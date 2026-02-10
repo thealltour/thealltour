@@ -1,0 +1,102 @@
+import { supabase } from "@/lib/supabase";
+import type { Product } from "@/types/product";
+import type {
+  ProductTaxonomy,
+  ProductTaxonomyType,
+  ProductTaxonomyWithUsage,
+} from "@/types/productTaxonomy";
+
+export function parseThemeTokens(value: string | undefined) {
+  if (!value) return [] as string[];
+  return value
+    .split(/[,\n/|]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+}
+
+function mapTaxonomy(row: Record<string, unknown>): ProductTaxonomy {
+  return {
+    id: String(row.id ?? ""),
+    type: row.type === "theme" ? "theme" : "category",
+    name: String(row.name ?? ""),
+    is_active: typeof row.is_active === "boolean" ? row.is_active : true,
+    sort_order: typeof row.sort_order === "number" ? row.sort_order : null,
+    created_at: typeof row.created_at === "string" ? row.created_at : null,
+  };
+}
+
+function toFallbackTaxonomies(products: Product[]) {
+  const categories = Array.from(
+    new Set(products.map((product) => product.category?.trim()).filter((value) => Boolean(value))),
+  ) as string[];
+  const themes = Array.from(
+    new Set(products.flatMap((product) => parseThemeTokens(product.theme))),
+  );
+  return { categories, themes };
+}
+
+export async function getProductTaxonomyOptions(productsFallback: Product[] = []) {
+  const result = await supabase
+    .from("product_taxonomies")
+    .select("*")
+    .eq("is_active", true)
+    .order("type", { ascending: true })
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  if (result.error) {
+    return toFallbackTaxonomies(productsFallback);
+  }
+
+  const mapped = (result.data ?? []).map((row) => mapTaxonomy(row as Record<string, unknown>));
+  const categories = mapped.filter((item) => item.type === "category").map((item) => item.name);
+  const themes = mapped.filter((item) => item.type === "theme").map((item) => item.name);
+  return { categories, themes };
+}
+
+function getUsageCount(products: Product[], type: ProductTaxonomyType, name: string) {
+  if (type === "category") {
+    return products.filter((product) => product.category === name).length;
+  }
+  return products.filter((product) => parseThemeTokens(product.theme).includes(name)).length;
+}
+
+export async function getProductTaxonomiesWithUsage(products: Product[]) {
+  const result = await supabase
+    .from("product_taxonomies")
+    .select("*")
+    .order("type", { ascending: true })
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  if (result.error) {
+    const fallback = toFallbackTaxonomies(products);
+    const categoryRows: ProductTaxonomyWithUsage[] = fallback.categories.map((name) => ({
+      id: `fallback-category-${name}`,
+      type: "category",
+      name,
+      is_active: true,
+      sort_order: null,
+      created_at: null,
+      usageCount: getUsageCount(products, "category", name),
+    }));
+    const themeRows: ProductTaxonomyWithUsage[] = fallback.themes.map((name) => ({
+      id: `fallback-theme-${name}`,
+      type: "theme",
+      name,
+      is_active: true,
+      sort_order: null,
+      created_at: null,
+      usageCount: getUsageCount(products, "theme", name),
+    }));
+    return [...categoryRows, ...themeRows];
+  }
+
+  return (result.data ?? []).map((row) => {
+    const taxonomy = mapTaxonomy(row as Record<string, unknown>);
+    return {
+      ...taxonomy,
+      usageCount: getUsageCount(products, taxonomy.type, taxonomy.name),
+    };
+  });
+}

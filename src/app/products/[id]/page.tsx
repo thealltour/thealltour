@@ -1,0 +1,97 @@
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getProductById } from "@/lib/products";
+
+type ProductDetailPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+function formatPrice(price?: number) {
+  if (typeof price !== "number") return null;
+  return new Intl.NumberFormat("ko-KR").format(price);
+}
+
+export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+  const { id } = await params;
+  const product = await getProductById(id);
+
+  if (!product) {
+    notFound();
+  }
+
+  const formattedPrice = formatPrice(product.price);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-6 py-10 md:px-10">
+      <main className="mx-auto w-full max-w-5xl space-y-8">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/products"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            ← 상품 목록으로
+          </Link>
+          <Link
+            href={{
+              pathname: "/quote",
+              query: {
+                product_id: product.id,
+                product_title: product.title,
+                source_path: `/products/${product.id}`,
+              },
+            }}
+            className="rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+          >
+            이 상품 문의하기
+          </Link>
+        </div>
+
+        <section className="overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe]">
+          <Image
+            src={product.image_url}
+            alt={`${product.title} 상세 이미지`}
+            width={1400}
+            height={900}
+            className="h-[340px] w-full object-cover md:h-[460px]"
+          />
+          <div className="space-y-5 p-6 md:p-8">
+            <span className="inline-block rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
+              {product.category}
+            </span>
+            <h1 className="text-3xl font-bold text-[#0f172a] md:text-4xl">{product.title}</h1>
+            <p className="whitespace-pre-line text-sm leading-7 text-slate-600 md:text-base">
+              {product.description}
+            </p>
+            <div className="flex flex-wrap gap-3 pt-1">
+              {formattedPrice ? (
+                <span className="rounded-lg bg-[#eff6ff] px-3 py-2 text-sm font-semibold text-[#1e3a8a]">
+                  예상가 {formattedPrice}원
+                </span>
+              ) : null}
+              {product.duration ? (
+                <span className="rounded-lg bg-[#f8fafc] px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200">
+                  일정 {product.duration}
+                </span>
+              ) : null}
+            </div>
+
+            {product.itinerary ? (
+              <div className="rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+                <h2 className="mb-2 text-lg font-bold text-[#1e3a8a]">일정표</h2>
+                <p className="whitespace-pre-line text-sm leading-7 text-slate-700">{product.itinerary}</p>
+              </div>
+            ) : null}
+
+            {product.inclusions ? (
+              <div className="rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+                <h2 className="mb-2 text-lg font-bold text-[#1e3a8a]">포함사항 / 안내</h2>
+                <p className="whitespace-pre-line text-sm leading-7 text-slate-700">{product.inclusions}</p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

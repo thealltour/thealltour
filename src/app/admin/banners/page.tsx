@@ -1,0 +1,30 @@
+import AdminBannerManager from "@/components/AdminBannerManager";
+import AdminHeader from "@/components/AdminHeader";
+import { getAdminCounts } from "@/lib/adminCounts";
+import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
+
+export default async function AdminBannersPage() {
+  const [{ inquiryCount, productCount, memberCount, reviewCount }, unreadNotificationCount] =
+    await Promise.all([getAdminCounts(), prepareAdminNotificationsAndGetUnreadCount()]);
+
+  return (
+    <div className="min-h-screen bg-[#f8fbff] px-6 py-10 text-[#0f172a] md:px-10">
+      <main className="mx-auto w-full max-w-6xl space-y-6">
+        <AdminHeader
+          activeTab="banners"
+          title="메인 배너 관리"
+          description="메인페이지 최상단 배너를 추가/삭제하고 노출 상태를 관리합니다."
+          inquiryCount={inquiryCount}
+          productCount={productCount}
+          memberCount={memberCount}
+          reviewCount={reviewCount}
+          unreadNotificationCount={unreadNotificationCount}
+        />
+
+        <section className="overflow-hidden rounded-2xl bg-white p-4 shadow-md ring-1 ring-[#dbeafe] md:p-5">
+          <AdminBannerManager />
+        </section>
+      </main>
+    </div>
+  );
+}

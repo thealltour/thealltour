@@ -16,11 +16,28 @@ import {
 type ProductCatalogSectionProps = {
   products: Product[];
   categories: string[];
+  initialKeyword?: string;
 };
 
-export default function ProductCatalogSection({ products, categories }: ProductCatalogSectionProps) {
+function normalizeSearchKeyword(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function matchesKeyword(product: Product, keyword: string) {
+  if (!keyword) {
+    return true;
+  }
+
+  const haystack = [product.title, product.description, product.category, product.theme ?? ""]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(keyword);
+}
+
+export default function ProductCatalogSection({ products, categories, initialKeyword = "" }: ProductCatalogSectionProps) {
   const [activeTab, setActiveTab] = useState<ProductCategoryTabId>("all");
   const [activeThemeTab, setActiveThemeTab] = useState("전체");
+  const keyword = useMemo(() => normalizeSearchKeyword(initialKeyword), [initialKeyword]);
   const categoryTabs = useMemo(() => ["전체", ...categories], [categories]);
 
   const filteredProducts = useMemo(
@@ -35,26 +52,33 @@ export default function ProductCatalogSection({ products, categories }: ProductC
     () => filteredProducts.filter((product) => matchesThemeTab(product, activeThemeTab)),
     [filteredProducts, activeThemeTab],
   );
+  const keywordFilteredProducts = useMemo(
+    () => themeFilteredProducts.filter((product) => matchesKeyword(product, keyword)),
+    [themeFilteredProducts, keyword],
+  );
   const groupedByTheme = useMemo(
-    () => groupProductsByTheme(themeFilteredProducts, themeTabs),
-    [themeFilteredProducts, themeTabs],
+    () => groupProductsByTheme(keywordFilteredProducts, themeTabs),
+    [keywordFilteredProducts, themeTabs],
   );
   const displayGroups = useMemo(
     () =>
       groupedByTheme.length > 0
         ? groupedByTheme
-        : themeFilteredProducts.length > 0
-          ? [{ theme: "기타", products: themeFilteredProducts }]
+        : keywordFilteredProducts.length > 0
+          ? [{ theme: "기타", products: keywordFilteredProducts }]
           : [],
-    [groupedByTheme, themeFilteredProducts],
+    [groupedByTheme, keywordFilteredProducts],
   );
 
   return (
     <section className="space-y-5">
       <div className="sticky top-[76px] z-20 space-y-3 rounded-2xl bg-white/95 p-3 shadow-sm ring-1 ring-[#dbeafe] backdrop-blur">
         <p className="text-xs font-semibold text-slate-500">
-          총 {themeFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
+          총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
         </p>
+        {keyword ? (
+          <p className="text-xs font-semibold text-[#1d4ed8]">검색어: {initialKeyword}</p>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
         {categoryTabs.map((tab) => (
           <button
@@ -94,9 +118,9 @@ export default function ProductCatalogSection({ products, categories }: ProductC
       </div>
 
       <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-6">
-        {themeFilteredProducts.length === 0 ? (
+        {keywordFilteredProducts.length === 0 ? (
           <div className="rounded-2xl bg-white p-8 text-sm text-slate-500 shadow-md ring-1 ring-[#e2e8f0] md:col-span-2">
-            선택한 카테고리에 해당하는 상품이 없습니다.
+            {keyword ? "검색어와 일치하는 상품이 없습니다." : "선택한 카테고리에 해당하는 상품이 없습니다."}
           </div>
         ) : (
           displayGroups.map((group) => (

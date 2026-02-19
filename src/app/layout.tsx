@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalSiteFooter from "@/components/GlobalSiteFooter";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "더올투어 | 맞춤형 해외/국내 여행 전문",
@@ -26,9 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased selection:bg-[#bfdbfe] selection:text-[#0f172a]`}
-      >
+      <body className="flex min-h-screen flex-col antialiased selection:bg-[#bfdbfe] selection:text-[#0f172a]">
         <div className="flex-1">{children}</div>
         <GlobalSiteFooter />
       </body>

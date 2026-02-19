@@ -19,3 +19,34 @@ comment on table public.product_terms_templates is '상품 약관/참조사항 �
 comment on column public.product_terms_templates.type is '템플릿 구분 키';
 comment on column public.product_terms_templates.content is '템플릿 본문';
 comment on column public.products.terms_template_type is '상품 약관 템플릿 키';
+
+alter table public.product_terms_templates enable row level security;
+
+drop policy if exists "terms_templates_select_anon" on public.product_terms_templates;
+create policy "terms_templates_select_anon"
+on public.product_terms_templates
+for select
+to anon
+using (true);
+
+drop policy if exists "terms_templates_insert_anon" on public.product_terms_templates;
+create policy "terms_templates_insert_anon"
+on public.product_terms_templates
+for insert
+to anon
+with check (true);
+
+drop policy if exists "terms_templates_update_anon" on public.product_terms_templates;
+create policy "terms_templates_update_anon"
+on public.product_terms_templates
+for update
+to anon
+using (true)
+with check (true);
+
+drop policy if exists "terms_templates_delete_anon" on public.product_terms_templates;
+create policy "terms_templates_delete_anon"
+on public.product_terms_templates
+for delete
+to anon
+using (true);

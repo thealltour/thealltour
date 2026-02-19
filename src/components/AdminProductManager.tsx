@@ -363,11 +363,12 @@ export default function AdminProductManager() {
         setTermsTemplatesErrorMessage(msg ?? "약관 템플릿 조회에 실패했습니다.");
         return;
       }
+      const templateResult = result as Partial<TermsTemplateMap>;
       setTermsTemplates({
-        overseas_brokerage: result.overseas_brokerage ?? "",
-        domestic_brokerage: result.domestic_brokerage ?? "",
-        overseas_direct: result.overseas_direct ?? "",
-        domestic_direct: result.domestic_direct ?? "",
+        overseas_brokerage: templateResult.overseas_brokerage ?? "",
+        domestic_brokerage: templateResult.domestic_brokerage ?? "",
+        overseas_direct: templateResult.overseas_direct ?? "",
+        domestic_direct: templateResult.domestic_direct ?? "",
       });
     } catch {
       setTermsTemplatesErrorMessage("약관 템플릿 조회 중 오류가 발생했습니다.");

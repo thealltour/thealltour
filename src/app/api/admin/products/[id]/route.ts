@@ -100,7 +100,7 @@ export async function PATCH(
     );
   }
 
-  revalidateTag("products");
+  revalidateTag("products", "max");
   return NextResponse.json({ message: "상품이 수정되었습니다." });
 }
 
@@ -121,6 +121,6 @@ export async function DELETE(
     );
   }
 
-  revalidateTag("products");
+  revalidateTag("products", "max");
   return NextResponse.json({ message: "상품이 삭제되었습니다." });
 }

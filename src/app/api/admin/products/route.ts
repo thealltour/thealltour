@@ -111,6 +111,6 @@ export async function POST(request: Request) {
     );
   }
 
-  revalidateTag("products");
+  revalidateTag("products", "max");
   return NextResponse.json({ message: "상품이 등록되었습니다." }, { status: 201 });
 }

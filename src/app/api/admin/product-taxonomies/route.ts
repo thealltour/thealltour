@@ -92,9 +92,9 @@ export async function POST(request: Request) {
   }
 
   if (type === "category") {
-    revalidateTag("product-taxonomies");
+    revalidateTag("product-taxonomies", "max");
     return NextResponse.json({ message: "카테고리가 추가되었습니다." }, { status: 201 });
   }
-  revalidateTag("product-taxonomies");
+  revalidateTag("product-taxonomies", "max");
   return NextResponse.json({ message: "테마가 추가되었습니다." }, { status: 201 });
 }

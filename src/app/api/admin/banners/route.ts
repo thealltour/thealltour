@@ -69,6 +69,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "배너 추가에 실패했습니다." }, { status: 500 });
   }
 
-  revalidateTag("home-banners");
+  revalidateTag("home-banners", "max");
   return NextResponse.json({ message: "배너가 추가되었습니다." }, { status: 201 });
 }

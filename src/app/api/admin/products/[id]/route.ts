@@ -7,6 +7,7 @@ const FEATURED_PRODUCT_LIMIT = 8;
 type ProductBody = {
   title?: string;
   description?: string;
+  product_source_url?: string | null;
   point_benefits?: string | null;
   point_tourism?: string | null;
   point_guide?: string | null;
@@ -84,6 +85,7 @@ export async function PATCH(
   if (body.detailed_schedule !== undefined) updates.detailed_schedule = body.detailed_schedule?.trim() || null;
   if (body.optional_tours !== undefined) updates.optional_tours = body.optional_tours?.trim() || null;
   if (body.terms_and_notes !== undefined) updates.terms_and_notes = body.terms_and_notes?.trim() || null;
+  if (body.product_source_url !== undefined) updates.product_source_url = body.product_source_url?.trim() || null;
   if (body.image_url !== undefined) updates.image_url = body.image_url?.trim();
   if (body.category !== undefined) updates.category = body.category?.trim();
   if (body.theme !== undefined) updates.theme = body.theme?.trim() || null;

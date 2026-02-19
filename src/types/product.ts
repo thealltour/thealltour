@@ -19,6 +19,7 @@ export type Product = {
   detailed_schedule?: string;
   optional_tours?: string;
   terms_and_notes?: string;
+  product_source_url?: string;
   meta_title?: string;
   meta_description?: string;
   is_active?: boolean;

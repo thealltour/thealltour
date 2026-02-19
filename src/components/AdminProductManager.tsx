@@ -7,6 +7,7 @@ import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 type ProductFormState = {
   title: string;
   description: string;
+  product_source_url: string;
   point_benefits: string;
   point_tourism: string;
   point_guide: string;
@@ -41,6 +42,7 @@ const FEATURED_PRODUCT_LIMIT = 8;
 const initialFormState: ProductFormState = {
   title: "",
   description: "",
+  product_source_url: "",
   point_benefits: "",
   point_tourism: "",
   point_guide: "",
@@ -69,6 +71,7 @@ function mapProductToForm(product: Product): ProductFormState {
   return {
     title: product.title ?? "",
     description: product.description ?? "",
+    product_source_url: product.product_source_url ?? "",
     point_benefits: product.point_benefits ?? "",
     point_tourism: product.point_tourism ?? "",
     point_guide: product.point_guide ?? "",
@@ -216,6 +219,7 @@ export default function AdminProductManager() {
         detailed_schedule: form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule,
         optional_tours: form.optional_tours.trim() === "" ? undefined : form.optional_tours,
         terms_and_notes: form.terms_and_notes.trim() === "" ? undefined : form.terms_and_notes,
+        product_source_url: form.product_source_url.trim() === "" ? undefined : form.product_source_url,
         image_url: form.image_url,
         category: form.category,
         theme: form.theme.trim() === "" ? null : form.theme,
@@ -302,6 +306,7 @@ export default function AdminProductManager() {
         product.category.toLowerCase().includes(q) ||
         (product.theme ?? "").toLowerCase().includes(q) ||
         product.description.toLowerCase().includes(q) ||
+        (product.product_source_url ?? "").toLowerCase().includes(q) ||
         (product.point_benefits ?? "").toLowerCase().includes(q) ||
         (product.point_tourism ?? "").toLowerCase().includes(q) ||
         (product.point_guide ?? "").toLowerCase().includes(q) ||
@@ -769,6 +774,12 @@ export default function AdminProductManager() {
             placeholder="상품 설명"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
           />
+          <input
+            value={form.product_source_url}
+            onChange={(event) => setForm((prev) => ({ ...prev, product_source_url: event.target.value }))}
+            placeholder="상품 원본주소 (관리자 확인용 URL)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+          />
           <textarea
             value={form.point_benefits}
             onChange={(event) => setForm((prev) => ({ ...prev, point_benefits: event.target.value }))}
@@ -944,6 +955,7 @@ export default function AdminProductManager() {
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">상품명</th>
                   <th className="px-4 py-3 text-left font-semibold">카테고리</th>
+                  <th className="px-4 py-3 text-left font-semibold">원본주소</th>
                   <th className="px-4 py-3 text-left font-semibold">테마/배지</th>
                   <th className="px-4 py-3 text-left font-semibold">가격</th>
                   <th className="w-[170px] px-4 py-3 text-left font-semibold">노출순서</th>
@@ -955,7 +967,7 @@ export default function AdminProductManager() {
               <tbody>
                 {pagedProducts.length === 0 ? (
                   <tr className="border-t border-slate-200">
-                    <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+                    <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
                       등록된 상품이 없습니다.
                     </td>
                   </tr>
@@ -964,6 +976,20 @@ export default function AdminProductManager() {
                     <tr key={product.id} className="border-t border-slate-200">
                       <td className="px-4 py-3 font-medium text-[#1e3a8a]">{product.title}</td>
                       <td className="px-4 py-3">{product.category}</td>
+                      <td className="px-4 py-3">
+                        {product.product_source_url ? (
+                          <a
+                            href={product.product_source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-semibold text-[#1d4ed8] underline-offset-2 hover:underline"
+                          >
+                            원본 보기
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                       <td className="px-4 py-3">{product.theme ?? "-"}</td>
                       <td className="px-4 py-3">
                         {typeof product.price === "number"

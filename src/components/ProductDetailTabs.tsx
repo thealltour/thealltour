@@ -98,11 +98,11 @@ export default function ProductDetailTabs({
   const termsLines = useMemo(() => parseBulletLines(safeTermsAndNotes), [safeTermsAndNotes]);
 
   const pointRows = [
-    { label: "혜택", value: pointBenefits, icon: "혜택", type: "text" as const },
-    { label: "관광", value: pointTourism, icon: "관광", type: "ox" as const },
-    { label: "인솔자", value: pointGuide, icon: "인솔", type: "ox" as const },
-    { label: "미팅정보", value: meetingInfo, icon: "미팅", type: "ox" as const },
-    { label: "여행자보험", value: travelInsurance, icon: "보험", type: "ox" as const },
+    { label: "혜택", value: pointBenefits, badge: "혜택", type: "text" as const },
+    { label: "관광", value: pointTourism, type: "ox" as const },
+    { label: "인솔자", value: pointGuide, type: "ox" as const },
+    { label: "미팅정보", value: meetingInfo, type: "ox" as const },
+    { label: "여행자보험", value: travelInsurance, type: "ox" as const },
   ].filter((item) => (item.type === "text" ? Boolean(item.value && item.value.trim()) : true));
 
   const mainTabs: { key: MainTab; label: string }[] = [
@@ -135,40 +135,41 @@ export default function ProductDetailTabs({
         <div key="points" className="fade-in-up space-y-5">
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {pointRows.length > 0 ? (
-              pointRows.map((item) => (
-                <article key={item.label} className="rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
-                  <div className="mb-3 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#1e3a8a] ring-1 ring-[#dbeafe]">
-                    {item.icon}
-                  </div>
-                  <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">{item.label}</h3>
-                  {item.type === "text" ? (
-                    <p className="whitespace-pre-line text-sm leading-6 text-slate-700">{item.value?.trim()}</p>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      {normalizeOXValue(item.value) === "O" ? (
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                          O
+              pointRows.map((item) => {
+                const oxValue = item.type === "ox" ? normalizeOXValue(item.value) : "";
+                const isProvided = oxValue === "O";
+                const isNotProvided = oxValue === "X";
+
+                return (
+                  <article key={item.label} className="rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+                    {item.type === "text" ? (
+                      <>
+                        <div className="mb-3 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#1e3a8a] ring-1 ring-[#dbeafe]">
+                          {item.badge}
+                        </div>
+                        <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">{item.label}</h3>
+                        <p className="whitespace-pre-line text-sm leading-6 text-slate-700">{item.value?.trim()}</p>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-[15px] font-bold text-[#1e3a8a]">{item.label}</h3>
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            isProvided
+                              ? "bg-emerald-100 text-emerald-700"
+                              : isNotProvided
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          <span className="font-black">{isProvided ? "O" : isNotProvided ? "X" : "-"}</span>
+                          <span>{isProvided ? "제공" : isNotProvided ? "미제공" : "미설정"}</span>
                         </span>
-                      ) : normalizeOXValue(item.value) === "X" ? (
-                        <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700">
-                          X
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
-                          미설정
-                        </span>
-                      )}
-                      <span className="text-sm font-medium text-slate-700">
-                        {normalizeOXValue(item.value) === "O"
-                          ? "제공"
-                          : normalizeOXValue(item.value) === "X"
-                            ? "미제공"
-                            : "정보 없음"}
-                      </span>
-                    </div>
-                  )}
-                </article>
-              ))
+                      </div>
+                    )}
+                  </article>
+                );
+              })
             ) : (
               <p className="text-sm text-slate-500">등록된 핵심 포인트가 없습니다.</p>
             )}

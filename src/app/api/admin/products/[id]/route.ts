@@ -18,6 +18,21 @@ type ProductBody = {
   detailed_schedule?: string | null;
   optional_tours?: string | null;
   terms_and_notes?: string | null;
+  terms_template_type?: string | null;
+  departure_from_airport?: string | null;
+  departure_from_date?: string | null;
+  departure_from_time?: string | null;
+  departure_to_airport?: string | null;
+  departure_to_date?: string | null;
+  departure_to_time?: string | null;
+  departure_flight_name?: string | null;
+  arrival_from_airport?: string | null;
+  arrival_from_date?: string | null;
+  arrival_from_time?: string | null;
+  arrival_to_airport?: string | null;
+  arrival_to_date?: string | null;
+  arrival_to_time?: string | null;
+  arrival_flight_name?: string | null;
   meta_title?: string | null;
   meta_description?: string | null;
   image_url?: string;
@@ -85,7 +100,26 @@ export async function PATCH(
   if (body.detailed_schedule !== undefined) updates.detailed_schedule = body.detailed_schedule?.trim() || null;
   if (body.optional_tours !== undefined) updates.optional_tours = body.optional_tours?.trim() || null;
   if (body.terms_and_notes !== undefined) updates.terms_and_notes = body.terms_and_notes?.trim() || null;
+  if (body.terms_template_type !== undefined) updates.terms_template_type = body.terms_template_type?.trim() || null;
   if (body.product_source_url !== undefined) updates.product_source_url = body.product_source_url?.trim() || null;
+  if (body.departure_from_airport !== undefined)
+    updates.departure_from_airport = body.departure_from_airport?.trim() || null;
+  if (body.departure_from_date !== undefined) updates.departure_from_date = body.departure_from_date?.trim() || null;
+  if (body.departure_from_time !== undefined) updates.departure_from_time = body.departure_from_time?.trim() || null;
+  if (body.departure_to_airport !== undefined)
+    updates.departure_to_airport = body.departure_to_airport?.trim() || null;
+  if (body.departure_to_date !== undefined) updates.departure_to_date = body.departure_to_date?.trim() || null;
+  if (body.departure_to_time !== undefined) updates.departure_to_time = body.departure_to_time?.trim() || null;
+  if (body.departure_flight_name !== undefined)
+    updates.departure_flight_name = body.departure_flight_name?.trim() || null;
+  if (body.arrival_from_airport !== undefined)
+    updates.arrival_from_airport = body.arrival_from_airport?.trim() || null;
+  if (body.arrival_from_date !== undefined) updates.arrival_from_date = body.arrival_from_date?.trim() || null;
+  if (body.arrival_from_time !== undefined) updates.arrival_from_time = body.arrival_from_time?.trim() || null;
+  if (body.arrival_to_airport !== undefined) updates.arrival_to_airport = body.arrival_to_airport?.trim() || null;
+  if (body.arrival_to_date !== undefined) updates.arrival_to_date = body.arrival_to_date?.trim() || null;
+  if (body.arrival_to_time !== undefined) updates.arrival_to_time = body.arrival_to_time?.trim() || null;
+  if (body.arrival_flight_name !== undefined) updates.arrival_flight_name = body.arrival_flight_name?.trim() || null;
   if (body.image_url !== undefined) updates.image_url = body.image_url?.trim();
   if (body.category !== undefined) updates.category = body.category?.trim();
   if (body.theme !== undefined) updates.theme = body.theme?.trim() || null;

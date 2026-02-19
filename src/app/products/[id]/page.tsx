@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ProductDetailTabs from "@/components/ProductDetailTabs";
 import { getProductById } from "@/lib/products";
+import { getTermsTemplateContent } from "@/lib/termsTemplates";
 
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -47,6 +48,56 @@ function formatPrice(price?: number) {
   return new Intl.NumberFormat("ko-KR").format(price);
 }
 
+type FlightCardData = {
+  fromAirport?: string;
+  fromDate?: string;
+  fromTime?: string;
+  toAirport?: string;
+  toDate?: string;
+  toTime?: string;
+  flightName?: string;
+};
+
+function hasFlightCardData(flight: FlightCardData) {
+  return Boolean(
+    flight.fromAirport?.trim() ||
+      flight.fromDate?.trim() ||
+      flight.fromTime?.trim() ||
+      flight.toAirport?.trim() ||
+      flight.toDate?.trim() ||
+      flight.toTime?.trim() ||
+      flight.flightName?.trim(),
+  );
+}
+
+function renderFlightCard(title: string, flight: FlightCardData) {
+  if (!hasFlightCardData(flight)) return null;
+
+  return (
+    <article className="rounded-2xl border border-[#dbeafe] bg-white px-5 py-4 shadow-sm">
+      <p className="mb-3 text-xs font-semibold text-[#1d4ed8]">{title}</p>
+      <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+        <div className="space-y-1">
+          <p className="text-xl font-extrabold text-[#0f172a]">{flight.fromAirport || "-"}</p>
+          <p className="text-sm text-slate-600">{flight.fromDate || "-"}</p>
+          <p className="text-3xl font-black tracking-tight text-[#0f172a]">{flight.fromTime || "-"}</p>
+        </div>
+        <div className="flex min-w-[190px] flex-col items-center gap-1 text-center">
+          <p className="text-sm font-semibold text-slate-700">{flight.flightName || "항공편"}</p>
+          <div className="w-full px-1">
+            <div className="h-[2px] w-full bg-slate-300" />
+          </div>
+        </div>
+        <div className="space-y-1 text-left md:text-right">
+          <p className="text-xl font-extrabold text-[#0f172a]">{flight.toAirport || "-"}</p>
+          <p className="text-sm text-slate-600">{flight.toDate || "-"}</p>
+          <p className="text-3xl font-black tracking-tight text-[#0f172a]">{flight.toTime || "-"}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id } = await params;
   const product = await getProductById(id);
@@ -69,7 +120,30 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     ? product.terms_and_notes
     : product.excluded_items;
   const resolvedOptionalTours = shouldFallbackFromLegacyDetailFields ? undefined : product.optional_tours;
-  const resolvedTermsAndNotes = shouldFallbackFromLegacyDetailFields ? undefined : product.terms_and_notes;
+  const selectedTermsTemplateContent = await getTermsTemplateContent(product.terms_template_type);
+  const resolvedTermsAndNotes = selectedTermsTemplateContent.trim()
+    ? selectedTermsTemplateContent
+    : shouldFallbackFromLegacyDetailFields
+      ? undefined
+      : product.terms_and_notes;
+  const departureFlight: FlightCardData = {
+    fromAirport: product.departure_from_airport,
+    fromDate: product.departure_from_date,
+    fromTime: product.departure_from_time,
+    toAirport: product.departure_to_airport,
+    toDate: product.departure_to_date,
+    toTime: product.departure_to_time,
+    flightName: product.departure_flight_name,
+  };
+  const arrivalFlight: FlightCardData = {
+    fromAirport: product.arrival_from_airport,
+    fromDate: product.arrival_from_date,
+    fromTime: product.arrival_from_time,
+    toAirport: product.arrival_to_airport,
+    toDate: product.arrival_to_date,
+    toTime: product.arrival_to_time,
+    flightName: product.arrival_flight_name,
+  };
   const quoteHref = {
     pathname: "/quote",
     query: {
@@ -136,6 +210,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 문의를 남겨주시면 일정/예산/동행구성에 맞춰 맞춤 동선과 견적 옵션을 안내드립니다.
               </p>
             </div>
+            {renderFlightCard("출발 항공편", departureFlight)}
+            {renderFlightCard("도착 항공편", arrivalFlight)}
 
             <ProductDetailTabs
               pointBenefits={product.point_benefits}

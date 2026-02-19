@@ -36,6 +36,36 @@ function normalizeProduct(row: Record<string, unknown>): Product {
     detailed_schedule: typeof row.detailed_schedule === "string" ? row.detailed_schedule : undefined,
     optional_tours: typeof row.optional_tours === "string" ? row.optional_tours : undefined,
     terms_and_notes: typeof row.terms_and_notes === "string" ? row.terms_and_notes : undefined,
+    terms_template_type:
+      typeof row.terms_template_type === "string" ? row.terms_template_type : undefined,
+    departure_from_airport:
+      typeof row.departure_from_airport === "string" ? row.departure_from_airport : undefined,
+    departure_from_date:
+      typeof row.departure_from_date === "string" ? row.departure_from_date : undefined,
+    departure_from_time:
+      typeof row.departure_from_time === "string" ? row.departure_from_time : undefined,
+    departure_to_airport:
+      typeof row.departure_to_airport === "string" ? row.departure_to_airport : undefined,
+    departure_to_date:
+      typeof row.departure_to_date === "string" ? row.departure_to_date : undefined,
+    departure_to_time:
+      typeof row.departure_to_time === "string" ? row.departure_to_time : undefined,
+    departure_flight_name:
+      typeof row.departure_flight_name === "string" ? row.departure_flight_name : undefined,
+    arrival_from_airport:
+      typeof row.arrival_from_airport === "string" ? row.arrival_from_airport : undefined,
+    arrival_from_date:
+      typeof row.arrival_from_date === "string" ? row.arrival_from_date : undefined,
+    arrival_from_time:
+      typeof row.arrival_from_time === "string" ? row.arrival_from_time : undefined,
+    arrival_to_airport:
+      typeof row.arrival_to_airport === "string" ? row.arrival_to_airport : undefined,
+    arrival_to_date:
+      typeof row.arrival_to_date === "string" ? row.arrival_to_date : undefined,
+    arrival_to_time:
+      typeof row.arrival_to_time === "string" ? row.arrival_to_time : undefined,
+    arrival_flight_name:
+      typeof row.arrival_flight_name === "string" ? row.arrival_flight_name : undefined,
     meta_title: typeof row.meta_title === "string" ? row.meta_title : undefined,
     meta_description:
       typeof row.meta_description === "string" ? row.meta_description : undefined,

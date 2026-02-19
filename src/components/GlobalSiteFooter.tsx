@@ -53,6 +53,20 @@ export default function GlobalSiteFooter() {
               인스타그램
             </a>
           </div>
+          <div className="mt-1 flex items-center gap-2">
+            <Link
+              href="/terms"
+              className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              이용약관
+            </Link>
+            <Link
+              href="/privacy"
+              className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              개인정보처리방침
+            </Link>
+          </div>
         </div>
       </div>
       <div className="border-t border-slate-200 py-3 text-center text-xs text-slate-500">

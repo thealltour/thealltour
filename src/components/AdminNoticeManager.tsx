@@ -10,11 +10,23 @@ type FormState = {
   is_published: boolean;
 };
 
+type LegalDocumentsState = {
+  terms: string;
+  privacy: string;
+};
+
 const initialForm: FormState = {
   title: "",
   content: "",
   sort_order: "",
   is_published: true,
+};
+
+const LEGAL_NOTICE_TITLES = new Set(["__LEGAL__TERMS", "__LEGAL__PRIVACY"]);
+
+const initialLegalDocuments: LegalDocumentsState = {
+  terms: "",
+  privacy: "",
 };
 
 export default function AdminNoticeManager() {
@@ -26,6 +38,11 @@ export default function AdminNoticeManager() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [legalDocuments, setLegalDocuments] = useState<LegalDocumentsState>(initialLegalDocuments);
+  const [isLegalLoading, setIsLegalLoading] = useState(true);
+  const [isLegalSaving, setIsLegalSaving] = useState(false);
+  const [legalErrorMessage, setLegalErrorMessage] = useState("");
+  const [isLegalPanelOpen, setIsLegalPanelOpen] = useState(false);
 
   function formatDate(value: string | null) {
     if (!value) return "-";
@@ -45,7 +62,7 @@ export default function AdminNoticeManager() {
         setErrorMessage(msg ?? "공지 목록 조회에 실패했습니다.");
         return;
       }
-      setNotices(result as Notice[]);
+      setNotices((result as Notice[]).filter((item) => !LEGAL_NOTICE_TITLES.has(item.title)));
     } catch {
       setErrorMessage("공지 목록 조회 중 오류가 발생했습니다.");
     } finally {
@@ -54,8 +71,30 @@ export default function AdminNoticeManager() {
   }
 
   useEffect(() => {
-    loadNotices();
+    Promise.all([loadNotices(), loadLegalDocuments()]);
   }, []);
+
+  async function loadLegalDocuments() {
+    try {
+      setIsLegalLoading(true);
+      setLegalErrorMessage("");
+      const response = await fetch("/api/admin/legal-documents", { cache: "no-store" });
+      const result = (await response.json()) as LegalDocumentsState | { message?: string };
+      if (!response.ok) {
+        const msg = "message" in result ? result.message : "법률 문서 조회에 실패했습니다.";
+        setLegalErrorMessage(msg ?? "법률 문서 조회에 실패했습니다.");
+        return;
+      }
+      setLegalDocuments({
+        terms: (result as LegalDocumentsState).terms ?? "",
+        privacy: (result as LegalDocumentsState).privacy ?? "",
+      });
+    } catch {
+      setLegalErrorMessage("법률 문서 조회 중 오류가 발생했습니다.");
+    } finally {
+      setIsLegalLoading(false);
+    }
+  }
 
   function startEdit(item: Notice) {
     setEditingId(item.id);
@@ -135,8 +174,94 @@ export default function AdminNoticeManager() {
     }
   }
 
+  async function saveLegalDocuments() {
+    try {
+      setIsLegalSaving(true);
+      setLegalErrorMessage("");
+      const response = await fetch("/api/admin/legal-documents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(legalDocuments),
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setLegalErrorMessage(result.message ?? "법률 문서 저장에 실패했습니다.");
+        return;
+      }
+      setMessage("법률 문서를 저장했습니다.");
+    } catch {
+      setLegalErrorMessage("법률 문서 저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsLegalSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-bold text-[#1e3a8a]">회원가입 법률 문서 관리</h3>
+          <button
+            type="button"
+            onClick={() => setIsLegalPanelOpen((prev) => !prev)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            {isLegalPanelOpen ? "접기" : "펼치기"}
+          </button>
+        </div>
+        {!isLegalPanelOpen ? (
+          <p className="text-xs text-slate-500">
+            안전을 위해 기본 접힘 상태입니다. 수정이 필요할 때만 펼쳐서 사용해 주세요.
+          </p>
+        ) : (
+          <>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={saveLegalDocuments}
+                disabled={isLegalLoading || isLegalSaving}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                {isLegalSaving ? "저장 중..." : "법률 문서 저장"}
+              </button>
+            </div>
+            {legalErrorMessage ? <p className="text-sm text-red-500">{legalErrorMessage}</p> : null}
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                서비스 이용약관
+                <textarea
+                  rows={10}
+                  value={legalDocuments.terms}
+                  onChange={(event) =>
+                    setLegalDocuments((prev) => ({
+                      ...prev,
+                      terms: event.target.value,
+                    }))
+                  }
+                  placeholder="서비스 이용약관 전문을 입력하세요."
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                개인정보처리방침
+                <textarea
+                  rows={10}
+                  value={legalDocuments.privacy}
+                  onChange={(event) =>
+                    setLegalDocuments((prev) => ({
+                      ...prev,
+                      privacy: event.target.value,
+                    }))
+                  }
+                  placeholder="개인정보처리방침 전문을 입력하세요."
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </label>
+            </div>
+          </>
+        )}
+      </section>
+
       <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold text-[#1e3a8a]">{editingId ? "공지 수정" : "공지 등록"}</h3>

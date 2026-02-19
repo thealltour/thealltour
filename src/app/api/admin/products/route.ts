@@ -18,6 +18,21 @@ type ProductBody = {
   detailed_schedule?: string | null;
   optional_tours?: string | null;
   terms_and_notes?: string | null;
+  terms_template_type?: string | null;
+  departure_from_airport?: string | null;
+  departure_from_date?: string | null;
+  departure_from_time?: string | null;
+  departure_to_airport?: string | null;
+  departure_to_date?: string | null;
+  departure_to_time?: string | null;
+  departure_flight_name?: string | null;
+  arrival_from_airport?: string | null;
+  arrival_from_date?: string | null;
+  arrival_from_time?: string | null;
+  arrival_to_airport?: string | null;
+  arrival_to_date?: string | null;
+  arrival_to_time?: string | null;
+  arrival_flight_name?: string | null;
   meta_title?: string | null;
   meta_description?: string | null;
   image_url?: string;
@@ -146,8 +161,53 @@ export async function POST(request: Request) {
   if (body.terms_and_notes !== undefined) {
     insertPayload.terms_and_notes = body.terms_and_notes?.trim() || null;
   }
+  if (body.terms_template_type !== undefined) {
+    insertPayload.terms_template_type = body.terms_template_type?.trim() || null;
+  }
   if (body.product_source_url !== undefined) {
     insertPayload.product_source_url = body.product_source_url?.trim() || null;
+  }
+  if (body.departure_from_airport !== undefined) {
+    insertPayload.departure_from_airport = body.departure_from_airport?.trim() || null;
+  }
+  if (body.departure_from_date !== undefined) {
+    insertPayload.departure_from_date = body.departure_from_date?.trim() || null;
+  }
+  if (body.departure_from_time !== undefined) {
+    insertPayload.departure_from_time = body.departure_from_time?.trim() || null;
+  }
+  if (body.departure_to_airport !== undefined) {
+    insertPayload.departure_to_airport = body.departure_to_airport?.trim() || null;
+  }
+  if (body.departure_to_date !== undefined) {
+    insertPayload.departure_to_date = body.departure_to_date?.trim() || null;
+  }
+  if (body.departure_to_time !== undefined) {
+    insertPayload.departure_to_time = body.departure_to_time?.trim() || null;
+  }
+  if (body.departure_flight_name !== undefined) {
+    insertPayload.departure_flight_name = body.departure_flight_name?.trim() || null;
+  }
+  if (body.arrival_from_airport !== undefined) {
+    insertPayload.arrival_from_airport = body.arrival_from_airport?.trim() || null;
+  }
+  if (body.arrival_from_date !== undefined) {
+    insertPayload.arrival_from_date = body.arrival_from_date?.trim() || null;
+  }
+  if (body.arrival_from_time !== undefined) {
+    insertPayload.arrival_from_time = body.arrival_from_time?.trim() || null;
+  }
+  if (body.arrival_to_airport !== undefined) {
+    insertPayload.arrival_to_airport = body.arrival_to_airport?.trim() || null;
+  }
+  if (body.arrival_to_date !== undefined) {
+    insertPayload.arrival_to_date = body.arrival_to_date?.trim() || null;
+  }
+  if (body.arrival_to_time !== undefined) {
+    insertPayload.arrival_to_time = body.arrival_to_time?.trim() || null;
+  }
+  if (body.arrival_flight_name !== undefined) {
+    insertPayload.arrival_flight_name = body.arrival_flight_name?.trim() || null;
   }
 
   const insertResult = await supabase

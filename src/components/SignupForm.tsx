@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { PRIVACY_POLICY_TEXT, SERVICE_TERMS_TEXT } from "@/content/legal";
 import type { MemberSignupInput } from "@/types/member";
 
 const initialFormState: MemberSignupInput = {
@@ -41,6 +42,11 @@ export default function SignupForm() {
   const [isIdAvailable, setIsIdAvailable] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [openDocument, setOpenDocument] = useState<"terms" | "privacy" | null>(null);
+  const [legalDocuments, setLegalDocuments] = useState({
+    terms: SERVICE_TERMS_TEXT,
+    privacy: PRIVACY_POLICY_TEXT,
+  });
 
   const isPasswordMatched = useMemo(
     () => form.password.length > 0 && form.password === form.confirmPassword,
@@ -53,6 +59,21 @@ export default function SignupForm() {
     const maxDay = getLastDayOfMonth(Number(birthYear), Number(birthMonth));
     return Array.from({ length: maxDay }, (_, index) => String(index + 1).padStart(2, "0"));
   }, [birthYear, birthMonth]);
+
+  useEffect(() => {
+    fetch("/api/legal-documents", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json()) as { terms?: string; privacy?: string };
+        if (!response.ok) return;
+        setLegalDocuments({
+          terms: result.terms?.trim() ? result.terms : SERVICE_TERMS_TEXT,
+          privacy: result.privacy?.trim() ? result.privacy : PRIVACY_POLICY_TEXT,
+        });
+      })
+      .catch(() => {
+        // fallback text is already set
+      });
+  }, []);
 
   function updateField<K extends keyof MemberSignupInput>(key: K, value: MemberSignupInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -355,6 +376,13 @@ export default function SignupForm() {
           />
           <span>
             이용약관 동의 <span className="font-semibold text-red-500">(필수)</span>
+            <button
+              type="button"
+              onClick={() => setOpenDocument("terms")}
+              className="ml-2 text-xs font-semibold text-[#2563eb] underline"
+            >
+              전문보기
+            </button>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -366,6 +394,13 @@ export default function SignupForm() {
           />
           <span>
             개인정보 수집 및 이용 동의 <span className="font-semibold text-red-500">(필수)</span>
+            <button
+              type="button"
+              onClick={() => setOpenDocument("privacy")}
+              className="ml-2 text-xs font-semibold text-[#2563eb] underline"
+            >
+              전문보기
+            </button>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -389,6 +424,30 @@ export default function SignupForm() {
       >
         {isSubmitting ? "가입 처리 중..." : "회원가입 완료"}
       </button>
+
+      {openDocument ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h3 className="text-base font-bold text-slate-800">
+                {openDocument === "terms" ? "서비스 이용약관" : "개인정보 수집 및 이용 동의"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setOpenDocument(null)}
+                className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                닫기
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto px-5 py-4">
+              <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
+                {openDocument === "terms" ? legalDocuments.terms : legalDocuments.privacy}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

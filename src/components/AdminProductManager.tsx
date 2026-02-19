@@ -15,8 +15,23 @@ type ProductFormState = {
   travel_insurance: "O" | "X";
   included_items: string;
   excluded_items: string;
+  departure_from_airport: string;
+  departure_from_date: string;
+  departure_from_time: string;
+  departure_to_airport: string;
+  departure_to_date: string;
+  departure_to_time: string;
+  departure_flight_name: string;
+  arrival_from_airport: string;
+  arrival_from_date: string;
+  arrival_from_time: string;
+  arrival_to_airport: string;
+  arrival_to_date: string;
+  arrival_to_time: string;
+  arrival_flight_name: string;
   detailed_schedule: string;
   optional_tours: string;
+  terms_template_type: "" | TermsTemplateType;
   terms_and_notes: string;
   meta_title: string;
   meta_description: string;
@@ -39,6 +54,25 @@ type ToastState = {
 
 const FEATURED_PRODUCT_LIMIT = 8;
 
+const TERMS_TEMPLATE_OPTIONS = [
+  { value: "overseas_brokerage", label: "해외중개" },
+  { value: "domestic_brokerage", label: "국내중개" },
+  { value: "overseas_direct", label: "해외직접" },
+  { value: "domestic_direct", label: "국내직접" },
+] as const;
+
+type TermsTemplateType = (typeof TERMS_TEMPLATE_OPTIONS)[number]["value"];
+type TermsTemplateMap = Record<TermsTemplateType, string>;
+
+function createEmptyTermsTemplateMap(): TermsTemplateMap {
+  return {
+    overseas_brokerage: "",
+    domestic_brokerage: "",
+    overseas_direct: "",
+    domestic_direct: "",
+  };
+}
+
 const initialFormState: ProductFormState = {
   title: "",
   description: "",
@@ -50,8 +84,23 @@ const initialFormState: ProductFormState = {
   travel_insurance: "X",
   included_items: "",
   excluded_items: "",
+  departure_from_airport: "",
+  departure_from_date: "",
+  departure_from_time: "",
+  departure_to_airport: "",
+  departure_to_date: "",
+  departure_to_time: "",
+  departure_flight_name: "",
+  arrival_from_airport: "",
+  arrival_from_date: "",
+  arrival_from_time: "",
+  arrival_to_airport: "",
+  arrival_to_date: "",
+  arrival_to_time: "",
+  arrival_flight_name: "",
   detailed_schedule: "",
   optional_tours: "",
+  terms_template_type: "",
   terms_and_notes: "",
   meta_title: "",
   meta_description: "",
@@ -82,6 +131,79 @@ function formatPriceWithCommas(raw: string) {
   return digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+type DayScheduleDraft = {
+  label: string;
+  content: string;
+};
+
+function parseDetailedSchedule(value: string): DayScheduleDraft[] {
+  const source = value.trim();
+  if (!source) return [];
+
+  const lines = source.split(/\r?\n/);
+  const drafts: DayScheduleDraft[] = [];
+  let currentLabel = "";
+  let currentContent: string[] = [];
+
+  for (const line of lines) {
+    const match = line.match(/^\[(.+)\]\s*$/);
+    if (match) {
+      if (currentLabel) {
+        drafts.push({
+          label: currentLabel,
+          content: currentContent.join("\n").trim(),
+        });
+      }
+      currentLabel = match[1].trim();
+      currentContent = [];
+      continue;
+    }
+    currentContent.push(line);
+  }
+
+  if (currentLabel) {
+    drafts.push({
+      label: currentLabel,
+      content: currentContent.join("\n").trim(),
+    });
+  }
+
+  if (drafts.length === 0) {
+    return [{ label: "1일차", content: source }];
+  }
+
+  return drafts.map((item) => ({
+    label: item.label.trim() || "일정",
+    content: item.content,
+  }));
+}
+
+function serializeDetailedSchedule(drafts: DayScheduleDraft[]) {
+  const cleaned = drafts
+    .map((item) => ({
+      label: item.label.trim(),
+      content: item.content.trim(),
+    }))
+    .filter((item) => item.label.length > 0 || item.content.length > 0);
+
+  return cleaned
+    .map((item) => {
+      const safeLabel = item.label || "일정";
+      return item.content ? `[${safeLabel}]\n${item.content}` : `[${safeLabel}]`;
+    })
+    .join("\n\n");
+}
+
+function createNextDayLabel(drafts: DayScheduleDraft[]) {
+  const dayNumbers = drafts
+    .map((item) => item.label.trim().match(/^(\d+)\s*일차$/))
+    .filter((match): match is RegExpMatchArray => Boolean(match))
+    .map((match) => Number(match[1]))
+    .filter((n) => Number.isFinite(n));
+  const next = dayNumbers.length > 0 ? Math.max(...dayNumbers) + 1 : drafts.length + 1;
+  return `${next}일차`;
+}
+
 function mapProductToForm(product: Product): ProductFormState {
   const includedItems = product.included_items?.trim() ?? "";
   const excludedItems = product.excluded_items?.trim() ?? "";
@@ -101,8 +223,24 @@ function mapProductToForm(product: Product): ProductFormState {
     travel_insurance: normalizeOXValue(product.travel_insurance),
     included_items: shouldRepairLegacyDetailMix ? optionalTours : product.included_items ?? "",
     excluded_items: shouldRepairLegacyDetailMix ? termsAndNotes : product.excluded_items ?? "",
+    departure_from_airport: product.departure_from_airport ?? "",
+    departure_from_date: product.departure_from_date ?? "",
+    departure_from_time: product.departure_from_time ?? "",
+    departure_to_airport: product.departure_to_airport ?? "",
+    departure_to_date: product.departure_to_date ?? "",
+    departure_to_time: product.departure_to_time ?? "",
+    departure_flight_name: product.departure_flight_name ?? "",
+    arrival_from_airport: product.arrival_from_airport ?? "",
+    arrival_from_date: product.arrival_from_date ?? "",
+    arrival_from_time: product.arrival_from_time ?? "",
+    arrival_to_airport: product.arrival_to_airport ?? "",
+    arrival_to_date: product.arrival_to_date ?? "",
+    arrival_to_time: product.arrival_to_time ?? "",
+    arrival_flight_name: product.arrival_flight_name ?? "",
     detailed_schedule: product.detailed_schedule ?? "",
     optional_tours: shouldRepairLegacyDetailMix ? "" : product.optional_tours ?? "",
+    terms_template_type:
+      (product.terms_template_type as "" | TermsTemplateType | undefined) ?? "",
     terms_and_notes: shouldRepairLegacyDetailMix ? "" : product.terms_and_notes ?? "",
     meta_title: product.meta_title ?? "",
     meta_description: product.meta_description ?? "",
@@ -142,6 +280,13 @@ export default function AdminProductManager() {
   );
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [newThemeInput, setNewThemeInput] = useState("");
+  const [termsTemplates, setTermsTemplates] = useState<TermsTemplateMap>(createEmptyTermsTemplateMap());
+  const [isTermsTemplatesLoading, setIsTermsTemplatesLoading] = useState(true);
+  const [isTermsTemplatesSaving, setIsTermsTemplatesSaving] = useState(false);
+  const [termsTemplatesErrorMessage, setTermsTemplatesErrorMessage] = useState("");
+  const [isTermsTemplatesPanelOpen, setIsTermsTemplatesPanelOpen] = useState(false);
+  const [activeSchedulePreviewIndex, setActiveSchedulePreviewIndex] = useState(0);
+  const [showRawScheduleEditor, setShowRawScheduleEditor] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageSize = 8;
 
@@ -207,8 +352,32 @@ export default function AdminProductManager() {
     }
   }
 
+  async function loadTermsTemplates() {
+    try {
+      setIsTermsTemplatesLoading(true);
+      setTermsTemplatesErrorMessage("");
+      const response = await fetch("/api/admin/terms-templates", { cache: "no-store" });
+      const result = (await response.json()) as Partial<TermsTemplateMap> | { message?: string };
+      if (!response.ok) {
+        const msg = "message" in result ? result.message : "약관 템플릿 조회에 실패했습니다.";
+        setTermsTemplatesErrorMessage(msg ?? "약관 템플릿 조회에 실패했습니다.");
+        return;
+      }
+      setTermsTemplates({
+        overseas_brokerage: result.overseas_brokerage ?? "",
+        domestic_brokerage: result.domestic_brokerage ?? "",
+        overseas_direct: result.overseas_direct ?? "",
+        domestic_direct: result.domestic_direct ?? "",
+      });
+    } catch {
+      setTermsTemplatesErrorMessage("약관 템플릿 조회 중 오류가 발생했습니다.");
+    } finally {
+      setIsTermsTemplatesLoading(false);
+    }
+  }
+
   useEffect(() => {
-    Promise.all([loadProducts(), loadTaxonomies()]);
+    Promise.all([loadProducts(), loadTaxonomies(), loadTermsTemplates()]);
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -256,8 +425,26 @@ export default function AdminProductManager() {
         travel_insurance: form.travel_insurance,
         included_items: resolvedIncludedItems === "" ? undefined : resolvedIncludedItems,
         excluded_items: resolvedExcludedItems === "" ? undefined : resolvedExcludedItems,
+        departure_from_airport:
+          form.departure_from_airport.trim() === "" ? undefined : form.departure_from_airport,
+        departure_from_date: form.departure_from_date.trim() === "" ? undefined : form.departure_from_date,
+        departure_from_time: form.departure_from_time.trim() === "" ? undefined : form.departure_from_time,
+        departure_to_airport: form.departure_to_airport.trim() === "" ? undefined : form.departure_to_airport,
+        departure_to_date: form.departure_to_date.trim() === "" ? undefined : form.departure_to_date,
+        departure_to_time: form.departure_to_time.trim() === "" ? undefined : form.departure_to_time,
+        departure_flight_name:
+          form.departure_flight_name.trim() === "" ? undefined : form.departure_flight_name,
+        arrival_from_airport:
+          form.arrival_from_airport.trim() === "" ? undefined : form.arrival_from_airport,
+        arrival_from_date: form.arrival_from_date.trim() === "" ? undefined : form.arrival_from_date,
+        arrival_from_time: form.arrival_from_time.trim() === "" ? undefined : form.arrival_from_time,
+        arrival_to_airport: form.arrival_to_airport.trim() === "" ? undefined : form.arrival_to_airport,
+        arrival_to_date: form.arrival_to_date.trim() === "" ? undefined : form.arrival_to_date,
+        arrival_to_time: form.arrival_to_time.trim() === "" ? undefined : form.arrival_to_time,
+        arrival_flight_name: form.arrival_flight_name.trim() === "" ? undefined : form.arrival_flight_name,
         detailed_schedule: form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule,
         optional_tours: resolvedOptionalTours === "" ? undefined : resolvedOptionalTours,
+        terms_template_type: form.terms_template_type === "" ? undefined : form.terms_template_type,
         terms_and_notes: resolvedTermsAndNotes === "" ? undefined : resolvedTermsAndNotes,
         product_source_url: form.product_source_url.trim() === "" ? undefined : form.product_source_url,
         image_url: form.image_url,
@@ -290,6 +477,8 @@ export default function AdminProductManager() {
       showToast("success", editingId ? "상품이 수정되었습니다." : "상품이 등록되었습니다.");
       setEditingId(null);
       setForm(initialFormState);
+      setActiveSchedulePreviewIndex(0);
+      setShowRawScheduleEditor(false);
       await loadProducts();
     } catch {
       showToast("error", "상품 저장 중 오류가 발생했습니다.");
@@ -314,6 +503,8 @@ export default function AdminProductManager() {
       if (editingId === id) {
         setEditingId(null);
         setForm(initialFormState);
+        setActiveSchedulePreviewIndex(0);
+        setShowRawScheduleEditor(false);
       }
       showToast("success", "상품이 삭제되었습니다.");
       await loadProducts();
@@ -354,8 +545,15 @@ export default function AdminProductManager() {
         (product.travel_insurance ?? "").toLowerCase().includes(q) ||
         (product.included_items ?? "").toLowerCase().includes(q) ||
         (product.excluded_items ?? "").toLowerCase().includes(q) ||
+        (product.departure_from_airport ?? "").toLowerCase().includes(q) ||
+        (product.departure_to_airport ?? "").toLowerCase().includes(q) ||
+        (product.departure_flight_name ?? "").toLowerCase().includes(q) ||
+        (product.arrival_from_airport ?? "").toLowerCase().includes(q) ||
+        (product.arrival_to_airport ?? "").toLowerCase().includes(q) ||
+        (product.arrival_flight_name ?? "").toLowerCase().includes(q) ||
         (product.detailed_schedule ?? "").toLowerCase().includes(q) ||
         (product.optional_tours ?? "").toLowerCase().includes(q) ||
+        (product.terms_template_type ?? "").toLowerCase().includes(q) ||
         (product.terms_and_notes ?? "").toLowerCase().includes(q) ||
         (product.meta_title ?? "").toLowerCase().includes(q) ||
         (product.meta_description ?? "").toLowerCase().includes(q),
@@ -398,6 +596,14 @@ export default function AdminProductManager() {
     () => taxonomyItems.filter((item) => item.type === "theme"),
     [taxonomyItems],
   );
+  const scheduleDrafts = useMemo(
+    () => parseDetailedSchedule(form.detailed_schedule),
+    [form.detailed_schedule],
+  );
+  const selectedTermsTemplateContent = useMemo(() => {
+    if (!form.terms_template_type) return "";
+    return termsTemplates[form.terms_template_type] ?? "";
+  }, [form.terms_template_type, termsTemplates]);
 
   useEffect(() => {
     if (categoryOptions.length === 0) {
@@ -416,6 +622,74 @@ export default function AdminProductManager() {
     if (cleanedText === form.theme) return;
     setForm((prev) => ({ ...prev, theme: cleanedText }));
   }, [availableThemeOptions, form.theme]);
+
+  useEffect(() => {
+    if (scheduleDrafts.length === 0) {
+      if (activeSchedulePreviewIndex === 0) return;
+      setActiveSchedulePreviewIndex(0);
+      return;
+    }
+    if (activeSchedulePreviewIndex < scheduleDrafts.length) return;
+    setActiveSchedulePreviewIndex(scheduleDrafts.length - 1);
+  }, [scheduleDrafts, activeSchedulePreviewIndex]);
+
+  function updateScheduleDrafts(updater: (current: DayScheduleDraft[]) => DayScheduleDraft[]) {
+    setForm((prev) => {
+      const current = parseDetailedSchedule(prev.detailed_schedule);
+      const next = updater(current);
+      return {
+        ...prev,
+        detailed_schedule: serializeDetailedSchedule(next),
+      };
+    });
+  }
+
+  function addScheduleDay() {
+    const nextIndex = scheduleDrafts.length;
+    updateScheduleDrafts((current) => [
+      ...current,
+      {
+        label: createNextDayLabel(current),
+        content: "",
+      },
+    ]);
+    setActiveSchedulePreviewIndex(nextIndex);
+  }
+
+  function appendScheduleTemplate(index: number, templateText: string) {
+    updateScheduleDrafts((current) =>
+      current.map((draft, draftIndex) => {
+        if (draftIndex !== index) return draft;
+        const nextContent = draft.content.trim()
+          ? `${draft.content.trim()}\n${templateText}`
+          : templateText;
+        return { ...draft, content: nextContent };
+      }),
+    );
+    setActiveSchedulePreviewIndex(index);
+  }
+
+  async function saveTermsTemplates() {
+    try {
+      setIsTermsTemplatesSaving(true);
+      setTermsTemplatesErrorMessage("");
+      const response = await fetch("/api/admin/terms-templates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(termsTemplates),
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setTermsTemplatesErrorMessage(result.message ?? "약관 템플릿 저장에 실패했습니다.");
+        return;
+      }
+      showToast("success", "약관 템플릿을 저장했습니다.");
+    } catch {
+      setTermsTemplatesErrorMessage("약관 템플릿 저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsTermsTemplatesSaving(false);
+    }
+  }
 
   function movePage(nextPage: number) {
     setPage(Math.max(1, Math.min(nextPage, totalPages)));
@@ -696,6 +970,8 @@ export default function AdminProductManager() {
               onClick={() => {
                 setEditingId(null);
                 setForm(initialFormState);
+                setActiveSchedulePreviewIndex(0);
+                setShowRawScheduleEditor(false);
                 setErrorMessage("");
               }}
               className="text-sm font-medium text-slate-500 hover:text-slate-700"
@@ -844,6 +1120,307 @@ export default function AdminProductManager() {
             placeholder="상품 포인트 - 혜택 (줄바꿈 가능)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
+          <textarea
+            value={form.included_items}
+            onChange={(event) => setForm((prev) => ({ ...prev, included_items: event.target.value }))}
+            rows={3}
+            placeholder="포함사항 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.excluded_items}
+            onChange={(event) => setForm((prev) => ({ ...prev, excluded_items: event.target.value }))}
+            rows={3}
+            placeholder="불포함사항 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <div className="space-y-3 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
+            <p className="text-sm font-semibold text-[#1e3a8a]">항공편 정보</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+                <p className="text-xs font-semibold text-slate-700">출발 항공편</p>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <input
+                    value={form.departure_from_airport}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, departure_from_airport: event.target.value }))
+                    }
+                    placeholder="출발공항 (예: 인천 ICN)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.departure_to_airport}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, departure_to_airport: event.target.value }))
+                    }
+                    placeholder="도착공항 (예: 미야자키 KMI)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.departure_from_date}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, departure_from_date: event.target.value }))
+                    }
+                    placeholder="출발일자 (예: 2026.02.20(금))"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.departure_to_date}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, departure_to_date: event.target.value }))
+                    }
+                    placeholder="도착일자 (예: 2026.02.20(금))"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.departure_from_time}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, departure_from_time: event.target.value }))
+                    }
+                    placeholder="출발시각 (예: 09:40)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.departure_to_time}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, departure_to_time: event.target.value }))
+                    }
+                    placeholder="도착시각 (예: 11:20)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <input
+                  value={form.departure_flight_name}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, departure_flight_name: event.target.value }))
+                  }
+                  placeholder="항공편명 (예: 아시아나항공)"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </div>
+
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+                <p className="text-xs font-semibold text-slate-700">도착 항공편</p>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <input
+                    value={form.arrival_from_airport}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, arrival_from_airport: event.target.value }))
+                    }
+                    placeholder="출발공항 (예: 미야자키 KMI)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.arrival_to_airport}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, arrival_to_airport: event.target.value }))
+                    }
+                    placeholder="도착공항 (예: 인천 ICN)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.arrival_from_date}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, arrival_from_date: event.target.value }))
+                    }
+                    placeholder="출발일자 (예: 2026.02.23(월))"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.arrival_to_date}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, arrival_to_date: event.target.value }))
+                    }
+                    placeholder="도착일자 (예: 2026.02.23(월))"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.arrival_from_time}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, arrival_from_time: event.target.value }))
+                    }
+                    placeholder="출발시각 (예: 12:30)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                  <input
+                    value={form.arrival_to_time}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, arrival_to_time: event.target.value }))
+                    }
+                    placeholder="도착시각 (예: 14:10)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <input
+                  value={form.arrival_flight_name}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, arrival_flight_name: event.target.value }))
+                  }
+                  placeholder="항공편명 (예: 아시아나항공)"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-[#1e3a8a]">상세일정 작성 도우미</p>
+                <p className="text-xs text-slate-500">일차별로 작성하면 자동으로 탭 형식으로 저장됩니다.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={addScheduleDay}
+                  className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                >
+                  + 일차 추가
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRawScheduleEditor((prev) => !prev)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {showRawScheduleEditor ? "원문 편집 숨기기" : "원문 직접 편집"}
+                </button>
+              </div>
+            </div>
+
+            {scheduleDrafts.length === 0 ? (
+              <button
+                type="button"
+                onClick={addScheduleDay}
+                className="w-full rounded-lg border border-dashed border-slate-300 bg-white px-3 py-6 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                일차를 추가하고 상세일정을 입력해 주세요
+              </button>
+            ) : (
+              <div className="space-y-3">
+                {scheduleDrafts.map((item, index) => (
+                  <article key={`${item.label}-${index}`} className="rounded-lg border border-slate-200 bg-white p-3">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <input
+                        value={item.label}
+                        onFocus={() => setActiveSchedulePreviewIndex(index)}
+                        onChange={(event) =>
+                          updateScheduleDrafts((current) =>
+                            current.map((draft, draftIndex) =>
+                              draftIndex === index ? { ...draft, label: event.target.value } : draft,
+                            ),
+                          )
+                        }
+                        placeholder="예: 1일차"
+                        className="w-28 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                      />
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() =>
+                            updateScheduleDrafts((current) => {
+                              if (index <= 0) return current;
+                              const next = [...current];
+                              const target = next[index];
+                              next[index] = next[index - 1];
+                              next[index - 1] = target;
+                              return next;
+                            })
+                          }
+                          className="rounded border border-slate-300 px-2 py-1 text-[11px] text-slate-700 disabled:opacity-40"
+                        >
+                          위로
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index >= scheduleDrafts.length - 1}
+                          onClick={() =>
+                            updateScheduleDrafts((current) => {
+                              if (index >= current.length - 1) return current;
+                              const next = [...current];
+                              const target = next[index];
+                              next[index] = next[index + 1];
+                              next[index + 1] = target;
+                              return next;
+                            })
+                          }
+                          className="rounded border border-slate-300 px-2 py-1 text-[11px] text-slate-700 disabled:opacity-40"
+                        >
+                          아래로
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateScheduleDrafts((current) =>
+                              current.filter((_, draftIndex) => draftIndex !== index),
+                            );
+                            setActiveSchedulePreviewIndex((prev) =>
+                              prev > index ? prev - 1 : Math.max(0, Math.min(prev, scheduleDrafts.length - 2)),
+                            );
+                          }}
+                          className="rounded border border-rose-200 px-2 py-1 text-[11px] text-rose-600 hover:bg-rose-50"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={item.content}
+                      onFocus={() => setActiveSchedulePreviewIndex(index)}
+                      onChange={(event) =>
+                        updateScheduleDrafts((current) =>
+                          current.map((draft, draftIndex) =>
+                            draftIndex === index ? { ...draft, content: event.target.value } : draft,
+                          ),
+                        )
+                      }
+                      rows={5}
+                      placeholder="해당 일차의 일정을 입력해 주세요."
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                    />
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {[
+                        { label: "TEE OFF", text: "▷TEE OFF TIME: " },
+                        { label: "식사", text: "▷식사: " },
+                        { label: "이동", text: "▷이동: " },
+                        { label: "호텔", text: "▷숙소: " },
+                      ].map((template) => (
+                        <button
+                          key={template.label}
+                          type="button"
+                          onClick={() => appendScheduleTemplate(index, template.text)}
+                          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          + {template.label}
+                        </button>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {scheduleDrafts.length > 0 ? (
+              <div className="rounded-xl border border-blue-100 bg-white p-4">
+                <p className="mb-2 text-xs font-semibold text-blue-700">실시간 미리보기</p>
+                <div className="mb-2 inline-flex items-center rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-bold text-[#1d4ed8]">
+                  {scheduleDrafts[activeSchedulePreviewIndex]?.label || `${activeSchedulePreviewIndex + 1}일차`}
+                </div>
+                <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
+                  {scheduleDrafts[activeSchedulePreviewIndex]?.content || "입력한 일정이 여기에 표시됩니다."}
+                </p>
+              </div>
+            ) : null}
+
+            {showRawScheduleEditor ? (
+              <textarea
+                value={form.detailed_schedule}
+                onChange={(event) => setForm((prev) => ({ ...prev, detailed_schedule: event.target.value }))}
+                rows={8}
+                placeholder={"원문 직접 편집\n예시:\n[1일차]\n인천 출발 / 하노이 도착\n...\n\n[2일차]\n하노이 시내관광\n..."}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+            ) : null}
+          </div>
           <div className="rounded-lg border border-slate-200 bg-white/80 p-3 md:col-span-2">
             <p className="mb-3 text-sm font-semibold text-slate-700">상품 포인트 O/X 선택</p>
             <div className="grid gap-3 md:grid-cols-2">
@@ -892,40 +1469,99 @@ export default function AdminProductManager() {
             </div>
           </div>
           <textarea
-            value={form.included_items}
-            onChange={(event) => setForm((prev) => ({ ...prev, included_items: event.target.value }))}
-            rows={3}
-            placeholder="포함사항 (줄바꿈 가능)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-          />
-          <textarea
-            value={form.excluded_items}
-            onChange={(event) => setForm((prev) => ({ ...prev, excluded_items: event.target.value }))}
-            rows={3}
-            placeholder="불포함사항 (줄바꿈 가능)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-          />
-          <textarea
-            value={form.detailed_schedule}
-            onChange={(event) => setForm((prev) => ({ ...prev, detailed_schedule: event.target.value }))}
-            rows={8}
-            placeholder={"상세일정 (탭 구분 입력)\n예시:\n[1일차]\n인천 출발 / 하노이 도착\n...\n\n[2일차]\n하노이 시내관광\n..."}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
-          />
-          <textarea
             value={form.optional_tours}
             onChange={(event) => setForm((prev) => ({ ...prev, optional_tours: event.target.value }))}
             rows={4}
             placeholder="선택관광 목록 (줄바꿈 가능)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
-          <textarea
-            value={form.terms_and_notes}
-            onChange={(event) => setForm((prev) => ({ ...prev, terms_and_notes: event.target.value }))}
-            rows={4}
-            placeholder="약관 및 참조사항 (줄바꿈 가능)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-          />
+          <div className="space-y-2 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
+            <p className="text-sm font-semibold text-[#1e3a8a]">약관 및 참조사항 템플릿 적용</p>
+            <select
+              value={form.terms_template_type}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  terms_template_type: event.target.value as "" | TermsTemplateType,
+                }))
+              }
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            >
+              <option value="">직접 입력 (템플릿 미사용)</option>
+              {TERMS_TEMPLATE_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {form.terms_template_type ? (
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <p className="mb-2 text-xs font-semibold text-slate-700">선택 템플릿 미리보기</p>
+                <p className="whitespace-pre-line text-xs leading-6 text-slate-600">
+                  {selectedTermsTemplateContent.trim() || "템플릿 내용이 비어 있습니다. 아래에서 수정해 주세요."}
+                </p>
+              </div>
+            ) : null}
+            <textarea
+              value={form.terms_and_notes}
+              onChange={(event) => setForm((prev) => ({ ...prev, terms_and_notes: event.target.value }))}
+              rows={4}
+              placeholder="약관 및 참조사항 직접 입력 (템플릿 미사용 시 적용)"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </div>
+          <div className="space-y-3 rounded-lg border border-slate-200 bg-white/90 p-3 md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-700">약관 템플릿 관리 (공통)</p>
+              <button
+                type="button"
+                onClick={() => setIsTermsTemplatesPanelOpen((prev) => !prev)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {isTermsTemplatesPanelOpen ? "접기" : "펼치기"}
+              </button>
+            </div>
+            {!isTermsTemplatesPanelOpen ? (
+              <p className="text-xs text-slate-500">
+                안전을 위해 기본 접힘 상태입니다. 수정이 필요할 때만 펼쳐서 사용해 주세요.
+              </p>
+            ) : (
+              <>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={saveTermsTemplates}
+                    disabled={isTermsTemplatesLoading || isTermsTemplatesSaving}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {isTermsTemplatesSaving ? "저장 중..." : "템플릿 저장"}
+                  </button>
+                </div>
+                {termsTemplatesErrorMessage ? (
+                  <p className="text-xs text-rose-600">{termsTemplatesErrorMessage}</p>
+                ) : null}
+                <div className="grid gap-3 md:grid-cols-2">
+                  {TERMS_TEMPLATE_OPTIONS.map((item) => (
+                    <div key={item.value} className="space-y-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                      <p className="text-xs font-semibold text-slate-700">{item.label}</p>
+                      <textarea
+                        value={termsTemplates[item.value]}
+                        onChange={(event) =>
+                          setTermsTemplates((prev) => ({
+                            ...prev,
+                            [item.value]: event.target.value,
+                          }))
+                        }
+                        rows={5}
+                        placeholder={`${item.label} 약관 템플릿을 입력하세요.`}
+                        className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs leading-5 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <input
             value={form.meta_title}
             onChange={(event) => setForm((prev) => ({ ...prev, meta_title: event.target.value }))}
@@ -1014,18 +1650,18 @@ export default function AdminProductManager() {
           <p className="text-sm text-slate-500">상품 목록을 불러오는 중입니다...</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-sm">
+            <table className="w-full min-w-[1160px] border-collapse text-sm">
               <thead className="bg-[#eff6ff] text-[#1e3a8a]">
                 <tr>
+                  <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">원본주소</th>
                   <th className="px-4 py-3 text-left font-semibold">상품명</th>
-                  <th className="px-4 py-3 text-left font-semibold">카테고리</th>
-                  <th className="px-4 py-3 text-left font-semibold">원본주소</th>
-                  <th className="px-4 py-3 text-left font-semibold">테마/배지</th>
-                  <th className="px-4 py-3 text-left font-semibold">가격</th>
+                  <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">카테고리</th>
+                  <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">테마/배지</th>
+                  <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">가격</th>
                   <th className="w-[170px] px-4 py-3 text-left font-semibold">노출순서</th>
                   <th className="w-[110px] px-4 py-3 text-left font-semibold whitespace-nowrap">활성화</th>
-                  <th className="px-4 py-3 text-left font-semibold">메인추천</th>
-                  <th className="px-4 py-3 text-left font-semibold">작업</th>
+                  <th className="w-[92px] px-4 py-3 text-center font-semibold whitespace-nowrap">메인추천</th>
+                  <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">작업</th>
                 </tr>
               </thead>
               <tbody>
@@ -1038,9 +1674,7 @@ export default function AdminProductManager() {
                 ) : (
                   pagedProducts.map((product) => (
                     <tr key={product.id} className="border-t border-slate-200">
-                      <td className="px-4 py-3 font-medium text-[#1e3a8a]">{product.title}</td>
-                      <td className="px-4 py-3">{product.category}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-center">
                         {product.product_source_url ? (
                           <a
                             href={product.product_source_url}
@@ -1054,13 +1688,15 @@ export default function AdminProductManager() {
                           "-"
                         )}
                       </td>
-                      <td className="px-4 py-3">{product.theme ?? "-"}</td>
-                      <td className="px-4 py-3">
+                      <td className="max-w-[270px] px-4 py-3 font-medium text-[#1e3a8a]">{product.title}</td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">{product.category}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{product.theme ?? "-"}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {typeof product.price === "number"
                           ? `${new Intl.NumberFormat("ko-KR").format(product.price)}원`
                           : "-"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <span className="inline-flex min-w-8 justify-center rounded bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
                             {typeof product.sort_order === "number" ? product.sort_order : "-"}
@@ -1096,17 +1732,19 @@ export default function AdminProductManager() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         {product.is_featured_home ? (
-                          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-700">추천</span>
+                          <span className="inline-flex whitespace-nowrap rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-700">
+                            추천
+                          </span>
                         ) : (
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
+                          <span className="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
                             일반
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
                           <button
                             type="button"
                             disabled={pendingToggleId === product.id}
@@ -1136,6 +1774,8 @@ export default function AdminProductManager() {
                             onClick={() => {
                               setEditingId(product.id);
                               setForm(mapProductToForm(product));
+                              setActiveSchedulePreviewIndex(0);
+                              setShowRawScheduleEditor(false);
                               setErrorMessage("");
                             }}
                             className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"

@@ -165,6 +165,7 @@ export default function ReviewItemActions({
                     src={url}
                     alt={`후기 이미지 ${index + 1}`}
                     fill
+                    sizes="(max-width: 640px) 50vw, 25vw"
                     className="object-cover"
                     unoptimized={imagePreviewUrls.length > 0}
                   />

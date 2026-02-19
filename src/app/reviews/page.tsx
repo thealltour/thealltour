@@ -83,6 +83,7 @@ export default async function ReviewsPage() {
                           alt={`${review.title} 후기 이미지 ${index + 1}`}
                           width={1200}
                           height={800}
+                          sizes="(max-width: 768px) 50vw, 25vw"
                           className="h-36 w-full object-cover"
                         />
                       </div>

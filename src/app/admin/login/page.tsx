@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
             width={150}
             height={96}
             className="h-auto w-[130px]"
-            priority
+            sizes="130px"
           />
         </Link>
         <div className="mb-6 space-y-2">

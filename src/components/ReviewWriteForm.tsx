@@ -122,7 +122,14 @@ export default function ReviewWriteForm() {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {imagePreviewUrls.map((previewUrl, index) => (
               <div key={`${previewUrl}-${index}`} className="relative h-28 overflow-hidden rounded-xl ring-1 ring-slate-200">
-                <Image src={previewUrl} alt={`첨부 이미지 미리보기 ${index + 1}`} fill className="object-cover" unoptimized />
+                <Image
+                  src={previewUrl}
+                  alt={`첨부 이미지 미리보기 ${index + 1}`}
+                  fill
+                  sizes="(max-width: 640px) 50vw, 25vw"
+                  className="object-cover"
+                  unoptimized
+                />
               </div>
             ))}
           </div>

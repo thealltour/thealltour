@@ -18,9 +18,11 @@ function getMenuClass(isActive: boolean) {
 }
 
 function getSubMenuClass(isActive: boolean) {
-  return isActive
-    ? "shrink-0 whitespace-nowrap rounded-full border border-[var(--line)] bg-[#eff6ff] px-3.5 py-1.5 text-[15px] font-bold text-[var(--brand-strong)] shadow-sm"
-    : "shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[15px] font-bold text-[#0f172a] transition hover:bg-[#eff6ff] hover:text-[var(--brand-strong)]";
+  return `shrink-0 whitespace-nowrap rounded-full border border-[#93c5fd] px-3.5 py-1.5 text-[15px] font-bold transition ${
+    isActive
+      ? "bg-[#bfdbfe] text-[#1e3a8a] ring-1 ring-[#60a5fa]"
+      : "bg-[#dbeafe] text-[#1e3a8a] hover:bg-[#bfdbfe]"
+  }`;
 }
 
 export default async function SiteHeader({ activeTab, searchQuery }: SiteHeaderProps) {
@@ -37,11 +39,11 @@ export default async function SiteHeader({ activeTab, searchQuery }: SiteHeaderP
               alt="더올투어 로고"
               width={140}
               height={90}
+              sizes="120px"
               className="h-auto w-[120px]"
-              priority
             />
           </Link>
-          <nav className="min-w-0 flex-1 items-center justify-start gap-2 text-[18px] font-bold tracking-tight text-[#0f172a] lg:flex">
+          <nav className="min-w-0 flex-1 items-center justify-center gap-2 text-[18px] font-bold tracking-tight text-[#0f172a] lg:flex">
             <Link className={getMenuClass(activeTab === "about")} href="/about">
               회사소개
             </Link>
@@ -83,16 +85,14 @@ export default async function SiteHeader({ activeTab, searchQuery }: SiteHeaderP
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-3 border-t border-slate-100 pt-2">
-          <div className="flex items-center gap-1.5">
-            <Link className={getSubMenuClass(activeTab === "products")} href="/products">
-              패키지상품
-            </Link>
-            <HeaderProductSearch mode="desktop" searchQuery={searchQuery} />
-          </div>
+        <div className="flex items-center justify-center gap-2.5 border-t border-slate-100 pt-2">
+          <Link className={getSubMenuClass(activeTab === "products")} href="/products">
+            패키지상품
+          </Link>
+          <HeaderProductSearch mode="desktop" searchQuery={searchQuery} />
           <Link
             href="/quote"
-            className="rounded-full bg-[#1d4ed8] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#1e40af]"
+            className="shrink-0 whitespace-nowrap rounded-full bg-[#1d4ed8] px-3.5 py-1.5 text-[15px] font-bold text-white transition hover:bg-[#1e40af]"
           >
             빠른 상담
           </Link>
@@ -107,8 +107,8 @@ export default async function SiteHeader({ activeTab, searchQuery }: SiteHeaderP
               alt="더올투어 로고"
               width={140}
               height={90}
+              sizes="(max-width: 768px) 110px, 130px"
               className="h-auto w-[110px] md:w-[130px]"
-              priority
             />
           </Link>
           <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-500 md:text-sm">

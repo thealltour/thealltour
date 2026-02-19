@@ -43,7 +43,7 @@ export default function AdminHeader({
               width={140}
               height={90}
               className="h-auto w-[120px]"
-              priority
+            sizes="120px"
             />
           </Link>
           <p className="text-sm font-semibold tracking-wide text-[#2563eb]">THEALL TOUR ADMIN</p>

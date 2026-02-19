@@ -23,7 +23,7 @@ export default async function SupportPage() {
           <div className="mt-4 space-y-3 text-sm leading-7 text-slate-600 md:text-base">
             <p>운영시간: 평일 09:00 - 18:00</p>
             <p>대표번호: 02-0000-0000</p>
-            <p>이메일: help@thealltour.com</p>
+            <p>이메일: thealltour@gmail.com</p>
             <p>빠른 문의는 견적문의 페이지를 이용해 주세요.</p>
           </div>
         </section>

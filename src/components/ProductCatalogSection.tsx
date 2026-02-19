@@ -141,7 +141,7 @@ export default function ProductCatalogSection({ products, categories }: ProductC
                           </div>
                           {typeof product.price === "number" ? (
                             <p className="text-base font-bold text-[#1d4ed8]">
-                              {new Intl.NumberFormat("ko-KR").format(product.price)}원~
+                              {new Intl.NumberFormat("ko-KR").format(product.price)}원
                             </p>
                           ) : null}
                           <span className="mt-auto inline-flex w-fit rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white">

@@ -29,10 +29,10 @@ export default function GlobalSiteFooter() {
             대표번호 02-0000-0000
           </a>
           <a
-            href="mailto:help@thealltour.com"
+            href="mailto:thealltour@gmail.com"
             className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            help@thealltour.com
+            thealltour@gmail.com
           </a>
           <div className="mt-1 flex items-center gap-2">
             <a

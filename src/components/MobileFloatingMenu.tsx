@@ -30,10 +30,10 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
   }
 
   return createPortal(
-    <div className="fixed right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] z-50 lg:hidden">
+    <div className="fixed right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] z-50 flex flex-col items-end lg:hidden">
       {isOpen ? (
-        <div className="mb-2 w-[min(78vw,15rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-          <ul className="flex flex-col gap-1">
+        <div className="mb-2 w-[min(78vw,15rem)] rounded-2xl border border-[var(--line)] bg-white/95 p-2 shadow-2xl backdrop-blur-sm">
+          <ul className="flex flex-col gap-1.5">
             {menuItems.map((item) => {
               const isActive = activeTab === item.key;
 
@@ -41,10 +41,10 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`block rounded-xl px-3 py-2 text-[clamp(13px,3.3vw,15px)] font-semibold transition ${
+                    className={`block rounded-xl px-3 py-2 text-[clamp(14px,3.5vw,16px)] font-bold leading-tight transition ${
                       isActive
-                        ? "bg-[#e0ecff] text-[#1d4ed8]"
-                        : "text-slate-700 hover:bg-slate-100 hover:text-[#1d4ed8]"
+                        ? "border border-[var(--line)] bg-[#eff6ff] text-[var(--brand-strong)]"
+                        : "text-[#0f172a] hover:bg-[#eff6ff] hover:text-[var(--brand-strong)]"
                     }`}
                     onClick={() => setIsOpen(false)}
                   >
@@ -62,7 +62,7 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label={isOpen ? "메뉴 닫기" : "메뉴 열기"}
-        className="min-h-12 rounded-full bg-[#1d4ed8] px-[clamp(14px,4vw,22px)] py-[clamp(9px,2.8vw,12px)] text-[clamp(13px,3.2vw,15px)] font-semibold text-white shadow-lg transition hover:bg-[#1e40af]"
+        className="min-h-12 rounded-full bg-[var(--brand)] px-[clamp(14px,4vw,22px)] py-[clamp(9px,2.8vw,12px)] text-[clamp(14px,3.2vw,16px)] font-bold text-white shadow-lg ring-2 ring-white/80 transition hover:bg-[var(--brand-strong)]"
       >
         메뉴
       </button>

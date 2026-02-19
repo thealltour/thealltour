@@ -11,8 +11,8 @@ type SiteHeaderProps = {
 
 function getMenuClass(isActive: boolean) {
   return isActive
-    ? "rounded-full bg-[#e0ecff] px-3 py-1 text-[#1d4ed8]"
-    : "rounded-full px-3 py-1 transition hover:bg-[#f1f5f9] hover:text-[#1d4ed8]";
+    ? "rounded-full border border-[var(--line)] bg-[#eff6ff] px-3.5 py-1.5 text-[var(--brand-strong)] shadow-sm"
+    : "rounded-full px-3.5 py-1.5 text-[#0f172a] transition hover:bg-[#eff6ff] hover:text-[var(--brand-strong)]";
 }
 
 export default async function SiteHeader({ activeTab }: SiteHeaderProps) {
@@ -33,7 +33,7 @@ export default async function SiteHeader({ activeTab }: SiteHeaderProps) {
           />
         </Link>
 
-        <nav className="hidden items-center gap-2 text-base font-semibold text-slate-700 lg:flex">
+        <nav className="hidden items-center gap-2 text-[15px] font-bold tracking-tight text-[#0f172a] lg:flex">
           <Link className={getMenuClass(activeTab === "about")} href="/about">
             회사소개
           </Link>
@@ -59,7 +59,7 @@ export default async function SiteHeader({ activeTab }: SiteHeaderProps) {
             href="/quote"
             className="hidden rounded-full bg-[#1d4ed8] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#1e40af] md:inline-flex"
           >
-            빠른 상담 신청
+            빠른 상담
           </Link>
           {session ? (
             <>

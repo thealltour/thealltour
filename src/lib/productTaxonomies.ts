@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { unstable_cache } from "next/cache";
 import type { Product } from "@/types/product";
 import type {
   ProductTaxonomy,
@@ -36,19 +37,13 @@ function toFallbackTaxonomies(products: Product[]) {
 }
 
 export async function getProductTaxonomyOptions(productsFallback: Product[] = []) {
-  const result = await supabase
-    .from("product_taxonomies")
-    .select("*")
-    .eq("is_active", true)
-    .order("type", { ascending: true })
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("name", { ascending: true });
+  const taxonomies = await getActiveTaxonomiesCached();
 
-  if (result.error) {
+  if (taxonomies === null) {
     return toFallbackTaxonomies(productsFallback);
   }
 
-  const mapped = (result.data ?? []).map((row) => mapTaxonomy(row as Record<string, unknown>));
+  const mapped = taxonomies.map((row) => mapTaxonomy(row));
   const categories = mapped.filter((item) => item.type === "category").map((item) => item.name);
   const themes = mapped.filter((item) => item.type === "theme").map((item) => item.name);
   return { categories, themes };
@@ -100,3 +95,20 @@ export async function getProductTaxonomiesWithUsage(products: Product[]) {
     };
   });
 }
+
+const getActiveTaxonomiesCached = unstable_cache(
+  async () => {
+    const result = await supabase
+      .from("product_taxonomies")
+      .select("*")
+      .eq("is_active", true)
+      .order("type", { ascending: true })
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true });
+
+    if (result.error) return null;
+    return (result.data ?? []) as Record<string, unknown>[];
+  },
+  ["product-taxonomies:active"],
+  { revalidate: 300, tags: ["product-taxonomies"] },
+);

@@ -15,6 +15,9 @@ export default async function ProductsPage() {
         <section className="space-y-3">
           <p className="text-sm font-semibold tracking-wide text-[#2563eb]">THEALL TOUR PRODUCTS</p>
           <h1 className="text-3xl font-bold md:text-4xl">패키지상품 전체보기</h1>
+          <p className="text-sm text-slate-600">
+            카테고리와 테마를 선택해 맞는 상품을 빠르게 찾고, 상세 페이지에서 바로 상담을 연결하세요.
+          </p>
         </section>
 
         {products.length === 0 ? (

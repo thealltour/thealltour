@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 
 type BannerBody = {
@@ -60,6 +61,7 @@ export async function PATCH(
     return NextResponse.json({ message: "배너 수정에 실패했습니다." }, { status: 500 });
   }
 
+  revalidateTag("home-banners");
   return NextResponse.json({ message: "배너가 수정되었습니다." });
 }
 
@@ -80,5 +82,6 @@ export async function DELETE(
     return NextResponse.json({ message: "배너 삭제에 실패했습니다." }, { status: 500 });
   }
 
+  revalidateTag("home-banners");
   return NextResponse.json({ message: "배너가 삭제되었습니다." });
 }

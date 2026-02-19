@@ -51,7 +51,11 @@ export default function ProductCatalogSection({ products, categories }: ProductC
 
   return (
     <section className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="sticky top-[76px] z-20 space-y-3 rounded-2xl bg-white/95 p-3 shadow-sm ring-1 ring-[#dbeafe] backdrop-blur">
+        <p className="text-xs font-semibold text-slate-500">
+          총 {themeFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
         {categoryTabs.map((tab) => (
           <button
             key={tab}
@@ -69,9 +73,9 @@ export default function ProductCatalogSection({ products, categories }: ProductC
             {tab}
           </button>
         ))}
-      </div>
+        </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
         {themeTabs.map((tab) => (
           <button
             key={`theme-${tab}`}
@@ -86,6 +90,7 @@ export default function ProductCatalogSection({ products, categories }: ProductC
             {tab}
           </button>
         ))}
+        </div>
       </div>
 
       <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-6">
@@ -104,7 +109,7 @@ export default function ProductCatalogSection({ products, categories }: ProductC
                     <Link
                       key={product.id}
                       href={`/products/${product.id}`}
-                      className="h-full overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-0.5 hover:shadow-lg"
+                      className="h-full overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe] transition hover:-translate-y-1 hover:shadow-xl"
                     >
                       <article className="flex h-full flex-col">
                         <Image
@@ -112,6 +117,8 @@ export default function ProductCatalogSection({ products, categories }: ProductC
                           alt={`${product.title} 상품 이미지`}
                           width={900}
                           height={560}
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          loading="lazy"
                           className="h-52 w-full object-cover"
                         />
                         <div className="flex flex-1 flex-col gap-3 p-5">
@@ -132,6 +139,11 @@ export default function ProductCatalogSection({ products, categories }: ProductC
                             <h2 className="text-xl font-semibold text-[#0f172a]">{product.title}</h2>
                             <p className="line-clamp-2 text-sm leading-6 text-slate-600">{product.description}</p>
                           </div>
+                          {typeof product.price === "number" ? (
+                            <p className="text-base font-bold text-[#1d4ed8]">
+                              {new Intl.NumberFormat("ko-KR").format(product.price)}원~
+                            </p>
+                          ) : null}
                           <span className="mt-auto inline-flex w-fit rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white">
                             상세 보기
                           </span>

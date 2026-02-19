@@ -21,8 +21,13 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
           <p className="mb-3 text-sm font-semibold tracking-wide text-blue-100">THEALL TOUR QUOTE</p>
           <h1 className="text-3xl font-bold md:text-4xl">맞춤 견적 문의</h1>
           <p className="mt-3 text-sm text-blue-100 md:text-base">
-            메인페이지의 문의 작성란과 동일한 폼입니다. 여행 희망 조건을 남겨주시면 빠르게 상담드립니다.
+            여행 희망 조건을 남겨주시면 접수 순서대로 맞춤 일정과 견적 옵션을 안내드립니다.
           </p>
+          <div className="mt-6 grid gap-3 text-sm md:grid-cols-3">
+            <div className="rounded-xl bg-white/10 p-3">1) 문의 접수</div>
+            <div className="rounded-xl bg-white/10 p-3">2) 상담 연결</div>
+            <div className="rounded-xl bg-white/10 p-3">3) 맞춤 견적 제안</div>
+          </div>
         </section>
 
         <section className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-[#dbeafe] md:p-10">

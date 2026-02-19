@@ -51,9 +51,13 @@ export default function HomeTopBanner({ banners }: HomeTopBannerProps) {
           priority
         />
       </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] bg-gradient-to-t from-black/45 via-black/10 to-transparent p-5 text-white">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">THEALL CURATION</p>
+        <p className="mt-1 text-lg font-bold md:text-2xl">{current.title}</p>
+      </div>
 
       {hasMany ? (
-        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/30 px-3 py-1.5">
+        <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5">
           {banners.map((banner, index) => (
             <button
               key={banner.id}

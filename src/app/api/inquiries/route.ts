@@ -4,17 +4,8 @@ import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
 import type { InquiryInput } from "@/types/inquiry";
 
-export async function GET() {
-  const { data, error } = await supabase
-    .from("inquiries")
-    .select("*")
-    .order("created_at", { ascending: false, nullsFirst: false });
-
-  if (error) {
-    return NextResponse.json({ message: "문의 목록 조회에 실패했습니다." }, { status: 500 });
-  }
-
-  const normalized = (data ?? []).map((row) => ({
+function normalizeInquiryRow(row: Record<string, unknown>) {
+  return {
     id: String(row.id ?? ""),
     name: String(row.name ?? ""),
     phone: String(row.phone ?? ""),
@@ -24,9 +15,123 @@ export async function GET() {
     source_path: typeof row.source_path === "string" ? row.source_path : undefined,
     is_completed: typeof row.is_completed === "boolean" ? row.is_completed : undefined,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
-  }));
+  };
+}
 
-  return NextResponse.json(normalized);
+type ListStatus = "all" | "completed" | "pending";
+type SortOption = "pending_first" | "recent" | "oldest" | "name";
+type SafeSummary = { pendingCount: number; completedCount: number };
+
+async function getInquirySummarySafe(): Promise<SafeSummary> {
+  const [pendingSummary, completedSummary] = await Promise.all([
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", true),
+  ]);
+
+  return {
+    pendingCount: pendingSummary.error ? 0 : (pendingSummary.count ?? 0),
+    completedCount: completedSummary.error ? 0 : (completedSummary.count ?? 0),
+  };
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search")?.trim() ?? "";
+  const statusParam = url.searchParams.get("status");
+  const status: ListStatus =
+    statusParam === "completed" || statusParam === "pending" ? statusParam : "all";
+  const sortParam = url.searchParams.get("sort");
+  const sort: SortOption =
+    sortParam === "recent" || sortParam === "oldest" || sortParam === "name" || sortParam === "pending_first"
+      ? sortParam
+      : "pending_first";
+  const pageRaw = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
+  const pageSizeRaw = Number.parseInt(url.searchParams.get("pageSize") ?? "10", 10);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const pageSize = Number.isFinite(pageSizeRaw) ? Math.min(Math.max(pageSizeRaw, 5), 50) : 10;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase.from("inquiries").select("*", { count: "exact" });
+
+  if (search) {
+    const escaped = search.replace(/[%_]/g, "\\$&");
+    query = query.or(
+      `name.ilike.%${escaped}%,phone.ilike.%${escaped}%,content.ilike.%${escaped}%,product_title.ilike.%${escaped}%`,
+    );
+  }
+
+  if (status === "completed") query = query.eq("is_completed", true);
+  if (status === "pending") query = query.eq("is_completed", false);
+
+  if (sort === "pending_first") {
+    query = query.order("is_completed", { ascending: true }).order("created_at", { ascending: false });
+  } else if (sort === "oldest") {
+    query = query.order("created_at", { ascending: true });
+  } else if (sort === "name") {
+    query = query.order("name", { ascending: true }).order("created_at", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  let { data, error, count } = await query.range(from, to);
+
+  if (error) {
+    // Fallback for legacy schema (e.g. missing is_completed/product_title columns).
+    let fallback = supabase.from("inquiries").select("*", { count: "exact" });
+    if (search) {
+      const escaped = search.replace(/[%_]/g, "\\$&");
+      fallback = fallback.or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%,content.ilike.%${escaped}%`);
+    }
+    const fallbackResult = await fallback
+      .order("created_at", { ascending: false, nullsFirst: false })
+      .range(from, to);
+
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+    count = fallbackResult.count ?? 0;
+  }
+
+  if (error) {
+    return NextResponse.json({ message: "문의 목록 조회에 실패했습니다." }, { status: 500 });
+  }
+
+  const summary = await getInquirySummarySafe();
+
+  return NextResponse.json({
+    items: (data ?? []).map((row) => normalizeInquiryRow(row as Record<string, unknown>)),
+    total: count ?? 0,
+    page,
+    pageSize,
+    pendingCount: summary.pendingCount,
+    completedCount: summary.completedCount,
+  });
+}
+
+type BulkPatchBody = {
+  ids?: string[];
+  is_completed?: boolean;
+};
+
+export async function PATCH(request: Request) {
+  const body = (await request.json()) as BulkPatchBody;
+  const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
+  const isCompleted = body.is_completed;
+
+  if (ids.length === 0 || typeof isCompleted !== "boolean") {
+    return NextResponse.json(
+      { message: "ids 배열과 is_completed(boolean) 값이 필요합니다." },
+      { status: 400 },
+    );
+  }
+
+  const { error } = await supabase.from("inquiries").update({ is_completed: isCompleted }).in("id", ids);
+
+  if (error) {
+    return NextResponse.json({ message: "일괄 상태 업데이트에 실패했습니다." }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: "선택한 문의 상태가 업데이트되었습니다." });
 }
 
 export async function POST(request: Request) {

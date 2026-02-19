@@ -6,7 +6,15 @@ import AdminNotificationBell from "@/components/AdminNotificationBell";
 type AdminHeaderProps = {
   title: string;
   description: string;
-  activeTab: "products" | "inquiries" | "members" | "reviews" | "notifications" | "banners" | "notices";
+  activeTab:
+    | "dashboard"
+    | "products"
+    | "inquiries"
+    | "members"
+    | "reviews"
+    | "notifications"
+    | "banners"
+    | "notices";
   productCount: number;
   inquiryCount: number;
   memberCount: number;
@@ -48,6 +56,16 @@ export default function AdminHeader({
         </div>
       </div>
       <nav className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2 shadow-sm ring-1 ring-[#dbeafe]">
+        <Link
+          href="/theall_manager_only"
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            activeTab === "dashboard"
+              ? "bg-[#1d4ed8] text-white"
+              : "text-[#1e3a8a] hover:bg-[#eff6ff]"
+          }`}
+        >
+          대시보드
+        </Link>
         <Link
           href="/theall_manager_only/products"
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${

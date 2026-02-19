@@ -818,7 +818,7 @@ export default function AdminProductManager() {
                   <th className="px-4 py-3 text-left font-semibold">테마/배지</th>
                   <th className="px-4 py-3 text-left font-semibold">가격</th>
                   <th className="w-[170px] px-4 py-3 text-left font-semibold">노출순서</th>
-                  <th className="px-4 py-3 text-left font-semibold">활성화</th>
+                  <th className="w-[110px] px-4 py-3 text-left font-semibold whitespace-nowrap">활성화</th>
                   <th className="px-4 py-3 text-left font-semibold">메인추천</th>
                   <th className="px-4 py-3 text-left font-semibold">작업</th>
                 </tr>
@@ -866,11 +866,15 @@ export default function AdminProductManager() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {product.is_active === false ? (
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">비노출</span>
+                          <span className="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500">
+                            비노출
+                          </span>
                         ) : (
-                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">노출</span>
+                          <span className="inline-flex whitespace-nowrap rounded-full bg-green-100 px-2.5 py-1 text-xs text-green-700">
+                            노출
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3">

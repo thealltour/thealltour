@@ -65,6 +65,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
   }
 
+  if (pathname === "/api/inquiries" && request.method === "PATCH" && !authenticated) {
+    return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
+  }
+
   if (pathname.startsWith("/api/inquiries/") && request.method === "PATCH" && !authenticated) {
     return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
   }

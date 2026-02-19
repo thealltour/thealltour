@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import type { InquiryInput } from "@/types/inquiry";
 
 type FormState = {
@@ -54,7 +55,7 @@ export default function InquiryForm({ source }: InquiryFormProps) {
       }
 
       setIsSuccess(true);
-      setMessage("문의가 접수되었습니다. 빠르게 연락드리겠습니다.");
+      setMessage("문의가 접수되었습니다. 확인 후 순차적으로 연락드리겠습니다.");
       setForm(initialFormState);
     } catch {
       setIsSuccess(false);
@@ -66,6 +67,20 @@ export default function InquiryForm({ source }: InquiryFormProps) {
 
   return (
     <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+      <div className="md:col-span-2 grid gap-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe] md:grid-cols-3">
+        <div>
+          <p className="text-xs font-semibold text-[#1d4ed8]">응답 안내</p>
+          <p className="mt-1 text-sm text-slate-600">접수된 순서대로 확인 후 연락드립니다.</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-[#1d4ed8]">맞춤 제안</p>
+          <p className="mt-1 text-sm text-slate-600">일정/예산/동행 구성 중심으로 설계합니다.</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-[#1d4ed8]">개인정보 보호</p>
+          <p className="mt-1 text-sm text-slate-600">상담 목적 외에는 사용하지 않습니다.</p>
+        </div>
+      </div>
       {sourceProductTitle ? (
         <div className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
           문의 상품: <span className="font-semibold">{sourceProductTitle}</span>
@@ -115,9 +130,25 @@ export default function InquiryForm({ source }: InquiryFormProps) {
         {isSubmitting ? "전송 중..." : "문의 내용 보내기"}
       </button>
       {message ? (
-        <p className={`md:col-span-2 text-sm ${isSuccess ? "text-green-600" : "text-red-500"}`}>
-          {message}
-        </p>
+        <div className={`md:col-span-2 rounded-lg px-3 py-2 text-sm ${isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+          <p>{message}</p>
+          {isSuccess ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <Link
+                href="/products"
+                className="rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
+              >
+                다른 상품 더 보기
+              </Link>
+              <Link
+                href="/support"
+                className="rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
+              >
+                고객센터 바로가기
+              </Link>
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </form>
   );

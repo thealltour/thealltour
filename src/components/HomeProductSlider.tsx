@@ -88,7 +88,7 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
       }}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white/80 p-2 ring-1 ring-[#dbeafe]">
           {categoryTabs.map((tab) => (
             <button
               key={tab}
@@ -160,7 +160,7 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
               <Link
                 key={product.id}
                 href={`/products/${product.id}`}
-                className="w-[280px] shrink-0 snap-start overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-0.5 hover:shadow-lg md:w-[330px]"
+                className="w-[280px] shrink-0 snap-start overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe] transition hover:-translate-y-1 hover:shadow-xl md:w-[330px]"
               >
                 <article className="flex h-full flex-col">
                   <Image
@@ -168,6 +168,8 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
                     alt={`${product.title} 상품 이미지`}
                     width={800}
                     height={500}
+                    sizes="(max-width: 768px) 280px, 330px"
+                    loading="lazy"
                     className="h-48 w-full object-cover md:h-52"
                   />
                   <div className="flex flex-1 flex-col gap-3 p-5">
@@ -188,6 +190,11 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
                       <h4 className="text-lg font-semibold text-[#0f172a]">{product.title}</h4>
                       <p className="line-clamp-2 text-sm leading-6 text-slate-600">{product.description}</p>
                     </div>
+                    {typeof product.price === "number" ? (
+                      <p className="text-base font-bold text-[#1d4ed8]">
+                        {new Intl.NumberFormat("ko-KR").format(product.price)}원~
+                      </p>
+                    ) : null}
                     <span className="mt-auto inline-flex w-fit rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white">
                       상세 보기
                     </span>

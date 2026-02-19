@@ -180,7 +180,7 @@ export default function AdminBannerManager() {
           ) : null}
         </div>
         <p className="text-xs text-slate-600">
-          권장 사이즈: 웹(PC) 1920x640px, 모바일 1080x1350px. JPG/PNG/WebP 모두 사용 가능합니다.
+          권장 사이즈: 웹(PC) 1920x640px, 모바일 1200x800px. JPG/PNG/WebP 모두 사용 가능합니다.
         </p>
         <form className="grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
           <input
@@ -206,7 +206,7 @@ export default function AdminBannerManager() {
           <input
             value={form.mobile_image_url}
             onChange={(event) => setForm((prev) => ({ ...prev, mobile_image_url: event.target.value }))}
-            placeholder="모바일 배너 이미지 URL (선택, 권장 1080x1350)"
+            placeholder="모바일 배너 이미지 URL (선택, 권장 1200x800)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
           />
           <input

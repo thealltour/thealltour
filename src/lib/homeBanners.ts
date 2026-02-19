@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { unstable_cache } from "next/cache";
 import type { HomeBanner } from "@/types/homeBanner";
 
 function normalizeBanner(row: Record<string, unknown>): HomeBanner {
@@ -19,13 +20,21 @@ function normalizeBanner(row: Record<string, unknown>): HomeBanner {
 }
 
 export async function getHomeBanners() {
-  const result = await supabase
-    .from("home_banners")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false, nullsFirst: false });
-
-  if (result.error) return [] as HomeBanner[];
-  return (result.data ?? []).map((row) => normalizeBanner(row as Record<string, unknown>));
+  return getHomeBannersCached();
 }
+
+const getHomeBannersCached = unstable_cache(
+  async () => {
+    const result = await supabase
+      .from("home_banners")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false, nullsFirst: false });
+
+    if (result.error) return [] as HomeBanner[];
+    return (result.data ?? []).map((row) => normalizeBanner(row as Record<string, unknown>));
+  },
+  ["home-banners:active"],
+  { revalidate: 120, tags: ["home-banners"] },
+);

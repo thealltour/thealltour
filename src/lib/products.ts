@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { unstable_cache } from "next/cache";
 import type { Product } from "@/types/product";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
@@ -34,6 +35,11 @@ function normalizeProduct(row: Record<string, unknown>): Product {
 }
 
 export async function getProducts() {
+  return getProductsCached();
+}
+
+const getProductsCached = unstable_cache(
+  async () => {
   const advancedQuery = await supabase
     .from("products")
     .select("*")
@@ -52,9 +58,17 @@ export async function getProducts() {
   }
 
   return (fallbackQuery.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
-}
+  },
+  ["products:list"],
+  { revalidate: 60, tags: ["products"] },
+);
 
 export async function getFeaturedProducts() {
+  return getFeaturedProductsCached();
+}
+
+const getFeaturedProductsCached = unstable_cache(
+  async () => {
   const featuredAdvancedQuery = await supabase
     .from("products")
     .select("*")
@@ -80,14 +94,25 @@ export async function getFeaturedProducts() {
 
   const allProducts = await getProducts();
   return allProducts.slice(0, FEATURED_PRODUCT_LIMIT);
-}
+  },
+  ["products:featured"],
+  { revalidate: 60, tags: ["products"] },
+);
 
 export async function getProductById(id: string) {
-  const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return normalizeProduct(data as Record<string, unknown>);
+  return getProductByIdCached(id);
 }
+
+const getProductByIdCached = unstable_cache(
+  async (id: string) => {
+    const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return normalizeProduct(data as Record<string, unknown>);
+  },
+  ["products:by-id"],
+  { revalidate: 120, tags: ["products"] },
+);

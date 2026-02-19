@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { HomeBanner } from "@/types/homeBanner";
 
@@ -68,5 +69,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "배너 추가에 실패했습니다." }, { status: 500 });
   }
 
+  revalidateTag("home-banners");
   return NextResponse.json({ message: "배너가 추가되었습니다." }, { status: 201 });
 }

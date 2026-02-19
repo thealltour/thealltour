@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
 import type { Product } from "@/types/product";
@@ -91,7 +92,9 @@ export async function POST(request: Request) {
   }
 
   if (type === "category") {
+    revalidateTag("product-taxonomies");
     return NextResponse.json({ message: "카테고리가 추가되었습니다." }, { status: 201 });
   }
+  revalidateTag("product-taxonomies");
   return NextResponse.json({ message: "테마가 추가되었습니다." }, { status: 201 });
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 
 const FEATURED_PRODUCT_LIMIT = 8;
@@ -99,6 +100,7 @@ export async function PATCH(
     );
   }
 
+  revalidateTag("products");
   return NextResponse.json({ message: "상품이 수정되었습니다." });
 }
 
@@ -119,5 +121,6 @@ export async function DELETE(
     );
   }
 
+  revalidateTag("products");
   return NextResponse.json({ message: "상품이 삭제되었습니다." });
 }

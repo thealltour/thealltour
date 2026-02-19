@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
 import type { ProductTaxonomyType } from "@/types/productTaxonomy";
@@ -51,5 +52,6 @@ export async function DELETE(
     return NextResponse.json({ message: "항목 삭제에 실패했습니다." }, { status: 500 });
   }
 
+  revalidateTag("product-taxonomies");
   return NextResponse.json({ message: "삭제되었습니다." });
 }

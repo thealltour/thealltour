@@ -21,9 +21,17 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   }
 
   const formattedPrice = formatPrice(product.price);
+  const quoteHref = {
+    pathname: "/quote",
+    query: {
+      product_id: product.id,
+      product_title: product.title,
+      source_path: `/products/${product.id}`,
+    },
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-6 py-10 md:px-10">
+    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-6 py-10 pb-28 md:px-10">
       <main className="mx-auto w-full max-w-5xl space-y-8">
         <div className="flex items-center justify-between">
           <Link
@@ -33,14 +41,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             ← 상품 목록으로
           </Link>
           <Link
-            href={{
-              pathname: "/quote",
-              query: {
-                product_id: product.id,
-                product_title: product.title,
-                source_path: `/products/${product.id}`,
-              },
-            }}
+            href={quoteHref}
             className="rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
           >
             이 상품 문의하기
@@ -53,6 +54,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             alt={`${product.title} 상세 이미지`}
             width={1400}
             height={900}
+            sizes="(max-width: 1024px) 100vw, 1024px"
+            priority
             className="h-[340px] w-full object-cover md:h-[460px]"
           />
           <div className="space-y-5 p-6 md:p-8">
@@ -74,6 +77,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   일정 {product.duration}
                 </span>
               ) : null}
+              <span className="rounded-lg bg-[#f0fdf4] px-3 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+                상담 후 최종 견적 확정
+              </span>
+            </div>
+            <div className="rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+              <h2 className="mb-2 text-lg font-bold text-[#1e3a8a]">상담 안내</h2>
+              <p className="text-sm leading-7 text-slate-700">
+                문의를 남겨주시면 일정/예산/동행구성에 맞춰 맞춤 동선과 견적 옵션을 안내드립니다.
+              </p>
             </div>
 
             {product.itinerary ? (
@@ -92,6 +104,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </div>
         </section>
       </main>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:hidden">
+        <Link
+          href={quoteHref}
+          className="flex w-full items-center justify-center rounded-xl bg-[#1d4ed8] px-4 py-3 text-sm font-semibold text-white"
+        >
+          이 상품 바로 상담하기
+        </Link>
+      </div>
     </div>
   );
 }

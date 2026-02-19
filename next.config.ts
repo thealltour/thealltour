@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "img.modetour.com",
+      },
+      {
+        protocol: "https",
         hostname: "qmswixmwquuazrhfyils.supabase.co",
       },
     ],

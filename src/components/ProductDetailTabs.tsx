@@ -62,6 +62,15 @@ function parseBulletLines(raw?: string) {
     .filter((line) => line.length > 0);
 }
 
+function normalizeOXValue(value?: string) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (["o", "y", "yes", "예", "가능", "제공", "포함", "있음", "있다"].includes(normalized)) return "O";
+  if (["x", "n", "no", "아니오", "불가", "미제공", "불포함", "없음", "없다"].includes(normalized)) return "X";
+  if (normalized.includes("없") || normalized.includes("불가") || normalized.includes("미")) return "X";
+  return "O";
+}
+
 export default function ProductDetailTabs({
   pointBenefits,
   pointTourism,
@@ -77,16 +86,24 @@ export default function ProductDetailTabs({
   const [activeMainTab, setActiveMainTab] = useState<MainTab>("points");
   const scheduleTabs = useMemo(() => parseScheduleTabs(detailedSchedule), [detailedSchedule]);
   const [activeScheduleIndex, setActiveScheduleIndex] = useState(0);
-  const optionalLines = useMemo(() => parseBulletLines(optionalTours), [optionalTours]);
-  const termsLines = useMemo(() => parseBulletLines(termsAndNotes), [termsAndNotes]);
+  const normalizedIncluded = includedItems?.trim() ?? "";
+  const normalizedExcluded = excludedItems?.trim() ?? "";
+  const normalizedOptional = optionalTours?.trim() ?? "";
+  const normalizedTerms = termsAndNotes?.trim() ?? "";
+  const safeOptionalTours =
+    normalizedOptional && normalizedOptional === normalizedIncluded ? "" : optionalTours;
+  const safeTermsAndNotes =
+    normalizedTerms && normalizedTerms === normalizedExcluded ? "" : termsAndNotes;
+  const optionalLines = useMemo(() => parseBulletLines(safeOptionalTours), [safeOptionalTours]);
+  const termsLines = useMemo(() => parseBulletLines(safeTermsAndNotes), [safeTermsAndNotes]);
 
   const pointRows = [
-    { label: "혜택", value: pointBenefits, icon: "혜택" },
-    { label: "관광", value: pointTourism, icon: "관광" },
-    { label: "인솔자", value: pointGuide, icon: "인솔" },
-    { label: "미팅정보", value: meetingInfo, icon: "미팅" },
-    { label: "여행자보험", value: travelInsurance, icon: "보험" },
-  ].filter((item) => Boolean(item.value && item.value.trim()));
+    { label: "혜택", value: pointBenefits, icon: "혜택", type: "text" as const },
+    { label: "관광", value: pointTourism, icon: "관광", type: "ox" as const },
+    { label: "인솔자", value: pointGuide, icon: "인솔", type: "ox" as const },
+    { label: "미팅정보", value: meetingInfo, icon: "미팅", type: "ox" as const },
+    { label: "여행자보험", value: travelInsurance, icon: "보험", type: "ox" as const },
+  ].filter((item) => (item.type === "text" ? Boolean(item.value && item.value.trim()) : true));
 
   const mainTabs: { key: MainTab; label: string }[] = [
     { key: "points", label: "상품 핵심 포인트" },
@@ -124,7 +141,32 @@ export default function ProductDetailTabs({
                     {item.icon}
                   </div>
                   <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">{item.label}</h3>
-                  <p className="whitespace-pre-line text-sm leading-6 text-slate-700">{item.value?.trim()}</p>
+                  {item.type === "text" ? (
+                    <p className="whitespace-pre-line text-sm leading-6 text-slate-700">{item.value?.trim()}</p>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {normalizeOXValue(item.value) === "O" ? (
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                          O
+                        </span>
+                      ) : normalizeOXValue(item.value) === "X" ? (
+                        <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700">
+                          X
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
+                          미설정
+                        </span>
+                      )}
+                      <span className="text-sm font-medium text-slate-700">
+                        {normalizeOXValue(item.value) === "O"
+                          ? "제공"
+                          : normalizeOXValue(item.value) === "X"
+                            ? "미제공"
+                            : "정보 없음"}
+                      </span>
+                    </div>
+                  )}
                 </article>
               ))
             ) : (

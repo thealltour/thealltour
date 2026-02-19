@@ -56,6 +56,20 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   }
 
   const formattedPrice = formatPrice(product.price);
+  const normalizedIncluded = product.included_items?.trim() ?? "";
+  const normalizedExcluded = product.excluded_items?.trim() ?? "";
+  const normalizedOptional = product.optional_tours?.trim() ?? "";
+  const normalizedTerms = product.terms_and_notes?.trim() ?? "";
+  const shouldFallbackFromLegacyDetailFields =
+    !normalizedIncluded && !normalizedExcluded && (normalizedOptional || normalizedTerms);
+  const resolvedIncludedItems = shouldFallbackFromLegacyDetailFields
+    ? product.optional_tours ?? product.inclusions
+    : product.included_items ?? product.inclusions;
+  const resolvedExcludedItems = shouldFallbackFromLegacyDetailFields
+    ? product.terms_and_notes
+    : product.excluded_items;
+  const resolvedOptionalTours = shouldFallbackFromLegacyDetailFields ? undefined : product.optional_tours;
+  const resolvedTermsAndNotes = shouldFallbackFromLegacyDetailFields ? undefined : product.terms_and_notes;
   const quoteHref = {
     pathname: "/quote",
     query: {
@@ -129,11 +143,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               pointGuide={product.point_guide}
               meetingInfo={product.meeting_info}
               travelInsurance={product.travel_insurance}
-              includedItems={product.included_items ?? product.inclusions}
-              excludedItems={product.excluded_items}
+              includedItems={resolvedIncludedItems}
+              excludedItems={resolvedExcludedItems}
               detailedSchedule={product.detailed_schedule ?? product.itinerary}
-              optionalTours={product.optional_tours}
-              termsAndNotes={product.terms_and_notes}
+              optionalTours={resolvedOptionalTours}
+              termsAndNotes={resolvedTermsAndNotes}
             />
           </div>
         </section>

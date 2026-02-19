@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "더올투어 | 맞춤형 해외/국내 여행 전문",
   description:
     "더올투어는 해외여행과 국내여행을 고객 맞춤형으로 설계하는 전문 여행사입니다. 상담부터 일정 운영까지 신뢰 있게 안내합니다.",
+  icons: {
+    icon: "/thealltour-logo.png",
+    shortcut: "/thealltour-logo.png",
+    apple: "/thealltour-logo.png",
+  },
 };
 
 export default function RootLayout({

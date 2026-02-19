@@ -17,6 +17,8 @@ type ProductCatalogSectionProps = {
   products: Product[];
   categories: string[];
   initialKeyword?: string;
+  presetCategories?: string[];
+  presetLabel?: string;
 };
 
 function normalizeSearchKeyword(value: string) {
@@ -34,20 +36,41 @@ function matchesKeyword(product: Product, keyword: string) {
   return haystack.includes(keyword);
 }
 
-export default function ProductCatalogSection({ products, categories, initialKeyword = "" }: ProductCatalogSectionProps) {
+export default function ProductCatalogSection({
+  products,
+  categories,
+  initialKeyword = "",
+  presetCategories,
+  presetLabel,
+}: ProductCatalogSectionProps) {
   const [activeTab, setActiveTab] = useState<ProductCategoryTabId>("all");
   const [activeThemeTab, setActiveThemeTab] = useState("전체");
   const keyword = useMemo(() => normalizeSearchKeyword(initialKeyword), [initialKeyword]);
-  const categoryTabs = useMemo(() => ["전체", ...categories], [categories]);
+  const presetCategorySet = useMemo(
+    () => new Set((presetCategories ?? []).map((item) => item.trim()).filter(Boolean)),
+    [presetCategories],
+  );
+  const baseProducts = useMemo(
+    () =>
+      presetCategorySet.size > 0
+        ? products.filter((product) => presetCategorySet.has(product.category))
+        : products,
+    [products, presetCategorySet],
+  );
+  const visibleCategories = useMemo(
+    () => (presetCategorySet.size > 0 ? categories.filter((category) => presetCategorySet.has(category)) : categories),
+    [categories, presetCategorySet],
+  );
+  const categoryTabs = useMemo(() => ["전체", ...visibleCategories], [visibleCategories]);
 
   const filteredProducts = useMemo(
-    () => products.filter((product) => matchesProductTab(product, activeTab)),
-    [products, activeTab],
+    () => baseProducts.filter((product) => matchesProductTab(product, activeTab)),
+    [baseProducts, activeTab],
   );
   const themeTabs = useMemo(() => {
-    const inferred = getThemeTabs(products, activeTab);
+    const inferred = getThemeTabs(baseProducts, activeTab);
     return Array.from(new Set(["전체", ...inferred.slice(1)]));
-  }, [products, activeTab]);
+  }, [baseProducts, activeTab]);
   const themeFilteredProducts = useMemo(
     () => filteredProducts.filter((product) => matchesThemeTab(product, activeThemeTab)),
     [filteredProducts, activeThemeTab],
@@ -76,6 +99,7 @@ export default function ProductCatalogSection({ products, categories, initialKey
         <p className="text-xs font-semibold text-slate-500">
           총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
         </p>
+        {presetLabel ? <p className="text-xs font-semibold text-[#15803d]">필터: {presetLabel}</p> : null}
         {keyword ? (
           <p className="text-xs font-semibold text-[#1d4ed8]">검색어: {initialKeyword}</p>
         ) : null}

@@ -9,6 +9,7 @@ import { getMemberSessionFromCookies } from "@/lib/memberSession";
 type SiteHeaderProps = {
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
   searchQuery?: string;
+  golfPresetActive?: boolean;
 };
 
 function getMenuClass(isActive: boolean) {
@@ -25,7 +26,15 @@ function getSubMenuClass(isActive: boolean) {
   }`;
 }
 
-export default async function SiteHeader({ activeTab, searchQuery }: SiteHeaderProps) {
+function getGolfSubMenuClass(isActive: boolean) {
+  return `shrink-0 whitespace-nowrap rounded-full border border-[#86efac] px-3.5 py-1.5 text-[15px] font-bold transition ${
+    isActive
+      ? "bg-[#bbf7d0] text-[#166534] ring-1 ring-[#4ade80]"
+      : "bg-[#dcfce7] text-[#166534] hover:bg-[#bbf7d0]"
+  }`;
+}
+
+export default async function SiteHeader({ activeTab, searchQuery, golfPresetActive = false }: SiteHeaderProps) {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
 
@@ -88,6 +97,9 @@ export default async function SiteHeader({ activeTab, searchQuery }: SiteHeaderP
         <div className="flex items-center justify-center gap-2.5 border-t border-slate-100 pt-2">
           <Link className={getSubMenuClass(activeTab === "products")} href="/products">
             패키지상품
+          </Link>
+          <Link className={getGolfSubMenuClass(golfPresetActive)} href="/products?tourType=golf-park">
+            골프/파크골프
           </Link>
           <HeaderProductSearch mode="desktop" searchQuery={searchQuery} />
           <Link

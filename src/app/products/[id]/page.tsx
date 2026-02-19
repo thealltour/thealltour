@@ -1,11 +1,46 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import ProductDetailTabs from "@/components/ProductDetailTabs";
 import { getProductById } from "@/lib/products";
 
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
 };
+
+function buildSeoDescription(input: string) {
+  return input.replace(/\s+/g, " ").trim().slice(0, 155);
+}
+
+export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProductById(id);
+
+  if (!product) {
+    return {
+      title: "패키지상품 | 더올투어",
+      description: "더올투어 패키지상품 정보를 확인해 보세요.",
+    };
+  }
+
+  const title = product.meta_title?.trim() || `${product.title} | ${product.category} 패키지 | 더올투어`;
+  const description =
+    product.meta_description?.trim() ||
+    buildSeoDescription(
+      `${product.title} ${product.category} ${product.theme ?? ""} ${product.description} 더올투어 맞춤 여행 상담 가능`,
+    );
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [{ url: product.image_url }],
+    },
+  };
+}
 
 function formatPrice(price?: number) {
   if (typeof price !== "number") return null;
@@ -88,19 +123,18 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               </p>
             </div>
 
-            {product.itinerary ? (
-              <div className="rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
-                <h2 className="mb-2 text-lg font-bold text-[#1e3a8a]">일정표</h2>
-                <p className="whitespace-pre-line text-sm leading-7 text-slate-700">{product.itinerary}</p>
-              </div>
-            ) : null}
-
-            {product.inclusions ? (
-              <div className="rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
-                <h2 className="mb-2 text-lg font-bold text-[#1e3a8a]">포함사항 / 안내</h2>
-                <p className="whitespace-pre-line text-sm leading-7 text-slate-700">{product.inclusions}</p>
-              </div>
-            ) : null}
+            <ProductDetailTabs
+              pointBenefits={product.point_benefits}
+              pointTourism={product.point_tourism}
+              pointGuide={product.point_guide}
+              meetingInfo={product.meeting_info}
+              travelInsurance={product.travel_insurance}
+              includedItems={product.included_items ?? product.inclusions}
+              excludedItems={product.excluded_items}
+              detailedSchedule={product.detailed_schedule ?? product.itinerary}
+              optionalTours={product.optional_tours}
+              termsAndNotes={product.terms_and_notes}
+            />
           </div>
         </section>
       </main>

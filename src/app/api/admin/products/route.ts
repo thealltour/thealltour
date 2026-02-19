@@ -7,6 +7,18 @@ const FEATURED_PRODUCT_LIMIT = 8;
 type ProductBody = {
   title?: string;
   description?: string;
+  point_benefits?: string | null;
+  point_tourism?: string | null;
+  point_guide?: string | null;
+  meeting_info?: string | null;
+  travel_insurance?: string | null;
+  included_items?: string | null;
+  excluded_items?: string | null;
+  detailed_schedule?: string | null;
+  optional_tours?: string | null;
+  terms_and_notes?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
   image_url?: string;
   category?: string;
   theme?: string | null;
@@ -81,9 +93,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const insertResult = await supabase
-    .from("products")
-    .insert({
+  const insertPayload: Record<string, unknown> = {
     title,
     description,
     image_url: imageUrl,
@@ -97,7 +107,48 @@ export async function POST(request: Request) {
       is_active: body.is_featured_home ? true : (body.is_active ?? true),
     is_featured_home: body.is_featured_home ?? false,
     sort_order: typeof body.sort_order === "number" ? body.sort_order : null,
-    })
+  };
+
+  if (body.meta_title !== undefined) {
+    insertPayload.meta_title = body.meta_title?.trim() || null;
+  }
+  if (body.meta_description !== undefined) {
+    insertPayload.meta_description = body.meta_description?.trim() || null;
+  }
+  if (body.point_benefits !== undefined) {
+    insertPayload.point_benefits = body.point_benefits?.trim() || null;
+  }
+  if (body.point_tourism !== undefined) {
+    insertPayload.point_tourism = body.point_tourism?.trim() || null;
+  }
+  if (body.point_guide !== undefined) {
+    insertPayload.point_guide = body.point_guide?.trim() || null;
+  }
+  if (body.meeting_info !== undefined) {
+    insertPayload.meeting_info = body.meeting_info?.trim() || null;
+  }
+  if (body.travel_insurance !== undefined) {
+    insertPayload.travel_insurance = body.travel_insurance?.trim() || null;
+  }
+  if (body.included_items !== undefined) {
+    insertPayload.included_items = body.included_items?.trim() || null;
+  }
+  if (body.excluded_items !== undefined) {
+    insertPayload.excluded_items = body.excluded_items?.trim() || null;
+  }
+  if (body.detailed_schedule !== undefined) {
+    insertPayload.detailed_schedule = body.detailed_schedule?.trim() || null;
+  }
+  if (body.optional_tours !== undefined) {
+    insertPayload.optional_tours = body.optional_tours?.trim() || null;
+  }
+  if (body.terms_and_notes !== undefined) {
+    insertPayload.terms_and_notes = body.terms_and_notes?.trim() || null;
+  }
+
+  const insertResult = await supabase
+    .from("products")
+    .insert(insertPayload)
     .select("id")
     .maybeSingle();
 

@@ -1,0 +1,21 @@
+alter table public.products add column if not exists point_benefits text;
+alter table public.products add column if not exists point_tourism text;
+alter table public.products add column if not exists point_guide text;
+alter table public.products add column if not exists meeting_info text;
+alter table public.products add column if not exists travel_insurance text;
+alter table public.products add column if not exists included_items text;
+alter table public.products add column if not exists excluded_items text;
+alter table public.products add column if not exists detailed_schedule text;
+alter table public.products add column if not exists optional_tours text;
+alter table public.products add column if not exists terms_and_notes text;
+
+comment on column public.products.point_benefits is '상품 핵심 포인트: 혜택';
+comment on column public.products.point_tourism is '상품 핵심 포인트: 관광';
+comment on column public.products.point_guide is '상품 핵심 포인트: 인솔자';
+comment on column public.products.meeting_info is '상품 핵심 포인트: 미팅정보';
+comment on column public.products.travel_insurance is '상품 핵심 포인트: 여행자보험';
+comment on column public.products.included_items is '포함사항';
+comment on column public.products.excluded_items is '불포함사항';
+comment on column public.products.detailed_schedule is '상세일정 탭 본문 텍스트';
+comment on column public.products.optional_tours is '선택관광 목록';
+comment on column public.products.terms_and_notes is '약관 및 참조사항';

@@ -7,6 +7,18 @@ const FEATURED_PRODUCT_LIMIT = 8;
 type ProductBody = {
   title?: string;
   description?: string;
+  point_benefits?: string | null;
+  point_tourism?: string | null;
+  point_guide?: string | null;
+  meeting_info?: string | null;
+  travel_insurance?: string | null;
+  included_items?: string | null;
+  excluded_items?: string | null;
+  detailed_schedule?: string | null;
+  optional_tours?: string | null;
+  terms_and_notes?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
   image_url?: string;
   category?: string;
   theme?: string | null;
@@ -60,6 +72,18 @@ export async function PATCH(
 
   if (body.title !== undefined) updates.title = body.title?.trim();
   if (body.description !== undefined) updates.description = body.description?.trim();
+  if (body.meta_title !== undefined) updates.meta_title = body.meta_title?.trim() || null;
+  if (body.meta_description !== undefined) updates.meta_description = body.meta_description?.trim() || null;
+  if (body.point_benefits !== undefined) updates.point_benefits = body.point_benefits?.trim() || null;
+  if (body.point_tourism !== undefined) updates.point_tourism = body.point_tourism?.trim() || null;
+  if (body.point_guide !== undefined) updates.point_guide = body.point_guide?.trim() || null;
+  if (body.meeting_info !== undefined) updates.meeting_info = body.meeting_info?.trim() || null;
+  if (body.travel_insurance !== undefined) updates.travel_insurance = body.travel_insurance?.trim() || null;
+  if (body.included_items !== undefined) updates.included_items = body.included_items?.trim() || null;
+  if (body.excluded_items !== undefined) updates.excluded_items = body.excluded_items?.trim() || null;
+  if (body.detailed_schedule !== undefined) updates.detailed_schedule = body.detailed_schedule?.trim() || null;
+  if (body.optional_tours !== undefined) updates.optional_tours = body.optional_tours?.trim() || null;
+  if (body.terms_and_notes !== undefined) updates.terms_and_notes = body.terms_and_notes?.trim() || null;
   if (body.image_url !== undefined) updates.image_url = body.image_url?.trim();
   if (body.category !== undefined) updates.category = body.category?.trim();
   if (body.theme !== undefined) updates.theme = body.theme?.trim() || null;

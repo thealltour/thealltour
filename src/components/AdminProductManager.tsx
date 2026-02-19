@@ -7,6 +7,18 @@ import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 type ProductFormState = {
   title: string;
   description: string;
+  point_benefits: string;
+  point_tourism: string;
+  point_guide: string;
+  meeting_info: string;
+  travel_insurance: string;
+  included_items: string;
+  excluded_items: string;
+  detailed_schedule: string;
+  optional_tours: string;
+  terms_and_notes: string;
+  meta_title: string;
+  meta_description: string;
   image_url: string;
   category: string;
   theme: string;
@@ -29,6 +41,18 @@ const FEATURED_PRODUCT_LIMIT = 8;
 const initialFormState: ProductFormState = {
   title: "",
   description: "",
+  point_benefits: "",
+  point_tourism: "",
+  point_guide: "",
+  meeting_info: "",
+  travel_insurance: "",
+  included_items: "",
+  excluded_items: "",
+  detailed_schedule: "",
+  optional_tours: "",
+  terms_and_notes: "",
+  meta_title: "",
+  meta_description: "",
   image_url: "",
   category: "여행상품",
   theme: "",
@@ -45,6 +69,18 @@ function mapProductToForm(product: Product): ProductFormState {
   return {
     title: product.title ?? "",
     description: product.description ?? "",
+    point_benefits: product.point_benefits ?? "",
+    point_tourism: product.point_tourism ?? "",
+    point_guide: product.point_guide ?? "",
+    meeting_info: product.meeting_info ?? "",
+    travel_insurance: product.travel_insurance ?? "",
+    included_items: product.included_items ?? "",
+    excluded_items: product.excluded_items ?? "",
+    detailed_schedule: product.detailed_schedule ?? "",
+    optional_tours: product.optional_tours ?? "",
+    terms_and_notes: product.terms_and_notes ?? "",
+    meta_title: product.meta_title ?? "",
+    meta_description: product.meta_description ?? "",
     image_url: product.image_url ?? "",
     category: product.category ?? "여행상품",
     theme: product.theme ?? "",
@@ -168,6 +204,18 @@ export default function AdminProductManager() {
       const payload = {
         title: form.title,
         description: form.description,
+        meta_title: form.meta_title.trim() === "" ? undefined : form.meta_title,
+        meta_description: form.meta_description.trim() === "" ? undefined : form.meta_description,
+        point_benefits: form.point_benefits.trim() === "" ? undefined : form.point_benefits,
+        point_tourism: form.point_tourism.trim() === "" ? undefined : form.point_tourism,
+        point_guide: form.point_guide.trim() === "" ? undefined : form.point_guide,
+        meeting_info: form.meeting_info.trim() === "" ? undefined : form.meeting_info,
+        travel_insurance: form.travel_insurance.trim() === "" ? undefined : form.travel_insurance,
+        included_items: form.included_items.trim() === "" ? undefined : form.included_items,
+        excluded_items: form.excluded_items.trim() === "" ? undefined : form.excluded_items,
+        detailed_schedule: form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule,
+        optional_tours: form.optional_tours.trim() === "" ? undefined : form.optional_tours,
+        terms_and_notes: form.terms_and_notes.trim() === "" ? undefined : form.terms_and_notes,
         image_url: form.image_url,
         category: form.category,
         theme: form.theme.trim() === "" ? null : form.theme,
@@ -253,7 +301,19 @@ export default function AdminProductManager() {
         product.title.toLowerCase().includes(q) ||
         product.category.toLowerCase().includes(q) ||
         (product.theme ?? "").toLowerCase().includes(q) ||
-        product.description.toLowerCase().includes(q),
+        product.description.toLowerCase().includes(q) ||
+        (product.point_benefits ?? "").toLowerCase().includes(q) ||
+        (product.point_tourism ?? "").toLowerCase().includes(q) ||
+        (product.point_guide ?? "").toLowerCase().includes(q) ||
+        (product.meeting_info ?? "").toLowerCase().includes(q) ||
+        (product.travel_insurance ?? "").toLowerCase().includes(q) ||
+        (product.included_items ?? "").toLowerCase().includes(q) ||
+        (product.excluded_items ?? "").toLowerCase().includes(q) ||
+        (product.detailed_schedule ?? "").toLowerCase().includes(q) ||
+        (product.optional_tours ?? "").toLowerCase().includes(q) ||
+        (product.terms_and_notes ?? "").toLowerCase().includes(q) ||
+        (product.meta_title ?? "").toLowerCase().includes(q) ||
+        (product.meta_description ?? "").toLowerCase().includes(q),
     );
 
     if (!showFeaturedOnly) return keywordFiltered;
@@ -709,6 +769,89 @@ export default function AdminProductManager() {
             placeholder="상품 설명"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
           />
+          <textarea
+            value={form.point_benefits}
+            onChange={(event) => setForm((prev) => ({ ...prev, point_benefits: event.target.value }))}
+            rows={3}
+            placeholder="상품 포인트 - 혜택 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.point_tourism}
+            onChange={(event) => setForm((prev) => ({ ...prev, point_tourism: event.target.value }))}
+            rows={3}
+            placeholder="상품 포인트 - 관광 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.point_guide}
+            onChange={(event) => setForm((prev) => ({ ...prev, point_guide: event.target.value }))}
+            rows={3}
+            placeholder="상품 포인트 - 인솔자 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.meeting_info}
+            onChange={(event) => setForm((prev) => ({ ...prev, meeting_info: event.target.value }))}
+            rows={3}
+            placeholder="상품 포인트 - 미팅정보 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.travel_insurance}
+            onChange={(event) => setForm((prev) => ({ ...prev, travel_insurance: event.target.value }))}
+            rows={3}
+            placeholder="상품 포인트 - 여행자보험 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+          />
+          <textarea
+            value={form.included_items}
+            onChange={(event) => setForm((prev) => ({ ...prev, included_items: event.target.value }))}
+            rows={3}
+            placeholder="포함사항 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.excluded_items}
+            onChange={(event) => setForm((prev) => ({ ...prev, excluded_items: event.target.value }))}
+            rows={3}
+            placeholder="불포함사항 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.detailed_schedule}
+            onChange={(event) => setForm((prev) => ({ ...prev, detailed_schedule: event.target.value }))}
+            rows={8}
+            placeholder={"상세일정 (탭 구분 입력)\n예시:\n[1일차]\n인천 출발 / 하노이 도착\n...\n\n[2일차]\n하노이 시내관광\n..."}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+          />
+          <textarea
+            value={form.optional_tours}
+            onChange={(event) => setForm((prev) => ({ ...prev, optional_tours: event.target.value }))}
+            rows={4}
+            placeholder="선택관광 목록 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <textarea
+            value={form.terms_and_notes}
+            onChange={(event) => setForm((prev) => ({ ...prev, terms_and_notes: event.target.value }))}
+            rows={4}
+            placeholder="약관 및 참조사항 (줄바꿈 가능)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <input
+            value={form.meta_title}
+            onChange={(event) => setForm((prev) => ({ ...prev, meta_title: event.target.value }))}
+            placeholder="SEO 메타 타이틀 (선택, 예시: 전 세계 맞춤 여행, 더올투어 / 패키지 골프여행 / 베트남 다낭 3박 5일 패키지 / No옵션 No쇼핑 특가)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+          />
+          <textarea
+            value={form.meta_description}
+            onChange={(event) => setForm((prev) => ({ ...prev, meta_description: event.target.value }))}
+            rows={3}
+            placeholder="SEO 메타 설명 (선택, 예시: 타깃층 문제해결 + 차별화된 혜택/신뢰 요소 + CTA포함)"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+          />
           <input
             value={form.price}
             onChange={(event) => setForm((prev) => ({ ...prev, price: event.target.value }))}
@@ -719,20 +862,6 @@ export default function AdminProductManager() {
             value={form.duration}
             onChange={(event) => setForm((prev) => ({ ...prev, duration: event.target.value }))}
             placeholder="일정(예: 5일)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-          />
-          <textarea
-            value={form.itinerary}
-            onChange={(event) => setForm((prev) => ({ ...prev, itinerary: event.target.value }))}
-            rows={3}
-            placeholder="일정표 (줄바꿈 가능)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-          />
-          <textarea
-            value={form.inclusions}
-            onChange={(event) => setForm((prev) => ({ ...prev, inclusions: event.target.value }))}
-            rows={3}
-            placeholder="포함사항/불포함사항 (줄바꿈 가능)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
           <input

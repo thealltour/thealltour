@@ -9,6 +9,18 @@ export type Product = {
   duration?: string;
   itinerary?: string;
   inclusions?: string;
+  point_benefits?: string;
+  point_tourism?: string;
+  point_guide?: string;
+  meeting_info?: string;
+  travel_insurance?: string;
+  included_items?: string;
+  excluded_items?: string;
+  detailed_schedule?: string;
+  optional_tours?: string;
+  terms_and_notes?: string;
+  meta_title?: string;
+  meta_description?: string;
   is_active?: boolean;
   is_featured_home?: boolean;
   sort_order?: number;

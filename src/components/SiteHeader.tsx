@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import MemberLogoutButton from "@/components/MemberLogoutButton";
+import MobileFloatingMenu from "@/components/MobileFloatingMenu";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 
 type SiteHeaderProps = {
@@ -82,6 +83,7 @@ export default async function SiteHeader({ activeTab }: SiteHeaderProps) {
           )}
         </div>
       </div>
+      <MobileFloatingMenu activeTab={activeTab} />
     </header>
   );
 }

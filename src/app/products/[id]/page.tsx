@@ -14,14 +14,27 @@ function buildSeoDescription(input: string) {
   return input.replace(/\s+/g, " ").trim().slice(0, 155);
 }
 
+function toAbsoluteUrl(siteUrl: string, pathOrUrl: string) {
+  if (!pathOrUrl) return siteUrl;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const normalizedPath = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  return `${siteUrl}${normalizedPath}`;
+}
+
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { id } = await params;
   const product = await getProductById(id);
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
+  const productPath = `/products/${id}`;
+  const productUrl = `${siteUrl}${productPath}`;
 
   if (!product) {
     return {
       title: "패키지상품 | 더올투어",
       description: "더올투어 패키지상품 정보를 확인해 보세요.",
+      alternates: {
+        canonical: productUrl,
+      },
     };
   }
 
@@ -31,14 +44,28 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     buildSeoDescription(
       `${product.title} ${product.category} ${product.theme ?? ""} ${product.description} 더올투어 맞춤 여행 상담 가능`,
     );
+  const ogImage = toAbsoluteUrl(siteUrl, product.image_url?.trim() || "/thealltour-logo.png");
 
   return {
     title,
     description,
+    alternates: {
+      canonical: productUrl,
+    },
     openGraph: {
+      type: "article",
+      url: productUrl,
+      siteName: "더올투어",
       title,
       description,
-      images: [{ url: product.image_url }],
+      images: [{ url: ogImage }],
+      locale: "ko_KR",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
     },
   };
 }
@@ -126,6 +153,32 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     : shouldFallbackFromLegacyDetailFields
       ? undefined
       : product.terms_and_notes;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
+  const productUrl = `${siteUrl}/products/${product.id}`;
+  const productImageUrl = toAbsoluteUrl(siteUrl, product.image_url?.trim() || "/thealltour-logo.png");
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description: buildSeoDescription(product.description),
+    image: [productImageUrl],
+    category: product.category,
+    brand: {
+      "@type": "Brand",
+      name: "더올투어",
+    },
+    url: productUrl,
+    offers:
+      typeof product.price === "number"
+        ? {
+            "@type": "Offer",
+            priceCurrency: "KRW",
+            price: product.price,
+            availability: "https://schema.org/InStock",
+            url: productUrl,
+          }
+        : undefined,
+  };
   const departureFlight: FlightCardData = {
     fromAirport: product.departure_from_airport,
     fromDate: product.departure_from_date,
@@ -172,6 +225,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
 
         <section className="overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe]">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+          />
           <Image
             src={product.image_url}
             alt={`${product.title} 상세 이미지`}
@@ -192,7 +249,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <div className="flex flex-wrap gap-3 pt-1">
               {formattedPrice ? (
                 <span className="rounded-lg bg-[#eff6ff] px-3 py-2 text-sm font-semibold text-[#1e3a8a]">
-                  예상가 {formattedPrice}원
+                  예상가 {formattedPrice}원~
                 </span>
               ) : null}
               {product.duration ? (

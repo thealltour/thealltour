@@ -126,9 +126,11 @@ function normalizeOXValue(value?: string | null): "O" | "X" {
 }
 
 function formatPriceWithCommas(raw: string) {
+  const hasTilde = raw.includes("~");
   const digitsOnly = raw.replace(/[^\d]/g, "");
   if (!digitsOnly) return "";
-  return digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const formatted = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return hasTilde ? `${formatted}~` : formatted;
 }
 
 type DayScheduleDraft = {
@@ -413,7 +415,7 @@ export default function AdminProductManager() {
         : normalizedExcludedItems;
       const resolvedOptionalTours = shouldRepairLegacyDetailMix ? "" : normalizedOptionalTours;
       const resolvedTermsAndNotes = shouldRepairLegacyDetailMix ? "" : normalizedTermsAndNotes;
-      const normalizedPrice = form.price.replace(/,/g, "").trim();
+      const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
       const payload = {
         title: form.title,
         description: form.description,

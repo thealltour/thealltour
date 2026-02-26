@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -20,10 +21,26 @@ const menuItems = [
 export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [pendingKey, setPendingKey] = useState<(typeof menuItems)[number]["key"] | null>(null);
+  const [pressedKey, setPressedKey] = useState<(typeof menuItems)[number]["key"] | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    // Route changed: close panel and reset touch feedback states.
+    setIsOpen(false);
+    setPendingKey(null);
+    setPressedKey(null);
+  }, [pathname]);
+
+  function triggerHapticFeedback() {
+    if (typeof navigator === "undefined") return;
+    if (typeof navigator.vibrate !== "function") return;
+    navigator.vibrate(12);
+  }
 
   if (!isMounted) {
     return null;
@@ -35,20 +52,38 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
         <div className="mb-2 w-[min(78vw,15rem)] rounded-2xl border border-[var(--line)] bg-white/95 p-2 shadow-2xl backdrop-blur-sm">
           <ul className="flex flex-col gap-1.5">
             {menuItems.map((item) => {
-              const isActive = activeTab === item.key;
+              const isPathActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const isActive = activeTab === item.key || isPathActive;
+              const isPending = pendingKey === item.key;
+              const isPressed = pressedKey === item.key;
+              const isNavigationLocked = pendingKey !== null && pendingKey !== item.key;
 
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`block rounded-xl px-3 py-2 text-[clamp(14px,3.5vw,16px)] font-bold leading-tight transition ${
+                    aria-current={isActive ? "page" : undefined}
+                    aria-disabled={isNavigationLocked}
+                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-[clamp(14px,3.5vw,16px)] font-bold leading-tight transition duration-100 active:scale-[0.98] ${
                       isActive
                         ? "border border-[var(--line)] bg-[#eff6ff] text-[var(--brand-strong)]"
-                        : "text-[#0f172a] hover:bg-[#eff6ff] hover:text-[var(--brand-strong)]"
-                    }`}
-                    onClick={() => setIsOpen(false)}
+                        : "text-[#0f172a] hover:bg-[#eff6ff] hover:text-[var(--brand-strong)] active:bg-[#e0ecff]"
+                    } ${isNavigationLocked ? "pointer-events-none opacity-50" : ""}`}
+                    onPointerDown={() => setPressedKey(item.key)}
+                    onPointerCancel={() => setPressedKey(null)}
+                    onPointerUp={() => setPressedKey(null)}
+                    onClick={() => {
+                      if (pendingKey) return;
+                      triggerHapticFeedback();
+                      setPendingKey(item.key);
+                    }}
                   >
-                    {item.label}
+                    <span>{item.label}</span>
+                    {isPending ? (
+                      <span className="text-[11px] font-semibold text-[var(--brand-strong)]">이동중...</span>
+                    ) : isPressed ? (
+                      <span className="h-2 w-2 rounded-full bg-[var(--brand)]" />
+                    ) : null}
                   </Link>
                 </li>
               );

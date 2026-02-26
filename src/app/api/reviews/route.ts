@@ -10,6 +10,7 @@ type ReviewBody = {
   content?: string;
   image_url?: string | null;
   image_urls?: string[];
+  rating?: number;
 };
 
 const MAX_REVIEW_IMAGES = 4;
@@ -34,9 +35,16 @@ export async function POST(request: Request) {
     .filter((url) => url.length > 0);
   const imageUrls = rawImageUrls.slice(0, MAX_REVIEW_IMAGES);
   const imageUrl = imageUrls[0] ?? body.image_url?.trim() ?? null;
+  const rating =
+    typeof body.rating === "number" && Number.isFinite(body.rating)
+      ? Math.round(body.rating)
+      : undefined;
 
   if (!title || !content) {
     return NextResponse.json({ message: "제목과 내용을 입력해 주세요." }, { status: 400 });
+  }
+  if (rating !== undefined && (rating < 1 || rating > 5)) {
+    return NextResponse.json({ message: "별점은 1점에서 5점 사이로 선택해 주세요." }, { status: 400 });
   }
   if (rawImageUrls.length > MAX_REVIEW_IMAGES) {
     return NextResponse.json(
@@ -55,6 +63,7 @@ export async function POST(request: Request) {
     content,
     image_url: imageUrl,
     image_urls: imageUrls,
+    rating: rating ?? null,
   };
 
   const insertWithArray = await supabase

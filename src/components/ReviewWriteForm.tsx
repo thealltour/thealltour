@@ -16,6 +16,7 @@ export default function ReviewWriteForm() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [rating, setRating] = useState<number | null>(null);
 
   useEffect(() => {
     return () => {
@@ -38,7 +39,7 @@ export default function ReviewWriteForm() {
       const response = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, image_urls: imageUrls }),
+        body: JSON.stringify({ title, content, image_urls: imageUrls, rating }),
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
@@ -77,6 +78,27 @@ export default function ReviewWriteForm() {
           className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
       </label>
+      <fieldset className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+        <legend className="text-sm font-medium text-slate-700">별점</legend>
+        <div className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRating(value)}
+              className={`text-2xl leading-none transition ${
+                rating !== null && value <= rating ? "text-amber-400" : "text-slate-300 hover:text-amber-300"
+              }`}
+              aria-label={`${value}점`}
+            >
+              ★
+            </button>
+          ))}
+          <span className="ml-2 text-xs font-normal text-slate-500">
+            {rating ? `${rating}점 / 5점` : "선택하지 않으면 별점 없이 등록됩니다."}
+          </span>
+        </div>
+      </fieldset>
       <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
         후기 사진 첨부 (선택, 최대 4장)
         <input

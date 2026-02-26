@@ -1,5 +1,6 @@
 import SiteHeader from "@/components/SiteHeader";
 import ProductCatalogSection from "@/components/ProductCatalogSection";
+import ProductsHero from "@/components/ProductsHero";
 import { getProducts } from "@/lib/products";
 import { getProductTaxonomyOptions } from "@/lib/productTaxonomies";
 
@@ -20,14 +21,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12 md:px-10">
-        <section className="space-y-3">
-          <p className="text-sm font-semibold tracking-wide text-[#2563eb]">THEALL TOUR PRODUCTS</p>
-          <h1 className="text-3xl font-bold md:text-4xl">패키지상품 전체보기</h1>
-          <p className="text-sm text-slate-600">
-            카테고리와 테마를 선택해 맞는 상품을 빠르게 찾고, 상세 페이지에서 바로 상담을 연결하세요.
-          </p>
-        </section>
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 md:px-10 md:py-14">
+        <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
 
         {products.length === 0 ? (
           <section className="rounded-2xl bg-white p-8 text-sm text-slate-500 shadow-md ring-1 ring-[#e2e8f0]">

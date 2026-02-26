@@ -1,43 +1,89 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+
+type SiteSettingsClient = {
+  kakao_channel_url?: string;
+  instagram_url?: string;
+  company_name?: string;
+  ceo_name?: string;
+  address?: string;
+  business_reg_no?: string;
+  tourism_reg_no?: string;
+  mail_order_reg_no?: string;
+  main_phone?: string;
+  main_email?: string;
+};
 
 export default function GlobalSiteFooter() {
   const pathname = usePathname();
+  const [settings, setSettings] = useState<SiteSettingsClient | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const response = await fetch("/api/site-settings", { cache: "no-store" });
+        const result = (await response.json()) as SiteSettingsClient | { message?: string };
+        if (!response.ok || !result || typeof result !== "object" || "message" in result) return;
+        if (isMounted) {
+          setSettings(result);
+        }
+      } catch {
+        // 실패 시에는 기본 URL 사용
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   if (pathname.startsWith("/admin") || pathname.startsWith("/theall_manager_only")) {
     return null;
   }
 
+  const companyName = settings?.company_name ?? "(주)더올투어";
+  const ceoName = settings?.ceo_name ?? "김지호";
+  const address = settings?.address ?? "경기도 고양시 덕양구 용현로 27, 407호(행신동, 행신프라자)";
+  const businessRegNo = settings?.business_reg_no ?? "645-88-03583";
+  const tourismRegNo = settings?.tourism_reg_no ?? "미정";
+  const mailOrderRegNo = settings?.mail_order_reg_no ?? "미정";
+  const mainPhone = settings?.main_phone ?? "02-0000-0000";
+  const mainEmail = settings?.main_email ?? "thealltour@gmail.com";
+  const kakaoChannelUrl = settings?.kakao_channel_url ?? "https://pf.kakao.com";
+  const instagramUrl = settings?.instagram_url ?? "https://www.instagram.com/thealltour";
+
   return (
     <footer className="border-t border-slate-200 bg-[#f8fafc]">
       <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-7 text-sm leading-7 text-slate-700 md:grid-cols-[1fr_auto] md:px-10">
         <div>
-          <p className="text-base font-bold text-[#0f172a]">(주)더올투어</p>
-          <p>대표: 김지호</p>
-          <p>주소: 경기도 고양시 덕양구 용현로 27, 407호(행신동, 행신프라자)</p>
-          <p>사업자등록번호: 645-88-03583</p>
-          <p>관광사업등록번호: 미정</p>
-          <p>통신판매업신고번호: 미정</p>
+          <p className="text-base font-bold text-[#0f172a]">{companyName}</p>
+          <p>대표: {ceoName}</p>
+          <p>주소: {address}</p>
+          <p>사업자등록번호: {businessRegNo}</p>
+          <p>관광사업등록번호: {tourismRegNo}</p>
+          <p>통신판매업신고번호: {mailOrderRegNo}</p>
         </div>
 
         <div className="flex flex-col items-start gap-2 text-xs md:items-end">
           <a
-            href="tel:02-0000-0000"
+            href={`tel:${mainPhone}`}
             className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            대표번호 02-0000-0000
+            대표번호 {mainPhone}
           </a>
           <a
-            href="mailto:thealltour@gmail.com"
+            href={`mailto:${mainEmail}`}
             className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            thealltour@gmail.com
+            {mainEmail}
           </a>
           <div className="mt-1 flex items-center gap-2">
             <a
-              href="https://pf.kakao.com"
+              href={kakaoChannelUrl ?? "https://pf.kakao.com"}
               target="_blank"
               rel="noreferrer"
               className="inline-flex rounded-full border border-[#facc15] bg-[#fef9c3] px-3 py-1.5 font-medium text-[#854d0e] transition hover:bg-[#fde68a]"
@@ -45,7 +91,7 @@ export default function GlobalSiteFooter() {
               카카오채널
             </a>
             <a
-              href="https://www.instagram.com/thealltour"
+              href={instagramUrl ?? "https://www.instagram.com/thealltour"}
               target="_blank"
               rel="noreferrer"
               className="inline-flex rounded-full border border-[#c4b5fd] bg-[#f5f3ff] px-3 py-1.5 font-medium text-[#5b21b6] transition hover:bg-[#ede9fe]"

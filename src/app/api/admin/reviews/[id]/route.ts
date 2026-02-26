@@ -5,6 +5,7 @@ type ReviewBody = {
   author_name?: string;
   title?: string;
   content?: string;
+  rating?: number;
 };
 
 export async function PATCH(
@@ -18,6 +19,14 @@ export async function PATCH(
   if (body.author_name !== undefined) updates.author_name = body.author_name.trim();
   if (body.title !== undefined) updates.title = body.title.trim();
   if (body.content !== undefined) updates.content = body.content.trim();
+  if (body.rating !== undefined) {
+    const value = Math.round(body.rating);
+    if (value >= 1 && value <= 5) {
+      updates.rating = value;
+    } else {
+      return NextResponse.json({ message: "별점은 1점에서 5점 사이로 입력해 주세요." }, { status: 400 });
+    }
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ message: "수정할 항목이 없습니다." }, { status: 400 });

@@ -33,7 +33,17 @@ function matchesKeyword(product: Product, keyword: string) {
   const haystack = [product.title, product.description, product.category, product.theme ?? ""]
     .join(" ")
     .toLowerCase();
-  return haystack.includes(keyword);
+
+  const tokens = keyword
+    .split(/[,\s]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+
+  if (tokens.length === 0) {
+    return true;
+  }
+
+  return tokens.some((token) => haystack.includes(token));
 }
 
 export default function ProductCatalogSection({

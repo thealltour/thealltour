@@ -29,6 +29,13 @@ export default function InquiryForm({ source }: InquiryFormProps) {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
 
+  function formatPhoneInput(raw: string) {
+    const digits = raw.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -105,8 +112,13 @@ export default function InquiryForm({ source }: InquiryFormProps) {
           name="phone"
           required
           value={form.phone}
-          onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-          placeholder="010-1234-5678"
+          onChange={(event) =>
+            setForm((prev) => ({
+              ...prev,
+              phone: formatPhoneInput(event.target.value),
+            }))
+          }
+          placeholder="01012345678 ( '-' 없이 입력 )"
           className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
       </label>

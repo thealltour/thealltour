@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import GlobalSiteFooter from "@/components/GlobalSiteFooter";
+import KakaoFloatingButton from "@/components/KakaoFloatingButton";
 
 export const metadata: Metadata = {
   title: "더올투어 | 맞춤형 해외/국내 골프투어/파크골프투어 전문",
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className="flex min-h-screen flex-col antialiased selection:bg-[#bfdbfe] selection:text-[#0f172a]">
         <div className="flex-1">{children}</div>
+        <KakaoFloatingButton />
         <GlobalSiteFooter />
       </body>
     </html>

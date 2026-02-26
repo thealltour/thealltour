@@ -8,6 +8,7 @@ type ReviewUpdateBody = {
   content?: string;
   image_url?: string | null;
   image_urls?: string[];
+  rating?: number;
 };
 
 const MAX_REVIEW_IMAGES = 4;
@@ -36,9 +37,16 @@ export async function PATCH(request: Request, context: RouteContext) {
     .filter((url) => url.length > 0);
   const imageUrls = rawImageUrls.slice(0, MAX_REVIEW_IMAGES);
   const imageUrl = imageUrls[0] ?? body.image_url?.trim() ?? null;
+  const rating =
+    typeof body.rating === "number" && Number.isFinite(body.rating)
+      ? Math.round(body.rating)
+      : undefined;
 
   if (!title || !content) {
     return NextResponse.json({ message: "제목과 내용을 입력해 주세요." }, { status: 400 });
+  }
+  if (rating !== undefined && (rating < 1 || rating > 5)) {
+    return NextResponse.json({ message: "별점은 1점에서 5점 사이로 선택해 주세요." }, { status: 400 });
   }
   if (rawImageUrls.length > MAX_REVIEW_IMAGES) {
     return NextResponse.json(
@@ -65,7 +73,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const updateWithArray = await supabase
     .from("reviews")
-    .update({ title, content, image_url: imageUrl, image_urls: imageUrls })
+    .update({ title, content, image_url: imageUrl, image_urls: imageUrls, rating: rating ?? null })
     .eq("id", id);
 
   if (updateWithArray.error) {

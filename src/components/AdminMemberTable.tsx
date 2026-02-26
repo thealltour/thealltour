@@ -11,6 +11,7 @@ type MemberItem = {
   birth_date: string;
   gender: "male" | "female" | "other";
   agree_email: boolean;
+  points: number;
   created_at: string | null;
 };
 
@@ -21,9 +22,19 @@ type MemberForm = {
   birth_date: string;
   gender: "male" | "female" | "other";
   agree_email: boolean;
+  points: string;
 };
 
-type SortKey = "username" | "name" | "phone" | "email" | "birth_date" | "gender" | "agree_email" | "created_at";
+type SortKey =
+  | "username"
+  | "name"
+  | "phone"
+  | "email"
+  | "birth_date"
+  | "gender"
+  | "agree_email"
+  | "points"
+  | "created_at";
 type SortDirection = "asc" | "desc";
 
 function formatDate(value: string | null) {
@@ -45,6 +56,7 @@ function buildMembersCsv(rows: MemberItem[]) {
     "연락처",
     "이메일",
     "생년월일",
+    "포인트",
     "성별",
     "이메일수신동의",
     "가입일시",
@@ -56,6 +68,7 @@ function buildMembersCsv(rows: MemberItem[]) {
       item.phone,
       item.email,
       item.birth_date,
+      item.points,
       item.gender,
       item.agree_email ? "동의" : "미동의",
       formatDate(item.created_at),
@@ -176,6 +189,10 @@ export default function AdminMemberTable() {
         return (aTime - bTime) * multiplier;
       }
 
+      if (sortKey === "points") {
+        return ((a.points ?? 0) - (b.points ?? 0)) * multiplier;
+      }
+
       const aValue = String(a[sortKey] ?? "");
       const bValue = String(b[sortKey] ?? "");
       return aValue.localeCompare(bValue, "ko") * multiplier;
@@ -222,6 +239,7 @@ export default function AdminMemberTable() {
       birth_date: item.birth_date,
       gender: item.gender,
       agree_email: item.agree_email,
+      points: String(item.points ?? 0),
     });
     setErrorMessage("");
   }
@@ -239,7 +257,15 @@ export default function AdminMemberTable() {
       const response = await fetch(`/api/admin/members/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          name: editForm.name,
+          phone: editForm.phone,
+          email: editForm.email,
+          birth_date: editForm.birth_date,
+          gender: editForm.gender,
+          agree_email: editForm.agree_email,
+          points: Number(editForm.points.replace(/,/g, "")),
+        }),
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
@@ -257,6 +283,7 @@ export default function AdminMemberTable() {
                 birth_date: editForm.birth_date,
                 gender: editForm.gender,
                 agree_email: editForm.agree_email,
+                points: Number(editForm.points.replace(/,/g, "")) || 0,
               }
             : item,
         ),
@@ -329,7 +356,7 @@ export default function AdminMemberTable() {
       {errorMessage ? <p className="px-4 text-sm text-red-500">{errorMessage}</p> : null}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1100px] border-collapse text-sm">
+        <table className="w-full min-w-[1180px] border-collapse text-sm">
           <thead className="bg-[#eff6ff] text-[#1e3a8a]">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">
@@ -390,6 +417,17 @@ export default function AdminMemberTable() {
               </th>
               <th className="px-4 py-3 text-left font-semibold">
                 <SortButton
+                  label="포인트"
+                  isActive={sortKey === "points"}
+                  direction={sortDirection}
+                  onClick={() => handleSort("points")}
+                />
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">
+                포인트(P)
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">
+                <SortButton
                   label="가입일시"
                   isActive={sortKey === "created_at"}
                   direction={sortDirection}
@@ -412,7 +450,7 @@ export default function AdminMemberTable() {
                 return (
                   <tr key={item.id} className="border-t border-slate-200">
                     <td className="px-4 py-3 font-medium text-[#1e3a8a]">{item.username}</td>
-                    <td className="px-4 py-3">
+                <td className="px-4 py-3">
                       {isEditing ? (
                         <input
                           value={editForm.name}
@@ -498,6 +536,23 @@ export default function AdminMemberTable() {
                         "동의"
                       ) : (
                         "미동의"
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input
+                          value={editForm.points}
+                          onChange={(event) => {
+                            const raw = event.target.value.replace(/[^\d]/g, "");
+                            const formatted = raw ? Number(raw).toLocaleString("ko-KR") : "0";
+                            setEditForm({ ...editForm, points: formatted });
+                          }}
+                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs text-right"
+                        />
+                      ) : (
+                        <span className="tabular-nums">
+                          {Number(item.points ?? 0).toLocaleString("ko-KR")}P
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3">{formatDate(item.created_at)}</td>

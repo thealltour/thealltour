@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export async function GET() {
   const { data, error } = await supabase
     .from("reviews")
-    .select("id,member_id,author_name,title,content,image_url,image_urls,created_at,members(username)")
+    .select("id,member_id,author_name,title,content,image_url,image_urls,rating,created_at,members(username)")
     .order("created_at", { ascending: false, nullsFirst: false });
 
   if (error) {
@@ -26,6 +26,7 @@ export async function GET() {
         : [],
       created_at: typeof value.created_at === "string" ? value.created_at : null,
       member_username: memberInfo?.username ?? null,
+      rating: typeof value.rating === "number" ? value.rating : null,
     };
   });
 

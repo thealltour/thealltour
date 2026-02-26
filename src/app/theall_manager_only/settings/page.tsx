@@ -1,0 +1,25 @@
+import AdminHeader from "@/components/AdminHeader";
+import AdminSiteSettingsManager from "@/components/AdminSiteSettingsManager";
+
+export const dynamic = "force-dynamic";
+
+export default function AdminSiteSettingsPage() {
+  return (
+    <div className="min-h-screen bg-[#f8fbff] px-6 py-10 text-[#0f172a] md:px-10">
+      <main className="mx-auto w-full max-w-6xl space-y-6">
+        <AdminHeader
+          activeTab="settings"
+          title="사이트 환경설정"
+          description="카카오채널, 인스타그램 등 외부 채널 URL을 한 곳에서 관리하세요."
+          inquiryCount={0}
+          productCount={0}
+          memberCount={0}
+          reviewCount={0}
+          unreadNotificationCount={0}
+        />
+        <AdminSiteSettingsManager />
+      </main>
+    </div>
+  );
+}
+

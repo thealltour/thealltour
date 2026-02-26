@@ -12,12 +12,14 @@ type AdminReviewItem = {
   image_url: string | null;
   image_urls: string[];
   created_at: string | null;
+  rating: number | null;
 };
 
 type ReviewForm = {
   author_name: string;
   title: string;
   content: string;
+  rating: number | null;
 };
 
 function formatDate(value: string | null) {
@@ -83,6 +85,7 @@ export default function AdminReviewTable() {
       author_name: item.author_name,
       title: item.title,
       content: item.content,
+      rating: item.rating,
     });
     setErrorMessage("");
   }
@@ -100,7 +103,12 @@ export default function AdminReviewTable() {
       const response = await fetch(`/api/admin/reviews/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          author_name: editForm.author_name,
+          title: editForm.title,
+          content: editForm.content,
+          rating: editForm.rating,
+        }),
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
@@ -115,6 +123,7 @@ export default function AdminReviewTable() {
                 author_name: editForm.author_name,
                 title: editForm.title,
                 content: editForm.content,
+                rating: editForm.rating,
               }
             : item,
         ),
@@ -156,6 +165,7 @@ export default function AdminReviewTable() {
               <th className="px-4 py-3 text-left font-semibold">작성자</th>
               <th className="px-4 py-3 text-left font-semibold">제목</th>
               <th className="px-4 py-3 text-left font-semibold">내용</th>
+              <th className="px-4 py-3 text-left font-semibold">별점</th>
               <th className="px-4 py-3 text-left font-semibold">이미지수</th>
               <th className="px-4 py-3 text-left font-semibold">작성일시</th>
               <th className="px-4 py-3 text-left font-semibold">작업</th>
@@ -188,6 +198,34 @@ export default function AdminReviewTable() {
                         />
                       ) : (
                         item.author_name
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <select
+                          value={editForm.rating ?? ""}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setEditForm({
+                              ...editForm,
+                              rating: value === "" ? null : Number(value),
+                            });
+                          }}
+                          className="w-20 rounded border border-slate-300 px-2 py-1 text-xs"
+                        >
+                          <option value="">-</option>
+                          <option value={5}>★★★★★</option>
+                          <option value={4}>★★★★☆</option>
+                          <option value={3}>★★★☆☆</option>
+                          <option value={2}>★★☆☆☆</option>
+                          <option value={1}>★☆☆☆☆</option>
+                        </select>
+                      ) : item.rating ? (
+                        <span className="text-xs text-amber-500">
+                          {"★".repeat(item.rating).padEnd(5, "☆")}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">

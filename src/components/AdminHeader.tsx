@@ -8,10 +8,12 @@ type AdminHeaderProps = {
   description: string;
   activeTab:
     | "dashboard"
+    | "settings"
     | "products"
     | "inquiries"
     | "members"
     | "reviews"
+    | "guides"
     | "notifications"
     | "banners"
     | "notices";
@@ -65,6 +67,16 @@ export default function AdminHeader({
           }`}
         >
           대시보드
+        </Link>
+        <Link
+          href="/theall_manager_only/settings"
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            activeTab === "settings"
+              ? "bg-[#1d4ed8] text-white"
+              : "text-[#1e3a8a] hover:bg-[#eff6ff]"
+          }`}
+        >
+          환경설정
         </Link>
         <Link
           href="/theall_manager_only/products"
@@ -134,6 +146,16 @@ export default function AdminHeader({
           >
             {reviewCount}
           </span>
+        </Link>
+        <Link
+          href="/theall_manager_only/guides"
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            activeTab === "guides"
+              ? "bg-[#1d4ed8] text-white"
+              : "text-[#1e3a8a] hover:bg-[#eff6ff]"
+          }`}
+        >
+          여행가이드
         </Link>
         <Link
           href="/theall_manager_only/banners"

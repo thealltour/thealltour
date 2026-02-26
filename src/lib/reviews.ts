@@ -16,6 +16,7 @@ function normalizeReview(row: Record<string, unknown>): Review {
     image_urls: imageUrls.length > 0 ? imageUrls : legacyImageUrl ? [legacyImageUrl] : [],
     author_name: String(row.author_name ?? ""),
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
+    rating: typeof row.rating === "number" ? row.rating : undefined,
   };
 }
 

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("members")
-    .select("id,username,name,password_hash,password_salt")
+    .select("id,username,name,password_hash,password_salt,points")
     .eq("username", username)
     .maybeSingle();
 

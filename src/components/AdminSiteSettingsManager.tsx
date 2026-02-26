@@ -1,0 +1,736 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { SiteSettings } from "@/lib/siteSettings";
+
+type HeroRegionConfig = {
+  id: string;
+  label: string;
+  searchKeyword: string;
+};
+
+const DEFAULT_HERO_REGIONS: HeroRegionConfig[] = [
+  { id: "japan", label: "일본 골프·패키지", searchKeyword: "일본" },
+  { id: "se-asia", label: "동남아 골프·휴양", searchKeyword: "동남아" },
+  { id: "europe", label: "유럽 여행", searchKeyword: "유럽" },
+  { id: "domestic", label: "국내·제주", searchKeyword: "국내" },
+];
+
+const DEFAULT_GOLF_HERO_REGIONS: HeroRegionConfig[] = [
+  { id: "golf-japan", label: "일본 골프투어", searchKeyword: "일본 골프" },
+  { id: "golf-se-asia", label: "동남아 골프투어", searchKeyword: "동남아 골프" },
+  { id: "golf-domestic", label: "국내 골프/파크골프", searchKeyword: "국내 골프" },
+];
+
+const EMPTY_SETTINGS: SiteSettings = {
+  kakao_channel_url: "",
+  instagram_url: "",
+  kakao_chat_url: "",
+  company_name: "",
+  ceo_name: "",
+  address: "",
+  business_reg_no: "",
+  tourism_reg_no: "",
+  mail_order_reg_no: "",
+  main_phone: "",
+  main_email: "",
+  products_hero_headline: "",
+  products_hero_subcopy: "",
+  products_hero_regions: "",
+  golf_hero_headline: "",
+  golf_hero_subcopy: "",
+  golf_hero_regions: "",
+  about_kicker: "",
+  about_title: "",
+  about_paragraph1: "",
+  about_paragraph2: "",
+  about_cta_label: "",
+  about_cta_href: "",
+};
+
+export default function AdminSiteSettingsManager() {
+  const [settings, setSettings] = useState<SiteSettings>(EMPTY_SETTINGS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [heroRegions, setHeroRegions] = useState<HeroRegionConfig[]>(DEFAULT_HERO_REGIONS);
+  const [golfHeroRegions, setGolfHeroRegions] = useState<HeroRegionConfig[]>(DEFAULT_GOLF_HERO_REGIONS);
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+        const response = await fetch("/api/admin/site-settings", { cache: "no-store" });
+        const result = (await response.json()) as Record<string, string> | { message?: string };
+        if (!response.ok || !result || typeof result !== "object") {
+          const msg = "message" in result ? result.message : "환경설정 조회에 실패했습니다.";
+          setErrorMessage(msg ?? "환경설정 조회에 실패했습니다.");
+          return;
+        }
+        const nextSettings: SiteSettings = {
+          kakao_channel_url: (result.kakao_channel_url as string) ?? "",
+          instagram_url: (result.instagram_url as string) ?? "",
+          kakao_chat_url: (result.kakao_chat_url as string) ?? "",
+          company_name: (result.company_name as string) ?? "",
+          ceo_name: (result.ceo_name as string) ?? "",
+          address: (result.address as string) ?? "",
+          business_reg_no: (result.business_reg_no as string) ?? "",
+          tourism_reg_no: (result.tourism_reg_no as string) ?? "",
+          mail_order_reg_no: (result.mail_order_reg_no as string) ?? "",
+          main_phone: (result.main_phone as string) ?? "",
+          main_email: (result.main_email as string) ?? "",
+          products_hero_headline: (result.products_hero_headline as string) ?? "",
+          products_hero_subcopy: (result.products_hero_subcopy as string) ?? "",
+          products_hero_regions: (result.products_hero_regions as string) ?? "",
+          golf_hero_headline: (result.golf_hero_headline as string) ?? "",
+          golf_hero_subcopy: (result.golf_hero_subcopy as string) ?? "",
+          golf_hero_regions: (result.golf_hero_regions as string) ?? "",
+          about_kicker: (result.about_kicker as string) ?? "",
+          about_title: (result.about_title as string) ?? "",
+          about_paragraph1: (result.about_paragraph1 as string) ?? "",
+          about_paragraph2: (result.about_paragraph2 as string) ?? "",
+          about_cta_label: (result.about_cta_label as string) ?? "",
+          about_cta_href: (result.about_cta_href as string) ?? "",
+        };
+
+        setSettings(nextSettings);
+
+        const rawRegions = nextSettings.products_hero_regions;
+        if (typeof rawRegions === "string" && rawRegions.trim()) {
+          try {
+            const parsed = JSON.parse(rawRegions) as HeroRegionConfig[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const normalized = parsed
+                .map((item) => ({
+                  id: String(item.id ?? "").trim(),
+                  label: String(item.label ?? "").trim(),
+                  searchKeyword: String(item.searchKeyword ?? "").trim(),
+                }))
+                .filter((item) => item.id && item.label);
+              if (normalized.length > 0) {
+                setHeroRegions(normalized);
+              }
+            }
+          } catch {
+            // keep default
+          }
+        }
+
+        const rawGolfRegions = nextSettings.golf_hero_regions;
+        if (typeof rawGolfRegions === "string" && rawGolfRegions.trim()) {
+          try {
+            const parsed = JSON.parse(rawGolfRegions) as HeroRegionConfig[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const normalized = parsed
+                .map((item) => ({
+                  id: String(item.id ?? "").trim(),
+                  label: String(item.label ?? "").trim(),
+                  searchKeyword: String(item.searchKeyword ?? "").trim(),
+                }))
+                .filter((item) => item.id && item.label);
+              if (normalized.length > 0) {
+                setGolfHeroRegions(normalized);
+              }
+            }
+          } catch {
+            // keep default
+          }
+        }
+      } catch {
+        setErrorMessage("환경설정 조회 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadSettings();
+  }, []);
+
+  async function handleSave() {
+    try {
+      setIsSaving(true);
+      setMessage("");
+      setErrorMessage("");
+      const payload: SiteSettings = {
+        ...settings,
+        products_hero_regions: JSON.stringify(heroRegions),
+        golf_hero_regions: JSON.stringify(golfHeroRegions),
+      };
+
+      const response = await fetch("/api/admin/site-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setErrorMessage(result.message ?? "환경설정 저장에 실패했습니다.");
+        return;
+      }
+      setMessage("환경설정을 저장했습니다.");
+    } catch {
+      setErrorMessage("환경설정 저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="space-y-4 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-lg font-bold text-[#1e3a8a]">사이트 환경설정</h3>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isLoading || isSaving}
+          className="rounded-lg bg-[#1d4ed8] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
+        >
+          {isSaving ? "저장 중..." : "환경설정 저장"}
+        </button>
+      </div>
+
+      {isLoading ? <p className="text-sm text-slate-500">환경설정을 불러오는 중입니다...</p> : null}
+      {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
+      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          카카오채널 URL
+          <input
+            type="url"
+            value={settings.kakao_channel_url}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                kakao_channel_url: event.target.value,
+              }))
+            }
+            placeholder="예: https://pf.kakao.com/..."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <span className="text-xs font-normal text-slate-500">
+            푸터 & 버튼에서 사용할 카카오채널 / 상담 URL 입니다.
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          인스타그램 URL
+          <input
+            type="url"
+            value={settings.instagram_url}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                instagram_url: event.target.value,
+              }))
+            }
+            placeholder="예: https://www.instagram.com/..."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <span className="text-xs font-normal text-slate-500">푸터의 인스타그램 버튼에 사용됩니다.</span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+          카카오톡 상담 URL (플로팅 버튼)
+          <input
+            type="url"
+            value={settings.kakao_chat_url}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                kakao_chat_url: event.target.value,
+              }))
+            }
+            placeholder="예: https://pf.kakao.com/..."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <span className="text-xs font-normal text-slate-500">
+            화면 우측 하단 플로팅 상담 버튼 클릭 시 이동할 URL 입니다.
+          </span>
+        </label>
+      </div>
+
+      <div className="mt-4 grid gap-4 border-t border-dashed border-slate-200 pt-4 md:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          회사명
+          <input
+            type="text"
+            value={settings.company_name}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                company_name: event.target.value,
+              }))
+            }
+            placeholder="예: (주)더올투어"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          대표자명
+          <input
+            type="text"
+            value={settings.ceo_name}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                ceo_name: event.target.value,
+              }))
+            }
+            placeholder="예: 김지호"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+          주소
+          <input
+            type="text"
+            value={settings.address}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                address: event.target.value,
+              }))
+            }
+            placeholder="예: 경기도 고양시 덕양구 ..."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          사업자등록번호
+          <input
+            type="text"
+            value={settings.business_reg_no}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                business_reg_no: event.target.value,
+              }))
+            }
+            placeholder="예: 645-88-03583"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          관광사업등록번호
+          <input
+            type="text"
+            value={settings.tourism_reg_no}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                tourism_reg_no: event.target.value,
+              }))
+            }
+            placeholder="예: 제 0000-00호 / 미정 등"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          통신판매업신고번호
+          <input
+            type="text"
+            value={settings.mail_order_reg_no}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                mail_order_reg_no: event.target.value,
+              }))
+            }
+            placeholder="예: 제 2024-고양덕양-0000호 / 미정 등"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          대표번호
+          <input
+            type="text"
+            value={settings.main_phone}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                main_phone: event.target.value,
+              }))
+            }
+            placeholder="예: 02-0000-0000"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          대표 이메일
+          <input
+            type="email"
+            value={settings.main_email}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                main_email: event.target.value,
+              }))
+            }
+            placeholder="예: thealltour@gmail.com"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+          패키지상품 히어로 헤드라인
+          <textarea
+            rows={2}
+            value={settings.products_hero_headline}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                products_hero_headline: event.target.value,
+              }))
+            }
+            placeholder="예: 패키지상품으로 원하시는 지역·예산에 맞춰 바로 상담까지 연결해 드려요."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+          패키지상품 히어로 보조 설명
+          <textarea
+            rows={3}
+            value={settings.products_hero_subcopy}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                products_hero_subcopy: event.target.value,
+              }))
+            }
+            placeholder="예: 골프/패키지, 가족·지인·단체 여행까지..."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <div className="md:col-span-2 space-y-2 rounded-lg border border-dashed border-slate-300 bg-white/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-700">
+              패키지상품 히어로 지역 선택 옵션
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setHeroRegions((prev) => [
+                  ...prev,
+                  {
+                    id: `region-${prev.length + 1}`,
+                    label: "",
+                    searchKeyword: "",
+                  },
+                ])
+              }
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              옵션 추가
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            셀렉트 박스에 노출될 항목입니다. 표시 이름은 셀렉트·유입 상품명에 함께 사용되고, 검색
+            키워드는 상품 목록 필터에 사용됩니다.
+          </p>
+          <div className="space-y-2">
+            {heroRegions.map((region, index) => (
+              <div
+                key={index}
+                className="grid gap-2 rounded-md border border-slate-200 bg-slate-50/70 p-2 text-[11px] md:grid-cols-[1.2fr_1fr_0.9fr_auto]"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-slate-700">표시 이름</span>
+                  <input
+                    type="text"
+                    value={region.label}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setHeroRegions((prev) =>
+                        prev.map((item, idx) =>
+                          idx === index ? { ...item, label: value } : item,
+                        ),
+                      );
+                    }}
+                    placeholder="예: 일본 골프·패키지"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-slate-700">검색 키워드</span>
+                  <input
+                    type="text"
+                    value={region.searchKeyword}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setHeroRegions((prev) =>
+                        prev.map((item, idx) =>
+                          idx === index ? { ...item, searchKeyword: value } : item,
+                        ),
+                      );
+                    }}
+                    placeholder="예: 일본"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-slate-700">URL 파라미터(id)</span>
+                  <input
+                    type="text"
+                    value={region.id}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setHeroRegions((prev) =>
+                        prev.map((item, idx) =>
+                          idx === index ? { ...item, id: value } : item,
+                        ),
+                      );
+                    }}
+                    placeholder="예: japan"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="flex items-end justify-end">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setHeroRegions((prev) => prev.filter((_, idx) => idx !== index))
+                    }
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="md:col-span-2 mt-4 space-y-2 rounded-lg border border-slate-200 bg-white/70 p-3">
+          <p className="text-xs font-bold text-[#1e3a8a]">회사소개(About) 페이지 콘텐츠</p>
+          <p className="text-[11px] text-slate-500">
+            랜딩 페이지로 대체하거나, 회사소개 문구를 수정할 때 사용합니다. CTA URL에 외부 랜딩 주소를
+            입력하면 버튼 클릭 시 해당 페이지로 이동합니다.
+          </p>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            상단 라벨(영문)
+            <input
+              type="text"
+              value={settings.about_kicker}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  about_kicker: event.target.value,
+                }))
+              }
+              placeholder="예: ABOUT THEALL TOUR"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            메인 타이틀
+            <input
+              type="text"
+              value={settings.about_title}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  about_title: event.target.value,
+                }))
+              }
+              placeholder="예: 여행을 디자인해 드립니다"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            소개 문단 1
+            <textarea
+              rows={3}
+              value={settings.about_paragraph1}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  about_paragraph1: event.target.value,
+                }))
+              }
+              placeholder="첫 번째 소개 문단을 입력하세요."
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            소개 문단 2
+            <textarea
+              rows={3}
+              value={settings.about_paragraph2}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  about_paragraph2: event.target.value,
+                }))
+              }
+              placeholder="두 번째 소개 문단을 입력하세요."
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <div className="grid gap-2 md:grid-cols-[1.4fr_1.8fr]">
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              CTA 버튼 문구
+              <input
+                type="text"
+                value={settings.about_cta_label}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    about_cta_label: event.target.value,
+                  }))
+                }
+                placeholder="예: 맞춤 여행 상담 받기"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              CTA 이동 URL
+              <input
+                type="text"
+                value={settings.about_cta_href}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    about_cta_href: event.target.value,
+                  }))
+                }
+                placeholder="예: /#contact 또는 https://landing.thealltour.com/about"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+              <span className="text-[11px] font-normal text-slate-500">
+                http로 시작하면 새 탭에서 외부 랜딩 페이지를 엽니다. 비워두면 기본 문의 섹션(/#contact)으로 이동합니다.
+              </span>
+            </label>
+          </div>
+        </div>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2 mt-4">
+          골프/파크골프 히어로 헤드라인
+          <textarea
+            rows={2}
+            value={settings.golf_hero_headline}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                golf_hero_headline: event.target.value,
+              }))
+            }
+            placeholder="예: 골프/파크골프 전문 맞춤 설계로 라운딩 동선을 깔끔하게 잡아드립니다."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+          골프/파크골프 히어로 보조 설명
+          <textarea
+            rows={3}
+            value={settings.golf_hero_subcopy}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                golf_hero_subcopy: event.target.value,
+              }))
+            }
+            placeholder="예: 선호하는 골프장, 라운딩 횟수, 동행 인원과 예산을 알려주시면..."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+        <div className="md:col-span-2 space-y-2 rounded-lg border border-dashed border-slate-300 bg-white/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-700">
+              골프/파크골프 히어로 지역 선택 옵션
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setGolfHeroRegions((prev) => [
+                  ...prev,
+                  {
+                    id: `golf-region-${prev.length + 1}`,
+                    label: "",
+                    searchKeyword: "",
+                  },
+                ])
+              }
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              옵션 추가
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            골프/파크골프 전용 뷰에서 노출될 옵션입니다. 표시 이름은 유입 상품명에도 사용되고, 검색
+            키워드는 골프 상품 목록 필터에 사용됩니다.
+          </p>
+          <div className="space-y-2">
+            {golfHeroRegions.map((region, index) => (
+              <div
+                key={index}
+                className="grid gap-2 rounded-md border border-slate-200 bg-slate-50/70 p-2 text-[11px] md:grid-cols-[1.2fr_1fr_0.9fr_auto]"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-slate-700">표시 이름</span>
+                  <input
+                    type="text"
+                    value={region.label}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setGolfHeroRegions((prev) =>
+                        prev.map((item, idx) =>
+                          idx === index ? { ...item, label: value } : item,
+                        ),
+                      );
+                    }}
+                    placeholder="예: 일본 골프투어"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-slate-700">검색 키워드</span>
+                  <input
+                    type="text"
+                    value={region.searchKeyword}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setGolfHeroRegions((prev) =>
+                        prev.map((item, idx) =>
+                          idx === index ? { ...item, searchKeyword: value } : item,
+                        ),
+                      );
+                    }}
+                    placeholder="예: 일본 골프"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-slate-700">URL 파라미터(id)</span>
+                  <input
+                    type="text"
+                    value={region.id}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setGolfHeroRegions((prev) =>
+                        prev.map((item, idx) =>
+                          idx === index ? { ...item, id: value } : item,
+                        ),
+                      );
+                    }}
+                    placeholder="예: golf-japan"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="flex items-end justify-end">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGolfHeroRegions((prev) => prev.filter((_, idx) => idx !== index))
+                    }
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+

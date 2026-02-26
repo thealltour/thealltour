@@ -7,4 +7,5 @@ export type Review = {
   image_urls?: string[];
   author_name: string;
   created_at?: string;
+  rating?: number;
 };

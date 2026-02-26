@@ -13,7 +13,7 @@ const menuItems = [
   { href: "/about", label: "회사소개", key: "about" },
   { href: "/quote", label: "견적문의", key: "quote" },
   { href: "/reviews", label: "여행후기", key: "reviews" },
-  { href: "/blog", label: "블로그", key: "blog" },
+  { href: "/blog", label: "여행가이드", key: "blog" },
   { href: "/support", label: "고객센터", key: "support" },
   { href: "/products", label: "패키지상품", key: "products" },
 ] as const;
@@ -47,7 +47,7 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
   }
 
   return createPortal(
-    <div className="fixed right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] z-50 flex flex-col items-end lg:hidden">
+    <div className="fixed right-[max(16px,env(safe-area-inset-right))] bottom-[max(92px,calc(env(safe-area-inset-bottom)+92px))] z-50 flex flex-col items-end lg:hidden">
       {isOpen ? (
         <div className="mb-2 w-[min(78vw,15rem)] rounded-2xl border border-[var(--line)] bg-white/95 p-2 shadow-2xl backdrop-blur-sm">
           <ul className="flex flex-col gap-1.5">
@@ -97,9 +97,9 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label={isOpen ? "메뉴 닫기" : "메뉴 열기"}
-        className="min-h-12 rounded-full bg-[var(--brand)] px-[clamp(14px,4vw,22px)] py-[clamp(9px,2.8vw,12px)] text-[clamp(14px,3.2vw,16px)] font-bold text-white shadow-lg ring-2 ring-white/80 transition hover:bg-[var(--brand-strong)]"
+        className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white shadow-[0_8px_20px_rgba(0,0,0,0.2)] ring-2 ring-white/80 transition duration-200 hover:bg-[var(--brand-strong)] hover:scale-105 hover:shadow-[0_12px_24px_rgba(0,0,0,0.28)] active:scale-95"
       >
-        메뉴
+        MENU
       </button>
     </div>,
     document.body,

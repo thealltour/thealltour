@@ -125,10 +125,34 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const { error } = await supabase.from("inquiries").update({ is_completed: isCompleted }).in("id", ids);
+  const updateResults = await Promise.all(
+    ids.map((id) =>
+      supabase
+        .from("inquiries")
+        .update({ is_completed: isCompleted })
+        .eq("id", id),
+    ),
+  );
 
-  if (error) {
-    return NextResponse.json({ message: "일괄 상태 업데이트에 실패했습니다." }, { status: 500 });
+  const failed = updateResults.find((result) => result.error);
+  if (failed?.error) {
+    const code = failed.error.code;
+    if (code === "42703") {
+      return NextResponse.json(
+        { message: "inquiries 테이블에 is_completed 컬럼이 없습니다. DB 업그레이드 SQL을 실행해 주세요." },
+        { status: 500 },
+      );
+    }
+    if (code === "42501") {
+      return NextResponse.json(
+        { message: "inquiries 테이블 UPDATE 권한(RLS 정책)이 없습니다. 정책 SQL을 확인해 주세요." },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json(
+      { message: `일괄 상태 업데이트에 실패했습니다. (${failed.error.message})` },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ message: "선택한 문의 상태가 업데이트되었습니다." });

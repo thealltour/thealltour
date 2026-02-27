@@ -1,5 +1,7 @@
 import AdminHeader from "@/components/AdminHeader";
 import AdminReviewTable from "@/components/AdminReviewTable";
+import AdminToastProvider from "@/components/admin/AdminToastProvider";
+import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";
 
@@ -22,7 +24,11 @@ export default async function AdminReviewsPage() {
         />
 
         <section className="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#dbeafe]">
-          <AdminReviewTable />
+          <AdminToastProvider>
+            <AdminConfirmProvider>
+              <AdminReviewTable />
+            </AdminConfirmProvider>
+          </AdminToastProvider>
         </section>
       </main>
     </div>

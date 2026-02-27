@@ -1,5 +1,7 @@
 import AdminHeader from "@/components/AdminHeader";
 import AdminNoticeManager from "@/components/AdminNoticeManager";
+import AdminToastProvider from "@/components/admin/AdminToastProvider";
+import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";
 
@@ -21,7 +23,11 @@ export default async function AdminNoticesPage() {
           unreadNotificationCount={unreadNotificationCount}
         />
         <section className="overflow-hidden rounded-2xl bg-white p-4 shadow-md ring-1 ring-[#dbeafe] md:p-5">
-          <AdminNoticeManager />
+          <AdminToastProvider>
+            <AdminConfirmProvider>
+              <AdminNoticeManager />
+            </AdminConfirmProvider>
+          </AdminToastProvider>
         </section>
       </main>
     </div>

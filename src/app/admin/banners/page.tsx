@@ -1,5 +1,7 @@
 import AdminBannerManager from "@/components/AdminBannerManager";
 import AdminHeader from "@/components/AdminHeader";
+import AdminToastProvider from "@/components/admin/AdminToastProvider";
+import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { getAdminCounts } from "@/lib/adminCounts";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 
@@ -22,7 +24,11 @@ export default async function AdminBannersPage() {
         />
 
         <section className="overflow-hidden rounded-2xl bg-white p-4 shadow-md ring-1 ring-[#dbeafe] md:p-5">
-          <AdminBannerManager />
+          <AdminToastProvider>
+            <AdminConfirmProvider>
+              <AdminBannerManager />
+            </AdminConfirmProvider>
+          </AdminToastProvider>
         </section>
       </main>
     </div>

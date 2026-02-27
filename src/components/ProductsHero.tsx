@@ -66,11 +66,14 @@ export default function ProductsHero({ variant }: ProductsHeroProps) {
       try {
         const response = await fetch("/api/site-settings", { cache: "no-store" });
         const result = (await response.json()) as SiteSettingsClient | { message?: string };
-        if (!response.ok || !result || typeof result !== "object" || "message" in result) return;
+        if (!response.ok || !result || typeof result !== "object" || "message" in result) {
+          return;
+        }
+        const data = result as SiteSettingsClient;
         if (isMounted) {
-          setSettings(result);
+          setSettings(data);
           const rawRegions =
-            variant === "golf" ? result.golf_hero_regions : result.products_hero_regions;
+            variant === "golf" ? data.golf_hero_regions : data.products_hero_regions;
           if (rawRegions && typeof rawRegions === "string") {
             try {
               const parsed = JSON.parse(rawRegions) as HeroRegionOption[];

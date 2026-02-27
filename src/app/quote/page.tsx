@@ -1,5 +1,8 @@
 import InquiryForm from "@/components/InquiryForm";
 import SiteHeader from "@/components/SiteHeader";
+import { PageHero } from "@/components/layout/PageHero";
+import { SectionBody } from "@/components/layout/SectionBody";
+import { ContentCard } from "@/components/layout/ContentCard";
 
 type QuotePageProps = {
   searchParams?: Promise<{
@@ -13,28 +16,21 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
   const query = (await searchParams) ?? {};
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">
+    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
       <SiteHeader activeTab="quote" />
 
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-12 md:px-10">
-        <section className="rounded-3xl bg-[#1d4ed8] p-10 text-white shadow-xl">
-          <p className="mb-3 text-sm font-semibold tracking-wide text-blue-100">THEALL TOUR QUOTE</p>
-          <h1 className="text-3xl font-bold md:text-4xl">맞춤 견적 문의</h1>
-          <p className="mt-3 text-sm text-blue-100 md:text-base">
-            여행 희망 조건을 남겨주시면 접수 순서대로 맞춤 일정과 견적 옵션을 안내드립니다.
-          </p>
-          <div className="mt-6 grid gap-3 text-sm md:grid-cols-3">
-            <div className="rounded-xl bg-white/10 p-3">1) 문의 접수</div>
-            <div className="rounded-xl bg-white/10 p-3">2) 상담 연결</div>
-            <div className="rounded-xl bg-white/10 p-3">3) 맞춤 견적 제안</div>
-          </div>
-        </section>
+      <SectionBody className="flex flex-col gap-[var(--space-5)]">
+        <PageHero
+          kicker="THEALL TOUR QUOTE"
+          title="맞춤 견적 문의"
+          subtitle="여행 희망 조건을 남겨주시면 접수 순서대로 맞춤 일정과 견적 옵션을 안내드립니다."
+        />
 
-        <section className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-[#dbeafe] md:p-10">
+        <ContentCard>
           <div className="mb-6 space-y-2">
-            <p className="text-sm font-semibold tracking-wide text-[#2563eb]">THEALL TOUR CONTACT</p>
-            <h2 className="text-2xl font-bold md:text-3xl">견적 문의 작성</h2>
-            <p className="text-sm text-slate-600">
+            <p className="section-label text-[#B8962E]">THEALL TOUR CONTACT</p>
+            <h2 className="section-title type-h2">견적 문의 작성</h2>
+            <p className="type-small text-content-secondary">
               이름, 연락처, 문의 내용을 남겨주시면 맞춤 견적으로 안내드리겠습니다.
             </p>
           </div>
@@ -45,8 +41,8 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
               source_path: query.source_path,
             }}
           />
-        </section>
-      </main>
+        </ContentCard>
+      </SectionBody>
     </div>
   );
 }

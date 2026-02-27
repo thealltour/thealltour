@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Info, FileText, Map, LifeBuoy, PackageSearch, Star } from "lucide-react";
+import { Info, FileText, Map, LifeBuoy, PackageSearch, Star, LogIn, LogOut } from "lucide-react";
 
 type MobileFloatingMenuProps = {
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
+  isLoggedIn?: boolean;
 };
 
 const menuItems = [
@@ -19,12 +20,14 @@ const menuItems = [
   { href: "/products", label: "패키지상품", key: "products", icon: PackageSearch },
 ] as const;
 
-export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProps) {
+export default function MobileFloatingMenu({ activeTab, isLoggedIn = false }: MobileFloatingMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [pendingKey, setPendingKey] = useState<(typeof menuItems)[number]["key"] | null>(null);
   const [pressedKey, setPressedKey] = useState<(typeof menuItems)[number]["key"] | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
@@ -54,6 +57,17 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
     navigator.vibrate(12);
   }
 
+  async function handleLogout() {
+    triggerHapticFeedback();
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/members/logout", { method: "POST" });
+      router.refresh();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
   if (!isMounted) {
     return null;
   }
@@ -78,7 +92,7 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
                     aria-disabled={isNavigationLocked}
                     className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold leading-tight transition-colors duration-150 ${
                       isActive
-                        ? "border border-[rgba(201,162,39,0.65)] bg-gradient-to-r from-[#1B2431] to-[#162133] text-site-primary"
+                        ? "border border-[rgba(184,150,46,0.65)] bg-gradient-to-r from-[#1B2431] to-[#162133] text-site-primary"
                         : "border border-white/8 bg-transparent text-site-secondary hover:bg-white/4 hover:border-white/20"
                     } ${isNavigationLocked ? "pointer-events-none opacity-50" : ""}`}
                     onPointerDown={() => setPressedKey(item.key)}
@@ -94,26 +108,48 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
                       <span
                         className={`flex h-8 w-8 items-center justify-center rounded-full border ${
                           isActive
-                            ? "border-[rgba(201,162,39,0.7)] bg-[#162133]"
+                            ? "border-[rgba(184,150,46,0.7)] bg-[#162133]"
                             : "border-white/10 bg-[#111C2D]"
                         }`}
                       >
-                        <item.icon className="h-4 w-4 text-[#d4af37]" aria-hidden="true" />
+                        <item.icon className="h-4 w-4 text-[#B8962E]" aria-hidden="true" />
                       </span>
                       <span>{item.label}</span>
                     </span>
                     {isPending ? (
-                      <span className="text-[11px] font-semibold text-[rgba(201,162,39,0.9)]">
+                      <span className="text-[11px] font-semibold text-[rgba(184,150,46,0.9)]">
                         이동중...
                       </span>
                     ) : isPressed ? (
-                      <span className="h-2 w-2 rounded-full bg-[rgba(201,162,39,0.9)]" />
+                      <span className="h-2 w-2 rounded-full bg-[rgba(184,150,46,0.9)]" />
                     ) : null}
                   </Link>
                 </li>
               );
             })}
           </ul>
+          <div className="mt-2 border-t border-white/10 pt-2">
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(184,150,46,0.5)] bg-[#162133] px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold text-[#B8962E] transition-colors duration-150 hover:bg-[rgba(184,150,46,0.12)] hover:border-[rgba(184,150,46,0.7)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span>{isLoggingOut ? "로그아웃 중..." : "로그아웃"}</span>
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[rgba(184,150,46,0.5)] bg-[#162133] px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold text-[#B8962E] transition-colors duration-150 hover:bg-[rgba(184,150,46,0.12)] hover:border-[rgba(184,150,46,0.7)]"
+                onClick={() => triggerHapticFeedback()}
+              >
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                <span>로그인</span>
+              </Link>
+            )}
+          </div>
         </div>
       ) : null}
     </div>,

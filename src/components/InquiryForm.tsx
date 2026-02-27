@@ -3,6 +3,10 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import type { InquiryInput } from "@/types/inquiry";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Label } from "@/components/ui/Label";
 
 type FormState = {
   name: string;
@@ -76,38 +80,37 @@ export default function InquiryForm({ source }: InquiryFormProps) {
     <form className="grid gap-4 md:grid-cols-2 md:gap-5" onSubmit={handleSubmit}>
       <div className="md:col-span-2 grid gap-3 rounded-xl bg-[#f9fafb] p-4 border border-[#e2e8f0] md:grid-cols-3">
         <div>
-          <p className="text-xs font-semibold text-[#1d4ed8]">응답 안내</p>
-          <p className="mt-1 text-sm text-slate-600">접수된 순서대로 확인 후 연락드립니다.</p>
+          <p className="section-label text-[#1E3A8A]">응답 안내</p>
+          <p className="mt-1 type-small text-content-secondary">접수된 순서대로 확인 후 연락드립니다.</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-[#1d4ed8]">맞춤 제안</p>
-          <p className="mt-1 text-sm text-slate-600">일정/예산/동행 구성 중심으로 설계합니다.</p>
+          <p className="section-label text-[#1E3A8A]">맞춤 제안</p>
+          <p className="mt-1 type-small text-content-secondary">일정/예산/동행 구성 중심으로 설계합니다.</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-[#1d4ed8]">개인정보 보호</p>
-          <p className="mt-1 text-sm text-slate-600">상담 목적 외에는 사용하지 않습니다.</p>
+          <p className="section-label text-[#1E3A8A]">개인정보 보호</p>
+          <p className="mt-1 type-small text-content-secondary">상담 목적 외에는 사용하지 않습니다.</p>
         </div>
       </div>
       {sourceProductTitle ? (
-        <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+        <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 type-small text-content-primary">
           문의 상품: <span className="font-semibold">{sourceProductTitle}</span>
         </div>
       ) : null}
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-800">
+      <Label className="flex flex-col gap-2 md:col-span-1">
         이름
-        <input
+        <Input
           type="text"
           name="name"
           required
           value={form.name}
           onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
           placeholder="홍길동"
-          className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
-      </label>
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-800">
+      </Label>
+      <Label className="flex flex-col gap-2 md:col-span-1">
         연락처
-        <input
+        <Input
           type="tel"
           name="phone"
           required
@@ -119,42 +122,40 @@ export default function InquiryForm({ source }: InquiryFormProps) {
             }))
           }
           placeholder="01012345678 ( '-' 없이 입력 )"
-          className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
-      </label>
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-800 md:col-span-2">
+      </Label>
+      <Label className="flex flex-col gap-2 md:col-span-2">
         문의 내용
-        <textarea
+        <Textarea
           name="content"
           required
           rows={5}
           value={form.content}
           onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
           placeholder="예: 스위스 7일, 부모님 동반, 5월 출발 희망"
-          className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
-      </label>
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="md:col-span-2 mt-1 inline-flex items-center justify-center rounded-full bg-[#1d4ed8] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
-      >
+      </Label>
+      <Button type="submit" disabled={isSubmitting} className="md:col-span-2 mt-1 w-full">
         {isSubmitting ? "전송 중..." : "문의 하기"}
-      </button>
+      </Button>
       {message ? (
-        <div className={`md:col-span-2 rounded-lg px-3 py-2 text-sm ${isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+        <div
+          className={`md:col-span-2 rounded-lg px-3 py-2 text-sm ${
+            isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
+          }`}
+        >
           <p>{message}</p>
           {isSuccess ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            <div className="mt-2 flex flex-wrap items-center gap-2 type-caption">
               <Link
                 href="/products"
-                className="rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
+                className="inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
               >
                 다른 상품 더 보기
               </Link>
               <Link
                 href="/support"
-                className="rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
+                className="inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
               >
                 고객센터 바로가기
               </Link>
@@ -165,3 +166,4 @@ export default function InquiryForm({ source }: InquiryFormProps) {
     </form>
   );
 }
+

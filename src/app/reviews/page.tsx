@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 import { getReviews } from "@/lib/reviews";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import ReviewItemActions from "@/components/ReviewItemActions";
+import { PageHero } from "@/components/layout/PageHero";
+import { SectionBody } from "@/components/layout/SectionBody";
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -15,11 +17,11 @@ function formatDate(value?: string) {
 
 function renderStars(rating?: number) {
   if (!rating || rating <= 0) {
-    return <span className="text-[11px] text-slate-400">별점 없음</span>;
+    return <span className="type-caption text-content-muted">별점 없음</span>;
   }
   const safe = Math.max(1, Math.min(5, Math.round(rating)));
   return (
-    <span className="text-sm text-amber-400">
+    <span className="type-small text-amber-400">
       {"★".repeat(safe).padEnd(5, "☆")}
     </span>
   );
@@ -31,21 +33,22 @@ export default async function ReviewsPage() {
   const reviews = await getReviews();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">
+    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
       <SiteHeader activeTab="reviews" />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12 md:px-10">
-        <section className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-[#dbeafe] md:p-10">
-          <p className="mb-2 text-sm font-semibold tracking-wide text-[#2563eb]">THEALL TOUR REVIEWS</p>
-          <h1 className="text-3xl font-bold md:text-4xl">여행후기</h1>
-          <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base">
-            실제 고객님들이 남긴 여행 후기를 카드형으로 한눈에 확인해 보세요. 여행후기 작성은 회원 전용입니다.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <SectionBody className="flex flex-col gap-[var(--space-5)]">
+        <PageHero
+          kicker="THEALL TOUR REVIEWS"
+          title="여행후기"
+          subtitle="실제 고객님들이 남긴 여행 후기를 카드형으로 한눈에 확인해 보세요. 여행후기 작성은 회원 전용입니다."
+        />
+
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             {session ? (
               <Link
                 href="/reviews/write"
-                className="inline-flex rounded-full bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+                className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
               >
                 여행후기 작성하기
               </Link>
@@ -53,27 +56,24 @@ export default async function ReviewsPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   href="/login?next=/reviews/write"
-                  className="inline-flex rounded-full bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+                  className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
                 >
                   로그인 후 후기 작성
                 </Link>
                 <Link
                   href="/signup"
-                  className="inline-flex rounded-full border border-[#93c5fd] bg-white px-5 py-2.5 text-sm font-semibold text-[#1e3a8a] transition hover:bg-[#eff6ff]"
+                  className="type-btn inline-flex rounded-full border border-[#1E3A8A]/40 bg-white px-5 py-2.5 text-[#1E3A8A] transition hover:bg-[#E9EEF5]"
                 >
                   회원가입
                 </Link>
               </div>
             )}
-            <p className="text-xs text-slate-500">
+            <p className="type-caption text-content-muted">
               등록된 후기 {reviews.length}건
             </p>
           </div>
-        </section>
-
-        <section className="space-y-4">
           {reviews.length === 0 ? (
-            <div className="rounded-2xl bg-white p-8 text-sm text-slate-500 shadow-md ring-1 ring-[#e2e8f0]">
+            <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0]">
               아직 등록된 여행후기가 없습니다.
             </div>
           ) : (
@@ -94,25 +94,25 @@ export default async function ReviewsPage() {
                       />
                     </div>
                   ) : (
-                    <div className="flex h-40 items-center justify-center bg-[#eff6ff] text-sm text-slate-400">
+                    <div className="flex h-40 items-center justify-center bg-[#eff6ff] type-small text-content-muted">
                       이미지 없음
                     </div>
                   )}
                   <div className="flex flex-1 flex-col gap-3 p-5">
                     <div className="flex items-start justify-between gap-2">
-                      <h2 className="line-clamp-2 text-base font-bold text-[#0f172a] md:text-lg">
+                      <h2 className="font-card-title line-clamp-2 type-body font-bold text-content-primary md:type-small md:font-semibold">
                         {review.title}
                       </h2>
                       <div className="shrink-0 text-right">
                         {renderStars(review.rating)}
-                        <p className="mt-1 text-[11px] text-slate-400">{formatDate(review.created_at)}</p>
+                        <p className="mt-1 type-caption text-content-muted">{formatDate(review.created_at)}</p>
                       </div>
                     </div>
-                    <p className="line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-700">
+                    <p className="line-clamp-4 whitespace-pre-line type-small leading-6 text-content-secondary">
                       {review.content}
                     </p>
                     <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                      <p className="text-xs font-semibold text-[#1d4ed8]">작성자: {review.author_name}</p>
+                      <p className="type-caption font-semibold text-[#1E3A8A]">작성자: {review.author_name}</p>
                       {session && review.member_id === session.memberId ? (
                         <ReviewItemActions
                           reviewId={review.id}
@@ -128,7 +128,7 @@ export default async function ReviewsPage() {
             </div>
           )}
         </section>
-      </main>
+      </SectionBody>
     </div>
   );
 }

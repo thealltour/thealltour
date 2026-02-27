@@ -33,10 +33,10 @@ export default function HeaderMobileShell({
         </Link>
 
         <div className="flex min-w-0 flex-1 flex-col items-center leading-tight">
-          <span className="heading-display-hero text-[15px] font-bold tracking-[0.08em] text-white">
+          <span className="heading-display-hero type-small font-bold tracking-tight text-white">
             더올투어
           </span>
-          <span className="mt-0.5 text-[10px] font-medium tracking-[0.16em] text-white/60">
+          <span className="mt-0.5 type-caption font-medium tracking-wide text-white/60">
             Golf & Premium Travel
           </span>
         </div>

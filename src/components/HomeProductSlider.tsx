@@ -11,6 +11,8 @@ import {
   matchesProductTab,
   type ProductCategoryTabId,
 } from "@/lib/productCategory";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 
 type HomeProductSliderProps = {
   products: Product[];
@@ -89,59 +91,65 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white/80 p-2 ring-1 ring-[#dbeafe]">
-          {categoryTabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab === "전체" ? "all" : tab);
-                setActiveThemeTab("전체");
-              }}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                (tab === "전체" ? "all" : tab) === activeTab
-                  ? "bg-[#2563eb] text-white"
-                  : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          {categoryTabs.map((tab) => {
+            const isActive = (tab === "전체" ? "all" : tab) === activeTab;
+            return (
+              <Button
+                key={tab}
+                type="button"
+                size="sm"
+                variant={isActive ? "primary" : "secondary"}
+                onClick={() => {
+                  setActiveTab(tab === "전체" ? "all" : tab);
+                  setActiveThemeTab("전체");
+                }}
+                className="rounded-full px-3 py-1.5 text-xs"
+              >
+                {tab}
+              </Button>
+            );
+          })}
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => scrollByCard("left")}
-            className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-full px-3 py-1.5 text-sm"
             aria-label="이전 추천상품"
           >
             ←
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => scrollByCard("right")}
-            className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-full px-3 py-1.5 text-sm"
             aria-label="다음 추천상품"
           >
             →
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {themeTabs.map((tab) => (
-          <button
-            key={`theme-${tab}`}
-            type="button"
-            onClick={() => setActiveThemeTab(tab)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-              activeThemeTab === tab
-                ? "bg-[#1d4ed8] text-white"
-                : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+        {themeTabs.map((tab) => {
+          const isActive = activeThemeTab === tab;
+          return (
+            <Button
+              key={`theme-${tab}`}
+              type="button"
+              size="sm"
+              variant={isActive ? "primary" : "secondary"}
+              onClick={() => setActiveThemeTab(tab)}
+              className="rounded-full px-3 py-1 text-xs"
+            >
+              {tab}
+            </Button>
+          );
+        })}
       </div>
 
       <div
@@ -175,29 +183,40 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
                   <div className="flex flex-1 flex-col gap-3 p-5">
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="inline-block rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
-                          {product.category}
-                        </span>
+                        {product.category ? (
+                          <Badge variant="blue" className="px-3 py-1 text-xs">
+                            {product.category}
+                          </Badge>
+                        ) : null}
                         {badges.map((badge) => (
-                          <span
+                          <Badge
                             key={`${product.id}-${badge}`}
-                            className="inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200"
+                            variant="gold"
+                            className="px-2.5 py-1 text-[11px]"
                           >
                             {badge}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
-                      <h4 className="text-lg font-semibold text-[#0f172a]">{product.title}</h4>
-                      <p className="line-clamp-2 text-sm leading-6 text-slate-600">{product.description}</p>
+                      <h4 className="font-card-title text-base font-semibold text-content-primary md:text-lg">
+                        {product.title}
+                      </h4>
+                      <p className="line-clamp-2 type-small leading-6 text-content-secondary">
+                        {product.description}
+                      </p>
                     </div>
                     {typeof product.price === "number" ? (
-                      <p className="text-base font-bold text-[#1d4ed8]">
+                      <p className="font-price-strong type-body font-bold text-[#1E3A8A]">
                         {new Intl.NumberFormat("ko-KR").format(product.price)}원
                       </p>
                     ) : null}
-                    <span className="mt-auto inline-flex w-fit rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-auto rounded-lg px-4 py-2 text-sm"
+                    >
                       상세 보기
-                    </span>
+                    </Button>
                   </div>
                 </article>
               </Link>

@@ -19,24 +19,21 @@ type SiteHeaderProps = {
 };
 
 function getMenuClass(isActive: boolean) {
-  const base =
-    "shrink-0 whitespace-nowrap text-[15px] transition-colors duration-150";
-  return isActive
-    ? `${base} font-semibold text-white`
-    : `${base} text-white/70 hover:text-white`;
+  const base = "shrink-0 whitespace-nowrap type-nav transition-colors duration-150";
+  return isActive ? `${base} type-nav-active text-white` : `${base} text-white/70 hover:text-white`;
 }
 
 function getSubMenuClass(isActive: boolean) {
   const base =
-    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] lg:text-sm transition-colors duration-150";
+    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 type-caption md:type-small transition-colors duration-150";
   return isActive
-    ? `${base} bg-[rgba(59,130,246,0.18)] border-[rgba(59,130,246,0.35)] text-white`
+    ? `${base} bg-[rgba(30,58,138,0.18)] border-[rgba(30,58,138,0.35)] text-white`
     : `${base} bg-white/5 border-white/10 text-white/80 hover:bg-white/8 hover:border-white/15`;
 }
 
 function getGolfSubMenuClass(isActive: boolean) {
   const base =
-    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] lg:text-sm transition-colors duration-150";
+    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 type-caption md:type-small transition-colors duration-150";
   return isActive
     ? `${base} bg-[rgba(34,197,94,0.18)] border-[rgba(34,197,94,0.45)] text-white`
     : `${base} bg-white/5 border-white/10 text-white/80 hover:bg-white/8 hover:border-white/15`;
@@ -65,7 +62,7 @@ export default async function SiteHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[rgba(201,162,39,0.32)] bg-[rgba(27,36,49,0.92)] backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-[rgba(184,150,46,0.32)] bg-[rgba(27,36,49,0.92)] backdrop-blur-md">
       <div className="mx-auto hidden w-full max-w-6xl flex-col px-6 py-4 lg:flex md:px-10">
         <div className="flex items-center gap-6 pb-2.5">
           <Link
@@ -82,10 +79,10 @@ export default async function SiteHeader({
               className="h-10 w-10 object-contain md:h-11 md:w-11"
             />
             <div className="flex flex-col justify-center leading-tight">
-              <span className="heading-display-hero text-[15px] font-bold tracking-[0.06em] text-white md:text-[17px]">
+              <span className="heading-display-hero text-[15px] font-bold tracking-tight text-white md:text-[17px]">
                 더올투어
               </span>
-              <span className="mt-0.5 text-[10px] font-medium tracking-[0.16em] text-white/60 md:text-[11px]">
+              <span className="mt-0.5 type-caption font-medium tracking-wide text-white/60">
                 Golf & Premium Travel
               </span>
             </div>
@@ -95,7 +92,7 @@ export default async function SiteHeader({
               <span className="relative inline-flex flex-col items-center">
                 <span>회사소개</span>
                 {activeTab === "about" ? (
-                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(184,150,46,0.55)] shadow-[0_0_8px_rgba(184,150,46,0.45)]" />
                 ) : null}
               </span>
             </Link>
@@ -103,7 +100,7 @@ export default async function SiteHeader({
               <span className="relative inline-flex flex-col items-center">
                 <span>견적문의</span>
                 {activeTab === "quote" ? (
-                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(184,150,46,0.55)] shadow-[0_0_8px_rgba(184,150,46,0.45)]" />
                 ) : null}
               </span>
             </Link>
@@ -111,7 +108,7 @@ export default async function SiteHeader({
               <span className="relative inline-flex flex-col items-center">
                 <span>여행후기</span>
                 {activeTab === "reviews" ? (
-                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(184,150,46,0.55)] shadow-[0_0_8px_rgba(184,150,46,0.45)]" />
                 ) : null}
               </span>
             </Link>
@@ -119,7 +116,7 @@ export default async function SiteHeader({
               <span className="relative inline-flex flex-col items-center">
                 <span>여행가이드</span>
                 {activeTab === "blog" ? (
-                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(184,150,46,0.55)] shadow-[0_0_8px_rgba(184,150,46,0.45)]" />
                 ) : null}
               </span>
             </Link>
@@ -127,20 +124,20 @@ export default async function SiteHeader({
               <span className="relative inline-flex flex-col items-center">
                 <span>고객센터</span>
                 {activeTab === "support" ? (
-                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(184,150,46,0.55)] shadow-[0_0_8px_rgba(184,150,46,0.45)]" />
                 ) : null}
               </span>
             </Link>
           </nav>
 
-          <div className="flex shrink-0 items-center gap-3 text-sm font-medium text-slate-500">
+          <div className="flex shrink-0 items-center gap-3 type-small font-medium text-content-secondary">
             {session ? (
               <>
-                <span className="text-slate-500">{session.name}님</span>
+                <span className="text-content-secondary">{session.name}님</span>
               {memberPoints !== null ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#eff6ff] px-2 py-1 text-[11px] font-semibold text-[#1d4ed8]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#eff6ff] px-2 py-1 type-caption font-semibold text-[#1E3A8A]">
                   포인트
-                  <span className="tabular-nums text-xs">
+                  <span className="tabular-nums type-caption">
                     {memberPoints.toLocaleString("ko-KR")}P
                   </span>
                 </span>
@@ -150,12 +147,12 @@ export default async function SiteHeader({
               </>
             ) : (
               <>
-                <Link className="transition hover:text-slate-600" href="/login">
+                <Link className="type-small transition hover:text-content-primary" href="/login">
                   로그인
                 </Link>
                 <span className="text-slate-300">|</span>
                 <Link
-                  className={activeTab === "signup" ? "text-[#1d4ed8]" : "transition hover:text-slate-600"}
+                  className={activeTab === "signup" ? "text-[#1E3A8A]" : "type-small transition hover:text-content-primary"}
                   href="/signup"
                 >
                   회원가입
@@ -204,7 +201,7 @@ export default async function SiteHeader({
 
       {/* 모바일 전용 헤더 (클라이언트 컴포넌트) */}
       <HeaderMobileShell activeTab={activeTab} searchQuery={searchQuery} />
-      <MobileFloatingMenu activeTab={activeTab} />
+      <MobileFloatingMenu activeTab={activeTab} isLoggedIn={!!session} />
     </header>
   );
 }

@@ -106,12 +106,12 @@ export default function ProductCatalogSection({
   return (
     <section className="space-y-5">
       <div className="sticky top-[76px] z-20 space-y-3 rounded-2xl bg-white/95 p-3 shadow-sm ring-1 ring-[#dbeafe] backdrop-blur">
-        <p className="text-xs font-semibold text-slate-500">
+        <p className="section-label text-content-muted">
           총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
         </p>
-        {presetLabel ? <p className="text-xs font-semibold text-[#15803d]">필터: {presetLabel}</p> : null}
+        {presetLabel ? <p className="section-label text-[#15803d]">필터: {presetLabel}</p> : null}
         {keyword ? (
-          <p className="text-xs font-semibold text-[#1d4ed8]">검색어: {initialKeyword}</p>
+          <p className="section-label text-[#1E3A8A]">검색어: {initialKeyword}</p>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
         {categoryTabs.map((tab) => (
@@ -122,10 +122,10 @@ export default function ProductCatalogSection({
               setActiveTab(tab === "전체" ? "all" : tab);
               setActiveThemeTab("전체");
             }}
-            className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+            className={`type-btn rounded-full px-3.5 py-1.5 transition ${
               (tab === "전체" ? "all" : tab) === activeTab
-                ? "bg-[#2563eb] text-white"
-                : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                ? "bg-[#1E3A8A] text-white"
+                : "border border-slate-300 bg-white text-content-secondary hover:bg-slate-50"
             }`}
           >
             {tab}
@@ -139,10 +139,10 @@ export default function ProductCatalogSection({
             key={`theme-${tab}`}
             type="button"
             onClick={() => setActiveThemeTab(tab)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+            className={`type-caption rounded-full px-3 py-1 font-semibold transition ${
               activeThemeTab === tab
-                ? "bg-[#1d4ed8] text-white"
-                : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                ? "bg-[#1E3A8A] text-white"
+                : "border border-slate-300 bg-white text-content-secondary hover:bg-slate-50"
             }`}
           >
             {tab}
@@ -153,13 +153,13 @@ export default function ProductCatalogSection({
 
       <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-6">
         {keywordFilteredProducts.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-sm text-slate-500 shadow-md ring-1 ring-[#e2e8f0] md:col-span-2">
+          <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0] md:col-span-2">
             {keyword ? "검색어와 일치하는 상품이 없습니다." : "선택한 카테고리에 해당하는 상품이 없습니다."}
           </div>
         ) : (
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
-              <h3 className="text-lg font-bold text-[#1e3a8a]">{group.theme}</h3>
+              <h3 className="font-card-title type-h3 text-[#1E3A8A]">{group.theme}</h3>
               <div className="grid gap-6 md:grid-cols-2">
                 {group.products.map((product) => {
                   const badges = getProductBadges(product);
@@ -182,27 +182,27 @@ export default function ProductCatalogSection({
                         <div className="flex flex-1 flex-col gap-3 p-5">
                           <div className="space-y-3">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="inline-block rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
+                              <span className="inline-block rounded-full bg-[#eff6ff] px-3 py-1 type-caption font-semibold text-[#1E3A8A]">
                                 {product.category}
                               </span>
                               {badges.map((badge) => (
                                 <span
                                   key={`${product.id}-${badge}`}
-                                  className="inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200"
+                                  className="inline-block rounded-full bg-amber-50 px-2.5 py-1 type-caption font-semibold text-amber-700 ring-1 ring-amber-200"
                                 >
                                   {badge}
                                 </span>
                               ))}
                             </div>
-                            <h2 className="text-xl font-semibold text-[#0f172a]">{product.title}</h2>
-                            <p className="line-clamp-2 text-sm leading-6 text-slate-600">{product.description}</p>
+                            <h2 className="font-card-title type-body font-semibold text-content-primary md:type-small">{product.title}</h2>
+                            <p className="line-clamp-2 type-small leading-6 text-content-secondary">{product.description}</p>
                           </div>
                           {typeof product.price === "number" ? (
-                            <p className="text-base font-bold text-[#1d4ed8]">
+                            <p className="font-price-strong type-body font-bold text-[#1E3A8A]">
                               {new Intl.NumberFormat("ko-KR").format(product.price)}원
                             </p>
                           ) : null}
-                          <span className="mt-auto inline-flex w-fit rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white">
+                          <span className="type-btn mt-auto inline-flex w-fit rounded-lg bg-[#1E3A8A] px-4 py-2 text-white">
                             상세 보기
                           </span>
                         </div>

@@ -7,8 +7,8 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
-  const rawNextPath = resolvedSearchParams.next ?? "/reviews";
-  const nextPath = rawNextPath.startsWith("/") ? rawNextPath : "/reviews";
+  const rawNextPath = resolvedSearchParams.next ?? "/";
+  const nextPath = rawNextPath.startsWith("/") ? rawNextPath : "/";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">

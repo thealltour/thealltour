@@ -2,7 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, PhoneCall, X } from "lucide-react";
+import { MessageCircle, Send, X } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/Button";
 
 type HeaderQuickConsultCtasProps = {
   quickConsultHref?: string;
@@ -113,19 +114,28 @@ export default function HeaderQuickConsultCtas({
   return (
     <>
       <div className="flex shrink-0 items-center gap-2.5">
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={() => setIsOpen(true)}
-          className="inline-flex h-12 items-center justify-center rounded-full border border-[#60a5fa]/70 bg-[#1d4ed8] px-4 text-[14px] font-semibold text-white transition-colors duration-150 hover:border-[#93c5fd] hover:bg-[#2563eb] md:px-5 md:text-[15px]"
+          className="h-11 px-4 text-[14px] md:px-5 md:text-[15px]"
         >
-          <PhoneCall className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          빠른 상담
-        </button>
+          <Send
+            className="mr-1.5 h-4 w-4 opacity-90"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+          상담 문의
+        </Button>
         <a
           href={kakaoHrefFallback}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-12 items-center justify-center rounded-full border border-[rgba(250,204,21,0.75)] bg-white/5 px-4 text-[14px] font-medium text-[#facc15] transition-colors duration-150 hover:border-[rgba(250,204,21,0.95)] hover:bg-[rgba(250,204,21,0.08)] md:px-5 md:text-[15px]"
+          className={buttonVariants({
+            variant: "kakao",
+            size: "sm",
+            className: "h-11 px-4 text-[14px] md:px-5 md:text-[15px]",
+          })}
         >
           <MessageCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
           카톡 상담
@@ -215,13 +225,14 @@ export default function HeaderQuickConsultCtas({
                   남겨주신 연락처로만 상담 연락을 드리며, 다른 용도로는 사용하지 않습니다.
                 </p>
                 <div className="flex items-center justify-end">
-                  <button
+                  <Button
                     type="submit"
+                    size="sm"
                     disabled={isSubmitting}
-                    className="inline-flex min-w-[180px] items-center justify-center rounded-full border border-[#60a5fa]/70 bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-5 py-2.5 text-sm font-semibold tracking-[0.03em] text-white transition-colors duration-150 hover:border-[#93c5fd] hover:from-[#2563eb] hover:to-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="min-w-[180px] px-5 py-2.5"
                   >
                     {isSubmitting ? "전송 중..." : "상담 신청"}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </form>

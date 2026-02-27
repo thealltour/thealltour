@@ -4,6 +4,10 @@ import { FormEvent, useEffect, useId, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { uploadReviewImage } from "@/lib/reviewImageUpload";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Label } from "@/components/ui/Label";
+import { Button, buttonVariants } from "@/components/ui/Button";
 
 const MAX_REVIEW_IMAGES = 4;
 
@@ -58,28 +62,26 @@ export default function ReviewWriteForm() {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+      <Label className="flex flex-col gap-2 text-content-secondary">
         제목
-        <input
+        <Input
           type="text"
           required
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
-      </label>
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+      </Label>
+      <Label className="flex flex-col gap-2 text-content-secondary">
         내용
-        <textarea
+        <Textarea
           required
           rows={8}
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
-      </label>
-      <fieldset className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-        <legend className="text-sm font-medium text-slate-700">별점</legend>
+      </Label>
+      <fieldset className="flex flex-col gap-2 type-small font-medium text-content-secondary">
+        <legend className="type-small font-medium text-content-secondary">별점</legend>
         <div className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2">
           {[1, 2, 3, 4, 5].map((value) => (
             <button
@@ -94,12 +96,12 @@ export default function ReviewWriteForm() {
               ★
             </button>
           ))}
-          <span className="ml-2 text-xs font-normal text-slate-500">
+          <span className="ml-2 type-caption font-normal text-content-muted">
             {rating ? `${rating}점 / 5점` : "선택하지 않으면 별점 없이 등록됩니다."}
           </span>
         </div>
       </fieldset>
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+      <Label className="flex flex-col gap-2 type-small font-medium text-content-secondary">
         후기 사진 첨부 (선택, 최대 4장)
         <input
           id={imageInputId}
@@ -127,18 +129,22 @@ export default function ReviewWriteForm() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label
             htmlFor={imageInputId}
-            className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className={buttonVariants({
+              variant: "secondary",
+              size: "sm",
+              className: "cursor-pointer rounded-lg",
+            })}
           >
             이미지 첨부
           </label>
           <span
-            className="block max-w-full truncate text-xs text-slate-500 sm:max-w-[260px]"
+            className="block max-w-full truncate type-caption text-slate-500 sm:max-w-[260px]"
             title={imageFiles.length > 0 ? `${imageFiles.length}개 선택됨` : "첨부된 파일 없음"}
           >
             {imageFiles.length > 0 ? `${imageFiles.length}개 선택됨` : "첨부된 파일 없음"}
           </span>
         </div>
-      </label>
+      </Label>
       {imagePreviewUrls.length > 0 ? (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -155,26 +161,24 @@ export default function ReviewWriteForm() {
               </div>
             ))}
           </div>
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => {
               setImageFiles([]);
               setImagePreviewUrls([]);
             }}
-            className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 transition hover:bg-slate-50"
+            className="rounded-md px-3 py-1.5"
           >
             첨부 이미지 제거
-          </button>
+          </Button>
         </div>
       ) : null}
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded-lg bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
-      >
+      {errorMessage ? <p className="type-small text-red-500">{errorMessage}</p> : null}
+      <Button type="submit" disabled={isSubmitting} className="rounded-lg px-5 py-3">
         {isSubmitting ? "등록 중..." : "후기 등록"}
-      </button>
+      </Button>
     </form>
   );
 }

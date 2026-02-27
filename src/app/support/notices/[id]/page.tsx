@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import { getNoticeById } from "@/lib/notices";
+import { PageHero } from "@/components/layout/PageHero";
+import { SectionBody } from "@/components/layout/SectionBody";
+import { ContentCard } from "@/components/layout/ContentCard";
 
 type NoticeDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -23,24 +26,26 @@ export default async function NoticeDetailPage({ params }: NoticeDetailPageProps
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">
+    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
       <SiteHeader activeTab="support" />
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12 md:px-10">
-        <Link
-          href="/support"
-          className="inline-flex w-fit rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          ← 고객센터로
-        </Link>
-        <section className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-[#dbeafe] md:p-10">
-          <p className="text-xs text-slate-500">작성일 {formatDate(notice.created_at)}</p>
-          <h1 className="mt-2 text-2xl font-bold md:text-3xl">{notice.title}</h1>
+      <SectionBody className="flex flex-col gap-[var(--space-5)] max-w-4xl">
+        <PageHero kicker="NOTICE BOARD" title={notice.title} subtitle={undefined} />
+        <ContentCard>
+          <p className="type-caption text-content-muted">작성일 {formatDate(notice.created_at)}</p>
           <hr className="my-5 border-slate-200" />
-          <p className="whitespace-pre-line text-sm leading-7 text-slate-700 md:text-base">
+          <p className="whitespace-pre-line type-small leading-7 text-content-secondary md:type-body">
             {notice.content}
           </p>
-        </section>
-      </main>
+          <div className="mt-[var(--space-5)]">
+            <Link
+              href="/support"
+              className="type-btn inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-content-secondary transition hover:bg-slate-50"
+            >
+              ← 고객센터로
+            </Link>
+          </div>
+        </ContentCard>
+      </SectionBody>
     </div>
   );
 }

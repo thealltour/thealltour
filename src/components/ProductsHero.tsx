@@ -188,23 +188,23 @@ export default function ProductsHero({ variant }: ProductsHeroProps) {
   return (
     <section className="rounded-3xl bg-white/95 p-5 shadow-md ring-1 ring-[#dbeafe] md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] md:items-stretch md:gap-8">
       <div className="flex flex-col justify-center space-y-2.5 md:space-y-3.5">
-        <p className="text-xs font-semibold tracking-[0.14em] text-[#2563eb] md:text-sm">
+        <p className="section-label text-[#B8962E] md:type-small">
           {variant === "golf" ? "THEALL TOUR GOLF" : "THEALL TOUR PACKAGE"}
         </p>
-        <h1 className="text-2xl font-bold leading-snug text-[#0f172a] md:text-4xl md:leading-tight">
+        <h1 className="section-title type-h2 text-content-primary md:type-h1 md:leading-[1.15]">
           {headline}
         </h1>
-        <p className="text-[13px] leading-relaxed text-slate-600 md:text-sm">{subcopy}</p>
+        <p className="type-small leading-relaxed text-content-secondary md:type-body">{subcopy}</p>
       </div>
 
       <div className="mt-4 flex h-full w-full max-w-md flex-col justify-center space-y-3 rounded-2xl bg-[#f9fbff] p-4 md:mt-0 md:max-w-none">
         <div className="space-y-1.5">
-          <label htmlFor="products-hero-region" className="text-xs font-semibold text-slate-700 md:text-sm">
+          <label htmlFor="products-hero-region" className="section-label text-content-secondary md:type-small">
             {variant === "golf" ? "어떤 일정을 찾고 계신가요?" : "어떤 여행을 계획 중이신가요?"}
           </label>
           <select
             id="products-hero-region"
-            className="h-10 w-full rounded-xl border border-[#bfdbfe] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#60a5fa] focus:ring-2 focus:ring-[#dbeafe]"
+            className="h-10 w-full rounded-xl border border-[#d9e1ec] bg-white px-3 type-small text-content-primary outline-none transition focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
             value={selectedRegion}
             onChange={(event) => handleRegionChange(event.target.value)}
           >
@@ -220,11 +220,11 @@ export default function ProductsHero({ variant }: ProductsHeroProps) {
         </div>
         <a
           href={ctaHref}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#1d4ed8] px-4 py-2.5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(37,99,235,0.4)] transition hover:bg-[#1e40af] hover:shadow-[0_12px_26px_rgba(37,99,235,0.55)] active:translate-y-[1px] active:shadow-[0_6px_14px_rgba(37,99,235,0.4)]"
+          className="type-btn inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#1E3A8A] px-4 py-2.5 text-white shadow-md transition hover:bg-[#0F172A] active:translate-y-[1px]"
         >
           바로 상담 요청하기
         </a>
-        <p className="text-[11px] leading-relaxed text-slate-500 md:text-xs">
+        <p className="type-caption leading-relaxed text-content-muted">
           상담 요청서에
           <span className="hidden sm:inline"> 희망 날짜·인원·선호하는 골프장/도시 등을 자유롭게 적어 주세요.</span>
           <span className="sm:hidden"> 희망 날짜·인원·선호 코스를 편하게 적어 주세요.</span>

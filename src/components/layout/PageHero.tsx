@@ -1,0 +1,28 @@
+import React from "react";
+
+type PageHeroProps = {
+  kicker?: string;
+  title: string;
+  subtitle?: string;
+  rightSlot?: React.ReactNode;
+};
+
+export function PageHero({ kicker, title, subtitle, rightSlot }: PageHeroProps) {
+  return (
+    <section className="page-hero flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="space-y-2">
+        {kicker ? (
+          <p className="section-label text-white/80">{kicker}</p>
+        ) : null}
+        <h1 className="section-title type-h2 md:text-[32px] md:leading-[1.2] text-white">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="type-small text-white/90">{subtitle}</p>
+        ) : null}
+      </div>
+      {rightSlot ? <div className="mt-4 md:mt-0">{rightSlot}</div> : null}
+    </section>
+  );
+}
+

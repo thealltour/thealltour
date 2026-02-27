@@ -7,7 +7,7 @@ type MemberLoginFormProps = {
   nextPath?: string;
 };
 
-export default function MemberLoginForm({ nextPath = "/reviews" }: MemberLoginFormProps) {
+export default function MemberLoginForm({ nextPath = "/" }: MemberLoginFormProps) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

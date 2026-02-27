@@ -64,35 +64,36 @@ export default function AdminSiteSettingsManager() {
         setErrorMessage("");
         const response = await fetch("/api/admin/site-settings", { cache: "no-store" });
         const result = (await response.json()) as Record<string, string> | { message?: string };
-        if (!response.ok || !result || typeof result !== "object") {
-          const msg = "message" in result ? result.message : "환경설정 조회에 실패했습니다.";
+        if (!response.ok || !result || typeof result !== "object" || "message" in result) {
+          const msg = (result as { message?: string }).message ?? "환경설정 조회에 실패했습니다.";
           setErrorMessage(msg ?? "환경설정 조회에 실패했습니다.");
           return;
         }
+        const data = result as Record<string, string>;
         const nextSettings: SiteSettings = {
-          kakao_channel_url: (result.kakao_channel_url as string) ?? "",
-          instagram_url: (result.instagram_url as string) ?? "",
-          kakao_chat_url: (result.kakao_chat_url as string) ?? "",
-          company_name: (result.company_name as string) ?? "",
-          ceo_name: (result.ceo_name as string) ?? "",
-          address: (result.address as string) ?? "",
-          business_reg_no: (result.business_reg_no as string) ?? "",
-          tourism_reg_no: (result.tourism_reg_no as string) ?? "",
-          mail_order_reg_no: (result.mail_order_reg_no as string) ?? "",
-          main_phone: (result.main_phone as string) ?? "",
-          main_email: (result.main_email as string) ?? "",
-          products_hero_headline: (result.products_hero_headline as string) ?? "",
-          products_hero_subcopy: (result.products_hero_subcopy as string) ?? "",
-          products_hero_regions: (result.products_hero_regions as string) ?? "",
-          golf_hero_headline: (result.golf_hero_headline as string) ?? "",
-          golf_hero_subcopy: (result.golf_hero_subcopy as string) ?? "",
-          golf_hero_regions: (result.golf_hero_regions as string) ?? "",
-          about_kicker: (result.about_kicker as string) ?? "",
-          about_title: (result.about_title as string) ?? "",
-          about_paragraph1: (result.about_paragraph1 as string) ?? "",
-          about_paragraph2: (result.about_paragraph2 as string) ?? "",
-          about_cta_label: (result.about_cta_label as string) ?? "",
-          about_cta_href: (result.about_cta_href as string) ?? "",
+          kakao_channel_url: data.kakao_channel_url ?? "",
+          instagram_url: data.instagram_url ?? "",
+          kakao_chat_url: data.kakao_chat_url ?? "",
+          company_name: data.company_name ?? "",
+          ceo_name: data.ceo_name ?? "",
+          address: data.address ?? "",
+          business_reg_no: data.business_reg_no ?? "",
+          tourism_reg_no: data.tourism_reg_no ?? "",
+          mail_order_reg_no: data.mail_order_reg_no ?? "",
+          main_phone: data.main_phone ?? "",
+          main_email: data.main_email ?? "",
+          products_hero_headline: data.products_hero_headline ?? "",
+          products_hero_subcopy: data.products_hero_subcopy ?? "",
+          products_hero_regions: data.products_hero_regions ?? "",
+          golf_hero_headline: data.golf_hero_headline ?? "",
+          golf_hero_subcopy: data.golf_hero_subcopy ?? "",
+          golf_hero_regions: data.golf_hero_regions ?? "",
+          about_kicker: data.about_kicker ?? "",
+          about_title: data.about_title ?? "",
+          about_paragraph1: data.about_paragraph1 ?? "",
+          about_paragraph2: data.about_paragraph2 ?? "",
+          about_cta_label: data.about_cta_label ?? "",
+          about_cta_href: data.about_cta_href ?? "",
         };
 
         setSettings(nextSettings);

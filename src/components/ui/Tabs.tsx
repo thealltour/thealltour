@@ -22,9 +22,12 @@ export function Tabs({ value, onChange, className, children }: TabsProps) {
       {React.Children.map(children, (child) => {
         if (!React.isValidElement(child)) return child;
         if (child.type !== TabsTrigger) return child;
-        const childValue = child.props.value as TabsValue;
+
+        const triggerElement = child as React.ReactElement<TabsTriggerBaseProps>;
+        const childValue = triggerElement.props.value;
         const selected = childValue === value;
-        return React.cloneElement(child, {
+
+        return React.cloneElement(triggerElement as React.ReactElement<TabsTriggerInnerProps>, {
           selected,
           onSelect: () => onChange?.(childValue),
         });

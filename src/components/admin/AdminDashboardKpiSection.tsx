@@ -176,34 +176,42 @@ export default function AdminDashboardKpiSection() {
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           <section className="grid gap-4 md:col-span-2 md:grid-cols-2 xl:grid-cols-2">
-            <KpiCard
+            {counts && (
+              <KpiCard
               title="전체 문의 수"
               value={counts.totalInquiries}
               changePercent={counts.totalInquiriesDeltaPercent}
               changeDirection={toDirection(counts.totalInquiriesDeltaPercent)}
               href="/theall_manager_only/inquiries"
             />
-            <KpiCard
+            )}
+            {counts && (
+              <KpiCard
               title="미처리 문의 수"
               value={counts.pendingInquiries}
               changePercent={counts.pendingInquiriesDeltaPercent}
               changeDirection={toDirection(counts.pendingInquiriesDeltaPercent)}
               href="/theall_manager_only/inquiries?status=pending"
             />
-            <KpiCard
+            )}
+            {counts && (
+              <KpiCard
               title="완료된 문의 수"
               value={counts.completedInquiries}
               changePercent={counts.completedInquiriesDeltaPercent}
               changeDirection={toDirection(counts.completedInquiriesDeltaPercent)}
               href="/theall_manager_only/inquiries?status=completed"
             />
-            <KpiCard
+            )}
+            {counts && (
+              <KpiCard
               title="24시간 이상 지연"
               value={counts.delayedInquiries}
               changePercent={counts.delayedInquiriesDeltaPercent}
               changeDirection={toDirection(counts.delayedInquiriesDeltaPercent)}
               href="/theall_manager_only/inquiries?status=delayed"
             />
+            )}
           </section>
 
           <section className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-surface)] p-4 backdrop-blur-md transition-colors">
@@ -228,7 +236,8 @@ export default function AdminDashboardKpiSection() {
                   ))}
                 </g>
 
-                {(() => {
+                {counts &&
+                  (() => {
                   const points = [
                     counts.completedInquiries,
                     counts.pendingInquiries,
@@ -293,18 +302,22 @@ export default function AdminDashboardKpiSection() {
 
             {/* 차트 외부, 하단 요약 레전드 */}
             <div className="mt-3 flex items-center justify-center gap-4 text-[11px] text-[var(--text-secondary)]">
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[var(--chart-3)]" />
-                완료 {counts.completedInquiries}
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[var(--chart-1)]" />
-                미처리 {counts.pendingInquiries}
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[var(--chart-5)]" />
-                지연 {counts.delayedInquiries}
-              </span>
+              {counts && (
+                <>
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[var(--chart-3)]" />
+                    완료 {counts.completedInquiries}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[var(--chart-1)]" />
+                    미처리 {counts.pendingInquiries}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[var(--chart-5)]" />
+                    지연 {counts.delayedInquiries}
+                  </span>
+                </>
+              )}
             </div>
 
           </section>

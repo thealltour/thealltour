@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import AdminDashboardKpiSection from "@/components/admin/AdminDashboardKpiSection";
 import AdminHeader from "@/components/AdminHeader";
 import { getAdminCounts } from "@/lib/adminCounts";
@@ -58,7 +59,25 @@ export default async function AdminPage() {
           unreadNotificationCount={unreadNotificationCount}
         />
 
-        <AdminDashboardKpiSection />
+        <Suspense
+          fallback={
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={index}
+                  className="h-full rounded-xl bg-[var(--surface-muted)] p-6 animate-pulse"
+                >
+                  <div className="h-3 w-16 rounded bg-[var(--border)]" />
+                  <div className="mt-4 h-7 w-24 rounded bg-[var(--border)]" />
+                  <div className="mt-3 h-3 w-20 rounded bg-[var(--border)]" />
+                </div>
+              ))}
+            </section>
+          }
+        >
+          <AdminDashboardKpiSection />
+        </Suspense>
 
         <section className="grid gap-4 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-surface)] p-5 backdrop-blur-md md:grid-cols-2 transition-colors">
           <article className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 transition-colors">

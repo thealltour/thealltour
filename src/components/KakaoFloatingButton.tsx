@@ -17,9 +17,12 @@ export default function KakaoFloatingButton() {
       try {
         const response = await fetch("/api/site-settings", { cache: "no-store" });
         const result = (await response.json()) as SiteSettingsResponse | { message?: string };
-        if (!response.ok || !result || typeof result !== "object") return;
-        if (!("message" in result) && isMounted && result.kakao_chat_url) {
-          setKakaoChatUrl(result.kakao_chat_url);
+        if (!response.ok || !result || typeof result !== "object" || "message" in result) {
+          return;
+        }
+        const data = result as SiteSettingsResponse;
+        if (isMounted && data.kakao_chat_url) {
+          setKakaoChatUrl(data.kakao_chat_url);
         }
       } catch {
         // 실패 시에는 기본 URL 사용

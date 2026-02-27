@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const includeInactive = searchParams.get("includeInactive") === "true";
 
   let query = supabase
-    .from<RecommendedKeywordRow>("recommended_search_keywords")
+    .from("recommended_search_keywords")
     .select("id, keyword, sort_order, is_active");
 
   if (!includeInactive) {

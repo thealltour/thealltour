@@ -76,8 +76,9 @@ export default function AdminRecommendedSearchManager() {
           setErrorMessage(result.message ?? "추천 검색어 추가에 실패했습니다.");
           return;
         }
+        const createdItem: EditRow = { ...result.item, isNew: false };
         setItems((prev) =>
-          prev.map((item) => (item.id === row.id ? { ...result.item } : item)),
+          prev.map((item) => (item.id === row.id ? createdItem : item)),
         );
         setMessage("추천 검색어를 추가했습니다.");
       } else {
@@ -95,8 +96,9 @@ export default function AdminRecommendedSearchManager() {
           setErrorMessage(result.message ?? "추천 검색어 수정에 실패했습니다.");
           return;
         }
+        const updatedItem: EditRow = { ...result.item, isNew: false };
         setItems((prev) =>
-          prev.map((item) => (item.id === row.id ? { ...result.item } : item)),
+          prev.map((item) => (item.id === row.id ? updatedItem : item)),
         );
         setMessage("추천 검색어를 저장했습니다.");
       }

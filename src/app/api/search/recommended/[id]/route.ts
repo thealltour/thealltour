@@ -8,11 +8,12 @@ type RecommendedKeywordRow = {
   is_active: boolean | null;
 };
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } },
-) {
-  const id = params.id;
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
+export async function PUT(request: Request, context: RouteContext) {
+  const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ message: "id가 필요합니다." }, { status: 400 });
   }
@@ -36,7 +37,7 @@ export async function PUT(
   }
 
   const { data, error } = await supabase
-    .from<RecommendedKeywordRow>("recommended_search_keywords")
+    .from("recommended_search_keywords")
     .update({
       ...update,
       updated_at: new Date().toISOString(),
@@ -63,11 +64,8 @@ export async function PUT(
   });
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } },
-) {
-  const id = params.id;
+export async function DELETE(_request: Request, context: RouteContext) {
+  const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ message: "id가 필요합니다." }, { status: 400 });
   }

@@ -49,8 +49,9 @@ export default function HeaderQuickConsultCtas({
         if (!response.ok || !result || typeof result !== "object" || "message" in result) {
           return;
         }
-        if (isMounted && result.kakao_channel_url) {
-          setKakaoFromSettings(result.kakao_channel_url);
+        const data = result as SiteSettingsClientForKakao;
+        if (isMounted && data.kakao_channel_url) {
+          setKakaoFromSettings(data.kakao_channel_url);
         }
       } catch {
         // 실패 시 기본값 사용

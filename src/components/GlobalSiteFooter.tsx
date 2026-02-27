@@ -27,9 +27,11 @@ export default function GlobalSiteFooter() {
       try {
         const response = await fetch("/api/site-settings", { cache: "no-store" });
         const result = (await response.json()) as SiteSettingsClient | { message?: string };
-        if (!response.ok || !result || typeof result !== "object" || "message" in result) return;
+        if (!response.ok || !result || typeof result !== "object" || "message" in result) {
+          return;
+        }
         if (isMounted) {
-          setSettings(result);
+          setSettings(result as SiteSettingsClient);
         }
       } catch {
         // 실패 시에는 기본 URL 사용

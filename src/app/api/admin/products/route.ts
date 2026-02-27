@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 
@@ -47,35 +47,62 @@ type ProductBody = {
   sort_order?: number | null;
 };
 
-export async function GET() {
-  const sortedByOrderAndCreatedAt = await supabase
-    .from("products")
-    .select("*")
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false, nullsFirst: false });
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
+  const page = Number(searchParams.get("page") ?? "1");
+  const pageSize = Number(searchParams.get("pageSize") ?? "8");
+  const sortField = (searchParams.get("sortField") ?? "sort_order") as
+    | "title"
+    | "category"
+    | "price"
+    | "sort_order"
+    | "created_at";
+  const sortDirection = (searchParams.get("sortDirection") ?? "asc") === "desc" ? "desc" : "asc";
+  const keyword = (searchParams.get("q") ?? "").trim();
+  const featuredOnly = searchParams.get("featuredOnly") === "true";
 
-  if (!sortedByOrderAndCreatedAt.error) {
-    return NextResponse.json(sortedByOrderAndCreatedAt.data ?? []);
+  try {
+    const from = Math.max(0, (page - 1) * pageSize);
+    const to = from + pageSize - 1;
+
+    let query = supabase
+      .from("products")
+      .select("*", { count: "exact" })
+      .order("is_featured_home", { ascending: false, nullsFirst: false })
+      .order(sortField, { ascending: sortDirection === "asc", nullsFirst: false })
+      .range(from, to);
+
+    if (featuredOnly) {
+      query = query.eq("is_featured_home", true);
+    }
+
+    if (keyword !== "") {
+      const ilike = `%${keyword}%`;
+      query = query.or(
+        `title.ilike.${ilike},description.ilike.${ilike},category.ilike.${ilike},theme.ilike.${ilike},product_source_url.ilike.${ilike}`,
+      );
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return NextResponse.json(
+        { message: `상품 목록 조회에 실패했습니다. (${error.message})` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      items: data ?? [],
+      total: count ?? 0,
+    });
+  } catch (error) {
+    console.error("Failed to load products", error);
+    return NextResponse.json(
+      { message: "상품 목록 조회 중 오류가 발생했습니다." },
+      { status: 500 },
+    );
   }
-
-  const sortedByOrderOnly = await supabase
-    .from("products")
-    .select("*")
-    .order("sort_order", { ascending: true, nullsFirst: false });
-
-  if (!sortedByOrderOnly.error) {
-    return NextResponse.json(sortedByOrderOnly.data ?? []);
-  }
-
-  const selectOnly = await supabase.from("products").select("*");
-  if (!selectOnly.error) {
-    return NextResponse.json(selectOnly.data ?? []);
-  }
-
-  return NextResponse.json(
-    { message: `상품 목록 조회에 실패했습니다. (${selectOnly.error.message})` },
-    { status: 500 },
-  );
 }
 
 export async function POST(request: Request) {

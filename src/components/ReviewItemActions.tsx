@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useId, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import { uploadReviewImage } from "@/lib/reviewImageUpload";
 
 const MAX_REVIEW_IMAGES = 4;
@@ -21,6 +23,8 @@ export default function ReviewItemActions({
   defaultImageUrls = [],
 }: ReviewItemActionsProps) {
   const router = useRouter();
+  const { showToast } = useAdminToast();
+  const { confirm } = useAdminConfirm();
   const imageInputId = useId();
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(defaultTitle);
@@ -69,7 +73,13 @@ export default function ReviewItemActions({
   }
 
   async function handleDelete() {
-    if (!confirm("정말 이 후기를 삭제하시겠습니까?")) return;
+    const ok = await confirm({
+      title: "후기 삭제",
+      description: "정말 이 후기를 삭제하시겠습니까?",
+      confirmLabel: "삭제",
+      cancelLabel: "취소",
+    });
+    if (!ok) return;
     setErrorMessage("");
     setIsSubmitting(true);
     try {
@@ -79,9 +89,11 @@ export default function ReviewItemActions({
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
         setErrorMessage(result.message ?? "후기 삭제에 실패했습니다.");
+        showToast("error", result.message ?? "후기 삭제에 실패했습니다.");
         return;
       }
       router.refresh();
+      showToast("success", "후기를 삭제했습니다.");
     } catch {
       setErrorMessage("후기 삭제 중 네트워크 오류가 발생했습니다.");
     } finally {

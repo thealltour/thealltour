@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Bell, Moon, Search, Sun } from "lucide-react";
+import AdminLogoutButton from "@/components/AdminLogoutButton";
 
 export const menuMap = {
   dashboard: ["운영 현황", "통계"],
-  product: ["상품 등록", "상품 목록"],
+  product: ["상품 목록", "상품 등록", "카테고리/테마 관리"],
   inquiry: ["전체 문의", "미처리 문의"],
   member: ["회원 목록"],
+  settings: ["환경 설정"],
+  reviews: ["후기 목록"],
+  guides: ["가이드 목록"],
+  banners: ["배너 목록"],
+  notices: ["공지 목록"],
+  notifications: ["알림 목록"],
 } as const;
 
 export type MainMenuKey = keyof typeof menuMap;
@@ -16,6 +25,12 @@ const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   product: "상품 관리",
   inquiry: "문의 관리",
   member: "회원 관리",
+  settings: "환경설정",
+  reviews: "후기 관리",
+  guides: "여행가이드",
+  banners: "메인배너",
+  notices: "공지사항",
+  notifications: "알림",
 };
 
 type SubHeaderProps = {
@@ -29,14 +44,124 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     [activeMenu],
   );
   const [activeLabel, setActiveLabel] = useState<string | null>(items[0] ?? null);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [isScrolled, setIsScrolled] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    const initial = items[0] ?? null;
+    let initial: string | null = items[0] ?? null;
+
+    if (activeMenu === "product") {
+      const view = searchParams.get("view");
+      if (view === "taxonomy") {
+        initial = "카테고리/테마 관리";
+      } else if (view === "create") {
+        initial = "상품 등록";
+      } else if (view === "list") {
+        initial = "상품 목록";
+      } else {
+        initial = "상품 목록";
+      }
+    }
+
     setActiveLabel(initial);
     if (initial && onTabChange) {
       onTabChange(initial);
     }
-  }, [items, onTabChange]);
+  }, [items, onTabChange, activeMenu, searchParams]);
+
+  useEffect(() => {
+    function handleScroll() {
+      if (typeof window === "undefined") return;
+      setIsScrolled(window.scrollY > 0);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("theall-admin-theme");
+    const prefersDark =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    const shouldEnable = stored === "dark" || (!stored && prefersDark);
+    const root = document.documentElement;
+    if (shouldEnable) {
+      root.classList.add("dark");
+      setIsDarkMode(true);
+    } else {
+      root.classList.remove("dark");
+      setIsDarkMode(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "/") return;
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const tagName = target.tagName;
+      if (tagName === "INPUT" || tagName === "TEXTAREA" || target.isContentEditable) return;
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  function toggleTheme() {
+    if (typeof window === "undefined") return;
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      const root = document.documentElement;
+      if (next) {
+        root.classList.add("dark");
+        window.localStorage.setItem("theall-admin-theme", "dark");
+      } else {
+        root.classList.remove("dark");
+        window.localStorage.setItem("theall-admin-theme", "light");
+      }
+      return next;
+    });
+  }
+
+  function mapProductLabelToView(label: string): string | null {
+    if (label === "카테고리/테마 관리") return "taxonomy";
+    if (label === "상품 등록") return "create";
+    if (label === "상품 목록") return "list";
+    return null;
+  }
+
+  function handleTabClick(label: string) {
+    setActiveLabel(label);
+    onTabChange?.(label);
+
+    if (activeMenu === "product") {
+      const view = mapProductLabelToView(label);
+      const params = new URLSearchParams(searchParams.toString());
+      if (view) {
+        params.set("view", view);
+      } else {
+        params.delete("view");
+      }
+      const query = params.toString();
+      const target = query ? `${pathname}?${query}` : pathname;
+      router.push(target);
+    }
+  }
 
   if (!activeMenu || items.length === 0) {
     return null;
@@ -45,11 +170,15 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   const title = MAIN_MENU_TITLE[activeMenu];
 
   return (
-    <div className="w-full border-b bg-white">
-      <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-10">
-        {/* 왼쪽: 제목 + 탭 */}
+    <div
+      className={`sticky top-0 z-30 w-full border-b border-[var(--border)] bg-[var(--card)] transition-shadow ${
+        isScrolled ? "shadow-sm" : ""
+      }`}
+    >
+      <div className="flex h-14 items-center justify-between px-6 md:px-10">
+        {/* 왼쪽: 제목 + 탭 (전체 폭 왼쪽 정렬) */}
         <div className="flex items-center gap-10">
-          <h1 className="text-base font-semibold text-[#0f172a]">{title}</h1>
+          <h1 className="text-base font-semibold text-[var(--text)]">{title}</h1>
 
           <div className="flex items-center gap-6 text-sm">
             {items.map((label) => {
@@ -57,14 +186,11 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
               return (
                 <button
                   key={label}
-                  onClick={() => {
-                    setActiveLabel(label);
-                    onTabChange?.(label);
-                  }}
+                  onClick={() => handleTabClick(label)}
                   className={`relative pb-1 transition-colors duration-200 ${
                     isActive
-                      ? "font-semibold text-[#1d4ed8] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-[#1d4ed8]"
-                      : "text-[#64748b] hover:text-[#1d4ed8]"
+                      ? "font-semibold text-[var(--brand)] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-[var(--brand)]"
+                      : "text-[var(--text-muted)] hover:text-[var(--brand)]"
                   }`}
                 >
                   {label}
@@ -74,13 +200,56 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
           </div>
         </div>
 
-        {/* 오른쪽: 글로벌 액션 */}
-        <button
-          type="button"
-          className="rounded-md bg-[#1d4ed8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e40af]"
-        >
-          + 상품 추가
-        </button>
+        {/* 오른쪽: 다크 토글 + 검색 + 글로벌 액션 + 알림/로그아웃 */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="hidden items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--card-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--card)] sm:flex"
+            aria-label={isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환"}
+          >
+            {isDarkMode ? (
+              <Sun className="h-3.5 w-3.5" />
+            ) : (
+              <Moon className="h-3.5 w-3.5" />
+            )}
+            <span>{isDarkMode ? "Dark" : "Light"}</span>
+          </button>
+
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={globalSearch}
+              onChange={(event) => {
+                const value = event.target.value;
+                setGlobalSearch(value);
+                // TODO: wire up admin global search API
+              }}
+              ref={searchInputRef}
+              placeholder="Admin search..."
+              className="w-[240px] rounded-md border border-[var(--border)] bg-[var(--card)] pl-8 pr-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              router.push("/theall_manager_only/products?view=create");
+            }}
+            className="btn-admin-primary"
+          >
+            + 상품 추가
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/theall_manager_only/notifications")}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--primary)] transition-colors duration-150 hover:bg-[var(--surface-muted)]"
+            aria-label="알림 보기"
+          >
+            <Bell className="h-4 w-4" />
+          </button>
+          <AdminLogoutButton />
+        </div>
       </div>
     </div>
   );

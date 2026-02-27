@@ -1,9 +1,41 @@
 import { supabase } from "@/lib/supabase";
 
+function percentChange(current: number, previous: number): number {
+  if (previous <= 0) {
+    if (current <= 0) return 0;
+    return 100;
+  }
+  return Math.round(((current - previous) / previous) * 100);
+}
+
 export async function getAdminCounts() {
-  const delayedThresholdIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const [productsResult, pendingInquiriesResult, membersResult, reviewsResult, totalInquiriesResult, delayedResult] =
-    await Promise.all([
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  const delayedThresholdIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [
+    productsResult,
+    pendingInquiriesResult,
+    membersResult,
+    reviewsResult,
+    totalInquiriesResult,
+    delayedResult,
+    // daily aggregates
+    todayTotalResult,
+    yesterdayTotalResult,
+    todayPendingResult,
+    yesterdayPendingResult,
+    todayDelayedResult,
+    yesterdayDelayedResult,
+  ] = await Promise.all([
     supabase.from("products").select("*", { count: "exact", head: true }),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
     supabase.from("members").select("*", { count: "exact", head: true }),
@@ -14,12 +46,62 @@ export async function getAdminCounts() {
       .select("*", { count: "exact", head: true })
       .eq("is_completed", false)
       .lt("created_at", delayedThresholdIso),
-    ]);
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", startOfToday.toISOString())
+      .lt("created_at", startOfTomorrow.toISOString()),
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", startOfYesterday.toISOString())
+      .lt("created_at", startOfToday.toISOString()),
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .eq("is_completed", false)
+      .gte("created_at", startOfToday.toISOString())
+      .lt("created_at", startOfTomorrow.toISOString()),
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .eq("is_completed", false)
+      .gte("created_at", startOfYesterday.toISOString())
+      .lt("created_at", startOfToday.toISOString()),
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .eq("is_completed", false)
+      .lt("created_at", delayedThresholdIso)
+      .gte("created_at", startOfToday.toISOString()),
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .eq("is_completed", false)
+      .lt("created_at", delayedThresholdIso)
+      .gte("created_at", startOfYesterday.toISOString())
+      .lt("created_at", startOfToday.toISOString()),
+  ]);
 
   const pendingCount = pendingInquiriesResult.error ? 0 : (pendingInquiriesResult.count ?? 0);
   const totalInquiries = totalInquiriesResult.error ? 0 : (totalInquiriesResult.count ?? 0);
   const completedInquiries = Math.max(0, totalInquiries - pendingCount);
-  const completionRate = totalInquiries === 0 ? 0 : Math.round((completedInquiries / totalInquiries) * 100);
+  const completionRate =
+    totalInquiries === 0 ? 0 : Math.round((completedInquiries / totalInquiries) * 100);
+
+  const todayTotal = todayTotalResult.error ? 0 : (todayTotalResult.count ?? 0);
+  const yesterdayTotal = yesterdayTotalResult.error ? 0 : (yesterdayTotalResult.count ?? 0);
+
+  const todayPending = todayPendingResult.error ? 0 : (todayPendingResult.count ?? 0);
+  const yesterdayPending = yesterdayPendingResult.error ? 0 : (yesterdayPendingResult.count ?? 0);
+
+  const todayCompleted = Math.max(0, todayTotal - todayPending);
+  const yesterdayCompleted = Math.max(0, yesterdayTotal - yesterdayPending);
+
+  const todayDelayed = todayDelayedResult.error ? 0 : (todayDelayedResult.count ?? 0);
+  const yesterdayDelayed = yesterdayDelayedResult.error
+    ? 0
+    : (yesterdayDelayedResult.count ?? 0);
 
   return {
     productCount: productsResult.error ? 0 : (productsResult.count ?? 0),
@@ -31,5 +113,9 @@ export async function getAdminCounts() {
     completedInquiries,
     delayedInquiries: delayedResult.error ? 0 : (delayedResult.count ?? 0),
     completionRate,
+    totalInquiriesDeltaPercent: percentChange(todayTotal, yesterdayTotal),
+    pendingInquiriesDeltaPercent: percentChange(todayPending, yesterdayPending),
+    completedInquiriesDeltaPercent: percentChange(todayCompleted, yesterdayCompleted),
+    delayedInquiriesDeltaPercent: percentChange(todayDelayed, yesterdayDelayed),
   };
 }

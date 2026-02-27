@@ -23,7 +23,7 @@ export default function AdminLogoutButton() {
       type="button"
       onClick={handleLogout}
       disabled={isSubmitting}
-      className="rounded-lg border border-[#bfdbfe] bg-white px-4 py-2 text-sm font-medium text-[#1e3a8a] transition hover:bg-[#eff6ff] disabled:cursor-not-allowed"
+      className="btn-admin-secondary disabled:cursor-not-allowed disabled:opacity-60"
     >
       {isSubmitting ? "로그아웃 중..." : "로그아웃"}
     </button>

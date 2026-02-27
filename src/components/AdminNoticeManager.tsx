@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import type { Notice } from "@/types/notice";
 
 type FormState = {
@@ -43,6 +45,8 @@ export default function AdminNoticeManager() {
   const [isLegalSaving, setIsLegalSaving] = useState(false);
   const [legalErrorMessage, setLegalErrorMessage] = useState("");
   const [isLegalPanelOpen, setIsLegalPanelOpen] = useState(false);
+  const { showToast } = useAdminToast();
+  const { confirm } = useAdminConfirm();
 
   function formatDate(value: string | null) {
     if (!value) return "-";
@@ -150,8 +154,13 @@ export default function AdminNoticeManager() {
   }
 
   async function deleteNotice(item: Notice) {
-    const confirmed = window.confirm(`'${item.title}' 공지를 삭제할까요?`);
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: "공지 삭제",
+      description: `'${item.title}' 공지를 삭제하면 되돌릴 수 없습니다. 계속 진행할까요?`,
+      confirmLabel: "삭제",
+      cancelLabel: "취소",
+    });
+    if (!ok) return;
     setPendingDeleteId(item.id);
     setMessage("");
     setErrorMessage("");
@@ -160,9 +169,11 @@ export default function AdminNoticeManager() {
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
         setErrorMessage(result.message ?? "공지 삭제에 실패했습니다.");
+        showToast("error", result.message ?? "공지 삭제에 실패했습니다.");
         return;
       }
       setMessage("공지를 삭제했습니다.");
+      showToast("success", "공지를 삭제했습니다.");
       setNotices((current) => current.filter((row) => row.id !== item.id));
       if (editingId === item.id) {
         cancelEdit();

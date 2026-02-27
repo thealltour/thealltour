@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import type { HomeBanner } from "@/types/homeBanner";
 
 type FormState = {
@@ -31,6 +33,8 @@ export default function AdminBannerManager() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const { showToast } = useAdminToast();
+  const { confirm } = useAdminConfirm();
 
   async function loadBanners() {
     try {
@@ -119,8 +123,13 @@ export default function AdminBannerManager() {
   }
 
   async function deleteBanner(item: HomeBanner) {
-    const confirmed = window.confirm(`'${item.title}' 배너를 삭제할까요?`);
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: "배너 삭제",
+      description: `'${item.title}' 배너를 삭제하면 되돌릴 수 없습니다. 계속 진행할까요?`,
+      confirmLabel: "삭제",
+      cancelLabel: "취소",
+    });
+    if (!ok) return;
 
     setPendingDeleteId(item.id);
     setErrorMessage("");
@@ -130,9 +139,11 @@ export default function AdminBannerManager() {
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
         setErrorMessage(result.message ?? "배너 삭제에 실패했습니다.");
+        showToast("error", result.message ?? "배너 삭제에 실패했습니다.");
         return;
       }
       setMessage("배너를 삭제했습니다.");
+      showToast("success", "배너를 삭제했습니다.");
       setBanners((current) => current.filter((row) => row.id !== item.id));
     } catch {
       setErrorMessage("배너 삭제 중 오류가 발생했습니다.");

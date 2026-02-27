@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import type { Guide } from "@/types/guide";
 
 type GuideFormState = {
@@ -30,6 +32,8 @@ export default function AdminGuideManager() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const { showToast } = useAdminToast();
+  const { confirm } = useAdminConfirm();
 
   async function loadGuides() {
     try {
@@ -115,8 +119,13 @@ export default function AdminGuideManager() {
   }
 
   async function deleteGuide(item: Guide) {
-    const confirmed = window.confirm(`'${item.title}' 가이드를 삭제할까요?`);
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: "여행가이드 삭제",
+      description: `'${item.title}' 가이드를 삭제하면 되돌릴 수 없습니다. 계속 진행할까요?`,
+      confirmLabel: "삭제",
+      cancelLabel: "취소",
+    });
+    if (!ok) return;
     setPendingDeleteId(item.id);
     setMessage("");
     setErrorMessage("");
@@ -125,9 +134,11 @@ export default function AdminGuideManager() {
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
         setErrorMessage(result.message ?? "여행가이드 삭제에 실패했습니다.");
+        showToast("error", result.message ?? "여행가이드 삭제에 실패했습니다.");
         return;
       }
       setMessage("여행가이드를 삭제했습니다.");
+      showToast("success", "여행가이드를 삭제했습니다.");
       setGuides((current) => current.filter((row) => row.id !== item.id));
       if (editingId === item.id) {
         cancelEdit();

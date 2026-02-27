@@ -9,7 +9,7 @@ export default async function AdminMembersPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fbff] px-6 py-10 text-[#0f172a] md:px-10">
-      <main className="mx-auto w-full max-w-6xl space-y-6">
+      <main className="w-full space-y-6">
         <AdminHeader
           activeTab="members"
           title="회원 관리"

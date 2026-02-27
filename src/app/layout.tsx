@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className="flex min-h-screen flex-col antialiased selection:bg-[#bfdbfe] selection:text-[#0f172a]">
+      <body className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-blue-100 selection:text-foreground">
         <div className="flex-1">{children}</div>
         <KakaoFloatingButton />
         <GlobalSiteFooter />

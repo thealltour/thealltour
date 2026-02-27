@@ -73,8 +73,8 @@ export default function InquiryForm({ source }: InquiryFormProps) {
   }
 
   return (
-    <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-      <div className="md:col-span-2 grid gap-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe] md:grid-cols-3">
+    <form className="grid gap-4 md:grid-cols-2 md:gap-5" onSubmit={handleSubmit}>
+      <div className="md:col-span-2 grid gap-3 rounded-xl bg-[#f9fafb] p-4 border border-[#e2e8f0] md:grid-cols-3">
         <div>
           <p className="text-xs font-semibold text-[#1d4ed8]">응답 안내</p>
           <p className="mt-1 text-sm text-slate-600">접수된 순서대로 확인 후 연락드립니다.</p>
@@ -89,11 +89,11 @@ export default function InquiryForm({ source }: InquiryFormProps) {
         </div>
       </div>
       {sourceProductTitle ? (
-        <div className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
           문의 상품: <span className="font-semibold">{sourceProductTitle}</span>
         </div>
       ) : null}
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-2 text-sm font-medium text-slate-800">
         이름
         <input
           type="text"
@@ -102,10 +102,10 @@ export default function InquiryForm({ source }: InquiryFormProps) {
           value={form.name}
           onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
           placeholder="홍길동"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
       </label>
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-2 text-sm font-medium text-slate-800">
         연락처
         <input
           type="tel"
@@ -119,10 +119,10 @@ export default function InquiryForm({ source }: InquiryFormProps) {
             }))
           }
           placeholder="01012345678 ( '-' 없이 입력 )"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
       </label>
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+      <label className="flex flex-col gap-2 text-sm font-medium text-slate-800 md:col-span-2">
         문의 내용
         <textarea
           name="content"
@@ -131,15 +131,15 @@ export default function InquiryForm({ source }: InquiryFormProps) {
           value={form.content}
           onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
           placeholder="예: 스위스 7일, 부모님 동반, 5월 출발 희망"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
         />
       </label>
       <button
         type="submit"
         disabled={isSubmitting}
-        className="md:col-span-2 rounded-lg bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
+        className="md:col-span-2 mt-1 inline-flex items-center justify-center rounded-full bg-[#1d4ed8] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
       >
-        {isSubmitting ? "전송 중..." : "문의 내용 보내기"}
+        {isSubmitting ? "전송 중..." : "문의 하기"}
       </button>
       {message ? (
         <div className={`md:col-span-2 rounded-lg px-3 py-2 text-sm ${isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>

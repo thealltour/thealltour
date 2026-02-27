@@ -59,10 +59,10 @@ export default function GlobalSiteFooter() {
   const instagramUrl = settings?.instagram_url ?? "https://www.instagram.com/thealltour";
 
   return (
-    <footer className="border-t border-slate-200 bg-[#f8fafc]">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-7 text-sm leading-7 text-slate-700 md:grid-cols-[1fr_auto] md:px-10">
+    <footer className="border-t border-[rgba(201,162,39,0.32)] bg-[#0B1220]">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-7 text-sm leading-7 text-site-secondary md:grid-cols-[1fr_auto] md:px-10">
         <div>
-          <p className="text-base font-bold text-[#0f172a]">{companyName}</p>
+          <p className="text-base font-bold text-site-primary">{companyName}</p>
           <p>대표: {ceoName}</p>
           <p>주소: {address}</p>
           <p>사업자등록번호: {businessRegNo}</p>
@@ -73,13 +73,13 @@ export default function GlobalSiteFooter() {
         <div className="flex flex-col items-start gap-2 text-xs md:items-end">
           <a
             href={`tel:${mainPhone}`}
-            className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
           >
             대표번호 {mainPhone}
           </a>
           <a
             href={`mailto:${mainEmail}`}
-            className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
           >
             {mainEmail}
           </a>
@@ -104,20 +104,20 @@ export default function GlobalSiteFooter() {
           <div className="mt-1 flex items-center gap-2">
             <Link
               href="/terms"
-              className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
             >
               이용약관
             </Link>
             <Link
               href="/privacy"
-              className="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
             >
               개인정보처리방침
             </Link>
           </div>
         </div>
       </div>
-      <div className="border-t border-slate-200 py-3 text-center text-xs text-slate-500">
+      <div className="border-t border-site-border py-3 text-center text-xs text-site-muted">
         © {new Date().getFullYear()} 더올투어. All rights reserved
         <Link
           href="/theall_manager_only"

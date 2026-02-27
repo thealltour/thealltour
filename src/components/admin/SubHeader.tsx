@@ -10,7 +10,7 @@ export const menuMap = {
   product: ["상품 목록", "상품 등록", "카테고리/테마 관리"],
   inquiry: ["전체 문의", "미처리 문의"],
   member: ["회원 목록"],
-  settings: ["환경 설정"],
+  settings: ["환경 설정", "추천 검색어"],
   reviews: ["후기 목록"],
   guides: ["가이드 목록"],
   banners: ["배너 목록"],

@@ -1,3 +1,5 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
+@import url("https://db.onlinewebfonts.com/c/965d8c66f0e10637fc7a402ffaff9270?family=Wanted+Sans+Variable");
 @import "tailwindcss";
 
 :root {
@@ -63,8 +65,18 @@
   --glass-surface: rgba(255, 255, 255, 0.9);
   --glass-border: rgba(15, 23, 42, 0.06);
 
-  --font-sans-fallback: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
+  --font-sans-fallback: "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans KR",
+    "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
   --font-mono-fallback: "D2Coding", "Consolas", "Courier New", monospace;
+
+  --font-display-sans: "Wanted Sans Variable", system-ui, -apple-system, BlinkMacSystemFont, "Pretendard",
+    "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
+
+  /* Public site (navy) text & border set */
+  --site-text-primary: #F1F5F9;
+  --site-text-secondary: #CBD5E1;
+  --site-text-muted: #94A3B8;
+  --site-border: #223046;
 }
 
 .dark {
@@ -133,6 +145,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-site-primary: var(--site-text-primary);
+  --color-site-secondary: var(--site-text-secondary);
+  --color-site-muted: var(--site-text-muted);
+  --color-site-border: var(--site-border);
   --font-sans: var(--font-sans-fallback);
   --font-mono: var(--font-mono-fallback);
 }
@@ -150,7 +166,27 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans-fallback);
-  line-height: 1.5;
+  line-height: 1.6;
+}
+
+.heading-display {
+  font-family: var(--font-display-sans);
+  letter-spacing: 0.03em;
+}
+
+.heading-display-hero {
+  font-family: var(--font-display-sans);
+  letter-spacing: 0.05em;
+}
+
+.font-card-title {
+  font-family: var(--font-display-sans);
+  letter-spacing: 0.02em;
+}
+
+.font-price-strong {
+  font-family: var(--font-sans-fallback);
+  letter-spacing: 0.01em;
 }
 
 @keyframes fadeInUp {

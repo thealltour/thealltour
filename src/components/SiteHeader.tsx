@@ -1,9 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { Check, X } from "lucide-react";
 import HeaderProductSearch from "@/components/HeaderProductSearch";
 import MemberLogoutButton from "@/components/MemberLogoutButton";
 import MobileFloatingMenu from "@/components/MobileFloatingMenu";
+import HeaderQuickConsultCtas from "@/components/HeaderQuickConsultCtas";
+import HeaderMobileShell from "@/components/HeaderMobileShell";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabase } from "@/lib/supabase";
 
@@ -11,31 +14,41 @@ type SiteHeaderProps = {
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
   searchQuery?: string;
   golfPresetActive?: boolean;
+  quickConsultHref?: string;
+  kakaoConsultHref?: string;
 };
 
 function getMenuClass(isActive: boolean) {
+  const base =
+    "shrink-0 whitespace-nowrap text-[15px] transition-colors duration-150";
   return isActive
-    ? "shrink-0 whitespace-nowrap rounded-full border border-[var(--line)] bg-[#eff6ff] px-3 py-1.5 text-[var(--brand-strong)] shadow-sm"
-    : "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[#0f172a] transition hover:bg-[#eff6ff] hover:text-[var(--brand-strong)]";
+    ? `${base} font-semibold text-white`
+    : `${base} text-white/70 hover:text-white`;
 }
 
 function getSubMenuClass(isActive: boolean) {
-  return `shrink-0 whitespace-nowrap rounded-full border border-[#93c5fd] px-3.5 py-1.5 text-[15px] font-bold transition ${
-    isActive
-      ? "bg-[#bfdbfe] text-[#1e3a8a] ring-1 ring-[#60a5fa]"
-      : "bg-[#dbeafe] text-[#1e3a8a] hover:bg-[#bfdbfe]"
-  }`;
+  const base =
+    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] lg:text-sm transition-colors duration-150";
+  return isActive
+    ? `${base} bg-[rgba(59,130,246,0.18)] border-[rgba(59,130,246,0.35)] text-white`
+    : `${base} bg-white/5 border-white/10 text-white/80 hover:bg-white/8 hover:border-white/15`;
 }
 
 function getGolfSubMenuClass(isActive: boolean) {
-  return `shrink-0 whitespace-nowrap rounded-full border border-[#86efac] px-3.5 py-1.5 text-[15px] font-bold transition ${
-    isActive
-      ? "bg-[#bbf7d0] text-[#166534] ring-1 ring-[#4ade80]"
-      : "bg-[#dcfce7] text-[#166534] hover:bg-[#bbf7d0]"
-  }`;
+  const base =
+    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] lg:text-sm transition-colors duration-150";
+  return isActive
+    ? `${base} bg-[rgba(34,197,94,0.18)] border-[rgba(34,197,94,0.45)] text-white`
+    : `${base} bg-white/5 border-white/10 text-white/80 hover:bg-white/8 hover:border-white/15`;
 }
 
-export default async function SiteHeader({ activeTab, searchQuery, golfPresetActive = false }: SiteHeaderProps) {
+export default async function SiteHeader({
+  activeTab,
+  searchQuery,
+  golfPresetActive = false,
+  quickConsultHref,
+  kakaoConsultHref,
+}: SiteHeaderProps) {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
   let memberPoints: number | null = null;
@@ -52,34 +65,71 @@ export default async function SiteHeader({ activeTab, searchQuery, golfPresetAct
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto hidden w-full max-w-6xl flex-col px-6 py-3 lg:flex md:px-10">
-        <div className="flex items-center gap-4 pb-2.5">
-          <Link href="/" className="flex shrink-0 items-center">
+    <header className="sticky top-0 z-40 border-b border-[rgba(201,162,39,0.32)] bg-[rgba(27,36,49,0.92)] backdrop-blur-md">
+      <div className="mx-auto hidden w-full max-w-6xl flex-col px-6 py-4 lg:flex md:px-10">
+        <div className="flex items-center gap-6 pb-2.5">
+          <Link
+            href="/"
+            className="flex shrink-0 items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.05] px-3.5 py-2 transition-colors duration-150 hover:bg-white/10"
+            aria-label="더올투어 홈"
+          >
             <Image
               src="/thealltour-logo.png"
-              alt="더올투어 로고"
-              width={140}
-              height={90}
-              sizes="120px"
-              className="h-auto w-[120px]"
+              alt=""
+              width={64}
+              height={64}
+              sizes="64px"
+              className="h-10 w-10 object-contain md:h-11 md:w-11"
             />
+            <div className="flex flex-col justify-center leading-tight">
+              <span className="heading-display-hero text-[15px] font-bold tracking-[0.06em] text-white md:text-[17px]">
+                더올투어
+              </span>
+              <span className="mt-0.5 text-[10px] font-medium tracking-[0.16em] text-white/60 md:text-[11px]">
+                Golf & Premium Travel
+              </span>
+            </div>
           </Link>
-          <nav className="min-w-0 flex-1 items-center justify-center gap-2 text-[18px] font-bold tracking-tight text-[#0f172a] lg:flex">
+          <nav className="min-w-0 flex-1 items-center justify-center gap-8 tracking-tight lg:flex">
             <Link className={getMenuClass(activeTab === "about")} href="/about">
-              회사소개
+              <span className="relative inline-flex flex-col items-center">
+                <span>회사소개</span>
+                {activeTab === "about" ? (
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                ) : null}
+              </span>
             </Link>
             <Link className={getMenuClass(activeTab === "quote")} href="/quote">
-              견적문의
+              <span className="relative inline-flex flex-col items-center">
+                <span>견적문의</span>
+                {activeTab === "quote" ? (
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                ) : null}
+              </span>
             </Link>
             <Link className={getMenuClass(activeTab === "reviews")} href="/reviews">
-              여행후기
+              <span className="relative inline-flex flex-col items-center">
+                <span>여행후기</span>
+                {activeTab === "reviews" ? (
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                ) : null}
+              </span>
             </Link>
             <Link className={getMenuClass(activeTab === "blog")} href="/blog">
-              여행가이드
+              <span className="relative inline-flex flex-col items-center">
+                <span>여행가이드</span>
+                {activeTab === "blog" ? (
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                ) : null}
+              </span>
             </Link>
             <Link className={getMenuClass(activeTab === "support")} href="/support">
-              고객센터
+              <span className="relative inline-flex flex-col items-center">
+                <span>고객센터</span>
+                {activeTab === "support" ? (
+                  <span className="mt-1 h-[2px] w-6 rounded-full bg-[rgba(201,162,39,0.55)] shadow-[0_0_8px_rgba(201,162,39,0.45)]" />
+                ) : null}
+              </span>
             </Link>
           </nav>
 
@@ -115,87 +165,45 @@ export default async function SiteHeader({ activeTab, searchQuery, golfPresetAct
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2.5 border-t border-slate-100 pt-2">
-          <Link className={getSubMenuClass(activeTab === "products")} href="/products">
-            패키지상품
-          </Link>
-          <Link className={getGolfSubMenuClass(golfPresetActive)} href="/products?tourType=golf-park">
-            골프/파크골프
-          </Link>
-          <HeaderProductSearch mode="desktop" searchQuery={searchQuery} />
-          <Link
-            href="/quote"
-            className="shrink-0 whitespace-nowrap rounded-full bg-[#1d4ed8] px-3.5 py-1.5 text-[15px] font-bold text-white transition hover:bg-[#1e40af]"
-          >
-            빠른 상담
-          </Link>
+        <div className="flex items-center gap-3 border-t border-white/10 pt-3">
+          <div className="flex shrink-0 items-center gap-2">
+            <Link className={getSubMenuClass(activeTab === "products")} href="/products">
+              <span className="flex items-center gap-1.5">
+                {activeTab === "products" ? (
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : null}
+                <span>패키지상품</span>
+                {activeTab === "products" ? (
+                  <X className="h-3 w-3 text-white/70" aria-hidden="true" />
+                ) : null}
+              </span>
+            </Link>
+            <Link className={getGolfSubMenuClass(golfPresetActive)} href="/products?tourType=golf-park">
+              <span className="flex items-center gap-1.5">
+                {golfPresetActive ? (
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : null}
+                <span>골프/파크골프</span>
+                {golfPresetActive ? (
+                  <X className="h-3 w-3 text-white/70" aria-hidden="true" />
+                ) : null}
+              </span>
+            </Link>
+          </div>
+
+          <div className="flex flex-1 justify-center px-2">
+            <HeaderProductSearch mode="desktop" searchQuery={searchQuery} />
+          </div>
+
+          <HeaderQuickConsultCtas
+            quickConsultHref={quickConsultHref}
+            kakaoConsultHref={kakaoConsultHref}
+          />
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-2.5 px-5 py-4 lg:hidden md:px-8">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/thealltour-logo.png"
-              alt="더올투어 로고"
-              width={140}
-              height={90}
-              sizes="(max-width: 768px) 110px, 130px"
-              className="h-auto w-[105px] md:w-[120px]"
-            />
-          </Link>
-          <div className="flex min-w-0 items-center justify-center gap-1.5">
-            <Link
-              href="/products"
-              className={`shrink-0 whitespace-nowrap rounded-full border border-[#93c5fd] px-2.5 py-1.5 text-[11px] font-bold transition md:px-3 md:text-xs ${
-                activeTab === "products"
-                  ? "bg-[#bfdbfe] text-[#1e3a8a] ring-1 ring-[#60a5fa]"
-                  : "bg-[#dbeafe] text-[#1e3a8a] hover:bg-[#bfdbfe]"
-              }`}
-            >
-              패키지상품
-            </Link>
-            <Link
-              href="/products?tourType=golf-park"
-              className={`shrink-0 whitespace-nowrap rounded-full border border-[#86efac] px-2.5 py-1.5 text-[11px] font-bold transition md:px-3 md:text-xs ${
-                golfPresetActive
-                  ? "bg-[#bbf7d0] text-[#166534] ring-1 ring-[#4ade80]"
-                  : "bg-[#dcfce7] text-[#166534] hover:bg-[#bbf7d0]"
-              }`}
-            >
-              골프/파크골프
-            </Link>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5 text-xs font-semibold leading-tight text-slate-600 md:text-sm">
-            {session ? (
-              <>
-                <span className="text-slate-500">{session.name}님</span>
-                <MemberLogoutButton />
-              </>
-            ) : (
-              <>
-                <Link
-                  className="inline-flex min-h-7 items-center rounded px-2 transition hover:bg-slate-100 hover:text-slate-700"
-                  href="/login"
-                >
-                  로그인
-                </Link>
-                <Link
-                  className={
-                    activeTab === "signup"
-                      ? "inline-flex min-h-7 items-center rounded px-2 text-[#1d4ed8]"
-                      : "inline-flex min-h-7 items-center rounded px-2 transition hover:bg-slate-100 hover:text-slate-700"
-                  }
-                  href="/signup"
-                >
-                  회원가입
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-        <HeaderProductSearch mode="mobile" searchQuery={searchQuery} />
-      </div>
+      {/* 모바일 전용 헤더 (클라이언트 컴포넌트) */}
+      <HeaderMobileShell activeTab={activeTab} searchQuery={searchQuery} />
       <MobileFloatingMenu activeTab={activeTab} />
     </header>
   );

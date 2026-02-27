@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { MessageCircle } from "lucide-react";
 
 type SiteSettingsResponse = {
   kakao_chat_url?: string;
@@ -39,7 +40,7 @@ export default function KakaoFloatingButton() {
   }
 
   return (
-    <div className="fixed right-[max(16px,env(safe-area-inset-right))] bottom-[max(16px,env(safe-area-inset-bottom))] z-50 flex items-center gap-3">
+    <div className="fixed right-[max(16px,env(safe-area-inset-right))] bottom-[max(16px,env(safe-area-inset-bottom))] z-50 flex items-center gap-3 sm:hidden">
       {/* 데스크탑에서만 노출되는 말풍선 */}
       <span className="hidden sm:inline-flex relative rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-white shadow-[0_4px_10px_rgba(0,0,0,0.15)]">
         실시간 상담
@@ -60,14 +61,9 @@ export default function KakaoFloatingButton() {
         rel="noreferrer"
         aria-label="카카오톡 상담 열기"
         title="카카오톡 상담"
-        className="inline-flex h-[56px] w-[56px] sm:h-[60px] sm:w-[60px] items-center justify-center rounded-full bg-[#FEE500] shadow-[0_3px_8px_rgba(0,0,0,0.15)] transition-all duration-200 ease-out hover:-translate-y-1 active:scale-95"
+        className="inline-flex h-[56px] w-[56px] sm:h-[60px] sm:w-[60px] items-center justify-center rounded-full border border-[#d4af37] bg-[#020617] shadow-[0_3px_8px_rgba(0,0,0,0.3)] transition-all duration-200 ease-out hover:-translate-y-1 hover:bg-[#020617]/90 active:scale-95"
       >
-        <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
-          <path
-            fill="#000000"
-            d="M12 3C6.48 3 2 6.58 2 10.9c0 2.58 1.56 4.87 3.96 6.3l-.83 3.02c-.08.29.24.53.5.37l3.6-2.17c.91.15 1.85.23 2.77.23 5.52 0 10-3.58 10-7.75S17.52 3 12 3z"
-          />
-        </svg>
+        <MessageCircle className="h-6 w-6 text-[#d4af37]" aria-hidden="true" />
       </a>
     </div>
   );

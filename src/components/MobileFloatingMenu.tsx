@@ -4,18 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { Info, FileText, Map, LifeBuoy, PackageSearch, Star } from "lucide-react";
 
 type MobileFloatingMenuProps = {
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
 };
 
 const menuItems = [
-  { href: "/about", label: "회사소개", key: "about" },
-  { href: "/quote", label: "견적문의", key: "quote" },
-  { href: "/reviews", label: "여행후기", key: "reviews" },
-  { href: "/blog", label: "여행가이드", key: "blog" },
-  { href: "/support", label: "고객센터", key: "support" },
-  { href: "/products", label: "패키지상품", key: "products" },
+  { href: "/about", label: "회사소개", key: "about", icon: Info },
+  { href: "/quote", label: "견적문의", key: "quote", icon: FileText },
+  { href: "/reviews", label: "여행후기", key: "reviews", icon: Star },
+  { href: "/blog", label: "여행가이드", key: "blog", icon: Map },
+  { href: "/support", label: "고객센터", key: "support", icon: LifeBuoy },
+  { href: "/products", label: "패키지상품", key: "products", icon: PackageSearch },
 ] as const;
 
 export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProps) {
@@ -27,6 +28,17 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    function handleToggle() {
+      setIsOpen((prev) => !prev);
+      triggerHapticFeedback();
+    }
+    window.addEventListener("thealltour-mobile-menu-toggle", handleToggle as EventListener);
+    return () => {
+      window.removeEventListener("thealltour-mobile-menu-toggle", handleToggle as EventListener);
+    };
   }, []);
 
   useEffect(() => {
@@ -47,10 +59,10 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
   }
 
   return createPortal(
-    <div className="fixed right-[max(16px,env(safe-area-inset-right))] bottom-[max(92px,calc(env(safe-area-inset-bottom)+92px))] z-50 flex flex-col items-end lg:hidden">
+    <div className="fixed right-[max(12px,calc(env(safe-area-inset-right)+8px))] top-[max(64px,calc(env(safe-area-inset-top)+64px))] z-50 flex flex-col items-end lg:hidden">
       {isOpen ? (
-        <div className="mb-2 w-[min(78vw,15rem)] rounded-2xl border border-[var(--line)] bg-white/95 p-2 shadow-2xl backdrop-blur-sm">
-          <ul className="flex flex-col gap-1.5">
+        <div className="mt-2 w-[min(80vw,17rem)] rounded-2xl border border-site-border bg-[#0F172A]/98 p-2 shadow-md shadow-black/40 backdrop-blur-md">
+          <ul className="flex flex-col gap-1">
             {menuItems.map((item) => {
               const isPathActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const isActive = activeTab === item.key || isPathActive;
@@ -64,10 +76,10 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     aria-disabled={isNavigationLocked}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-[clamp(14px,3.5vw,16px)] font-bold leading-tight transition duration-100 active:scale-[0.98] ${
+                    className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold leading-tight transition-colors duration-150 ${
                       isActive
-                        ? "border border-[var(--line)] bg-[#eff6ff] text-[var(--brand-strong)]"
-                        : "text-[#0f172a] hover:bg-[#eff6ff] hover:text-[var(--brand-strong)] active:bg-[#e0ecff]"
+                        ? "border border-[rgba(201,162,39,0.65)] bg-gradient-to-r from-[#1B2431] to-[#162133] text-site-primary"
+                        : "border border-white/8 bg-transparent text-site-secondary hover:bg-white/4 hover:border-white/20"
                     } ${isNavigationLocked ? "pointer-events-none opacity-50" : ""}`}
                     onPointerDown={() => setPressedKey(item.key)}
                     onPointerCancel={() => setPressedKey(null)}
@@ -78,11 +90,24 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
                       setPendingKey(item.key);
                     }}
                   >
-                    <span>{item.label}</span>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+                          isActive
+                            ? "border-[rgba(201,162,39,0.7)] bg-[#162133]"
+                            : "border-white/10 bg-[#111C2D]"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4 text-[#d4af37]" aria-hidden="true" />
+                      </span>
+                      <span>{item.label}</span>
+                    </span>
                     {isPending ? (
-                      <span className="text-[11px] font-semibold text-[var(--brand-strong)]">이동중...</span>
+                      <span className="text-[11px] font-semibold text-[rgba(201,162,39,0.9)]">
+                        이동중...
+                      </span>
                     ) : isPressed ? (
-                      <span className="h-2 w-2 rounded-full bg-[var(--brand)]" />
+                      <span className="h-2 w-2 rounded-full bg-[rgba(201,162,39,0.9)]" />
                     ) : null}
                   </Link>
                 </li>
@@ -91,16 +116,6 @@ export default function MobileFloatingMenu({ activeTab }: MobileFloatingMenuProp
           </ul>
         </div>
       ) : null}
-
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        aria-expanded={isOpen}
-        aria-label={isOpen ? "메뉴 닫기" : "메뉴 열기"}
-        className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white shadow-[0_8px_20px_rgba(0,0,0,0.2)] ring-2 ring-white/80 transition duration-200 hover:bg-[var(--brand-strong)] hover:scale-105 hover:shadow-[0_12px_24px_rgba(0,0,0,0.28)] active:scale-95"
-      >
-        MENU
-      </button>
     </div>,
     document.body,
   );

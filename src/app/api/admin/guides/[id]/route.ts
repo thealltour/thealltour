@@ -3,7 +3,10 @@ import { supabase } from "@/lib/supabase";
 import type { Guide } from "@/types/guide";
 
 type GuideBody = Partial<
-  Pick<Guide, "title" | "summary" | "thumbnail_url" | "landing_url" | "is_published" | "sort_order">
+  Pick<
+    Guide,
+    "title" | "summary" | "thumbnail_url" | "landing_url" | "guide_pdf_url" | "guide_thumbnail_url" | "is_published" | "sort_order"
+  >
 >;
 
 type RouteContext = {
@@ -23,6 +26,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (body.summary !== undefined) updates.summary = body.summary.trim();
   if (body.thumbnail_url !== undefined) updates.thumbnail_url = body.thumbnail_url.trim();
   if (body.landing_url !== undefined) updates.landing_url = body.landing_url.trim();
+  if (body.guide_pdf_url !== undefined) updates.guide_pdf_url = (body.guide_pdf_url ?? "").trim() || null;
+  if (body.guide_thumbnail_url !== undefined)
+    updates.guide_thumbnail_url = (body.guide_thumbnail_url ?? "").trim() || null;
   if (body.is_published !== undefined) updates.is_published = body.is_published;
   if (body.sort_order !== undefined) updates.sort_order = body.sort_order;
 

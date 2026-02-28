@@ -3,7 +3,10 @@ import { supabase } from "@/lib/supabase";
 import type { Guide } from "@/types/guide";
 
 type GuideBody = Partial<
-  Pick<Guide, "title" | "summary" | "thumbnail_url" | "landing_url" | "is_published" | "sort_order">
+  Pick<
+    Guide,
+    "title" | "summary" | "thumbnail_url" | "landing_url" | "guide_pdf_url" | "guide_thumbnail_url" | "is_published" | "sort_order"
+  >
 >;
 
 export async function GET() {
@@ -26,6 +29,8 @@ export async function POST(request: Request) {
   const summary = body.summary?.trim() ?? "";
   const thumbnailUrl = body.thumbnail_url?.trim() ?? "";
   const landingUrl = body.landing_url?.trim() ?? "";
+  const guidePdfUrl = body.guide_pdf_url?.trim() ?? "";
+  const guideThumbnailUrl = body.guide_thumbnail_url?.trim() ?? "";
   const sortOrder = typeof body.sort_order === "number" ? body.sort_order : null;
   const isPublished = body.is_published ?? true;
 
@@ -40,6 +45,8 @@ export async function POST(request: Request) {
       summary: summary || null,
       thumbnail_url: thumbnailUrl || null,
       landing_url: landingUrl || null,
+      guide_pdf_url: guidePdfUrl || null,
+      guide_thumbnail_url: guideThumbnailUrl || null,
       is_published: isPublished,
       sort_order: sortOrder,
     })

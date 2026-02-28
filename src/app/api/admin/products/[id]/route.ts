@@ -37,6 +37,8 @@ type ProductBody = {
   meta_title?: string | null;
   meta_description?: string | null;
   image_url?: string;
+  /** TODO: cardUrl 분리 저장 시 updates.image_card_url 추가. docs/design/product-image-card-url-extension.md */
+  // image_card_url?: string;
   category?: string;
   theme?: string | null;
   price?: number | null;

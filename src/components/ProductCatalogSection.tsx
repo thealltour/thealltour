@@ -18,6 +18,7 @@ import {
   matchesProductTab,
   type ProductCategoryTabId,
 } from "@/lib/productCategory";
+import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 
 type ProductCatalogSectionProps = {
   products: Product[];
@@ -29,16 +30,6 @@ type ProductCatalogSectionProps = {
 
 function normalizeSearchKeyword(value: string) {
   return value.trim().toLowerCase();
-}
-
-/** SEO 메타 타이틀을 스페이스로 구분해 해시태그용 단어 배열로 반환 */
-function parseMetaTitleAsHashtags(metaTitle?: string): string[] {
-  if (!metaTitle?.trim()) return [];
-  return metaTitle
-    .trim()
-    .split(/\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
 }
 
 const PRIORITY_BADGES = ["제철", "인기", "마감임박"];

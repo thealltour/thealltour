@@ -7,6 +7,21 @@ import type { Product } from "@/types/product";
 import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
+import ProductCardV2, { type ProductCardV2Props } from "@/components/products/ProductCardV2";
+import ProductDetailV2, { type ProductDetailV2StatusTag } from "@/components/products/ProductDetailV2";
+import {
+  ProductDetailStickyV2Desktop,
+  ProductDetailStickyV2Mobile,
+} from "@/components/products/ProductDetailStickyV2";
+import { ConsultModalProvider } from "@/components/ConsultModal";
+import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
+import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
+import {
+  formToPreviewProduct,
+  productToCardV2PropsPayload,
+  productToDetailV2PropsPayload,
+} from "@/lib/admin/productPreview";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
 
 type ProductFormState = {
   title: string;
@@ -228,6 +243,59 @@ function createNextDayLabel(drafts: DayScheduleDraft[]) {
   return `${next}일차`;
 }
 
+export type PreviewWarning = {
+  id: string;
+  message: string;
+  sectionId: "basic" | "price" | "schedule";
+};
+
+/** 미리보기 품질 경고: 원인 + 화면 영향. sectionId는 클릭 시 해당 아코디언 열기/스크롤용 */
+function getPreviewWarnings(
+  form: ProductFormState,
+  hasPreviewImage: boolean,
+): PreviewWarning[] {
+  const warnings: PreviewWarning[] = [];
+
+  if (!form.category?.trim()) {
+    warnings.push({
+      id: "category",
+      message: "카테고리 미입력 → 카드/상세에 카테고리 칩이 비어 보입니다.",
+      sectionId: "basic",
+    });
+  }
+
+  const priceNum = form.price ? parseInt(form.price.replace(/\D/g, ""), 10) : undefined;
+  if (!form.price?.trim() || priceNum === 0 || Number.isNaN(priceNum)) {
+    warnings.push({
+      id: "price",
+      message: "가격 미입력 또는 0원 → 카드/상세에 '상담 후 견적'으로만 표시됩니다.",
+      sectionId: "price",
+    });
+  }
+
+  if (!form.image_url?.trim() && !hasPreviewImage) {
+    warnings.push({
+      id: "image",
+      message: "대표 이미지 없음 → 카드/상세에 이미지가 비어 보입니다.",
+      sectionId: "basic",
+    });
+  }
+
+  const scheduleDrafts = parseDetailedSchedule(form.detailed_schedule);
+  const hasEmptySchedule =
+    scheduleDrafts.length === 0 ||
+    scheduleDrafts.every((d) => !d.content?.trim());
+  if (hasEmptySchedule) {
+    warnings.push({
+      id: "schedule",
+      message: "일정(일차) 비어 있음 → 상세 '일정 안내' 탭에 내용이 없습니다.",
+      sectionId: "schedule",
+    });
+  }
+
+  return warnings;
+}
+
 function mapProductToForm(product: Product): ProductFormState {
   const includedItems = product.included_items?.trim() ?? "";
   const excludedItems = product.excluded_items?.trim() ?? "";
@@ -344,6 +412,15 @@ export default function AdminProductManager() {
     flight: false,
     terms: false,
   });
+  /** lg 미만에서 입력|카드|상세 탭 전환 */
+  const [smallScreenTab, setSmallScreenTab] = useState<"input" | "card" | "detail">("input");
+  /** 미리보기 디바이스 뷰 (클래스로만 구분) */
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  /** 미리보기용 로컬 이미지 파일 선택 시 ObjectURL 생성/해제용 */
+  const [previewImageFile, setPreviewImageFile] = useState<File | null>(null);
+  const [previewImageObjectUrl, setPreviewImageObjectUrl] = useState<string | null>(null);
+  /** 상세 미리보기에서 Sticky CTA 표시 여부 (UX 방해 시 숨김) */
+  const [showDetailSticky, setShowDetailSticky] = useState(true);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageSize = 8;
   const { showToast } = useAdminToast();
@@ -693,6 +770,128 @@ export default function AdminProductManager() {
     if (!form.terms_template_type) return "";
     return termsTemplates[form.terms_template_type] ?? "";
   }, [form.terms_template_type, termsTemplates]);
+
+  /** 폼 + 이미지(URL 또는 File ObjectURL) 기반 미리보기용 Product (공용 로직) */
+  const previewProduct = useMemo(
+    () =>
+      formToPreviewProduct(
+        form,
+        previewImageObjectUrl ?? form.image_url?.trim() ?? "",
+      ),
+    [form, previewImageObjectUrl],
+  );
+
+  /** 로컬 fallback: 카드/상세 props (API 실패 시 사용) */
+  const localCardProps = useMemo<ProductCardV2Props>(() => {
+    const payload = productToCardV2PropsPayload(previewProduct);
+    return {
+      ...payload,
+      onClickDetail: () => {},
+      onClickConsult: () => {},
+    };
+  }, [previewProduct]);
+
+  const localDetailProps = useMemo(() => {
+    const payload = productToDetailV2PropsPayload(previewProduct);
+    return {
+      ...payload,
+      onConsultClick: () => {},
+      kakaoHref: "#",
+      trust: undefined,
+    };
+  }, [previewProduct]);
+
+  /** 서버 preview API 응답 (우선 사용, 실패 시 로컬 fallback) */
+  const [serverPreview, setServerPreview] = useState<{
+    previewProduct: Product;
+    cardProps: ReturnType<typeof productToCardV2PropsPayload>;
+    detailProps: ReturnType<typeof productToDetailV2PropsPayload>;
+  } | null>(null);
+
+  const effectivePreviewProduct = serverPreview?.previewProduct ?? previewProduct;
+  const previewCardProps: ProductCardV2Props = serverPreview
+    ? { ...serverPreview.cardProps, onClickDetail: () => {}, onClickConsult: () => {} }
+    : localCardProps;
+  const previewDetailProps = serverPreview
+    ? {
+        ...serverPreview.detailProps,
+        onConsultClick: () => {},
+        kakaoHref: "#",
+        trust: undefined,
+      }
+    : localDetailProps;
+
+  const hasPreviewImage = !!(form.image_url?.trim() || previewImageFile);
+  const previewWarnings = useMemo(
+    () => getPreviewWarnings(form, hasPreviewImage),
+    [form, hasPreviewImage],
+  );
+
+  function handleWarningClick(sectionId: "basic" | "price" | "schedule") {
+    setProductFormOpenSections((prev) => ({ ...prev, [sectionId]: true }));
+    requestAnimationFrame(() => {
+      document.getElementById(`form-section-${sectionId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
+  /** File 선택 시 ObjectURL 생성, 언마운트/파일 변경 시 revoke */
+  useEffect(() => {
+    if (!previewImageFile) {
+      setPreviewImageObjectUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(previewImageFile);
+    setPreviewImageObjectUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [previewImageFile]);
+
+  /** 400ms debounce로 preview API 호출, 성공 시 serverPreview 설정, 실패 시 로컬 fallback 유지 */
+  const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewRequestIdRef = useRef(0);
+  useEffect(() => {
+    setServerPreview(null);
+    previewDebounceRef.current && clearTimeout(previewDebounceRef.current);
+    const requestId = ++previewRequestIdRef.current;
+    previewDebounceRef.current = setTimeout(() => {
+      previewDebounceRef.current = null;
+      const imageUrl = previewImageObjectUrl ?? form.image_url?.trim() ?? "";
+      fetch("/api/admin/products/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ form, imageUrl }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(res.statusText);
+          return res.json();
+        })
+        .then((data: { previewProduct: Product; cardProps: unknown; detailProps: unknown }) => {
+          if (requestId !== previewRequestIdRef.current) return;
+          setServerPreview({
+            previewProduct: data.previewProduct,
+            cardProps: data.cardProps as ReturnType<typeof productToCardV2PropsPayload>,
+            detailProps: data.detailProps as ReturnType<typeof productToDetailV2PropsPayload>,
+          });
+        })
+        .catch(() => {
+          if (requestId !== previewRequestIdRef.current) return;
+          setServerPreview(null);
+        });
+    }, 400);
+    return () => {
+      if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+    };
+  }, [form, previewImageObjectUrl]);
+
+  /** previewProduct 변경 시 콘솔 출력 (구성 확인용) */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    console.log("[AdminProductManager] previewProduct", effectivePreviewProduct);
+  }, [effectivePreviewProduct]);
 
   useEffect(() => {
     if (categoryOptions.length === 0) {
@@ -1147,6 +1346,19 @@ export default function AdminProductManager() {
       )}
 
       {isCreateView || editingId ? (
+        <>
+        {/* lg 미만: 입력 | 카드 | 상세 탭 */}
+        <div className="lg:hidden mb-4">
+          <Tabs value={smallScreenTab} onChange={(v) => setSmallScreenTab(v as "input" | "card" | "detail")}>
+            <TabsTrigger value="input">입력</TabsTrigger>
+            <TabsTrigger value="card">카드</TabsTrigger>
+            <TabsTrigger value="detail">상세</TabsTrigger>
+          </Tabs>
+        </div>
+
+        <div className="lg:grid lg:grid-cols-[1fr,minmax(300px,400px)] lg:gap-6 space-y-4 lg:space-y-0">
+          {/* 좌측: 폼 — lg에서 항상, small에서는 탭이 입력일 때만 */}
+          <div className={smallScreenTab === "input" ? "block" : "hidden lg:block"} aria-hidden={smallScreenTab !== "input"}>
         <form className="space-y-4 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]" onSubmit={handleSubmit}>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-[#1e3a8a]">{editingId ? "상품 수정" : "상품 등록"}</h3>
@@ -1177,7 +1389,11 @@ export default function AdminProductManager() {
             { id: "flight", title: "항공편" },
             { id: "terms", title: "약관·SEO" },
           ].map(({ id, title }) => (
-            <div key={id} className="overflow-hidden rounded-lg border border-[#dbeafe] bg-white">
+            <div
+              key={id}
+              id={`form-section-${id}`}
+              className="overflow-hidden rounded-lg border border-[#dbeafe] bg-white"
+            >
               <button
                 type="button"
                 onClick={() =>
@@ -1321,16 +1537,38 @@ export default function AdminProductManager() {
             </div>
           </div>
           <div className="space-y-1 md:col-span-2">
-            <input
+            {/* TODO: cardUrl 분리 저장 시 onUploaded(heroUrl, cardUrl)로 확장, form.image_card_url 저장. docs/design/product-image-card-url-extension.md */}
+            <ImageUploadField
               value={form.image_url}
-              onChange={(event) => setForm((prev) => ({ ...prev, image_url: event.target.value }))}
-              required
-              placeholder="이미지 URL (권장 1200x800)"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              onChange={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
+              onUploaded={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
             />
-            <p className="text-xs text-slate-500">
-              권장 사이즈: 1200x800px 이상 (3:2 비율). JPG/PNG/WebP 사용 가능
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                미리보기용 이미지 파일 선택
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setPreviewImageFile(file ?? null);
+                  }}
+                />
+              </label>
+              {previewImageFile && (
+                <span className="text-xs text-slate-600">
+                  {previewImageFile.name}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewImageFile(null)}
+                    className="ml-1 text-red-600 hover:underline"
+                  >
+                    해제
+                  </button>
+                </span>
+              )}
+            </div>
           </div>
           <div className="space-y-1 md:col-span-2">
             <p className="text-xs font-semibold text-emerald-700">관리자 전용 | 상품 원본주소</p>
@@ -1967,6 +2205,149 @@ export default function AdminProductManager() {
           </span>
         </div>
         </form>
+          </div>
+
+          {/* 우측: 미리보기 패널 — lg에서 항상, small에서는 탭이 카드/상세일 때만 */}
+          <aside
+            className={smallScreenTab !== "input" ? "block" : "hidden lg:block"}
+            aria-label="실시간 미리보기"
+            aria-hidden={smallScreenTab === "input"}
+          >
+            <div className="sticky top-4 space-y-4 rounded-xl border border-[#dbeafe] bg-white p-4">
+              <h3 className="text-lg font-bold text-[#1e3a8a]">실시간 미리보기</h3>
+
+              {previewWarnings.length > 0 && (
+                <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/80 p-3">
+                  <p className="text-xs font-semibold text-amber-800">미리보기 품질 경고</p>
+                  <ul className="space-y-1">
+                    {previewWarnings.map((w) => (
+                      <li key={w.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleWarningClick(w.sectionId)}
+                          className="w-full text-left text-xs text-amber-800 underline-offset-2 hover:underline"
+                        >
+                          {w.message}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* previewProduct 구성 확인용 (실서비스 컴포넌트 연결 전) */}
+              <details className="rounded-lg border border-slate-200 bg-slate-50">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-slate-700">
+                  previewProduct 확인 (JSON)
+                </summary>
+                <pre className="max-h-48 overflow-auto p-3 text-xs text-slate-600">
+                  {JSON.stringify(effectivePreviewProduct, null, 2)}
+                </pre>
+              </details>
+
+              {/* 디바이스 토글 (Desktop / Mobile) */}
+              <div className="flex gap-2" role="tablist" aria-label="미리보기 뷰">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={previewDevice === "desktop"}
+                  onClick={() => setPreviewDevice("desktop")}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    previewDevice === "desktop"
+                      ? "bg-[#1e3a8a] text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Desktop
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={previewDevice === "mobile"}
+                  onClick={() => setPreviewDevice("mobile")}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    previewDevice === "mobile"
+                      ? "bg-[#1e3a8a] text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Mobile
+                </button>
+              </div>
+
+              {/* 상품 카드 미리보기 — lg에서는 항상, small에서는 탭이 카드일 때만 */}
+              <section
+                className={smallScreenTab === "detail" ? "hidden lg:block" : "block"}
+                aria-labelledby="preview-card-heading"
+              >
+                <h4 id="preview-card-heading" className="mb-2 text-sm font-semibold text-slate-700">
+                  상품 카드 미리보기
+                </h4>
+                <div
+                  className={`${previewDevice === "mobile" ? "max-w-[360px]" : "max-w-[640px]"} mx-auto`}
+                  data-preview-view={previewDevice}
+                >
+                  <ProductCardV2 {...previewCardProps} />
+                </div>
+              </section>
+
+              {/* 상세 페이지 미리보기 — lg에서는 항상, small에서는 탭이 상세일 때만 */}
+              <section
+                className={smallScreenTab === "card" ? "hidden lg:block" : "block"}
+                aria-labelledby="preview-detail-heading"
+              >
+                <h4 id="preview-detail-heading" className="mb-2 text-sm font-semibold text-slate-700">
+                  상세 페이지 미리보기
+                </h4>
+                <label className="mb-2 flex items-center gap-2 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={showDetailSticky}
+                    onChange={(e) => setShowDetailSticky(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[#1d4ed8]"
+                  />
+                  Sticky CTA 표시
+                </label>
+                <div
+                  className={`rounded-xl border border-[#dbeafe] bg-[#f8fbff] ${previewDevice === "mobile" ? "max-w-[360px]" : ""}`}
+                  data-preview-view={previewDevice}
+                >
+                  <ConsultModalProvider>
+                    <ProductQuoteProvider>
+                      <div className="flex gap-4 lg:items-start">
+                        <div className="min-w-0 flex-1 p-4">
+                          <ProductDetailV2 {...previewDetailProps} />
+                        </div>
+                        {showDetailSticky && previewDevice !== "mobile" && (
+                          <ProductDetailStickyV2Desktop
+                            priceFormatted={previewDetailProps.priceFormatted}
+                            productId="_preview"
+                            productTitle={effectivePreviewProduct.title}
+                            sourcePath="/admin/products"
+                            kakaoHref="#"
+                            status={previewDetailProps.statusTag}
+                            trust={undefined}
+                          />
+                        )}
+                      </div>
+                      {showDetailSticky && (
+                        <ProductDetailStickyV2Mobile
+                          priceFormatted={previewDetailProps.priceFormatted}
+                          productId="_preview"
+                          productTitle={effectivePreviewProduct.title}
+                          sourcePath="/admin/products"
+                          kakaoHref="#"
+                          status={previewDetailProps.statusTag}
+                        />
+                      )}
+                    </ProductQuoteProvider>
+                  </ConsultModalProvider>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+        </>
       ) : null}
 
       {isListView && !editingId ? (

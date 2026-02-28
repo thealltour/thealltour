@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
+import { GuidePdfUploadField } from "@/components/admin/GuidePdfUploadField";
 import type { Guide } from "@/types/guide";
 
 type GuideFormState = {
@@ -10,6 +12,8 @@ type GuideFormState = {
   summary: string;
   thumbnail_url: string;
   landing_url: string;
+  guide_pdf_url: string;
+  guide_thumbnail_url: string;
   sort_order: string;
   is_published: boolean;
 };
@@ -19,6 +23,8 @@ const initialForm: GuideFormState = {
   summary: "",
   thumbnail_url: "",
   landing_url: "",
+  guide_pdf_url: "",
+  guide_thumbnail_url: "",
   sort_order: "",
   is_published: true,
 };
@@ -65,6 +71,8 @@ export default function AdminGuideManager() {
       summary: item.summary ?? "",
       thumbnail_url: item.thumbnail_url ?? "",
       landing_url: item.landing_url ?? "",
+      guide_pdf_url: item.guide_pdf_url ?? "",
+      guide_thumbnail_url: item.guide_thumbnail_url ?? "",
       sort_order: typeof item.sort_order === "number" ? String(item.sort_order) : "",
       is_published: item.is_published ?? true,
     });
@@ -93,6 +101,8 @@ export default function AdminGuideManager() {
         summary: form.summary,
         thumbnail_url: form.thumbnail_url.trim() || null,
         landing_url: form.landing_url.trim() || null,
+        guide_pdf_url: form.guide_pdf_url.trim() || null,
+        guide_thumbnail_url: form.guide_thumbnail_url.trim() || null,
         sort_order: form.sort_order.trim() === "" ? null : Number(form.sort_order),
         is_published: form.is_published,
       };
@@ -224,6 +234,23 @@ export default function AdminGuideManager() {
               외부/랜딩 페이지 URL을 입력하면, 가이드 카드를 클릭했을 때 새 창으로 이동합니다.
             </span>
           </label>
+          <div className="md:col-span-2 space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+            <p className="text-xs font-semibold text-slate-600">여행가이드 PDF</p>
+            <p className="text-xs text-slate-500">
+              PDF를 선택하면 1페이지 썸네일이 자동 생성되어 guide_pdf_url, guide_thumbnail_url에 저장됩니다.
+            </p>
+            <GuidePdfUploadField
+              pdfUrl={form.guide_pdf_url}
+              thumbnailUrl={form.guide_thumbnail_url}
+              onChange={({ pdfUrl, thumbnailUrl }) =>
+                setForm((prev) => ({
+                  ...prev,
+                  guide_pdf_url: pdfUrl,
+                  guide_thumbnail_url: thumbnailUrl,
+                }))
+              }
+            />
+          </div>
           <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
             정렬 순서
             <input
@@ -266,7 +293,17 @@ export default function AdminGuideManager() {
       </section>
 
       <section className="space-y-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-[#e5e7eb]">
-        <h3 className="text-lg font-bold text-[#1e3a8a]">등록된 여행가이드</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-bold text-[#1e3a8a]">등록된 여행가이드</h3>
+          <Link
+            href="/blog"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] hover:underline"
+          >
+            공개 페이지 보기 →
+          </Link>
+        </div>
         {isLoading ? (
           <p className="text-sm text-slate-500">여행가이드 목록을 불러오는 중입니다...</p>
         ) : guides.length === 0 ? (
@@ -298,6 +335,7 @@ export default function AdminGuideManager() {
                 </div>
                 <div className="space-y-1 text-[11px] text-slate-500">
                   {item.thumbnail_url ? <p>썸네일: {item.thumbnail_url}</p> : <p>썸네일: (없음)</p>}
+                  {item.guide_pdf_url ? <p>PDF: {item.guide_pdf_url}</p> : <p>PDF: (없음)</p>}
                   {item.landing_url ? <p>랜딩 URL: {item.landing_url}</p> : <p>랜딩 URL: (없음)</p>}
                 </div>
                 <div className="mt-1 flex items-center justify-end gap-2">

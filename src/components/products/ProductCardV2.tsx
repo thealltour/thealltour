@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { buttonVariants } from "@/components/ui/Button";
 
 const TRANSITION = "transition-all duration-[220ms] ease-out";
@@ -157,7 +158,7 @@ export default function ProductCardV2({
 
         {thumbnailUrl ? (
           <Image
-            src={thumbnailUrl}
+            src={normalizeProductImageUrl(thumbnailUrl)}
             alt={title || "상품 이미지"}
             fill
             sizes="(max-width: 768px) 44vw, 220px"

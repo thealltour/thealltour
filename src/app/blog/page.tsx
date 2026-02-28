@@ -29,21 +29,29 @@ export default async function BlogPage() {
         <section className="space-y-4">
           {guides.length === 0 ? (
             <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0]">
-              아직 등록된 여행가이드가 없습니다. 관리자 페이지에서 가이드를 등록해 주세요.
+              아직 등록된 여행가이드가 없습니다.{" "}
+              <Link
+                href="/theall_manager_only/guides"
+                className="font-medium text-[#1E3A8A] underline hover:text-[#0F172A]"
+              >
+                관리자 페이지
+              </Link>
+              에서 가이드를 등록해 주세요.
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {guides.map((guide) => {
-                const hasLanding = !!guide.landing_url;
+                const thumbUrl = guide.thumbnail_url ?? guide.guide_thumbnail_url ?? "";
+                const pdfUrl = guide.guide_pdf_url ?? "";
                 return (
                   <article
                     key={guide.id}
                     className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-1 hover:shadow-lg"
                   >
-                    {guide.thumbnail_url ? (
+                    {thumbUrl ? (
                       <div className="relative h-40 w-full overflow-hidden">
                         <Image
-                          src={guide.thumbnail_url}
+                          src={thumbUrl}
                           alt={guide.title}
                           fill
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 30vw"
@@ -68,19 +76,16 @@ export default async function BlogPage() {
                         <p className="line-clamp-4 type-small leading-6 text-content-secondary">{guide.summary}</p>
                       ) : null}
                       <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                        <div className="flex flex-col type-caption text-content-muted">
-                          {hasLanding ? <span>랜딩 페이지 연결됨</span> : <span>랜딩 URL 미설정</span>}
-                          <span>{formatDate(guide.created_at)}</span>
-                        </div>
-                        {hasLanding ? (
-                          <Link
-                            href={guide.landing_url ?? "#"}
+                        <span className="type-caption text-content-muted">{formatDate(guide.created_at)}</span>
+                        {pdfUrl ? (
+                          <a
+                            href={pdfUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="type-btn inline-flex items-center rounded-full bg-[#1E3A8A] px-3 py-1.5 text-white transition hover:bg-[#0F172A]"
                           >
-                            자세히 보기
-                          </Link>
+                            PDF 열기
+                          </a>
                         ) : null}
                       </div>
                     </div>

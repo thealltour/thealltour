@@ -20,6 +20,7 @@ import { ConsultModalProvider } from "@/components/ConsultModal";
 import { ENABLE_NEW_PRODUCT_UI } from "@/config/featureFlags";
 import { getProductById } from "@/lib/products";
 import { getSiteSettings } from "@/lib/siteSettings";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getTermsTemplateContent } from "@/lib/termsTemplates";
 
 type ProductDetailPageProps = {
@@ -276,7 +277,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
                 />
                 <Image
-                  src={product.image_url}
+                  src={normalizeProductImageUrl(product.image_url) || "/thealltour-logo.png"}
                   alt={`${product.title} 상세 이미지`}
                   width={1400}
                   height={900}

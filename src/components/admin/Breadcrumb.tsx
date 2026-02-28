@@ -16,6 +16,9 @@ const LABEL_REVIEWS = "\uD6C4\uAE30 \uAD00\uB9AC"; // 후기 관리
 const LABEL_GUIDES = "\uC5EC\uD589\uAC00\uC774\uB4DC"; // 여행가이드
 const LABEL_BANNERS = "\uBA54\uC778\uBC30\uB108"; // 메인배너
 const LABEL_NOTICES = "\uACF5\uC9C0\uC0AC\uD56D"; // 공지사항
+const LABEL_NOTICES_LEGAL = "\uD68C\uC6D0\uAC00\uC785 \uBC95\uB959 \uBB38\uC11C \uAD00\uB9AC"; // 회원가입 법률 문서 관리
+const LABEL_NOTICES_CREATE = "\uACF5\uC9C0 \uB4F1\uB85D"; // 공지 등록
+const LABEL_NOTICES_LIST = "\uB4F1\uB85D\uB41C \uACF5\uC9C0 \uBAA9\uB85D"; // 등록된 공지 목록
 const LABEL_NOTIFICATIONS = "\uC54C\uB9BC"; // 알림
 
 function buildBreadcrumbLabels(pathname: string, view: string | null): string[] {
@@ -62,8 +65,13 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
       return [...base, LABEL_GUIDES];
     case "banners":
       return [...base, LABEL_BANNERS];
-    case "notices":
-      return [...base, LABEL_NOTICES];
+    case "notices": {
+      let noticeDetail: string;
+      if (view === "legal") noticeDetail = LABEL_NOTICES_LEGAL;
+      else if (view === "create") noticeDetail = LABEL_NOTICES_CREATE;
+      else noticeDetail = LABEL_NOTICES_LIST;
+      return [...base, LABEL_NOTICES, noticeDetail];
+    }
     case "notifications":
       return [...base, LABEL_NOTIFICATIONS];
     default:

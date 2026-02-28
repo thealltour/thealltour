@@ -17,6 +17,7 @@ type ProductBody = {
   excluded_items?: string | null;
   detailed_schedule?: string | null;
   optional_tours?: string | null;
+  min_departure_people?: string | null;
   terms_and_notes?: string | null;
   terms_template_type?: string | null;
   departure_from_airport?: string | null;
@@ -45,6 +46,12 @@ type ProductBody = {
   is_active?: boolean;
   is_featured_home?: boolean;
   sort_order?: number | null;
+  status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED" | null;
+  fuel_included?: boolean | null;
+  price_meta?: string | null;
+  meta_info?: string | null;
+  one_liner?: string | null;
+  options?: Record<string, unknown> | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -185,6 +192,9 @@ export async function POST(request: Request) {
   if (body.optional_tours !== undefined) {
     insertPayload.optional_tours = body.optional_tours?.trim() || null;
   }
+  if (body.min_departure_people !== undefined) {
+    insertPayload.min_departure_people = body.min_departure_people?.trim() || null;
+  }
   if (body.terms_and_notes !== undefined) {
     insertPayload.terms_and_notes = body.terms_and_notes?.trim() || null;
   }
@@ -235,6 +245,24 @@ export async function POST(request: Request) {
   }
   if (body.arrival_flight_name !== undefined) {
     insertPayload.arrival_flight_name = body.arrival_flight_name?.trim() || null;
+  }
+  if (body.status !== undefined) {
+    insertPayload.status = body.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(body.status) ? body.status : null;
+  }
+  if (body.fuel_included !== undefined) {
+    insertPayload.fuel_included = typeof body.fuel_included === "boolean" ? body.fuel_included : null;
+  }
+  if (body.price_meta !== undefined) {
+    insertPayload.price_meta = body.price_meta?.trim() || null;
+  }
+  if (body.meta_info !== undefined) {
+    insertPayload.meta_info = body.meta_info?.trim() || null;
+  }
+  if (body.one_liner !== undefined) {
+    insertPayload.one_liner = body.one_liner?.trim() || null;
+  }
+  if (body.options !== undefined) {
+    insertPayload.options = body.options && typeof body.options === "object" ? body.options : null;
   }
 
   const insertResult = await supabase

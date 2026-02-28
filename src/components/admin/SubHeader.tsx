@@ -10,11 +10,11 @@ export const menuMap = {
   product: ["상품 목록", "상품 등록", "카테고리/테마 관리"],
   inquiry: ["전체 문의", "미처리 문의"],
   member: ["회원 목록"],
-  settings: ["환경 설정", "추천 검색어"],
+  settings: [],
   reviews: ["후기 목록"],
   guides: ["가이드 목록"],
   banners: ["배너 목록"],
-  notices: ["공지 목록"],
+  notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
   notifications: ["알림 목록"],
 } as const;
 
@@ -65,6 +65,18 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         initial = "상품 목록";
       } else {
         initial = "상품 목록";
+      }
+    }
+    if (activeMenu === "notices") {
+      const view = searchParams.get("view");
+      if (view === "legal") {
+        initial = "회원가입 법률 문서";
+      } else if (view === "create") {
+        initial = "공지 등록";
+      } else if (view === "list") {
+        initial = "등록된 공지 목록";
+      } else {
+        initial = "등록된 공지 목록";
       }
     }
 
@@ -145,6 +157,13 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     return null;
   }
 
+  function mapNoticesLabelToView(label: string): string | null {
+    if (label === "회원가입 법률 문서") return "legal";
+    if (label === "공지 등록") return "create";
+    if (label === "등록된 공지 목록") return "list";
+    return null;
+  }
+
   function handleTabClick(label: string) {
     setActiveLabel(label);
     onTabChange?.(label);
@@ -160,14 +179,28 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       const query = params.toString();
       const target = query ? `${pathname}?${query}` : pathname;
       router.push(target);
+      return;
+    }
+    if (activeMenu === "notices") {
+      const view = mapNoticesLabelToView(label);
+      const params = new URLSearchParams(searchParams.toString());
+      if (view) {
+        params.set("view", view);
+      } else {
+        params.delete("view");
+      }
+      const query = params.toString();
+      const target = query ? `${pathname}?${query}` : pathname;
+      router.push(target);
     }
   }
 
-  if (!activeMenu || items.length === 0) {
+  if (!activeMenu) {
     return null;
   }
 
   const title = MAIN_MENU_TITLE[activeMenu];
+  const hasSubTabs = items.length > 0;
 
   return (
     <div
@@ -180,6 +213,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         <div className="flex items-center gap-10">
           <h1 className="text-base font-semibold text-[var(--text)]">{title}</h1>
 
+          {hasSubTabs ? (
           <div className="flex items-center gap-6 text-sm">
             {items.map((label) => {
               const isActive = activeLabel === label;
@@ -198,6 +232,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
               );
             })}
           </div>
+          ) : null}
         </div>
 
         {/* 오른쪽: 다크 토글 + 검색 + 글로벌 액션 + 알림/로그아웃 */}

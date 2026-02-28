@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import type { Product } from "@/types/product";
 import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
@@ -34,6 +35,7 @@ type ProductFormState = {
   arrival_flight_name: string;
   detailed_schedule: string;
   optional_tours: string;
+  min_departure_people: string;
   terms_template_type: "" | TermsTemplateType;
   terms_and_notes: string;
   meta_title: string;
@@ -48,6 +50,15 @@ type ProductFormState = {
   is_active: boolean;
   is_featured_home: boolean;
   sort_order: string;
+  /** 예약 가능 / 잔여 한정 / 마감 / 상담 후 안내 */
+  status: "" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
+  one_liner: string;
+  price_meta: string;
+  /** "" = 표시 안 함, "true" = 포함, "false" = 별도 */
+  fuel_included: "" | "true" | "false";
+  meta_info: string;
+  /** JSON 문자열. 옵션 사용 시 ProductOptions 직렬화 */
+  options_json: string;
 };
 
 type ToastState = {
@@ -104,6 +115,7 @@ const initialFormState: ProductFormState = {
   arrival_flight_name: "",
   detailed_schedule: "",
   optional_tours: "",
+  min_departure_people: "",
   terms_template_type: "",
   terms_and_notes: "",
   meta_title: "",
@@ -118,6 +130,12 @@ const initialFormState: ProductFormState = {
   is_active: true,
   is_featured_home: false,
   sort_order: "",
+  status: "AVAILABLE",
+  one_liner: "",
+  price_meta: "",
+  fuel_included: "",
+  meta_info: "",
+  options_json: "",
 };
 
 function normalizeOXValue(value?: string | null): "O" | "X" {
@@ -245,6 +263,7 @@ function mapProductToForm(product: Product): ProductFormState {
     arrival_flight_name: product.arrival_flight_name ?? "",
     detailed_schedule: product.detailed_schedule ?? "",
     optional_tours: shouldRepairLegacyDetailMix ? "" : product.optional_tours ?? "",
+    min_departure_people: product.min_departure_people ?? "",
     terms_template_type:
       (product.terms_template_type as "" | TermsTemplateType | undefined) ?? "",
     terms_and_notes: shouldRepairLegacyDetailMix ? "" : product.terms_and_notes ?? "",
@@ -260,6 +279,19 @@ function mapProductToForm(product: Product): ProductFormState {
     is_active: product.is_active ?? true,
     is_featured_home: product.is_featured_home ?? false,
     sort_order: typeof product.sort_order === "number" ? String(product.sort_order) : "",
+    status:
+      product.status === "AVAILABLE" ||
+      product.status === "LIMITED" ||
+      product.status === "SOLD_OUT" ||
+      product.status === "CONSULT_REQUIRED"
+        ? product.status
+        : "AVAILABLE",
+    one_liner: product.one_liner ?? "",
+    price_meta: product.price_meta ?? "",
+    fuel_included:
+      product.fuel_included === true ? "true" : product.fuel_included === false ? "false" : "",
+    meta_info: product.meta_info ?? "",
+    options_json: product.options ? JSON.stringify(product.options, null, 2) : "",
   };
 }
 
@@ -303,6 +335,15 @@ export default function AdminProductManager() {
   const [isTermsTemplatesPanelOpen, setIsTermsTemplatesPanelOpen] = useState(false);
   const [activeSchedulePreviewIndex, setActiveSchedulePreviewIndex] = useState(0);
   const [showRawScheduleEditor, setShowRawScheduleEditor] = useState(false);
+  const [productFormOpenSections, setProductFormOpenSections] = useState<Record<string, boolean>>({
+    basic: true,
+    price: false,
+    description: false,
+    included: false,
+    schedule: false,
+    flight: false,
+    terms: false,
+  });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageSize = 8;
   const { showToast } = useAdminToast();
@@ -508,6 +549,7 @@ export default function AdminProductManager() {
         arrival_flight_name: form.arrival_flight_name.trim() === "" ? undefined : form.arrival_flight_name,
         detailed_schedule: form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule,
         optional_tours: resolvedOptionalTours === "" ? undefined : resolvedOptionalTours,
+        min_departure_people: form.min_departure_people.trim() === "" ? undefined : form.min_departure_people,
         terms_template_type: form.terms_template_type === "" ? undefined : form.terms_template_type,
         terms_and_notes: resolvedTermsAndNotes === "" ? undefined : resolvedTermsAndNotes,
         product_source_url: form.product_source_url.trim() === "" ? undefined : form.product_source_url,
@@ -521,6 +563,34 @@ export default function AdminProductManager() {
         is_active: form.is_featured_home ? true : form.is_active,
         is_featured_home: form.is_featured_home,
         sort_order: form.sort_order.trim() === "" ? null : Number(form.sort_order),
+        status:
+          form.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(form.status)
+            ? form.status
+            : undefined,
+        one_liner: form.one_liner.trim() === "" ? undefined : form.one_liner.trim(),
+        price_meta: form.price_meta.trim() === "" ? undefined : form.price_meta.trim(),
+        meta_info: form.meta_info.trim() === "" ? undefined : form.meta_info.trim(),
+        fuel_included:
+          form.fuel_included === ""
+            ? undefined
+            : form.fuel_included === "true"
+              ? true
+              : form.fuel_included === "false"
+                ? false
+                : undefined,
+        options: (() => {
+          const raw = form.options_json.trim();
+          if (!raw) return undefined;
+          try {
+            const parsed = JSON.parse(raw) as Record<string, unknown>;
+            if (parsed && typeof parsed === "object" && Array.isArray(parsed.groups) && parsed.groups.length > 0) {
+              return parsed;
+            }
+            return undefined;
+          } catch {
+            return undefined;
+          }
+        })(),
       };
 
       const endpoint = editingId ? `/api/admin/products/${editingId}` : "/api/admin/products";
@@ -1076,7 +1146,7 @@ export default function AdminProductManager() {
         </section>
       )}
 
-      {isCreateView && (
+      {isCreateView || editingId ? (
         <form className="space-y-4 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]" onSubmit={handleSubmit}>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-[#1e3a8a]">{editingId ? "상품 수정" : "상품 등록"}</h3>
@@ -1097,6 +1167,35 @@ export default function AdminProductManager() {
           ) : null}
         </div>
 
+        <div className="space-y-2">
+          {[
+            { id: "basic", title: "기본 정보" },
+            { id: "price", title: "가격·노출" },
+            { id: "description", title: "설명·포인트" },
+            { id: "included", title: "포함·불포함·선택관광" },
+            { id: "schedule", title: "상세 일정" },
+            { id: "flight", title: "항공편" },
+            { id: "terms", title: "약관·SEO" },
+          ].map(({ id, title }) => (
+            <div key={id} className="overflow-hidden rounded-lg border border-[#dbeafe] bg-white">
+              <button
+                type="button"
+                onClick={() =>
+                  setProductFormOpenSections((prev) => ({ ...prev, [id]: !prev[id] }))
+                }
+                className="flex w-full items-center justify-between px-4 py-3 text-left font-semibold text-[#1e3a8a] hover:bg-[#f8fbff]"
+              >
+                <span>{title}</span>
+                <ChevronDown
+                  className={`h-5 w-5 shrink-0 transition ${productFormOpenSections[id] ? "rotate-180" : ""}`}
+                />
+              </button>
+              <div
+                className={productFormOpenSections[id] ? "block" : "hidden"}
+                aria-hidden={!productFormOpenSections[id]}
+              >
+                <div className="border-t border-[#dbeafe] p-4">
+                  {id === "basic" && (
         <div className="grid gap-3 md:grid-cols-2">
           <input
             value={form.title}
@@ -1105,6 +1204,15 @@ export default function AdminProductManager() {
             placeholder="상품명"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">한 줄 소개 (상세 상단 요약)</label>
+            <input
+              value={form.one_liner}
+              onChange={(event) => setForm((prev) => ({ ...prev, one_liner: event.target.value }))}
+              placeholder="비우면 상품 설명 첫 줄 사용"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </div>
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               {categoryOptions.length === 0 ? (
@@ -1186,6 +1294,32 @@ export default function AdminProductManager() {
             </div>
             <p className="text-xs text-slate-500">선택된 테마: {selectedThemes.join(", ") || "-"}</p>
           </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-600">상품 상태 (카드/상세 태그)</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "AVAILABLE", label: "예약 가능" },
+                { value: "LIMITED", label: "잔여 한정" },
+                { value: "SOLD_OUT", label: "마감" },
+                { value: "CONSULT_REQUIRED", label: "상담 후 안내" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, status: opt.value as ProductFormState["status"] }))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    form.status === opt.value
+                      ? "bg-[#1E3A8A] text-white"
+                      : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-1 md:col-span-2">
             <input
               value={form.image_url}
@@ -1207,6 +1341,10 @@ export default function AdminProductManager() {
               className="w-full rounded-lg border border-emerald-200 bg-emerald-50/40 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </div>
+                  </div>
+                  )}
+                  {id === "price" && (
+        <div className="grid gap-3 md:grid-cols-2">
           <input
             value={form.price}
             onChange={(event) =>
@@ -1221,6 +1359,66 @@ export default function AdminProductManager() {
             placeholder="일정(예: 5일)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-600">가격 기준 문구</label>
+            <input
+              value={form.price_meta}
+              onChange={(event) => setForm((prev) => ({ ...prev, price_meta: event.target.value }))}
+              placeholder="예: 1인 기준 (비우면 기본값 1인 기준)"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-600">유류할증료 문구</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "", label: "표시 안 함" },
+                { value: "true", label: "유류할증료 포함" },
+                { value: "false", label: "유류할증료 별도" },
+              ].map((opt) => (
+                <button
+                  key={opt.value || "none"}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, fuel_included: opt.value as "" | "true" | "false" }))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    form.fuel_included === opt.value
+                      ? "bg-[#1E3A8A] text-white"
+                      : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">카드 메타 문구 (일정·지역 옆 표시)</label>
+            <input
+              value={form.meta_info}
+              onChange={(event) => setForm((prev) => ({ ...prev, meta_info: event.target.value }))}
+              placeholder="예: 항공 포함"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </div>
+          <div className="space-y-2 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
+            <p className="text-sm font-semibold text-[#1e3a8a]">상품 옵션 (기간·룸 등 선택 시 견적)</p>
+            <p className="text-xs text-slate-500">
+              JSON 형식. 비우면 옵션 미사용. basePrice, currency, requiredGroups(선택), groups 배열 필수.
+            </p>
+            <textarea
+              value={form.options_json}
+              onChange={(event) => setForm((prev) => ({ ...prev, options_json: event.target.value }))}
+              rows={8}
+              placeholder='{"basePrice": 1000000, "currency": "KRW", "requiredGroups": ["period"], "groups": [{"key": "period", "title": "기간", "type": "radio", "items": [{"value": "3n4d", "label": "3박4일", "priceDelta": 0, "isDefault": true}, {"value": "4n5d", "label": "4박5일", "priceDelta": 200000}]}]}'
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </div>
+                  </div>
+                  )}
+                  {id === "description" && (
+        <div className="grid gap-3 md:grid-cols-2">
           <textarea
             value={form.description}
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
@@ -1236,6 +1434,57 @@ export default function AdminProductManager() {
             placeholder="상품 포인트 - 혜택 (줄바꿈 가능)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
+          <div className="rounded-lg border border-slate-200 bg-white/80 p-3 md:col-span-2">
+            <p className="mb-3 text-sm font-semibold text-slate-700">상품 포인트 O/X 선택</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {[
+                { key: "travel_insurance", label: "상품 포인트 - 여행자보험" },
+                { key: "meeting_info", label: "상품 포인트 - 미팅 정보" },
+                { key: "point_tourism", label: "상품 포인트 - 관광" },
+                { key: "point_guide", label: "상품 포인트 - 인솔자" },
+              ].map((field) => {
+                const fieldKey = field.key as
+                  | "travel_insurance"
+                  | "meeting_info"
+                  | "point_tourism"
+                  | "point_guide";
+                const value = form[fieldKey];
+                return (
+                  <div key={field.key} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="mb-2 text-xs font-semibold text-slate-700">{field.label}</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "O" }))}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                          value === "O"
+                            ? "bg-emerald-600 text-white"
+                            : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        O
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "X" }))}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                          value === "X"
+                            ? "bg-rose-600 text-white"
+                            : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        X
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+                  </div>
+                  )}
+                  {id === "included" && (
+        <div className="grid gap-3 md:grid-cols-2">
           <textarea
             value={form.included_items}
             onChange={(event) => setForm((prev) => ({ ...prev, included_items: event.target.value }))}
@@ -1250,6 +1499,32 @@ export default function AdminProductManager() {
             placeholder="불포함사항 (줄바꿈 가능)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start md:col-span-2">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">선택관광 목록 (줄바꿈 가능)</label>
+              <textarea
+                value={form.optional_tours}
+                onChange={(event) => setForm((prev) => ({ ...prev, optional_tours: event.target.value }))}
+                rows={4}
+                placeholder="선택관광 목록 (줄바꿈 가능)"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+            </div>
+            <div className="w-full sm:w-48 shrink-0">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">출발인원 (~명 이상)</label>
+              <input
+                type="text"
+                value={form.min_departure_people}
+                onChange={(event) => setForm((prev) => ({ ...prev, min_departure_people: event.target.value }))}
+                placeholder="예: 10"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+            </div>
+          </div>
+                  </div>
+                  )}
+                  {id === "flight" && (
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-3 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[#1e3a8a]">항공편 정보</p>
             <div className="grid gap-3 md:grid-cols-2">
@@ -1378,6 +1653,10 @@ export default function AdminProductManager() {
               </div>
             </div>
           </div>
+                  </div>
+                  )}
+                  {id === "schedule" && (
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-3 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -1537,60 +1816,10 @@ export default function AdminProductManager() {
               />
             ) : null}
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white/80 p-3 md:col-span-2">
-            <p className="mb-3 text-sm font-semibold text-slate-700">상품 포인트 O/X 선택</p>
-            <div className="grid gap-3 md:grid-cols-2">
-              {[
-                { key: "travel_insurance", label: "상품 포인트 - 여행자보험" },
-                { key: "meeting_info", label: "상품 포인트 - 미팅 정보" },
-                { key: "point_tourism", label: "상품 포인트 - 관광" },
-                { key: "point_guide", label: "상품 포인트 - 인솔자" },
-              ].map((field) => {
-                const fieldKey = field.key as
-                  | "travel_insurance"
-                  | "meeting_info"
-                  | "point_tourism"
-                  | "point_guide";
-                const value = form[fieldKey];
-                return (
-                  <div key={field.key} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <p className="mb-2 text-xs font-semibold text-slate-700">{field.label}</p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "O" }))}
-                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                          value === "O"
-                            ? "bg-emerald-600 text-white"
-                            : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
-                        }`}
-                      >
-                        O
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "X" }))}
-                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                          value === "X"
-                            ? "bg-rose-600 text-white"
-                            : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
-                        }`}
-                      >
-                        X
-                      </button>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-          <textarea
-            value={form.optional_tours}
-            onChange={(event) => setForm((prev) => ({ ...prev, optional_tours: event.target.value }))}
-            rows={4}
-            placeholder="선택관광 목록 (줄바꿈 가능)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-          />
+                  )}
+                  {id === "terms" && (
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[#1e3a8a]">약관 및 참조사항 템플릿 적용</p>
             <select
@@ -1681,7 +1910,7 @@ export default function AdminProductManager() {
           <input
             value={form.meta_title}
             onChange={(event) => setForm((prev) => ({ ...prev, meta_title: event.target.value }))}
-            placeholder="SEO 메타 타이틀 (선택, 예시: 전 세계 맞춤 여행, 더올투어 / 패키지 골프여행 / 베트남 다낭 3박 5일 패키지 / No옵션 No쇼핑 특가)"
+            placeholder="SEO 메타 타이틀 (선택). 스페이스로 구분한 키워드는 상품 상세페이지에 해시태그(#키워드)로 노출됩니다. 예: 태국 파크골프 치앙마이"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
           />
           <textarea
@@ -1718,6 +1947,12 @@ export default function AdminProductManager() {
             메인 추천상품 슬라이드 노출 (최대 {FEATURED_PRODUCT_LIMIT}개)
           </label>
         </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
 
         <div className="flex items-center gap-3">
           <button
@@ -1732,9 +1967,9 @@ export default function AdminProductManager() {
           </span>
         </div>
         </form>
-      )}
+      ) : null}
 
-      {isListView && (
+      {isListView && !editingId ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-lg font-bold text-[#1e3a8a]">상품 목록</h3>
@@ -2045,7 +2280,7 @@ export default function AdminProductManager() {
           </div>
         </div>
       </div>
-      )}
+      ) : null}
 
       {toast ? (
         <div className="pointer-events-none fixed bottom-6 right-6 z-50">

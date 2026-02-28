@@ -179,6 +179,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
   --color-content-primary: var(--theall-text-primary);
   --color-content-secondary: var(--theall-text-secondary);
   --color-content-muted: var(--theall-text-muted);

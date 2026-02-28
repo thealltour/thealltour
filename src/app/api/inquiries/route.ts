@@ -2,9 +2,34 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
-import type { InquiryInput } from "@/types/inquiry";
+import type { Inquiry, InquiryInput } from "@/types/inquiry";
 
 function normalizeInquiryRow(row: Record<string, unknown>) {
+  const quoteSnapshotRaw = row.quote_snapshot;
+  let quote_snapshot: Inquiry["quote_snapshot"] = undefined;
+  if (quoteSnapshotRaw && typeof quoteSnapshotRaw === "object") {
+    const o = quoteSnapshotRaw as Record<string, unknown>;
+    const qs = o.quoteSummary as Record<string, unknown> | undefined;
+    quote_snapshot = {
+      selectedOptions:
+        o.selectedOptions && typeof o.selectedOptions === "object"
+          ? (o.selectedOptions as Record<string, string>)
+          : undefined,
+      quoteSummary: qs
+        ? {
+            total: qs.total as number | null,
+            basePrice: qs.basePrice as number | null,
+            breakdown: Array.isArray(qs.breakdown)
+              ? (qs.breakdown as Array<{ groupLabel: string; optionLabel: string; priceDelta: number }>)
+              : [],
+          }
+        : undefined,
+      inquiredAt: typeof o.inquiredAt === "string" ? o.inquiredAt : undefined,
+    };
+    if (!quote_snapshot.selectedOptions && !quote_snapshot.quoteSummary && !quote_snapshot.inquiredAt) {
+      quote_snapshot = undefined;
+    }
+  }
   return {
     id: String(row.id ?? ""),
     name: String(row.name ?? ""),
@@ -15,6 +40,7 @@ function normalizeInquiryRow(row: Record<string, unknown>) {
     source_path: typeof row.source_path === "string" ? row.source_path : undefined,
     is_completed: typeof row.is_completed === "boolean" ? row.is_completed : undefined,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
+    quote_snapshot: quote_snapshot ?? undefined,
   };
 }
 
@@ -166,39 +192,93 @@ export async function POST(request: Request) {
   const productId = body.product_id?.trim();
   const productTitle = body.product_title?.trim();
   const sourcePath = body.source_path?.trim();
+  const selectedOptions = body.selected_options;
+  const quoteSummaryRaw = body.quote_summary;
+  const inquiredAt = body.inquired_at?.trim();
 
   if (!name || !phone || !content) {
     return NextResponse.json({ message: "이름, 연락처, 문의 내용은 필수입니다." }, { status: 400 });
   }
 
+  const hasOptionPayload =
+    (selectedOptions && Object.keys(selectedOptions).length > 0) ||
+    (quoteSummaryRaw &&
+      (quoteSummaryRaw.total != null || (quoteSummaryRaw.breakdown?.length ?? 0) > 0)) ||
+    inquiredAt;
+
+  let quoteSnapshot: Record<string, unknown> | null = null;
+  if (hasOptionPayload) {
+    quoteSnapshot = {
+      inquiredAt: inquiredAt || new Date().toISOString(),
+    };
+    if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+      quoteSnapshot.selectedOptions = selectedOptions;
+    }
+    if (quoteSummaryRaw && (quoteSummaryRaw.total != null || (quoteSummaryRaw.breakdown?.length ?? 0) > 0)) {
+      quoteSnapshot.quoteSummary = {
+        total: quoteSummaryRaw.total,
+        basePrice: quoteSummaryRaw.base_price,
+        breakdown: (quoteSummaryRaw.breakdown ?? []).map((b) => ({
+          groupLabel: b.group_label,
+          optionLabel: b.option_label,
+          priceDelta: b.price_delta,
+        })),
+      };
+    }
+  }
+
+  const insertPayload: Record<string, unknown> = {
+    name,
+    phone,
+    content,
+    product_id: productId || null,
+    product_title: productTitle || null,
+    source_path: sourcePath || null,
+  };
+  if (quoteSnapshot) {
+    insertPayload.quote_snapshot = quoteSnapshot;
+  }
+
   const insertResultWithProduct = await supabase
     .from("inquiries")
-    .insert({
-      name,
-      phone,
-      content,
-      product_id: productId || null,
-      product_title: productTitle || null,
-      source_path: sourcePath || null,
-    })
+    .insert(insertPayload)
     .select("id")
     .maybeSingle();
 
   let inquiryId = insertResultWithProduct.data?.id;
   if (insertResultWithProduct.error || !insertResultWithProduct.data) {
-    const insertLegacy = await supabase
-      .from("inquiries")
-      .insert({
-        name,
-        phone,
-        content,
-      })
-      .select("id")
-      .maybeSingle();
-    if (insertLegacy.error || !insertLegacy.data) {
-      return NextResponse.json({ message: "문의 저장에 실패했습니다." }, { status: 500 });
+    if (insertResultWithProduct.error?.code === "42703" && quoteSnapshot) {
+      const retry = await supabase
+        .from("inquiries")
+        .insert({
+          name,
+          phone,
+          content,
+          product_id: productId || null,
+          product_title: productTitle || null,
+          source_path: sourcePath || null,
+        })
+        .select("id")
+        .maybeSingle();
+      if (!retry.error && retry.data) {
+        inquiryId = retry.data.id;
+      }
     }
-    inquiryId = insertLegacy.data.id;
+    if (!inquiryId) {
+      const insertLegacy = await supabase
+        .from("inquiries")
+        .insert({
+          name,
+          phone,
+          content,
+        })
+        .select("id")
+        .maybeSingle();
+      if (insertLegacy.error || !insertLegacy.data) {
+        return NextResponse.json({ message: "문의 저장에 실패했습니다." }, { status: 500 });
+      }
+      inquiryId = insertLegacy.data.id;
+    }
   }
 
   await notifyInquiryCreated({ name, phone, content });

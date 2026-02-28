@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import type { Notice } from "@/types/notice";
@@ -32,6 +33,11 @@ const initialLegalDocuments: LegalDocumentsState = {
 };
 
 export default function AdminNoticeManager() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const view = (searchParams.get("view") ?? "list") as "legal" | "create" | "list";
+
   const [notices, setNotices] = useState<Notice[]>([]);
   const [form, setForm] = useState<FormState>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -78,6 +84,10 @@ export default function AdminNoticeManager() {
     Promise.all([loadNotices(), loadLegalDocuments()]);
   }, []);
 
+  useEffect(() => {
+    if (view === "legal") setIsLegalPanelOpen(true);
+  }, [view]);
+
   async function loadLegalDocuments() {
     try {
       setIsLegalLoading(true);
@@ -110,6 +120,7 @@ export default function AdminNoticeManager() {
     });
     setMessage("");
     setErrorMessage("");
+    router.push(`${pathname}?view=create`);
   }
 
   function cancelEdit() {
@@ -117,6 +128,7 @@ export default function AdminNoticeManager() {
     setForm(initialForm);
     setMessage("");
     setErrorMessage("");
+    router.push(`${pathname}?view=list`);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -146,6 +158,7 @@ export default function AdminNoticeManager() {
       setForm(initialForm);
       setEditingId(null);
       await loadNotices();
+      router.push(`${pathname}?view=list`);
     } catch {
       setErrorMessage("저장 중 오류가 발생했습니다.");
     } finally {
@@ -209,6 +222,7 @@ export default function AdminNoticeManager() {
 
   return (
     <div className="space-y-6">
+      {view === "legal" && (
       <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold text-[#1e3a8a]">회원가입 법률 문서 관리</h3>
@@ -272,7 +286,9 @@ export default function AdminNoticeManager() {
           </>
         )}
       </section>
+      )}
 
+      {view === "create" && (
       <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold text-[#1e3a8a]">{editingId ? "공지 수정" : "공지 등록"}</h3>
@@ -326,10 +342,16 @@ export default function AdminNoticeManager() {
           </button>
         </form>
       </section>
+      )}
 
+      {view === "create" || view === "list" ? (
+        <>
       {message ? <p className="text-sm text-green-600">{message}</p> : null}
       {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+        </>
+      ) : null}
 
+      {view === "list" && (
       <section className="space-y-3">
         <h3 className="text-lg font-bold text-[#1e3a8a]">등록된 공지</h3>
         {isLoading ? (
@@ -383,6 +405,7 @@ export default function AdminNoticeManager() {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }

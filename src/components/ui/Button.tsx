@@ -52,7 +52,8 @@ export function buttonVariants(options?: {
       break;
     case "primary":
     default:
-      variantClass = "bg-primary text-white hover:bg-primary-hover";
+      variantClass =
+        "bg-[#1E3A8A] text-white hover:bg-[#1d4ed8]";
       break;
   }
 

@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from "react";
 import type { SiteSettings } from "@/lib/siteSettings";
+import AdminRecommendedSearchManager from "@/components/admin/AdminRecommendedSearchManager";
+
+type SettingsSectionId = "channel" | "company" | "products-hero" | "about" | "golf-hero" | "recommended-search";
+
+const SETTINGS_TABS: { id: SettingsSectionId; label: string }[] = [
+  { id: "channel", label: "연락·채널" },
+  { id: "company", label: "회사 정보" },
+  { id: "products-hero", label: "패키지상품 히어로" },
+  { id: "about", label: "About 페이지" },
+  { id: "golf-hero", label: "골프 히어로" },
+  { id: "recommended-search", label: "추천 검색어" },
+];
 
 type HeroRegionConfig = {
   id: string;
@@ -50,6 +62,7 @@ const EMPTY_SETTINGS: SiteSettings = {
 
 export default function AdminSiteSettingsManager() {
   const [settings, setSettings] = useState<SiteSettings>(EMPTY_SETTINGS);
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>("channel");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -192,11 +205,31 @@ export default function AdminSiteSettingsManager() {
         </button>
       </div>
 
+      {/* 서브헤더: 섹션 탭 */}
+      <div className="flex flex-wrap gap-1 rounded-lg border border-[#dbeafe] bg-white p-1">
+        {SETTINGS_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveSection(tab.id)}
+            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+              activeSection === tab.id
+                ? "bg-[#1e3a8a] text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? <p className="text-sm text-slate-500">환경설정을 불러오는 중입니다...</p> : null}
       {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
       {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="min-h-[200px]">
+        {activeSection === "channel" && (
+          <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
           카카오채널 URL
           <input
@@ -249,9 +282,11 @@ export default function AdminSiteSettingsManager() {
             화면 우측 하단 플로팅 상담 버튼 클릭 시 이동할 URL 입니다.
           </span>
         </label>
-      </div>
+          </div>
+        )}
 
-      <div className="mt-4 grid gap-4 border-t border-dashed border-slate-200 pt-4 md:grid-cols-2">
+        {activeSection === "company" && (
+          <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
           회사명
           <input
@@ -372,6 +407,11 @@ export default function AdminSiteSettingsManager() {
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
         </label>
+          </div>
+        )}
+
+        {activeSection === "products-hero" && (
+          <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
           패키지상품 히어로 헤드라인
           <textarea
@@ -500,7 +540,11 @@ export default function AdminSiteSettingsManager() {
             ))}
           </div>
         </div>
-        <div className="md:col-span-2 mt-4 space-y-2 rounded-lg border border-slate-200 bg-white/70 p-3">
+          </div>
+        )}
+
+        {activeSection === "about" && (
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-white/70 p-3">
           <p className="text-xs font-bold text-[#1e3a8a]">회사소개(About) 페이지 콘텐츠</p>
           <p className="text-[11px] text-slate-500">
             랜딩 페이지로 대체하거나, 회사소개 문구를 수정할 때 사용합니다. CTA URL에 외부 랜딩 주소를
@@ -601,8 +645,12 @@ export default function AdminSiteSettingsManager() {
               </span>
             </label>
           </div>
-        </div>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2 mt-4">
+          </div>
+        )}
+
+        {activeSection === "golf-hero" && (
+          <div className="grid gap-4 md:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
           골프/파크골프 히어로 헤드라인
           <textarea
             rows={2}
@@ -730,6 +778,12 @@ export default function AdminSiteSettingsManager() {
             ))}
           </div>
         </div>
+          </div>
+        )}
+
+        {activeSection === "recommended-search" && (
+          <AdminRecommendedSearchManager />
+        )}
       </div>
     </section>
   );

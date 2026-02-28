@@ -17,6 +17,7 @@ type ProductBody = {
   excluded_items?: string | null;
   detailed_schedule?: string | null;
   optional_tours?: string | null;
+  min_departure_people?: string | null;
   terms_and_notes?: string | null;
   terms_template_type?: string | null;
   departure_from_airport?: string | null;
@@ -45,6 +46,12 @@ type ProductBody = {
   is_active?: boolean;
   is_featured_home?: boolean;
   sort_order?: number | null;
+  status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED" | null;
+  fuel_included?: boolean | null;
+  price_meta?: string | null;
+  meta_info?: string | null;
+  one_liner?: string | null;
+  options?: Record<string, unknown> | null;
 };
 
 export async function PATCH(
@@ -99,6 +106,7 @@ export async function PATCH(
   if (body.excluded_items !== undefined) updates.excluded_items = body.excluded_items?.trim() || null;
   if (body.detailed_schedule !== undefined) updates.detailed_schedule = body.detailed_schedule?.trim() || null;
   if (body.optional_tours !== undefined) updates.optional_tours = body.optional_tours?.trim() || null;
+  if (body.min_departure_people !== undefined) updates.min_departure_people = body.min_departure_people?.trim() || null;
   if (body.terms_and_notes !== undefined) updates.terms_and_notes = body.terms_and_notes?.trim() || null;
   if (body.terms_template_type !== undefined) updates.terms_template_type = body.terms_template_type?.trim() || null;
   if (body.product_source_url !== undefined) updates.product_source_url = body.product_source_url?.trim() || null;
@@ -137,6 +145,24 @@ export async function PATCH(
   }
   if (body.sort_order !== undefined) {
     updates.sort_order = typeof body.sort_order === "number" ? body.sort_order : null;
+  }
+  if (body.status !== undefined) {
+    updates.status = body.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(body.status) ? body.status : null;
+  }
+  if (body.fuel_included !== undefined) {
+    updates.fuel_included = typeof body.fuel_included === "boolean" ? body.fuel_included : null;
+  }
+  if (body.price_meta !== undefined) {
+    updates.price_meta = body.price_meta?.trim() || null;
+  }
+  if (body.meta_info !== undefined) {
+    updates.meta_info = body.meta_info?.trim() || null;
+  }
+  if (body.one_liner !== undefined) {
+    updates.one_liner = body.one_liner?.trim() || null;
+  }
+  if (body.options !== undefined) {
+    updates.options = body.options && typeof body.options === "object" ? body.options : null;
   }
 
   if (Object.keys(updates).length === 0) {

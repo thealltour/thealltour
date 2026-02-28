@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
-import type { Product } from "@/types/product";
+import type { Product, ProductTrust, ProductOptions, ProductOptionGroup, ProductOptionItem } from "@/types/product";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
 const FEATURED_PRODUCT_LIMIT = 8;
@@ -35,6 +35,7 @@ function normalizeProduct(row: Record<string, unknown>): Product {
     excluded_items: typeof row.excluded_items === "string" ? row.excluded_items : undefined,
     detailed_schedule: typeof row.detailed_schedule === "string" ? row.detailed_schedule : undefined,
     optional_tours: typeof row.optional_tours === "string" ? row.optional_tours : undefined,
+    min_departure_people: typeof row.min_departure_people === "string" ? row.min_departure_people : undefined,
     terms_and_notes: typeof row.terms_and_notes === "string" ? row.terms_and_notes : undefined,
     terms_template_type:
       typeof row.terms_template_type === "string" ? row.terms_template_type : undefined,
@@ -74,6 +75,108 @@ function normalizeProduct(row: Record<string, unknown>): Product {
       typeof row.is_featured_home === "boolean" ? row.is_featured_home : undefined,
     sort_order: sortOrder,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
+    status:
+      row.status === "AVAILABLE" ||
+      row.status === "LIMITED" ||
+      row.status === "SOLD_OUT" ||
+      row.status === "CONSULT_REQUIRED"
+        ? row.status
+        : undefined,
+    fuel_included:
+      row.fuel_included === true ? true : row.fuel_included === false ? false : undefined,
+    price_meta: typeof row.price_meta === "string" && row.price_meta.trim() !== "" ? row.price_meta.trim() : undefined,
+    meta_info: typeof row.meta_info === "string" && row.meta_info.trim() !== "" ? row.meta_info.trim() : undefined,
+    one_liner: typeof row.one_liner === "string" && row.one_liner.trim() !== "" ? row.one_liner.trim() : undefined,
+    trust: normalizeTrust(row.trust),
+    options: normalizeOptions(row.options, typeof row.price === "number" ? row.price : undefined),
+  };
+}
+
+function normalizeTrust(raw: unknown): ProductTrust | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const recentConsultCount = typeof o.recentConsultCount === "number" ? o.recentConsultCount : undefined;
+  const recentDays = typeof o.recentDays === "number" ? o.recentDays : undefined;
+  const totalInquiries = typeof o.totalInquiries === "number" ? o.totalInquiries : undefined;
+  const ratingAvg = typeof o.ratingAvg === "number" ? o.ratingAvg : undefined;
+  const reviewCount = typeof o.reviewCount === "number" ? o.reviewCount : undefined;
+  if (
+    recentConsultCount === undefined &&
+    recentDays === undefined &&
+    totalInquiries === undefined &&
+    ratingAvg === undefined &&
+    reviewCount === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    recentConsultCount,
+    recentDays,
+    totalInquiries,
+    ratingAvg,
+    reviewCount,
+  };
+}
+
+function normalizeOptionItem(raw: unknown): ProductOptionItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const value = typeof o.value === "string" ? o.value : typeof o.id === "string" ? o.id : undefined;
+  const label = typeof o.label === "string" ? o.label : undefined;
+  if (!value || !label) return null;
+  return {
+    value,
+    label,
+    priceDelta: typeof o.priceDelta === "number" ? o.priceDelta : undefined,
+    meta: typeof o.meta === "string" ? o.meta : undefined,
+    isDefault: o.isDefault === true,
+  };
+}
+
+function normalizeOptionGroup(raw: unknown): ProductOptionGroup | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const key = typeof o.key === "string" ? o.key : typeof o.id === "string" ? o.id : undefined;
+  const title = typeof o.title === "string" ? o.title : typeof o.label === "string" ? o.label : undefined;
+  const type =
+    o.type === "radio" || o.type === "select" || o.type === "stepper" || o.type === "multi"
+      ? o.type
+      : "radio";
+  const rawItems = Array.isArray(o.items) ? o.items : Array.isArray(o.options) ? o.options : [];
+  const items = rawItems.map((item: unknown) => normalizeOptionItem(item)).filter((x): x is ProductOptionItem => x !== null);
+  if (!key || !title || items.length === 0) return null;
+  return { key, title, type, items };
+}
+
+/** 신규: { basePrice, currency, groups }. 레거시: 그룹 배열 → basePrice는 productPrice 사용 */
+function normalizeOptions(raw: unknown, productPrice?: number): ProductOptions | undefined {
+  const fallbackBase = typeof productPrice === "number" ? productPrice : 0;
+
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>;
+    const basePrice = typeof o.basePrice === "number" ? o.basePrice : fallbackBase;
+    const currency = o.currency === "KRW" ? "KRW" : "KRW";
+    const rawGroups = Array.isArray(o.groups) ? o.groups : [];
+    const groups = rawGroups.map((g: unknown) => normalizeOptionGroup(g)).filter((x): x is ProductOptionGroup => x !== null);
+    const requiredGroups = Array.isArray(o.requiredGroups)
+      ? (o.requiredGroups as string[]).filter((k): k is string => typeof k === "string")
+      : undefined;
+    if (groups.length === 0) return undefined;
+    return { basePrice, currency, requiredGroups, groups };
+  }
+
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const legacyGroups = raw.map((item: unknown) => normalizeOptionGroup(item)).filter((x): x is ProductOptionGroup => x !== null);
+  if (legacyGroups.length === 0) return undefined;
+  const requiredKeys = (raw as Record<string, unknown>[])
+    .filter((r) => r.required === true)
+    .map((r) => (typeof r.key === "string" ? r.key : typeof r.id === "string" ? r.id : null))
+    .filter((k): k is string => k != null);
+  return {
+    basePrice: fallbackBase,
+    currency: "KRW",
+    requiredGroups: requiredKeys.length > 0 ? requiredKeys : undefined,
+    groups: legacyGroups,
   };
 }
 

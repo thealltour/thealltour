@@ -1,12 +1,75 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Inquiry } from "@/types/inquiry";
+import { useEffect, useMemo, useState, Fragment } from "react";
+import type { Inquiry, QuoteSnapshot } from "@/types/inquiry";
 
 function formatDate(dateText: string) {
   const date = new Date(dateText);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString("ko-KR");
+}
+
+function formatPrice(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "-";
+  return `${n >= 0 ? "" : "-"}${Math.abs(n).toLocaleString()}원`;
+}
+
+function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
+  const hasOptions =
+    (snapshot.selectedOptions && Object.keys(snapshot.selectedOptions).length > 0) ||
+    (snapshot.quoteSummary?.breakdown?.length ?? 0) > 0;
+  const hasSummary =
+    snapshot.quoteSummary &&
+    (snapshot.quoteSummary.total != null ||
+      snapshot.quoteSummary.basePrice != null ||
+      (snapshot.quoteSummary.breakdown?.length ?? 0) > 0);
+
+  if (!hasOptions && !hasSummary && !snapshot.inquiredAt) return null;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm">
+      <h4 className="mb-3 font-semibold text-slate-700">고객 선택 구성</h4>
+      {hasOptions ? (
+        <ul className="mb-3 list-inside list-disc space-y-1 text-slate-600">
+          {(snapshot.quoteSummary?.breakdown?.length ?? 0) > 0
+            ? snapshot.quoteSummary!.breakdown.map((b, i) => (
+                <li key={i}>
+                  {b.groupLabel} · {b.optionLabel}
+                </li>
+              ))
+            : snapshot.selectedOptions
+              ? Object.entries(snapshot.selectedOptions).map(([k, v]) => (
+                  <li key={k}>
+                    {k}: {v}
+                  </li>
+                ))
+              : null}
+        </ul>
+      ) : null}
+      {hasSummary && snapshot.quoteSummary ? (
+        <div className="space-y-1 border-t border-slate-200 pt-3 text-slate-600">
+          {snapshot.quoteSummary.basePrice != null ? (
+            <p>예상 기본가: {formatPrice(snapshot.quoteSummary.basePrice)}</p>
+          ) : null}
+          {(snapshot.quoteSummary.breakdown?.length ?? 0) > 0
+            ? snapshot.quoteSummary.breakdown!.map((b, i) => (
+                <p key={i}>
+                  예상 옵션 · {b.groupLabel} – {b.optionLabel}: {formatPrice(b.priceDelta)}
+                </p>
+              ))
+            : null}
+          {snapshot.quoteSummary.total != null ? (
+            <p className="font-semibold text-slate-700">예상 합계: {formatPrice(snapshot.quoteSummary.total)}</p>
+          ) : null}
+        </div>
+      ) : null}
+      {snapshot.inquiredAt ? (
+        <p className="mt-2 text-xs text-slate-500">
+          문의 시각: {formatDate(snapshot.inquiredAt)}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 type StatusFilter = "all" | "completed" | "pending";
@@ -39,6 +102,7 @@ export default function AdminInquiryTable() {
   const [completedCount, setCompletedCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -327,12 +391,13 @@ export default function AdminInquiryTable() {
               <th className="w-[220px] px-4 py-3 text-left font-semibold">유입 상품</th>
               <th className="min-w-[320px] px-4 py-3 text-left font-semibold">문의 내용</th>
               <th className="w-[180px] px-4 py-3 text-left font-semibold">문의일시</th>
+              <th className="w-[100px] px-4 py-3 text-left font-semibold">선택 구성</th>
             </tr>
           </thead>
           <tbody>
             {inquiries.length === 0 ? (
               <tr className="border-t border-slate-200">
-                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                   조건에 맞는 문의가 없습니다.
                 </td>
               </tr>
@@ -343,12 +408,13 @@ export default function AdminInquiryTable() {
                 const isExpanded = expandedRows.includes(inquiry.id);
 
                 return (
-                  <tr
-                    key={inquiry.id}
-                    className={`border-t border-slate-200 ${
-                      !isCompleted ? "bg-amber-50/40 hover:bg-amber-50/70" : "hover:bg-slate-50"
-                    }`}
-                  >
+                  <Fragment key={inquiry.id}>
+                    <tr
+                      key={inquiry.id}
+                      className={`border-t border-slate-200 ${
+                        !isCompleted ? "bg-amber-50/40 hover:bg-amber-50/70" : "hover:bg-slate-50"
+                      }`}
+                    >
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -415,7 +481,30 @@ export default function AdminInquiryTable() {
                     <td className="px-4 py-3 text-xs tabular-nums text-slate-600">
                       {formatDate(inquiry.created_at ?? "")}
                     </td>
+                    <td className="px-4 py-3">
+                      {inquiry.quote_snapshot ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedQuoteId((prev) => (prev === inquiry.id ? null : inquiry.id))
+                          }
+                          className="text-xs font-semibold text-[#1d4ed8] hover:underline"
+                        >
+                          {expandedQuoteId === inquiry.id ? "접기" : "보기"}
+                        </button>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
                   </tr>
+                  {inquiry.quote_snapshot && expandedQuoteId === inquiry.id ? (
+                    <tr className="border-t border-slate-200 bg-slate-50/50">
+                      <td colSpan={8} className="px-4 py-3">
+                        <QuoteSnapshotSection snapshot={inquiry.quote_snapshot} />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
                 );
               })
             )}

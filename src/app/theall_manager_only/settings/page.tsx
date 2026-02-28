@@ -1,6 +1,5 @@
 import AdminHeader from "@/components/AdminHeader";
 import AdminSiteSettingsManager from "@/components/AdminSiteSettingsManager";
-import AdminRecommendedSearchManager from "@/components/admin/AdminRecommendedSearchManager";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +9,8 @@ export default function AdminSiteSettingsPage() {
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
           activeTab="settings"
-          title="??? ????"
-          description="?????, ?????, ?? ??? ?? ? ??? ?????."
+          title="환경설정"
+          description="사이트 연락처, 회사 정보, 히어로·About·추천 검색어를 관리합니다."
           inquiryCount={0}
           productCount={0}
           memberCount={0}
@@ -20,7 +19,6 @@ export default function AdminSiteSettingsPage() {
         />
         <div className="space-y-6">
           <AdminSiteSettingsManager />
-          <AdminRecommendedSearchManager />
         </div>
       </main>
     </div>

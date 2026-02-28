@@ -4,7 +4,7 @@
  * multipart/form-data 가이드 업로드 (PDF + 썸네일)
  * - field "pdf": application/pdf
  * - field "thumb": image/webp
- * - 최대 10MB each
+ * - 최대 100MB each
  * - admin 인증: middleware에서 ADMIN_AUTH_COOKIE 검사 (미인증 시 401)
  *
  * 응답: { pdfUrl: string, thumbnailUrl: string }
@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStorageProvider } from "@/lib/storage";
 
 const BUCKET = "guide-pdfs";
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_SIZE = 100 * 1024 * 1024; // 100MB
 
 function generatePath(ext: "pdf" | "webp"): string {
   const now = new Date();
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       }
       if (pdfFile.size > MAX_SIZE) {
         return NextResponse.json(
-          { error: "PDF 파일 용량은 10MB 이하만 업로드할 수 있습니다." },
+          { error: "PDF 파일 용량은 100MB 이하만 업로드할 수 있습니다." },
           { status: 400 }
         );
       }
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       }
       if (thumbFile.size > MAX_SIZE) {
         return NextResponse.json(
-          { error: "썸네일 파일 용량은 10MB 이하만 업로드할 수 있습니다." },
+          { error: "썸네일 파일 용량은 100MB 이하만 업로드할 수 있습니다." },
           { status: 400 }
         );
       }

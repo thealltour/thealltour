@@ -54,12 +54,12 @@ export function GuidePdfUploadField({
           data = text ? (JSON.parse(text) as ResData) : {};
         } catch {
           if (res.status === 413) {
-            setErrorMessage("파일 용량이 너무 큽니다. PDF는 10MB 이하로 올려주세요.");
-            showToast("error", "파일 용량이 너무 큽니다. PDF는 10MB 이하로 올려주세요.");
+            setErrorMessage("파일 용량이 너무 큽니다. PDF는 100MB 이하로 올려주세요.");
+            showToast("error", "파일 용량이 너무 큽니다. PDF는 100MB 이하로 올려주세요.");
             return;
           }
-          setErrorMessage("서버 응답을 처리할 수 없습니다. 파일 용량(10MB 이하)을 확인해 주세요.");
-          showToast("error", "서버 응답을 처리할 수 없습니다. 파일 용량(10MB 이하)을 확인해 주세요.");
+          setErrorMessage("서버 응답을 처리할 수 없습니다. 파일 용량(100MB 이하)을 확인해 주세요.");
+          showToast("error", "서버 응답을 처리할 수 없습니다. 파일 용량(100MB 이하)을 확인해 주세요.");
           return;
         }
 

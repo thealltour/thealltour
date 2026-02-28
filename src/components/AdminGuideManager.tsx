@@ -237,7 +237,7 @@ export default function AdminGuideManager() {
           <div className="md:col-span-2 space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
             <p className="text-xs font-semibold text-slate-600">여행가이드 PDF</p>
             <p className="text-xs text-slate-500">
-              PDF를 선택하면 1페이지 썸네일이 자동 생성되어 guide_pdf_url, guide_thumbnail_url에 저장됩니다.
+              PDF를 선택하면 1페이지가 표시됩니다. 썸네일로 사용할 영역을 선택한 뒤 '썸네일 생성'을 누르면 guide_pdf_url, guide_thumbnail_url에 저장됩니다.
             </p>
             <GuidePdfUploadField
               pdfUrl={form.guide_pdf_url}

@@ -1,0 +1,136 @@
+"use client";
+
+import { useState, useCallback } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import type { Guide } from "@/types/guide";
+import { GuidePdfModal } from "@/components/GuidePdfModal";
+
+type GuideCardListProps = {
+  guides: Guide[];
+};
+
+function formatDate(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("ko-KR");
+}
+
+export function GuideCardList({ guides }: GuideCardListProps) {
+  const [modalPdfUrl, setModalPdfUrl] = useState<string | null>(null);
+  const [modalTitle, setModalTitle] = useState<string>("");
+
+  const openPdfModal = useCallback((pdfUrl: string, title: string) => {
+    setModalPdfUrl(pdfUrl);
+    setModalTitle(title);
+  }, []);
+
+  const closePdfModal = useCallback(() => {
+    setModalPdfUrl(null);
+    setModalTitle("");
+  }, []);
+
+  if (guides.length === 0) {
+    return (
+      <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0]">
+        아직 등록된 여행가이드가 없습니다.{" "}
+        <Link
+          href="/theall_manager_only/guides"
+          className="font-medium text-[#1E3A8A] underline hover:text-[#0F172A]"
+        >
+          관리자 페이지
+        </Link>
+        에서 가이드를 등록해 주세요.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {guides.map((guide) => {
+          const thumbUrl = guide.thumbnail_url ?? guide.guide_thumbnail_url ?? "";
+          const pdfUrl = guide.guide_pdf_url ?? "";
+          const hasPdf = Boolean(pdfUrl?.trim());
+
+          const cardContent = (
+            <>
+              {thumbUrl ? (
+                <div className="relative h-40 w-full overflow-hidden">
+                  <Image
+                    src={thumbUrl}
+                    alt={guide.title}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 30vw"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-40 items-center justify-center bg-[#eff6ff] type-caption text-content-muted">
+                  썸네일 이미지 없음
+                </div>
+              )}
+              <div className="flex flex-1 flex-col gap-3 p-5">
+                <div className="space-y-1.5">
+                  <p className="section-label uppercase tracking-wide text-[#B8962E]">
+                    TRAVEL GUIDE
+                  </p>
+                  <h2 className="font-card-title line-clamp-2 type-body font-semibold text-content-primary md:type-small">
+                    {guide.title}
+                  </h2>
+                </div>
+                {guide.summary ? (
+                  <p className="line-clamp-4 type-small leading-6 text-content-secondary">
+                    {guide.summary}
+                  </p>
+                ) : null}
+                <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                  <span className="type-caption text-content-muted">
+                    {formatDate(guide.created_at)}
+                  </span>
+                </div>
+              </div>
+            </>
+          );
+
+          const cardClass =
+            "flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-1 hover:shadow-lg";
+
+          if (hasPdf) {
+            return (
+              <article
+                key={guide.id}
+                role="button"
+                tabIndex={0}
+                className={`${cardClass} cursor-pointer`}
+                onClick={() => openPdfModal(pdfUrl, guide.title)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openPdfModal(pdfUrl, guide.title);
+                  }
+                }}
+              >
+                {cardContent}
+              </article>
+            );
+          }
+
+          return (
+            <article key={guide.id} className={cardClass}>
+              {cardContent}
+            </article>
+          );
+        })}
+      </div>
+
+      <GuidePdfModal
+        isOpen={Boolean(modalPdfUrl)}
+        pdfUrl={modalPdfUrl ?? ""}
+        title={modalTitle}
+        onClose={closePdfModal}
+      />
+    </>
+  );
+}

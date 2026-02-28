@@ -2,7 +2,12 @@
 
 import { useCallback, useState } from "react";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
-import { renderFirstPageToWebp } from "@/lib/pdf/renderFirstPageToWebp";
+import {
+  renderFirstPageToDataUrl,
+  cropFirstPageToWebp,
+  type CropRect,
+} from "@/lib/pdf/renderFirstPageToWebp";
+import { ThumbnailCropSelector } from "@/components/admin/ThumbnailCropSelector";
 
 type GuidePdfUploadFieldProps = {
   pdfUrl: string;
@@ -18,7 +23,55 @@ export function GuidePdfUploadField({
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cropState, setCropState] = useState<{
+    file: File;
+    dataUrl: string;
+    width: number;
+    height: number;
+  } | null>(null);
   const { showToast } = useAdminToast();
+
+  const uploadPdfAndThumb = useCallback(
+    async (file: File, thumbFile: File) => {
+      const formData = new FormData();
+      formData.append("pdf", file, file.name);
+      formData.append("thumb", thumbFile, thumbFile.name);
+
+      const res = await fetch("/api/admin/uploads/guide", {
+        method: "POST",
+        body: formData,
+      });
+
+      type ResData = { pdfUrl?: string; thumbnailUrl?: string; error?: string };
+      let data: ResData;
+      try {
+        const text = await res.text();
+        data = text ? (JSON.parse(text) as ResData) : {};
+      } catch {
+        if (res.status === 413) {
+          setErrorMessage("파일 용량이 너무 큽니다. PDF는 100MB 이하로 올려주세요.");
+          showToast("error", "파일 용량이 너무 큽니다. PDF는 100MB 이하로 올려주세요.");
+          return;
+        }
+        setErrorMessage("서버 응답을 처리할 수 없습니다. 파일 용량(100MB 이하)을 확인해 주세요.");
+        showToast("error", "서버 응답을 처리할 수 없습니다. 파일 용량(100MB 이하)을 확인해 주세요.");
+        return;
+      }
+
+      if (!res.ok) {
+        const msg = data.error ?? "업로드에 실패했습니다.";
+        setErrorMessage(msg);
+        showToast("error", msg);
+        return;
+      }
+
+      const newPdfUrl = data.pdfUrl ?? "";
+      const newThumbUrl = data.thumbnailUrl ?? "";
+      onChange({ pdfUrl: newPdfUrl, thumbnailUrl: newThumbUrl });
+      showToast("success", "PDF와 썸네일이 업로드되었습니다.");
+    },
+    [onChange, showToast]
+  );
 
   const handleFile = useCallback(
     async (file: File | null) => {
@@ -36,54 +89,42 @@ export function GuidePdfUploadField({
       setErrorMessage(null);
 
       try {
-        const { thumbFile } = await renderFirstPageToWebp(file);
-
-        const formData = new FormData();
-        formData.append("pdf", file, file.name);
-        formData.append("thumb", thumbFile, thumbFile.name);
-
-        const res = await fetch("/api/admin/uploads/guide", {
-          method: "POST",
-          body: formData,
-        });
-
-        type ResData = { pdfUrl?: string; thumbnailUrl?: string; error?: string };
-        let data: ResData;
-        try {
-          const text = await res.text();
-          data = text ? (JSON.parse(text) as ResData) : {};
-        } catch {
-          if (res.status === 413) {
-            setErrorMessage("파일 용량이 너무 큽니다. PDF는 100MB 이하로 올려주세요.");
-            showToast("error", "파일 용량이 너무 큽니다. PDF는 100MB 이하로 올려주세요.");
-            return;
-          }
-          setErrorMessage("서버 응답을 처리할 수 없습니다. 파일 용량(100MB 이하)을 확인해 주세요.");
-          showToast("error", "서버 응답을 처리할 수 없습니다. 파일 용량(100MB 이하)을 확인해 주세요.");
-          return;
-        }
-
-        if (!res.ok) {
-          const msg = data.error ?? "업로드에 실패했습니다.";
-          setErrorMessage(msg);
-          showToast("error", msg);
-          return;
-        }
-
-        const newPdfUrl = data.pdfUrl ?? "";
-        const newThumbUrl = data.thumbnailUrl ?? "";
-        onChange({ pdfUrl: newPdfUrl, thumbnailUrl: newThumbUrl });
-        showToast("success", "PDF와 썸네일이 업로드되었습니다.");
+        const { dataUrl, width, height } = await renderFirstPageToDataUrl(file);
+        setCropState({ file, dataUrl, width, height });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "PDF 업로드 중 오류가 발생했습니다.";
+        const msg = err instanceof Error ? err.message : "PDF 로드 중 오류가 발생했습니다.";
         setErrorMessage(msg);
         showToast("error", msg);
       } finally {
         setIsLoading(false);
       }
     },
-    [onChange, showToast]
+    [showToast]
   );
+
+  const handleCropConfirm = useCallback(
+    async (cropRect: CropRect) => {
+      if (!cropState) return;
+      const { file } = cropState;
+      setIsLoading(true);
+      try {
+        const { thumbFile } = await cropFirstPageToWebp(file, cropRect);
+        setCropState(null);
+        await uploadPdfAndThumb(file, thumbFile);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "썸네일 생성 중 오류가 발생했습니다.";
+        setErrorMessage(msg);
+        showToast("error", msg);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [cropState, uploadPdfAndThumb, showToast]
+  );
+
+  const handleCropCancel = useCallback(() => {
+    setCropState(null);
+  }, []);
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,6 +217,16 @@ export function GuidePdfUploadField({
 
       {errorMessage && (
         <p className="text-sm text-red-500">{errorMessage}</p>
+      )}
+
+      {cropState && (
+        <ThumbnailCropSelector
+          imageDataUrl={cropState.dataUrl}
+          imageWidth={cropState.width}
+          imageHeight={cropState.height}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
       )}
     </div>
   );

@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "110mb",
     },
+    // API 라우트 FormData 업로드 시 본문 크기 제한 (기본 10MB → 110MB)
+    proxyClientMaxBodySize: "110mb",
   },
   turbopack: {
     root: __dirname,

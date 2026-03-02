@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { PdfViewer } from "@/components/PdfViewer";
 
 type GuidePdfModalProps = {
   isOpen: boolean;
@@ -35,9 +36,20 @@ export function GuidePdfModal({ isOpen, pdfUrl, title, onClose }: GuidePdfModalP
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
-          <h2 id="guide-pdf-modal-title" className="truncate font-semibold text-slate-800">
-            {title ?? "여행가이드 PDF"}
-          </h2>
+          <div className="min-w-0 flex-1">
+            <h2 id="guide-pdf-modal-title" className="truncate font-semibold text-slate-800">
+              {title ?? "여행가이드 PDF"}
+            </h2>
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-0.5 block text-xs text-blue-600 underline hover:text-blue-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              새 탭에서 열기
+            </a>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -47,12 +59,8 @@ export function GuidePdfModal({ isOpen, pdfUrl, title, onClose }: GuidePdfModalP
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden bg-slate-100">
-          <iframe
-            src={pdfUrl}
-            title={title ?? "PDF 뷰어"}
-            className="h-full w-full border-0"
-          />
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <PdfViewer url={pdfUrl} className="h-full" />
         </div>
       </div>
     </div>

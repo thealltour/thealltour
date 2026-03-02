@@ -14,6 +14,9 @@ const LABEL_MEMBERS = "\uD68C\uC6D0 \uAD00\uB9AC"; // 회원 관리
 const LABEL_SETTINGS = "\uD658\uACBD\uC124\uC815"; // 환경설정
 const LABEL_REVIEWS = "\uD6C4\uAE30 \uAD00\uB9AC"; // 후기 관리
 const LABEL_GUIDES = "\uC5EC\uD589\uAC00\uC774\uB4DC"; // 여행가이드
+const LABEL_GUIDES_LIST = "\uAC00\uC774\uB4DC \uBAA9\uB85D"; // 가이드 목록
+const LABEL_GUIDES_NOTION = "\uAC00\uC774\uB4DC\uB4F1\uB85D(\uB178\uC158)"; // 가이드등록(노션)
+const LABEL_GUIDES_GENERAL = "\uAC00\uC774\uB4DC\uB4F1\uB85D(\uC77C\uBC18)"; // 가이드등록(일반)
 const LABEL_BANNERS = "\uBA54\uC778\uBC30\uB108"; // 메인배너
 const LABEL_NOTICES = "\uACF5\uC9C0\uC0AC\uD56D"; // 공지사항
 const LABEL_NOTICES_LEGAL = "\uD68C\uC6D0\uAC00\uC785 \uBC95\uB959 \uBB38\uC11C \uAD00\uB9AC"; // 회원가입 법률 문서 관리
@@ -61,8 +64,13 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
       return [...base, LABEL_SETTINGS];
     case "reviews":
       return [...base, LABEL_REVIEWS];
-    case "guides":
-      return [...base, LABEL_GUIDES];
+    case "guides": {
+      let guideDetail: string;
+      if (view === "notion") guideDetail = LABEL_GUIDES_NOTION;
+      else if (view === "general") guideDetail = LABEL_GUIDES_GENERAL;
+      else guideDetail = LABEL_GUIDES_LIST;
+      return [...base, LABEL_GUIDES, guideDetail];
+    }
     case "banners":
       return [...base, LABEL_BANNERS];
     case "notices": {

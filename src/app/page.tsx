@@ -83,6 +83,8 @@ export default async function Home() {
                   alt={primaryBanner.title}
                   fill
                   sizes="(min-width: 1024px) 960px, 100vw"
+                  priority
+                  fetchPriority="high"
                   className="object-cover object-[right_center]"
                 />
                 {/* 왼쪽 45%는 딥 네이비 유지, 오른쪽으로 갈수록 이미지가 선명해지는 그라데이션 */}
@@ -108,6 +110,8 @@ export default async function Home() {
                     alt={primaryBanner.title}
                     fill
                     sizes="100vw"
+                    priority
+                    fetchPriority="high"
                     className="object-cover object-center"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />

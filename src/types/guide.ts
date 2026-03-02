@@ -9,5 +9,16 @@ export type Guide = {
   is_published?: boolean;
   sort_order?: number;
   created_at?: string;
+  // Notion 연동 필드
+  slug?: string | null;
+  notion_page_id?: string | null;
+  notion_url?: string | null;
+  title_override?: string | null;
+  cover_image_url?: string | null;
+  tags?: string[] | null;
+  category?: string | null;
+  published_at?: string | null;
+  notion_last_edited_time?: string | null;
+  last_synced_at?: string | null;
 };
 

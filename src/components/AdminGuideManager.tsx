@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import { GuidePdfUploadField } from "@/components/admin/GuidePdfUploadField";
@@ -10,6 +11,13 @@ import type { Guide } from "@/types/guide";
 type GuideFormState = {
   title: string;
   summary: string;
+  slug: string;
+  notion_url: string;
+  title_override: string;
+  cover_image_url: string;
+  tags_csv: string;
+  category: string;
+  published_at: string;
   thumbnail_url: string;
   landing_url: string;
   guide_pdf_url: string;
@@ -21,6 +29,13 @@ type GuideFormState = {
 const initialForm: GuideFormState = {
   title: "",
   summary: "",
+  slug: "",
+  notion_url: "",
+  title_override: "",
+  cover_image_url: "",
+  tags_csv: "",
+  category: "",
+  published_at: "",
   thumbnail_url: "",
   landing_url: "",
   guide_pdf_url: "",
@@ -30,6 +45,9 @@ const initialForm: GuideFormState = {
 };
 
 export default function AdminGuideManager() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const [guides, setGuides] = useState<Guide[]>([]);
   const [form, setForm] = useState<GuideFormState>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -40,6 +58,22 @@ export default function AdminGuideManager() {
   const [errorMessage, setErrorMessage] = useState("");
   const { showToast } = useAdminToast();
   const { confirm } = useAdminConfirm();
+  const view = searchParams.get("view");
+  const activeView: "list" | "notion" | "general" =
+    view === "notion" || view === "general" ? view : "list";
+  const isNotionForm = activeView === "notion";
+  const isGeneralForm = activeView === "general";
+
+  const sortedGuides = useMemo(() => {
+    return [...guides].sort((a, b) => {
+      const aOrder = typeof a.sort_order === "number" ? a.sort_order : Number.MAX_SAFE_INTEGER;
+      const bOrder = typeof b.sort_order === "number" ? b.sort_order : Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [guides]);
 
   async function loadGuides() {
     try {
@@ -69,6 +103,13 @@ export default function AdminGuideManager() {
     setForm({
       title: item.title ?? "",
       summary: item.summary ?? "",
+      slug: item.slug ?? "",
+      notion_url: item.notion_url ?? "",
+      title_override: item.title_override ?? "",
+      cover_image_url: item.cover_image_url ?? "",
+      tags_csv: Array.isArray(item.tags) ? item.tags.join(", ") : "",
+      category: item.category ?? "",
+      published_at: item.published_at ?? "",
       thumbnail_url: item.thumbnail_url ?? "",
       landing_url: item.landing_url ?? "",
       guide_pdf_url: item.guide_pdf_url ?? "",
@@ -78,6 +119,10 @@ export default function AdminGuideManager() {
     });
     setMessage("");
     setErrorMessage("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", item.notion_url ? "notion" : "general");
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
   }
 
   function cancelEdit() {
@@ -99,6 +144,16 @@ export default function AdminGuideManager() {
       const payload = {
         title: form.title,
         summary: form.summary,
+        slug: form.slug.trim() || null,
+        notion_url: form.notion_url.trim() || null,
+        title_override: form.title_override.trim() || null,
+        cover_image_url: form.cover_image_url.trim() || null,
+        tags: form.tags_csv
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0),
+        category: form.category.trim() || null,
+        published_at: form.published_at.trim() || null,
         thumbnail_url: form.thumbnail_url.trim() || null,
         landing_url: form.landing_url.trim() || null,
         guide_pdf_url: form.guide_pdf_url.trim() || null,
@@ -160,12 +215,34 @@ export default function AdminGuideManager() {
     }
   }
 
+  async function syncNow(item: Guide) {
+    try {
+      const response = await fetch(`/api/admin/guides/${item.id}/sync`, {
+        method: "POST",
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        showToast("error", result.message ?? "즉시 반영에 실패했습니다.");
+        return;
+      }
+      showToast("success", result.message ?? "즉시 반영이 완료되었습니다.");
+      await loadGuides();
+    } catch {
+      showToast("error", "즉시 반영 중 오류가 발생했습니다.");
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {(isNotionForm || isGeneralForm) && (
       <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold text-[#1e3a8a]">
-            {editingId ? "여행가이드 수정" : "여행가이드 등록"}
+            {editingId
+              ? "여행가이드 수정"
+              : isNotionForm
+                ? "가이드등록(노션)"
+                : "가이드등록(일반)"}
           </h3>
           {editingId ? (
             <button
@@ -181,10 +258,10 @@ export default function AdminGuideManager() {
           <label className="md:col-span-2 flex flex-col gap-2 text-sm font-medium text-slate-700">
             제목
             <input
-              required
+              required={!isNotionForm}
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder="예: 일본 온천 + 골프 완벽 가이드"
+              placeholder={isNotionForm ? "선택 입력 (비우면 노션 제목 사용)" : "예: 일본 온천 + 골프 완벽 가이드"}
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
@@ -198,42 +275,129 @@ export default function AdminGuideManager() {
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-            썸네일 이미지 URL
+          {isNotionForm ? (
+          <label className="md:col-span-2 flex flex-col gap-2 text-sm font-medium text-slate-700">
+            Notion 문서 URL
             <input
               type="url"
-              value={form.thumbnail_url}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  thumbnail_url: event.target.value,
-                }))
-              }
-              placeholder="예: https://.../thumbnail.jpg"
+              value={form.notion_url}
+              onChange={(event) => setForm((prev) => ({ ...prev, notion_url: event.target.value }))}
+              placeholder="예: https://www.notion.so/... "
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
             <span className="text-xs font-normal text-slate-500">
-              랜딩 페이지의 대표 이미지를 연결해 주세요. 비워두면 기본 배경이 표시됩니다.
+              저장 시 notion_page_id를 자동 추출/저장하고 동기화합니다.
             </span>
           </label>
+          ) : null}
+          {isNotionForm ? (
           <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-            랜딩 페이지 URL
+            슬러그
             <input
-              type="url"
-              value={form.landing_url}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  landing_url: event.target.value,
-                }))
-              }
-              placeholder="예: https://thealltour.com/landing/japan-golf"
+              value={form.slug}
+              onChange={(event) => setForm((prev) => ({ ...prev, slug: event.target.value }))}
+              placeholder="예: japan-golf-guide"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
-            <span className="text-xs font-normal text-slate-500">
-              외부/랜딩 페이지 URL을 입력하면, 가이드 카드를 클릭했을 때 새 창으로 이동합니다.
-            </span>
           </label>
+          ) : null}
+          {isNotionForm ? (
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            제목 오버라이드
+            <input
+              value={form.title_override}
+              onChange={(event) => setForm((prev) => ({ ...prev, title_override: event.target.value }))}
+              placeholder="비우면 기본 제목 사용"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          ) : null}
+          {isNotionForm ? (
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            커버 이미지 URL
+            <input
+              type="url"
+              value={form.cover_image_url}
+              onChange={(event) => setForm((prev) => ({ ...prev, cover_image_url: event.target.value }))}
+              placeholder="예: https://.../cover.jpg"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          ) : null}
+          {isNotionForm ? (
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            카테고리
+            <input
+              value={form.category}
+              onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
+              placeholder="예: 일본"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          ) : null}
+          {isNotionForm ? (
+          <label className="md:col-span-2 flex flex-col gap-2 text-sm font-medium text-slate-700">
+            태그 (쉼표 구분)
+            <input
+              value={form.tags_csv}
+              onChange={(event) => setForm((prev) => ({ ...prev, tags_csv: event.target.value }))}
+              placeholder="예: 일본, 골프, 온천"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          ) : null}
+          {isNotionForm ? (
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            발행일시 (ISO)
+            <input
+              value={form.published_at}
+              onChange={(event) => setForm((prev) => ({ ...prev, published_at: event.target.value }))}
+              placeholder="예: 2026-03-03T09:00:00+09:00"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          ) : null}
+          {isGeneralForm ? (
+            <>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                썸네일 이미지 URL
+                <input
+                  type="url"
+                  value={form.thumbnail_url}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      thumbnail_url: event.target.value,
+                    }))
+                  }
+                  placeholder="예: https://.../thumbnail.jpg"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+                <span className="text-xs font-normal text-slate-500">
+                  랜딩 페이지의 대표 이미지를 연결해 주세요. 비워두면 기본 배경이 표시됩니다.
+                </span>
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                랜딩 페이지 URL
+                <input
+                  type="url"
+                  value={form.landing_url}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      landing_url: event.target.value,
+                    }))
+                  }
+                  placeholder="예: https://thealltour.com/landing/japan-golf"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+                <span className="text-xs font-normal text-slate-500">
+                  외부/랜딩 페이지 URL을 입력하면, 가이드 카드를 클릭했을 때 새 창으로 이동합니다.
+                </span>
+              </label>
+            </>
+          ) : null}
+          {isGeneralForm ? (
           <div className="md:col-span-2 space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
             <p className="text-xs font-semibold text-slate-600">여행가이드 PDF</p>
             <p className="text-xs text-slate-500">
@@ -251,6 +415,7 @@ export default function AdminGuideManager() {
               }
             />
           </div>
+          ) : null}
           <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
             정렬 순서
             <input
@@ -291,12 +456,14 @@ export default function AdminGuideManager() {
         {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
         {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
       </section>
+      )}
 
+      {activeView === "list" ? (
       <section className="space-y-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-[#e5e7eb]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold text-[#1e3a8a]">등록된 여행가이드</h3>
           <Link
-            href="/blog"
+            href="/guides"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] hover:underline"
@@ -311,55 +478,71 @@ export default function AdminGuideManager() {
             등록된 여행가이드가 없습니다.
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {guides.map((item) => (
-              <article
-                key={item.id}
-                className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-[#f9fafb] p-3 text-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-slate-500">
-                      정렬: {item.sort_order ?? "-"} /{" "}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">정렬</th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">제목</th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">유형</th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">슬러그</th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">상태</th>
+                  <th className="px-3 py-2 text-right font-semibold text-slate-600">작업</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedGuides.map((item) => (
+                  <tr key={item.id} className="bg-white">
+                    <td className="px-3 py-2 text-slate-600">{item.sort_order ?? "-"}</td>
+                    <td className="px-3 py-2">
+                      <p className="font-medium text-slate-900">{item.title}</p>
+                      {item.summary ? <p className="line-clamp-1 text-xs text-slate-500">{item.summary}</p> : null}
+                    </td>
+                    <td className="px-3 py-2 text-slate-600">
+                      {item.notion_url ? "노션" : "일반"}
+                    </td>
+                    <td className="px-3 py-2 text-slate-600">{item.slug ?? "-"}</td>
+                    <td className="px-3 py-2">
                       {item.is_published === false ? (
                         <span className="text-rose-600">비공개</span>
                       ) : (
                         <span className="text-emerald-600">공개</span>
                       )}
-                    </p>
-                    <p className="font-semibold text-[#0f172a]">{item.title}</p>
-                    {item.summary ? (
-                      <p className="line-clamp-2 text-xs text-slate-600">{item.summary}</p>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="space-y-1 text-[11px] text-slate-500">
-                  {item.thumbnail_url ? <p>썸네일: {item.thumbnail_url}</p> : <p>썸네일: (없음)</p>}
-                  {item.guide_pdf_url ? <p>PDF: {item.guide_pdf_url}</p> : <p>PDF: (없음)</p>}
-                  {item.landing_url ? <p>랜딩 URL: {item.landing_url}</p> : <p>랜딩 URL: (없음)</p>}
-                </div>
-                <div className="mt-1 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(item)}
-                    className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    disabled={pendingDeleteId === item.id}
-                    onClick={() => deleteGuide(item)}
-                    className="rounded border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </article>
-            ))}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => syncNow(item)}
+                          className="rounded border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+                        >
+                          즉시 반영
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          수정
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pendingDeleteId === item.id}
+                          onClick={() => deleteGuide(item)}
+                          className="rounded border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
+      ) : null}
     </div>
   );
 }

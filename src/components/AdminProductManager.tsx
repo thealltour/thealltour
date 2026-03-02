@@ -2004,8 +2004,13 @@ export default function AdminProductManager() {
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-3 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[#1e3a8a]">항공편 정보</p>
-            <p className="text-xs text-slate-600">출발/도착 공항·편명은 상세 첫 화면 여행 오버뷰의 &quot;항공&quot; 카드에 자동 반영됩니다.</p>
-            <p className="text-xs text-slate-500">항공사명 뒤에 (TW)처럼 IATA 코드를 함께 입력하면 로고가 자동 표시됩니다.</p>
+            <p className="text-xs text-slate-600">
+              출발/도착 공항·편명은 상세 첫 화면 여행 오버뷰의 &quot;항공&quot; 카드에 자동 반영됩니다.
+            </p>
+            <p className="text-xs text-slate-500">
+              현재는 라이선스 문제로 실제 항공사 로고 이미지는 사용하지 않고, 아이콘 + 텍스트만 표시됩니다. 추후
+              라이선스 획득 시 이 프리뷰 영역과 상세페이지에 로고가 자동 업데이트됩니다.
+            </p>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-xs font-semibold text-slate-700">출발 항공편</p>
@@ -2071,20 +2076,7 @@ export default function AdminProductManager() {
                     />
                     <AirlineLogo airlineText={form.departure_flight_name} size={32} />
                   </div>
-                  {form.departure_flight_name.trim() !== "" && !departureFlightCode && (
-                    <p className="text-[11px] text-red-600">
-                      항공사 코드를 인식하지 못했습니다. 예: &apos;티웨이항공(TW)&apos; 또는
-                      &apos;티웨이항공 TW501&apos;처럼 입력하면 로고가 자동 표시됩니다.
-                    </p>
-                  )}
-                  {form.departure_flight_name.trim() !== "" &&
-                    departureFlightCode &&
-                    !departureHasLogo && (
-                      <p className="text-[11px] text-amber-600">
-                        로고 파일이 없습니다. `/public/assets/airlines/{departureFlightCode}.svg` 를 추가하면
-                        로고가 표시됩니다.
-                      </p>
-                    )}
+                  {/* 현재는 항상 Plane + 텍스트만 표시 (로고 비활성화) */}
                 </div>
               </div>
 
@@ -2152,18 +2144,7 @@ export default function AdminProductManager() {
                     />
                     <AirlineLogo airlineText={form.arrival_flight_name} size={32} />
                   </div>
-                  {form.arrival_flight_name.trim() !== "" && !arrivalFlightCode && (
-                    <p className="text-[11px] text-red-600">
-                      항공사 코드를 인식하지 못했습니다. 예: &apos;티웨이항공(TW)&apos; 또는
-                      &apos;티웨이항공 TW501&apos;처럼 입력하면 로고가 자동 표시됩니다.
-                    </p>
-                  )}
-                  {form.arrival_flight_name.trim() !== "" && arrivalFlightCode && !arrivalHasLogo && (
-                    <p className="text-[11px] text-amber-600">
-                      로고 파일이 없습니다. `/public/assets/airlines/{arrivalFlightCode}.svg` 를 추가하면 로고가
-                      표시됩니다.
-                    </p>
-                  )}
+                  {/* 현재는 항상 Plane + 텍스트만 표시 (로고 비활성화) */}
                 </div>
               </div>
             </div>

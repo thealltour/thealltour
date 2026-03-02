@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@notionhq/client": "^5.11.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-query": "^5.90.21",
     "lucide-react": "^0.575.0",
@@ -26,5 +27,13 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Edge versions",
+    "last 2 Safari versions",
+    "last 2 iOS versions",
+    "last 2 Firefox versions",
+    "not IE 11"
+  ]
 }

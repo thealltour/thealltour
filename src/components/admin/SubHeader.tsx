@@ -12,7 +12,7 @@ export const menuMap = {
   member: ["회원 목록"],
   settings: [],
   reviews: ["후기 목록"],
-  guides: ["가이드 목록"],
+  guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
   banners: ["배너 목록"],
   notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
   notifications: ["알림 목록"],
@@ -77,6 +77,16 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         initial = "등록된 공지 목록";
       } else {
         initial = "등록된 공지 목록";
+      }
+    }
+    if (activeMenu === "guides") {
+      const view = searchParams.get("view");
+      if (view === "notion") {
+        initial = "가이드등록(노션)";
+      } else if (view === "general") {
+        initial = "가이드등록(일반)";
+      } else {
+        initial = "가이드 목록";
       }
     }
 
@@ -164,6 +174,13 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     return null;
   }
 
+  function mapGuidesLabelToView(label: string): string | null {
+    if (label === "가이드등록(노션)") return "notion";
+    if (label === "가이드등록(일반)") return "general";
+    if (label === "가이드 목록") return "list";
+    return null;
+  }
+
   function handleTabClick(label: string) {
     setActiveLabel(label);
     onTabChange?.(label);
@@ -183,6 +200,19 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     }
     if (activeMenu === "notices") {
       const view = mapNoticesLabelToView(label);
+      const params = new URLSearchParams(searchParams.toString());
+      if (view) {
+        params.set("view", view);
+      } else {
+        params.delete("view");
+      }
+      const query = params.toString();
+      const target = query ? `${pathname}?${query}` : pathname;
+      router.push(target);
+      return;
+    }
+    if (activeMenu === "guides") {
+      const view = mapGuidesLabelToView(label);
       const params = new URLSearchParams(searchParams.toString());
       if (view) {
         params.set("view", view);

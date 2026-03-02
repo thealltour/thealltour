@@ -21,6 +21,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <link
+          rel="preconnect"
+          href="https://qmswixmwquuazrhfyils.supabase.co"
+          crossOrigin=""
+        />
+        <link
+          rel="preconnect"
+          href="https://img.modetour.com"
+          crossOrigin=""
+        />
+      </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-blue-100 selection:text-foreground">
         <div className="flex-1">{children}</div>
         <KakaoFloatingButton />

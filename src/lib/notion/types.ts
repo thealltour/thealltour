@@ -5,7 +5,9 @@ export type NotionRichText = {
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
+    strikethrough?: boolean;
     code?: boolean;
+    color?: string;
   };
 };
 
@@ -61,6 +63,24 @@ export type GuideBlock =
       id: string;
       groupId: string;
       images: GuideImage[];
+    }
+  | {
+      type: "columns";
+      id: string;
+      columns: Array<{
+        id: string;
+        blocks: GuideBlock[];
+      }>;
+    }
+  | {
+      type: "table";
+      id: string;
+      hasColumnHeader: boolean;
+      hasRowHeader: boolean;
+      rows: Array<{
+        id: string;
+        cells: NotionRichText[][];
+      }>;
     }
   | {
       type: "divider";

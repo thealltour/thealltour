@@ -7,6 +7,14 @@
   font-size: var(--nt-font-size-base);
 }
 
+.root :is(h1, h2, h3, p, ul, ol, blockquote, figure, table) {
+  margin: 0;
+}
+
+.root :is(ul, ol) {
+  padding: 0;
+}
+
 .container,
 .nestedContainer {
   width: 100%;
@@ -20,37 +28,64 @@
   margin-bottom: var(--nt-block-spacing);
 }
 
-.h1,
-.h2,
-.h3 {
-  margin-top: var(--nt-heading-top);
-  margin-bottom: var(--nt-heading-bottom);
+.h1 {
+  margin-top: var(--nt-h1-top);
+  margin-bottom: var(--nt-h1-bottom);
+  font-size: var(--nt-h1-size);
+  line-height: var(--nt-h1-lh);
+  font-weight: var(--nt-h1-weight);
   color: var(--nt-heading);
   letter-spacing: -0.01em;
 }
 
-.h1 {
-  font-size: var(--nt-h1-size);
-  line-height: var(--nt-h1-lh);
-  font-weight: var(--nt-h1-weight);
-}
-
 .h2 {
+  margin-top: var(--nt-h2-top);
+  margin-bottom: var(--nt-h2-bottom);
   font-size: var(--nt-h2-size);
   line-height: var(--nt-h2-lh);
   font-weight: var(--nt-h2-weight);
+  color: var(--nt-heading);
+  letter-spacing: -0.01em;
 }
 
 .h3 {
+  margin-top: var(--nt-h3-top);
+  margin-bottom: var(--nt-h3-bottom);
   font-size: var(--nt-h3-size);
   line-height: var(--nt-h3-lh);
   font-weight: var(--nt-h3-weight);
+  color: var(--nt-heading);
+  letter-spacing: -0.01em;
 }
 
 .paragraph {
+  margin: 0;
+  margin-bottom: var(--nt-p-bottom);
   font-size: 1rem;
   line-height: var(--nt-line-height-body);
   color: var(--nt-text-secondary);
+}
+
+.h1 + .paragraph,
+.h2 + .paragraph,
+.h3 + .paragraph {
+  margin-top: 0;
+}
+
+.richTextSegment {
+  white-space: pre-wrap;
+}
+
+.rtBold {
+  font-weight: 700;
+}
+
+.rtItalic {
+  font-style: italic;
+}
+
+.rtStrike {
+  text-decoration: line-through;
 }
 
 .link {
@@ -80,20 +115,60 @@
   text-underline-offset: 2px;
 }
 
-.list,
-.listNested {
-  padding-left: var(--nt-list-indent);
-  color: var(--nt-text-secondary);
-  line-height: var(--nt-line-height-body);
+.rtFgBlue {
+  color: #7bb8ff;
+}
+
+.rtFgOrange {
+  color: #ffbf80;
+}
+
+.rtFgPink {
+  color: #ff9cc6;
+}
+
+.rtFgRed {
+  color: #ff8a8a;
+}
+
+.rtFgGray {
+  color: #a8b3c7;
+}
+
+.rtBgBlue {
+  background: rgba(59, 130, 246, 0.2);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.rtBgOrange {
+  background: rgba(251, 146, 60, 0.2);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.rtBgPink {
+  background: rgba(236, 72, 153, 0.2);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.rtBgRed {
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.rtBgGray {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+  padding: 0 2px;
 }
 
 .list {
-  margin-top: -6px;
-}
-
-.listNested {
-  margin-top: 10px;
-  margin-bottom: 12px;
+  padding-left: var(--nt-list-indent);
+  color: var(--nt-text-secondary);
+  line-height: var(--nt-line-height-body);
 }
 
 .listItem {
@@ -129,6 +204,53 @@
   flex: 1;
 }
 
+.columns {
+  display: grid;
+  grid-template-columns: repeat(var(--columns-count, 1), minmax(0, 1fr));
+  gap: 24px;
+}
+
+.column {
+  min-width: 0;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--nt-divider);
+  border-radius: var(--nt-radius-md);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 460px;
+}
+
+.tableCell,
+.tableHeaderCell {
+  border-bottom: 1px solid var(--nt-divider);
+  border-right: 1px solid var(--nt-divider);
+  padding: 10px 12px;
+  vertical-align: top;
+  line-height: var(--nt-line-height-body);
+  color: var(--nt-text-secondary);
+  text-align: left;
+}
+
+.tableHeaderCell {
+  font-weight: 700;
+  color: var(--nt-heading);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.table tr:last-child :is(.tableCell, .tableHeaderCell) {
+  border-bottom: 0;
+}
+
+.table :is(.tableCell, .tableHeaderCell):last-child {
+  border-right: 0;
+}
+
 .divider {
   border: 0;
   border-top: 1px solid var(--nt-divider);
@@ -141,15 +263,6 @@
   margin-right: auto;
   width: 100%;
   max-width: var(--nt-image-max-width);
-}
-
-.imageButton {
-  display: block;
-  width: 100%;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: zoom-in;
 }
 
 .image {
@@ -178,6 +291,31 @@
 
   .block {
     margin-bottom: var(--nt-block-spacing-mobile);
+  }
+
+  .h1 {
+    margin-top: calc(var(--nt-h1-top) * 0.85);
+  }
+
+  .h2 {
+    margin-top: calc(var(--nt-h2-top) * 0.85);
+  }
+
+  .h3 {
+    margin-top: calc(var(--nt-h3-top) * 0.9);
+  }
+
+  .paragraph {
+    margin-bottom: calc(var(--nt-p-bottom) * 0.9);
+  }
+
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .table {
+    min-width: 100%;
   }
 }
 

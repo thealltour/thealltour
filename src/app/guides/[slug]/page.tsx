@@ -94,27 +94,11 @@ export default async function GuideDetailPage({ params }: PageProps) {
           subtitle={content.summary || content.excerpt}
         />
 
-        {content.toc.length > 0 ? (
-          <nav
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm shadow-sm"
-            aria-label="가이드 목차"
-          >
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">목차</p>
-            <ul className="space-y-1.5">
-              {content.toc.map((item) => (
-                <li key={`${item.id}-${item.level}`} className={item.level === 3 ? "pl-3" : ""}>
-                  <a href={`#${item.id}`} className="text-slate-700 hover:text-slate-900 hover:underline">
-                    {item.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ) : null}
-
-        <section className="space-y-4 rounded-3xl bg-[#0b1220] p-6 shadow-md ring-1 ring-[#1e293b] md:p-8">
-          <NotionBlocksRenderer blocks={content.blocks} theme="dark" />
-        </section>
+        <div className="flex flex-col gap-10 md:gap-12">
+          <section className="notion-content-section space-y-4 rounded-3xl bg-[#0b1220] p-6 shadow-md ring-1 ring-[#1e293b] md:p-8">
+            <NotionBlocksRenderer blocks={content.blocks} theme="dark" />
+          </section>
+        </div>
 
         {relatedGuides.length > 0 ? (
           <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

@@ -110,6 +110,62 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
       continue;
     }
 
+    if (type === "column_list") {
+      const rawColumns = Array.isArray(block?.children)
+        ? block.children.filter((child: any) => child?.type === "column")
+        : [];
+
+      const columns: Array<{ id: string; blocks: GuideBlock[] }> = rawColumns
+        .map((column: any, columnIndex: number) => {
+          const columnChildren = Array.isArray(column?.children) ? column.children : [];
+          const columnBlocks = normalizeBlocksInternal(columnChildren, toc);
+          return {
+            id: String(column?.id ?? `${id}-column-${columnIndex}`),
+            blocks: columnBlocks,
+          };
+        })
+        .filter((column: { id: string; blocks: GuideBlock[] }) => column.blocks.length > 0);
+
+      if (columns.length > 0) {
+        blocks.push({
+          type: "columns",
+          id,
+          columns,
+        });
+      } else if (Array.isArray(block?.children) && block.children.length > 0) {
+        blocks.push(...normalizeBlocksInternal(block.children, toc));
+      }
+      index += 1;
+      continue;
+    }
+
+    if (type === "table") {
+      const rows = Array.isArray(block?.children)
+        ? block.children
+            .filter((child: any) => child?.type === "table_row")
+            .map((row: any, rowIndex: number) => ({
+              id: String(row?.id ?? `${id}-row-${rowIndex}`),
+              cells: Array.isArray(row?.table_row?.cells)
+                ? (row.table_row.cells as NotionRichText[][])
+                : [],
+            }))
+        : [];
+
+      if (rows.length > 0) {
+        blocks.push({
+          type: "table",
+          id,
+          hasColumnHeader: Boolean(block?.table?.has_column_header),
+          hasRowHeader: Boolean(block?.table?.has_row_header),
+          rows,
+        });
+      } else if (Array.isArray(block?.children) && block.children.length > 0) {
+        blocks.push(...normalizeBlocksInternal(block.children, toc));
+      }
+      index += 1;
+      continue;
+    }
+
     if (type === "paragraph") {
       blocks.push({
         type: "paragraph",
@@ -175,6 +231,16 @@ function collectPlainTextFromBlocks(blocks: GuideBlock[]): string {
           chunks.push(collectPlainTextFromBlocks(item.children));
         }
       }
+    } else if (block.type === "columns") {
+      for (const column of block.columns) {
+        chunks.push(collectPlainTextFromBlocks(column.blocks));
+      }
+    } else if (block.type === "table") {
+      for (const row of block.rows) {
+        for (const cell of row.cells) {
+          chunks.push(richTextToString(cell));
+        }
+      }
     }
   }
   return chunks.join(" ").replace(/\s+/g, " ").trim();
@@ -186,6 +252,7 @@ export function normalizeGuideContent(input: {
   pageTitleFromNotion?: string;
 }): GuideContent {
   const toc: GuideTocItem[] = [];
+  // 외부 TOC를 사용하지 않는 경우를 고려해, 본문 내 목차 섹션은 제거하지 않고 유지합니다.
   const blocks = normalizeBlocksInternal(input.rawBlocks, toc);
   const plainText = collectPlainTextFromBlocks(blocks);
   const excerpt = (input.guide.summary?.trim() || plainText).slice(0, 180);

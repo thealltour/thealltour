@@ -1,0 +1,16 @@
+.block {
+  margin-bottom: var(--space-5);
+}
+
+.toc {
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 768px) {
+  .toc {
+    margin-top: 12px;
+    margin-bottom: 24px;
+  }
+}
+

@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Guide } from "@/types/guide";
+import { unstable_cache } from "next/cache";
 
 function normalizeGuide(row: Record<string, unknown>): Guide {
   return {
@@ -34,13 +35,12 @@ function normalizeGuide(row: Record<string, unknown>): Guide {
   };
 }
 
-// 기존 블로그(/blog)에서 사용하는 PDF 기반 가이드 목록
+// 유저 여행가이드(/blog) 통합 목록: PDF/Notion 모두 노출
 export async function getPublishedGuides(): Promise<Guide[]> {
   const { data, error } = await supabase
     .from("guides")
     .select("*")
     .eq("is_published", true)
-    .not("guide_pdf_url", "is", null)
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false, nullsFirst: false });
 
@@ -53,19 +53,27 @@ export async function getPublishedGuides(): Promise<Guide[]> {
 
 // Notion 기반 상세 페이지(/guides)용: slug와 notion_page_id가 있는 가이드만
 export async function getPublishedNotionGuides(): Promise<Guide[]> {
-  const { data, error } = await supabase
-    .from("guides")
-    .select("*")
-    .eq("is_published", true)
-    .not("slug", "is", null)
-    .not("notion_page_id", "is", null)
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false, nullsFirst: false });
+  return unstable_cache(
+    async () => {
+      const { data, error } = await supabase
+        .from("guides")
+        .select("*")
+        .eq("is_published", true)
+        .not("slug", "is", null)
+        .not("notion_page_id", "is", null)
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false });
 
-  if (error) {
-    return [];
-  }
-
-  return (data ?? []).map((row) => normalizeGuide(row as Record<string, unknown>));
+      if (error) {
+        return [];
+      }
+      return (data ?? []).map((row) => normalizeGuide(row as Record<string, unknown>));
+    },
+    ["guides-notion-list"],
+    {
+      revalidate: 60 * 60 * 3,
+      tags: ["guides:list"],
+    },
+  )();
 }
 

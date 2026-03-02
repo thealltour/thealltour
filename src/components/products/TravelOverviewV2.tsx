@@ -13,6 +13,8 @@ import {
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
+import { FlightSummarySection } from "@/components/products/FlightSummarySection";
+import type { Product } from "@/types/product";
 
 const CARD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   flight: Plane,
@@ -26,6 +28,8 @@ const CARD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 export type TravelOverviewV2Props = {
   /** 모델이 없거나 카드가 없으면 렌더하지 않음 */
   model: TravelOverviewModel | null;
+  /** 항공 카드 포함용 상품 데이터 */
+  product?: Product | null;
   /** 커버 이미지가 없을 때 사용할 URL */
   fallbackImageUrl?: string | null;
   /** 일정 타임라인은 오버뷰 아래 InteractiveTimelineV2에서 표시 (onGoToItinerary는 해당 섹션으로 스크롤용) */
@@ -34,6 +38,7 @@ export type TravelOverviewV2Props = {
 
 export function TravelOverviewV2({
   model,
+  product = null,
   fallbackImageUrl = null,
 }: TravelOverviewV2Props) {
   if (!model || !model.cards?.length) {
@@ -62,14 +67,7 @@ export function TravelOverviewV2({
         </div>
 
         <div className="space-y-8">
-          {/* 1. 최상단: 항공·숙소·지역 카드 */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {cards.map((card, i) => (
-              <SummaryCard key={`${card.iconKey}-${card.label}-${i}`} card={card} />
-            ))}
-          </div>
-
-          {/* 2. 사진 + 차트 (모바일에서만 차트 표시, 웹은 오른쪽 예상가 위에 표시) */}
+          {/* 1. 사진 + 차트 (모바일에서만 차트 표시, 웹은 오른쪽 예상가 위에 표시) */}
           <div
             className={
               hasChart
@@ -106,6 +104,15 @@ export function TravelOverviewV2({
               </div>
             )}
           </div>
+
+          {/* 2. 항공·숙소·지역 카드 */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {cards.map((card, i) => (
+              <SummaryCard key={`${card.iconKey}-${card.label}-${i}`} card={card} />
+            ))}
+          </div>
+
+          <FlightSummarySection product={product} compact embedded />
 
         </div>
       </div>

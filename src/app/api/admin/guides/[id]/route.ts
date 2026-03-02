@@ -30,6 +30,11 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return "알 수 없는 오류";
+}
+
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
   if (!id) {
@@ -39,10 +44,10 @@ export async function PATCH(request: Request, context: RouteContext) {
   const body = (await request.json()) as GuideBody;
   const updates: Record<string, unknown> = {};
 
-  if (body.title !== undefined) updates.title = body.title.trim();
-  if (body.summary !== undefined) updates.summary = body.summary.trim();
-  if (body.thumbnail_url !== undefined) updates.thumbnail_url = body.thumbnail_url.trim();
-  if (body.landing_url !== undefined) updates.landing_url = body.landing_url.trim();
+  if (body.title !== undefined) updates.title = (body.title ?? "").trim();
+  if (body.summary !== undefined) updates.summary = (body.summary ?? "").trim() || null;
+  if (body.thumbnail_url !== undefined) updates.thumbnail_url = (body.thumbnail_url ?? "").trim() || null;
+  if (body.landing_url !== undefined) updates.landing_url = (body.landing_url ?? "").trim() || null;
   if (body.guide_pdf_url !== undefined) updates.guide_pdf_url = (body.guide_pdf_url ?? "").trim() || null;
   if (body.guide_thumbnail_url !== undefined)
     updates.guide_thumbnail_url = (body.guide_thumbnail_url ?? "").trim() || null;
@@ -81,7 +86,14 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (data?.notion_page_id) {
-    await syncGuideFromNotion(id);
+    try {
+      await syncGuideFromNotion(id);
+    } catch (error) {
+      const reason = getErrorMessage(error);
+      return NextResponse.json({
+        message: `여행가이드는 수정되었지만 노션 동기화에 실패했습니다. (${reason})`,
+      });
+    }
   }
 
   return NextResponse.json({ message: "여행가이드가 수정되었습니다." });

@@ -210,7 +210,7 @@ export function ScheduleVisualEditorV2({
                 legacy_itinerary_text: e.target.value,
               }))
             }
-            placeholder={"예시:\n[1일차]\n인천 출발 / 시드니 도착 (오후)\n기내식\n\n[2일차]\n시드니 시내 관광 (종일)\n..."}
+            placeholder={"예시:\n[1일차]\n집결/인천국제공항 제1터미널 집결/오후/19:40\n출발/티웨이항공(TW) 인천(ICN) 출발 (약 10시간 35분 소요)/오후/21:40\n식사/석식: 기내식\n숙박/기내박\n\n\n[2일차]\n미팅/시드니(SYD) 공항 도착 및 가이드 미팅/오전/10:15 \n관광/시드니 동부 해안 관광/오후\n본다이 비치/시드니 최고의 서핑 명소 및 해변 관람"}
             rows={4}
             className="mb-2 w-full rounded border border-amber-300 bg-white px-2.5 py-2 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
           />

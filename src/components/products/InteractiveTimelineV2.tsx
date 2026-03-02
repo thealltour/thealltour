@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import {
   Plane,
@@ -124,6 +124,7 @@ export function InteractiveTimelineV2({
   maxEventsVisible,
 }: InteractiveTimelineV2Props) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const topAnchorRef = useRef<HTMLDivElement | null>(null);
   /** [STEP 6] 요약 모드에서 Day별 '더보기' 펼침 여부 (Day 번호 집합) */
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
@@ -142,10 +143,15 @@ export function InteractiveTimelineV2({
     maxEventsVisible != null && activeDay.events.length > maxEventsVisible && !isExpanded;
   const moreCount = hasMore ? activeDay.events.length - maxEventsVisible! : 0;
 
-  const handleDayTab = (index: number) => {
+  const handleDayTab = (index: number, scrollToTop = false) => {
     setActiveIndex(index);
     const day = days[index];
     if (day) onDayChange?.(day.day);
+    if (scrollToTop) {
+      requestAnimationFrame(() => {
+        topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   };
 
   const toggleExpand = () => {
@@ -170,6 +176,7 @@ export function InteractiveTimelineV2({
       aria-label="상세 일정"
     >
       <div className="p-4 sm:p-6">
+        <div ref={topAnchorRef} />
         {/* 1) 상단 Day 탭 */}
         <div className="mb-6 flex flex-wrap gap-2">
           {days.map((d, i) => (
@@ -264,6 +271,29 @@ export function InteractiveTimelineV2({
           </div>
         ) : (
           <p className="py-6 text-center text-sm text-slate-500">해당 일차 이벤트가 없습니다.</p>
+        )}
+
+        {/* 하단 Day 탭: 일차 확인 후 다음 Day로 바로 이동 */}
+        {days.length > 1 && (
+          <div className="mt-8 border-t border-slate-200 pt-4">
+            <p className="mb-3 text-xs font-semibold text-slate-500">다른 일차 바로가기</p>
+            <div className="flex flex-wrap gap-2">
+              {days.map((d, i) => (
+                <button
+                  key={`day-bottom-${d.day}-${i}`}
+                  type="button"
+                  onClick={() => handleDayTab(i, true)}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    activeIndex === i
+                      ? "bg-[#1E3A8A] text-white shadow-md"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  Day {d.day}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </section>

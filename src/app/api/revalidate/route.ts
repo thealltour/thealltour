@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function POST(request: NextRequest) {
   const secret =
@@ -27,6 +27,11 @@ export async function POST(request: NextRequest) {
   }
 
   revalidatePath(targetPath);
+  revalidatePath("/guides");
+  if (body.slug && typeof body.slug === "string") {
+    revalidateTag(`guide:${body.slug}`, "max");
+  }
+  revalidateTag("guides:list", "max");
 
   return NextResponse.json({ revalidated: true, path: targetPath });
 }

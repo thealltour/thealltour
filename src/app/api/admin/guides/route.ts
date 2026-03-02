@@ -49,6 +49,11 @@ async function ensureUniqueSlug(base: string): Promise<string> {
   }
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return "알 수 없는 오류";
+}
+
 export async function GET() {
   const { data, error } = await supabase
     .from("guides")
@@ -117,11 +122,24 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (error || !data) {
-    return NextResponse.json({ message: "여행가이드 등록에 실패했습니다." }, { status: 500 });
+    console.error("[api/admin/guides:POST] insert failed", error);
+    const reason = error?.message ? ` (${error.message})` : "";
+    return NextResponse.json({ message: `여행가이드 등록에 실패했습니다.${reason}` }, { status: 500 });
   }
 
   if (data?.id && notionPageId) {
-    await syncGuideFromNotion(data.id);
+    try {
+      await syncGuideFromNotion(data.id);
+    } catch (error) {
+      const reason = getErrorMessage(error);
+      return NextResponse.json(
+        {
+          ...data,
+          message: `가이드는 등록되었지만 노션 동기화에 실패했습니다. (${reason})`,
+        },
+        { status: 201 },
+      );
+    }
   }
 
   return NextResponse.json(data, { status: 201 });

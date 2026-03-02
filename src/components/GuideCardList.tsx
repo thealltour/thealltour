@@ -50,9 +50,18 @@ export function GuideCardList({ guides }: GuideCardListProps) {
     <>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {guides.map((guide) => {
-          const thumbUrl = guide.thumbnail_url ?? guide.guide_thumbnail_url ?? "";
+          const thumbUrl =
+            guide.cover_image_url ??
+            guide.thumbnail_url ??
+            guide.guide_thumbnail_url ??
+            "";
           const pdfUrl = guide.guide_pdf_url ?? "";
           const hasPdf = Boolean(pdfUrl?.trim());
+          const hasNotionDetail = Boolean(
+            guide.slug?.trim() && guide.notion_page_id?.trim(),
+          );
+          const hasLanding = Boolean(guide.landing_url?.trim());
+          const guideTitle = guide.title_override?.trim() || guide.title;
 
           const cardContent = (
             <>
@@ -77,7 +86,7 @@ export function GuideCardList({ guides }: GuideCardListProps) {
                     TRAVEL GUIDE
                   </p>
                   <h2 className="font-card-title line-clamp-2 type-body font-semibold text-content-primary md:type-small">
-                    {guide.title}
+                    {guideTitle}
                   </h2>
                 </div>
                 {guide.summary ? (
@@ -104,16 +113,42 @@ export function GuideCardList({ guides }: GuideCardListProps) {
                 role="button"
                 tabIndex={0}
                 className={`${cardClass} cursor-pointer`}
-                onClick={() => openPdfModal(pdfUrl, guide.title)}
+                onClick={() => openPdfModal(pdfUrl, guideTitle)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    openPdfModal(pdfUrl, guide.title);
+                    openPdfModal(pdfUrl, guideTitle);
                   }
                 }}
               >
                 {cardContent}
               </article>
+            );
+          }
+
+          if (hasNotionDetail) {
+            return (
+              <Link
+                key={guide.id}
+                href={`/guides/${guide.slug}`}
+                className={cardClass}
+              >
+                {cardContent}
+              </Link>
+            );
+          }
+
+          if (hasLanding) {
+            return (
+              <a
+                key={guide.id}
+                href={guide.landing_url || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cardClass}
+              >
+                {cardContent}
+              </a>
             );
           }
 

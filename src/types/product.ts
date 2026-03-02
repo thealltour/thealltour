@@ -167,6 +167,8 @@ export type Product = {
   departure_to_date?: string;
   departure_to_time?: string;
   departure_flight_name?: string;
+  /** 출발편 수하물 한도 (예: 23KG) */
+  departure_baggage_limit?: string;
   arrival_from_airport?: string;
   arrival_from_date?: string;
   arrival_from_time?: string;
@@ -174,6 +176,8 @@ export type Product = {
   arrival_to_date?: string;
   arrival_to_time?: string;
   arrival_flight_name?: string;
+  /** 도착편 수하물 한도 (예: 23KG) */
+  arrival_baggage_limit?: string;
   meta_title?: string;
   meta_description?: string;
   is_active?: boolean;

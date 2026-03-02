@@ -1,0 +1,155 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(2, 6, 23, 0.8);
+  padding: 16px;
+}
+
+.modal {
+  margin: 0 auto;
+  display: flex;
+  height: 100%;
+  max-width: 1280px;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: #0b1220;
+  color: var(--nt-text-primary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  padding: 12px 14px;
+}
+
+.title {
+  font-size: 0.86rem;
+  color: var(--nt-text-muted);
+}
+
+.closeButton {
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: transparent;
+  color: var(--nt-text-primary);
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+  padding: 12px;
+}
+
+.previewPanel {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewViewport {
+  flex: 1;
+  min-height: 260px;
+  overflow: auto;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.previewViewportZoom {
+  cursor: zoom-out;
+}
+
+.previewImage {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  transition: transform 180ms ease;
+}
+
+.previewViewportZoom .previewImage {
+  transform: scale(1.6);
+  transform-origin: center center;
+}
+
+.previewCaption {
+  font-size: var(--nt-caption-size);
+  color: var(--nt-text-muted);
+}
+
+.navRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.navButton {
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(2, 6, 23, 0.3);
+  color: var(--nt-text-primary);
+  padding: 7px 10px;
+  font-size: 0.82rem;
+}
+
+.collagePanel {
+  min-height: 0;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.34);
+  padding: 8px;
+}
+
+.grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gridItem {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.gridItemActive {
+  border-color: var(--nt-link);
+  box-shadow: 0 0 0 1px var(--nt-link);
+}
+
+.gridImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+@media (min-width: 900px) {
+  .body {
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 14px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+

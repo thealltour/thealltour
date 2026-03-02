@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import { GuidePdfUploadField } from "@/components/admin/GuidePdfUploadField";
@@ -46,11 +46,10 @@ const initialForm: GuideFormState = {
 
 export default function AdminGuideManager() {
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
   const [guides, setGuides] = useState<Guide[]>([]);
   const [form, setForm] = useState<GuideFormState>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingType, setEditingType] = useState<"notion" | "general" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -61,8 +60,8 @@ export default function AdminGuideManager() {
   const view = searchParams.get("view");
   const activeView: "list" | "notion" | "general" =
     view === "notion" || view === "general" ? view : "list";
-  const isNotionForm = activeView === "notion";
-  const isGeneralForm = activeView === "general";
+  const isNotionForm = activeView === "notion" || (editingId !== null && editingType === "notion");
+  const isGeneralForm = activeView === "general" || (editingId !== null && editingType === "general");
 
   const sortedGuides = useMemo(() => {
     return [...guides].sort((a, b) => {
@@ -100,6 +99,7 @@ export default function AdminGuideManager() {
 
   function startEdit(item: Guide) {
     setEditingId(item.id);
+    setEditingType(item.notion_url || item.notion_page_id ? "notion" : "general");
     setForm({
       title: item.title ?? "",
       summary: item.summary ?? "",
@@ -119,14 +119,11 @@ export default function AdminGuideManager() {
     });
     setMessage("");
     setErrorMessage("");
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", item.notion_url ? "notion" : "general");
-    const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
   }
 
   function cancelEdit() {
     setEditingId(null);
+    setEditingType(null);
     setForm(initialForm);
     setMessage("");
     setErrorMessage("");
@@ -175,6 +172,7 @@ export default function AdminGuideManager() {
       setMessage(editingId ? "여행가이드를 수정했습니다." : "여행가이드를 등록했습니다.");
       setForm(initialForm);
       setEditingId(null);
+      setEditingType(null);
       await loadGuides();
     } catch {
       setErrorMessage("저장 중 오류가 발생했습니다.");
@@ -499,7 +497,7 @@ export default function AdminGuideManager() {
                       {item.summary ? <p className="line-clamp-1 text-xs text-slate-500">{item.summary}</p> : null}
                     </td>
                     <td className="px-3 py-2 text-slate-600">
-                      {item.notion_url ? "노션" : "일반"}
+                      {item.notion_url || item.notion_page_id ? "노션" : "일반"}
                     </td>
                     <td className="px-3 py-2 text-slate-600">{item.slug ?? "-"}</td>
                     <td className="px-3 py-2">

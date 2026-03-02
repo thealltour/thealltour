@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import SiteHeader from "@/components/SiteHeader";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { PageHero } from "@/components/layout/PageHero";
-import { getGuideBySlug } from "@/lib/notionSync";
-import { fetchNotionBlocks, fetchNotionPageMeta } from "@/lib/notion";
+import Link from "next/link";
 import { NotionBlocksRenderer } from "@/components/guides/NotionBlocksRenderer";
+import { getGuideContentCached } from "@/lib/notion";
+import { getPublishedNotionGuides } from "@/lib/guides";
 
-export const revalidate = 300;
+export const revalidate = 10800;
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -15,61 +16,68 @@ type PageProps = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const guide = await getGuideBySlug(slug);
-  if (!guide || guide.is_published === false) {
+  const content = await getGuideContentCached(slug);
+  if (!content) {
     return {};
   }
-
-  const titleBase = guide.title_override || guide.title;
-  const title = `${titleBase} | 더올투어 여행가이드`;
-
-  let description = guide.summary ?? "";
-  if (!description && guide.notion_page_id) {
-    try {
-      const page = await fetchNotionPageMeta(guide.notion_page_id);
-      const properties = (page as any).properties ?? {};
-      for (const value of Object.values(properties) as any[]) {
-        if (value?.type === "rich_text" && Array.isArray(value.rich_text) && value.rich_text[0]?.plain_text) {
-          description = value.rich_text.map((t: any) => t.plain_text).join(" ").slice(0, 150);
-          break;
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  const image = guide.cover_image_url || guide.thumbnail_url || "/thealltour-logo.png";
+  const title = `${content.title} | 더올투어 여행가이드`;
+  const description = content.excerpt;
+  const canonical = `/guides/${content.slug}`;
+  const image = content.ogImage || "/thealltour-logo.png";
 
   return {
     title,
     description: description || undefined,
+    alternates: {
+      canonical,
+    },
     openGraph: {
       title,
       description: description || undefined,
       images: [{ url: image }],
       type: "article",
+      url: canonical,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: description || undefined,
+      images: [image],
     },
   };
 }
 
+export async function generateStaticParams() {
+  const guides = await getPublishedNotionGuides();
+  return guides
+    .filter((guide) => Boolean(guide.slug))
+    .map((guide) => ({ slug: guide.slug as string }));
+}
+
 export default async function GuideDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const guide = await getGuideBySlug(slug);
+  const content = await getGuideContentCached(slug);
 
-  if (!guide || guide.is_published === false || !guide.notion_page_id) {
+  if (!content) {
     notFound();
   }
 
-  const blocks = await fetchNotionBlocks(guide.notion_page_id);
-  const title = guide.title_override || guide.title;
+  const guides = await getPublishedNotionGuides();
+  const relatedGuides = guides
+    .filter((guide) => guide.slug && guide.slug !== content.slug)
+    .slice(0, 3);
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
-    headline: title,
-    description: guide.summary ?? undefined,
-    datePublished: guide.published_at ?? guide.created_at ?? undefined,
+    headline: content.title,
+    description: content.excerpt,
+    datePublished: content.publishedAt ?? undefined,
+    image: content.ogImage ? [content.ogImage] : undefined,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `https://thealltour.com/guides/${content.slug}`,
+    },
     author: {
       "@type": "Organization",
       name: "더올투어",
@@ -82,12 +90,50 @@ export default async function GuideDetailPage({ params }: PageProps) {
       <SectionBody className="flex flex-col gap-[var(--space-5)] max-w-4xl">
         <PageHero
           kicker="THEALL TOUR GUIDE"
-          title={title}
-          subtitle={guide.summary ?? undefined}
+          title={content.title}
+          subtitle={content.summary || content.excerpt}
         />
-        <section className="space-y-4 rounded-3xl bg-white p-6 shadow-md ring-1 ring-[#e2e8f0]">
-          <NotionBlocksRenderer blocks={blocks} />
+
+        {content.toc.length > 0 ? (
+          <nav
+            className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm shadow-sm"
+            aria-label="가이드 목차"
+          >
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">목차</p>
+            <ul className="space-y-1.5">
+              {content.toc.map((item) => (
+                <li key={`${item.id}-${item.level}`} className={item.level === 3 ? "pl-3" : ""}>
+                  <a href={`#${item.id}`} className="text-slate-700 hover:text-slate-900 hover:underline">
+                    {item.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
+
+        <section className="space-y-4 rounded-3xl bg-[#0b1220] p-6 shadow-md ring-1 ring-[#1e293b] md:p-8">
+          <NotionBlocksRenderer blocks={content.blocks} theme="dark" />
         </section>
+
+        {relatedGuides.length > 0 ? (
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">관련 가이드</h2>
+            <ul className="space-y-2">
+              {relatedGuides.map((guide) => (
+                <li key={guide.id}>
+                  <Link
+                    href={`/guides/${guide.slug}`}
+                    className="text-slate-700 underline-offset-2 hover:text-slate-900 hover:underline"
+                  >
+                    {guide.title_override || guide.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

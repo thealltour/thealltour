@@ -43,6 +43,7 @@ export type ProductFormPayload = {
   departure_to_date?: string;
   departure_to_time?: string;
   departure_flight_name?: string;
+  departure_baggage_limit?: string;
   arrival_from_airport?: string;
   arrival_from_date?: string;
   arrival_from_time?: string;
@@ -50,6 +51,7 @@ export type ProductFormPayload = {
   arrival_to_date?: string;
   arrival_to_time?: string;
   arrival_flight_name?: string;
+  arrival_baggage_limit?: string;
   meta_title?: string;
   meta_description?: string;
   is_active?: boolean;
@@ -133,6 +135,7 @@ export function formToPreviewProduct(
     departure_to_date: form.departure_to_date?.trim() || undefined,
     departure_to_time: form.departure_to_time?.trim() || undefined,
     departure_flight_name: form.departure_flight_name?.trim() || undefined,
+    departure_baggage_limit: form.departure_baggage_limit?.trim() || undefined,
     arrival_from_airport: form.arrival_from_airport?.trim() || undefined,
     arrival_from_date: form.arrival_from_date?.trim() || undefined,
     arrival_from_time: form.arrival_from_time?.trim() || undefined,
@@ -140,6 +143,7 @@ export function formToPreviewProduct(
     arrival_to_date: form.arrival_to_date?.trim() || undefined,
     arrival_to_time: form.arrival_to_time?.trim() || undefined,
     arrival_flight_name: form.arrival_flight_name?.trim() || undefined,
+    arrival_baggage_limit: form.arrival_baggage_limit?.trim() || undefined,
     meta_title: form.meta_title?.trim() || undefined,
     meta_description: form.meta_description?.trim() || undefined,
     is_active: form.is_active ?? true,

@@ -52,6 +52,7 @@ type ProductFormState = {
   departure_to_date: string;
   departure_to_time: string;
   departure_flight_name: string;
+  departure_baggage_limit: string;
   arrival_from_airport: string;
   arrival_from_date: string;
   arrival_from_time: string;
@@ -59,6 +60,7 @@ type ProductFormState = {
   arrival_to_date: string;
   arrival_to_time: string;
   arrival_flight_name: string;
+  arrival_baggage_limit: string;
   detailed_schedule: string;
   optional_tours: string;
   min_departure_people: string;
@@ -146,6 +148,7 @@ const initialFormState: ProductFormState = {
   departure_to_date: "",
   departure_to_time: "",
   departure_flight_name: "",
+  departure_baggage_limit: "",
   arrival_from_airport: "",
   arrival_from_date: "",
   arrival_from_time: "",
@@ -153,6 +156,7 @@ const initialFormState: ProductFormState = {
   arrival_to_date: "",
   arrival_to_time: "",
   arrival_flight_name: "",
+  arrival_baggage_limit: "",
   detailed_schedule: "",
   optional_tours: "",
   min_departure_people: "",
@@ -356,6 +360,7 @@ function mapProductToForm(product: Product): ProductFormState {
     departure_to_date: product.departure_to_date ?? "",
     departure_to_time: product.departure_to_time ?? "",
     departure_flight_name: product.departure_flight_name ?? "",
+    departure_baggage_limit: product.departure_baggage_limit ?? "",
     arrival_from_airport: product.arrival_from_airport ?? "",
     arrival_from_date: product.arrival_from_date ?? "",
     arrival_from_time: product.arrival_from_time ?? "",
@@ -363,6 +368,7 @@ function mapProductToForm(product: Product): ProductFormState {
     arrival_to_date: product.arrival_to_date ?? "",
     arrival_to_time: product.arrival_to_time ?? "",
     arrival_flight_name: product.arrival_flight_name ?? "",
+    arrival_baggage_limit: product.arrival_baggage_limit ?? "",
     detailed_schedule: product.detailed_schedule ?? "",
     optional_tours: shouldRepairLegacyDetailMix ? "" : product.optional_tours ?? "",
     min_departure_people: product.min_departure_people ?? "",
@@ -677,6 +683,8 @@ export default function AdminProductManager() {
         departure_to_time: form.departure_to_time.trim() === "" ? undefined : form.departure_to_time,
         departure_flight_name:
           form.departure_flight_name.trim() === "" ? undefined : form.departure_flight_name,
+        departure_baggage_limit:
+          form.departure_baggage_limit.trim() === "" ? undefined : form.departure_baggage_limit,
         arrival_from_airport:
           form.arrival_from_airport.trim() === "" ? undefined : form.arrival_from_airport,
         arrival_from_date: form.arrival_from_date.trim() === "" ? undefined : form.arrival_from_date,
@@ -685,6 +693,8 @@ export default function AdminProductManager() {
         arrival_to_date: form.arrival_to_date.trim() === "" ? undefined : form.arrival_to_date,
         arrival_to_time: form.arrival_to_time.trim() === "" ? undefined : form.arrival_to_time,
         arrival_flight_name: form.arrival_flight_name.trim() === "" ? undefined : form.arrival_flight_name,
+        arrival_baggage_limit:
+          form.arrival_baggage_limit.trim() === "" ? undefined : form.arrival_baggage_limit,
         detailed_schedule:
           form.itinerary_days_json.length > 0
             ? serializeStructuredDaysToSchedule(form.itinerary_days_json)
@@ -2076,6 +2086,14 @@ export default function AdminProductManager() {
                     />
                     <AirlineLogo airlineText={form.departure_flight_name} size={32} />
                   </div>
+                  <input
+                    value={form.departure_baggage_limit}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, departure_baggage_limit: event.target.value }))
+                    }
+                    placeholder="수하물 한도 (예: 23 또는 23KG)"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
                   {/* 현재는 항상 Plane + 텍스트만 표시 (로고 비활성화) */}
                 </div>
               </div>
@@ -2144,6 +2162,14 @@ export default function AdminProductManager() {
                     />
                     <AirlineLogo airlineText={form.arrival_flight_name} size={32} />
                   </div>
+                  <input
+                    value={form.arrival_baggage_limit}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, arrival_baggage_limit: event.target.value }))
+                    }
+                    placeholder="수하물 한도 (예: 23 또는 23KG)"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
                   {/* 현재는 항상 Plane + 텍스트만 표시 (로고 비활성화) */}
                 </div>
               </div>

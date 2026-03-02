@@ -19,8 +19,10 @@ import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { mapProductToTimelineModel, getTimelineModelFromSchedule } from "@/lib/products/mapProductToTimelineModel";
 import { TravelOverviewV2 } from "@/components/products/TravelOverviewV2";
-import { FlightSummarySection } from "@/components/products/FlightSummarySection";
 import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
+import { ProductImageCarousel } from "@/components/products/ProductImageCarousel";
+import type { ProductGalleryImage } from "@/components/products/ProductImageGalleryModal";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -143,18 +145,7 @@ export default function ProductDetailV2({
     return overviewModel ?? null;
   }, [product, overviewModel]);
 
-  const hasFlightData =
-    product != null &&
-    !!(
-      product.departure_from_airport?.trim() ||
-      product.departure_to_airport?.trim() ||
-      product.departure_flight_name?.trim() ||
-      product.arrival_from_airport?.trim() ||
-      product.arrival_to_airport?.trim() ||
-      product.arrival_flight_name?.trim()
-    );
-
-  /** 오버뷰 카드에서는 항공 카드 제외 (항공은 상단 FlightSummarySection에서만 표시) */
+  /** 오버뷰 카드에서는 항공 카드를 제외하고, 항공편은 오버뷰 내부 컴팩트 섹션으로 표시 */
   const overviewForCards = useMemo(() => {
     if (!resolvedOverview?.cards?.length) return resolvedOverview;
     const withoutFlight = resolvedOverview.cards.filter((c) => c.iconKey !== "flight");
@@ -164,6 +155,44 @@ export default function ProductDetailV2({
   }, [resolvedOverview]);
 
   const resolvedOverviewFallbackUrl = product?.image_url?.trim() ?? overviewFallbackUrl ?? "";
+  const galleryImages = useMemo<ProductGalleryImage[]>(() => {
+    const seen = new Set<string>();
+    const list: ProductGalleryImage[] = [];
+    const altBase = title?.trim() || product?.title?.trim() || "상품";
+    const pushImage = (rawUrl: string | undefined | null, label?: string) => {
+      if (!rawUrl?.trim()) return;
+      const normalized = normalizeProductImageUrl(rawUrl);
+      if (!normalized) return;
+      if (seen.has(normalized)) return;
+      seen.add(normalized);
+      list.push({ url: normalized, alt: `${altBase} 이미지`, label });
+    };
+
+    pushImage(product?.image_url, "대표 이미지");
+
+    if (Array.isArray(product?.itinerary_v2_json?.days)) {
+      product?.itinerary_v2_json.days.forEach((day) => {
+        pushImage(day.coverImageUrl, `Day ${day.day}`);
+      });
+    }
+
+    const media = product?.itinerary_media_json;
+    if (media && typeof media === "object") {
+      Object.entries(media)
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .forEach(([day, url]) => {
+          if (typeof url === "string") {
+            pushImage(url, `Day ${day}`);
+          }
+        });
+    }
+
+    if (list.length === 0) {
+      pushImage(overviewFallbackUrl, "대표 이미지");
+    }
+
+    return list;
+  }, [overviewFallbackUrl, product, title]);
   /** [STEP 5] 시각화 타임라인: itinerary_v2_json.days가 있을 때만 InteractiveTimelineV2, 없으면 레거시 텍스트 일정만 */
   const hasVisualItinerary =
     product != null &&
@@ -275,6 +304,7 @@ export default function ProductDetailV2({
         {oneLiner ? (
           <p className="text-sm leading-[1.75] text-slate-600 md:text-base">{oneLiner}</p>
         ) : null}
+        {galleryImages.length > 0 && <ProductImageCarousel images={galleryImages} />}
 
         {/* Price Summary Card: 모바일에서만 표시. 웹에서는 오른쪽 예상가 카드에 동일 정보 표시 */}
         <Card
@@ -350,12 +380,10 @@ export default function ProductDetailV2({
         </div>
       </section>
 
-      {/* 항공편 요약: product에 항공 데이터가 있으면 오버뷰 위에 별도 섹션으로 표시 */}
-      {hasFlightData && <FlightSummarySection product={product} />}
-
-      {/* 여행 오버뷰: 항공 카드는 위 섹션으로 분리했으면 제외 */}
+      {/* 여행 오버뷰: 항공 카드는 별도 섹션으로 분리 */}
       <TravelOverviewV2
         model={overviewForCards}
+        product={product}
         fallbackImageUrl={resolvedOverviewFallbackUrl || null}
         onGoToItinerary={() => {
           setActiveTab("schedule");

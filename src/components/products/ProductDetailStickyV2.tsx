@@ -7,6 +7,7 @@ import TrustSignals from "@/components/products/TrustSignals";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
+import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import type { Product, ProductTrust } from "@/types/product";
 
@@ -47,6 +48,10 @@ export function ProductDetailStickyV2Desktop({
     const overview = mapProductToOverview(product);
     return overview.chart?.items?.length ? overview.chart : null;
   }, [product]);
+  const seoHashtags = useMemo(
+    () => parseMetaTitleAsHashtags(product?.meta_title),
+    [product?.meta_title],
+  );
 
   const displayPrice = quoteSummary?.total != null
     ? formatPriceKR(quoteSummary.total)
@@ -68,6 +73,21 @@ export function ProductDetailStickyV2Desktop({
       className="hidden md:block sticky top-24 w-full max-w-[280px] shrink-0 space-y-4"
       aria-label="상품 요약"
     >
+      {seoHashtags.length > 0 && (
+        <div className="rounded-2xl border border-[#dbeafe] bg-white p-4 shadow-lg ring-1 ring-[#dbeafe]">
+          <p className="mb-2 text-xs font-semibold text-slate-500">핵심 키워드</p>
+          <div className="flex flex-wrap gap-1.5">
+            {seoHashtags.map((tag, index) => (
+              <span
+                key={`detail-seo-${tag}-${index}`}
+                className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       {/* 웹: 예상가 위에 일정 테마 구성비 차트 */}
       {chart && (
         <div className="rounded-2xl border border-[#dbeafe] bg-white p-4 shadow-lg ring-1 ring-[#dbeafe]">

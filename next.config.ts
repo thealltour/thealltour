@@ -45,6 +45,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.notion.so",
       },
+      {
+        protocol: "https",
+        hostname: "file.notion.so",
+      },
+      {
+        protocol: "https",
+        hostname: "image-tc.galaxy.tf",
+      },
     ],
   },
 };

@@ -64,6 +64,8 @@ function normalizeProduct(row: Record<string, unknown>): Product {
       typeof row.departure_to_time === "string" ? row.departure_to_time : undefined,
     departure_flight_name:
       typeof row.departure_flight_name === "string" ? row.departure_flight_name : undefined,
+    departure_baggage_limit:
+      typeof row.departure_baggage_limit === "string" ? row.departure_baggage_limit : undefined,
     arrival_from_airport:
       typeof row.arrival_from_airport === "string" ? row.arrival_from_airport : undefined,
     arrival_from_date:
@@ -78,6 +80,8 @@ function normalizeProduct(row: Record<string, unknown>): Product {
       typeof row.arrival_to_time === "string" ? row.arrival_to_time : undefined,
     arrival_flight_name:
       typeof row.arrival_flight_name === "string" ? row.arrival_flight_name : undefined,
+    arrival_baggage_limit:
+      typeof row.arrival_baggage_limit === "string" ? row.arrival_baggage_limit : undefined,
     meta_title: typeof row.meta_title === "string" ? row.meta_title : undefined,
     meta_description:
       typeof row.meta_description === "string" ? row.meta_description : undefined,

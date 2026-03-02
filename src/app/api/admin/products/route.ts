@@ -28,6 +28,7 @@ type ProductBody = {
   departure_to_date?: string | null;
   departure_to_time?: string | null;
   departure_flight_name?: string | null;
+  departure_baggage_limit?: string | null;
   arrival_from_airport?: string | null;
   arrival_from_date?: string | null;
   arrival_from_time?: string | null;
@@ -35,6 +36,7 @@ type ProductBody = {
   arrival_to_date?: string | null;
   arrival_to_time?: string | null;
   arrival_flight_name?: string | null;
+  arrival_baggage_limit?: string | null;
   meta_title?: string | null;
   meta_description?: string | null;
   image_url?: string;
@@ -249,6 +251,9 @@ export async function POST(request: Request) {
   if (body.departure_flight_name !== undefined) {
     insertPayload.departure_flight_name = body.departure_flight_name?.trim() || null;
   }
+  if (body.departure_baggage_limit !== undefined) {
+    insertPayload.departure_baggage_limit = body.departure_baggage_limit?.trim() || null;
+  }
   if (body.arrival_from_airport !== undefined) {
     insertPayload.arrival_from_airport = body.arrival_from_airport?.trim() || null;
   }
@@ -269,6 +274,9 @@ export async function POST(request: Request) {
   }
   if (body.arrival_flight_name !== undefined) {
     insertPayload.arrival_flight_name = body.arrival_flight_name?.trim() || null;
+  }
+  if (body.arrival_baggage_limit !== undefined) {
+    insertPayload.arrival_baggage_limit = body.arrival_baggage_limit?.trim() || null;
   }
   if (body.status !== undefined) {
     insertPayload.status = body.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(body.status) ? body.status : null;

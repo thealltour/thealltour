@@ -15,7 +15,7 @@ export default async function BlogPage() {
         <PageHero
           kicker="THEALL TOUR GUIDE"
           title="여행가이드"
-          subtitle="지역별 골프장 정보, 시즌별 추천 코스, 출발 전 꼭 알아두면 좋은 팁들을 정리한 가이드입니다. 카드를 클릭하면 PDF 가이드를 웹페이지 내에서 바로 확인할 수 있습니다."
+          subtitle="지역별 골프장 정보, 시즌별 추천 코스, 출발 전 꼭 알아두면 좋은 팁들을 정리한 가이드입니다. 카드 유형에 따라 PDF 바로보기 또는 상세 가이드 페이지로 이동합니다."
         />
 
         <section className="space-y-4">

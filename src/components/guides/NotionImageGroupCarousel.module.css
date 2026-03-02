@@ -1,0 +1,119 @@
+.block {
+  margin-bottom: var(--nt-block-spacing);
+}
+
+.viewport {
+  position: relative;
+  margin: 0 auto;
+  width: 100%;
+  max-width: var(--nt-image-max-width);
+  overflow: hidden;
+  border-radius: var(--nt-radius-md);
+  background: var(--nt-image-bg);
+}
+
+.openButton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.mainImage {
+  position: relative;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.navButton {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.55);
+  color: var(--nt-text-primary);
+  width: 36px;
+  height: 36px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.navPrev {
+  left: 10px;
+}
+
+.navNext {
+  right: 10px;
+}
+
+.caption {
+  margin-top: 8px;
+  text-align: center;
+  font-size: var(--nt-caption-size);
+  color: var(--nt-text-muted);
+}
+
+.indicatorRow {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.dotActive {
+  width: 20px;
+  background: var(--nt-link);
+}
+
+.thumbnailRow {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .thumbnailRow {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .thumbnailButton {
+    border: 1px solid rgba(148, 163, 184, 0.36);
+    border-radius: var(--nt-radius-sm);
+    overflow: hidden;
+    width: 78px;
+    height: 58px;
+    background: transparent;
+    opacity: 0.8;
+  }
+
+  .thumbnailButtonActive {
+    opacity: 1;
+    border-color: var(--nt-link);
+    box-shadow: 0 0 0 1px var(--nt-link);
+  }
+
+  .thumbnailImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+

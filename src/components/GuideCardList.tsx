@@ -17,6 +17,17 @@ function formatDate(value?: string) {
   return date.toLocaleDateString("ko-KR");
 }
 
+function getNotionViewUrl(guide: Guide): string {
+  const url = guide.notion_url?.trim();
+  if (url) return url;
+  const pageId = guide.notion_page_id?.trim();
+  if (pageId) {
+    const hex = pageId.replace(/-/g, "");
+    return `https://notion.so/${hex}`;
+  }
+  return "";
+}
+
 export function GuideCardList({ guides }: GuideCardListProps) {
   const [modalPdfUrl, setModalPdfUrl] = useState<string | null>(null);
   const [modalTitle, setModalTitle] = useState<string>("");
@@ -127,14 +138,21 @@ export function GuideCardList({ guides }: GuideCardListProps) {
           }
 
           if (hasNotionDetail) {
-            return (
-              <Link
+            const notionUrl = getNotionViewUrl(guide);
+            return notionUrl ? (
+              <a
                 key={guide.id}
-                href={`/guides/${guide.slug}`}
+                href={notionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cardClass}
               >
                 {cardContent}
-              </Link>
+              </a>
+            ) : (
+              <article key={guide.id} className={cardClass}>
+                {cardContent}
+              </article>
             );
           }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useConsultModal } from "@/components/ConsultModal";
 import { Button } from "@/components/ui/Button";
 import TrustSignals from "@/components/products/TrustSignals";
@@ -73,6 +74,12 @@ export function ProductDetailStickyV2Desktop({
       className="hidden md:block sticky top-24 w-full max-w-[280px] shrink-0 space-y-4"
       aria-label="상품 요약"
     >
+      <Link
+        href="/products"
+        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+      >
+        ← 상품 목록으로
+      </Link>
       {seoHashtags.length > 0 && (
         <div className="rounded-2xl border border-[#dbeafe] bg-white p-4 shadow-lg ring-1 ring-[#dbeafe]">
           <p className="mb-2 text-xs font-semibold text-slate-500">핵심 키워드</p>
@@ -145,10 +152,45 @@ export function ProductDetailStickyV2Mobile({
   const { openModal } = useConsultModal();
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
+  const [compact, setCompact] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const displayPrice = quoteSummary?.total != null
     ? formatPriceKR(quoteSummary.total)
     : priceFormatted;
+
+  useEffect(() => {
+    lastScrollYRef.current = window.scrollY;
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollYRef.current;
+      if (delta > 6) {
+        setCompact(true);
+      } else if (delta < -4) {
+        setCompact(false);
+      }
+      lastScrollYRef.current = currentY;
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => setCompact(false), 240);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const nextHeight = compact ? 44 : 56;
+    document.documentElement.setAttribute("data-mobile-cta", "on");
+    document.documentElement.style.setProperty("--cta-h", `${nextHeight}px`);
+    return () => {
+      document.documentElement.removeAttribute("data-mobile-cta");
+      document.documentElement.style.setProperty("--cta-h", "0px");
+    };
+  }, [compact]);
 
   const handlePrimaryClick = () => {
     if (requiredGroupsMissing) {
@@ -162,7 +204,13 @@ export function ProductDetailStickyV2Mobile({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:hidden">
+    <div
+      className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-3 backdrop-blur transition-all duration-200 md:hidden"
+      style={{
+        paddingTop: compact ? "8px" : "12px",
+        paddingBottom: compact ? "max(8px, env(safe-area-inset-bottom))" : "max(12px, env(safe-area-inset-bottom))",
+      }}
+    >
       {displayPrice ? (
         <span className="font-price-strong text-sm font-bold text-[#1E3A8A]">
           ₩{displayPrice}~
@@ -172,7 +220,7 @@ export function ProductDetailStickyV2Mobile({
       )}
       <div className="flex flex-1 gap-2">
         <Button variant="primary" size="md" onClick={handlePrimaryClick} className="flex-1">
-          {isSoldOut ? "대기 문의" : "상담 문의"}
+          {compact ? (isSoldOut ? "대기" : "상담") : isSoldOut ? "대기 문의" : "상담 문의"}
         </Button>
         <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="md">

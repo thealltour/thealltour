@@ -6,6 +6,7 @@ import {
   ProductImageGalleryModal,
   type ProductGalleryImage,
 } from "@/components/products/ProductImageGalleryModal";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 
 type ProductImageCarouselProps = {
   images: ProductGalleryImage[];
@@ -22,16 +23,26 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
+  const maxDesktopThumbs = 6;
 
   if (!images.length) return null;
 
   const current = images[clampIndex(activeIndex, images.length)];
+  const desktopThumbs = images.slice(1, 1 + maxDesktopThumbs);
+  const hiddenDesktopCount = Math.max(0, images.length - 1 - maxDesktopThumbs);
+  const mobileThumbs = images.slice(0, 12);
+
+  function openModalAt(index: number) {
+    const nextIndex = clampIndex(index, images.length);
+    setActiveIndex(nextIndex);
+    setIsModalOpen(true);
+  }
 
   return (
     <>
-      <section className="space-y-3">
+      <section className="space-y-3" aria-label="상품 이미지 갤러리">
         <div
-          className="relative aspect-square w-full overflow-hidden rounded-2xl bg-slate-100 md:aspect-[4/3]"
+          className="relative overflow-hidden rounded-2xl bg-slate-100 md:hidden"
           onTouchStart={(event) => {
             touchStartXRef.current = event.changedTouches[0]?.clientX ?? null;
           }}
@@ -47,56 +58,150 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
             touchStartXRef.current = null;
           }}
         >
+          <div className="relative aspect-[4/3] w-full">
+            <button
+              type="button"
+              onClick={() => openModalAt(activeIndex)}
+              className="absolute inset-0 z-10"
+              aria-label={`상품 이미지 ${activeIndex + 1} 크게 보기`}
+            />
+            <Image
+              src={normalizeProductImageUrl(current.url, { width: 1400, quality: 80, mode: "cover" })}
+              alt={current.alt}
+              fill
+              priority={activeIndex === 0}
+              sizes="100vw"
+              className="object-cover"
+            />
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveIndex((prev) => clampIndex(prev - 1, images.length))
+                  }
+                  className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/35 px-3 py-2 text-sm font-semibold text-white transition hover:bg-black/55"
+                  aria-label="이전 이미지"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveIndex((prev) => clampIndex(prev + 1, images.length))
+                  }
+                  className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/35 px-3 py-2 text-sm font-semibold text-white transition hover:bg-black/55"
+                  aria-label="다음 이미지"
+                >
+                  →
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => openModalAt(activeIndex)}
+              className="absolute bottom-3 right-3 z-20 rounded-lg bg-black/45 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-black/65"
+            >
+              전체 사진 보기 ({images.length}장)
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden gap-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
-            className="absolute inset-0 z-10"
-            aria-label="상품 이미지 크게 보기"
-          />
-          <Image
-            src={current.url}
-            alt={current.alt}
-            fill
-            priority={activeIndex === 0}
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 70vw, 900px"
-            className="object-cover"
-          />
-          {images.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveIndex((prev) => clampIndex(prev - 1, images.length))
-                }
-                className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/35 px-3 py-2 text-sm font-semibold text-white transition hover:bg-black/55"
-                aria-label="이전 이미지"
-              >
-                ←
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveIndex((prev) => clampIndex(prev + 1, images.length))
-                }
-                className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/35 px-3 py-2 text-sm font-semibold text-white transition hover:bg-black/55"
-                aria-label="다음 이미지"
-              >
-                →
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            className="absolute bottom-3 right-3 z-20 rounded-lg bg-black/45 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-black/65"
+            onClick={() => openModalAt(activeIndex)}
+            className="group relative aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100"
+            aria-label={`대표 이미지 ${activeIndex + 1} 확대 보기`}
           >
-            전체 보기
+            <Image
+              src={normalizeProductImageUrl(current.url, { width: 1600, quality: 82, mode: "cover" })}
+              alt={current.alt}
+              fill
+              priority={activeIndex === 0}
+              sizes="(max-width: 1024px) 68vw, 720px"
+              className="object-cover transition duration-300 group-hover:scale-[1.02]"
+            />
+            <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
+            <div className="absolute bottom-3 left-3 rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white">
+              {activeIndex + 1} / {images.length}
+            </div>
+            <div className="absolute bottom-3 right-3 rounded-lg bg-black/45 px-3 py-1.5 text-xs font-semibold text-white">
+              전체 사진 보기
+            </div>
           </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            {desktopThumbs.map((image, i) => {
+              const imageIndex = i + 1;
+              const isLastVisible = i === desktopThumbs.length - 1;
+              const showMoreOverlay = isLastVisible && hiddenDesktopCount > 0;
+              return (
+                <button
+                  key={`${image.url}-${imageIndex}`}
+                  type="button"
+                  onClick={() => openModalAt(imageIndex)}
+                  className="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100"
+                  aria-label={`썸네일 이미지 ${imageIndex + 1} 확대 보기`}
+                >
+                  <Image
+                    src={normalizeProductImageUrl(image.url, { width: 480, quality: 70, mode: "cover" })}
+                    alt={image.alt}
+                    fill
+                    sizes="(max-width: 1280px) 16vw, 180px"
+                    className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                  />
+                  <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
+                  {showMoreOverlay ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-bold text-white">
+                      +{hiddenDesktopCount}
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
+            {desktopThumbs.length < 4 &&
+              Array.from({ length: 4 - desktopThumbs.length }).map((_, idx) => (
+                <div
+                  key={`empty-thumb-${idx}`}
+                  className="aspect-[4/3] rounded-xl bg-slate-100/60"
+                  aria-hidden="true"
+                />
+              ))}
+          </div>
         </div>
 
         {images.length > 1 && (
-          <div className="flex items-center justify-center gap-1.5">
-            {images.map((_, index) => (
+          <div className="md:hidden">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {mobileThumbs.map((image, index) => (
+                <button
+                  key={`${image.url}-mobile-${index}`}
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  className={`relative h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition ${
+                    activeIndex === index
+                      ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                      : "border-slate-200 opacity-90 hover:opacity-100"
+                  }`}
+                  aria-label={`이미지 ${index + 1} 선택`}
+                >
+                  <Image
+                    src={normalizeProductImageUrl(image.url, { width: 240, quality: 68, mode: "cover" })}
+                    alt={image.alt}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {images.length > 1 && (
+          <div className="hidden items-center justify-center gap-1.5 md:flex">
+            {images.slice(0, 8).map((_, index) => (
               <button
                 key={`indicator-${index}`}
                 type="button"
@@ -109,6 +214,15 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
                 aria-label={`이미지 ${index + 1}로 이동`}
               />
             ))}
+            {images.length > 8 ? (
+              <button
+                type="button"
+                onClick={() => openModalAt(activeIndex)}
+                className="ml-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
+              >
+                +{images.length - 8}
+              </button>
+            ) : null}
           </div>
         )}
       </section>

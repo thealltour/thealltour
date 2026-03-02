@@ -49,7 +49,7 @@ export default async function DevProductDetailPage({ params }: DevProductDetailP
   const oneLiner = product.description?.trim().split(/\n/)[0]?.slice(0, 200) ?? product.title;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-6 py-10 pb-28 md:px-10">
+    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-6 py-10 md:px-10">
       <main className="mx-auto w-full max-w-6xl">
         <div className="mb-6">
           <Link

@@ -24,6 +24,9 @@ type GuideFormState = {
   guide_thumbnail_url: string;
   sort_order: string;
   is_published: boolean;
+  seo_title: string;
+  seo_description: string;
+  focus_keyword: string;
 };
 
 const initialForm: GuideFormState = {
@@ -42,6 +45,9 @@ const initialForm: GuideFormState = {
   guide_thumbnail_url: "",
   sort_order: "",
   is_published: true,
+  seo_title: "",
+  seo_description: "",
+  focus_keyword: "",
 };
 
 export default function AdminGuideManager() {
@@ -116,6 +122,9 @@ export default function AdminGuideManager() {
       guide_thumbnail_url: item.guide_thumbnail_url ?? "",
       sort_order: typeof item.sort_order === "number" ? String(item.sort_order) : "",
       is_published: item.is_published ?? true,
+      seo_title: item.seo_title ?? "",
+      seo_description: item.seo_description ?? "",
+      focus_keyword: item.focus_keyword ?? "",
     });
     setMessage("");
     setErrorMessage("");
@@ -157,6 +166,9 @@ export default function AdminGuideManager() {
         guide_thumbnail_url: form.guide_thumbnail_url.trim() || null,
         sort_order: form.sort_order.trim() === "" ? null : Number(form.sort_order),
         is_published: form.is_published,
+        seo_title: form.seo_title.trim() || null,
+        seo_description: form.seo_description.trim() || null,
+        focus_keyword: form.focus_keyword.trim() || null,
       };
 
       const response = await fetch(endpoint, {
@@ -253,26 +265,32 @@ export default function AdminGuideManager() {
           ) : null}
         </div>
         <form className="grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
-          <label className="md:col-span-2 flex flex-col gap-2 text-sm font-medium text-slate-700">
-            제목
-            <input
-              required={!isNotionForm}
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder={isNotionForm ? "선택 입력 (비우면 노션 제목 사용)" : "예: 일본 온천 + 골프 완벽 가이드"}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-            />
-          </label>
-          <label className="md:col-span-2 flex flex-col gap-2 text-sm font-medium text-slate-700">
-            요약 설명
-            <textarea
-              rows={4}
-              value={form.summary}
-              onChange={(event) => setForm((prev) => ({ ...prev, summary: event.target.value }))}
-              placeholder="카드에서 보여질 짧은 소개 문구를 입력해 주세요."
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-            />
-          </label>
+          {/* 콘텐츠 정보 */}
+          <div className="md:col-span-2">
+            <h4 className="mb-2 text-sm font-semibold text-slate-600">콘텐츠 정보</h4>
+            <div className="space-y-3">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                제목
+                <input
+                  required={!isNotionForm}
+                  value={form.title}
+                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                  placeholder="카드/상세에 표시될 제목 (비우면 노션 제목 사용)"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                카드 요약(리스트에서 보임)
+                <textarea
+                  rows={4}
+                  value={form.summary}
+                  onChange={(event) => setForm((prev) => ({ ...prev, summary: event.target.value }))}
+                  placeholder="리스트 카드에 노출될 짧은 소개 (예: 1~2문장, 60~90자 권장)"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </label>
+            </div>
+          </div>
           {isNotionForm ? (
           <label className="md:col-span-2 flex flex-col gap-2 text-sm font-medium text-slate-700">
             Notion 문서 URL
@@ -280,7 +298,7 @@ export default function AdminGuideManager() {
               type="url"
               value={form.notion_url}
               onChange={(event) => setForm((prev) => ({ ...prev, notion_url: event.target.value }))}
-              placeholder="예: https://www.notion.so/... "
+              placeholder="노션 공유 링크를 붙여넣기 (Public 공유 필요)"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
             <span className="text-xs font-normal text-slate-500">
@@ -294,7 +312,7 @@ export default function AdminGuideManager() {
             <input
               value={form.slug}
               onChange={(event) => setForm((prev) => ({ ...prev, slug: event.target.value }))}
-              placeholder="예: japan-golf-guide"
+              placeholder="URL 경로 (예: sydney-golf-guide) — 키워드 포함 권장"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
@@ -305,7 +323,7 @@ export default function AdminGuideManager() {
             <input
               value={form.title_override}
               onChange={(event) => setForm((prev) => ({ ...prev, title_override: event.target.value }))}
-              placeholder="비우면 기본 제목 사용"
+              placeholder="화면 표시용 제목 (비우면 기본 제목 사용)"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
@@ -317,7 +335,7 @@ export default function AdminGuideManager() {
               type="url"
               value={form.cover_image_url}
               onChange={(event) => setForm((prev) => ({ ...prev, cover_image_url: event.target.value }))}
-              placeholder="예: https://.../cover.jpg"
+              placeholder="OG/대표 이미지 URL (비우면 노션 cover 자동 사용)"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
@@ -328,7 +346,7 @@ export default function AdminGuideManager() {
             <input
               value={form.category}
               onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
-              placeholder="예: 일본"
+              placeholder="예: 일본, 호주, 동남아"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
@@ -339,7 +357,7 @@ export default function AdminGuideManager() {
             <input
               value={form.tags_csv}
               onChange={(event) => setForm((prev) => ({ ...prev, tags_csv: event.target.value }))}
-              placeholder="예: 일본, 골프, 온천"
+              placeholder="쉼표로 구분 (예: 일본, 골프, 온천)"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
@@ -414,6 +432,52 @@ export default function AdminGuideManager() {
             />
           </div>
           ) : null}
+          {/* SEO 설정 */}
+          {isNotionForm ? (
+          <div className="md:col-span-2 space-y-3 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+            <h4 className="text-sm font-semibold text-slate-600">SEO 설정</h4>
+            <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              SEO 제목(선택)
+              <input
+                value={form.seo_title}
+                onChange={(event) => setForm((prev) => ({ ...prev, seo_title: event.target.value }))}
+                placeholder="검색 결과에 노출될 제목 (예: 시드니 골프여행 가이드 | 코스·비용·일정 총정리)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+              <span className="text-xs font-normal text-slate-500">비우면 기본 제목을 사용합니다</span>
+            </label>
+            <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              SEO 설명(선택)
+              <textarea
+                rows={3}
+                value={form.seo_description}
+                onChange={(event) => setForm((prev) => ({ ...prev, seo_description: event.target.value }))}
+                placeholder="150~160자 권장. 핵심 키워드를 포함해 클릭을 유도하는 문장으로 작성"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-normal text-slate-500">비우면 노션 첫 문단에서 자동 생성됩니다</span>
+                <span
+                  className={`text-xs font-medium ${
+                    form.seo_description.length > 160 ? "text-red-600" : "text-slate-500"
+                  }`}
+                >
+                  {form.seo_description.length} / 160
+                </span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              포커스 키워드(선택)
+              <input
+                value={form.focus_keyword}
+                onChange={(event) => setForm((prev) => ({ ...prev, focus_keyword: event.target.value }))}
+                placeholder="이 글이 노리는 핵심 검색어 1개 (예: 시드니 골프여행)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+              <span className="text-xs font-normal text-slate-500">운영/콘텐츠 전략용 필드입니다</span>
+            </label>
+          </div>
+          ) : null}
           <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
             정렬 순서
             <input
@@ -425,23 +489,26 @@ export default function AdminGuideManager() {
                   sort_order: event.target.value,
                 }))
               }
-              placeholder="숫자가 작을수록 상단에 노출 (선택)"
+              placeholder="숫자가 작을수록 상단 노출 (예: 10)"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
-          <label className="mt-1 flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={form.is_published}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  is_published: event.target.checked,
-                }))
-              }
-              className="h-4 w-4 accent-[#1d4ed8]"
-            />
-            공개 상태
+          <label className="mt-1 flex flex-col gap-1 text-sm text-slate-700">
+            <span className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.is_published}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    is_published: event.target.checked,
+                  }))
+                }
+                className="h-4 w-4 accent-[#1d4ed8]"
+              />
+              공개 상태
+            </span>
+            <span className="text-xs font-normal text-slate-500">체크 시 사이트에 노출됩니다</span>
           </label>
           <button
             type="submit"

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { unstable_cache } from "next/cache";
 
 function percentChange(current: number, previous: number): number {
   if (previous <= 0) {
@@ -8,7 +9,7 @@ function percentChange(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 100);
 }
 
-export async function getAdminCounts() {
+async function fetchAdminCountsRaw() {
   const now = new Date();
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
@@ -36,47 +37,47 @@ export async function getAdminCounts() {
     todayDelayedResult,
     yesterdayDelayedResult,
   ] = await Promise.all([
-    supabase.from("products").select("*", { count: "exact", head: true }),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
-    supabase.from("members").select("*", { count: "exact", head: true }),
-    supabase.from("reviews").select("*", { count: "exact", head: true }),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }),
+    supabase.from("products").select("id", { count: "exact", head: true }),
+    supabase.from("inquiries").select("id", { count: "exact", head: true }).eq("is_completed", false),
+    supabase.from("members").select("id", { count: "exact", head: true }),
+    supabase.from("reviews").select("id", { count: "exact", head: true }),
+    supabase.from("inquiries").select("id", { count: "exact", head: true }),
     supabase
       .from("inquiries")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("is_completed", false)
       .lt("created_at", delayedThresholdIso),
     supabase
       .from("inquiries")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .gte("created_at", startOfToday.toISOString())
       .lt("created_at", startOfTomorrow.toISOString()),
     supabase
       .from("inquiries")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .gte("created_at", startOfYesterday.toISOString())
       .lt("created_at", startOfToday.toISOString()),
     supabase
       .from("inquiries")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("is_completed", false)
       .gte("created_at", startOfToday.toISOString())
       .lt("created_at", startOfTomorrow.toISOString()),
     supabase
       .from("inquiries")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("is_completed", false)
       .gte("created_at", startOfYesterday.toISOString())
       .lt("created_at", startOfToday.toISOString()),
     supabase
       .from("inquiries")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("is_completed", false)
       .lt("created_at", delayedThresholdIso)
       .gte("created_at", startOfToday.toISOString()),
     supabase
       .from("inquiries")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("is_completed", false)
       .lt("created_at", delayedThresholdIso)
       .gte("created_at", startOfYesterday.toISOString())
@@ -118,4 +119,13 @@ export async function getAdminCounts() {
     completedInquiriesDeltaPercent: percentChange(todayCompleted, yesterdayCompleted),
     delayedInquiriesDeltaPercent: percentChange(todayDelayed, yesterdayDelayed),
   };
+}
+
+/** 60초 캐시 — 관리자 대시보드 KPI용 */
+export async function getAdminCounts() {
+  return unstable_cache(
+    fetchAdminCountsRaw,
+    ["admin-counts"],
+    { revalidate: 60, tags: ["admin-counts"] },
+  )();
 }

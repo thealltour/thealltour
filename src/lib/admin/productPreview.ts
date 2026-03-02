@@ -10,6 +10,7 @@ import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { getProductBadges } from "@/lib/productCategory";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
+import { getPrimaryImageUrl, normalizeImageList } from "@/lib/products/images";
 
 /** 폼 필드 (API POST body 및 클라이언트 form과 호환) */
 export type ProductFormPayload = {
@@ -18,6 +19,7 @@ export type ProductFormPayload = {
   one_liner?: string;
   options_json?: string;
   image_url?: string;
+  images_json?: string[];
   category?: string;
   theme?: string;
   price?: string;
@@ -105,11 +107,15 @@ export function formToPreviewProduct(
     return undefined;
   })();
 
+  const imagesJson = normalizeImageList(form.images_json);
+  const primaryImageUrl = imageUrlForPreview?.trim() || imagesJson[0] || form.image_url?.trim() || "";
+
   return {
     id: "_preview",
     title: ((form.title?.trim() || "상품명") as string).slice(0, 200),
     description: (form.description?.trim() || "") as string,
-    image_url: (imageUrlForPreview?.trim() || "") as string,
+    image_url: primaryImageUrl as string,
+    images_json: imagesJson.length > 0 ? imagesJson : undefined,
     category: (form.category?.trim() || "여행상품") as string,
     theme: form.theme?.trim() || undefined,
     price,
@@ -219,7 +225,7 @@ export function productToCardV2PropsPayload(product: Product): ProductCardV2Prop
     tags: parseMetaTitleAsHashtags(product.meta_title),
     status: (product.status ?? "AVAILABLE") as ProductCardV2PropsPayload["status"],
     badges,
-    thumbnailUrl: product.image_url,
+    thumbnailUrl: getPrimaryImageUrl(product),
     priceMeta: product.price_meta || "1인 기준",
     metaInfo: product.meta_info ?? "",
   };
@@ -280,6 +286,6 @@ export function productToDetailV2PropsPayload(product: Product): ProductDetailV2
     basePrice: product.price,
     product,
     overviewModel: mapProductToOverview(product),
-    overviewFallbackUrl: product.image_url,
+    overviewFallbackUrl: getPrimaryImageUrl(product),
   };
 }

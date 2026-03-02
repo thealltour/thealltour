@@ -133,6 +133,7 @@
   --site-text-secondary: #cbd5e1;
   --site-text-muted: #94a3b8;
   --site-border: #223046;
+  --cta-h: 0px;
 }
 
 .dark {
@@ -229,6 +230,22 @@ body {
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-leading);
   letter-spacing: var(--type-letter-tight);
+}
+
+@media (max-width: 767px) {
+  html[data-mobile-cta="on"] body {
+    padding-bottom: calc(var(--cta-h) + env(safe-area-inset-bottom) + 12px);
+  }
+
+  /* 모바일 전역 가로 폭 규칙: 과도한 중첩 px-6을 px-4로 통일 */
+  body :where(main, section, article, aside, div)[class~="px-6"] {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .section-body {
+    padding-inline: 1rem;
+  }
 }
 
 /* Typography scale utilities (Heading: Wanted Sans, Body/UI: Pretendard) */

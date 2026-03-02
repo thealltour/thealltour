@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 
 export type ProductGalleryImage = {
   url: string;
@@ -25,6 +26,15 @@ function clampIndex(index: number, length: number): number {
   return index;
 }
 
+function getDistance(
+  t1: { clientX: number; clientY: number },
+  t2: { clientX: number; clientY: number },
+): number {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 export function ProductImageGalleryModal({
   isOpen,
   images,
@@ -35,6 +45,11 @@ export function ProductImageGalleryModal({
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const touchStartXRef = useRef<number | null>(null);
+  const pinchStartDistanceRef = useRef<number | null>(null);
+  const pinchStartScaleRef = useRef(1);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+  const [scale, setScale] = useState(1);
+  const [mode, setMode] = useState<"default" | "collage">("default");
   const current = images[clampIndex(selectedIndex, images.length)];
 
   const focusableSelector = useMemo(
@@ -46,6 +61,7 @@ export function ProductImageGalleryModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
@@ -93,8 +109,14 @@ export function ProductImageGalleryModal({
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      previousFocusedElementRef.current?.focus();
     };
   }, [focusableSelector, images.length, isOpen, onClose, onSelectIndex, selectedIndex]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setScale(1);
+  }, [isOpen, selectedIndex]);
 
   if (!isOpen || images.length === 0 || !current) return null;
 
@@ -103,7 +125,7 @@ export function ProductImageGalleryModal({
       className="fixed inset-0 z-[70] bg-black/70 p-3 md:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="상품 이미지 전체 보기"
+      aria-label="상품 이미지 갤러리"
       onClick={onClose}
     >
       <div
@@ -113,8 +135,28 @@ export function ProductImageGalleryModal({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <p className="text-sm font-semibold text-slate-700">
-            {current.label || `이미지 ${selectedIndex + 1}`}
+            {current.label || `이미지 ${selectedIndex + 1}`} · {selectedIndex + 1}/{images.length}
           </p>
+          <div className="mr-2 hidden items-center gap-1 rounded-lg bg-slate-100 p-1 md:inline-flex">
+            <button
+              type="button"
+              onClick={() => setMode("default")}
+              className={`rounded-md px-2 py-1 text-xs font-semibold ${
+                mode === "default" ? "bg-white text-[#1E3A8A]" : "text-slate-600"
+              }`}
+            >
+              기본
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("collage")}
+              className={`rounded-md px-2 py-1 text-xs font-semibold ${
+                mode === "collage" ? "bg-white text-[#1E3A8A]" : "text-slate-600"
+              }`}
+            >
+              콜라주
+            </button>
+          </div>
           <button
             ref={closeButtonRef}
             type="button"
@@ -130,9 +172,27 @@ export function ProductImageGalleryModal({
           <div
             className="relative min-h-0 flex-1 bg-slate-950"
             onTouchStart={(event) => {
+              if (event.touches.length >= 2) {
+                pinchStartDistanceRef.current = getDistance(event.touches[0], event.touches[1]);
+                pinchStartScaleRef.current = scale;
+                touchStartXRef.current = null;
+                return;
+              }
               touchStartXRef.current = event.changedTouches[0]?.clientX ?? null;
             }}
+            onTouchMove={(event) => {
+              if (event.touches.length >= 2 && pinchStartDistanceRef.current) {
+                const currentDistance = getDistance(event.touches[0], event.touches[1]);
+                const ratio = currentDistance / pinchStartDistanceRef.current;
+                const nextScale = Math.max(1, Math.min(3, pinchStartScaleRef.current * ratio));
+                setScale(nextScale);
+              }
+            }}
             onTouchEnd={(event) => {
+              if (event.changedTouches.length >= 2) {
+                pinchStartDistanceRef.current = null;
+                return;
+              }
               if (touchStartXRef.current == null) return;
               const endX = event.changedTouches[0]?.clientX ?? touchStartXRef.current;
               const delta = endX - touchStartXRef.current;
@@ -146,14 +206,25 @@ export function ProductImageGalleryModal({
               }
               touchStartXRef.current = null;
             }}
+            onWheel={(event) => {
+              event.preventDefault();
+              const delta = event.deltaY;
+              setScale((prev) => {
+                const next = delta < 0 ? prev + 0.15 : prev - 0.15;
+                return Math.max(1, Math.min(3, Number(next.toFixed(2))));
+              });
+            }}
           >
-            <Image
-              src={current.url}
-              alt={current.alt}
-              fill
-              sizes="100vw"
-              className="object-contain"
-            />
+            <div className="absolute inset-0">
+              <Image
+                src={normalizeProductImageUrl(current.url, { width: 2200, quality: 86, mode: "contain" })}
+                alt={current.alt}
+                fill
+                sizes="100vw"
+                className="object-contain transition-transform duration-150"
+                style={{ transform: `scale(${scale})` }}
+              />
+            </div>
             {images.length > 1 && (
               <>
                 <button
@@ -178,48 +249,93 @@ export function ProductImageGalleryModal({
                 </button>
               </>
             )}
+            {scale > 1 ? (
+              <button
+                type="button"
+                onClick={() => setScale(1)}
+                className="absolute bottom-3 left-3 rounded bg-black/45 px-2 py-1 text-xs font-semibold text-white"
+              >
+                줌 초기화 ({Math.round(scale * 100)}%)
+              </button>
+            ) : null}
           </div>
 
           <div className="border-t border-slate-200 bg-white p-3">
-            <div className="flex gap-2 overflow-x-auto md:hidden">
-              {images.map((image, index) => (
-                <button
-                  key={`${image.url}-${index}`}
-                  type="button"
-                  onClick={() => onSelectIndex(index)}
-                  className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border ${
-                    selectedIndex === index
-                      ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
-                      : "border-slate-200 opacity-80 hover:opacity-100"
-                  }`}
-                >
-                  <Image src={image.url} alt={image.alt} fill sizes="64px" className="object-cover" />
-                </button>
-              ))}
-            </div>
+            {mode === "default" ? (
+              <>
+                <div className="flex gap-2 overflow-x-auto md:hidden">
+                  {images.map((image, index) => (
+                    <button
+                      key={`${image.url}-${index}`}
+                      type="button"
+                      onClick={() => onSelectIndex(index)}
+                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border ${
+                        selectedIndex === index
+                          ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                          : "border-slate-200 opacity-80 hover:opacity-100"
+                      }`}
+                    >
+                      <Image
+                        src={normalizeProductImageUrl(image.url, { width: 180, quality: 68, mode: "cover" })}
+                        alt={image.alt}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
 
-            <div className="hidden grid-cols-4 gap-2 md:grid lg:grid-cols-6">
-              {images.map((image, index) => (
-                <button
-                  key={`${image.url}-grid-${index}`}
-                  type="button"
-                  onClick={() => onSelectIndex(index)}
-                  className={`relative aspect-square overflow-hidden rounded-lg border ${
-                    selectedIndex === index
-                      ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
-                      : "border-slate-200 opacity-80 hover:opacity-100"
-                  }`}
-                >
-                  <Image
-                    src={image.url}
-                    alt={image.alt}
-                    fill
-                    sizes="120px"
-                    className="object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+                <div className="hidden grid-cols-4 gap-2 md:grid lg:grid-cols-6">
+                  {images.map((image, index) => (
+                    <button
+                      key={`${image.url}-grid-${index}`}
+                      type="button"
+                      onClick={() => onSelectIndex(index)}
+                      className={`relative aspect-square overflow-hidden rounded-lg border ${
+                        selectedIndex === index
+                          ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                          : "border-slate-200 opacity-80 hover:opacity-100"
+                      }`}
+                    >
+                      <Image
+                        src={normalizeProductImageUrl(image.url, { width: 320, quality: 70, mode: "cover" })}
+                        alt={image.alt}
+                        fill
+                        sizes="120px"
+                        className="object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="max-h-[30vh] overflow-auto">
+                <div className="columns-2 gap-2 md:columns-3">
+                  {images.map((image, index) => (
+                    <button
+                      key={`${image.url}-collage-${index}`}
+                      type="button"
+                      onClick={() => onSelectIndex(index)}
+                      className={`group relative mb-2 block w-full overflow-hidden rounded-lg border ${
+                        selectedIndex === index
+                          ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                          : "border-slate-200"
+                      }`}
+                    >
+                      <Image
+                        src={normalizeProductImageUrl(image.url, { width: 480, quality: 72, mode: "cover" })}
+                        alt={image.alt}
+                        width={480}
+                        height={320}
+                        sizes="(max-width: 768px) 48vw, (max-width: 1280px) 22vw, 240px"
+                        className="h-auto w-full object-cover transition group-hover:scale-[1.02]"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

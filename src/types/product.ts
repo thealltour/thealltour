@@ -139,6 +139,8 @@ export type Product = {
   description: string;
   /** 상세 히어로용 (hero 1920px). 카드 썸네일은 image_card_url 우선, 없으면 이 값 사용 */
   image_url: string;
+  /** 상품 이미지 갤러리 URL 배열. 첫 번째가 대표 이미지로 사용됨 */
+  images_json?: string[];
   /** TODO: 목록 카드 썸네일용 (card 800px). 확장 시 ProductCatalogSection 등에서 우선 사용. docs/design/product-image-card-url-extension.md */
   // image_card_url?: string;
   category: string;

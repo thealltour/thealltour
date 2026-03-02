@@ -29,10 +29,12 @@ import {
   itineraryV2ToTimelineModel,
 } from "@/lib/products/mapProductToTimelineModel";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { MultiImageUploadField } from "@/components/admin/MultiImageUploadField";
 import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
 import { ScheduleVisualEditorV2 } from "@/components/admin/ScheduleVisualEditorV2";
 import { normalizeAirline } from "@/lib/airlines/normalizeAirline";
 import { AIRLINE_LOGO_BY_CODE } from "@/lib/airlines/airlineLogos";
+import { normalizeImageList } from "@/lib/products/images";
 
 type ProductFormState = {
   title: string;
@@ -69,6 +71,7 @@ type ProductFormState = {
   meta_title: string;
   meta_description: string;
   image_url: string;
+  images_json: string[];
   category: string;
   theme: string;
   price: string;
@@ -165,6 +168,7 @@ const initialFormState: ProductFormState = {
   meta_title: "",
   meta_description: "",
   image_url: "",
+  images_json: [],
   category: "여행상품",
   theme: "",
   price: "",
@@ -310,7 +314,7 @@ function getPreviewWarnings(
     });
   }
 
-  if (!form.image_url?.trim() && !hasPreviewImage) {
+  if (!form.image_url?.trim() && form.images_json.length === 0 && !hasPreviewImage) {
     warnings.push({
       id: "image",
       message: "대표 이미지 없음 → 카드/상세에 이미지가 비어 보입니다.",
@@ -378,6 +382,7 @@ function mapProductToForm(product: Product): ProductFormState {
     meta_title: product.meta_title ?? "",
     meta_description: product.meta_description ?? "",
     image_url: product.image_url ?? "",
+    images_json: normalizeImageList(product.images_json),
     category: product.category ?? "여행상품",
     theme: product.theme ?? "",
     price: typeof product.price === "number" ? product.price.toLocaleString("ko-KR") : "",
@@ -556,7 +561,16 @@ export default function AdminProductManager() {
         setErrorMessage(msg ?? "상품 목록 조회에 실패했습니다.");
         return;
       }
-      setProducts(result.items);
+      setProducts(
+        result.items.map((item) => {
+          const images = normalizeImageList(item.images_json);
+          return {
+            ...item,
+            images_json: images,
+            image_url: images[0] ?? item.image_url ?? "",
+          };
+        }),
+      );
       setTotalCount(result.total);
     } catch {
       setErrorMessage("상품 목록 조회 중 오류가 발생했습니다.");
@@ -629,10 +643,30 @@ export default function AdminProductManager() {
     return () => clearTimeout(timer);
   }, [keyword]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     setIsSubmitting(true);
     setErrorMessage("");
+
+    const title = form.title.trim();
+    const description = form.description.trim();
+    const normalizedImagesForValidation = normalizeImageList(form.images_json);
+    const primaryImageForValidation = form.image_url.trim() || normalizedImagesForValidation[0] || "";
+    if (!title) {
+      showLocalToast("error", "상품명을 입력해 주세요.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!description) {
+      showLocalToast("error", "상품 설명을 입력해 주세요.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!primaryImageForValidation) {
+      showLocalToast("error", "대표 이미지를 1장 이상 등록해 주세요.");
+      setIsSubmitting(false);
+      return;
+    }
 
     if (form.is_featured_home) {
       const isExistingFeatured = Boolean(editingProduct?.is_featured_home);
@@ -662,8 +696,10 @@ export default function AdminProductManager() {
       const resolvedOptionalTours = shouldRepairLegacyDetailMix ? "" : normalizedOptionalTours;
       const resolvedTermsAndNotes = shouldRepairLegacyDetailMix ? "" : normalizedTermsAndNotes;
       const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
+      const normalizedImages = normalizeImageList(form.images_json);
+      const primaryImageUrl = form.image_url.trim() || normalizedImages[0] || "";
       const payload = {
-        title: (form.title ?? "").trim() || "",
+        title: title,
         description: form.description,
         meta_title: form.meta_title.trim() === "" ? undefined : form.meta_title,
         meta_description: form.meta_description.trim() === "" ? undefined : form.meta_description,
@@ -704,7 +740,8 @@ export default function AdminProductManager() {
         terms_template_type: form.terms_template_type === "" ? undefined : form.terms_template_type,
         terms_and_notes: resolvedTermsAndNotes === "" ? undefined : resolvedTermsAndNotes,
         product_source_url: form.product_source_url.trim() === "" ? undefined : form.product_source_url,
-        image_url: form.image_url,
+        image_url: primaryImageUrl,
+        images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
         category: form.category,
         theme: form.theme.trim() === "" ? null : form.theme,
         price: normalizedPrice === "" ? null : Number(normalizedPrice),
@@ -781,22 +818,32 @@ export default function AdminProductManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json()) as { message?: string; warningCode?: string };
 
       if (!response.ok) {
+        setErrorMessage(result.message ?? "상품 저장에 실패했습니다.");
         showLocalToast("error", result.message ?? "상품 저장에 실패했습니다.");
         return;
       }
 
-      showToast("success", editingId ? "상품이 수정되었습니다." : "상품이 등록되었습니다.");
+      if (result.warningCode === "IMAGES_JSON_NOT_PERSISTED") {
+        showLocalToast(
+          "error",
+          "DB에 images_json 컬럼이 없어 대표 이미지 외 나머지는 저장되지 않았습니다. supabase/products_images_json_upgrade.sql 실행이 필요합니다.",
+        );
+      } else {
+        showToast("success", editingId ? "상품이 수정되었습니다." : "상품이 등록되었습니다.");
+      }
       setEditingId(null);
       setForm(initialFormState);
       setActiveSchedulePreviewIndex(0);
       setShowRawScheduleEditor(false);
       setScheduleEditorMode("visual");
       await loadProducts();
-    } catch {
-      showToast("error", "상품 저장 중 오류가 발생했습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "상품 저장 중 오류가 발생했습니다.";
+      setErrorMessage(message);
+      showLocalToast("error", message);
     } finally {
       setIsSubmitting(false);
     }
@@ -901,7 +948,7 @@ export default function AdminProductManager() {
     () =>
       formToPreviewProduct(
         form,
-        previewImageObjectUrl ?? form.image_url?.trim() ?? "",
+        previewImageObjectUrl ?? form.images_json[0] ?? form.image_url?.trim() ?? "",
       ),
     [form, previewImageObjectUrl],
   );
@@ -946,7 +993,7 @@ export default function AdminProductManager() {
       }
     : localDetailProps;
 
-  const hasPreviewImage = !!(form.image_url?.trim() || previewImageFile);
+  const hasPreviewImage = !!(form.image_url?.trim() || form.images_json.length > 0 || previewImageFile);
   const previewWarnings = useMemo(
     () => getPreviewWarnings(form, hasPreviewImage),
     [form, hasPreviewImage],
@@ -984,7 +1031,7 @@ export default function AdminProductManager() {
     const requestId = ++previewRequestIdRef.current;
     previewDebounceRef.current = setTimeout(() => {
       previewDebounceRef.current = null;
-      const imageUrl = previewImageObjectUrl ?? form.image_url?.trim() ?? "";
+      const imageUrl = previewImageObjectUrl ?? form.images_json[0] ?? form.image_url?.trim() ?? "";
       fetch("/api/admin/products/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1484,7 +1531,13 @@ export default function AdminProductManager() {
         <div className="lg:grid lg:grid-cols-[1fr,minmax(300px,400px)] lg:gap-6 space-y-4 lg:space-y-0">
           {/* 좌측: 폼 — lg에서 항상, small에서는 탭이 입력일 때만 */}
           <div className={smallScreenTab === "input" ? "block" : "hidden lg:block"} aria-hidden={smallScreenTab !== "input"}>
-        <form className="space-y-4 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]" onSubmit={handleSubmit}>
+        <form
+          className="space-y-4 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]"
+          onSubmit={(event) => {
+            void handleSubmit(event);
+          }}
+          noValidate
+        >
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-[#1e3a8a]">{editingId ? "상품 수정" : "상품 등록"}</h3>
           {editingId ? (
@@ -1782,11 +1835,16 @@ export default function AdminProductManager() {
             </div>
           </div>
           <div className="space-y-1 md:col-span-2">
-            {/* TODO: cardUrl 분리 저장 시 onUploaded(heroUrl, cardUrl)로 확장, form.image_card_url 저장. docs/design/product-image-card-url-extension.md */}
-            <ImageUploadField
-              value={form.image_url}
-              onChange={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
-              onUploaded={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
+            <p className="text-xs font-semibold text-slate-700">상품 이미지 (여러 장)</p>
+            <MultiImageUploadField
+              value={form.images_json}
+              onChange={(urls) =>
+                setForm((prev) => ({
+                  ...prev,
+                  images_json: urls,
+                  image_url: urls[0] ?? "",
+                }))
+              }
             />
             <div className="flex flex-wrap items-center gap-2">
               <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
@@ -2211,7 +2269,7 @@ export default function AdminProductManager() {
             <ScheduleVisualEditorV2
               form={form}
               setForm={setForm}
-              previewProductImageUrl={previewImageObjectUrl ?? form.image_url ?? ""}
+              previewProductImageUrl={previewImageObjectUrl ?? form.images_json[0] ?? form.image_url ?? ""}
               activeDayIndex={activeSchedulePreviewIndex}
               setActiveDayIndex={setActiveSchedulePreviewIndex}
             />
@@ -2785,12 +2843,16 @@ export default function AdminProductManager() {
 
         <div className="flex items-center gap-3">
           <button
-            type="submit"
+            type="button"
+            onClick={() => {
+              void handleSubmit();
+            }}
             disabled={isSubmitting}
             className="rounded-lg bg-[#1d4ed8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
           >
             {isSubmitting ? "저장 중..." : editingId ? "수정 저장" : "상품 등록"}
           </button>
+          {errorMessage ? <p className="text-xs text-red-600">{errorMessage}</p> : null}
           <span className="text-xs text-slate-500">
             메인 추천 설정: {featuredCount}/{FEATURED_PRODUCT_LIMIT}
           </span>

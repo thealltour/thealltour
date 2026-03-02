@@ -19,7 +19,15 @@ const AdminConfirmContext = createContext<ConfirmContextValue | undefined>(undef
 export function useAdminConfirm(): ConfirmContextValue {
   const value = useContext(AdminConfirmContext);
   if (!value) {
-    throw new Error("useAdminConfirm must be used within AdminConfirmProvider");
+    return {
+      confirm: async (options: ConfirmOptions) => {
+        if (typeof window === "undefined") return false;
+        const message = options.description
+          ? `${options.title}\n\n${options.description}`
+          : options.title;
+        return window.confirm(message);
+      },
+    };
   }
   return value;
 }

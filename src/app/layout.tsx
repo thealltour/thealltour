@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import GlobalSiteFooter from "@/components/GlobalSiteFooter";
 import KakaoFloatingButton from "@/components/KakaoFloatingButton";
+import { ConsultModalProvider } from "@/components/ConsultModal";
+import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 
 export const metadata: Metadata = {
   title: "더올투어 | 맞춤형 해외/국내 골프투어/파크골프투어 전문",
@@ -22,21 +24,22 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        {/* LCP 히어로 이미지(Supabase Storage)용 - 초기 연결 선점 */}
         <link
           rel="preconnect"
           href="https://qmswixmwquuazrhfyils.supabase.co"
           crossOrigin=""
         />
-        <link
-          rel="preconnect"
-          href="https://img.modetour.com"
-          crossOrigin=""
-        />
+        {/* 상품 이미지 도메인 - dns-prefetch로 가볍게 (폴드 아래) */}
+        <link rel="dns-prefetch" href="https://img.modetour.com" />
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-blue-100 selection:text-foreground">
-        <div className="flex-1">{children}</div>
-        <KakaoFloatingButton />
-        <GlobalSiteFooter />
+        <WebVitalsReporter />
+        <ConsultModalProvider>
+          <div className="flex-1">{children}</div>
+          <KakaoFloatingButton />
+          <GlobalSiteFooter />
+        </ConsultModalProvider>
       </body>
     </html>
   );

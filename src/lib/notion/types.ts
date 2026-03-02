@@ -99,10 +99,21 @@ export type GuideContent = {
   title: string;
   summary?: string;
   excerpt: string;
+  /** SEO 본문용 장문 텍스트(노션 블록에서 추출, 1500~3000자 수준) */
+  excerptText?: string;
+  /** SEO용 제목 (비우면 title 사용) */
+  seoTitle?: string | null;
+  /** meta description (비우면 excerptText 160자 또는 summary 사용) */
+  seoDescription?: string | null;
   ogImage?: string;
   coverImage?: string;
   publishedAt?: string;
+  /** 원문 보기 iframe용 공유 URL */
+  notionUrl?: string;
+  is_published?: boolean;
   notionPageId: string;
+  /** 노션 최종 수정 시각 (JSON-LD dateModified용) */
+  notionLastEditedTime?: string;
   blocks: GuideBlock[];
   toc: GuideTocItem[];
 };

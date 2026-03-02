@@ -59,6 +59,83 @@ type FlightCardProps = {
   compact?: boolean;
 };
 
+type AirportLabel = {
+  code: string;
+  city: string;
+};
+
+type MobileFlightBlockProps = {
+  label: string;
+  fromAirport: string;
+  toAirport: string;
+  fromDate: string;
+  toDate: string;
+  fromTime: string;
+  toTime: string;
+  toTimeExtra?: string;
+  flightName: string;
+  baggageLimit?: string;
+};
+
+function parseAirportLabel(raw: string): AirportLabel {
+  const value = raw.trim();
+  if (!value) return { code: "", city: "" };
+  const match = value.match(/^(.*)\(([^)]+)\)\s*(출발|도착)?$/);
+  if (!match) return { code: "", city: value.replace(/\s*(출발|도착)\s*$/, "").trim() };
+  const city = match[1].trim();
+  const code = match[2].trim().toUpperCase();
+  return { code, city };
+}
+
+function MobileFlightBlock({
+  label,
+  fromAirport,
+  toAirport,
+  fromDate,
+  toDate,
+  fromTime,
+  toTime,
+  toTimeExtra,
+  flightName,
+  baggageLimit,
+}: MobileFlightBlockProps) {
+  const from = parseAirportLabel(fromAirport);
+  const to = parseAirportLabel(toAirport);
+  const route =
+    from.code && to.code
+      ? `${from.code} → ${to.code}`
+      : `${from.city || fromAirport || "출발"} → ${to.city || toAirport || "도착"}`;
+  const airportLine = [from.city || fromAirport, to.city || toAirport].filter(Boolean).join(" → ");
+  const metaParts = [flightName.trim()];
+  if (baggageLimit?.trim()) {
+    metaParts.push(`수하물 ${formatBaggageLimit(baggageLimit)}`);
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-semibold text-[#1e3a8a]">{label}</p>
+      <p className="text-sm font-semibold text-slate-800">{route}</p>
+      {airportLine ? <p className="text-xs text-slate-500">{airportLine}</p> : null}
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] text-slate-500">출발</p>
+          <p className="text-xl font-bold leading-tight text-slate-900">{fromTime || "—"}</p>
+          {fromDate ? <p className="text-[11px] text-slate-500">{fromDate}</p> : null}
+        </div>
+        <div className="min-w-0 text-right">
+          <p className="text-[11px] text-slate-500">도착</p>
+          <p className="text-xl font-bold leading-tight text-slate-900">
+            {toTime || "—"}
+            {toTimeExtra ? <span className="ml-1 text-xs font-semibold text-[#1e3a8a]">{toTimeExtra}</span> : null}
+          </p>
+          {toDate ? <p className="text-[11px] text-slate-500">{toDate}</p> : null}
+        </div>
+      </div>
+      <p className="truncate text-[11px] text-slate-500">{metaParts.join(" · ")}</p>
+    </div>
+  );
+}
+
 function FlightCard({
   title,
   fromAirport,
@@ -151,6 +228,8 @@ export function FlightSummarySection({
 
   const depToTimeExtra =
     depFromDate && depToDate && depFromDate !== depToDate ? "+1일" : undefined;
+  const arrToTimeExtra =
+    arrFromDate && arrToDate && arrFromDate !== arrToDate ? "+1일" : undefined;
 
   return (
     <section
@@ -167,35 +246,69 @@ export function FlightSummarySection({
         </h2>
         {!compact && <p className="mt-1 text-sm text-slate-500">출발·도착 항공편 정보입니다.</p>}
         <div className={compact ? "mt-3 space-y-3" : "mt-6 space-y-4"}>
-          {hasDepart && (
-            <FlightCard
-              title="출발 항공편"
-              fromAirport={depFromLabel}
-              fromDate={depFromDate}
-              fromTime={depFromTime}
-              flightName={depFlight || "—"}
-              baggageLimit={depBaggage || undefined}
-              toAirport={depToLabel}
-              toDate={depToDate}
-              toTime={depToTime}
-              toTimeExtra={depToTimeExtra}
-              compact={compact}
-            />
-          )}
-          {hasArrival && (
-            <FlightCard
-              title="도착 항공편"
-              fromAirport={arrFromLabel}
-              fromDate={arrFromDate}
-              fromTime={arrFromTime}
-              flightName={arrFlight || "—"}
-              baggageLimit={arrBaggage || undefined}
-              toAirport={arrToLabel}
-              toDate={arrToDate}
-              toTime={arrToTime}
-              compact={compact}
-            />
-          )}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 md:hidden">
+            {hasDepart ? (
+              <MobileFlightBlock
+                label="출발 항공편"
+                fromAirport={depFromLabel}
+                toAirport={depToLabel}
+                fromDate={depFromDate}
+                toDate={depToDate}
+                fromTime={depFromTime}
+                toTime={depToTime}
+                toTimeExtra={depToTimeExtra}
+                flightName={depFlight || "—"}
+                baggageLimit={depBaggage || undefined}
+              />
+            ) : null}
+            {hasDepart && hasArrival ? <div className="my-3 border-t border-slate-200" /> : null}
+            {hasArrival ? (
+              <MobileFlightBlock
+                label="도착 항공편"
+                fromAirport={arrFromLabel}
+                toAirport={arrToLabel}
+                fromDate={arrFromDate}
+                toDate={arrToDate}
+                fromTime={arrFromTime}
+                toTime={arrToTime}
+                toTimeExtra={arrToTimeExtra}
+                flightName={arrFlight || "—"}
+                baggageLimit={arrBaggage || undefined}
+              />
+            ) : null}
+          </div>
+
+          <div className="hidden space-y-4 md:block">
+            {hasDepart && (
+              <FlightCard
+                title="출발 항공편"
+                fromAirport={depFromLabel}
+                fromDate={depFromDate}
+                fromTime={depFromTime}
+                flightName={depFlight || "—"}
+                baggageLimit={depBaggage || undefined}
+                toAirport={depToLabel}
+                toDate={depToDate}
+                toTime={depToTime}
+                toTimeExtra={depToTimeExtra}
+                compact={compact}
+              />
+            )}
+            {hasArrival && (
+              <FlightCard
+                title="도착 항공편"
+                fromAirport={arrFromLabel}
+                fromDate={arrFromDate}
+                fromTime={arrFromTime}
+                flightName={arrFlight || "—"}
+                baggageLimit={arrBaggage || undefined}
+                toAirport={arrToLabel}
+                toDate={arrToDate}
+                toTime={arrToTime}
+                compact={compact}
+              />
+            )}
+          </div>
         </div>
       </div>
     </section>

@@ -25,6 +25,32 @@ export async function fetchNotionPageMeta(pageId: string) {
   return page as any;
 }
 
+/** Notion Integration으로 해당 페이지 접근 가능 여부 검증 (등록/수정 시 호출) */
+export async function validateNotionPageAccess(
+  pageId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    await fetchNotionPageMeta(pageId);
+    return { ok: true };
+  } catch (err: unknown) {
+    const msg =
+      err && typeof err === "object" && "message" in err
+        ? String((err as { message: string }).message)
+        : "";
+    if (/could not find|not found|404|403|unauthorized|restrict/i.test(msg)) {
+      return {
+        ok: false,
+        message:
+          "Notion Integration에 공유되지 않은 페이지입니다. 노션에서 해당 페이지를 연동된 Integration에 공유해 주세요.",
+      };
+    }
+    return {
+      ok: false,
+      message: msg || "노션 페이지에 접근할 수 없습니다. Integration 설정을 확인해 주세요.",
+    };
+  }
+}
+
 export async function fetchNotionBlocks(pageId: string) {
   const client = ensureNotionClient();
 

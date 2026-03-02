@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import type { Guide } from "@/types/guide";
-import { extractNotionPageId } from "@/lib/notion";
+import { extractNotionPageId, validateNotionPageAccess } from "@/lib/notion";
 import { syncGuideFromNotion } from "@/lib/notionSync";
 
 type GuideBody = Partial<
@@ -23,6 +23,9 @@ type GuideBody = Partial<
     | "tags"
     | "category"
     | "published_at"
+    | "seo_title"
+    | "seo_description"
+    | "focus_keyword"
   >
 >;
 
@@ -75,6 +78,17 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
   if (body.category !== undefined) updates.category = (body.category ?? "").trim() || null;
   if (body.published_at !== undefined) updates.published_at = body.published_at || null;
+  if (body.seo_title !== undefined) updates.seo_title = (body.seo_title ?? "").trim() || null;
+  if (body.seo_description !== undefined) updates.seo_description = (body.seo_description ?? "").trim() || null;
+  if (body.focus_keyword !== undefined) updates.focus_keyword = (body.focus_keyword ?? "").trim() || null;
+
+  const notionPageIdToValidate = (updates.notion_page_id as string | undefined) ?? null;
+  if (notionPageIdToValidate) {
+    const validation = await validateNotionPageAccess(notionPageIdToValidate);
+    if (!validation.ok) {
+      return NextResponse.json({ message: validation.message }, { status: 400 });
+    }
+  }
 
   if (!Object.keys(updates).length) {
     return NextResponse.json({ message: "수정할 항목이 없습니다." }, { status: 400 });

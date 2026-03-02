@@ -12,6 +12,7 @@ import type {
   ItineraryV2,
   ItineraryV2Event,
 } from "@/types/product";
+import { normalizeImageList } from "@/lib/products/images";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
 const FEATURED_PRODUCT_LIMIT = 8;
@@ -20,12 +21,19 @@ function normalizeProduct(row: Record<string, unknown>): Product {
   const rawPrice = row.price;
   const price = typeof rawPrice === "number" ? rawPrice : undefined;
   const sortOrder = typeof row.sort_order === "number" ? row.sort_order : undefined;
+  const images = normalizeImageList(
+    Array.isArray(row.images_json)
+      ? (row.images_json as Array<string | null | undefined>)
+      : null,
+  );
+  const primaryImage = images[0] ?? String(row.image_url ?? row.image ?? FALLBACK_IMAGE);
 
   return {
     id: String(row.id ?? ""),
     title: String(row.title ?? row.name ?? "상품명 미정"),
     description: String(row.description ?? row.content ?? "상세 설명이 준비 중입니다."),
-    image_url: String(row.image_url ?? row.image ?? FALLBACK_IMAGE),
+    image_url: primaryImage,
+    images_json: images.length > 0 ? images : undefined,
     category: String(row.category ?? row.type ?? "여행상품"),
     theme: typeof row.theme === "string" ? row.theme : undefined,
     price,

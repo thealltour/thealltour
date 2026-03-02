@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   Plane,
   Building2,
@@ -8,10 +7,8 @@ import {
   Sparkles,
   CircleDot,
   MoreHorizontal,
-  ImageIcon,
 } from "lucide-react";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
-import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { FlightSummarySection } from "@/components/products/FlightSummarySection";
 import type { Product } from "@/types/product";
@@ -30,8 +27,6 @@ export type TravelOverviewV2Props = {
   model: TravelOverviewModel | null;
   /** 항공 카드 포함용 상품 데이터 */
   product?: Product | null;
-  /** 커버 이미지가 없을 때 사용할 URL */
-  fallbackImageUrl?: string | null;
   /** 일정 타임라인은 오버뷰 아래 InteractiveTimelineV2에서 표시 (onGoToItinerary는 해당 섹션으로 스크롤용) */
   onGoToItinerary?: () => void;
 };
@@ -39,7 +34,6 @@ export type TravelOverviewV2Props = {
 export function TravelOverviewV2({
   model,
   product = null,
-  fallbackImageUrl = null,
 }: TravelOverviewV2Props) {
   if (!model || !model.cards?.length) {
     return null;
@@ -47,9 +41,6 @@ export function TravelOverviewV2({
 
   const title = model.title?.trim() || "여행 오버뷰";
   const subtext = "여행 일정과 흐름을 한눈에 확인하세요.";
-  const coverRaw = model.coverImageUrl?.trim() || fallbackImageUrl?.trim() || "";
-  const coverSrc = coverRaw ? (normalizeProductImageUrl(coverRaw) || "") : "";
-  const hasCoverImage = !!coverSrc;
   const cards = model.cards.slice(0, 3);
   const chart = model.chart;
 
@@ -67,7 +58,7 @@ export function TravelOverviewV2({
         </div>
 
         <div className="space-y-8">
-          {/* 1. 사진 + 차트 (모바일에서만 차트 표시, 웹은 오른쪽 예상가 위에 표시) */}
+          {/* 1. 차트 (모바일에서만 오버뷰에 표시, 웹은 오른쪽 예상가 위에 표시) */}
           <div
             className={
               hasChart
@@ -75,28 +66,6 @@ export function TravelOverviewV2({
                 : "block"
             }
           >
-            {/* 커버 이미지 또는 Placeholder */}
-            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-slate-200 shadow-md">
-              {hasCoverImage ? (
-                <Image
-                  src={coverSrc}
-                  alt={title}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 55vw"
-                  className="object-cover"
-                  priority
-                />
-              ) : (
-                <div
-                  className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-100 text-slate-500"
-                  aria-hidden
-                >
-                  <ImageIcon className="h-12 w-12 opacity-50" />
-                  <span className="text-center text-sm font-medium">대표 이미지를 등록하면 여기에 표시됩니다</span>
-                </div>
-              )}
-            </div>
-
             {/* 차트 (도넛) - 모바일에서만 오버뷰에 표시 */}
             {hasChart && (
               <div className="md:hidden">

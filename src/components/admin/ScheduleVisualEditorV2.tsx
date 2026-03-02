@@ -41,7 +41,12 @@ function createEmptyDay(dayNumber: number): ItineraryV2Day {
 }
 
 export type ScheduleVisualEditorV2Props = {
-  form: { itinerary_v2_json: ItineraryV2; legacy_itinerary_text: string };
+  form: {
+    itinerary_v2_json: ItineraryV2;
+    legacy_itinerary_text: string;
+    images_json?: string[];
+    image_url?: string;
+  };
   /** ProductFormState와 같은 상위 타입 setState도 허용 */
   setForm: React.Dispatch<React.SetStateAction<any>>;
   previewProductImageUrl: string;
@@ -58,6 +63,16 @@ export function ScheduleVisualEditorV2({
 }: ScheduleVisualEditorV2Props) {
   const v2 = form.itinerary_v2_json;
   const days = v2.days ?? [];
+  const productImageCandidates = Array.from(
+    new Set(
+      [
+        ...(Array.isArray(form.images_json) ? form.images_json : []),
+        form.image_url ?? "",
+      ]
+        .map((u) => u?.trim())
+        .filter((u): u is string => Boolean(u)),
+    ),
+  );
 
   const updateV2 = (updater: (prev: ItineraryV2) => ItineraryV2) => {
     setForm((prev: any) => ({
@@ -294,22 +309,75 @@ export function ScheduleVisualEditorV2({
                   <p className="mb-1 text-[11px] font-semibold text-slate-500">
                     Day 커버 이미지 (선택, 카드 800px)
                   </p>
-                  <ImageUploadField
-                    value={dayEntry.coverImageUrl ?? ""}
-                    onChange={(v) =>
-                      updateDay(dayIndex, {
-                        coverImageUrl: v?.trim() || undefined,
-                      })
-                    }
-                    onUploaded={(v) =>
-                      updateDay(dayIndex, {
-                        coverImageUrl: v?.trim() || undefined,
-                      })
-                    }
-                    uploadedUrlKey="card"
-                    optional
-                    placeholder="URL 또는 업로드"
-                  />
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/40 p-2">
+                      <p className="mb-2 text-[11px] font-semibold text-slate-600">
+                        파일 업로드 / 드래그앤드롭
+                      </p>
+                      <ImageUploadField
+                        value={dayEntry.coverImageUrl ?? ""}
+                        onChange={(v) =>
+                          updateDay(dayIndex, {
+                            coverImageUrl: v?.trim() || undefined,
+                          })
+                        }
+                        onUploaded={(v) =>
+                          updateDay(dayIndex, {
+                            coverImageUrl: v?.trim() || undefined,
+                          })
+                        }
+                        uploadedUrlKey="card"
+                        optional
+                        placeholder="URL 또는 업로드"
+                      />
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/40 p-2">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-[11px] font-semibold text-slate-600">
+                          상품 이미지에서 선택
+                        </p>
+                        {dayEntry.coverImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => updateDay(dayIndex, { coverImageUrl: undefined })}
+                            className="rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] text-slate-600 hover:bg-slate-50"
+                          >
+                            선택 해제
+                          </button>
+                        ) : null}
+                      </div>
+                      {productImageCandidates.length === 0 ? (
+                        <p className="rounded border border-dashed border-slate-300 bg-white px-2 py-6 text-center text-[11px] text-slate-500">
+                          먼저 상품 이미지(여러 장)를 업로드해 주세요.
+                        </p>
+                      ) : (
+                        <div className="grid max-h-[240px] grid-cols-3 gap-2 overflow-y-auto pr-1">
+                          {productImageCandidates.map((url, imageIndex) => {
+                            const selected = (dayEntry.coverImageUrl ?? "").trim() === url;
+                            return (
+                              <button
+                                key={`${url}-${imageIndex}`}
+                                type="button"
+                                onClick={() => updateDay(dayIndex, { coverImageUrl: url })}
+                                className={`group relative aspect-[4/3] overflow-hidden rounded-md border transition ${
+                                  selected
+                                    ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                                    : "border-slate-200 hover:border-slate-400"
+                                }`}
+                                title={`이미지 ${imageIndex + 1} 선택`}
+                              >
+                                <img
+                                  src={normalizeProductImageUrl(url)}
+                                  alt={`상품 이미지 ${imageIndex + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

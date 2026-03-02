@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useConsultModal } from "@/components/ConsultModal";
 
 type ProductDetailStickyProps = {
@@ -60,8 +61,49 @@ export function ProductDetailStickyMobile({
   kakaoHref,
 }: ProductDetailStickyProps) {
   const { openModal } = useConsultModal();
+  const [compact, setCompact] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    lastScrollYRef.current = window.scrollY;
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollYRef.current;
+      if (delta > 6) {
+        setCompact(true);
+      } else if (delta < -4) {
+        setCompact(false);
+      }
+      lastScrollYRef.current = currentY;
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => setCompact(false), 240);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const nextHeight = compact ? 44 : 56;
+    document.documentElement.setAttribute("data-mobile-cta", "on");
+    document.documentElement.style.setProperty("--cta-h", `${nextHeight}px`);
+    return () => {
+      document.documentElement.removeAttribute("data-mobile-cta");
+      document.documentElement.style.setProperty("--cta-h", "0px");
+    };
+  }, [compact]);
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:hidden">
+    <div
+      className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-3 backdrop-blur transition-all duration-200 md:hidden"
+      style={{
+        paddingTop: compact ? "8px" : "12px",
+        paddingBottom: compact ? "max(8px, env(safe-area-inset-bottom))" : "max(12px, env(safe-area-inset-bottom))",
+      }}
+    >
       {priceFormatted ? (
         <span className="font-price-strong text-sm font-bold text-[#1E3A8A]">
           ₩{priceFormatted}~
@@ -73,7 +115,7 @@ export function ProductDetailStickyMobile({
           onClick={() => openModal({ productId, productTitle, sourcePath })}
           className="type-btn flex-1 rounded-xl bg-[#1d4ed8] px-4 py-3 text-center text-sm font-semibold text-white"
         >
-          상담 문의
+          {compact ? "상담" : "상담 문의"}
         </button>
         <a
           href={kakaoHref}

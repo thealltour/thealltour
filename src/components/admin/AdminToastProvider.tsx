@@ -16,11 +16,17 @@ type ToastContextValue = {
 };
 
 const AdminToastContext = createContext<ToastContextValue | undefined>(undefined);
+const FALLBACK_TOAST_CONTEXT: ToastContextValue = {
+  showToast: () => {},
+};
 
 export function useAdminToast(): ToastContextValue {
   const value = useContext(AdminToastContext);
   if (!value) {
-    throw new Error("useAdminToast must be used within AdminToastProvider");
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("useAdminToast called without AdminToastProvider. Falling back to no-op.");
+    }
+    return FALLBACK_TOAST_CONTEXT;
   }
   return value;
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import type { Guide } from "@/types/guide";
-import { extractNotionPageId } from "@/lib/notion";
+import { extractNotionPageId, validateNotionPageAccess } from "@/lib/notion";
 import { syncGuideFromNotion } from "@/lib/notionSync";
 
 type GuideBody = Partial<
@@ -23,6 +23,9 @@ type GuideBody = Partial<
     | "tags"
     | "category"
     | "published_at"
+    | "seo_title"
+    | "seo_description"
+    | "focus_keyword"
   >
 >;
 
@@ -89,12 +92,21 @@ export async function POST(request: Request) {
     : null;
   const category = body.category?.trim() || null;
   const publishedAt = body.published_at?.trim() || null;
+  const seoTitle = body.seo_title?.trim() || null;
+  const seoDescription = body.seo_description?.trim() || null;
+  const focusKeyword = body.focus_keyword?.trim() || null;
 
   if (notionUrl && !notionPageId) {
     return NextResponse.json({ message: "노션 URL에서 페이지 ID를 추출할 수 없습니다." }, { status: 400 });
   }
   if (!title && !notionPageId) {
     return NextResponse.json({ message: "제목을 입력해 주세요." }, { status: 400 });
+  }
+  if (notionPageId) {
+    const validation = await validateNotionPageAccess(notionPageId);
+    if (!validation.ok) {
+      return NextResponse.json({ message: validation.message }, { status: 400 });
+    }
   }
   const titleForInsert = title || "노션 여행가이드";
 
@@ -117,6 +129,9 @@ export async function POST(request: Request) {
       tags,
       category,
       published_at: publishedAt,
+      seo_title: seoTitle,
+      seo_description: seoDescription,
+      focus_keyword: focusKeyword,
     })
     .select("*")
     .maybeSingle();

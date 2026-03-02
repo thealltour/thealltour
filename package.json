@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=mobile --throttling.cpuSlowdownMultiplier=4 --chrome-flags=\"--headless\"",
+    "lighthouse:desktop": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=desktop"
   },
   "dependencies": {
     "@notionhq/client": "^5.11.0",
@@ -34,6 +36,7 @@
     "last 2 Safari versions",
     "last 2 iOS versions",
     "last 2 Firefox versions",
+    "not dead",
     "not IE 11"
   ]
 }

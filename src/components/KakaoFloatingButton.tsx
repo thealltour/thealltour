@@ -36,7 +36,14 @@ export default function KakaoFloatingButton() {
     };
   }, []);
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/theall_manager_only")) {
+  const isProductDetailPage =
+    /^\/products\/[^/]+\/?$/.test(pathname) || /^\/dev\/product-detail\/[^/]+\/?$/.test(pathname);
+
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/theall_manager_only") ||
+    isProductDetailPage
+  ) {
     return null;
   }
 

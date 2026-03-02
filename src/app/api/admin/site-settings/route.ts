@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { SiteSettings } from "@/lib/siteSettings";
 
@@ -63,6 +64,7 @@ export async function PATCH(request: Request) {
     }
   }
 
+  revalidateTag("site-settings", "max");
   return NextResponse.json({ message: "환경설정을 저장했습니다." });
 }
 

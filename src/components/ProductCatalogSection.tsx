@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Product } from "@/types/product";
 import type { ProductCardTag } from "@/components/ProductCard";
 import type { ProductCardV2Status } from "@/components/products/ProductCardV2";
 import ProductCard from "@/components/ProductCard";
 import ProductCardV2 from "@/components/products/ProductCardV2";
+import { useConsultModal } from "@/components/ConsultModal";
 import { ENABLE_NEW_PRODUCT_UI } from "@/config/featureFlags";
 import {
   getProductBadges,
@@ -143,6 +144,24 @@ export default function ProductCatalogSection({
     [groupedByTheme, keywordFilteredProducts],
   );
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { openModal } = useConsultModal();
+
+  function handleProductConsult(product: Product) {
+    const isMobile =
+      typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false;
+    if (isMobile) {
+      const query = searchParams.toString();
+      openModal({
+        productId: product.id,
+        productTitle: product.title,
+        sourcePath: query ? `${pathname}?${query}` : pathname,
+      });
+      return;
+    }
+    router.push(`/quote?productId=${encodeURIComponent(product.id)}`);
+  }
 
   return (
     <section className="space-y-5">
@@ -224,7 +243,7 @@ export default function ProductCatalogSection({
                         metaInfo={product.meta_info ?? ""}
                         hrefDetail={`/products/${product.id}`}
                         onClickDetail={() => router.push(`/products/${product.id}`)}
-                        onClickConsult={() => router.push(`/quote?productId=${encodeURIComponent(product.id)}`)}
+                        onClickConsult={() => handleProductConsult(product)}
                       />
                     );
                   }

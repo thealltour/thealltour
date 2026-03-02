@@ -4,6 +4,11 @@ import { supabase } from "@/lib/supabase";
 import type { ItineraryV2 } from "@/types/product";
 
 const FEATURED_PRODUCT_LIMIT = 8;
+function isMissingImagesJsonColumn(message?: string): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes("images_json") && normalized.includes("column");
+}
 
 type ProductBody = {
   title?: string;
@@ -40,6 +45,7 @@ type ProductBody = {
   meta_title?: string | null;
   meta_description?: string | null;
   image_url?: string;
+  images_json?: string[] | null;
   /** TODO: cardUrl 분리 저장 시 updates.image_card_url 추가. docs/design/product-image-card-url-extension.md */
   // image_card_url?: string;
   category?: string;
@@ -169,6 +175,18 @@ export async function PATCH(
   if (body.arrival_baggage_limit !== undefined)
     updates.arrival_baggage_limit = body.arrival_baggage_limit?.trim() || null;
   if (body.image_url !== undefined) updates.image_url = body.image_url?.trim();
+  if (body.images_json !== undefined) {
+    const images = Array.isArray(body.images_json)
+      ? body.images_json
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter(Boolean)
+      : [];
+    updates.images_json = images.length > 0 ? images : null;
+    if (body.image_url === undefined && images.length > 0) {
+      updates.image_url = images[0];
+    }
+  }
   if (body.category !== undefined) updates.category = body.category?.trim();
   if (body.theme !== undefined) updates.theme = body.theme?.trim() || null;
   if (body.duration !== undefined) updates.duration = body.duration?.trim() || null;
@@ -250,15 +268,31 @@ export async function PATCH(
     );
   }
 
-  const updateResult = await supabase
+  let imagesJsonPersisted = true;
+  let updateResult = await supabase
     .from("products")
     .update(updates)
     .eq("id", id)
     .select("id")
     .maybeSingle();
 
+  // DB에 images_json 컬럼이 아직 없는 환경 호환
+  if (updateResult.error && "images_json" in updates && isMissingImagesJsonColumn(updateResult.error.message)) {
+    imagesJsonPersisted = false;
+    const { images_json: _omit, ...fallbackUpdates } = updates;
+    updateResult = await supabase
+      .from("products")
+      .update(fallbackUpdates)
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
+  }
+
   if (updateResult.error) {
-    return NextResponse.json({ message: "상품 수정에 실패했습니다." }, { status: 500 });
+    return NextResponse.json(
+      { message: `상품 수정에 실패했습니다. (${updateResult.error.message})` },
+      { status: 500 },
+    );
   }
   if (!updateResult.data) {
     return NextResponse.json(
@@ -269,6 +303,12 @@ export async function PATCH(
 
   revalidateTag("products", "max");
   revalidatePath(`/products/${id}`);
+  if (!imagesJsonPersisted) {
+    return NextResponse.json({
+      message: "상품이 수정되었습니다. (대표 이미지만 저장됨)",
+      warningCode: "IMAGES_JSON_NOT_PERSISTED",
+    });
+  }
   return NextResponse.json({ message: "상품이 수정되었습니다." });
 }
 

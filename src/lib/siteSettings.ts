@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { unstable_cache } from "next/cache";
 
 export type SiteSettings = {
   kakao_channel_url: string;
@@ -66,7 +67,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   about_cta_href: "/#contact",
 };
 
-export async function getSiteSettings(): Promise<SiteSettings> {
+async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
   const { data, error } = await supabase.from("site_settings").select("key, value");
 
   if (error || !data) {
@@ -113,5 +114,14 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       map.get("about_cta_label") || DEFAULT_SITE_SETTINGS.about_cta_label,
     about_cta_href: map.get("about_cta_href") || DEFAULT_SITE_SETTINGS.about_cta_href,
   };
+}
+
+/** 5분 캐시 — 관리자에서 site_settings 수정 시 revalidateTag("site-settings") 호출 필요 */
+export async function getSiteSettings(): Promise<SiteSettings> {
+  return unstable_cache(
+    fetchSiteSettingsRaw,
+    ["site-settings"],
+    { revalidate: 300, tags: ["site-settings"] },
+  )();
 }
 

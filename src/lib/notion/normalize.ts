@@ -1,5 +1,6 @@
 import type { Guide } from "@/types/guide";
 import type { GuideBlock, GuideContent, GuideImage, GuideTocItem, NotionRichText } from "@/lib/notion/types";
+import { extractNotionSeoFromBlocks } from "@/lib/notion/text";
 
 function richTextToString(richText: NotionRichText[]): string {
   return richText.map((item) => item.plain_text ?? "").join("").trim();
@@ -246,16 +247,27 @@ function collectPlainTextFromBlocks(blocks: GuideBlock[]): string {
   return chunks.join(" ").replace(/\s+/g, " ").trim();
 }
 
+function extractNotionCoverUrl(pageMeta: any): string | undefined {
+  const cover = pageMeta?.cover;
+  if (!cover) return undefined;
+  if (cover.type === "external" && cover.external?.url) return cover.external.url;
+  if (cover.type === "file" && cover.file?.url) return cover.file.url;
+  return undefined;
+}
+
 export function normalizeGuideContent(input: {
   guide: Guide;
   rawBlocks: any[];
   pageTitleFromNotion?: string;
+  pageMeta?: any;
 }): GuideContent {
   const toc: GuideTocItem[] = [];
   // 외부 TOC를 사용하지 않는 경우를 고려해, 본문 내 목차 섹션은 제거하지 않고 유지합니다.
   const blocks = normalizeBlocksInternal(input.rawBlocks, toc);
   const plainText = collectPlainTextFromBlocks(blocks);
   const excerpt = (input.guide.summary?.trim() || plainText).slice(0, 180);
+
+  const { excerptText } = extractNotionSeoFromBlocks(input.rawBlocks, { maxExcerptLength: 2500 });
 
   const firstImage = blocks.find((block) => block.type === "image" || block.type === "image_group");
   const firstImageSrc =
@@ -265,16 +277,29 @@ export function normalizeGuideContent(input: {
         ? firstImage.images[0]?.src
         : undefined;
 
+  const notionCover = extractNotionCoverUrl(input.pageMeta);
+  const ogImageFallback =
+    input.guide.cover_image_url ||
+    notionCover ||
+    input.guide.thumbnail_url ||
+    firstImageSrc;
+
   return {
     id: input.guide.id,
     slug: input.guide.slug ?? "",
     title: input.guide.title_override || input.guide.title || input.pageTitleFromNotion || "여행가이드",
     summary: input.guide.summary ?? undefined,
     excerpt,
-    ogImage: input.guide.cover_image_url || input.guide.thumbnail_url || firstImageSrc,
-    coverImage: input.guide.cover_image_url || input.guide.thumbnail_url || firstImageSrc,
+    excerptText: excerptText || undefined,
+    seoTitle: input.guide.seo_title?.trim() || null,
+    seoDescription: input.guide.seo_description?.trim() || null,
+    ogImage: ogImageFallback,
+    coverImage: ogImageFallback,
     publishedAt: input.guide.published_at || input.guide.created_at || undefined,
     notionPageId: input.guide.notion_page_id || "",
+    notionUrl: input.guide.notion_url ?? undefined,
+    is_published: input.guide.is_published,
+    notionLastEditedTime: input.guide.notion_last_edited_time ?? undefined,
     blocks,
     toc,
   };

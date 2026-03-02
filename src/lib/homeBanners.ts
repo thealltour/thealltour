@@ -27,7 +27,7 @@ const getHomeBannersCached = unstable_cache(
   async () => {
     const result = await supabase
       .from("home_banners")
-      .select("*")
+      .select("id, title, image_url, mobile_image_url, link_url, sort_order, is_active, created_at")
       .eq("is_active", true)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false, nullsFirst: false });

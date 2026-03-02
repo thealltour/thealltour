@@ -23,6 +23,7 @@ import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimeline
 import { ProductImageCarousel } from "@/components/products/ProductImageCarousel";
 import type { ProductGalleryImage } from "@/components/products/ProductImageGalleryModal";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { getPrimaryImageUrl } from "@/lib/products/images";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -154,7 +155,7 @@ export default function ProductDetailV2({
       : { ...resolvedOverview, cards: withoutFlight };
   }, [resolvedOverview]);
 
-  const resolvedOverviewFallbackUrl = product?.image_url?.trim() ?? overviewFallbackUrl ?? "";
+  const resolvedOverviewFallbackUrl = product ? getPrimaryImageUrl(product) : overviewFallbackUrl ?? "";
   const galleryImages = useMemo<ProductGalleryImage[]>(() => {
     const seen = new Set<string>();
     const list: ProductGalleryImage[] = [];
@@ -168,6 +169,11 @@ export default function ProductDetailV2({
       list.push({ url: normalized, alt: `${altBase} 이미지`, label });
     };
 
+    if (Array.isArray(product?.images_json)) {
+      product.images_json.forEach((url, idx) => {
+        pushImage(url, idx === 0 ? "대표 이미지" : `추가 이미지 ${idx + 1}`);
+      });
+    }
     pushImage(product?.image_url, "대표 이미지");
 
     if (Array.isArray(product?.itinerary_v2_json?.days)) {
@@ -384,7 +390,6 @@ export default function ProductDetailV2({
       <TravelOverviewV2
         model={overviewForCards}
         product={product}
-        fallbackImageUrl={resolvedOverviewFallbackUrl || null}
         onGoToItinerary={() => {
           setActiveTab("schedule");
           setTimeout(() => {

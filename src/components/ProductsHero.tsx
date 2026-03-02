@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useConsultModal } from "@/components/ConsultModal";
 
 type ProductsHeroVariant = "package" | "golf";
 
@@ -49,7 +50,9 @@ type ProductsHeroProps = {
 
 export default function ProductsHero({ variant }: ProductsHeroProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { openModal } = useConsultModal();
   const [settings, setSettings] = useState<SiteSettingsClient | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string>(() => searchParams.get("region") ?? "");
   const [regions, setRegions] = useState<HeroRegionOption[]>(
@@ -185,6 +188,20 @@ export default function ProductsHero({ variant }: ProductsHeroProps) {
     return qs ? `${base}?${qs}` : base;
   }, [searchParams, selectedOption]);
 
+  function handleConsultCtaClick() {
+    const isMobile =
+      typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false;
+    if (isMobile) {
+      const query = searchParams.toString();
+      openModal({
+        productTitle: selectedOption?.label || (variant === "golf" ? "골프/파크골프 맞춤 일정" : "패키지 맞춤 일정"),
+        sourcePath: query ? `${pathname}?${query}` : pathname,
+      });
+      return;
+    }
+    router.push(ctaHref);
+  }
+
   return (
     <section className="rounded-3xl bg-white/95 p-5 shadow-md ring-1 ring-[#dbeafe] md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] md:items-stretch md:gap-8">
       <div className="flex flex-col justify-center space-y-2.5 md:space-y-3.5">
@@ -218,12 +235,13 @@ export default function ProductsHero({ variant }: ProductsHeroProps) {
             ))}
           </select>
         </div>
-        <a
-          href={ctaHref}
+        <button
+          type="button"
+          onClick={handleConsultCtaClick}
           className="type-btn inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#1E3A8A] px-4 py-2.5 text-white shadow-md transition hover:bg-[#0F172A] active:translate-y-[1px]"
         >
           바로 상담 요청하기
-        </a>
+        </button>
         <p className="type-caption leading-relaxed text-content-muted">
           상담 요청서에
           <span className="hidden sm:inline"> 희망 날짜·인원·선호하는 골프장/도시 등을 자유롭게 적어 주세요.</span>

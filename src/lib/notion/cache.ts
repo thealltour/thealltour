@@ -28,6 +28,7 @@ async function loadGuideContentBySlug(slug: string): Promise<GuideContent | null
     guide,
     rawBlocks,
     pageTitleFromNotion: titleFromNotion,
+    pageMeta,
   });
 }
 
@@ -36,7 +37,7 @@ export async function getGuideContentCached(slug: string): Promise<GuideContent 
     async () => loadGuideContentBySlug(slug),
     ["guide-content", slug],
     {
-      revalidate: 60 * 60 * 3,
+      revalidate: 300,
       tags: [`guide:${slug}`, "guides:list"],
     },
   )();

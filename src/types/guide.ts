@@ -20,5 +20,9 @@ export type Guide = {
   published_at?: string | null;
   notion_last_edited_time?: string | null;
   last_synced_at?: string | null;
+  // SEO 필드
+  seo_title?: string | null;
+  seo_description?: string | null;
+  focus_keyword?: string | null;
 };
 

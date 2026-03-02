@@ -1,14 +1,15 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
 import SiteHeader from "@/components/SiteHeader";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { PageHero } from "@/components/layout/PageHero";
 import Link from "next/link";
-import { NotionBlocksRenderer } from "@/components/guides/NotionBlocksRenderer";
+import { GuideDetailBody } from "@/components/guides/GuideDetailBody";
 import { getGuideContentCached } from "@/lib/notion";
 import { getPublishedNotionGuides } from "@/lib/guides";
 
-export const revalidate = 10800;
+export const revalidate = 300;
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -20,23 +21,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!content) {
     return {};
   }
-  const title = `${content.title} | 더올투어 여행가이드`;
-  const description = content.excerpt;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
+  const baseTitle = content.seoTitle?.trim() || content.title;
+  const title = `${baseTitle} | 더올투어 여행가이드`;
+  const description =
+    content.seoDescription?.trim() ||
+    content.summary?.trim() ||
+    content.excerpt ||
+    (content.excerptText ? content.excerptText.slice(0, 160).trim() + "…" : undefined);
   const canonical = `/guides/${content.slug}`;
-  const image = content.ogImage || "/thealltour-logo.png";
+  const imageRaw = content.ogImage || content.coverImage || "/thealltour-logo.png";
+  const image = imageRaw.startsWith("http") ? imageRaw : `${siteUrl}${imageRaw.startsWith("/") ? "" : "/"}${imageRaw}`;
 
   return {
     title,
     description: description || undefined,
+    ...(content.is_published === false && { robots: { index: false, follow: false } }),
     alternates: {
-      canonical,
+      canonical: `${siteUrl}${canonical}`,
     },
     openGraph: {
       title,
       description: description || undefined,
       images: [{ url: image }],
       type: "article",
-      url: canonical,
+      url: `${siteUrl}${canonical}`,
     },
     twitter: {
       card: "summary_large_image",
@@ -67,16 +76,18 @@ export default async function GuideDetailPage({ params }: PageProps) {
     .filter((guide) => guide.slug && guide.slug !== content.slug)
     .slice(0, 3);
 
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: content.title,
-    description: content.excerpt,
+    description: content.summary || content.excerpt || content.excerptText?.slice(0, 200),
     datePublished: content.publishedAt ?? undefined,
+    dateModified: content.notionLastEditedTime ?? content.publishedAt ?? undefined,
     image: content.ogImage ? [content.ogImage] : undefined,
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://thealltour.com/guides/${content.slug}`,
+      "@id": `${siteUrl}/guides/${content.slug}`,
     },
     author: {
       "@type": "Organization",
@@ -87,18 +98,35 @@ export default async function GuideDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
       <SiteHeader activeTab="blog" />
-      <SectionBody className="flex flex-col gap-[var(--space-5)] max-w-4xl">
+      <SectionBody className="flex max-w-4xl flex-col gap-[var(--space-5)]">
         <PageHero
           kicker="THEALL TOUR GUIDE"
           title={content.title}
           subtitle={content.summary || content.excerpt}
         />
 
-        <div className="flex flex-col gap-10 md:gap-12">
-          <section className="notion-content-section space-y-4 rounded-3xl bg-[#0b1220] p-6 shadow-md ring-1 ring-[#1e293b] md:p-8">
-            <NotionBlocksRenderer blocks={content.blocks} theme="dark" />
-          </section>
-        </div>
+        {content.coverImage ? (
+          <div className="relative aspect-[2/1] w-full overflow-hidden rounded-2xl bg-slate-100">
+            <Image
+              src={content.coverImage}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 896px"
+              priority
+            />
+          </div>
+        ) : null}
+
+        <article aria-label="가이드 본문">
+          <GuideDetailBody
+            excerptText={content.excerptText ?? ""}
+            toc={content.toc}
+            notionUrl={content.notionUrl}
+            title={content.title}
+            autoOpenModalOnMount={true}
+          />
+        </article>
 
         {relatedGuides.length > 0 ? (
           <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

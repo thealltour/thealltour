@@ -32,6 +32,11 @@ function normalizeGuide(row: Record<string, unknown>): Guide {
         : null,
     last_synced_at:
       typeof (row as any).last_synced_at === "string" ? ((row as any).last_synced_at as string) : null,
+    seo_title: typeof (row as any).seo_title === "string" ? ((row as any).seo_title as string) : null,
+    seo_description:
+      typeof (row as any).seo_description === "string" ? ((row as any).seo_description as string) : null,
+    focus_keyword:
+      typeof (row as any).focus_keyword === "string" ? ((row as any).focus_keyword as string) : null,
   };
 }
 

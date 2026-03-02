@@ -41,11 +41,19 @@ export function matchesThemeTab(product: Product, themeTab: string) {
 }
 
 export function groupProductsByTheme(products: Product[], themeTabs: string[]) {
-  return themeTabs
-    .filter((theme) => theme !== "전체")
+  const themeNames = themeTabs.filter((t) => t !== "전체");
+  const groups = themeNames
     .map((theme) => ({
       theme,
       products: products.filter((product) => matchesThemeTab(product, theme)),
     }))
     .filter((group) => group.products.length > 0);
+
+  // 테마가 없거나 기존 테마 그룹에 속하지 않는 상품 → "기타" 그룹에 포함
+  const productIdsInGroups = new Set(groups.flatMap((g) => g.products.map((p) => p.id)));
+  const ungrouped = products.filter((p) => !productIdsInGroups.has(p.id));
+  if (ungrouped.length > 0) {
+    return [...groups, { theme: "기타", products: ungrouped }];
+  }
+  return groups;
 }

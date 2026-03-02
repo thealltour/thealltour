@@ -36,10 +36,20 @@ function toFallbackTaxonomies(products: Product[]) {
   return { categories, themes };
 }
 
+/**
+ * 상품 목록용 카테고리/테마 옵션.
+ * productsFallback이 있으면 해당 상품에서 카테고리 추출 (추천 필터 없음).
+ * taxonomy 없을 때만 fallback 사용.
+ */
 export async function getProductTaxonomyOptions(productsFallback: Product[] = []) {
   const taxonomies = await getActiveTaxonomiesCached();
 
   if (taxonomies === null) {
+    return toFallbackTaxonomies(productsFallback);
+  }
+
+  // 상품 페이지: 전달된 전체 상품에서 카테고리 추출 (추천 상품만 쓰지 않음)
+  if (productsFallback.length > 0) {
     return toFallbackTaxonomies(productsFallback);
   }
 

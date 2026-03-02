@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "qmswixmwquuazrhfyils.supabase.co",
       },
+      {
+        protocol: "https",
+        hostname: "images.kiwi.com",
+      },
     ],
   },
 };

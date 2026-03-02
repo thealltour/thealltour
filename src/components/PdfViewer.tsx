@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const LOAD_TIMEOUT_MS = 25000;
+
 let workerInitialized = false;
 
 async function getPdfjs() {
@@ -35,13 +37,31 @@ export function PdfViewer({ url, className = "" }: PdfViewerProps) {
     async function loadAndRender() {
       try {
         const pdfjsLib = await getPdfjs();
-        const loadingTask = pdfjsLib.getDocument({
-          url,
-          cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
-          cMapPacked: true,
-        });
-        const pdf = await loadingTask.promise;
+
+        let pdf: Awaited<ReturnType<typeof pdfjsLib.getDocument>["promise"]>;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), LOAD_TIMEOUT_MS);
+          const res = await fetch(url, { signal: controller.signal, mode: "cors" });
+          clearTimeout(timeoutId);
+          if (cancelled) return;
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const arrayBuffer = await res.arrayBuffer();
+          if (cancelled) return;
+          const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, useSystemFonts: true });
+          pdf = await loadingTask.promise;
+        } catch {
+          if (cancelled) return;
+          const loadingTask = pdfjsLib.getDocument({ url, useSystemFonts: true });
+          pdf = await Promise.race([
+            loadingTask.promise,
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("로딩 시간 초과. 새 탭에서 열어 보세요.")), LOAD_TIMEOUT_MS)
+            ),
+          ]);
+        }
         if (cancelled) return;
+        if (!pdf) throw new Error("PDF를 불러올 수 없습니다.");
 
         const numPages = pdf.numPages;
         const container = containerRef.current;
@@ -98,8 +118,16 @@ export function PdfViewer({ url, className = "" }: PdfViewerProps) {
 
   if (status === "loading") {
     return (
-      <div className={`flex flex-1 items-center justify-center bg-slate-100 ${className}`}>
+      <div className={`flex flex-1 flex-col items-center justify-center gap-3 bg-slate-100 p-6 ${className}`}>
         <p className="text-sm text-slate-500">PDF 불러오는 중…</p>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-blue-600 underline hover:text-blue-800"
+        >
+          로딩이 느리면 새 탭에서 열기
+        </a>
       </div>
     );
   }

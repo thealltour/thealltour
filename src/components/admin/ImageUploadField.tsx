@@ -15,6 +15,10 @@ type ImageUploadFieldProps = {
   onChange: (url: string) => void;
   /** heroUrl 전달. TODO: cardUrl 분리 저장 시 (heroUrl, cardUrl) 시그니처로 확장. docs/design/product-image-card-url-extension.md */
   onUploaded: (url: string) => void;
+  /** 업로드 완료 시 전달할 URL. "card"면 cardUrl(800 webp) 사용 → Day 이미지 등. 기본 "hero" */
+  uploadedUrlKey?: "hero" | "card";
+  /** true면 입력 필드 required 아님 (Day 이미지 등 선택 입력) */
+  optional?: boolean;
   placeholder?: string;
   accept?: string;
 };
@@ -23,6 +27,8 @@ export function ImageUploadField({
   value,
   onChange,
   onUploaded,
+  uploadedUrlKey = "hero",
+  optional = false,
   placeholder = "이미지 URL (권장 1200x800)",
   accept = "image/jpeg,image/png,image/webp",
 }: ImageUploadFieldProps) {
@@ -77,8 +83,12 @@ export function ImageUploadField({
         }
 
         const formData = new FormData();
-        formData.append("hero", hero, hero.name);
-        formData.append("card", card, card.name);
+        if (uploadedUrlKey === "card") {
+          formData.append("card", card, card.name);
+        } else {
+          formData.append("hero", hero, hero.name);
+          formData.append("card", card, card.name);
+        }
 
         const res = await fetch("/api/admin/uploads/image", {
           method: "POST",
@@ -88,7 +98,8 @@ export function ImageUploadField({
         if (!res.ok) throw new Error(data.error ?? "업로드 실패");
 
         const { heroUrl, cardUrl } = data;
-        onUploaded(heroUrl);
+        const urlToUse = uploadedUrlKey === "card" ? cardUrl : heroUrl;
+        onUploaded(urlToUse);
         setUploadedUrls({ heroUrl, cardUrl });
         setSizeMeta({
           originalBytes: meta.originalBytes,
@@ -107,7 +118,7 @@ export function ImageUploadField({
         setIsLoading(false);
       }
     },
-    [onUploaded, showToast]
+    [onUploaded, showToast, uploadedUrlKey]
   );
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,7 +150,7 @@ export function ImageUploadField({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        required
+        required={!optional}
         placeholder={placeholder}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
       />

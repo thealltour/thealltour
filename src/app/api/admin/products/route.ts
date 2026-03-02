@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import type { ItineraryV2 } from "@/types/product";
 
 const FEATURED_PRODUCT_LIMIT = 8;
 
@@ -54,6 +55,27 @@ type ProductBody = {
   meta_info?: string | null;
   one_liner?: string | null;
   options?: Record<string, unknown> | null;
+  itinerary_media_json?: Record<string, string> | null;
+  /** [STEP 0] 구조화 일정 */
+  itinerary_days_json?: Array<{
+    day: number;
+    dateText?: string;
+    title?: string;
+    coverImageUrl?: string | null;
+    events: Array<{
+      heading: string;
+      description?: string;
+      timeOfDay?: "오전" | "오후" | "저녁" | "종일";
+      iconKey?: string;
+    }>;
+  }> | null;
+  /** [STEP 1] 구조화 일정 v2 (jsonb 1컬럼) */
+  itinerary_v2_json?: ItineraryV2 | null;
+  /** 일정 테마 구성비. { items: [{ label, percent }] } */
+  theme_chart_json?: { items: Array<{ label: string; percent: number }> } | null;
+  overview_accommodation?: string | null;
+  overview_region?: string | null;
+  overview_duration?: string | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -266,6 +288,44 @@ export async function POST(request: Request) {
   if (body.options !== undefined) {
     insertPayload.options = body.options && typeof body.options === "object" ? body.options : null;
   }
+  if (body.itinerary_media_json !== undefined) {
+    insertPayload.itinerary_media_json =
+      body.itinerary_media_json && typeof body.itinerary_media_json === "object"
+        ? body.itinerary_media_json
+        : null;
+  }
+  if (body.itinerary_days_json !== undefined) {
+    insertPayload.itinerary_days_json =
+      Array.isArray(body.itinerary_days_json) && body.itinerary_days_json.length > 0
+        ? body.itinerary_days_json
+        : null;
+  }
+  if (body.itinerary_v2_json !== undefined) {
+    insertPayload.itinerary_v2_json =
+      body.itinerary_v2_json &&
+      typeof body.itinerary_v2_json === "object" &&
+      Array.isArray(body.itinerary_v2_json.days) &&
+      body.itinerary_v2_json.days.length > 0
+        ? body.itinerary_v2_json
+        : null;
+  }
+  if (body.theme_chart_json !== undefined) {
+    const items = body.theme_chart_json?.items;
+    const filtered = Array.isArray(items)
+      ? items.filter((i) => i?.label?.trim() && typeof i.percent === "number")
+      : [];
+    insertPayload.theme_chart_json = filtered.length >= 2 ? { items: filtered } : null;
+  }
+  if (body.overview_accommodation !== undefined) {
+    insertPayload.overview_accommodation = body.overview_accommodation?.trim() || null;
+  }
+  if (body.overview_region !== undefined) {
+    insertPayload.overview_region = body.overview_region?.trim() || null;
+  }
+  if (body.overview_duration !== undefined) {
+    insertPayload.overview_duration = body.overview_duration?.trim() || null;
+  }
+  // overview_json: 저장 제거. 상세 화면은 mapProductToOverview(product)로 자동 생성
 
   const insertResult = await supabase
     .from("products")

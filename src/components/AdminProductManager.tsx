@@ -3,7 +3,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import type { Product } from "@/types/product";
+import { AirlineLogo } from "@/components/airlines/AirlineLogo";
+import type { Product, ItineraryStructuredDay, ItineraryV2 } from "@/types/product";
 import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
@@ -21,7 +22,17 @@ import {
   productToCardV2PropsPayload,
   productToDetailV2PropsPayload,
 } from "@/lib/admin/productPreview";
+import {
+  getTimelineModelFromSchedule,
+  timelineModelToStructuredDays,
+  serializeStructuredDaysToSchedule,
+  itineraryV2ToTimelineModel,
+} from "@/lib/products/mapProductToTimelineModel";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
+import { ScheduleVisualEditorV2 } from "@/components/admin/ScheduleVisualEditorV2";
+import { normalizeAirline } from "@/lib/airlines/normalizeAirline";
+import { AIRLINE_LOGO_BY_CODE } from "@/lib/airlines/airlineLogos";
 
 type ProductFormState = {
   title: string;
@@ -74,6 +85,20 @@ type ProductFormState = {
   meta_info: string;
   /** JSON 문자열. 옵션 사용 시 ProductOptions 직렬화 */
   options_json: string;
+  /** [STEP 3] 일정 Day별 대표 이미지 URL. 키: "1","2",... 값: URL */
+  itinerary_media_json: Record<string, string>;
+  /** [STEP 0] 구조화 일정. 있으면 상세에서 시각화 타임라인 우선 사용 */
+  itinerary_days_json: ItineraryStructuredDay[];
+  /** [STEP 1] 시각화 일정 v2 (jsonb 1컬럼, 권장) */
+  itinerary_v2_json: ItineraryV2;
+  /** [STEP 3] 레거시 텍스트 붙여넣기용 (저장 안 함, 초안 생성용) */
+  legacy_itinerary_text: string;
+  /** 일정 테마 구성비. 상세 오버뷰 차트용. 2개 이상 입력 시 저장 */
+  theme_chart_json: Array<{ label: string; percent: number }>;
+  /** 여행 오버뷰 카드 전용 (숙소·지역·기간) */
+  overview_accommodation: string;
+  overview_region: string;
+  overview_duration: string;
 };
 
 type ToastState = {
@@ -151,6 +176,14 @@ const initialFormState: ProductFormState = {
   fuel_included: "",
   meta_info: "",
   options_json: "",
+  itinerary_media_json: {},
+  itinerary_days_json: [],
+  itinerary_v2_json: { days: [] },
+  legacy_itinerary_text: "",
+  theme_chart_json: [],
+  overview_accommodation: "",
+  overview_region: "",
+  overview_duration: "",
 };
 
 function normalizeOXValue(value?: string | null): "O" | "X" {
@@ -283,8 +316,9 @@ function getPreviewWarnings(
 
   const scheduleDrafts = parseDetailedSchedule(form.detailed_schedule);
   const hasEmptySchedule =
-    scheduleDrafts.length === 0 ||
-    scheduleDrafts.every((d) => !d.content?.trim());
+    (form.itinerary_days_json.length === 0 &&
+      (scheduleDrafts.length === 0 ||
+        scheduleDrafts.every((d) => !d.content?.trim())));
   if (hasEmptySchedule) {
     warnings.push({
       id: "schedule",
@@ -360,6 +394,19 @@ function mapProductToForm(product: Product): ProductFormState {
       product.fuel_included === true ? "true" : product.fuel_included === false ? "false" : "",
     meta_info: product.meta_info ?? "",
     options_json: product.options ? JSON.stringify(product.options, null, 2) : "",
+    itinerary_media_json: product.itinerary_media_json ?? {},
+    itinerary_days_json:
+      product.itinerary_days_json && product.itinerary_days_json.length > 0
+        ? product.itinerary_days_json
+        : timelineModelToStructuredDays(
+            getTimelineModelFromSchedule(product.detailed_schedule ?? ""),
+          ),
+    itinerary_v2_json: product.itinerary_v2_json ?? { days: [] },
+    legacy_itinerary_text: "",
+    theme_chart_json: product.theme_chart_json?.items ?? [],
+    overview_accommodation: product.overview_accommodation ?? "",
+    overview_region: product.overview_region ?? "",
+    overview_duration: product.overview_duration ?? "",
   };
 }
 
@@ -403,6 +450,8 @@ export default function AdminProductManager() {
   const [isTermsTemplatesPanelOpen, setIsTermsTemplatesPanelOpen] = useState(false);
   const [activeSchedulePreviewIndex, setActiveSchedulePreviewIndex] = useState(0);
   const [showRawScheduleEditor, setShowRawScheduleEditor] = useState(false);
+  /** 일정 입력 모드: 시각화(권장) vs 레거시 텍스트 */
+  const [scheduleEditorMode, setScheduleEditorMode] = useState<"visual" | "legacy">("visual");
   const [productFormOpenSections, setProductFormOpenSections] = useState<Record<string, boolean>>({
     basic: true,
     price: false,
@@ -414,6 +463,18 @@ export default function AdminProductManager() {
   });
   /** lg 미만에서 입력|카드|상세 탭 전환 */
   const [smallScreenTab, setSmallScreenTab] = useState<"input" | "card" | "detail">("input");
+
+  const departureFlightCode = useMemo(
+    () => (form.departure_flight_name ? normalizeAirline(form.departure_flight_name) : null),
+    [form.departure_flight_name],
+  );
+  const arrivalFlightCode = useMemo(
+    () => (form.arrival_flight_name ? normalizeAirline(form.arrival_flight_name) : null),
+    [form.arrival_flight_name],
+  );
+
+  const departureHasLogo = departureFlightCode ? Boolean(AIRLINE_LOGO_BY_CODE[departureFlightCode]) : false;
+  const arrivalHasLogo = arrivalFlightCode ? Boolean(AIRLINE_LOGO_BY_CODE[arrivalFlightCode]) : false;
   /** 미리보기 디바이스 뷰 (클래스로만 구분) */
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   /** 미리보기용 로컬 이미지 파일 선택 시 ObjectURL 생성/해제용 */
@@ -596,7 +657,7 @@ export default function AdminProductManager() {
       const resolvedTermsAndNotes = shouldRepairLegacyDetailMix ? "" : normalizedTermsAndNotes;
       const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
       const payload = {
-        title: form.title,
+        title: (form.title ?? "").trim() || "",
         description: form.description,
         meta_title: form.meta_title.trim() === "" ? undefined : form.meta_title,
         meta_description: form.meta_description.trim() === "" ? undefined : form.meta_description,
@@ -624,7 +685,10 @@ export default function AdminProductManager() {
         arrival_to_date: form.arrival_to_date.trim() === "" ? undefined : form.arrival_to_date,
         arrival_to_time: form.arrival_to_time.trim() === "" ? undefined : form.arrival_to_time,
         arrival_flight_name: form.arrival_flight_name.trim() === "" ? undefined : form.arrival_flight_name,
-        detailed_schedule: form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule,
+        detailed_schedule:
+          form.itinerary_days_json.length > 0
+            ? serializeStructuredDaysToSchedule(form.itinerary_days_json)
+            : (form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule),
         optional_tours: resolvedOptionalTours === "" ? undefined : resolvedOptionalTours,
         min_departure_people: form.min_departure_people.trim() === "" ? undefined : form.min_departure_people,
         terms_template_type: form.terms_template_type === "" ? undefined : form.terms_template_type,
@@ -668,6 +732,35 @@ export default function AdminProductManager() {
             return undefined;
           }
         })(),
+        itinerary_media_json:
+          (() => {
+            const media = form.itinerary_media_json;
+            const dayCount =
+              form.itinerary_days_json.length > 0
+                ? form.itinerary_days_json.length
+                : parseDetailedSchedule(form.detailed_schedule).length;
+            const cleaned = Object.fromEntries(
+              Object.entries(media).filter(([key, v]) => {
+                if (typeof v !== "string" || !v.trim()) return false;
+                const n = parseInt(key, 10);
+                return !Number.isNaN(n) && n >= 1 && n <= dayCount;
+              }),
+            );
+            return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+          })(),
+        itinerary_days_json:
+          form.itinerary_days_json.length > 0 ? form.itinerary_days_json : null,
+        itinerary_v2_json:
+          form.itinerary_v2_json.days.length > 0 ? form.itinerary_v2_json : null,
+        theme_chart_json: (() => {
+          const items = form.theme_chart_json.filter(
+            (i) => i.label?.trim() && typeof i.percent === "number",
+          );
+          return items.length >= 2 ? { items } : null;
+        })(),
+        overview_accommodation: form.overview_accommodation.trim() === "" ? undefined : form.overview_accommodation.trim(),
+        overview_region: form.overview_region.trim() === "" ? undefined : form.overview_region.trim(),
+        overview_duration: form.overview_duration.trim() === "" ? undefined : form.overview_duration.trim(),
       };
 
       const endpoint = editingId ? `/api/admin/products/${editingId}` : "/api/admin/products";
@@ -690,6 +783,7 @@ export default function AdminProductManager() {
       setForm(initialFormState);
       setActiveSchedulePreviewIndex(0);
       setShowRawScheduleEditor(false);
+      setScheduleEditorMode("visual");
       await loadProducts();
     } catch {
       showToast("error", "상품 저장 중 오류가 발생했습니다.");
@@ -721,6 +815,7 @@ export default function AdminProductManager() {
         setForm(initialFormState);
         setActiveSchedulePreviewIndex(0);
         setShowRawScheduleEditor(false);
+        setScheduleEditorMode("visual");
       }
       showToast("success", "상품이 삭제되었습니다.");
       await loadProducts();
@@ -766,6 +861,26 @@ export default function AdminProductManager() {
     () => parseDetailedSchedule(form.detailed_schedule),
     [form.detailed_schedule],
   );
+  const effectiveDayCount =
+    form.itinerary_days_json.length > 0
+      ? form.itinerary_days_json.length
+      : scheduleDrafts.length;
+  const TIMEOFDAY_OPTIONS = [
+    { value: "", label: "미지정" },
+    { value: "오전", label: "오전" },
+    { value: "오후", label: "오후" },
+    { value: "저녁", label: "저녁" },
+    { value: "종일", label: "종일" },
+  ] as const;
+  const ICON_KEY_OPTIONS = [
+    { value: "", label: "없음" },
+    { value: "car", label: "이동" },
+    { value: "utensils", label: "식사" },
+    { value: "golf", label: "골프" },
+    { value: "hotel", label: "숙소" },
+    { value: "map", label: "관광" },
+    { value: "sun", label: "자유" },
+  ] as const;
   const selectedTermsTemplateContent = useMemo(() => {
     if (!form.terms_template_type) return "";
     return termsTemplates[form.terms_template_type] ?? "";
@@ -1370,6 +1485,7 @@ export default function AdminProductManager() {
                 setForm(initialFormState);
                 setActiveSchedulePreviewIndex(0);
                 setShowRawScheduleEditor(false);
+                setScheduleEditorMode("visual");
                 setErrorMessage("");
               }}
               className="text-sm font-medium text-slate-500 hover:text-slate-700"
@@ -1509,6 +1625,125 @@ export default function AdminProductManager() {
               </button>
             </div>
             <p className="text-xs text-slate-500">선택된 테마: {selectedThemes.join(", ") || "-"}</p>
+            <div className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 md:col-span-2">
+              <p className="text-xs font-medium text-blue-900">여행 오버뷰 품질 가이드</p>
+              <p className="mt-0.5 text-xs text-blue-800">
+                카테고리·테마는 상세 첫 화면의 여행 오버뷰 &quot;지역&quot; 카드에 반영됩니다. 대표 이미지는 오버뷰 커버로 사용됩니다.
+              </p>
+            </div>
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4 md:col-span-2">
+              <p className="text-xs font-semibold text-slate-700">여행 오버뷰 카드 (숙소·지역·기간)</p>
+              <p className="text-xs text-slate-500">
+                상세 페이지 첫 화면에 표시되는 카드 값입니다. 비우면 기존 자동 추출(meta_info, theme, duration)을 사용합니다.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600">숙소</label>
+                  <input
+                    value={form.overview_accommodation}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, overview_accommodation: e.target.value }))
+                    }
+                    placeholder="예: 상담 시 안내, 전일정4성"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600">지역</label>
+                  <input
+                    value={form.overview_region}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, overview_region: e.target.value }))
+                    }
+                    placeholder="예: 호주, 동남아"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600">기간</label>
+                  <input
+                    value={form.overview_duration}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, overview_duration: e.target.value }))
+                    }
+                    placeholder="예: 6일, 3박4일"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <p className="text-xs font-semibold text-slate-600">일정 테마 구성비 (상세 오버뷰 차트)</p>
+            <p className="text-xs text-slate-500">
+              2개 이상 입력 시 상세 페이지에 도넛 차트로 표시됩니다. 미입력 시 카테고리·테마 기반으로 자동 생성됩니다.
+            </p>
+            <div className="space-y-2">
+              {form.theme_chart_json.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/50 p-2"
+                >
+                  <input
+                    type="text"
+                    value={item.label}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        theme_chart_json: prev.theme_chart_json.map((x, i) =>
+                          i === idx ? { ...x, label: e.target.value } : x,
+                        ),
+                      }))
+                    }
+                    placeholder="항목명 (예: 자연)"
+                    className="flex-1 min-w-[80px] rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[#2563eb]"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={item.percent}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v))
+                        setForm((prev) => ({
+                          ...prev,
+                          theme_chart_json: prev.theme_chart_json.map((x, i) =>
+                            i === idx ? { ...x, percent: Math.max(0, Math.min(100, v)) } : x,
+                          ),
+                        }));
+                    }}
+                    placeholder="%"
+                    className="w-16 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[#2563eb]"
+                  />
+                  <span className="text-xs text-slate-500">%</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        theme_chart_json: prev.theme_chart_json.filter((_, i) => i !== idx),
+                      }))
+                    }
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    theme_chart_json: [...prev.theme_chart_json, { label: "", percent: 0 }],
+                  }))
+                }
+                className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                + 항목 추가
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             <p className="text-xs font-semibold text-slate-600">상품 상태 (카드/상세 태그)</p>
@@ -1597,6 +1832,7 @@ export default function AdminProductManager() {
             placeholder="일정(예: 5일)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
           />
+          <p className="text-xs text-slate-500 md:col-span-2">일정 값은 여행 오버뷰 &quot;기간&quot; 카드에 반영됩니다.</p>
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-slate-600">가격 기준 문구</label>
             <input
@@ -1639,6 +1875,9 @@ export default function AdminProductManager() {
               placeholder="예: 항공 포함"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              이 값은 상세 첫 화면 여행 오버뷰의 &quot;숙소&quot;·&quot;기타&quot; 카드에 반영될 수 있습니다. (예: 전일정4성, 호텔 등)
+            </p>
           </div>
           <div className="space-y-2 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[#1e3a8a]">상품 옵션 (기간·룸 등 선택 시 견적)</p>
@@ -1765,6 +2004,8 @@ export default function AdminProductManager() {
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-3 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[#1e3a8a]">항공편 정보</p>
+            <p className="text-xs text-slate-600">출발/도착 공항·편명은 상세 첫 화면 여행 오버뷰의 &quot;항공&quot; 카드에 자동 반영됩니다.</p>
+            <p className="text-xs text-slate-500">항공사명 뒤에 (TW)처럼 IATA 코드를 함께 입력하면 로고가 자동 표시됩니다.</p>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-xs font-semibold text-slate-700">출발 항공편</p>
@@ -1818,14 +2059,33 @@ export default function AdminProductManager() {
                     className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
                   />
                 </div>
-                <input
-                  value={form.departure_flight_name}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, departure_flight_name: event.target.value }))
-                  }
-                  placeholder="항공편명 (예: 아시아나항공)"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <input
+                      value={form.departure_flight_name}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, departure_flight_name: event.target.value }))
+                      }
+                      placeholder="항공편명 (예: 아시아나항공, 티웨이항공 TW501)"
+                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                    />
+                    <AirlineLogo airlineText={form.departure_flight_name} size={32} />
+                  </div>
+                  {form.departure_flight_name.trim() !== "" && !departureFlightCode && (
+                    <p className="text-[11px] text-red-600">
+                      항공사 코드를 인식하지 못했습니다. 예: &apos;티웨이항공(TW)&apos; 또는
+                      &apos;티웨이항공 TW501&apos;처럼 입력하면 로고가 자동 표시됩니다.
+                    </p>
+                  )}
+                  {form.departure_flight_name.trim() !== "" &&
+                    departureFlightCode &&
+                    !departureHasLogo && (
+                      <p className="text-[11px] text-amber-600">
+                        로고 파일이 없습니다. `/public/assets/airlines/{departureFlightCode}.svg` 를 추가하면
+                        로고가 표시됩니다.
+                      </p>
+                    )}
+                </div>
               </div>
 
               <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
@@ -1880,26 +2140,82 @@ export default function AdminProductManager() {
                     className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
                   />
                 </div>
-                <input
-                  value={form.arrival_flight_name}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, arrival_flight_name: event.target.value }))
-                  }
-                  placeholder="항공편명 (예: 아시아나항공)"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <input
+                      value={form.arrival_flight_name}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, arrival_flight_name: event.target.value }))
+                      }
+                      placeholder="항공편명 (예: 아시아나항공, 티웨이항공 TW501)"
+                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                    />
+                    <AirlineLogo airlineText={form.arrival_flight_name} size={32} />
+                  </div>
+                  {form.arrival_flight_name.trim() !== "" && !arrivalFlightCode && (
+                    <p className="text-[11px] text-red-600">
+                      항공사 코드를 인식하지 못했습니다. 예: &apos;티웨이항공(TW)&apos; 또는
+                      &apos;티웨이항공 TW501&apos;처럼 입력하면 로고가 자동 표시됩니다.
+                    </p>
+                  )}
+                  {form.arrival_flight_name.trim() !== "" && arrivalFlightCode && !arrivalHasLogo && (
+                    <p className="text-[11px] text-amber-600">
+                      로고 파일이 없습니다. `/public/assets/airlines/{arrivalFlightCode}.svg` 를 추가하면 로고가
+                      표시됩니다.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
                   </div>
                   )}
                   {id === "schedule" && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+            <span className="text-xs font-semibold text-slate-500">일정 입력 방식</span>
+            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+              <button
+                type="button"
+                onClick={() => setScheduleEditorMode("visual")}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  scheduleEditorMode === "visual"
+                    ? "bg-white text-[#1d4ed8] shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                시각화 일정(권장)
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleEditorMode("legacy")}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  scheduleEditorMode === "legacy"
+                    ? "bg-white text-[#1d4ed8] shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                레거시 텍스트(기존)
+              </button>
+            </div>
+          </div>
+
+          {scheduleEditorMode === "visual" ? (
+            <ScheduleVisualEditorV2
+              form={form}
+              setForm={setForm}
+              previewProductImageUrl={previewImageObjectUrl ?? form.image_url ?? ""}
+              activeDayIndex={activeSchedulePreviewIndex}
+              setActiveDayIndex={setActiveSchedulePreviewIndex}
+            />
+          ) : (
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-3 rounded-lg border border-[#dbeafe] bg-[#f8fbff] p-3 md:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-semibold text-[#1e3a8a]">상세일정 작성 도우미</p>
                 <p className="text-xs text-slate-500">일차별로 작성하면 자동으로 탭 형식으로 저장됩니다.</p>
+                <p className="mt-0.5 text-xs text-blue-700">이 일정은 상세 첫 화면의 여행 오버뷰 타임라인에도 자동 반영됩니다.</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1919,6 +2235,225 @@ export default function AdminProductManager() {
               </div>
             </div>
 
+            {!showRawScheduleEditor ? (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-600">
+                  Day별로 이벤트를 입력하면 상세 페이지에서 시각화 타임라인으로 표시됩니다. 시간대·아이콘을 선택하면 타임라인에 반영됩니다.
+                </p>
+                {form.itinerary_days_json.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        itinerary_days_json: [
+                          { day: 1, title: "", events: [{ heading: "", description: "", timeOfDay: undefined, iconKey: undefined }] },
+                        ],
+                      }))
+                    }
+                    className="w-full rounded-lg border border-dashed border-slate-300 bg-white px-3 py-6 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    + 일차 추가 (구조화 일정 시작)
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    {form.itinerary_days_json.map((dayEntry, dayIndex) => (
+                      <article
+                        key={`day-${dayEntry.day}-${dayIndex}`}
+                        className="rounded-lg border border-slate-200 bg-white p-4"
+                        onFocus={() => setActiveSchedulePreviewIndex(dayIndex)}
+                      >
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <span className="rounded bg-[#eff6ff] px-2.5 py-1 text-xs font-bold text-[#1d4ed8]">
+                            Day {dayEntry.day}
+                          </span>
+                          <input
+                            value={dayEntry.title ?? ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                itinerary_days_json: prev.itinerary_days_json.map((d, i) =>
+                                  i === dayIndex ? { ...d, title: e.target.value.trim() || undefined } : d,
+                                ),
+                              }))
+                            }
+                            placeholder="일차 제목 (선택)"
+                            className="max-w-xs rounded-md border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-[#2563eb]"
+                          />
+                          <div className="ml-auto flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  itinerary_days_json: prev.itinerary_days_json.filter((_, i) => i !== dayIndex).map((d, i) => ({ ...d, day: i + 1 })),
+                                }))
+                              }
+                              className="rounded border border-rose-200 px-2 py-1 text-[11px] text-rose-600 hover:bg-rose-50"
+                            >
+                              일차 삭제
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {dayEntry.events.map((ev, evIndex) => (
+                            <div
+                              key={`ev-${dayIndex}-${evIndex}`}
+                              className="flex flex-wrap items-start gap-2 rounded border border-slate-100 bg-slate-50/50 p-2"
+                            >
+                              <input
+                                value={ev.heading}
+                                onChange={(event) =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    itinerary_days_json: prev.itinerary_days_json.map((d, di) =>
+                                      di === dayIndex
+                                        ? {
+                                            ...d,
+                                            events: d.events.map((evt, ei) =>
+                                              ei === evIndex ? { ...evt, heading: event.target.value } : evt,
+                                            ),
+                                          }
+                                        : d,
+                                    ),
+                                  }))
+                                }
+                                placeholder="제목 (예: 이동, 식사)"
+                                className="min-w-[100px] rounded border border-slate-300 px-2 py-1 text-xs outline-none focus:border-[#2563eb]"
+                              />
+                              <input
+                                value={ev.description ?? ""}
+                                onChange={(event) =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    itinerary_days_json: prev.itinerary_days_json.map((d, di) =>
+                                      di === dayIndex
+                                        ? {
+                                            ...d,
+                                            events: d.events.map((evt, ei) =>
+                                              ei === evIndex ? { ...evt, description: event.target.value.trim() || undefined } : evt,
+                                            ),
+                                          }
+                                        : d,
+                                    ),
+                                  }))
+                                }
+                                placeholder="설명"
+                                className="flex-1 min-w-0 rounded border border-slate-300 px-2 py-1 text-xs outline-none focus:border-[#2563eb]"
+                              />
+                              <select
+                                value={ev.timeOfDay ?? ""}
+                                onChange={(event) =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    itinerary_days_json: prev.itinerary_days_json.map((d, di) =>
+                                      di === dayIndex
+                                        ? {
+                                            ...d,
+                                            events: d.events.map((evt, ei) =>
+                                              ei === evIndex
+                                                ? { ...evt, timeOfDay: (event.target.value as "오전" | "오후" | "저녁" | "종일") || undefined }
+                                                : evt,
+                                            ),
+                                          }
+                                        : d,
+                                    ),
+                                  }))
+                                }
+                                className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                              >
+                                {TIMEOFDAY_OPTIONS.map((o) => (
+                                  <option key={o.value || "x"} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                value={ev.iconKey ?? ""}
+                                onChange={(event) =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    itinerary_days_json: prev.itinerary_days_json.map((d, di) =>
+                                      di === dayIndex
+                                        ? {
+                                            ...d,
+                                            events: d.events.map((evt, ei) =>
+                                              ei === evIndex ? { ...evt, iconKey: event.target.value.trim() || undefined } : evt,
+                                            ),
+                                          }
+                                        : d,
+                                    ),
+                                  }))
+                                }
+                                className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                              >
+                                {ICON_KEY_OPTIONS.map((o) => (
+                                  <option key={o.value || "x"} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    itinerary_days_json: prev.itinerary_days_json.map((d, di) =>
+                                      di === dayIndex
+                                        ? { ...d, events: d.events.filter((_, ei) => ei !== evIndex) }
+                                        : d,
+                                    ),
+                                  }))
+                                }
+                                className="rounded border border-slate-300 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                itinerary_days_json: prev.itinerary_days_json.map((d, di) =>
+                                  di === dayIndex
+                                    ? { ...d, events: [...d.events, { heading: "", description: undefined, timeOfDay: undefined, iconKey: undefined }] }
+                                    : d,
+                                ),
+                              }))
+                            }
+                            className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            + 이벤트 추가
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          itinerary_days_json: [
+                            ...prev.itinerary_days_json,
+                            {
+                              day: prev.itinerary_days_json.length + 1,
+                              title: "",
+                              events: [{ heading: "", description: undefined, timeOfDay: undefined, iconKey: undefined }],
+                            },
+                          ],
+                        }))
+                      }
+                      className="w-full rounded-lg border border-dashed border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      + 일차 추가
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+            <>
             {scheduleDrafts.length === 0 ? (
               <button
                 type="button"
@@ -2032,15 +2567,62 @@ export default function AdminProductManager() {
               </div>
             )}
 
-            {scheduleDrafts.length > 0 ? (
+            </>
+            )}
+
+            {effectiveDayCount > 0 ? (
               <div className="rounded-xl border border-blue-100 bg-white p-4">
                 <p className="mb-2 text-xs font-semibold text-blue-700">실시간 미리보기</p>
                 <div className="mb-2 inline-flex items-center rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-bold text-[#1d4ed8]">
-                  {scheduleDrafts[activeSchedulePreviewIndex]?.label || `${activeSchedulePreviewIndex + 1}일차`}
+                  {form.itinerary_days_json.length > 0
+                    ? form.itinerary_days_json[activeSchedulePreviewIndex]?.title || `Day ${(form.itinerary_days_json[activeSchedulePreviewIndex]?.day ?? activeSchedulePreviewIndex + 1)}`
+                    : scheduleDrafts[activeSchedulePreviewIndex]?.label || `${activeSchedulePreviewIndex + 1}일차`}
                 </div>
                 <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
-                  {scheduleDrafts[activeSchedulePreviewIndex]?.content || "입력한 일정이 여기에 표시됩니다."}
+                  {form.itinerary_days_json.length > 0
+                    ? (form.itinerary_days_json[activeSchedulePreviewIndex]?.events ?? [])
+                        .map((e) => (e.description ? `${e.heading}: ${e.description}` : e.heading))
+                        .join("\n") || "입력한 일정이 여기에 표시됩니다."
+                    : scheduleDrafts[activeSchedulePreviewIndex]?.content || "입력한 일정이 여기에 표시됩니다."}
                 </p>
+              </div>
+            ) : null}
+
+            {effectiveDayCount > 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                <p className="mb-2 text-xs font-semibold text-slate-700">Day별 대표 이미지 (선택)</p>
+                <p className="mb-3 text-xs text-slate-500">
+                  일차별로 업로드하거나 URL을 넣으면 상세 일정 타임라인에 표시됩니다. 비우면 상품 대표 이미지로 대체됩니다.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {Array.from({ length: effectiveDayCount }, (_, i) => i + 1).map((dayNum) => {
+                    const dayKey = String(dayNum);
+                    const url = form.itinerary_media_json[dayKey] ?? "";
+                    return (
+                      <div key={dayKey} className="space-y-1 rounded-lg border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-semibold text-slate-700">Day {dayNum}</p>
+                        <ImageUploadField
+                          value={url}
+                          onChange={(v) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              itinerary_media_json: { ...prev.itinerary_media_json, [dayKey]: v },
+                            }))
+                          }
+                          onUploaded={(v) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              itinerary_media_json: { ...prev.itinerary_media_json, [dayKey]: v },
+                            }))
+                          }
+                          uploadedUrlKey="card"
+                          optional
+                          placeholder="Day 이미지 URL 또는 업로드"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
 
@@ -2054,7 +2636,9 @@ export default function AdminProductManager() {
               />
             ) : null}
           </div>
-                  </div>
+        </div>
+          )}
+        </div>
                   )}
                   {id === "terms" && (
         <div className="grid gap-3 md:grid-cols-2">
@@ -2314,8 +2898,8 @@ export default function AdminProductManager() {
                 >
                   <ConsultModalProvider>
                     <ProductQuoteProvider>
-                      <div className="flex gap-4 lg:items-start">
-                        <div className="min-w-0 flex-1 p-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                        <div className="min-w-0 flex-1 space-y-4 p-4">
                           <ProductDetailV2 {...previewDetailProps} />
                         </div>
                         {showDetailSticky && previewDevice !== "mobile" && (

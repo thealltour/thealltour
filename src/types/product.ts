@@ -49,6 +49,90 @@ export type ProductOptions = {
 /** 선택된 옵션: groupKey -> itemValue (UI/계산용) */
 export type SelectedOptions = Record<string, string>;
 
+/** 여행 오버뷰 요약 카드 kind */
+export type OverviewSummaryCardKind =
+  | "flight"
+  | "hotel"
+  | "region"
+  | "theme"
+  | "golf"
+  | "etc";
+
+/** 여행 오버뷰 요약 카드 */
+export type OverviewSummaryCard = {
+  kind: OverviewSummaryCardKind;
+  label: string;
+  value: string;
+};
+
+/** 여행 오버뷰 차트 아이템 */
+export type OverviewChartItem = { label: string; percent: number };
+
+/** 여행 오버뷰 타임라인 Day */
+export type OverviewTimelineDay = {
+  day: number;
+  dateText?: string;
+  headline?: string;
+  bullets: string[];
+};
+
+/** [STEP 0] 구조화 일정 이벤트 1개 (시간대·아이콘 지원) */
+export type ItineraryStructuredEvent = {
+  heading: string;
+  description?: string;
+  timeOfDay?: "오전" | "오후" | "저녁" | "종일";
+  iconKey?: string;
+};
+
+/** [STEP 0] 구조화 일정 Day 1개 */
+export type ItineraryStructuredDay = {
+  day: number;
+  dateText?: string;
+  title?: string;
+  coverImageUrl?: string | null;
+  events: ItineraryStructuredEvent[];
+};
+
+/** [STEP 1] 구조화 일정 v2 (시각화 최적화, jsonb 1컬럼) */
+export type ItineraryV2Event = {
+  timeOfDay?: "오전" | "오후" | "저녁" | "종일";
+  /** 시각 (예: 09:00, 14:30). 오전/오후 옆에 표시 */
+  timeText?: string;
+  iconKey?: string;
+  heading: string;
+  description?: string;
+  location?: string;
+  order?: number;
+};
+
+export type ItineraryV2Day = {
+  day: number;
+  dateText?: string;
+  title?: string;
+  coverImageUrl?: string;
+  events: ItineraryV2Event[];
+};
+
+export type ItineraryV2 = {
+  days: ItineraryV2Day[];
+};
+
+/** 여행 오버뷰 (jsonb 1컬럼 스키마) */
+export type ProductOverview = {
+  enabled: boolean;
+  title?: string;
+  summaryCards: OverviewSummaryCard[];
+  coverImageUrl?: string;
+  chart?: {
+    enabled: boolean;
+    items: OverviewChartItem[];
+  };
+  timeline?: {
+    enabled: boolean;
+    days: OverviewTimelineDay[];
+  };
+};
+
 export type Product = {
   id: string;
   title: string;
@@ -106,6 +190,20 @@ export type Product = {
   meta_info?: string;
   /** 상세 상단 한 줄 소개. 비우면 description 첫 줄 사용 */
   one_liner?: string;
+  /** [STEP 2] 오버뷰 jsonb 1컬럼. enabled/summaryCards/chart/timeline/coverImageUrl */
+  overview_json?: ProductOverview | null;
+  /** [STEP 3] 일정 Day별 대표 이미지 URL. 예: { "1": "https://...", "2": "https://..." } */
+  itinerary_media_json?: Record<string, string> | null;
+  /** [STEP 0] 구조화 일정. 있으면 상세에서 시각화 타임라인 우선 사용, 없으면 detailed_schedule 텍스트 fallback */
+  itinerary_days_json?: ItineraryStructuredDay[] | null;
+  /** [STEP 1] 구조화 일정 v2 (jsonb 1컬럼, 시각화 최적화) */
+  itinerary_v2_json?: ItineraryV2 | null;
+  /** 일정 테마 구성비. 상품 등록 시 입력, 없으면 theme/category 기반 자동 생성 */
+  theme_chart_json?: { items: Array<{ label: string; percent: number }> } | null;
+  /** 여행 오버뷰 카드 전용 입력 (숙소·지역·기간). 있으면 우선 사용 */
+  overview_accommodation?: string;
+  overview_region?: string;
+  overview_duration?: string;
   trust?: ProductTrust;
   /** 옵션 정의. 없거나 groups가 비어 있으면 옵션 UI 미노출 */
   options?: ProductOptions;

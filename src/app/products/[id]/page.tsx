@@ -18,7 +18,7 @@ import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext"
 import AlertCard from "@/components/ui/AlertCard";
 import { ConsultModalProvider } from "@/components/ConsultModal";
 import { ENABLE_NEW_PRODUCT_UI } from "@/config/featureFlags";
-import { getProductById } from "@/lib/products";
+import { getProductByIdFresh } from "@/lib/products";
 import { getSiteSettings } from "@/lib/siteSettings";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getTermsTemplateContent } from "@/lib/termsTemplates";
@@ -40,7 +40,7 @@ function toAbsoluteUrl(siteUrl: string, pathOrUrl: string) {
 
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const product = await getProductById(id);
+  const product = await getProductByIdFresh(id);
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
   const productPath = `/products/${id}`;
   const productUrl = `${siteUrl}${productPath}`;
@@ -102,49 +102,9 @@ type FlightCardData = {
   flightName?: string;
 };
 
-function hasFlightCardData(flight: FlightCardData) {
-  return Boolean(
-    flight.fromAirport?.trim() ||
-      flight.fromDate?.trim() ||
-      flight.fromTime?.trim() ||
-      flight.toAirport?.trim() ||
-      flight.toDate?.trim() ||
-      flight.toTime?.trim() ||
-      flight.flightName?.trim(),
-  );
-}
-
-function renderFlightCard(title: string, flight: FlightCardData) {
-  if (!hasFlightCardData(flight)) return null;
-
-  return (
-    <article className="rounded-2xl border border-[#dbeafe] bg-white px-5 py-4 shadow-sm">
-      <p className="mb-3 text-xs font-semibold text-[#1d4ed8]">{title}</p>
-      <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
-        <div className="space-y-1">
-          <p className="text-xl font-extrabold text-[#0f172a]">{flight.fromAirport || "-"}</p>
-          <p className="text-sm text-slate-600">{flight.fromDate || "-"}</p>
-          <p className="text-3xl font-black tracking-tight text-[#0f172a]">{flight.fromTime || "-"}</p>
-        </div>
-        <div className="flex min-w-[190px] flex-col items-center gap-1 text-center">
-          <p className="text-sm font-semibold text-slate-700">{flight.flightName || "항공편"}</p>
-          <div className="w-full px-1">
-            <div className="h-[2px] w-full bg-slate-300" />
-          </div>
-        </div>
-        <div className="space-y-1 text-left md:text-right">
-          <p className="text-xl font-extrabold text-[#0f172a]">{flight.toAirport || "-"}</p>
-          <p className="text-sm text-slate-600">{flight.toDate || "-"}</p>
-          <p className="text-3xl font-black tracking-tight text-[#0f172a]">{flight.toTime || "-"}</p>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id } = await params;
-  const product = await getProductById(id);
+  const product = await getProductByIdFresh(id);
 
   if (!product) {
     notFound();
@@ -276,15 +236,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   type="application/ld+json"
                   dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
                 />
-                <Image
-                  src={normalizeProductImageUrl(product.image_url) || "/thealltour-logo.png"}
-                  alt={`${product.title} 상세 이미지`}
-                  width={1400}
-                  height={900}
-                  sizes="(max-width: 1024px) 100vw, 1024px"
-                  priority
-                  className="h-[340px] w-full object-cover md:h-[460px]"
-                />
                 <div className="p-6 md:p-8">
                   <ProductDetailV2
                     title={product.title}
@@ -310,6 +261,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     trust={product.trust}
                     options={product.options}
                     basePrice={product.price}
+                    product={product}
+                    overviewFallbackUrl={product.image_url}
                   />
                 </div>
               </section>
@@ -317,9 +270,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               <AlertCard variant="info" title="상담 안내">
                 문의를 남겨주시면 일정/예산/동행구성에 맞춰 맞춤 동선과 견적 옵션을 안내드립니다.
               </AlertCard>
-
-              {renderFlightCard("출발 항공편", departureFlight)}
-              {renderFlightCard("도착 항공편", arrivalFlight)}
             </div>
 
             <ProductDetailStickyV2Desktop
@@ -330,6 +280,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               kakaoHref={kakaoHref}
               status={statusV2}
               trust={product.trust}
+              product={product}
             />
           </div>
         </main>

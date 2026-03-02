@@ -14,7 +14,13 @@ import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { useConsultModal } from "@/components/ConsultModal";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
 import { calcQuote, formatPriceKR } from "@/lib/pricing/calcQuote";
-import type { ProductTrust, ProductOptions, SelectedOptions } from "@/types/product";
+import type { Product, ProductTrust, ProductOptions, SelectedOptions } from "@/types/product";
+import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
+import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
+import { mapProductToTimelineModel, getTimelineModelFromSchedule } from "@/lib/products/mapProductToTimelineModel";
+import { TravelOverviewV2 } from "@/components/products/TravelOverviewV2";
+import { FlightSummarySection } from "@/components/products/FlightSummarySection";
+import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -51,6 +57,12 @@ export type ProductDetailV2Props = {
   options?: ProductOptions;
   /** 기준가(원). 옵션 있을 때 calcQuote에 사용 */
   basePrice?: number;
+  /** 있으면 내부에서 mapProductToOverview(product) 호출해 오버뷰 자동 생성 (우선) */
+  product?: Product | null;
+  /** product 없을 때 사용. 여행 오버뷰 렌더용 모델 */
+  overviewModel?: TravelOverviewModel | null;
+  /** 오버뷰 커버 이미지 fallback (product 있으면 product.image_url 사용) */
+  overviewFallbackUrl?: string;
 };
 
 type ScheduleDay = { label: string; content: string };
@@ -122,7 +134,49 @@ export default function ProductDetailV2({
   trust,
   options,
   basePrice,
+  product,
+  overviewModel,
+  overviewFallbackUrl = "",
 }: ProductDetailV2Props) {
+  const resolvedOverview = useMemo(() => {
+    if (product != null) return mapProductToOverview(product);
+    return overviewModel ?? null;
+  }, [product, overviewModel]);
+
+  const hasFlightData =
+    product != null &&
+    !!(
+      product.departure_from_airport?.trim() ||
+      product.departure_to_airport?.trim() ||
+      product.departure_flight_name?.trim() ||
+      product.arrival_from_airport?.trim() ||
+      product.arrival_to_airport?.trim() ||
+      product.arrival_flight_name?.trim()
+    );
+
+  /** 오버뷰 카드에서는 항공 카드 제외 (항공은 상단 FlightSummarySection에서만 표시) */
+  const overviewForCards = useMemo(() => {
+    if (!resolvedOverview?.cards?.length) return resolvedOverview;
+    const withoutFlight = resolvedOverview.cards.filter((c) => c.iconKey !== "flight");
+    return withoutFlight.length === resolvedOverview.cards.length
+      ? resolvedOverview
+      : { ...resolvedOverview, cards: withoutFlight };
+  }, [resolvedOverview]);
+
+  const resolvedOverviewFallbackUrl = product?.image_url?.trim() ?? overviewFallbackUrl ?? "";
+  /** [STEP 5] 시각화 타임라인: itinerary_v2_json.days가 있을 때만 InteractiveTimelineV2, 없으면 레거시 텍스트 일정만 */
+  const hasVisualItinerary =
+    product != null &&
+    Array.isArray(product.itinerary_v2_json?.days) &&
+    product.itinerary_v2_json.days.length > 0;
+  /** 텍스트 일정 → 시각화 타임라인(InteractiveTimelineV2). 시각화 있을 때만 사용 */
+  const timelineModel = useMemo(
+    () =>
+      product != null
+        ? mapProductToTimelineModel(product)
+        : getTimelineModelFromSchedule(detailedSchedule ?? ""),
+    [product, detailedSchedule],
+  );
   const [activeTab, setActiveTab] = useState<MainTab>("schedule");
   const [openAccordionIndex, setOpenAccordionIndex] = useState<number | null>(0);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({});
@@ -222,8 +276,11 @@ export default function ProductDetailV2({
           <p className="text-sm leading-[1.75] text-slate-600 md:text-base">{oneLiner}</p>
         ) : null}
 
-        {/* Price Summary Card (옵션 선택 시 quote 반영) */}
-        <Card variant="default" className="border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe]">
+        {/* Price Summary Card: 모바일에서만 표시. 웹에서는 오른쪽 예상가 카드에 동일 정보 표시 */}
+        <Card
+          variant="default"
+          className="border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe] md:hidden"
+        >
           {displayPrice ? (
             <p className="font-price-strong text-xl font-bold text-[#1E3A8A] md:text-2xl">
               ₩{displayPrice}~
@@ -263,33 +320,53 @@ export default function ProductDetailV2({
         {/* Trust Signals: 데이터 있을 때만 */}
         <TrustSignals trust={trust} />
 
-        {/* CTA 2개 (SOLD_OUT 시 대기 문의). 필수 옵션 미선택 시 인라인 안내 */}
-        {requiredGroupsMissing && (
-          <p className="text-sm text-amber-600">
-            필수 옵션을 선택해 주세요.
-          </p>
-        )}
-        <div className="flex flex-wrap gap-3">
-          {productId != null || isSoldOut || !consultHref ? (
-            <Button variant="primary" size="md" onClick={handlePrimaryCta}>
-              {isSoldOut ? "대기 문의" : "상담 문의"}
-            </Button>
-          ) : (
-            <a href={consultHref}>
-              <Button variant="primary" size="md">
-                상담 문의
-              </Button>
-            </a>
+        {/* CTA 2개: 모바일에서만 표시. 웹에서는 오른쪽 예상가 카드에 동일 버튼 있음 */}
+        <div className="mb-0 md:hidden">
+          {requiredGroupsMissing && (
+            <p className="mb-2 text-sm text-amber-600">
+              필수 옵션을 선택해 주세요.
+            </p>
           )}
-          {kakaoHref ? (
-            <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="md">
-                카톡 상담
+          <div className="flex flex-wrap gap-3">
+            {productId != null || isSoldOut || !consultHref ? (
+              <Button variant="primary" size="md" onClick={handlePrimaryCta}>
+                {isSoldOut ? "대기 문의" : "상담 문의"}
               </Button>
-            </a>
-          ) : null}
+            ) : (
+              <a href={consultHref}>
+                <Button variant="primary" size="md">
+                  상담 문의
+                </Button>
+              </a>
+            )}
+            {kakaoHref ? (
+              <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="md">
+                  카톡 상담
+                </Button>
+              </a>
+            ) : null}
+          </div>
         </div>
       </section>
+
+      {/* 항공편 요약: product에 항공 데이터가 있으면 오버뷰 위에 별도 섹션으로 표시 */}
+      {hasFlightData && <FlightSummarySection product={product} />}
+
+      {/* 여행 오버뷰: 항공 카드는 위 섹션으로 분리했으면 제외 */}
+      <TravelOverviewV2
+        model={overviewForCards}
+        fallbackImageUrl={resolvedOverviewFallbackUrl || null}
+        onGoToItinerary={() => {
+          setActiveTab("schedule");
+          setTimeout(() => {
+            document.getElementById("itinerary-section")?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }, 150);
+        }}
+      />
 
       {/* Tabs */}
       <section>
@@ -301,35 +378,44 @@ export default function ProductDetailV2({
         </Tabs>
 
         {activeTab === "schedule" && (
-          <div className="space-y-2">
-            {hasSchedule ? (
-              scheduleDays.map((day, index) => {
-                const isOpen = openAccordionIndex === index;
-                return (
-                  <Card key={`${day.label}-${index}`} variant="default" className="overflow-hidden border-[#dbeafe] bg-[#f8fbff] ring-[#dbeafe]">
-                    <button
-                      type="button"
-                      onClick={() => setOpenAccordionIndex(isOpen ? null : index)}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#eff6ff]"
-                    >
-                      <span className="flex-1 font-semibold text-[#0f172a]">{day.label}</span>
-                      <ChevronDown
-                        className={`h-5 w-5 shrink-0 text-slate-500 transition ${isOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    {isOpen && (
-                      <div className="border-t border-[#dbeafe] px-4 pb-4 pt-2">
-                        <p className="whitespace-pre-line text-sm leading-[1.7] text-slate-700">
-                          {day.content}
-                        </p>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })
+          <div id="itinerary-section" className="space-y-6">
+            {/* [STEP 5] v2 있으면 시각화 타임라인(탭 안에서도 동일 노출), 없으면 레거시 텍스트만 */}
+            {hasVisualItinerary ? (
+              <InteractiveTimelineV2
+                model={timelineModel}
+                fallbackImageUrl={resolvedOverviewFallbackUrl || null}
+              />
+            ) : hasSchedule ? (
+              <>
+                {scheduleDays.map((day, index) => {
+                  const isOpen = openAccordionIndex === index;
+                  return (
+                    <Card key={`${day.label}-${index}`} variant="default" className="overflow-hidden border-[#dbeafe] bg-[#f8fbff] ring-[#dbeafe]">
+                      <button
+                        type="button"
+                        onClick={() => setOpenAccordionIndex(isOpen ? null : index)}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#eff6ff]"
+                      >
+                        <span className="flex-1 font-semibold text-[#0f172a]">{day.label}</span>
+                        <ChevronDown
+                          className={`h-5 w-5 shrink-0 text-slate-500 transition ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                      {isOpen && (
+                        <div className="border-t border-[#dbeafe] px-4 pb-4 pt-2">
+                          <p className="whitespace-pre-line text-sm leading-[1.7] text-slate-700">
+                            {day.content}
+                          </p>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </>
             ) : (
               <p className="text-sm text-slate-500">일정 정보 준비 중입니다.</p>
             )}
+            {/* 레거시 전용: 시각화 없을 때만 위에서 아코디언으로 이미 표시됨 */}
           </div>
         )}
 

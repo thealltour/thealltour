@@ -1,6 +1,7 @@
 import SiteHeader from "@/components/SiteHeader";
 import ProductCatalogSection from "@/components/ProductCatalogSection";
 import ProductsHero from "@/components/ProductsHero";
+// 패키지상품 목록: 전체 상품 노출. 추천(is_featured_home) 필터는 홈에서만 사용
 import { getProducts } from "@/lib/products";
 import { getProductTaxonomyOptions } from "@/lib/productTaxonomies";
 

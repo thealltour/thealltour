@@ -4,7 +4,9 @@
  * - Product → ProductCardV2Props / ProductDetailV2Props (직렬화 가능한 payload만, CTA는 클라이언트에서 주입)
  */
 
-import type { Product, ProductOptions } from "@/types/product";
+import type { Product, ProductOptions, ItineraryStructuredDay, ItineraryV2 } from "@/types/product";
+import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
+import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { getProductBadges } from "@/lib/productCategory";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
@@ -57,6 +59,13 @@ export type ProductFormPayload = {
   fuel_included?: "" | "true" | "false";
   price_meta?: string;
   meta_info?: string;
+  overview_accommodation?: string;
+  overview_region?: string;
+  overview_duration?: string;
+  itinerary_media_json?: Record<string, string>;
+  itinerary_days_json?: ItineraryStructuredDay[];
+  itinerary_v2_json?: ItineraryV2;
+  theme_chart_json?: Array<{ label: string; percent: number }>;
 };
 
 const PREVIEW_PRIORITY_BADGES = ["제철", "인기", "마감임박"];
@@ -143,8 +152,28 @@ export function formToPreviewProduct(
         : form.fuel_included === "true",
     price_meta: ((form.price_meta?.trim() || "1인 기준") as string) || undefined,
     meta_info: form.meta_info?.trim() || undefined,
+    overview_accommodation: form.overview_accommodation?.trim() || undefined,
+    overview_region: form.overview_region?.trim() || undefined,
+    overview_duration: form.overview_duration?.trim() || undefined,
     one_liner: oneLiner || undefined,
     options,
+    itinerary_media_json:
+      form.itinerary_media_json && Object.keys(form.itinerary_media_json).length > 0
+        ? form.itinerary_media_json
+        : undefined,
+    itinerary_days_json:
+      form.itinerary_days_json && form.itinerary_days_json.length > 0
+        ? form.itinerary_days_json
+        : undefined,
+    itinerary_v2_json:
+      form.itinerary_v2_json?.days?.length
+        ? form.itinerary_v2_json
+        : undefined,
+    theme_chart_json: (() => {
+      const items = form.theme_chart_json?.filter((i) => i?.label?.trim() && typeof i.percent === "number") ?? [];
+      return items.length >= 2 ? { items } : undefined;
+    })(),
+    // overview는 mapProductToOverview(product)로 자동 생성
   };
 }
 
@@ -212,6 +241,11 @@ export type ProductDetailV2PropsPayload = {
   trust?: unknown;
   options?: ProductOptions;
   basePrice?: number;
+  /** 있으면 ProductDetailV2가 mapProductToOverview(product)로 오버뷰 자동 생성 */
+  product?: Product | null;
+  /** product 없을 때만 사용 */
+  overviewModel?: TravelOverviewModel | null;
+  overviewFallbackUrl?: string;
 };
 
 export function productToDetailV2PropsPayload(product: Product): ProductDetailV2PropsPayload {
@@ -240,5 +274,8 @@ export function productToDetailV2PropsPayload(product: Product): ProductDetailV2
     trust: undefined,
     options: product.options,
     basePrice: product.price,
+    product,
+    overviewModel: mapProductToOverview(product),
+    overviewFallbackUrl: product.image_url,
   };
 }

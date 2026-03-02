@@ -1,6 +1,17 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
-import type { Product, ProductTrust, ProductOptions, ProductOptionGroup, ProductOptionItem } from "@/types/product";
+import type {
+  Product,
+  ProductTrust,
+  ProductOptions,
+  ProductOptionGroup,
+  ProductOptionItem,
+  ProductOverview,
+  ItineraryStructuredDay,
+  ItineraryStructuredEvent,
+  ItineraryV2,
+  ItineraryV2Event,
+} from "@/types/product";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
 const FEATURED_PRODUCT_LIMIT = 8;
@@ -84,11 +95,287 @@ function normalizeProduct(row: Record<string, unknown>): Product {
         : undefined,
     fuel_included:
       row.fuel_included === true ? true : row.fuel_included === false ? false : undefined,
-    price_meta: typeof row.price_meta === "string" && row.price_meta.trim() !== "" ? row.price_meta.trim() : undefined,
-    meta_info: typeof row.meta_info === "string" && row.meta_info.trim() !== "" ? row.meta_info.trim() : undefined,
-    one_liner: typeof row.one_liner === "string" && row.one_liner.trim() !== "" ? row.one_liner.trim() : undefined,
+    price_meta:
+      typeof row.price_meta === "string" && row.price_meta.trim() !== ""
+        ? row.price_meta.trim()
+        : undefined,
+    meta_info:
+      typeof row.meta_info === "string" && row.meta_info.trim() !== ""
+        ? row.meta_info.trim()
+        : undefined,
+    overview_accommodation:
+      typeof row.overview_accommodation === "string" && row.overview_accommodation.trim() !== ""
+        ? row.overview_accommodation.trim()
+        : undefined,
+    overview_region:
+      typeof row.overview_region === "string" && row.overview_region.trim() !== ""
+        ? row.overview_region.trim()
+        : undefined,
+    overview_duration:
+      typeof row.overview_duration === "string" && row.overview_duration.trim() !== ""
+        ? row.overview_duration.trim()
+        : undefined,
+    one_liner:
+      typeof row.one_liner === "string" && row.one_liner.trim() !== ""
+        ? row.one_liner.trim()
+        : undefined,
+    overview_json: normalizeOverview(row.overview_json),
+    itinerary_media_json: normalizeItineraryMedia(row.itinerary_media_json),
+    itinerary_days_json: normalizeItineraryDays(row.itinerary_days_json),
+    itinerary_v2_json: normalizeItineraryV2(row.itinerary_v2_json),
+    theme_chart_json: normalizeThemeChartJson(row.theme_chart_json),
     trust: normalizeTrust(row.trust),
     options: normalizeOptions(row.options, typeof row.price === "number" ? row.price : undefined),
+  };
+}
+
+function normalizeThemeChartJson(raw: unknown): { items: Array<{ label: string; percent: number }> } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const items = o.items;
+  if (!Array.isArray(items) || items.length < 2) return undefined;
+  const parsed = items
+    .filter((i): i is Record<string, unknown> => i != null && typeof i === "object")
+    .map((i) => {
+      const label = typeof i.label === "string" ? i.label.trim() : "";
+      const percent = typeof i.percent === "number" ? i.percent : Number(i.percent);
+      return { label, percent: Number.isNaN(percent) ? 0 : Math.max(0, Math.min(100, percent)) };
+    })
+    .filter((i) => i.label.length > 0);
+  return parsed.length >= 2 ? { items: parsed } : undefined;
+}
+
+const OVERVIEW_SUMMARY_KINDS = ["flight", "hotel", "region", "theme", "golf", "etc"] as const;
+
+function normalizeItineraryMedia(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(o)) {
+    if (typeof value === "string" && value.trim()) result[key] = value.trim();
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function normalizeItineraryDays(raw: unknown): ItineraryStructuredDay[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const days: ItineraryStructuredDay[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const day = typeof o.day === "number" ? o.day : typeof o.day === "string" ? parseInt(o.day, 10) : undefined;
+    if (day == null || !Number.isFinite(day) || day < 1) continue;
+    const events = Array.isArray(o.events)
+      ? (o.events as Array<Record<string, unknown>>)
+          .map((e) => {
+            const heading = typeof e.heading === "string" ? e.heading.trim() : "";
+            if (!heading) return null;
+            return {
+              heading,
+              description:
+                typeof e.description === "string" && e.description.trim()
+                  ? e.description.trim()
+                  : undefined,
+              timeOfDay:
+                e.timeOfDay === "오전" ||
+                e.timeOfDay === "오후" ||
+                e.timeOfDay === "저녁" ||
+                e.timeOfDay === "종일"
+                  ? (e.timeOfDay as ItineraryStructuredEvent["timeOfDay"])
+                  : undefined,
+              iconKey:
+                typeof e.iconKey === "string" && e.iconKey.trim() ? e.iconKey.trim() : undefined,
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null)
+      : [];
+    days.push({
+      day,
+      dateText: typeof o.dateText === "string" && o.dateText.trim() ? o.dateText.trim() : undefined,
+      title: typeof o.title === "string" && o.title.trim() ? o.title.trim() : undefined,
+      coverImageUrl:
+        o.coverImageUrl == null || (typeof o.coverImageUrl === "string" && o.coverImageUrl.trim() === "")
+          ? undefined
+          : typeof o.coverImageUrl === "string"
+            ? o.coverImageUrl.trim()
+            : null,
+      events,
+    });
+  }
+  return days.length > 0 ? days : undefined;
+}
+
+function normalizeItineraryV2(raw: unknown): ItineraryV2 | undefined {
+  if (raw == null) return undefined;
+  let o: Record<string, unknown>;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!parsed || typeof parsed !== "object") return undefined;
+      o = parsed as Record<string, unknown>;
+    } catch {
+      return undefined;
+    }
+  } else if (typeof raw === "object") {
+    o = raw as Record<string, unknown>;
+  } else {
+    return undefined;
+  }
+  const rawDays = Array.isArray(o.days) ? o.days : [];
+  if (rawDays.length === 0) return undefined;
+  const days: ItineraryV2["days"] = [];
+  for (const item of rawDays) {
+    if (!item || typeof item !== "object") continue;
+    const d = item as Record<string, unknown>;
+    const day = typeof d.day === "number" ? d.day : typeof d.day === "string" ? parseInt(d.day, 10) : undefined;
+    if (day == null || !Number.isFinite(day) || day < 1) continue;
+    const rawEvents = Array.isArray(d.events) ? d.events : [];
+    const events = rawEvents
+      .map((e: unknown) => {
+        if (!e || typeof e !== "object") return null;
+        const ev = e as Record<string, unknown>;
+        const heading = typeof ev.heading === "string" ? ev.heading.trim() : "";
+        if (!heading) return null;
+        return {
+          timeOfDay:
+            ev.timeOfDay === "오전" ||
+            ev.timeOfDay === "오후" ||
+            ev.timeOfDay === "저녁" ||
+            ev.timeOfDay === "종일"
+              ? (ev.timeOfDay as ItineraryV2Event["timeOfDay"])
+              : undefined,
+          timeText:
+            typeof ev.timeText === "string" && ev.timeText.trim() ? ev.timeText.trim() : undefined,
+          iconKey:
+            typeof ev.iconKey === "string" && ev.iconKey.trim() ? ev.iconKey.trim() : undefined,
+          heading,
+          description:
+            typeof ev.description === "string" && ev.description.trim()
+              ? ev.description.trim()
+              : undefined,
+          location:
+            typeof ev.location === "string" && ev.location.trim()
+              ? ev.location.trim()
+              : undefined,
+          order: typeof ev.order === "number" && Number.isFinite(ev.order) ? ev.order : undefined,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+    days.push({
+      day,
+      dateText: typeof d.dateText === "string" && d.dateText.trim() ? d.dateText.trim() : undefined,
+      title: typeof d.title === "string" && d.title.trim() ? d.title.trim() : undefined,
+      coverImageUrl: typeof d.coverImageUrl === "string" && d.coverImageUrl.trim() ? d.coverImageUrl.trim() : undefined,
+      events,
+    });
+  }
+  return days.length > 0 ? { days } : undefined;
+}
+
+export function normalizeOverview(raw: unknown): ProductOverview | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+
+  // 새 스키마 (enabled, summaryCards with kind, chart, timeline)
+  if (typeof o.enabled === "boolean") {
+    const summaryCards = Array.isArray(o.summaryCards)
+      ? (o.summaryCards as Array<{ kind?: string; label?: string; value?: string }>)
+          .filter(
+            (c) =>
+              c &&
+              typeof c.label === "string" &&
+              typeof c.value === "string" &&
+              OVERVIEW_SUMMARY_KINDS.includes((c.kind ?? "etc") as (typeof OVERVIEW_SUMMARY_KINDS)[number]),
+          )
+          .map((c) => ({
+            kind: (OVERVIEW_SUMMARY_KINDS.includes((c.kind ?? "etc") as (typeof OVERVIEW_SUMMARY_KINDS)[number])
+              ? c.kind
+              : "etc") as (typeof OVERVIEW_SUMMARY_KINDS)[number],
+            label: c.label!,
+            value: c.value!,
+          }))
+      : [];
+    const chart =
+      o.chart && typeof o.chart === "object"
+        ? (() => {
+            const ch = o.chart as Record<string, unknown>;
+            if (ch.enabled !== true) return undefined;
+            const items = Array.isArray(ch.items)
+              ? (ch.items as Array<{ label?: string; percent?: number }>)
+                  .filter((i) => i && typeof i.label === "string" && typeof i.percent === "number")
+                  .map((i) => ({ label: i.label!, percent: i.percent! }))
+              : [];
+            return items.length > 0 ? { enabled: true, items } : undefined;
+          })()
+        : undefined;
+    const timeline =
+      o.timeline && typeof o.timeline === "object"
+        ? (() => {
+            const tl = o.timeline as Record<string, unknown>;
+            if (tl.enabled !== true) return undefined;
+            const days = Array.isArray(tl.days)
+              ? (tl.days as Array<{ day?: number; dateText?: string; headline?: string; bullets?: unknown }>)
+                  .filter(
+                    (d) =>
+                      d &&
+                      typeof d.day === "number" &&
+                      Array.isArray(d.bullets) &&
+                      (d.bullets as unknown[]).every((b) => typeof b === "string"),
+                  )
+                  .map((d) => ({
+                    day: d.day!,
+                    dateText: typeof d.dateText === "string" ? d.dateText : undefined,
+                    headline: typeof d.headline === "string" ? d.headline : undefined,
+                    bullets: d.bullets as string[],
+                  }))
+              : [];
+            return days.length > 0 ? { enabled: true, days } : undefined;
+          })()
+        : undefined;
+    const coverImageUrl =
+      typeof o.coverImageUrl === "string" && o.coverImageUrl.trim() !== "" ? o.coverImageUrl.trim() : undefined;
+    const title = typeof o.title === "string" && o.title.trim() !== "" ? o.title.trim() : undefined;
+    return {
+      enabled: o.enabled,
+      title,
+      summaryCards,
+      coverImageUrl,
+      chart,
+      timeline,
+    };
+  }
+
+  // 구 스키마 호환 (summaryCards, themeChart, days) → 새 스키마로 변환
+  const legacySummaryCards = Array.isArray(o.summaryCards)
+    ? (o.summaryCards as Array<{ label?: string; value?: string }>)
+        .filter((c) => c && typeof c.label === "string" && typeof c.value === "string")
+        .map((c) => ({ kind: "etc" as const, label: c.label!, value: c.value! }))
+    : [];
+  const themeChart = o.themeChart && typeof o.themeChart === "object" ? (o.themeChart as Record<string, unknown>) : null;
+  const chartItems =
+    themeChart && Array.isArray(themeChart.labels) && Array.isArray(themeChart.values)
+      ? (themeChart.labels as string[]).map((label, i) => {
+          const values = themeChart.values as number[];
+          const total = values.reduce((a, b) => a + b, 0);
+          const percent = total > 0 ? Math.round(((values[i] ?? 0) / total) * 100) : 0;
+          return { label, percent };
+        })
+      : [];
+  const legacyDays = Array.isArray(o.days)
+    ? (o.days as Array<{ day?: string; summary?: string }>)
+        .filter((d) => d && typeof d.day === "string" && typeof d.summary === "string")
+        .map((d) => ({
+          day: parseInt(d.day!, 10) || 1,
+          bullets: d.summary!.split(/\n/).filter((b) => b.trim()),
+        }))
+    : [];
+  const hasData = legacySummaryCards.length > 0 || chartItems.length > 0 || legacyDays.length > 0;
+  if (!hasData) return undefined;
+  return {
+    enabled: true,
+    summaryCards: legacySummaryCards,
+    chart: chartItems.length > 0 ? { enabled: true, items: chartItems } : undefined,
+    timeline: legacyDays.length > 0 ? { enabled: true, days: legacyDays } : undefined,
   };
 }
 
@@ -180,6 +467,7 @@ function normalizeOptions(raw: unknown, productPrice?: number): ProductOptions |
   };
 }
 
+/** 패키지상품 목록용: is_active인 전체 상품 (추천 여부 무관) */
 export async function getProducts() {
   return getProductsCached();
 }
@@ -209,6 +497,7 @@ const getProductsCached = unstable_cache(
   { revalidate: 60, tags: ["products"] },
 );
 
+/** 홈 전용: is_featured_home인 상품만 (패키지상품 목록에서는 사용하지 않음) */
 export async function getFeaturedProducts() {
   return getFeaturedProductsCached();
 }
@@ -247,6 +536,17 @@ const getFeaturedProductsCached = unstable_cache(
 
 export async function getProductById(id: string) {
   return getProductByIdCached(id);
+}
+
+/** 상세 페이지용: 캐시 없이 항상 최신 데이터 조회 (수정 저장 후 즉시 반영) */
+export async function getProductByIdFresh(id: string) {
+  const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return normalizeProduct(data as Record<string, unknown>);
 }
 
 const getProductByIdCached = unstable_cache(

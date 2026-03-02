@@ -99,6 +99,8 @@ export default async function DevProductDetailPage({ params }: DevProductDetailP
               kakaoHref={kakaoHref}
               options={product.options}
               basePrice={product.price}
+              product={product}
+              overviewFallbackUrl={product.image_url}
             />
           </div>
         </section>

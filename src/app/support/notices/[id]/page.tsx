@@ -32,14 +32,14 @@ export default async function NoticeDetailPage({ params }: NoticeDetailPageProps
         <PageHero kicker="NOTICE BOARD" title={notice.title} subtitle={undefined} />
         <ContentCard>
           <p className="type-caption text-content-muted">작성일 {formatDate(notice.created_at)}</p>
-          <hr className="my-5 border-slate-200" />
+          <hr className="my-5 border-[var(--divider)]" />
           <p className="whitespace-pre-line type-small leading-7 text-content-secondary md:type-body">
             {notice.content}
           </p>
           <div className="mt-[var(--space-5)]">
             <Link
               href="/support"
-              className="type-btn inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-content-secondary transition hover:bg-slate-50"
+              className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2 font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
             >
               ← 고객센터로
             </Link>

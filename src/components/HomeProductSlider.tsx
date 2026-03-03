@@ -90,7 +90,7 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
       }}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white/80 p-2 ring-1 ring-[#dbeafe]">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-[var(--surface)] p-2 ring-1 ring-[var(--border)]">
           {categoryTabs.map((tab) => {
             const isActive = (tab === "전체" ? "all" : tab) === activeTab;
             return (
@@ -168,7 +168,7 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
               <Link
                 key={product.id}
                 href={`/products/${product.id}`}
-                className="w-[280px] shrink-0 snap-start overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe] transition hover:-translate-y-1 hover:shadow-xl md:w-[330px]"
+                className="w-[280px] shrink-0 snap-start overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-soft-strong)] hover:border-[var(--border-strong)] md:w-[330px]"
               >
                 <article className="flex h-full flex-col">
                   <Image

@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: rgba(2, 6, 23, 0.8);
+  background: var(--overlay);
   padding: 16px;
 }
 
@@ -13,8 +13,9 @@
   max-width: 1280px;
   flex-direction: column;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: #0b1220;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-modal);
   color: var(--nt-text-primary);
 }
 

@@ -23,7 +23,7 @@ export default function HomeTopBanner({ banners }: HomeTopBannerProps) {
   }, [hasMany, banners.length]);
 
   const containerClass = useMemo(
-    () => "relative overflow-hidden rounded-3xl shadow-xl ring-1 ring-[#dbeafe]",
+    () => "relative overflow-hidden rounded-3xl shadow-xl ring-1 ring-[var(--border)]",
     [],
   );
 
@@ -63,7 +63,7 @@ export default function HomeTopBanner({ banners }: HomeTopBannerProps) {
               onClick={() => setActiveIndex(index)}
               aria-label={`${index + 1}번 배너 보기`}
               className={`h-2 w-2 rounded-full transition ${
-                index === activeIndex ? "bg-white" : "bg-white/50"
+                index === activeIndex ? "bg-[var(--surface)]" : "bg-[var(--surface)]/50"
               }`}
             />
           ))}

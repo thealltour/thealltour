@@ -61,7 +61,7 @@ export default function ProductCard({
   return (
     <Link
       href={href}
-      className={`group flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe] ${TRANSITION} hover:-translate-y-0.5 hover:shadow-xl`}
+      className={`group flex h-full flex-col overflow-hidden rounded-3xl bg-[var(--card)] shadow-[var(--shadow-soft-strong)] ring-1 ring-[var(--border)] ${TRANSITION} hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft-strong)]`}
     >
       {/* ImageArea */}
       <div className="relative h-52 w-full overflow-hidden">
@@ -81,7 +81,7 @@ export default function ProductCard({
               <button
                 type="button"
                 onClick={(e) => handleActionClick(e, onCompareAdd)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm backdrop-blur hover:bg-white hover:text-[#1E3A8A]"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--glass-surface)] text-[var(--text-secondary)] shadow-sm backdrop-blur hover:bg-[var(--surface)] hover:text-[var(--primary)]"
                 aria-label="비교 추가"
               >
                 <Scale className="h-4 w-4" />
@@ -91,7 +91,7 @@ export default function ProductCard({
               <button
                 type="button"
                 onClick={(e) => handleActionClick(e, onBookmark)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm backdrop-blur hover:bg-white hover:text-[#1E3A8A]"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--glass-surface)] text-[var(--text-secondary)] shadow-sm backdrop-blur hover:bg-[var(--surface)] hover:text-[var(--primary)]"
                 aria-label="찜하기"
               >
                 <Bookmark className="h-4 w-4" />
@@ -129,20 +129,20 @@ export default function ProductCard({
             </p>
           )}
           {(duration || priceMeta) && (
-            <p className="type-caption text-slate-500">
+            <p className="type-caption text-[var(--text-muted)]">
               {[duration, priceMeta].filter(Boolean).join(" / ")}
             </p>
           )}
           {typeof fuelSurchargeIncluded === "boolean" && (
-            <p className="type-caption flex items-center gap-1.5 text-slate-500">
+            <p className="type-caption flex items-center gap-1.5 text-[var(--text-muted)]">
               {fuelSurchargeIncluded ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  <Check className="h-3.5 w-3.5 text-[var(--success)]" />
                   유류할증료 포함
                 </>
               ) : (
                 <>
-                  <Info className="h-3.5 w-3.5 text-slate-400" />
+                  <Info className="h-3.5 w-3.5 text-[var(--text-muted)]" />
                   유류할증료 별도
                 </>
               )}
@@ -154,7 +154,7 @@ export default function ProductCard({
         {hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {hashtags.map((tag) => (
-              <span key={tag} className="type-caption text-slate-600">
+              <span key={tag} className="type-caption text-[var(--text-secondary)]">
                 #{tag}
               </span>
             ))}
@@ -163,7 +163,7 @@ export default function ProductCard({
 
         {/* CTA */}
         <span
-          className={`type-btn mt-auto inline-flex w-fit rounded-lg bg-[#1E3A8A] px-4 py-2 text-white ${TRANSITION} group-hover:bg-[#1d4ed8] group-hover:shadow-md`}
+          className={`type-btn mt-auto inline-flex w-fit rounded-lg bg-[var(--primary)] px-4 py-2 text-white ${TRANSITION} group-hover:bg-[var(--primary-hover)] group-hover:shadow-[var(--shadow-soft-strong)]`}
         >
           {ctaLabel}
         </span>

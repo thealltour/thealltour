@@ -1,32 +1,67 @@
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
-type BadgeVariant = "default" | "outline" | "gold" | "blue";
+type BadgeVariant =
+  | "neutral"
+  | "primary"
+  | "premium"
+  | "outline"
+  | "success"
+  | "warning"
+  | "danger"
+  | "default"
+  | "blue"
+  | "gold";
 
 export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
 };
 
-export function Badge({ variant = "default", className, ...props }: BadgeProps) {
+/** neutral: surface-muted/text-muted. primary: primary-soft/primary. premium: secondary/white. */
+export function Badge({ variant = "neutral", className, ...props }: BadgeProps) {
   let variantClass: string;
 
   switch (variant) {
+    case "primary":
+      variantClass =
+        "border border-[var(--border)] bg-[var(--primary-soft)] text-[var(--primary)]";
+      break;
+    case "premium":
+      variantClass =
+        "border border-transparent bg-[var(--secondary)] text-white";
+      break;
     case "outline":
       variantClass =
-        "border border-[color:var(--border)] bg-transparent text-content-secondary";
+        "border border-[var(--border-strong)] bg-transparent text-[var(--foreground)]";
       break;
-    case "gold":
+    case "success":
       variantClass =
-        "border border-[color:var(--theall-premium-gold)] bg-[color:color-mix(in_oklab,var(--theall-premium-gold)_10%,white)] text-[color:var(--theall-primary-navy)]";
+        "border border-[var(--success)]/40 bg-[var(--success-bg)] text-[var(--success)]";
+      break;
+    case "warning":
+      variantClass =
+        "border border-[var(--warning)]/40 bg-[var(--warning-bg)] text-[var(--warning)]";
+      break;
+    case "danger":
+      variantClass =
+        "border border-[var(--danger)]/40 bg-[var(--danger-bg)] text-[var(--danger)]";
+      break;
+    case "neutral":
+    case "default":
+      variantClass =
+        "border border-[var(--divider)] bg-[var(--surface-muted)] text-[var(--text-muted)]";
       break;
     case "blue":
       variantClass =
-        "border border-primary/40 bg-primary/5 text-primary";
+        "border border-[var(--border)] bg-[var(--primary-soft)] text-[var(--primary)]";
       break;
-    case "default":
+    case "gold":
+      variantClass =
+        "border border-transparent bg-[var(--secondary)] text-white";
+      break;
     default:
       variantClass =
-        "border border-[color:var(--border)] bg-[color:var(--card-muted)] text-content-secondary";
+        "border border-[var(--divider)] bg-[var(--surface-muted)] text-[var(--text-muted)]";
       break;
   }
 
@@ -41,4 +76,3 @@ export function Badge({ variant = "default", className, ...props }: BadgeProps) 
     />
   );
 }
-

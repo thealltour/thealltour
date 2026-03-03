@@ -65,7 +65,7 @@ function badgeVariantToChipStyle(variant: "accent" | "muted" | "gold") {
   if (variant === "gold") {
     return "border-amber-200 bg-amber-500/95 text-white";
   }
-  return "border-slate-200 bg-white/95 text-slate-700";
+  return "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]";
 }
 
 export default function ProductCardV2({
@@ -144,7 +144,7 @@ export default function ProductCardV2({
   const cardContent = (
     <div className="flex min-h-[140px] w-full">
       {/* Image (Left) - 카드 높이 전체를 채우도록 변경 */}
-      <div className="relative w-[44%] max-w-[220px] shrink-0 overflow-hidden bg-slate-100">
+      <div className="relative w-[44%] max-w-[220px] shrink-0 overflow-hidden bg-[var(--surface-muted)]">
         <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1">
           {topLeftChips.map((chip) => (
             <span
@@ -168,7 +168,7 @@ export default function ProductCardV2({
           />
         ) : null}
         <div
-          className={`absolute inset-0 bg-slate-200 ${TRANSITION} ${
+          className={`absolute inset-0 bg-[var(--border)] ${TRANSITION} ${
             thumbnailUrl
               ? imageLoaded
                 ? "opacity-0"
@@ -183,28 +183,28 @@ export default function ProductCardV2({
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
         {/* Title: 한 줄 + 오른쪽 그라데이션 페이드 */}
         <div className="relative min-h-[1.25rem] overflow-hidden">
-          <h2 className="font-card-title line-clamp-1 pr-8 text-sm font-semibold leading-snug text-[#0f172a] md:text-base">
+          <h2 className="font-card-title line-clamp-1 pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] md:text-base">
             {title || "상품명"}
           </h2>
           <div
-            className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-white to-transparent"
+            className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-[var(--surface)] to-transparent"
             aria-hidden
           />
         </div>
 
         {metaLine ? (
-          <p className="line-clamp-1 text-xs text-slate-500">{metaLine}</p>
+          <p className="line-clamp-1 text-xs text-[var(--text-muted)]">{metaLine}</p>
         ) : null}
 
         <div className="mt-0.5 space-y-0.5">
           {priceFormatted != null ? (
-            <p className="font-price-strong text-lg font-bold text-[#1E3A8A] md:text-xl">
+            <p className="font-price-strong text-lg font-bold text-[var(--primary)] md:text-xl">
               {priceFormatted}원~
             </p>
           ) : (
-            <p className="text-sm font-semibold text-slate-600">상담 후 견적</p>
+            <p className="text-sm font-semibold text-[var(--text-muted)]">상담 후 견적</p>
           )}
-          {priceMeta ? <p className="text-[11px] text-slate-500">{priceMeta}</p> : null}
+          {priceMeta ? <p className="text-[11px] text-[var(--text-subtle)]">{priceMeta}</p> : null}
         </div>
 
         {/* Hashtag: 한 줄 + 오른쪽 그라데이션 페이드 */}
@@ -214,14 +214,14 @@ export default function ProductCardV2({
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600"
+                  className="inline-flex shrink-0 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)]"
                 >
                   #{tag}
                 </span>
               ))}
             </div>
             <div
-              className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-white to-transparent"
+              className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-[var(--surface)] to-transparent"
               aria-hidden
             />
           </div>

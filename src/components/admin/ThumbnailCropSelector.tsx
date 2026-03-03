@@ -173,9 +173,9 @@ export function ThumbnailCropSelector({
   if (!selection) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/95">
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-700 px-4 py-3">
-        <h2 className="text-lg font-semibold text-white">썸네일 영역 선택</h2>
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--overlay)]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--divider)] bg-[var(--surface-elevated)] px-4 py-3">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">썸네일 영역 선택</h2>
         <div className="flex gap-2">
           <button
             type="button"
@@ -196,7 +196,7 @@ export function ThumbnailCropSelector({
       </div>
       <div
         ref={containerRef}
-        className="flex flex-1 items-center justify-center overflow-auto p-4"
+        className="flex flex-1 items-center justify-center overflow-auto bg-[var(--surface-elevated)] p-4"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}

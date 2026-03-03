@@ -123,7 +123,7 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
             loadNotifications();
           }
         }}
-        className="relative inline-flex items-center justify-center rounded-lg border border-[#bfdbfe] bg-white px-3 py-2 text-sm font-medium text-[#1e3a8a] transition hover:bg-[#eff6ff]"
+        className="relative inline-flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--primary)] transition hover:bg-[var(--surface-muted)]"
         title="관리자 알림"
         aria-label="관리자 알림"
       >
@@ -136,14 +136,14 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 z-50 mt-2 w-[340px] rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+        <div className="absolute right-0 z-50 mt-2 w-[340px] rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-3 shadow-[var(--shadow-modal)]">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-[#0f172a]">알림</p>
             <button
               type="button"
               disabled={isMarkingAll || unreadCount === 0}
               onClick={markAllAsRead}
-              className="text-xs font-semibold text-[#2563eb] disabled:cursor-not-allowed disabled:text-slate-400"
+              className="text-xs font-semibold text-[var(--primary)] disabled:cursor-not-allowed disabled:text-[var(--text-muted)]"
             >
               {isMarkingAll ? "처리 중..." : "Mark all as read"}
             </button>
@@ -152,9 +152,9 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
           {errorMessage ? <p className="mb-2 text-xs text-red-500">{errorMessage}</p> : null}
 
           {isLoading ? (
-            <p className="py-4 text-center text-xs text-slate-500">알림을 불러오는 중입니다...</p>
+            <p className="py-4 text-center text-xs text-[var(--text-muted)]">알림을 불러오는 중입니다...</p>
           ) : latestNotifications.length === 0 ? (
-            <p className="py-4 text-center text-xs text-slate-500">새로운 알림이 없습니다.</p>
+            <p className="py-4 text-center text-xs text-[var(--text-muted)]">새로운 알림이 없습니다.</p>
           ) : (
             <div className="space-y-2">
               {latestNotifications.map((item) => (
@@ -164,11 +164,11 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
                   onClick={() => openNotification(item)}
                   className={`w-full rounded-lg border p-2 text-left transition ${
                     item.is_read
-                      ? "border-slate-200 bg-white hover:bg-slate-50"
-                      : "border-blue-200 bg-blue-50 hover:bg-blue-100/60"
+                      ? "border-[var(--border)] bg-[var(--card)] hover:bg-[var(--surface-muted)]"
+                      : "border-[color:color-mix(in_oklab,var(--primary)_35%,transparent)] bg-[var(--success-bg)] hover:bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)]"
                   }`}
                 >
-                  <p className="text-xs font-semibold text-[#0f172a]">
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">
                     {item.type === "birthday_upcoming"
                       ? "🎂 "
                       : item.type === "new_member"
@@ -180,17 +180,17 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
                             : "🔔 "}
                     {item.title}
                   </p>
-                  <p className="mt-1 line-clamp-2 text-xs text-slate-700">{item.message}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">{formatDate(item.created_at)}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-[var(--text-secondary)]">{item.message}</p>
+                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">{formatDate(item.created_at)}</p>
                 </button>
               ))}
             </div>
           )}
 
-          <div className="mt-3 border-t border-slate-100 pt-2 text-right">
+          <div className="mt-3 border-t border-[var(--divider)] pt-2 text-right">
             <Link
               href="/theall_manager_only/notifications"
-              className="text-xs font-semibold text-[#2563eb] hover:text-[#1d4ed8]"
+              className="text-xs font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)]"
               onClick={() => setIsOpen(false)}
             >
               알림 전체보기 →

@@ -8,7 +8,7 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     return (
       <label
         ref={ref}
-        className={cn("type-small font-medium text-content-primary", className)}
+        className={cn("type-small font-medium text-[var(--foreground)]", className)}
         {...props}
       />
     );
@@ -16,4 +16,17 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
 );
 
 Label.displayName = "Label";
+
+/** 보조 라벨/설명: --text-muted */
+export function LabelSub({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      className={cn("type-caption text-[var(--text-muted)]", className)}
+      {...props}
+    />
+  );
+}
 

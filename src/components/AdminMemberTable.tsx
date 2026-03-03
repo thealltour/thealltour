@@ -103,7 +103,7 @@ function SortButton({
       type="button"
       onClick={onClick}
       className={`inline-flex items-center gap-1 rounded px-1 py-0.5 transition ${
-        isActive ? "bg-[#dbeafe] text-[#1d4ed8]" : "text-[#1e3a8a] hover:bg-[#e8f0ff]"
+        isActive ? "bg-[color:color-mix(in_oklab,var(--primary)_15%,white)] text-[var(--primary)]" : "text-[var(--primary)] hover:bg-[color:color-mix(in_oklab,var(--primary)_8%,white)]"
       }`}
     >
       <span>{label}</span>
@@ -297,7 +297,7 @@ export default function AdminMemberTable() {
   }
 
   if (isLoading) {
-    return <p className="px-4 py-6 text-sm text-slate-500">회원 목록을 불러오는 중입니다...</p>;
+    return <p className="px-4 py-6 text-sm text-[var(--text-muted)]">회원 목록을 불러오는 중입니다...</p>;
   }
 
   return (
@@ -312,9 +312,9 @@ export default function AdminMemberTable() {
               setPage(1);
             }}
             placeholder="아이디/이름/연락처/이메일 검색"
-            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="w-full max-w-sm rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <label className="inline-flex items-center gap-2 text-sm text-[var(--text-primary)]">
             <input
               type="checkbox"
               checked={showAgreeEmailOnly}
@@ -322,12 +322,12 @@ export default function AdminMemberTable() {
                 setShowAgreeEmailOnly(event.target.checked);
                 setPage(1);
               }}
-              className="h-4 w-4 accent-[#1d4ed8]"
+              className="h-4 w-4 accent-[var(--primary)]"
             />
             이메일수신 동의 회원만 보기
           </label>
         </div>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-[var(--text-muted)]">
           이메일 동의 회원: {agreeEmailCount}명
         </span>
       </div>
@@ -338,7 +338,7 @@ export default function AdminMemberTable() {
           onClick={() =>
             downloadCsv(`members-agree-email-${getDateStamp()}.csv`, agreeEmailMembers)
           }
-          className="rounded border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+          className="rounded border border-[var(--success)]/40 bg-[var(--success-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--success)] transition hover:bg-[color:color-mix(in_oklab,var(--success)_8%,transparent)]"
         >
           동의회원 전체 CSV 다운로드
         </button>
@@ -347,17 +347,17 @@ export default function AdminMemberTable() {
           onClick={() =>
             downloadCsv(`members-current-filter-${getDateStamp()}.csv`, sortedMembers)
           }
-          className="rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+          className="rounded border border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)]"
         >
           현재 검색된 회원 전체 CSV 다운로드
         </button>
       </div>
 
-      {errorMessage ? <p className="px-4 text-sm text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="px-4 text-sm text-[var(--danger)]">{errorMessage}</p> : null}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1180px] border-collapse text-sm">
-          <thead className="bg-[#eff6ff] text-[#1e3a8a]">
+          <thead className="bg-[color:color-mix(in_oklab,var(--primary)_12%,white)] text-[var(--primary)]">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">
                 <SortButton
@@ -439,8 +439,8 @@ export default function AdminMemberTable() {
           </thead>
           <tbody>
             {pagedMembers.length === 0 ? (
-              <tr className="border-t border-slate-200">
-                <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+              <tr className="border-t border-[var(--divider)]">
+                <td colSpan={9} className="px-4 py-6 text-center text-[var(--text-muted)]">
                   회원 데이터가 없습니다.
                 </td>
               </tr>
@@ -448,14 +448,14 @@ export default function AdminMemberTable() {
               pagedMembers.map((item) => {
                 const isEditing = editingId === item.id && editForm;
                 return (
-                  <tr key={item.id} className="border-t border-slate-200">
-                    <td className="px-4 py-3 font-medium text-[#1e3a8a]">{item.username}</td>
+                  <tr key={item.id} className="border-t border-[var(--divider)]">
+                    <td className="px-4 py-3 font-medium text-[var(--primary)]">{item.username}</td>
                 <td className="px-4 py-3">
                       {isEditing ? (
                         <input
                           value={editForm.name}
                           onChange={(event) => setEditForm({ ...editForm, name: event.target.value })}
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-[var(--border)] px-2 py-1 text-xs"
                         />
                       ) : (
                         item.name
@@ -466,7 +466,7 @@ export default function AdminMemberTable() {
                         <input
                           value={editForm.phone}
                           onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })}
-                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-32 rounded border border-[var(--border)] px-2 py-1 text-xs"
                         />
                       ) : (
                         item.phone
@@ -477,7 +477,7 @@ export default function AdminMemberTable() {
                         <input
                           value={editForm.email}
                           onChange={(event) => setEditForm({ ...editForm, email: event.target.value })}
-                          className="w-44 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-44 rounded border border-[var(--border)] px-2 py-1 text-xs"
                         />
                       ) : (
                         item.email
@@ -489,7 +489,7 @@ export default function AdminMemberTable() {
                           type="date"
                           value={editForm.birth_date}
                           onChange={(event) => setEditForm({ ...editForm, birth_date: event.target.value })}
-                          className="rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="rounded border border-[var(--border)] px-2 py-1 text-xs"
                         />
                       ) : (
                         item.birth_date
@@ -505,7 +505,7 @@ export default function AdminMemberTable() {
                               gender: event.target.value as "male" | "female" | "other",
                             })
                           }
-                          className="rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="rounded border border-[var(--border)] px-2 py-1 text-xs"
                         >
                           <option value="male">남성</option>
                           <option value="female">여성</option>
@@ -528,7 +528,7 @@ export default function AdminMemberTable() {
                             onChange={(event) =>
                               setEditForm({ ...editForm, agree_email: event.target.checked })
                             }
-                            className="h-4 w-4 accent-[#1d4ed8]"
+                            className="h-4 w-4 accent-[var(--primary)]"
                           />
                           동의
                         </label>
@@ -547,7 +547,7 @@ export default function AdminMemberTable() {
                             const formatted = raw ? Number(raw).toLocaleString("ko-KR") : "0";
                             setEditForm({ ...editForm, points: formatted });
                           }}
-                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs text-right"
+                          className="w-24 rounded border border-[var(--border)] px-2 py-1 text-xs text-right"
                         />
                       ) : (
                         <span className="tabular-nums">
@@ -563,7 +563,7 @@ export default function AdminMemberTable() {
                             type="button"
                             disabled={pendingId === item.id}
                             onClick={() => saveEdit(item.id)}
-                            className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                            className="rounded border border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[var(--success-bg)] px-2 py-1 text-xs text-[var(--primary)]"
                           >
                             저장
                           </button>
@@ -571,7 +571,7 @@ export default function AdminMemberTable() {
                             type="button"
                             disabled={pendingId === item.id}
                             onClick={cancelEdit}
-                            className="rounded border border-slate-300 px-2 py-1 text-xs"
+                            className="rounded border border-[var(--border)] px-2 py-1 text-xs"
                           >
                             취소
                           </button>
@@ -580,7 +580,7 @@ export default function AdminMemberTable() {
                         <button
                           type="button"
                           onClick={() => startEdit(item)}
-                          className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
+                          className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)]"
                         >
                           수정
                         </button>
@@ -594,7 +594,7 @@ export default function AdminMemberTable() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-4 pb-4 text-sm text-slate-600">
+      <div className="flex items-center justify-between px-4 pb-4 text-sm text-[var(--text-secondary)]">
         <p>
           총 {sortedMembers.length}건 중 {sortedMembers.length === 0 ? 0 : (safePage - 1) * pageSize + 1}-
           {Math.min(safePage * pageSize, sortedMembers.length)}건 표시
@@ -604,7 +604,7 @@ export default function AdminMemberTable() {
             type="button"
             onClick={() => setPage(Math.max(1, safePage - 1))}
             disabled={safePage <= 1}
-            className="rounded border border-slate-300 px-3 py-1 text-xs disabled:opacity-50"
+            className="rounded border border-[var(--border)] px-3 py-1 text-xs disabled:opacity-50"
           >
             이전
           </button>
@@ -615,7 +615,7 @@ export default function AdminMemberTable() {
             type="button"
             onClick={() => setPage(Math.min(totalPages, safePage + 1))}
             disabled={safePage >= totalPages}
-            className="rounded border border-slate-300 px-3 py-1 text-xs disabled:opacity-50"
+            className="rounded border border-[var(--border)] px-3 py-1 text-xs disabled:opacity-50"
           >
             다음
           </button>

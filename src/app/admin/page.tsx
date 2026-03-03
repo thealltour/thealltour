@@ -82,7 +82,7 @@ export default async function AdminPage() {
         <section className="grid gap-4 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-surface)] p-5 backdrop-blur-md md:grid-cols-2 transition-colors">
           <article className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 transition-colors">
             <h2 className="text-lg font-bold text-[var(--text-primary)]">Quick actions</h2>
-            <ul className="divide-y divide-[var(--border)] rounded-lg bg-[var(--surface)] ring-1 ring-[var(--border)]">
+            <ul className="divide-y divide-[var(--divider)] rounded-lg bg-[var(--surface)] ring-1 ring-[var(--border)]">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (

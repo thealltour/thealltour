@@ -150,22 +150,22 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
     <ConsultModalContext.Provider value={value}>
       {children}
       {isOpen && (
-        <div className="fixed inset-0 z-50 bg-[#020617]/75">
+        <div className="fixed inset-0 z-[60] bg-[var(--overlay)] backdrop-blur-[2px]">
           <div className="flex min-h-full items-center justify-center px-4 py-6">
-            <div className="w-full max-w-md rounded-2xl border border-white/12 bg-[#0F172A] p-6 text-site-primary shadow-xl">
+            <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-6 text-[var(--text-primary)] shadow-[var(--shadow-modal)]">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold tracking-[0.18em] text-site-muted">
+                  <p className="text-xs font-semibold tracking-[0.18em] text-[var(--text-muted)]">
                     THEALL QUICK CONSULT
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold text-site-primary md:text-2xl">
+                  <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl">
                     상담 문의하기
                   </h2>
-                  <p className="mt-1 text-xs text-site-muted md:text-sm">
+                  <p className="mt-1 text-xs text-[var(--text-muted)] md:text-sm">
                     간단한 정보만 남겨주시면, 전담 상담사가 순차적으로 연락드립니다.
                   </p>
                   {params.productTitle ? (
-                    <p className="mt-2 text-xs text-site-muted">
+                    <p className="mt-2 text-xs text-[var(--text-muted)]">
                       상품: {params.productTitle}
                     </p>
                   ) : null}
@@ -173,7 +173,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-site-muted transition-colors duration-150 hover:border-white/25 hover:text-white"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] transition-colors duration-150 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
                   aria-label="상담 모달 닫기"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
@@ -181,7 +181,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3.5">
-                <div className="flex flex-col gap-1.5 text-xs font-medium text-site-secondary">
+                <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                   <label className="space-y-1.5">
                     <span>이름 *</span>
                     <input
@@ -189,12 +189,12 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                       value={form.name}
                       onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                       placeholder="성함을 입력해 주세요"
-                      className="w-full rounded-xl border border-white/12 bg-[#020617]/60 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-150 placeholder:text-white/35 focus:border-[rgba(59,130,246,0.6)] focus:ring-2 focus:ring-[rgba(59,130,246,0.35)]"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                       required
                     />
                   </label>
                 </div>
-                <div className="flex flex-col gap-1.5 text-xs font-medium text-site-secondary">
+                <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                   <label className="space-y-1.5">
                     <span>연락처 *</span>
                     <input
@@ -204,12 +204,12 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         setForm((prev) => ({ ...prev, phone: formatPhoneInput(e.target.value) }))
                       }
                       placeholder="010-0000-0000"
-                      className="w-full rounded-xl border border-white/12 bg-[#020617]/60 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-150 placeholder:text-white/35 focus:border-[rgba(59,130,246,0.6)] focus:ring-2 focus:ring-[rgba(59,130,246,0.35)]"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                       required
                     />
                   </label>
                 </div>
-                <div className="flex flex-col gap-1.5 text-xs font-medium text-site-secondary">
+                <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                   <label className="space-y-1.5">
                     <span>문의 내용 *</span>
                     <textarea
@@ -217,13 +217,13 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                       value={form.content}
                       onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
                       placeholder="예: 5월 중 일본 골프 3박 4일, 4인 강습 포함 일정 희망"
-                      className="w-full rounded-xl border border-white/12 bg-[#020617]/60 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-150 placeholder:text-white/35 focus:border-[rgba(59,130,246,0.6)] focus:ring-2 focus:ring-[rgba(59,130,246,0.35)]"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                       required
                     />
                   </label>
                 </div>
                 <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <p className="text-[10px] text-site-muted md:text-xs">
+                  <p className="text-[10px] text-[var(--text-muted)] md:text-xs">
                     남겨주신 연락처로만 상담 연락을 드리며, 다른 용도로는 사용하지 않습니다.
                   </p>
                   <div className="flex justify-end">
@@ -244,7 +244,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
       )}
 
       {toast ? (
-        <div className="fixed top-4 right-4 z-[60]">
+        <div className="fixed top-4 right-4 z-[70]">
           <div
             className={`rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
               toast.kind === "success" ? "bg-emerald-600" : "bg-red-600"

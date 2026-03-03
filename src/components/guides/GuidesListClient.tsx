@@ -38,7 +38,7 @@ export function GuidesListClient({ guides }: GuidesListClientProps) {
             href={notionUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white text-left shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:ring-offset-2"
+            className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white text-left shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-offset-2"
           >
             <div className="relative h-40 w-full overflow-hidden bg-slate-200">
               {guide.cover_image_url || guide.thumbnail_url ? (

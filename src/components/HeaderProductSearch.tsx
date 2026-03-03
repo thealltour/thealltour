@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
 import HeaderSearchDropdown from "@/components/HeaderSearchDropdown";
 
 type HeaderProductSearchProps = {
@@ -161,8 +163,14 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
         <label htmlFor="header-product-search-desktop" className="sr-only">
           패키지상품 검색
         </label>
-        <div className="relative w-full">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+        <div
+          className={cn(
+            "relative flex w-full items-center rounded-2xl border bg-[var(--surface)] px-4 shadow-[var(--shadow-soft)] transition",
+            "border-[var(--border)]",
+            isFocused && "border-[var(--primary)] ring-[3px] ring-[var(--focus-ring)]",
+          )}
+        >
+          <Search className="pointer-events-none h-4 w-4 shrink-0 text-[var(--text-subtle)]" />
           <input
             id="header-product-search-desktop"
             type="text"
@@ -172,22 +180,27 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
             onFocus={() => setIsFocused(true)}
             onBlur={() => setTimeout(() => setIsFocused(false), 120)}
             placeholder="지역/코스/상품명을 검색하세요 (예: 동남아 골프, 유럽 여행)"
-            className="h-12 w-full rounded-full border border-white/10 bg-white/5 pl-10 pr-10 text-sm text-white outline-none transition-colors duration-150 placeholder:text-white/40 focus:border-[rgba(59,130,246,0.4)] focus:ring-2 focus:ring-[rgba(59,130,246,0.3)]"
+            className="h-11 min-h-[44px] w-full flex-1 bg-transparent pl-3 pr-24 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-subtle)]"
             autoComplete="off"
           />
-          {query ? (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                desktopInputRef.current?.focus();
-              }}
-              aria-label="검색어 지우기"
-              className="absolute right-3 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-white/50 transition-colors duration-150 hover:bg-white/10 hover:text-white/85"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          ) : null}
+          <div className="absolute right-2 flex items-center gap-1">
+            {query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  desktopInputRef.current?.focus();
+                }}
+                aria-label="검색어 지우기"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            ) : null}
+            <Button type="submit" size="sm" className="min-h-9 px-4">
+              검색
+            </Button>
+          </div>
         </div>
         <HeaderSearchDropdown
           open={showDropdown}
@@ -211,8 +224,14 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
       <label htmlFor="header-product-search-mobile" className="sr-only">
         패키지상품 검색
       </label>
-      <div className="relative w-full">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+      <div
+        className={cn(
+          "relative flex w-full items-center rounded-2xl border bg-[var(--surface)] px-3.5 shadow-[var(--shadow-soft)] transition",
+          "border-[var(--border)]",
+          isFocused && "border-[var(--primary)] ring-[3px] ring-[var(--focus-ring)]",
+        )}
+      >
+        <Search className="pointer-events-none h-4 w-4 shrink-0 text-[var(--text-subtle)]" />
         <input
           id="header-product-search-mobile"
           type="text"
@@ -221,23 +240,28 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 120)}
-          placeholder="지역/코스/상품명을 검색하세요 (예: 동남아 골프, 유럽 여행)"
-          className="h-11 w-full rounded-full border border-white/10 bg-white/5 pl-9 pr-9 text-[14px] text-white outline-none transition-colors duration-150 placeholder:text-white/40 focus:border-[rgba(59,130,246,0.4)] focus:ring-2 focus:ring-[rgba(59,130,246,0.3)]"
+          placeholder="지역/코스/상품명을 검색하세요"
+          className="h-11 min-h-[44px] w-full flex-1 bg-transparent pl-2.5 pr-20 text-[14px] text-[var(--foreground)] outline-none placeholder:text-[var(--text-subtle)]"
           autoComplete="off"
         />
-        {query ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              mobileInputRef.current?.focus();
-            }}
-            aria-label="검색어 지우기"
-            className="absolute right-3 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-white/50 transition-colors duration-150 hover:bg-white/10 hover:text-white/85"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        ) : null}
+        <div className="absolute right-2 flex items-center gap-1">
+          {query ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                mobileInputRef.current?.focus();
+              }}
+              aria-label="검색어 지우기"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          ) : null}
+          <Button type="submit" size="sm" className="min-h-9 px-3 text-xs">
+            검색
+          </Button>
+        </div>
       </div>
       <HeaderSearchDropdown
         open={showDropdown}

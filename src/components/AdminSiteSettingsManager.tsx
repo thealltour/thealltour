@@ -192,21 +192,21 @@ export default function AdminSiteSettingsManager() {
   }
 
   return (
-    <section className="space-y-4 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+    <section className="space-y-4 rounded-xl bg-[var(--card-muted)] p-4 ring-1 ring-[var(--border)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-bold text-[#1e3a8a]">사이트 환경설정</h3>
         <button
           type="button"
           onClick={handleSave}
           disabled={isLoading || isSaving}
-          className="rounded-lg bg-[#1d4ed8] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
+          className="rounded-lg bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving ? "저장 중..." : "환경설정 저장"}
         </button>
       </div>
 
       {/* 서브헤더: 섹션 탭 */}
-      <div className="flex flex-wrap gap-1 rounded-lg border border-[#dbeafe] bg-white p-1">
+      <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1">
         {SETTINGS_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -214,8 +214,8 @@ export default function AdminSiteSettingsManager() {
             onClick={() => setActiveSection(tab.id)}
             className={`rounded-md px-3 py-2 text-sm font-medium transition ${
               activeSection === tab.id
-                ? "bg-[#1e3a8a] text-white"
-                : "text-slate-600 hover:bg-slate-100"
+                ? "bg-[var(--primary)] text-white"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
             {tab.label}
@@ -223,14 +223,14 @@ export default function AdminSiteSettingsManager() {
         ))}
       </div>
 
-      {isLoading ? <p className="text-sm text-slate-500">환경설정을 불러오는 중입니다...</p> : null}
+      {isLoading ? <p className="text-sm text-[var(--text-muted)]">환경설정을 불러오는 중입니다...</p> : null}
       {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
       {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
 
       <div className="min-h-[200px]">
         {activeSection === "channel" && (
           <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           카카오채널 URL
           <input
             type="url"
@@ -242,13 +242,13 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: https://pf.kakao.com/..."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
-          <span className="text-xs font-normal text-slate-500">
+          <span className="text-xs font-normal text-[var(--text-muted)]">
             푸터 & 버튼에서 사용할 카카오채널 / 상담 URL 입니다.
           </span>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           인스타그램 URL
           <input
             type="url"
@@ -260,11 +260,11 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: https://www.instagram.com/..."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
-          <span className="text-xs font-normal text-slate-500">푸터의 인스타그램 버튼에 사용됩니다.</span>
+          <span className="text-xs font-normal text-[var(--text-muted)]">푸터의 인스타그램 버튼에 사용됩니다.</span>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           카카오톡 상담 URL (플로팅 버튼)
           <input
             type="url"
@@ -276,9 +276,9 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: https://pf.kakao.com/..."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
-          <span className="text-xs font-normal text-slate-500">
+          <span className="text-xs font-normal text-[var(--text-muted)]">
             화면 우측 하단 플로팅 상담 버튼 클릭 시 이동할 URL 입니다.
           </span>
         </label>
@@ -287,7 +287,7 @@ export default function AdminSiteSettingsManager() {
 
         {activeSection === "company" && (
           <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           회사명
           <input
             type="text"
@@ -299,10 +299,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: (주)더올투어"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           대표자명
           <input
             type="text"
@@ -314,10 +314,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 김지호"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           주소
           <input
             type="text"
@@ -329,10 +329,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 경기도 고양시 덕양구 ..."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           사업자등록번호
           <input
             type="text"
@@ -344,10 +344,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 645-88-03583"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           관광사업등록번호
           <input
             type="text"
@@ -359,10 +359,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 제 0000-00호 / 미정 등"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           통신판매업신고번호
           <input
             type="text"
@@ -374,10 +374,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 제 2024-고양덕양-0000호 / 미정 등"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           대표번호
           <input
             type="text"
@@ -389,10 +389,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 02-0000-0000"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           대표 이메일
           <input
             type="email"
@@ -404,7 +404,7 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: thealltour@gmail.com"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
           </div>
@@ -412,7 +412,7 @@ export default function AdminSiteSettingsManager() {
 
         {activeSection === "products-hero" && (
           <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           패키지상품 히어로 헤드라인
           <textarea
             rows={2}
@@ -424,10 +424,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 패키지상품으로 원하시는 지역·예산에 맞춰 바로 상담까지 연결해 드려요."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           패키지상품 히어로 보조 설명
           <textarea
             rows={3}
@@ -439,12 +439,12 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 골프/패키지, 가족·지인·단체 여행까지..."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <div className="md:col-span-2 space-y-2 rounded-lg border border-dashed border-slate-300 bg-white/60 p-3">
+        <div className="md:col-span-2 space-y-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-700">
+            <p className="text-xs font-semibold text-[var(--text-primary)]">
               패키지상품 히어로 지역 선택 옵션
             </p>
             <button
@@ -459,12 +459,12 @@ export default function AdminSiteSettingsManager() {
                   },
                 ])
               }
-              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             >
               옵션 추가
             </button>
           </div>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-[var(--text-muted)]">
             셀렉트 박스에 노출될 항목입니다. 표시 이름은 셀렉트·유입 상품명에 함께 사용되고, 검색
             키워드는 상품 목록 필터에 사용됩니다.
           </p>
@@ -472,10 +472,10 @@ export default function AdminSiteSettingsManager() {
             {heroRegions.map((region, index) => (
               <div
                 key={index}
-                className="grid gap-2 rounded-md border border-slate-200 bg-slate-50/70 p-2 text-[11px] md:grid-cols-[1.2fr_1fr_0.9fr_auto]"
+                className="grid gap-2 rounded-md border border-[var(--border)] bg-[var(--card-muted)] p-2 text-[11px] md:grid-cols-[1.2fr_1fr_0.9fr_auto]"
               >
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-slate-700">표시 이름</span>
+                  <span className="font-semibold text-[var(--text-primary)]">표시 이름</span>
                   <input
                     type="text"
                     value={region.label}
@@ -488,11 +488,11 @@ export default function AdminSiteSettingsManager() {
                       );
                     }}
                     placeholder="예: 일본 골프·패키지"
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-slate-700">검색 키워드</span>
+                  <span className="font-semibold text-[var(--text-primary)]">검색 키워드</span>
                   <input
                     type="text"
                     value={region.searchKeyword}
@@ -505,11 +505,11 @@ export default function AdminSiteSettingsManager() {
                       );
                     }}
                     placeholder="예: 일본"
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-slate-700">URL 파라미터(id)</span>
+                  <span className="font-semibold text-[var(--text-primary)]">URL 파라미터(id)</span>
                   <input
                     type="text"
                     value={region.id}
@@ -522,7 +522,7 @@ export default function AdminSiteSettingsManager() {
                       );
                     }}
                     placeholder="예: japan"
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
                   />
                 </div>
                 <div className="flex items-end justify-end">
@@ -531,7 +531,7 @@ export default function AdminSiteSettingsManager() {
                     onClick={() =>
                       setHeroRegions((prev) => prev.filter((_, idx) => idx !== index))
                     }
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
                   >
                     삭제
                   </button>
@@ -544,13 +544,13 @@ export default function AdminSiteSettingsManager() {
         )}
 
         {activeSection === "about" && (
-          <div className="space-y-2 rounded-lg border border-slate-200 bg-white/70 p-3">
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--card-muted)] p-3">
           <p className="text-xs font-bold text-[#1e3a8a]">회사소개(About) 페이지 콘텐츠</p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-[var(--text-muted)]">
             랜딩 페이지로 대체하거나, 회사소개 문구를 수정할 때 사용합니다. CTA URL에 외부 랜딩 주소를
             입력하면 버튼 클릭 시 해당 페이지로 이동합니다.
           </p>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
             상단 라벨(영문)
             <input
               type="text"
@@ -562,10 +562,10 @@ export default function AdminSiteSettingsManager() {
                 }))
               }
               placeholder="예: ABOUT THEALL TOUR"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
             메인 타이틀
             <input
               type="text"
@@ -577,10 +577,10 @@ export default function AdminSiteSettingsManager() {
                 }))
               }
               placeholder="예: 여행을 디자인해 드립니다"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
             소개 문단 1
             <textarea
               rows={3}
@@ -592,10 +592,10 @@ export default function AdminSiteSettingsManager() {
                 }))
               }
               placeholder="첫 번째 소개 문단을 입력하세요."
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
             소개 문단 2
             <textarea
               rows={3}
@@ -607,11 +607,11 @@ export default function AdminSiteSettingsManager() {
                 }))
               }
               placeholder="두 번째 소개 문단을 입력하세요."
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
             />
           </label>
           <div className="grid gap-2 md:grid-cols-[1.4fr_1.8fr]">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
               CTA 버튼 문구
               <input
                 type="text"
@@ -623,10 +623,10 @@ export default function AdminSiteSettingsManager() {
                   }))
                 }
                 placeholder="예: 맞춤 여행 상담 받기"
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
               CTA 이동 URL
               <input
                 type="text"
@@ -638,7 +638,7 @@ export default function AdminSiteSettingsManager() {
                   }))
                 }
                 placeholder="예: /#contact 또는 https://landing.thealltour.com/about"
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
               />
               <span className="text-[11px] font-normal text-slate-500">
                 http로 시작하면 새 탭에서 외부 랜딩 페이지를 엽니다. 비워두면 기본 문의 섹션(/#contact)으로 이동합니다.
@@ -650,7 +650,7 @@ export default function AdminSiteSettingsManager() {
 
         {activeSection === "golf-hero" && (
           <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           골프/파크골프 히어로 헤드라인
           <textarea
             rows={2}
@@ -662,10 +662,10 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 골프/파크골프 전문 맞춤 설계로 라운딩 동선을 깔끔하게 잡아드립니다."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           골프/파크골프 히어로 보조 설명
           <textarea
             rows={3}
@@ -677,12 +677,12 @@ export default function AdminSiteSettingsManager() {
               }))
             }
             placeholder="예: 선호하는 골프장, 라운딩 횟수, 동행 인원과 예산을 알려주시면..."
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
         </label>
-        <div className="md:col-span-2 space-y-2 rounded-lg border border-dashed border-slate-300 bg-white/60 p-3">
+        <div className="md:col-span-2 space-y-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-700">
+            <p className="text-xs font-semibold text-[var(--text-primary)]">
               골프/파크골프 히어로 지역 선택 옵션
             </p>
             <button
@@ -697,12 +697,12 @@ export default function AdminSiteSettingsManager() {
                   },
                 ])
               }
-              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             >
               옵션 추가
             </button>
           </div>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-[var(--text-muted)]">
             골프/파크골프 전용 뷰에서 노출될 옵션입니다. 표시 이름은 유입 상품명에도 사용되고, 검색
             키워드는 골프 상품 목록 필터에 사용됩니다.
           </p>
@@ -710,10 +710,10 @@ export default function AdminSiteSettingsManager() {
             {golfHeroRegions.map((region, index) => (
               <div
                 key={index}
-                className="grid gap-2 rounded-md border border-slate-200 bg-slate-50/70 p-2 text-[11px] md:grid-cols-[1.2fr_1fr_0.9fr_auto]"
+                className="grid gap-2 rounded-md border border-[var(--border)] bg-[var(--card-muted)] p-2 text-[11px] md:grid-cols-[1.2fr_1fr_0.9fr_auto]"
               >
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-slate-700">표시 이름</span>
+                  <span className="font-semibold text-[var(--text-primary)]">표시 이름</span>
                   <input
                     type="text"
                     value={region.label}
@@ -726,11 +726,11 @@ export default function AdminSiteSettingsManager() {
                       );
                     }}
                     placeholder="예: 일본 골프투어"
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-slate-700">검색 키워드</span>
+                  <span className="font-semibold text-[var(--text-primary)]">검색 키워드</span>
                   <input
                     type="text"
                     value={region.searchKeyword}
@@ -743,11 +743,11 @@ export default function AdminSiteSettingsManager() {
                       );
                     }}
                     placeholder="예: 일본 골프"
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-slate-700">URL 파라미터(id)</span>
+                  <span className="font-semibold text-[var(--text-primary)]">URL 파라미터(id)</span>
                   <input
                     type="text"
                     value={region.id}
@@ -760,7 +760,7 @@ export default function AdminSiteSettingsManager() {
                       );
                     }}
                     placeholder="예: golf-japan"
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#bfdbfe]"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
                   />
                 </div>
                 <div className="flex items-end justify-end">
@@ -769,7 +769,7 @@ export default function AdminSiteSettingsManager() {
                     onClick={() =>
                       setGolfHeroRegions((prev) => prev.filter((_, idx) => idx !== index))
                     }
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
                   >
                     삭제
                   </button>

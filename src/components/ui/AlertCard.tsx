@@ -2,23 +2,31 @@
 
 import { AlertTriangle, Info, MessageSquare } from "lucide-react";
 
-export type AlertCardVariant = "warning" | "info" | "neutral";
+export type AlertCardVariant = "success" | "warning" | "danger" | "info" | "neutral";
 
 const variantConfig: Record<
   AlertCardVariant,
   { icon: typeof AlertTriangle; className: string }
 > = {
+  success: {
+    icon: Info,
+    className: "border border-[var(--divider)] bg-[var(--success-bg)] [&_.alert-icon]:text-[var(--success)]",
+  },
   warning: {
     icon: AlertTriangle,
-    className: "bg-amber-50 ring-amber-200 text-amber-800 [&_.alert-icon]:text-amber-600",
+    className: "border border-[var(--divider)] bg-[var(--warning-bg)] [&_.alert-icon]:text-[var(--warning)]",
+  },
+  danger: {
+    icon: AlertTriangle,
+    className: "border border-[var(--divider)] bg-[var(--danger-bg)] [&_.alert-icon]:text-[var(--danger)]",
   },
   info: {
     icon: Info,
-    className: "bg-[#f8fbff] ring-[#dbeafe] text-[#1e3a8a] [&_.alert-icon]:text-[#2563eb]",
+    className: "border border-[var(--divider)] bg-[var(--surface-muted)] [&_.alert-icon]:text-[var(--primary)]",
   },
   neutral: {
     icon: MessageSquare,
-    className: "bg-slate-50 ring-slate-200 text-slate-700 [&_.alert-icon]:text-slate-500",
+    className: "border border-[var(--divider)] bg-[var(--surface-muted)] [&_.alert-icon]:text-[var(--text-muted)]",
   },
 };
 
@@ -38,7 +46,7 @@ export default function AlertCard({
   const { icon: Icon, className: variantClass } = variantConfig[variant];
   return (
     <div
-      className={`rounded-xl ring-1 p-4 ${variantClass} ${className}`}
+      className={`rounded-xl border p-4 ${variantClass} ${className}`}
       role="region"
       aria-label={title ?? "안내"}
     >
@@ -48,9 +56,9 @@ export default function AlertCard({
         </span>
         <div className="min-w-0 flex-1">
           {title ? (
-            <h3 className="mb-1.5 text-sm font-semibold">{title}</h3>
+            <h3 className="mb-1.5 text-sm font-semibold text-[var(--foreground)]">{title}</h3>
           ) : null}
-          <div className="text-sm leading-[1.7] text-slate-700">{children}</div>
+          <div className="text-sm leading-[1.7] text-[var(--text-muted)]">{children}</div>
         </div>
       </div>
     </div>

@@ -261,7 +261,7 @@ export function FlightSummarySection({
                 baggageLimit={depBaggage || undefined}
               />
             ) : null}
-            {hasDepart && hasArrival ? <div className="my-3 border-t border-slate-200" /> : null}
+            {hasDepart && hasArrival ? <div className="my-3 border-t border-[var(--divider)]" /> : null}
             {hasArrival ? (
               <MobileFlightBlock
                 label="도착 항공편"

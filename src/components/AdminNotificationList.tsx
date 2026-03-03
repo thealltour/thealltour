@@ -118,20 +118,20 @@ export default function AdminNotificationList() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4">
-        <p className="text-sm text-slate-600">
-          읽지 않은 알림 <span className="font-semibold text-[#1d4ed8]">{unreadCount}</span>건
+        <p className="text-sm text-[var(--text-secondary)]">
+          읽지 않은 알림 <span className="font-semibold text-[var(--primary)]">{unreadCount}</span>건
         </p>
         <button
           type="button"
           disabled={isMarkingAll || unreadCount === 0}
           onClick={markAllAsRead}
-          className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isMarkingAll ? "처리 중..." : "Mark all as read"}
         </button>
       </div>
 
-      {errorMessage ? <p className="px-4 text-sm text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="px-4 text-sm text-[var(--danger)]">{errorMessage}</p> : null}
 
       <div className="flex flex-wrap gap-2 px-4">
         {NOTIFICATION_FILTER_TABS.map((tab) => (
@@ -141,8 +141,8 @@ export default function AdminNotificationList() {
             onClick={() => setActiveTab(tab.id)}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
               activeTab === tab.id
-                ? "bg-[#2563eb] text-white"
-                : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                ? "bg-[var(--primary)] text-white"
+                : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
             {tab.label}
@@ -152,7 +152,7 @@ export default function AdminNotificationList() {
 
       <div className="space-y-2 px-4 pb-4">
         {filteredNotifications.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card-muted)] p-4 text-sm text-[var(--text-muted)]">
             선택한 조건의 알림이 없습니다.
           </div>
         ) : (
@@ -160,12 +160,12 @@ export default function AdminNotificationList() {
             <article
               key={item.id}
               className={`rounded-xl border p-4 ${
-                item.is_read ? "border-slate-200 bg-white" : "border-blue-200 bg-blue-50/60"
+                item.is_read ? "border-[var(--border)] bg-[var(--card)]" : "border-[color:color-mix(in_oklab,var(--primary)_35%,transparent)] bg-[var(--success-bg)]"
               }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-[#0f172a]">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">
                     {item.type === "birthday_upcoming"
                       ? "🎂 "
                       : item.type === "new_member"
@@ -177,15 +177,15 @@ export default function AdminNotificationList() {
                             : "🔔 "}
                     {item.title}
                   </p>
-                  <p className="text-sm text-slate-700">{item.message}</p>
-                  <p className="text-xs text-slate-500">{formatDate(item.created_at)}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">{item.message}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{formatDate(item.created_at)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                       item.is_read
-                        ? "bg-slate-100 text-slate-500"
-                        : "bg-blue-100 text-blue-700"
+                        ? "bg-[var(--card-muted)] text-[var(--text-muted)]"
+                        : "bg-[var(--success-bg)] text-[var(--primary)]"
                     }`}
                   >
                     {item.is_read ? "읽음" : "새 알림"}
@@ -193,7 +193,7 @@ export default function AdminNotificationList() {
                   <button
                     type="button"
                     onClick={() => openNotification(item)}
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 transition hover:bg-slate-50"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
                   >
                     {item.target_url ? "열기" : "확인"}
                   </button>

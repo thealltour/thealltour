@@ -75,38 +75,36 @@ export default function HeroQuickConsultButton() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-[#60a5fa]/70 bg-[#1d4ed8] px-4 text-[14px] font-semibold text-white transition-colors duration-150 hover:border-[#93c5fd] hover:bg-[#2563eb] md:px-6 md:text-[15px]"
+        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[var(--primary)] bg-[var(--primary)] px-4 text-[14px] font-semibold text-[var(--on-primary)] transition-colors duration-150 hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] md:px-6 md:text-[15px]"
       >
-        <span className="flex items-center justify-center gap-2">
-          <Send
-            className="h-4 w-4 opacity-90"
-            strokeWidth={1.5}
-            aria-hidden="true"
-          />
-          <span>1:1 상담 문의</span>
-        </span>
+        <Send
+          className="h-4 w-4 opacity-90"
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+        <span>1:1 상담 문의</span>
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 bg-[#020617]/75">
+        <div className="fixed inset-0 z-50 bg-[var(--overlay)] backdrop-blur-[2px]">
           <div className="flex min-h-full items-center justify-center px-4 py-6">
-            <div className="w-full max-w-md rounded-2xl border border-white/12 bg-[#0F172A] p-6 text-site-primary shadow-xl">
+            <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-6 text-[var(--text-primary)] shadow-[var(--shadow-modal)]">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold tracking-[0.18em] text-site-muted">
+                  <p className="text-xs font-semibold tracking-[0.18em] text-[var(--text-muted)]">
                     THEALL QUICK CONSULT
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold text-site-primary md:text-2xl">
+                  <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl">
                     프리미엄 상담 요청 남기기
                   </h2>
-                  <p className="mt-1 text-xs text-site-muted md:text-sm">
+                  <p className="mt-1 text-xs text-[var(--text-muted)] md:text-sm">
                     간단한 정보만 남겨주시면, 전담 상담사가 순차적으로 연락드립니다.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-site-muted transition-colors duration-150 hover:border-white/25 hover:text-white"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] transition-colors duration-150 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
                   aria-label="상담 모달 닫기"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
@@ -114,7 +112,7 @@ export default function HeroQuickConsultButton() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3.5">
-                <div className="flex flex-col gap-1.5 text-xs font-medium text-site-secondary">
+                <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                   <label className="space-y-1.5">
                     <span>이름 *</span>
                     <input
@@ -124,13 +122,13 @@ export default function HeroQuickConsultButton() {
                         setForm((prev) => ({ ...prev, name: event.target.value }))
                       }
                       placeholder="성함을 입력해 주세요"
-                      className="w-full rounded-xl border border-white/12 bg-[#020617]/60 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-150 placeholder:text-white/35 focus:border-[rgba(59,130,246,0.6)] focus:ring-2 focus:ring-[rgba(59,130,246,0.35)]"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                       required
                     />
                   </label>
                 </div>
 
-                <div className="flex flex-col gap-1.5 text-xs font-medium text-site-secondary">
+                <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                   <label className="space-y-1.5">
                     <span>연락처 *</span>
                     <input
@@ -143,13 +141,13 @@ export default function HeroQuickConsultButton() {
                         }))
                       }
                       placeholder="010-0000-0000"
-                      className="w-full rounded-xl border border-white/12 bg-[#020617]/60 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-150 placeholder:text-white/35 focus:border-[rgba(59,130,246,0.6)] focus:ring-2 focus:ring-[rgba(59,130,246,0.35)]"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                       required
                     />
                   </label>
                 </div>
 
-                <div className="flex flex-col gap-1.5 text-xs font-medium text-site-secondary">
+                <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                   <label className="space-y-1.5">
                     <span>문의 내용 *</span>
                     <textarea
@@ -159,21 +157,21 @@ export default function HeroQuickConsultButton() {
                         setForm((prev) => ({ ...prev, content: event.target.value }))
                       }
                       placeholder="예: 5월 중 일본 골프 3박 4일, 4인 강습 포함 일정 희망"
-                      className="w-full rounded-xl border border-white/12 bg-[#020617]/60 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-150 placeholder:text-white/35 focus:border-[rgba(59,130,246,0.6)] focus:ring-2 focus:ring-[rgba(59,130,246,0.35)]"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                       required
                     />
                   </label>
                 </div>
 
                 <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <p className="text-[10px] text-site-muted md:text-xs">
+                  <p className="text-[10px] text-[var(--text-muted)] md:text-xs">
                     남겨주신 연락처로만 상담 연락을 드리며, 다른 용도로는 사용하지 않습니다.
                   </p>
                   <div className="flex items-center justify-end">
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="inline-flex min-w-[180px] items-center justify-center rounded-full border border-[#60a5fa]/70 bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-5 py-2.5 text-sm font-semibold tracking-[0.03em] text-white transition-colors duration-150 hover:border-[#93c5fd] hover:from-[#2563eb] hover:to-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-70"
+                      className="inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full border border-[var(--primary)] bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--on-primary)] transition-colors duration-150 hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] disabled:pointer-events-none disabled:opacity-70"
                     >
                       {isSubmitting ? "전송 중..." : "상담 신청"}
                     </button>
@@ -188,8 +186,8 @@ export default function HeroQuickConsultButton() {
       {toast ? (
         <div className="fixed top-4 right-4 z-50">
           <div
-            className={`rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
-              toast.kind === "success" ? "bg-emerald-600" : "bg-red-600"
+            className={`rounded-xl px-4 py-3 text-sm font-semibold shadow-lg text-[var(--on-primary)] ${
+              toast.kind === "success" ? "bg-[var(--success)]" : "bg-[var(--danger)]"
             }`}
           >
             {toast.message}

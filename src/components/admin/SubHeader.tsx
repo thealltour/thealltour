@@ -112,11 +112,8 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("theall-admin-theme");
-    const prefersDark =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    const shouldEnable = stored === "dark" || (!stored && prefersDark);
+    /* 기본값: 라이트 모드. 저장된 값이 "dark"일 때만 다크 적용 */
+    const shouldEnable = stored === "dark";
     const root = document.documentElement;
     if (shouldEnable) {
       root.classList.add("dark");
@@ -234,7 +231,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
 
   return (
     <div
-      className={`sticky top-0 z-30 w-full border-b border-[var(--border)] bg-[var(--card)] transition-shadow ${
+      className={`sticky top-0 z-30 w-full border-b border-[var(--divider)] bg-[var(--card)] transition-shadow ${
         isScrolled ? "shadow-sm" : ""
       }`}
     >
@@ -282,7 +279,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
           </button>
 
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-subtle)]" />
             <input
               type="text"
               value={globalSearch}
@@ -293,7 +290,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
               }}
               ref={searchInputRef}
               placeholder="Admin search..."
-              className="w-[240px] rounded-md border border-[var(--border)] bg-[var(--card)] pl-8 pr-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              className="w-[240px] rounded-md border border-[var(--border)] bg-[var(--card)] pl-8 pr-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
             />
           </div>
           <button

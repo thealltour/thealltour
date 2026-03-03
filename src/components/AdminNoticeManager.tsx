@@ -235,7 +235,7 @@ export default function AdminNoticeManager() {
           </button>
         </div>
         {!isLegalPanelOpen ? (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-[var(--text-muted)]">
             안전을 위해 기본 접힘 상태입니다. 수정이 필요할 때만 펼쳐서 사용해 주세요.
           </p>
         ) : (
@@ -296,7 +296,7 @@ export default function AdminNoticeManager() {
             <button
               type="button"
               onClick={cancelEdit}
-              className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
+              className="text-sm font-medium text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
             >
               수정 취소
             </button>
@@ -355,9 +355,9 @@ export default function AdminNoticeManager() {
       <section className="space-y-3">
         <h3 className="text-lg font-bold text-[#1e3a8a]">등록된 공지</h3>
         {isLoading ? (
-          <p className="text-sm text-slate-500">공지 목록을 불러오는 중입니다...</p>
+          <p className="text-sm text-[var(--text-muted)]">공지 목록을 불러오는 중입니다...</p>
         ) : notices.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-muted)]">
             등록된 공지가 없습니다.
           </div>
         ) : (
@@ -370,15 +370,15 @@ export default function AdminNoticeManager() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-[#0f172a]">{item.title}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-[var(--text-muted)]">
                       작성일: {formatDate(item.created_at)} / 수정일: {formatDate(item.updated_at)}
                     </p>
-                    <p className="line-clamp-2 text-xs text-slate-600">{item.content}</p>
+                    <p className="line-clamp-2 text-xs text-[var(--text-muted)]">{item.content}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span
                       className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                        item.is_published ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                        item.is_published ? "bg-green-100 text-green-700" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
                       }`}
                     >
                       {item.is_published ? "게시중" : "비공개"}

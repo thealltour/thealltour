@@ -1589,7 +1589,7 @@ export default function AdminProductManager() {
                 className={productFormOpenSections[id] ? "block" : "hidden"}
                 aria-hidden={!productFormOpenSections[id]}
               >
-                <div className="border-t border-[#dbeafe] p-4">
+                <div className="border-t border-[var(--divider)] p-4">
                   {id === "basic" && (
         <div className="grid gap-3 md:grid-cols-2">
           <input
@@ -2237,7 +2237,7 @@ export default function AdminProductManager() {
                   )}
                   {id === "schedule" && (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--divider)] pb-2">
             <span className="text-xs font-semibold text-slate-500">일정 입력 방식</span>
             <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
               <button
@@ -3133,7 +3133,7 @@ export default function AdminProductManager() {
               </thead>
               <tbody>
                 {pagedProducts.length === 0 ? (
-                  <tr className="border-t border-slate-200">
+                  <tr className="border-t border-[var(--divider)]">
                     <td colSpan={10} className="px-4 py-10 text-center text-slate-500">
                       <div className="mx-auto flex max-w-md flex-col items-center gap-2">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
@@ -3148,7 +3148,7 @@ export default function AdminProductManager() {
                   </tr>
                 ) : (
                   pagedProducts.map((product) => (
-                    <tr key={product.id} className="group border-t border-slate-200 hover:bg-slate-50">
+                    <tr key={product.id} className="group border-t border-[var(--divider)] hover:bg-[var(--surface-muted)]">
                       <td className="px-4 py-3 text-center">
                         <input
                           type="checkbox"

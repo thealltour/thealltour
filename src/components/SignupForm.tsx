@@ -208,7 +208,7 @@ export default function SignupForm() {
               onChange={(event) => updateField("username", event.target.value)}
               required
               placeholder="4~20자 영문/숫자/밑줄(_)"
-              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
             />
             <button
               type="button"
@@ -229,7 +229,7 @@ export default function SignupForm() {
             value={form.name}
             onChange={(event) => updateField("name", event.target.value)}
             required
-            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
         </label>
 
@@ -241,7 +241,7 @@ export default function SignupForm() {
             onChange={(event) => updateField("phone", event.target.value)}
             required
             placeholder="010-1234-5678"
-            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
         </label>
 
@@ -253,7 +253,7 @@ export default function SignupForm() {
             onChange={(event) => updateField("password", event.target.value)}
             required
             placeholder="8자 이상"
-            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
         </label>
 
@@ -264,7 +264,7 @@ export default function SignupForm() {
             value={form.confirmPassword}
             onChange={(event) => updateField("confirmPassword", event.target.value)}
             required
-            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
           {form.confirmPassword.length > 0 ? (
             <span className={`text-xs ${isPasswordMatched ? "text-green-600" : "text-red-500"}`}>
@@ -280,7 +280,7 @@ export default function SignupForm() {
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
             required
-            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
         </label>
 
@@ -291,7 +291,7 @@ export default function SignupForm() {
               required
               value={birthYear}
               onChange={(event) => updateBirthDate({ year: event.target.value })}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
             >
               <option value="">년도</option>
               {birthYearOptions.map((year) => (
@@ -304,7 +304,7 @@ export default function SignupForm() {
               required
               value={birthMonth}
               onChange={(event) => updateBirthDate({ month: event.target.value })}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
             >
               <option value="">월</option>
               {birthMonthOptions.map((month) => (
@@ -317,7 +317,7 @@ export default function SignupForm() {
               required
               value={birthDay}
               onChange={(event) => updateBirthDate({ day: event.target.value })}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
             >
               <option value="">일</option>
               {birthDayOptions.map((day) => (
@@ -426,22 +426,22 @@ export default function SignupForm() {
       </button>
 
       {openDocument ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h3 className="text-base font-bold text-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-[var(--surface-elevated)] shadow-[var(--shadow-modal)] ring-1 ring-[var(--border)]">
+            <div className="flex items-center justify-between border-b border-[var(--divider)] px-5 py-4">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
                 {openDocument === "terms" ? "서비스 이용약관" : "개인정보 수집 및 이용 동의"}
               </h3>
               <button
                 type="button"
                 onClick={() => setOpenDocument(null)}
-                className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-md border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
               >
                 닫기
               </button>
             </div>
             <div className="max-h-[65vh] overflow-y-auto px-5 py-4">
-              <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
+              <p className="whitespace-pre-line text-sm leading-7 text-[var(--text-secondary)]">
                 {openDocument === "terms" ? legalDocuments.terms : legalDocuments.privacy}
               </p>
             </div>

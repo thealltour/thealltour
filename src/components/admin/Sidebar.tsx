@@ -87,7 +87,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
             },
           )}
 
-          <div className="mt-4 space-y-1 border-t border-[var(--border)] pt-3 text-xs text-[var(--text-muted)]">
+          <div className="mt-4 space-y-1 border-t border-[var(--divider)] pt-3 text-xs text-[var(--text-muted)]">
             {!isCollapsed && (
               <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.16em]">기타</p>
             )}

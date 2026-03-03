@@ -30,7 +30,7 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
     <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm">
       <h4 className="mb-3 font-semibold text-slate-700">고객 선택 구성</h4>
       {hasOptions ? (
-        <ul className="mb-3 list-inside list-disc space-y-1 text-slate-600">
+        <ul className="mb-3 list-inside list-disc space-y-1 text-[var(--text-muted)]">
           {(snapshot.quoteSummary?.breakdown?.length ?? 0) > 0
             ? snapshot.quoteSummary!.breakdown.map((b, i) => (
                 <li key={i}>
@@ -47,7 +47,7 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
         </ul>
       ) : null}
       {hasSummary && snapshot.quoteSummary ? (
-        <div className="space-y-1 border-t border-slate-200 pt-3 text-slate-600">
+        <div className="space-y-1 border-t border-[var(--divider)] pt-3 text-[var(--text-secondary)]">
           {snapshot.quoteSummary.basePrice != null ? (
             <p>예상 기본가: {formatPrice(snapshot.quoteSummary.basePrice)}</p>
           ) : null}
@@ -64,7 +64,7 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
         </div>
       ) : null}
       {snapshot.inquiredAt ? (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-[var(--text-subtle)]">
           문의 시각: {formatDate(snapshot.inquiredAt)}
         </p>
       ) : null}
@@ -255,7 +255,7 @@ export default function AdminInquiryTable() {
       <div className="space-y-3 px-4 py-6">
         <div className="h-9 w-80 animate-pulse rounded-lg bg-slate-100" />
         <div className="h-56 animate-pulse rounded-xl bg-slate-100" />
-        <p className="text-sm text-slate-500">문의 목록을 불러오는 중입니다...</p>
+        <p className="text-sm text-[var(--text-muted)]">문의 목록을 불러오는 중입니다...</p>
       </div>
     );
   }
@@ -264,7 +264,7 @@ export default function AdminInquiryTable() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="flex min-w-64 flex-col gap-2 text-xs font-semibold text-slate-500">
+          <label className="flex min-w-64 flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             검색(이름/연락처/문의내용)
             <input
               type="text"
@@ -277,7 +277,7 @@ export default function AdminInquiryTable() {
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
             />
           </label>
-          <label className="flex flex-col gap-2 text-xs font-semibold text-slate-500">
+          <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             상담여부
             <select
               value={statusFilter}
@@ -292,7 +292,7 @@ export default function AdminInquiryTable() {
               <option value="pending">미완료</option>
             </select>
           </label>
-          <label className="flex flex-col gap-2 text-xs font-semibold text-slate-500">
+          <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             정렬
             <select
               value={sortBy}
@@ -308,7 +308,7 @@ export default function AdminInquiryTable() {
               <option value="name">이름순</option>
             </select>
           </label>
-          <label className="flex flex-col gap-2 text-xs font-semibold text-slate-500">
+          <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             페이지 크기
             <select
               value={pageSize}
@@ -353,7 +353,7 @@ export default function AdminInquiryTable() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 text-xs text-slate-600">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 text-xs text-[var(--text-muted)]">
         <p>
           전체 {total}건 · 미완료 {pendingCount}건 · 완료 {completedCount}건
         </p>
@@ -396,8 +396,8 @@ export default function AdminInquiryTable() {
           </thead>
           <tbody>
             {inquiries.length === 0 ? (
-              <tr className="border-t border-slate-200">
-                <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+              <tr className="border-t border-[var(--divider)]">
+                <td colSpan={8} className="px-4 py-6 text-center text-[var(--text-muted)]">
                   조건에 맞는 문의가 없습니다.
                 </td>
               </tr>
@@ -411,7 +411,7 @@ export default function AdminInquiryTable() {
                   <Fragment key={inquiry.id}>
                     <tr
                       key={inquiry.id}
-                      className={`border-t border-slate-200 ${
+                      className={`border-t border-[var(--divider)] ${
                         !isCompleted ? "bg-amber-50/40 hover:bg-amber-50/70" : "hover:bg-slate-50"
                       }`}
                     >
@@ -457,11 +457,11 @@ export default function AdminInquiryTable() {
                         <div className="space-y-1">
                           <p className="font-medium text-slate-700">{inquiry.product_title}</p>
                           {inquiry.source_path ? (
-                            <p className="text-xs text-slate-500">{inquiry.source_path}</p>
+                            <p className="text-xs text-[var(--text-subtle)]">{inquiry.source_path}</p>
                           ) : null}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400">일반 문의</span>
+                        <span className="text-xs text-[var(--text-subtle)]">일반 문의</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -478,7 +478,7 @@ export default function AdminInquiryTable() {
                         </button>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-xs tabular-nums text-slate-600">
+                    <td className="px-4 py-3 text-xs tabular-nums text-[var(--text-muted)]">
                       {formatDate(inquiry.created_at ?? "")}
                     </td>
                     <td className="px-4 py-3">
@@ -493,12 +493,12 @@ export default function AdminInquiryTable() {
                           {expandedQuoteId === inquiry.id ? "접기" : "보기"}
                         </button>
                       ) : (
-                        <span className="text-slate-400">-</span>
+                        <span className="text-[var(--text-subtle)]">-</span>
                       )}
                     </td>
                   </tr>
                   {inquiry.quote_snapshot && expandedQuoteId === inquiry.id ? (
-                    <tr className="border-t border-slate-200 bg-slate-50/50">
+                    <tr className="border-t border-[var(--divider)] bg-[var(--surface-muted)]">
                       <td colSpan={8} className="px-4 py-3">
                         <QuoteSnapshotSection snapshot={inquiry.quote_snapshot} />
                       </td>
@@ -511,7 +511,7 @@ export default function AdminInquiryTable() {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between px-4 pb-4 pt-1 text-sm text-slate-600">
+      <div className="flex items-center justify-between px-4 pb-4 pt-1 text-sm text-[var(--text-muted)]">
         <p>
           총 {total}건 중 {total === 0 ? 0 : (safePage - 1) * pageSize + 1}
           -

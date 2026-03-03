@@ -48,13 +48,13 @@ export function TravelOverviewV2({
 
   return (
     <section
-      className="w-full overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-lg shadow-slate-200/50"
+      className="w-full overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft-strong)]"
       aria-label={title}
     >
       <div className="p-6 md:p-8">
         <div className="mb-6">
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">{title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{subtext}</p>
+          <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">{title}</h2>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">{subtext}</p>
         </div>
 
         <div className="space-y-8">
@@ -95,13 +95,13 @@ function SummaryCard({ card }: { card: CardModel }) {
   const Icon = CARD_ICONS[card.iconKey] ?? MoreHorizontal;
   const displayValue = card.value?.trim() || "상담 시 안내";
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1E3A8A]">
+    <div className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition hover:shadow-[var(--shadow-soft-strong)]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:color-mix(in_oklab,var(--primary)_12%,white)] text-[var(--primary)]">
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.label}</p>
-        <p className="mt-0.5 line-clamp-2 break-words text-sm font-semibold text-slate-800">{displayValue}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{card.label}</p>
+        <p className="mt-0.5 line-clamp-2 break-words text-sm font-semibold text-[var(--text-primary)]">{displayValue}</p>
       </div>
     </div>
   );

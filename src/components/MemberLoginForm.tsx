@@ -48,7 +48,7 @@ export default function MemberLoginForm({ nextPath = "/" }: MemberLoginFormProps
           required
           value={username}
           onChange={(event) => setUsername(event.target.value)}
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
@@ -58,7 +58,7 @@ export default function MemberLoginForm({ nextPath = "/" }: MemberLoginFormProps
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
       </label>
       <button

@@ -199,32 +199,32 @@ export default function AdminBannerManager() {
             value={form.title}
             onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
             placeholder="배너 제목"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
           <input
             value={form.link_url}
             onChange={(event) => setForm((prev) => ({ ...prev, link_url: event.target.value }))}
             placeholder="클릭 이동 링크(선택, 예: /products)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
           <input
             required
             value={form.image_url}
             onChange={(event) => setForm((prev) => ({ ...prev, image_url: event.target.value }))}
             placeholder="PC 배너 이미지 URL (권장 1920x640)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)] md:col-span-2"
           />
           <input
             value={form.mobile_image_url}
             onChange={(event) => setForm((prev) => ({ ...prev, mobile_image_url: event.target.value }))}
             placeholder="모바일 배너 이미지 URL (선택, 권장 1200x800)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)] md:col-span-2"
           />
           <input
             value={form.sort_order}
             onChange={(event) => setForm((prev) => ({ ...prev, sort_order: event.target.value }))}
             placeholder="노출 순서 (숫자 작을수록 먼저)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
@@ -253,7 +253,7 @@ export default function AdminBannerManager() {
         {isLoading ? (
           <p className="text-sm text-slate-500">배너 목록을 불러오는 중입니다...</p>
         ) : banners.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-muted)]">
             등록된 배너가 없습니다.
           </div>
         ) : (

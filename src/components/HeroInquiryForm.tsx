@@ -71,7 +71,7 @@ export default function HeroInquiryForm() {
             setForm((prev) => ({ ...prev, name: event.target.value }))
           }
           placeholder="이름을 입력해 주세요"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
       </label>
 
@@ -88,7 +88,7 @@ export default function HeroInquiryForm() {
             }))
           }
           placeholder="010-0000-0000"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
       </label>
 
@@ -102,7 +102,7 @@ export default function HeroInquiryForm() {
             setForm((prev) => ({ ...prev, content: event.target.value }))
           }
           placeholder="예: 5월 중 일본 골프 3박 4일, 부부 동반 일정 상담希望"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
       </label>
 

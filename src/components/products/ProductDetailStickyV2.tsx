@@ -205,7 +205,7 @@ export function ProductDetailStickyV2Mobile({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-3 backdrop-blur transition-all duration-200 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-[var(--divider)] bg-[var(--glass-surface)] px-3 backdrop-blur transition-all duration-200 md:hidden"
       style={{
         paddingTop: compact ? "8px" : "12px",
         paddingBottom: compact ? "max(8px, env(safe-area-inset-bottom))" : "max(12px, env(safe-area-inset-bottom))",

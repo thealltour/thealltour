@@ -4,11 +4,11 @@ type TagVariant = "accent" | "muted" | "gold";
 
 const variantStyles: Record<TagVariant, string> = {
   accent:
-    "bg-[#eff6ff] text-[#1E3A8A] ring-[#dbeafe]",
+    "bg-[color:color-mix(in_oklab,var(--primary)_12%,white)] text-[var(--primary)] ring-[var(--border)]",
   muted:
-    "bg-slate-100 text-slate-600 ring-slate-200",
+    "bg-[var(--card-muted)] text-[var(--text-secondary)] ring-[var(--border)]",
   gold:
-    "bg-amber-50 text-amber-700 ring-amber-200",
+    "bg-[var(--warning-bg)] text-[var(--secondary)] ring-[color:color-mix(in_oklab,var(--secondary)_45%,transparent)]",
 };
 
 type TagProps = {

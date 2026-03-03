@@ -165,13 +165,13 @@ export default function ProductCatalogSection({
 
   return (
     <section className="space-y-5">
-      <div className="sticky top-[76px] z-20 space-y-3 rounded-2xl bg-white/95 p-3 shadow-sm ring-1 ring-[#dbeafe] backdrop-blur">
+      <div className="sticky top-[76px] z-20 space-y-3 rounded-2xl bg-[var(--surface)]/95 p-3 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] backdrop-blur">
         <p className="section-label text-content-muted">
           총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
         </p>
         {presetLabel ? <p className="section-label text-[#15803d]">필터: {presetLabel}</p> : null}
         {keyword ? (
-          <p className="section-label text-[#1E3A8A]">검색어: {initialKeyword}</p>
+          <p className="section-label text-[var(--primary)]">검색어: {initialKeyword}</p>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
         {categoryTabs.map((tab) => (
@@ -184,8 +184,8 @@ export default function ProductCatalogSection({
             }}
             className={`type-btn rounded-full px-3.5 py-1.5 transition ${
               (tab === "전체" ? "all" : tab) === activeTab
-                ? "bg-[#1E3A8A] text-white"
-                : "border border-slate-300 bg-white text-content-secondary hover:bg-slate-50"
+                ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
             {tab}
@@ -201,8 +201,8 @@ export default function ProductCatalogSection({
             onClick={() => setActiveThemeTab(tab)}
             className={`type-caption rounded-full px-3 py-1 font-semibold transition ${
               activeThemeTab === tab
-                ? "bg-[#1E3A8A] text-white"
-                : "border border-slate-300 bg-white text-content-secondary hover:bg-slate-50"
+                ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
             {tab}
@@ -213,13 +213,13 @@ export default function ProductCatalogSection({
 
       <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-6">
         {keywordFilteredProducts.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0] md:col-span-2">
+          <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:col-span-2">
             {keyword ? "검색어와 일치하는 상품이 없습니다." : "선택한 카테고리에 해당하는 상품이 없습니다."}
           </div>
         ) : (
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
-              <h3 className="font-card-title type-h3 text-[#1E3A8A]">{group.theme}</h3>
+              <h3 className="font-card-title type-h3 text-[var(--primary)]">{group.theme}</h3>
               <div className="grid gap-6 md:grid-cols-2">
                 {group.products.map((product) => {
                   const badges = getProductBadges(product);
@@ -251,7 +251,7 @@ export default function ProductCatalogSection({
                     <Link
                       key={product.id}
                       href={`/products/${product.id}`}
-                      className="h-full overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe] transition hover:-translate-y-1 hover:shadow-xl"
+                      className="h-full overflow-hidden rounded-3xl bg-[var(--surface)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-soft-strong)]"
                     >
                       <article className="flex h-full flex-col">
                         <Image
@@ -265,7 +265,7 @@ export default function ProductCatalogSection({
                         />
                         <div className="flex flex-1 flex-col gap-3 p-5">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="inline-block rounded-full bg-[#eff6ff] px-3 py-1 type-caption font-semibold text-[#1E3A8A]">
+                            <span className="inline-block rounded-full bg-[var(--surface-muted)] px-3 py-1 type-caption font-semibold text-[var(--primary)]">
                               {product.category}
                             </span>
                             {badges.map((badge) => (
@@ -277,14 +277,14 @@ export default function ProductCatalogSection({
                               </span>
                             ))}
                           </div>
-                          <h2 className="font-card-title type-body font-semibold text-content-primary md:type-small line-clamp-2">
+                          <h2 className="font-card-title type-body font-semibold text-[var(--text-primary)] md:type-small line-clamp-2">
                             {product.title}
                           </h2>
-                          <p className="line-clamp-1 type-small leading-6 text-content-secondary">
+                          <p className="line-clamp-1 type-small leading-6 text-[var(--text-secondary)]">
                             {product.description}
                           </p>
                           {typeof product.price === "number" ? (
-                            <p className="font-price-strong type-body font-bold text-[#1E3A8A]">
+                            <p className="font-price-strong type-body font-bold text-[var(--primary)]">
                               {new Intl.NumberFormat("ko-KR").format(product.price)}원~
                             </p>
                           ) : null}
@@ -293,14 +293,14 @@ export default function ProductCatalogSection({
                               {hashtags.map((tag) => (
                                 <span
                                   key={`${product.id}-${tag}`}
-                                  className="type-caption text-slate-600"
+                                  className="type-caption text-[var(--text-muted)]"
                                 >
                                   #{tag}
                                 </span>
                               ))}
                             </div>
                           ) : null}
-                          <span className="type-btn mt-auto inline-flex w-fit rounded-lg bg-[#1E3A8A] px-4 py-2 text-white">
+                          <span className="type-btn mt-auto inline-flex w-fit rounded-lg bg-[var(--primary)] px-4 py-2 text-white">
                             상세 보기
                           </span>
                         </div>

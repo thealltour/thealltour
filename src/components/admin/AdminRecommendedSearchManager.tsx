@@ -183,7 +183,7 @@ export default function AdminRecommendedSearchManager() {
       ) : null}
 
       <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)]">
-        <table className="min-w-full divide-y divide-[var(--border)] text-sm">
+        <table className="min-w-full divide-y divide-[var(--divider)] text-sm">
           <thead className="bg-[var(--card-muted)]">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--text-muted)]">
@@ -200,7 +200,7 @@ export default function AdminRecommendedSearchManager() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--border)] bg-[var(--surface)]">
+          <tbody className="divide-y divide-[var(--divider)] bg-[var(--surface)]">
             {items.map((row) => (
               <tr key={row.id}>
                 <td className="px-3 py-2 align-middle">
@@ -212,7 +212,7 @@ export default function AdminRecommendedSearchManager() {
                         sortOrder: Number(event.target.value),
                       })
                     }
-                    className="w-20 rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                    className="w-20 rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                   />
                 </td>
                 <td className="px-3 py-2 align-middle">
@@ -222,7 +222,7 @@ export default function AdminRecommendedSearchManager() {
                     onChange={(event) =>
                       handleLocalChange(row.id, { keyword: event.target.value })
                     }
-                    className="w-full rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                    className="w-full rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                     placeholder="예: 동남아 골프, 유럽 여행"
                   />
                 </td>
@@ -234,7 +234,7 @@ export default function AdminRecommendedSearchManager() {
                       onChange={(event) =>
                         handleLocalChange(row.id, { isActive: event.target.checked })
                       }
-                      className="h-3.5 w-3.5 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]"
+                      className="h-3.5 w-3.5 rounded border-[var(--border)] text-[var(--brand)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                     <span>{row.isActive ? "사용" : "숨김"}</span>
                   </label>

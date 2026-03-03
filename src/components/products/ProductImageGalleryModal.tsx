@@ -122,7 +122,7 @@ export function ProductImageGalleryModal({
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/70 p-3 md:p-6"
+      className="fixed inset-0 z-[70] bg-[var(--overlay)] p-3 md:p-6"
       role="dialog"
       aria-modal="true"
       aria-label="상품 이미지 갤러리"
@@ -130,11 +130,11 @@ export function ProductImageGalleryModal({
     >
       <div
         ref={dialogRef}
-        className="mx-auto flex h-full w-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl"
+        className="mx-auto flex h-full w-full max-w-6xl flex-col rounded-2xl bg-[var(--surface-elevated)] shadow-[var(--shadow-modal)] ring-1 ring-[var(--border)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <p className="text-sm font-semibold text-slate-700">
+        <div className="flex items-center justify-between border-b border-[var(--divider)] px-4 py-3">
+          <p className="text-sm font-semibold text-[var(--text-secondary)]">
             {current.label || `이미지 ${selectedIndex + 1}`} · {selectedIndex + 1}/{images.length}
           </p>
           <div className="mr-2 hidden items-center gap-1 rounded-lg bg-slate-100 p-1 md:inline-flex">
@@ -260,7 +260,7 @@ export function ProductImageGalleryModal({
             ) : null}
           </div>
 
-          <div className="border-t border-slate-200 bg-white p-3">
+          <div className="border-t border-[var(--divider)] bg-[var(--surface)] p-3">
             {mode === "default" ? (
               <>
                 <div className="flex gap-2 overflow-x-auto md:hidden">

@@ -10,6 +10,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean;
 };
 
+/** 높이: sm 36px, md 44px, lg 52px. radius 12px. focus-visible ring 3px --focus-ring. */
 export function buttonVariants(options?: {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -18,42 +19,43 @@ export function buttonVariants(options?: {
   const { variant = "primary", size = "md", className } = options ?? {};
 
   const base =
-    "inline-flex items-center justify-center rounded-full type-btn transition-colors duration-150 " +
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 " +
-    "disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center rounded-xl type-btn transition-all duration-150 " +
+    "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] " +
+    "disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed " +
+    "active:translate-y-px";
 
   const sizeClass =
     size === "sm"
-      ? "px-3 py-1.5"
+      ? "h-9 min-h-9 px-3"
       : size === "lg"
-        ? "px-6 py-3"
-        : "px-4 py-2.5";
+        ? "min-h-[52px] px-6 py-3"
+        : "min-h-[44px] px-4 py-2.5";
 
   let variantClass: string;
   switch (variant) {
     case "secondary":
       variantClass =
-        "bg-transparent border border-[color:var(--border)] text-content-primary " +
-        "hover:bg-[color:color-mix(in_oklab,var(--border)_8%,white)]";
+        "bg-[var(--secondary)] text-white hover:bg-[var(--secondary-hover)]";
       break;
     case "kakao":
       variantClass =
-        "bg-[color:var(--theall-kakao-bg)] text-[color:var(--theall-kakao-text)] " +
-        "border border-[color:var(--theall-kakao-border)] " +
+        "bg-[var(--theall-kakao-bg)] text-[var(--theall-kakao-text)] " +
+        "border border-[var(--theall-kakao-border)] " +
         "hover:border-[color:color-mix(in_oklab,var(--theall-premium-gold)_78%,black)]";
       break;
     case "ghost":
       variantClass =
-        "bg-transparent text-content-primary hover:bg-[color:color-mix(in_oklab,var(--border)_12%,white)]";
+        "bg-transparent text-[var(--foreground)] hover:bg-[var(--surface-muted)]";
       break;
     case "outline":
       variantClass =
-        "bg-transparent border border-primary/40 text-primary hover:bg-primary/5";
+        "bg-transparent border border-[var(--border-strong)] text-[var(--foreground)] " +
+        "hover:bg-[var(--surface-muted)]";
       break;
     case "primary":
     default:
       variantClass =
-        "bg-[#1E3A8A] text-white hover:bg-[#1d4ed8]";
+        "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]";
       break;
   }
 
@@ -70,7 +72,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading ? (
-          <span className="mr-1 inline-flex h-3.5 w-3.5 animate-spin rounded-full border border-white/40 border-t-transparent" />
+          <span className="mr-1.5 inline-flex h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent" />
         ) : null}
         {children}
       </button>
@@ -79,4 +81,3 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = "Button";
-

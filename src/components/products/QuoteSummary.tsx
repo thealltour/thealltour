@@ -47,7 +47,7 @@ export function QuoteSummary({ quote, className = "" }: QuoteSummaryProps) {
         </p>
       ) : null}
       {lines.length > 0 && (
-        <ul className="mt-4 space-y-1.5 border-t border-[#dbeafe] pt-4">
+        <ul className="mt-4 space-y-1.5 border-t border-[var(--divider)] pt-4">
           {lines.map((line, index) => (
             <li
               key={`${line.label}-${index}`}

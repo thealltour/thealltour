@@ -20,7 +20,7 @@ export function OptionPanel({ options, selected, onSelectionChange }: OptionPane
   const requiredSet = new Set(options.requiredGroups ?? []);
 
   return (
-    <Card variant="default" className="border-[#dbeafe] bg-white p-5 ring-[#dbeafe] md:p-6">
+    <Card variant="default" className="border-[var(--border)] bg-[var(--surface)] p-5 md:p-6">
       <h3 className="mb-4 text-lg font-bold text-[#0f172a]">옵션 선택</h3>
       <div className="grid gap-6 md:grid-cols-2">
         {sorted.map((group) => (

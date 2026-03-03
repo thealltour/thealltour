@@ -65,8 +65,8 @@ export default function AdminConfirmProvider({ children }: AdminConfirmProviderP
     <AdminConfirmContext.Provider value={{ confirm }}>
       {children}
       {pending ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-[var(--card)] p-5 shadow-[0_18px_55px_rgba(15,23,42,0.45)] ring-1 ring-[var(--border)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] px-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-sm rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-[var(--shadow-modal)] ring-1 ring-[var(--border)]">
             <h2 className="text-sm font-semibold text-[var(--text)]">{pending.title}</h2>
             {pending.description ? (
               <p className="mt-2 text-xs text-[var(--text-muted)]">{pending.description}</p>

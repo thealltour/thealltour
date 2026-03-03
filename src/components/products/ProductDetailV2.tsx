@@ -423,7 +423,7 @@ export default function ProductDetailV2({
                 {scheduleDays.map((day, index) => {
                   const isOpen = openAccordionIndex === index;
                   return (
-                    <Card key={`${day.label}-${index}`} variant="default" className="overflow-hidden border-[#dbeafe] bg-[#f8fbff] ring-[#dbeafe]">
+                    <Card key={`${day.label}-${index}`} variant="default" className="overflow-hidden border-[var(--border)] bg-[var(--surface-muted)]">
                       <button
                         type="button"
                         onClick={() => setOpenAccordionIndex(isOpen ? null : index)}
@@ -435,7 +435,7 @@ export default function ProductDetailV2({
                         />
                       </button>
                       {isOpen && (
-                        <div className="border-t border-[#dbeafe] px-4 pb-4 pt-2">
+                        <div className="border-t border-[var(--divider)] px-4 pb-4 pt-2">
                           <p className="whitespace-pre-line text-sm leading-[1.7] text-slate-700">
                             {day.content}
                           </p>

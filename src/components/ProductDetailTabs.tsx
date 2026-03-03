@@ -150,7 +150,7 @@ export default function ProductDetailTabs({
                     />
                   </button>
                   {isOpen && (
-                    <div className="border-t border-[#dbeafe] px-4 pb-4 pt-2">
+                    <div className="border-t border-[var(--divider)] px-4 pb-4 pt-2">
                       <p className="whitespace-pre-line text-sm leading-[1.7] text-slate-700">
                         {day.content}
                       </p>

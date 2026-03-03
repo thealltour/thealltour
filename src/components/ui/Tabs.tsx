@@ -14,7 +14,7 @@ export function Tabs({ value, onChange, className, children }: TabsProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-2 rounded-full bg-[color:color-mix(in_oklab,var(--border)_12%,white)] p-1",
+        "inline-flex items-center rounded-full bg-[var(--surface-muted)] p-1",
         className,
       )}
       data-value={value}
@@ -58,10 +58,10 @@ export function TabsTrigger({
     <button
       type="button"
       className={cn(
-        "rounded-full px-3.5 py-1.5 type-caption font-semibold transition-colors",
+        "min-h-[40px] rounded-full px-4 py-2 type-caption font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-muted)]",
         selected
-          ? "bg-[#1E3A8A] text-white shadow-sm"
-          : "bg-transparent text-content-secondary hover:bg-[color:color-mix(in_oklab,var(--border)_15%,white)]",
+          ? "bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)]"
+          : "bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
         className,
       )}
       onClick={onSelect}

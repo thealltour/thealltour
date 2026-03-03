@@ -137,7 +137,7 @@ export default function AdminReviewTable() {
   }
 
   if (isLoading) {
-    return <p className="px-4 py-6 text-sm text-slate-500">후기 목록을 불러오는 중입니다...</p>;
+    return <p className="px-4 py-6 text-sm text-[var(--text-muted)]">후기 목록을 불러오는 중입니다...</p>;
   }
 
   return (
@@ -151,7 +151,7 @@ export default function AdminReviewTable() {
             setPage(1);
           }}
           placeholder="제목/내용/작성자/회원아이디 검색"
-          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
       </div>
 
@@ -173,8 +173,8 @@ export default function AdminReviewTable() {
           </thead>
           <tbody>
             {pagedReviews.length === 0 ? (
-              <tr className="border-t border-slate-200">
-                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+              <tr className="border-t border-[var(--divider)]">
+                <td colSpan={7} className="px-4 py-6 text-center text-[var(--text-muted)]">
                   후기 데이터가 없습니다.
                 </td>
               </tr>
@@ -182,7 +182,7 @@ export default function AdminReviewTable() {
               pagedReviews.map((item) => {
                 const isEditing = editingId === item.id && editForm;
                 return (
-                  <tr key={item.id} className="border-t border-slate-200 align-top">
+                  <tr key={item.id} className="border-t border-[var(--divider)] align-top">
                     <td className="px-4 py-3 font-medium text-[#1e3a8a]">{item.member_username ?? "-"}</td>
                     <td className="px-4 py-3">
                       {isEditing ? (
@@ -225,7 +225,7 @@ export default function AdminReviewTable() {
                           {"★".repeat(item.rating).padEnd(5, "☆")}
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400">-</span>
+                        <span className="text-xs text-[var(--text-subtle)]">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -299,7 +299,7 @@ export default function AdminReviewTable() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-4 pb-4 text-sm text-slate-600">
+      <div className="flex items-center justify-between px-4 pb-4 text-sm text-[var(--text-muted)]">
         <p>
           총 {filteredReviews.length}건 중 {filteredReviews.length === 0 ? 0 : (safePage - 1) * pageSize + 1}-
           {Math.min(safePage * pageSize, filteredReviews.length)}건 표시

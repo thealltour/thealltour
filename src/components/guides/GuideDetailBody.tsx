@@ -32,13 +32,13 @@ export function GuideDetailBody({
   }, [hasNotionUrl, autoOpenModalOnMount, notionUrl]);
 
   return (
-    <section className="space-y-6 rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-200/80 md:p-8">
+    <section className="space-y-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)] md:p-8">
       {hasToc ? (
         <nav
-          className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3"
+          className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3"
           aria-label="목차"
         >
-          <h2 className="mb-2 text-sm font-semibold text-slate-700">목차</h2>
+          <h2 className="mb-2 text-sm font-semibold text-[var(--foreground)]">목차</h2>
           <ul className="space-y-1.5 text-sm">
             {toc.map((item) => (
               <li
@@ -48,7 +48,7 @@ export function GuideDetailBody({
               >
                 <a
                   href={`#${item.id}`}
-                  className="text-slate-600 underline-offset-2 hover:text-[#1E3A8A] hover:underline"
+                  className="link-primary underline-offset-2 hover:underline"
                 >
                   {item.text}
                 </a>
@@ -59,14 +59,14 @@ export function GuideDetailBody({
       ) : null}
 
       {hasExcerpt ? (
-        <div className="prose prose-slate max-w-none text-slate-700">
+        <div className="prose prose-slate max-w-none text-[var(--text-secondary)]">
           <div className="whitespace-pre-line leading-relaxed">{excerptText}</div>
         </div>
       ) : null}
 
       {hasNotionUrl ? (
-        <div className="border-t border-slate-200 pt-6">
-          <p className="mb-3 text-sm text-slate-500">
+        <div className="border-t border-[var(--divider)] pt-6">
+          <p className="mb-3 text-sm text-[var(--text-muted)]">
             원문은 노션에서 작성되었으며, 아래 버튼으로 전체 문서를 새 탭에서 볼 수 있습니다.
           </p>
           <a
@@ -74,7 +74,7 @@ export function GuideDetailBody({
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${title} 원문 새 탭에서 보기`}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#1E3A8A]/40 bg-[#1E3A8A] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)]"
           >
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
             원문 보기 (새 탭)

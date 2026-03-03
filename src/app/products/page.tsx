@@ -19,14 +19,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const { categories } = await getProductTaxonomyOptions(products);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
 
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 md:px-10 md:py-14">
         <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
 
         {products.length === 0 ? (
-          <section className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0]">
+          <section className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
             현재 등록된 상품이 없습니다. 관리자 페이지에서 상품을 등록해 주세요.
           </section>
         ) : (

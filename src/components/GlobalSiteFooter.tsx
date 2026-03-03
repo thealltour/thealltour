@@ -17,6 +17,10 @@ type SiteSettingsClient = {
   main_email?: string;
 };
 
+const footerPillClass =
+  "footer-pill focus-visible:outline-none";
+const footerPillCtaClass = "footer-pill footer-pill-cta focus-visible:outline-none";
+
 export default function GlobalSiteFooter() {
   const pathname = usePathname();
   const [settings, setSettings] = useState<SiteSettingsClient | null>(null);
@@ -59,28 +63,22 @@ export default function GlobalSiteFooter() {
   const instagramUrl = settings?.instagram_url ?? "https://www.instagram.com/thealltour";
 
   return (
-    <footer className="border-t border-[rgba(184,150,46,0.32)] bg-[#0B1220]">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-7 type-small leading-7 text-site-secondary md:grid-cols-[1fr_auto] md:px-10">
+    <footer className="border-t border-[var(--divider)] bg-[var(--surface-muted)]">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-7 type-small leading-7 text-[var(--text-muted)] md:grid-cols-[1fr_auto] md:px-10">
         <div>
-          <p className="type-body font-bold text-site-primary">{companyName}</p>
-          <p>대표: {ceoName}</p>
-          <p>주소: {address}</p>
-          <p>사업자등록번호: {businessRegNo}</p>
-          <p>관광사업등록번호: {tourismRegNo}</p>
-          <p>통신판매업신고번호: {mailOrderRegNo}</p>
+          <p className="type-body font-bold text-[var(--foreground)]">{companyName}</p>
+          <p className="text-[var(--text-subtle)]">대표: {ceoName}</p>
+          <p className="text-[var(--text-subtle)]">주소: {address}</p>
+          <p className="text-[var(--text-subtle)]">사업자등록번호: {businessRegNo}</p>
+          <p className="text-[var(--text-subtle)]">관광사업등록번호: {tourismRegNo}</p>
+          <p className="text-[var(--text-subtle)]">통신판매업신고번호: {mailOrderRegNo}</p>
         </div>
 
         <div className="flex flex-col items-start gap-2 type-caption md:items-end">
-          <a
-            href={`tel:${mainPhone}`}
-            className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
-          >
+          <a href={`tel:${mainPhone}`} className={footerPillClass}>
             대표번호 {mainPhone}
           </a>
-          <a
-            href={`mailto:${mainEmail}`}
-            className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
-          >
+          <a href={`mailto:${mainEmail}`} className={footerPillClass}>
             {mainEmail}
           </a>
           <div className="mt-1 flex items-center gap-2">
@@ -88,7 +86,7 @@ export default function GlobalSiteFooter() {
               href={kakaoChannelUrl ?? "https://pf.kakao.com"}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex rounded-full border border-[#facc15] bg-[#fef9c3] px-3 py-1.5 font-medium text-[#854d0e] transition hover:bg-[#fde68a]"
+              className={footerPillCtaClass}
             >
               카카오채널
             </a>
@@ -96,28 +94,22 @@ export default function GlobalSiteFooter() {
               href={instagramUrl ?? "https://www.instagram.com/thealltour"}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex rounded-full border border-[#c4b5fd] bg-[#f5f3ff] px-3 py-1.5 font-medium text-[#5b21b6] transition hover:bg-[#ede9fe]"
+              className={footerPillClass}
             >
               인스타그램
             </a>
           </div>
           <div className="mt-1 flex items-center gap-2">
-            <Link
-              href="/terms"
-              className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
-            >
+            <Link href="/terms" className={footerPillClass}>
               이용약관
             </Link>
-            <Link
-              href="/privacy"
-              className="inline-flex rounded-full border border-site-border bg-[#111827] px-3 py-1.5 font-medium text-site-secondary transition hover:bg-[#1f2937]"
-            >
+            <Link href="/privacy" className={footerPillClass}>
               개인정보처리방침
             </Link>
           </div>
         </div>
       </div>
-      <div className="border-t border-site-border py-3 text-center type-caption text-site-muted">
+      <div className="border-t border-[var(--divider)] py-3 text-center type-caption text-[var(--text-subtle)]">
         © {new Date().getFullYear()} 더올투어. All rights reserved
         <Link
           href="/theall_manager_only"

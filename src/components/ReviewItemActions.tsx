@@ -109,14 +109,14 @@ export default function ReviewItemActions({
           required
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
         <textarea
           required
           rows={6}
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
         />
         <label className="flex flex-col gap-2 text-xs font-medium text-slate-700">
           사진 변경 (선택)

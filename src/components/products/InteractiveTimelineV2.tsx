@@ -275,7 +275,7 @@ export function InteractiveTimelineV2({
 
         {/* 하단 Day 탭: 일차 확인 후 다음 Day로 바로 이동 */}
         {days.length > 1 && (
-          <div className="mt-8 border-t border-slate-200 pt-4">
+          <div className="mt-8 border-t border-[var(--divider)] pt-4">
             <p className="mb-3 text-xs font-semibold text-slate-500">다른 일차 바로가기</p>
             <div className="flex flex-wrap gap-2">
               {days.map((d, i) => (

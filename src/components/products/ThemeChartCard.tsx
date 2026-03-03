@@ -59,8 +59,8 @@ export function ThemeChartCard({ items }: { items: ThemeChartItem[] }) {
   });
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-slate-800">일정 테마 구성비</h3>
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-muted)] p-4 shadow-[var(--shadow-soft)]">
+      <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">일정 테마 구성비</h3>
       <div className="flex flex-col items-center gap-4">
         <div className="relative shrink-0" style={{ width: size, height: size }}>
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -91,7 +91,7 @@ export function ThemeChartCard({ items }: { items: ThemeChartItem[] }) {
                   y={seg.labelPos.y}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  className="fill-white text-xs font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+                  className="fill-white text-xs font-bold drop-shadow-[0_1px_2px_var(--shadow-color)]"
                 >
                   {seg.label}
                 </text>
@@ -103,14 +103,14 @@ export function ThemeChartCard({ items }: { items: ThemeChartItem[] }) {
           {normalized.map((item, i) => (
             <div
               key={`${item.label}-${i}`}
-              className="flex items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-1.5 text-xs min-w-0"
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs min-w-0"
             >
               <span
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: getChartColor(i) }}
               />
-              <span className="font-medium text-slate-700">{item.label}</span>
-              <span className="font-semibold text-slate-500 shrink-0">
+              <span className="font-medium text-[var(--text-secondary)]">{item.label}</span>
+              <span className="font-semibold text-[var(--text-muted)] shrink-0">
                 {Math.round(item.percent)}%
               </span>
             </div>

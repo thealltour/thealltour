@@ -48,7 +48,7 @@ export default function HeaderSearchDropdown({
 
   return (
     <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50">
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-modal)]">
         {/* 최근 검색어 섹션 */}
         {recentSearches.length > 0 ? (
           <section className="px-3 py-2.5">
@@ -61,7 +61,7 @@ export default function HeaderSearchDropdown({
                   key={keyword}
                   type="button"
                   onMouseDown={(event) => handleClickKeyword(event, keyword)}
-                  className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1 text-xs text-[var(--text-primary)] transition-colors duration-150 hover:border-[var(--brand)] hover:bg-[var(--card)]"
+                  className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1 text-xs text-[var(--foreground)] transition hover:bg-[var(--surface)] hover:border-[var(--border-strong)]"
                 >
                   {keyword}
                 </button>
@@ -72,7 +72,7 @@ export default function HeaderSearchDropdown({
 
         {/* 추천 검색어 섹션 */}
         {isLoadingRecommended ? (
-          <section className="border-t border-[var(--border)] px-3 py-2.5">
+          <section className="border-t border-[var(--divider)] px-3 py-2.5">
             <p className="mb-1 text-[11px] font-semibold text-[var(--text-muted)]">
               추천 검색어
             </p>
@@ -82,7 +82,7 @@ export default function HeaderSearchDropdown({
             </div>
           </section>
         ) : recommended.length > 0 ? (
-          <section className="border-t border-[var(--border)] px-3 py-2.5">
+          <section className="border-t border-[var(--divider)] px-3 py-2.5">
             <p className="mb-1 text-[11px] font-semibold text-[var(--text-muted)]">
               추천 검색어
             </p>
@@ -92,7 +92,7 @@ export default function HeaderSearchDropdown({
                   key={item.id}
                   type="button"
                   onMouseDown={(event) => handleClickKeyword(event, item.keyword)}
-                  className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--text-primary)] transition-colors duration-150 hover:border-[var(--brand)] hover:bg-[var(--card-muted)]"
+                  className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                 >
                   {item.keyword}
                 </button>
@@ -103,7 +103,7 @@ export default function HeaderSearchDropdown({
 
         {/* 상품 제안 섹션 */}
         {productSuggestions.length > 0 ? (
-          <section className="border-t border-[var(--border)]">
+          <section className="border-t border-[var(--divider)]">
             <p className="px-3 pt-2 text-[11px] font-semibold text-[var(--text-muted)]">
               검색 제안
             </p>
@@ -113,7 +113,7 @@ export default function HeaderSearchDropdown({
                   <button
                     type="button"
                     onMouseDown={(event) => handleClickKeyword(event, item.title)}
-                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs text-[var(--text-primary)] transition-colors duration-150 hover:bg-[var(--card-muted)]"
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                   >
                     <span className="line-clamp-1 text-sm font-medium">
                       {item.title}

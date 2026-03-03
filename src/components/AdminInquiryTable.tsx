@@ -27,8 +27,8 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
   if (!hasOptions && !hasSummary && !snapshot.inquiredAt) return null;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm">
-      <h4 className="mb-3 font-semibold text-slate-700">고객 선택 구성</h4>
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm">
+      <h4 className="mb-3 font-semibold text-[var(--text-primary)]">고객 선택 구성</h4>
       {hasOptions ? (
         <ul className="mb-3 list-inside list-disc space-y-1 text-[var(--text-muted)]">
           {(snapshot.quoteSummary?.breakdown?.length ?? 0) > 0
@@ -59,7 +59,7 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
               ))
             : null}
           {snapshot.quoteSummary.total != null ? (
-            <p className="font-semibold text-slate-700">예상 합계: {formatPrice(snapshot.quoteSummary.total)}</p>
+            <p className="font-semibold text-[var(--text-primary)]">예상 합계: {formatPrice(snapshot.quoteSummary.total)}</p>
           ) : null}
         </div>
       ) : null}
@@ -253,8 +253,8 @@ export default function AdminInquiryTable() {
   if (isLoading) {
     return (
       <div className="space-y-3 px-4 py-6">
-        <div className="h-9 w-80 animate-pulse rounded-lg bg-slate-100" />
-        <div className="h-56 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-9 w-80 animate-pulse rounded-lg bg-[var(--surface-muted)]" />
+        <div className="h-56 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
         <p className="text-sm text-[var(--text-muted)]">문의 목록을 불러오는 중입니다...</p>
       </div>
     );
@@ -274,7 +274,7 @@ export default function AdminInquiryTable() {
                 setPage(1);
               }}
               placeholder="검색어를 입력하세요"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             />
           </label>
           <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
@@ -285,7 +285,7 @@ export default function AdminInquiryTable() {
                 setStatusFilter(event.target.value as StatusFilter);
                 setPage(1);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
               <option value="all">전체</option>
               <option value="completed">완료</option>
@@ -300,7 +300,7 @@ export default function AdminInquiryTable() {
                 setSortBy(event.target.value as SortOption);
                 setPage(1);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
               <option value="pending_first">미완료 우선</option>
               <option value="recent">최신순</option>
@@ -316,7 +316,7 @@ export default function AdminInquiryTable() {
                 setPageSize(Number(event.target.value));
                 setPage(1);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
               <option value={10}>10</option>
               <option value={20}>20</option>
@@ -330,7 +330,7 @@ export default function AdminInquiryTable() {
             type="button"
             onClick={() => updateBulkCompletion(true)}
             disabled={selectedIds.length === 0 || isBulkUpdating}
-            className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[var(--success)]/30 bg-[var(--success-bg)] px-3 py-2 text-sm font-medium text-[var(--success)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             선택 완료 처리
           </button>
@@ -338,7 +338,7 @@ export default function AdminInquiryTable() {
             type="button"
             onClick={() => updateBulkCompletion(false)}
             disabled={selectedIds.length === 0 || isBulkUpdating}
-            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)] px-3 py-2 text-sm font-medium text-[var(--warning)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             선택 미완료 처리
           </button>
@@ -346,7 +346,7 @@ export default function AdminInquiryTable() {
             type="button"
             onClick={() => loadInquiries({ silent: true })}
             disabled={isRefreshing}
-            className="rounded-lg border border-[#bfdbfe] bg-white px-3 py-2 text-sm font-medium text-[#1e3a8a] transition hover:bg-[#eff6ff] disabled:cursor-not-allowed"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--primary)] transition hover:bg-[var(--primary-soft)] disabled:cursor-not-allowed"
           >
             {isRefreshing ? "새로고침 중..." : "새로고침"}
           </button>
@@ -361,12 +361,12 @@ export default function AdminInquiryTable() {
       </div>
 
       {errorMessage ? (
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-200">
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)] ring-1 ring-[var(--danger)]/30">
           <span>{errorMessage}</span>
           <button
             type="button"
             onClick={() => loadInquiries({ silent: true, resetSelection: false })}
-            className="rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+            className="rounded-md border border-[var(--danger)]/50 bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface-muted)]"
           >
             다시 시도
           </button>
@@ -374,7 +374,7 @@ export default function AdminInquiryTable() {
       ) : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-collapse text-sm">
-          <thead className="sticky top-0 z-10 bg-[#eff6ff] text-[#1e3a8a]">
+          <thead className="sticky top-0 z-10 bg-[var(--primary-soft)] text-[var(--primary)]">
             <tr>
               <th className="w-10 px-4 py-3 text-left font-semibold">
                 <input
@@ -382,7 +382,7 @@ export default function AdminInquiryTable() {
                   checked={selectedAllVisible}
                   onChange={toggleSelectAll}
                   aria-label="현재 페이지 전체 선택"
-                  className="h-4 w-4 accent-[#1d4ed8]"
+                  className="h-4 w-4 accent-[var(--primary)]"
                 />
               </th>
               <th className="w-[170px] px-4 py-3 text-left font-semibold">상담여부</th>
@@ -412,7 +412,7 @@ export default function AdminInquiryTable() {
                     <tr
                       key={inquiry.id}
                       className={`border-t border-[var(--divider)] ${
-                        !isCompleted ? "bg-amber-50/40 hover:bg-amber-50/70" : "hover:bg-slate-50"
+                        !isCompleted ? "bg-[var(--warning-bg)]/40 hover:bg-[var(--warning-bg)]/70" : "hover:bg-[var(--surface-muted)]"
                       }`}
                     >
                     <td className="px-4 py-3">
@@ -427,7 +427,7 @@ export default function AdminInquiryTable() {
                           );
                         }}
                         aria-label={`${inquiry.name} 선택`}
-                        className="h-4 w-4 accent-[#1d4ed8]"
+                        className="h-4 w-4 accent-[var(--primary)]"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -439,23 +439,23 @@ export default function AdminInquiryTable() {
                           onChange={(event) => {
                             updateCompletion(inquiry.id, event.target.checked);
                           }}
-                          className="h-4 w-4 accent-[#1d4ed8]"
+                          className="h-4 w-4 accent-[var(--primary)]"
                         />
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            isCompleted ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                            isCompleted ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--warning-bg)] text-[var(--warning)]"
                           }`}
                         >
                           {isCompleted ? "완료" : "미완료"}
                         </span>
                       </label>
                     </td>
-                    <td className="px-4 py-3 font-medium text-[#1e3a8a]">{inquiry.name}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--primary)]">{inquiry.name}</td>
                     <td className="px-4 py-3 tabular-nums">{inquiry.phone}</td>
                     <td className="px-4 py-3">
                       {inquiry.product_title ? (
                         <div className="space-y-1">
-                          <p className="font-medium text-slate-700">{inquiry.product_title}</p>
+                          <p className="font-medium text-[var(--text-secondary)]">{inquiry.product_title}</p>
                           {inquiry.source_path ? (
                             <p className="text-xs text-[var(--text-subtle)]">{inquiry.source_path}</p>
                           ) : null}
@@ -472,7 +472,7 @@ export default function AdminInquiryTable() {
                         <button
                           type="button"
                           onClick={() => toggleExpand(inquiry.id)}
-                          className="mt-1 text-xs font-semibold text-[#1d4ed8] hover:underline"
+                          className="mt-1 text-xs font-semibold text-[var(--primary)] hover:underline"
                         >
                           {isExpanded ? "접기" : "더보기"}
                         </button>
@@ -488,7 +488,7 @@ export default function AdminInquiryTable() {
                           onClick={() =>
                             setExpandedQuoteId((prev) => (prev === inquiry.id ? null : inquiry.id))
                           }
-                          className="text-xs font-semibold text-[#1d4ed8] hover:underline"
+                          className="text-xs font-semibold text-[var(--primary)] hover:underline"
                         >
                           {expandedQuoteId === inquiry.id ? "접기" : "보기"}
                         </button>
@@ -522,18 +522,18 @@ export default function AdminInquiryTable() {
             type="button"
             onClick={() => movePage(safePage - 1)}
             disabled={safePage <= 1}
-            className="rounded border border-slate-300 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             이전
           </button>
-          <span className="text-xs font-semibold">
+          <span className="text-xs font-semibold text-[var(--text-primary)]">
             {safePage} / {totalPages}
           </span>
           <button
             type="button"
             onClick={() => movePage(safePage + 1)}
             disabled={safePage >= totalPages}
-            className="rounded border border-slate-300 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             다음
           </button>

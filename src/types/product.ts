@@ -82,6 +82,8 @@ export type ItineraryStructuredEvent = {
   description?: string;
   timeOfDay?: "오전" | "오후" | "저녁" | "종일";
   iconKey?: string;
+  /** 이벤트별 이미지 URL 목록 (대표·정렬 포함) */
+  images?: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }>;
 };
 
 /** [STEP 0] 구조화 일정 Day 1개 */
@@ -103,6 +105,8 @@ export type ItineraryV2Event = {
   description?: string;
   location?: string;
   order?: number;
+  /** 이벤트별 이미지 URL 목록 (대표·정렬 포함) */
+  images?: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }>;
 };
 
 export type ItineraryV2Day = {
@@ -116,6 +120,11 @@ export type ItineraryV2Day = {
 export type ItineraryV2 = {
   days: ItineraryV2Day[];
 };
+
+/** 이벤트 선택 상태: 상품 공용 이미지 → "이 이벤트에 추가" 시 참조 (관리자 UI용) */
+export type SelectedEventRef =
+  | { editorType: "v2"; dayIndex: number; eventIndex: number }
+  | { editorType: "structured"; dayIndex: number; eventIndex: number };
 
 /** 여행 오버뷰 (jsonb 1컬럼 스키마) */
 export type ProductOverview = {

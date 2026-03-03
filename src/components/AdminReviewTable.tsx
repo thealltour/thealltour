@@ -155,11 +155,11 @@ export default function AdminReviewTable() {
         />
       </div>
 
-      {errorMessage ? <p className="px-4 text-sm text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="px-4 text-sm text-[var(--danger)]">{errorMessage}</p> : null}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1050px] border-collapse text-sm">
-          <thead className="bg-[#eff6ff] text-[#1e3a8a]">
+          <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">회원아이디</th>
               <th className="px-4 py-3 text-left font-semibold">작성자</th>
@@ -183,7 +183,7 @@ export default function AdminReviewTable() {
                 const isEditing = editingId === item.id && editForm;
                 return (
                   <tr key={item.id} className="border-t border-[var(--divider)] align-top">
-                    <td className="px-4 py-3 font-medium text-[#1e3a8a]">{item.member_username ?? "-"}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--primary)]">{item.member_username ?? "-"}</td>
                     <td className="px-4 py-3">
                       {isEditing ? (
                         <input
@@ -194,7 +194,7 @@ export default function AdminReviewTable() {
                               author_name: event.target.value,
                             })
                           }
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         />
                       ) : (
                         item.author_name
@@ -211,7 +211,7 @@ export default function AdminReviewTable() {
                               rating: value === "" ? null : Number(value),
                             });
                           }}
-                          className="w-20 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-20 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         >
                           <option value="">-</option>
                           <option value={5}>★★★★★</option>
@@ -233,7 +233,7 @@ export default function AdminReviewTable() {
                         <input
                           value={editForm.title}
                           onChange={(event) => setEditForm({ ...editForm, title: event.target.value })}
-                          className="w-44 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-44 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         />
                       ) : (
                         item.title
@@ -245,10 +245,10 @@ export default function AdminReviewTable() {
                           rows={3}
                           value={editForm.content}
                           onChange={(event) => setEditForm({ ...editForm, content: event.target.value })}
-                          className="w-72 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-72 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         />
                       ) : (
-                        <p className="line-clamp-3 max-w-[360px] whitespace-pre-line text-slate-700">
+                        <p className="line-clamp-3 max-w-[360px] whitespace-pre-line text-[var(--text-secondary)]">
                           {item.content}
                         </p>
                       )}
@@ -268,7 +268,7 @@ export default function AdminReviewTable() {
                             type="button"
                             disabled={pendingId === item.id}
                             onClick={() => saveEdit(item.id)}
-                            className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                            className="rounded border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-2 py-1 text-xs text-[var(--primary)]"
                           >
                             저장
                           </button>
@@ -276,7 +276,7 @@ export default function AdminReviewTable() {
                             type="button"
                             disabled={pendingId === item.id}
                             onClick={cancelEdit}
-                            className="rounded border border-slate-300 px-2 py-1 text-xs"
+                            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                           >
                             취소
                           </button>
@@ -285,7 +285,7 @@ export default function AdminReviewTable() {
                         <button
                           type="button"
                           onClick={() => startEdit(item)}
-                          className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
+                          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
                         >
                           수정
                         </button>
@@ -309,18 +309,18 @@ export default function AdminReviewTable() {
             type="button"
             onClick={() => setPage(Math.max(1, safePage - 1))}
             disabled={safePage <= 1}
-            className="rounded border border-slate-300 px-3 py-1 text-xs disabled:opacity-50"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             이전
           </button>
-          <span className="text-xs font-semibold">
+          <span className="text-xs font-semibold text-[var(--text-primary)]">
             {safePage} / {totalPages}
           </span>
           <button
             type="button"
             onClick={() => setPage(Math.min(totalPages, safePage + 1))}
             disabled={safePage >= totalPages}
-            className="rounded border border-slate-300 px-3 py-1 text-xs disabled:opacity-50"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             다음
           </button>

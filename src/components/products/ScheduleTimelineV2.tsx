@@ -25,7 +25,7 @@ function DayImage({
 
   if (src) {
     return (
-      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-slate-200 shadow-md">
+      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[var(--surface-muted)] shadow-md">
         <Image
           src={src}
           alt={`Day ${day.day}`}
@@ -39,7 +39,7 @@ function DayImage({
 
   return (
     <div
-      className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-500"
+      className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 rounded-xl bg-[var(--surface-muted)] text-[var(--text-muted)]"
       aria-hidden
     >
       <ImageIcon className="h-10 w-10 opacity-50" />
@@ -67,13 +67,13 @@ export function ScheduleTimelineV2({
 
   return (
     <section
-      className="w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md"
+      className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-md"
       aria-label="상세 일정 타임라인"
     >
       <div className="p-4 sm:p-6">
         <div className="mb-4 flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-slate-600" />
-          <h3 className="text-lg font-bold tracking-tight text-slate-900">상세 일정</h3>
+          <Calendar className="h-5 w-5 text-[var(--text-secondary)]" />
+          <h3 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">상세 일정</h3>
         </div>
 
         {/* Day 탭 */}
@@ -85,8 +85,8 @@ export function ScheduleTimelineV2({
               onClick={() => setActiveIndex(i)}
               className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                 activeIndex === i
-                  ? "bg-[#1E3A8A] text-white shadow-sm"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-sm"
+                  : "bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]/80"
               }`}
             >
               Day {d.day}
@@ -99,20 +99,20 @@ export function ScheduleTimelineV2({
           <DayImage day={activeDay} fallbackImageUrl={fallback} />
 
           {activeDay.headline && (
-            <p className="text-base font-semibold text-slate-800">{activeDay.headline}</p>
+            <p className="text-base font-semibold text-[var(--text-primary)]">{activeDay.headline}</p>
           )}
 
           {activeDay.bullets.length > 0 ? (
-            <ul className="space-y-1.5 text-sm leading-relaxed text-slate-700">
+            <ul className="space-y-1.5 text-sm leading-relaxed text-[var(--text-secondary)]">
               {activeDay.bullets.map((b, bi) => (
                 <li key={bi} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
                   <span>{b}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-slate-500">해당 일차 상세 내용을 입력해 주세요.</p>
+            <p className="text-sm text-[var(--text-muted)]">해당 일차 상세 내용을 입력해 주세요.</p>
           )}
         </div>
       </div>

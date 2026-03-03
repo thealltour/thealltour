@@ -103,7 +103,7 @@ function SortButton({
       type="button"
       onClick={onClick}
       className={`inline-flex items-center gap-1 rounded px-1 py-0.5 transition ${
-        isActive ? "bg-[color:color-mix(in_oklab,var(--primary)_15%,white)] text-[var(--primary)]" : "text-[var(--primary)] hover:bg-[color:color-mix(in_oklab,var(--primary)_8%,white)]"
+        isActive ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "text-[var(--primary)] hover:bg-[var(--primary-soft)]"
       }`}
     >
       <span>{label}</span>
@@ -312,7 +312,7 @@ export default function AdminMemberTable() {
               setPage(1);
             }}
             placeholder="아이디/이름/연락처/이메일 검색"
-            className="w-full max-w-sm rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+            className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
           <label className="inline-flex items-center gap-2 text-sm text-[var(--text-primary)]">
             <input
@@ -357,7 +357,7 @@ export default function AdminMemberTable() {
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1180px] border-collapse text-sm">
-          <thead className="bg-[color:color-mix(in_oklab,var(--primary)_12%,white)] text-[var(--primary)]">
+          <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">
                 <SortButton
@@ -455,7 +455,7 @@ export default function AdminMemberTable() {
                         <input
                           value={editForm.name}
                           onChange={(event) => setEditForm({ ...editForm, name: event.target.value })}
-                          className="w-28 rounded border border-[var(--border)] px-2 py-1 text-xs"
+                          className="w-28 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         />
                       ) : (
                         item.name
@@ -466,7 +466,7 @@ export default function AdminMemberTable() {
                         <input
                           value={editForm.phone}
                           onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })}
-                          className="w-32 rounded border border-[var(--border)] px-2 py-1 text-xs"
+                          className="w-32 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         />
                       ) : (
                         item.phone
@@ -477,7 +477,7 @@ export default function AdminMemberTable() {
                         <input
                           value={editForm.email}
                           onChange={(event) => setEditForm({ ...editForm, email: event.target.value })}
-                          className="w-44 rounded border border-[var(--border)] px-2 py-1 text-xs"
+                          className="w-44 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         />
                       ) : (
                         item.email
@@ -489,7 +489,7 @@ export default function AdminMemberTable() {
                           type="date"
                           value={editForm.birth_date}
                           onChange={(event) => setEditForm({ ...editForm, birth_date: event.target.value })}
-                          className="rounded border border-[var(--border)] px-2 py-1 text-xs"
+                          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         />
                       ) : (
                         item.birth_date
@@ -505,7 +505,7 @@ export default function AdminMemberTable() {
                               gender: event.target.value as "male" | "female" | "other",
                             })
                           }
-                          className="rounded border border-[var(--border)] px-2 py-1 text-xs"
+                          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                         >
                           <option value="male">남성</option>
                           <option value="female">여성</option>
@@ -547,7 +547,7 @@ export default function AdminMemberTable() {
                             const formatted = raw ? Number(raw).toLocaleString("ko-KR") : "0";
                             setEditForm({ ...editForm, points: formatted });
                           }}
-                          className="w-24 rounded border border-[var(--border)] px-2 py-1 text-xs text-right"
+                          className="w-24 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-right text-[var(--text-primary)]"
                         />
                       ) : (
                         <span className="tabular-nums">
@@ -571,7 +571,7 @@ export default function AdminMemberTable() {
                             type="button"
                             disabled={pendingId === item.id}
                             onClick={cancelEdit}
-                            className="rounded border border-[var(--border)] px-2 py-1 text-xs"
+                            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
                           >
                             취소
                           </button>
@@ -604,18 +604,18 @@ export default function AdminMemberTable() {
             type="button"
             onClick={() => setPage(Math.max(1, safePage - 1))}
             disabled={safePage <= 1}
-            className="rounded border border-[var(--border)] px-3 py-1 text-xs disabled:opacity-50"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             이전
           </button>
-          <span className="text-xs font-semibold">
+          <span className="text-xs font-semibold text-[var(--text-primary)]">
             {safePage} / {totalPages}
           </span>
           <button
             type="button"
             onClick={() => setPage(Math.min(totalPages, safePage + 1))}
             disabled={safePage >= totalPages}
-            className="rounded border border-[var(--border)] px-3 py-1 text-xs disabled:opacity-50"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             다음
           </button>

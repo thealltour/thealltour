@@ -160,18 +160,18 @@ export function GuidePdfUploadField({
         onDragLeave={onDragLeave}
         className={`flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 transition ${
           isDragging
-            ? "border-[#2563eb] bg-blue-50/50"
-            : "border-slate-300 bg-slate-50/50 hover:border-slate-400"
+            ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+            : "border-[var(--border)] bg-[var(--surface-muted)] hover:border-[var(--border-strong)]"
         } ${isLoading ? "pointer-events-none opacity-70" : ""}`}
       >
         {thumbnailUrl?.trim() ? (
           <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start">
             <div className="shrink-0">
-              <p className="mb-1 text-xs font-medium text-slate-600">썸네일 미리보기</p>
+              <p className="mb-1 text-xs font-medium text-[var(--text-secondary)]">썸네일 미리보기</p>
               <img
                 src={thumbnailUrl}
                 alt="가이드 PDF 썸네일"
-                className="max-h-24 rounded border border-slate-200 object-contain"
+                className="max-h-24 rounded border border-[var(--border)] object-contain"
               />
             </div>
             <div className="flex flex-1 flex-col gap-1">
@@ -180,12 +180,12 @@ export function GuidePdfUploadField({
                   href={pdfUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-blue-600 underline hover:text-blue-800"
+                  className="text-sm font-medium text-[var(--primary)] underline hover:text-[var(--primary-hover)]"
                 >
                   PDF 열기 →
                 </a>
               )}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[var(--text-muted)]">
                 새 PDF를 선택하면 기존 파일을 덮어씁니다.
               </p>
             </div>
@@ -196,8 +196,8 @@ export function GuidePdfUploadField({
           <label
             className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition ${
               isLoading
-                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                ? "cursor-not-allowed border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
             {isLoading ? "업로드 중…" : "PDF 선택"}
@@ -209,14 +209,14 @@ export function GuidePdfUploadField({
               onChange={onFileSelect}
             />
           </label>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[var(--text-muted)]">
             {isDragging ? "여기에 놓기" : "또는 드래그 앤 드롭"}
           </span>
         </div>
       </div>
 
       {errorMessage && (
-        <p className="text-sm text-red-500">{errorMessage}</p>
+        <p className="text-sm text-[var(--danger)]">{errorMessage}</p>
       )}
 
       {cropState && (

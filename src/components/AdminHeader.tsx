@@ -26,8 +26,8 @@ export default function AdminHeader({
   return (
     <header className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold md:text-3xl">{title}</h1>
-        <p className="text-sm text-slate-600">{description}</p>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)] md:text-3xl">{title}</h1>
+        <p className="text-sm text-[var(--text-muted)]">{description}</p>
       </div>
     </header>
   );

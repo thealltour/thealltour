@@ -321,6 +321,13 @@
   --overlay-image-via: rgba(0, 0, 0, 0.08);
 }
 
+/* 다크 모드: 관리자 체크박스 배경이 토큰을 따르도록 (accent는 컴포넌트에서 accent-[var(--primary)] 사용) */
+.dark input[type="checkbox"] {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -737,5 +744,14 @@ body {
 .footer-pill-cta:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* 타임라인 썸네일 스트립: 가로 스크롤 시 스크롤바 숨김 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 

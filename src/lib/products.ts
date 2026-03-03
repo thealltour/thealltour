@@ -197,6 +197,7 @@ function normalizeItineraryDays(raw: unknown): ItineraryStructuredDay[] | undefi
                   : undefined,
               iconKey:
                 typeof e.iconKey === "string" && e.iconKey.trim() ? e.iconKey.trim() : undefined,
+              images: normalizeEventImages(e.images),
             };
           })
           .filter((x): x is NonNullable<typeof x> => x !== null)
@@ -215,6 +216,24 @@ function normalizeItineraryDays(raw: unknown): ItineraryStructuredDay[] | undefi
     });
   }
   return days.length > 0 ? days : undefined;
+}
+
+function normalizeEventImages(raw: unknown): ItineraryV2Event["images"] {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }> = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const url = typeof o.url === "string" && o.url.trim() ? o.url.trim() : undefined;
+    if (!url || !/^https?:\/\//i.test(url)) continue;
+    out.push({
+      url,
+      alt: typeof o.alt === "string" && o.alt.trim() ? o.alt.trim() : undefined,
+      sortOrder: typeof o.sortOrder === "number" && Number.isFinite(o.sortOrder) ? o.sortOrder : undefined,
+      isCover: o.isCover === true,
+    });
+  }
+  return out.length > 0 ? out : undefined;
 }
 
 function normalizeItineraryV2(raw: unknown): ItineraryV2 | undefined {
@@ -270,6 +289,7 @@ function normalizeItineraryV2(raw: unknown): ItineraryV2 | undefined {
               ? ev.location.trim()
               : undefined,
           order: typeof ev.order === "number" && Number.isFinite(ev.order) ? ev.order : undefined,
+          images: normalizeEventImages(ev.images),
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);

@@ -8,7 +8,7 @@ export default async function AdminNotificationsPage() {
     await Promise.all([getAdminCounts(), prepareAdminNotificationsAndGetUnreadCount()]);
 
   return (
-    <div className="min-h-screen bg-[#f8fbff] px-6 py-10 text-[#0f172a] md:px-10">
+    <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="w-full space-y-6">
         <AdminHeader
           activeTab="notifications"
@@ -21,7 +21,7 @@ export default async function AdminNotificationsPage() {
           unreadNotificationCount={unreadNotificationCount}
         />
 
-        <section className="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#dbeafe]">
+        <section className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
           <AdminNotificationList />
         </section>
       </main>

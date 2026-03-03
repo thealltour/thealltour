@@ -180,7 +180,7 @@ export function ThumbnailCropSelector({
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
           >
             <X className="h-4 w-4" />
             취소
@@ -188,7 +188,7 @@ export function ThumbnailCropSelector({
           <button
             type="button"
             onClick={handleConfirm}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)]"
           >
             선택한 영역 썸네일로 지정
           </button>
@@ -214,7 +214,7 @@ export function ThumbnailCropSelector({
             onMouseDown={handleMouseDown}
           >
             <div
-              className="absolute border-2 border-blue-500 bg-blue-500/20"
+              className="absolute border-2 border-[var(--primary)] bg-[var(--primary)]/20"
               style={{
                 left: `${(selection.x / imageWidth) * 100}%`,
                 top: `${(selection.y / imageHeight) * 100}%`,
@@ -222,12 +222,12 @@ export function ThumbnailCropSelector({
                 height: `${(selection.height / imageHeight) * 100}%`,
               }}
             >
-              <div className="absolute -right-1.5 -bottom-1.5 h-4 w-4 cursor-se-resize rounded-full border-2 border-white bg-blue-500" />
+              <div className="absolute -right-1.5 -bottom-1.5 h-4 w-4 cursor-se-resize rounded-full border-2 border-[var(--surface)] bg-[var(--primary)]" />
             </div>
           </div>
         </div>
       </div>
-      <p className="shrink-0 px-4 py-2 text-center text-xs text-slate-400">
+      <p className="shrink-0 px-4 py-2 text-center text-xs text-[var(--text-muted)]">
         영역을 드래그하여 이동·리사이즈할 수 있습니다. 빈 곳을 클릭하면 새 영역을 지정합니다.
       </p>
     </div>

@@ -10,7 +10,7 @@ export default async function AdminBannersPage() {
     await Promise.all([getAdminCounts(), prepareAdminNotificationsAndGetUnreadCount()]);
 
   return (
-    <div className="min-h-screen bg-[#f8fbff] px-6 py-10 text-[#0f172a] md:px-10">
+    <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
           activeTab="banners"
@@ -23,7 +23,7 @@ export default async function AdminBannersPage() {
           unreadNotificationCount={unreadNotificationCount}
         />
 
-        <section className="overflow-hidden rounded-2xl bg-white p-4 shadow-md ring-1 ring-[#dbeafe] md:p-5">
+        <section className="overflow-hidden rounded-2xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-5">
           <AdminToastProvider>
             <AdminConfirmProvider>
               <AdminBannerManager />

@@ -21,6 +21,10 @@ export type TimelineEvent = {
   heading: string;
   description?: string;
   side?: "left" | "right";
+  /** 이벤트별 이미지 목록 (url/alt/sortOrder/isCover). 없으면 undefined, 표시 시 (event.images ?? []) 사용 */
+  images?: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }>;
+  /** 썸네일용 URL. isCover=true인 이미지 우선, 없으면 images[0].url, 없으면 null */
+  thumbnailUrl?: string | null;
 };
 
 export type TimelineDay = {
@@ -34,6 +38,17 @@ export type TimelineDay = {
 export type TimelineModel = {
   days: TimelineDay[];
 };
+
+/** event.images에서 썸네일 URL 결정: isCover=true 우선, 없으면 images[0].url, 없으면 null */
+function getThumbnailUrl(
+  images: TimelineEvent["images"],
+): string | null {
+  if (!Array.isArray(images) || images.length === 0) return null;
+  const cover = images.find((i) => i.isCover);
+  if (cover?.url?.trim()) return cover.url.trim();
+  const first = images[0];
+  return first?.url?.trim() ?? null;
+}
 
 const MAX_EVENTS_PER_DAY = 4;
 const TITLE_MAX_LEN = 40;
@@ -162,6 +177,8 @@ export function mapProductToTimelineModel(product: Product | null): TimelineMode
             heading: e.heading,
             description: e.description,
             side: (i % 2 === 0 ? "left" : "right") as "left" | "right",
+            images: Array.isArray(e.images) ? e.images : undefined,
+            thumbnailUrl: getThumbnailUrl(Array.isArray(e.images) ? e.images : undefined),
           })),
         };
       }),
@@ -197,6 +214,8 @@ export function mapProductToTimelineModel(product: Product | null): TimelineMode
             heading: e.heading,
             description: e.description,
             side: (i % 2 === 0 ? "left" : "right") as "left" | "right",
+            images: Array.isArray(e.images) ? e.images : undefined,
+            thumbnailUrl: getThumbnailUrl(Array.isArray(e.images) ? e.images : undefined),
           })),
         };
       }),
@@ -244,6 +263,7 @@ export function timelineModelToStructuredDays(model: TimelineModel | null): Itin
       description: e.description,
       timeOfDay: e.timeOfDay,
       iconKey: e.iconKey,
+      images: Array.isArray(e.images) ? e.images : undefined,
     })),
   }));
 }
@@ -278,6 +298,8 @@ export function itineraryV2ToTimelineModel(v2: ItineraryV2 | null | undefined): 
         heading: e.heading,
         description: e.description,
         side: (i % 2 === 0 ? "left" : "right") as "left" | "right",
+        images: Array.isArray(e.images) ? e.images : undefined,
+        thumbnailUrl: getThumbnailUrl(Array.isArray(e.images) ? e.images : undefined),
       })),
     })),
   };

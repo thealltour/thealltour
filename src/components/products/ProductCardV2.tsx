@@ -135,9 +135,14 @@ export default function ProductCardV2({
     variant: badgeTypeToTagVariant(b.type),
   }));
 
-  const topLeftChips = [statusChip, categoryChip, themeChip, ...badgeChips].filter(
-    (x): x is { label: string; variant: "accent" | "muted" | "gold" } => Boolean(x),
-  );
+  const topLeftChips = [statusChip, categoryChip, themeChip, ...badgeChips]
+    .filter(
+      (x): x is { label: string; variant: "accent" | "muted" | "gold" } => Boolean(x),
+    )
+    .filter((chip, index, arr) => {
+      const key = `${chip.variant}-${chip.label}`;
+      return arr.findIndex((c) => `${c.variant}-${c.label}` === key) === index;
+    });
 
   const metaLine = [duration, metaInfo].filter(Boolean).join(" · ");
 

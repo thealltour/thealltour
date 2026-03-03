@@ -1,53 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
-import {
-  Plane,
-  Hotel,
-  UtensilsCrossed,
-  Landmark,
-  Flag,
-  Clock,
-  ImageIcon,
-} from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import type {
   TimelineModel,
   TimelineDay,
   TimelineEvent,
-  TimeOfDayLabel,
 } from "@/lib/products/mapProductToTimelineModel";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { TimelineEventCard } from "@/components/products/timeline/TimelineEventCard";
 
 export type InteractiveTimelineV2Props = {
   model: TimelineModel;
-  /** Day별 이미지 없을 때 사용할 URL (product.image_url 등) */
+  /** Day??????? ??? ???????URL (product.image_url ?? */
   fallbackImageUrl?: string | null;
   onDayChange?: (day: number) => void;
-  /** [STEP 6] 요약 영역: Day당 이벤트 최대 N개만 노출 후 "더보기"로 펼침. 미설정 시 전부 노출 */
+  /** [STEP 6] ??? ???: Day?????????? N?? ??? ??"??????????. ?????????? ??? */
   maxEventsVisible?: number;
-};
-
-/** [STEP 6] 아이콘 기본값: 이동/항공→Plane, 숙소→Hotel, 식사→Utensils, 관광→Landmark, 골프→Flag, 자유→Clock */
-const EVENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  plane: Plane,
-  hotel: Hotel,
-  utensils: UtensilsCrossed,
-  landmark: Landmark,
-  flag: Flag,
-  clock: Clock,
-  /* 하위 호환 */
-  car: Plane,
-  map: Landmark,
-  golf: Flag,
-  sun: Clock,
-};
-
-const TIMEOFDAY_LABELS: Record<TimeOfDayLabel, string> = {
-  오전: "오전",
-  오후: "오후",
-  저녁: "저녁",
-  종일: "종일",
 };
 
 function CoverImage({
@@ -62,7 +32,7 @@ function CoverImage({
 
   if (src) {
     return (
-      <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl bg-slate-200 shadow-lg">
+      <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl bg-[var(--surface-muted)] shadow-lg">
         <Image
           src={src}
           alt={day.dateText ? `Day ${day.day} - ${day.dateText}` : `Day ${day.day}`}
@@ -76,43 +46,11 @@ function CoverImage({
 
   return (
     <div
-      className="flex aspect-[21/9] w-full flex-col items-center justify-center gap-2 rounded-2xl bg-slate-100 text-slate-500"
+      className="flex aspect-[21/9] w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[var(--surface-muted)] text-[var(--text-muted)]"
       aria-hidden
     >
       <ImageIcon className="h-12 w-12 opacity-50" />
-      <span className="text-sm font-medium">Day {day.day} 대표 이미지</span>
-    </div>
-  );
-}
-
-function EventCard({ event }: { event: TimelineEvent }) {
-  const Icon = event.iconKey ? EVENT_ICONS[event.iconKey] : null;
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100">
-      <div className="flex items-start gap-3">
-        {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1E3A8A]">
-            <Icon className="h-4 w-4" />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          {event.timeOfDay && (
-            <span className="mb-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-              {TIMEOFDAY_LABELS[event.timeOfDay]}
-              {event.timeText?.trim() ? ` ${event.timeText.trim()}` : ""}
-            </span>
-          )}
-          <p className="font-semibold text-slate-900 line-clamp-1" title={event.heading}>
-            {event.heading}
-          </p>
-          {event.description && (
-            <p className="mt-1 text-sm leading-relaxed text-slate-600 line-clamp-2" title={event.description}>
-              {event.description}
-            </p>
-          )}
-        </div>
-      </div>
+      <span className="text-sm font-medium">Day {day.day} ?????????</span>
     </div>
   );
 }
@@ -125,7 +63,7 @@ export function InteractiveTimelineV2({
 }: InteractiveTimelineV2Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
-  /** [STEP 6] 요약 모드에서 Day별 '더보기' 펼침 여부 (Day 번호 집합) */
+  /** [STEP 6] ??? ????? Day??'????? ??? ???? (Day ?? ??) */
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
   if (!model?.days?.length) return null;
@@ -166,18 +104,31 @@ export function InteractiveTimelineV2({
     }
   };
 
+  const showMoreButton =
+    maxEventsVisible != null && activeDay.events.length > maxEventsVisible ? (
+      <div className="mt-6 flex justify-center">
+        <button
+          type="button"
+          onClick={toggleExpand}
+          className="rounded-lg border border-[var(--primary)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--primary)] shadow-sm transition hover:bg-[var(--primary-soft)]"
+        >
+          {isExpanded ? "??" : `??? (${moreCount}? ?)`}
+        </button>
+      </div>
+    ) : null;
+
   const titleLine = activeDay.dateText
     ? `Day ${activeDay.day} - ${activeDay.dateText}`
     : `Day ${activeDay.day}`;
 
   return (
     <section
-      className="w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-lg"
-      aria-label="상세 일정"
+      className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+      aria-label="??? ???"
     >
       <div className="p-4 sm:p-6">
         <div ref={topAnchorRef} />
-        {/* 1) 상단 Day 탭 */}
+        {/* 1) ??? Day ??*/}
         <div className="mb-6 flex flex-wrap gap-2">
           {days.map((d, i) => (
             <button
@@ -186,8 +137,8 @@ export function InteractiveTimelineV2({
               onClick={() => handleDayTab(i)}
               className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                 activeIndex === i
-                  ? "bg-[#1E3A8A] text-white shadow-md"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-md"
+                  : "bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]/80"
               }`}
             >
               Day {d.day}
@@ -195,88 +146,66 @@ export function InteractiveTimelineV2({
           ))}
         </div>
 
-        {/* 2) 선택 Day: 큰 이미지 + 타이틀 + 서브 타이틀 */}
+        {/* 2) ??? Day: ??????? + ?????? + ??? ?????? */}
         <div className="mb-8 space-y-4">
           <CoverImage day={activeDay} fallbackImageUrl={fallback} />
           <div className="text-center">
-            <h3 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            <h3 className="text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">
               {titleLine}
             </h3>
             {activeDay.title && (
-              <p className="mt-1 text-sm font-medium text-slate-600 sm:text-base">
+              <p className="mt-1 text-sm font-medium text-[var(--text-secondary)] sm:text-base">
                 {activeDay.title}
               </p>
             )}
           </div>
         </div>
 
-        {/* 3) 타임라인: 세로 라인 + 이벤트 좌/우 (모바일에서는 단일 컬럼). [STEP 6] 요약 시 displayEvents만 노출 */}
-        {activeDay.events.length > 0 ? (
+        {/* 3) ??????? ???? ??? ??? + ?? ????????? ???????????? ??? ?? */}
+        {activeDay.events.length >= 1 ? (
           <div className="relative">
-            {/* 데스크톱: 가운데 세로 라인 + 좌우 번갈아 */}
             <div className="hidden md:block">
-              <div className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 bg-[#2563eb]/30" />
-              <div className="space-y-8">
-                {displayEvents.map((ev, i) => {
-                  const isLeft = ev.side === "left";
-                  return (
-                    <div key={`${ev.heading}-${i}`} className="relative flex w-full items-start">
-                      <div className={`flex w-[calc(50%-14px)] ${isLeft ? "justify-end pr-4" : "justify-start pl-4"}`}>
-                        {isLeft ? (
-                          <div className="w-full max-w-sm">
-                            <EventCard event={ev} />
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex w-7 shrink-0 justify-center">
-                        <span className="h-3 w-3 rounded-full bg-[#2563eb] ring-4 ring-white" />
-                      </div>
-                      <div className={`flex w-[calc(50%-14px)] ${isLeft ? "justify-start pl-4" : "justify-end pr-4"}`}>
-                        {!isLeft ? (
-                          <div className="w-full max-w-sm">
-                            <EventCard event={ev} />
-                          </div>
-                        ) : null}
-                      </div>
+              <div className="absolute left-0 top-0 bottom-0 w-6" aria-hidden>
+                <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[var(--primary)]/20" />
+              </div>
+              <div className="flex flex-col space-y-10">
+                {displayEvents.map((ev, i) => (
+                  <div key={`${ev.heading}-${i}`} className="flex items-start gap-4">
+                    <div className="w-6 shrink-0 flex justify-center pt-5">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[var(--primary)]/50 ring-2 ring-[var(--surface)]" aria-hidden />
                     </div>
-                  );
-                })}
+                    <div className="min-w-0 flex-1">
+                      <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* 모바일: 단일 컬럼 스택 */}
-            <div className="space-y-4 md:hidden">
+            {/* ???: ?? ??, ?? ?? */}
+            <div className="space-y-6 md:hidden">
               {displayEvents.map((ev, i) => (
                 <div key={`${ev.heading}-${i}`} className="flex items-start gap-3">
-                  <span className="mt-4 h-2 w-2 shrink-0 rounded-full bg-[#2563eb]" />
+                  <span className="mt-6 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]/40" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <EventCard event={ev} />
+                    <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* [STEP 6] 요약 모드: 더보기 / 접기 */}
-            {maxEventsVisible != null && activeDay.events.length > maxEventsVisible && (
-              <div className="mt-6 flex justify-center">
-                <button
-                  type="button"
-                  onClick={toggleExpand}
-                  className="rounded-lg border border-[#2563eb] bg-white px-4 py-2 text-sm font-semibold text-[#1E3A8A] shadow-sm transition hover:bg-[#eff6ff]"
-                >
-                  {isExpanded ? "접기" : `더보기 (${moreCount}개 더)`}
-                </button>
-              </div>
-            )}
+            <div className="mt-6 flex justify-center">
+              {showMoreButton}
+            </div>
           </div>
         ) : (
-          <p className="py-6 text-center text-sm text-slate-500">해당 일차 이벤트가 없습니다.</p>
+          <p className="py-6 text-center text-sm text-[var(--text-muted)]">?? ?? ???? ????.</p>
         )}
 
-        {/* 하단 Day 탭: 일차 확인 후 다음 Day로 바로 이동 */}
+        {/* ??? Day ?? ??? ??? ????? Day???? ??? */}
         {days.length > 1 && (
           <div className="mt-8 border-t border-[var(--divider)] pt-4">
-            <p className="mb-3 text-xs font-semibold text-slate-500">다른 일차 바로가기</p>
+            <p className="mb-3 text-xs font-semibold text-[var(--text-muted)]">?? ?? ????</p>
             <div className="flex flex-wrap gap-2">
               {days.map((d, i) => (
                 <button
@@ -285,8 +214,8 @@ export function InteractiveTimelineV2({
                   onClick={() => handleDayTab(i, true)}
                   className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                     activeIndex === i
-                      ? "bg-[#1E3A8A] text-white shadow-md"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-md"
+                      : "bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]/80"
                   }`}
                 >
                   Day {d.day}

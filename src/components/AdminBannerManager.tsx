@@ -175,22 +175,22 @@ export default function AdminBannerManager() {
 
   return (
     <div className="space-y-6">
-      <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+      <section className="space-y-3 rounded-xl bg-[var(--surface-muted)] p-4 ring-1 ring-[var(--border)]">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-bold text-[#1e3a8a]">
+          <h3 className="text-lg font-bold text-[var(--primary)]">
             {editingId ? "메인 최상단 배너 수정" : "메인 최상단 배너 등록"}
           </h3>
           {editingId ? (
             <button
               type="button"
               onClick={cancelEdit}
-              className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
+              className="text-sm font-medium text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
             >
               수정 취소
             </button>
           ) : null}
         </div>
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-[var(--text-muted)]">
           권장 사이즈: 웹(PC) 1920x640px, 모바일 1200x800px. JPG/PNG/WebP 모두 사용 가능합니다.
         </p>
         <form className="grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
@@ -199,59 +199,59 @@ export default function AdminBannerManager() {
             value={form.title}
             onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
             placeholder="배너 제목"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
           <input
             value={form.link_url}
             onChange={(event) => setForm((prev) => ({ ...prev, link_url: event.target.value }))}
             placeholder="클릭 이동 링크(선택, 예: /products)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
           <input
             required
             value={form.image_url}
             onChange={(event) => setForm((prev) => ({ ...prev, image_url: event.target.value }))}
             placeholder="PC 배너 이미지 URL (권장 1920x640)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)] md:col-span-2"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />
           <input
             value={form.mobile_image_url}
             onChange={(event) => setForm((prev) => ({ ...prev, mobile_image_url: event.target.value }))}
             placeholder="모바일 배너 이미지 URL (선택, 권장 1200x800)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)] md:col-span-2"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />
           <input
             value={form.sort_order}
             onChange={(event) => setForm((prev) => ({ ...prev, sort_order: event.target.value }))}
             placeholder="노출 순서 (숫자 작을수록 먼저)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
             <input
               type="checkbox"
               checked={form.is_active}
               onChange={(event) => setForm((prev) => ({ ...prev, is_active: event.target.checked }))}
-              className="h-4 w-4 accent-[#1d4ed8]"
+              className="h-4 w-4 accent-[var(--primary)]"
             />
             즉시 노출 활성화
           </label>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-lg bg-[#1d4ed8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd] md:col-span-2"
+            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
           >
             {isSubmitting ? (editingId ? "수정 중..." : "등록 중...") : editingId ? "수정 저장" : "배너 추가"}
           </button>
         </form>
       </section>
 
-      {message ? <p className="text-sm text-green-600">{message}</p> : null}
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+      {message ? <p className="text-sm text-[var(--success)]">{message}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
 
       <section className="space-y-3">
-        <h3 className="text-lg font-bold text-[#1e3a8a]">등록된 배너</h3>
+        <h3 className="text-lg font-bold text-[var(--primary)]">등록된 배너</h3>
         {isLoading ? (
-          <p className="text-sm text-slate-500">배너 목록을 불러오는 중입니다...</p>
+          <p className="text-sm text-[var(--text-muted)]">배너 목록을 불러오는 중입니다...</p>
         ) : banners.length === 0 ? (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-muted)]">
             등록된 배너가 없습니다.
@@ -261,21 +261,21 @@ export default function AdminBannerManager() {
             {banners.map((item) => (
               <article
                 key={item.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-[#eef2ff]"
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm ring-1 ring-[var(--border)]"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-[#0f172a]">{item.title}</p>
-                    <p className="text-xs text-slate-500">PC 이미지: {item.image_url}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{item.title}</p>
+                    <p className="text-xs text-[var(--text-muted)]">PC 이미지: {item.image_url}</p>
+                    <p className="text-xs text-[var(--text-muted)]">
                       모바일 이미지: {item.mobile_image_url || "(미등록 - PC 이미지 사용)"}
                     </p>
-                    <p className="text-xs text-slate-500">링크: {item.link_url || "-"}</p>
+                    <p className="text-xs text-[var(--text-muted)]">링크: {item.link_url || "-"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span
                       className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                        item.is_active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                        item.is_active ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
                       }`}
                     >
                       {item.is_active ? "노출중" : "비노출"}
@@ -283,7 +283,7 @@ export default function AdminBannerManager() {
                     <button
                       type="button"
                       onClick={() => startEdit(item)}
-                      className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 transition hover:bg-slate-50"
+                      className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                       수정
                     </button>
@@ -291,7 +291,7 @@ export default function AdminBannerManager() {
                       type="button"
                       disabled={pendingToggleId === item.id}
                       onClick={() => toggleActive(item)}
-                      className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                      className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)] disabled:opacity-50"
                     >
                       상태변경
                     </button>
@@ -299,7 +299,7 @@ export default function AdminBannerManager() {
                       type="button"
                       disabled={pendingDeleteId === item.id}
                       onClick={() => deleteBanner(item)}
-                      className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-xs text-[var(--danger)] transition hover:opacity-90 disabled:opacity-50"
                     >
                       삭제
                     </button>

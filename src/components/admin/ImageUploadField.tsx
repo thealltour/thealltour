@@ -152,7 +152,7 @@ export function ImageUploadField({
         onChange={(e) => onChange(e.target.value)}
         required={!optional}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+        className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
       />
 
       <div
@@ -161,8 +161,8 @@ export function ImageUploadField({
         onDragLeave={onDragLeave}
         className={`relative flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 transition ${
           isDragging
-            ? "border-[#2563eb] bg-blue-50/50"
-            : "border-slate-300 bg-slate-50/50 hover:border-slate-400"
+            ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+            : "border-[var(--border)] bg-[var(--surface-muted)] hover:border-[var(--border-strong)]"
         } ${isLoading ? "pointer-events-none opacity-70" : ""}`}
       >
         {previewUrl && (
@@ -179,8 +179,8 @@ export function ImageUploadField({
           <label
             className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition ${
               isLoading
-                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                ? "cursor-not-allowed border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
             {isLoading ? "업로드 중…" : "파일 선택"}
@@ -193,31 +193,31 @@ export function ImageUploadField({
               onChange={onFileSelect}
             />
           </label>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[var(--text-muted)]">
             {isDragging ? "여기에 놓기" : "또는 드래그 앤 드롭"}
           </span>
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-[var(--text-muted)]">
         권장 사이즈: 1200x800px 이상 (3:2 비율). JPG/PNG/WebP 사용 가능
       </p>
 
       {sizeMeta && (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-[var(--text-secondary)]">
           용량: 원본 {formatBytes(sizeMeta.originalBytes)} → hero {formatBytes(sizeMeta.heroBytes)}{" "}
           / card {formatBytes(sizeMeta.cardBytes)}
         </p>
       )}
       {uploadedUrls && (
-        <div className="space-y-1 text-xs text-slate-600">
+        <div className="space-y-1 text-xs text-[var(--text-secondary)]">
           <p>
             <span className="font-medium">hero:</span>{" "}
             <a
               href={uploadedUrls.heroUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
+              className="text-[var(--primary)] underline hover:text-[var(--primary-hover)]"
             >
               {uploadedUrls.heroUrl.slice(0, 50)}…
             </a>
@@ -228,7 +228,7 @@ export function ImageUploadField({
               href={uploadedUrls.cardUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
+              className="text-[var(--primary)] underline hover:text-[var(--primary-hover)]"
             >
               {uploadedUrls.cardUrl.slice(0, 50)}…
             </a>
@@ -236,7 +236,7 @@ export function ImageUploadField({
         </div>
       )}
       {warnings.length > 0 && (
-        <p className="text-xs text-amber-600">{warnings.join(" ")}</p>
+        <p className="text-xs text-[var(--warning)]">{warnings.join(" ")}</p>
       )}
     </div>
   );

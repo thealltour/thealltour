@@ -10,6 +10,8 @@ export const menuMap = {
   product: ["상품 목록", "상품 등록", "카테고리/테마 관리"],
   inquiry: ["전체 문의", "미처리 문의"],
   member: ["회원 목록"],
+  rewards: ["신청", "승인", "발송", "완료", "반려"],
+  points: ["포인트 지급"],
   settings: [],
   reviews: ["후기 목록"],
   guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
@@ -25,6 +27,8 @@ const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   product: "상품 관리",
   inquiry: "문의 관리",
   member: "회원 관리",
+  rewards: "리워드 교환 관리",
+  points: "포인트 지급 관리",
   settings: "환경설정",
   reviews: "후기 관리",
   guides: "여행가이드",
@@ -88,6 +92,17 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       } else {
         initial = "가이드 목록";
       }
+    }
+    if (activeMenu === "rewards") {
+      const status = searchParams.get("status");
+      const tabByStatus: Record<string, string> = {
+        REQUESTED: "신청",
+        APPROVED: "승인",
+        SHIPPED: "발송",
+        COMPLETED: "완료",
+        REJECTED: "반려",
+      };
+      initial = (status && tabByStatus[status]) || "신청";
     }
 
     setActiveLabel(initial);
@@ -178,6 +193,14 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     return null;
   }
 
+  const REWARDS_LABEL_TO_STATUS: Record<string, string> = {
+    신청: "REQUESTED",
+    승인: "APPROVED",
+    발송: "SHIPPED",
+    완료: "COMPLETED",
+    반려: "REJECTED",
+  };
+
   function handleTabClick(label: string) {
     setActiveLabel(label);
     onTabChange?.(label);
@@ -219,6 +242,21 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       const query = params.toString();
       const target = query ? `${pathname}?${query}` : pathname;
       router.push(target);
+      return;
+    }
+    if (activeMenu === "rewards") {
+      const status = REWARDS_LABEL_TO_STATUS[label];
+      const params = new URLSearchParams(searchParams.toString());
+      if (status) {
+        params.set("status", status);
+      } else {
+        params.delete("status");
+      }
+      params.delete("id");
+      const query = params.toString();
+      const target = query ? `${pathname}?${query}` : pathname;
+      router.push(target);
+      return;
     }
   }
 

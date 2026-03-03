@@ -7,6 +7,8 @@ type AdminHeaderProps = {
     | "products"
     | "inquiries"
     | "members"
+    | "rewards"
+    | "points"
     | "reviews"
     | "guides"
     | "notifications"

@@ -11,6 +11,8 @@ import {
   Image as ImageIcon,
   Megaphone,
   Bell,
+  Gift,
+  Coins,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -54,6 +56,22 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     section: "main",
     mainKey: "member",
     roles: ["admin"],
+  },
+  {
+    href: "/theall_manager_only/rewards",
+    label: "리워드 교환 관리",
+    icon: Gift,
+    section: "main",
+    mainKey: "rewards",
+    roles: ["admin", "manager"],
+  },
+  {
+    href: "/theall_manager_only/points",
+    label: "포인트 지급 관리",
+    icon: Coins,
+    section: "main",
+    mainKey: "points",
+    roles: ["admin", "manager"],
   },
   {
     href: "/theall_manager_only/settings",

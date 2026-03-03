@@ -23,6 +23,8 @@ const LABEL_NOTICES_LEGAL = "\uD68C\uC6D0\uAC00\uC785 \uBC95\uB959 \uBB38\uC11C 
 const LABEL_NOTICES_CREATE = "\uACF5\uC9C0 \uB4F1\uB85D"; // 공지 등록
 const LABEL_NOTICES_LIST = "\uB4F1\uB85D\uB41C \uACF5\uC9C0 \uBAA9\uB85D"; // 등록된 공지 목록
 const LABEL_NOTIFICATIONS = "\uC54C\uB9BC"; // 알림
+const LABEL_REWARDS = "\uB9AC\uC6CC\uB4DC \uAD50\uD658 \uAD00\uB9AC"; // 리워드 교환 관리
+const LABEL_POINTS = "\uD3EC\uC778\uD2B8 \uC9C1\uAE09 \uAD00\uB9AC"; // 포인트 지급 관리
 
 function buildBreadcrumbLabels(pathname: string, view: string | null): string[] {
   const base = [LABEL_ADMIN];
@@ -60,6 +62,10 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
       return [...base, LABEL_INQUIRIES];
     case "members":
       return [...base, LABEL_MEMBERS];
+    case "rewards":
+      return [...base, LABEL_REWARDS];
+    case "points":
+      return [...base, LABEL_POINTS];
     case "settings":
       return [...base, LABEL_SETTINGS];
     case "reviews":

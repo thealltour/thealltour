@@ -18,6 +18,8 @@ function inferMainMenuKey(pathname: string): MainMenuKey | null {
   if (pathname.startsWith("/theall_manager_only/products")) return "product";
   if (pathname.startsWith("/theall_manager_only/inquiries")) return "inquiry";
   if (pathname.startsWith("/theall_manager_only/members")) return "member";
+  if (pathname.startsWith("/theall_manager_only/rewards")) return "rewards";
+  if (pathname.startsWith("/theall_manager_only/points")) return "points";
    if (pathname.startsWith("/theall_manager_only/settings")) return "settings";
    if (pathname.startsWith("/theall_manager_only/reviews")) return "reviews";
    if (pathname.startsWith("/theall_manager_only/guides")) return "guides";

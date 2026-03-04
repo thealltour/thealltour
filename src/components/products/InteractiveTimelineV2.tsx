@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 import type {
@@ -13,11 +13,13 @@ import { TimelineEventCard } from "@/components/products/timeline/TimelineEventC
 
 export type InteractiveTimelineV2Props = {
   model: TimelineModel;
-  /** Day??????? ??? ???????URL (product.image_url ?? */
   fallbackImageUrl?: string | null;
   onDayChange?: (day: number) => void;
-  /** [STEP 6] ??? ???: Day?????????? N?? ??? ??"??????????. ?????????? ??? */
   maxEventsVisible?: number;
+  /** 선택된 이벤트 (관리자 편집과 동기화). 해당 Day 탭으로 전환 후 카드 하이라이트 및 scrollIntoView */
+  selectedDayIndex?: number;
+  selectedEventIndex?: number;
+  onEventSelect?: (dayIndex: number, eventIndex: number) => void;
 };
 
 function CoverImage({
@@ -60,10 +62,13 @@ export function InteractiveTimelineV2({
   fallbackImageUrl = null,
   onDayChange,
   maxEventsVisible,
+  selectedDayIndex,
+  selectedEventIndex,
+  onEventSelect,
 }: InteractiveTimelineV2Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
-  /** [STEP 6] ??? ????? Day??'????? ??? ???? (Day ?? ??) */
+  const selectedCardRef = useRef<HTMLDivElement | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
   if (!model?.days?.length) return null;
@@ -71,6 +76,27 @@ export function InteractiveTimelineV2({
   const days = model.days;
   const activeDay = days[activeIndex] ?? days[0];
   const fallback = fallbackImageUrl?.trim() ?? "";
+
+  // 선택된 이벤트가 있으면 해당 Day 탭으로 맞춤
+  useEffect(() => {
+    if (selectedDayIndex != null && selectedDayIndex >= 0 && selectedDayIndex < days.length) {
+      setActiveIndex(selectedDayIndex);
+    }
+  }, [selectedDayIndex, days.length]);
+
+  // 선택된 이벤트 카드로 스크롤
+  useEffect(() => {
+    if (
+      selectedDayIndex == null ||
+      selectedEventIndex == null ||
+      selectedDayIndex !== activeIndex
+    )
+      return;
+    const t = setTimeout(() => {
+      selectedCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [selectedDayIndex, selectedEventIndex, activeIndex]);
 
   const isExpanded = expandedDays.has(activeDay.day);
   const displayEvents =
@@ -169,29 +195,91 @@ export function InteractiveTimelineV2({
                 <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[var(--primary)]/20" />
               </div>
               <div className="flex flex-col space-y-10">
-                {displayEvents.map((ev, i) => (
-                  <div key={`${ev.heading}-${i}`} className="flex items-start gap-4">
-                    <div className="w-6 shrink-0 flex justify-center pt-5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[var(--primary)]/50 ring-2 ring-[var(--surface)]" aria-hidden />
+                {displayEvents.map((ev, i) => {
+                  const isSelected =
+                    onEventSelect != null &&
+                    selectedDayIndex === activeIndex &&
+                    selectedEventIndex === i;
+                  return (
+                    <div
+                      key={`${ev.heading}-${i}`}
+                      ref={isSelected ? selectedCardRef : undefined}
+                      className="flex items-start gap-4"
+                    >
+                      <div className="w-6 shrink-0 flex justify-center pt-5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[var(--primary)]/50 ring-2 ring-[var(--surface)]" aria-hidden />
+                      </div>
+                      <div
+                        className={`min-w-0 flex-1 rounded-2xl transition ${
+                          isSelected
+                            ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--surface)]"
+                            : ""
+                        } ${onEventSelect ? "cursor-pointer" : ""}`}
+                        role={onEventSelect ? "button" : undefined}
+                        tabIndex={onEventSelect ? 0 : undefined}
+                        onClick={
+                          onEventSelect
+                            ? () => onEventSelect(activeIndex, i)
+                            : undefined
+                        }
+                        onKeyDown={
+                          onEventSelect
+                            ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  onEventSelect(activeIndex, i);
+                                }
+                              }
+                            : undefined
+                        }
+                      >
+                        <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* ???: ?? ??, ?? ?? */}
             <div className="space-y-6 md:hidden">
-              {displayEvents.map((ev, i) => (
-                <div key={`${ev.heading}-${i}`} className="flex items-start gap-3">
-                  <span className="mt-6 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]/40" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
+              {displayEvents.map((ev, i) => {
+                const isSelected =
+                  onEventSelect != null &&
+                  selectedDayIndex === activeIndex &&
+                  selectedEventIndex === i;
+                return (
+                  <div
+                    key={`${ev.heading}-${i}`}
+                    ref={isSelected ? selectedCardRef : undefined}
+                    className="flex items-start gap-3"
+                  >
+                    <span className="mt-6 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]/40" aria-hidden />
+                    <div
+                      className={`min-w-0 flex-1 rounded-2xl transition ${
+                        isSelected ? "ring-2 ring-[var(--primary)]" : ""
+                      } ${onEventSelect ? "cursor-pointer" : ""}`}
+                      role={onEventSelect ? "button" : undefined}
+                      tabIndex={onEventSelect ? 0 : undefined}
+                      onClick={
+                        onEventSelect ? () => onEventSelect(activeIndex, i) : undefined
+                      }
+                      onKeyDown={
+                        onEventSelect
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onEventSelect(activeIndex, i);
+                              }
+                            }
+                          : undefined
+                      }
+                    >
+                      <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-6 flex justify-center">

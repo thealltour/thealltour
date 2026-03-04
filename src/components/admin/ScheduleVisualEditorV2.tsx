@@ -6,6 +6,7 @@ import { itineraryV2ToTimelineModel } from "@/lib/products/mapProductToTimelineM
 import { parseLegacyItineraryText } from "@/lib/products/parseLegacyItineraryText";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { V2DayCard } from "@/components/admin/itinerary/v2/V2DayCard";
+import { HintDisclosure } from "@/components/admin/common/HintDisclosure";
 
 const DEFAULT_EVENTS_TEMPLATE: ItineraryV2Event[] = [
   { heading: "이동", description: "", timeOfDay: "오전", iconKey: "car" },
@@ -36,7 +37,7 @@ export type ScheduleVisualEditorV2Props = {
   setActiveDayIndex: (index: number) => void;
   /** 상품 이미지 → 이벤트에 추가 시 참조할 선택 이벤트 */
   selectedEvent: SelectedEventRef | null;
-  onSelectEvent: (ref: SelectedEventRef) => void;
+  onSelectEvent: (ref: SelectedEventRef | null) => void;
 };
 
 export function ScheduleVisualEditorV2({
@@ -114,12 +115,30 @@ export function ScheduleVisualEditorV2({
   const addEvent = (dayIndex: number) => {
     updateV2((prev) => ({
       days: prev.days.map((d, i) =>
-        i === dayIndex ? { ...d, events: [...d.events, { heading: "", description: "" }] } : d,
+        i === dayIndex
+          ? {
+              ...d,
+              events: [
+                ...d.events,
+                {
+                  heading: "새 이벤트",
+                  description: "",
+                  timeText: "",
+                  timeOfDay: "오후",
+                  iconKey: "",
+                },
+              ],
+            }
+          : d,
       ),
     }));
   };
 
   const removeEvent = (dayIndex: number, eventIndex: number) => {
+    const wasSelected =
+      selectedEvent?.editorType === "v2" &&
+      selectedEvent.dayIndex === dayIndex &&
+      selectedEvent.eventIndex === eventIndex;
     updateV2((prev) => ({
       days: prev.days.map((d, i) =>
         i === dayIndex
@@ -127,6 +146,7 @@ export function ScheduleVisualEditorV2({
           : d,
       ),
     }));
+    if (wasSelected) onSelectEvent(null);
   };
 
   const moveEvent = (dayIndex: number, eventIndex: number, direction: "up" | "down") => {
@@ -200,10 +220,14 @@ export function ScheduleVisualEditorV2({
         </div>
 
         <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)]/50 p-3">
-          <p className="mb-2 text-xs font-semibold text-[var(--warning)]">레거시 텍스트로 초안 만들기</p>
-          <p className="mb-2 text-[11px] text-[var(--warning)]">
-            기존 일정 텍스트를 붙여넣고 버튼을 누르면 Day/이벤트 초안이 생성됩니다. &quot;1일차&quot;, &quot;Day 1&quot;, &quot;[2일차]&quot; 등으로 구분된 텍스트를 지원합니다.
-          </p>
+          <HintDisclosure
+            id="schedule.legacyTextGuide"
+            summary="레거시 텍스트를 붙여넣어 Day/이벤트 초안을 생성할 수 있습니다."
+          >
+            {`기존 일정 텍스트를 붙여넣고 버튼을 누르면 Day/이벤트 초안이 생성됩니다. "1일차", "Day 1", "[2일차]" 등으로 구분된 텍스트를 지원합니다.
+
+아래 입력란에 예시처럼 일차별로 구분해 붙여넣은 뒤 "레거시 텍스트로 초안 만들기" 버튼을 누르세요.`}
+          </HintDisclosure>
           <textarea
             value={form.legacy_itinerary_text ?? ""}
             onChange={(e) =>
@@ -214,7 +238,7 @@ export function ScheduleVisualEditorV2({
             }
             placeholder={"예시:\n[1일차]\n집결/인천국제공항 제1터미널 집결/오후/19:40\n출발/티웨이항공(TW) 인천(ICN) 출발 (약 10시간 35분 소요)/오후/21:40\n식사/석식: 기내식\n숙박/기내박\n\n\n[2일차]\n미팅/시드니(SYD) 공항 도착 및 가이드 미팅/오전/10:15 \n관광/시드니 동부 해안 관광/오후\n본다이 비치/시드니 최고의 서핑 명소 및 해변 관람"}
             rows={4}
-            className="mb-2 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            className="mb-2 mt-2 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
           <button
             type="button"
@@ -274,6 +298,13 @@ export function ScheduleVisualEditorV2({
               model={timelineModel}
               fallbackImageUrl={fallbackUrl}
               onDayChange={setActiveDayIndex}
+              selectedDayIndex={selectedEvent?.editorType === "v2" ? selectedEvent.dayIndex : undefined}
+              selectedEventIndex={
+                selectedEvent?.editorType === "v2" ? selectedEvent.eventIndex : undefined
+              }
+              onEventSelect={(dayIndex, eventIndex) =>
+                onSelectEvent({ editorType: "v2", dayIndex, eventIndex })
+              }
             />
           ) : (
             <div className="flex flex-col items-center justify-center rounded-lg bg-[var(--surface-muted)] py-12 text-center text-sm text-[var(--text-muted)]">

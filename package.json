@@ -11,6 +11,9 @@
     "lighthouse:desktop": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=desktop"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@notionhq/client": "^5.11.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-query": "^5.90.21",

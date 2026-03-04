@@ -32,6 +32,7 @@ import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { MultiImageUploadField } from "@/components/admin/MultiImageUploadField";
 import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
 import { ScheduleVisualEditorV2 } from "@/components/admin/ScheduleVisualEditorV2";
+import { HintDisclosure } from "@/components/admin/common/HintDisclosure";
 import { StructuredDaysEditor } from "@/components/admin/itinerary/structured/StructuredDaysEditor";
 import { normalizeAirline } from "@/lib/airlines/normalizeAirline";
 import { AIRLINE_LOGO_BY_CODE } from "@/lib/airlines/airlineLogos";
@@ -2926,9 +2927,17 @@ export default function AdminProductManager() {
           </div>
           <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[var(--primary)]">상품 옵션 (기간·룸 등 선택 시 견적)</p>
-            <p className="text-xs text-[var(--text-muted)]">
-              JSON 형식. 비우면 옵션 미사용. basePrice, currency, requiredGroups(선택), groups 배열 필수.
-            </p>
+            <HintDisclosure
+              id="price.optionsJsonGuide"
+              summary="가격 옵션 JSON 형식 보기"
+            >
+              {`JSON 형식. 비우면 옵션 미사용.
+필수 필드: basePrice, currency, groups 배열.
+선택: requiredGroups (필수 선택 그룹 키 배열).
+
+예시:
+{"basePrice": 1000000, "currency": "KRW", "requiredGroups": ["period"], "groups": [{"key": "period", "title": "기간", "type": "radio", "items": [{"value": "3n4d", "label": "3박4일", "priceDelta": 0, "isDefault": true}, {"value": "4n5d", "label": "4박5일", "priceDelta": 200000}]}]}`}
+            </HintDisclosure>
             <textarea
               value={form.options_json}
               onChange={(event) => setForm((prev) => ({ ...prev, options_json: event.target.value }))}
@@ -3227,7 +3236,18 @@ export default function AdminProductManager() {
             </div>
           )}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/30 p-3">
-            <p className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">붙여넣기로 이미지 추가 (Paste-to-Add)</p>
+            <HintDisclosure
+              id="schedule.pasteToAddGuide"
+              summary="URL을 줄바꿈으로 붙여넣으면 이미지가 추가됩니다."
+            >
+              {`1) 상단 이미지 자동 등록 [!] 버튼으로 북마클릿 복사
+2) 브라우저 북마크 URL에 붙여넣기
+3) 모두투어 등 원본 페이지에서 북마클릿 실행 → URL 복사됨
+4) 아래 입력란에 URL을 붙여넣기 (줄바꿈 또는 쉼표 구분)
+
+※ 먼저 아래 일정에서 "이 이벤트에 추가 대상"을 선택한 뒤, "선택 이벤트에 추가"를 누르세요.`}
+            </HintDisclosure>
+            <p className="mb-2 mt-2 text-xs font-semibold text-[var(--text-secondary)]">붙여넣기로 이미지 추가 (Paste-to-Add)</p>
             <textarea
               value={pasteToAddValue}
               onChange={(e) => setPasteToAddValue(e.target.value)}

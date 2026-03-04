@@ -2,8 +2,9 @@
 
 import type { ItineraryV2Day, ItineraryV2Event, SelectedEventRef } from "@/types/product";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
-import { V2EventRow } from "./V2EventRow";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { HintDisclosure } from "@/components/admin/common/HintDisclosure";
+import { ScheduleEditor } from "@/components/admin/product/schedule/ScheduleEditor";
 
 export type V2DayCardProps = {
   day: ItineraryV2Day;
@@ -102,7 +103,14 @@ export function V2DayCard({
         <p className="mb-1 text-[11px] font-semibold text-[var(--text-muted)]">
           Day 커버 이미지 (선택, 카드 800px)
         </p>
-        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+        <HintDisclosure
+          id="schedule.dayCoverImageGuide"
+          summary="권장: 1200x800px 이상(3:2)"
+        >
+          {`지원 포맷: JPG, PNG, WebP
+권장 사이즈: 1200x800px 이상 (3:2 비율). 카드/타임라인에서 800px 폭으로 사용되며, 비율이 맞으면 깨짐 없이 표시됩니다.`}
+        </HintDisclosure>
+        <div className="mt-2 flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/40 p-2">
             <p className="mb-2 text-[11px] font-semibold text-[var(--text-secondary)]">
               파일 업로드 / 드래그앤드롭
@@ -174,32 +182,20 @@ export function V2DayCard({
       </div>
 
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold text-[var(--text-secondary)]">이벤트</p>
-        {events.map((ev, evIndex) => (
-          <V2EventRow
-            key={`ev-${dayIndex}-${evIndex}`}
-            event={ev}
-            eventIndex={evIndex}
-            totalEvents={events.length}
-            onEventChange={(patch) => onEventChange(evIndex, patch)}
-            onMoveUp={() => onMoveEvent(evIndex, "up")}
-            onMoveDown={() => onMoveEvent(evIndex, "down")}
-            onRemove={() => onRemoveEvent(evIndex)}
-            onSelect={onEventSelect ? () => onEventSelect(evIndex) : undefined}
-            isSelected={
-              selectedEvent?.editorType === "v2" &&
-              selectedEvent.dayIndex === dayIndex &&
-              selectedEvent.eventIndex === evIndex
-            }
-          />
-        ))}
-        <button
-          type="button"
-          onClick={onAddEvent}
-          className="rounded border border-dashed border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-        >
-          + 이벤트 추가
-        </button>
+        <ScheduleEditor
+          events={events}
+          selectedEventIndex={
+            selectedEvent?.editorType === "v2" &&
+            selectedEvent.dayIndex === dayIndex
+              ? selectedEvent.eventIndex
+              : null
+          }
+          onSelectEvent={(evIndex) => onEventSelect?.(evIndex)}
+          onEventChange={(evIndex, patch) => onEventChange(evIndex, patch)}
+          onReorder={(nextEvents) => onDayChange({ events: nextEvents })}
+          onAddEvent={onAddEvent}
+          onRemoveEvent={(evIndex) => onRemoveEvent(evIndex)}
+        />
       </div>
     </article>
   );

@@ -1,0 +1,152 @@
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+import { requireMemberSession } from "@/lib/apiAuth";
+import { getStorageProvider } from "@/lib/storage";
+import {
+  MAX_ACTIVE_EARN_REQUESTS,
+  MAX_EARN_ATTACHMENTS,
+  MIN_EARN_ATTACHMENTS,
+  validateEarnRequestAttachment,
+} from "@/server/services/points/earnRequests";
+
+function buildAttachmentPath(userId: string, fileName: string) {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return `points/earn-requests/${yyyy}/${mm}/${userId}/${Date.now()}-${safeName}`;
+}
+
+export async function GET() {
+  const auth = await requireMemberSession();
+  if (auth.res) return auth.res;
+  const userId = auth.session.memberId;
+
+  const { data, error } = await supabase
+    .from("point_earn_requests")
+    .select("id, status, booking_ref, departure_date, payer_name, memo, contact_phone, admin_memo, reject_reason, requested_at, decided_at")
+    .eq("user_id", userId)
+    .order("requested_at", { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ message: "요청 목록을 불러올 수 없습니다." }, { status: 500 });
+  }
+  return NextResponse.json(data ?? []);
+}
+
+export async function POST(request: Request) {
+  const auth = await requireMemberSession();
+  if (auth.res) return auth.res;
+  const userId = auth.session.memberId;
+
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json({ message: "요청 형식이 올바르지 않습니다." }, { status: 400 });
+  }
+
+  const bookingRef = String(formData.get("booking_ref") ?? "").trim();
+  const departureDate = String(formData.get("departure_date") ?? "").trim();
+  const payerName = String(formData.get("payer_name") ?? "").trim();
+  const memo = String(formData.get("memo") ?? "").trim();
+  const contactPhone = String(formData.get("contact_phone") ?? "").trim();
+  const files = formData.getAll("attachments").filter((v): v is File => v instanceof File);
+
+  if (!bookingRef || !departureDate || !payerName) {
+    return NextResponse.json({ message: "booking_ref, departure_date, payer_name은 필수입니다." }, { status: 400 });
+  }
+  if (files.length < MIN_EARN_ATTACHMENTS || files.length > MAX_EARN_ATTACHMENTS) {
+    return NextResponse.json({ message: "증빙 파일은 1~3개까지 업로드할 수 있습니다." }, { status: 400 });
+  }
+
+  for (const file of files) {
+    const result = validateEarnRequestAttachment(file);
+    if (!result.ok) {
+      return NextResponse.json({ message: result.message }, { status: 400 });
+    }
+  }
+
+  const [activeRes, dupRes] = await Promise.all([
+    supabase
+      .from("point_earn_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "REQUESTED"),
+    supabase
+      .from("point_earn_requests")
+      .select("id")
+      .eq("booking_ref", bookingRef)
+      .maybeSingle(),
+  ]);
+
+  if (activeRes.error || dupRes.error) {
+    return NextResponse.json({ message: "중복/요청 상태 확인에 실패했습니다." }, { status: 500 });
+  }
+  if ((activeRes.count ?? 0) >= MAX_ACTIVE_EARN_REQUESTS) {
+    return NextResponse.json({ message: "진행 중인 적립 요청이 있어 추가 요청할 수 없습니다." }, { status: 400 });
+  }
+  if (dupRes.data) {
+    return NextResponse.json({ message: "이미 등록된 예약번호입니다." }, { status: 400 });
+  }
+
+  const { data: reqRow, error: reqErr } = await supabase
+    .from("point_earn_requests")
+    .insert({
+      user_id: userId,
+      status: "REQUESTED",
+      booking_ref: bookingRef,
+      departure_date: departureDate,
+      payer_name: payerName,
+      memo: memo || null,
+      contact_phone: contactPhone || null,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (reqErr || !reqRow) {
+    return NextResponse.json({ message: "적립 요청 생성에 실패했습니다." }, { status: 500 });
+  }
+
+  const requestId = (reqRow as { id: string }).id;
+  const provider = getStorageProvider();
+
+  try {
+    const uploaded = [];
+    for (const file of files) {
+      const path = buildAttachmentPath(userId, file.name);
+      const result = await provider.uploadPublicImage({
+        file,
+        path,
+        contentType: file.type,
+        bucket: process.env.POINT_EARN_REQUEST_BUCKET || "product-images",
+      });
+      uploaded.push({
+        request_id: requestId,
+        file_url: result.url,
+        file_name: file.name,
+        mime_type: file.type,
+        file_size: file.size,
+      });
+    }
+
+    const { error: attachErr } = await supabase.from("earn_request_attachments").insert(uploaded);
+    if (attachErr) {
+      await supabase.from("point_earn_requests").delete().eq("id", requestId);
+      return NextResponse.json({ message: "증빙 파일 저장에 실패했습니다." }, { status: 500 });
+    }
+
+    await supabase.from("notifications").insert({
+      user_id: userId,
+      type: "ADMIN_MESSAGE",
+      title: "포인트 적립 요청 접수",
+      body: "예약 증빙 요청이 접수되었습니다. 관리자 검수 후 처리됩니다.",
+    });
+
+    return NextResponse.json({ id: requestId, message: "적립 요청이 접수되었습니다." }, { status: 201 });
+  } catch (error) {
+    await supabase.from("point_earn_requests").delete().eq("id", requestId);
+    const message = error instanceof Error ? error.message : "파일 업로드에 실패했습니다.";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}

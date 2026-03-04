@@ -116,7 +116,7 @@ export default function ProductDetailTabsLegacy({
 
       {activeMainTab === "points" && (
         <div className="fade-in-up space-y-5">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3">
             {pointRows.length > 0 ? (
               pointRows.map((item) => {
                 const oxValue = item.type === "ox" ? normalizeOXValue(item.value) : "";
@@ -158,7 +158,7 @@ export default function ProductDetailTabsLegacy({
               <p className="text-sm leading-6 text-slate-700">{minDeparturePeople.trim()}명 이상 출발 확정</p>
             </article>
           ) : null}
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
             <article className="rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
               <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">포함사항</h3>
               <p className="whitespace-pre-line text-sm leading-6 text-slate-700">

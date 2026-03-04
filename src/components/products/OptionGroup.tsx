@@ -52,7 +52,7 @@ export function OptionGroup({ group, value, isRequired, onChange }: OptionGroupP
           ))}
         </Select>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={group.title} aria-required={isRequired}>
+        <div className="flex flex-col space-y-2 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-2" role="radiogroup" aria-label={group.title} aria-required={isRequired}>
           {items.map((opt) => (
             <OptionRadioItem
               key={opt.value}

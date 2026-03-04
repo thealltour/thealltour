@@ -1,36 +1,47 @@
+import MyPageLayout from "@/components/mypage/MyPageLayout";
+import RewardsRedemptionClient from "@/components/mypage/RewardsRedemptionClient";
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
-import RewardsCatalogClient from "@/components/mypage/RewardsCatalogClient";
+import { supabase } from "@/lib/supabase";
 
-async function fetchCatalog() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+async function fetchCatalog(baseUrl: string) {
   const res = await fetch(`${baseUrl}/api/rewards/catalog`, { cache: "no-store" });
   if (!res.ok) return [];
   return res.json();
 }
 
-export default async function MypageRewardsPage() {
+async function fetchPoints(baseUrl: string, cookieHeader: string) {
+  const res = await fetch(`${baseUrl}/api/me/points`, {
+    headers: { Cookie: cookieHeader },
+    cache: "no-store",
+  });
+  if (!res.ok) return { balance: 0 };
+  return res.json();
+}
+
+export default async function MyPageRewardsPage() {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
-  if (!session) return null;
-
-  const catalog = await fetchCatalog();
-
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const cookieHeader = cookieStore.toString();
+  const [catalog, points] = await Promise.all([fetchCatalog(baseUrl), fetchPoints(baseUrl, cookieHeader)]);
+  let profile: { name: string | null; phone: string | null } | null = null;
+  if (session?.memberId) {
+    const { data } = await supabase
+      .from("members")
+      .select("name, phone")
+      .eq("id", session.memberId)
+      .maybeSingle();
+    profile = data as { name: string | null; phone: string | null } | null;
+  }
   return (
-    <div className="space-y-8">
-      <p className="text-sm text-[var(--text-muted)]">
-        포인트로 경품을 교환할 수 있습니다. 교환 신청 시 포인트가 즉시 차감되며, 승인 후 발송됩니다.
-      </p>
-      <RewardsCatalogClient catalog={catalog} />
-      <p>
-        <Link
-          href="/mypage/redemptions"
-          className="inline-flex items-center rounded-lg bg-[var(--surface-muted)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--border)]"
-        >
-          교환 신청 내역 보기
-        </Link>
-      </p>
-    </div>
+    <MyPageLayout title="리워드 교환소" description="포인트로 교환 가능한 리워드를 확인할 수 있습니다.">
+      <RewardsRedemptionClient
+        initialCatalog={catalog}
+        initialBalance={Number(points?.balance ?? 0)}
+        initialName={profile?.name ?? undefined}
+        initialPhone={profile?.phone ?? undefined}
+      />
+    </MyPageLayout>
   );
 }

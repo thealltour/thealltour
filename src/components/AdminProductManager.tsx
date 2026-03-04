@@ -17,7 +17,6 @@ import {
 } from "@/components/products/ProductDetailStickyV2";
 import { ConsultModalProvider } from "@/components/ConsultModal";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
-import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
 import {
   formToPreviewProduct,
   productToCardV2PropsPayload,
@@ -781,8 +780,6 @@ export default function AdminProductManager() {
   });
   /** 목차 네비에서 현재 스크롤 기준 활성 섹션 (IntersectionObserver로 갱신) */
   const [activeSectionId, setActiveSectionId] = useState<SectionId | null>("basic");
-  /** lg 미만에서 입력|카드|상세 탭 전환 */
-  const [smallScreenTab, setSmallScreenTab] = useState<"input" | "card" | "detail">("input");
 
   const departureFlightCode = useMemo(
     () => (form.departure_flight_name ? normalizeAirline(form.departure_flight_name) : null),
@@ -859,6 +856,25 @@ export default function AdminProductManager() {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       });
+    });
+  }
+
+  /** 아코디언 헤더 클릭: 토글(열려 있으면 접기, 닫혀 있으면 열고 스크롤). */
+  function toggleSection(sectionId: SectionId) {
+    setProductFormOpenSections((prev) => {
+      const next = { ...prev, [sectionId]: !prev[sectionId] };
+      if (next[sectionId]) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const headerOffset = getStickyHeaderOffset();
+            const el = document.getElementById(`form-section-${sectionId}`) as HTMLElement | null;
+            if (!el) return;
+            const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
+            window.scrollTo({ top, behavior: "smooth" });
+          });
+        });
+      }
+      return next;
     });
   }
 
@@ -1668,36 +1684,48 @@ export default function AdminProductManager() {
     };
   }, [isCreateView, editingId]);
 
-  /** IntersectionObserver: 스크롤 시 상단 근처에 들어온 섹션을 activeSectionId로 설정.
-   * rootMargin "-20% 0px -70% 0px": 뷰포트 상단 20%·하단 70%를 제외한 중간 10% 대만 "활성 구간"으로 봄 → 섹션 헤더가 그 구간에 들어오면 active.
-   * threshold 0.01: 1%만 보여도 교차로 간주해 반응 속도 확보. */
+  /** Scroll Spy: 윈도우 스크롤 기준 activeSectionId 자동 동기화 */
   useEffect(() => {
     if (!(isCreateView || editingId)) return;
-    const visibleIds = new Set<string>();
-    const observer = new IntersectionObserver(
+    const headerOffset = getStickyHeaderOffset();
+    const ids = SECTIONS.map((s) => s.id);
+
+    const els = ids
+      .map((id) => document.getElementById(`form-section-${id}`))
+      .filter(Boolean) as HTMLElement[];
+
+    if (els.length === 0) return;
+
+    let raf = 0;
+
+    const io = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.id?.startsWith("form-section-")
-            ? entry.target.id.slice("form-section-".length)
-            : "";
-          if (!id) continue;
-          if (entry.isIntersecting) visibleIds.add(id);
-          else visibleIds.delete(id);
-        }
-        const first = SECTIONS.find((s) => visibleIds.has(s.id));
-        setActiveSectionId(first?.id ?? null);
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .map((e) => e.target as HTMLElement)
+          .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+
+        const next = visible[0]?.id?.replace("form-section-", "");
+        if (!next) return;
+
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          setActiveSectionId(next as SectionId);
+        });
       },
       {
         root: null,
-        rootMargin: "-20% 0px -70% 0px",
-        threshold: 0.01,
-      },
+        rootMargin: `-${headerOffset + 8}px 0px -60% 0px`,
+        threshold: [0, 0.1, 0.25],
+      }
     );
-    for (const s of SECTIONS) {
-      const el = document.getElementById(`form-section-${s.id}`);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
+
+    els.forEach((el) => io.observe(el));
+
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+    };
   }, [isCreateView, editingId]);
 
   function handleSaveDraft() {
@@ -1734,8 +1762,6 @@ export default function AdminProductManager() {
     const el = document.getElementById("product-form-preview-panel");
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      setSmallScreenTab("card");
     }
   }
 
@@ -2216,7 +2242,7 @@ export default function AdminProductManager() {
                   분류 전용 테이블이 없어 임시 목록으로 표시 중입니다. SQL 적용 후 추가/삭제가 완전 활성화됩니다.
                 </p>
               ) : null}
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
                 <div className="space-y-3">
                   <p className="text-sm font-semibold text-[var(--text-primary)]">카테고리</p>
                   <div className="flex flex-wrap gap-2">
@@ -2301,36 +2327,62 @@ export default function AdminProductManager() {
 
       {isCreateView || editingId ? (
         <>
-        {/* lg 미만: 입력 | 카드 | 상세 탭 */}
-        <div className="lg:hidden mb-4">
-          <Tabs value={smallScreenTab} onChange={(v) => setSmallScreenTab(v as "input" | "card" | "detail")}>
-            <TabsTrigger value="input">입력</TabsTrigger>
-            <TabsTrigger value="card">카드</TabsTrigger>
-            <TabsTrigger value="detail">상세</TabsTrigger>
-          </Tabs>
-        </div>
-
-        <div className="lg:grid lg:grid-cols-[1fr,minmax(300px,400px)] lg:gap-6 space-y-4 lg:space-y-0">
-          {/* 좌측: 네비(aside) + 폼(main) — md부터 좌측 네비 2컬럼, 네비 sticky */}
-          <div className={smallScreenTab === "input" ? "block" : "hidden lg:block"} aria-hidden={smallScreenTab !== "input"}>
-        <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(200px,240px),1fr] md:gap-4">
-          {/* 좌측 세로 네비 — md 이상에서 왼쪽 고정, sticky로 스크롤 따라다님 */}
-          <aside className="hidden md:block w-full md:min-h-0" aria-label="폼 섹션 목차 영역">
-            <div
-              className="sticky z-10 max-h-[calc(100vh-7rem)] overflow-y-auto overscroll-contain"
-              style={{ top: "var(--product-form-nav-top, 6rem)" }}
-            >
-              <ProductFormSectionNav
-                sections={SECTIONS.map((s) => ({ id: s.id, title: s.title }))}
-                activeSectionId={activeSectionId}
-                setActiveSectionId={(id) => setActiveSectionId(id as SectionId)}
-                openSection={(id, anchorId) =>
-                  openSectionAndScrollTo(id as SectionId, anchorId)
-                }
-                issues={formIssuesForBar}
-              />
+        <div className="flex items-start gap-4 lg:gap-6">
+        {/* 좌측 필드: 섹션 네비 + 액션 바 (sticky, 문서 흐름 내) */}
+        <aside
+          className="sticky top-24 z-10 flex max-h-[calc(100vh-6rem)] w-[260px] shrink-0 flex-col gap-4 self-start overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-sm max-md:hidden"
+          aria-label="폼 섹션 목차 및 액션"
+        >
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <ProductFormSectionNav
+              sections={SECTIONS.map((s) => ({ id: s.id, title: s.title }))}
+              activeSectionId={activeSectionId}
+              setActiveSectionId={(id) => setActiveSectionId(id as SectionId)}
+              openSection={(id, anchorId) =>
+                openSectionAndScrollTo(id as SectionId, anchorId)
+              }
+              issues={formIssuesForBar}
+            />
+          </div>
+          <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--border)] pt-3" role="group" aria-label="상품 등록 액션">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[var(--primary)]">{editingId ? "상품 수정" : "상품 등록"}</h3>
+              {editingId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(initialFormState);
+                    setActiveSchedulePreviewIndex(0);
+                    setShowRawScheduleEditor(false);
+                    setScheduleEditorMode("visual");
+                    setErrorMessage("");
+                  }}
+                  className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                >
+                  수정 취소
+                </button>
+              ) : null}
             </div>
-          </aside>
+            <ProductFormActionBar
+              sections={SECTIONS.map((s) => ({ id: s.id, title: s.title }))}
+              openSections={productFormOpenSections}
+              setOpenSections={setProductFormOpenSections}
+              issues={formIssuesForBar}
+              onSave={submit}
+              onTempSave={handleSaveDraft}
+              onPreviewClick={handlePreviewClick}
+              hasTempDraft={showDraftBanner && !!draftData}
+              isSaving={isSubmitting}
+              isSavingDraft={isSavingDraft}
+              isEditing={Boolean(editingId)}
+              sticky={false}
+            />
+          </div>
+        </aside>
+        {/* 오른쪽 필드: 입력 아코디언 + 미리보기 */}
+        <div className="flex min-w-0 flex-1 flex-col gap-4 lg:gap-6">
+          {/* 아코디언 폼 (2열 내용) */}
           <main className="min-w-0">
         <form
           className="space-y-4 rounded-xl bg-[var(--surface-muted)] p-4 ring-1 ring-[var(--border)]"
@@ -2340,26 +2392,6 @@ export default function AdminProductManager() {
           }}
           noValidate
         >
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-[var(--primary)]">{editingId ? "상품 수정" : "상품 등록"}</h3>
-          {editingId ? (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                setForm(initialFormState);
-                setActiveSchedulePreviewIndex(0);
-                setShowRawScheduleEditor(false);
-                setScheduleEditorMode("visual");
-                setErrorMessage("");
-              }}
-              className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            >
-              수정 취소
-            </button>
-          ) : null}
-        </div>
-
         {showDraftBanner && draftData && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-amber-800 dark:text-amber-200">
@@ -2384,20 +2416,6 @@ export default function AdminProductManager() {
           </div>
         )}
 
-        <ProductFormActionBar
-          sections={SECTIONS.map((s) => ({ id: s.id, title: s.title }))}
-          openSections={productFormOpenSections}
-          setOpenSections={setProductFormOpenSections}
-          issues={formIssuesForBar}
-          onSave={submit}
-          onTempSave={handleSaveDraft}
-          onPreviewClick={handlePreviewClick}
-          hasTempDraft={showDraftBanner && !!draftData}
-          isSaving={isSubmitting}
-          isSavingDraft={isSavingDraft}
-          isEditing={Boolean(editingId)}
-        />
-
         <div className="space-y-2">
           {SECTIONS.map((section) => {
             const id = section.id;
@@ -2420,7 +2438,7 @@ export default function AdminProductManager() {
             >
               <button
                 type="button"
-                onClick={() => openSectionAndScrollTo(id as SectionId)}
+                onClick={() => toggleSection(id as SectionId)}
                 className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)]"
               >
                 <span className="flex items-center gap-2">
@@ -2461,7 +2479,7 @@ export default function AdminProductManager() {
                     />
                   ) : null}
                   {id === "basic" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
           <input
             value={form.title}
@@ -2483,7 +2501,7 @@ export default function AdminProductManager() {
             상품명 추출
           </button>
           </div>
-          <div className="md:col-span-2">
+          <div>
             <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">한 줄 소개 (상세 상단 요약)</label>
             <input
               value={form.one_liner}
@@ -2581,13 +2599,13 @@ export default function AdminProductManager() {
                 카테고리·테마는 상세 첫 화면의 여행 오버뷰 &quot;지역&quot; 카드에 반영됩니다. 대표 이미지는 오버뷰 커버로 사용됩니다.
               </p>
             </div>
-            <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 md:col-span-2">
+            <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
               <p className="text-xs font-semibold text-[var(--text-primary)]">여행 오버뷰 카드 (숙소·지역·기간)</p>
               <p className="text-xs text-[var(--text-muted)]">
                 상세 페이지 첫 화면에 표시되는 카드 값입니다. 비우면 기존 자동 추출(meta_info, theme, duration)을 사용합니다.
               </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <div className="space-y-1 min-w-0 flex-1">
                   <label className="block text-xs font-medium text-[var(--text-secondary)]">숙소</label>
                   <input
                     value={form.overview_accommodation}
@@ -2598,7 +2616,7 @@ export default function AdminProductManager() {
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 min-w-0 flex-1">
                   <label className="block text-xs font-medium text-[var(--text-secondary)]">지역</label>
                   <input
                     value={form.overview_region}
@@ -2609,7 +2627,7 @@ export default function AdminProductManager() {
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 min-w-0 flex-1">
                   <label className="block text-xs font-medium text-[var(--text-secondary)]">기간</label>
                   <input
                     value={form.overview_duration}
@@ -2843,7 +2861,7 @@ export default function AdminProductManager() {
                   </div>
                   )}
                   {id === "price" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <input
             value={form.price}
             onChange={(event) =>
@@ -2922,7 +2940,7 @@ export default function AdminProductManager() {
                   </div>
                   )}
                   {id === "description" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <textarea
             value={form.description}
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
@@ -2941,7 +2959,7 @@ export default function AdminProductManager() {
           />
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:col-span-2">
             <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">상품 포인트 O/X 선택</p>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
               {[
                 { key: "travel_insurance", label: "상품 포인트 - 여행자보험" },
                 { key: "meeting_info", label: "상품 포인트 - 미팅 정보" },
@@ -2989,7 +3007,7 @@ export default function AdminProductManager() {
                   </div>
                   )}
                   {id === "included" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <textarea
             value={form.included_items}
             onChange={(event) => setForm((prev) => ({ ...prev, included_items: event.target.value }))}
@@ -3031,7 +3049,7 @@ export default function AdminProductManager() {
                   </div>
                   )}
                   {id === "flight" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[var(--primary)]">항공편 정보</p>
             <p className="text-xs text-[var(--text-secondary)]">
@@ -3041,10 +3059,10 @@ export default function AdminProductManager() {
               현재는 라이선스 문제로 실제 항공사 로고 이미지는 사용하지 않고, 아이콘 + 텍스트만 표시됩니다. 추후
               라이선스 획득 시 이 프리뷰 영역과 상세페이지에 로고가 자동 업데이트됩니다.
             </p>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
               <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                 <p className="text-xs font-semibold text-[var(--text-primary)]">출발 항공편</p>
-                <div className="grid gap-2 md:grid-cols-2">
+                <div className="flex flex-col space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-2">
                   <input
                     value={form.departure_from_airport}
                     onChange={(event) =>
@@ -3121,7 +3139,7 @@ export default function AdminProductManager() {
 
               <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                 <p className="text-xs font-semibold text-[var(--text-primary)]">도착 항공편</p>
-                <div className="grid gap-2 md:grid-cols-2">
+                <div className="flex flex-col space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-2">
                   <input
                     value={form.arrival_from_airport}
                     onChange={(event) =>
@@ -3278,7 +3296,7 @@ export default function AdminProductManager() {
               onSelectEvent={setSelectedEvent}
             />
           ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -3456,7 +3474,7 @@ export default function AdminProductManager() {
                 <p className="mb-3 text-xs text-[var(--text-muted)]">
                   일차별로 업로드하거나 URL을 넣으면 상세 일정 타임라인에 표시됩니다. 비우면 상품 대표 이미지로 대체됩니다.
                 </p>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
                   {Array.from({ length: effectiveDayCount }, (_, i) => i + 1).map((dayNum) => {
                     const dayKey = String(dayNum);
                     const url = form.itinerary_media_json[dayKey] ?? "";
@@ -3503,7 +3521,7 @@ export default function AdminProductManager() {
         </div>
                   )}
                   {id === "terms" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[var(--primary)]">약관 및 참조사항 템플릿 적용</p>
             <select
@@ -3569,7 +3587,7 @@ export default function AdminProductManager() {
                 {termsTemplatesErrorMessage ? (
                   <p className="text-xs text-rose-600">{termsTemplatesErrorMessage}</p>
                 ) : null}
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
                   {TERMS_TEMPLATE_OPTIONS.map((item) => (
                     <div key={item.value} className="space-y-1 rounded-lg border border-[var(--border)] bg-slate-50 p-2.5">
                       <p className="text-xs font-semibold text-[var(--text-primary)]">{item.label}</p>
@@ -3660,8 +3678,137 @@ export default function AdminProductManager() {
         </div>
         </form>
           </main>
-          </div>
-          </div>
+          {/* 실시간 미리보기 — 2열(폼) 하단에 배치 */}
+          <aside
+            id="product-form-preview-panel"
+            className="block"
+            aria-label="실시간 미리보기"
+          >
+            <div className="sticky top-4 space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] ring-1 ring-[var(--border)] p-4">
+              <h3 className="text-lg font-bold text-[var(--primary)]">실시간 미리보기</h3>
+
+              {previewWarnings.length > 0 && (
+                <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/80 p-3">
+                  <p className="text-xs font-semibold text-amber-800">미리보기 품질 경고</p>
+                  <ul className="space-y-1">
+                    {previewWarnings.map((w) => (
+                      <li key={w.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleWarningClick(w.sectionId)}
+                          className="w-full text-left text-xs text-amber-800 underline-offset-2 hover:underline"
+                        >
+                          {w.message}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <details className="rounded-lg border border-[var(--border)] bg-slate-50">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[var(--text-primary)]">
+                  previewProduct 확인 (JSON)
+                </summary>
+                <pre className="max-h-48 overflow-auto p-3 text-xs text-[var(--text-secondary)]">
+                  {JSON.stringify(effectivePreviewProduct, null, 2)}
+                </pre>
+              </details>
+
+              <div className="flex gap-2" role="tablist" aria-label="미리보기 뷰">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={previewDevice === "desktop"}
+                  onClick={() => setPreviewDevice("desktop")}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    previewDevice === "desktop"
+                      ? "bg-[#1e3a8a] text-white"
+                      : "bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
+                  }`}
+                >
+                  Desktop
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={previewDevice === "mobile"}
+                  onClick={() => setPreviewDevice("mobile")}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    previewDevice === "mobile"
+                      ? "bg-[#1e3a8a] text-white"
+                      : "bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
+                  }`}
+                >
+                  Mobile
+                </button>
+              </div>
+
+              <section className="block" aria-labelledby="preview-card-heading">
+                <h4 id="preview-card-heading" className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
+                  상품 카드 미리보기
+                </h4>
+                <div
+                  className={`${previewDevice === "mobile" ? "max-w-[360px]" : "max-w-[640px]"} mx-auto`}
+                  data-preview-view={previewDevice}
+                >
+                  <ProductCardV2 {...previewCardProps} />
+                </div>
+              </section>
+
+              <section className="block" aria-labelledby="preview-detail-heading">
+                <h4 id="preview-detail-heading" className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
+                  상세 페이지 미리보기
+                </h4>
+                <label className="mb-2 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <input
+                    type="checkbox"
+                    checked={showDetailSticky}
+                    onChange={(e) => setShowDetailSticky(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[var(--primary)]"
+                  />
+                  Sticky CTA 표시
+                </label>
+                <div
+                  className={`rounded-xl border border-[#dbeafe] bg-[#f8fbff] ${previewDevice === "mobile" ? "max-w-[360px]" : ""}`}
+                  data-preview-view={previewDevice}
+                >
+                  <ConsultModalProvider>
+                    <ProductQuoteProvider>
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                        <div className="min-w-0 flex-1 space-y-4 p-4">
+                          <ProductDetailV2 {...previewDetailProps} />
+                        </div>
+                        {showDetailSticky && previewDevice !== "mobile" && (
+                          <ProductDetailStickyV2Desktop
+                            priceFormatted={previewDetailProps.priceFormatted}
+                            productId="_preview"
+                            productTitle={effectivePreviewProduct.title}
+                            sourcePath="/admin/products"
+                            kakaoHref="#"
+                            status={previewDetailProps.statusTag}
+                            trust={undefined}
+                          />
+                        )}
+                      </div>
+                      {showDetailSticky && (
+                        <ProductDetailStickyV2Mobile
+                          priceFormatted={previewDetailProps.priceFormatted}
+                          productId="_preview"
+                          productTitle={effectivePreviewProduct.title}
+                          sourcePath="/admin/products"
+                          kakaoHref="#"
+                          status={previewDetailProps.statusTag}
+                        />
+                      )}
+                    </ProductQuoteProvider>
+                  </ConsultModalProvider>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+        </div>
 
           {/* 상품명 추출 모달 */}
           {showTitleExtractModal && (
@@ -3792,147 +3939,6 @@ export default function AdminProductManager() {
             </div>
           )}
 
-          {/* 우측: 미리보기 패널 — lg에서 항상, small에서는 탭이 카드/상세일 때만 */}
-          <aside
-            id="product-form-preview-panel"
-            className={smallScreenTab !== "input" ? "block" : "hidden lg:block"}
-            aria-label="실시간 미리보기"
-            aria-hidden={smallScreenTab === "input"}
-          >
-            <div className="sticky top-4 space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] ring-1 ring-[var(--border)] p-4">
-              <h3 className="text-lg font-bold text-[var(--primary)]">실시간 미리보기</h3>
-
-              {previewWarnings.length > 0 && (
-                <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/80 p-3">
-                  <p className="text-xs font-semibold text-amber-800">미리보기 품질 경고</p>
-                  <ul className="space-y-1">
-                    {previewWarnings.map((w) => (
-                      <li key={w.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleWarningClick(w.sectionId)}
-                          className="w-full text-left text-xs text-amber-800 underline-offset-2 hover:underline"
-                        >
-                          {w.message}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* previewProduct 구성 확인용 (실서비스 컴포넌트 연결 전) */}
-              <details className="rounded-lg border border-[var(--border)] bg-slate-50">
-                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[var(--text-primary)]">
-                  previewProduct 확인 (JSON)
-                </summary>
-                <pre className="max-h-48 overflow-auto p-3 text-xs text-[var(--text-secondary)]">
-                  {JSON.stringify(effectivePreviewProduct, null, 2)}
-                </pre>
-              </details>
-
-              {/* 디바이스 토글 (Desktop / Mobile) */}
-              <div className="flex gap-2" role="tablist" aria-label="미리보기 뷰">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={previewDevice === "desktop"}
-                  onClick={() => setPreviewDevice("desktop")}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    previewDevice === "desktop"
-                      ? "bg-[#1e3a8a] text-white"
-                      : "bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
-                  }`}
-                >
-                  Desktop
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={previewDevice === "mobile"}
-                  onClick={() => setPreviewDevice("mobile")}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    previewDevice === "mobile"
-                      ? "bg-[#1e3a8a] text-white"
-                      : "bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
-                  }`}
-                >
-                  Mobile
-                </button>
-              </div>
-
-              {/* 상품 카드 미리보기 — lg에서는 항상, small에서는 탭이 카드일 때만 */}
-              <section
-                className={smallScreenTab === "detail" ? "hidden lg:block" : "block"}
-                aria-labelledby="preview-card-heading"
-              >
-                <h4 id="preview-card-heading" className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
-                  상품 카드 미리보기
-                </h4>
-                <div
-                  className={`${previewDevice === "mobile" ? "max-w-[360px]" : "max-w-[640px]"} mx-auto`}
-                  data-preview-view={previewDevice}
-                >
-                  <ProductCardV2 {...previewCardProps} />
-                </div>
-              </section>
-
-              {/* 상세 페이지 미리보기 — lg에서는 항상, small에서는 탭이 상세일 때만 */}
-              <section
-                className={smallScreenTab === "card" ? "hidden lg:block" : "block"}
-                aria-labelledby="preview-detail-heading"
-              >
-                <h4 id="preview-detail-heading" className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
-                  상세 페이지 미리보기
-                </h4>
-                <label className="mb-2 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <input
-                    type="checkbox"
-                    checked={showDetailSticky}
-                    onChange={(e) => setShowDetailSticky(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[var(--primary)]"
-                  />
-                  Sticky CTA 표시
-                </label>
-                <div
-                  className={`rounded-xl border border-[#dbeafe] bg-[#f8fbff] ${previewDevice === "mobile" ? "max-w-[360px]" : ""}`}
-                  data-preview-view={previewDevice}
-                >
-                  <ConsultModalProvider>
-                    <ProductQuoteProvider>
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                        <div className="min-w-0 flex-1 space-y-4 p-4">
-                          <ProductDetailV2 {...previewDetailProps} />
-                        </div>
-                        {showDetailSticky && previewDevice !== "mobile" && (
-                          <ProductDetailStickyV2Desktop
-                            priceFormatted={previewDetailProps.priceFormatted}
-                            productId="_preview"
-                            productTitle={effectivePreviewProduct.title}
-                            sourcePath="/admin/products"
-                            kakaoHref="#"
-                            status={previewDetailProps.statusTag}
-                            trust={undefined}
-                          />
-                        )}
-                      </div>
-                      {showDetailSticky && (
-                        <ProductDetailStickyV2Mobile
-                          priceFormatted={previewDetailProps.priceFormatted}
-                          productId="_preview"
-                          productTitle={effectivePreviewProduct.title}
-                          sourcePath="/admin/products"
-                          kakaoHref="#"
-                          status={previewDetailProps.statusTag}
-                        />
-                      )}
-                    </ProductQuoteProvider>
-                  </ConsultModalProvider>
-                </div>
-              </section>
-            </div>
-          </aside>
-        </div>
         </>
       ) : null}
 

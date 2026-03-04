@@ -1,13 +1,13 @@
+import MyPageLayout from "@/components/mypage/MyPageLayout";
 import { cookies } from "next/headers";
-import { getMemberSessionFromCookies } from "@/lib/memberSession";
 
-const LEDGER_TYPE_LABEL: Record<string, string> = {
+const TYPE_LABEL: Record<string, string> = {
   EARN: "적립",
   USE: "사용",
   EXPIRE: "소멸",
   ADJUST: "조정",
-  RESERVE: "예약(경품)",
-  RELEASE: "예약 해제",
+  RESERVE: "예약",
+  RELEASE: "예약해제",
 };
 
 async function fetchPoints(baseUrl: string, cookieHeader: string) {
@@ -19,127 +19,68 @@ async function fetchPoints(baseUrl: string, cookieHeader: string) {
   return res.json();
 }
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-export default async function MypagePointsPage() {
+export default async function MyPagePointsPage() {
   const cookieStore = await cookies();
-  const session = getMemberSessionFromCookies(cookieStore);
-  if (!session) return null;
-
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const pointsData = await fetchPoints(baseUrl, cookieStore.toString());
-  if (!pointsData) {
-    return (
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-[var(--text-muted)]">
-        포인트 정보를 불러올 수 없습니다.
-      </div>
-    );
-  }
-
-  const balance = pointsData.balance ?? 0;
-  const pending = pointsData.pending ?? 0;
-  const expiringSoon = pointsData.expiringSoon ?? 0;
-  const ledger: Array<{
-    id: string;
-    type: string;
-    status: string;
-    amount: number;
-    reason: string | null;
-    ref_type: string | null;
-    ref_id: string | null;
-    expires_at: string | null;
-    created_at: string;
-  }> = pointsData.ledger ?? [];
-  const now = new Date();
-  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
+  const data = await fetchPoints(baseUrl, cookieStore.toString());
+  const ledger = Array.isArray(data?.ledger) ? data.ledger : [];
   return (
-    <div className="space-y-8">
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">포인트 현황</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <p className="text-sm text-[var(--text-muted)]">사용 가능</p>
-            <p className="text-2xl font-bold text-[var(--primary)]">{Number(balance).toLocaleString()}P</p>
-          </div>
-          <div>
-            <p className="text-sm text-[var(--text-muted)]">적립 대기</p>
-            <p className="text-xl font-semibold text-[var(--text-secondary)]">{Number(pending).toLocaleString()}P</p>
-          </div>
-          <div>
-            <p className="text-sm text-[var(--text-muted)]">소멸 예정 (30일 이내)</p>
-            <p className="text-xl font-semibold text-[var(--warning)]">{Number(expiringSoon).toLocaleString()}P</p>
-          </div>
-        </div>
-      </section>
+    <MyPageLayout title="포인트" description="잔액 및 포인트 내역을 확인할 수 있습니다.">
+      <div className="space-y-6">
+        <section className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
+          <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <p className="text-sm text-[var(--text-secondary)]">포인트 잔액</p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
+              {Number(data?.balance ?? 0).toLocaleString()}P
+            </p>
+          </article>
+          <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <p className="text-sm text-[var(--text-secondary)]">적립 예정</p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
+              {Number(data?.pending ?? 0).toLocaleString()}P
+            </p>
+          </article>
+        </section>
+        {Number(data?.expiringSoon ?? 0) > 0 ? (
+          <p className="rounded-lg border border-[var(--warning)] bg-[var(--warning-bg)] px-3 py-2 text-sm text-[var(--warning)]">
+            30일 이내 소멸 예정 포인트: {Number(data?.expiringSoon ?? 0).toLocaleString()}P
+          </p>
+        ) : null}
+        <a
+          href="/mypage/points/request"
+          className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)]"
+        >
+          예약 증빙으로 포인트 적립 요청하기
+        </a>
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">포인트 내역</h2>
-        {ledger.length === 0 ? (
-          <p className="text-sm text-[var(--text-muted)]">아직 내역이 없습니다.</p>
-        ) : (
-          <ul className="space-y-2">
-            {ledger.map((row) => {
-              const isEarn = row.type === "EARN";
-              const isExpiringSoon =
-                row.type === "EARN" &&
-                row.expires_at &&
-                new Date(row.expires_at) <= in30Days &&
-                new Date(row.expires_at) >= now;
-              return (
-                <li
-                  key={row.id}
-                  className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] p-3 ${
-                    isExpiringSoon ? "border-[var(--warning)] bg-[var(--warning-bg)]" : "bg-[var(--surface-muted)]"
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="font-medium text-[var(--text-primary)]">
-                      {LEDGER_TYPE_LABEL[row.type] ?? row.type}
-                      {row.reason ? ` · ${row.reason}` : ""}
-                    </span>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
-                      <span
-                        className={`rounded px-1.5 py-0.5 font-medium ${
-                          row.status === "CONFIRMED" ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--warning-bg)] text-[var(--warning)]"
-                        }`}
-                      >
-                        {row.status === "CONFIRMED" ? "확정" : row.status}
-                      </span>
-                      {isExpiringSoon && row.expires_at && (
-                        <span className="text-[var(--warning)]">소멸 예정 {formatDate(row.expires_at)}</span>
-                      )}
-                    </div>
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">포인트 내역</h2>
+          <ul className="mt-3 space-y-2">
+            {ledger.length === 0 ? (
+              <li className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)]">
+                포인트 내역이 없습니다.
+              </li>
+            ) : (
+              ledger.map((item: { id: string; type: string; status: string; amount: number; reason: string | null; created_at: string }) => (
+                <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                      {TYPE_LABEL[item.type] ?? item.type} · {item.reason ?? "-"}
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)]">{new Date(item.created_at).toLocaleString("ko-KR")}</p>
                   </div>
-                  <span
-                    className={`shrink-0 font-semibold ${
-                      isEarn ? "text-[var(--success)]" : "text-[var(--danger)]"
-                    }`}
-                  >
-                    {isEarn ? "+" : "-"}
-                    {Number(row.amount).toLocaleString()}P
-                  </span>
-                  <span className="w-full shrink-0 text-right text-xs text-[var(--text-muted)] sm:w-auto">
-                    {formatDate(row.created_at)}
-                  </span>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{Number(item.amount).toLocaleString()}P</p>
+                    <span className="rounded-md bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
+                      {item.status}
+                    </span>
+                  </div>
                 </li>
-              );
-            })}
+              ))
+            )}
           </ul>
-        )}
-      </section>
-    </div>
+        </section>
+      </div>
+    </MyPageLayout>
   );
 }

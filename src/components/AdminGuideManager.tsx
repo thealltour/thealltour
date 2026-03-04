@@ -264,7 +264,7 @@ export default function AdminGuideManager() {
             </button>
           ) : null}
         </div>
-        <form className="grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
+        <form className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3" onSubmit={handleSubmit}>
           {/* 콘텐츠 정보 */}
           <div className="md:col-span-2">
             <h4 className="mb-2 text-sm font-semibold text-[var(--text-secondary)]">콘텐츠 정보</h4>

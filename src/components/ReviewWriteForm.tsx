@@ -147,7 +147,7 @@ export default function ReviewWriteForm() {
       </Label>
       {imagePreviewUrls.length > 0 ? (
         <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-4 sm:gap-2">
             {imagePreviewUrls.map((previewUrl, index) => (
               <div key={`${previewUrl}-${index}`} className="relative h-28 overflow-hidden rounded-xl ring-1 ring-slate-200">
                 <Image

@@ -193,7 +193,7 @@ export default function AdminBannerManager() {
         <p className="text-xs text-[var(--text-muted)]">
           권장 사이즈: 웹(PC) 1920x640px, 모바일 1200x800px. JPG/PNG/WebP 모두 사용 가능합니다.
         </p>
-        <form className="grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
+        <form className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3" onSubmit={handleSubmit}>
           <input
             required
             value={form.title}

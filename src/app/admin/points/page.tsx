@@ -21,6 +21,15 @@ export default async function AdminPointsPage() {
           unreadNotificationCount={unreadNotificationCount}
         />
 
+        <div className="flex justify-end">
+          <a
+            href="/admin/points/requests"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
+          >
+            적립 요청 관리로 이동
+          </a>
+        </div>
+
         <AdminPointsGrantManager />
       </main>
     </div>

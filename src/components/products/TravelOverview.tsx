@@ -38,11 +38,11 @@ export function TravelOverview({ overview, fallbackCoverUrl }: TravelOverviewPro
 
       {/* 요약 카드 그리드 */}
       {hasSummaryCards && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
           {summaryCards.map((card, i) => (
             <div
               key={`${card.kind}-${card.label}-${i}`}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {card.label}

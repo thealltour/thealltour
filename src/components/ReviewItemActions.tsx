@@ -170,7 +170,7 @@ export default function ReviewItemActions({
         </label>
         {imagePreviewUrls.length > 0 || imageUrls.length > 0 ? (
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-4 sm:gap-2">
               {(imagePreviewUrls.length > 0 ? imagePreviewUrls : imageUrls).map((url, index) => (
                 <div key={`${url}-${index}`} className="relative h-24 overflow-hidden rounded-lg ring-1 ring-slate-200">
                   <Image

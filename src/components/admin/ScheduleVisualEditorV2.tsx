@@ -175,7 +175,7 @@ export function ScheduleVisualEditorV2({
     : null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+    <div className="flex flex-col space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_380px] lg:gap-6">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-[var(--text-secondary)]">

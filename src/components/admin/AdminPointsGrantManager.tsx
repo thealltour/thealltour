@@ -62,6 +62,7 @@ export default function AdminPointsGrantManager() {
   const [grantStatus, setGrantStatus] = useState<"PENDING" | "CONFIRMED">("CONFIRMED");
   const [refType, setRefType] = useState("");
   const [refId, setRefId] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -113,6 +114,10 @@ export default function AdminPointsGrantManager() {
     setSubmitLoading(true);
     setMessage(null);
     try {
+      const expiresAtIso =
+        expiresAt.trim() && !Number.isNaN(new Date(expiresAt).getTime())
+          ? new Date(expiresAt).toISOString()
+          : undefined;
       const res = await fetch("/api/admin/points/grant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,6 +128,7 @@ export default function AdminPointsGrantManager() {
           status: grantStatus,
           refType: refType.trim() || undefined,
           refId: refId.trim() || undefined,
+          expiresAt: expiresAtIso,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -135,6 +141,7 @@ export default function AdminPointsGrantManager() {
       setReason("");
       setRefType("");
       setRefId("");
+      setExpiresAt("");
       setLedger((prev) => [
         {
           id: data.ledgerId || "",
@@ -152,10 +159,10 @@ export default function AdminPointsGrantManager() {
     } finally {
       setSubmitLoading(false);
     }
-  }, [selected, amount, reason, grantStatus, refType, refId]);
+  }, [selected, amount, reason, grantStatus, refType, refId, expiresAt]);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
+    <div className="flex flex-col space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8">
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
         <h3 className="text-base font-semibold text-[var(--text-primary)]">회원 검색</h3>
         <p className="mt-1 text-sm text-[var(--text-muted)]">이메일·전화·이름·아이디로 검색 후 선택하세요.</p>
@@ -248,6 +255,15 @@ export default function AdminPointsGrantManager() {
                   value={refId}
                   onChange={(e) => setRefId(e.target.value)}
                   placeholder="예: 예약 ID"
+                  className="input-base mt-1 w-full bg-[var(--surface-muted)]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)]">expiresAt (선택)</label>
+                <input
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
                   className="input-base mt-1 w-full bg-[var(--surface-muted)]"
                 />
               </div>

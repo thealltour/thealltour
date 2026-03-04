@@ -102,7 +102,7 @@ export function V2DayCard({
         <p className="mb-1 text-[11px] font-semibold text-[var(--text-muted)]">
           Day 커버 이미지 (선택, 카드 800px)
         </p>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/40 p-2">
             <p className="mb-2 text-[11px] font-semibold text-[var(--text-secondary)]">
               파일 업로드 / 드래그앤드롭

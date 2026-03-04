@@ -22,7 +22,7 @@ export function OptionPanel({ options, selected, onSelectionChange }: OptionPane
   return (
     <Card variant="default" className="border-[var(--border)] bg-[var(--surface)] p-5 md:p-6">
       <h3 className="mb-4 text-lg font-bold text-[#0f172a]">옵션 선택</h3>
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-6">
         {sorted.map((group) => (
           <OptionGroup
             key={group.key}

@@ -22,11 +22,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 md:px-10 md:py-14">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-3 py-6 sm:px-6 sm:py-10 md:px-10 md:py-14">
         <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
 
         {products.length === 0 ? (
-          <section className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
+          <section className="rounded-none bg-transparent p-0 shadow-none ring-0 sm:rounded-2xl sm:bg-[var(--surface)] sm:p-8 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] type-small text-[var(--text-muted)]">
             현재 등록된 상품이 없습니다. 관리자 페이지에서 상품을 등록해 주세요.
           </section>
         ) : (

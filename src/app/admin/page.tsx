@@ -5,6 +5,7 @@ import { getAdminCounts } from "@/lib/adminCounts";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import Link from "next/link";
 import { Bell, MessageSquare, PackageSearch, Users } from "lucide-react";
+import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
 
 export default async function AdminPage() {
   const [counts, unreadNotificationCount] = await Promise.all([
@@ -59,27 +60,29 @@ export default async function AdminPage() {
           unreadNotificationCount={unreadNotificationCount}
         />
 
-        <Suspense
-          fallback={
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={index}
-                  className="h-full rounded-xl bg-[var(--surface-muted)] p-6 animate-pulse"
-                >
-                  <div className="h-3 w-16 rounded bg-[var(--border)]" />
-                  <div className="mt-4 h-7 w-24 rounded bg-[var(--border)]" />
-                  <div className="mt-3 h-3 w-20 rounded bg-[var(--border)]" />
-                </div>
-              ))}
-            </section>
-          }
-        >
-          <AdminDashboardKpiSection />
-        </Suspense>
+        <AdminQueryProvider>
+          <Suspense
+            fallback={
+              <section className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 xl:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={index}
+                    className="h-full rounded-xl bg-[var(--surface-muted)] p-6 animate-pulse"
+                  >
+                    <div className="h-3 w-16 rounded bg-[var(--border)]" />
+                    <div className="mt-4 h-7 w-24 rounded bg-[var(--border)]" />
+                    <div className="mt-3 h-3 w-20 rounded bg-[var(--border)]" />
+                  </div>
+                ))}
+              </section>
+            }
+          >
+            <AdminDashboardKpiSection />
+          </Suspense>
+        </AdminQueryProvider>
 
-        <section className="grid gap-4 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-surface)] p-5 backdrop-blur-md md:grid-cols-2 transition-colors">
+        <section className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-surface)] p-5 backdrop-blur-md transition-colors">
           <article className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 transition-colors">
             <h2 className="text-lg font-bold text-[var(--text-primary)]">Quick actions</h2>
             <ul className="divide-y divide-[var(--divider)] rounded-lg bg-[var(--surface)] ring-1 ring-[var(--border)]">

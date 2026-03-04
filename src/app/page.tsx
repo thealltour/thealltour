@@ -72,8 +72,8 @@ export default async function Home() {
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
 
-      <main className="page-content flex w-full flex-col gap-16 py-8 md:gap-20 md:py-10">
-        <section className="relative overflow-hidden rounded-3xl bg-[var(--hero-bg)] px-6 py-12 text-[var(--hero-text-primary)] shadow-[var(--shadow-soft-strong)] ring-1 ring-[var(--border)] md:px-14 md:py-20">
+      <main className="page-content flex w-full flex-col gap-16 px-3 py-8 sm:px-6 md:gap-20 md:py-10 md:px-10">
+        <section className="relative overflow-hidden rounded-none bg-[var(--hero-bg)] px-3 py-8 text-[var(--hero-text-primary)] shadow-none ring-0 sm:rounded-3xl sm:px-6 sm:py-12 sm:shadow-[var(--shadow-soft-strong)] sm:ring-1 sm:ring-[var(--border)] md:px-14 md:py-20">
           {/* 데스크톱: 우측 골프 이미지 + 스크림·웜톤·비네트 (토큰 기반) */}
           {primaryBanner ? (
             <>
@@ -153,10 +153,10 @@ export default async function Home() {
         </section>
 
         {/* 신뢰 강조 섹션 */}
-        <section className="rounded-3xl bg-[var(--surface-muted)] px-6 py-12 md:px-10 ring-1 ring-[var(--border)]">
+        <section className="rounded-none bg-transparent px-3 py-8 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-12 sm:ring-1 sm:ring-[var(--border)] md:px-10">
           <div className="mb-8 space-y-3 text-center">
             <p className="inline-flex items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-1 section-label text-[var(--foreground)] md:type-small">
-              모두투어 · 하나투어 공식 제휴 파트너
+              대형 여행사 공식 제휴 파트너
             </p>
             <p className="section-label text-[var(--text-muted)] md:type-small">
               THEALL TOUR TRUST
@@ -169,8 +169,8 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="grid gap-7 md:grid-cols-2 lg:grid-cols-4">
-            <div className="flex h-full flex-col rounded-2xl bg-[var(--surface)] p-5 text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-7 lg:grid-cols-4">
+            <div className="flex h-full flex-col rounded-none bg-transparent p-0 shadow-none ring-0 sm:rounded-2xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] text-[var(--foreground)]">
               <div className="mb-3 flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-muted)] ring-1 ring-[var(--border)]">
                   <ShieldCheck className="h-5 w-5 text-[var(--primary)]" />
@@ -178,12 +178,12 @@ export default async function Home() {
                 <p className="text-sm font-semibold text-[var(--foreground)] type-small">대형 여행사 공식 제휴</p>
               </div>
               <p className="text-xs leading-relaxed text-[var(--text-muted)] type-caption">
-                모두투어·하나투어 등 주요 파트너와 협력하여, 검증된 상품과 안정적인 예약 시스템을 기반으로
+                국내 주요 파트너와 협력하여, 검증된 상품과 안정적인 예약 시스템을 기반으로
                 운영합니다.
               </p>
             </div>
 
-            <div className="flex h-full flex-col rounded-2xl bg-[var(--surface)] p-5 text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
+            <div className="flex h-full flex-col rounded-none bg-transparent p-0 shadow-none ring-0 sm:rounded-2xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] text-[var(--foreground)]">
               <div className="mb-3 flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-muted)] ring-1 ring-[var(--border)]">
                   <Users className="h-5 w-5 text-[var(--primary)]" />
@@ -196,7 +196,7 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="flex h-full flex-col rounded-2xl bg-[var(--surface)] p-5 text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
+            <div className="flex h-full flex-col rounded-none bg-transparent p-0 shadow-none ring-0 sm:rounded-2xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] text-[var(--foreground)]">
               <div className="mb-3 flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-muted)] ring-1 ring-[var(--border)]">
                   <Route className="h-5 w-5 text-[var(--primary)]" />
@@ -209,7 +209,7 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="flex h-full flex-col rounded-2xl bg-[var(--surface)] p-5 text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
+            <div className="flex h-full flex-col rounded-none bg-transparent p-0 shadow-none ring-0 sm:rounded-2xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] text-[var(--foreground)]">
               <div className="mb-3 flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-muted)] ring-1 ring-[var(--border)]">
                   <CheckCircle2 className="h-5 w-5 text-[var(--primary)]" />
@@ -225,7 +225,7 @@ export default async function Home() {
         </section>
 
         {/* 메인 카테고리 섹션 - 골프 우선 구조 */}
-        <section className="space-y-8 rounded-3xl bg-[var(--surface-muted)] px-6 py-12 md:px-10 ring-1 ring-[var(--border)]">
+        <section className="space-y-8 rounded-none bg-transparent px-3 py-8 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-12 sm:ring-1 sm:ring-[var(--border)] md:px-10">
           <div className="space-y-2 text-left md:text-center">
             <p className="section-label text-[var(--text-muted)] md:type-small">
               THEALL TOUR PREMIUM
@@ -239,7 +239,7 @@ export default async function Home() {
           </div>
 
           {/* 골프 3종 카테고리 (최상단) */}
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
             <Link
               href="/products?category=해외 골프 투어"
               className="group relative overflow-hidden rounded-3xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-colors duration-150 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)]"
@@ -341,7 +341,7 @@ export default async function Home() {
           </Link>
         </section>
 
-        <section className="space-y-8 rounded-3xl bg-[var(--surface-muted)] px-6 py-10 md:px-10 ring-1 ring-[var(--border)]">
+        <section className="space-y-8 rounded-none bg-transparent px-3 py-6 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-10 sm:ring-1 sm:ring-[var(--border)] md:px-10">
           <div className="space-y-2">
             <p className="text-sm font-semibold tracking-wide text-[var(--text-muted)] type-small">
               THEALL CURATED PICKS
@@ -355,7 +355,7 @@ export default async function Home() {
           </div>
 
           {featuredProducts.length === 0 ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)]">
+            <div className="rounded-none border-0 bg-transparent p-0 shadow-none ring-0 type-small text-[var(--text-muted)] sm:rounded-2xl sm:border sm:border-[var(--border)] sm:bg-[var(--surface)] sm:p-8 sm:shadow-[var(--shadow-soft)]">
               메인 추천 상품이 없습니다. 관리자 페이지에서 추천 상품을 체크해 주세요.
             </div>
           ) : (
@@ -395,7 +395,7 @@ export default async function Home() {
 
         <section
           id="contact"
-          className="rounded-3xl bg-[var(--surface-muted)] px-6 py-12 ring-1 ring-[var(--border)] md:px-12 md:py-14"
+          className="rounded-none bg-transparent px-3 py-8 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-12 sm:ring-1 sm:ring-[var(--border)] md:px-12 md:py-14"
         >
           <div className="grid items-start gap-10 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)]">
             <div className="space-y-4">
@@ -416,14 +416,14 @@ export default async function Home() {
               </div>
             </div>
 
-            <div className="rounded-2xl bg-[var(--surface)] p-5 text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-7">
+            <div className="rounded-none bg-transparent p-0 shadow-none ring-0 text-[var(--foreground)] sm:rounded-2xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] md:p-7">
               <h4 className="mb-3 type-small font-semibold text-[var(--text-muted)] md:type-body">
                 한 번의 클릭으로 프리미엄 상담을 요청해 주세요.
               </h4>
               <p className="mb-4 type-caption text-[var(--text-muted)] md:type-small">
                 문의 양식을 길게 작성하지 않아도, 간단한 정보만 남기면 전담 상담사가 직접 연락드립니다.
               </p>
-              <div className="rounded-2xl bg-[var(--surface-muted)] p-4 ring-1 ring-[var(--border)] md:p-5">
+              <div className="rounded-none bg-transparent p-0 ring-0 sm:rounded-2xl sm:bg-[var(--surface-muted)] sm:p-4 sm:ring-1 sm:ring-[var(--border)] md:p-5">
                 <HeroQuickConsultButton />
               </div>
             </div>
@@ -445,7 +445,7 @@ function CuratedBlock({ title, description, products }: CuratedBlockProps) {
   if (!products || products.length === 0) return null;
 
   return (
-    <section className="space-y-4 rounded-3xl bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-6">
+    <section className="space-y-4 rounded-none bg-transparent p-0 shadow-none ring-0 sm:rounded-3xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] md:p-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-baseline md:justify-between">
         <div>
           <h4 className="font-card-title type-h3 text-[var(--foreground)] md:text-[1.375rem]">
@@ -455,7 +455,7 @@ function CuratedBlock({ title, description, products }: CuratedBlockProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
         {products.map((product) => {
           const badges = getProductBadges(product);
           return (

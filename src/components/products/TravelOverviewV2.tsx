@@ -75,7 +75,7 @@ export function TravelOverviewV2({
           </div>
 
           {/* 2. 항공·숙소·지역 카드 */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
             {cards.map((card, i) => (
               <SummaryCard key={`${card.iconKey}-${card.label}-${i}`} card={card} />
             ))}

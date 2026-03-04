@@ -48,9 +48,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const MESSAGE_TEMPLATES = [
-  { label: "주소 확인 요청", body: "안녕하세요. 경품 배송을 위해 수령 주소를 확인하고자 연락드립니다. 위 주소로 발송해도 될까요?" },
-  { label: "발송 안내", body: "경품이 발송되었습니다. 택배 도착까지 2~3일 소요될 수 있습니다." },
-  { label: "승인 안내", body: "경품 교환이 승인되었습니다. 곧 발송 예정입니다." },
+  { label: "주소 확인 요청", key: "address" as const },
+  { label: "발송 완료 안내(운송장 포함)", key: "shipping" as const },
 ];
 
 function formatDate(iso: string) {
@@ -151,6 +150,20 @@ export default function AdminRewardsManager() {
     });
   }, [selected]);
 
+  const buildTemplateBody = useCallback(
+    (key: "address" | "shipping") => {
+      if (!selected) return "";
+      if (key === "address") {
+        return "안녕하세요. 경품 배송을 위해 수령 주소를 확인하고자 연락드립니다. 현재 등록된 주소로 발송해도 될까요?";
+      }
+      const tracking = selected.tracking_number
+        ? `\n운송장: ${selected.tracking_carrier ? `${selected.tracking_carrier} ` : ""}${selected.tracking_number}`
+        : "";
+      return `안녕하세요. 신청하신 경품 발송이 시작되었습니다.${tracking}\n수령까지 2~3일 정도 소요될 수 있습니다.`;
+    },
+    [selected],
+  );
+
   const copyTemplate = useCallback((body: string) => {
     navigator.clipboard.writeText(body).then(() => {
       setCopiedTemplate(body.slice(0, 20));
@@ -248,10 +261,10 @@ export default function AdminRewardsManager() {
               <button
                 key={t.label}
                 type="button"
-                onClick={() => copyTemplate(t.body)}
+                onClick={() => copyTemplate(buildTemplateBody(t.key))}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--border)]"
               >
-                {copiedTemplate === t.body ? <Check className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />}
+                {copiedTemplate ? <Check className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />}
                 {t.label}
               </button>
             ))}

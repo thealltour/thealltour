@@ -59,7 +59,7 @@ export function GuideCardList({ guides }: GuideCardListProps) {
 
   return (
     <>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {guides.map((guide) => {
           const thumbUrl =
             guide.cover_image_url ??

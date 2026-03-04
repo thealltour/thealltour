@@ -136,7 +136,7 @@ export default function AdminDashboardKpiSection() {
 
       {/* KPI content */}
       {isLoadingState ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
@@ -174,8 +174,8 @@ export default function AdminDashboardKpiSection() {
           </p>
         </section>
       ) : (
-        <div className="grid gap-4 md:grid-cols-3">
-          <section className="grid gap-4 md:col-span-2 md:grid-cols-2 xl:grid-cols-2">
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
+          <section className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 md:col-span-2 xl:grid-cols-2">
             {counts && (
               <KpiCard
               title="전체 문의 수"

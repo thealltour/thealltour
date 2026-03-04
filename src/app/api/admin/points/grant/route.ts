@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { getPointExpiresAt } from "@/config/rewardPolicy";
+import { grantPointsToUser } from "@/server/services/points/grantPoints";
 
 type Body = {
   userId: string;
@@ -9,6 +8,7 @@ type Body = {
   reason: string;
   refType?: string;
   refId?: string;
+  expiresAt?: string;
   status?: "CONFIRMED" | "PENDING";
 };
 
@@ -36,65 +36,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "amount는 1 이상의 숫자여야 합니다." }, { status: 400 });
   }
 
-  const { data: memberRow, error: memberErr } = await supabase
-    .from("members")
-    .select("id, point_balance, point_pending")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (memberErr || !memberRow) {
-    return NextResponse.json({ message: "회원을 찾을 수 없습니다." }, { status: 404 });
-  }
-
-  const currentBalance = Number((memberRow as { point_balance?: number }).point_balance ?? 0);
-  const currentPending = Number((memberRow as { point_pending?: number }).point_pending ?? 0);
-
-  const { data: ledgerRow, error: ledgerErr } = await supabase
-    .from("point_ledger")
-    .insert({
-      user_id: userId,
-      type: "EARN",
-      status,
+  try {
+    const result = await grantPointsToUser({
+      userId,
       amount,
+      status,
       reason,
-      ref_type: body.refType?.trim() || null,
-      ref_id: body.refId?.trim() || null,
-      expires_at: getPointExpiresAt(),
-    })
-    .select("id")
-    .maybeSingle();
+      refType: body.refType?.trim() || undefined,
+      refId: body.refId?.trim() || undefined,
+      expiresAt: body.expiresAt?.trim() || null,
+      actorAdminId: "ADMIN",
+    });
 
-  if (ledgerErr || !ledgerRow) {
-    return NextResponse.json({ message: "포인트 원장 기록에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({
+      message: status === "CONFIRMED" ? `${amount}P 지급되었습니다.` : `${amount}P가 대기 상태로 기록되었습니다.`,
+      ledgerId: result.ledgerId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "포인트 지급에 실패했습니다.";
+    return NextResponse.json({ message }, { status: 500 });
   }
-
-  if (status === "CONFIRMED") {
-    const { error: updateErr } = await supabase
-      .from("members")
-      .update({ point_balance: currentBalance + amount })
-      .eq("id", userId);
-    if (updateErr) {
-      return NextResponse.json({ message: "포인트 반영에 실패했습니다." }, { status: 500 });
-    }
-  } else {
-    const { error: updateErr } = await supabase
-      .from("members")
-      .update({ point_pending: currentPending + amount })
-      .eq("id", userId);
-    if (updateErr) {
-      return NextResponse.json({ message: "대기 포인트 반영에 실패했습니다." }, { status: 500 });
-    }
-  }
-
-  await supabase.from("notifications").insert({
-    user_id: userId,
-    type: "POINT_EARNED",
-    title: "포인트 적립",
-    body: status === "CONFIRMED" ? `${amount}P가 적립되었습니다.` : `${amount}P가 적립 예정입니다. (확정 후 반영됩니다.)`,
-  });
-
-  return NextResponse.json({
-    message: status === "CONFIRMED" ? `${amount}P 지급되었습니다.` : `${amount}P가 대기 상태로 기록되었습니다.`,
-    ledgerId: (ledgerRow as { id: string }).id,
-  });
 }

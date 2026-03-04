@@ -45,7 +45,7 @@ export default function DevProductCardV2Grid({ products }: DevProductCardV2GridP
   return (
     <section className="space-y-6">
       <h2 className="text-xl font-bold text-slate-800">ProductCardV2 데모 (기존 목록 변경 없음)</h2>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {products.slice(0, 6).map((product) => (
           <ProductCardV2
             key={product.id}

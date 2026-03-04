@@ -198,7 +198,7 @@ export default function SignupForm() {
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 md:col-span-2">
           아이디
           <div className="flex gap-2">
@@ -286,7 +286,7 @@ export default function SignupForm() {
 
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
           생년월일
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-col space-y-2 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-2">
             <select
               required
               value={birthYear}

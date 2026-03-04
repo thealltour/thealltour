@@ -204,19 +204,43 @@ export default function MobileFloatingMenu({ activeTab, isLoggedIn = false }: Mo
           </ul>
           <div className="mt-2 border-t border-[var(--divider)] pt-2">
             {isLoggedIn ? (
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-transparent px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold text-[var(--foreground)] transition-colors duration-150",
-                  "hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                )}
-              >
-                <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{isLoggingOut ? "로그아웃 중..." : "로그아웃"}</span>
-              </button>
+              <div className="space-y-1.5">
+                <Link
+                  href="/mypage"
+                  aria-label="마이페이지로 이동"
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-transparent px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold text-[var(--foreground)] transition-colors duration-150",
+                    "hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+                  )}
+                  onClick={() => triggerHapticFeedback()}
+                >
+                  마이페이지
+                </Link>
+                <Link
+                  href="/mypage/points"
+                  aria-label="포인트 내역으로 이동"
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold text-[var(--foreground)] transition-colors duration-150",
+                    "hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+                  )}
+                  onClick={() => triggerHapticFeedback()}
+                >
+                  포인트 내역
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-transparent px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold text-[var(--foreground)] transition-colors duration-150",
+                    "hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+                    "disabled:cursor-not-allowed disabled:opacity-60",
+                  )}
+                >
+                  <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>{isLoggingOut ? "로그아웃 중..." : "로그아웃"}</span>
+                </button>
+              </div>
             ) : (
               <Link
                 href="/login"

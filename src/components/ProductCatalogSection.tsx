@@ -220,7 +220,7 @@ export default function ProductCatalogSection({
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
               <h3 className="font-card-title type-h3 text-[var(--primary)]">{group.theme}</h3>
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-6">
                 {group.products.map((product) => {
                   const badges = getProductBadges(product);
                   const hashtags = parseMetaTitleAsHashtags(product.meta_title);

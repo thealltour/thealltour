@@ -12,7 +12,7 @@ export default async function AdminProductsPage() {
   return (
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="w-full space-y-6">
-        <section className="overflow-hidden rounded-2xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-5">
+        <section className="rounded-2xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-5 overflow-visible">
           <Suspense
             fallback={
               <div className="h-32 animate-pulse rounded-xl bg-[var(--surface-muted)]" aria-hidden="true" />

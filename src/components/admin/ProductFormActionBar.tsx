@@ -33,6 +33,8 @@ export type ProductFormActionBarProps = {
   isSavingDraft?: boolean;
   /** 수정 모드 여부 */
   isEditing?: boolean;
+  /** 상단 고정 여부 (기본 true, 좌측 네비 아래에 둘 때 false) */
+  sticky?: boolean;
 };
 
 export function ProductFormActionBar({
@@ -47,6 +49,7 @@ export function ProductFormActionBar({
   isSaving = false,
   isSavingDraft = false,
   isEditing = false,
+  sticky = true,
 }: ProductFormActionBarProps) {
   const sectionIds = sections.map((s) => s.id);
   const totalSections = sectionIds.length;
@@ -79,7 +82,11 @@ export function ProductFormActionBar({
   return (
     <div
       id="product-form-actionbar"
-      className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-b border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/80"
+      className={
+        sticky
+          ? "sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-b border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/80"
+          : "flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-sm"
+      }
       role="toolbar"
       aria-label="상품 폼 액션"
     >

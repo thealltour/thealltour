@@ -251,7 +251,7 @@ export default function AdminNoticeManager() {
               </button>
             </div>
             {legalErrorMessage ? <p className="text-sm text-red-500">{legalErrorMessage}</p> : null}
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
               <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
                 서비스 이용약관
                 <textarea
@@ -302,7 +302,7 @@ export default function AdminNoticeManager() {
             </button>
           ) : null}
         </div>
-        <form className="grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
+        <form className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3" onSubmit={handleSubmit}>
           <input
             required
             value={form.title}

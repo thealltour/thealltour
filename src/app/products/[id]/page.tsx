@@ -218,7 +218,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   return (
     <ConsultModalProvider>
       <ProductQuoteProvider>
-      <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-6 py-10 md:px-10">
+      <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-3 py-6 sm:px-6 sm:py-10 md:px-10">
         <main className="mx-auto w-full max-w-6xl">
           <div className="mb-6 md:hidden">
             <Link
@@ -231,12 +231,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           <div className="flex gap-8 lg:items-start">
             <div className="min-w-0 flex-1 space-y-6">
-              <section className="overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-[#dbeafe]">
+              <section className="overflow-hidden rounded-none bg-transparent shadow-none ring-0 sm:rounded-3xl sm:bg-white sm:shadow-md sm:ring-1 sm:ring-[#dbeafe]">
                 <script
                   type="application/ld+json"
                   dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
                 />
-                <div className="p-6 md:p-8">
+                <div className="p-0 sm:p-6 md:p-8">
                   <ProductDetailV2
                     title={product.title}
                     region={product.theme}

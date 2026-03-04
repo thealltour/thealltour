@@ -130,13 +130,24 @@ export default function SiteHeaderUI({
           <div className="flex shrink-0 items-center gap-3">
             {session ? (
               <>
-                <span className="type-small text-[var(--text-muted)]">{session.name}님</span>
+                <Link
+                  href="/mypage"
+                  aria-label="마이페이지로 이동"
+                  className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-semibold text-[var(--on-primary)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                >
+                  마이페이지
+                </Link>
                 {memberPoints !== null ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-soft)] px-2 py-1 type-caption font-semibold text-[var(--primary)]">
+                  <Link
+                    href="/mypage/points"
+                    aria-label="포인트 내역으로 이동"
+                    className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-soft)] px-2 py-1 type-caption font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                  >
                     포인트
                     <span className="tabular-nums">{memberPoints.toLocaleString("ko-KR")}P</span>
-                  </span>
+                  </Link>
                 ) : null}
+                <span className="hidden xl:inline type-small text-[var(--text-muted)]">{session.name}님</span>
                 <span className="text-[var(--divider)]" aria-hidden>|</span>
                 <MemberLogoutButton />
               </>

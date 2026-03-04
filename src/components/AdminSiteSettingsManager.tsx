@@ -229,7 +229,7 @@ export default function AdminSiteSettingsManager() {
 
       <div className="min-h-[200px]">
         {activeSection === "channel" && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           카카오채널 URL
           <input
@@ -286,7 +286,7 @@ export default function AdminSiteSettingsManager() {
         )}
 
         {activeSection === "company" && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           회사명
           <input
@@ -411,7 +411,7 @@ export default function AdminSiteSettingsManager() {
         )}
 
         {activeSection === "products-hero" && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           패키지상품 히어로 헤드라인
           <textarea
@@ -610,7 +610,7 @@ export default function AdminSiteSettingsManager() {
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
             />
           </label>
-          <div className="grid gap-2 md:grid-cols-[1.4fr_1.8fr]">
+          <div className="flex flex-col space-y-2 md:space-y-0 md:grid md:grid-cols-[1.4fr_1.8fr] md:gap-2">
             <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
               CTA 버튼 문구
               <input
@@ -649,7 +649,7 @@ export default function AdminSiteSettingsManager() {
         )}
 
         {activeSection === "golf-hero" && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           골프/파크골프 히어로 헤드라인
           <textarea

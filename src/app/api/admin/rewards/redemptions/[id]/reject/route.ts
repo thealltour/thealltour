@@ -42,7 +42,7 @@ export async function POST(
     status: "CONFIRMED",
     amount,
     reason: "경품 교환 반려로 인한 포인트 복구",
-    ref_type: "REDEMPTION",
+    ref_type: "REWARD_REDEMPTION",
     ref_id: id,
   });
 

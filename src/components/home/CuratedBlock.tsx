@@ -23,7 +23,7 @@ export default function CuratedBlock({ title, description, products }: CuratedBl
 
       <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
         {products.map((product) => (
-          <CuratedProductCard key={product.id} product={product} />
+          <CuratedProductCard key={product.id} product={product} sectionTitle={title} />
         ))}
       </div>
     </section>

@@ -1,19 +1,34 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import type { Product } from "@/types/product";
 import { getProductBadges } from "@/lib/productCategory";
+import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 
 export type CuratedProductCardProps = {
   product: Product;
+  /** 상위 섹션 제목 (홈 추천 계측용) */
+  sectionTitle?: string | null;
 };
 
-export default function CuratedProductCard({ product }: CuratedProductCardProps) {
+export default function CuratedProductCard({ product, sectionTitle }: CuratedProductCardProps) {
   const badges = getProductBadges(product);
+  const href = `/products/${product.id}`;
 
   return (
     <Link
-      href={`/products/${product.id}`}
+      href={href}
       className="group relative flex h-full flex-col overflow-hidden rounded-3xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-colors duration-150 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)]"
+      onClick={() =>
+        trackProductCardClick({
+          productId: product.id,
+          productTitle: product.title ?? "",
+          href,
+          source: "home_curated",
+          section: sectionTitle ?? undefined,
+        })
+      }
     >
       <div className="relative h-40 w-full overflow-hidden">
         <Image

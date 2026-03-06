@@ -2,122 +2,171 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
+import { getReviewById } from "@/lib/reviews";
+import { updateEligibilityStatus } from "@/lib/reviewEligibilities";
+import { createNewReviewNotification } from "@/lib/adminNotifications";
 
-type ReviewUpdateBody = {
+type ReviewPatchBody = {
+  action?: "save_draft" | "submit";
   title?: string;
   content?: string;
-  image_url?: string | null;
+  summary?: string;
+  content_good?: string;
+  content_bad?: string;
+  content_tip?: string;
   image_urls?: string[];
   rating?: number;
+  rating_schedule?: number;
+  rating_stay?: number;
+  rating_guide?: number;
+  rating_food?: number;
 };
 
-const MAX_REVIEW_IMAGES = 4;
+const MAX_REVIEW_IMAGES = 10;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+export async function GET(_request: Request, context: RouteContext) {
+  const { id } = await context.params;
+
+  const review = await getReviewById(id);
+  if (!review) {
+    return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  return NextResponse.json(review);
+}
+
 export async function PATCH(request: Request, context: RouteContext) {
+  const { id } = await context.params;
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
+
   if (!session) {
-    return NextResponse.json({ message: "회원 로그인 후 수정할 수 있습니다." }, { status: 401 });
+    return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const { id } = await context.params;
-  if (!id) {
-    return NextResponse.json({ message: "후기 ID가 올바르지 않습니다." }, { status: 400 });
+  const review = await getReviewById(id);
+  if (!review) {
+    return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const body = (await request.json()) as ReviewUpdateBody;
-  const title = body.title?.trim() ?? "";
-  const content = body.content?.trim() ?? "";
-  const rawImageUrls = (Array.isArray(body.image_urls) ? body.image_urls : [])
-    .map((url) => String(url).trim())
-    .filter((url) => url.length > 0);
+  if (review.member_id !== session.memberId) {
+    return NextResponse.json({ message: "본인의 후기만 수정할 수 있습니다." }, { status: 403 });
+  }
+
+  if (review.status === "submitted") {
+    return NextResponse.json({ message: "이미 제출된 후기는 수정할 수 없습니다." }, { status: 400 });
+  }
+
+  const body = (await request.json()) as ReviewPatchBody;
+  const action = body.action ?? "save_draft";
+
+  const title = body.title?.trim() ?? review.title;
+  const content = body.content?.trim() ?? review.content;
+  const summary = body.summary?.trim() ?? review.summary ?? "";
+  const contentGood = body.content_good?.trim() ?? review.content_good ?? "";
+  const contentBad = body.content_bad?.trim() ?? review.content_bad ?? "";
+  const contentTip = body.content_tip?.trim() ?? review.content_tip ?? "";
+
+  const rawImageUrls = (Array.isArray(body.image_urls) ? body.image_urls : review.image_urls ?? [])
+    .map((url: unknown) => String(url).trim())
+    .filter((url: string) => url.length > 0);
   const imageUrls = rawImageUrls.slice(0, MAX_REVIEW_IMAGES);
-  const imageUrl = imageUrls[0] ?? body.image_url?.trim() ?? null;
-  const rating =
-    typeof body.rating === "number" && Number.isFinite(body.rating)
-      ? Math.round(body.rating)
-      : undefined;
+  const imageUrl = imageUrls[0] ?? null;
 
-  if (!title || !content) {
-    return NextResponse.json({ message: "제목과 내용을 입력해 주세요." }, { status: 400 });
+  const parseRating = (val: unknown, fallback?: number): number | null => {
+    if (typeof val === "number" && Number.isFinite(val) && val >= 1 && val <= 5) {
+      return Math.round(val);
+    }
+    if (typeof fallback === "number") return fallback;
+    return null;
+  };
+
+  const rating = parseRating(body.rating, review.rating);
+  const ratingSchedule = parseRating(body.rating_schedule, review.rating_schedule);
+  const ratingStay = parseRating(body.rating_stay, review.rating_stay);
+  const ratingGuide = parseRating(body.rating_guide, review.rating_guide);
+  const ratingFood = parseRating(body.rating_food, review.rating_food);
+
+  if (action === "submit") {
+    const hasTitleOrSummary = title || summary;
+    const hasContent = content || contentGood || contentBad || contentTip;
+
+    if (review.eligibility_id) {
+      if (!hasTitleOrSummary) {
+        return NextResponse.json({ message: "제목 또는 한줄 요약을 입력해 주세요." }, { status: 400 });
+      }
+      if (!hasContent) {
+        return NextResponse.json({ message: "후기 내용을 입력해 주세요." }, { status: 400 });
+      }
+      if (rating === null) {
+        return NextResponse.json({ message: "전체 만족도를 선택해 주세요." }, { status: 400 });
+      }
+    } else {
+      if (!title || !content) {
+        return NextResponse.json({ message: "제목과 내용을 입력해 주세요." }, { status: 400 });
+      }
+    }
   }
-  if (rating !== undefined && (rating < 1 || rating > 5)) {
-    return NextResponse.json({ message: "별점은 1점에서 5점 사이로 선택해 주세요." }, { status: 400 });
-  }
+
   if (rawImageUrls.length > MAX_REVIEW_IMAGES) {
     return NextResponse.json(
       { message: `이미지는 최대 ${MAX_REVIEW_IMAGES}장까지 첨부할 수 있습니다.` },
       { status: 400 },
     );
   }
-  if (imageUrls.some((url) => url.length > 2000) || (imageUrl && imageUrl.length > 2000)) {
-    return NextResponse.json({ message: "이미지 URL이 너무 깁니다." }, { status: 400 });
+
+  const finalContent = content || buildFallbackContent(contentGood, contentBad, contentTip);
+  const newStatus = action === "submit" ? "submitted" : "draft";
+
+  const payload: Record<string, unknown> = {
+    title,
+    content: finalContent,
+    summary: summary || null,
+    content_good: contentGood || null,
+    content_bad: contentBad || null,
+    content_tip: contentTip || null,
+    image_url: imageUrl,
+    image_urls: imageUrls,
+    rating,
+    rating_schedule: ratingSchedule,
+    rating_stay: ratingStay,
+    rating_guide: ratingGuide,
+    rating_food: ratingFood,
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("reviews").update(payload).eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ message: "후기 수정에 실패했습니다." }, { status: 500 });
   }
 
-  const { data: existing, error: findError } = await supabase
-    .from("reviews")
-    .select("id,member_id")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (findError || !existing) {
-    return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
-  }
-  if (String(existing.member_id) !== session.memberId) {
-    return NextResponse.json({ message: "본인이 작성한 후기만 수정할 수 있습니다." }, { status: 403 });
-  }
-
-  const updateWithArray = await supabase
-    .from("reviews")
-    .update({ title, content, image_url: imageUrl, image_urls: imageUrls, rating: rating ?? null })
-    .eq("id", id);
-
-  if (updateWithArray.error) {
-    const updateLegacy = await supabase
-      .from("reviews")
-      .update({ title, content, image_url: imageUrl })
-      .eq("id", id);
-    if (updateLegacy.error) {
-      return NextResponse.json({ message: "후기 수정에 실패했습니다." }, { status: 500 });
+  if (action === "submit") {
+    if (review.eligibility_id) {
+      await updateEligibilityStatus(review.eligibility_id, "submitted");
     }
+    await createNewReviewNotification({
+      reviewId: id,
+      authorName: review.author_name,
+      title: title || summary || "후기",
+    });
   }
 
-  return NextResponse.json({ message: "후기가 수정되었습니다." });
+  return NextResponse.json({
+    message: action === "submit" ? "후기가 등록되었습니다." : "임시저장되었습니다.",
+    review_id: id,
+  });
 }
 
-export async function DELETE(_: Request, context: RouteContext) {
-  const cookieStore = await cookies();
-  const session = getMemberSessionFromCookies(cookieStore);
-  if (!session) {
-    return NextResponse.json({ message: "회원 로그인 후 삭제할 수 있습니다." }, { status: 401 });
-  }
-
-  const { id } = await context.params;
-  if (!id) {
-    return NextResponse.json({ message: "후기 ID가 올바르지 않습니다." }, { status: 400 });
-  }
-
-  const { data: existing, error: findError } = await supabase
-    .from("reviews")
-    .select("id,member_id")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (findError || !existing) {
-    return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
-  }
-  if (String(existing.member_id) !== session.memberId) {
-    return NextResponse.json({ message: "본인이 작성한 후기만 삭제할 수 있습니다." }, { status: 403 });
-  }
-
-  const { error } = await supabase.from("reviews").delete().eq("id", id);
-  if (error) {
-    return NextResponse.json({ message: "후기 삭제에 실패했습니다." }, { status: 500 });
-  }
-
-  return NextResponse.json({ message: "후기가 삭제되었습니다." });
+function buildFallbackContent(good?: string, bad?: string, tip?: string): string {
+  const parts: string[] = [];
+  if (good) parts.push(`[좋았던 점]\n${good}`);
+  if (bad) parts.push(`[아쉬웠던 점]\n${bad}`);
+  if (tip) parts.push(`[여행 팁]\n${tip}`);
+  return parts.join("\n\n");
 }

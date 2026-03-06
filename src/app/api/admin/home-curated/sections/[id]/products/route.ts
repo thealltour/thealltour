@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import type { Product } from "@/types/product";
 import type { SectionProductMappingRow } from "@/types/homeCurated";
@@ -136,7 +137,7 @@ export async function POST(
     return NextResponse.json({ message: "상품 추가에 실패했습니다." }, { status: 500 });
   }
 
-  revalidateTag("home-curated", "max");
+  revalidateTag(CACHE_TAGS.HOME_CURATED, REVALIDATE_MAX);
   revalidatePath("/");
   return NextResponse.json(insertResult.data, { status: 201 });
 }

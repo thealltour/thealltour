@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cacheTags";
 import type { Product } from "@/types/product";
 import type {
   ProductTaxonomy,
@@ -20,6 +21,7 @@ function mapTaxonomy(row: Record<string, unknown>): ProductTaxonomy {
     id: String(row.id ?? ""),
     type: row.type === "theme" ? "theme" : "category",
     name: String(row.name ?? ""),
+    slug: typeof row.slug === "string" ? row.slug : null,
     is_active: typeof row.is_active === "boolean" ? row.is_active : true,
     sort_order: typeof row.sort_order === "number" ? row.sort_order : null,
     created_at: typeof row.created_at === "string" ? row.created_at : null,
@@ -80,6 +82,7 @@ export async function getProductTaxonomiesWithUsage(products: Product[]) {
       id: `fallback-category-${name}`,
       type: "category",
       name,
+      slug: null,
       is_active: true,
       sort_order: null,
       created_at: null,
@@ -89,6 +92,7 @@ export async function getProductTaxonomiesWithUsage(products: Product[]) {
       id: `fallback-theme-${name}`,
       type: "theme",
       name,
+      slug: null,
       is_active: true,
       sort_order: null,
       created_at: null,
@@ -120,5 +124,60 @@ const getActiveTaxonomiesCached = unstable_cache(
     return (result.data ?? []) as Record<string, unknown>[];
   },
   ["product-taxonomies:active"],
-  { revalidate: 300, tags: ["product-taxonomies"] },
+  { revalidate: 300, tags: [CACHE_TAGS.TAXONOMY, CACHE_TAGS.HEADER_NAV] },
 );
+
+/**
+ * 헤더/필터용 활성 taxonomy 목록 (캐시 공유).
+ * taxonomy / header-nav revalidate 시 갱신됨.
+ */
+export async function getActiveTaxonomiesForHeader(): Promise<ProductTaxonomy[]> {
+  const rows = await getActiveTaxonomiesCached();
+  if (!rows) return [];
+  return rows.map((r) => mapTaxonomy(r));
+}
+
+/** slug → name 폴백 (taxonomy에 slug 미설정 시 랜딩용) */
+const SLUG_TO_REGION_NAME: Record<string, string> = {
+  japan: "일본",
+  "south-america": "남미",
+  "south-america-americas": "미국·남미",
+  sea: "동남아",
+  asia: "동남아",
+  indonesia: "인도네시아",
+  europe: "유럽",
+  americas: "미국·남미",
+};
+const SLUG_TO_THEME_NAME: Record<string, string> = {
+  golf: "골프",
+  "park-golf": "파크골프",
+  premium: "프리미엄",
+  group: "단체/동호회",
+  honeymoon: "허니문",
+};
+
+/**
+ * region/theme 랜딩용: slug로 taxonomy name 조회.
+ * slug가 DB에 있으면 해당 name 반환, 없으면 폴백 맵 사용.
+ */
+export async function getTaxonomyNameBySlug(
+  type: "category" | "theme",
+  slug: string,
+): Promise<string | null> {
+  const normalizedSlug = slug.trim().toLowerCase().replace(/\s+/g, "-");
+  if (!normalizedSlug) return null;
+
+  const rows = await getActiveTaxonomiesCached();
+  if (rows) {
+    const match = rows.find(
+      (r) =>
+        r.type === type &&
+        typeof r.slug === "string" &&
+        r.slug.trim().toLowerCase().replace(/\s+/g, "-") === normalizedSlug,
+    );
+    if (match) return String((match as Record<string, unknown>).name ?? "");
+  }
+
+  const fallback = type === "category" ? SLUG_TO_REGION_NAME : SLUG_TO_THEME_NAME;
+  return fallback[normalizedSlug] ?? null;
+}

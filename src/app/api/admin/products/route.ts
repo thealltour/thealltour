@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, revalidatePath } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import type { ItineraryV2 } from "@/types/product";
 
@@ -379,7 +380,8 @@ export async function POST(request: Request) {
     );
   }
 
-  revalidateTag("products", "max");
+  revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
+  revalidatePath("/products");
   const createdId = insertResult.data?.id ?? null;
   if (!imagesJsonPersisted) {
     return NextResponse.json(

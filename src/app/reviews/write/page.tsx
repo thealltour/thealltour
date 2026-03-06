@@ -1,21 +1,149 @@
+import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import ReviewWriteForm from "@/components/ReviewWriteForm";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
+import { getEligibilityWithBookingById } from "@/lib/reviewEligibilities";
+import { getReviewByEligibilityId, getReviewById } from "@/lib/reviews";
+import type { Review } from "@/types/review";
 
-export default function ReviewWritePage() {
+type Props = {
+  searchParams: Promise<{ eligibility?: string; review?: string }>;
+};
+
+export default async function ReviewWritePage({ searchParams }: Props) {
+  const params = await searchParams;
+  const eligibilityId = params.eligibility;
+  const reviewIdParam = params.review;
+
+  let eligibilityInfo: {
+    productTitle: string | null;
+    departureDate: string | null;
+    returnDate: string | null;
+    isValid: boolean;
+    alreadySubmitted: boolean;
+  } | null = null;
+
+  let initialReview: Review | null = null;
+  let effectiveReviewId: string | undefined = reviewIdParam;
+
+  if (reviewIdParam) {
+    const review = await getReviewById(reviewIdParam);
+    if (review && review.status === "draft") {
+      initialReview = review;
+      if (review.eligibility_id && !eligibilityId) {
+        const eligibility = await getEligibilityWithBookingById(review.eligibility_id);
+        if (eligibility) {
+          eligibilityInfo = {
+            productTitle: eligibility.product_title,
+            departureDate: eligibility.departure_date,
+            returnDate: eligibility.return_date,
+            isValid: true,
+            alreadySubmitted: false,
+          };
+        }
+      }
+    }
+  }
+
+  if (eligibilityId) {
+    const eligibility = await getEligibilityWithBookingById(eligibilityId);
+    if (eligibility) {
+      const existingReview = await getReviewByEligibilityId(eligibilityId);
+
+      if (existingReview && existingReview.status === "draft") {
+        initialReview = existingReview;
+        effectiveReviewId = existingReview.id;
+      }
+
+      eligibilityInfo = {
+        productTitle: eligibility.product_title,
+        departureDate: eligibility.departure_date,
+        returnDate: eligibility.return_date,
+        isValid: true,
+        alreadySubmitted: !!(existingReview && existingReview.status === "submitted"),
+      };
+    } else {
+      eligibilityInfo = {
+        productTitle: null,
+        departureDate: null,
+        returnDate: null,
+        isValid: false,
+        alreadySubmitted: false,
+      };
+    }
+  }
+
+  const showInvalidWarning = eligibilityId && eligibilityInfo && !eligibilityInfo.isValid;
+  const showAlreadySubmittedWarning = eligibilityId && eligibilityInfo?.alreadySubmitted;
+
+  const pageTitle = eligibilityInfo?.productTitle
+    ? `${eligibilityInfo.productTitle} 후기 작성`
+    : "여행후기 작성";
+
+  const productInfo = eligibilityInfo?.isValid
+    ? {
+        title: eligibilityInfo.productTitle ?? undefined,
+        departureDate: eligibilityInfo.departureDate ?? undefined,
+        returnDate: eligibilityInfo.returnDate ?? undefined,
+      }
+    : undefined;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
       <SiteHeader activeTab="reviews" />
       <SectionBody className="flex flex-col gap-[var(--space-5)]">
         <PageHero
           kicker="THEALL TOUR REVIEWS"
-          title="여행후기 작성"
+          title={pageTitle}
           subtitle="실제 여행 경험을 남겨주시면 더올투어를 찾는 분들께 큰 도움이 됩니다."
         />
         <ContentCard>
-          <ReviewWriteForm />
+          {showInvalidWarning ? (
+            <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium text-red-700">유효하지 않은 후기 작성 링크입니다.</p>
+                <p className="mt-1 text-sm text-red-600">마이페이지에서 작성 가능한 후기를 확인해주세요.</p>
+              </div>
+              <Link
+                href="/mypage/reviews"
+                className="inline-flex items-center gap-1 text-sm font-medium text-red-700 hover:text-red-800"
+              >
+                마이페이지로 이동 →
+              </Link>
+            </div>
+          ) : showAlreadySubmittedWarning ? (
+            <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+                <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium text-amber-700">이미 작성 완료된 후기입니다.</p>
+                <p className="mt-1 text-sm text-amber-600">마이페이지에서 작성한 후기를 확인할 수 있습니다.</p>
+              </div>
+              <Link
+                href="/mypage/reviews"
+                className="inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:text-amber-800"
+              >
+                내 후기 보기 →
+              </Link>
+            </div>
+          ) : (
+            <ReviewWriteForm
+              eligibilityId={eligibilityId}
+              reviewId={effectiveReviewId}
+              initialData={initialReview}
+              productInfo={productInfo}
+            />
+          )}
         </ContentCard>
       </SectionBody>
     </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import type { HomeCuratedSectionWithCount } from "@/types/homeCurated";
 
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "섹션 추가에 실패했습니다." }, { status: 500 });
   }
 
-  revalidateTag("home-curated", "max");
+  revalidateTag(CACHE_TAGS.HOME_CURATED, REVALIDATE_MAX);
   revalidatePath("/");
   const row = insertResult.data as Record<string, unknown>;
   return NextResponse.json(normalizeSection(row, 0), { status: 201 });

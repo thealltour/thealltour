@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import { TERMS_TEMPLATE_TYPES, type TermsTemplateType } from "@/lib/termsTemplates";
 
@@ -39,6 +40,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "약관 템플릿 저장에 실패했습니다." }, { status: 500 });
   }
 
-  revalidateTag("products", "max");
+  revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
   return NextResponse.json({ message: "약관 템플릿이 저장되었습니다." });
 }

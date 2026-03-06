@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { buttonVariants } from "@/components/ui/Button";
+import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 
 const TRANSITION = "transition-all duration-[220ms] ease-out";
 
@@ -40,6 +41,11 @@ export type ProductCardV2Props = {
   priceMeta?: string;
   /** 항공 포함 여부 등 메타 문구 */
   metaInfo?: string;
+  /** 상품 카드 클릭 계측용 (선택). 설정 시 클릭 시 product_card_click 전송 */
+  analyticsSource?: "product_list" | "landing" | "home_curated";
+  analyticsSection?: string;
+  /** 계측 시 사용할 상품 ID (analyticsSource 설정 시 권장) */
+  productId?: string;
 };
 
 const STATUS_LABELS: Record<ProductCardV2Status, string> = {
@@ -83,6 +89,9 @@ export default function ProductCardV2({
   onClickConsult,
   priceMeta = "1인 기준",
   metaInfo = "",
+  analyticsSource,
+  analyticsSection,
+  productId,
 }: ProductCardV2Props) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -260,8 +269,20 @@ export default function ProductCardV2({
   const wrapperClass = `group flex h-full overflow-hidden rounded-2xl ${TRANSITION} hover:shadow-xl`;
 
   if (hrefDetail) {
+    const handleCardClick = () => {
+      if (analyticsSource && hrefDetail) {
+        const id = productId ?? (hrefDetail.split("/").pop() || "");
+        trackProductCardClick({
+          productId: id,
+          productTitle: title ?? "",
+          href: hrefDetail,
+          source: analyticsSource,
+          section: analyticsSection ?? undefined,
+        });
+      }
+    };
     return (
-      <Link href={hrefDetail} className="block h-full">
+      <Link href={hrefDetail} className="block h-full" onClick={handleCardClick}>
         <Card variant="elevated" className={wrapperClass}>
           {cardContent}
         </Card>

@@ -6,6 +6,9 @@ import { Search, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import HeaderSearchDropdown from "@/components/HeaderSearchDropdown";
+import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
+import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 
 type HeaderProductSearchProps = {
   searchQuery?: string;
@@ -144,6 +147,35 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    const searchSource =
+      mode === "desktop" ? ANALYTICS_SOURCES.header_search_desktop : ANALYTICS_SOURCES.header_search_mobile;
+
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS.search_submit,
+        source: searchSource,
+        query: trimmed,
+        pagePath: typeof window !== "undefined" ? window.location.pathname : null,
+        deviceType: inferDeviceType(mode),
+      }),
+    );
+
+    if (suggestions.length === 0) {
+      trackClientEvent(
+        createAnalyticsPayload({
+          eventName: ANALYTICS_EVENTS.search_no_result,
+          source: searchSource,
+          query: trimmed,
+          resultCount: 0,
+          pagePath: typeof window !== "undefined" ? window.location.pathname : null,
+          deviceType: inferDeviceType(mode),
+        }),
+      );
+    }
+
     performSearch(query);
   }
 
@@ -161,7 +193,7 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
         className="relative hidden lg:flex w-full max-w-xl"
       >
         <label htmlFor="header-product-search-desktop" className="sr-only">
-          패키지상품 검색
+          상품 검색
         </label>
         <div
           className={cn(
@@ -179,7 +211,7 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setTimeout(() => setIsFocused(false), 120)}
-            placeholder="지역/코스/상품명을 검색하세요 (예: 동남아 골프, 유럽 여행)"
+            placeholder="지역, 테마, 상품명으로 검색해보세요 (예: 일본 골프, 남미 여행, 발리 파크골프)"
             className="h-11 min-h-[44px] w-full flex-1 bg-transparent pl-3 pr-24 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-subtle)]"
             autoComplete="off"
           />
@@ -204,6 +236,7 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
         </div>
         <HeaderSearchDropdown
           open={showDropdown}
+          mode={mode}
           query={query}
           recentSearches={recentSearches}
           recommended={recommended}
@@ -222,7 +255,7 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
       className="relative flex w-full lg:hidden"
     >
       <label htmlFor="header-product-search-mobile" className="sr-only">
-        패키지상품 검색
+        상품 검색
       </label>
       <div
         className={cn(
@@ -240,7 +273,7 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 120)}
-          placeholder="지역/코스/상품명을 검색하세요"
+          placeholder="지역, 테마, 상품명으로 검색해보세요"
           className="h-11 min-h-[44px] w-full flex-1 bg-transparent pl-2.5 pr-20 text-[14px] text-[var(--foreground)] outline-none placeholder:text-[var(--text-subtle)]"
           autoComplete="off"
         />
@@ -265,6 +298,7 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
       </div>
       <HeaderSearchDropdown
         open={showDropdown}
+        mode={mode}
         query={query}
         recentSearches={recentSearches}
         recommended={recommended}

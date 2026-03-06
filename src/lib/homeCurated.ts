@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cacheTags";
 import { normalizeProduct } from "@/lib/products";
 import type {
   HomeCuratedSettings,
@@ -125,6 +126,6 @@ async function getHomeCuratedDataUncached(): Promise<HomeCuratedData> {
 export async function getHomeCuratedData(): Promise<HomeCuratedData> {
   return unstable_cache(getHomeCuratedDataUncached, ["home-curated-data"], {
     revalidate: 60,
-    tags: ["home-curated"],
+    tags: [CACHE_TAGS.HOME_CURATED],
   })();
 }

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import SiteHeaderUI from "@/components/SiteHeaderUI";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabase } from "@/lib/supabase";
+import { getHeaderNavigationData } from "@/lib/headerNavigation";
 
 type SiteHeaderProps = {
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
@@ -33,8 +34,16 @@ export default async function SiteHeader({
     }
   }
 
+  let headerNavigationData = null;
+  try {
+    headerNavigationData = await getHeaderNavigationData();
+  } catch {
+    // fallback: UI will use empty/minimal nav
+  }
+
   return (
     <SiteHeaderUI
+      headerNavigationData={headerNavigationData}
       activeTab={activeTab}
       searchQuery={searchQuery}
       golfPresetActive={golfPresetActive}

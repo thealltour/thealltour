@@ -1119,14 +1119,24 @@ export default function AdminProductManager() {
           errorMessage={taxonomyController.errorMessage || null}
           isLoading={taxonomyController.isLoading}
           newCategoryInput={taxonomyController.newCategoryInput}
+          newCategorySlug={taxonomyController.newCategorySlug}
+          newCategorySortOrder={taxonomyController.newCategorySortOrder}
           newThemeInput={taxonomyController.newThemeInput}
+          newThemeSlug={taxonomyController.newThemeSlug}
+          newThemeSortOrder={taxonomyController.newThemeSortOrder}
           pendingCreateType={taxonomyController.pendingCreateType}
           pendingDeleteId={taxonomyController.pendingDeleteId}
+          pendingUpdateId={taxonomyController.pendingUpdateId}
           onCategoryInputChange={taxonomyController.setNewCategoryInput}
+          onCategorySlugChange={taxonomyController.setNewCategorySlug}
+          onCategorySortOrderChange={taxonomyController.setNewCategorySortOrder}
           onThemeInputChange={taxonomyController.setNewThemeInput}
+          onThemeSlugChange={taxonomyController.setNewThemeSlug}
+          onThemeSortOrderChange={taxonomyController.setNewThemeSortOrder}
           onCreateCategory={taxonomyController.addCustomCategory}
           onCreateTheme={taxonomyController.addCustomTheme}
           onDeleteTaxonomy={taxonomyController.handleDeleteTaxonomy}
+          onUpdateTaxonomy={taxonomyController.handleUpdateTaxonomy}
         />
       )}
 

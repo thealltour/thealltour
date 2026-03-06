@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import KpiCard from "@/components/admin/KpiCard";
 import StatusBadge from "@/components/admin/StatusBadge";
+import AdminCard from "@/components/admin/ui/AdminCard";
+import type { AdminAnalyticsOverview } from "@/lib/adminAnalytics";
 
 type AdminCounts = {
   inquiryCount: number;
@@ -24,7 +26,24 @@ type AdminCounts = {
 type DashboardResponse = {
   counts: AdminCounts;
   unreadNotificationCount: number;
+  analytics?: AdminAnalyticsOverview | null;
 };
+
+/** analytics.summary가 없을 때 사용할 기본값 (전부 0) */
+function getSafeAnalyticsSummary(analytics: AdminAnalyticsOverview | null | undefined) {
+  const s = analytics?.summary;
+  return {
+    headerNavClicks: typeof s?.headerNavClicks === "number" ? s.headerNavClicks : 0,
+    megaMenuClicks: typeof s?.megaMenuClicks === "number" ? s.megaMenuClicks : 0,
+    searchSubmits: typeof s?.searchSubmits === "number" ? s.searchSubmits : 0,
+    searchResultClicks: typeof s?.searchResultClicks === "number" ? s.searchResultClicks : 0,
+    searchNoResultCount: typeof s?.searchNoResultCount === "number" ? s.searchNoResultCount : 0,
+    ctaClicks: typeof s?.ctaClicks === "number" ? s.ctaClicks : 0,
+    landingViews: typeof s?.landingViews === "number" ? s.landingViews : 0,
+    landingProductClicks: typeof s?.landingProductClicks === "number" ? s.landingProductClicks : 0,
+    productCardClicks: typeof s?.productCardClicks === "number" ? s.productCardClicks : 0,
+  };
+}
 
 function toDirection(value?: number | null): "up" | "down" | undefined {
   if (typeof value !== "number") return undefined;
@@ -80,6 +99,10 @@ export default function AdminDashboardKpiSection() {
   });
 
   const { counts } = data ?? {};
+  const analyticsSummary = getSafeAnalyticsSummary(data?.analytics);
+  const topHeaderItems = (data?.analytics?.topHeaderItems ?? []).slice(0, 5);
+  const topSearchKeywords = (data?.analytics?.topSearchKeywords ?? []).slice(0, 5);
+  const hasAnalyticsLists = topHeaderItems.length > 0 || topSearchKeywords.length > 0;
 
   const isLoadingState = isLoading;
   const isErrorState = isError || !data;
@@ -174,8 +197,9 @@ export default function AdminDashboardKpiSection() {
           </p>
         </section>
       ) : (
-        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
-          <section className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 md:col-span-2 xl:grid-cols-2">
+        <div className="flex flex-col space-y-4">
+          {/* 문의 KPI 카드 4장 */}
+          <section className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 xl:grid-cols-2">
             {counts && (
               <KpiCard
               title="전체 문의 수"
@@ -212,6 +236,114 @@ export default function AdminDashboardKpiSection() {
               href="/theall_manager_only/inquiries?status=delayed"
             />
             )}
+          </section>
+
+          {/* 운영 지표: analytics summary 기반 카드 4장 (있으면 표시, 없으면 0 fallback) */}
+          <section>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">탐색/전환 지표</h3>
+            <div className="mt-2 flex flex-col space-y-3 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-5">
+              <KpiCard
+                title="헤더 클릭 수"
+                value={analyticsSummary.headerNavClicks + analyticsSummary.megaMenuClicks}
+              />
+              <KpiCard
+                title="검색 실행 수"
+                value={analyticsSummary.searchSubmits}
+              />
+              <KpiCard
+                title="검색 결과 클릭 수"
+                value={analyticsSummary.searchResultClicks}
+              />
+              <KpiCard
+                title="CTA 클릭 수"
+                value={analyticsSummary.ctaClicks}
+              />
+              <KpiCard
+                title="상품 클릭 수"
+                value={analyticsSummary.productCardClicks}
+              />
+            </div>
+          </section>
+
+          {/* Top list: 상위 헤더 클릭 항목 / 상위 검색어 (읽기 전용) */}
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <AdminCard variant="glass" className="p-4">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                상위 헤더 클릭 항목
+              </h3>
+              <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+                헤더/메가메뉴에서 많이 눌린 진입 항목입니다.
+              </p>
+              {topHeaderItems.length === 0 ? (
+                <p className="mt-3 text-xs text-[var(--text-muted)]">
+                  아직 집계된 헤더 클릭 데이터가 없습니다.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {topHeaderItems.map((item, index) => {
+                    const label =
+                      (item.label && item.label.trim()) ||
+                      (item.taxonomySlug && item.taxonomySlug.trim()) ||
+                      item.key ||
+                      "—";
+                    return (
+                      <li
+                        key={`${item.key}-${index}`}
+                        className="flex items-center justify-between gap-2 border-b border-[var(--border)]/50 pb-2 last:border-0 last:pb-0"
+                      >
+                        <span className="flex min-w-0 items-center gap-2 text-sm text-[var(--text-primary)]">
+                          <span className="shrink-0 text-[11px] font-medium text-[var(--text-muted)]">
+                            {index + 1}.
+                          </span>
+                          <span className="truncate">{label}</span>
+                          {item.taxonomyType && (
+                            <span className="shrink-0 text-[10px] text-[var(--text-muted)]">
+                              {item.taxonomyType}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-xs font-medium text-[var(--text-secondary)]">
+                          {Number(item.count).toLocaleString()}회
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </AdminCard>
+
+            <AdminCard variant="glass" className="p-4">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                상위 검색어
+              </h3>
+              <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+                사용자가 가장 자주 검색한 키워드입니다.
+              </p>
+              {topSearchKeywords.length === 0 ? (
+                <p className="mt-3 text-xs text-[var(--text-muted)]">
+                  아직 집계된 검색어 데이터가 없습니다.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {topSearchKeywords.map((item, index) => (
+                    <li
+                      key={`${item.keyword}-${index}`}
+                      className="flex items-center justify-between gap-2 border-b border-[var(--border)]/50 pb-2 last:border-0 last:pb-0"
+                    >
+                      <span className="flex min-w-0 items-center gap-2 text-sm text-[var(--text-primary)]">
+                        <span className="shrink-0 text-[11px] font-medium text-[var(--text-muted)]">
+                          {index + 1}.
+                        </span>
+                        <span className="truncate">{item.keyword || "—"}</span>
+                      </span>
+                      <span className="shrink-0 text-xs font-medium text-[var(--text-secondary)]">
+                        {Number(item.count).toLocaleString()}회
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AdminCard>
           </section>
 
           <section className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-surface)] p-4 backdrop-blur-md transition-colors">

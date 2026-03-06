@@ -1,0 +1,208 @@
+/**
+ * 랜딩 페이지용 데이터 로더 (region/theme).
+ * 기존 redirect는 유지하고, 후속 PR에서 page가 이 로더를 사용해 실제 랜딩 UI로 전환할 수 있도록 준비.
+ * TODO: 후속 PR-34~36에서 taxonomy id 기반 매칭으로 전환 시 문자열(name) 의존 축소 가능.
+ */
+
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cacheTags";
+import { getProducts } from "@/lib/products";
+import { getTaxonomyNameBySlug, getActiveTaxonomiesForHeader, parseThemeTokens } from "@/lib/productTaxonomies";
+import { getHomeCuratedData } from "@/lib/homeCurated";
+import type { Product } from "@/types/product";
+import type { ProductTaxonomy } from "@/types/productTaxonomy";
+import type {
+  ProductLandingData,
+  ProductLandingHero,
+  ProductLandingFeaturedLink,
+  ProductLandingProductSummary,
+  ProductLandingType,
+} from "@/types/productLanding";
+
+const RECOMMENDED_MAX = 8;
+
+/** region = category name 일치, theme = theme 토큰에 name 포함. /products 필터와 동일 기준. */
+function matchProductsByTaxonomyName(
+  products: Product[],
+  type: ProductLandingType,
+  taxonomyName: string,
+): Product[] {
+  const name = taxonomyName.trim();
+  if (!name) return [];
+  if (type === "region") {
+    return products.filter((p) => (p.category ?? "").trim() === name);
+  }
+  return products.filter((p) => parseThemeTokens(p.theme).includes(name));
+}
+
+/** Product → 랜딩 카드용 요약. null/undefined 안전 처리. */
+export function toLandingProductSummary(product: Product): ProductLandingProductSummary {
+  const id = product.id ?? "";
+  const title = product.title ?? "상품명 미정";
+  const description = product.description ?? null;
+  const imageUrl = product.image_url ?? null;
+  const price = product.price != null ? product.price : null;
+  const href = id ? `/products/${encodeURIComponent(id)}` : "/products";
+  const categories = product.category ? [product.category] : [];
+  const themes = product.theme ? parseThemeTokens(product.theme) : [];
+  return {
+    id,
+    title,
+    imageUrl,
+    description,
+    price,
+    href,
+    categories,
+    themes,
+  };
+}
+
+/** hero 문구/CTA 계산형 생성. DB 메타 없음. */
+function buildLandingHero(
+  type: ProductLandingType,
+  taxonomyName: string,
+  _slug: string,
+): ProductLandingHero {
+  const primaryCtaHref =
+    type === "region"
+      ? `/products?region=${encodeURIComponent(taxonomyName)}`
+      : `/products?theme=${encodeURIComponent(taxonomyName)}`;
+  if (type === "region") {
+    return {
+      eyebrow: "지역별 여행",
+      title: `${taxonomyName} 여행 추천`,
+      description: `${taxonomyName} 중심으로 둘러보는 추천 상품을 한곳에서 확인해보세요.`,
+      primaryCtaLabel: "전체 상품 보기",
+      primaryCtaHref,
+      secondaryCtaLabel: "맞춤 상담 문의",
+      secondaryCtaHref: "/quote",
+    };
+  }
+  return {
+    eyebrow: "테마별 여행",
+    title: `${taxonomyName} 테마 추천`,
+    description: `${taxonomyName} 성격의 여행 상품을 모아 비교해보세요.`,
+    primaryCtaLabel: "전체 상품 보기",
+    primaryCtaHref,
+    secondaryCtaLabel: "맞춤 상담 문의",
+    secondaryCtaHref: "/quote",
+  };
+}
+
+/** featuredLinks: 전체 상품 보기 + 정렬 링크 + 맞춤 상담. */
+function buildLandingFeaturedLinks(type: ProductLandingType, taxonomyName: string): ProductLandingFeaturedLink[] {
+  const baseHref =
+    type === "region"
+      ? `/products?region=${encodeURIComponent(taxonomyName)}`
+      : `/products?theme=${encodeURIComponent(taxonomyName)}`;
+  return [
+    { key: "all", label: "전체 상품 보기", href: baseHref },
+    { key: "popular", label: "인기순", href: `${baseHref}&sort=popular` },
+    { key: "new", label: "신규순", href: `${baseHref}&sort=new` },
+    { key: "consult", label: "맞춤 상담 문의", href: "/quote" },
+  ];
+}
+
+/** relatedTaxonomies: 반대 축 활성 taxonomy 4~6개. region 랜딩 → themes, theme 랜딩 → categories. */
+function buildLandingRelatedTaxonomies(
+  type: ProductLandingType,
+  taxonomies: ProductTaxonomy[],
+  _currentName: string,
+): ProductLandingFeaturedLink[] {
+  const pathSegment = type === "region" ? "theme" : "region";
+  const queryKey = type === "region" ? "theme" : "region";
+  const list = taxonomies
+    .filter((t) => t.type === (type === "region" ? "theme" : "category"))
+    .slice(0, 6)
+    .map((t) => ({
+      key: `related-${t.id}-${t.slug ?? t.name}`,
+      label: t.name,
+      href: t.slug
+        ? `/products/${pathSegment}/${encodeURIComponent(t.slug.trim().toLowerCase().replace(/\s+/g, "-"))}`
+        : `/products?${queryKey}=${encodeURIComponent(t.name)}`,
+    }));
+  return list;
+}
+
+/**
+ * 추천 상품: home curated에서 해당 taxonomy 매칭 우선, 그 다음 일반 상품 매칭. 중복 제거, 최대 8개.
+ */
+function selectRecommendedProductsForLanding(
+  allProducts: Product[],
+  curatedProducts: Product[],
+  type: ProductLandingType,
+  taxonomyName: string,
+): Product[] {
+  const matched = matchProductsByTaxonomyName(allProducts, type, taxonomyName);
+  const matchedIds = new Set(matched.map((p) => p.id));
+  const fromCurated = curatedProducts.filter((p) => matchedIds.has(p.id));
+  const curatedIds = new Set(fromCurated.map((p) => p.id));
+  const rest = matched.filter((p) => !curatedIds.has(p.id));
+  const combined = [...fromCurated, ...rest];
+  return combined.slice(0, RECOMMENDED_MAX);
+}
+
+async function getProductLandingDataUncached(params: {
+  type: ProductLandingType;
+  slug: string;
+}): Promise<ProductLandingData | null> {
+  const { type, slug } = params;
+  const normalizedSlug = slug?.trim();
+  if (!normalizedSlug) return null;
+
+  const taxonomyName = await getTaxonomyNameBySlug(type === "region" ? "category" : "theme", normalizedSlug);
+  if (!taxonomyName) return null;
+
+  const [products, curatedData, taxonomies] = await Promise.all([
+    getProducts(),
+    getHomeCuratedData(),
+    getActiveTaxonomiesForHeader(),
+  ]);
+
+  const curatedProducts = curatedData.sections.flatMap((s) => s.products ?? []);
+  const recommended = selectRecommendedProductsForLanding(
+    products,
+    curatedProducts,
+    type,
+    taxonomyName,
+  );
+  const matchedAll = matchProductsByTaxonomyName(products, type, taxonomyName);
+
+  const hero = buildLandingHero(type, taxonomyName, normalizedSlug);
+  const featuredLinks = buildLandingFeaturedLinks(type, taxonomyName);
+  const relatedTaxonomies = buildLandingRelatedTaxonomies(type, taxonomies, taxonomyName);
+
+  const taxonomySlug =
+    taxonomies.find(
+      (t) =>
+        t.type === (type === "region" ? "category" : "theme") &&
+        (t.name === taxonomyName || (t.slug && t.slug.trim().toLowerCase().replace(/\s+/g, "-") === normalizedSlug.toLowerCase())),
+    )?.slug ?? null;
+
+  return {
+    type,
+    slug: normalizedSlug,
+    taxonomyName,
+    taxonomySlug,
+    hero,
+    featuredLinks,
+    recommendedProducts: recommended.map(toLandingProductSummary),
+    relatedTaxonomies,
+    productCount: matchedAll.length,
+  };
+}
+
+/**
+ * 랜딩 페이지용 데이터 로드. slug로 taxonomy name 조회 후 상품/hero/링크 구성.
+ * taxonomy 없으면 null. 후속 PR에서 page가 이 함수를 사용해 redirect 대신 랜딩 UI 렌더 가능.
+ */
+export async function getProductLandingData(params: {
+  type: ProductLandingType;
+  slug: string;
+}): Promise<ProductLandingData | null> {
+  const cacheKey = `product-landing:${params.type}:${params.slug.trim().toLowerCase()}`;
+  return unstable_cache(getProductLandingDataUncached, [cacheKey], {
+    revalidate: 60,
+    tags: [CACHE_TAGS.TAXONOMY, CACHE_TAGS.HOME_CURATED, CACHE_TAGS.PRODUCTS],
+  })(params);
+}

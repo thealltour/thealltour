@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 
 type PatchBody = {
@@ -49,7 +50,7 @@ export async function PATCH(
     return NextResponse.json({ message: "수정에 실패했습니다." }, { status: 500 });
   }
 
-  revalidateTag("home-curated", "max");
+  revalidateTag(CACHE_TAGS.HOME_CURATED, REVALIDATE_MAX);
   revalidatePath("/");
   return NextResponse.json(result.data);
 }
@@ -72,7 +73,7 @@ export async function DELETE(
     return NextResponse.json({ message: "삭제에 실패했습니다." }, { status: 500 });
   }
 
-  revalidateTag("home-curated", "max");
+  revalidateTag(CACHE_TAGS.HOME_CURATED, REVALIDATE_MAX);
   revalidatePath("/");
   return NextResponse.json({ message: "삭제되었습니다." });
 }

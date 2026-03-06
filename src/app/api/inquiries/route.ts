@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
 import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
 import type { Inquiry, InquiryInput } from "@/types/inquiry";
@@ -39,24 +40,83 @@ function normalizeInquiryRow(row: Record<string, unknown>) {
     product_title: typeof row.product_title === "string" ? row.product_title : undefined,
     source_path: typeof row.source_path === "string" ? row.source_path : undefined,
     is_completed: typeof row.is_completed === "boolean" ? row.is_completed : undefined,
+    customer_profile_id: typeof row.customer_profile_id === "string" ? row.customer_profile_id : undefined,
+    consultation_status: typeof row.consultation_status === "string" ? row.consultation_status : undefined,
+    booking_status: typeof row.booking_status === "string" ? row.booking_status : undefined,
+    completed_at: typeof row.completed_at === "string" ? row.completed_at : undefined,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
     quote_snapshot: quote_snapshot ?? undefined,
   };
 }
 
-type ListStatus = "all" | "completed" | "pending";
+type ListStatus =
+  | "all"
+  | "new"
+  | "contacted"
+  | "closed"
+  | "reserved"
+  | "completed"
+  | "pending"
+  | "completed_legacy";
 type SortOption = "pending_first" | "recent" | "oldest" | "name";
-type SafeSummary = { pendingCount: number; completedCount: number };
+type SafeSummary = {
+  pendingCount: number;
+  completedCount: number;
+  reservedCount: number;
+  newCount: number;
+  contactedCount: number;
+  closedCount: number;
+};
 
 async function getInquirySummarySafe(): Promise<SafeSummary> {
-  const [pendingSummary, completedSummary] = await Promise.all([
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", true),
+  const [
+    pendingSummary,
+    completedSummary,
+    reservedSummary,
+    newSummary,
+    contactedSummary,
+    closedSummary,
+  ] = await Promise.all([
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .or("consultation_status.neq.closed,booking_status.eq.none"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "completed"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "reserved"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "new"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "contacted"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "closed"),
   ]);
 
+  if (
+    pendingSummary.error ||
+    completedSummary.error ||
+    reservedSummary.error ||
+    newSummary.error ||
+    contactedSummary.error ||
+    closedSummary.error
+  ) {
+    const [legacyPending, legacyCompleted] = await Promise.all([
+      supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
+      supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", true),
+    ]);
+    return {
+      pendingCount: legacyPending.error ? 0 : (legacyPending.count ?? 0),
+      completedCount: legacyCompleted.error ? 0 : (legacyCompleted.count ?? 0),
+      reservedCount: 0,
+      newCount: 0,
+      contactedCount: 0,
+      closedCount: 0,
+    };
+  }
+
   return {
-    pendingCount: pendingSummary.error ? 0 : (pendingSummary.count ?? 0),
-    completedCount: completedSummary.error ? 0 : (completedSummary.count ?? 0),
+    pendingCount: pendingSummary.count ?? 0,
+    completedCount: completedSummary.count ?? 0,
+    reservedCount: reservedSummary.count ?? 0,
+    newCount: newSummary.count ?? 0,
+    contactedCount: contactedSummary.count ?? 0,
+    closedCount: closedSummary.count ?? 0,
   };
 }
 
@@ -65,7 +125,15 @@ export async function GET(request: Request) {
   const search = url.searchParams.get("search")?.trim() ?? "";
   const statusParam = url.searchParams.get("status");
   const status: ListStatus =
-    statusParam === "completed" || statusParam === "pending" ? statusParam : "all";
+    statusParam === "new" ||
+    statusParam === "contacted" ||
+    statusParam === "closed" ||
+    statusParam === "reserved" ||
+    statusParam === "completed" ||
+    statusParam === "pending" ||
+    statusParam === "completed_legacy"
+      ? statusParam
+      : "all";
   const sortParam = url.searchParams.get("sort");
   const sort: SortOption =
     sortParam === "recent" || sortParam === "oldest" || sortParam === "name" || sortParam === "pending_first"
@@ -87,11 +155,19 @@ export async function GET(request: Request) {
     );
   }
 
-  if (status === "completed") query = query.eq("is_completed", true);
-  if (status === "pending") query = query.eq("is_completed", false);
+  if (status === "new") query = query.eq("consultation_status", "new");
+  else if (status === "contacted") query = query.eq("consultation_status", "contacted");
+  else if (status === "closed") query = query.eq("consultation_status", "closed");
+  else if (status === "reserved") query = query.eq("booking_status", "reserved");
+  else if (status === "completed") query = query.eq("booking_status", "completed");
+  else if (status === "pending") {
+    query = query.or("consultation_status.neq.closed,booking_status.eq.none");
+  } else if (status === "completed_legacy") {
+    query = query.eq("is_completed", true);
+  }
 
   if (sort === "pending_first") {
-    query = query.order("is_completed", { ascending: true }).order("created_at", { ascending: false });
+    query = query.order("consultation_status", { ascending: true }).order("created_at", { ascending: false });
   } else if (sort === "oldest") {
     query = query.order("created_at", { ascending: true });
   } else if (sort === "name") {
@@ -103,7 +179,6 @@ export async function GET(request: Request) {
   let { data, error, count } = await query.range(from, to);
 
   if (error) {
-    // Fallback for legacy schema (e.g. missing is_completed/product_title columns).
     let fallback = supabase.from("inquiries").select("*", { count: "exact" });
     if (search) {
       const escaped = search.replace(/[%_]/g, "\\$&");
@@ -131,33 +206,61 @@ export async function GET(request: Request) {
     pageSize,
     pendingCount: summary.pendingCount,
     completedCount: summary.completedCount,
+    reservedCount: summary.reservedCount,
+    newCount: summary.newCount,
+    contactedCount: summary.contactedCount,
+    closedCount: summary.closedCount,
   });
 }
 
 type BulkPatchBody = {
   ids?: string[];
+  /** @deprecated 단계적 deprecated. consultation_status / booking_status 사용 권장.
+   * TODO(후속 PR): 관리자 문의 UI를 consultation_status/booking_status 기반으로 개편 후 is_completed 제거. */
   is_completed?: boolean;
+  consultation_status?: "new" | "contacted" | "closed";
+  booking_status?: "none" | "reserved" | "completed" | "canceled";
 };
 
 export async function PATCH(request: Request) {
   const body = (await request.json()) as BulkPatchBody;
   const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
-  const isCompleted = body.is_completed;
 
-  if (ids.length === 0 || typeof isCompleted !== "boolean") {
+  if (ids.length === 0) {
     return NextResponse.json(
-      { message: "ids 배열과 is_completed(boolean) 값이 필요합니다." },
+      { message: "ids 배열이 필요합니다." },
+      { status: 400 },
+    );
+  }
+
+  const updatePayload: Record<string, unknown> = {};
+  if (typeof body.is_completed === "boolean") {
+    updatePayload.is_completed = body.is_completed;
+  }
+  if (
+    body.consultation_status === "new" ||
+    body.consultation_status === "contacted" ||
+    body.consultation_status === "closed"
+  ) {
+    updatePayload.consultation_status = body.consultation_status;
+  }
+  if (
+    body.booking_status === "none" ||
+    body.booking_status === "reserved" ||
+    body.booking_status === "completed" ||
+    body.booking_status === "canceled"
+  ) {
+    updatePayload.booking_status = body.booking_status;
+  }
+  if (Object.keys(updatePayload).length === 0) {
+    return NextResponse.json(
+      { message: "is_completed, consultation_status, booking_status 중 하나 이상이 필요합니다." },
       { status: 400 },
     );
   }
 
   const updateResults = await Promise.all(
-    ids.map((id) =>
-      supabase
-        .from("inquiries")
-        .update({ is_completed: isCompleted })
-        .eq("id", id),
-    ),
+    ids.map((id) => supabase.from("inquiries").update(updatePayload).eq("id", id)),
   );
 
   const failed = updateResults.find((result) => result.error);
@@ -239,6 +342,16 @@ export async function POST(request: Request) {
     insertPayload.quote_snapshot = quoteSnapshot;
   }
 
+  const profile = await findOrCreateCustomerProfile({
+    name,
+    phone,
+    source: "inquiry",
+  });
+  if (profile) {
+    insertPayload.customer_profile_id = profile.id;
+  }
+
+  // 1차: 전체 payload(quote_snapshot, customer_profile_id, product_*, source_path 포함)로 insert
   const insertResultWithProduct = await supabase
     .from("inquiries")
     .insert(insertPayload)
@@ -247,23 +360,61 @@ export async function POST(request: Request) {
 
   let inquiryId = insertResultWithProduct.data?.id;
   if (insertResultWithProduct.error || !insertResultWithProduct.data) {
-    if (insertResultWithProduct.error?.code === "42703" && quoteSnapshot) {
-      const retry = await supabase
+    const firstError = insertResultWithProduct.error;
+    const code = firstError?.code;
+
+    // 2차: quote_snapshot만 제거하고 재시도 (product_*, source_path, customer_profile_id 유지)
+    if (code === "42703" && quoteSnapshot) {
+      const withoutQuote: Record<string, unknown> = {
+        name,
+        phone,
+        content,
+        product_id: productId || null,
+        product_title: productTitle || null,
+        source_path: sourcePath || null,
+      };
+      if (insertPayload.customer_profile_id) {
+        withoutQuote.customer_profile_id = insertPayload.customer_profile_id;
+      }
+      const retryWithoutQuote = await supabase
         .from("inquiries")
-        .insert({
-          name,
-          phone,
-          content,
-          product_id: productId || null,
-          product_title: productTitle || null,
-          source_path: sourcePath || null,
-        })
+        .insert(withoutQuote)
         .select("id")
         .maybeSingle();
-      if (!retry.error && retry.data) {
-        inquiryId = retry.data.id;
+      if (!retryWithoutQuote.error && retryWithoutQuote.data) {
+        inquiryId = retryWithoutQuote.data.id;
+        console.error("[inquiries POST] fallback: quote_snapshot 제거 후 저장 성공", {
+          code,
+          message: firstError?.message,
+        });
       }
     }
+
+    if (!inquiryId) {
+      // 3차: customer_profile_id 제거 후 재시도 (product_*, source_path 유지)
+      const withoutProfile: Record<string, unknown> = {
+        name,
+        phone,
+        content,
+        product_id: productId || null,
+        product_title: productTitle || null,
+        source_path: sourcePath || null,
+      };
+      const retryWithoutProfile = await supabase
+        .from("inquiries")
+        .insert(withoutProfile)
+        .select("id")
+        .maybeSingle();
+      if (!retryWithoutProfile.error && retryWithoutProfile.data) {
+        inquiryId = retryWithoutProfile.data.id;
+        console.error("[inquiries POST] fallback: customer_profile_id 제거 후 저장 성공", {
+          code: firstError?.code,
+          message: firstError?.message,
+        });
+      }
+    }
+
+    // 최종: 정말 불가할 때만 최소 필드 insert
     if (!inquiryId) {
       const insertLegacy = await supabase
         .from("inquiries")
@@ -275,9 +426,14 @@ export async function POST(request: Request) {
         .select("id")
         .maybeSingle();
       if (insertLegacy.error || !insertLegacy.data) {
+        console.error("[inquiries POST] fallback: 최소 필드 insert 실패", {
+          error: insertLegacy.error?.message,
+          code: insertLegacy.error?.code,
+        });
         return NextResponse.json({ message: "문의 저장에 실패했습니다." }, { status: 500 });
       }
       inquiryId = insertLegacy.data.id;
+      console.error("[inquiries POST] fallback: 최소 필드(name,phone,content)만 저장됨. product/customer_profile 등 유실 가능.");
     }
   }
 

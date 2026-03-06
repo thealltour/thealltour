@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import type { ItineraryV2 } from "@/types/product";
 
@@ -262,8 +263,9 @@ export async function PATCH(
     );
   }
 
-  revalidateTag("products", "max");
+  revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
   revalidatePath(`/products/${id}`);
+  revalidatePath("/products");
   if (!imagesJsonPersisted) {
     return NextResponse.json({
       message: "상품이 수정되었습니다. (대표 이미지만 저장됨)",
@@ -290,7 +292,9 @@ export async function DELETE(
     );
   }
 
-  revalidateTag("products", "max");
+  revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
+  revalidatePath(`/products/${id}`);
+  revalidatePath("/products");
   return NextResponse.json({ message: "상품이 삭제되었습니다." });
 }
 

@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import AdminDashboardKpiSection from "@/components/admin/AdminDashboardKpiSection";
+import AdminDashboardKpiSectionWithProvider from "@/components/admin/AdminDashboardKpiSectionWithProvider";
 import AdminHeader from "@/components/AdminHeader";
+import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
 import { getAdminCounts } from "@/lib/adminCounts";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import Link from "next/link";
 import { Bell, MessageSquare, PackageSearch, Users } from "lucide-react";
-import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
 
 export default async function AdminPage() {
   const [counts, unreadNotificationCount] = await Promise.all([
@@ -78,7 +78,7 @@ export default async function AdminPage() {
               </section>
             }
           >
-            <AdminDashboardKpiSection />
+            <AdminDashboardKpiSectionWithProvider />
           </Suspense>
         </AdminQueryProvider>
 

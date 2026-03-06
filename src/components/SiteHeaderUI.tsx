@@ -3,16 +3,19 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Check, X } from "lucide-react";
 import HeaderProductSearch from "@/components/HeaderProductSearch";
 import MemberLogoutButton from "@/components/MemberLogoutButton";
-import MobileFloatingMenu from "@/components/MobileFloatingMenu";
 import HeaderQuickConsultCtas from "@/components/HeaderQuickConsultCtas";
-import HeaderMobileShell from "@/components/HeaderMobileShell";
-import { Button } from "@/components/ui/Button";
+import { DesktopMegaMenu } from "@/components/header/DesktopMegaMenu";
+import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
+import { HEADER_DESKTOP_PRIMARY_NAV_KEYS, HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF } from "@/components/header/headerNav.constants";
+import type { HeaderPrimaryNavKey } from "@/components/header/headerNav.constants";
+import type { HeaderNavigationData, HeaderPrimaryNavItem } from "@/components/header/headerNav.types";
 import { cn } from "@/lib/cn";
 
 export type SiteHeaderUIProps = {
+  /** 서버에서 조회한 헤더 네비 데이터. null이면 직접 링크 fallback */
+  headerNavigationData?: HeaderNavigationData | null;
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
   searchQuery?: string;
   golfPresetActive?: boolean;
@@ -21,6 +24,15 @@ export type SiteHeaderUIProps = {
   session: { name: string } | null;
   memberPoints: number | null;
 };
+
+/** 데이터 없을 때 사용할 최소 1차 메뉴 (직접 링크) */
+function getFallbackPrimaryNav(): HeaderPrimaryNavItem[] {
+  return HEADER_PRIMARY_NAV_ITEMS.map(({ key, label }) => ({
+    key,
+    label,
+    href: HEADER_PRIMARY_NAV_DEFAULT_HREF[key as HeaderPrimaryNavKey],
+  }));
+}
 
 function getNavLinkClass(isActive: boolean) {
   const base =
@@ -39,22 +51,8 @@ function getNavLinkClass(isActive: boolean) {
   );
 }
 
-function getSubChipClass(isActive: boolean, isGolf?: boolean) {
-  const base =
-    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 type-caption md:type-small transition-colors duration-150";
-  if (isActive) {
-    return isGolf
-      ? cn(base, "bg-[var(--success-bg)] border-[var(--success)]/40 text-[var(--success)]")
-      : cn(base, "bg-[var(--primary-soft)] border-[var(--primary)]/40 text-[var(--primary)]");
-  }
-  return cn(
-    base,
-    "bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]",
-    "hover:bg-[var(--surface-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]",
-  );
-}
-
 export default function SiteHeaderUI({
+  headerNavigationData,
   activeTab,
   searchQuery,
   golfPresetActive = false,
@@ -64,6 +62,9 @@ export default function SiteHeaderUI({
   memberPoints,
 }: SiteHeaderUIProps) {
   const [scrolled, setScrolled] = useState(false);
+  const primaryNav = headerNavigationData?.primaryNav?.length
+    ? headerNavigationData.primaryNav
+    : getFallbackPrimaryNav();
 
   useEffect(() => {
     function onScroll() {
@@ -177,26 +178,7 @@ export default function SiteHeaderUI({
         </div>
 
         <div className="flex h-14 items-center gap-3 border-t border-[var(--divider)]">
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              className={getSubChipClass(activeTab === "products")}
-              href="/products"
-            >
-              <span className="flex items-center gap-1.5">
-                {activeTab === "products" ? <Check className="h-3.5 w-3.5" aria-hidden /> : null}
-                패키지상품
-              </span>
-            </Link>
-            <Link
-              className={getSubChipClass(golfPresetActive, true)}
-              href="/products?tourType=golf-park"
-            >
-              <span className="flex items-center gap-1.5">
-                {golfPresetActive ? <Check className="h-3.5 w-3.5" aria-hidden /> : null}
-                골프/파크골프
-              </span>
-            </Link>
-          </div>
+          <DesktopMegaMenu primaryNav={primaryNav} />
 
           <div className="flex flex-1 justify-center px-2">
             <HeaderProductSearch mode="desktop" searchQuery={searchQuery} />
@@ -209,8 +191,12 @@ export default function SiteHeaderUI({
         </div>
       </div>
 
-      <HeaderMobileShell activeTab={activeTab} searchQuery={searchQuery} />
-      <MobileFloatingMenu activeTab={activeTab} isLoggedIn={!!session} />
+      <MobileHeaderMenu
+        primaryNav={primaryNav}
+        activeTab={activeTab}
+        searchQuery={searchQuery}
+        session={session}
+      />
     </header>
   );
 }

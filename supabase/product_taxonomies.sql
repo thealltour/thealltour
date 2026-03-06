@@ -4,6 +4,7 @@ create table if not exists public.product_taxonomies (
   id uuid primary key default gen_random_uuid(),
   type text not null check (type in ('category', 'theme')),
   name text not null,
+  slug text,
   is_active boolean not null default true,
   sort_order integer,
   created_at timestamptz not null default now(),

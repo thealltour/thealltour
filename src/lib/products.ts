@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cacheTags";
 import type {
   Product,
   ProductTrust,
@@ -523,7 +524,7 @@ const getProductsCached = unstable_cache(
   return (fallbackQuery.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
   },
   ["products:list"],
-  { revalidate: 60, tags: ["products"] },
+  { revalidate: 60, tags: [CACHE_TAGS.PRODUCTS] },
 );
 
 export async function getProductById(id: string) {
@@ -552,5 +553,5 @@ const getProductByIdCached = unstable_cache(
     return normalizeProduct(data as Record<string, unknown>);
   },
   ["products:by-id"],
-  { revalidate: 120, tags: ["products"] },
+  { revalidate: 120, tags: [CACHE_TAGS.PRODUCTS] },
 );

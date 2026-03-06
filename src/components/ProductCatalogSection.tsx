@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -27,6 +27,14 @@ type ProductCatalogSectionProps = {
   initialKeyword?: string;
   presetCategories?: string[];
   presetLabel?: string;
+  /** URL 필터 연동 시: 초기 지역(카테고리) */
+  initialRegion?: string | null;
+  /** URL 필터 연동 시: 초기 테마 */
+  initialTheme?: string | null;
+  /** URL 필터 연동 시: 카테고리 탭 클릭 시 호출 */
+  onCategoryChange?: (region: string | null) => void;
+  /** URL 필터 연동 시: 테마 탭 클릭 시 호출 */
+  onThemeChange?: (theme: string | null) => void;
 };
 
 function normalizeSearchKeyword(value: string) {
@@ -87,9 +95,28 @@ export default function ProductCatalogSection({
   initialKeyword = "",
   presetCategories,
   presetLabel,
+  initialRegion,
+  initialTheme,
+  onCategoryChange,
+  onThemeChange,
 }: ProductCatalogSectionProps) {
-  const [activeTab, setActiveTab] = useState<ProductCategoryTabId>("all");
-  const [activeThemeTab, setActiveThemeTab] = useState("전체");
+  const [internalTab, setInternalTab] = useState<ProductCategoryTabId>("all");
+  const [internalThemeTab, setInternalThemeTab] = useState("전체");
+
+  const isUrlControlled = onCategoryChange != null && onThemeChange != null;
+  const activeTab: ProductCategoryTabId = isUrlControlled
+    ? (initialRegion ?? "all")
+    : internalTab;
+  const activeThemeTab = isUrlControlled
+    ? (initialTheme ?? "전체")
+    : internalThemeTab;
+
+  useEffect(() => {
+    if (!isUrlControlled) return;
+    setInternalTab(initialRegion ?? "all");
+    setInternalThemeTab(initialTheme ?? "전체");
+  }, [isUrlControlled, initialRegion, initialTheme]);
+
   const keyword = useMemo(() => normalizeSearchKeyword(initialKeyword), [initialKeyword]);
   const presetCategorySet = useMemo(
     () => new Set((presetCategories ?? []).map((item) => item.trim()).filter(Boolean)),
@@ -107,22 +134,25 @@ export default function ProductCatalogSection({
     [categories, presetCategorySet],
   );
   const categoryTabs = useMemo(() => ["전체", ...visibleCategories], [visibleCategories]);
-
-  const filteredProducts = useMemo(
-    () => baseProducts.filter((product) => matchesProductTab(product, activeTab)),
-    [baseProducts, activeTab],
-  );
+  /** URL 연동 시 부모가 이미 region/theme 필터 적용함 → 키워드만 적용 */
+  const filteredProducts = useMemo(() => {
+    if (isUrlControlled) return baseProducts;
+    return baseProducts.filter((product) => matchesProductTab(product, activeTab));
+  }, [baseProducts, activeTab, isUrlControlled]);
   const themeTabs = useMemo(() => {
     const inferred = getThemeTabs(baseProducts, activeTab);
     return Array.from(new Set(["전체", ...inferred.slice(1)]));
   }, [baseProducts, activeTab]);
-  const themeFilteredProducts = useMemo(
-    () => filteredProducts.filter((product) => matchesThemeTab(product, activeThemeTab)),
-    [filteredProducts, activeThemeTab],
-  );
+  const themeFilteredProducts = useMemo(() => {
+    if (isUrlControlled) return filteredProducts;
+    return filteredProducts.filter((product) => matchesThemeTab(product, activeThemeTab));
+  }, [filteredProducts, activeThemeTab, isUrlControlled]);
   const keywordFilteredProducts = useMemo(
-    () => themeFilteredProducts.filter((product) => matchesKeyword(product, keyword)),
-    [themeFilteredProducts, keyword],
+    () =>
+      (isUrlControlled ? filteredProducts : themeFilteredProducts).filter((product) =>
+        matchesKeyword(product, keyword),
+      ),
+    [isUrlControlled, filteredProducts, themeFilteredProducts, keyword],
   );
   const groupedByTheme = useMemo(
     () => groupProductsByTheme(keywordFilteredProducts, themeTabs),
@@ -173,8 +203,12 @@ export default function ProductCatalogSection({
             key={tab}
             type="button"
             onClick={() => {
-              setActiveTab(tab === "전체" ? "all" : tab);
-              setActiveThemeTab("전체");
+              if (isUrlControlled && onCategoryChange) {
+                onCategoryChange(tab === "전체" ? null : tab);
+                return;
+              }
+              setInternalTab(tab === "전체" ? "all" : tab);
+              setInternalThemeTab("전체");
             }}
             className={`type-btn rounded-full px-3.5 py-1.5 transition ${
               (tab === "전체" ? "all" : tab) === activeTab
@@ -192,7 +226,13 @@ export default function ProductCatalogSection({
           <button
             key={`theme-${tab}`}
             type="button"
-            onClick={() => setActiveThemeTab(tab)}
+            onClick={() => {
+              if (isUrlControlled && onThemeChange) {
+                onThemeChange(tab === "전체" ? null : tab);
+                return;
+              }
+              setInternalThemeTab(tab);
+            }}
             className={`type-caption rounded-full px-3 py-1 font-semibold transition ${
               activeThemeTab === tab
                 ? "bg-[var(--primary-soft)] text-[var(--primary)]"
@@ -238,6 +278,9 @@ export default function ProductCatalogSection({
                         hrefDetail={`/products/${product.id}`}
                         onClickDetail={() => router.push(`/products/${product.id}`)}
                         onClickConsult={() => handleProductConsult(product)}
+                        analyticsSource="product_list"
+                        analyticsSection="catalog"
+                        productId={product.id}
                       />
                     );
                   }

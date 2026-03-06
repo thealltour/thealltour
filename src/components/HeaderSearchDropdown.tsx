@@ -1,4 +1,7 @@
 import type { MouseEvent } from "react";
+import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
+import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 
 type RecommendedKeyword = {
   id: string;
@@ -14,6 +17,7 @@ type ProductSuggestionItem = {
 
 type HeaderSearchDropdownProps = {
   open: boolean;
+  mode: "desktop" | "mobile";
   query: string;
   recentSearches: string[];
   recommended: RecommendedKeyword[];
@@ -24,6 +28,7 @@ type HeaderSearchDropdownProps = {
 
 export default function HeaderSearchDropdown({
   open,
+  mode,
   query,
   recentSearches,
   recommended,
@@ -31,6 +36,43 @@ export default function HeaderSearchDropdown({
   productSuggestions,
   onSelectKeyword,
 }: HeaderSearchDropdownProps) {
+  const searchSource =
+    mode === "desktop" ? ANALYTICS_SOURCES.header_search_desktop : ANALYTICS_SOURCES.header_search_mobile;
+
+  function trackSearchClick(
+    eventName: "search_recent_click" | "search_recommended_click" | "search_suggestion_click",
+    value: string,
+  ) {
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS[eventName],
+        source: searchSource,
+        query: query.trim() || null,
+        label: value,
+        pagePath: typeof window !== "undefined" ? window.location.pathname : null,
+        deviceType: inferDeviceType(mode),
+      }),
+    );
+  }
+
+  function handleClickRecent(event: MouseEvent<HTMLButtonElement>, value: string) {
+    event.preventDefault();
+    trackSearchClick("search_recent_click", value);
+    onSelectKeyword(value);
+  }
+
+  function handleClickRecommended(event: MouseEvent<HTMLButtonElement>, value: string) {
+    event.preventDefault();
+    trackSearchClick("search_recommended_click", value);
+    onSelectKeyword(value);
+  }
+
+  function handleClickSuggestion(event: MouseEvent<HTMLButtonElement>, value: string) {
+    event.preventDefault();
+    trackSearchClick("search_suggestion_click", value);
+    onSelectKeyword(value);
+  }
+
   if (
     !open ||
     (!recentSearches.length &&
@@ -39,11 +81,6 @@ export default function HeaderSearchDropdown({
       !isLoadingRecommended)
   ) {
     return null;
-  }
-
-  function handleClickKeyword(event: MouseEvent<HTMLButtonElement>, value: string) {
-    event.preventDefault();
-    onSelectKeyword(value);
   }
 
   return (
@@ -60,7 +97,7 @@ export default function HeaderSearchDropdown({
                 <button
                   key={keyword}
                   type="button"
-                  onMouseDown={(event) => handleClickKeyword(event, keyword)}
+                  onMouseDown={(event) => handleClickRecent(event, keyword)}
                   className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1 text-xs text-[var(--foreground)] transition hover:bg-[var(--surface)] hover:border-[var(--border-strong)]"
                 >
                   {keyword}
@@ -91,7 +128,7 @@ export default function HeaderSearchDropdown({
                 <button
                   key={item.id}
                   type="button"
-                  onMouseDown={(event) => handleClickKeyword(event, item.keyword)}
+                  onMouseDown={(event) => handleClickRecommended(event, item.keyword)}
                   className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                 >
                   {item.keyword}
@@ -112,7 +149,7 @@ export default function HeaderSearchDropdown({
                 <li key={item.id}>
                   <button
                     type="button"
-                    onMouseDown={(event) => handleClickKeyword(event, item.title)}
+                    onMouseDown={(event) => handleClickSuggestion(event, item.title)}
                     className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                   >
                     <span className="line-clamp-1 text-sm font-medium">

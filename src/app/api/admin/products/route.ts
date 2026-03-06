@@ -3,11 +3,20 @@ import { revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { ItineraryV2 } from "@/types/product";
 
-const FEATURED_PRODUCT_LIMIT = 8;
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
   const normalized = message.toLowerCase();
   return normalized.includes("images_json") && normalized.includes("column");
+}
+
+/** PostgreSQL integer 컬럼용: 과학적 표기·부동소수·범위 초과 시 null */
+function toSafeInteger(value: unknown): number | null {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  const int = Math.round(n);
+  if (int < -2147483648 || int > 2147483647) return null;
+  return int;
 }
 
 type ProductBody = {
@@ -55,7 +64,6 @@ type ProductBody = {
   itinerary?: string | null;
   inclusions?: string | null;
   is_active?: boolean;
-  is_featured_home?: boolean;
   sort_order?: number | null;
   status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED" | null;
   fuel_included?: boolean | null;
@@ -98,7 +106,6 @@ export async function GET(request: NextRequest) {
     | "created_at";
   const sortDirection = (searchParams.get("sortDirection") ?? "asc") === "desc" ? "desc" : "asc";
   const keyword = (searchParams.get("q") ?? "").trim();
-  const featuredOnly = searchParams.get("featuredOnly") === "true";
 
   try {
     const from = Math.max(0, (page - 1) * pageSize);
@@ -107,13 +114,8 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("products")
       .select("*", { count: "exact" })
-      .order("is_featured_home", { ascending: false, nullsFirst: false })
       .order(sortField, { ascending: sortDirection === "asc", nullsFirst: false })
       .range(from, to);
-
-    if (featuredOnly) {
-      query = query.eq("is_featured_home", true);
-    }
 
     if (keyword !== "") {
       const ilike = `%${keyword}%`;
@@ -154,28 +156,31 @@ export async function POST(request: Request) {
   const imageUrl = body.image_url?.trim() || images[0];
   const category = body.category?.trim() || "여행상품";
 
+  const sourceUrl = body.product_source_url?.trim();
+  if (sourceUrl) {
+    const { data: existing } = await supabase
+      .from("products")
+      .select("id")
+      .eq("product_source_url", sourceUrl)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) {
+      return NextResponse.json(
+        {
+          message: "이미 같은 원본 URL로 생성된 상품이 있습니다.",
+          existingId: existing.id,
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   if (!title || !description || !imageUrl) {
     return NextResponse.json(
       { message: "상품명, 설명, 이미지 URL은 필수입니다." },
       { status: 400 },
     );
-  }
-
-  if (body.is_featured_home === true) {
-    const featuredCountQuery = await supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("is_featured_home", true);
-
-    if (featuredCountQuery.error) {
-      return NextResponse.json({ message: "추천상품 개수 확인에 실패했습니다." }, { status: 500 });
-    }
-    if ((featuredCountQuery.count ?? 0) >= FEATURED_PRODUCT_LIMIT) {
-      return NextResponse.json(
-        { message: `메인 추천상품은 최대 ${FEATURED_PRODUCT_LIMIT}개까지 설정할 수 있습니다.` },
-        { status: 400 },
-      );
-    }
   }
 
   const insertPayload: Record<string, unknown> = {
@@ -185,14 +190,12 @@ export async function POST(request: Request) {
     images_json: images.length > 0 ? images : null,
     category,
     theme: body.theme?.trim() || null,
-    price: typeof body.price === "number" ? body.price : null,
+    price: toSafeInteger(body.price),
     duration: body.duration?.trim() || null,
     itinerary: body.itinerary?.trim() || null,
     inclusions: body.inclusions?.trim() || null,
-      // 추천상품은 메인 노출을 위해 자동 활성화합니다.
-      is_active: body.is_featured_home ? true : (body.is_active ?? true),
-    is_featured_home: body.is_featured_home ?? false,
-    sort_order: typeof body.sort_order === "number" ? body.sort_order : null,
+    is_active: body.is_active ?? true,
+    sort_order: toSafeInteger(body.sort_order),
   };
 
   if (body.meta_title !== undefined) {
@@ -377,14 +380,16 @@ export async function POST(request: Request) {
   }
 
   revalidateTag("products", "max");
+  const createdId = insertResult.data?.id ?? null;
   if (!imagesJsonPersisted) {
     return NextResponse.json(
       {
         message: "상품이 등록되었습니다. (대표 이미지만 저장됨)",
         warningCode: "IMAGES_JSON_NOT_PERSISTED",
+        id: createdId,
       },
       { status: 201 },
     );
   }
-  return NextResponse.json({ message: "상품이 등록되었습니다." }, { status: 201 });
+  return NextResponse.json({ message: "상품이 등록되었습니다.", id: createdId }, { status: 201 });
 }

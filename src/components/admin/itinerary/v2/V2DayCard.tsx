@@ -22,6 +22,13 @@ export type V2DayCardProps = {
   onFocus?: () => void;
   selectedEvent?: SelectedEventRef | null;
   onEventSelect?: (eventIndex: number) => void;
+  /** 모두투어 미할당 이미지 DnD */
+  modetourDnDEnabled?: boolean;
+  onDropExternalImage?: (
+    item: { source: "unassigned"; url: string },
+    destination: { editorType: "v2"; dayIndex: number; eventIndex: number; insertAt?: number }
+  ) => void;
+  onReturnImageToPool?: (url: string) => void;
 };
 
 export function V2DayCard({
@@ -40,6 +47,9 @@ export function V2DayCard({
   onFocus,
   selectedEvent,
   onEventSelect,
+  modetourDnDEnabled,
+  onDropExternalImage,
+  onReturnImageToPool,
 }: V2DayCardProps) {
   const events = day.events ?? [];
 
@@ -195,6 +205,10 @@ export function V2DayCard({
           onReorder={(nextEvents) => onDayChange({ events: nextEvents })}
           onAddEvent={onAddEvent}
           onRemoveEvent={(evIndex) => onRemoveEvent(evIndex)}
+          modetourDnDEnabled={modetourDnDEnabled}
+          dayIndex={dayIndex}
+          onDropExternalImage={onDropExternalImage}
+          onReturnImageToPool={onReturnImageToPool}
         />
       </div>
     </article>

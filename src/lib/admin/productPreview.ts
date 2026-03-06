@@ -57,7 +57,6 @@ export type ProductFormPayload = {
   meta_title?: string;
   meta_description?: string;
   is_active?: boolean;
-  is_featured_home?: boolean;
   sort_order?: string;
   status?: "" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
   fuel_included?: "" | "true" | "false";
@@ -153,7 +152,6 @@ export function formToPreviewProduct(
     meta_title: form.meta_title?.trim() || undefined,
     meta_description: form.meta_description?.trim() || undefined,
     is_active: form.is_active ?? true,
-    is_featured_home: form.is_featured_home ?? false,
     sort_order: form.sort_order ? parseInt(String(form.sort_order), 10) : undefined,
     status: form.status || "AVAILABLE",
     fuel_included:
@@ -205,9 +203,6 @@ export type ProductCardV2PropsPayload = {
 export function productToCardV2PropsPayload(product: Product): ProductCardV2PropsPayload {
   const themeBadges = getProductBadges(product);
   const badges: { type: string; label: string; priority?: number; isActive?: boolean }[] = [];
-  if (product.is_featured_home) {
-    badges.push({ type: "gold", label: "추천", priority: 10, isActive: true });
-  }
   themeBadges.forEach((label) => {
     badges.push({
       type: PREVIEW_PRIORITY_BADGES.includes(label) ? "gold" : "muted",

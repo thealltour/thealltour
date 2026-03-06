@@ -14,6 +14,13 @@ export type StructuredDayCardProps = {
   onFocus?: () => void;
   selectedEvent?: SelectedEventRef | null;
   onEventSelect?: (eventIndex: number) => void;
+  /** 모두투어 미할당 이미지 DnD */
+  modetourDnDEnabled?: boolean;
+  onDropExternalImage?: (
+    item: { source: "unassigned"; url: string },
+    destination: { editorType: "structured"; dayIndex: number; eventIndex: number; insertAt?: number }
+  ) => void;
+  onReturnImageToPool?: (url: string) => void;
 };
 
 const EMPTY_EVENT: ItineraryStructuredEvent = {
@@ -34,6 +41,9 @@ export function StructuredDayCard({
   onFocus,
   selectedEvent,
   onEventSelect,
+  modetourDnDEnabled,
+  onDropExternalImage,
+  onReturnImageToPool,
 }: StructuredDayCardProps) {
   const events = day.events ?? [];
 
@@ -80,6 +90,10 @@ export function StructuredDayCard({
               selectedEvent.dayIndex === dayIndex &&
               selectedEvent.eventIndex === evIndex
             }
+            modetourDnDEnabled={modetourDnDEnabled}
+            dayIndex={dayIndex}
+            onDropExternalImage={onDropExternalImage}
+            onReturnImageToPool={onReturnImageToPool}
           />
         ))}
         <button

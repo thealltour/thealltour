@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { parseUrls, dedupeUrls, isAllowedUrl, normalizeUrl } from "./urlParser";
 import { extractImageUrls } from "@/lib/images/extractImageUrls";
+import { normalizeEventImages } from "./normalizeEventImages";
+import { getDragData, setDragData, type ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
 
 export type EventImageItem = {
   url: string;
@@ -11,10 +13,28 @@ export type EventImageItem = {
   isCover?: boolean;
 };
 
+export type EventImagesEditorDndContext = {
+  enabled?: boolean;
+  editorType: "v2" | "structured";
+  dayIndex: number;
+  eventIndex: number;
+  onDropExternalImage?: (
+    item: ModetourImageDragItem,
+    destination: {
+      editorType: "v2" | "structured";
+      dayIndex: number;
+      eventIndex: number;
+      insertAt?: number;
+    }
+  ) => void;
+  onReturnImageToPool?: (url: string) => void;
+};
+
 export type EventImagesEditorProps = {
   value: EventImageItem[];
   onChange: (nextImages: EventImageItem[]) => void;
   mode?: "compact" | "full";
+  dndContext?: EventImagesEditorDndContext;
 };
 
 type PasteMode = "url" | "html";
@@ -23,16 +43,31 @@ function sortByOrder(items: EventImageItem[]): EventImageItem[] {
   return [...items].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 
+function arrayMove<T>(arr: T[], from: number, to: number): T[] {
+  const next = [...arr];
+  const [removed] = next.splice(from, 1);
+  next.splice(to, 0, removed);
+  return next;
+}
+
 export function EventImagesEditor({
   value,
   onChange,
   mode = "full",
+  dndContext,
 }: EventImagesEditorProps) {
   const [pasteInput, setPasteInput] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
   const [pasteMode, setPasteMode] = useState<PasteMode>("url");
   const [extractedUrls, setExtractedUrls] = useState<string[]>([]);
   const [selectedExtracted, setSelectedExtracted] = useState<Set<string>>(new Set());
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [externalDragOver, setExternalDragOver] = useState(false);
+  /** drop indicator: hover 중인 카드 인덱스 (sortedItems.length = 끝에 추가) */
+  const [hoverImageIndex, setHoverImageIndex] = useState<number | null>(null);
+  /** drop indicator: 카드 앞/뒤 */
+  const [hoverPosition, setHoverPosition] = useState<"before" | "after" | null>(null);
 
   const sortedItems = useMemo(() => sortByOrder(value), [value]);
 
@@ -67,7 +102,7 @@ export function EventImagesEditor({
         isCover: !hasCover && idx === 0,
       })),
     ];
-    onChange(nextItems);
+    onChange(normalizeEventImages(nextItems));
     setPasteInput("");
     setParseError(null);
   };
@@ -110,7 +145,7 @@ export function EventImagesEditor({
         isCover: !hasCover && idx === 0,
       })),
     ];
-    onChange(nextItems);
+    onChange(normalizeEventImages(nextItems));
     setExtractedUrls([]);
     setSelectedExtracted(new Set());
   };
@@ -118,36 +153,182 @@ export function EventImagesEditor({
   const removeAt = (index: number) => {
     const item = sortedItems[index];
     if (!item) return;
-    const wasCover = item.isCover;
-    const next = value.filter((i) => normalizeUrl(i.url) !== normalizeUrl(item.url));
-    if (wasCover && next.length > 0 && !next.some((i) => i.isCover)) {
-      next[0] = { ...next[0], isCover: true };
+    if (dndContext?.enabled && dndContext?.onReturnImageToPool) {
+      dndContext.onReturnImageToPool(item.url);
     }
-    onChange(next.map((i, idx) => ({ ...i, sortOrder: idx })));
+    const next = value.filter((i) => normalizeUrl(i.url) !== normalizeUrl(item.url));
+    onChange(normalizeEventImages(next));
   };
 
-  const setCoverAt = (index: number) => {
-    const next = value.map((item, i) => {
-      const sortedIdx = sortedItems.findIndex((s) => normalizeUrl(s.url) === normalizeUrl(item.url));
-      return { ...item, isCover: sortedIdx === index };
-    });
-    onChange(next);
+  /** Cover 지정: index번째(sorted 기준)만 isCover true, 나머지 false → 정규화 */
+  const handleToggleCover = (index: number) => {
+    const next = sortedItems.map((img, i) => ({ ...img, isCover: i === index }));
+    onChange(normalizeEventImages(next));
   };
 
   const moveAt = (index: number, direction: "up" | "down") => {
     if (direction === "up" && index <= 0) return;
     if (direction === "down" && index >= sortedItems.length - 1) return;
     const swapIndex = direction === "up" ? index - 1 : index + 1;
-    const reordered = [...sortedItems];
-    [reordered[index], reordered[swapIndex]] = [reordered[swapIndex], reordered[index]];
-    const next: EventImageItem[] = reordered.map((item, idx) => ({ ...item, sortOrder: idx }));
-    onChange(next);
+    const reordered = arrayMove(sortedItems, index, swapIndex);
+    onChange(normalizeEventImages(reordered));
+  };
+
+  const handleDragStart = (index: number) => (e: React.DragEvent) => {
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    if (dndContext?.enabled && dndContext.editorType != null) {
+      const item = sortedItems[index];
+      if (item) {
+        setDragData(e.dataTransfer, {
+          source: "event",
+          url: item.url,
+          editorType: dndContext.editorType,
+          dayIndex: dndContext.dayIndex,
+          eventIndex: dndContext.eventIndex,
+          imageIndex: index,
+        });
+      }
+    } else {
+      e.dataTransfer.setData("text/plain", String(index));
+    }
+    e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+  };
+
+  const clearHover = () => {
+    setOverIndex(null);
+    setHoverImageIndex(null);
+    setHoverPosition(null);
+    setExternalDragOver(false);
+  };
+
+  const handleDragOverCard = (index: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = dndContext?.enabled ? "move" : "move";
+    setOverIndex(index);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+    const midY = rect.top + rect.height / 2;
+    const isBefore = e.clientX < midX || e.clientY < midY;
+    setHoverImageIndex(index);
+    setHoverPosition(isBefore ? "before" : "after");
+  };
+
+  const handleDragOverAppend = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setOverIndex(null);
+    setHoverImageIndex(sortedItems.length);
+    setHoverPosition("after");
+    setExternalDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setOverIndex(null);
+  };
+
+  const handleDragLeaveContainer = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setHoverImageIndex(null);
+      setHoverPosition(null);
+      setExternalDragOver(false);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    clearHover();
+  };
+
+  /** insertAt: 카드 index 기준 before=index, after=index+1; append zone = length */
+  const resolveInsertAt = (cardIndex: number, position: "before" | "after"): number =>
+    position === "before" ? cardIndex : cardIndex + 1;
+
+  const handleDropCard = (cardIndex: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+    const midY = rect.top + rect.height / 2;
+    const position: "before" | "after" = e.clientX < midX || e.clientY < midY ? "before" : "after";
+    const insertAt = Math.min(resolveInsertAt(cardIndex, position), sortedItems.length);
+    handleDropWithInsertAt(e, insertAt);
+  };
+
+  const handleAppendDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    handleDropWithInsertAt(e, sortedItems.length);
+  };
+
+  const handleDropWithInsertAt = (e: React.DragEvent, insertAt: number) => {
+    e.preventDefault();
+    clearHover();
+    const payload = getDragData(e.dataTransfer);
+
+    if (payload && dndContext?.onDropExternalImage) {
+      dndContext.onDropExternalImage(payload, {
+        editorType: dndContext.editorType,
+        dayIndex: dndContext.dayIndex,
+        eventIndex: dndContext.eventIndex,
+        insertAt,
+      });
+      return;
+    }
+
+    const from = dragIndex;
+    if (from != null) {
+      const toIndex = from < insertAt ? insertAt - 1 : insertAt;
+      if (from !== toIndex) {
+        const reordered = arrayMove(sortedItems, from, toIndex);
+        onChange(normalizeEventImages(reordered));
+      }
+      setDragIndex(null);
+    }
+  };
+
+  const handleContainerDragOver = (e: React.DragEvent) => {
+    if (dndContext?.enabled) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      setExternalDragOver(true);
+      if (sortedItems.length === 0) {
+        setHoverImageIndex(0);
+        setHoverPosition("before");
+      }
+    }
+  };
+
+  const handleContainerDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setExternalDragOver(false);
+      setHoverImageIndex(null);
+      setHoverPosition(null);
+    }
+  };
+
+  const handleContainerDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const insertAt = sortedItems.length;
+    clearHover();
+    const payload = getDragData(e.dataTransfer);
+    if (payload && dndContext?.onDropExternalImage) {
+      dndContext.onDropExternalImage(payload, {
+        editorType: dndContext.editorType,
+        dayIndex: dndContext.dayIndex,
+        eventIndex: dndContext.eventIndex,
+        insertAt,
+      });
+    }
   };
 
   const isCompact = mode === "compact";
 
   return (
-    <div className="space-y-2">
+    <div
+      className={`space-y-2 ${externalDragOver && sortedItems.length === 0 ? "rounded-lg ring-2 ring-[var(--primary)] border border-[var(--primary)] bg-[var(--primary-soft)]/30" : ""}`}
+      onDragOver={handleContainerDragOver}
+      onDragLeave={handleDragLeaveContainer}
+      onDrop={handleContainerDrop}
+    >
       {!isCompact && (
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
@@ -269,14 +450,63 @@ export function EventImagesEditor({
       {sortedItems.length > 0 ? (
         <div className="space-y-1">
           <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
-            이미지 {sortedItems.length}장 (가로 스크롤)
+            이미지 {sortedItems.length}장 (드래그로 순서 변경)
           </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 items-start">
             {sortedItems.map((item, index) => (
-              <div
-                key={`${normalizeUrl(item.url)}-${index}`}
-                className="flex shrink-0 flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
-              >
+              <div key={`${normalizeUrl(item.url)}-${index}`} className="flex shrink-0 items-center gap-0">
+                {/* 카드 앞 drop indicator 라인 (최소 4px로 드롭 가능) */}
+                <div
+                  className={`h-full min-h-[80px] shrink-0 rounded-full transition ${
+                    hoverImageIndex === index && hoverPosition === "before"
+                      ? "w-2 bg-[var(--primary)]"
+                      : "min-w-[4px] w-1 bg-transparent"
+                  }`}
+                  onDragOver={handleDragOverCard(index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(ev) => {
+                    ev.preventDefault();
+                    clearHover();
+                    const payload = getDragData(ev.dataTransfer);
+                    if (payload && dndContext?.onDropExternalImage) {
+                      dndContext.onDropExternalImage(payload, {
+                        editorType: dndContext.editorType,
+                        dayIndex: dndContext.dayIndex,
+                        eventIndex: dndContext.eventIndex,
+                        insertAt: index,
+                      });
+                      return;
+                    }
+                    const from = dragIndex;
+                    if (from != null) {
+                      const toIndex = from < index ? index - 1 : index;
+                      if (from !== toIndex) {
+                        const reordered = arrayMove(sortedItems, from, toIndex);
+                        onChange(normalizeEventImages(reordered));
+                      }
+                      setDragIndex(null);
+                    }
+                  }}
+                />
+                <div
+                  className={`flex shrink-0 flex-col items-center gap-1 rounded-lg border bg-[var(--surface)] p-2 transition ${
+                    dragIndex === index ? "opacity-50 border-[var(--border)]" : ""
+                  } ${overIndex === index ? "ring-2 ring-[var(--primary)] border-[var(--primary)]" : "border-[var(--border)]"} ${
+                    hoverImageIndex === index && hoverPosition === "after" ? "ring-2 ring-[var(--primary)] ring-offset-1" : ""
+                  }`}
+                  onDragOver={handleDragOverCard(index)}
+                  onDragLeave={handleDragLeave}
+                  onDragEnd={handleDragEnd}
+                  onDrop={handleDropCard(index)}
+                >
+                  <div
+                  draggable
+                  onDragStart={handleDragStart(index)}
+                  className="flex w-full cursor-grab active:cursor-grabbing items-center justify-center rounded border border-dashed border-[var(--border)] bg-[var(--surface-muted)]/50 py-0.5 text-[10px] text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+                  title="드래그하여 순서 변경"
+                >
+                  ≡ 드래그
+                </div>
                 <div className="relative h-16 w-20 overflow-hidden rounded bg-[var(--surface-muted)]">
                   <img
                     src={item.url}
@@ -313,7 +543,7 @@ export function EventImagesEditor({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCoverAt(index)}
+                    onClick={() => handleToggleCover(index)}
                     className={`rounded border px-1 py-0.5 text-[10px] font-semibold ${
                       item.isCover
                         ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
@@ -333,11 +563,31 @@ export function EventImagesEditor({
                   </button>
                 </div>
               </div>
+              </div>
             ))}
+            {/* 리스트 끝 "끝에 추가" drop zone */}
+            <div
+              className={`flex shrink-0 items-center rounded border-2 border-dashed min-w-[24px] min-h-[60px] transition ${
+                hoverImageIndex === sortedItems.length && hoverPosition === "after"
+                  ? "border-[var(--primary)] bg-[var(--primary-soft)]/20 w-6"
+                  : "border-[var(--border)] border-transparent hover:border-[var(--border)]"
+              }`}
+              onDragOver={handleDragOverAppend}
+              onDragLeave={handleDragLeaveContainer}
+              onDrop={handleAppendDrop}
+            >
+              {hoverImageIndex === sortedItems.length && hoverPosition === "after" ? (
+                <span className="px-1 text-[10px] text-[var(--primary)]">끝</span>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : (
-        <p className="text-[11px] text-[var(--text-muted)]">등록된 이미지가 없습니다.</p>
+        <p
+          className={`rounded border border-dashed px-4 py-8 text-center text-[11px] text-[var(--text-muted)] ${externalDragOver ? "border-[var(--primary)] bg-[var(--primary-soft)]/20" : "border-[var(--border)]"}`}
+        >
+          등록된 이미지가 없습니다. {dndContext?.enabled ? "미할당 이미지나 다른 이벤트 이미지를 여기로 드래그해 배치할 수 있습니다." : ""}
+        </p>
       )}
     </div>
   );

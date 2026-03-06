@@ -17,9 +17,6 @@ function parseMetaTitleAsHashtags(metaTitle?: string): string[] {
 function productToV2Props(product: Product): React.ComponentProps<typeof ProductCardV2> {
   const tags = parseMetaTitleAsHashtags(product.meta_title);
   const badges: ProductCardV2Badge[] = [];
-  if (product.is_featured_home) {
-    badges.push({ type: "gold", label: "추천", priority: 10, isActive: true });
-  }
   return {
     title: product.title,
     price: product.price,

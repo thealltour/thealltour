@@ -192,7 +192,6 @@ export type Product = {
   meta_title?: string;
   meta_description?: string;
   is_active?: boolean;
-  is_featured_home?: boolean;
   sort_order?: number;
   created_at?: string;
   /** 상품 상태: 없으면 AVAILABLE로 간주 */

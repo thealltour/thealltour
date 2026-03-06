@@ -51,20 +51,7 @@ export function V2EventRow({
   const imagesList: EventImageItem[] = event.images ?? [];
 
   const handleImagesChange = (nextImages: EventImageItem[]) => {
-    if (nextImages.length === 0) {
-      onEventChange({ images: [] });
-      return;
-    }
-    const hasCover = nextImages.some((i) => i.isCover);
-    const normalized = nextImages.map((item, index) => ({
-      ...item,
-      sortOrder: index,
-      isCover: hasCover ? item.isCover === true : index === 0,
-    }));
-    if (!normalized.some((i) => i.isCover)) {
-      normalized[0] = { ...normalized[0], isCover: true };
-    }
-    onEventChange({ images: normalized });
+    onEventChange({ images: nextImages });
   };
 
   return (

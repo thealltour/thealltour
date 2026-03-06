@@ -7,6 +7,26 @@ import { ProductFormSectionIssuesPanel } from "@/components/admin/ProductFormSec
 import { AirlineLogo } from "@/components/airlines/AirlineLogo";
 import type { Product, ItineraryStructuredDay, ItineraryV2, SelectedEventRef } from "@/types/product";
 import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
+import type { ProductFormState, ProductFormDraft, TermsTemplateType } from "@/types/adminProductForm";
+import { createEmptyAdminProductFormState } from "@/components/admin/products/editor/adminProductForm.defaults";
+import { serializeAdminProductForm } from "@/components/admin/products/editor/adminProductForm.serializer";
+import { deserializeAdminProductToForm } from "@/components/admin/products/editor/adminProductForm.deserializer";
+import {
+  mapAdminProductFormToPreviewProduct,
+  getPreviewWarnings,
+  type PreviewWarning,
+} from "@/components/admin/products/editor/adminProductPreview.mapper";
+import {
+  SECTIONS,
+  collectAllRequiredIssues,
+  collectFormIssues,
+} from "@/components/admin/products/editor/adminProductForm.validation";
+import { parseDetailedSchedule, type DayScheduleDraft } from "@/components/admin/products/editor/adminProductForm.helpers";
+
+import type { SectionId, FormIssue, SectionIssue } from "@/components/admin/products/editor/adminProductForm.types";
+/** AdminProductManager에서 사용하는 섹션/이슈 타입 re-export */
+export type { SectionId, FormIssue, SectionIssue };
+export type { PreviewWarning } from "@/components/admin/products/editor/adminProductPreview.mapper";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import ProductCardV2, { type ProductCardV2Props } from "@/components/products/ProductCardV2";
@@ -18,14 +38,10 @@ import {
 import { ConsultModalProvider } from "@/components/ConsultModal";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import {
-  formToPreviewProduct,
   productToCardV2PropsPayload,
   productToDetailV2PropsPayload,
 } from "@/lib/admin/productPreview";
 import {
-  getTimelineModelFromSchedule,
-  timelineModelToStructuredDays,
-  serializeStructuredDaysToSchedule,
   itineraryV2ToTimelineModel,
 } from "@/lib/products/mapProductToTimelineModel";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
@@ -38,12 +54,10 @@ import { normalizeAirline } from "@/lib/airlines/normalizeAirline";
 import { AIRLINE_LOGO_BY_CODE } from "@/lib/airlines/airlineLogos";
 import { normalizeImageList } from "@/lib/products/images";
 import {
-  hasRealText,
-  hasValidNumber,
-  hasValidPriceOptionJson,
-  hasCoverImage,
-  hasNonEmptyArray,
-} from "@/lib/products/formCompletion";
+  fetchAdminProduct,
+  createAdminProduct,
+  updateAdminProduct,
+} from "@/components/admin/products/api/adminProducts.client";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { BOOKMARKLET_EXTRACT_IMAGE_URLS } from "@/lib/bookmarkletExtractImageUrls";
 import { ImageImportGuideModal } from "@/components/admin/ImageImportGuideModal";
@@ -55,101 +69,21 @@ import {
   recommendCoverCandidates,
   type CoverCandidate,
 } from "@/lib/products/recommendCoverImage";
+import AdminHomeCuratedManager from "@/components/admin/products/AdminHomeCuratedManager";
+import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
+import AdminProductsListView from "@/components/admin/products/AdminProductsListView";
+import { useAdminProductsListController } from "@/components/admin/products/hooks/useAdminProductsListController";
+import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
+import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
+import {
+  ADMIN_PRODUCTS_VIEW,
+  ADMIN_PRODUCTS_QUERY_KEYS,
+  DEFAULT_PRODUCTS_PAGE_SIZE,
+} from "@/components/admin/products/adminProducts.constants";
 
 function normalizeUrlForCompare(url: string): string {
   return url.trim();
 }
-
-type ProductFormState = {
-  title: string;
-  description: string;
-  product_source_url: string;
-  point_benefits: string;
-  point_tourism: "O" | "X";
-  point_guide: "O" | "X";
-  meeting_info: "O" | "X";
-  travel_insurance: "O" | "X";
-  included_items: string;
-  excluded_items: string;
-  departure_from_airport: string;
-  departure_from_date: string;
-  departure_from_time: string;
-  departure_to_airport: string;
-  departure_to_date: string;
-  departure_to_time: string;
-  departure_flight_name: string;
-  departure_baggage_limit: string;
-  arrival_from_airport: string;
-  arrival_from_date: string;
-  arrival_from_time: string;
-  arrival_to_airport: string;
-  arrival_to_date: string;
-  arrival_to_time: string;
-  arrival_flight_name: string;
-  arrival_baggage_limit: string;
-  detailed_schedule: string;
-  optional_tours: string;
-  min_departure_people: string;
-  terms_template_type: "" | TermsTemplateType;
-  terms_and_notes: string;
-  meta_title: string;
-  meta_description: string;
-  image_url: string;
-  images_json: string[];
-  category: string;
-  theme: string;
-  price: string;
-  duration: string;
-  itinerary: string;
-  inclusions: string;
-  is_active: boolean;
-  is_featured_home: boolean;
-  sort_order: string;
-  /** 예약 가능 / 잔여 한정 / 마감 / 상담 후 안내 */
-  status: "" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
-  one_liner: string;
-  price_meta: string;
-  /** "" = 표시 안 함, "true" = 포함, "false" = 별도 */
-  fuel_included: "" | "true" | "false";
-  meta_info: string;
-  /** JSON 문자열. 옵션 사용 시 ProductOptions 직렬화 */
-  options_json: string;
-  /** [STEP 3] 일정 Day별 대표 이미지 URL. 키: "1","2",... 값: URL */
-  itinerary_media_json: Record<string, string>;
-  /** [STEP 0] 구조화 일정. 있으면 상세에서 시각화 타임라인 우선 사용 */
-  itinerary_days_json: ItineraryStructuredDay[];
-  /** [STEP 1] 시각화 일정 v2 (jsonb 1컬럼, 권장) */
-  itinerary_v2_json: ItineraryV2;
-  /** [STEP 3] 레거시 텍스트 붙여넣기용 (저장 안 함, 초안 생성용) */
-  legacy_itinerary_text: string;
-  /** 일정 테마 구성비. 상세 오버뷰 차트용. 2개 이상 입력 시 저장 */
-  theme_chart_json: Array<{ label: string; percent: number }>;
-  /** 여행 오버뷰 카드 전용 (숙소·지역·기간) */
-  overview_accommodation: string;
-  overview_region: string;
-  overview_duration: string;
-};
-
-type ToastState = {
-  type: "success" | "error";
-  text: string;
-} | null;
-
-const FEATURED_PRODUCT_LIMIT = 8;
-
-/** 임시저장 localStorage 키 접두사 (뒤에 productId or 'new' 붙임) */
-const PRODUCT_FORM_DRAFT_KEY_PREFIX = "admin_product_form_draft_v1:";
-
-function getDraftKey(productId: string | null): string {
-  return PRODUCT_FORM_DRAFT_KEY_PREFIX + (productId ?? "new");
-}
-
-/** 임시저장 payload (로컬 저장/복원용) */
-export type ProductFormDraft = {
-  version: 1;
-  form: ProductFormState;
-  savedAt: number;
-};
 
 const TERMS_TEMPLATE_OPTIONS = [
   { value: "overseas_brokerage", label: "해외중개" },
@@ -158,9 +92,7 @@ const TERMS_TEMPLATE_OPTIONS = [
   { value: "domestic_direct", label: "국내직접" },
 ] as const;
 
-type TermsTemplateType = (typeof TERMS_TEMPLATE_OPTIONS)[number]["value"];
 type TermsTemplateMap = Record<TermsTemplateType, string>;
-type ProductSortKey = "title" | "category" | "price" | "sort_order" | "created_at";
 
 function createEmptyTermsTemplateMap(): TermsTemplateMap {
   return {
@@ -171,75 +103,19 @@ function createEmptyTermsTemplateMap(): TermsTemplateMap {
   };
 }
 
-const initialFormState: ProductFormState = {
-  title: "",
-  description: "",
-  product_source_url: "",
-  point_benefits: "",
-  point_tourism: "X",
-  point_guide: "X",
-  meeting_info: "X",
-  travel_insurance: "X",
-  included_items: "",
-  excluded_items: "",
-  departure_from_airport: "",
-  departure_from_date: "",
-  departure_from_time: "",
-  departure_to_airport: "",
-  departure_to_date: "",
-  departure_to_time: "",
-  departure_flight_name: "",
-  departure_baggage_limit: "",
-  arrival_from_airport: "",
-  arrival_from_date: "",
-  arrival_from_time: "",
-  arrival_to_airport: "",
-  arrival_to_date: "",
-  arrival_to_time: "",
-  arrival_flight_name: "",
-  arrival_baggage_limit: "",
-  detailed_schedule: "",
-  optional_tours: "",
-  min_departure_people: "",
-  terms_template_type: "",
-  terms_and_notes: "",
-  meta_title: "",
-  meta_description: "",
-  image_url: "",
-  images_json: [],
-  category: "여행상품",
-  theme: "",
-  price: "",
-  duration: "",
-  itinerary: "",
-  inclusions: "",
-  is_active: true,
-  is_featured_home: false,
-  sort_order: "",
-  status: "AVAILABLE",
-  one_liner: "",
-  price_meta: "",
-  fuel_included: "",
-  meta_info: "",
-  options_json: "",
-  itinerary_media_json: {},
-  itinerary_days_json: [],
-  itinerary_v2_json: { days: [] },
-  legacy_itinerary_text: "",
-  theme_chart_json: [],
-  overview_accommodation: "",
-  overview_region: "",
-  overview_duration: "",
-};
+/** 임시저장 localStorage 키 접두사 (뒤에 productId or 'new' 붙임) */
+const PRODUCT_FORM_DRAFT_KEY_PREFIX = "admin_product_form_draft_v1:";
 
-function normalizeOXValue(value?: string | null): "O" | "X" {
-  const normalized = (value ?? "").trim().toLowerCase();
-  if (!normalized) return "X";
-  if (["o", "y", "yes", "예", "가능", "제공", "포함", "있음", "있다"].includes(normalized)) return "O";
-  if (["x", "n", "no", "아니오", "불가", "미제공", "불포함", "없음", "없다"].includes(normalized)) return "X";
-  if (normalized.includes("없") || normalized.includes("불가") || normalized.includes("미")) return "X";
-  return "O";
+function getDraftKey(productId: string | null): string {
+  return PRODUCT_FORM_DRAFT_KEY_PREFIX + (productId ?? "new");
 }
+
+const initialFormState: ProductFormState = createEmptyAdminProductFormState();
+
+type ToastState = {
+  type: "success" | "error";
+  text: string;
+} | null;
 
 function formatPriceWithCommas(raw: string) {
   const hasTilde = raw.includes("~");
@@ -247,53 +123,6 @@ function formatPriceWithCommas(raw: string) {
   if (!digitsOnly) return "";
   const formatted = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return hasTilde ? `${formatted}~` : formatted;
-}
-
-type DayScheduleDraft = {
-  label: string;
-  content: string;
-};
-
-function parseDetailedSchedule(value: string): DayScheduleDraft[] {
-  const source = value.trim();
-  if (!source) return [];
-
-  const lines = source.split(/\r?\n/);
-  const drafts: DayScheduleDraft[] = [];
-  let currentLabel = "";
-  let currentContent: string[] = [];
-
-  for (const line of lines) {
-    const match = line.match(/^\[(.+)\]\s*$/);
-    if (match) {
-      if (currentLabel) {
-        drafts.push({
-          label: currentLabel,
-          content: currentContent.join("\n").trim(),
-        });
-      }
-      currentLabel = match[1].trim();
-      currentContent = [];
-      continue;
-    }
-    currentContent.push(line);
-  }
-
-  if (currentLabel) {
-    drafts.push({
-      label: currentLabel,
-      content: currentContent.join("\n").trim(),
-    });
-  }
-
-  if (drafts.length === 0) {
-    return [{ label: "1일차", content: source }];
-  }
-
-  return drafts.map((item) => ({
-    label: item.label.trim() || "일정",
-    content: item.content,
-  }));
 }
 
 function serializeDetailedSchedule(drafts: DayScheduleDraft[]) {
@@ -322,438 +151,18 @@ function createNextDayLabel(drafts: DayScheduleDraft[]) {
   return `${next}일차`;
 }
 
-export type PreviewWarning = {
-  id: string;
-  message: string;
-  sectionId: "basic" | "price" | "schedule";
-};
-
-/** 미리보기 품질 경고: 원인 + 화면 영향. sectionId는 클릭 시 해당 아코디언 열기/스크롤용 */
-function getPreviewWarnings(
-  form: ProductFormState,
-  hasPreviewImage: boolean,
-): PreviewWarning[] {
-  const warnings: PreviewWarning[] = [];
-
-  if (!hasRealText(form.category)) {
-    warnings.push({
-      id: "category",
-      message: "카테고리 미입력 → 카드/상세에 카테고리 칩이 비어 보입니다.",
-      sectionId: "basic",
-    });
-  }
-
-  if (!hasValidNumber(form.price) && !hasValidPriceOptionJson(form.options_json)) {
-    warnings.push({
-      id: "price",
-      message: "가격 미입력 또는 0원 → 카드/상세에 '상담 후 견적'으로만 표시됩니다.",
-      sectionId: "price",
-    });
-  }
-
-  if (!hasCoverImage(form.image_url, form.images_json) && !hasPreviewImage) {
-    warnings.push({
-      id: "image",
-      message: "대표 이미지 없음 → 카드/상세에 이미지가 비어 보입니다.",
-      sectionId: "basic",
-    });
-  }
-
-  const scheduleDrafts = parseDetailedSchedule(form.detailed_schedule);
-  const hasEmptySchedule =
-    !hasNonEmptyArray(form.itinerary_days_json) &&
-    (!hasNonEmptyArray(scheduleDrafts) || scheduleDrafts.every((d) => !hasRealText(d.content)));
-  if (hasEmptySchedule) {
-    warnings.push({
-      id: "schedule",
-      message: "일정(일차) 비어 있음 → 상세 '일정 안내' 탭에 내용이 없습니다.",
-      sectionId: "schedule",
-    });
-  }
-
-  return warnings;
-}
-
-/** 섹션별 완료/미완료 뱃지용 이슈 */
-export type SectionId =
-  | "basic"
-  | "price"
-  | "description"
-  | "included"
-  | "schedule"
-  | "flight"
-  | "terms";
-
-export type IssueSeverity = "required" | "recommended";
-
-/** 저장 실패 점프/포커스 재사용용 이슈 타입 */
-export type FormIssue = {
-  sectionId: SectionId;
-  severity: IssueSeverity;
-  message: string;
-  anchorId?: string;
-};
-
-export type SectionIssue = FormIssue & {
-  fieldKey: string;
-};
-
-export type SectionConfig = {
-  id: SectionId;
-  title: string;
-  description?: string;
-  getIssues: (form: ProductFormState) => SectionIssue[];
-};
-
-function hasValidPriceOption(form: ProductFormState): boolean {
-  return hasValidPriceOptionJson(form.options_json);
-}
-
-const SECTIONS: SectionConfig[] = [
-  {
-    id: "basic",
-    title: "기본 정보",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      if (!hasRealText(form.title)) {
-        issues.push({
-          sectionId: "basic",
-          fieldKey: "title",
-          message: "상품명을 입력해 주세요.",
-          anchorId: "field-product-name",
-          severity: "required",
-        });
-      }
-      if (!hasCoverImage(form.image_url, form.images_json ?? [])) {
-        issues.push({
-          sectionId: "basic",
-          fieldKey: "image",
-          message: "대표 이미지를 1장 이상 등록해 주세요.",
-          anchorId: "field-product-cover-image",
-          severity: "required",
-        });
-      }
-      if (!hasRealText(form.one_liner)) {
-        issues.push({
-          sectionId: "basic",
-          fieldKey: "one_liner",
-          message: "한 줄 소개를 입력하면 상세 상단에 표시됩니다.",
-          anchorId: "form-field-basic-one_liner",
-          severity: "recommended",
-        });
-      }
-      if (!hasRealText(form.category)) {
-        issues.push({
-          sectionId: "basic",
-          fieldKey: "category",
-          message: "카테고리를 선택해 주세요.",
-          anchorId: "form-field-basic-category",
-          severity: "recommended",
-        });
-      }
-      if (!hasRealText(form.theme)) {
-        issues.push({
-          sectionId: "basic",
-          fieldKey: "theme",
-          message: "테마를 선택하면 노출 품질이 좋아집니다.",
-          anchorId: "form-field-basic-theme",
-          severity: "recommended",
-        });
-      }
-      return issues;
-    },
-  },
-  {
-    id: "price",
-    title: "가격·노출",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      const hasValidPrice = hasValidNumber(form.price);
-      const hasOptions = hasValidPriceOption(form);
-      if (!hasValidPrice && !hasOptions) {
-        issues.push({
-          sectionId: "price",
-          fieldKey: "price",
-          message: "가격(숫자)을 입력하거나, 가격 옵션 JSON을 등록해 주세요.",
-          anchorId: "field-price-main",
-          severity: "required",
-        });
-      }
-      return issues;
-    },
-  },
-  {
-    id: "description",
-    title: "설명·포인트",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      if (!hasRealText(form.description)) {
-        issues.push({
-          sectionId: "description",
-          fieldKey: "description",
-          message: "상품 설명을 입력해 주세요.",
-          anchorId: "field-product-description",
-          severity: "required",
-        });
-      }
-      return issues;
-    },
-  },
-  {
-    id: "included",
-    title: "포함·불포함·선택관광",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      const hasIncluded = hasRealText(form.included_items);
-      const hasExcluded = hasRealText(form.excluded_items);
-      const hasOptional = hasRealText(form.optional_tours);
-      if (!hasIncluded && !hasExcluded && !hasOptional) {
-        issues.push({
-          sectionId: "included",
-          fieldKey: "included",
-          message: "포함·불포함·선택관광 중 최소 1개 이상 입력을 권장합니다.",
-          anchorId: "field-included",
-          severity: "recommended",
-        });
-      }
-      return issues;
-    },
-  },
-  {
-    id: "schedule",
-    title: "상세 일정",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      const v2Days = form.itinerary_v2_json?.days ?? [];
-      const structuredDays = form.itinerary_days_json ?? [];
-      const scheduleDrafts = parseDetailedSchedule(form.detailed_schedule ?? "");
-      const hasV2 = hasNonEmptyArray(v2Days);
-      const hasStructured = hasNonEmptyArray(structuredDays);
-      const hasLegacyContent =
-        hasNonEmptyArray(scheduleDrafts) &&
-        scheduleDrafts.some((d) => hasRealText(d.content));
-      const hasAnySchedule = hasV2 || hasStructured || hasLegacyContent;
-      if (!hasAnySchedule) {
-        issues.push({
-          sectionId: "schedule",
-          fieldKey: "schedule",
-          message: "일정(일차)을 최소 1일 이상 입력해 주세요.",
-          anchorId: "field-schedule-root",
-          severity: "required",
-        });
-      } else {
-        if (hasV2) {
-          const emptyDays = v2Days.filter((d) => {
-            const hasTitle = hasRealText(d.title) || hasRealText(d.dateText);
-            const events = d.events ?? [];
-            const hasEvent = events.some((e) => hasRealText(e.heading) || hasRealText(e.description));
-            return !hasTitle && !hasEvent;
-          });
-          if (emptyDays.length > 0) {
-            issues.push({
-              sectionId: "schedule",
-              fieldKey: "schedule_day",
-              message: "일부 일차에 제목·날짜 또는 이벤트를 입력해 주세요.",
-              anchorId: "field-schedule-root",
-              severity: "recommended",
-            });
-          }
-        }
-      }
-      return issues;
-    },
-  },
-  {
-    id: "flight",
-    title: "항공편",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      const dep = hasRealText(form.departure_flight_name) ? form.departure_flight_name!.trim() : "";
-      const arr = hasRealText(form.arrival_flight_name) ? form.arrival_flight_name!.trim() : "";
-      if (dep && !/^[A-Z0-9]{2}\s*\d+/i.test(dep.replace(/\s/g, ""))) {
-        issues.push({
-          sectionId: "flight",
-          fieldKey: "departure_flight_name",
-          message: "출발 편명 형식(예: OZ 123)을 권장합니다.",
-          anchorId: "form-field-flight-departure_flight_name",
-          severity: "recommended",
-        });
-      }
-      if (arr && !/^[A-Z0-9]{2}\s*\d+/i.test(arr.replace(/\s/g, ""))) {
-        issues.push({
-          sectionId: "flight",
-          fieldKey: "arrival_flight_name",
-          message: "도착 편명 형식(예: OZ 456)을 권장합니다.",
-          anchorId: "form-field-flight-arrival_flight_name",
-          severity: "recommended",
-        });
-      }
-      return issues;
-    },
-  },
-  {
-    id: "terms",
-    title: "약관·SEO",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      if (!hasRealText(form.meta_title)) {
-        issues.push({
-          sectionId: "terms",
-          fieldKey: "meta_title",
-          message: "SEO 메타 제목을 입력하면 검색 노출에 유리합니다.",
-          anchorId: "field-seo-title",
-          severity: "recommended",
-        });
-      }
-      if (!hasRealText(form.meta_description)) {
-        issues.push({
-          sectionId: "terms",
-          fieldKey: "meta_description",
-          message: "SEO 메타 설명을 입력하면 검색 노출에 유리합니다.",
-          anchorId: "field-seo-desc",
-          severity: "recommended",
-        });
-      }
-      return issues;
-    },
-  },
-];
-
-/** 필수(required) 이슈만 섹션 순서대로 수집. handleSubmit 검증 및 스크롤/포커스용 */
-function collectAllRequiredIssues(form: ProductFormState): SectionIssue[] {
-  const out: SectionIssue[] = [];
-  for (const section of SECTIONS) {
-    const issues = section.getIssues(form).filter((i) => i.severity === "required");
-    out.push(...issues);
-  }
-  return out;
-}
-
-/** 섹션별 이슈 전체 수집(required + recommended). 뱃지/저장 실패 점프 재사용 */
-function collectFormIssues(form: ProductFormState): FormIssue[] {
-  const out: FormIssue[] = [];
-  for (const section of SECTIONS) {
-    out.push(...section.getIssues(form));
-  }
-  return out;
-}
-
-function mapProductToForm(product: Product): ProductFormState {
-  const includedItems = product.included_items?.trim() ?? "";
-  const excludedItems = product.excluded_items?.trim() ?? "";
-  const optionalTours = product.optional_tours?.trim() ?? "";
-  const termsAndNotes = product.terms_and_notes?.trim() ?? "";
-  const shouldRepairLegacyDetailMix =
-    !includedItems && !excludedItems && (optionalTours.length > 0 || termsAndNotes.length > 0);
-
-  return {
-    title: product.title ?? "",
-    description: product.description ?? "",
-    product_source_url: product.product_source_url ?? "",
-    point_benefits: product.point_benefits ?? "",
-    point_tourism: normalizeOXValue(product.point_tourism),
-    point_guide: normalizeOXValue(product.point_guide),
-    meeting_info: normalizeOXValue(product.meeting_info),
-    travel_insurance: normalizeOXValue(product.travel_insurance),
-    included_items: shouldRepairLegacyDetailMix ? optionalTours : product.included_items ?? "",
-    excluded_items: shouldRepairLegacyDetailMix ? termsAndNotes : product.excluded_items ?? "",
-    departure_from_airport: product.departure_from_airport ?? "",
-    departure_from_date: product.departure_from_date ?? "",
-    departure_from_time: product.departure_from_time ?? "",
-    departure_to_airport: product.departure_to_airport ?? "",
-    departure_to_date: product.departure_to_date ?? "",
-    departure_to_time: product.departure_to_time ?? "",
-    departure_flight_name: product.departure_flight_name ?? "",
-    departure_baggage_limit: product.departure_baggage_limit ?? "",
-    arrival_from_airport: product.arrival_from_airport ?? "",
-    arrival_from_date: product.arrival_from_date ?? "",
-    arrival_from_time: product.arrival_from_time ?? "",
-    arrival_to_airport: product.arrival_to_airport ?? "",
-    arrival_to_date: product.arrival_to_date ?? "",
-    arrival_to_time: product.arrival_to_time ?? "",
-    arrival_flight_name: product.arrival_flight_name ?? "",
-    arrival_baggage_limit: product.arrival_baggage_limit ?? "",
-    detailed_schedule: product.detailed_schedule ?? "",
-    optional_tours: shouldRepairLegacyDetailMix ? "" : product.optional_tours ?? "",
-    min_departure_people: product.min_departure_people ?? "",
-    terms_template_type:
-      (product.terms_template_type as "" | TermsTemplateType | undefined) ?? "",
-    terms_and_notes: shouldRepairLegacyDetailMix ? "" : product.terms_and_notes ?? "",
-    meta_title: product.meta_title ?? "",
-    meta_description: product.meta_description ?? "",
-    image_url: product.image_url ?? "",
-    images_json: normalizeImageList(product.images_json),
-    category: product.category ?? "여행상품",
-    theme: product.theme ?? "",
-    price: typeof product.price === "number" ? product.price.toLocaleString("ko-KR") : "",
-    duration: product.duration ?? "",
-    itinerary: product.itinerary ?? "",
-    inclusions: product.inclusions ?? "",
-    is_active: product.is_active ?? true,
-    is_featured_home: product.is_featured_home ?? false,
-    sort_order: typeof product.sort_order === "number" ? String(product.sort_order) : "",
-    status:
-      product.status === "AVAILABLE" ||
-      product.status === "LIMITED" ||
-      product.status === "SOLD_OUT" ||
-      product.status === "CONSULT_REQUIRED"
-        ? product.status
-        : "AVAILABLE",
-    one_liner: product.one_liner ?? "",
-    price_meta: product.price_meta ?? "",
-    fuel_included:
-      product.fuel_included === true ? "true" : product.fuel_included === false ? "false" : "",
-    meta_info: product.meta_info ?? "",
-    options_json: product.options ? JSON.stringify(product.options, null, 2) : "",
-    itinerary_media_json: product.itinerary_media_json ?? {},
-    itinerary_days_json:
-      product.itinerary_days_json && product.itinerary_days_json.length > 0
-        ? product.itinerary_days_json
-        : timelineModelToStructuredDays(
-            getTimelineModelFromSchedule(product.detailed_schedule ?? ""),
-          ),
-    itinerary_v2_json: product.itinerary_v2_json ?? { days: [] },
-    legacy_itinerary_text: "",
-    theme_chart_json: product.theme_chart_json?.items ?? [],
-    overview_accommodation: product.overview_accommodation ?? "",
-    overview_region: product.overview_region ?? "",
-    overview_duration: product.overview_duration ?? "",
-  };
-}
-
 export default function AdminProductManager() {
   const searchParams = useSearchParams();
-  const viewParam = searchParams.get("view");
-  const isTaxonomyView = viewParam === "taxonomy";
-  const isCreateView = viewParam === "create";
-  const isListView = !viewParam || viewParam === "list";
-  const [products, setProducts] = useState<Product[]>([]);
+  const viewParam = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
+  const isTaxonomyView = viewParam === ADMIN_PRODUCTS_VIEW.TAXONOMY;
+  const isCreateView = viewParam === ADMIN_PRODUCTS_VIEW.CREATE;
+  const isFeaturedView = viewParam === ADMIN_PRODUCTS_VIEW.FEATURED;
+  const isListView = !viewParam || viewParam === ADMIN_PRODUCTS_VIEW.LIST;
   const [form, setForm] = useState<ProductFormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [showFeaturedOnly, setShowFeaturedOnly] = useState(false);
-  const [page, setPage] = useState(1);
-  const [debouncedKeyword, setDebouncedKeyword] = useState("");
-  const [totalCount, setTotalCount] = useState(0);
-  const [sortField, setSortField] = useState<ProductSortKey>("sort_order");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
-  const [pendingFeaturedToggleId, setPendingFeaturedToggleId] = useState<string | null>(null);
-  const [pendingMoveId, setPendingMoveId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
-  const [taxonomyItems, setTaxonomyItems] = useState<ProductTaxonomyWithUsage[]>([]);
-  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState(true);
-  const [taxonomyErrorMessage, setTaxonomyErrorMessage] = useState("");
-  const [pendingTaxonomyDeleteId, setPendingTaxonomyDeleteId] = useState<string | null>(null);
-  const [pendingTaxonomyCreateType, setPendingTaxonomyCreateType] = useState<"category" | "theme" | null>(
-    null,
-  );
-  const [newCategoryInput, setNewCategoryInput] = useState("");
-  const [newThemeInput, setNewThemeInput] = useState("");
   const [termsTemplates, setTermsTemplates] = useState<TermsTemplateMap>(createEmptyTermsTemplateMap());
   const [isTermsTemplatesLoading, setIsTermsTemplatesLoading] = useState(true);
   const [isTermsTemplatesSaving, setIsTermsTemplatesSaving] = useState(false);
@@ -808,9 +217,40 @@ export default function AdminProductManager() {
   const [showCoverRecommendModal, setShowCoverRecommendModal] = useState(false);
   const [coverCandidates, setCoverCandidates] = useState<CoverCandidate[]>([]);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pageSize = 8;
+  const pageSize = DEFAULT_PRODUCTS_PAGE_SIZE;
   const { showToast } = useAdminToast();
   const { confirm } = useAdminConfirm();
+
+  const listController = useAdminProductsListController({
+    showToast,
+    confirm,
+    pageSize,
+    onAfterDelete(id) {
+      if (editingId === id) {
+        setEditingId(null);
+        setForm(initialFormState);
+        setActiveSchedulePreviewIndex(0);
+        setShowRawScheduleEditor(false);
+        setScheduleEditorMode("visual");
+        setErrorMessage("");
+      }
+    },
+  });
+
+  const taxonomyController = useAdminProductTaxonomyController({
+    showToast,
+    confirm,
+    onCategoryAdded(name) {
+      setForm((prev) => ({ ...prev, category: name }));
+    },
+    onThemeAdded(name) {
+      setForm((prev) => {
+        const current = parseThemeList(prev.theme);
+        if (current.includes(name)) return prev;
+        return { ...prev, theme: stringifyThemeList([...current, name]) };
+      });
+    },
+  });
 
   function parseThemeList(value: string) {
     return value
@@ -907,13 +347,8 @@ export default function AdminProductManager() {
       const images = event.images ?? [];
       const existingSet = new Set(images.map((i) => normalizeUrlForCompare(i.url)));
       if (existingSet.has(normalized)) return false;
-      const maxOrder = images.length === 0 ? -1 : Math.max(...images.map((i) => i.sortOrder ?? 0));
-      const hasCover = images.some((i) => i.isCover);
-      const newItem = {
-        url: normalized,
-        sortOrder: maxOrder + 1,
-        isCover: !hasCover && images.length === 0,
-      };
+      const newItem = { url: normalized };
+      const nextImages = [...images, newItem];
       setForm((prev: any) => ({
         ...prev,
         itinerary_v2_json: {
@@ -923,7 +358,7 @@ export default function AdminProductManager() {
               ? {
                   ...d,
                   events: d.events.map((e: any, ei: number) =>
-                    ei === ref.eventIndex ? { ...e, images: [...(e.images ?? []), newItem] } : e,
+                    ei === ref.eventIndex ? { ...e, images: nextImages } : e,
                   ),
                 }
               : d,
@@ -943,13 +378,8 @@ export default function AdminProductManager() {
       const images = (event as { images?: Array<{ url: string; sortOrder?: number; isCover?: boolean }> }).images ?? [];
       const existingSet = new Set(images.map((i) => normalizeUrlForCompare(i.url)));
       if (existingSet.has(normalized)) return false;
-      const maxOrder = images.length === 0 ? -1 : Math.max(...images.map((i) => i.sortOrder ?? 0));
-      const hasCover = images.some((i) => i.isCover);
-      const newItem = {
-        url: normalized,
-        sortOrder: maxOrder + 1,
-        isCover: !hasCover && images.length === 0,
-      };
+      const newItem = { url: normalized };
+      const nextImages = [...images, newItem];
       setForm((prev: any) => ({
         ...prev,
         itinerary_days_json: prev.itinerary_days_json.map((d: ItineraryStructuredDay, di: number) =>
@@ -957,7 +387,7 @@ export default function AdminProductManager() {
             ? {
                 ...d,
                 events: d.events.map((e: any, ei: number) =>
-                  ei === ref.eventIndex ? { ...e, images: [...(e.images ?? []), newItem] } : e,
+                  ei === ref.eventIndex ? { ...e, images: nextImages } : e,
                 ),
               }
             : d,
@@ -1011,22 +441,16 @@ export default function AdminProductManager() {
       if (!event) return 0;
       const images = event.images ?? [];
       const existingSet = new Set(images.map((i) => normalizeUrlForCompare(i.url)));
-      const hasCover = images.some((i) => i.isCover);
-      let maxOrder = images.length === 0 ? -1 : Math.max(...images.map((i) => i.sortOrder ?? 0));
-      const newItems: Array<{ url: string; sortOrder: number; isCover: boolean }> = [];
+      const toAdd: Array<{ url: string }> = [];
       for (const url of valid) {
         const normalized = normalizeUrlForCompare(url);
         if (!normalized || existingSet.has(normalized)) continue;
         existingSet.add(normalized);
-        maxOrder += 1;
-        newItems.push({
-          url: normalized,
-          sortOrder: maxOrder,
-          isCover: !hasCover && newItems.length === 0,
-        });
-        added += 1;
+        toAdd.push({ url: normalized });
       }
-      if (newItems.length === 0) return added;
+      if (toAdd.length === 0) return added;
+      added = toAdd.length;
+      const nextImages = [...images, ...toAdd];
       setForm((prev: any) => ({
         ...prev,
         itinerary_v2_json: {
@@ -1036,9 +460,7 @@ export default function AdminProductManager() {
               ? {
                   ...d,
                   events: d.events.map((e: any, ei: number) =>
-                    ei === ref.eventIndex
-                      ? { ...e, images: [...(e.images ?? []), ...newItems] }
-                      : e,
+                    ei === ref.eventIndex ? { ...e, images: nextImages } : e,
                   ),
                 }
               : d,
@@ -1057,22 +479,16 @@ export default function AdminProductManager() {
       if (!event) return 0;
       const images = (event as { images?: Array<{ url: string; sortOrder?: number; isCover?: boolean }> }).images ?? [];
       const existingSet = new Set(images.map((i) => normalizeUrlForCompare(i.url)));
-      const hasCover = images.some((i) => i.isCover);
-      let maxOrder = images.length === 0 ? -1 : Math.max(...images.map((i) => i.sortOrder ?? 0));
-      const newItems: Array<{ url: string; sortOrder: number; isCover: boolean }> = [];
+      const toAdd: Array<{ url: string }> = [];
       for (const url of valid) {
         const normalized = normalizeUrlForCompare(url);
         if (!normalized || existingSet.has(normalized)) continue;
         existingSet.add(normalized);
-        maxOrder += 1;
-        newItems.push({
-          url: normalized,
-          sortOrder: maxOrder,
-          isCover: !hasCover && newItems.length === 0,
-        });
-        added += 1;
+        toAdd.push({ url: normalized });
       }
-      if (newItems.length === 0) return added;
+      if (toAdd.length === 0) return added;
+      added = toAdd.length;
+      const nextImages = [...images, ...toAdd];
       setForm((prev: any) => ({
         ...prev,
         itinerary_days_json: prev.itinerary_days_json.map((d: ItineraryStructuredDay, di: number) =>
@@ -1080,9 +496,7 @@ export default function AdminProductManager() {
             ? {
                 ...d,
                 events: d.events.map((e: any, ei: number) =>
-                  ei === ref.eventIndex
-                    ? { ...e, images: [...(e.images ?? []), ...newItems] }
-                    : e,
+                  ei === ref.eventIndex ? { ...e, images: nextImages } : e,
                 ),
               }
             : d,
@@ -1091,88 +505,6 @@ export default function AdminProductManager() {
       return added;
     }
     return 0;
-  }
-
-  async function loadProducts(args?: {
-    page?: number;
-    sortField?: ProductSortKey;
-    sortDirection?: "asc" | "desc";
-    keywordOverride?: string;
-    featuredOnlyOverride?: boolean;
-  }) {
-    const effectivePage = args?.page ?? page;
-    const effectiveSortField = args?.sortField ?? sortField;
-    const effectiveSortDirection = args?.sortDirection ?? sortDirection;
-    const effectiveKeyword = args?.keywordOverride ?? debouncedKeyword;
-    const effectiveFeaturedOnly =
-      typeof args?.featuredOnlyOverride === "boolean"
-        ? args.featuredOnlyOverride
-        : showFeaturedOnly;
-
-    try {
-      setErrorMessage("");
-      setIsLoading(true);
-      const params = new URLSearchParams();
-      params.set("page", String(effectivePage));
-      params.set("pageSize", String(pageSize));
-      params.set("sortField", effectiveSortField);
-      params.set("sortDirection", effectiveSortDirection);
-      if (effectiveKeyword.trim() !== "") {
-        params.set("q", effectiveKeyword.trim());
-      }
-      if (effectiveFeaturedOnly) {
-        params.set("featuredOnly", "true");
-      }
-
-      const response = await fetch(`/api/admin/products?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const result = (await response.json()) as
-        | { items: Product[]; total: number }
-        | { message?: string };
-      if (!response.ok || !("items" in result)) {
-        const msg = "message" in result ? result.message : "상품 목록 조회에 실패했습니다.";
-        setErrorMessage(msg ?? "상품 목록 조회에 실패했습니다.");
-        return;
-      }
-      setProducts(
-        result.items.map((item) => {
-          const images = normalizeImageList(item.images_json);
-          return {
-            ...item,
-            images_json: images,
-            image_url: images[0] ?? item.image_url ?? "",
-          };
-        }),
-      );
-      setTotalCount(result.total);
-    } catch {
-      setErrorMessage("상품 목록 조회 중 오류가 발생했습니다.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function loadTaxonomies() {
-    try {
-      setTaxonomyErrorMessage("");
-      setIsTaxonomyLoading(true);
-      const response = await fetch("/api/admin/product-taxonomies", { cache: "no-store" });
-      const result = (await response.json()) as ProductTaxonomyWithUsage[] | { message?: string };
-      if (!response.ok) {
-        const msg = "message" in result ? result.message : "분류 목록 조회에 실패했습니다.";
-        setTaxonomyErrorMessage(msg ?? "분류 목록 조회에 실패했습니다.");
-        return;
-      }
-      setTaxonomyItems(result as ProductTaxonomyWithUsage[]);
-        if (Array.isArray(result) && (result as ProductTaxonomyWithUsage[]).length > 0) {
-          setErrorMessage("");
-        }
-    } catch {
-      setTaxonomyErrorMessage("분류 목록 조회 중 오류가 발생했습니다.");
-    } finally {
-      setIsTaxonomyLoading(false);
-    }
   }
 
   async function loadTermsTemplates() {
@@ -1201,21 +533,33 @@ export default function AdminProductManager() {
   }
 
   useEffect(() => {
-    Promise.all([loadProducts({ page: 1 }), loadTaxonomies(), loadTermsTemplates()]);
+    loadTermsTemplates();
   }, []);
 
+  const urlEditingId = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedKeyword(keyword);
-      if (keyword.trim() !== "") {
-        setPage(1);
-        loadProducts({ page: 1, keywordOverride: keyword });
-      } else {
-        loadProducts({ page: 1, keywordOverride: "" });
+    if (!urlEditingId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const product = await fetchAdminProduct(urlEditingId);
+        if (cancelled) return;
+        const images = normalizeImageList(product.images_json);
+        const productWithImages = {
+          ...product,
+          images_json: images,
+          image_url: images[0] ?? product.image_url ?? "",
+        };
+        setForm(deserializeAdminProductToForm(productWithImages));
+        setEditingId(urlEditingId);
+      } catch {
+        if (!cancelled) setEditingId(urlEditingId);
       }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [keyword]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [urlEditingId]);
 
   /** 폼 제출 (액션 바 [저장] 및 form onSubmit에서 공통 호출) */
   const submit = () => void handleSubmit(undefined);
@@ -1225,9 +569,7 @@ export default function AdminProductManager() {
     setIsSubmitting(true);
     setErrorMessage("");
 
-    const requiredIssues = SECTIONS.flatMap((s) =>
-      (sectionIssuesBySection[s.id] ?? []).filter((i) => i.severity === "required"),
-    );
+    const requiredIssues = collectAllRequiredIssues(form);
     if (requiredIssues.length > 0) {
       const first = requiredIssues[0];
       const sectionTitle = SECTIONS.find((s) => s.id === first.sectionId)?.title ?? first.sectionId;
@@ -1240,156 +582,13 @@ export default function AdminProductManager() {
       return;
     }
 
-    const title = form.title.trim();
-    const description = form.description.trim();
-
     try {
-      const normalizedIncludedItems = form.included_items.trim();
-      const normalizedExcludedItems = form.excluded_items.trim();
-      const normalizedOptionalTours = form.optional_tours.trim();
-      const normalizedTermsAndNotes = form.terms_and_notes.trim();
-      const shouldRepairLegacyDetailMix =
-        Boolean(editingId) &&
-        !normalizedIncludedItems &&
-        !normalizedExcludedItems &&
-        (normalizedOptionalTours.length > 0 || normalizedTermsAndNotes.length > 0);
-      const resolvedIncludedItems = shouldRepairLegacyDetailMix
-        ? normalizedOptionalTours
-        : normalizedIncludedItems;
-      const resolvedExcludedItems = shouldRepairLegacyDetailMix
-        ? normalizedTermsAndNotes
-        : normalizedExcludedItems;
-      const resolvedOptionalTours = shouldRepairLegacyDetailMix ? "" : normalizedOptionalTours;
-      const resolvedTermsAndNotes = shouldRepairLegacyDetailMix ? "" : normalizedTermsAndNotes;
-      const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
-      const normalizedImages = normalizeImageList(form.images_json);
-      const primaryImageUrl = form.image_url.trim() || normalizedImages[0] || "";
-      const payload = {
-        title: title,
-        description: form.description,
-        meta_title: form.meta_title.trim() === "" ? undefined : form.meta_title,
-        meta_description: form.meta_description.trim() === "" ? undefined : form.meta_description,
-        point_benefits: form.point_benefits.trim() === "" ? undefined : form.point_benefits,
-        point_tourism: form.point_tourism,
-        point_guide: form.point_guide,
-        meeting_info: form.meeting_info,
-        travel_insurance: form.travel_insurance,
-        included_items: resolvedIncludedItems === "" ? undefined : resolvedIncludedItems,
-        excluded_items: resolvedExcludedItems === "" ? undefined : resolvedExcludedItems,
-        departure_from_airport:
-          form.departure_from_airport.trim() === "" ? undefined : form.departure_from_airport,
-        departure_from_date: form.departure_from_date.trim() === "" ? undefined : form.departure_from_date,
-        departure_from_time: form.departure_from_time.trim() === "" ? undefined : form.departure_from_time,
-        departure_to_airport: form.departure_to_airport.trim() === "" ? undefined : form.departure_to_airport,
-        departure_to_date: form.departure_to_date.trim() === "" ? undefined : form.departure_to_date,
-        departure_to_time: form.departure_to_time.trim() === "" ? undefined : form.departure_to_time,
-        departure_flight_name:
-          form.departure_flight_name.trim() === "" ? undefined : form.departure_flight_name,
-        departure_baggage_limit:
-          form.departure_baggage_limit.trim() === "" ? undefined : form.departure_baggage_limit,
-        arrival_from_airport:
-          form.arrival_from_airport.trim() === "" ? undefined : form.arrival_from_airport,
-        arrival_from_date: form.arrival_from_date.trim() === "" ? undefined : form.arrival_from_date,
-        arrival_from_time: form.arrival_from_time.trim() === "" ? undefined : form.arrival_from_time,
-        arrival_to_airport: form.arrival_to_airport.trim() === "" ? undefined : form.arrival_to_airport,
-        arrival_to_date: form.arrival_to_date.trim() === "" ? undefined : form.arrival_to_date,
-        arrival_to_time: form.arrival_to_time.trim() === "" ? undefined : form.arrival_to_time,
-        arrival_flight_name: form.arrival_flight_name.trim() === "" ? undefined : form.arrival_flight_name,
-        arrival_baggage_limit:
-          form.arrival_baggage_limit.trim() === "" ? undefined : form.arrival_baggage_limit,
-        detailed_schedule:
-          form.itinerary_days_json.length > 0
-            ? serializeStructuredDaysToSchedule(form.itinerary_days_json)
-            : (form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule),
-        optional_tours: resolvedOptionalTours === "" ? undefined : resolvedOptionalTours,
-        min_departure_people: form.min_departure_people.trim() === "" ? undefined : form.min_departure_people,
-        terms_template_type: form.terms_template_type === "" ? undefined : form.terms_template_type,
-        terms_and_notes: resolvedTermsAndNotes === "" ? undefined : resolvedTermsAndNotes,
-        product_source_url: form.product_source_url.trim() === "" ? undefined : form.product_source_url,
-        image_url: primaryImageUrl,
-        images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
-        category: form.category,
-        theme: form.theme.trim() === "" ? null : form.theme,
-        price: normalizedPrice === "" ? null : Number(normalizedPrice),
-        duration: form.duration.trim() === "" ? null : form.duration,
-        itinerary: form.itinerary.trim() === "" ? null : form.itinerary,
-        inclusions: form.inclusions.trim() === "" ? null : form.inclusions,
-        is_active: form.is_featured_home ? true : form.is_active,
-        is_featured_home: form.is_featured_home,
-        sort_order: form.sort_order.trim() === "" ? null : Number(form.sort_order),
-        status:
-          form.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(form.status)
-            ? form.status
-            : undefined,
-        one_liner: form.one_liner.trim() === "" ? undefined : form.one_liner.trim(),
-        price_meta: form.price_meta.trim() === "" ? undefined : form.price_meta.trim(),
-        meta_info: form.meta_info.trim() === "" ? undefined : form.meta_info.trim(),
-        fuel_included:
-          form.fuel_included === ""
-            ? undefined
-            : form.fuel_included === "true"
-              ? true
-              : form.fuel_included === "false"
-                ? false
-                : undefined,
-        options: (() => {
-          const raw = form.options_json.trim();
-          if (!raw) return undefined;
-          try {
-            const parsed = JSON.parse(raw) as Record<string, unknown>;
-            if (parsed && typeof parsed === "object" && Array.isArray(parsed.groups) && parsed.groups.length > 0) {
-              return parsed;
-            }
-            return undefined;
-          } catch {
-            return undefined;
-          }
-        })(),
-        itinerary_media_json:
-          (() => {
-            const media = form.itinerary_media_json;
-            const dayCount =
-              form.itinerary_days_json.length > 0
-                ? form.itinerary_days_json.length
-                : parseDetailedSchedule(form.detailed_schedule).length;
-            const cleaned = Object.fromEntries(
-              Object.entries(media).filter(([key, v]) => {
-                if (typeof v !== "string" || !v.trim()) return false;
-                const n = parseInt(key, 10);
-                return !Number.isNaN(n) && n >= 1 && n <= dayCount;
-              }),
-            );
-            return Object.keys(cleaned).length > 0 ? cleaned : undefined;
-          })(),
-        itinerary_days_json:
-          form.itinerary_days_json.length > 0 ? form.itinerary_days_json : null,
-        itinerary_v2_json:
-          form.itinerary_v2_json.days.length > 0 ? form.itinerary_v2_json : null,
-        theme_chart_json: (() => {
-          const items = form.theme_chart_json.filter(
-            (i) => i.label?.trim() && typeof i.percent === "number",
-          );
-          return items.length >= 2 ? { items } : null;
-        })(),
-        overview_accommodation: form.overview_accommodation.trim() === "" ? undefined : form.overview_accommodation.trim(),
-        overview_region: form.overview_region.trim() === "" ? undefined : form.overview_region.trim(),
-        overview_duration: form.overview_duration.trim() === "" ? undefined : form.overview_duration.trim(),
-      };
-
-      const endpoint = editingId ? `/api/admin/products/${editingId}` : "/api/admin/products";
-      const method = editingId ? "PATCH" : "POST";
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = (await response.json()) as { message?: string; warningCode?: string };
-
-      if (!response.ok) {
-        setErrorMessage(result.message ?? "상품 저장에 실패했습니다.");
-        showLocalToast("error", result.message ?? "상품 저장에 실패했습니다.");
-        return;
+      const payload = serializeAdminProductForm(form, { editingId });
+      let result: { message?: string; warningCode?: string };
+      if (editingId) {
+        result = await updateAdminProduct(editingId, payload);
+      } else {
+        result = await createAdminProduct(payload);
       }
 
       if (result.warningCode === "IMAGES_JSON_NOT_PERSISTED") {
@@ -1408,7 +607,7 @@ export default function AdminProductManager() {
       localStorage.removeItem(getDraftKey(editingId));
       setShowDraftBanner(false);
       setDraftData(null);
-      await loadProducts();
+      await listController.loadProducts();
     } catch (error) {
       const message = error instanceof Error ? error.message : "상품 저장 중 오류가 발생했습니다.";
       setErrorMessage(message);
@@ -1418,71 +617,29 @@ export default function AdminProductManager() {
     }
   }
 
-  async function handleDelete(id: string) {
-    const ok = await confirm({
-      title: "상품 삭제",
-      description: "이 상품을 삭제하면 되돌릴 수 없습니다. 계속 진행할까요?",
-      confirmLabel: "삭제",
-      cancelLabel: "취소",
-    });
-    if (!ok) return;
-
-    setErrorMessage("");
-    try {
-      const response = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-      const result = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        showToast("error", result.message ?? "상품 삭제에 실패했습니다.");
-        return;
-      }
-
-      if (editingId === id) {
-        setEditingId(null);
-        setForm(initialFormState);
-        setActiveSchedulePreviewIndex(0);
-        setShowRawScheduleEditor(false);
-        setScheduleEditorMode("visual");
-      }
-      showToast("success", "상품이 삭제되었습니다.");
-      await loadProducts();
-    } catch {
-      showToast("error", "상품 삭제 중 오류가 발생했습니다.");
-    }
-  }
-
-  const featuredCount = useMemo(
-    () => products.filter((product) => Boolean(product.is_featured_home)).length,
-    [products],
-  );
   const editingProduct = useMemo(
-    () => products.find((product) => product.id === editingId),
-    [products, editingId],
+    () => listController.products.find((product) => product.id === editingId),
+    [listController.products, editingId],
   );
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pagedProducts = products;
+  const totalPages = listController.totalPages;
+  const safePage = listController.currentPage;
+  const pagedProducts = listController.products;
   const categoryOptions = useMemo(() => {
-    return taxonomyItems
+    return taxonomyController.taxonomyItems
       .filter((item) => item.type === "category" && item.is_active)
       .map((item) => item.name);
-  }, [taxonomyItems]);
+  }, [taxonomyController.taxonomyItems]);
   const selectedThemes = useMemo(() => parseThemeList(form.theme), [form.theme]);
   const availableThemeOptions = useMemo(
     () =>
-      taxonomyItems
+      taxonomyController.taxonomyItems
         .filter((item) => item.type === "theme" && item.is_active)
         .map((item) => item.name),
-    [taxonomyItems],
+    [taxonomyController.taxonomyItems],
   );
-  const categoryTaxonomies = useMemo(
-    () => taxonomyItems.filter((item) => item.type === "category"),
-    [taxonomyItems],
-  );
-  const themeTaxonomies = useMemo(
-    () => taxonomyItems.filter((item) => item.type === "theme"),
-    [taxonomyItems],
-  );
+  const categoryTaxonomies = taxonomyController.categoryTaxonomies;
+  const themeTaxonomies = taxonomyController.themeTaxonomies;
   const scheduleDrafts = useMemo(
     () => parseDetailedSchedule(form.detailed_schedule),
     [form.detailed_schedule],
@@ -1499,7 +656,7 @@ export default function AdminProductManager() {
   /** 폼 + 이미지(URL 또는 File ObjectURL) 기반 미리보기용 Product (공용 로직) */
   const previewProduct = useMemo(
     () =>
-      formToPreviewProduct(
+      mapAdminProductFormToPreviewProduct(
         form,
         previewImageObjectUrl ?? form.images_json[0] ?? form.image_url?.trim() ?? "",
       ),
@@ -1557,26 +714,8 @@ export default function AdminProductManager() {
     for (const section of SECTIONS) {
       out[section.id] = section.getIssues(form);
     }
-    const featuredCountNow = products.filter((p) => Boolean(p.is_featured_home)).length;
-    const editingProd = products.find((p) => p.id === editingId);
-    if (
-      form.is_featured_home &&
-      !editingProd?.is_featured_home &&
-      featuredCountNow >= FEATURED_PRODUCT_LIMIT
-    ) {
-      out.price = [
-        ...(out.price ?? []),
-        {
-          sectionId: "price",
-          fieldKey: "featured",
-          message: `메인 추천상품은 최대 ${FEATURED_PRODUCT_LIMIT}개까지 설정할 수 있습니다.`,
-          anchorId: "field-main-reco",
-          severity: "required" as const,
-        },
-      ];
-    }
     return out;
-  }, [form, products, editingId]);
+  }, [form, listController.products, editingId]);
 
   const completedSectionCount = useMemo(() => {
     return SECTIONS.filter(
@@ -1960,98 +1099,6 @@ export default function AdminProductManager() {
     }
   }
 
-  function movePage(nextPage: number) {
-    const clamped = Math.max(1, Math.min(nextPage, totalPages));
-    setPage(clamped);
-    loadProducts({ page: clamped });
-  }
-
-  function toggleSelectAllForPage() {
-    if (products.length === 0) return;
-    const pageIds = products.map((product) => product.id);
-    const allSelected = pageIds.every((id) => selectedIds.includes(id));
-    if (allSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
-    } else {
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
-    }
-  }
-
-  function toggleSelectOne(id: string) {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id],
-    );
-  }
-
-  async function handleBulkDeleteSelected() {
-    if (selectedIds.length === 0) return;
-    const ok = await confirm({
-      title: "선택 상품 삭제",
-      description: `선택된 ${selectedIds.length}개 상품을 삭제합니다. 계속 진행할까요?`,
-      confirmLabel: "삭제",
-      cancelLabel: "취소",
-    });
-    if (!ok) return;
-
-    setErrorMessage("");
-    try {
-      const ids = [...selectedIds];
-      setSelectedIds([]);
-      await Promise.allSettled(
-        ids.map(async (id) => {
-          const response = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-          if (!response.ok) {
-            // 개별 오류는 토스트로만 알림
-            const result = (await response.json()) as { message?: string };
-        showToast("error", result.message ?? "일부 상품 삭제에 실패했습니다.");
-          }
-        }),
-      );
-      await loadProducts({ page: 1 });
-      setPage(1);
-      showToast("success", "선택한 상품을 삭제했습니다.");
-    } catch {
-      showToast("error", "선택 상품 삭제 중 오류가 발생했습니다.");
-    }
-  }
-
-  function handleSortChange(field: ProductSortKey) {
-    let nextDirection: "asc" | "desc" = "asc";
-    if (sortField === field) {
-      nextDirection = sortDirection === "asc" ? "desc" : "asc";
-    }
-    setSortField(field);
-    setSortDirection(nextDirection);
-    setPage(1);
-    loadProducts({ page: 1, sortField: field, sortDirection: nextDirection });
-  }
-
-  function addCustomCategory() {
-    const value = newCategoryInput.trim();
-    if (!value) return;
-    setPendingTaxonomyCreateType("category");
-    fetch("/api/admin/product-taxonomies", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "category", name: value }),
-    })
-      .then(async (response) => {
-        const result = (await response.json()) as { message?: string };
-        if (!response.ok) {
-          showToast("error", result.message ?? "카테고리 추가에 실패했습니다.");
-          return;
-        }
-        setForm((prev) => ({ ...prev, category: value }));
-        setNewCategoryInput("");
-        showToast("success", "카테고리를 추가했습니다.");
-        await loadTaxonomies();
-      })
-      .catch(() => {
-        showToast("error", "카테고리 추가 중 오류가 발생했습니다.");
-      })
-      .finally(() => setPendingTaxonomyCreateType(null));
-  }
-
   function toggleTheme(theme: string) {
     setForm((prev) => {
       const current = parseThemeList(prev.theme);
@@ -2062,271 +1109,31 @@ export default function AdminProductManager() {
     });
   }
 
-  function addCustomTheme() {
-    const value = newThemeInput.trim();
-    if (!value) return;
-    setPendingTaxonomyCreateType("theme");
-    fetch("/api/admin/product-taxonomies", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "theme", name: value }),
-    })
-      .then(async (response) => {
-        const result = (await response.json()) as { message?: string };
-        if (!response.ok) {
-          showToast("error", result.message ?? "테마 추가에 실패했습니다.");
-          return;
-        }
-        setForm((prev) => {
-          const current = parseThemeList(prev.theme);
-          if (current.includes(value)) return prev;
-          return { ...prev, theme: stringifyThemeList([...current, value]) };
-        });
-        setNewThemeInput("");
-        showToast("success", "테마를 추가했습니다.");
-        await loadTaxonomies();
-      })
-      .catch(() => {
-        showToast("error", "테마 추가 중 오류가 발생했습니다.");
-      })
-      .finally(() => setPendingTaxonomyCreateType(null));
-  }
-
-  async function handleDeleteTaxonomy(item: ProductTaxonomyWithUsage) {
-    const confirmed = window.confirm(`'${item.name}' 항목을 삭제할까요?`);
-    if (!confirmed) return;
-    setPendingTaxonomyDeleteId(item.id);
-    try {
-      const response = await fetch(`/api/admin/product-taxonomies/${item.id}`, { method: "DELETE" });
-      const result = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        showToast("error", result.message ?? "삭제에 실패했습니다.");
-        return;
-      }
-      showToast("success", "항목을 삭제했습니다.");
-      await loadTaxonomies();
-    } catch {
-      showToast("error", "삭제 중 오류가 발생했습니다.");
-    } finally {
-      setPendingTaxonomyDeleteId(null);
-    }
-  }
-
-  async function quickToggleActive(product: Product) {
-    setPendingToggleId(product.id);
-    setErrorMessage("");
-    try {
-      const response = await fetch(`/api/admin/products/${product.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !(product.is_active ?? true) }),
-      });
-
-      const result = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        showToast("error", result.message ?? "활성화 상태 변경에 실패했습니다.");
-        return;
-      }
-
-      setProducts((current) =>
-        current.map((item) =>
-          item.id === product.id ? { ...item, is_active: !(item.is_active ?? true) } : item,
-        ),
-      );
-      showToast("success", "상품 활성화 상태를 변경했습니다.");
-    } catch {
-      showToast("error", "활성화 상태 변경 중 오류가 발생했습니다.");
-    } finally {
-      setPendingToggleId(null);
-    }
-  }
-
-  async function quickToggleFeaturedHome(product: Product) {
-    if (!product.is_featured_home && featuredCount >= FEATURED_PRODUCT_LIMIT) {
-      showToast("error", `메인 추천상품은 최대 ${FEATURED_PRODUCT_LIMIT}개까지 설정할 수 있습니다.`);
-      return;
-    }
-
-    setPendingFeaturedToggleId(product.id);
-    setErrorMessage("");
-    try {
-      const response = await fetch(`/api/admin/products/${product.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_featured_home: !Boolean(product.is_featured_home) }),
-      });
-
-      const result = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        showToast("error", result.message ?? "메인 추천 상태 변경에 실패했습니다.");
-        return;
-      }
-
-      setProducts((current) =>
-        current.map((item) =>
-          item.id === product.id
-            ? {
-                ...item,
-                is_featured_home: !Boolean(item.is_featured_home),
-                is_active: !Boolean(item.is_featured_home) ? true : item.is_active,
-              }
-            : item,
-        ),
-      );
-      showToast("success", "메인 추천 상태를 변경했습니다.");
-    } catch {
-      showToast("error", "메인 추천 상태 변경 중 오류가 발생했습니다.");
-    } finally {
-      setPendingFeaturedToggleId(null);
-    }
-  }
-
-  async function moveSortOrder(product: Product, direction: "up" | "down") {
-    const sameBucket = products.filter(
-      (item) => Boolean(item.is_featured_home) === Boolean(product.is_featured_home),
-    );
-    const currentIndex = sameBucket.findIndex((item) => item.id === product.id);
-    if (currentIndex < 0) return;
-
-    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= sameBucket.length) return;
-
-    const target = sameBucket[targetIndex];
-    const currentOrder = typeof product.sort_order === "number" ? product.sort_order : currentIndex + 1;
-    const targetOrder = typeof target.sort_order === "number" ? target.sort_order : targetIndex + 1;
-
-    setPendingMoveId(product.id);
-    try {
-      const first = await fetch(`/api/admin/products/${product.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sort_order: targetOrder }),
-      });
-      const firstResult = (await first.json()) as { message?: string };
-      if (!first.ok) {
-        showToast("error", firstResult.message ?? "노출순서 변경에 실패했습니다.");
-        return;
-      }
-
-      const second = await fetch(`/api/admin/products/${target.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sort_order: currentOrder }),
-      });
-      const secondResult = (await second.json()) as { message?: string };
-      if (!second.ok) {
-        showToast("error", secondResult.message ?? "노출순서 변경에 실패했습니다.");
-        return;
-      }
-
-      showToast("success", "노출순서를 변경했습니다.");
-      await loadProducts();
-    } catch {
-      showToast("error", "노출순서 변경 중 오류가 발생했습니다.");
-    } finally {
-      setPendingMoveId(null);
-    }
-  }
-
   return (
     <div className="space-y-6">
       {isTaxonomyView && (
-        <section className="space-y-3 rounded-xl bg-[var(--surface-muted)] p-4 ring-1 ring-[var(--border)]">
-          <h3 className="text-lg font-bold text-[var(--primary)]">카테고리/테마 관리</h3>
-          {taxonomyErrorMessage ? <p className="text-sm text-[var(--danger)]">{taxonomyErrorMessage}</p> : null}
-          {isTaxonomyLoading ? (
-            <p className="text-sm text-[var(--text-muted)]">분류 목록을 불러오는 중입니다...</p>
-          ) : (
-            <div className="space-y-3">
-              {taxonomyItems.some((item) => item.id.startsWith("fallback-")) ? (
-                <p className="text-xs text-amber-700">
-                  분류 전용 테이블이 없어 임시 목록으로 표시 중입니다. SQL 적용 후 추가/삭제가 완전 활성화됩니다.
-                </p>
-              ) : null}
-              <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">카테고리</p>
-                  <div className="flex flex-wrap gap-2">
-                    {categoryTaxonomies.map((item) => (
-                      <span
-                        key={item.id}
-                        className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800"
-                      >
-                        {item.name}
-                        <span className="text-[10px] text-blue-600">({item.usageCount})</span>
-                        <button
-                          type="button"
-                          disabled={pendingTaxonomyDeleteId === item.id || item.id.startsWith("fallback-")}
-                          onClick={() => handleDeleteTaxonomy(item)}
-                          className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-1.5 py-0.5 text-[10px] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 hover:opacity-90 disabled:opacity-50"
-                        >
-                          삭제
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={newCategoryInput}
-                      onChange={(event) => setNewCategoryInput(event.target.value)}
-                      placeholder="카테고리 직접 추가"
-                      className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={addCustomCategory}
-                      disabled={pendingTaxonomyCreateType === "category"}
-                      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
-                    >
-                      {pendingTaxonomyCreateType === "category" ? "추가 중..." : "추가"}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">테마</p>
-                  <div className="flex flex-wrap gap-2">
-                    {themeTaxonomies.map((item) => (
-                      <span
-                        key={item.id}
-                        className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800"
-                      >
-                        {item.name}
-                        <span className="text-[10px] text-amber-600">({item.usageCount})</span>
-                        <button
-                          type="button"
-                          disabled={pendingTaxonomyDeleteId === item.id || item.id.startsWith("fallback-")}
-                          onClick={() => handleDeleteTaxonomy(item)}
-                          className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-1.5 py-0.5 text-[10px] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 hover:opacity-90 disabled:opacity-50"
-                        >
-                          삭제
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={newThemeInput}
-                      onChange={(event) => setNewThemeInput(event.target.value)}
-                      placeholder="테마 직접 추가 (예: 가족여행)"
-                      className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={addCustomTheme}
-                      disabled={pendingTaxonomyCreateType === "theme"}
-                      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
-                    >
-                      {pendingTaxonomyCreateType === "theme" ? "추가 중..." : "추가"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
+        <AdminProductTaxonomyView
+          categoryTaxonomies={taxonomyController.categoryTaxonomies}
+          themeTaxonomies={taxonomyController.themeTaxonomies}
+          hasFallbackItems={taxonomyController.hasFallbackItems}
+          errorMessage={taxonomyController.errorMessage || null}
+          isLoading={taxonomyController.isLoading}
+          newCategoryInput={taxonomyController.newCategoryInput}
+          newThemeInput={taxonomyController.newThemeInput}
+          pendingCreateType={taxonomyController.pendingCreateType}
+          pendingDeleteId={taxonomyController.pendingDeleteId}
+          onCategoryInputChange={taxonomyController.setNewCategoryInput}
+          onThemeInputChange={taxonomyController.setNewThemeInput}
+          onCreateCategory={taxonomyController.addCustomCategory}
+          onCreateTheme={taxonomyController.addCustomTheme}
+          onDeleteTaxonomy={taxonomyController.handleDeleteTaxonomy}
+        />
       )}
 
-      {isCreateView || editingId ? (
+      {isFeaturedView && <AdminHomeCuratedManager />}
+
+      {(isCreateView || editingId) && !isFeaturedView ? (
+        <AdminProductEditorView>
         <>
         <div className="flex items-start gap-4 lg:gap-6">
         {/* 좌측 필드: 섹션 네비 + 액션 바 (sticky, 문서 흐름 내) */}
@@ -2540,19 +1347,19 @@ export default function AdminProductManager() {
             </div>
             <div className="flex items-center gap-2">
               <input
-                value={newCategoryInput}
-                onChange={(event) => setNewCategoryInput(event.target.value)}
+                value={taxonomyController.newCategoryInput}
+                onChange={(e) => taxonomyController.setNewCategoryInput(e.target.value)}
                 placeholder="카테고리 직접 추가"
                 id="form-field-basic-category"
                 className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
               />
               <button
                 type="button"
-                onClick={addCustomCategory}
-                disabled={pendingTaxonomyCreateType === "category"}
+                onClick={taxonomyController.addCustomCategory}
+                disabled={taxonomyController.pendingCreateType === "category"}
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
               >
-                {pendingTaxonomyCreateType === "category" ? "추가 중..." : "추가"}
+                {taxonomyController.pendingCreateType === "category" ? "추가 중..." : "추가"}
               </button>
             </div>
           </div>
@@ -2578,19 +1385,19 @@ export default function AdminProductManager() {
             </div>
             <div className="flex items-center gap-2">
               <input
-                value={newThemeInput}
-                onChange={(event) => setNewThemeInput(event.target.value)}
+                value={taxonomyController.newThemeInput}
+                onChange={(event) => taxonomyController.setNewThemeInput(event.target.value)}
                 placeholder="테마 직접 추가 (예: 가족여행)"
                 id="form-field-basic-theme"
                 className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
               />
               <button
                 type="button"
-                onClick={addCustomTheme}
-                disabled={pendingTaxonomyCreateType === "theme"}
+                onClick={taxonomyController.addCustomTheme}
+                disabled={taxonomyController.pendingCreateType === "theme"}
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
               >
-                {pendingTaxonomyCreateType === "theme" ? "추가 중..." : "추가"}
+                {taxonomyController.pendingCreateType === "theme" ? "추가 중..." : "추가"}
               </button>
             </div>
             <p className="text-xs text-[var(--text-muted)]">선택된 테마: {selectedThemes.join(", ") || "-"}</p>
@@ -3659,18 +2466,6 @@ export default function AdminProductManager() {
             />
             상품 노출 활성화
           </label>
-          <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
-            <input
-              id="field-main-reco"
-              type="checkbox"
-              checked={form.is_featured_home}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, is_featured_home: event.target.checked }))
-              }
-                          className="h-4 w-4 accent-[var(--primary)]"
-            />
-            메인 추천상품 슬라이드 노출 (최대 {FEATURED_PRODUCT_LIMIT}개)
-          </label>
         </div>
                   )}
                 </div>
@@ -3692,9 +2487,6 @@ export default function AdminProductManager() {
             {isSubmitting ? "저장 중..." : editingId ? "수정 저장" : "상품 등록"}
           </button>
           {errorMessage ? <p className="text-xs text-red-600">{errorMessage}</p> : null}
-          <span className="text-xs text-[var(--text-muted)]">
-            메인 추천 설정: {featuredCount}/{FEATURED_PRODUCT_LIMIT}
-          </span>
         </div>
         </form>
           </main>
@@ -3730,9 +2522,27 @@ export default function AdminProductManager() {
                 <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[var(--text-primary)]">
                   previewProduct 확인 (JSON)
                 </summary>
-                <pre className="max-h-48 overflow-auto p-3 text-xs text-[var(--text-secondary)]">
-                  {JSON.stringify(effectivePreviewProduct, null, 2)}
-                </pre>
+                <div className="relative">
+                  <pre className="max-h-48 overflow-auto p-3 text-xs text-[var(--text-secondary)]">
+                    {JSON.stringify(effectivePreviewProduct, null, 2)}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          JSON.stringify(effectivePreviewProduct, null, 2),
+                        );
+                        showToast("success", "전체 JSON이 클립보드에 복사되었습니다.");
+                      } catch {
+                        showToast("error", "클립보드 복사에 실패했습니다.");
+                      }
+                    }}
+                    className="absolute right-2 top-2 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                  >
+                    전체 복사
+                  </button>
+                </div>
               </details>
 
               <div className="flex gap-2" role="tablist" aria-label="미리보기 뷰">
@@ -3960,319 +2770,42 @@ export default function AdminProductManager() {
           )}
 
         </>
+        </AdminProductEditorView>
       ) : null}
 
-      {isListView && !editingId ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-lg font-bold text-[var(--primary)]">상품 목록</h3>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
-                <input
-                  type="checkbox"
-                  checked={showFeaturedOnly}
-                  onChange={(event) => {
-                    const next = event.target.checked;
-                    setShowFeaturedOnly(next);
-                    setPage(1);
-                    loadProducts({ page: 1, featuredOnlyOverride: next });
-                  }}
-                  className="h-4 w-4 accent-[var(--primary)]"
-                />
-                추천상품만 보기
-              </label>
-              <input
-                type="text"
-                value={keyword}
-                onChange={(event) => {
-                  setKeyword(event.target.value);
-                }}
-                placeholder="상품 검색"
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-              />
-            </div>
-          </div>
-
-          {selectedIds.length > 0 ? (
-            <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
-              <p>
-                선택된 상품 <span className="font-semibold">{selectedIds.length}</span>개
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBulkDeleteSelected}
-                  className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-[11px] font-semibold text-[var(--danger)] hover:opacity-90"
-                >
-                  선택 삭제
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedIds([])}
-                  className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-                >
-                  선택 해제
-                </button>
-              </div>
-            </div>
-          ) : null}
-        {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
-        {isLoading ? (
-          <p className="text-sm text-[var(--text-muted)]">상품 목록을 불러오는 중입니다...</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1160px] border-collapse text-sm">
-              <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
-                <tr>
-                  <th className="w-[42px] px-4 py-3 text-center">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-[var(--primary)]"
-                      onChange={toggleSelectAllForPage}
-                      checked={
-                        pagedProducts.length > 0 &&
-                        pagedProducts.every((product) => selectedIds.includes(product.id))
-                      }
-                    />
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">원본주소</th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => handleSortChange("title")}
-                      className="inline-flex items-center gap-1"
-                    >
-                      <span>상품명</span>
-                      <span className="text-[10px] text-[var(--text-muted)]">
-                        {sortField === "title" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                      </span>
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => handleSortChange("category")}
-                      className="inline-flex items-center gap-1"
-                    >
-                      <span>카테고리</span>
-                      <span className="text-[10px] text-[var(--text-muted)]">
-                        {sortField === "category" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                      </span>
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">테마/배지</th>
-                  <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => handleSortChange("price")}
-                      className="inline-flex items-center gap-1"
-                    >
-                      <span>가격</span>
-                      <span className="text-[10px] text-[var(--text-muted)]">
-                        {sortField === "price" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                      </span>
-                    </button>
-                  </th>
-                  <th className="w-[170px] px-4 py-3 text-left font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => handleSortChange("sort_order")}
-                      className="inline-flex items-center gap-1"
-                    >
-                      <span>노출순서</span>
-                      <span className="text-[10px] text-[var(--text-muted)]">
-                        {sortField === "sort_order" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                      </span>
-                    </button>
-                  </th>
-                  <th className="w-[110px] px-4 py-3 text-left font-semibold whitespace-nowrap">활성화</th>
-                  <th className="w-[92px] px-4 py-3 text-center font-semibold whitespace-nowrap">메인추천</th>
-                  <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagedProducts.length === 0 ? (
-                  <tr className="border-t border-[var(--divider)]">
-                    <td colSpan={10} className="px-4 py-10 text-center text-[var(--text-muted)]">
-                      <div className="mx-auto flex max-w-md flex-col items-center gap-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)]">
-                          📦
-                        </div>
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">등록된 상품이 없습니다.</p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          상단의 &quot;상품 등록&quot; 탭에서 첫 번째 상품을 추가해 보세요.
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  pagedProducts.map((product) => (
-                    <tr key={product.id} className="group border-t border-[var(--divider)] hover:bg-[var(--surface-muted)]">
-                      <td className="px-4 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-[var(--primary)]"
-                          checked={selectedIds.includes(product.id)}
-                          onChange={() => toggleSelectOne(product.id)}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {product.product_source_url ? (
-                          <a
-                            href={product.product_source_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs font-semibold text-[var(--primary)] underline-offset-2 hover:underline"
-                          >
-                            원본 보기
-                          </a>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="max-w-[270px] px-4 py-3 font-medium text-[var(--primary)]">
-                        {product.title}
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">{product.category}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{product.theme ?? "-"}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {typeof product.price === "number"
-                          ? `${new Intl.NumberFormat("ko-KR").format(product.price)}원`
-                          : "-"}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-flex min-w-8 justify-center rounded bg-[var(--surface-muted)] px-2 py-1 text-xs font-semibold text-[var(--text-primary)] ring-1 ring-[var(--border)]">
-                            {typeof product.sort_order === "number" ? product.sort_order : "-"}
-                          </span>
-                          <button
-                            type="button"
-                            disabled={pendingMoveId === product.id}
-                            onClick={() => moveSortOrder(product, "up")}
-                            className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-                            title="위로 이동"
-                          >
-                            ▲
-                          </button>
-                          <button
-                            type="button"
-                            disabled={pendingMoveId === product.id}
-                            onClick={() => moveSortOrder(product, "down")}
-                            className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-                            title="아래로 이동"
-                          >
-                            ▼
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {product.is_active === false ? (
-                          <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs text-[var(--text-muted)]">
-                            비노출
-                          </span>
-                        ) : (
-                          <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--success-bg)] px-2.5 py-1 text-xs text-[var(--success)]">
-                            노출
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {product.is_featured_home ? (
-                          <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--primary-soft)] px-2 py-1 text-xs text-[var(--primary)]">
-                            추천
-                          </span>
-                        ) : (
-                          <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--text-muted)]">
-                            일반
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2 whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                          <button
-                            type="button"
-                            disabled={pendingToggleId === product.id}
-                            onClick={() => quickToggleActive(product)}
-                            className={`rounded px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
-                              product.is_active === false
-                                ? "border border-[var(--success)]/30 bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90"
-                                : "border border-[var(--danger)]/30 bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-90"
-                            }`}
-                          >
-                            {product.is_active === false ? "활성화" : "비활성화"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={pendingFeaturedToggleId === product.id}
-                            onClick={() => quickToggleFeaturedHome(product)}
-                            className={`rounded px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
-                              product.is_featured_home
-                                ? "border border-[var(--warning)]/30 bg-[var(--warning-bg)] text-[var(--warning)] hover:opacity-90"
-                                : "border border-[var(--primary)]/30 bg-[var(--primary-soft)] text-[var(--primary)] hover:opacity-90"
-                            }`}
-                          >
-                            {product.is_featured_home ? "추천해제" : "추천등록"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingId(product.id);
-                              setForm(mapProductToForm(product));
-                              setActiveSchedulePreviewIndex(0);
-                              setShowRawScheduleEditor(false);
-                              setErrorMessage("");
-                            }}
-                            className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)]"
-                          >
-                            수정
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(product.id)}
-                            className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div className="flex items-center justify-between text-sm text-[var(--text-secondary)]">
-          <p>
-            총 {totalCount}건 중 {totalCount === 0 ? 0 : (safePage - 1) * pageSize + 1}-{Math.min(
-              safePage * pageSize,
-              totalCount,
-            )}
-            건 표시
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => movePage(safePage - 1)}
-              disabled={safePage <= 1}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              이전
-            </button>
-            <span className="text-xs font-semibold text-[var(--text-primary)]">
-              {safePage} / {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => movePage(safePage + 1)}
-              disabled={safePage >= totalPages}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              다음
-            </button>
-          </div>
-        </div>
-      </div>
+      {isListView && !editingId && !isFeaturedView ? (
+        <AdminProductsListView
+          products={pagedProducts}
+          totalCount={listController.totalCount}
+          currentPage={safePage}
+          pageSize={pageSize}
+          totalPages={totalPages}
+          sortField={listController.sortField}
+          sortDirection={listController.sortDirection}
+          keyword={listController.keyword}
+          isLoading={listController.isLoading}
+          errorMessage={listController.errorMessage || null}
+          selectedIds={listController.selectedIds}
+          pendingMoveId={listController.pendingMoveId}
+          pendingToggleId={listController.pendingToggleId}
+          onKeywordChange={listController.setKeyword}
+          onSortChange={listController.handleSortChange}
+          onPageChange={listController.movePage}
+          onToggleSelectAll={listController.toggleSelectAllForPage}
+          onToggleSelectOne={listController.toggleSelectOne}
+          onClearSelection={() => listController.setSelectedIds([])}
+          onBulkDelete={listController.handleBulkDeleteSelected}
+          onEditProduct={(product: Product) => {
+            setEditingId(product.id);
+            setForm(deserializeAdminProductToForm(product));
+            setActiveSchedulePreviewIndex(0);
+            setShowRawScheduleEditor(false);
+            setErrorMessage("");
+          }}
+          onDeleteProduct={listController.handleDelete}
+          onQuickToggleActive={listController.quickToggleActive}
+          onMoveSortOrder={listController.moveSortOrder}
+        />
       ) : null}
 
       <ImageImportGuideModal

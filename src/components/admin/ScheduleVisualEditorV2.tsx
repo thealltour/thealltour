@@ -38,6 +38,13 @@ export type ScheduleVisualEditorV2Props = {
   /** 상품 이미지 → 이벤트에 추가 시 참조할 선택 이벤트 */
   selectedEvent: SelectedEventRef | null;
   onSelectEvent: (ref: SelectedEventRef | null) => void;
+  /** 모두투어 미할당 이미지 DnD (ModetourNewProductPage 전용) */
+  modetourDnDEnabled?: boolean;
+  onDropExternalImage?: (
+    item: { source: "unassigned"; url: string },
+    destination: { editorType: "v2"; dayIndex: number; eventIndex: number; insertAt?: number }
+  ) => void;
+  onReturnImageToPool?: (url: string) => void;
 };
 
 export function ScheduleVisualEditorV2({
@@ -48,6 +55,9 @@ export function ScheduleVisualEditorV2({
   setActiveDayIndex,
   selectedEvent,
   onSelectEvent,
+  modetourDnDEnabled,
+  onDropExternalImage,
+  onReturnImageToPool,
 }: ScheduleVisualEditorV2Props) {
   const v2 = form.itinerary_v2_json;
   const days = v2.days ?? [];
@@ -277,6 +287,9 @@ export function ScheduleVisualEditorV2({
                 onFocus={() => setActiveDayIndex(dayIndex)}
                 selectedEvent={selectedEvent}
                 onEventSelect={(evIndex) => onSelectEvent({ editorType: "v2", dayIndex, eventIndex: evIndex })}
+                modetourDnDEnabled={modetourDnDEnabled}
+                onDropExternalImage={onDropExternalImage}
+                onReturnImageToPool={onReturnImageToPool}
               />
             ))}
             <button

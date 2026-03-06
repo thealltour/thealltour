@@ -43,3 +43,30 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+build/
+.out/
+.next/
+
+# Plasmo / extension
+tools/modetour-extractor-extension/node_modules
+tools/modetour-extractor-extension/build
+tools/modetour-extractor-extension/dist
+
+# logs
+*.log
+
+# env
+.env
+.env.local
+
+# mac
+.DS_Store
+
+# vscode
+.vscode

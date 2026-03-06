@@ -3,6 +3,7 @@
 import type { ItineraryV2Event } from "@/types/product";
 import { EventImagesEditor } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { EventImageItem } from "@/components/admin/itinerary/shared/EventImagesEditor";
+import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
 import { ChevronDown } from "lucide-react";
 
 const TIMEOFDAY_OPTIONS = [
@@ -27,9 +28,27 @@ export type EventEditorProps = {
   event: ItineraryV2Event | null;
   onChange: (patch: Partial<ItineraryV2Event>) => void;
   onRemove?: () => void;
+  /** 모두투어 미할당 이미지 DnD (ModetourNewProductPage 전용) */
+  modetourDnDEnabled?: boolean;
+  dayIndex?: number;
+  eventIndex?: number;
+  onDropExternalImage?: (
+    item: { source: "unassigned"; url: string },
+    destination: { editorType: "v2"; dayIndex: number; eventIndex: number; insertAt?: number }
+  ) => void;
+  onReturnImageToPool?: (url: string) => void;
 };
 
-export function EventEditor({ event, onChange, onRemove }: EventEditorProps) {
+export function EventEditor({
+  event,
+  onChange,
+  onRemove,
+  modetourDnDEnabled,
+  dayIndex = 0,
+  eventIndex = 0,
+  onDropExternalImage,
+  onReturnImageToPool,
+}: EventEditorProps) {
   if (event == null) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)]/50 py-16 text-center">
@@ -160,6 +179,22 @@ export function EventEditor({ event, onChange, onRemove }: EventEditorProps) {
               value={imagesList}
               onChange={handleImagesChange}
               mode="full"
+              dndContext={
+                modetourDnDEnabled && onDropExternalImage && onReturnImageToPool && dayIndex != null && eventIndex != null
+                  ? {
+                      enabled: true,
+                      editorType: "v2",
+                      dayIndex,
+                      eventIndex,
+                      onDropExternalImage: (item: ModetourImageDragItem, destination) => {
+                        if (item.source === "unassigned") {
+                          onDropExternalImage(item, { ...destination, editorType: "v2" });
+                        }
+                      },
+                      onReturnImageToPool,
+                    }
+                  : undefined
+              }
             />
           </div>
         </details>

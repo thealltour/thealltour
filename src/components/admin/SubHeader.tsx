@@ -4,10 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, Moon, Search, Sun } from "lucide-react";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
+import {
+  ADMIN_PRODUCTS_VIEW,
+  ADMIN_PRODUCTS_QUERY_KEYS,
+  PRODUCT_LABEL_TO_VIEW,
+  PRODUCT_VIEW_TO_LABEL,
+} from "@/components/admin/products/adminProducts.constants";
 
 export const menuMap = {
   dashboard: ["운영 현황", "통계"],
-  product: ["상품 목록", "상품 등록", "카테고리/테마 관리"],
+  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 추천상품 관리"],
   inquiry: ["전체 문의", "미처리 문의"],
   member: ["회원 목록"],
   rewards: ["신청", "승인", "발송", "완료", "반려"],
@@ -60,15 +66,19 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     let initial: string | null = items[0] ?? null;
 
     if (activeMenu === "product") {
-      const view = searchParams.get("view");
-      if (view === "taxonomy") {
-        initial = "카테고리/테마 관리";
-      } else if (view === "create") {
-        initial = "상품 등록";
-      } else if (view === "list") {
-        initial = "상품 목록";
+      const view = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
+      if (pathname.includes("/products/new-modetour")) {
+        initial = "상품 등록(모두)";
+      } else if (view === ADMIN_PRODUCTS_VIEW.TAXONOMY) {
+        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
+      } else if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
+        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.FEATURED];
+      } else if (view === ADMIN_PRODUCTS_VIEW.CREATE) {
+        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.CREATE];
+      } else if (view === ADMIN_PRODUCTS_VIEW.LIST) {
+        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
       } else {
-        initial = "상품 목록";
+        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
       }
     }
     if (activeMenu === "notices") {
@@ -173,10 +183,8 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   }
 
   function mapProductLabelToView(label: string): string | null {
-    if (label === "카테고리/테마 관리") return "taxonomy";
-    if (label === "상품 등록") return "create";
-    if (label === "상품 목록") return "list";
-    return null;
+    const view = PRODUCT_LABEL_TO_VIEW[label];
+    return view ?? null;
   }
 
   function mapNoticesLabelToView(label: string): string | null {
@@ -206,12 +214,16 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     onTabChange?.(label);
 
     if (activeMenu === "product") {
+      if (label === "상품 등록(모두)") {
+        router.push("/theall_manager_only/products/new-modetour");
+        return;
+      }
       const view = mapProductLabelToView(label);
       const params = new URLSearchParams(searchParams.toString());
       if (view) {
-        params.set("view", view);
+        params.set(ADMIN_PRODUCTS_QUERY_KEYS.VIEW, view);
       } else {
-        params.delete("view");
+        params.delete(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
       }
       const query = params.toString();
       const target = query ? `${pathname}?${query}` : pathname;
@@ -334,7 +346,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
           <button
             type="button"
             onClick={() => {
-              router.push("/theall_manager_only/products?view=create");
+              router.push(`/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.CREATE}`);
             }}
             className="btn-admin-primary"
           >

@@ -13,6 +13,13 @@ export type StructuredDaysEditorProps = {
   /** 상품 이미지 → 이벤트에 추가 시 참조할 선택 이벤트 */
   selectedEvent: SelectedEventRef | null;
   onSelectEvent: (ref: SelectedEventRef) => void;
+  /** 모두투어 미할당 이미지 DnD */
+  modetourDnDEnabled?: boolean;
+  onDropExternalImage?: (
+    item: { source: "unassigned"; url: string },
+    destination: { editorType: "structured"; dayIndex: number; eventIndex: number; insertAt?: number }
+  ) => void;
+  onReturnImageToPool?: (url: string) => void;
 };
 
 const EMPTY_DAY_FIRST: ItineraryStructuredDay = {
@@ -36,6 +43,9 @@ export function StructuredDaysEditor({
   onDayFocus,
   selectedEvent,
   onSelectEvent,
+  modetourDnDEnabled,
+  onDropExternalImage,
+  onReturnImageToPool,
 }: StructuredDaysEditorProps) {
   const addFirstDay = () => {
     onDaysChange(() => [EMPTY_DAY_FIRST]);
@@ -137,6 +147,9 @@ export function StructuredDaysEditor({
             onFocus={() => onDayFocus?.(dayIndex)}
             selectedEvent={selectedEvent}
             onEventSelect={(evIndex) => onSelectEvent({ editorType: "structured", dayIndex, eventIndex: evIndex })}
+            modetourDnDEnabled={modetourDnDEnabled}
+            onDropExternalImage={onDropExternalImage}
+            onReturnImageToPool={onReturnImageToPool}
           />
         ))}
         <button

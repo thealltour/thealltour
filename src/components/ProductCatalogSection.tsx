@@ -37,9 +37,6 @@ const PRIORITY_BADGES = ["제철", "인기", "마감임박"];
 
 function buildV2Badges(product: Product, themeBadges: string[]): { type: string; label: string; priority?: number; isActive?: boolean }[] {
   const badges: { type: string; label: string; priority?: number; isActive?: boolean }[] = [];
-  if (product.is_featured_home) {
-    badges.push({ type: "gold", label: "추천", priority: 10, isActive: true });
-  }
   themeBadges.forEach((label) => {
     badges.push({
       type: PRIORITY_BADGES.includes(label) ? "gold" : "muted",
@@ -54,9 +51,6 @@ function buildV2Badges(product: Product, themeBadges: string[]): { type: string;
 function buildProductCardTags(product: Product, themeBadges: string[]): ProductCardTag[] {
   const tags: ProductCardTag[] = [];
   tags.push({ label: product.category, variant: "accent" });
-  if (product.is_featured_home) {
-    tags.push({ label: "추천", variant: "gold" });
-  }
   themeBadges.forEach((label) => {
     tags.push({
       label,

@@ -3,7 +3,6 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { ItineraryV2 } from "@/types/product";
 
-const FEATURED_PRODUCT_LIMIT = 8;
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
   const normalized = message.toLowerCase();
@@ -55,7 +54,6 @@ type ProductBody = {
   itinerary?: string | null;
   inclusions?: string | null;
   is_active?: boolean;
-  is_featured_home?: boolean;
   sort_order?: number | null;
   status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED" | null;
   fuel_included?: boolean | null;
@@ -102,36 +100,6 @@ export async function PATCH(
   }
 
   const { id } = await context.params;
-
-  if (body.is_featured_home === true) {
-    const existingQuery = await supabase
-      .from("products")
-      .select("id,is_featured_home")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (existingQuery.error || !existingQuery.data) {
-      return NextResponse.json({ message: "상품을 찾을 수 없습니다." }, { status: 404 });
-    }
-
-    const alreadyFeatured = Boolean(existingQuery.data.is_featured_home);
-    if (!alreadyFeatured) {
-      const featuredCountQuery = await supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("is_featured_home", true);
-
-      if (featuredCountQuery.error) {
-        return NextResponse.json({ message: "추천상품 개수 확인에 실패했습니다." }, { status: 500 });
-      }
-      if ((featuredCountQuery.count ?? 0) >= FEATURED_PRODUCT_LIMIT) {
-        return NextResponse.json(
-          { message: `메인 추천상품은 최대 ${FEATURED_PRODUCT_LIMIT}개까지 설정할 수 있습니다.` },
-          { status: 400 },
-        );
-      }
-    }
-  }
 
   const updates: Record<string, unknown> = {};
 
@@ -194,13 +162,6 @@ export async function PATCH(
   if (body.inclusions !== undefined) updates.inclusions = body.inclusions?.trim() || null;
   if (body.price !== undefined) updates.price = typeof body.price === "number" ? body.price : null;
   if (body.is_active !== undefined) updates.is_active = body.is_active;
-  if (body.is_featured_home !== undefined) {
-    updates.is_featured_home = body.is_featured_home;
-    if (body.is_featured_home) {
-      // 추천상품으로 설정되면 자동으로 활성화합니다.
-      updates.is_active = true;
-    }
-  }
   if (body.sort_order !== undefined) {
     updates.sort_order = typeof body.sort_order === "number" ? body.sort_order : null;
   }
@@ -331,4 +292,27 @@ export async function DELETE(
 
   revalidateTag("products", "max");
   return NextResponse.json({ message: "상품이 삭제되었습니다." });
+}
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json(
+      { message: `상품 조회에 실패했습니다. (${error.message})` },
+      { status: 500 },
+    );
+  }
+  if (!data) {
+    return NextResponse.json({ message: "상품을 찾을 수 없습니다." }, { status: 404 });
+  }
+  return NextResponse.json(data);
 }

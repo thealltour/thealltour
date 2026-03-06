@@ -1,14 +1,16 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import {
+  ADMIN_PRODUCTS_VIEW,
+  ADMIN_PRODUCTS_QUERY_KEYS,
+  PRODUCT_VIEW_TO_LABEL,
+} from "@/components/admin/products/adminProducts.constants";
 
 const LABEL_ADMIN = "\uAD00\uB9AC\uC790"; // 관리자
 const LABEL_DASHBOARD = "\uB300\uC2DC\uBCF4\uB4DC"; // 대시보드
 const LABEL_DASHBOARD_OVERVIEW = "\uC6B4\uC601 \uD604\uD669"; // 운영 현황
 const LABEL_PRODUCTS = "\uC0C1\uD488 \uAD00\uB9AC"; // 상품 관리
-const LABEL_PRODUCTS_CATEGORY = "\uCE74\uD14C\uACE0\uB9AC/\uD14C\uB9C8 \uAD00\uB9AC"; // 카테고리/테마 관리
-const LABEL_PRODUCTS_CREATE = "\uC0C1\uD488 \uB4F1\uB85D"; // 상품 등록
-const LABEL_PRODUCTS_LIST = "\uC0C1\uD488 \uBAA9\uB85D"; // 상품 목록
 const LABEL_INQUIRIES = "\uBB38\uC758 \uAD00\uB9AC"; // 문의 관리
 const LABEL_MEMBERS = "\uD68C\uC6D0 \uAD00\uB9AC"; // 회원 관리
 const LABEL_SETTINGS = "\uD658\uACBD\uC124\uC815"; // 환경설정
@@ -49,12 +51,14 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
   switch (section) {
     case "products": {
       let detail: string | null = null;
-      if (view === "taxonomy") {
-        detail = LABEL_PRODUCTS_CATEGORY;
-      } else if (view === "create" || view === null) {
-        detail = LABEL_PRODUCTS_CREATE;
-      } else if (view === "list") {
-        detail = LABEL_PRODUCTS_LIST;
+      if (view === ADMIN_PRODUCTS_VIEW.TAXONOMY) {
+        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
+      } else if (view === ADMIN_PRODUCTS_VIEW.CREATE || view === null) {
+        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.CREATE];
+      } else if (view === ADMIN_PRODUCTS_VIEW.LIST) {
+        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
+      } else if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
+        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.FEATURED];
       }
       return detail ? [...base, LABEL_PRODUCTS, detail] : [...base, LABEL_PRODUCTS];
     }
@@ -96,7 +100,7 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
 export default function Breadcrumb() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const view = searchParams.get("view");
+  const view = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
   const labels = buildBreadcrumbLabels(pathname, view);
 
   if (labels.length === 0) {

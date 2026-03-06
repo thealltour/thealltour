@@ -15,9 +15,8 @@ import type {
 import { normalizeImageList } from "@/lib/products/images";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
-const FEATURED_PRODUCT_LIMIT = 8;
 
-function normalizeProduct(row: Record<string, unknown>): Product {
+export function normalizeProduct(row: Record<string, unknown>): Product {
   const rawPrice = row.price;
   const price = typeof rawPrice === "number" ? rawPrice : undefined;
   const sortOrder = typeof row.sort_order === "number" ? row.sort_order : undefined;
@@ -94,8 +93,6 @@ function normalizeProduct(row: Record<string, unknown>): Product {
     meta_description:
       typeof row.meta_description === "string" ? row.meta_description : undefined,
     is_active: typeof row.is_active === "boolean" ? row.is_active : undefined,
-    is_featured_home:
-      typeof row.is_featured_home === "boolean" ? row.is_featured_home : undefined,
     sort_order: sortOrder,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
     status:
@@ -526,43 +523,6 @@ const getProductsCached = unstable_cache(
   return (fallbackQuery.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
   },
   ["products:list"],
-  { revalidate: 60, tags: ["products"] },
-);
-
-/** 홈 전용: is_featured_home인 상품만 (패키지상품 목록에서는 사용하지 않음) */
-export async function getFeaturedProducts() {
-  return getFeaturedProductsCached();
-}
-
-const getFeaturedProductsCached = unstable_cache(
-  async () => {
-  const featuredAdvancedQuery = await supabase
-    .from("products")
-    .select("*")
-    .eq("is_active", true)
-    .eq("is_featured_home", true)
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false, nullsFirst: false })
-    .limit(FEATURED_PRODUCT_LIMIT);
-
-  if (!featuredAdvancedQuery.error) {
-    return (featuredAdvancedQuery.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
-  }
-
-  const featuredSimpleQuery = await supabase
-    .from("products")
-    .select("*")
-    .eq("is_active", true)
-    .eq("is_featured_home", true)
-    .limit(FEATURED_PRODUCT_LIMIT);
-  if (!featuredSimpleQuery.error) {
-    return (featuredSimpleQuery.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
-  }
-
-  const allProducts = await getProducts();
-  return allProducts.slice(0, FEATURED_PRODUCT_LIMIT);
-  },
-  ["products:featured"],
   { revalidate: 60, tags: ["products"] },
 );
 

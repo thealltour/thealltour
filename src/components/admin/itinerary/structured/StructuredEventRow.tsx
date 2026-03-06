@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ItineraryStructuredEvent } from "@/types/product";
 import { EventImagesEditor } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { EventImageItem } from "@/components/admin/itinerary/shared/EventImagesEditor";
+import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 const TIMEOFDAY_OPTIONS = [
@@ -31,6 +32,14 @@ export type StructuredEventRowProps = {
   onRemove: () => void;
   onSelect?: () => void;
   isSelected?: boolean;
+  /** 모두투어 미할당 이미지 DnD */
+  modetourDnDEnabled?: boolean;
+  dayIndex?: number;
+  onDropExternalImage?: (
+    item: { source: "unassigned"; url: string },
+    destination: { editorType: "structured"; dayIndex: number; eventIndex: number; insertAt?: number }
+  ) => void;
+  onReturnImageToPool?: (url: string) => void;
 };
 
 export function StructuredEventRow({
@@ -40,25 +49,16 @@ export function StructuredEventRow({
   onRemove,
   onSelect,
   isSelected,
+  modetourDnDEnabled,
+  dayIndex = 0,
+  onDropExternalImage,
+  onReturnImageToPool,
 }: StructuredEventRowProps) {
   const [imagesOpen, setImagesOpen] = useState(false);
   const imagesList: EventImageItem[] = event.images ?? [];
 
   const handleImagesChange = (nextImages: EventImageItem[]) => {
-    if (nextImages.length === 0) {
-      onEventChange({ images: [] });
-      return;
-    }
-    const hasCover = nextImages.some((i) => i.isCover);
-    const normalized = nextImages.map((item, index) => ({
-      ...item,
-      sortOrder: index,
-      isCover: hasCover ? item.isCover === true : index === 0,
-    }));
-    if (!normalized.some((i) => i.isCover)) {
-      normalized[0] = { ...normalized[0], isCover: true };
-    }
-    onEventChange({ images: normalized });
+    onEventChange({ images: nextImages });
   };
 
   return (
@@ -155,6 +155,22 @@ export function StructuredEventRow({
               value={imagesList}
               onChange={handleImagesChange}
               mode="full"
+              dndContext={
+                modetourDnDEnabled && onDropExternalImage && onReturnImageToPool && dayIndex != null
+                  ? {
+                      enabled: true,
+                      editorType: "structured",
+                      dayIndex,
+                      eventIndex,
+                      onDropExternalImage: (item: ModetourImageDragItem, destination) => {
+                        if (item.source === "unassigned") {
+                          onDropExternalImage(item, { ...destination, editorType: "structured" });
+                        }
+                      },
+                      onReturnImageToPool,
+                    }
+                  : undefined
+              }
             />
           </div>
         )}

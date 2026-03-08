@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Product } from "@/types/product";
 import { normalizeImageList } from "@/lib/products/images";
 import type { ProductSortKey } from "@/components/admin/products/api/adminProducts.types";
@@ -38,25 +38,35 @@ export function useAdminProductsListController({
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
-  const [sortField, setSortField] = useState<ProductSortKey>("sort_order");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<ProductSortKey>("created_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED"
+  >("all");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
   const [pendingMoveId, setPendingMoveId] = useState<string | null>(null);
+  const loadRequestIdRef = useRef(0);
 
   async function loadProducts(args?: {
     page?: number;
     sortField?: ProductSortKey;
     sortDirection?: "asc" | "desc";
     keywordOverride?: string;
+    filterActiveOverride?: "all" | "active" | "inactive";
+    filterStatusOverride?: "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
   }) {
     const effectivePage = args?.page ?? page;
     const effectiveSortField = args?.sortField ?? sortField;
     const effectiveSortDirection = args?.sortDirection ?? sortDirection;
     const effectiveKeyword = args?.keywordOverride ?? debouncedKeyword;
+    const effectiveActive = args?.filterActiveOverride ?? filterActive;
+    const effectiveStatus = args?.filterStatusOverride ?? filterStatus;
 
+    const requestId = ++loadRequestIdRef.current;
     try {
       setErrorMessage("");
       setIsLoading(true);
@@ -66,7 +76,16 @@ export function useAdminProductsListController({
         sortField: effectiveSortField,
         sortDirection: effectiveSortDirection,
         q: effectiveKeyword.trim() !== "" ? effectiveKeyword.trim() : undefined,
+        is_active:
+          effectiveActive === "all"
+            ? undefined
+            : effectiveActive === "active"
+              ? true
+              : false,
+        status:
+          effectiveStatus === "all" ? undefined : effectiveStatus,
       });
+      if (requestId !== loadRequestIdRef.current) return;
       setProducts(
         result.items.map((item) => {
           const images = normalizeImageList(item.images_json);
@@ -79,9 +98,12 @@ export function useAdminProductsListController({
       );
       setTotalCount(result.total);
     } catch (err) {
+      if (requestId !== loadRequestIdRef.current) return;
       setErrorMessage(err instanceof Error ? err.message : ADMIN_PRODUCTS_MESSAGES.LIST_FETCH_ERROR);
     } finally {
-      setIsLoading(false);
+      if (requestId === loadRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -101,6 +123,20 @@ export function useAdminProductsListController({
     }, 300);
     return () => clearTimeout(timer);
   }, [keyword]);
+
+  const isFilterMounted = useRef(false);
+  useEffect(() => {
+    if (!isFilterMounted.current) {
+      isFilterMounted.current = true;
+      return;
+    }
+    setPage(1);
+    loadProducts({
+      page: 1,
+      filterActiveOverride: filterActive,
+      filterStatusOverride: filterStatus,
+    });
+  }, [filterActive, filterStatus]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -159,11 +195,15 @@ export function useAdminProductsListController({
     }
   }
 
-  function handleSortChange(field: ProductSortKey) {
-    let nextDirection: "asc" | "desc" = "asc";
-    if (sortField === field) {
-      nextDirection = sortDirection === "asc" ? "desc" : "asc";
-    }
+  function handleSortChange(field: ProductSortKey, direction?: "asc" | "desc") {
+    const nextDirection: "asc" | "desc" =
+      direction ?? (sortField === field
+        ? sortDirection === "asc"
+          ? "desc"
+          : "asc"
+        : field === "title" || field === "category"
+          ? "asc"
+          : "desc");
     setSortField(field);
     setSortDirection(nextDirection);
     setPage(1);
@@ -249,7 +289,11 @@ export function useAdminProductsListController({
     selectedIds,
     pendingToggleId,
     pendingMoveId,
+    filterActive,
+    filterStatus,
     setKeyword,
+    setFilterActive,
+    setFilterStatus,
     loadProducts,
     movePage,
     toggleSelectAllForPage,

@@ -4,6 +4,7 @@ import type { ItineraryV2Event } from "@/types/product";
 import { EventImagesEditor } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { EventImageItem } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import type { ImagePlacementIssue } from "@/components/admin/modetour/modetourImageValidation";
 import { ChevronDown } from "lucide-react";
 
 const TIMEOFDAY_OPTIONS = [
@@ -28,26 +29,33 @@ export type EventEditorProps = {
   event: ItineraryV2Event | null;
   onChange: (patch: Partial<ItineraryV2Event>) => void;
   onRemove?: () => void;
+  onCopy?: () => void;
   /** 모두투어 미할당 이미지 DnD (ModetourNewProductPage 전용) */
   modetourDnDEnabled?: boolean;
   dayIndex?: number;
   eventIndex?: number;
   onDropExternalImage?: (
-    item: { source: "unassigned"; url: string },
+    item: ModetourImageDragItem,
     destination: { editorType: "v2"; dayIndex: number; eventIndex: number; insertAt?: number }
   ) => void;
   onReturnImageToPool?: (url: string) => void;
+  /** URL별 검증 이슈 (개별 이미지 카드 표시용) */
+  imagePlacementIssuesByUrl?: Record<string, ImagePlacementIssue[]>;
+  showPlacementWarnings?: boolean;
 };
 
 export function EventEditor({
   event,
   onChange,
   onRemove,
+  onCopy,
   modetourDnDEnabled,
   dayIndex = 0,
   eventIndex = 0,
   onDropExternalImage,
   onReturnImageToPool,
+  imagePlacementIssuesByUrl,
+  showPlacementWarnings = true,
 }: EventEditorProps) {
   if (event == null) {
     return (
@@ -60,6 +68,17 @@ export function EventEditor({
   }
 
   const imagesList: EventImageItem[] = event.images ?? [];
+
+  const handleConfirmRemove = () => {
+    const title = event.heading?.trim() || "이 이벤트";
+    if (
+      !window.confirm(
+        `'${title}'를 삭제할까요?\n이벤트에 연결된 이미지 정보도 함께 사라집니다.`,
+      )
+    )
+      return;
+    onRemove?.();
+  };
 
   const handleImagesChange = (nextImages: EventImageItem[]) => {
     if (nextImages.length === 0) {
@@ -82,15 +101,26 @@ export function EventEditor({
     <div className="flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold text-[var(--text-secondary)]">이벤트 편집</p>
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-[11px] text-[var(--danger)] hover:opacity-90"
-          >
-            삭제
-          </button>
-        )}
+        <div className="flex gap-1">
+          {onCopy && (
+            <button
+              type="button"
+              onClick={onCopy}
+              className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+            >
+              복사
+            </button>
+          )}
+          {onRemove && (
+            <button
+              type="button"
+              onClick={handleConfirmRemove}
+              className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-[11px] text-[var(--danger)] hover:opacity-90"
+            >
+              삭제
+            </button>
+          )}
+        </div>
       </div>
 
       <div>
@@ -187,14 +217,14 @@ export function EventEditor({
                       dayIndex,
                       eventIndex,
                       onDropExternalImage: (item: ModetourImageDragItem, destination) => {
-                        if (item.source === "unassigned") {
-                          onDropExternalImage(item, { ...destination, editorType: "v2" });
-                        }
+                        onDropExternalImage(item, { ...destination, editorType: "v2" });
                       },
                       onReturnImageToPool,
                     }
                   : undefined
               }
+              issuesByUrl={imagePlacementIssuesByUrl}
+              showWarnings={showPlacementWarnings}
             />
           </div>
         </details>

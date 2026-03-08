@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import type { Product } from "@/types/product";
 import type { AdminProductsListViewProps } from "./adminProducts.types";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 
 export type { AdminProductsListViewProps } from "./adminProducts.types";
 
@@ -19,6 +21,8 @@ export default function AdminProductsListView({
   selectedIds,
   pendingMoveId,
   pendingToggleId,
+  filterActive,
+  filterStatus,
   onKeywordChange,
   onSortChange,
   onPageChange,
@@ -30,20 +34,100 @@ export default function AdminProductsListView({
   onDeleteProduct,
   onQuickToggleActive,
   onMoveSortOrder,
+  onFilterActiveChange,
+  onFilterStatusChange,
+  newProductHref,
+  onRetryLoad,
 }: AdminProductsListViewProps) {
+  const isEmpty = products.length === 0;
+  const isSearchEmpty = keyword.trim() !== "" && isEmpty;
+
+  function formatDate(iso?: string) {
+    if (!iso) return "-";
+    try {
+      const d = new Date(iso);
+      return new Intl.DateTimeFormat("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(d);
+    } catch {
+      return "-";
+    }
+  }
+
+  const STATUS_LABELS: Record<string, string> = {
+    AVAILABLE: "예약 가능",
+    LIMITED: "잔여 한정",
+    SOLD_OUT: "마감",
+    CONSULT_REQUIRED: "상담 후 안내",
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-lg font-bold text-[var(--primary)]">상품 목록</h3>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={keyword}
-            onChange={(e) => onKeywordChange(e.target.value)}
-            placeholder="상품 검색"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-          />
-        </div>
+        {newProductHref ? (
+          <Link
+            href={newProductHref}
+            className="rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-[var(--on-primary)] hover:opacity-90"
+          >
+            새 상품 등록
+          </Link>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+        <input
+          type="text"
+          value={keyword}
+          onChange={(e) => onKeywordChange(e.target.value)}
+          placeholder="상품명·설명·카테고리·테마·원본주소 검색"
+          className="min-w-[200px] flex-1 rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-soft)]"
+        />
+        <select
+          value={filterActive}
+          onChange={(e) => onFilterActiveChange(e.target.value as "all" | "active" | "inactive")}
+          className="rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)]"
+        >
+          <option value="all">노출: 전체</option>
+          <option value="active">노출만</option>
+          <option value="inactive">비노출만</option>
+        </select>
+        <select
+          value={filterStatus}
+          onChange={(e) =>
+            onFilterStatusChange(
+              e.target.value as "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED",
+            )
+          }
+          className="rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)]"
+        >
+          <option value="all">상태: 전체</option>
+          <option value="AVAILABLE">예약 가능</option>
+          <option value="LIMITED">잔여 한정</option>
+          <option value="SOLD_OUT">마감</option>
+          <option value="CONSULT_REQUIRED">상담 후 안내</option>
+        </select>
+        <select
+          value={`${sortField}:${sortDirection}`}
+          onChange={(e) => {
+            const [f, d] = (e.target.value as string).split(":");
+            onSortChange(f as Parameters<typeof onSortChange>[0], d as "asc" | "desc");
+          }}
+          className="rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)]"
+        >
+          <option value="created_at:desc">최근 생성순</option>
+          <option value="created_at:asc">오래된 생성순</option>
+          <option value="updated_at:desc">최근 수정순</option>
+          <option value="title:asc">제목 가나다순</option>
+          <option value="title:desc">제목 가나다 역순</option>
+          <option value="sort_order:asc">노출순서순</option>
+          <option value="price:asc">가격 낮은순</option>
+          <option value="price:desc">가격 높은순</option>
+        </select>
       </div>
 
       {selectedIds.length > 0 ? (
@@ -70,12 +154,27 @@ export default function AdminProductsListView({
         </div>
       ) : null}
 
-      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
+      {errorMessage ? (
+        <div className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)]">
+          <p>{errorMessage}</p>
+          {onRetryLoad ? (
+            <button
+              type="button"
+              onClick={() => onRetryLoad()}
+              className="mt-2 rounded border border-[var(--danger)]/50 bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface-muted)]"
+            >
+              다시 불러오기
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">상품 목록을 불러오는 중입니다...</p>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+          상품 목록을 불러오는 중입니다...
+        </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1160px] border-collapse text-sm">
+          <table className="w-full min-w-[1200px] border-collapse text-sm">
             <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
               <tr>
                 <th className="w-[42px] px-4 py-3 text-center">
@@ -89,6 +188,7 @@ export default function AdminProductsListView({
                     }
                   />
                 </th>
+                <th className="w-[56px] px-2 py-3 text-center font-semibold whitespace-nowrap">대표</th>
                 <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">원본주소</th>
                 <th className="px-4 py-3 text-left font-semibold">
                   <button
@@ -140,20 +240,26 @@ export default function AdminProductsListView({
                   </button>
                 </th>
                 <th className="w-[110px] px-4 py-3 text-left font-semibold whitespace-nowrap">활성화</th>
+                <th className="w-[100px] px-4 py-3 text-left font-semibold whitespace-nowrap">예약상태</th>
+                <th className="w-[120px] px-4 py-3 text-left font-semibold whitespace-nowrap">생성일</th>
                 <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">작업</th>
               </tr>
             </thead>
             <tbody>
-              {products.length === 0 ? (
+              {isEmpty ? (
                 <tr className="border-t border-[var(--divider)]">
-                  <td colSpan={9} className="px-4 py-10 text-center text-[var(--text-muted)]">
+                  <td colSpan={12} className="px-4 py-10 text-center text-[var(--text-muted)]">
                     <div className="mx-auto flex max-w-md flex-col items-center gap-2">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)]">
-                        📦
+                        {isSearchEmpty ? "🔍" : "📦"}
                       </div>
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">등록된 상품이 없습니다.</p>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">
+                        {isSearchEmpty ? "검색 결과가 없습니다." : "등록된 상품이 없습니다."}
+                      </p>
                       <p className="text-xs text-[var(--text-muted)]">
-                        상단의 &quot;상품 등록&quot; 탭에서 첫 번째 상품을 추가해 보세요.
+                        {isSearchEmpty
+                          ? "다른 검색어로 시도해 보세요."
+                          : '상단의 "새 상품 등록" 또는 "상품 등록" 탭에서 첫 번째 상품을 추가해 보세요.'}
                       </p>
                     </div>
                   </td>
@@ -169,6 +275,20 @@ export default function AdminProductsListView({
                         onChange={() => onToggleSelectOne(product.id)}
                       />
                     </td>
+                    <td className="px-2 py-3 text-center">
+                      {product.image_url?.trim() ? (
+                        <div className="relative mx-auto h-10 w-10 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-muted)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={normalizeProductImageUrl(product.image_url)}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-[var(--text-muted)]">-</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       {product.product_source_url ? (
                         <a
@@ -183,7 +303,7 @@ export default function AdminProductsListView({
                         "-"
                       )}
                     </td>
-                    <td className="max-w-[270px] px-4 py-3 font-medium text-[var(--primary)]">
+                    <td className="max-w-[270px] px-4 py-3 font-medium text-[var(--primary)] truncate" title={product.title}>
                       {product.title}
                     </td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">{product.category}</td>
@@ -230,7 +350,37 @@ export default function AdminProductsListView({
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
+                      {product.status && STATUS_LABELS[product.status] ? (
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                            product.status === "SOLD_OUT"
+                              ? "bg-[var(--danger-bg)] text-[var(--danger)]"
+                              : product.status === "LIMITED"
+                                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+                                : product.status === "CONSULT_REQUIRED"
+                                  ? "bg-[var(--surface-muted)] text-[var(--text-secondary)]"
+                                  : "bg-[var(--primary-soft)] text-[var(--primary)]"
+                          }`}
+                        >
+                          {STATUS_LABELS[product.status]}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-[var(--text-muted)]">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-[var(--text-secondary)]" title={product.created_at}>
+                      {formatDate(product.created_at)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2 whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                        <Link
+                          href={`/products/${product.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded border border-[var(--primary)]/50 bg-[var(--primary-soft)] px-2 py-1 text-xs font-medium text-[var(--primary)] hover:opacity-90"
+                        >
+                          미리보기
+                        </Link>
                         <button
                           type="button"
                           disabled={pendingToggleId === product.id}

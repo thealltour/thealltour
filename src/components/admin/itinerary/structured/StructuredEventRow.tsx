@@ -5,6 +5,7 @@ import type { ItineraryStructuredEvent } from "@/types/product";
 import { EventImagesEditor } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { EventImageItem } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import type { ImagePlacementIssue } from "@/components/admin/modetour/modetourImageValidation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 const TIMEOFDAY_OPTIONS = [
@@ -36,10 +37,12 @@ export type StructuredEventRowProps = {
   modetourDnDEnabled?: boolean;
   dayIndex?: number;
   onDropExternalImage?: (
-    item: { source: "unassigned"; url: string },
+    item: ModetourImageDragItem,
     destination: { editorType: "structured"; dayIndex: number; eventIndex: number; insertAt?: number }
   ) => void;
   onReturnImageToPool?: (url: string) => void;
+  imagePlacementIssuesByUrl?: Record<string, ImagePlacementIssue[]>;
+  showPlacementWarnings?: boolean;
 };
 
 export function StructuredEventRow({
@@ -53,9 +56,22 @@ export function StructuredEventRow({
   dayIndex = 0,
   onDropExternalImage,
   onReturnImageToPool,
+  imagePlacementIssuesByUrl,
+  showPlacementWarnings = true,
 }: StructuredEventRowProps) {
   const [imagesOpen, setImagesOpen] = useState(false);
   const imagesList: EventImageItem[] = event.images ?? [];
+
+  const handleConfirmRemove = () => {
+    const title = event.heading?.trim() || "이 이벤트";
+    if (
+      !window.confirm(
+        `'${title}'를 삭제할까요?\n이벤트에 연결된 이미지 정보도 함께 사라집니다.`,
+      )
+    )
+      return;
+    onRemove?.();
+  };
 
   const handleImagesChange = (nextImages: EventImageItem[]) => {
     onEventChange({ images: nextImages });
@@ -130,8 +146,8 @@ export function StructuredEventRow({
       </select>
       <button
         type="button"
-        onClick={onRemove}
-        className="rounded border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+        onClick={handleConfirmRemove}
+        className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-[11px] text-[var(--danger)] hover:opacity-90"
       >
         삭제
       </button>
@@ -155,6 +171,8 @@ export function StructuredEventRow({
               value={imagesList}
               onChange={handleImagesChange}
               mode="full"
+              issuesByUrl={imagePlacementIssuesByUrl}
+              showWarnings={showPlacementWarnings}
               dndContext={
                 modetourDnDEnabled && onDropExternalImage && onReturnImageToPool && dayIndex != null
                   ? {
@@ -163,9 +181,7 @@ export function StructuredEventRow({
                       dayIndex,
                       eventIndex,
                       onDropExternalImage: (item: ModetourImageDragItem, destination) => {
-                        if (item.source === "unassigned") {
-                          onDropExternalImage(item, { ...destination, editorType: "structured" });
-                        }
+                        onDropExternalImage(item, { ...destination, editorType: "structured" });
                       },
                       onReturnImageToPool,
                     }

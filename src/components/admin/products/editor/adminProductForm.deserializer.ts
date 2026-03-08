@@ -1,6 +1,7 @@
 /**
  * API/Product → Admin product form state 변환
  * 편집 진입 시 서버 응답을 폼에 주입하는 로직
+ * PR8.11: 로드 직후 hydrate 적용으로 editor state 일관성 확보
  */
 
 import type { Product } from "@/types/product";
@@ -10,6 +11,7 @@ import {
   getTimelineModelFromSchedule,
   timelineModelToStructuredDays,
 } from "@/lib/products/mapProductToTimelineModel";
+import { hydrateItineraryImages } from "@/lib/images/hydrateItineraryImages";
 import { normalizeOXValue } from "./adminProductForm.helpers";
 
 /**
@@ -83,13 +85,22 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     meta_info: product.meta_info ?? "",
     options_json: product.options ? JSON.stringify(product.options, null, 2) : "",
     itinerary_media_json: product.itinerary_media_json ?? {},
-    itinerary_days_json:
-      product.itinerary_days_json && product.itinerary_days_json.length > 0
-        ? product.itinerary_days_json
-        : timelineModelToStructuredDays(
-            getTimelineModelFromSchedule(product.detailed_schedule ?? ""),
-          ),
-    itinerary_v2_json: product.itinerary_v2_json ?? { days: [] },
+    ...((): Pick<ProductFormState, "itinerary_days_json" | "itinerary_v2_json"> => {
+      const hydrated = hydrateItineraryImages({
+        v2Days: product.itinerary_v2_json?.days ?? [],
+        structuredDays: product.itinerary_days_json ?? [],
+        unassignedImageUrls: [],
+      });
+      return {
+        itinerary_days_json:
+          hydrated.structuredDays.length > 0
+            ? hydrated.structuredDays
+            : timelineModelToStructuredDays(
+                getTimelineModelFromSchedule(product.detailed_schedule ?? ""),
+              ),
+        itinerary_v2_json: { days: hydrated.v2Days },
+      };
+    })(),
     legacy_itinerary_text: "",
     theme_chart_json: product.theme_chart_json?.items ?? [],
     overview_accommodation: product.overview_accommodation ?? "",

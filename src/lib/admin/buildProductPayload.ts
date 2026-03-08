@@ -1,156 +1,34 @@
 /**
  * ProductFormState → API POST body (상품 생성용).
- * AdminProductManager의 저장 payload와 동일한 구조로 맞춤.
+ * PR9: serializer 계층으로 통합. create/update 동일 규칙 유지.
  */
 
 import type { ProductFormState } from "@/types/adminProductForm";
-import { normalizeImageList } from "@/lib/products/images";
-import { serializeStructuredDaysToSchedule } from "@/lib/products/mapProductToTimelineModel";
+import { serializeAdminProductForm } from "@/components/admin/products/editor/adminProductForm.serializer";
 
 export type ProductCreateBodyOverrides = {
   product_source_url?: string;
 };
 
-/** PostgreSQL integer 호환: 유한 정수만, 범위 초과 시 null */
-function toSafeInteger(value: unknown): number | null {
-  if (value == null) return null;
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return null;
-  const int = Math.round(n);
-  if (int < -2147483648 || int > 2147483647) return null;
-  return int;
-}
-
 /**
  * 폼 상태를 API POST /api/admin/products 에 보낼 body로 변환한다.
- * source_url 등은 overrides로 덮어쓸 수 있다.
+ * 내부적으로 serializeAdminProductForm 사용. source_url 등은 overrides로 덮어쓸 수 있다.
  */
 export function buildProductCreateBody(
   form: ProductFormState,
   overrides?: ProductCreateBodyOverrides,
 ): Record<string, unknown> {
-  const normalizedImages = normalizeImageList(form.images_json);
-  const primaryImageUrl = form.image_url?.trim() || normalizedImages[0] || "";
-  const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
-  const sourceUrl = overrides?.product_source_url?.trim() ?? form.product_source_url?.trim();
-
-  const payload: Record<string, unknown> = {
-    title: form.title?.trim() ?? "",
-    description: form.description ?? "",
-    meta_title: form.meta_title?.trim() === "" ? undefined : form.meta_title,
-    meta_description: form.meta_description?.trim() === "" ? undefined : form.meta_description,
-    point_benefits: form.point_benefits?.trim() === "" ? undefined : form.point_benefits,
-    point_tourism: form.point_tourism,
-    point_guide: form.point_guide,
-    meeting_info: form.meeting_info,
-    travel_insurance: form.travel_insurance,
-    included_items: form.included_items?.trim() === "" ? undefined : form.included_items,
-    excluded_items: form.excluded_items?.trim() === "" ? undefined : form.excluded_items,
-    departure_from_airport:
-      form.departure_from_airport?.trim() === "" ? undefined : form.departure_from_airport,
-    departure_from_date: form.departure_from_date?.trim() === "" ? undefined : form.departure_from_date,
-    departure_from_time: form.departure_from_time?.trim() === "" ? undefined : form.departure_from_time,
-    departure_to_airport: form.departure_to_airport?.trim() === "" ? undefined : form.departure_to_airport,
-    departure_to_date: form.departure_to_date?.trim() === "" ? undefined : form.departure_to_date,
-    departure_to_time: form.departure_to_time?.trim() === "" ? undefined : form.departure_to_time,
-    departure_flight_name:
-      form.departure_flight_name?.trim() === "" ? undefined : form.departure_flight_name,
-    departure_baggage_limit:
-      form.departure_baggage_limit?.trim() === "" ? undefined : form.departure_baggage_limit,
-    arrival_from_airport:
-      form.arrival_from_airport?.trim() === "" ? undefined : form.arrival_from_airport,
-    arrival_from_date: form.arrival_from_date?.trim() === "" ? undefined : form.arrival_from_date,
-    arrival_from_time: form.arrival_from_time?.trim() === "" ? undefined : form.arrival_from_time,
-    arrival_to_airport: form.arrival_to_airport?.trim() === "" ? undefined : form.arrival_to_airport,
-    arrival_to_date: form.arrival_to_date?.trim() === "" ? undefined : form.arrival_to_date,
-    arrival_to_time: form.arrival_to_time?.trim() === "" ? undefined : form.arrival_to_time,
-    arrival_flight_name: form.arrival_flight_name?.trim() === "" ? undefined : form.arrival_flight_name,
-    arrival_baggage_limit:
-      form.arrival_baggage_limit?.trim() === "" ? undefined : form.arrival_baggage_limit,
-    detailed_schedule:
-      form.itinerary_days_json?.length > 0
-        ? serializeStructuredDaysToSchedule(form.itinerary_days_json)
-        : (form.detailed_schedule?.trim() === "" ? undefined : form.detailed_schedule),
-    optional_tours: form.optional_tours?.trim() === "" ? undefined : form.optional_tours,
-    min_departure_people:
-      form.min_departure_people?.trim() === "" ? undefined : form.min_departure_people,
-    terms_template_type: form.terms_template_type === "" ? undefined : form.terms_template_type,
-    terms_and_notes: form.terms_and_notes?.trim() === "" ? undefined : form.terms_and_notes,
-    product_source_url: sourceUrl === "" ? undefined : sourceUrl,
-    image_url: primaryImageUrl,
-    images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
-    category: form.category || "여행상품",
-    theme: form.theme?.trim() === "" ? null : form.theme,
-    price: normalizedPrice === "" ? null : toSafeInteger(Number(normalizedPrice)),
-    duration: form.duration?.trim() === "" ? null : form.duration,
-    itinerary: form.itinerary?.trim() === "" ? null : form.itinerary,
-    inclusions: form.inclusions?.trim() === "" ? null : form.inclusions,
-    is_active: form.is_active,
-    sort_order: form.sort_order?.trim() === "" ? null : toSafeInteger(Number(form.sort_order)),
-    status:
-      form.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(form.status)
-        ? form.status
-        : undefined,
-    one_liner: form.one_liner?.trim() === "" ? undefined : form.one_liner.trim(),
-    price_meta: form.price_meta?.trim() === "" ? undefined : form.price_meta.trim(),
-    meta_info: form.meta_info?.trim() === "" ? undefined : form.meta_info.trim(),
-    fuel_included:
-      form.fuel_included === ""
-        ? undefined
-        : form.fuel_included === "true"
-          ? true
-          : form.fuel_included === "false"
-            ? false
-            : undefined,
-    options: (() => {
-      const raw = form.options_json?.trim();
-      if (!raw) return undefined;
-      try {
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        if (
-          parsed &&
-          typeof parsed === "object" &&
-          Array.isArray(parsed.groups) &&
-          parsed.groups.length > 0
-        ) {
-          return parsed;
-        }
-        return undefined;
-      } catch {
-        return undefined;
-      }
-    })(),
-    itinerary_media_json:
-      (() => {
-        const media = form.itinerary_media_json ?? {};
-        const dayCount =
-          form.itinerary_days_json?.length > 0
-            ? form.itinerary_days_json.length
-            : 0;
-        const cleaned = Object.fromEntries(
-          Object.entries(media).filter(([key, v]) => {
-            if (typeof v !== "string" || !v.trim()) return false;
-            const n = parseInt(key, 10);
-            return !Number.isNaN(n) && n >= 1 && (dayCount === 0 || n <= dayCount);
-          }),
-        );
-        return Object.keys(cleaned).length > 0 ? cleaned : undefined;
-      })(),
-    itinerary_days_json:
-      form.itinerary_days_json?.length > 0 ? form.itinerary_days_json : null,
-    itinerary_v2_json:
-      form.itinerary_v2_json?.days?.length > 0 ? form.itinerary_v2_json : null,
-    theme_chart_json: (() => {
-      const items = (form.theme_chart_json ?? []).filter(
-        (i) => i?.label?.trim() && typeof i.percent === "number",
-      );
-      return items.length >= 2 ? { items } : null;
-    })(),
-    overview_accommodation:
-      form.overview_accommodation?.trim() === "" ? undefined : form.overview_accommodation.trim(),
-    overview_region: form.overview_region?.trim() === "" ? undefined : form.overview_region.trim(),
-    overview_duration: form.overview_duration?.trim() === "" ? undefined : form.overview_duration.trim(),
+  const formForSerialize: ProductFormState = {
+    ...form,
+    product_source_url:
+      overrides?.product_source_url?.trim() ?? form.product_source_url?.trim() ?? "",
   };
-
+  const payload = serializeAdminProductForm(formForSerialize, {
+    unassignedImageUrls: [],
+  }) as Record<string, unknown>;
+  if (overrides?.product_source_url !== undefined) {
+    const v = overrides.product_source_url?.trim();
+    payload.product_source_url = v === "" ? undefined : v;
+  }
   return payload;
 }

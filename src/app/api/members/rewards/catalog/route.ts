@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import type { RewardCatalogRow } from "@/types/pointsRewards";
+import type { RewardCatalogRow } from "@/types/pointsRewardsV2";
 
 /** 교환 가능 경품 목록 (비로그인도 조회 가능) */
 export async function GET() {

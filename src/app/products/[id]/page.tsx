@@ -110,6 +110,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
+  if (product.is_active === false) {
+    notFound();
+  }
+
   const formattedPrice = formatPrice(product.price);
   const normalizedIncluded = product.included_items?.trim() ?? "";
   const normalizedExcluded = product.excluded_items?.trim() ?? "";

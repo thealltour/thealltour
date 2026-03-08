@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ModetourImportV1, ModetourImportWarning } from "@/types/modetourImport";
@@ -8,6 +8,7 @@ import type { Product } from "@/types/product";
 import type { SelectedEventRef } from "@/types/product";
 import { createEmptyProductFormState } from "@/types/adminProductForm";
 import type { ProductFormState } from "@/types/adminProductForm";
+import { serializeAdminProductForm } from "@/components/admin/products/editor/adminProductForm.serializer";
 import {
   isModetourImportV1,
   validateModetourImportV1,
@@ -15,12 +16,21 @@ import {
   mergeDraftOnlyEmpty,
 } from "@/lib/admin/modetourImport";
 import { formToPreviewProduct } from "@/lib/admin/productPreview";
-import { buildProductCreateBody } from "@/lib/admin/buildProductPayload";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { normalizeEventImages } from "@/components/admin/itinerary/shared/normalizeEventImages";
-import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import {
+  type ModetourImageDragItem,
+  isValidImageDndPayload,
+  isNoOpDrop,
+} from "@/components/admin/modetour/modetourImageDnd";
+import { validateImagePlacementState, groupImagePlacementIssuesByUrl } from "@/components/admin/modetour/modetourImageValidation";
+import { normalizeImageUrl } from "@/lib/images/normalizeImageUrl";
+import { getEventImageUrl } from "@/lib/images/getEventImageUrl";
+import { dedupeEventImages } from "@/lib/images/dedupeEventImages";
+import { hydrateItineraryImages } from "@/lib/images/hydrateItineraryImages";
 import { UnassignedImagePool } from "@/components/admin/modetour/UnassignedImagePool";
 import { ScheduleVisualEditorV2 } from "@/components/admin/ScheduleVisualEditorV2";
+import { getProductDiffSummary } from "@/lib/adminProductDiff";
 
 const SNIPPET_LEN = 200;
 const PRODUCTS_LIST_PATH = "/theall_manager_only/products";
@@ -54,6 +64,12 @@ function arrayMove<T>(arr: T[], from: number, to: number): T[] {
   return next;
 }
 
+/** target 이미지 배열에 이미 정규화된 url이 있는지 */
+function targetHasUrl(images: EventImageObj[] | undefined, normalizedUrl: string): boolean {
+  if (!normalizedUrl || !images?.length) return false;
+  return images.some((img) => normalizeImageUrl(getEventImageUrl(img)) === normalizedUrl);
+}
+
 export default function ModetourNewProductPage() {
   const [jsonText, setJsonText] = useState("");
   const [importData, setImportData] = useState<ModetourImportV1 | null>(null);
@@ -75,6 +91,32 @@ export default function ModetourNewProductPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [existingProductId, setExistingProductId] = useState<string | null>(null);
+
+  const initialFormSnapshotRef = useRef<ProductFormState | null>(null);
+  const initialUnassignedCountRef = useRef<number>(0);
+
+  const imagePlacementValidation = useMemo(
+    () =>
+      validateImagePlacementState({
+        v2Days: formState.itinerary_v2_json?.days,
+        structuredDays: formState.itinerary_days_json,
+        unassignedImageUrls,
+      }),
+    [formState.itinerary_v2_json?.days, formState.itinerary_days_json, unassignedImageUrls],
+  );
+
+  const imagePlacementIssuesByUrl = useMemo(
+    () => groupImagePlacementIssuesByUrl(imagePlacementValidation.issues),
+    [imagePlacementValidation.issues],
+  );
+
+  const diffSummary = useMemo(() => {
+    const initial = initialFormSnapshotRef.current ?? formState;
+    return getProductDiffSummary(initial, formState, {
+      initialUnassignedCount: initialUnassignedCountRef.current,
+      currentUnassignedCount: unassignedImageUrls.length,
+    });
+  }, [formState, unassignedImageUrls.length]);
 
   function handleValidate() {
     setParseError(null);
@@ -103,8 +145,23 @@ export default function ModetourNewProductPage() {
       const emptyForm = createEmptyProductFormState();
       const emptyDraft = { version: 1 as const, form: emptyForm, savedAt: 0 };
       const merged = mergeDraftOnlyEmpty(emptyDraft, patch);
-      setFormState(merged.form);
-      setUnassignedImageUrls(parsed.media?.unassignedImageUrls ?? []);
+      const hydrated = hydrateItineraryImages({
+        v2Days: merged.form.itinerary_v2_json?.days,
+        structuredDays: merged.form.itinerary_days_json,
+        unassignedImageUrls: parsed.media?.unassignedImageUrls ?? [],
+      });
+      setFormState({
+        ...merged.form,
+        itinerary_v2_json: { days: hydrated.v2Days },
+        itinerary_days_json: hydrated.structuredDays,
+      });
+      setUnassignedImageUrls(hydrated.unassignedImageUrls);
+      initialFormSnapshotRef.current = structuredClone({
+        ...merged.form,
+        itinerary_v2_json: { days: hydrated.v2Days },
+        itinerary_days_json: hydrated.structuredDays,
+      });
+      initialUnassignedCountRef.current = hydrated.unassignedImageUrls.length;
 
       const imageUrl =
         merged.form.image_url?.trim() ||
@@ -134,6 +191,7 @@ export default function ModetourNewProductPage() {
     setSaveError(null);
     setCreatedProductId(null);
     setExistingProductId(null);
+    initialFormSnapshotRef.current = null;
   }
 
   function assignUnassignedImageToEvent(params: {
@@ -144,6 +202,9 @@ export default function ModetourNewProductPage() {
     insertAt?: number;
   }) {
     const { editorType, dayIndex, eventIndex, url, insertAt } = params;
+    const normalizedUrl = normalizeImageUrl(url);
+    if (!normalizedUrl) return;
+
     setFormState((prev) => {
       if (editorType === "v2") {
         const days = prev.itinerary_v2_json?.days ?? [];
@@ -153,8 +214,10 @@ export default function ModetourNewProductPage() {
         const event = events[eventIndex];
         if (!event) return prev;
         const images = event.images ?? [];
+        if (targetHasUrl(images, normalizedUrl)) return prev;
         const at = insertAt != null ? Math.min(insertAt, images.length) : images.length;
-        const nextImages = [...images.slice(0, at), { url }, ...images.slice(at)];
+        let nextImages = [...images.slice(0, at), { url }, ...images.slice(at)];
+        nextImages = dedupeEventImages(nextImages);
         const normalized = normalizeEventImages(nextImages);
         const nextEvents = events.map((e, i) =>
           i === eventIndex ? { ...e, images: normalized } : e,
@@ -174,8 +237,10 @@ export default function ModetourNewProductPage() {
       const event = events[eventIndex];
       if (!event) return prev;
       const images = event.images ?? [];
+      if (targetHasUrl(images, normalizedUrl)) return prev;
       const at = insertAt != null ? Math.min(insertAt, images.length) : images.length;
-      const nextImages = [...images.slice(0, at), { url }, ...images.slice(at)];
+      let nextImages = [...images.slice(0, at), { url }, ...images.slice(at)];
+      nextImages = dedupeEventImages(nextImages);
       const normalized = normalizeEventImages(nextImages);
       const nextEvents = events.map((e, i) =>
         i === eventIndex ? { ...e, images: normalized } : e,
@@ -190,6 +255,30 @@ export default function ModetourNewProductPage() {
 
   function returnEventImageToUnassigned(params: { url: string }) {
     setUnassignedImageUrls((prev) => [...prev, params.url]);
+  }
+
+  function handleAutoAssignImages() {
+    const days = formState.itinerary_v2_json?.days ?? [];
+    const unassigned = [...unassignedImageUrls];
+    let uIndex = 0;
+    const nextDays = days.map((day) => ({
+      ...day,
+      events: (day.events ?? []).map((ev) => {
+        const hasImages = (ev.images?.length ?? 0) > 0;
+        if (hasImages || uIndex >= unassigned.length) return ev;
+        const url = unassigned[uIndex];
+        uIndex += 1;
+        const newImages = normalizeEventImages([{ url, sortOrder: 0, isCover: true }]);
+        const merged = dedupeEventImages([...(ev.images ?? []), ...newImages]);
+        return { ...ev, images: normalizeEventImages(merged) };
+      }),
+    }));
+    const consumed = uIndex;
+    setFormState((prev) => ({
+      ...prev,
+      itinerary_v2_json: { ...prev.itinerary_v2_json, days: nextDays },
+    }));
+    setUnassignedImageUrls((prev) => prev.slice(consumed));
   }
 
   function reorderWithinEvent(params: {
@@ -297,10 +386,43 @@ export default function ModetourNewProductPage() {
       const imageToMove = sourceImages[sourceImageIndex];
       if (!imageToMove) return prev;
 
+      const movedUrl = normalizeImageUrl(imageToMove.url);
       const afterRemove = removeImageAt(sourceImages, sourceImageIndex);
       const targetBase = targetImages ?? [];
       const insertAt = Math.max(0, Math.min(targetInsertAt, targetBase.length));
-      const afterInsert = insertImageAt(targetBase, imageToMove, insertAt);
+
+      if (targetHasUrl(targetBase, movedUrl)) {
+        const normalizedSource = normalizeEventImages(afterRemove);
+        if (sourceEditorType === "v2") {
+          const days = prev.itinerary_v2_json?.days ?? [];
+          const nextDays = days.map((d, i) =>
+            i === sourceDayIndex
+              ? {
+                  ...d,
+                  events: (d.events ?? []).map((e, ei) =>
+                    ei === sourceEventIndex ? { ...e, images: normalizedSource } : e,
+                  ),
+                }
+              : d,
+          );
+          return { ...prev, itinerary_v2_json: { ...prev.itinerary_v2_json, days: nextDays } };
+        }
+        const days = prev.itinerary_days_json ?? [];
+        const nextDays = days.map((d, i) =>
+          i === sourceDayIndex
+            ? {
+                ...d,
+                events: d.events.map((e, ei) =>
+                  ei === sourceEventIndex ? { ...e, images: normalizedSource } : e,
+                ),
+              }
+            : d,
+        );
+        return { ...prev, itinerary_days_json: nextDays };
+      }
+
+      let afterInsert = insertImageAt(targetBase, imageToMove, insertAt);
+      afterInsert = dedupeEventImages(afterInsert);
       const normalizedSource = normalizeEventImages(afterRemove);
       const normalizedTarget = normalizeEventImages(afterInsert);
 
@@ -427,14 +549,43 @@ export default function ModetourNewProductPage() {
       insertAt?: number;
     },
   ) {
+    if (!payload || !isValidImageDndPayload(payload)) return;
+    const normalizedUrl = normalizeImageUrl(payload.url);
+    if (!normalizedUrl) return;
+
+    const destEditorType = destination.editorType;
+    const destDayIndex = destination.dayIndex;
+    const destEventIndex = destination.eventIndex;
+    const destInsertAt =
+      destination.insertAt != null
+        ? Math.max(0, destination.insertAt)
+        : (() => {
+            const days =
+              destEditorType === "v2"
+                ? formState.itinerary_v2_json?.days
+                : formState.itinerary_days_json;
+            const day = days?.[destDayIndex];
+            const images = day?.events?.[destEventIndex]?.images ?? [];
+            return images.length;
+          })();
+
+    const destDays = destEditorType === "v2" ? formState.itinerary_v2_json?.days : formState.itinerary_days_json;
+    const destDay = destDays?.[destDayIndex];
+    const destEvent = destDay?.events?.[destEventIndex];
+    if (!destDay || !destEvent) return;
+
     if (payload.source === "unassigned") {
-      assignUnassignedImageToEvent({
-        editorType: destination.editorType,
-        dayIndex: destination.dayIndex,
-        eventIndex: destination.eventIndex,
-        url: payload.url,
-        insertAt: destination.insertAt,
-      });
+      if (targetHasUrl(destEvent.images ?? [], normalizedUrl)) {
+        setUnassignedImageUrls((prev) => removeFirstMatch(prev, payload.url));
+      } else {
+        assignUnassignedImageToEvent({
+          editorType: destEditorType,
+          dayIndex: destDayIndex,
+          eventIndex: destEventIndex,
+          url: payload.url,
+          insertAt: destInsertAt,
+        });
+      }
       return;
     }
 
@@ -443,30 +594,39 @@ export default function ModetourNewProductPage() {
       const sourceDayIndex = payload.dayIndex;
       const sourceEventIndex = payload.eventIndex;
       const sourceImageIndex = payload.imageIndex;
-      const targetEditorType = destination.editorType;
-      const targetDayIndex = destination.dayIndex;
-      const targetEventIndex = destination.eventIndex;
-      const targetInsertAt =
-        destination.insertAt != null
-          ? Math.max(0, destination.insertAt)
-          : (() => {
-              const days =
-                targetEditorType === "v2"
-                  ? formState.itinerary_v2_json?.days
-                  : formState.itinerary_days_json;
-              const day = days?.[targetDayIndex];
-              const images = day?.events?.[targetEventIndex]?.images ?? [];
-              return images.length;
-            })();
+      const sourceDays = sourceEditorType === "v2" ? formState.itinerary_v2_json?.days : formState.itinerary_days_json;
+      const sourceDay = sourceDays?.[sourceDayIndex];
+      const sourceEvent = sourceDay?.events?.[sourceEventIndex];
+      const sourceImages = sourceEvent?.images ?? [];
+      if (!sourceDay || !sourceEvent) return;
+      if (sourceImageIndex < 0 || sourceImageIndex >= sourceImages.length) return;
 
       const sameEvent =
-        sourceEditorType === targetEditorType &&
-        sourceDayIndex === targetDayIndex &&
-        sourceEventIndex === targetEventIndex;
+        sourceEditorType === destEditorType &&
+        sourceDayIndex === destDayIndex &&
+        sourceEventIndex === destEventIndex;
 
       if (sameEvent) {
+        if (
+          isNoOpDrop({
+            source: {
+              editorType: sourceEditorType,
+              dayIndex: sourceDayIndex,
+              eventIndex: sourceEventIndex,
+              imageIndex: sourceImageIndex,
+            },
+            target: {
+              editorType: destEditorType,
+              dayIndex: destDayIndex,
+              eventIndex: destEventIndex,
+              insertAt: destInsertAt,
+            },
+            sourceImagesLength: sourceImages.length,
+          })
+        )
+          return;
         const fromIndex = sourceImageIndex;
-        let toIndex = targetInsertAt;
+        let toIndex = destInsertAt;
         if (toIndex > fromIndex) toIndex -= 1;
         if (fromIndex === toIndex) return;
         reorderWithinEvent({
@@ -482,10 +642,10 @@ export default function ModetourNewProductPage() {
           sourceDayIndex,
           sourceEventIndex,
           sourceImageIndex,
-          targetEditorType,
-          targetDayIndex,
-          targetEventIndex,
-          targetInsertAt,
+          targetEditorType: destEditorType,
+          targetDayIndex: destDayIndex,
+          targetEventIndex: destEventIndex,
+          targetInsertAt: destInsertAt,
         });
       }
     }
@@ -494,12 +654,27 @@ export default function ModetourNewProductPage() {
   async function handleCreateProduct() {
     if (!importData || !previewProduct) return;
 
-    const sourceUrl = importData.source?.url?.trim() ?? "";
-    const payload = buildProductCreateBody(formState, {
-      product_source_url: sourceUrl || undefined,
+    const validation = validateImagePlacementState({
+      v2Days: formState.itinerary_v2_json?.days,
+      structuredDays: formState.itinerary_days_json,
+      unassignedImageUrls,
     });
+    if (validation.hasError) {
+      const firstError = validation.errors[0];
+      setSaveError(firstError?.message ?? "이미지 배치 오류가 있어 저장할 수 없습니다.");
+      return;
+    }
 
-    // API 필수값 보정: 상품명·설명·이미지 URL이 비면 import/preview에서 채움
+    const sourceUrl = importData.source?.url?.trim() ?? "";
+    const formForSerialize: ProductFormState = {
+      ...formState,
+      product_source_url: sourceUrl || formState.product_source_url,
+    };
+    const payload = serializeAdminProductForm(formForSerialize, {
+      unassignedImageUrls,
+    }) as Record<string, unknown>;
+
+    // API 필수값 보정: 상품명·이미지 URL만 필수. 설명은 비어 있어도 생성 가능(편집에서 입력)
     const title =
       (payload.title as string)?.trim() ||
       importData.product?.title?.trim() ||
@@ -519,14 +694,14 @@ export default function ModetourNewProductPage() {
       (Array.isArray(payload.images_json) ? (payload.images_json[0] as string) : undefined)?.trim() ||
       "";
 
-    if (!title || !description || !imageUrl) {
-      setSaveError("상품명, 설명, 이미지 URL 중 하나 이상이 비어 있습니다. Import 데이터를 확인하세요.");
+    if (!title || !imageUrl) {
+      setSaveError("상품명과 이미지 URL이 필요합니다. Import 데이터를 확인하세요.");
       return;
     }
 
-    (payload as Record<string, unknown>).title = title;
-    (payload as Record<string, unknown>).description = description;
-    (payload as Record<string, unknown>).image_url = imageUrl;
+    payload.title = title;
+    payload.description = description || "";
+    payload.image_url = imageUrl;
 
     setIsSaving(true);
     setSaveError(null);
@@ -581,6 +756,9 @@ export default function ModetourNewProductPage() {
       <h1 className="text-xl font-semibold text-slate-100">상품 등록(모두)</h1>
       <p className="mt-2 text-sm text-slate-300">
         모두투어 상품 페이지에서 추출한 JSON을 붙여넣어 등록합니다.
+      </p>
+      <p className="mt-1 text-xs text-slate-400">
+        일정·이미지·기본 정보만 자동 반영됩니다. 설명/포함·불포함/예약·환불 규정은 편집에서 직접 입력해 주세요.
       </p>
 
       <div className="mt-6">
@@ -757,6 +935,35 @@ export default function ModetourNewProductPage() {
             {/* 미할당 이미지 풀 + 일정 편집 (이미지 배치 DnD) */}
             <div className="mt-8 space-y-4 rounded-lg border border-slate-700 bg-slate-900/50 p-4">
               <h3 className="font-semibold text-slate-200">일정 이미지 배치</h3>
+              {imagePlacementValidation.issues.length > 0 && (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    imagePlacementValidation.hasError
+                      ? "border-red-800 bg-red-900/40 text-red-200"
+                      : "border-amber-700 bg-amber-900/30 text-amber-200"
+                  }`}
+                  role="alert"
+                >
+                  {imagePlacementValidation.hasError ? (
+                    <p className="font-medium">오류가 있어 저장할 수 없습니다.</p>
+                  ) : (
+                    <p className="font-medium">저장 전 확인해 주세요.</p>
+                  )}
+                  <p className="mt-0.5 text-xs opacity-90">
+                    오류 {imagePlacementValidation.errors.length}건
+                    {imagePlacementValidation.warnings.length > 0 &&
+                      ` / 경고 ${imagePlacementValidation.warnings.length}건`}
+                  </p>
+                  <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs opacity-95">
+                    {imagePlacementValidation.errors.slice(0, 5).map((e, i) => (
+                      <li key={`e-${i}`}>{e.message}</li>
+                    ))}
+                    {imagePlacementValidation.warnings.slice(0, 3).map((w, i) => (
+                      <li key={`w-${i}`}>{w.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <p className="text-xs text-slate-400">
                 미할당 이미지를 드래그하여 각 일정 이벤트에 배치할 수 있습니다. 이벤트에서 삭제 시 미할당 풀로 돌아갑니다.
               </p>
@@ -793,8 +1000,30 @@ export default function ModetourNewProductPage() {
                 modetourDnDEnabled
                 onDropExternalImage={handleDropOnEvent}
                 onReturnImageToPool={(url) => returnEventImageToUnassigned({ url })}
+                imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
+                showPlacementWarnings={true}
+                onAutoAssignImages={handleAutoAssignImages}
+                unassignedImageCount={unassignedImageUrls.length}
               />
             </div>
+
+            {/* 저장 시 반영될 변경사항 요약 */}
+            {importData && previewProduct && diffSummary.changed && (
+              <div
+                className="rounded-lg border border-emerald-700/50 bg-emerald-900/20 px-4 py-3 text-sm text-slate-200"
+                role="region"
+                aria-label="저장 시 반영될 변경사항"
+              >
+                <p className="mb-2 font-semibold">저장 시 반영될 변경사항</p>
+                <ul className="list-inside list-disc space-y-0.5 text-slate-300">
+                  {diffSummary.sections.flatMap((s) =>
+                    s.items.map((item, i) => (
+                      <li key={`${s.key}-${i}`}>{item}</li>
+                    )),
+                  )}
+                </ul>
+              </div>
+            )}
 
             {/* 상품 생성 액션 */}
             <div className="mt-6 flex flex-col gap-4 border-t border-slate-700 pt-4">
@@ -805,7 +1034,8 @@ export default function ModetourNewProductPage() {
                   !importData ||
                   !previewProduct ||
                   isSaving ||
-                  !!parseError
+                  !!parseError ||
+                  imagePlacementValidation.hasError
                 }
                 className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -836,6 +1066,14 @@ export default function ModetourNewProductPage() {
                   <p className="font-medium">생성 완료</p>
                   <p className="mt-1 text-slate-300">상품이 등록되었습니다.</p>
                   <div className="mt-3 flex gap-3">
+                    <Link
+                      href={`/products/${createdProductId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded border border-sky-600 bg-sky-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-600"
+                    >
+                      미리보기
+                    </Link>
                     <Link
                       href={`${PRODUCTS_LIST_PATH}?editingId=${createdProductId}`}
                       className="rounded border border-emerald-600 bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600"

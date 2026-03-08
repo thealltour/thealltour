@@ -23,8 +23,10 @@ export type AdminProductsListViewProps = {
   selectedIds: string[];
   pendingMoveId: string | null;
   pendingToggleId: string | null;
+  filterActive: "all" | "active" | "inactive";
+  filterStatus: "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
   onKeywordChange: (value: string) => void;
-  onSortChange: (field: ProductSortKey) => void;
+  onSortChange: (field: ProductSortKey, direction?: "asc" | "desc") => void;
   onPageChange: (page: number) => void;
   onToggleSelectAll: () => void;
   onToggleSelectOne: (id: string) => void;
@@ -34,4 +36,10 @@ export type AdminProductsListViewProps = {
   onDeleteProduct: (productId: string) => void;
   onQuickToggleActive: (product: Product) => void;
   onMoveSortOrder: (product: Product, direction: "up" | "down") => void;
+  onFilterActiveChange: (value: "all" | "active" | "inactive") => void;
+  onFilterStatusChange: (value: "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED") => void;
+  /** 목록 상단 "새 상품 등록" 링크 (없으면 버튼 비표시) */
+  newProductHref?: string;
+  /** 목록 조회 실패 시 다시 불러오기 (없으면 버튼 비표시) */
+  onRetryLoad?: () => void;
 };

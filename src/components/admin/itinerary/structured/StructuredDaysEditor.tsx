@@ -1,6 +1,9 @@
 "use client";
 
 import type { ItineraryStructuredDay, ItineraryStructuredEvent, SelectedEventRef } from "@/types/product";
+import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import { normalizeEventImages } from "@/lib/images/normalizeEventImages";
+import { dedupeEventImages } from "@/lib/images/dedupeEventImages";
 import { StructuredDayCard } from "./StructuredDayCard";
 
 export type StructuredDaysEditorProps = {
@@ -16,10 +19,12 @@ export type StructuredDaysEditorProps = {
   /** 모두투어 미할당 이미지 DnD */
   modetourDnDEnabled?: boolean;
   onDropExternalImage?: (
-    item: { source: "unassigned"; url: string },
+    item: ModetourImageDragItem,
     destination: { editorType: "structured"; dayIndex: number; eventIndex: number; insertAt?: number }
   ) => void;
   onReturnImageToPool?: (url: string) => void;
+  imagePlacementIssuesByUrl?: Record<string, import("@/components/admin/modetour/modetourImageValidation").ImagePlacementIssue[]>;
+  showPlacementWarnings?: boolean;
 };
 
 const EMPTY_DAY_FIRST: ItineraryStructuredDay = {
@@ -46,6 +51,8 @@ export function StructuredDaysEditor({
   modetourDnDEnabled,
   onDropExternalImage,
   onReturnImageToPool,
+  imagePlacementIssuesByUrl,
+  showPlacementWarnings = true,
 }: StructuredDaysEditorProps) {
   const addFirstDay = () => {
     onDaysChange(() => [EMPTY_DAY_FIRST]);
@@ -63,9 +70,36 @@ export function StructuredDaysEditor({
   };
 
   const removeDay = (dayIndex: number) => {
+    if (days.length <= 1) return;
     onDaysChange((prev) =>
       prev.filter((_, i) => i !== dayIndex).map((d, i) => ({ ...d, day: i + 1 })),
     );
+  };
+
+  const handleConfirmRemoveDay = (dayIndex: number) => {
+    if (days.length <= 1) return;
+    const day = days[dayIndex];
+    if (!day) return;
+    const eventCount = day.events?.length ?? 0;
+    const message =
+      eventCount > 0
+        ? `Day ${day.day} 전체를 삭제할까요?\n해당 Day의 이벤트 ${eventCount}개와 이미지 연결 정보가 함께 제거됩니다.`
+        : `Day ${day.day} 전체를 삭제할까요?`;
+    if (!window.confirm(message)) return;
+    removeDay(dayIndex);
+  };
+
+  const handleConfirmRemoveEvent = (dayIndex: number, eventIndex: number) => {
+    const day = days[dayIndex];
+    const ev = day?.events?.[eventIndex];
+    const title = ev?.heading?.trim() || "이 이벤트";
+    if (
+      !window.confirm(
+        `'${title}'를 삭제할까요?\n이벤트에 연결된 이미지 정보도 함께 사라집니다.`,
+      )
+    )
+      return;
+    removeEvent(dayIndex, eventIndex);
   };
 
   const updateDay = (dayIndex: number, patch: Partial<ItineraryStructuredDay>) => {
@@ -97,13 +131,18 @@ export function StructuredDaysEditor({
     eventIndex: number,
     patch: Partial<ItineraryStructuredEvent>,
   ) => {
+    const nextPatch = { ...patch };
+    if (nextPatch.images != null) {
+      const normalized = normalizeEventImages(nextPatch.images);
+      nextPatch.images = dedupeEventImages(normalized);
+    }
     onDaysChange((prev) =>
       prev.map((d, i) =>
         i === dayIndex
           ? {
               ...d,
               events: d.events.map((e, ei) =>
-                ei === eventIndex ? { ...e, ...patch } : e,
+                ei === eventIndex ? { ...e, ...nextPatch } : e,
               ),
             }
           : d,
@@ -139,17 +178,20 @@ export function StructuredDaysEditor({
             key={`day-${dayEntry.day}-${dayIndex}`}
             day={dayEntry}
             dayIndex={dayIndex}
+            totalDays={days.length}
             onDayChange={(patch) => updateDay(dayIndex, patch)}
             onAddEvent={() => addEvent(dayIndex)}
-            onRemoveDay={() => removeDay(dayIndex)}
+            onRemoveDay={() => handleConfirmRemoveDay(dayIndex)}
             onEventChange={(evIndex, patch) => updateEvent(dayIndex, evIndex, patch)}
-            onRemoveEvent={(evIndex) => removeEvent(dayIndex, evIndex)}
+            onRemoveEvent={(evIndex) => handleConfirmRemoveEvent(dayIndex, evIndex)}
             onFocus={() => onDayFocus?.(dayIndex)}
             selectedEvent={selectedEvent}
             onEventSelect={(evIndex) => onSelectEvent({ editorType: "structured", dayIndex, eventIndex: evIndex })}
             modetourDnDEnabled={modetourDnDEnabled}
             onDropExternalImage={onDropExternalImage}
             onReturnImageToPool={onReturnImageToPool}
+            imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
+            showPlacementWarnings={showPlacementWarnings}
           />
         ))}
         <button

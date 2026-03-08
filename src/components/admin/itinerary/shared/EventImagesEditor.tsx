@@ -2,9 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { parseUrls, dedupeUrls, isAllowedUrl, normalizeUrl } from "./urlParser";
+import { normalizeImageUrl } from "@/lib/images/normalizeImageUrl";
+import { getEventImageUrl } from "@/lib/images/getEventImageUrl";
 import { extractImageUrls } from "@/lib/images/extractImageUrls";
 import { normalizeEventImages } from "./normalizeEventImages";
 import { getDragData, setDragData, type ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import type { ImagePlacementIssue } from "@/components/admin/modetour/modetourImageValidation";
 
 export type EventImageItem = {
   url: string;
@@ -35,6 +38,10 @@ export type EventImagesEditorProps = {
   onChange: (nextImages: EventImageItem[]) => void;
   mode?: "compact" | "full";
   dndContext?: EventImagesEditorDndContext;
+  /** URL별 검증 이슈 (normalizeImageUrl 기준 키). 개별 이미지 카드에 오류/경고 표시 */
+  issuesByUrl?: Record<string, ImagePlacementIssue[]>;
+  /** false면 경고는 숨기고 오류만 표시 */
+  showWarnings?: boolean;
 };
 
 type PasteMode = "url" | "html";
@@ -55,6 +62,8 @@ export function EventImagesEditor({
   onChange,
   mode = "full",
   dndContext,
+  issuesByUrl,
+  showWarnings = true,
 }: EventImagesEditorProps) {
   const [pasteInput, setPasteInput] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
@@ -81,8 +90,8 @@ export function EventImagesEditor({
       else invalid.push(n);
     });
     const newUrls = dedupeUrls(valid);
-    const existingSet = new Set(value.map((i) => normalizeUrl(i.url)));
-    const toAdd = newUrls.filter((u) => !existingSet.has(normalizeUrl(u)));
+    const existingSet = new Set(value.map((i) => getEventImageUrl(i)));
+    const toAdd = newUrls.filter((u) => !existingSet.has(normalizeImageUrl(u)));
     if (invalid.length > 0) {
       setParseError(`제외된 URL ${invalid.length}개 (http/https만 허용): ${invalid.slice(0, 3).join(", ")}${invalid.length > 3 ? "…" : ""}`);
     } else {
@@ -132,8 +141,8 @@ export function EventImagesEditor({
   };
 
   const addSelectedExtracted = () => {
-    const existingSet = new Set(value.map((i) => normalizeUrl(i.url)));
-    const toAdd = [...selectedExtracted].filter((u) => !existingSet.has(normalizeUrl(u)));
+    const existingSet = new Set(value.map((i) => getEventImageUrl(i)));
+    const toAdd = [...selectedExtracted].filter((u) => !existingSet.has(normalizeImageUrl(u)));
     if (toAdd.length === 0) return;
     const maxOrder = value.length === 0 ? -1 : Math.max(...value.map((i) => i.sortOrder ?? 0));
     const hasCover = value.some((i) => i.isCover);
@@ -156,7 +165,7 @@ export function EventImagesEditor({
     if (dndContext?.enabled && dndContext?.onReturnImageToPool) {
       dndContext.onReturnImageToPool(item.url);
     }
-    const next = value.filter((i) => normalizeUrl(i.url) !== normalizeUrl(item.url));
+    const next = value.filter((i) => getEventImageUrl(i) !== getEventImageUrl(item));
     onChange(normalizeEventImages(next));
   };
 
@@ -224,7 +233,7 @@ export function EventImagesEditor({
   };
 
   const handleDragLeave = () => {
-    setOverIndex(null);
+    clearHover();
   };
 
   const handleDragLeaveContainer = (e: React.DragEvent) => {
@@ -452,9 +461,27 @@ export function EventImagesEditor({
           <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
             이미지 {sortedItems.length}장 (드래그로 순서 변경)
           </p>
+          <p className="text-[10px] text-[var(--text-muted)]">
+            첫 번째 이미지가 대표 이미지로 사용됩니다.
+          </p>
           <div className="flex gap-2 overflow-x-auto pb-1 items-start">
-            {sortedItems.map((item, index) => (
-              <div key={`${normalizeUrl(item.url)}-${index}`} className="flex shrink-0 items-center gap-0">
+            {sortedItems.map((item, index) => {
+              const urlKey = normalizeImageUrl(getEventImageUrl(item));
+              const issuesForUrl = urlKey ? issuesByUrl?.[urlKey] : undefined;
+              const hasError = issuesForUrl?.some((i) => i.level === "error");
+              const hasWarning = showWarnings && issuesForUrl?.some((i) => i.level === "warning");
+              const caption =
+                hasError && issuesForUrl
+                  ? issuesForUrl.find((i) => i.level === "error")?.message ?? "오류"
+                  : hasWarning && issuesForUrl
+                    ? issuesForUrl.find((i) => i.level === "warning")?.message ?? "경고"
+                    : hasError
+                      ? "잘못된 이미지 URL"
+                      : hasWarning
+                        ? "배치 확인 필요"
+                        : null;
+              return (
+              <div key={`${urlKey}-${index}`} className="flex shrink-0 items-center gap-0">
                 {/* 카드 앞 drop indicator 라인 (최소 4px로 드롭 가능) */}
                 <div
                   className={`h-full min-h-[80px] shrink-0 rounded-full transition ${
@@ -493,7 +520,7 @@ export function EventImagesEditor({
                     dragIndex === index ? "opacity-50 border-[var(--border)]" : ""
                   } ${overIndex === index ? "ring-2 ring-[var(--primary)] border-[var(--primary)]" : "border-[var(--border)]"} ${
                     hoverImageIndex === index && hoverPosition === "after" ? "ring-2 ring-[var(--primary)] ring-offset-1" : ""
-                  }`}
+                  } ${hasError ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""} ${hasWarning && !hasError ? "border-amber-500/70" : ""}`}
                   onDragOver={handleDragOverCard(index)}
                   onDragLeave={handleDragLeave}
                   onDragEnd={handleDragEnd}
@@ -522,6 +549,14 @@ export function EventImagesEditor({
                     </span>
                   )}
                 </div>
+                {caption && (
+                  <p
+                    className={`text-[10px] text-center max-w-[5rem] truncate ${hasError ? "text-[var(--danger)] font-medium" : "text-amber-600 dark:text-amber-400"}`}
+                    title={caption}
+                  >
+                    {hasError ? "오류" : "경고"}
+                  </p>
+                )}
                 <div className="flex flex-wrap items-center justify-center gap-0.5">
                   <button
                     type="button"
@@ -557,14 +592,19 @@ export function EventImagesEditor({
                     type="button"
                     onClick={() => removeAt(index)}
                     className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-1 py-0.5 text-[10px] text-[var(--danger)] hover:opacity-90"
-                    title="삭제"
+                    title={
+                      dndContext?.enabled && dndContext?.onReturnImageToPool
+                        ? "이미지를 이벤트에서 제거합니다. 미할당 이미지로 이동합니다."
+                        : "이미지 제거"
+                    }
                   >
                     삭제
                   </button>
                 </div>
+                </div>
               </div>
-              </div>
-            ))}
+              );
+            })}
             {/* 리스트 끝 "끝에 추가" drop zone */}
             <div
               className={`flex shrink-0 items-center rounded border-2 border-dashed min-w-[24px] min-h-[60px] transition ${
@@ -586,7 +626,9 @@ export function EventImagesEditor({
         <p
           className={`rounded border border-dashed px-4 py-8 text-center text-[11px] text-[var(--text-muted)] ${externalDragOver ? "border-[var(--primary)] bg-[var(--primary-soft)]/20" : "border-[var(--border)]"}`}
         >
-          등록된 이미지가 없습니다. {dndContext?.enabled ? "미할당 이미지나 다른 이벤트 이미지를 여기로 드래그해 배치할 수 있습니다." : ""}
+          {dndContext?.enabled
+            ? "이 이벤트에는 아직 배치된 이미지가 없습니다. 미할당 이미지나 다른 이벤트 이미지를 여기로 드래그해 배치할 수 있습니다."
+            : "이 이벤트에는 아직 배치된 이미지가 없습니다."}
         </p>
       )}
     </div>

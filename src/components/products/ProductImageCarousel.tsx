@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { ImageIcon } from "lucide-react";
 import {
   ProductImageGalleryModal,
   type ProductGalleryImage,
@@ -10,6 +11,8 @@ import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 
 type ProductImageCarouselProps = {
   images: ProductGalleryImage[];
+  /** 이미지가 없을 때 placeholder 표시 (false면 아무것도 안 그림) */
+  showPlaceholderWhenEmpty?: boolean;
 };
 
 function clampIndex(index: number, length: number): number {
@@ -19,13 +22,29 @@ function clampIndex(index: number, length: number): number {
   return index;
 }
 
-export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
+export function ProductImageCarousel({
+  images,
+  showPlaceholderWhenEmpty = true,
+}: ProductImageCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const maxDesktopThumbs = 6;
 
-  if (!images.length) return null;
+  if (!images.length) {
+    if (!showPlaceholderWhenEmpty) return null;
+    return (
+      <section className="space-y-3" aria-label="상품 이미지 갤러리">
+        <div
+          className="relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-slate-100 text-slate-500"
+          aria-hidden
+        >
+          <ImageIcon className="h-12 w-12 opacity-50" />
+          <span className="text-sm font-medium">대표 이미지 없음</span>
+        </div>
+      </section>
+    );
+  }
 
   const current = images[clampIndex(activeIndex, images.length)];
   const desktopThumbs = images.slice(1, 1 + maxDesktopThumbs);

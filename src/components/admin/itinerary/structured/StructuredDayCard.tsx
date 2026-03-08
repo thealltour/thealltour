@@ -1,11 +1,13 @@
 "use client";
 
 import type { ItineraryStructuredDay, ItineraryStructuredEvent, SelectedEventRef } from "@/types/product";
+import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
 import { StructuredEventRow } from "./StructuredEventRow";
 
 export type StructuredDayCardProps = {
   day: ItineraryStructuredDay;
   dayIndex: number;
+  totalDays?: number;
   onDayChange: (patch: Partial<ItineraryStructuredDay>) => void;
   onAddEvent: () => void;
   onRemoveDay: () => void;
@@ -17,10 +19,12 @@ export type StructuredDayCardProps = {
   /** 모두투어 미할당 이미지 DnD */
   modetourDnDEnabled?: boolean;
   onDropExternalImage?: (
-    item: { source: "unassigned"; url: string },
+    item: ModetourImageDragItem,
     destination: { editorType: "structured"; dayIndex: number; eventIndex: number; insertAt?: number }
   ) => void;
   onReturnImageToPool?: (url: string) => void;
+  imagePlacementIssuesByUrl?: Record<string, import("@/components/admin/modetour/modetourImageValidation").ImagePlacementIssue[]>;
+  showPlacementWarnings?: boolean;
 };
 
 const EMPTY_EVENT: ItineraryStructuredEvent = {
@@ -33,6 +37,7 @@ const EMPTY_EVENT: ItineraryStructuredEvent = {
 export function StructuredDayCard({
   day,
   dayIndex,
+  totalDays = 1,
   onDayChange,
   onAddEvent,
   onRemoveDay,
@@ -44,6 +49,8 @@ export function StructuredDayCard({
   modetourDnDEnabled,
   onDropExternalImage,
   onReturnImageToPool,
+  imagePlacementIssuesByUrl,
+  showPlacementWarnings = true,
 }: StructuredDayCardProps) {
   const events = day.events ?? [];
 
@@ -70,7 +77,9 @@ export function StructuredDayCard({
           <button
             type="button"
             onClick={onRemoveDay}
-            className="rounded border border-rose-200 px-2 py-1 text-[11px] text-rose-600 hover:bg-rose-50 dark:border-[var(--danger)]/30 dark:bg-[var(--danger-bg)] dark:text-[var(--danger)] dark:hover:opacity-90"
+            disabled={totalDays <= 1}
+            title={totalDays <= 1 ? "마지막 Day는 삭제할 수 없습니다." : undefined}
+            className="rounded border border-rose-200 px-2 py-1 text-[11px] text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[var(--danger)]/30 dark:bg-[var(--danger-bg)] dark:text-[var(--danger)] dark:hover:opacity-90"
           >
             일차 삭제
           </button>
@@ -94,6 +103,8 @@ export function StructuredDayCard({
             dayIndex={dayIndex}
             onDropExternalImage={onDropExternalImage}
             onReturnImageToPool={onReturnImageToPool}
+            imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
+            showPlacementWarnings={showPlacementWarnings}
           />
         ))}
         <button

@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cacheTags";
+import { normalizeEventImages as normalizeEventImagesLib } from "@/lib/images/normalizeEventImages";
+import { dedupeEventImages } from "@/lib/images/dedupeEventImages";
 import type {
   Product,
   ProductTrust,
@@ -216,22 +218,12 @@ function normalizeItineraryDays(raw: unknown): ItineraryStructuredDay[] | undefi
   return days.length > 0 ? days : undefined;
 }
 
+/** event.images 정규화: lib/images 규칙 사용 (products 로드 시 editor와 동일 규칙) */
 function normalizeEventImages(raw: unknown): ItineraryV2Event["images"] {
-  if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const out: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }> = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const o = item as Record<string, unknown>;
-    const url = typeof o.url === "string" && o.url.trim() ? o.url.trim() : undefined;
-    if (!url || !/^https?:\/\//i.test(url)) continue;
-    out.push({
-      url,
-      alt: typeof o.alt === "string" && o.alt.trim() ? o.alt.trim() : undefined,
-      sortOrder: typeof o.sortOrder === "number" && Number.isFinite(o.sortOrder) ? o.sortOrder : undefined,
-      isCover: o.isCover === true,
-    });
-  }
-  return out.length > 0 ? out : undefined;
+  if (!raw || !Array.isArray(raw)) return undefined;
+  const normalized = normalizeEventImagesLib(raw);
+  const deduped = dedupeEventImages(normalized);
+  return deduped.length > 0 ? deduped : undefined;
 }
 
 function normalizeItineraryV2(raw: unknown): ItineraryV2 | undefined {

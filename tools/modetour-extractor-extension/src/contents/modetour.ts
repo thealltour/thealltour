@@ -1,14 +1,12 @@
+/**
+ * 모두투어 상품 상세 페이지 Content Script.
+ * PR16/PR17: 상품 초안 생성용으로만 동작 — 일정(itinerary), 이미지(media), 기본 정보(product)만 수집합니다.
+ * 설명/포함·불포함/예약·환불 규정은 수집하지 않으며, includeExcludeDom / detailTabsDom 파서는 호출하지 않습니다.
+ */
 import type { PlasmoCSConfig } from "plasmo";
 import type { ExtractedDomData, ExtractMeta } from "~lib/extractTypes";
 import { waitForPageLoad, waitForSelector, sleep } from "~lib/domWait";
 import { getJsonLdObjects, pickBestJsonLd, mapJsonLdToImport } from "~lib/jsonLd";
-import {
-  findSectionByHeading,
-  extractTextFromNode,
-  INCLUSIONS_HEADINGS,
-  EXCLUDED_HEADINGS,
-  TERMS_HEADINGS,
-} from "~lib/sectionText";
 import { getScopedSection } from "~lib/sectionScope";
 import { parseItineraryText } from "~lib/itineraryParser";
 import { extractItineraryFromDom } from "~lib/itineraryDom";
@@ -40,13 +38,11 @@ const SNIPPET_MAX = 5000;
 const RAW_DOM_HINT_MAX = 800;
 
 async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: ExtractMeta }> {
-  console.log("[modetour-extractor] start", location.href);
   await waitForPageLoad();
   await waitForSelector("h1", 8000, 200);
   await sleep(500);
 
   const uiPrep = await prepareItineraryUi();
-  console.log("[modetour-extractor] prepareItineraryUi", uiPrep);
   await sleep(300);
 
   const doc = document;
@@ -61,13 +57,6 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
   const { product: productLd } = pickBestJsonLd(jsonLdObjs);
   const jsonLdPartial = mapJsonLdToImport(productLd);
   if (jsonLdPartial) usedJsonLd = true;
-
-  const sectionIncludedEl = findSectionByHeading(INCLUSIONS_HEADINGS);
-  const sectionIncludedText = extractTextFromNode(sectionIncludedEl, SNIPPET_MAX);
-  const sectionExcludedEl = findSectionByHeading(EXCLUDED_HEADINGS);
-  const sectionExcludedText = extractTextFromNode(sectionExcludedEl, SNIPPET_MAX);
-  const sectionTermsEl = findSectionByHeading(TERMS_HEADINGS);
-  const sectionTermsText = extractTextFromNode(sectionTermsEl, SNIPPET_MAX);
 
   const itineraryScope = getScopedSection(["일정", "여행일정", "상세일정", "일정표"], SNIPPET_MAX);
   const sectionItineraryText = itineraryScope.text ?? "";
@@ -199,46 +188,10 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
     doc.title?.trim() ??
     "";
 
-  const summary =
-    jsonLdPartial?.product?.summary?.trim() ??
-    queryText(doc, SELECTORS.summary) ??
-    undefined;
-
   const priceText = queryText(doc, SELECTORS.price) ?? undefined;
   const metaText = queryText(doc, SELECTORS.meta) ?? "";
   const { nights, days } = parseNightsDays(metaText);
   const regionText = metaText.replace(/\d+\s*박\s*\d+\s*일/g, "").trim() || undefined;
-
-  let inclusions: ExtractedDomData["inclusions"];
-  const includedText = sectionIncludedText.trim() || (queryFirst(doc, SELECTORS.inclusions)?.textContent?.trim() ?? "");
-  const excludedText = sectionExcludedText.trim() || (queryFirst(doc, SELECTORS.exclusions)?.textContent?.trim() ?? "");
-  if (includedText) {
-    inclusions = { includedText: truncateSnippet(includedText, SNIPPET_MAX) };
-    if (excludedText) inclusions.excludedText = truncateSnippet(excludedText, SNIPPET_MAX);
-  } else if (excludedText) {
-    inclusions = { excludedText: truncateSnippet(excludedText, SNIPPET_MAX) };
-  } else {
-    rawSnippets.inclusions = truncateSnippet(doc.body?.textContent?.match(/포함\s*내용?[\s\S]{0,2000}/i)?.[0] ?? "");
-    missingSections.push("SECTION_NOT_FOUND_INCLUDED");
-  }
-  if (!excludedText && !inclusions?.excludedText && queryFirst(doc, SELECTORS.exclusions)) {
-    const exc = queryFirst(doc, SELECTORS.exclusions)!.textContent?.trim();
-    if (exc) {
-      inclusions = inclusions ?? {};
-      inclusions.excludedText = truncateSnippet(exc, SNIPPET_MAX);
-    }
-  }
-
-  let terms: ExtractedDomData["terms"];
-  const termsText = sectionTermsText.trim() || (queryFirst(doc, SELECTORS.terms)?.textContent?.trim() ?? "");
-  if (termsText) {
-    terms = { termsText: truncateSnippet(termsText, SNIPPET_MAX) };
-  } else {
-    rawSnippets.terms = truncateSnippet(
-      doc.body?.textContent?.match(/(약관|취소|유의사항)[\s\S]{0,3000}/i)?.[0] ?? "",
-    );
-    missingSections.push("SECTION_NOT_FOUND_terms");
-  }
 
   const allImageUrls = extractImageUrlsFromDom();
   const firstActivityFirstImage = (() => {
@@ -341,12 +294,6 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
     !heroImageUrl && eventImageTotal === 0 && galleryImageUrls.length < 3;
   if (imagesLowConfidence) missingSections.push("IMAGES_LOW_CONFIDENCE");
 
-  console.log("[modetour-extractor] buildImport done", {
-    title: title,
-    dayCount: itinerary?.days?.length,
-    eventCount: itinerary?.days?.reduce((a, d) => a + (d.events?.length ?? 0), 0),
-  });
-
   return {
     extracted: {
       source: {
@@ -355,15 +302,16 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
       },
       product: {
         title,
-        summary,
+        summary: undefined,
         nights,
         days,
         regionText,
         priceText,
       },
       itinerary,
-      inclusions,
-      terms,
+      inclusions: undefined,
+      terms: undefined,
+      detailTabs: undefined,
       media,
       rawSnippets: Object.keys(rawSnippets).length > 0 ? rawSnippets : undefined,
       missingSections: missingSections.length > 0 ? missingSections : undefined,

@@ -99,23 +99,27 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const page = Number(searchParams.get("page") ?? "1");
   const pageSize = Number(searchParams.get("pageSize") ?? "8");
-  const sortField = (searchParams.get("sortField") ?? "sort_order") as
+  const sortField = (searchParams.get("sortField") ?? "created_at") as
     | "title"
     | "category"
     | "price"
     | "sort_order"
-    | "created_at";
-  const sortDirection = (searchParams.get("sortDirection") ?? "asc") === "desc" ? "desc" : "asc";
+    | "created_at"
+    | "updated_at";
+  const sortDirection = (searchParams.get("sortDirection") ?? "desc") === "desc" ? "desc" : "asc";
   const keyword = (searchParams.get("q") ?? "").trim();
+  const isActiveParam = searchParams.get("is_active");
+  const statusParam = searchParams.get("status")?.trim();
 
   try {
     const from = Math.max(0, (page - 1) * pageSize);
     const to = from + pageSize - 1;
 
+    const orderColumn = sortField === "updated_at" ? "created_at" : sortField;
     let query = supabase
       .from("products")
       .select("*", { count: "exact" })
-      .order(sortField, { ascending: sortDirection === "asc", nullsFirst: false })
+      .order(orderColumn, { ascending: sortDirection === "asc", nullsFirst: false })
       .range(from, to);
 
     if (keyword !== "") {
@@ -123,6 +127,19 @@ export async function GET(request: NextRequest) {
       query = query.or(
         `title.ilike.${ilike},description.ilike.${ilike},category.ilike.${ilike},theme.ilike.${ilike},product_source_url.ilike.${ilike}`,
       );
+    }
+
+    if (isActiveParam === "true") {
+      query = query.eq("is_active", true);
+    } else if (isActiveParam === "false") {
+      query = query.eq("is_active", false);
+    }
+
+    if (
+      statusParam &&
+      ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(statusParam)
+    ) {
+      query = query.eq("status", statusParam);
     }
 
     const { data, error, count } = await query;
@@ -138,8 +155,7 @@ export async function GET(request: NextRequest) {
       items: data ?? [],
       total: count ?? 0,
     });
-  } catch (error) {
-    console.error("Failed to load products", error);
+  } catch {
     return NextResponse.json(
       { message: "상품 목록 조회 중 오류가 발생했습니다." },
       { status: 500 },

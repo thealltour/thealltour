@@ -25,11 +25,13 @@ export async function fetchAdminProducts(
     sortField: params.sortField,
     sortDirection: params.sortDirection,
     q: params.q?.trim() || undefined,
+    is_active: params.is_active,
+    status: params.status,
   });
   const response = await fetch(`${BASE}?${qs}`, { cache: "no-store" });
   const result = await parseJsonResponse<AdminProductsListResponse | AdminProductMessageResponse>(
     response,
-  );
+  ).catch(() => ({}));
   if (!response.ok || !("items" in result)) {
     throw new Error(extractErrorMessage(result, ADMIN_PRODUCTS_MESSAGES.LIST_FETCH_FAIL));
   }
@@ -41,7 +43,9 @@ export async function fetchAdminProducts(
  */
 export async function fetchAdminProduct(productId: string): Promise<Product> {
   const response = await fetch(`${BASE}/${productId}`, { cache: "no-store" });
-  const result = await parseJsonResponse<Product | AdminProductMessageResponse>(response);
+  const result = await parseJsonResponse<Product | AdminProductMessageResponse>(response).catch(
+    () => ({}),
+  );
   if (!response.ok || !result || typeof result !== "object" || !("id" in result)) {
     throw new Error(extractErrorMessage(result, ADMIN_PRODUCTS_MESSAGES.PRODUCT_FETCH_FAIL));
   }
@@ -59,7 +63,7 @@ export async function createAdminProduct(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const result = await parseJsonResponse<AdminProductSaveResponse>(response);
+  const result = await parseJsonResponse<AdminProductSaveResponse>(response).catch(() => ({}));
   if (!response.ok) {
     throw new Error(extractErrorMessage(result, ADMIN_PRODUCTS_MESSAGES.PRODUCT_SAVE_FAIL));
   }
@@ -78,7 +82,7 @@ export async function updateAdminProduct(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const result = await parseJsonResponse<AdminProductSaveResponse>(response);
+  const result = await parseJsonResponse<AdminProductSaveResponse>(response).catch(() => ({}));
   if (!response.ok) {
     throw new Error(extractErrorMessage(result, ADMIN_PRODUCTS_MESSAGES.PRODUCT_SAVE_FAIL));
   }

@@ -60,9 +60,10 @@ function getCoverImage(images: EventMediaImage[]): EventMediaImage | null {
   return first?.url?.trim() ? first : null;
 }
 
-function sortedImages(images: EventMediaImage[]): EventMediaImage[] {
+/** 배열 순서 유지 (PR8.x). url 없는 항목은 제외해 렌더 깨짐 방지 */
+function inDisplayOrder(images: EventMediaImage[]): EventMediaImage[] {
   if (!Array.isArray(images) || images.length === 0) return [];
-  return [...images].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  return images.filter((i) => i?.url?.trim());
 }
 
 export type EventMediaSectionProps = {
@@ -78,12 +79,12 @@ export function EventMediaSection({
   onOpenLightbox,
   eventTitle = "이벤트",
 }: EventMediaSectionProps) {
-  const sorted = sortedImages(images);
-  const cover = getCoverImage(sorted);
+  const inOrder = inDisplayOrder(images);
+  const cover = getCoverImage(inOrder);
   if (!cover) return null;
 
-  const thumbnails = sorted.slice(0, MAX_THUMBNAILS);
-  const hasMultiple = sorted.length > 1;
+  const thumbnails = inOrder.slice(0, MAX_THUMBNAILS);
+  const hasMultiple = inOrder.length > 1;
 
   return (
     <div className="space-y-3">
@@ -138,7 +139,7 @@ export function EventMediaSection({
           type="button"
           onClick={(e) => onOpenLightbox(0, e.currentTarget)}
           className="rounded text-sm font-medium text-[var(--primary)] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
-          aria-label={`${eventTitle} 이미지 ${sorted.length}장 크게 보기`}
+          aria-label={`${eventTitle} 이미지 ${inOrder.length}장 크게 보기`}
         >
           크게 보기
         </button>

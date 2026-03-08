@@ -206,14 +206,11 @@ const EXAMPLES = [
 
 export function runExtractImageUrlsExamples(): void {
   if (typeof process === "undefined" || process.env?.NODE_ENV === "production") return;
-  console.log("[extractImageUrls] 예시 실행\n");
   for (const ex of EXAMPLES) {
     const got = extractImageUrls(ex.input);
     const ok = JSON.stringify(got) === JSON.stringify(ex.expect);
-    console.log(ok ? "✓" : "✗", ex.name);
     if (!ok) {
-      console.log("  기대:", ex.expect);
-      console.log("  결과:", got);
+      throw new Error(`[extractImageUrls] ${ex.name}: expected ${JSON.stringify(ex.expect)}, got ${JSON.stringify(got)}`);
     }
   }
 }

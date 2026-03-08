@@ -308,9 +308,9 @@ export default function ProductDetailV2({
         </h1>
 
         {oneLiner ? (
-          <p className="text-sm leading-[1.75] text-slate-600 md:text-base">{oneLiner}</p>
+          <p className="whitespace-pre-wrap text-sm leading-[1.75] text-slate-600 md:text-base">{oneLiner}</p>
         ) : null}
-        {galleryImages.length > 0 && <ProductImageCarousel images={galleryImages} />}
+        <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
 
         {/* Price Summary Card: 모바일에서만 표시. 웹에서는 오른쪽 예상가 카드에 동일 정보 표시 */}
         <Card
@@ -413,7 +413,7 @@ export default function ProductDetailV2({
         {activeTab === "schedule" && (
           <div id="itinerary-section" className="space-y-6">
             {/* [STEP 5] v2 있으면 시각화 타임라인(탭 안에서도 동일 노출), 없으면 레거시 텍스트만 */}
-            {hasVisualItinerary ? (
+            {hasVisualItinerary && timelineModel?.days?.length ? (
               <InteractiveTimelineV2
                 model={timelineModel}
                 fallbackImageUrl={resolvedOverviewFallbackUrl || null}

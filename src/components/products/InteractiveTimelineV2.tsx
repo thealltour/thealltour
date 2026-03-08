@@ -52,7 +52,7 @@ function CoverImage({
       aria-hidden
     >
       <ImageIcon className="h-12 w-12 opacity-50" />
-      <span className="text-sm font-medium">Day {day.day} ?????????</span>
+      <span className="text-sm font-medium">Day {day.day} 일정 이미지 없음</span>
     </div>
   );
 }
@@ -138,7 +138,7 @@ export function InteractiveTimelineV2({
           onClick={toggleExpand}
           className="rounded-lg border border-[var(--primary)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--primary)] shadow-sm transition hover:bg-[var(--primary-soft)]"
         >
-          {isExpanded ? "??" : `??? (${moreCount}? ?)`}
+          {isExpanded ? "접기" : `더 보기 (${moreCount}건)`}
         </button>
       </div>
     ) : null;
@@ -150,7 +150,7 @@ export function InteractiveTimelineV2({
   return (
     <section
       className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
-      aria-label="??? ???"
+      aria-label="일정 안내"
     >
       <div className="p-4 sm:p-6">
         <div ref={topAnchorRef} />
@@ -287,13 +287,13 @@ export function InteractiveTimelineV2({
             </div>
           </div>
         ) : (
-          <p className="py-6 text-center text-sm text-[var(--text-muted)]">?? ?? ???? ????.</p>
+          <p className="py-6 text-center text-sm text-[var(--text-muted)]">이 일차에 등록된 일정이 없습니다.</p>
         )}
 
-        {/* ??? Day ?? ??? ??? ????? Day???? ??? */}
+        {/* 하단 Day 탭 (여러 일차일 때만) */}
         {days.length > 1 && (
           <div className="mt-8 border-t border-[var(--divider)] pt-4">
-            <p className="mb-3 text-xs font-semibold text-[var(--text-muted)]">?? ?? ????</p>
+            <p className="mb-3 text-xs font-semibold text-[var(--text-muted)]">다른 일차 보기</p>
             <div className="flex flex-wrap gap-2">
               {days.map((d, i) => (
                 <button

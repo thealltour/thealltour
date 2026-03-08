@@ -26,12 +26,13 @@ export async function POST(
   const { data: ledgerRow, error: ledgerErr } = await supabase
     .from("point_ledger")
     .insert({
-      member_id: memberId,
-      kind: "accrual",
+      user_id: memberId,
+      type: "EARN",
+      status: "CONFIRMED",
       amount,
-      balance_after: newBalance,
       reason,
-      reference_type: "manual",
+      ref_type: "manual",
+      ref_id: null,
     })
     .select("id")
     .maybeSingle();

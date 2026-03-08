@@ -1,10 +1,15 @@
 "use client";
 
 import type { ItineraryV2, ItineraryV2Day, ItineraryV2Event, SelectedEventRef } from "@/types/product";
+import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import type { ImagePlacementIssue } from "@/components/admin/modetour/modetourImageValidation";
 import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
 import { itineraryV2ToTimelineModel } from "@/lib/products/mapProductToTimelineModel";
 import { parseLegacyItineraryText } from "@/lib/products/parseLegacyItineraryText";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { normalizeEventImages } from "@/lib/images/normalizeEventImages";
+import { dedupeEventImages } from "@/lib/images/dedupeEventImages";
+import { hydrateItineraryImages } from "@/lib/images/hydrateItineraryImages";
 import { V2DayCard } from "@/components/admin/itinerary/v2/V2DayCard";
 import { HintDisclosure } from "@/components/admin/common/HintDisclosure";
 
@@ -41,10 +46,16 @@ export type ScheduleVisualEditorV2Props = {
   /** 모두투어 미할당 이미지 DnD (ModetourNewProductPage 전용) */
   modetourDnDEnabled?: boolean;
   onDropExternalImage?: (
-    item: { source: "unassigned"; url: string },
+    item: ModetourImageDragItem,
     destination: { editorType: "v2"; dayIndex: number; eventIndex: number; insertAt?: number }
   ) => void;
   onReturnImageToPool?: (url: string) => void;
+  imagePlacementIssuesByUrl?: Record<string, ImagePlacementIssue[]>;
+  showPlacementWarnings?: boolean;
+  /** 이미지 자동 배치 (미할당 → 이미지 없는 이벤트에 1개씩). ModetourNewProductPage에서 구현 */
+  onAutoAssignImages?: () => void;
+  /** 미할당 이미지 수 (자동 배치 버튼 표시용) */
+  unassignedImageCount?: number;
 };
 
 export function ScheduleVisualEditorV2({
@@ -58,6 +69,10 @@ export function ScheduleVisualEditorV2({
   modetourDnDEnabled,
   onDropExternalImage,
   onReturnImageToPool,
+  imagePlacementIssuesByUrl,
+  showPlacementWarnings = true,
+  onAutoAssignImages,
+  unassignedImageCount = 0,
 }: ScheduleVisualEditorV2Props) {
   const v2 = form.itinerary_v2_json;
   const days = v2.days ?? [];
@@ -82,9 +97,14 @@ export function ScheduleVisualEditorV2({
   const applyLegacyDraft = () => {
     const text = form.legacy_itinerary_text?.trim() ?? "";
     const draft = parseLegacyItineraryText(text);
+    const hydrated = hydrateItineraryImages({
+      v2Days: draft.days,
+      structuredDays: [],
+      unassignedImageUrls: [],
+    });
     setForm((prev: any) => ({
       ...prev,
-      itinerary_v2_json: draft,
+      itinerary_v2_json: { days: hydrated.v2Days },
     }));
   };
 
@@ -95,12 +115,26 @@ export function ScheduleVisualEditorV2({
   };
 
   const removeDay = (dayIndex: number) => {
+    if (days.length <= 1) return;
     updateV2((prev) => ({
       days: prev.days
         .filter((_, i) => i !== dayIndex)
         .map((d, i) => ({ ...d, day: i + 1 })),
     }));
     setActiveDayIndex(Math.max(0, Math.min(activeDayIndex, days.length - 2)));
+  };
+
+  const handleConfirmRemoveDay = (dayIndex: number) => {
+    if (days.length <= 1) return;
+    const day = days[dayIndex];
+    if (!day) return;
+    const eventCount = day.events?.length ?? 0;
+    const message =
+      eventCount > 0
+        ? `Day ${day.day} 전체를 삭제할까요?\n해당 Day의 이벤트 ${eventCount}개와 이미지 연결 정보가 함께 제거됩니다.`
+        : `Day ${day.day} 전체를 삭제할까요?`;
+    if (!window.confirm(message)) return;
+    removeDay(dayIndex);
   };
 
   const moveDay = (dayIndex: number, direction: "up" | "down") => {
@@ -170,18 +204,54 @@ export function ScheduleVisualEditorV2({
     updateDay(dayIndex, { events: nextEvents });
   };
 
+  const copyEvent = (dayIndex: number, eventIndex: number) => {
+    const day = days[dayIndex];
+    if (!day?.events?.[eventIndex]) return;
+    const source = day.events[eventIndex];
+    const cloned: ItineraryV2Event = JSON.parse(JSON.stringify(source));
+    if (cloned.images?.length) {
+      const normalized = normalizeEventImages(cloned.images);
+      cloned.images = dedupeEventImages(normalized);
+    }
+    const nextEvents = [
+      ...day.events.slice(0, eventIndex + 1),
+      cloned,
+      ...day.events.slice(eventIndex + 1),
+    ];
+    updateDay(dayIndex, { events: nextEvents });
+  };
+
+  const copyDay = (dayIndex: number) => {
+    const source = days[dayIndex];
+    if (!source) return;
+    const cloned: ItineraryV2Day = JSON.parse(JSON.stringify(source));
+    cloned.day = dayIndex + 2;
+    const nextDays = [
+      ...days.slice(0, dayIndex + 1),
+      cloned,
+      ...days.slice(dayIndex + 1),
+    ].map((d, i) => ({ ...d, day: i + 1 }));
+    updateV2(() => ({ days: nextDays }));
+    setActiveDayIndex(Math.min(activeDayIndex + 1, nextDays.length - 1));
+  };
+
   const updateEvent = (
     dayIndex: number,
     eventIndex: number,
     patch: Partial<ItineraryV2Event>,
   ) => {
+    const nextPatch = { ...patch };
+    if (nextPatch.images != null) {
+      const normalized = normalizeEventImages(nextPatch.images);
+      nextPatch.images = dedupeEventImages(normalized);
+    }
     updateV2((prev) => ({
       days: prev.days.map((d, i) =>
         i === dayIndex
           ? {
               ...d,
               events: d.events.map((e, ei) =>
-                ei === eventIndex ? { ...e, ...patch } : e,
+                ei === eventIndex ? { ...e, ...nextPatch } : e,
               ),
             }
           : d,
@@ -212,6 +282,15 @@ export function ScheduleVisualEditorV2({
             Day와 이벤트를 입력하면 상세 페이지에서 타임라인으로 표시됩니다.
           </p>
           <div className="flex flex-wrap gap-2">
+            {onAutoAssignImages != null && unassignedImageCount > 0 && (
+              <button
+                type="button"
+                onClick={onAutoAssignImages}
+                className="rounded-lg border border-[var(--primary)]/50 bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:opacity-90"
+              >
+                이미지 자동 배치 ({unassignedImageCount}장)
+              </button>
+            )}
             <button
               type="button"
               onClick={() => createSkeleton(3)}
@@ -278,18 +357,22 @@ export function ScheduleVisualEditorV2({
                 productImageCandidates={productImageCandidates}
                 onDayChange={(patch) => updateDay(dayIndex, patch)}
                 onAddEvent={() => addEvent(dayIndex)}
-                onRemoveDay={() => removeDay(dayIndex)}
+                onRemoveDay={() => handleConfirmRemoveDay(dayIndex)}
                 onMoveDayUp={() => moveDay(dayIndex, "up")}
                 onMoveDayDown={() => moveDay(dayIndex, "down")}
+                onCopyDay={() => copyDay(dayIndex)}
                 onEventChange={(evIndex, patch) => updateEvent(dayIndex, evIndex, patch)}
                 onRemoveEvent={(evIndex) => removeEvent(dayIndex, evIndex)}
                 onMoveEvent={(evIndex, direction) => moveEvent(dayIndex, evIndex, direction)}
+                onCopyEvent={(evIndex) => copyEvent(dayIndex, evIndex)}
                 onFocus={() => setActiveDayIndex(dayIndex)}
                 selectedEvent={selectedEvent}
                 onEventSelect={(evIndex) => onSelectEvent({ editorType: "v2", dayIndex, eventIndex: evIndex })}
                 modetourDnDEnabled={modetourDnDEnabled}
                 onDropExternalImage={onDropExternalImage}
                 onReturnImageToPool={onReturnImageToPool}
+                imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
+                showPlacementWarnings={showPlacementWarnings}
               />
             ))}
             <button

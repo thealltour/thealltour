@@ -1,5 +1,7 @@
 /**
- * 포인트·경품·알림 스키마 v2 타입
+ * 포인트·경품·알림 스키마 v2 타입 (앱 목표 스키마 기준 주 사용 타입)
+ * - point_ledger: user_id, type, status, amount(양수), ref_type, ref_id
+ * - reward_redemptions: user_id, catalog_id, status 대문자, shipping_address1, shipping_zip, admin_memo, decided_at
  * - users 역할 = members (member_id / user_id 동일 대상)
  */
 

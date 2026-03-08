@@ -3,6 +3,9 @@ import type { ProductFormState, ProductFormDraft } from "@/types/adminProductFor
 import type { ModetourImportV1, ModetourImportWarning } from "@/types/modetourImport";
 import { createEmptyProductFormState } from "@/types/adminProductForm";
 
+// PR16 정책: Modetour import는 설명/포함·불포함/약관 데이터를 자동 주입하지 않는다.
+// 운영자가 관리자 편집 화면에서 직접 작성하도록 한다. (일정·이미지·기본 정보만 자동 반영)
+
 /** Import → Draft 변환 결과 (빈 필드만 채우는 merge용 patch) */
 export function modetourImportToDraft(input: ModetourImportV1): {
   draft: { version: 1; form: Partial<ProductFormState>; savedAt: number };
@@ -13,10 +16,6 @@ export function modetourImportToDraft(input: ModetourImportV1): {
 
   if (input.product?.title?.trim()) {
     form.title = input.product.title.trim();
-  }
-  if (input.product?.summary?.trim()) {
-    form.one_liner = input.product.summary.trim();
-    form.description = input.product.summary.trim();
   }
   if (input.product?.nights != null || input.product?.days != null) {
     const n = input.product.nights ?? 0;
@@ -39,21 +38,6 @@ export function modetourImportToDraft(input: ModetourImportV1): {
 
   if (input.source?.url?.trim()) {
     form.product_source_url = input.source.url.trim();
-  }
-
-  if (input.inclusions?.includedText?.trim()) {
-    form.included_items = input.inclusions.includedText.trim();
-  }
-  if (input.inclusions?.excludedText?.trim()) {
-    form.excluded_items = input.inclusions.excludedText.trim();
-  }
-
-  const termsParts: string[] = [];
-  if (input.terms?.termsText?.trim()) termsParts.push(input.terms.termsText.trim());
-  if (input.terms?.cancelText?.trim()) termsParts.push(`[취소규정]\n${input.terms.cancelText.trim()}`);
-  if (input.terms?.noticeText?.trim()) termsParts.push(`[유의사항]\n${input.terms.noticeText.trim()}`);
-  if (termsParts.length > 0) {
-    form.terms_and_notes = termsParts.join("\n\n");
   }
 
   if (input.media?.heroImageUrl?.trim()) {

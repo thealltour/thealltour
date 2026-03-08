@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { ChevronDown, AlertCircle } from "lucide-react";
 import { ProductFormSectionIssuesPanel } from "@/components/admin/ProductFormSectionIssuesPanel";
 import { AirlineLogo } from "@/components/airlines/AirlineLogo";
@@ -69,6 +69,7 @@ import {
   recommendCoverCandidates,
   type CoverCandidate,
 } from "@/lib/products/recommendCoverImage";
+import { getProductDiffSummary } from "@/lib/adminProductDiff";
 import AdminHomeCuratedManager from "@/components/admin/products/AdminHomeCuratedManager";
 import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
 import AdminProductsListView from "@/components/admin/products/AdminProductsListView";
@@ -153,6 +154,7 @@ function createNextDayLabel(drafts: DayScheduleDraft[]) {
 
 export default function AdminProductManager() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const viewParam = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
   const isTaxonomyView = viewParam === ADMIN_PRODUCTS_VIEW.TAXONOMY;
   const isCreateView = viewParam === ADMIN_PRODUCTS_VIEW.CREATE;
@@ -537,8 +539,11 @@ export default function AdminProductManager() {
   }, []);
 
   const urlEditingId = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID);
+  const initialFormSnapshotRef = useRef<ProductFormState | null>(null);
+
   useEffect(() => {
     if (!urlEditingId) return;
+    initialFormSnapshotRef.current = null;
     let cancelled = false;
     (async () => {
       try {
@@ -550,10 +555,18 @@ export default function AdminProductManager() {
           images_json: images,
           image_url: images[0] ?? product.image_url ?? "",
         };
-        setForm(deserializeAdminProductToForm(productWithImages));
+        const nextForm = deserializeAdminProductToForm(productWithImages);
+        setForm(nextForm);
+        initialFormSnapshotRef.current = structuredClone(nextForm);
         setEditingId(urlEditingId);
+        setErrorMessage("");
       } catch {
-        if (!cancelled) setEditingId(urlEditingId);
+        if (!cancelled) {
+          setEditingId(urlEditingId);
+          setForm(initialFormState);
+          setErrorMessage("상품을 불러오지 못했습니다. 목록에서 다시 시도해 주세요.");
+          showLocalToast("error", "상품 조회에 실패했습니다.");
+        }
       }
     })();
     return () => {
@@ -561,11 +574,21 @@ export default function AdminProductManager() {
     };
   }, [urlEditingId]);
 
+  const diffSummary = useMemo(() => {
+    const initial = editingId
+      ? (initialFormSnapshotRef.current ?? initialFormState)
+      : initialFormState;
+    return getProductDiffSummary(initial, form);
+  }, [form, editingId]);
+
   /** 폼 제출 (액션 바 [저장] 및 form onSubmit에서 공통 호출) */
   const submit = () => void handleSubmit(undefined);
 
+  const submitRequestIdRef = useRef(0);
+
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setErrorMessage("");
 
@@ -582,6 +605,7 @@ export default function AdminProductManager() {
       return;
     }
 
+    const requestId = ++submitRequestIdRef.current;
     try {
       const payload = serializeAdminProductForm(form, { editingId });
       let result: { message?: string; warningCode?: string };
@@ -590,6 +614,8 @@ export default function AdminProductManager() {
       } else {
         result = await createAdminProduct(payload);
       }
+
+      if (requestId !== submitRequestIdRef.current) return;
 
       if (result.warningCode === "IMAGES_JSON_NOT_PERSISTED") {
         showLocalToast(
@@ -609,11 +635,14 @@ export default function AdminProductManager() {
       setDraftData(null);
       await listController.loadProducts();
     } catch (error) {
+      if (requestId !== submitRequestIdRef.current) return;
       const message = error instanceof Error ? error.message : "상품 저장 중 오류가 발생했습니다.";
       setErrorMessage(message);
       showLocalToast("error", message);
     } finally {
-      setIsSubmitting(false);
+      if (requestId === submitRequestIdRef.current) {
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -1006,12 +1035,6 @@ export default function AdminProductManager() {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     };
   }, [form, previewImageObjectUrl]);
-
-  /** previewProduct 변경 시 콘솔 출력 (구성 확인용) */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    console.log("[AdminProductManager] previewProduct", effectivePreviewProduct);
-  }, [effectivePreviewProduct]);
 
   useEffect(() => {
     if (categoryOptions.length === 0) {
@@ -1772,7 +1795,7 @@ export default function AdminProductManager() {
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
             required
             rows={4}
-            placeholder="상품 설명"
+            placeholder="상품 설명 (필요 시 직접 작성. 모두투어 import는 자동 반영하지 않습니다.)"
             id="field-product-description"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />
@@ -1838,7 +1861,7 @@ export default function AdminProductManager() {
             value={form.included_items}
             onChange={(event) => setForm((prev) => ({ ...prev, included_items: event.target.value }))}
             rows={3}
-            placeholder="포함사항 (줄바꿈 가능)"
+            placeholder="포함 사항 (자동 추출하지 않습니다. 필요 시 직접 입력해 주세요.)"
             id="field-included"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
@@ -1846,7 +1869,7 @@ export default function AdminProductManager() {
             value={form.excluded_items}
             onChange={(event) => setForm((prev) => ({ ...prev, excluded_items: event.target.value }))}
             rows={3}
-            placeholder="불포함사항 (줄바꿈 가능)"
+            placeholder="불포함 사항 (자동 추출하지 않습니다. 필요 시 직접 입력해 주세요.)"
             id="field-excluded"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
@@ -2390,7 +2413,7 @@ export default function AdminProductManager() {
               value={form.terms_and_notes}
               onChange={(event) => setForm((prev) => ({ ...prev, terms_and_notes: event.target.value }))}
               rows={4}
-              placeholder="약관 및 참조사항 직접 입력 (템플릿 미사용 시 적용)"
+              placeholder="예약 조건·환불·취소 규정 등 (운영자가 직접 확인 후 입력해 주세요. 모두투어 import는 자동 반영하지 않습니다.)"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             />
           </div>
@@ -2484,6 +2507,25 @@ export default function AdminProductManager() {
             );
           })}
         </div>
+
+        {diffSummary.changed && (
+          <div
+            className="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary-soft)]/20 px-4 py-3 text-sm"
+            role="region"
+            aria-label="저장 시 반영될 변경사항"
+          >
+            <p className="mb-2 font-semibold text-[var(--text-primary)]">
+              저장 시 반영될 변경사항
+            </p>
+            <ul className="list-inside list-disc space-y-0.5 text-[var(--text-secondary)]">
+              {diffSummary.sections.flatMap((s) =>
+                s.items.map((item, i) => (
+                  <li key={`${s.key}-${i}`}>{item}</li>
+                )),
+              )}
+            </ul>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button
@@ -2815,6 +2857,12 @@ export default function AdminProductManager() {
           onDeleteProduct={listController.handleDelete}
           onQuickToggleActive={listController.quickToggleActive}
           onMoveSortOrder={listController.moveSortOrder}
+          filterActive={listController.filterActive}
+          filterStatus={listController.filterStatus}
+          onFilterActiveChange={listController.setFilterActive}
+          onFilterStatusChange={listController.setFilterStatus}
+          newProductHref={pathname ? `${pathname.replace(/\?.*$/, "")}?view=create` : undefined}
+          onRetryLoad={listController.loadProducts}
         />
       ) : null}
 

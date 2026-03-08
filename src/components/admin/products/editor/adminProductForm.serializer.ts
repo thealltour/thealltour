@@ -1,17 +1,31 @@
 /**
  * Admin product form → API 저장 payload 변환
- * 기존 AdminProductManager 저장 시 사용하던 payload 구조와 동일 유지
+ * PR8.11: 저장 직전 serialize 적용으로 이미지 규칙 일관성 확보
+ * PR9: create/update 동일 규칙, API 정수 계약(toSafeInteger) 적용
  */
 
 import type { ProductFormState } from "@/types/adminProductForm";
 import { normalizeImageList } from "@/lib/products/images";
 import { serializeStructuredDaysToSchedule } from "@/lib/products/mapProductToTimelineModel";
+import { serializeItineraryImages } from "@/lib/images/serializeItineraryImages";
 import { parseDetailedSchedule } from "./adminProductForm.helpers";
 import type { AdminProductSavePayload } from "./adminProductForm.types";
+
+/** PostgreSQL integer 호환: 유한 정수만, 범위 초과 시 null */
+function toSafeInteger(value: unknown): number | null {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  const int = Math.round(n);
+  if (int < -2147483648 || int > 2147483647) return null;
+  return int;
+}
 
 export type SerializeAdminProductFormOptions = {
   /** 편집 모드일 때 레거시 포함·불포함 보정 적용 */
   editingId?: string | null;
+  /** 미할당 이미지 URL (Modetour 등). serialize 시 event와 중복 제거에 사용 */
+  unassignedImageUrls?: string[];
 };
 
 /**
@@ -43,6 +57,12 @@ export function serializeAdminProductForm(
   const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
   const normalizedImages = normalizeImageList(form.images_json);
   const primaryImageUrl = form.image_url.trim() || normalizedImages[0] || "";
+
+  const serialized = serializeItineraryImages({
+    v2Days: form.itinerary_v2_json?.days ?? [],
+    structuredDays: form.itinerary_days_json ?? [],
+    unassignedImageUrls: options?.unassignedImageUrls ?? [],
+  });
 
   const payload: AdminProductSavePayload = {
     title: form.title.trim(),
@@ -90,12 +110,12 @@ export function serializeAdminProductForm(
     images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
     category: form.category,
     theme: form.theme.trim() === "" ? null : form.theme,
-    price: normalizedPrice === "" ? null : Number(normalizedPrice),
+    price: normalizedPrice === "" ? null : toSafeInteger(Number(normalizedPrice)),
     duration: form.duration.trim() === "" ? null : form.duration,
     itinerary: form.itinerary.trim() === "" ? null : form.itinerary,
     inclusions: form.inclusions.trim() === "" ? null : form.inclusions,
     is_active: form.is_active,
-    sort_order: form.sort_order.trim() === "" ? null : Number(form.sort_order),
+    sort_order: form.sort_order.trim() === "" ? null : toSafeInteger(Number(form.sort_order)),
     status:
       form.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(form.status)
         ? form.status
@@ -132,9 +152,11 @@ export function serializeAdminProductForm(
     itinerary_media_json: (() => {
       const media = form.itinerary_media_json;
       const dayCount =
-        form.itinerary_days_json.length > 0
-          ? form.itinerary_days_json.length
-          : parseDetailedSchedule(form.detailed_schedule).length;
+        serialized.structuredDays.length > 0
+          ? serialized.structuredDays.length
+          : form.itinerary_days_json.length > 0
+            ? form.itinerary_days_json.length
+            : parseDetailedSchedule(form.detailed_schedule).length;
       const cleaned = Object.fromEntries(
         Object.entries(media).filter(([key, v]) => {
           if (typeof v !== "string" || !v.trim()) return false;
@@ -145,9 +167,9 @@ export function serializeAdminProductForm(
       return Object.keys(cleaned).length > 0 ? cleaned : undefined;
     })(),
     itinerary_days_json:
-      form.itinerary_days_json.length > 0 ? form.itinerary_days_json : null,
+      serialized.structuredDays.length > 0 ? serialized.structuredDays : null,
     itinerary_v2_json:
-      form.itinerary_v2_json.days.length > 0 ? form.itinerary_v2_json : null,
+      serialized.v2Days.length > 0 ? { days: serialized.v2Days } : null,
     theme_chart_json: (() => {
       const items = form.theme_chart_json.filter(
         (i) => i.label?.trim() && typeof i.percent === "number",

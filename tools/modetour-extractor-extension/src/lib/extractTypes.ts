@@ -36,11 +36,19 @@ export type ExtractedDomData = {
   inclusions?: {
     includedText?: string;
     excludedText?: string;
+    includedItems?: string[];
+    excludedItems?: string[];
   };
   terms?: {
     termsText?: string;
     cancelText?: string;
     noticeText?: string;
+  };
+  /** 탭형 상세정보 DOM 파싱 결과 */
+  detailTabs?: {
+    scheduleNotice?: { title: string; rawText: string; sections: { heading?: string | null; lines: string[] }[]; lines: string[] } | null;
+    bookingTerms?: { title: string; rawText: string; sections: { heading?: string | null; lines: string[] }[]; lines: string[] } | null;
+    cancellationPolicy?: { title: string; rawText: string; sections: { heading?: string | null; lines: string[] }[]; lines: string[] } | null;
   };
   media?: {
     heroImageUrl?: string;

@@ -34,6 +34,8 @@ set public = excluded.public,
 | `SUPABASE_URL` | Supabase 프로젝트 URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | 서비스 역할 키 (Storage 업로드용) |
 
+Supabase 개발 환경 reset/reapply 절차는 **docs/supabase-reset-guide.md** 를 참고하세요.
+
 ## Getting Started
 
 First, run the development server:

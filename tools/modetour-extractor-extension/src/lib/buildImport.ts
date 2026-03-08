@@ -40,6 +40,8 @@ function checkDaySequence(
 
 /**
  * ExtractedDomData → ModetourImportV1 (warnings, raw 포함)
+ * PR16 이후: payload는 source, product(title/nights/days/regionText/priceText), itinerary, media, warnings, raw 만 포함.
+ * 설명/포함·불포함/약관/상세탭 필드는 설정하지 않음.
  */
 export function buildModetourImportV1(extracted: ExtractedDomData): ModetourImportV1 {
   const warnings: ModetourImportWarning[] = [];
@@ -114,54 +116,6 @@ export function buildModetourImportV1(extracted: ExtractedDomData): ModetourImpo
     addWarning(warnings, "HERO_IMAGE_MISSING", "대표 이미지를 찾지 못했습니다.", "media.heroImageUrl");
   }
 
-  if (extracted.missingSections?.includes("SECTION_NOT_FOUND_inclusions")) {
-    addWarning(
-      warnings,
-      "SECTION_NOT_FOUND_inclusions",
-      "포함/불포함 섹션을 찾지 못했습니다.",
-      "inclusions",
-    );
-  }
-  if (extracted.missingSections?.includes("SECTION_NOT_FOUND_terms")) {
-    addWarning(
-      warnings,
-      "SECTION_NOT_FOUND_terms",
-      "약관/유의사항 섹션을 찾지 못했습니다.",
-      "terms",
-    );
-  }
-  if (extracted.missingSections?.includes("SECTION_NOT_FOUND_INCLUDED")) {
-    addWarning(
-      warnings,
-      "SECTION_NOT_FOUND_INCLUDED",
-      "포함 섹션을 찾지 못했습니다.",
-      "inclusions",
-    );
-  }
-  if (extracted.missingSections?.includes("SECTION_NOT_FOUND_EXCLUDED")) {
-    addWarning(
-      warnings,
-      "SECTION_NOT_FOUND_EXCLUDED",
-      "불포함 섹션을 찾지 못했습니다.",
-      "inclusions",
-    );
-  }
-  if (extracted.missingSections?.includes("SECTION_NOT_FOUND_CANCEL")) {
-    addWarning(
-      warnings,
-      "SECTION_NOT_FOUND_CANCEL",
-      "취소규정 섹션을 찾지 못했습니다.",
-      "terms",
-    );
-  }
-  if (extracted.missingSections?.includes("SECTION_NOT_FOUND_NOTICE")) {
-    addWarning(
-      warnings,
-      "SECTION_NOT_FOUND_NOTICE",
-      "유의사항 섹션을 찾지 못했습니다.",
-      "terms",
-    );
-  }
   if (extracted.missingSections?.includes("EXTRACT_ERROR")) {
     addWarning(warnings, "EXTRACT_ERROR", "DOM 추출 중 오류가 발생했습니다.", undefined);
   }
@@ -191,14 +145,11 @@ export function buildModetourImportV1(extracted: ExtractedDomData): ModetourImpo
     },
     product: {
       title: extracted.product.title?.trim() ?? "",
-      summary: extracted.product.summary?.trim() || undefined,
       nights: extracted.product.nights,
       days: extracted.product.days,
       regionText: extracted.product.regionText?.trim() || undefined,
       priceText: extracted.product.priceText?.trim() || undefined,
     },
-    inclusions: extracted.inclusions,
-    terms: extracted.terms,
     itinerary: extracted.itinerary,
     media: extracted.media,
     warnings: warnings.length > 0 ? warnings : undefined,

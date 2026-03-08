@@ -25,12 +25,23 @@ export type ModetourImportV1 = {
   inclusions?: {
     includedText?: string;
     excludedText?: string;
+    /** DOM 파싱으로 추출한 포함 사항 리스트 (우선 사용) */
+    includedItems?: string[];
+    /** DOM 파싱으로 추출한 불포함 사항 리스트 (우선 사용) */
+    excludedItems?: string[];
   };
 
   terms?: {
     termsText?: string;
     cancelText?: string;
     noticeText?: string;
+  };
+
+  /** 탭형 상세정보 (일정 안내 / 예약 조건 / 환불·취소 규정) DOM 파싱 결과 */
+  detailTabs?: {
+    scheduleNotice?: { title: string; rawText: string; sections: { heading?: string | null; lines: string[] }[]; lines: string[] } | null;
+    bookingTerms?: { title: string; rawText: string; sections: { heading?: string | null; lines: string[] }[]; lines: string[] } | null;
+    cancellationPolicy?: { title: string; rawText: string; sections: { heading?: string | null; lines: string[] }[]; lines: string[] } | null;
   };
 
   itinerary?: {

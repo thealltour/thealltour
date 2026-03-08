@@ -1,6 +1,8 @@
 "use client";
 
 import type { ItineraryV2Day, ItineraryV2Event, SelectedEventRef } from "@/types/product";
+import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import type { ImagePlacementIssue } from "@/components/admin/modetour/modetourImageValidation";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { HintDisclosure } from "@/components/admin/common/HintDisclosure";
@@ -19,16 +21,20 @@ export type V2DayCardProps = {
   onEventChange: (eventIndex: number, patch: Partial<ItineraryV2Event>) => void;
   onRemoveEvent: (eventIndex: number) => void;
   onMoveEvent: (eventIndex: number, direction: "up" | "down") => void;
+  onCopyDay?: () => void;
+  onCopyEvent?: (eventIndex: number) => void;
   onFocus?: () => void;
   selectedEvent?: SelectedEventRef | null;
   onEventSelect?: (eventIndex: number) => void;
   /** 모두투어 미할당 이미지 DnD */
   modetourDnDEnabled?: boolean;
   onDropExternalImage?: (
-    item: { source: "unassigned"; url: string },
+    item: ModetourImageDragItem,
     destination: { editorType: "v2"; dayIndex: number; eventIndex: number; insertAt?: number }
   ) => void;
   onReturnImageToPool?: (url: string) => void;
+  imagePlacementIssuesByUrl?: Record<string, ImagePlacementIssue[]>;
+  showPlacementWarnings?: boolean;
 };
 
 export function V2DayCard({
@@ -44,12 +50,16 @@ export function V2DayCard({
   onEventChange,
   onRemoveEvent,
   onMoveEvent,
+  onCopyDay,
+  onCopyEvent,
   onFocus,
   selectedEvent,
   onEventSelect,
   modetourDnDEnabled,
   onDropExternalImage,
   onReturnImageToPool,
+  imagePlacementIssuesByUrl,
+  showPlacementWarnings = true,
 }: V2DayCardProps) {
   const events = day.events ?? [];
 
@@ -83,6 +93,15 @@ export function V2DayCard({
           className="min-w-[140px] flex-1 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
         />
         <div className="ml-auto flex gap-1">
+          {onCopyDay && (
+            <button
+              type="button"
+              onClick={onCopyDay}
+              className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+            >
+              Day 복사
+            </button>
+          )}
           <button
             type="button"
             disabled={dayIndex === 0}
@@ -102,7 +121,9 @@ export function V2DayCard({
           <button
             type="button"
             onClick={onRemoveDay}
-            className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-[11px] text-[var(--danger)] hover:opacity-90"
+            disabled={totalDays <= 1}
+            title={totalDays <= 1 ? "마지막 Day는 삭제할 수 없습니다." : undefined}
+            className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-[11px] text-[var(--danger)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Day 삭제
           </button>
@@ -205,10 +226,13 @@ export function V2DayCard({
           onReorder={(nextEvents) => onDayChange({ events: nextEvents })}
           onAddEvent={onAddEvent}
           onRemoveEvent={(evIndex) => onRemoveEvent(evIndex)}
+          onCopyEvent={onCopyEvent}
           modetourDnDEnabled={modetourDnDEnabled}
           dayIndex={dayIndex}
           onDropExternalImage={onDropExternalImage}
           onReturnImageToPool={onReturnImageToPool}
+          imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
+          showPlacementWarnings={showPlacementWarnings}
         />
       </div>
     </article>

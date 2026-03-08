@@ -3,6 +3,9 @@ import Image from "next/image";
 import { ShieldCheck, Users, Route, CheckCircle2 } from "lucide-react";
 import InquiryForm from "@/components/InquiryForm";
 import SiteHeader from "@/components/SiteHeader";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { SectionBlock } from "@/components/layout/SectionBlock";
+import { SectionHeader } from "@/components/layout/SectionHeader";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import { getHomeBanners } from "@/lib/homeBanners";
 import HeroQuickConsultButton from "@/components/HeroQuickConsultButton";
@@ -18,23 +21,92 @@ export default async function Home() {
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
 
-      <main className="page-content flex w-full flex-col gap-16 px-3 py-8 sm:px-6 md:gap-20 md:py-10 md:px-10">
-        {/* 추천여행 (home curated) - 최상단 배치 */}
-        <section className="space-y-8 rounded-none bg-transparent px-3 py-6 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-10 sm:ring-1 sm:ring-[var(--border)] md:px-10">
-          {curatedSettings?.is_active === true && curatedSections.length > 0 ? (
+      <main className="page-content flex w-full flex-col py-8 md:py-10">
+        {/* Full-bleed Hero: 배경/이미지는 화면 전체, 콘텐츠만 PageContainer로 정렬 */}
+        <section className="relative overflow-hidden bg-[var(--hero-bg)]">
+          {primaryBanner ? (
             <>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold tracking-wide text-[var(--text-muted)] type-small">
-                  {curatedSettings.section_label}
-                </p>
-                <h3 className="heading-display section-title type-h2 md:type-h2 text-[var(--foreground)]">
-                  {curatedSettings.section_title}
-                </h3>
-                <p className="type-small text-[var(--text-muted)]">
-                  {curatedSettings.section_description}
-                </p>
+              <div className="pointer-events-none absolute inset-0 hidden md:block">
+                <Image
+                  src={primaryBanner.image_url}
+                  alt={primaryBanner.title}
+                  fill
+                  sizes="100vw"
+                  priority
+                  fetchPriority="high"
+                  quality={82}
+                  className="object-cover object-[right_center]"
+                />
+                <div className="absolute inset-0 hero-scrim" />
+                <div className="absolute inset-y-0 right-0 w-3/5 hero-overlay-warm mix-blend-soft-light" />
+                <div className="absolute inset-y-0 left-1/2 w-[18%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--hero-scrim-from)]/40 to-transparent backdrop-blur-[2px]" />
+                <div className="absolute inset-0 hero-vignette" />
               </div>
+              <div className="pointer-events-none absolute inset-0 hidden md:block hero-vignette-soft" />
+            </>
+          ) : null}
 
+          <PageContainer size="wide">
+            <div className="relative z-10 py-10 text-[var(--hero-text-primary)] sm:py-14 md:py-20">
+              <div className="space-y-8 md:space-y-10">
+                {primaryBanner ? (
+                  <div className="overflow-hidden rounded-2xl ring-1 ring-[var(--hero-badge-border)] md:hidden">
+                    <div className="relative aspect-[16/11] w-full">
+                      <Image
+                        src={primaryBanner.mobile_image_url || primaryBanner.image_url}
+                        alt={primaryBanner.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 0px"
+                        priority
+                        fetchPriority="high"
+                        quality={82}
+                        className="object-cover object-center"
+                      />
+                      <div className="pointer-events-none absolute inset-0 image-overlay-bottom" />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 text-left text-[var(--hero-text-primary)]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--hero-text-secondary)]/90">
+                          THEALL CURATION
+                        </p>
+                        <p className="mt-1 type-small font-semibold">{primaryBanner.title}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-10 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center">
+                  <div className="space-y-6">
+                    <p className="inline-flex items-center gap-2 rounded-full bg-[var(--hero-badge-bg)] px-4 py-1 section-label text-[var(--hero-text-secondary)] md:type-small ring-1 ring-[var(--hero-badge-border)]">
+                      THEALL TOUR PREMIUM GOLF
+                    </p>
+                    <h1 className="heading-display-hero type-h1 font-semibold leading-[1.15] md:text-[2.5rem]">
+                      <span className="text-[var(--hero-accent)]">품격 있는</span> 골프와 여행의 시작
+                    </h1>
+                    <p className="max-w-xl type-small font-semibold text-[var(--hero-text-secondary)] md:type-body">
+                      전담 상담사가 1:1 맞춤 설계를 진행하여, 일정·동행 구성·예산에 맞는 골프&여행 코스를 함께
+                      정리해 드립니다.
+                    </p>
+                    <ul className="space-y-1.5 type-small text-[var(--hero-text-secondary)]/95">
+                      <li>· 전화·메신저로 편하게 상담 시작</li>
+                      <li>· 일정·항공·골프장까지 한 번에 비교 제안</li>
+                      <li>· 출발 전·후 안내까지 전담 상담사가 지속 케어</li>
+                    </ul>
+                  </div>
+                  <div className="hidden min-h-[260px] md:block" />
+                </div>
+              </div>
+            </div>
+          </PageContainer>
+        </section>
+
+        <PageContainer size="wide" className="flex flex-col gap-16 md:gap-20">
+          {/* 추천여행 (home curated) - 최상단 배치 */}
+          {curatedSettings?.is_active === true && curatedSections.length > 0 ? (
+            <SectionBlock surface="none" padding="md">
+              <SectionHeader
+                eyebrow={curatedSettings.section_label}
+                title={curatedSettings.section_title}
+                description={curatedSettings.section_description}
+              />
               <div className="space-y-8">
                 {curatedSections.map((sec) => (
                   <CuratedBlock
@@ -44,7 +116,6 @@ export default async function Home() {
                     products={sec.products}
                   />
                 ))}
-
                 <div className="pt-2">
                   <Link
                     href={curatedSettings.catalog_button_href}
@@ -54,95 +125,17 @@ export default async function Home() {
                   </Link>
                 </div>
               </div>
-            </>
+            </SectionBlock>
           ) : (
-            <div className="rounded-none border-0 bg-transparent p-0 shadow-none ring-0 type-small text-[var(--text-muted)] sm:rounded-2xl sm:border sm:border-[var(--border)] sm:bg-[var(--surface)] sm:p-8 sm:shadow-[var(--shadow-soft)]">
-              메인 추천 상품이 없습니다. 관리자 페이지에서 추천 상품을 체크해 주세요.
-            </div>
+            <SectionBlock surface="card" padding="md">
+              <p className="type-small text-[var(--text-muted)]">
+                메인 추천 상품이 없습니다. 관리자 페이지에서 추천 상품을 체크해 주세요.
+              </p>
+            </SectionBlock>
           )}
-        </section>
-
-        <section className="relative overflow-hidden rounded-none bg-[var(--hero-bg)] px-3 py-8 text-[var(--hero-text-primary)] shadow-none ring-0 sm:rounded-3xl sm:px-6 sm:py-12 sm:shadow-[var(--shadow-soft-strong)] sm:ring-1 sm:ring-[var(--border)] md:px-14 md:py-20">
-          {/* 데스크톱: 우측 골프 이미지 + 스크림·웜톤·비네트 (토큰 기반) */}
-          {primaryBanner ? (
-            <>
-              <div className="pointer-events-none absolute inset-0 hidden md:block">
-                <Image
-                  src={primaryBanner.image_url}
-                  alt={primaryBanner.title}
-                  fill
-                  sizes="(min-width: 1024px) 960px, (min-width: 768px) 768px, 0px"
-                  priority
-                  fetchPriority="high"
-                  quality={82}
-                  className="object-cover object-[right_center]"
-                />
-                {/* 왼쪽 45% 스크림: 라이트는 밝게, 다크는 어둡게 (--hero-scrim-from / --hero-scrim-to) */}
-                <div className="absolute inset-0 hero-scrim" />
-                {/* 우측 웜톤 오버레이 */}
-                <div className="absolute inset-y-0 right-0 w-3/5 hero-overlay-warm mix-blend-soft-light" />
-                {/* 중앙 경계 블러 */}
-                <div className="absolute inset-y-0 left-1/2 w-[18%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--hero-scrim-from)]/40 to-transparent backdrop-blur-[2px]" />
-                {/* 가장자리 비네트 */}
-                <div className="absolute inset-0 hero-vignette" />
-              </div>
-              <div className="pointer-events-none absolute inset-0 hidden md:block hero-vignette-soft" />
-            </>
-          ) : null}
-
-          <div className="relative z-10 space-y-8 md:space-y-10">
-            {/* 모바일: 이미지 상단, 텍스트 하단 */}
-            {primaryBanner ? (
-              <div className="overflow-hidden rounded-2xl ring-1 ring-[var(--hero-badge-border)] md:hidden">
-                <div className="relative aspect-[16/11] w-full">
-                  <Image
-                    src={primaryBanner.mobile_image_url || primaryBanner.image_url}
-                    alt={primaryBanner.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 0px"
-                    priority
-                    fetchPriority="high"
-                    quality={82}
-                    className="object-cover object-center"
-                  />
-                  <div className="pointer-events-none absolute inset-0 image-overlay-bottom" />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 text-left text-[var(--hero-text-primary)]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--hero-text-secondary)]/90">
-                      THEALL CURATION
-                    </p>
-                    <p className="mt-1 type-small font-semibold">{primaryBanner.title}</p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="grid gap-10 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center">
-              <div className="space-y-6">
-                <p className="inline-flex items-center gap-2 rounded-full bg-[var(--hero-badge-bg)] px-4 py-1 section-label text-[var(--hero-text-secondary)] md:type-small ring-1 ring-[var(--hero-badge-border)]">
-                  THEALL TOUR PREMIUM GOLF
-                </p>
-                <h1 className="heading-display-hero type-h1 font-semibold leading-[1.15] md:text-[2.5rem]">
-                  <span className="text-[var(--hero-accent)]">품격 있는</span> 골프와 여행의 시작
-                </h1>
-                <p className="max-w-xl type-small font-semibold text-[var(--hero-text-secondary)] md:type-body">
-                  전담 상담사가 1:1 맞춤 설계를 진행하여, 일정·동행 구성·예산에 맞는 골프&여행 코스를 함께
-                  정리해 드립니다.
-                </p>
-                <ul className="space-y-1.5 type-small text-[var(--hero-text-secondary)]/95">
-                  <li>· 전화·메신저로 편하게 상담 시작</li>
-                  <li>· 일정·항공·골프장까지 한 번에 비교 제안</li>
-                  <li>· 출발 전·후 안내까지 전담 상담사가 지속 케어</li>
-                </ul>
-              </div>
-
-              {/* 우측 컬럼: 배경 이미지를 보여주기 위한 여백 (이미지는 섹션 배경으로 처리) */}
-              <div className="hidden min-h-[260px] md:block" />
-            </div>
-          </div>
-        </section>
 
         {/* 신뢰 강조 섹션 */}
-        <section className="rounded-none bg-transparent px-3 py-8 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-12 sm:ring-1 sm:ring-[var(--border)] md:px-10">
+        <SectionBlock surface="none" padding="md">
           <div className="mb-8 space-y-3 text-center">
             <p className="inline-flex items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-1 section-label text-[var(--foreground)] md:type-small">
               대형 여행사 공식 제휴 파트너
@@ -157,7 +150,6 @@ export default async function Home() {
               대형 여행사와의 공식 제휴와 검증된 일정 운영 경험을 바탕으로, 안정적인 예약과 운영을 약속드립니다.
             </p>
           </div>
-
           <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-7 lg:grid-cols-4">
             <div className="flex h-full flex-col rounded-none bg-transparent p-0 shadow-none ring-0 sm:rounded-2xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] text-[var(--foreground)]">
               <div className="mb-3 flex items-center gap-2">
@@ -211,23 +203,18 @@ export default async function Home() {
               </p>
             </div>
           </div>
-        </section>
+        </SectionBlock>
 
         {/* 메인 카테고리 섹션 - 골프 우선 구조 */}
-        <section className="space-y-8 rounded-none bg-transparent px-3 py-8 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-12 sm:ring-1 sm:ring-[var(--border)] md:px-10">
-          <div className="space-y-2 text-left md:text-center">
-            <p className="section-label text-[var(--text-muted)] md:type-small">
-              THEALL TOUR PREMIUM
-            </p>
-            <h3 className="heading-display text-3xl font-semibold tracking-[0.06em] text-[var(--foreground)] md:text-4xl">
-              품격 있는 골프 컬렉션
-            </h3>
-            <p className="mx-auto max-w-2xl type-small text-[var(--text-muted)] md:type-body">
-              검증된 일정과 안정적인 운영으로 안내합니다.
-            </p>
-          </div>
-
-          {/* 골프 3종 카테고리 (최상단) */}
+        <SectionBlock surface="none" padding="md">
+          <SectionHeader
+            eyebrow="THEALL TOUR PREMIUM"
+            title="품격 있는 골프 컬렉션"
+            description="검증된 일정과 안정적인 운영으로 안내합니다."
+            align="left"
+            className="mb-0"
+          />
+          <div className="space-y-8">
           <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
             <Link
               href="/products?category=해외 골프 투어"
@@ -328,11 +315,13 @@ export default async function Home() {
               </span>
             </div>
           </Link>
-        </section>
-
-        <section
+        </div>
+        </SectionBlock>
+        <SectionBlock
           id="contact"
-          className="rounded-none bg-transparent px-3 py-8 ring-0 sm:rounded-3xl sm:bg-[var(--surface-muted)] sm:px-6 sm:py-12 sm:ring-1 sm:ring-[var(--border)] md:px-12 md:py-14"
+          surface="none"
+          padding="md"
+          className="md:px-12"
         >
           <div className="grid items-start gap-10 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)]">
             <div className="space-y-4">
@@ -365,8 +354,9 @@ export default async function Home() {
               </div>
             </div>
           </div>
-        </section>
+        </SectionBlock>
 
+        </PageContainer>
       </main>
     </div>
   );

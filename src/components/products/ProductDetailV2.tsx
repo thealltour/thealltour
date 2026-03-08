@@ -66,6 +66,8 @@ export type ProductDetailV2Props = {
   overviewModel?: TravelOverviewModel | null;
   /** 오버뷰 커버 이미지 fallback (product 있으면 product.image_url 사용) */
   overviewFallbackUrl?: string;
+  /** PR6: 리뷰 요약 (있으면 제목 근처에 평점·후기 수 표시) */
+  reviewSummary?: { averageRating: number; reviewCount: number } | null;
 };
 
 type ScheduleDay = { label: string; content: string };
@@ -140,6 +142,7 @@ export default function ProductDetailV2({
   product,
   overviewModel,
   overviewFallbackUrl = "",
+  reviewSummary,
 }: ProductDetailV2Props) {
   const resolvedOverview = useMemo(() => {
     if (product != null) return mapProductToOverview(product);
@@ -306,6 +309,17 @@ export default function ProductDetailV2({
         <h1 className="font-card-title text-2xl font-bold leading-tight text-[#0f172a] md:text-3xl">
           {title || "상품명"}
         </h1>
+
+        {reviewSummary && reviewSummary.reviewCount > 0 && (
+          <a
+            href="#reviews"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+          >
+            <span className="text-amber-500">★</span>
+            <span>{reviewSummary.averageRating.toFixed(1)}</span>
+            <span className="text-slate-500">(후기 {reviewSummary.reviewCount})</span>
+          </a>
+        )}
 
         {oneLiner ? (
           <p className="whitespace-pre-wrap text-sm leading-[1.75] text-slate-600 md:text-base">{oneLiner}</p>

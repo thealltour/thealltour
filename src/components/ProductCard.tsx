@@ -4,6 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { Scale, Bookmark, Check, Info } from "lucide-react";
 import Tag from "@/components/ui/Tag";
+import {
+  CARD_BASE,
+  CARD_HOVER,
+  CARD_TRANSITION,
+  CARD_PADDING_RELAXED,
+  CARD_IMAGE_WRAPPER,
+} from "@/lib/cardTokens";
+import { cn } from "@/lib/cn";
 
 export type ProductCardTag = {
   label: string;
@@ -28,8 +36,6 @@ export type ProductCardProps = {
   showCompareButton?: boolean;
   showBookmarkButton?: boolean;
 };
-
-const TRANSITION = "transition-all duration-[250ms] ease-out";
 
 export default function ProductCard({
   href,
@@ -61,10 +67,16 @@ export default function ProductCard({
   return (
     <Link
       href={href}
-      className={`group flex h-full flex-col overflow-hidden rounded-3xl bg-[var(--card)] shadow-[var(--shadow-soft-strong)] ring-1 ring-[var(--border)] ${TRANSITION} hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft-strong)]`}
+      className={cn(
+        "group flex h-full flex-col overflow-hidden",
+        CARD_BASE,
+        CARD_HOVER,
+        CARD_TRANSITION,
+        "hover:-translate-y-0.5",
+      )}
     >
       {/* ImageArea */}
-      <div className="relative h-52 w-full overflow-hidden">
+      <div className={cn(CARD_IMAGE_WRAPPER, "h-48 md:h-52")}>
         <Image
           src={imageUrl}
           alt={imageAlt}
@@ -72,7 +84,7 @@ export default function ProductCard({
           height={560}
           sizes="(max-width: 768px) 100vw, 50vw"
           loading="lazy"
-          className={`h-full w-full object-cover ${TRANSITION} group-hover:scale-[1.03]`}
+          className={cn("h-full w-full object-cover", CARD_TRANSITION, "group-hover:scale-[1.03]")}
         />
         {/* 비교 추가 / 북마크: 우측 상단 액션 영역 */}
         {(showCompareButton || showBookmarkButton) && (
@@ -101,7 +113,7 @@ export default function ProductCard({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
+      <div className={cn("flex flex-1 flex-col gap-3", CARD_PADDING_RELAXED)}>
         {/* BadgeRow */}
         {tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -114,17 +126,17 @@ export default function ProductCard({
         )}
 
         {/* Title */}
-        <h2 className="font-card-title type-body font-semibold text-content-primary md:type-small line-clamp-2">
+        <h2 className="font-card-title type-body font-semibold text-[var(--text-primary)] md:type-small line-clamp-2">
           {title}
         </h2>
 
         {/* MetaInfo */}
-        <p className="line-clamp-1 type-small leading-6 text-content-secondary">{description}</p>
+        <p className="line-clamp-1 type-small leading-6 text-[var(--text-muted)]">{description}</p>
 
         {/* PriceBlock */}
         <div className="space-y-1">
           {priceFormatted !== null && (
-            <p className="font-price-strong type-body font-bold text-[#1E3A8A]">
+            <p className="font-price-strong type-body font-bold text-[var(--primary)]">
               ₩{priceFormatted}~
             </p>
           )}
@@ -163,7 +175,11 @@ export default function ProductCard({
 
         {/* CTA */}
         <span
-          className={`type-btn mt-auto inline-flex w-fit rounded-lg bg-[var(--primary)] px-4 py-2 text-white ${TRANSITION} group-hover:bg-[var(--primary-hover)] group-hover:shadow-[var(--shadow-soft-strong)]`}
+          className={cn(
+            "type-btn mt-auto inline-flex w-fit rounded-lg bg-[var(--primary)] px-4 py-2 text-white",
+            CARD_TRANSITION,
+            "group-hover:bg-[var(--primary-hover)] group-hover:shadow-[var(--shadow-soft-strong)]",
+          )}
         >
           {ctaLabel}
         </span>

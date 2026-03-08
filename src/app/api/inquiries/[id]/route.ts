@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getTravelBookingByInquiryId, createTravelBooking, updateTravelBookingStatus } from "@/lib/travelBookings";
 import { createEligibilityIfNotExists } from "@/lib/reviewEligibilities";
+import { createReviewReminders } from "@/lib/reviewReminders";
 import type { ConsultationStatus, BookingStatus } from "@/types/inquiry";
 
 type PatchBodyLegacy = {
@@ -195,6 +196,7 @@ export async function PATCH(
       });
 
       if (eligibility) {
+        await createReviewReminders(eligibility);
         return NextResponse.json({
           message: "여행 완료 및 후기 자격이 생성되었습니다.",
           claim_token: eligibility.claim_token,

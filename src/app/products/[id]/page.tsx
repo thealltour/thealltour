@@ -6,6 +6,7 @@ import ProductDetailContentLegacy from "@/components/ProductDetailContentLegacy"
 import ProductDetailHero from "@/components/ProductDetailHero";
 import ProductDetailTabs from "@/components/ProductDetailTabs";
 import ProductDetailV2 from "@/components/products/ProductDetailV2";
+import { ProductReviewsSection } from "@/components/products/ProductReviewsSection";
 import {
   ProductDetailStickyDesktop,
   ProductDetailStickyMobile,
@@ -14,17 +15,28 @@ import {
   ProductDetailStickyV2Desktop,
   ProductDetailStickyV2Mobile,
 } from "@/components/products/ProductDetailStickyV2";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import AlertCard from "@/components/ui/AlertCard";
 import { ConsultModalProvider } from "@/components/ConsultModal";
 import { ENABLE_NEW_PRODUCT_UI } from "@/config/featureFlags";
 import { getProductByIdFresh } from "@/lib/products";
+import { getProductReviewStats, getProductReviews } from "@/lib/reviewStats";
+import { buildProductReviewJsonLd } from "@/lib/seo/products";
+import { addTrustScoresToReviews } from "@/lib/reviewTrustScore";
+import {
+  buildProductReviewStructuredData,
+} from "@/lib/reviewStructuredData";
+import { parseReviewPersonalizationContext } from "@/lib/reviewPersonalizationContext";
+import { getReviewExperimentVariant } from "@/lib/reviewExperimentAssignment";
+import { cookies } from "next/headers";
 import { getSiteSettings } from "@/lib/siteSettings";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getTermsTemplateContent } from "@/lib/termsTemplates";
 
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function buildSeoDescription(input: string) {
@@ -102,8 +114,19 @@ type FlightCardData = {
   flightName?: string;
 };
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+export default async function ProductDetailPage({ params, searchParams }: ProductDetailPageProps) {
   const { id } = await params;
+  const rawSearch = searchParams ? await searchParams : {};
+  const personalizationContext = parseReviewPersonalizationContext(rawSearch);
+  const cookieStore = await cookies();
+  const subjectKey = cookieStore.get("review_exp_subject")?.value;
+  const persistedVariant = cookieStore.get("review_exp_highlight")?.value;
+  const queryVariant = typeof rawSearch?.reviewVariant === "string" ? rawSearch.reviewVariant : undefined;
+  const reviewExperimentVariant = getReviewExperimentVariant("review_highlight_variant", {
+    queryVariant,
+    persistedVariant: persistedVariant ?? undefined,
+    subjectKey: subjectKey ?? undefined,
+  });
   const product = await getProductByIdFresh(id);
 
   if (!product) {
@@ -137,18 +160,43 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
   const productUrl = `${siteUrl}/products/${product.id}`;
   const productImageUrl = toAbsoluteUrl(siteUrl, product.image_url?.trim() || "/thealltour-logo.png");
-  const productJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.title,
-    description: buildSeoDescription(product.description),
-    image: [productImageUrl],
-    category: product.category,
-    brand: {
-      "@type": "Brand",
-      name: "더올투어",
+  const productReviewStats = await getProductReviewStats(product.id);
+  const productReviewsForSeo = await getProductReviews(product.id, {
+    limit: 50,
+    sort: "recommended",
+  });
+  const reviewsWithTrust = addTrustScoresToReviews(productReviewsForSeo);
+  const reviewsForSeo = reviewsWithTrust.map((r) => ({ ...r, status: "visible" }));
+  const structuredData = buildProductReviewStructuredData(
+    { name: product.title, id: product.id },
+    reviewsForSeo,
+  );
+  const productJsonLdBase = buildProductReviewJsonLd(
+    {
+      id: product.id,
+      title: product.title,
+      description: product.description,
+      image_url: product.image_url,
     },
-    url: productUrl,
+    productReviewStats,
+    [],
+    { productUrl },
+  );
+  if (structuredData) {
+    if (structuredData.aggregateRating) {
+      (productJsonLdBase as Record<string, unknown>).aggregateRating =
+        structuredData.aggregateRating;
+    }
+    if (structuredData.review?.length) {
+      (productJsonLdBase as Record<string, unknown>).review = structuredData.review;
+    }
+  } else {
+    delete (productJsonLdBase as Record<string, unknown>).aggregateRating;
+    delete (productJsonLdBase as Record<string, unknown>).review;
+  }
+  const productJsonLd = {
+    ...productJsonLdBase,
+    category: product.category,
     offers:
       typeof product.price === "number"
         ? {
@@ -219,21 +267,24 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     product.description?.trim().split(/\n/)[0]?.slice(0, 200) ||
     product.title;
 
+  const hasReviews = productReviewStats.reviewCount > 0;
+
   return (
     <ConsultModalProvider>
       <ProductQuoteProvider>
-      <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white px-3 py-6 sm:px-6 sm:py-10 md:px-10">
-        <main className="mx-auto w-full max-w-6xl">
-          <div className="mb-6 md:hidden">
-            <Link
-              href="/products"
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              ← 상품 목록으로
-            </Link>
-          </div>
+      <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white py-6 sm:py-10 md:py-14">
+        <PageContainer size="default">
+          <main className="w-full">
+            <div className="mb-6 md:hidden">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                ← 상품 목록으로
+              </Link>
+            </div>
 
-          <div className="flex gap-8 lg:items-start">
+            <div className="flex gap-8 xl:gap-10 lg:items-start">
             <div className="min-w-0 flex-1 space-y-6">
               <section className="overflow-hidden rounded-none bg-transparent shadow-none ring-0 sm:rounded-3xl sm:bg-white sm:shadow-md sm:ring-1 sm:ring-[#dbeafe]">
                 <script
@@ -267,9 +318,18 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     basePrice={product.price}
                     product={product}
                     overviewFallbackUrl={product.image_url}
+                    reviewSummary={productReviewStats.reviewCount > 0 ? { averageRating: productReviewStats.averageRating, reviewCount: productReviewStats.reviewCount } : undefined}
                   />
                 </div>
               </section>
+
+              <ProductReviewsSection
+                productId={product.id}
+                productTitle={product.title}
+                personalizationContext={personalizationContext}
+                experimentKey="review_highlight_variant"
+                variant={reviewExperimentVariant}
+              />
 
               <AlertCard variant="info" title="상담 안내">
                 문의를 남겨주시면 일정/예산/동행구성에 맞춰 맞춤 동선과 견적 옵션을 안내드립니다.
@@ -285,9 +345,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               status={statusV2}
               trust={product.trust}
               product={product}
+              experimentKey="review_highlight_variant"
+              variant={reviewExperimentVariant}
             />
           </div>
         </main>
+        </PageContainer>
 
         <ProductDetailStickyV2Mobile
           priceFormatted={formattedPrice}
@@ -297,6 +360,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           kakaoHref={kakaoHref}
           status={statusV2}
           trust={product.trust}
+          experimentKey="review_highlight_variant"
+          variant={reviewExperimentVariant}
         />
       </div>
       </ProductQuoteProvider>

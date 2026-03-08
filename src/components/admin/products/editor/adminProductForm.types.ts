@@ -13,6 +13,7 @@ export type {
 
 export type SectionId =
   | "basic"
+  | "taxonomy"
   | "price"
   | "description"
   | "included"

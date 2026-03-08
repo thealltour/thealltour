@@ -5,6 +5,14 @@ import Image from "next/image";
 import type { Product } from "@/types/product";
 import { getProductBadges } from "@/lib/productCategory";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
+import {
+  CARD_BASE,
+  CARD_HOVER,
+  CARD_TRANSITION,
+  CARD_PADDING,
+  CARD_IMAGE_WRAPPER,
+} from "@/lib/cardTokens";
+import { cn } from "@/lib/cn";
 
 export type CuratedProductCardProps = {
   product: Product;
@@ -19,7 +27,12 @@ export default function CuratedProductCard({ product, sectionTitle }: CuratedPro
   return (
     <Link
       href={href}
-      className="group relative flex h-full flex-col overflow-hidden rounded-3xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-colors duration-150 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)]"
+      className={cn(
+        "group relative flex h-full flex-col overflow-hidden",
+        CARD_BASE,
+        CARD_HOVER,
+        CARD_TRANSITION,
+      )}
       onClick={() =>
         trackProductCardClick({
           productId: product.id,
@@ -30,18 +43,19 @@ export default function CuratedProductCard({ product, sectionTitle }: CuratedPro
         })
       }
     >
-      <div className="relative h-40 w-full overflow-hidden">
+      <div className={cn(CARD_IMAGE_WRAPPER, "h-32 sm:h-36")}>
         <Image
           src={product.image_url ?? ""}
           alt={`${product.title ?? "상품"} 대표 이미지`}
           fill
-          sizes="(max-width: 768px) 100vw, 33vw"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--overlay)] via-[var(--overlay)]/20 to-transparent" />
-        <div className="absolute inset-0 overlay-radial-blue-subtle opacity-80 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 overlay-radial-blue-subtle opacity-80 transition-opacity group-hover:opacity-100" />
       </div>
-      <div className="relative flex flex-1 flex-col gap-2 p-4">
+      <div className={cn("relative flex flex-1 flex-col", CARD_PADDING)}>
+        {/* 태그: 카테고리·배지 */}
         <div className="flex flex-wrap items-center gap-1.5 section-label">
           {product.category ? (
             <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 type-caption text-[var(--text-muted)] ring-1 ring-[var(--border)]">
@@ -57,19 +71,23 @@ export default function CuratedProductCard({ product, sectionTitle }: CuratedPro
             </span>
           ))}
         </div>
-        <h5 className="font-card-title mt-1 line-clamp-2 type-small font-semibold md:type-body text-[var(--foreground)]">
+        {/* 제목 */}
+        <h5 className="font-card-title mt-1 line-clamp-2 type-small font-semibold text-[var(--foreground)]">
           {product.title ?? "상품명"}
         </h5>
+        {/* 테마/한줄: 1줄 */}
         {product.theme ? (
-          <p className="type-caption text-[var(--text-muted)]">
+          <p className="mt-0.5 line-clamp-1 type-caption text-[var(--text-muted)]">
             {product.theme}
           </p>
         ) : null}
-        <p className="line-clamp-3 type-caption leading-relaxed text-[var(--text-muted)] md:type-small">
+        {/* 설명: 1줄로 밀도 확보 */}
+        <p className="mt-0.5 line-clamp-1 type-caption text-[var(--text-muted)]">
           {product.description ?? ""}
         </p>
+        {/* 가격: 하단 고정 */}
         {typeof product.price === "number" ? (
-          <p className="font-price-strong mt-1 type-caption font-semibold text-[var(--primary)] md:type-small">
+          <p className="font-price-strong mt-1.5 type-caption font-semibold text-[var(--primary)]">
             예상가 {new Intl.NumberFormat("ko-KR").format(product.price)}원~
           </p>
         ) : null}

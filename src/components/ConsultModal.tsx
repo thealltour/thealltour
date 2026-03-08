@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Send, X } from "lucide-react";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
+import { trackReviewConversionInquiry } from "@/lib/reviewExperimentTracking";
 
 export type ConsultModalParams = {
   productId?: string;
@@ -132,6 +133,9 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        if (params.productId) {
+          trackReviewConversionInquiry(params.productId);
+        }
         setForm(initialFormState);
         closeModal();
         showToast("success", "상담 요청이 접수되었습니다. 확인 후 순차적으로 연락드리겠습니다.");

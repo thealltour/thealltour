@@ -1,13 +1,16 @@
 import AdminHeader from "@/components/AdminHeader";
-import AdminReviewTable from "@/components/AdminReviewTable";
-import AdminToastProvider from "@/components/admin/AdminToastProvider";
-import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";
+import { getAllReviewsForAdminList } from "@/lib/reviewAdminList";
+import { AdminReviewListPage } from "@/components/admin/reviews/AdminReviewListPage";
 
 export default async function AdminReviewsPage() {
-  const [{ inquiryCount, productCount, memberCount, reviewCount }, unreadNotificationCount] =
-    await Promise.all([getAdminCounts(), prepareAdminNotificationsAndGetUnreadCount()]);
+  const [{ inquiryCount, productCount, memberCount, reviewCount }, unreadNotificationCount, reviews] =
+    await Promise.all([
+      getAdminCounts(),
+      prepareAdminNotificationsAndGetUnreadCount(),
+      getAllReviewsForAdminList(),
+    ]);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
@@ -15,7 +18,7 @@ export default async function AdminReviewsPage() {
         <AdminHeader
           activeTab="reviews"
           title="후기 관리"
-          description="등록된 여행후기 내용을 열람하고 제목/작성자/본문을 수정할 수 있습니다."
+          description="리뷰 검색·필터·정렬로 목록을 확인하고, analytics / anomalies / summaries로 이동할 수 있습니다."
           inquiryCount={inquiryCount}
           productCount={productCount}
           memberCount={memberCount}
@@ -23,12 +26,8 @@ export default async function AdminReviewsPage() {
           unreadNotificationCount={unreadNotificationCount}
         />
 
-        <section className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
-          <AdminToastProvider>
-            <AdminConfirmProvider>
-              <AdminReviewTable />
-            </AdminConfirmProvider>
-          </AdminToastProvider>
+        <section className="overflow-hidden rounded-2xl bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
+          <AdminReviewListPage reviews={reviews} />
         </section>
       </main>
     </div>

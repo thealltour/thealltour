@@ -22,18 +22,23 @@ export type ProductsPageContentProps = {
   products: Product[];
   regionOptions: string[];
   themeOptions: string[];
+  productLineOptions: string[];
   initialKeyword?: string;
   presetCategories?: string[];
   presetLabel?: string;
+  /** 랜딩(destination/city/theme slug) 진입 시 서버에서 해석한 초기 필터 */
+  initialFiltersFromServer?: ProductFiltersState | null;
 };
 
 export function ProductsPageContent({
   products,
   regionOptions,
   themeOptions,
+  productLineOptions,
   initialKeyword = "",
   presetCategories,
   presetLabel,
+  initialFiltersFromServer = null,
 }: ProductsPageContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,11 +46,18 @@ export function ProductsPageContent({
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
 
   const filters = useMemo(
-    () =>
-      parseProductFiltersFromSearchParams(
+    () => {
+      const hasLanding =
+        searchParams.get("destination") ||
+        searchParams.get("city") ||
+        searchParams.get("theme");
+      if (hasLanding && initialFiltersFromServer != null)
+        return initialFiltersFromServer;
+      return parseProductFiltersFromSearchParams(
         Object.fromEntries(searchParams.entries()),
-      ),
-    [searchParams],
+      );
+    },
+    [searchParams, initialFiltersFromServer],
   );
 
   const baseProducts = useMemo(() => {
@@ -73,10 +85,11 @@ export function ProductsPageContent({
     : null;
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-8 items-start">
       <ProductFilterSidebar
         regionOptions={regionOptions}
         themeOptions={themeOptions}
+        productLineOptions={productLineOptions}
         filters={filters}
         onFilterChange={handleFilterChange}
       />
@@ -108,6 +121,8 @@ export function ProductsPageContent({
           filters={filters}
           onRemoveRegion={() => handleFilterChange({ region: null })}
           onRemoveTheme={() => handleFilterChange({ theme: null })}
+          onRemoveProductLine={() => handleFilterChange({ product_line: null })}
+          onRemoveKeyword={() => handleFilterChange({ q: null })}
           onRemoveSort={() => handleFilterChange({ sort: "" })}
         />
 
@@ -121,6 +136,7 @@ export function ProductsPageContent({
           initialTheme={filters.theme}
           onCategoryChange={(region) => handleFilterChange({ region: region ?? null })}
           onThemeChange={(theme) => handleFilterChange({ theme: theme ?? null })}
+          onResetFilters={() => handleFilterChange({ region: null, theme: null, product_line: null, q: null })}
         />
       </div>
 
@@ -129,9 +145,10 @@ export function ProductsPageContent({
         onClose={() => setFilterDrawerOpen(false)}
         regionOptions={regionOptions}
         themeOptions={themeOptions}
+        productLineOptions={productLineOptions}
         filters={filters}
         onApply={(next) => handleFilterChange(next)}
-        onReset={() => handleFilterChange({ region: null, theme: null })}
+        onReset={() => handleFilterChange({ region: null, theme: null, product_line: null })}
       />
 
       <MobileProductSortSheet

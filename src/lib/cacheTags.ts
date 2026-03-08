@@ -7,6 +7,7 @@
  * - HOME_CURATED: 홈 추천 섹션. curated 설정/섹션/상품 매핑 변경 시 revalidate.
  * - TAXONOMY: 지역/테마 taxonomy. taxonomy 테이블 변경 시 revalidate.
  * - HEADER_NAV: 헤더 메가메뉴/모바일 메뉴. taxonomy 또는 home-curated 변경 시 함께 revalidate.
+ * - LANDING_SUBNODES: 상세 랜딩 하위 탐색 카드. landing_subnodes 변경 시 revalidate.
  *
  * Revalidate 호출 위치:
  * - taxonomy: product-taxonomies API (POST/PATCH/DELETE) → TAXONOMY + HEADER_NAV
@@ -19,6 +20,7 @@ export const CACHE_TAGS = {
   HOME_CURATED: "home-curated",
   TAXONOMY: "taxonomy",
   HEADER_NAV: "header-nav",
+  LANDING_SUBNODES: "landing-subnodes",
 } as const;
 
 export type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];

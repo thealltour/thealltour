@@ -12,18 +12,20 @@ export type MobileProductFilterDrawerProps = {
   onClose: () => void;
   regionOptions: string[];
   themeOptions: string[];
+  productLineOptions: string[];
   filters: ProductFiltersState;
-  onApply: (next: Pick<ProductFiltersState, "region" | "theme">) => void;
+  onApply: (next: Partial<ProductFiltersState>) => void;
   onReset: () => void;
 };
 
-type DraftState = { region: string | null; theme: string | null };
+type DraftState = { region: string | null; theme: string | null; product_line: string | null };
 
 export function MobileProductFilterDrawer({
   isOpen,
   onClose,
   regionOptions,
   themeOptions,
+  productLineOptions,
   filters,
   onApply,
   onReset,
@@ -31,12 +33,13 @@ export function MobileProductFilterDrawer({
   const [draft, setDraft] = useState<DraftState>({
     region: filters.region,
     theme: filters.theme,
+    product_line: filters.product_line,
   });
 
   useEffect(() => {
     if (!isOpen) return;
-    setDraft({ region: filters.region, theme: filters.theme });
-  }, [isOpen, filters.region, filters.theme]);
+    setDraft({ region: filters.region, theme: filters.theme, product_line: filters.product_line });
+  }, [isOpen, filters.region, filters.theme, filters.product_line]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -48,12 +51,12 @@ export function MobileProductFilterDrawer({
   }, [isOpen, onClose]);
 
   function handleApply() {
-    onApply({ region: draft.region, theme: draft.theme });
+    onApply({ region: draft.region, theme: draft.theme, product_line: draft.product_line });
     onClose();
   }
 
   function handleReset() {
-    setDraft({ region: null, theme: null });
+    setDraft({ region: null, theme: null, product_line: null });
     onReset();
     onClose();
   }
@@ -157,6 +160,40 @@ export function MobileProductFilterDrawer({
               ))}
             </ul>
           </fieldset>
+
+          {productLineOptions.length > 0 && (
+            <fieldset className="mt-6 space-y-3">
+              <legend className="type-small font-semibold text-[var(--foreground)]">상품군</legend>
+              <ul className="space-y-1">
+                <li>
+                  <label className="flex cursor-pointer items-center gap-3 py-2.5">
+                    <input
+                      type="radio"
+                      name={`${PRODUCT_FILTER_KEYS.PRODUCT_LINE}-mobile`}
+                      checked={!draft.product_line}
+                      onChange={() => setDraft((p) => ({ ...p, product_line: null }))}
+                      className="h-4 w-4 border-[var(--border)] text-[var(--primary)] focus-visible:ring-[var(--focus-ring)]"
+                    />
+                    <span className="type-small text-[var(--text-primary)]">전체</span>
+                  </label>
+                </li>
+                {productLineOptions.map((name) => (
+                  <li key={name}>
+                    <label className="flex cursor-pointer items-center gap-3 py-2.5">
+                      <input
+                        type="radio"
+                        name={`${PRODUCT_FILTER_KEYS.PRODUCT_LINE}-mobile`}
+                        checked={draft.product_line === name}
+                        onChange={() => setDraft((p) => ({ ...p, product_line: name }))}
+                        className="h-4 w-4 border-[var(--border)] text-[var(--primary)] focus-visible:ring-[var(--focus-ring)]"
+                      />
+                      <span className="type-small text-[var(--text-primary)]">{name}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          )}
         </div>
 
         <div className="flex shrink-0 gap-3 border-t border-[var(--divider)] p-4 safe-bottom">

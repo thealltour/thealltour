@@ -6,25 +6,74 @@ import type {
   ProductTaxonomy,
   ProductTaxonomyType,
   ProductTaxonomyWithUsage,
+  ProductCategoryType,
+  TaxonomyType,
 } from "@/types/productTaxonomy";
 
 export function parseThemeTokens(value: string | undefined) {
   if (!value) return [] as string[];
   return value
-    .split(/[,\n/|]+/)
+    .split(/[,\n|]+/)
     .map((token) => token.trim())
     .filter((token) => token.length > 0);
 }
 
+const TAXONOMY_TYPE_VALUES: TaxonomyType[] = [
+  "destination",
+  "theme",
+  "product_line",
+  "campaign",
+  "tag",
+];
+
+function parseTaxonomyType(val: unknown): TaxonomyType {
+  if (typeof val === "string" && TAXONOMY_TYPE_VALUES.includes(val as TaxonomyType)) {
+    return val as TaxonomyType;
+  }
+  return "destination";
+}
+
 function mapTaxonomy(row: Record<string, unknown>): ProductTaxonomy {
+  const r = row as Record<string, unknown>;
+  const optStr = (key: string): string | null =>
+    typeof r[key] === "string" ? (r[key] as string) : null;
+  const optBool = (key: string, fallback: boolean): boolean =>
+    typeof r[key] === "boolean" ? (r[key] as boolean) : fallback;
+
+  const taxonomy_type =
+    r.taxonomy_type != null && String(r.taxonomy_type).trim() !== ""
+      ? parseTaxonomyType(r.taxonomy_type)
+      : r.type === "theme"
+        ? "theme"
+        : "destination";
+  const legacyType: ProductTaxonomyType =
+    taxonomy_type === "theme" ? "theme" : "category";
+  const category_type: ProductCategoryType | undefined =
+    legacyType === "category" && r.category_type != null
+      ? (r.category_type as ProductCategoryType)
+      : undefined;
+
   return {
     id: String(row.id ?? ""),
-    type: row.type === "theme" ? "theme" : "category",
+    taxonomy_type,
+    type: legacyType,
     name: String(row.name ?? ""),
     slug: typeof row.slug === "string" ? row.slug : null,
+    parent_id: r.parent_id != null ? String(r.parent_id) : null,
     is_active: typeof row.is_active === "boolean" ? row.is_active : true,
     sort_order: typeof row.sort_order === "number" ? row.sort_order : null,
     created_at: typeof row.created_at === "string" ? row.created_at : null,
+    category_type,
+    is_hub_visible: optBool("is_hub_visible", true),
+    is_landing_enabled: optBool("is_landing_enabled", false),
+    card_title: optStr("card_title") ?? undefined,
+    card_description: optStr("card_description") ?? undefined,
+    card_image_url: optStr("card_image_url") ?? undefined,
+    landing_title: optStr("landing_title") ?? undefined,
+    landing_description: optStr("landing_description") ?? undefined,
+    hero_image_url: optStr("hero_image_url") ?? undefined,
+    seo_title: optStr("seo_title") ?? undefined,
+    seo_description: optStr("seo_description") ?? undefined,
   };
 }
 
@@ -39,33 +88,68 @@ function toFallbackTaxonomies(products: Product[]) {
 }
 
 /**
- * 상품 목록용 카테고리/테마 옵션.
- * productsFallback이 있으면 해당 상품에서 카테고리 추출 (추천 필터 없음).
- * taxonomy 없을 때만 fallback 사용.
+ * 상품 목록 필터용 taxonomy 옵션 (taxonomy_type 기준).
+ * - categories: 지역(destination)만 → 필터 "지역"
+ * - themes: 테마(theme)만 → 필터 "테마"
+ * - productLines: 상품군(product_line)만 → 필터 "상품군"
+ * productsFallback이 있으면 해당 상품에서 카테고리/테마 추출 (추천 필터 없음). taxonomy 없을 때만 fallback 사용.
  */
-export async function getProductTaxonomyOptions(productsFallback: Product[] = []) {
+export async function getProductTaxonomyOptions(productsFallback: Product[] = []): Promise<{
+  categories: string[];
+  themes: string[];
+  productLines: string[];
+}> {
   const taxonomies = await getActiveTaxonomiesCached();
 
   if (taxonomies === null) {
-    return toFallbackTaxonomies(productsFallback);
+    const fallback = toFallbackTaxonomies(productsFallback);
+    return {
+      categories: fallback.categories,
+      themes: fallback.themes,
+      productLines: [],
+    };
   }
 
-  // 상품 페이지: 전달된 전체 상품에서 카테고리 추출 (추천 상품만 쓰지 않음)
   if (productsFallback.length > 0) {
-    return toFallbackTaxonomies(productsFallback);
+    const fallback = toFallbackTaxonomies(productsFallback);
+    return {
+      categories: fallback.categories,
+      themes: fallback.themes,
+      productLines: [],
+    };
   }
 
   const mapped = taxonomies.map((row) => mapTaxonomy(row));
-  const categories = mapped.filter((item) => item.type === "category").map((item) => item.name);
-  const themes = mapped.filter((item) => item.type === "theme").map((item) => item.name);
-  return { categories, themes };
+  const categories = mapped
+    .filter((item) => item.taxonomy_type === "destination")
+    .map((item) => item.name);
+  const themes = mapped
+    .filter((item) => item.taxonomy_type === "theme")
+    .map((item) => item.name);
+  const productLines = mapped
+    .filter((item) => item.taxonomy_type === "product_line")
+    .map((item) => item.name);
+  return { categories, themes, productLines };
 }
 
-function getUsageCount(products: Product[], type: ProductTaxonomyType, name: string) {
-  if (type === "category") {
+function getUsageCount(
+  products: Product[],
+  taxonomyType: TaxonomyType,
+  name: string,
+): number {
+  if (
+    taxonomyType === "destination" ||
+    taxonomyType === "product_line" ||
+    taxonomyType === "campaign"
+  ) {
     return products.filter((product) => product.category === name).length;
   }
-  return products.filter((product) => parseThemeTokens(product.theme).includes(name)).length;
+  if (taxonomyType === "theme") {
+    return products.filter((product) =>
+      parseThemeTokens(product.theme).includes(name),
+    ).length;
+  }
+  return 0;
 }
 
 export async function getProductTaxonomiesWithUsage(products: Product[]) {
@@ -80,22 +164,26 @@ export async function getProductTaxonomiesWithUsage(products: Product[]) {
     const fallback = toFallbackTaxonomies(products);
     const categoryRows: ProductTaxonomyWithUsage[] = fallback.categories.map((name) => ({
       id: `fallback-category-${name}`,
-      type: "category",
+      taxonomy_type: "destination",
       name,
       slug: null,
       is_active: true,
       sort_order: null,
       created_at: null,
-      usageCount: getUsageCount(products, "category", name),
+      is_hub_visible: true,
+      is_landing_enabled: false,
+      usageCount: getUsageCount(products, "destination", name),
     }));
     const themeRows: ProductTaxonomyWithUsage[] = fallback.themes.map((name) => ({
       id: `fallback-theme-${name}`,
-      type: "theme",
+      taxonomy_type: "theme",
       name,
       slug: null,
       is_active: true,
       sort_order: null,
       created_at: null,
+      is_hub_visible: true,
+      is_landing_enabled: false,
       usageCount: getUsageCount(products, "theme", name),
     }));
     return [...categoryRows, ...themeRows];
@@ -105,7 +193,7 @@ export async function getProductTaxonomiesWithUsage(products: Product[]) {
     const taxonomy = mapTaxonomy(row as Record<string, unknown>);
     return {
       ...taxonomy,
-      usageCount: getUsageCount(products, taxonomy.type, taxonomy.name),
+      usageCount: getUsageCount(products, taxonomy.taxonomy_type, taxonomy.name),
     };
   });
 }
@@ -137,6 +225,112 @@ export async function getActiveTaxonomiesForHeader(): Promise<ProductTaxonomy[]>
   return rows.map((r) => mapTaxonomy(r));
 }
 
+/** 허브 페이지용: 활성 + 허브 노출인 destination(지역) 목록.
+ * taxonomy_type='destination' 기준. is_landing_enabled 는 허브 조회에 사용하지 않음.
+ */
+const getHubDestinationsCached = unstable_cache(
+  async (): Promise<ProductTaxonomy[]> => {
+    const result = await supabase
+      .from("product_taxonomies")
+      .select("*")
+      .eq("taxonomy_type", "destination")
+      .eq("is_active", true)
+      .eq("is_hub_visible", true)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true });
+    if (result.error) return [];
+    return (result.data ?? []).map((r) => mapTaxonomy(r as Record<string, unknown>));
+  },
+  ["product-taxonomies:hub-destinations"],
+  { revalidate: 300, tags: [CACHE_TAGS.TAXONOMY, CACHE_TAGS.HEADER_NAV] },
+);
+
+/** 허브 페이지용: 활성 + 허브 노출인 theme(테마) 목록. taxonomy_type='theme' 기준. */
+const getHubThemesCached = unstable_cache(
+  async (): Promise<ProductTaxonomy[]> => {
+    const result = await supabase
+      .from("product_taxonomies")
+      .select("*")
+      .eq("taxonomy_type", "theme")
+      .eq("is_active", true)
+      .eq("is_hub_visible", true)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true });
+    if (result.error) return [];
+    return (result.data ?? []).map((r) => mapTaxonomy(r as Record<string, unknown>));
+  },
+  ["product-taxonomies:hub-themes"],
+  { revalidate: 300, tags: [CACHE_TAGS.TAXONOMY, CACHE_TAGS.HEADER_NAV] },
+);
+
+export async function getHubDestinations(): Promise<ProductTaxonomy[]> {
+  return getHubDestinationsCached();
+}
+
+export async function getHubThemes(): Promise<ProductTaxonomy[]> {
+  return getHubThemesCached();
+}
+
+/**
+ * slug로 destination 1건 조회. taxonomy_type='destination' 기준.
+ * 상세 랜딩 공개 여부는 반환 후 is_landing_enabled로 확인.
+ */
+export async function getDestinationBySlug(slug: string): Promise<ProductTaxonomy | null> {
+  const normalized = slug.trim().toLowerCase().replace(/\s+/g, "-");
+  if (!normalized) return null;
+  const result = await supabase
+    .from("product_taxonomies")
+    .select("*")
+    .eq("taxonomy_type", "destination")
+    .eq("is_active", true)
+    .eq("slug", normalized)
+    .maybeSingle();
+  if (result.error || !result.data) return null;
+  return mapTaxonomy(result.data as Record<string, unknown>);
+}
+
+/**
+ * 상세 랜딩 공개된 destination만 slug로 조회.
+ * is_landing_enabled === true 인 경우만 반환. [slug] 페이지에서 사용.
+ */
+export async function getDestinationBySlugForPublicLanding(
+  slug: string,
+): Promise<ProductTaxonomy | null> {
+  const item = await getDestinationBySlug(slug);
+  if (!item || !item.is_landing_enabled) return null;
+  return item;
+}
+
+/**
+ * slug로 theme 1건 조회. taxonomy_type='theme' 기준.
+ * 상세 랜딩 공개 여부는 반환 후 is_landing_enabled로 확인.
+ */
+export async function getThemeBySlug(slug: string): Promise<ProductTaxonomy | null> {
+  const normalized = slug.trim().toLowerCase().replace(/\s+/g, "-");
+  if (!normalized) return null;
+  const result = await supabase
+    .from("product_taxonomies")
+    .select("*")
+    .eq("taxonomy_type", "theme")
+    .eq("is_active", true)
+    .eq("slug", normalized)
+    .maybeSingle();
+  if (result.error || !result.data) return null;
+  return mapTaxonomy(result.data as Record<string, unknown>);
+}
+
+/**
+ * 상세 랜딩 공개된 theme만 slug로 조회.
+ * is_landing_enabled === true 인 경우만 반환. [slug] 페이지에서 사용.
+ */
+export async function getThemeBySlugForPublicLanding(
+  slug: string,
+): Promise<ProductTaxonomy | null> {
+  const item = await getThemeBySlug(slug);
+  if (!item || !item.is_landing_enabled) return null;
+  return item;
+}
+
 /** slug → name 폴백 (taxonomy에 slug 미설정 시 랜딩용) */
 const SLUG_TO_REGION_NAME: Record<string, string> = {
   japan: "일본",
@@ -158,7 +352,7 @@ const SLUG_TO_THEME_NAME: Record<string, string> = {
 
 /**
  * region/theme 랜딩용: slug로 taxonomy name 조회.
- * slug가 DB에 있으면 해당 name 반환, 없으면 폴백 맵 사용.
+ * type 'category' -> taxonomy_type='destination', type 'theme' -> taxonomy_type='theme'.
  */
 export async function getTaxonomyNameBySlug(
   type: "category" | "theme",
@@ -167,13 +361,21 @@ export async function getTaxonomyNameBySlug(
   const normalizedSlug = slug.trim().toLowerCase().replace(/\s+/g, "-");
   if (!normalizedSlug) return null;
 
+  const taxonomyType: TaxonomyType = type === "theme" ? "theme" : "destination";
   const rows = await getActiveTaxonomiesCached();
   if (rows) {
     const match = rows.find(
-      (r) =>
-        r.type === type &&
-        typeof r.slug === "string" &&
-        r.slug.trim().toLowerCase().replace(/\s+/g, "-") === normalizedSlug,
+      (r) => {
+        const row = r as Record<string, unknown>;
+        const effectiveType: TaxonomyType =
+          row.taxonomy_type != null && String(row.taxonomy_type).trim() !== ""
+            ? parseTaxonomyType(row.taxonomy_type)
+            : row.type === "theme"
+              ? "theme"
+              : "destination";
+        const slugVal = typeof row.slug === "string" ? row.slug.trim().toLowerCase().replace(/\s+/g, "-") : "";
+        return effectiveType === taxonomyType && slugVal === normalizedSlug;
+      },
     );
     if (match) return String((match as Record<string, unknown>).name ?? "");
   }

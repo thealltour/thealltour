@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useCallback } from "react";
+import { ChevronDown } from "lucide-react";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { DesktopMegaMenuPanel } from "./DesktopMegaMenuPanel";
 import { cn } from "@/lib/cn";
@@ -71,6 +72,79 @@ export function DesktopNavItem({
       >
         {item.label}
       </Link>
+    );
+  }
+
+  if (hasPanel && item.href) {
+    return (
+      <div
+        ref={wrapperRef}
+        className="relative flex items-center gap-0.5"
+        onMouseEnter={onOpen}
+        onMouseLeave={onClose}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+      >
+        <Link
+          href={item.href}
+          className={getNavLinkClass(isActive || isOpen)}
+          onClick={() => {
+            const payload = createAnalyticsPayload({
+              eventName: ANALYTICS_EVENTS.header_nav_click,
+              source: ANALYTICS_SOURCES.header_desktop_primary,
+              label: item.label,
+              href: item.href ?? null,
+              section: item.key,
+              taxonomyType: null,
+              position: positionIndex ?? null,
+              pagePath: typeof window !== "undefined" ? window.location.pathname : null,
+              deviceType: inferDeviceType("desktop"),
+            });
+            trackClientEvent(payload);
+          }}
+        >
+          {item.label}
+        </Link>
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-expanded={isOpen}
+          aria-haspopup="true"
+          aria-label={`${item.label} 하위 메뉴 열기`}
+          aria-controls={isOpen ? `mega-menu-panel-${item.key}` : undefined}
+          id={`mega-menu-trigger-${item.key}`}
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded p-0.5 text-[var(--text-muted)] transition-colors",
+            "hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:rounded",
+          )}
+          onClick={(e) => {
+            e.preventDefault();
+            if (isOpen) onClose();
+            else {
+              if (typeof window !== "undefined") {
+                const payload = createAnalyticsPayload({
+                  eventName: ANALYTICS_EVENTS.mega_menu_open,
+                  source: ANALYTICS_SOURCES.header_desktop_primary,
+                  section: item.key,
+                  label: item.label,
+                  position: positionIndex ?? null,
+                  pagePath: window.location.pathname,
+                  deviceType: inferDeviceType("desktop"),
+                });
+                trackClientEvent(payload);
+              }
+              onOpen();
+            }
+          }}
+          onFocus={onOpen}
+        >
+          <ChevronDown className="h-4 w-4" aria-hidden />
+        </button>
+        {isOpen && (
+          <DesktopMegaMenuPanel item={item} onClose={onClose} />
+        )}
+      </div>
     );
   }
 

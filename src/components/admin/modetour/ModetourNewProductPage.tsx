@@ -752,7 +752,7 @@ export default function ModetourNewProductPage() {
     (importData?.media?.heroImageUrl ? 1 : 0);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-8">
+    <div className="w-full px-6 py-8 md:px-10">
       <h1 className="text-xl font-semibold text-slate-100">상품 등록(모두)</h1>
       <p className="mt-2 text-sm text-slate-300">
         모두투어 상품 페이지에서 추출한 JSON을 붙여넣어 등록합니다.

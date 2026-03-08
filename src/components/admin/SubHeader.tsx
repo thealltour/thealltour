@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, Moon, Search, Sun } from "lucide-react";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
@@ -11,6 +12,31 @@ import {
   PRODUCT_VIEW_TO_LABEL,
 } from "@/components/admin/products/adminProducts.constants";
 
+export type SubHeaderTab = { label: string; href: string };
+
+/** 후기 관리 상단 가로 탭 (본문 상단 탭 UI용) */
+export const REVIEWS_TABS: SubHeaderTab[] = [
+  { label: "리뷰 목록 (검색)", href: "/admin/reviews" },
+  { label: "리뷰 검토", href: "/admin/reviews/moderation" },
+  { label: "리뷰 운영 알림", href: "/admin/reviews/notifications" },
+  { label: "후기 신고", href: "/theall_manager_only/review-reports" },
+  { label: "후기 리마인더", href: "/theall_manager_only/review-reminders" },
+  { label: "리뷰 요약", href: "/theall_manager_only/review-summaries" },
+  { label: "리뷰 분석", href: "/admin/reviews/analytics" },
+  { label: "리뷰 이상 감지", href: "/admin/reviews/anomalies" },
+  { label: "리뷰 요약 (관리자)", href: "/admin/reviews/summaries" },
+  { label: "리뷰 작성자 분석", href: "/admin/reviews/authors" },
+  { label: "리뷰 A/B 실험", href: "/admin/reviews/experiments" },
+  { label: "리뷰 전환 기여도", href: "/admin/reviews/conversions" },
+  { label: "리뷰 인사이트", href: "/admin/reviews/insights" },
+];
+
+function isReviewTabActive(href: string, pathname: string): boolean {
+  if (href === "/admin/reviews") return pathname === "/admin/reviews";
+  if (href === "/theall_manager_only/reviews") return pathname === "/theall_manager_only/reviews";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 export const menuMap = {
   dashboard: ["운영 현황", "통계"],
   product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 추천상품 관리"],
@@ -19,7 +45,7 @@ export const menuMap = {
   rewards: ["신청", "승인", "발송", "완료", "반려"],
   points: ["포인트 지급"],
   settings: [],
-  reviews: ["후기 목록"],
+  reviews: [] as string[],
   guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
   banners: ["배너 목록"],
   notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
@@ -50,9 +76,11 @@ type SubHeaderProps = {
 
 export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   const items = useMemo(
-    () => (activeMenu ? menuMap[activeMenu] ?? [] : []),
+    () => (activeMenu && activeMenu !== "reviews" ? menuMap[activeMenu] ?? [] : []) as string[],
     [activeMenu],
   );
+  const hasReviewTabs = activeMenu === "reviews";
+  const hasSubTabs = hasReviewTabs || items.length > 0;
   const [activeLabel, setActiveLabel] = useState<string | null>(items[0] ?? null);
   const [globalSearch, setGlobalSearch] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -226,7 +254,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         params.delete(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
       }
       const query = params.toString();
-      const target = query ? `${pathname}?${query}` : pathname;
+      const basePath = pathname.includes("/products/new-modetour")
+        ? "/theall_manager_only/products"
+        : pathname;
+      const target = query ? `${basePath}?${query}` : basePath;
       router.push(target);
       return;
     }
@@ -257,7 +288,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       return;
     }
     if (activeMenu === "rewards") {
-      const status = REWARDS_LABEL_TO_STATUS[label];
+      const status = searchParams.get("status");
       const params = new URLSearchParams(searchParams.toString());
       if (status) {
         params.set("status", status);
@@ -277,7 +308,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   }
 
   const title = MAIN_MENU_TITLE[activeMenu];
-  const hasSubTabs = items.length > 0;
+  const showInlineTabs = !hasReviewTabs && items.length > 0;
 
   return (
     <div
@@ -286,11 +317,11 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       }`}
     >
       <div className="flex h-14 items-center justify-between px-6 md:px-10">
-        {/* 왼쪽: 제목 + 탭 (전체 폭 왼쪽 정렬) */}
+        {/* 왼쪽: 제목 + 탭 (리뷰가 아닐 때만 인라인 탭) */}
         <div className="flex items-center gap-10">
           <h1 className="text-base font-semibold text-[var(--text)]">{title}</h1>
 
-          {hasSubTabs ? (
+          {showInlineTabs ? (
           <div className="flex items-center gap-6 text-sm">
             {items.map((label) => {
               const isActive = activeLabel === label;
@@ -363,6 +394,32 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
           <AdminLogoutButton />
         </div>
       </div>
+
+      {/* 후기 관리: 본문 상단 가로 탭 바 (가로 스크롤) */}
+      {hasReviewTabs && (
+        <div className="border-t border-[var(--divider)] bg-[var(--card)] px-6 py-3 md:px-10">
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2">
+            <div className="inline-flex min-w-max items-center gap-1">
+              {REVIEWS_TABS.map((tab) => {
+                const active = isReviewTabActive(tab.href, pathname);
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+                      active
+                        ? "bg-[var(--primary)] text-white"
+                        : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

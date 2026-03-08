@@ -5,6 +5,10 @@ import { getReviews, getReviewByEligibilityId } from "@/lib/reviews";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { createNewReviewNotification } from "@/lib/adminNotifications";
 import { getEligibilityById, updateEligibilityStatus } from "@/lib/reviewEligibilities";
+import { createReviewReward } from "@/lib/reviewRewards";
+import { cancelReviewReminders } from "@/lib/reviewReminders";
+import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
+import { getProductIdByBookingId } from "@/lib/travelBookings";
 
 type ReviewBody = {
   title?: string;
@@ -165,18 +169,28 @@ export async function POST(request: Request) {
 
         if (!isDraft) {
           await updateEligibilityStatus(eligibilityId, "submitted");
+          await cancelReviewReminders(eligibilityId);
+          const productIdForSummary = await getProductIdByBookingId(eligibility.booking_id);
+          if (productIdForSummary) await markProductReviewSummaryStale(productIdForSummary);
           await createNewReviewNotification({
             reviewId: existingReview.id,
             authorName: session.name,
             title: title || summary || "후기",
           });
+          const reward = await createReviewReward({
+            id: existingReview.id,
+            member_id: session.memberId,
+            status: "submitted",
+            eligibility_id: eligibilityId,
+          });
+          return NextResponse.json({
+            message: isDraft ? "임시저장되었습니다." : "후기가 등록되었습니다.",
+            review_id: existingReview.id,
+            eligibility_based: true,
+            rewardCreated: reward.rewardCreated,
+            pointsAwarded: reward.rewardCreated ? reward.points : undefined,
+          }, { status: isDraft ? 200 : 201 });
         }
-
-        return NextResponse.json({
-          message: isDraft ? "임시저장되었습니다." : "후기가 등록되었습니다.",
-          review_id: existingReview.id,
-          eligibility_based: true,
-        }, { status: isDraft ? 200 : 201 });
       }
     }
 
@@ -263,6 +277,26 @@ export async function POST(request: Request) {
       authorName: String(insertResult.data.author_name),
       title: String(insertResult.data.title),
     });
+    if (eligibilityId && bookingId) {
+      const productIdForSummary = await getProductIdByBookingId(bookingId);
+      if (productIdForSummary) await markProductReviewSummaryStale(productIdForSummary);
+    }
+    if (eligibilityId) {
+      await cancelReviewReminders(eligibilityId);
+    }
+    const reward = await createReviewReward({
+      id: String(insertResult.data.id),
+      member_id: session.memberId,
+      status: "submitted",
+      eligibility_id: eligibilityId,
+    });
+    return NextResponse.json({
+      message: "후기가 등록되었습니다.",
+      review_id: String(insertResult.data.id),
+      eligibility_based: true,
+      rewardCreated: reward.rewardCreated,
+      pointsAwarded: reward.rewardCreated ? reward.points : undefined,
+    }, { status: 201 });
   }
 
   return NextResponse.json({

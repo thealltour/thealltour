@@ -51,21 +51,29 @@ export const SECTIONS: SectionConfig[] = [
           severity: "recommended",
         });
       }
+      return issues;
+    },
+  },
+  {
+    id: "taxonomy",
+    title: "카테고리 설정",
+    getIssues(form) {
+      const issues: SectionIssue[] = [];
       if (!hasRealText(form.category)) {
         issues.push({
-          sectionId: "basic",
+          sectionId: "taxonomy",
           fieldKey: "category",
-          message: "카테고리를 선택해 주세요.",
-          anchorId: "form-field-basic-category",
+          message: "카테고리(지역)를 선택해 주세요.",
+          anchorId: "form-field-taxonomy-category",
           severity: "recommended",
         });
       }
       if (!hasRealText(form.theme)) {
         issues.push({
-          sectionId: "basic",
+          sectionId: "taxonomy",
           fieldKey: "theme",
           message: "테마를 선택하면 노출 품질이 좋아집니다.",
-          anchorId: "form-field-basic-theme",
+          anchorId: "form-field-taxonomy-theme",
           severity: "recommended",
         });
       }

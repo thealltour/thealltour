@@ -10,6 +10,7 @@ import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
+import { trackReviewConversionCtaClick } from "@/lib/reviewExperimentTracking";
 import type { Product, ProductTrust } from "@/types/product";
 
 export type ProductDetailStickyV2Status =
@@ -28,6 +29,9 @@ type ProductDetailStickyV2Props = {
   trust?: ProductTrust | null;
   /** 웹에서 예상가 위에 차트 표시용 */
   product?: Product | null;
+  /** PR27: 리뷰 전환 attribution용 실험 컨텍스트 */
+  experimentKey?: string;
+  variant?: string;
 };
 
 export function ProductDetailStickyV2Desktop({
@@ -39,6 +43,8 @@ export function ProductDetailStickyV2Desktop({
   status = "AVAILABLE",
   trust,
   product,
+  experimentKey,
+  variant,
 }: ProductDetailStickyV2Props) {
   const { openModal } = useConsultModal();
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
@@ -66,12 +72,13 @@ export function ProductDetailStickyV2Desktop({
     if (isSoldOut && typeof window !== "undefined") {
       window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
     }
+    trackReviewConversionCtaClick(productId, { experimentKey, variant });
     openModal({ productId, productTitle, sourcePath });
   };
 
   return (
     <aside
-      className="hidden md:block sticky top-24 w-full max-w-[280px] shrink-0 space-y-4"
+      className="hidden md:block sticky top-24 w-full max-w-[300px] shrink-0 space-y-4"
       aria-label="상품 요약"
     >
       <Link
@@ -148,6 +155,8 @@ export function ProductDetailStickyV2Mobile({
   sourcePath,
   kakaoHref,
   status = "AVAILABLE",
+  experimentKey,
+  variant,
 }: ProductDetailStickyV2Props) {
   const { openModal } = useConsultModal();
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
@@ -200,6 +209,7 @@ export function ProductDetailStickyV2Mobile({
     if (isSoldOut && typeof window !== "undefined") {
       window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
     }
+    trackReviewConversionCtaClick(productId, { experimentKey, variant });
     openModal({ productId, productTitle, sourcePath });
   };
 

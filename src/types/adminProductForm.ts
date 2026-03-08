@@ -45,6 +45,10 @@ export type ProductFormState = {
   images_json: string[];
   category: string;
   theme: string;
+  /** 상품군 1개 (product_taxonomies.id). 빈 문자열 = 미선택 */
+  product_line_id: string;
+  /** 기획/추천 다중 선택. 쉼표 등으로 구분된 이름 문자열 (테마와 동일 방식) */
+  campaigns: string;
   price: string;
   duration: string;
   itinerary: string;
@@ -123,6 +127,8 @@ export function createEmptyProductFormState(): ProductFormState {
     images_json: [],
     category: "여행상품",
     theme: "",
+    product_line_id: "",
+    campaigns: "",
     price: "",
     duration: "",
     itinerary: "",

@@ -64,7 +64,7 @@ export async function getMyPageReviewSections(
     review_id: r.id,
     eligibility_id: r.eligibility_id,
     title: r.title || null,
-    updated_at: r.created_at,
+    updated_at: r.updated_at ?? r.created_at,
     created_at: r.created_at,
   }));
 

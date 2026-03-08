@@ -50,6 +50,8 @@ type ProductBody = {
   // image_card_url?: string;
   category?: string;
   theme?: string | null;
+  product_line_id?: string | null;
+  campaigns?: string[] | null;
   price?: number | null;
   duration?: string | null;
   itinerary?: string | null;
@@ -158,6 +160,15 @@ export async function PATCH(
   }
   if (body.category !== undefined) updates.category = body.category?.trim();
   if (body.theme !== undefined) updates.theme = body.theme?.trim() || null;
+  if (body.product_line_id !== undefined) {
+    updates.product_line_id = body.product_line_id?.trim() || null;
+  }
+  if (body.campaigns !== undefined) {
+    updates.campaigns_json =
+      Array.isArray(body.campaigns) && body.campaigns.length > 0
+        ? body.campaigns.filter((v): v is string => typeof v === "string").map((v) => v.trim()).filter(Boolean)
+        : null;
+  }
   if (body.duration !== undefined) updates.duration = body.duration?.trim() || null;
   if (body.itinerary !== undefined) updates.itinerary = body.itinerary?.trim() || null;
   if (body.inclusions !== undefined) updates.inclusions = body.inclusions?.trim() || null;

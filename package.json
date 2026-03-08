@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=mobile --throttling.cpuSlowdownMultiplier=4 --chrome-flags=\"--headless\"",
-    "lighthouse:desktop": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=desktop"
+    "lighthouse:desktop": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=desktop",
+    "taxonomy:verify": "npx tsx scripts/verify-taxonomy-mapping.ts",
+    "taxonomy:migrate": "npx tsx scripts/migrate-taxonomies.ts",
+    "taxonomy:migrate:apply": "npx tsx scripts/migrate-taxonomies.ts --apply"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -17,12 +20,15 @@
     "@notionhq/client": "^5.11.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-query": "^5.90.21",
+    "browser-image-compression": "^2.0.2",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
     "pdfjs-dist": "^5.4.624",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "server-only": "^0.0.1"
+    "react-photo-view": "^1.2.7",
+    "server-only": "^0.0.1",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -31,7 +37,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "supabase": "^2.77.0",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   },
   "browserslist": [

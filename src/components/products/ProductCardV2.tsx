@@ -7,8 +7,8 @@ import { Card } from "@/components/ui/Card";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { buttonVariants } from "@/components/ui/Button";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
-
-const TRANSITION = "transition-all duration-[220ms] ease-out";
+import { CARD_TRANSITION } from "@/lib/cardTokens";
+import { cn } from "@/lib/cn";
 
 export type ProductCardV2Status =
   | "AVAILABLE"
@@ -46,6 +46,8 @@ export type ProductCardV2Props = {
   analyticsSection?: string;
   /** 계측 시 사용할 상품 ID (analyticsSource 설정 시 권장) */
   productId?: string;
+  /** 목록 페이지 1열 리스트용 레이아웃 시 이미지·타이틀 영역 확장 */
+  layout?: "grid" | "list";
 };
 
 const STATUS_LABELS: Record<ProductCardV2Status, string> = {
@@ -92,6 +94,7 @@ export default function ProductCardV2({
   analyticsSource,
   analyticsSection,
   productId,
+  layout = "grid",
 }: ProductCardV2Props) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -154,11 +157,19 @@ export default function ProductCardV2({
     });
 
   const metaLine = [duration, metaInfo].filter(Boolean).join(" · ");
+  const isListLayout = layout === "list";
 
   const cardContent = (
     <div className="flex min-h-[140px] w-full">
-      {/* Image (Left) - 카드 높이 전체를 채우도록 변경 */}
-      <div className="relative w-[44%] max-w-[220px] shrink-0 overflow-hidden bg-[var(--surface-muted)]">
+      {/* Left: thumbnail. Wider in list layout. */}
+      <div
+        className={cn(
+          "relative shrink-0 overflow-hidden bg-[var(--surface-muted)]",
+          isListLayout
+            ? "w-[38%] min-w-[180px] max-w-[280px]"
+            : "w-[42%] min-w-[140px] max-w-[220px]",
+        )}
+      >
         <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1">
           {topLeftChips.map((chip) => (
             <span
@@ -175,29 +186,34 @@ export default function ProductCardV2({
             src={normalizeProductImageUrl(thumbnailUrl)}
             alt={title || "상품 이미지"}
             fill
-            sizes="(max-width: 768px) 44vw, 220px"
-            className={`h-full w-full object-cover ${TRANSITION} group-hover:scale-[1.02]`}
+            sizes={isListLayout ? "(max-width: 768px) 38vw, 280px" : "(max-width: 768px) 42vw, 220px"}
+            className={cn("h-full w-full object-cover", CARD_TRANSITION, "group-hover:scale-[1.02]")}
             loading="lazy"
-            onLoadingComplete={() => setImageLoaded(true)}
+            onLoad={() => setImageLoaded(true)}
           />
         ) : null}
         <div
-          className={`absolute inset-0 bg-[var(--border)] ${TRANSITION} ${
+          className={cn(
+            "absolute inset-0 bg-[var(--border)]",
+            CARD_TRANSITION,
             thumbnailUrl
               ? imageLoaded
                 ? "opacity-0"
                 : "animate-pulse opacity-100"
-              : "animate-pulse"
-          }`}
+              : "animate-pulse",
+          )}
           aria-hidden
         />
       </div>
 
-      {/* Content (Right) */}
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
-        {/* Title: 한 줄 + 오른쪽 그라데이션 페이드 */}
         <div className="relative min-h-[1.25rem] overflow-hidden">
-          <h2 className="font-card-title line-clamp-1 pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] md:text-base">
+          <h2
+            className={cn(
+              "font-card-title pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] md:text-base",
+              isListLayout ? "line-clamp-2" : "line-clamp-1",
+            )}
+          >
             {title || "상품명"}
           </h2>
           <div
@@ -221,7 +237,6 @@ export default function ProductCardV2({
           {priceMeta ? <p className="text-[11px] text-[var(--text-subtle)]">{priceMeta}</p> : null}
         </div>
 
-        {/* Hashtag: 한 줄 + 오른쪽 그라데이션 페이드 */}
         {tags.length > 0 ? (
           <div className="relative mt-auto flex overflow-hidden">
             <div className="flex shrink-0 flex-nowrap gap-1.5 pr-8">
@@ -243,7 +258,6 @@ export default function ProductCardV2({
           <div className="mt-auto" />
         )}
 
-        {/* Compact consult chip (optional) */}
         {onClickConsult ? (
           <div className="pt-1">
             <span
@@ -266,7 +280,11 @@ export default function ProductCardV2({
     </div>
   );
 
-  const wrapperClass = `group flex h-full overflow-hidden rounded-2xl ${TRANSITION} hover:shadow-xl`;
+  const wrapperClass = cn(
+    "group flex h-full overflow-hidden",
+    CARD_TRANSITION,
+    "hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-soft-strong)]",
+  );
 
   if (hrefDetail) {
     const handleCardClick = () => {
@@ -283,7 +301,7 @@ export default function ProductCardV2({
     };
     return (
       <Link href={hrefDetail} className="block h-full" onClick={handleCardClick}>
-        <Card variant="elevated" className={wrapperClass}>
+        <Card variant="interactive" className={wrapperClass}>
           {cardContent}
         </Card>
       </Link>
@@ -292,7 +310,7 @@ export default function ProductCardV2({
 
   return (
     <Card
-      variant="elevated"
+      variant="interactive"
       className={wrapperClass}
       role="button"
       tabIndex={0}

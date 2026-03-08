@@ -74,6 +74,8 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
       return [...base, LABEL_SETTINGS];
     case "reviews":
       return [...base, LABEL_REVIEWS];
+    case "review-reports":
+      return [...base, LABEL_REVIEWS, "신고 목록"];
     case "guides": {
       let guideDetail: string;
       if (view === "notion") guideDetail = LABEL_GUIDES_NOTION;

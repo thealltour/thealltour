@@ -103,7 +103,7 @@ function buildLandingFeaturedLinks(type: ProductLandingType, taxonomyName: strin
   ];
 }
 
-/** relatedTaxonomies: 반대 축 활성 taxonomy 4~6개. region 랜딩 → themes, theme 랜딩 → categories. */
+/** relatedTaxonomies: 반대 축 활성 taxonomy. region 랜딩 → theme만, theme 랜딩 → destination만. taxonomy_type 기준. */
 function buildLandingRelatedTaxonomies(
   type: ProductLandingType,
   taxonomies: ProductTaxonomy[],
@@ -111,8 +111,9 @@ function buildLandingRelatedTaxonomies(
 ): ProductLandingFeaturedLink[] {
   const pathSegment = type === "region" ? "theme" : "region";
   const queryKey = type === "region" ? "theme" : "region";
+  const targetType = type === "region" ? "theme" : "destination";
   const list = taxonomies
-    .filter((t) => t.type === (type === "region" ? "theme" : "category"))
+    .filter((t) => t.taxonomy_type === targetType)
     .slice(0, 6)
     .map((t) => ({
       key: `related-${t.id}-${t.slug ?? t.name}`,
@@ -175,7 +176,7 @@ async function getProductLandingDataUncached(params: {
   const taxonomySlug =
     taxonomies.find(
       (t) =>
-        t.type === (type === "region" ? "category" : "theme") &&
+        t.taxonomy_type === (type === "region" ? "destination" : "theme") &&
         (t.name === taxonomyName || (t.slug && t.slug.trim().toLowerCase().replace(/\s+/g, "-") === normalizedSlug.toLowerCase())),
     )?.slug ?? null;
 

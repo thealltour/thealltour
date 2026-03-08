@@ -20,13 +20,42 @@ function inferMainMenuKey(pathname: string): MainMenuKey | null {
   if (pathname.startsWith("/theall_manager_only/members")) return "member";
   if (pathname.startsWith("/theall_manager_only/rewards")) return "rewards";
   if (pathname.startsWith("/theall_manager_only/points")) return "points";
-   if (pathname.startsWith("/theall_manager_only/settings")) return "settings";
-   if (pathname.startsWith("/theall_manager_only/reviews")) return "reviews";
-   if (pathname.startsWith("/theall_manager_only/guides")) return "guides";
-   if (pathname.startsWith("/theall_manager_only/banners")) return "banners";
-   if (pathname.startsWith("/theall_manager_only/notices")) return "notices";
-   if (pathname.startsWith("/theall_manager_only/notifications")) return "notifications";
+  if (pathname.startsWith("/theall_manager_only/settings")) return "settings";
+  if (pathname.startsWith("/admin/reviews")) return "reviews";
+  if (
+    pathname.startsWith("/theall_manager_only/reviews") ||
+    pathname.startsWith("/theall_manager_only/review-reports") ||
+    pathname.startsWith("/theall_manager_only/review-reminders") ||
+    pathname.startsWith("/theall_manager_only/review-summaries")
+  )
+    return "reviews";
+  if (pathname.startsWith("/theall_manager_only/guides")) return "guides";
+  if (pathname.startsWith("/theall_manager_only/banners")) return "banners";
+  if (pathname.startsWith("/theall_manager_only/notices")) return "notices";
+  if (pathname.startsWith("/theall_manager_only/notifications")) return "notifications";
   return null;
+}
+
+function canAccessPath(
+  pathname: string,
+  role: string,
+  items: typeof SIDEBAR_ITEMS,
+): boolean {
+  const roleOk = role as "admin" | "manager" | "viewer";
+  for (const item of items) {
+    if (!item.roles.includes(roleOk)) continue;
+    if (item.mainKey === "reviews") {
+      const isReviewPath =
+        pathname.startsWith("/admin/reviews") ||
+        pathname === "/theall_manager_only/reviews" ||
+        pathname.startsWith("/theall_manager_only/review-");
+      if (isReviewPath) return true;
+      continue;
+    }
+    const matchItem = pathname === item.href || pathname.startsWith(item.href + "/");
+    if (matchItem) return true;
+  }
+  return false;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -65,9 +94,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
-  const canAccessCurrentPath = SIDEBAR_ITEMS.some(
-    (item) => item.roles.includes(role) && pathname.startsWith(item.href),
-  );
+  const canAccessCurrentPath = canAccessPath(pathname, role, SIDEBAR_ITEMS);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] transition-colors">

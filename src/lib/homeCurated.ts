@@ -33,6 +33,8 @@ function normalizeSection(row: Record<string, unknown>): HomeCuratedSection {
     sort_order: typeof row.sort_order === "number" ? row.sort_order : 0,
     max_items: typeof row.max_items === "number" ? Math.max(0, row.max_items) : 8,
     is_active: row.is_active === true,
+    slug: typeof (row as Record<string, unknown>).slug === "string" ? (row as Record<string, unknown>).slug as string : undefined,
+    landing_enabled: typeof (row as Record<string, unknown>).landing_enabled === "boolean" ? (row as Record<string, unknown>).landing_enabled as boolean : undefined,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
   };
 }
@@ -128,4 +130,42 @@ export async function getHomeCuratedData(): Promise<HomeCuratedData> {
     revalidate: 60,
     tags: [CACHE_TAGS.HOME_CURATED],
   })();
+}
+
+/** 추천 허브(/recommended)용: 활성 추천 섹션 목록. section_title 등은 settings에서 가져와 사용. */
+export async function getRecommendedLandingSections(): Promise<HomeCuratedSectionWithProducts[]> {
+  const data = await getHomeCuratedData();
+  if (!data.settings?.is_active || !data.sections?.length) return [];
+  return data.sections;
+}
+
+const normalizedSlug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, "-");
+
+/**
+ * slug로 추천 섹션 1건 조회 (상품 포함).
+ * /recommended/[slug] 상세 랜딩 구현 시 사용. 공개 여부는 반환 후 landing_enabled로 확인.
+ */
+export async function getRecommendedSectionBySlug(
+  slug: string,
+): Promise<HomeCuratedSectionWithProducts | null> {
+  const data = await getHomeCuratedData();
+  if (!data.settings?.is_active || !data.sections?.length) return null;
+  const want = normalizedSlug(slug);
+  if (!want) return null;
+  const section = data.sections.find(
+    (s) => s.slug != null && normalizedSlug(s.slug) === want,
+  );
+  return section ?? null;
+}
+
+/**
+ * 상세 랜딩 공개된 추천 섹션만 slug로 조회.
+ * landing_enabled === true 인 경우만 반환. [slug] 페이지에서 사용.
+ */
+export async function getRecommendedSectionBySlugForPublicLanding(
+  slug: string,
+): Promise<HomeCuratedSectionWithProducts | null> {
+  const section = await getRecommendedSectionBySlug(slug);
+  if (!section || section.landing_enabled !== true) return null;
+  return section;
 }

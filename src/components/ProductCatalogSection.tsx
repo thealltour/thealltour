@@ -35,6 +35,8 @@ type ProductCatalogSectionProps = {
   onCategoryChange?: (region: string | null) => void;
   /** URL 필터 연동 시: 테마 탭 클릭 시 호출 */
   onThemeChange?: (theme: string | null) => void;
+  /** 0건일 때 필터 초기화(전체 상품 보기)용. 제공 시 빈 결과 UI에 "필터 초기화" CTA 노출 */
+  onResetFilters?: () => void;
 };
 
 function normalizeSearchKeyword(value: string) {
@@ -99,6 +101,7 @@ export default function ProductCatalogSection({
   initialTheme,
   onCategoryChange,
   onThemeChange,
+  onResetFilters,
 }: ProductCatalogSectionProps) {
   const [internalTab, setInternalTab] = useState<ProductCategoryTabId>("all");
   const [internalThemeTab, setInternalThemeTab] = useState("전체");
@@ -189,15 +192,17 @@ export default function ProductCatalogSection({
 
   return (
     <section className="space-y-5">
-      <div className="sticky top-[76px] z-20 space-y-3 rounded-2xl bg-[var(--surface)]/95 p-3 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] backdrop-blur">
-        <p className="section-label text-content-muted">
-          총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
-        </p>
-        {presetLabel ? <p className="section-label text-[#15803d]">필터: {presetLabel}</p> : null}
-        {keyword ? (
-          <p className="section-label text-[var(--primary)]">검색어: {initialKeyword}</p>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="sticky top-[76px] z-20 rounded-2xl bg-[var(--surface)]/95 p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] backdrop-blur sm:rounded-3xl sm:p-5">
+        <div className="space-y-4">
+          <p className="section-label text-[var(--text-muted)]">
+            총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
+          </p>
+          {presetLabel ? <p className="section-label text-[#15803d]">필터: {presetLabel}</p> : null}
+          {keyword ? (
+            <p className="section-label text-[var(--primary)]">검색어: {initialKeyword}</p>
+          ) : null}
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
         {categoryTabs.map((tab) => (
           <button
             key={tab}
@@ -221,7 +226,7 @@ export default function ProductCatalogSection({
         ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
         {themeTabs.map((tab) => (
           <button
             key={`theme-${tab}`}
@@ -247,14 +252,40 @@ export default function ProductCatalogSection({
 
       <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-6">
         {keywordFilteredProducts.length === 0 ? (
-          <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:col-span-2">
-            {keyword ? "검색어와 일치하는 상품이 없습니다." : "선택한 카테고리에 해당하는 상품이 없습니다."}
+          <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:rounded-3xl">
+            {(initialRegion || initialTheme || (initialKeyword && initialKeyword.trim())) && onResetFilters ? (
+              <>
+                <p className="font-semibold text-[var(--text-primary)]">선택한 조건에 맞는 상품이 없습니다.</p>
+                <p className="mt-2 text-[var(--text-secondary)]">
+                  {[initialRegion && `지역: ${initialRegion}`, initialTheme && `테마: ${initialTheme}`, initialKeyword?.trim() && `키워드: ${initialKeyword.trim()}`].filter(Boolean).join(" · ")}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Link
+                    href="/products"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90"
+                  >
+                    전체 상품 보기
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={onResetFilters}
+                    className="inline-flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 type-btn font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
+                  >
+                    필터 초기화
+                  </button>
+                </div>
+              </>
+            ) : keyword ? (
+              "검색어와 일치하는 상품이 없습니다."
+            ) : (
+              "선택한 카테고리에 해당하는 상품이 없습니다."
+            )}
           </div>
         ) : (
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
               <h3 className="font-card-title type-h3 text-[var(--primary)]">{group.theme}</h3>
-              <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-6">
+              <div className="flex flex-col gap-6">
                 {group.products.map((product) => {
                   const badges = getProductBadges(product);
                   const hashtags = parseMetaTitleAsHashtags(product.meta_title);
@@ -264,6 +295,7 @@ export default function ProductCatalogSection({
                     return (
                       <ProductCardV2
                         key={product.id}
+                        layout="list"
                         title={product.title}
                         price={product.price}
                         duration={product.duration}

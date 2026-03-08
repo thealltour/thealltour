@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, Fragment } from "react";
-import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
+import type { ProductTaxonomyWithUsage, TaxonomyType } from "@/types/productTaxonomy";
 import type { UpdateAdminTaxonomyPayload } from "@/components/admin/products/api/adminProductTaxonomy.client";
 import { cn } from "@/lib/cn";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -145,28 +145,100 @@ function getVisibleTaxonomies(
   return sortTaxonomyItems(afterFilters, controls.sortKey);
 }
 
+/** 지역(destination) 또는 테마(theme) 탭용: 대분류(parent_id null) → 중분류 → 세부 순서의 평면 목록 (다단계 지원) */
+function buildTaxonomyTreeOrder(
+  items: ProductTaxonomyWithUsage[],
+): ProductTaxonomyWithUsage[] {
+  const roots = items
+    .filter((i) => !i.parent_id || i.parent_id.trim() === "")
+    .sort((a, b) => {
+      const sa = a.sort_order ?? 9999;
+      const sb = b.sort_order ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+    });
+  const byParent = new Map<string, ProductTaxonomyWithUsage[]>();
+  for (const i of items) {
+    const pid = i.parent_id?.trim() || null;
+    if (!pid) continue;
+    if (!byParent.has(pid)) byParent.set(pid, []);
+    byParent.get(pid)!.push(i);
+  }
+  for (const arr of byParent.values()) {
+    arr.sort((a, b) => {
+      const sa = a.sort_order ?? 9999;
+      const sb = b.sort_order ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+    });
+  }
+  const out: ProductTaxonomyWithUsage[] = [];
+  function appendChildren(parentId: string) {
+    const children = byParent.get(parentId) ?? [];
+    for (const c of children) {
+      out.push(c);
+      appendChildren(c.id);
+    }
+  }
+  for (const root of roots) {
+    out.push(root);
+    appendChildren(root.id);
+  }
+  return out;
+}
+
+/** 트리 순서의 항목 목록으로 부모 선택용 옵션 생성 (대분류·중분류 모두 선택 가능) */
+function buildParentSelectOptions(
+  items: ProductTaxonomyWithUsage[],
+  excludeId: string | null,
+): { id: string; label: string; depth: number }[] {
+  const treeOrdered = buildTaxonomyTreeOrder(items);
+  return treeOrdered
+    .filter((i) => i.id !== excludeId)
+    .map((i) => {
+      let depth = 0;
+      let current: ProductTaxonomyWithUsage | undefined = i;
+      while (current?.parent_id?.trim()) {
+        depth += 1;
+        current = items.find((x) => x.id === current!.parent_id?.trim());
+      }
+      return {
+        id: i.id,
+        label: (depth > 0 ? "　".repeat(depth) + "└ " : "") + (i.name ?? ""),
+        depth,
+      };
+    });
+}
+
 // --- taxonomy row 빠른 액션: 랜딩/상품 보기 href (읽기 전용, fallback 안전) ---
 function normalizeSlugForPath(slug: string | null | undefined): string {
   const s = (slug ?? "").trim().toLowerCase().replace(/\s+/g, "-");
   return s;
 }
 
-/** region(category) / theme 구분해 랜딩 또는 필터 fallback URL 반환. slug 없으면 querystring 사용. */
-function buildLandingHref(item: ProductTaxonomyWithUsage): string {
+/** region(category) / theme / product_line / campaign 구분해 랜딩 또는 필터 fallback URL 반환.
+ * destination·theme만 상세 랜딩 경로 있음. product_line·campaign은 상품 보기만.
+ */
+function buildLandingHref(item: ProductTaxonomyWithUsage): string | null {
+  const tt = item.taxonomy_type;
   const name = (item.name ?? "").trim() || "all";
   const normalizedSlug = normalizeSlugForPath(item.slug);
-  if (item.type === "theme") {
-    if (normalizedSlug) return `/products/theme/${encodeURIComponent(normalizedSlug)}`;
+  if (tt === "theme") {
+    if (normalizedSlug) return `/themes/${encodeURIComponent(normalizedSlug)}`;
     return `/products?theme=${encodeURIComponent(name)}`;
   }
-  if (normalizedSlug) return `/products/region/${encodeURIComponent(normalizedSlug)}`;
-  return `/products?region=${encodeURIComponent(name)}`;
+  if (tt === "destination") {
+    if (normalizedSlug) return `/destinations/${encodeURIComponent(normalizedSlug)}`;
+    return `/products?region=${encodeURIComponent(name)}`;
+  }
+  return null;
 }
 
 /** 해당 taxonomy로 필터된 상품 목록 URL. */
 function buildFilteredProductsHref(item: ProductTaxonomyWithUsage): string {
   const name = (item.name ?? "").trim() || "all";
-  if (item.type === "theme") return `/products?theme=${encodeURIComponent(name)}`;
+  const tt = item.taxonomy_type;
+  if (tt === "theme") return `/products?theme=${encodeURIComponent(name)}`;
   return `/products?region=${encodeURIComponent(name)}`;
 }
 
@@ -270,65 +342,101 @@ function getTaxonomyPriorityTag(item: ProductTaxonomyWithUsage): PriorityTag | n
 }
 
 export type AdminProductTaxonomyViewProps = {
-  categoryTaxonomies: ProductTaxonomyWithUsage[];
-  themeTaxonomies: ProductTaxonomyWithUsage[];
+  activeTab: TaxonomyType;
+  setActiveTab: (tab: TaxonomyType) => void;
+  taxonomyTabTypes: TaxonomyType[];
+  taxonomyItems: ProductTaxonomyWithUsage[];
   hasFallbackItems: boolean;
   errorMessage: string | null;
   isLoading: boolean;
-  newCategoryInput: string;
-  newCategorySlug: string;
-  newCategorySortOrder: string | number;
-  newThemeInput: string;
-  newThemeSlug: string;
-  newThemeSortOrder: string | number;
-  pendingCreateType: "category" | "theme" | null;
+  newNameInput: string;
+  newSlug: string;
+  newSortOrder: string | number;
+  newParentId: string | null;
+  pendingCreateType: TaxonomyType | null;
   pendingDeleteId: string | null;
   pendingUpdateId: string | null;
-  onCategoryInputChange: (value: string) => void;
-  onCategorySlugChange: (value: string) => void;
-  onCategorySortOrderChange: (value: string | number) => void;
-  onThemeInputChange: (value: string) => void;
-  onThemeSlugChange: (value: string) => void;
-  onThemeSortOrderChange: (value: string | number) => void;
-  onCreateCategory: () => void;
-  onCreateTheme: () => void;
+  onNameInputChange: (value: string) => void;
+  onSlugChange: (value: string) => void;
+  onSortOrderChange: (value: string | number) => void;
+  onParentIdChange: (value: string | null) => void;
+  onCreate: () => void;
   onDeleteTaxonomy: (item: ProductTaxonomyWithUsage) => void;
-  onUpdateTaxonomy: (item: ProductTaxonomyWithUsage, payload: UpdateAdminTaxonomyPayload) => void;
+  onUpdateTaxonomy: (item: ProductTaxonomyWithUsage, payload: UpdateAdminTaxonomyPayload) => void | Promise<void>;
 };
 
-type TabId = "region" | "theme";
+const TAB_LABELS: Record<TaxonomyType, string> = {
+  destination: "지역 관리",
+  theme: "테마 관리",
+  product_line: "상품군 관리",
+  campaign: "기획/추천 관리",
+  tag: "태그",
+};
+
+const INSIGHT_TITLES: Record<TaxonomyType, string> = {
+  destination: "지역 운영 인사이트",
+  theme: "테마 운영 인사이트",
+  product_line: "상품군 운영 인사이트",
+  campaign: "기획/추천 운영 인사이트",
+  tag: "태그 운영 인사이트",
+};
+
+const ADD_PLACEHOLDERS: Record<TaxonomyType, string> = {
+  destination: "이름 (필수, 예: 일본)",
+  theme: "이름 (필수, 예: 가족여행)",
+  product_line: "이름 (필수, 예: 골프투어)",
+  campaign: "이름 (필수, 예: 마감임박)",
+  tag: "이름 (필수)",
+};
+
+const ADD_BUTTON_LABELS: Record<TaxonomyType, string> = {
+  destination: "지역 추가",
+  theme: "테마 추가",
+  product_line: "상품군 추가",
+  campaign: "기획 추가",
+  tag: "태그 추가",
+};
+
+const TAXONOMY_TYPE_LABELS: Record<TaxonomyType, string> = {
+  destination: "지역",
+  theme: "테마",
+  product_line: "상품군",
+  campaign: "기획",
+  tag: "태그",
+};
+
+type TabId = TaxonomyType;
 
 export default function AdminProductTaxonomyView({
-  categoryTaxonomies,
-  themeTaxonomies,
+  activeTab,
+  setActiveTab,
+  taxonomyTabTypes,
+  taxonomyItems,
   hasFallbackItems,
   errorMessage,
   isLoading,
-  newCategoryInput,
-  newCategorySlug,
-  newCategorySortOrder,
-  newThemeInput,
-  newThemeSlug,
-  newThemeSortOrder,
+  newNameInput,
+  newSlug,
+  newSortOrder,
+  newParentId,
   pendingCreateType,
   pendingDeleteId,
   pendingUpdateId,
-  onCategoryInputChange,
-  onCategorySlugChange,
-  onCategorySortOrderChange,
-  onThemeInputChange,
-  onThemeSlugChange,
-  onThemeSortOrderChange,
-  onCreateCategory,
-  onCreateTheme,
+  onNameInputChange,
+  onSlugChange,
+  onSortOrderChange,
+  onParentIdChange,
+  onCreate,
   onDeleteTaxonomy,
   onUpdateTaxonomy,
 }: AdminProductTaxonomyViewProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("region");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSlug, setEditSlug] = useState("");
   const [editSortOrder, setEditSortOrder] = useState<string>("");
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editIsHubVisible, setEditIsHubVisible] = useState(true);
+  const [editIsLandingEnabled, setEditIsLandingEnabled] = useState(false);
+  const [editParentId, setEditParentId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
@@ -341,33 +449,50 @@ export default function AdminProductTaxonomyView({
     setExpandedItemKey(null);
   }, [activeTab]);
 
-  const regionItems = categoryTaxonomies;
-  const themeItems = themeTaxonomies;
-
-  const visibleRegionItems = useMemo(
-    () => getVisibleTaxonomies(regionItems, { searchTerm, activeFilter, performanceFilter, sortKey }),
-    [regionItems, searchTerm, activeFilter, performanceFilter, sortKey],
+  const visibleItems = useMemo(
+    () => getVisibleTaxonomies(taxonomyItems, { searchTerm, activeFilter, performanceFilter, sortKey }),
+    [taxonomyItems, searchTerm, activeFilter, performanceFilter, sortKey],
   );
-  const visibleThemeItems = useMemo(
-    () => getVisibleTaxonomies(themeItems, { searchTerm, activeFilter, performanceFilter, sortKey }),
-    [themeItems, searchTerm, activeFilter, performanceFilter, sortKey],
+  const displayItems = useMemo(() => {
+    if (activeTab !== "destination" && activeTab !== "theme") return visibleItems;
+    return buildTaxonomyTreeOrder(visibleItems);
+  }, [activeTab, visibleItems]);
+  /** displayItems 기준 계층 깊이 (0=대분류, 1=중분류, 2=세부…) */
+  const itemDepthMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of displayItems) {
+      let depth = 0;
+      let cur: ProductTaxonomyWithUsage | undefined = item;
+      while (cur?.parent_id?.trim()) {
+        depth += 1;
+        cur = displayItems.find((x) => x.id === cur!.parent_id?.trim());
+      }
+      map.set(item.id, depth);
+    }
+    return map;
+  }, [displayItems]);
+  /** 현재 탭의 최상위 항목(대분류 선택용). destination/theme 탭에서만 의미 있음 */
+  const topLevelItems = useMemo(
+    () => taxonomyItems.filter((i) => !i.parent_id || i.parent_id.trim() === ""),
+    [taxonomyItems],
   );
-  const currentTotal = activeTab === "region" ? regionItems.length : themeItems.length;
-  const currentVisible =
-    activeTab === "region" ? visibleRegionItems.length : visibleThemeItems.length;
-
-  const visibleItemsForTab =
-    activeTab === "region" ? visibleRegionItems : visibleThemeItems;
+  /** 부모 선택용 옵션: 트리 순서 + 들여쓰기. 대분류·중분류 모두 선택 가능 (지역 관리에서 해외 하위 중분류 생성용) */
+  const parentSelectOptions = useMemo(
+    () =>
+      (activeTab === "destination" || activeTab === "theme")
+        ? buildParentSelectOptions(taxonomyItems, null)
+        : [],
+    [activeTab, taxonomyItems],
+  );
   const taxonomySummary = useMemo(
-    () => computeTaxonomySummary(visibleItemsForTab),
-    [visibleItemsForTab],
+    () => computeTaxonomySummary(visibleItems),
+    [visibleItems],
   );
   const priorityReviewCount = useMemo(
-    () => visibleItemsForTab.filter((item) => getTaxonomyPriorityTag(item) !== null).length,
-    [visibleItemsForTab],
+    () => visibleItems.filter((item) => getTaxonomyPriorityTag(item) !== null).length,
+    [visibleItems],
   );
-  const insightTitle =
-    activeTab === "region" ? "지역 운영 인사이트" : "테마 운영 인사이트";
+  const insightTitle = INSIGHT_TITLES[activeTab];
 
   function startEdit(item: ProductTaxonomyWithUsage) {
     setExpandedItemKey(null);
@@ -375,23 +500,43 @@ export default function AdminProductTaxonomyView({
     setEditSlug(item.slug ?? "");
     setEditSortOrder(item.sort_order !== null ? String(item.sort_order) : "");
     setEditIsActive(item.is_active);
+    setEditIsHubVisible(item.is_hub_visible ?? true);
+    setEditIsLandingEnabled(item.is_landing_enabled ?? false);
+    setEditParentId(item.parent_id?.trim() || null);
+  }
+
+  /** 이름 기반 URL-safe slug 생성 (영문/숫자/하이픈만) */
+  function generateSlugFromName(name: string): string {
+    const s = name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    return s || "";
   }
 
   function cancelEdit() {
     setEditingId(null);
   }
 
-  function submitEdit(item: ProductTaxonomyWithUsage) {
+  async function submitEdit(item: ProductTaxonomyWithUsage) {
     const payload: UpdateAdminTaxonomyPayload = {};
     if (editSlug !== (item.slug ?? "")) payload.slug = editSlug.trim() || null;
     const so = editSortOrder === "" ? null : Number(editSortOrder);
     if (so !== item.sort_order) payload.sort_order = so;
     if (editIsActive !== item.is_active) payload.is_active = editIsActive;
+    if ((item.is_hub_visible ?? true) !== editIsHubVisible) payload.is_hub_visible = editIsHubVisible;
+    if ((item.is_landing_enabled ?? false) !== editIsLandingEnabled) payload.is_landing_enabled = editIsLandingEnabled;
+    const currentParent = item.parent_id?.trim() || null;
+    if ((activeTab === "destination" || activeTab === "theme") && editParentId !== currentParent)
+      payload.parent_id = editParentId;
     if (Object.keys(payload).length === 0) {
       setEditingId(null);
       return;
     }
-    onUpdateTaxonomy(item, payload);
+    await onUpdateTaxonomy(item, payload);
     setEditingId(null);
   }
 
@@ -407,7 +552,7 @@ export default function AdminProductTaxonomyView({
 
   return (
     <section className="space-y-4 rounded-xl bg-[var(--surface-muted)] p-4 ring-1 ring-[var(--border)]">
-      <h3 className="text-lg font-bold text-[var(--primary)]">지역 / 테마 관리</h3>
+      <h3 className="text-lg font-bold text-[var(--primary)]">지역 / 테마 / 상품군 / 기획 관리</h3>
       {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
       {isLoading ? (
         <p className="text-sm text-[var(--text-muted)]">분류 목록을 불러오는 중입니다...</p>
@@ -420,30 +565,21 @@ export default function AdminProductTaxonomyView({
           ) : null}
 
           <div className="flex gap-2 border-b border-[var(--border)]">
-            <button
-              type="button"
-              onClick={() => setActiveTab("region")}
-              className={cn(
-                "px-3 py-2 text-sm font-semibold transition",
-                activeTab === "region"
-                  ? "border-b-2 border-[var(--primary)] text-[var(--primary)]"
-                  : "text-[var(--text-muted)] hover:text-[var(--foreground)]",
-              )}
-            >
-              지역 관리
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("theme")}
-              className={cn(
-                "px-3 py-2 text-sm font-semibold transition",
-                activeTab === "theme"
-                  ? "border-b-2 border-[var(--primary)] text-[var(--primary)]"
-                  : "text-[var(--text-muted)] hover:text-[var(--foreground)]",
-              )}
-            >
-              테마 관리
-            </button>
+            {taxonomyTabTypes.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "px-3 py-2 text-sm font-semibold transition",
+                  activeTab === tab
+                    ? "border-b-2 border-[var(--primary)] text-[var(--primary)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--foreground)]",
+                )}
+              >
+                {TAB_LABELS[tab]}
+              </button>
+            ))}
           </div>
 
           {/* 운영 인사이트 요약: 현재 표시 목록 기준 */}
@@ -538,20 +674,24 @@ export default function AdminProductTaxonomyView({
               <option value="name-asc">이름순</option>
             </select>
             <span className="text-xs text-[var(--text-muted)]">
-              총 {currentTotal}개 중 {currentVisible}개 표시
+              총 {taxonomyItems.length}개 중 {visibleItems.length}개 표시
             </span>
           </div>
 
-          {activeTab === "region" ? (
-            <div className="space-y-4">
+          <div className="space-y-4">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[680px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-[var(--border)]">
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">이름</th>
+                      {(activeTab === "destination" || activeTab === "theme") ? (
+                        <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">상위</th>
+                      ) : null}
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">slug</th>
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">정렬</th>
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">활성</th>
+                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">허브 노출</th>
+                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">랜딩 공개</th>
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">사용</th>
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">헤더 클릭(7일)</th>
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">검색 유입(7일)</th>
@@ -561,218 +701,313 @@ export default function AdminProductTaxonomyView({
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleRegionItems.length === 0 ? (
+                    {visibleItems.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-8 text-center text-sm text-[var(--text-muted)]">
+                        <td colSpan={(activeTab === "destination" || activeTab === "theme") ? 13 : 12} className="py-8 text-center text-sm text-[var(--text-muted)]">
                           조건에 맞는 항목이 없습니다.
                         </td>
                       </tr>
                     ) : (
-                      visibleRegionItems.map((item) => {
+                      displayItems.map((item) => {
                         const priorityTag = getTaxonomyPriorityTag(item);
+                        const landingHref = buildLandingHref(item);
                         return (
-                      <Fragment key={item.id}>
-                      <tr className="border-b border-[var(--border)]">
-                        <td className="py-2 pr-2 font-medium text-[var(--foreground)]">
-                          <div className="flex flex-col gap-0.5">
-                            <span>{item.name}</span>
-                            {priorityTag ? (
-                              <AdminBadge variant={priorityTag.variant} className="w-fit">
-                                {priorityTag.label}
-                              </AdminBadge>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="py-2 pr-2">
-                          {editingId === item.id ? (
-                            <input
-                              value={editSlug}
-                              onChange={(e) => setEditSlug(e.target.value)}
-                              placeholder="미설정"
-                              className={cn(inputBase, "w-24")}
-                            />
-                          ) : (
-                            <span className="text-[var(--text-muted)]">{item.slug ?? "—"}</span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-2">
-                          {editingId === item.id ? (
-                            <input
-                              type="number"
-                              value={editSortOrder}
-                              onChange={(e) => setEditSortOrder(e.target.value)}
-                              placeholder="—"
-                              className={cn(inputBase, "w-16")}
-                            />
-                          ) : (
-                            <span className="text-[var(--text-muted)]">{item.sort_order ?? "—"}</span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-2">
-                          {editingId === item.id ? (
-                            <label className="flex items-center gap-1">
-                              <input
-                                type="checkbox"
-                                checked={editIsActive}
-                                onChange={(e) => setEditIsActive(e.target.checked)}
-                              />
-                              <span className="text-xs">{editIsActive ? "활성" : "비활성"}</span>
-                            </label>
-                          ) : (
-                            <span className={item.is_active ? "text-green-600" : "text-[var(--text-muted)]"}>
-                              {item.is_active ? "활성" : "비활성"}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)]">{item.usageCount}</td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {Number(item.headerClickCount ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {Number(item.searchInboundCount ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {Number(item.landingViewCount ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {formatLandingCtr(item.landingCtr)}
-                        </td>
-                        <td className="py-2">
-                          {editingId === item.id ? (
-                            <span className="flex gap-1">
-                              <button
-                                type="button"
-                                onClick={() => submitEdit(item)}
-                                disabled={pendingUpdateId === item.id}
-                                className={cn(btnSmall, "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]")}
-                              >
-                                저장
-                              </button>
-                              <button type="button" onClick={cancelEdit} className={cn(btnSmall, "border-[var(--border)]")}>
-                                취소
-                              </button>
-                            </span>
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              <span className="flex flex-wrap gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => startEdit(item)}
-                                  disabled={item.id.startsWith("fallback-")}
-                                  className={cn(btnSmall, "border-[var(--border)]")}
+                          <Fragment key={item.id}>
+                            <tr className="border-b border-[var(--border)]">
+                              <td className="py-2 pr-2 font-medium text-[var(--foreground)]">
+                                <div
+                                  className={cn(
+                                    "flex flex-col gap-0.5",
+                                    (activeTab === "destination" || activeTab === "theme") &&
+                                      (() => {
+                                        const d = itemDepthMap.get(item.id) ?? 0;
+                                        return d >= 1 && (d === 1 ? "pl-6" : d === 2 ? "pl-10" : "pl-14");
+                                      })(),
+                                  )}
                                 >
-                                  수정
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={pendingDeleteId === item.id || item.id.startsWith("fallback-")}
-                                  onClick={() => onDeleteTaxonomy(item)}
-                                  className={cn(btnSmall, "border-[var(--danger)]/50 text-[var(--danger)]")}
-                                >
-                                  삭제
-                                </button>
-                              </span>
-                              <span className="flex flex-wrap gap-2 text-xs">
-                                <a
-                                  href={buildLandingHref(item)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[var(--primary)] underline hover:no-underline"
-                                >
-                                  랜딩 보기
-                                </a>
-                                <a
-                                  href={buildFilteredProductsHref(item)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[var(--primary)] underline hover:no-underline"
-                                >
-                                  상품 보기
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setExpandedItemKey(expandedItemKey === item.id ? null : item.id)
-                                  }
-                                  className="text-[var(--primary)] underline hover:no-underline"
-                                >
-                                  {expandedItemKey === item.id ? "인사이트 닫기" : "인사이트 보기"}
-                                </button>
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                      {expandedItemKey === item.id ? (
-                        <tr>
-                          <td colSpan={10} className="bg-[var(--surface-muted)] p-0 align-top">
-                            <div className="border-t border-[var(--border)] p-4">
-                              {priorityTag ? (
-                                <p className="mb-3 text-xs font-medium text-[var(--text-muted)]">
-                                  현재 상태: {priorityTag.label} 후보
-                                </p>
+                                  {(activeTab === "destination" || activeTab === "theme") && (itemDepthMap.get(item.id) ?? 0) > 0 ? (
+                                    <span className="text-[var(--text-muted)]">└ </span>
+                                  ) : null}
+                                  <span>{item.name}</span>
+                                  {priorityTag ? (
+                                    <AdminBadge variant={priorityTag.variant} className="w-fit">
+                                      {priorityTag.label}
+                                    </AdminBadge>
+                                  ) : null}
+                                </div>
+                              </td>
+                              {activeTab === "destination" || activeTab === "theme" ? (
+                                <td className="py-2 pr-2">
+                                  {editingId === item.id ? (
+                                    <select
+                                      value={editParentId ?? ""}
+                                      onChange={(e) => setEditParentId(e.target.value === "" ? null : e.target.value)}
+                                      className={cn(inputBase, "min-w-[100px]")}
+                                      aria-label="상위"
+                                    >
+                                      <option value="">— 최상위</option>
+                                      {parentSelectOptions
+                                        .filter((p) => p.id !== item.id)
+                                        .map((p) => (
+                                          <option key={p.id} value={p.id}>
+                                            {p.label}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  ) : (
+                                    <span className="text-[var(--text-muted)]">
+                                      {item.parent_id
+                                        ? taxonomyItems.find((p) => p.id === item.parent_id)?.name ?? "—"
+                                        : "—"}
+                                    </span>
+                                  )}
+                                </td>
                               ) : null}
-                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                <AdminCard variant="muted" className="p-4">
-                                  <p className="text-xs font-semibold text-[var(--text-muted)]">기본 상태</p>
-                                  <dl className="mt-2 space-y-1 text-sm">
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">이름 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.name ?? "—"}</dd>
+                              <td className="py-2 pr-2">
+                                {editingId === item.id ? (
+                                  <span className="flex items-center gap-1">
+                                    <input
+                                      value={editSlug}
+                                      onChange={(e) => setEditSlug(e.target.value)}
+                                      placeholder="미설정"
+                                      className={cn(inputBase, "w-24")}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditSlug(generateSlugFromName(item.name ?? ""))}
+                                      className="text-xs text-[var(--primary)] underline"
+                                    >
+                                      자동생성
+                                    </button>
+                                  </span>
+                                ) : (
+                                  <span className="text-[var(--text-muted)]">{item.slug ?? "—"}</span>
+                                )}
+                              </td>
+                              <td className="py-2 pr-2">
+                                {editingId === item.id ? (
+                                  <input
+                                    type="number"
+                                    value={editSortOrder}
+                                    onChange={(e) => setEditSortOrder(e.target.value)}
+                                    placeholder="—"
+                                    className={cn(inputBase, "w-16")}
+                                  />
+                                ) : (
+                                  <span className="text-[var(--text-muted)]">{item.sort_order ?? "—"}</span>
+                                )}
+                              </td>
+                              <td className="py-2 pr-2">
+                                {editingId === item.id ? (
+                                  <label className="flex items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={editIsActive}
+                                      onChange={(e) => setEditIsActive(e.target.checked)}
+                                    />
+                                    <span className="text-xs">{editIsActive ? "활성" : "비활성"}</span>
+                                  </label>
+                                ) : (
+                                  <span className={item.is_active ? "text-green-600" : "text-[var(--text-muted)]"}>
+                                    {item.is_active ? "활성" : "비활성"}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 pr-2">
+                                {editingId === item.id ? (
+                                  <label className="flex items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={editIsHubVisible}
+                                      onChange={(e) => setEditIsHubVisible(e.target.checked)}
+                                    />
+                                    <span className="text-xs">{editIsHubVisible ? "노출" : "숨김"}</span>
+                                  </label>
+                                ) : (
+                                  <span className={item.is_hub_visible !== false ? "text-green-600" : "text-[var(--text-muted)]"}>
+                                    {item.is_hub_visible !== false ? "노출" : "숨김"}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 pr-2">
+                                {editingId === item.id ? (
+                                  <label className="flex items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={editIsLandingEnabled}
+                                      onChange={(e) => setEditIsLandingEnabled(e.target.checked)}
+                                    />
+                                    <span className="text-xs">{editIsLandingEnabled ? "공개" : "비공개"}</span>
+                                  </label>
+                                ) : (
+                                  <span className={item.is_landing_enabled ? "text-green-600" : "text-[var(--text-muted)]"}>
+                                    {item.is_landing_enabled ? "공개" : "비공개"}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 pr-2 text-[var(--text-muted)]">{item.usageCount}</td>
+                              <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
+                                {Number(item.headerClickCount ?? 0).toLocaleString()}
+                              </td>
+                              <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
+                                {Number(item.searchInboundCount ?? 0).toLocaleString()}
+                              </td>
+                              <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
+                                {Number(item.landingViewCount ?? 0).toLocaleString()}
+                              </td>
+                              <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
+                                {formatLandingCtr(item.landingCtr)}
+                              </td>
+                              <td className="py-2">
+                                {editingId === item.id ? (
+                                    <span className="flex gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          void submitEdit(item);
+                                        }}
+                                        disabled={pendingUpdateId === item.id}
+                                        className={cn(btnSmall, "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]")}
+                                      >
+                                        저장
+                                      </button>
+                                      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); cancelEdit(); }} className={cn(btnSmall, "border-[var(--border)]")}>
+                                        취소
+                                      </button>
+                                    </span>
+                                ) : (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="flex flex-wrap gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          startEdit(item);
+                                        }}
+                                        disabled={item.id.startsWith("fallback-") || !item.id?.trim()}
+                                        className={cn(btnSmall, "border-[var(--border)]")}
+                                      >
+                                        수정
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={pendingDeleteId === item.id || item.id.startsWith("fallback-") || !item.id?.trim()}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          onDeleteTaxonomy(item);
+                                        }}
+                                        className={cn(btnSmall, "border-[var(--danger)]/50 text-[var(--danger)]")}
+                                      >
+                                        삭제
+                                      </button>
+                                    </span>
+                                    <span className="flex flex-wrap gap-2 text-xs">
+                                      {landingHref != null ? (
+                                        <a
+                                          href={landingHref}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-[var(--primary)] underline hover:no-underline"
+                                        >
+                                          랜딩 보기
+                                        </a>
+                                      ) : null}
+                                      <a
+                                        href={buildFilteredProductsHref(item)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[var(--primary)] underline hover:no-underline"
+                                      >
+                                        상품 보기
+                                      </a>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setExpandedItemKey(expandedItemKey === item.id ? null : item.id)
+                                        }
+                                        className="text-[var(--primary)] underline hover:no-underline"
+                                      >
+                                        {expandedItemKey === item.id ? "인사이트 닫기" : "인사이트 보기"}
+                                      </button>
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                            {expandedItemKey === item.id ? (
+                              <tr>
+                                <td colSpan={(activeTab === "destination" || activeTab === "theme") ? 13 : 12} className="bg-[var(--surface-muted)] p-0 align-top">
+                                  <div className="border-t border-[var(--border)] p-4">
+                                    {priorityTag ? (
+                                      <p className="mb-3 text-xs font-medium text-[var(--text-muted)]">
+                                        현재 상태: {priorityTag.label} 후보
+                                      </p>
+                                    ) : null}
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                      <AdminCard variant="muted" className="p-4">
+                                        <p className="text-xs font-semibold text-[var(--text-muted)]">기본 상태</p>
+                                        <dl className="mt-2 space-y-1 text-sm">
+                                          <div>
+                                            <dt className="inline font-medium text-[var(--text-primary)]">이름 </dt>
+                                            <dd className="inline text-[var(--text-secondary)]">{item.name ?? "—"}</dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-medium text-[var(--text-primary)]">slug </dt>
+                                            <dd className="inline text-[var(--text-secondary)]">{item.slug?.trim() ? item.slug : "없음"}</dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-medium text-[var(--text-primary)]">활성 </dt>
+                                            <dd className="inline text-[var(--text-secondary)]">{item.is_active ? "활성" : "비활성"}</dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-medium text-[var(--text-primary)]">사용 수 </dt>
+                                            <dd className="inline text-[var(--text-secondary)]">{(item.usageCount ?? 0).toLocaleString()}</dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-medium text-[var(--text-primary)]">분류 </dt>
+                                            <dd className="inline text-[var(--text-secondary)]">{TAXONOMY_TYPE_LABELS[item.taxonomy_type] ?? item.taxonomy_type}</dd>
+                                          </div>
+                                        </dl>
+                                      </AdminCard>
+                                      <AdminCard variant="muted" className="p-4">
+                                        <p className="text-xs font-semibold text-[var(--text-muted)]">최근 성과(7일)</p>
+                                        <dl className="mt-2 space-y-1 text-sm">
+                                          <div className="flex justify-between gap-2">
+                                            <dt className="text-[var(--text-secondary)]">헤더 클릭</dt>
+                                            <dd className="font-medium text-[var(--text-primary)]">{(item.headerClickCount ?? 0).toLocaleString()}</dd>
+                                          </div>
+                                          <div className="flex justify-between gap-2">
+                                            <dt className="text-[var(--text-secondary)]">검색 유입</dt>
+                                            <dd className="font-medium text-[var(--text-primary)]">{(item.searchInboundCount ?? 0).toLocaleString()}</dd>
+                                          </div>
+                                          <div className="flex justify-between gap-2">
+                                            <dt className="text-[var(--text-secondary)]">랜딩 조회</dt>
+                                            <dd className="font-medium text-[var(--text-primary)]">{(item.landingViewCount ?? 0).toLocaleString()}</dd>
+                                          </div>
+                                          <div className="flex justify-between gap-2">
+                                            <dt className="text-[var(--text-secondary)]">랜딩 CTR</dt>
+                                            <dd className="font-medium text-[var(--text-primary)]">{formatLandingCtr(item.landingCtr)}</dd>
+                                          </div>
+                                        </dl>
+                                      </AdminCard>
+                                      <AdminCard variant="muted" className="p-4 sm:col-span-2 lg:col-span-1">
+                                        <p className="text-xs font-semibold text-[var(--text-muted)]">운영 점검 포인트</p>
+                                        <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-[var(--text-secondary)]">
+                                          {getTaxonomyInsightMessages(item).map((msg, i) => (
+                                            <li key={i}>{msg}</li>
+                                          ))}
+                                        </ul>
+                                      </AdminCard>
                                     </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">slug </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.slug?.trim() ? item.slug : "없음"}</dd>
-                                    </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">활성 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.is_active ? "활성" : "비활성"}</dd>
-                                    </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">사용 수 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{(item.usageCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">타입 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.type === "theme" ? "테마" : "지역"}</dd>
-                                    </div>
-                                  </dl>
-                                </AdminCard>
-                                <AdminCard variant="muted" className="p-4">
-                                  <p className="text-xs font-semibold text-[var(--text-muted)]">최근 성과(7일)</p>
-                                  <dl className="mt-2 space-y-1 text-sm">
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">헤더 클릭</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{(item.headerClickCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">검색 유입</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{(item.searchInboundCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">랜딩 조회</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{(item.landingViewCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">랜딩 CTR</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{formatLandingCtr(item.landingCtr)}</dd>
-                                    </div>
-                                  </dl>
-                                </AdminCard>
-                                <AdminCard variant="muted" className="p-4 sm:col-span-2 lg:col-span-1">
-                                  <p className="text-xs font-semibold text-[var(--text-muted)]">운영 점검 포인트</p>
-                                  <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-[var(--text-secondary)]">
-                                    {getTaxonomyInsightMessages(item).map((msg, i) => (
-                                      <li key={i}>{msg}</li>
-                                    ))}
-                                  </ul>
-                                </AdminCard>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : null}
-                      </Fragment>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : null}
+                          </Fragment>
                         );
                       })
                     )}
@@ -780,303 +1015,50 @@ export default function AdminProductTaxonomyView({
                 </table>
               </div>
               <div className="flex flex-wrap items-end gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                {(activeTab === "destination" || activeTab === "theme") ? (
+                  <select
+                    value={newParentId ?? ""}
+                    onChange={(e) => onParentIdChange(e.target.value === "" ? null : e.target.value)}
+                    className={cn(inputBase, "min-w-[100px]")}
+                    aria-label="상위 (선택)"
+                  >
+                    <option value="">대분류 없음 (최상위)</option>
+                    {parentSelectOptions.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <input
-                  value={newCategoryInput}
-                  onChange={(e) => onCategoryInputChange(e.target.value)}
-                  placeholder="이름 (필수)"
-                  className={cn(inputBase, "min-w-[100px]")}
-                />
-                <input
-                  value={newCategorySlug}
-                  onChange={(e) => onCategorySlugChange(e.target.value)}
-                  placeholder="slug (선택)"
-                  className={cn(inputBase, "w-24")}
-                />
-                <input
-                  type="number"
-                  value={newCategorySortOrder}
-                  onChange={(e) => onCategorySortOrderChange(e.target.value === "" ? "" : Number(e.target.value))}
-                  placeholder="정렬"
-                  className={cn(inputBase, "w-16")}
-                />
-                <button
-                  type="button"
-                  onClick={onCreateCategory}
-                  disabled={pendingCreateType === "category" || !newCategoryInput.trim()}
-                  className={cn(btnSmall, "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)] disabled:opacity-50")}
-                >
-                  {pendingCreateType === "category" ? "추가 중..." : "지역 추가"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border)]">
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">이름</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">slug</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">정렬</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">활성</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">사용</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">헤더 클릭(7일)</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">검색 유입(7일)</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">랜딩 조회(7일)</th>
-                      <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">랜딩 CTR</th>
-                      <th className="pb-2 font-semibold text-[var(--text-primary)]">동작</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleThemeItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="py-8 text-center text-sm text-[var(--text-muted)]">
-                          조건에 맞는 항목이 없습니다.
-                        </td>
-                      </tr>
-                    ) : (
-                      visibleThemeItems.map((item) => {
-                        const priorityTag = getTaxonomyPriorityTag(item);
-                        return (
-                      <Fragment key={item.id}>
-                      <tr className="border-b border-[var(--border)]">
-                        <td className="py-2 pr-2 font-medium text-[var(--foreground)]">
-                          <div className="flex flex-col gap-0.5">
-                            <span>{item.name}</span>
-                            {priorityTag ? (
-                              <AdminBadge variant={priorityTag.variant} className="w-fit">
-                                {priorityTag.label}
-                              </AdminBadge>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="py-2 pr-2">
-                          {editingId === item.id ? (
-                            <input
-                              value={editSlug}
-                              onChange={(e) => setEditSlug(e.target.value)}
-                              placeholder="미설정"
-                              className={cn(inputBase, "w-24")}
-                            />
-                          ) : (
-                            <span className="text-[var(--text-muted)]">{item.slug ?? "—"}</span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-2">
-                          {editingId === item.id ? (
-                            <input
-                              type="number"
-                              value={editSortOrder}
-                              onChange={(e) => setEditSortOrder(e.target.value)}
-                              placeholder="—"
-                              className={cn(inputBase, "w-16")}
-                            />
-                          ) : (
-                            <span className="text-[var(--text-muted)]">{item.sort_order ?? "—"}</span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-2">
-                          {editingId === item.id ? (
-                            <label className="flex items-center gap-1">
-                              <input
-                                type="checkbox"
-                                checked={editIsActive}
-                                onChange={(e) => setEditIsActive(e.target.checked)}
-                              />
-                              <span className="text-xs">{editIsActive ? "활성" : "비활성"}</span>
-                            </label>
-                          ) : (
-                            <span className={item.is_active ? "text-green-600" : "text-[var(--text-muted)]"}>
-                              {item.is_active ? "활성" : "비활성"}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)]">{item.usageCount}</td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {Number(item.headerClickCount ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {Number(item.searchInboundCount ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {Number(item.landingViewCount ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-2 pr-2 text-[var(--text-muted)] text-right">
-                          {formatLandingCtr(item.landingCtr)}
-                        </td>
-                        <td className="py-2">
-                          {editingId === item.id ? (
-                            <span className="flex gap-1">
-                              <button
-                                type="button"
-                                onClick={() => submitEdit(item)}
-                                disabled={pendingUpdateId === item.id}
-                                className={cn(btnSmall, "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]")}
-                              >
-                                저장
-                              </button>
-                              <button type="button" onClick={cancelEdit} className={cn(btnSmall, "border-[var(--border)]")}>
-                                취소
-                              </button>
-                            </span>
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              <span className="flex flex-wrap gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => startEdit(item)}
-                                  disabled={item.id.startsWith("fallback-")}
-                                  className={cn(btnSmall, "border-[var(--border)]")}
-                                >
-                                  수정
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={pendingDeleteId === item.id || item.id.startsWith("fallback-")}
-                                  onClick={() => onDeleteTaxonomy(item)}
-                                  className={cn(btnSmall, "border-[var(--danger)]/50 text-[var(--danger)]")}
-                                >
-                                  삭제
-                                </button>
-                              </span>
-                              <span className="flex flex-wrap gap-2 text-xs">
-                                <a
-                                  href={buildLandingHref(item)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[var(--primary)] underline hover:no-underline"
-                                >
-                                  랜딩 보기
-                                </a>
-                                <a
-                                  href={buildFilteredProductsHref(item)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[var(--primary)] underline hover:no-underline"
-                                >
-                                  상품 보기
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setExpandedItemKey(expandedItemKey === item.id ? null : item.id)
-                                  }
-                                  className="text-[var(--primary)] underline hover:no-underline"
-                                >
-                                  {expandedItemKey === item.id ? "인사이트 닫기" : "인사이트 보기"}
-                                </button>
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                      {expandedItemKey === item.id ? (
-                        <tr>
-                          <td colSpan={10} className="bg-[var(--surface-muted)] p-0 align-top">
-                            <div className="border-t border-[var(--border)] p-4">
-                              {priorityTag ? (
-                                <p className="mb-3 text-xs font-medium text-[var(--text-muted)]">
-                                  현재 상태: {priorityTag.label} 후보
-                                </p>
-                              ) : null}
-                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                <AdminCard variant="muted" className="p-4">
-                                  <p className="text-xs font-semibold text-[var(--text-muted)]">기본 상태</p>
-                                  <dl className="mt-2 space-y-1 text-sm">
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">이름 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.name ?? "—"}</dd>
-                                    </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">slug </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.slug?.trim() ? item.slug : "없음"}</dd>
-                                    </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">활성 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.is_active ? "활성" : "비활성"}</dd>
-                                    </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">사용 수 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{(item.usageCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div>
-                                      <dt className="inline font-medium text-[var(--text-primary)]">타입 </dt>
-                                      <dd className="inline text-[var(--text-secondary)]">{item.type === "theme" ? "테마" : "지역"}</dd>
-                                    </div>
-                                  </dl>
-                                </AdminCard>
-                                <AdminCard variant="muted" className="p-4">
-                                  <p className="text-xs font-semibold text-[var(--text-muted)]">최근 성과(7일)</p>
-                                  <dl className="mt-2 space-y-1 text-sm">
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">헤더 클릭</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{(item.headerClickCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">검색 유입</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{(item.searchInboundCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">랜딩 조회</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{(item.landingViewCount ?? 0).toLocaleString()}</dd>
-                                    </div>
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-[var(--text-secondary)]">랜딩 CTR</dt>
-                                      <dd className="font-medium text-[var(--text-primary)]">{formatLandingCtr(item.landingCtr)}</dd>
-                                    </div>
-                                  </dl>
-                                </AdminCard>
-                                <AdminCard variant="muted" className="p-4 sm:col-span-2 lg:col-span-1">
-                                  <p className="text-xs font-semibold text-[var(--text-muted)]">운영 점검 포인트</p>
-                                  <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-[var(--text-secondary)]">
-                                    {getTaxonomyInsightMessages(item).map((msg, i) => (
-                                      <li key={i}>{msg}</li>
-                                    ))}
-                                  </ul>
-                                </AdminCard>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : null}
-                      </Fragment>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex flex-wrap items-end gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-                <input
-                  value={newThemeInput}
-                  onChange={(e) => onThemeInputChange(e.target.value)}
-                  placeholder="이름 (필수, 예: 가족여행)"
+                  value={newNameInput}
+                  onChange={(e) => onNameInputChange(e.target.value)}
+                  placeholder={ADD_PLACEHOLDERS[activeTab]}
                   className={cn(inputBase, "min-w-[120px]")}
                 />
                 <input
-                  value={newThemeSlug}
-                  onChange={(e) => onThemeSlugChange(e.target.value)}
+                  value={newSlug}
+                  onChange={(e) => onSlugChange(e.target.value)}
                   placeholder="slug (선택)"
                   className={cn(inputBase, "w-24")}
                 />
                 <input
                   type="number"
-                  value={newThemeSortOrder}
-                  onChange={(e) => onThemeSortOrderChange(e.target.value === "" ? "" : Number(e.target.value))}
+                  value={newSortOrder}
+                  onChange={(e) => onSortOrderChange(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="정렬"
                   className={cn(inputBase, "w-16")}
                 />
                 <button
                   type="button"
-                  onClick={onCreateTheme}
-                  disabled={pendingCreateType === "theme" || !newThemeInput.trim()}
+                  onClick={onCreate}
+                  disabled={pendingCreateType !== null || !newNameInput.trim()}
                   className={cn(btnSmall, "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)] disabled:opacity-50")}
                 >
-                  {pendingCreateType === "theme" ? "추가 중..." : "테마 추가"}
+                  {pendingCreateType !== null ? "추가 중..." : ADD_BUTTON_LABELS[activeTab]}
                 </button>
               </div>
             </div>
-          )}
         </>
       )}
     </section>

@@ -51,7 +51,9 @@ export default function ReviewItemActions({
     setIsSubmitting(true);
     try {
       const nextImageUrls =
-        imageFiles.length > 0 ? await Promise.all(imageFiles.map((file) => uploadReviewImage(file))) : imageUrls;
+        imageFiles.length > 0
+          ? await Promise.all(imageFiles.map((file, i) => uploadReviewImage(file, reviewId, i)))
+          : imageUrls;
 
       const response = await fetch(`/api/reviews/${reviewId}`, {
         method: "PATCH",

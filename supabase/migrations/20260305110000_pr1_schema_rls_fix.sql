@@ -4,16 +4,33 @@
 -- 후속 PR에서 서버 API 또는 인증 기반 정책으로 재도입 예정
 
 -- ---------------------------------------------------------------------------
--- 1) travel_bookings.inquiry_id: bigint → uuid
--- inquiries.id 가 uuid 이므로 FK 타입 일치. 이미 적용된 환경을 위해 alter 방식 사용.
+-- 1) travel_bookings.inquiry_id: inquiries.id 타입에 맞춰 FK 추가
+-- inquiries.id 가 uuid면 uuid, bigint면 bigint로 컬럼 추가. 이미 적용된 환경을 위해 alter 방식 사용.
 -- ---------------------------------------------------------------------------
 alter table public.travel_bookings drop constraint if exists travel_bookings_inquiry_id_fkey;
 alter table public.travel_bookings drop column if exists inquiry_id;
-alter table public.travel_bookings add column inquiry_id uuid references public.inquiries(id) on delete set null;
+
+do $$
+declare
+  id_type text;
+begin
+  select data_type into id_type
+  from information_schema.columns
+  where table_schema = 'public' and table_name = 'inquiries' and column_name = 'id';
+
+  if id_type = 'uuid' then
+    alter table public.travel_bookings add column inquiry_id uuid references public.inquiries(id) on delete set null;
+    comment on column public.travel_bookings.inquiry_id is '연결된 문의(inquiries.id). uuid.';
+  elsif id_type = 'bigint' then
+    alter table public.travel_bookings add column inquiry_id bigint references public.inquiries(id) on delete set null;
+    comment on column public.travel_bookings.inquiry_id is '연결된 문의(inquiries.id). bigint (legacy).';
+  else
+    raise notice 'inquiries.id type % - adding inquiry_id as uuid (no FK)', coalesce(id_type, 'unknown');
+    alter table public.travel_bookings add column inquiry_id uuid;
+  end if;
+end $$;
 
 create index if not exists idx_travel_bookings_inquiry_id on public.travel_bookings(inquiry_id) where inquiry_id is not null;
-
-comment on column public.travel_bookings.inquiry_id is '연결된 문의(inquiries.id). uuid.';
 
 -- ---------------------------------------------------------------------------
 -- 2) RLS: anon 전체 허용 제거 — 클라이언트 anon 직접 접근 차단, 서버 API 경유만 허용 예정

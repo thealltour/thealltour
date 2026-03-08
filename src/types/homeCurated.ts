@@ -21,6 +21,10 @@ export type HomeCuratedSection = {
   sort_order: number;
   max_items: number;
   is_active: boolean;
+  /** 허브/랜딩용. /recommended/[slug] 확장 시 사용 */
+  slug?: string | null;
+  /** 상세 랜딩 페이지 공개 여부. 허브에서만 노출할지 구분 */
+  landing_enabled?: boolean;
   created_at?: string;
 };
 

@@ -110,6 +110,13 @@ export function serializeAdminProductForm(
     images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
     category: form.category,
     theme: form.theme.trim() === "" ? null : form.theme,
+    product_line_id: form.product_line_id.trim() === "" ? null : form.product_line_id.trim(),
+    campaigns: ((): string[] | null => {
+      const s = form.campaigns.trim();
+      if (!s) return null;
+      const arr = s.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+      return arr.length > 0 ? arr : null;
+    })(),
     price: normalizedPrice === "" ? null : toSafeInteger(Number(normalizedPrice)),
     duration: form.duration.trim() === "" ? null : form.duration,
     itinerary: form.itinerary.trim() === "" ? null : form.itinerary,

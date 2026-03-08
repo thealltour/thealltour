@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MyPageLayout from "@/components/mypage/MyPageLayout";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
@@ -8,6 +9,11 @@ import { getReviewById } from "@/lib/reviews";
 
 type Props = {
   params: Promise<{ id: string }>;
+};
+
+/** PR11: 마이페이지 리뷰 상세는 검색 노출 제외 */
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
 };
 
 function formatDate(value?: string | null) {

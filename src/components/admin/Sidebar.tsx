@@ -62,9 +62,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
                   type="button"
                   title={item.label}
                   onClick={() => {
-                    if (item.mainKey) {
-                      setActiveMenu(item.mainKey);
-                    }
+                    if (item.mainKey) setActiveMenu(item.mainKey);
                     router.push(item.href);
                   }}
                   className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
@@ -98,7 +96,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
               const isActive =
                 item.href === "/theall_manager_only"
                   ? pathname === "/theall_manager_only"
-                  : pathname.startsWith(item.href);
+                  : pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.href}
@@ -128,5 +126,3 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
     </aside>
   );
 }
-
-

@@ -72,6 +72,133 @@ export function MobileHeaderAccordion({
           const hasGroups = item.groups && item.groups.length > 0;
           const isExpanded = expandedKey === item.key;
 
+          if (hasGroups && item.href) {
+            return (
+              <li key={item.key} className="border-b border-[var(--divider)]">
+                <div className="flex w-full items-center gap-1 pr-4 pl-4">
+                  <Link
+                    href={item.href}
+                    onClick={() => {
+                      handleDirectLinkClick(item.key, item.label, item.href!);
+                    }}
+                    className={cn(
+                      "flex flex-1 items-center py-4 text-left type-small font-semibold text-[var(--foreground)]",
+                      "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    aria-controls={`mobile-nav-panel-${item.key}`}
+                    id={`mobile-nav-trigger-${item.key}`}
+                    aria-label={`${item.label} 하위 메뉴 ${isExpanded ? "접기" : "펼치기"}`}
+                    onClick={() => onToggle(item.key)}
+                    className={cn(
+                      "flex shrink-0 items-center justify-center rounded p-2 text-[var(--text-muted)]",
+                      "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
+                    )}
+                  >
+                    <ChevronDown
+                      className={cn("h-5 w-5 shrink-0 transition-transform", isExpanded && "rotate-180")}
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+                <div
+                  id={`mobile-nav-panel-${item.key}`}
+                  role="region"
+                  aria-labelledby={`mobile-nav-trigger-${item.key}`}
+                  className={cn("overflow-hidden transition-[height] duration-200 ease-out", isExpanded ? "visible" : "hidden")}
+                >
+                  <ul className="flex flex-col border-t border-[var(--divider)] bg-[var(--surface-muted)] pb-2">
+                    {item.groups!.map((group) => (
+                      <li key={group.key}>
+                        {group.subGroups?.length ? (
+                          <>
+                            {group.labelHref ? (
+                              <Link
+                                href={group.labelHref}
+                                onClick={() => onNavigate?.()}
+                                className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                              >
+                                {group.label}
+                              </Link>
+                            ) : (
+                              <span className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)]">
+                                {group.label}
+                              </span>
+                            )}
+                            {group.subGroups.map((sub) => (
+                              <ul key={sub.key} className="flex flex-col">
+                                <li>
+                                  {sub.labelHref ? (
+                                    <Link
+                                      href={sub.labelHref}
+                                      onClick={() => onNavigate?.()}
+                                      className="block py-2 pl-6 pr-4 type-caption font-medium text-[var(--text-muted)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                    >
+                                      {sub.label}
+                                    </Link>
+                                  ) : (
+                                    <span className="block py-2 pl-6 pr-4 type-caption font-medium text-[var(--text-muted)]">
+                                      {sub.label}
+                                    </span>
+                                  )}
+                                </li>
+                                {sub.items.map((leaf) => (
+                                  <li key={leaf.key}>
+                                    <Link
+                                      href={leaf.href}
+                                      onClick={() => handleLeafClick(item, leaf)}
+                                      className="block py-2 pl-8 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                    >
+                                      {leaf.label}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            {group.labelHref ? (
+                              <Link
+                                href={group.labelHref}
+                                onClick={() => onNavigate?.()}
+                                className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                              >
+                                {group.label}
+                              </Link>
+                            ) : (
+                              <span className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)]">
+                                {group.label}
+                              </span>
+                            )}
+                            <ul className="flex flex-col">
+                              {group.items.map((leaf) => (
+                                <li key={leaf.key}>
+                                  <Link
+                                    href={leaf.href}
+                                    onClick={() => handleLeafClick(item, leaf)}
+                                    className="block py-2 pl-6 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                  >
+                                    {leaf.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            );
+          }
+
           if (hasGroups) {
             return (
               <li key={item.key} className="border-b border-[var(--divider)]">
@@ -101,22 +228,82 @@ export function MobileHeaderAccordion({
                   <ul className="flex flex-col border-t border-[var(--divider)] bg-[var(--surface-muted)] pb-2">
                     {item.groups!.map((group) => (
                       <li key={group.key}>
-                        <span className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)]">
-                          {group.label}
-                        </span>
-                        <ul className="flex flex-col">
-                          {group.items.map((leaf) => (
-                            <li key={leaf.key}>
+                        {group.subGroups?.length ? (
+                          <>
+                            {group.labelHref ? (
                               <Link
-                                href={leaf.href}
-                                onClick={() => handleLeafClick(item, leaf)}
-                                className="block py-2 pl-6 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                href={group.labelHref}
+                                onClick={() => onNavigate?.()}
+                                className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
                               >
-                                {leaf.label}
+                                {group.label}
                               </Link>
-                            </li>
-                          ))}
-                        </ul>
+                            ) : (
+                              <span className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)]">
+                                {group.label}
+                              </span>
+                            )}
+                            {group.subGroups.map((sub) => (
+                              <ul key={sub.key} className="flex flex-col">
+                                <li>
+                                  {sub.labelHref ? (
+                                    <Link
+                                      href={sub.labelHref}
+                                      onClick={() => onNavigate?.()}
+                                      className="block py-2 pl-6 pr-4 type-caption font-medium text-[var(--text-muted)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                    >
+                                      {sub.label}
+                                    </Link>
+                                  ) : (
+                                    <span className="block py-2 pl-6 pr-4 type-caption font-medium text-[var(--text-muted)]">
+                                      {sub.label}
+                                    </span>
+                                  )}
+                                </li>
+                                {sub.items.map((leaf) => (
+                                  <li key={leaf.key}>
+                                    <Link
+                                      href={leaf.href}
+                                      onClick={() => handleLeafClick(item, leaf)}
+                                      className="block py-2 pl-8 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                    >
+                                      {leaf.label}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            {group.labelHref ? (
+                              <Link
+                                href={group.labelHref}
+                                onClick={() => onNavigate?.()}
+                                className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                              >
+                                {group.label}
+                              </Link>
+                            ) : (
+                              <span className="block px-4 pt-3 pb-1.5 type-caption font-semibold text-[var(--text-muted)]">
+                                {group.label}
+                              </span>
+                            )}
+                            <ul className="flex flex-col">
+                              {group.items.map((leaf) => (
+                                <li key={leaf.key}>
+                                  <Link
+                                    href={leaf.href}
+                                    onClick={() => handleLeafClick(item, leaf)}
+                                    className="block py-2 pl-6 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                  >
+                                    {leaf.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>

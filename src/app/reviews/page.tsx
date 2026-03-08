@@ -1,36 +1,79 @@
 import SiteHeader from "@/components/SiteHeader";
 import Link from "next/link";
-import Image from "next/image";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { getReviews } from "@/lib/reviews";
+import { Suspense } from "react";
+import { getPublicReviews } from "@/lib/reviewStats";
+import type { ReviewSortOption } from "@/types/review";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
-import ReviewItemActions from "@/components/ReviewItemActions";
+import { buildReviewListMetadata } from "@/lib/seo/reviews";
+import { getProductByIdFresh } from "@/lib/products";
+import ReviewListFilters from "@/components/reviews/ReviewListFilters";
+import PublicReviewCard from "@/components/reviews/PublicReviewCard";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 
-function formatDate(value?: string) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("ko-KR");
-}
+type Props = {
+  searchParams: Promise<{ sort?: string; verified?: string; photos?: string; minRating?: string; productId?: string }>;
+};
 
-function renderStars(rating?: number) {
-  if (!rating || rating <= 0) {
-    return <span className="type-caption text-content-muted">별점 없음</span>;
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const onlyVerified = params.verified === "1";
+  const onlyWithImages = params.photos === "1";
+  const productId = params.productId ?? undefined;
+  let productTitle: string | undefined;
+  if (productId) {
+    const product = await getProductByIdFresh(productId);
+    productTitle = product?.title;
   }
-  const safe = Math.max(1, Math.min(5, Math.round(rating)));
-  return (
-    <span className="type-small text-amber-400">
-      {"★".repeat(safe).padEnd(5, "☆")}
-    </span>
-  );
+  const meta = buildReviewListMetadata({
+    productId,
+    productTitle,
+    onlyVerified,
+    onlyWithImages,
+  });
+  return {
+    title: meta.title,
+    description: meta.description,
+    alternates: { canonical: meta.canonical },
+    openGraph: {
+      title: meta.title,
+      description: meta.description,
+      url: meta.canonical,
+      siteName: "더올투어",
+      type: "website",
+      locale: "ko_KR",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: meta.title,
+      description: meta.description,
+    },
+  };
 }
 
-export default async function ReviewsPage() {
+export default async function ReviewsPage({ searchParams }: Props) {
+  const params = await searchParams;
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
-  const reviews = await getReviews();
+
+  const sort = (params.sort as ReviewSortOption) || "latest";
+  const onlyVerified = params.verified === "1";
+  const onlyWithImages = params.photos === "1";
+  const minRating = params.minRating ? (Number(params.minRating) as 1 | 2 | 3 | 4 | 5) : undefined;
+  const productId = params.productId ?? undefined;
+
+  const reviews = await getPublicReviews({
+    sort,
+    onlyVerified,
+    onlyWithImages,
+    minRating,
+    productId,
+    limit: 50,
+    offset: 0,
+    viewerMemberId: session?.memberId,
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
@@ -72,58 +115,19 @@ export default async function ReviewsPage() {
               등록된 후기 {reviews.length}건
             </p>
           </div>
+
+          <Suspense fallback={<div className="h-14 rounded-xl bg-slate-100" />}>
+            <ReviewListFilters />
+          </Suspense>
+
           {reviews.length === 0 ? (
             <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0]">
-              아직 등록된 여행후기가 없습니다.
+              조건에 맞는 여행후기가 없습니다.
             </div>
           ) : (
-            <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {reviews.map((review) => (
-                <article
-                  key={review.id}
-                  className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-1 hover:shadow-lg"
-                >
-                  {review.image_urls && review.image_urls.length > 0 ? (
-                    <div className="relative h-40 w-full overflow-hidden">
-                      <Image
-                        src={review.image_urls[0]}
-                        alt={`${review.title} 후기 대표 이미지`}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 30vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex h-40 items-center justify-center bg-[#eff6ff] type-small text-content-muted">
-                      이미지 없음
-                    </div>
-                  )}
-                  <div className="flex flex-1 flex-col gap-3 p-5">
-                    <div className="flex items-start justify-between gap-2">
-                      <h2 className="font-card-title line-clamp-2 type-body font-bold text-content-primary md:type-small md:font-semibold">
-                        {review.title}
-                      </h2>
-                      <div className="shrink-0 text-right">
-                        {renderStars(review.rating)}
-                        <p className="mt-1 type-caption text-content-muted">{formatDate(review.created_at)}</p>
-                      </div>
-                    </div>
-                    <p className="line-clamp-4 whitespace-pre-line type-small leading-6 text-content-secondary">
-                      {review.content}
-                    </p>
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                      <p className="type-caption font-semibold text-[#1E3A8A]">작성자: {review.author_name}</p>
-                      {session && review.member_id === session.memberId ? (
-                        <ReviewItemActions
-                          reviewId={review.id}
-                          defaultTitle={review.title}
-                          defaultContent={review.content}
-                          defaultImageUrls={review.image_urls}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
+                <PublicReviewCard key={review.id} review={review} />
               ))}
             </div>
           )}

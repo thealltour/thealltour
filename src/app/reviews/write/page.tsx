@@ -1,15 +1,22 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import SiteHeader from "@/components/SiteHeader";
 import ReviewWriteForm from "@/components/ReviewWriteForm";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getEligibilityWithBookingById } from "@/lib/reviewEligibilities";
 import { getReviewByEligibilityId, getReviewById } from "@/lib/reviews";
 import type { Review } from "@/types/review";
 
 type Props = {
   searchParams: Promise<{ eligibility?: string; review?: string }>;
+};
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
 };
 
 export default async function ReviewWritePage({ searchParams }: Props) {
@@ -23,10 +30,14 @@ export default async function ReviewWritePage({ searchParams }: Props) {
     returnDate: string | null;
     isValid: boolean;
     alreadySubmitted: boolean;
+    isOwnedByCurrentUser: boolean;
   } | null = null;
 
   let initialReview: Review | null = null;
   let effectiveReviewId: string | undefined = reviewIdParam;
+
+  const cookieStore = await cookies();
+  const session = getMemberSessionFromCookies(cookieStore);
 
   if (reviewIdParam) {
     const review = await getReviewById(reviewIdParam);
@@ -41,6 +52,7 @@ export default async function ReviewWritePage({ searchParams }: Props) {
             returnDate: eligibility.return_date,
             isValid: true,
             alreadySubmitted: false,
+            isOwnedByCurrentUser: !!session && eligibility.claimed_by_member_id === session.memberId,
           };
         }
       }
@@ -63,6 +75,7 @@ export default async function ReviewWritePage({ searchParams }: Props) {
         returnDate: eligibility.return_date,
         isValid: true,
         alreadySubmitted: !!(existingReview && existingReview.status === "submitted"),
+        isOwnedByCurrentUser: !!session && eligibility.claimed_by_member_id === session.memberId,
       };
     } else {
       eligibilityInfo = {
@@ -71,12 +84,15 @@ export default async function ReviewWritePage({ searchParams }: Props) {
         returnDate: null,
         isValid: false,
         alreadySubmitted: false,
+        isOwnedByCurrentUser: false,
       };
     }
   }
 
   const showInvalidWarning = eligibilityId && eligibilityInfo && !eligibilityInfo.isValid;
   const showAlreadySubmittedWarning = eligibilityId && eligibilityInfo?.alreadySubmitted;
+  const showNotOwnerWarning =
+    eligibilityId && eligibilityInfo && eligibilityInfo.isValid && !eligibilityInfo.isOwnedByCurrentUser;
 
   const pageTitle = eligibilityInfo?.productTitle
     ? `${eligibilityInfo.productTitle} 후기 작성`
@@ -97,10 +113,32 @@ export default async function ReviewWritePage({ searchParams }: Props) {
         <PageHero
           kicker="THEALL TOUR REVIEWS"
           title={pageTitle}
-          subtitle="실제 여행 경험을 남겨주시면 더올투어를 찾는 분들께 큰 도움이 됩니다."
+          subtitle={
+            productInfo
+              ? "여행 경험을 공유하면 다른 여행자에게 큰 도움이 됩니다. 아래 단계를 따라 작성해 주세요."
+              : "실제 여행 경험을 남겨주시면 더올투어를 찾는 분들께 큰 도움이 됩니다."
+          }
         />
         <ContentCard>
-          {showInvalidWarning ? (
+          {showNotOwnerWarning ? (
+            <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium text-red-700">본인에게 부여된 후기 작성 권한이 아닙니다.</p>
+                <p className="mt-1 text-sm text-red-600">마이페이지에서 작성 가능한 후기를 확인해주세요.</p>
+              </div>
+              <Link
+                href="/mypage/reviews"
+                className="inline-flex items-center gap-1 text-sm font-medium text-red-700 hover:text-red-800"
+              >
+                마이페이지로 이동 →
+              </Link>
+            </div>
+          ) : showInvalidWarning ? (
             <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-6 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
                 <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

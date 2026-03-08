@@ -34,8 +34,11 @@ end $$;
 do $$
 begin
   if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'point_ledger') then
-    alter table public.reward_redemption drop constraint if exists reward_redemption_ledger_id_fkey;
-    alter table public.reward_redemption drop column if exists ledger_id;
+    -- reward_redemption(단수) 레거시 테이블이 있을 때만 FK/컬럼 제거 (없으면 스킵)
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'reward_redemption') then
+      alter table public.reward_redemption drop constraint if exists reward_redemption_ledger_id_fkey;
+      alter table public.reward_redemption drop column if exists ledger_id;
+    end if;
     drop policy if exists "Allow anon select point_ledger" on public.point_ledger;
     drop policy if exists "Allow anon insert point_ledger" on public.point_ledger;
   end if;
@@ -56,9 +59,9 @@ create table public.point_ledger (
   created_at timestamptz not null default now()
 );
 
-create index idx_point_ledger_user_created on public.point_ledger(user_id, created_at desc);
-create index idx_point_ledger_user_status on public.point_ledger(user_id, status);
-create index idx_point_ledger_ref on public.point_ledger(ref_type, ref_id) where ref_type is not null;
+create index if not exists idx_point_ledger_user_created on public.point_ledger(user_id, created_at desc);
+create index if not exists idx_point_ledger_user_status on public.point_ledger(user_id, status);
+create index if not exists idx_point_ledger_ref on public.point_ledger(ref_type, ref_id) where ref_type is not null;
 
 comment on table public.point_ledger is '포인트 원장. amount는 항상 양수, type으로 적립/사용/소멸/조정/예약/해제 구분';
 comment on column public.point_ledger.user_id is 'members.id (users 역할)';
@@ -126,9 +129,9 @@ create table if not exists public.reward_redemptions (
   updated_at timestamptz not null default now()
 );
 
-create index idx_reward_redemptions_user_created on public.reward_redemptions(user_id, created_at desc);
-create index idx_reward_redemptions_status on public.reward_redemptions(status);
-create index idx_reward_redemptions_catalog on public.reward_redemptions(catalog_id);
+create index if not exists idx_reward_redemptions_user_created on public.reward_redemptions(user_id, created_at desc);
+create index if not exists idx_reward_redemptions_status on public.reward_redemptions(status);
+create index if not exists idx_reward_redemptions_catalog on public.reward_redemptions(catalog_id);
 
 comment on table public.reward_redemptions is '경품 교환 신청/승인/발송 (상세 스키마)';
 comment on column public.reward_redemptions.user_id is 'members.id';
@@ -146,8 +149,8 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 
-create index idx_notifications_user_created on public.notifications(user_id, created_at desc);
-create index idx_notifications_user_read on public.notifications(user_id, is_read) where is_read = false;
+create index if not exists idx_notifications_user_created on public.notifications(user_id, created_at desc);
+create index if not exists idx_notifications_user_read on public.notifications(user_id, is_read) where is_read = false;
 
 comment on table public.notifications is '회원 알림 (경품 상태, 포인트 적립, 관리자 메시지)';
 

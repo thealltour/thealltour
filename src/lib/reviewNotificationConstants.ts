@@ -1,0 +1,21 @@
+/**
+ * PR29: 리뷰 운영 알림 임계값 및 dedupe 정책 상수.
+ */
+
+export const REVIEW_NOTIFICATION_DEDUPE_WINDOW_MINUTES = 60;
+export const REVIEW_CRITICAL_REPORT_THRESHOLD = 5;
+export const REVIEW_CRITICAL_RISK_SCORE_THRESHOLD = 7;
+export const REVIEW_CRITICAL_LOW_TRUST_THRESHOLD = 20;
+export const REVIEW_CONVERSION_DROP_ALERT_THRESHOLD = 0.3;
+export const REVIEW_ANOMALY_ALERT_MIN_REVIEWS = 3;
+
+export const REVIEW_MODERATION_FLAGGED_WARNING_COUNT = 2;
+export const REVIEW_MODERATION_UNDER_REVIEW_WARNING_COUNT = 5;
+export const REVIEW_INSIGHT_RISK_PRODUCT_ALERT = true;
+export const REVIEW_INSIGHT_RECURRING_COMPLAINT_WARNING = 3;
+
+export const SEVERITY_ORDER: Record<string, number> = {
+  critical: 0,
+  warning: 1,
+  info: 2,
+};

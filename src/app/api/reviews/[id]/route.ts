@@ -5,6 +5,10 @@ import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getReviewById } from "@/lib/reviews";
 import { updateEligibilityStatus } from "@/lib/reviewEligibilities";
 import { createNewReviewNotification } from "@/lib/adminNotifications";
+import { createReviewReward } from "@/lib/reviewRewards";
+import { cancelReviewReminders } from "@/lib/reviewReminders";
+import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
+import { getProductIdByBookingId } from "@/lib/travelBookings";
 
 type ReviewPatchBody = {
   action?: "save_draft" | "submit";
@@ -30,10 +34,20 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
+  const cookieStore = await cookies();
+  const session = getMemberSessionFromCookies(cookieStore);
+
+  if (!session) {
+    return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
+  }
 
   const review = await getReviewById(id);
   if (!review) {
     return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  if (review.member_id !== session.memberId) {
+    return NextResponse.json({ message: "본인의 후기만 조회할 수 있습니다." }, { status: 403 });
   }
 
   return NextResponse.json(review);
@@ -149,16 +163,33 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (action === "submit") {
     if (review.eligibility_id) {
       await updateEligibilityStatus(review.eligibility_id, "submitted");
+      await cancelReviewReminders(review.eligibility_id);
+    }
+    if (review.booking_id) {
+      const productIdForSummary = await getProductIdByBookingId(review.booking_id);
+      if (productIdForSummary) await markProductReviewSummaryStale(productIdForSummary);
     }
     await createNewReviewNotification({
       reviewId: id,
       authorName: review.author_name,
       title: title || summary || "후기",
     });
+    const reward = await createReviewReward({
+      id,
+      member_id: review.member_id,
+      status: "submitted",
+      eligibility_id: review.eligibility_id,
+    });
+    return NextResponse.json({
+      message: "후기가 등록되었습니다.",
+      review_id: id,
+      rewardCreated: reward.rewardCreated,
+      pointsAwarded: reward.rewardCreated ? reward.points : undefined,
+    });
   }
 
   return NextResponse.json({
-    message: action === "submit" ? "후기가 등록되었습니다." : "임시저장되었습니다.",
+    message: "임시저장되었습니다.",
     review_id: id,
   });
 }

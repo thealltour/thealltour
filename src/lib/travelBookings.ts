@@ -67,6 +67,27 @@ export async function getTravelBookingByInquiryId(
   return toBooking(data as Record<string, unknown>);
 }
 
+/** id로 예약 1건 조회 */
+export async function getTravelBookingById(
+  bookingId: string,
+): Promise<TravelBooking | null> {
+  const { data, error } = await supabaseAdmin
+    .from("travel_bookings")
+    .select("*")
+    .eq("id", bookingId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return toBooking(data as Record<string, unknown>);
+}
+
+/** booking_id로 product_id만 조회 (요약 stale 처리 등용). */
+export async function getProductIdByBookingId(bookingId: string): Promise<string | null> {
+  const booking = await getTravelBookingById(bookingId);
+  return booking?.product_id ?? null;
+}
+
 /** 예약 상태 업데이트 (booking_status, 필요 시 travel_completed_at) */
 export async function updateTravelBookingStatus(
   bookingId: string,

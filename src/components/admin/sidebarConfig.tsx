@@ -81,10 +81,11 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     roles: ["admin"],
   },
   {
-    href: "/theall_manager_only/reviews",
+    href: "/admin/reviews",
     label: "후기 관리",
     icon: Star,
     section: "extra",
+    mainKey: "reviews",
     roles: ["admin", "manager", "viewer"],
   },
   {
@@ -116,4 +117,3 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     roles: ["admin", "manager", "viewer"],
   },
 ];
-

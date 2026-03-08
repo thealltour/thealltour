@@ -150,10 +150,28 @@ export type Product = {
   image_url: string;
   /** 상품 이미지 갤러리 URL 배열. 첫 번째가 대표 이미지로 사용됨 */
   images_json?: string[];
-  /** TODO: 목록 카드 썸네일용 (card 800px). 확장 시 ProductCatalogSection 등에서 우선 사용. docs/design/product-image-card-url-extension.md */
+  /** TODO: 목록 카드 썸네일용 (card 800px). 확장 시 ProductCatalogSection 등에서 우선 사용. */
   // image_card_url?: string;
+  /**
+   * @deprecated legacy. destination_id / product_line_id 비어 있을 때만 fallback 사용.
+   * 지역·상품군이 혼재했던 단일 문자열. 점진적 이전 후 제거 검토.
+   */
   category: string;
+  /**
+   * @deprecated legacy. 테마 이름 토큰 문자열(쉼표/구분자).
+   * 새 스키마에서는 theme_ids_json 등 검토. 당분간 유지.
+   */
   theme?: string;
+  /** 지역 1개 (product_taxonomies.id, taxonomy_type=destination). 비어 있으면 category fallback */
+  destination_id?: string | null;
+  /** 상품군 1개 (product_taxonomies.id, taxonomy_type=product_line). 비어 있으면 category fallback */
+  product_line_id?: string | null;
+  /** 기획/강조 항목. taxonomy 이름 배열 또는 id 배열. 선택 */
+  campaigns?: string[] | null;
+  /** DB 컬럼명. API 응답에서 올 수 있음 */
+  campaigns_json?: string[] | null;
+  /** 태그 이름 배열. 선택 */
+  tags?: string[] | null;
   price?: number;
   duration?: string;
   itinerary?: string;

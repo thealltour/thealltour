@@ -1,23 +1,38 @@
 "use client";
 
-import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
+import type { ProductTaxonomyWithUsage, TaxonomyType } from "@/types/productTaxonomy";
 import { parseJsonResponse, extractErrorMessage } from "./adminApiClient.shared";
 
 const BASE = "/api/admin/product-taxonomies";
 
 export type CreateAdminTaxonomyPayload = {
-  type: "category" | "theme";
+  /** 권장. 없으면 type/category_type 으로 호환 */
+  taxonomy_type?: TaxonomyType;
+  /** @deprecated taxonomy_type 사용 */
+  type?: "category" | "theme";
   name: string;
   slug?: string | null;
   sort_order?: number | null;
+  /** 대분류 id (지역이면 해외/국내 등). 없으면 최상위 */
+  parent_id?: string | null;
   is_active?: boolean;
+  /** @deprecated taxonomy_type 사용 */
+  category_type?: "destination" | "product_line" | "highlight" | "other" | null;
+  is_hub_visible?: boolean;
+  is_landing_enabled?: boolean;
 };
 
 /**
- * taxonomy 목록 조회. 실패 시 throw.
+ * taxonomy 목록 조회. options.taxonomy_type 이 있으면 해당 타입만 반환.
  */
-export async function fetchAdminProductTaxonomy(): Promise<ProductTaxonomyWithUsage[]> {
-  const response = await fetch(BASE, { cache: "no-store" });
+export async function fetchAdminProductTaxonomy(
+  options?: { taxonomy_type?: TaxonomyType },
+): Promise<ProductTaxonomyWithUsage[]> {
+  const url =
+    options?.taxonomy_type != null
+      ? `${BASE}?taxonomy_type=${encodeURIComponent(options.taxonomy_type)}`
+      : BASE;
+  const response = await fetch(url, { cache: "no-store" });
   const result = await parseJsonResponse<ProductTaxonomyWithUsage[] | { message?: string }>(
     response,
   );
@@ -31,18 +46,24 @@ export async function fetchAdminProductTaxonomy(): Promise<ProductTaxonomyWithUs
 }
 
 /**
- * category 또는 theme 생성. 실패 시 throw.
+ * category 또는 theme 생성. taxonomy_type 또는 type(category/theme) 지정.
+ * 신규는 taxonomy_type 권장.
  */
 export async function createAdminProductTaxonomy(
   payload: CreateAdminTaxonomyPayload,
 ): Promise<void> {
   const body: Record<string, unknown> = {
-    type: payload.type,
     name: payload.name,
   };
+  if (payload.taxonomy_type != null) body.taxonomy_type = payload.taxonomy_type;
+  if (payload.type != null) body.type = payload.type;
   if (payload.slug !== undefined) body.slug = payload.slug?.trim() || null;
   if (payload.sort_order !== undefined) body.sort_order = payload.sort_order;
+  if (payload.parent_id !== undefined) body.parent_id = payload.parent_id?.trim() || null;
   if (payload.is_active !== undefined) body.is_active = payload.is_active;
+  if (payload.category_type !== undefined) body.category_type = payload.category_type ?? null;
+  if (payload.is_hub_visible !== undefined) body.is_hub_visible = payload.is_hub_visible;
+  if (payload.is_landing_enabled !== undefined) body.is_landing_enabled = payload.is_landing_enabled;
 
   const response = await fetch(BASE, {
     method: "POST",
@@ -71,9 +92,16 @@ export async function deleteAdminProductTaxonomy(id: string): Promise<void> {
 }
 
 export type UpdateAdminTaxonomyPayload = {
+  taxonomy_type?: TaxonomyType;
   slug?: string | null;
   sort_order?: number | null;
   is_active?: boolean;
+  /** 대분류 id. null이면 최상위로 */
+  parent_id?: string | null;
+  /** @deprecated taxonomy_type 사용 */
+  category_type?: "destination" | "product_line" | "highlight" | "other" | null;
+  is_hub_visible?: boolean;
+  is_landing_enabled?: boolean;
 };
 
 /**

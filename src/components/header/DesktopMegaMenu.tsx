@@ -27,9 +27,12 @@ function getNavLinkClass(isActive: boolean) {
 
 function getIsActive(item: HeaderPrimaryNavItem, pathname: string): boolean {
   const key = item.key as HeaderPrimaryNavKey;
-  if (key === "recommended") return pathname === "/";
+  if (key === "recommended") return pathname === "/recommended";
+  if (key === "region") return pathname === "/destinations" || pathname.startsWith("/destinations/");
+  if (key === "theme") return pathname === "/themes" || pathname.startsWith("/themes/");
   if (key === "inquiry") return pathname === "/quote";
-  if (key === "region" || key === "theme") return pathname.startsWith("/products");
+  if (key === "guides") return pathname.startsWith("/guides");
+  if (key === "support") return pathname.startsWith("/support");
   return false;
 }
 

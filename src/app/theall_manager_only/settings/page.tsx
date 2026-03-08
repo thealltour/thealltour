@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default function AdminSiteSettingsPage() {
   return (
-    <div className="min-h-screen bg-[#f8fbff] px-6 py-10 text-[#0f172a] md:px-10">
+    <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
           activeTab="settings"

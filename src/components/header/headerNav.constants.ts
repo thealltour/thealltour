@@ -34,9 +34,9 @@ export const HEADER_NAV_GROUP_KEYS = {
 
 /** 정적 1차 메뉴용 기본 href (메가메뉴 없이 상단만 쓸 때) */
 export const HEADER_PRIMARY_NAV_DEFAULT_HREF: Record<HeaderPrimaryNavKey, string> = {
-  recommended: "/",
-  region: "/products",
-  theme: "/products",
+  recommended: "/recommended",
+  region: "/destinations",
+  theme: "/themes",
   inquiry: "/quote",
   guides: "/guides",
   support: "/support",

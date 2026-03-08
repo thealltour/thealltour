@@ -194,12 +194,12 @@ export default function AdminSiteSettingsManager() {
   return (
     <section className="space-y-4 rounded-xl bg-[var(--card-muted)] p-4 ring-1 ring-[var(--border)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-bold text-[#1e3a8a]">사이트 환경설정</h3>
+        <h3 className="text-lg font-bold text-[var(--primary)]">사이트 환경설정</h3>
         <button
           type="button"
           onClick={handleSave}
           disabled={isLoading || isSaving}
-          className="rounded-lg bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving ? "저장 중..." : "환경설정 저장"}
         </button>
@@ -214,7 +214,7 @@ export default function AdminSiteSettingsManager() {
             onClick={() => setActiveSection(tab.id)}
             className={`rounded-md px-3 py-2 text-sm font-medium transition ${
               activeSection === tab.id
-                ? "bg-[var(--primary)] text-white"
+                ? "bg-[var(--primary)] text-[var(--on-primary)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
@@ -224,8 +224,8 @@ export default function AdminSiteSettingsManager() {
       </div>
 
       {isLoading ? <p className="text-sm text-[var(--text-muted)]">환경설정을 불러오는 중입니다...</p> : null}
-      {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+      {message ? <p className="text-sm text-[var(--success)]">{message}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
 
       <div className="min-h-[200px]">
         {activeSection === "channel" && (
@@ -545,7 +545,7 @@ export default function AdminSiteSettingsManager() {
 
         {activeSection === "about" && (
           <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--card-muted)] p-3">
-          <p className="text-xs font-bold text-[#1e3a8a]">회사소개(About) 페이지 콘텐츠</p>
+          <p className="text-xs font-bold text-[var(--primary)]">회사소개(About) 페이지 콘텐츠</p>
           <p className="text-[11px] text-[var(--text-muted)]">
             랜딩 페이지로 대체하거나, 회사소개 문구를 수정할 때 사용합니다. CTA URL에 외부 랜딩 주소를
             입력하면 버튼 클릭 시 해당 페이지로 이동합니다.
@@ -640,7 +640,7 @@ export default function AdminSiteSettingsManager() {
                 placeholder="예: /#contact 또는 https://landing.thealltour.com/about"
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
               />
-              <span className="text-[11px] font-normal text-slate-500">
+              <span className="text-[11px] font-normal text-[var(--text-muted)]">
                 http로 시작하면 새 탭에서 외부 랜딩 페이지를 엽니다. 비워두면 기본 문의 섹션(/#contact)으로 이동합니다.
               </span>
             </label>

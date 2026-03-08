@@ -1,35 +1,44 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
-
-const REVIEW_IMAGE_BUCKET = "review-images";
-const MAX_REVIEW_IMAGE_SIZE = 5 * 1024 * 1024;
+/**
+ * PR12: 리뷰 이미지 업로드 (API 연동).
+ * - reviewId 필수. 업로드 전 클라이언트에서 압축(ReviewWriteForm) 권장.
+ * - 서버에서 thumb/medium/original 생성 후 medium URL 반환.
+ */
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_REVIEW_IMAGE_SIZE = 10 * 1024 * 1024;
 
-function sanitizeFileName(name: string) {
-  return name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-}
-
-export async function uploadReviewImage(file: File) {
+export async function uploadReviewImage(
+  file: File,
+  reviewId: string,
+  index: number = 0,
+): Promise<string> {
+  if (!reviewId) {
+    throw new Error("이미지 업로드에는 후기 ID가 필요합니다. 먼저 임시저장해 주세요.");
+  }
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error("jpg, png, webp, gif 형식만 업로드할 수 있습니다.");
   }
   if (file.size > MAX_REVIEW_IMAGE_SIZE) {
-    throw new Error("이미지 용량은 5MB 이하만 업로드할 수 있습니다.");
+    throw new Error("이미지 용량은 10MB 이하만 업로드할 수 있습니다.");
   }
 
-  const extension = sanitizeFileName(file.name.split(".").pop() ?? "jpg");
-  const filePath = `public/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+  const form = new FormData();
+  form.append("file", file);
+  form.append("reviewId", reviewId);
+  form.append("index", String(index));
 
-  const uploadResult = await supabase.storage.from(REVIEW_IMAGE_BUCKET).upload(filePath, file, {
-    cacheControl: "3600",
-    upsert: false,
+  const res = await fetch("/api/reviews/upload-image", {
+    method: "POST",
+    body: form,
   });
 
-  if (uploadResult.error) {
-    throw new Error("이미지 업로드에 실패했습니다.");
+  const data = (await res.json()) as { message?: string; url?: string };
+  if (!res.ok) {
+    throw new Error(data.message ?? "이미지 업로드에 실패했습니다.");
   }
-
-  const publicResult = supabase.storage.from(REVIEW_IMAGE_BUCKET).getPublicUrl(filePath);
-  return publicResult.data.publicUrl;
+  if (!data.url) {
+    throw new Error("서버에서 이미지 URL을 반환하지 않았습니다.");
+  }
+  return data.url;
 }

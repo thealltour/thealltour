@@ -56,3 +56,49 @@ export function getRecommendedSectionMetadataFallback(
 /** 상세 랜딩 공통 히어로 이미지 fallback (taxonomy/section에 이미지 없을 때) */
 export const LANDING_HERO_FALLBACK_IMAGE =
   "https://picsum.photos/seed/thealltour-landing/1600/900";
+
+/** 허브 랜딩 히어로용 이미지 fallback (destinations/themes 상단). 확장 시 허브별 URL 관리 가능 */
+export const HUB_HERO_FALLBACK_IMAGE = LANDING_HERO_FALLBACK_IMAGE;
+
+export type HubHeroConfig = {
+  imageUrl: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  ctaLabel: string;
+  ctaHref: string;
+  secondaryCtaLabel: string;
+  secondaryCtaHref: string;
+};
+
+/**
+ * 허브별 이미지형 LandingHero에 넣을 기본 설정.
+ * 향후 관리자에서 허브별 hero를 관리할 때 이 반환값을 덮어쓰면 됨.
+ */
+export function getHubHeroConfig(hub: "destinations" | "themes"): HubHeroConfig {
+  const imageUrl = HUB_HERO_FALLBACK_IMAGE;
+  if (hub === "destinations") {
+    return {
+      imageUrl,
+      eyebrow: "지역별 여행",
+      title: "지역별 여행",
+      description:
+        "가고 싶은 지역부터 여행을 찾아볼 수 있도록 안내합니다. 지역을 선택하면 해당 지역의 상품을 바로 둘러보실 수 있습니다.",
+      ctaLabel: "전체 상품 보기",
+      ctaHref: "/products",
+      secondaryCtaLabel: "맞춤 상담 문의",
+      secondaryCtaHref: "/quote",
+    };
+  }
+  return {
+    imageUrl,
+    eyebrow: "테마별 여행",
+    title: "테마별 여행",
+    description:
+      "원하는 여행 스타일과 목적에 맞춰 테마별 상품을 살펴보실 수 있습니다. 골프, 휴양, 가족여행, 허니문 등 테마로 찾아보세요.",
+    ctaLabel: "전체 상품 보기",
+    ctaHref: "/products",
+    secondaryCtaLabel: "맞춤 상담 문의",
+    secondaryCtaHref: "/quote",
+  };
+}

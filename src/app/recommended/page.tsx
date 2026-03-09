@@ -4,9 +4,18 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { LandingHero } from "@/components/landing/LandingHero";
+import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import { getRecommendedLandingHref } from "@/lib/hubLandingLinks";
+import {
+  getHubDestinations,
+  getHubThemes,
+  getProductTaxonomyOptions,
+  buildRegionTree,
+  buildThemeTree,
+} from "@/lib/productTaxonomies";
+import { getProducts } from "@/lib/products";
 
 export const metadata = {
   title: "추천여행 | 더올투어",
@@ -15,7 +24,17 @@ export const metadata = {
 };
 
 export default async function RecommendedHubPage() {
-  const { settings, sections } = await getHomeCuratedData();
+  const [{ settings, sections }, products, destinations, hubThemes] = await Promise.all([
+    getHomeCuratedData(),
+    getProducts(),
+    getHubDestinations(),
+    getHubThemes(),
+  ]);
+  const taxonomyOptions = await getProductTaxonomyOptions(products);
+  const { categories, themes, productLines } = taxonomyOptions;
+  const regionTree = buildRegionTree(destinations);
+  const themeTree = buildThemeTree(hubThemes);
+
   const isActive = settings?.is_active ?? false;
   const sectionList = sections ?? [];
 
@@ -23,8 +42,8 @@ export default async function RecommendedHubPage() {
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
 
-      <main className="page-content flex w-full flex-col py-8 md:py-12">
-        <PageContainer size="wide" className="flex flex-col gap-16 md:gap-20">
+      <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
+        <PageContainer size="wide" className="flex flex-col gap-8">
           <LandingHero
             title={settings?.section_title?.trim() || "지금 추천하는 여행"}
             description={
@@ -35,6 +54,17 @@ export default async function RecommendedHubPage() {
             ctaHref={settings?.catalog_button_href?.trim() || "/products"}
           />
 
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+            <div className="hidden w-72 shrink-0 lg:block">
+              <HubFilterSidebar
+                regionOptions={categories}
+                regionTree={regionTree}
+                themeOptions={themes}
+                themeTree={themeTree}
+                productLineOptions={productLines}
+              />
+            </div>
+            <div className="min-w-0 flex-1 space-y-12">
           {isActive && sectionList.length > 0 ? (
             <section className="space-y-12">
               {sectionList.map((sec) => {
@@ -102,6 +132,8 @@ export default async function RecommendedHubPage() {
               </Link>
             </div>
           </SectionBlock>
+            </div>
+          </div>
         </PageContainer>
       </main>
     </div>

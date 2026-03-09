@@ -65,3 +65,10 @@ export type ProductTaxonomyWithUsage = ProductTaxonomy & {
   /** 랜딩 CTR, landingViewCount > 0일 때만 (관리자 목록용, 선택) */
   landingCtr?: number | null;
 };
+
+/** 상품 필터 지역 트리 노드 (대분류 > 중분류 > 소분류). */
+export type RegionTreeNode = {
+  id: string;
+  name: string;
+  children?: RegionTreeNode[];
+};

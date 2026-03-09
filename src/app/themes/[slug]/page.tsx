@@ -7,19 +7,48 @@ import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { LandingDetailHero } from "@/components/landing/LandingDetailHero";
 import { LandingSubCardsSection } from "@/components/landing/LandingSubCardsSection";
+import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
 import {
   getThemeBySlugForPublicLanding,
+  getHubThemes,
+  getHubDestinations,
   parseThemeTokens,
+  getProductTaxonomyOptions,
+  buildRegionTree,
+  buildThemeTree,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
+import { getThemeLandingHref } from "@/lib/hubLandingLinks";
 import {
   getTaxonomyMetadataFallback,
   getTaxonomyHeroImageFallback,
 } from "@/lib/landingMetadata";
+import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
+import type { ProductTaxonomy } from "@/types/productTaxonomy";
+import type { Product } from "@/types/product";
 
 const RELATED_PRODUCTS_LIMIT = 12;
+
+/** 카드 이미지 미설정 시 해당 테마 상품 대표 이미지로 채움. */
+function buildThemeFallbackImageMap(
+  themes: ProductTaxonomy[],
+  products: Product[],
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const t of themes) {
+    const nameLower = t.name.trim().toLowerCase();
+    if (map.has(nameLower)) continue;
+    const first = products.find(
+      (p) =>
+        p.image_url?.trim() &&
+        parseThemeTokens(p.theme).map((x) => x.trim().toLowerCase()).includes(nameLower),
+    );
+    if (first?.image_url?.trim()) map.set(nameLower, first.image_url.trim());
+  }
+  return map;
+}
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -41,10 +70,30 @@ export default async function ThemeLandingPage({ params }: Props) {
   const theme = await getThemeBySlugForPublicLanding(slug);
   if (!theme) notFound();
 
-  const [products, subnodes] = await Promise.all([
+  const [products, subnodes, allThemes] = await Promise.all([
     getProducts(),
     getLandingSubnodes("theme", slug),
+    getHubThemes(),
   ]);
+  const [taxonomyOptions, destinations] = await Promise.all([
+    getProductTaxonomyOptions(products),
+    getHubDestinations(),
+  ]);
+  const { categories, themes: themeNames, productLines } = taxonomyOptions;
+  const regionTree = buildRegionTree(destinations);
+  const themeTree = buildThemeTree(allThemes);
+
+  const parentId = theme.id.trim();
+  const childThemes = allThemes
+    .filter((t) => (t.parent_id ?? "").trim() === parentId)
+    .sort((a, b) => {
+      const sa = a.sort_order ?? 9999;
+      const sb = b.sort_order ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+    });
+  const childFallbackImages = buildThemeFallbackImageMap(childThemes, products);
+
   const themeNameLower = theme.name.trim().toLowerCase();
   const related = products
     .filter((p) => {
@@ -66,13 +115,53 @@ export default async function ThemeLandingPage({ params }: Props) {
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
 
-      <main className="page-content flex w-full flex-col py-0 md:py-0">
-        <PageContainer size="wide" className="flex flex-col gap-12 md:gap-16">
+      <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
+        <PageContainer size="wide" className="flex flex-col gap-8">
           <LandingDetailHero
             title={heroTitle}
             description={heroDescription}
             imageUrl={heroImage}
           />
+
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+            <div className="hidden w-72 shrink-0 lg:block">
+              <HubFilterSidebar
+                regionOptions={categories}
+                regionTree={regionTree}
+                themeOptions={themeNames}
+                themeTree={themeTree}
+                productLineOptions={productLines}
+                initialFilters={{ theme: theme.name }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+          {childThemes.length > 0 ? (
+            <SectionBlock surface="none" padding="md">
+              <SectionHeader
+                title="세부 테마 선택"
+                description="원하는 테마를 선택해 보세요."
+                align="left"
+              />
+              <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {childThemes.map((t) => {
+                  const nameKey = t.name.trim().toLowerCase();
+                  const cardImageUrl =
+                    t.card_image_url?.trim() ||
+                    childFallbackImages.get(nameKey) ||
+                    undefined;
+                  return (
+                    <li key={t.id}>
+                      <HubBrowseCard
+                        item={{ ...t, card_image_url: cardImageUrl ?? t.card_image_url }}
+                        href={getThemeLandingHref(t)}
+                        showImage={true}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </SectionBlock>
+          ) : null}
 
           <LandingSubCardsSection
             contextTitle={theme.name}
@@ -109,6 +198,8 @@ export default async function ThemeLandingPage({ params }: Props) {
               </Link>
             </div>
           </SectionBlock>
+            </div>
+          </div>
         </PageContainer>
       </main>
     </div>

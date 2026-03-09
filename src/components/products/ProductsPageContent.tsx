@@ -17,11 +17,16 @@ import {
   type ProductSortId,
 } from "@/lib/productFilters";
 import type { Product } from "@/types/product";
+import type { RegionTreeNode } from "@/types/productTaxonomy";
 
 export type ProductsPageContentProps = {
   products: Product[];
   regionOptions: string[];
+  /** 지역 트리(대분류>중분류>소분류). 있으면 좌측 필터에 접이식 트리로 표시 */
+  regionTree?: RegionTreeNode[];
   themeOptions: string[];
+  /** 테마 트리(부모>자식). 있으면 좌측 필터에 접이식 트리로 표시 */
+  themeTree?: RegionTreeNode[];
   productLineOptions: string[];
   initialKeyword?: string;
   presetCategories?: string[];
@@ -33,7 +38,9 @@ export type ProductsPageContentProps = {
 export function ProductsPageContent({
   products,
   regionOptions,
+  regionTree,
   themeOptions,
+  themeTree,
   productLineOptions,
   initialKeyword = "",
   presetCategories,
@@ -88,7 +95,9 @@ export function ProductsPageContent({
     <div className="flex gap-8 items-start">
       <ProductFilterSidebar
         regionOptions={regionOptions}
+        regionTree={regionTree}
         themeOptions={themeOptions}
+        themeTree={themeTree}
         productLineOptions={productLineOptions}
         filters={filters}
         onFilterChange={handleFilterChange}
@@ -144,7 +153,9 @@ export function ProductsPageContent({
         isOpen={filterDrawerOpen}
         onClose={() => setFilterDrawerOpen(false)}
         regionOptions={regionOptions}
+        regionTree={regionTree}
         themeOptions={themeOptions}
+        themeTree={themeTree}
         productLineOptions={productLineOptions}
         filters={filters}
         onApply={(next) => handleFilterChange(next)}

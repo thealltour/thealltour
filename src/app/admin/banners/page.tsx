@@ -1,4 +1,5 @@
 import AdminBannerManager from "@/components/AdminBannerManager";
+import AdminHeroContentForm from "@/components/admin/AdminHeroContentForm";
 import AdminHeader from "@/components/AdminHeader";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
 import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
@@ -26,7 +27,10 @@ export default async function AdminBannersPage() {
         <section className="overflow-hidden rounded-2xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-5">
           <AdminToastProvider>
             <AdminConfirmProvider>
-              <AdminBannerManager />
+              <div className="space-y-6">
+                <AdminHeroContentForm />
+                <AdminBannerManager />
+              </div>
             </AdminConfirmProvider>
           </AdminToastProvider>
         </section>

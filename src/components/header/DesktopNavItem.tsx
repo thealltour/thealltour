@@ -16,6 +16,9 @@ type DesktopNavItemProps = {
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  /** 부모에서 관리하는 닫기 지연. 다른 메뉴로 이동 시 대기 중인 닫기가 취소되도록 함 */
+  scheduleClose?: () => void;
+  cancelClose?: () => void;
   isActive: boolean;
   getNavLinkClass: (isActive: boolean) => string;
 };
@@ -26,12 +29,17 @@ export function DesktopNavItem({
   isOpen,
   onOpen,
   onClose,
+  scheduleClose: scheduleCloseProp,
+  cancelClose: cancelCloseProp,
   isActive,
   getNavLinkClass,
 }: DesktopNavItemProps) {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hasPanel = Boolean(item.groups && item.groups.length > 0);
+
+  const scheduleClose = scheduleCloseProp ?? onClose;
+  const cancelClose = cancelCloseProp ?? (() => {});
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -80,8 +88,11 @@ export function DesktopNavItem({
       <div
         ref={wrapperRef}
         className="relative flex items-center gap-0.5"
-        onMouseEnter={onOpen}
-        onMouseLeave={onClose}
+        onMouseEnter={() => {
+          cancelClose();
+          onOpen();
+        }}
+        onMouseLeave={scheduleClose}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
       >
@@ -139,7 +150,7 @@ export function DesktopNavItem({
           }}
           onFocus={onOpen}
         >
-          <ChevronDown className="h-4 w-4" aria-hidden />
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden />
         </button>
         {isOpen && (
           <DesktopMegaMenuPanel item={item} onClose={onClose} />
@@ -152,8 +163,11 @@ export function DesktopNavItem({
     <div
       ref={wrapperRef}
       className="relative"
-      onMouseEnter={onOpen}
-      onMouseLeave={onClose}
+      onMouseEnter={() => {
+        cancelClose();
+        onOpen();
+      }}
+      onMouseLeave={scheduleClose}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
     >
@@ -165,17 +179,14 @@ export function DesktopNavItem({
         aria-controls={isOpen ? `mega-menu-panel-${item.key}` : undefined}
         id={`mega-menu-trigger-${item.key}`}
         className={cn(
-          "relative shrink-0 whitespace-nowrap type-nav transition-colors duration-150 py-1 px-0.5 rounded border-0 bg-transparent cursor-pointer text-left",
+          "relative shrink-0 whitespace-nowrap type-nav transition-colors duration-150 py-1.5 px-2.5 rounded-lg border-0 bg-transparent cursor-pointer text-left",
           isActive || isOpen
-            ? cn(
-                "text-[var(--foreground)] font-semibold",
-                "after:absolute after:left-0 after:right-0 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--primary)]",
-              )
+            ? cn("bg-[var(--primary-soft)] font-semibold text-[var(--primary)]")
             : cn(
                 "text-[var(--text-muted)]",
-                "hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)]",
+                "hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
               ),
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:rounded",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:rounded-lg",
         )}
         onClick={(e) => {
           e.preventDefault();

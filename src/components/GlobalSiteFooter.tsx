@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 type SiteSettingsClient = {
   kakao_channel_url?: string;
@@ -64,7 +65,7 @@ export default function GlobalSiteFooter() {
 
   return (
     <footer className="border-t border-[var(--divider)] bg-[var(--surface-muted)]">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-7 type-small leading-7 text-[var(--text-muted)] md:grid-cols-[1fr_auto] md:px-10">
+      <PageContainer size="wide" className="grid gap-6 py-7 type-small leading-7 text-[var(--text-muted)] md:grid-cols-[1fr_auto]">
         <div>
           <p className="type-body font-bold text-[var(--foreground)]">{companyName}</p>
           <p className="text-[var(--text-subtle)]">대표: {ceoName}</p>
@@ -108,8 +109,8 @@ export default function GlobalSiteFooter() {
             </Link>
           </div>
         </div>
-      </div>
-      <div className="border-t border-[var(--divider)] py-3 text-center type-caption text-[var(--text-subtle)]">
+      </PageContainer>
+      <PageContainer size="wide" className="border-t border-[var(--divider)] py-3 text-center type-caption text-[var(--text-subtle)]">
         © {new Date().getFullYear()} 더올투어. All rights reserved
         <Link
           href="/theall_manager_only"
@@ -118,7 +119,7 @@ export default function GlobalSiteFooter() {
         >
           .
         </Link>
-      </div>
+      </PageContainer>
     </footer>
   );
 }

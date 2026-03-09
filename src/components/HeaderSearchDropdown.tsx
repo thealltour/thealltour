@@ -85,7 +85,7 @@ export default function HeaderSearchDropdown({
 
   return (
     <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50">
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-modal)]">
+      <div className="max-h-[min(70vh,400px)] overflow-y-auto overflow-x-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-modal)]">
         {/* 최근 검색어 섹션 */}
         {recentSearches.length > 0 ? (
           <section className="px-3 py-2.5">

@@ -57,21 +57,31 @@ export function toLandingProductSummary(product: Product): ProductLandingProduct
   };
 }
 
-/** hero 문구/CTA 계산형 생성. DB 메타 없음. */
+/** hero 문구/CTA 계산형 생성. taxonomy에 landing_title·landing_description 있으면 우선 사용. */
 function buildLandingHero(
   type: ProductLandingType,
   taxonomyName: string,
   _slug: string,
+  taxonomy?: ProductTaxonomy | null,
 ): ProductLandingHero {
   const primaryCtaHref =
     type === "region"
       ? `/products?region=${encodeURIComponent(taxonomyName)}`
       : `/products?theme=${encodeURIComponent(taxonomyName)}`;
+  const defaultTitle =
+    type === "region" ? `${taxonomyName} 여행 추천` : `${taxonomyName} 테마 추천`;
+  const defaultDescription =
+    type === "region"
+      ? `${taxonomyName} 중심으로 둘러보는 추천 상품을 한곳에서 확인해보세요.`
+      : `${taxonomyName} 성격의 여행 상품을 모아 비교해보세요.`;
+  const imageUrl =
+    taxonomy?.hero_image_url?.trim() || taxonomy?.card_image_url?.trim() || null;
   if (type === "region") {
     return {
       eyebrow: "지역별 여행",
-      title: `${taxonomyName} 여행 추천`,
-      description: `${taxonomyName} 중심으로 둘러보는 추천 상품을 한곳에서 확인해보세요.`,
+      title: taxonomy?.landing_title?.trim() || defaultTitle,
+      description: taxonomy?.landing_description?.trim() || defaultDescription,
+      imageUrl: imageUrl || undefined,
       primaryCtaLabel: "전체 상품 보기",
       primaryCtaHref,
       secondaryCtaLabel: "맞춤 상담 문의",
@@ -80,8 +90,9 @@ function buildLandingHero(
   }
   return {
     eyebrow: "테마별 여행",
-    title: `${taxonomyName} 테마 추천`,
-    description: `${taxonomyName} 성격의 여행 상품을 모아 비교해보세요.`,
+    title: taxonomy?.landing_title?.trim() || defaultTitle,
+    description: taxonomy?.landing_description?.trim() || defaultDescription,
+    imageUrl: imageUrl || undefined,
     primaryCtaLabel: "전체 상품 보기",
     primaryCtaHref,
     secondaryCtaLabel: "맞춤 상담 문의",
@@ -169,7 +180,14 @@ async function getProductLandingDataUncached(params: {
   );
   const matchedAll = matchProductsByTaxonomyName(products, type, taxonomyName);
 
-  const hero = buildLandingHero(type, taxonomyName, normalizedSlug);
+  const currentTaxonomy =
+    taxonomies.find(
+      (t) =>
+        t.taxonomy_type === (type === "region" ? "destination" : "theme") &&
+        (t.name === taxonomyName ||
+          (t.slug?.trim().toLowerCase().replace(/\s+/g, "-") === normalizedSlug.toLowerCase())),
+    ) ?? null;
+  const hero = buildLandingHero(type, taxonomyName, normalizedSlug, currentTaxonomy);
   const featuredLinks = buildLandingFeaturedLinks(type, taxonomyName);
   const relatedTaxonomies = buildLandingRelatedTaxonomies(type, taxonomies, taxonomyName);
 

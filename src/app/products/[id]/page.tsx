@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import SiteHeader from "@/components/SiteHeader";
 import ProductDetailContentLegacy from "@/components/ProductDetailContentLegacy";
 import ProductDetailHero from "@/components/ProductDetailHero";
 import ProductDetailTabs from "@/components/ProductDetailTabs";
@@ -232,7 +233,9 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
   if (!ENABLE_NEW_PRODUCT_UI) {
     return (
-      <ProductDetailContentLegacy
+      <>
+        <SiteHeader activeTab="products" />
+        <ProductDetailContentLegacy
         productId={product.id}
         title={product.title}
         description={product.description}
@@ -258,6 +261,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
         arrivalFlight={arrivalFlight}
         kakaoHref={kakaoHref}
       />
+      </>
     );
   }
 
@@ -272,8 +276,9 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   return (
     <ConsultModalProvider>
       <ProductQuoteProvider>
+        <SiteHeader activeTab="products" />
       <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white py-6 sm:py-10 md:py-14">
-        <PageContainer size="default">
+        <PageContainer size="wide">
           <main className="w-full">
             <div className="mb-6 md:hidden">
               <Link

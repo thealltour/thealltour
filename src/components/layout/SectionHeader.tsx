@@ -9,6 +9,8 @@ export type SectionHeaderProps = {
   action?: React.ReactNode;
   align?: "left" | "center";
   className?: string;
+  /** h2에 부여할 id (섹션 aria-labelledby 연결용) */
+  titleId?: string;
 };
 
 /**
@@ -22,6 +24,7 @@ export function SectionHeader({
   action,
   align = "left",
   className,
+  titleId,
 }: SectionHeaderProps) {
   const hasTop = Boolean(eyebrow ?? title ?? description);
   const alignClass = align === "center" ? "text-center" : "text-left";
@@ -34,7 +37,7 @@ export function SectionHeader({
             <p className="section-label text-[var(--text-muted)]">{eyebrow}</p>
           ) : null}
           {title ? (
-            <h2 className="heading-display section-title type-h2 text-[var(--foreground)]">
+            <h2 id={titleId} className="heading-display section-title type-h2 text-[var(--foreground)]">
               {title}
             </h2>
           ) : null}

@@ -6,17 +6,50 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { LandingDetailHero } from "@/components/landing/LandingDetailHero";
+import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
 import { LandingSubCardsSection } from "@/components/landing/LandingSubCardsSection";
+import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
-import { getDestinationBySlugForPublicLanding } from "@/lib/productTaxonomies";
+import {
+  getDestinationBySlugForPublicLanding,
+  getHubDestinations,
+  getHubThemes,
+  buildRegionTree,
+  buildThemeTree,
+  getProductTaxonomyOptions,
+} from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
+import { getDestinationLandingHref } from "@/lib/hubLandingLinks";
 import {
   getTaxonomyMetadataFallback,
   getTaxonomyHeroImageFallback,
 } from "@/lib/landingMetadata";
+import type { Product } from "@/types/product";
+import type { ProductTaxonomy } from "@/types/productTaxonomy";
 
 const RELATED_PRODUCTS_LIMIT = 12;
+
+/** 카드 이미지 미설정 시 해당 지역 상품 대표 이미지로 채움. */
+function buildDestinationFallbackImageMap(
+  destinations: ProductTaxonomy[],
+  products: Product[],
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const d of destinations) {
+    const first = products.find(
+      (p) =>
+        p.image_url?.trim() &&
+        (p.destination_id === d.id ||
+          p.category?.trim().toLowerCase() === d.name.trim().toLowerCase()),
+    );
+    if (first?.image_url?.trim()) {
+      map.set(d.id, first.image_url.trim());
+      map.set(d.name.trim().toLowerCase(), first.image_url.trim());
+    }
+  }
+  return map;
+}
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -36,10 +69,30 @@ export default async function DestinationLandingPage({ params }: Props) {
   const destination = await getDestinationBySlugForPublicLanding(slug);
   if (!destination) notFound();
 
-  const [products, subnodes] = await Promise.all([
+  const [products, subnodes, allDestinations] = await Promise.all([
     getProducts(),
     getLandingSubnodes("destination", slug),
+    getHubDestinations(),
   ]);
+  const [taxonomyOptions, hubThemes] = await Promise.all([
+    getProductTaxonomyOptions(products),
+    getHubThemes(),
+  ]);
+  const { categories, themes, productLines } = taxonomyOptions;
+  const regionTree = buildRegionTree(allDestinations);
+  const themeTree = buildThemeTree(hubThemes);
+
+  const parentId = destination.id.trim();
+  const childDestinations = allDestinations
+    .filter((d) => (d.parent_id ?? "").trim() === parentId)
+    .sort((a, b) => {
+      const sa = a.sort_order ?? 9999;
+      const sb = b.sort_order ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+    });
+  const childFallbackImages = buildDestinationFallbackImageMap(childDestinations, products);
+
   const nameLower = destination.name.trim().toLowerCase();
   const related = products
     .filter((p) => p.category?.trim().toLowerCase() === nameLower)
@@ -56,13 +109,53 @@ export default async function DestinationLandingPage({ params }: Props) {
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
 
-      <main className="page-content flex w-full flex-col py-0 md:py-0">
-        <PageContainer size="wide" className="flex flex-col gap-12 md:gap-16">
+      <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
+        <PageContainer size="wide" className="flex flex-col gap-8">
           <LandingDetailHero
             title={heroTitle}
             description={heroDescription}
             imageUrl={heroImage}
           />
+
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+            <div className="hidden w-72 shrink-0 lg:block">
+              <HubFilterSidebar
+                regionOptions={categories}
+                regionTree={regionTree}
+                themeOptions={themes}
+                themeTree={themeTree}
+                productLineOptions={productLines}
+                initialFilters={{ region: destination.name }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+          {childDestinations.length > 0 ? (
+            <SectionBlock surface="none" padding="md">
+              <SectionHeader
+                title="도시·지역 선택"
+                description="원하는 도시·지역을 선택해 보세요."
+                align="left"
+              />
+              <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {childDestinations.map((d) => {
+                  const cardImageUrl =
+                    d.card_image_url?.trim() ||
+                    childFallbackImages.get(d.id) ||
+                    childFallbackImages.get(d.name.trim().toLowerCase()) ||
+                    undefined;
+                  return (
+                    <li key={d.id}>
+                      <HubBrowseCard
+                        item={{ ...d, card_image_url: cardImageUrl ?? d.card_image_url }}
+                        href={getDestinationLandingHref(d)}
+                        showImage={true}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </SectionBlock>
+          ) : null}
 
           <LandingSubCardsSection
             contextTitle={destination.name}
@@ -93,6 +186,8 @@ export default async function DestinationLandingPage({ params }: Props) {
               </Link>
             </div>
           </SectionBlock>
+            </div>
+          </div>
         </PageContainer>
       </main>
     </div>

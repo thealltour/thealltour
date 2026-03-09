@@ -34,6 +34,12 @@ type TaxonomyBody = {
   category_type?: ProductCategoryType | null;
   is_hub_visible?: boolean;
   is_landing_enabled?: boolean;
+  card_image_url?: string | null;
+  card_title?: string | null;
+  card_description?: string | null;
+  landing_title?: string | null;
+  landing_description?: string | null;
+  hero_image_url?: string | null;
 };
 
 const VALID_TYPES: ProductTaxonomyType[] = ["category", "theme"];
@@ -143,6 +149,12 @@ export async function GET(request: Request) {
       category_type: type === "category" && r.category_type != null ? (r.category_type as ProductCategoryType) : undefined,
       is_hub_visible: typeof r.is_hub_visible === "boolean" ? r.is_hub_visible : true,
       is_landing_enabled: typeof r.is_landing_enabled === "boolean" ? r.is_landing_enabled : false,
+      card_image_url: typeof r.card_image_url === "string" ? r.card_image_url.trim() || null : null,
+      card_title: typeof r.card_title === "string" ? r.card_title.trim() || null : null,
+      card_description: typeof r.card_description === "string" ? r.card_description.trim() || null : null,
+      landing_title: typeof r.landing_title === "string" ? r.landing_title.trim() || null : null,
+      landing_description: typeof r.landing_description === "string" ? r.landing_description.trim() || null : null,
+      hero_image_url: typeof r.hero_image_url === "string" ? r.hero_image_url.trim() || null : null,
       usageCount,
       headerClickCount: metricsRow?.headerClickCount ?? 0,
       searchInboundCount: metricsRow?.searchInboundCount ?? 0,
@@ -269,6 +281,12 @@ export async function POST(request: Request) {
   if (type === "category" && category_type != null) {
     insertPayload.category_type = category_type;
   }
+  if (body.card_image_url !== undefined) insertPayload.card_image_url = body.card_image_url?.trim() || null;
+  if (body.card_title !== undefined) insertPayload.card_title = body.card_title?.trim() || null;
+  if (body.card_description !== undefined) insertPayload.card_description = body.card_description?.trim() || null;
+  if (body.landing_title !== undefined) insertPayload.landing_title = body.landing_title?.trim() || null;
+  if (body.landing_description !== undefined) insertPayload.landing_description = body.landing_description?.trim() || null;
+  if (body.hero_image_url !== undefined) insertPayload.hero_image_url = body.hero_image_url?.trim() || null;
 
   const insertResult = await supabase
     .from("product_taxonomies")

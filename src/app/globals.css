@@ -213,6 +213,12 @@
 .hero-vignette-soft {
   background-image: radial-gradient(circle at top left, var(--hero-vignette-soft) 0%, transparent 60%);
 }
+.hero-text-shadow-title {
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
+}
+.hero-text-shadow-body {
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
+}
 .image-overlay-bottom {
   background-image: linear-gradient(to top, var(--overlay-image-from) 0%, var(--overlay-image-via) 50%, transparent 100%);
 }
@@ -371,6 +377,10 @@
   to {
     transform: scaleX(1);
   }
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -753,5 +763,20 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* 헤더 메가메뉴 패널 등장 애니메이션 */
+@keyframes mega-menu-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mega-menu-panel-enter {
+  animation: mega-menu-panel-enter 0.18s ease-out forwards;
 }
 

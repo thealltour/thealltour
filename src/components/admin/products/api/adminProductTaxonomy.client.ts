@@ -20,6 +20,12 @@ export type CreateAdminTaxonomyPayload = {
   category_type?: "destination" | "product_line" | "highlight" | "other" | null;
   is_hub_visible?: boolean;
   is_landing_enabled?: boolean;
+  card_image_url?: string | null;
+  card_title?: string | null;
+  card_description?: string | null;
+  landing_title?: string | null;
+  landing_description?: string | null;
+  hero_image_url?: string | null;
 };
 
 /**
@@ -64,6 +70,12 @@ export async function createAdminProductTaxonomy(
   if (payload.category_type !== undefined) body.category_type = payload.category_type ?? null;
   if (payload.is_hub_visible !== undefined) body.is_hub_visible = payload.is_hub_visible;
   if (payload.is_landing_enabled !== undefined) body.is_landing_enabled = payload.is_landing_enabled;
+  if (payload.card_image_url !== undefined) body.card_image_url = payload.card_image_url?.trim() || null;
+  if (payload.card_title !== undefined) body.card_title = payload.card_title?.trim() || null;
+  if (payload.card_description !== undefined) body.card_description = payload.card_description?.trim() || null;
+  if (payload.landing_title !== undefined) body.landing_title = payload.landing_title?.trim() || null;
+  if (payload.landing_description !== undefined) body.landing_description = payload.landing_description?.trim() || null;
+  if (payload.hero_image_url !== undefined) body.hero_image_url = payload.hero_image_url?.trim() || null;
 
   const response = await fetch(BASE, {
     method: "POST",
@@ -102,6 +114,16 @@ export type UpdateAdminTaxonomyPayload = {
   category_type?: "destination" | "product_line" | "highlight" | "other" | null;
   is_hub_visible?: boolean;
   is_landing_enabled?: boolean;
+  /** 허브 카드 이미지 URL (지역/테마 카드용) */
+  card_image_url?: string | null;
+  card_title?: string | null;
+  card_description?: string | null;
+  /** 랜딩(히어로) 제목. 비우면 이름 사용 */
+  landing_title?: string | null;
+  /** 랜딩(히어로) 설명 */
+  landing_description?: string | null;
+  /** 랜딩(히어로) 배경 이미지 URL */
+  hero_image_url?: string | null;
 };
 
 /**

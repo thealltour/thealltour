@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import HeaderProductSearch from "@/components/HeaderProductSearch";
 import MemberLogoutButton from "@/components/MemberLogoutButton";
 import HeaderQuickConsultCtas from "@/components/HeaderQuickConsultCtas";
+import { HeaderExpandSearch } from "@/components/HeaderExpandSearch";
 import { DesktopMegaMenu } from "@/components/header/DesktopMegaMenu";
 import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { HEADER_DESKTOP_PRIMARY_NAV_KEYS, HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF } from "@/components/header/headerNav.constants";
 import type { HeaderPrimaryNavKey } from "@/components/header/headerNav.constants";
 import type { HeaderNavigationData, HeaderPrimaryNavItem } from "@/components/header/headerNav.types";
@@ -36,7 +37,7 @@ function getFallbackPrimaryNav(): HeaderPrimaryNavItem[] {
 
 function getNavLinkClass(isActive: boolean) {
   const base =
-    "relative shrink-0 whitespace-nowrap type-nav transition-colors duration-150 py-1 px-0.5 rounded";
+    "relative shrink-0 whitespace-nowrap type-nav font-medium transition-colors duration-150 py-1 px-0.5 rounded";
   if (isActive) {
     return cn(
       base,
@@ -81,12 +82,34 @@ export default function SiteHeaderUI({
         "sticky z-40 transition-all duration-200 safe-top top-[env(safe-area-inset-top)]",
         scrolled
           ? "border-b border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-soft)] backdrop-blur-sm"
-          : "bg-[var(--theall-page-bg)]",
+          : "border-b border-[var(--divider)] bg-[var(--surface)]",
       )}
     >
-      {/* 데스크톱: 64px */}
-      <div className="mx-auto hidden w-full max-w-6xl flex-col px-6 py-0 lg:flex md:px-10">
-        <div className="flex h-16 items-center gap-8">
+      {/* 데스크톱: 상단 유틸바 + 메인 헤더바 */}
+      <PageContainer size="wide" className="hidden flex-col py-0 lg:flex">
+        {/* 상단 유틸바: 회사소개 ~ 고객센터 */}
+        <div className="flex h-10 items-center justify-center gap-x-8 border-b border-[var(--divider)]">
+          <nav className="flex items-center gap-x-8 tracking-tight" aria-label="유틸리티 메뉴">
+            <Link className={getNavLinkClass(activeTab === "about")} href="/about">
+              회사소개
+            </Link>
+            <Link className={getNavLinkClass(activeTab === "quote")} href="/quote">
+              견적문의
+            </Link>
+            <Link className={getNavLinkClass(activeTab === "reviews")} href="/reviews">
+              여행후기
+            </Link>
+            <Link className={getNavLinkClass(activeTab === "blog")} href="/blog">
+              여행가이드
+            </Link>
+            <Link className={getNavLinkClass(activeTab === "support")} href="/support">
+              고객센터
+            </Link>
+          </nav>
+        </div>
+
+        {/* 메인 헤더바: 로고 | 메가메뉴 | 검색(비홈) | 마이페이지/CTA */}
+        <div className="flex h-[72px] min-h-[72px] items-center gap-x-10 md:h-[76px] md:min-h-[76px]">
           <Link
             href="/"
             className="flex shrink-0 items-center gap-2.5 rounded-xl px-2 py-2 transition-colors duration-150 hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
@@ -110,86 +133,66 @@ export default function SiteHeaderUI({
             </div>
           </Link>
 
-          <nav className="flex min-w-0 flex-1 items-center justify-center gap-1 tracking-tight">
-            <Link className={getNavLinkClass(activeTab === "about")} href="/about">
-              회사소개
-            </Link>
-            <Link className={getNavLinkClass(activeTab === "quote")} href="/quote">
-              견적문의
-            </Link>
-            <Link className={getNavLinkClass(activeTab === "reviews")} href="/reviews">
-              여행후기
-            </Link>
-            <Link className={getNavLinkClass(activeTab === "blog")} href="/blog">
-              여행가이드
-            </Link>
-            <Link className={getNavLinkClass(activeTab === "support")} href="/support">
-              고객센터
-            </Link>
-          </nav>
-
-          <div className="flex shrink-0 items-center gap-3">
-            {session ? (
-              <>
-                <Link
-                  href="/mypage"
-                  aria-label="마이페이지로 이동"
-                  className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-semibold text-[var(--on-primary)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-                >
-                  마이페이지
-                </Link>
-                {memberPoints !== null ? (
-                  <Link
-                    href="/mypage/points"
-                    aria-label="포인트 내역으로 이동"
-                    className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-soft)] px-2 py-1 type-caption font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-                  >
-                    포인트
-                    <span className="tabular-nums">{memberPoints.toLocaleString("ko-KR")}P</span>
-                  </Link>
-                ) : null}
-                <span className="hidden xl:inline type-small text-[var(--text-muted)]">{session.name}님</span>
-                <span className="text-[var(--divider)]" aria-hidden>|</span>
-                <MemberLogoutButton />
-              </>
-            ) : (
-              <>
-                <Link
-                  className="type-small text-[var(--text-muted)] transition hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:rounded"
-                  href="/login"
-                >
-                  로그인
-                </Link>
-                <span className="text-[var(--divider)]" aria-hidden>|</span>
-                <Link
-                  className={cn(
-                    "type-small transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:rounded",
-                    activeTab === "signup"
-                      ? "font-semibold text-[var(--primary)]"
-                      : "text-[var(--text-muted)] hover:text-[var(--foreground)]",
-                  )}
-                  href="/signup"
-                >
-                  회원가입
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="flex h-14 items-center gap-3 border-t border-[var(--divider)]">
           <DesktopMegaMenu primaryNav={primaryNav} />
 
-          <div className="flex flex-1 justify-center px-2">
-            <HeaderProductSearch mode="desktop" searchQuery={searchQuery} />
-          </div>
+          <div className="flex flex-1 justify-end items-center gap-x-4">
+            <HeaderExpandSearch searchQuery={searchQuery} />
 
-          <HeaderQuickConsultCtas
-            quickConsultHref={quickConsultHref}
-            kakaoConsultHref={kakaoConsultHref}
-          />
+            <div className="flex shrink-0 items-center gap-3">
+              {session ? (
+                <>
+                  <Link
+                    href="/mypage"
+                    aria-label="마이페이지로 이동"
+                    className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-semibold text-[var(--on-primary)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                  >
+                    마이페이지
+                  </Link>
+                  {memberPoints !== null ? (
+                    <Link
+                      href="/mypage/points"
+                      aria-label="포인트 내역으로 이동"
+                      className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-soft)] px-2 py-1 type-caption font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                    >
+                      포인트
+                      <span className="tabular-nums">{memberPoints.toLocaleString("ko-KR")}P</span>
+                    </Link>
+                  ) : null}
+                  <span className="hidden xl:inline type-small text-[var(--text-muted)]">{session.name}님</span>
+                  <span className="text-[var(--divider)]" aria-hidden>|</span>
+                  <MemberLogoutButton />
+                </>
+              ) : (
+                <>
+                  <Link
+                    className="type-small text-[var(--text-muted)] transition hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:rounded"
+                    href="/login"
+                  >
+                    로그인
+                  </Link>
+                  <span className="text-[var(--divider)]" aria-hidden>|</span>
+                  <Link
+                    className={cn(
+                      "type-small transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:rounded",
+                      activeTab === "signup"
+                        ? "font-semibold text-[var(--primary)]"
+                        : "text-[var(--text-muted)] hover:text-[var(--foreground)]",
+                    )}
+                    href="/signup"
+                  >
+                    회원가입
+                  </Link>
+                </>
+              )}
+            </div>
+
+            <HeaderQuickConsultCtas
+              quickConsultHref={quickConsultHref}
+              kakaoConsultHref={kakaoConsultHref}
+            />
+          </div>
         </div>
-      </div>
+      </PageContainer>
 
       <MobileHeaderMenu
         primaryNav={primaryNav}

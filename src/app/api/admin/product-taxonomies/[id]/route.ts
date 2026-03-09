@@ -29,6 +29,16 @@ type PatchBody = {
   category_type?: ProductCategoryType | null;
   is_hub_visible?: boolean;
   is_landing_enabled?: boolean;
+  /** 허브 카드 이미지 URL (지역/테마 카드용) */
+  card_image_url?: string | null;
+  card_title?: string | null;
+  card_description?: string | null;
+  /** 랜딩(히어로) 제목. 비우면 이름 사용 */
+  landing_title?: string | null;
+  /** 랜딩(히어로) 설명 */
+  landing_description?: string | null;
+  /** 랜딩(히어로) 배경 이미지 URL */
+  hero_image_url?: string | null;
 };
 
 export async function PATCH(
@@ -127,6 +137,12 @@ export async function PATCH(
     }
     updates.parent_id = nextParent;
   }
+  if (body.card_image_url !== undefined) updates.card_image_url = body.card_image_url?.trim() || null;
+  if (body.card_title !== undefined) updates.card_title = body.card_title?.trim() || null;
+  if (body.card_description !== undefined) updates.card_description = body.card_description?.trim() || null;
+  if (body.landing_title !== undefined) updates.landing_title = body.landing_title?.trim() || null;
+  if (body.landing_description !== undefined) updates.landing_description = body.landing_description?.trim() || null;
+  if (body.hero_image_url !== undefined) updates.hero_image_url = body.hero_image_url?.trim() || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ message: "변경 사항이 없습니다." }, { status: 200 });
@@ -154,7 +170,7 @@ export async function PATCH(
     .from("product_taxonomies")
     .update(updates)
     .eq("id", id)
-    .select("id, taxonomy_type, type, name, slug, is_active, sort_order, is_hub_visible, is_landing_enabled, category_type, parent_id")
+    .select("id, taxonomy_type, type, name, slug, is_active, sort_order, is_hub_visible, is_landing_enabled, category_type, parent_id, card_image_url, card_title, card_description, landing_title, landing_description, hero_image_url")
     .maybeSingle();
 
   if (updateResult.error) {

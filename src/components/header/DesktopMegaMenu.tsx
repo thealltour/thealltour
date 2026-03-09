@@ -10,18 +10,17 @@ import { cn } from "@/lib/cn";
 
 function getNavLinkClass(isActive: boolean) {
   const base =
-    "relative shrink-0 whitespace-nowrap type-nav transition-colors duration-150 py-1 px-0.5 rounded";
+    "relative shrink-0 whitespace-nowrap type-nav font-medium transition-colors duration-150 py-1.5 px-2.5 rounded-lg";
   if (isActive) {
     return cn(
       base,
-      "text-[var(--foreground)] font-semibold",
-      "after:absolute after:left-0 after:right-0 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--primary)]",
+      "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]",
     );
   }
   return cn(
     base,
     "text-[var(--text-muted)]",
-    "hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)]",
+    "hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
   );
 }
 
@@ -40,12 +39,34 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
   const pathname = usePathname();
   const [openKey, setOpenKey] = useState<HeaderPrimaryNavKey | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const items = primaryNav.filter((p) =>
     HEADER_DESKTOP_PRIMARY_NAV_KEYS.includes(p.key as HeaderPrimaryNavKey),
   );
 
   const onClose = useCallback(() => setOpenKey(null), []);
+
+  const scheduleClose = useCallback(() => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => {
+      closeTimeoutRef.current = null;
+      setOpenKey(null);
+    }, 150);
+  }, []);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -66,7 +87,7 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
   }, []);
 
   return (
-    <nav ref={containerRef} className="flex shrink-0 items-center gap-4" aria-label="탐색 메뉴">
+    <nav ref={containerRef} className="flex shrink-0 items-center gap-x-8" aria-label="탐색 메뉴">
       {items.map((item, index) => (
         <DesktopNavItem
           key={item.key}
@@ -75,6 +96,8 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
           isOpen={openKey === (item.key as HeaderPrimaryNavKey)}
           onOpen={() => setOpenKey(item.key as HeaderPrimaryNavKey)}
           onClose={onClose}
+          scheduleClose={scheduleClose}
+          cancelClose={cancelClose}
           isActive={getIsActive(item, pathname)}
           getNavLinkClass={getNavLinkClass}
         />

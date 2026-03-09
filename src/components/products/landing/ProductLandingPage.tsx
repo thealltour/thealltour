@@ -4,8 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import type { ProductLandingData, ProductLandingProductSummary } from "@/types/productLanding";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { getDestinationLandingHref, getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { trackLandingCtaClick } from "@/lib/analytics/trackLandingCta";
+import { HeroVisual } from "@/components/landing/HeroVisual";
+import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
 
 export type ProductLandingPageProps = {
   data: ProductLandingData;
@@ -17,8 +20,12 @@ type LandingProductCardProps = {
   taxonomySlug: string;
 };
 
+const LANDING_PRODUCT_FALLBACK_IMAGE =
+  "https://picsum.photos/seed/thealltour-landing-product/400/260";
+
 function LandingProductCard({ item, landingType, taxonomySlug }: LandingProductCardProps) {
-  const imageUrl = item.imageUrl?.trim() ? normalizeProductImageUrl(item.imageUrl) : null;
+  const rawUrl = item.imageUrl?.trim() ? normalizeProductImageUrl(item.imageUrl) : null;
+  const imageUrl = rawUrl || LANDING_PRODUCT_FALLBACK_IMAGE;
   const priceFormatted =
     typeof item.price === "number"
       ? new Intl.NumberFormat("ko-KR").format(item.price)
@@ -43,17 +50,13 @@ function LandingProductCard({ item, landingType, taxonomySlug }: LandingProductC
       }
     >
       <div className="relative h-40 w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={item.title || "상품 이미지"}
-            fill
-            sizes="(max-width: 768px) 100vw, 33vw"
-            className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-[var(--border)]" aria-hidden />
-        )}
+        <Image
+          src={imageUrl}
+          alt={item.title || "상품 이미지"}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+        />
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4">
         {item.categories?.[0] ? (
@@ -83,7 +86,7 @@ function getLandingCtaPayload(data: ProductLandingData, section: "hero" | "recom
 }
 
 export default function ProductLandingPage({ data }: ProductLandingPageProps) {
-  const { hero, featuredLinks, recommendedProducts, relatedTaxonomies, type, taxonomyName, productCount } = data;
+  const { hero, featuredLinks, recommendedProducts, relatedTaxonomies, type, taxonomyName, productCount, childDestinations, childThemes } = data;
   const relatedTitle = type === "region" ? "함께 살펴볼 테마" : "함께 살펴볼 지역";
   const relatedDescription =
     type === "region"
@@ -101,7 +104,63 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <main className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-6 sm:py-10 md:px-10 md:py-14">
         <div className="flex flex-col gap-10">
-          {/* Hero */}
+          {/* Hero: 이미지 있으면 배경 히어로, 없으면 카드 스타일 */}
+          {hero.imageUrl ? (
+            <HeroVisual
+              imageUrl={hero.imageUrl}
+              priority
+              contentClassName="max-w-[680px] gap-2"
+            >
+              {hero.eyebrow ? (
+                <p className="hero-text-shadow-body text-sm font-semibold text-white/92">{hero.eyebrow}</p>
+              ) : null}
+              <h1 className="hero-text-shadow-title text-2xl font-bold leading-tight text-white sm:text-3xl">
+                {hero.title}
+              </h1>
+              {hero.description ? (
+                <p className="hero-text-shadow-body max-w-2xl text-sm text-white/90 sm:text-base">
+                  {hero.description}
+                </p>
+              ) : null}
+              {productCount > 0 ? (
+                <p className="inline-flex w-fit rounded-lg border border-white/25 bg-black/20 px-2.5 py-1 text-sm text-white/90 backdrop-blur-sm">
+                  총 {productCount}개 상품
+                </p>
+              ) : null}
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href={hero.primaryCtaHref}
+                  className="inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                  onClick={() =>
+                    trackLandingCtaClick({
+                      ...basePayload,
+                      section: "hero",
+                      label: hero.primaryCtaLabel,
+                      href: hero.primaryCtaHref,
+                    })
+                  }
+                >
+                  {hero.primaryCtaLabel}
+                </Link>
+                {hero.secondaryCtaLabel && hero.secondaryCtaHref ? (
+                  <Link
+                    href={hero.secondaryCtaHref}
+                    className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+                    onClick={() =>
+                      trackLandingCtaClick({
+                        ...basePayload,
+                        section: "hero",
+                        label: hero.secondaryCtaLabel!,
+                        href: hero.secondaryCtaHref!,
+                      })
+                    }
+                  >
+                    {hero.secondaryCtaLabel}
+                  </Link>
+                ) : null}
+              </div>
+            </HeroVisual>
+          ) : (
           <section className="rounded-2xl bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:p-8">
             {hero.eyebrow ? (
               <p className="text-sm font-semibold text-[var(--text-muted)]">{hero.eyebrow}</p>
@@ -146,6 +205,45 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
               ) : null}
             </div>
           </section>
+          )}
+
+          {/* 도시·지역 선택 (region 랜딩이고 소분류가 있을 때만) */}
+          {type === "region" && childDestinations && childDestinations.length > 0 ? (
+            <section>
+              <h2 className="text-lg font-bold text-[var(--foreground)]">도시·지역 선택</h2>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">원하는 도시·지역을 선택해 보세요.</p>
+              <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {childDestinations.map((d) => (
+                  <li key={d.id}>
+                    <HubBrowseCard
+                      item={d}
+                      href={getDestinationLandingHref(d)}
+                      showImage={true}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {/* 세부 테마 선택 (theme 랜딩이고 하위 테마가 있을 때만) */}
+          {type === "theme" && childThemes && childThemes.length > 0 ? (
+            <section>
+              <h2 className="text-lg font-bold text-[var(--foreground)]">세부 테마 선택</h2>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">원하는 테마를 선택해 보세요.</p>
+              <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {childThemes.map((t) => (
+                  <li key={t.id}>
+                    <HubBrowseCard
+                      item={t}
+                      href={getThemeLandingHref(t)}
+                      showImage={true}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {/* 바로가기 링크 묶음 */}
           {featuredLinks.length > 0 ? (

@@ -20,6 +20,8 @@ type ImageUploadFieldProps = {
   /** true면 입력 필드 required 아님 (Day 이미지 등 선택 입력) */
   optional?: boolean;
   placeholder?: string;
+  /** 권장 사이즈 문구. 미전달 시 기본 "1200x800px 이상 (3:2)" */
+  sizeHint?: string;
   accept?: string;
 };
 
@@ -30,6 +32,7 @@ export function ImageUploadField({
   uploadedUrlKey = "hero",
   optional = false,
   placeholder = "이미지 URL (권장 1200x800)",
+  sizeHint,
   accept = "image/jpeg,image/png,image/webp",
 }: ImageUploadFieldProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -200,7 +203,7 @@ export function ImageUploadField({
       </div>
 
       <p className="text-xs text-[var(--text-muted)]">
-        권장 사이즈: 1200x800px 이상 (3:2 비율). JPG/PNG/WebP 사용 가능
+        {sizeHint ?? "권장 사이즈: 1200x800px 이상 (3:2 비율). JPG/PNG/WebP 사용 가능"}
       </p>
 
       {sizeMeta && (

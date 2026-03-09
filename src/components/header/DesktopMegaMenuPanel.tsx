@@ -28,7 +28,14 @@ function extractSlugFromHref(href: string): string | null {
 }
 
 const PANEL_BASE =
-  "absolute left-0 top-full z-50 mt-0 min-w-[280px] max-w-[520px] rounded-b-xl border border-t-0 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft-strong)] py-4 px-4";
+  "absolute left-0 top-full z-50 mt-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl py-8 px-8 min-h-[360px] mega-menu-panel-enter";
+
+/** 메가메뉴 링크 공통: hover = surface-muted, active = primary-soft + primary + semibold */
+const LINK_BASE =
+  "block rounded-lg py-2 px-2.5 type-small transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1";
+const LINK_HOVER = "hover:bg-[var(--surface-muted)]";
+const LINK_ACTIVE = "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]";
+const LINK_DEFAULT = "text-[var(--foreground)] hover:text-[var(--primary)]";
 
 type RegionCascadePanelProps = {
   hubGroup: HeaderNavGroup | undefined;
@@ -52,10 +59,14 @@ function RegionCascadePanel({
   const activeSubGroup =
     activeGroup?.subGroups?.find((s) => s.key === activeSubGroupKey) ?? activeGroup?.subGroups?.[0] ?? null;
 
+  const isGroupActive = (key: string) => activeGroupKey === key || (activeGroupKey === null && key === regionRootGroups[0]?.key);
+  const isSubGroupActive = (key: string) =>
+    activeSubGroupKey === key || (activeSubGroupKey === null && key === activeGroup?.subGroups?.[0]?.key);
+
   return (
     <div
       id="mega-menu-panel-region"
-      className={cn(PANEL_BASE, "min-w-[420px] max-w-[720px] w-max")}
+      className={cn(PANEL_BASE, "min-w-[900px] w-max")}
       role="menu"
       aria-label="지역별 여행"
       onMouseLeave={() => {
@@ -64,44 +75,41 @@ function RegionCascadePanel({
         onClose();
       }}
     >
-      <div className="grid grid-cols-[auto_1fr_1fr] gap-6">
-        <div className="space-y-4 min-w-[140px]">
+      <div className="grid grid-cols-[200px_200px_200px_260px] gap-8">
+        {/* Column 1: 바로가기 */}
+        <div className="space-y-3">
+          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">바로가기</p>
           {hubGroup && (
-            <div className="space-y-1">
-              <p className="type-small font-semibold text-[var(--text-muted)] px-2">지역별 여행</p>
-              <ul className="space-y-0.5" role="none">
-                {hubGroup.items.map((leaf, i) => (
-                  <li key={leaf.key} role="none">
-                    <Link
-                      href={leaf.href}
-                      role="menuitem"
-                      className={cn(
-                        "block rounded-md py-1.5 px-2 type-small text-[var(--foreground)]",
-                        "hover:bg-[var(--surface-muted)] hover:text-[var(--primary)]",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1",
-                      )}
-                      onClick={() => onLeafClick(leaf, 0, i)}
-                    >
-                      {leaf.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ul className="space-y-0.5" role="none">
+              {hubGroup.items.map((leaf, i) => (
+                <li key={leaf.key} role="none">
+                  <Link
+                    href={leaf.href}
+                    role="menuitem"
+                    className={cn(LINK_BASE, LINK_DEFAULT, LINK_HOVER)}
+                    onClick={() => onLeafClick(leaf, 0, i)}
+                  >
+                    {leaf.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
-          <div className="border-t border-[var(--border)] pt-3 space-y-0.5">
+        </div>
+
+        {/* Column 2: 권역 (대분류) */}
+        <div className="space-y-3 border-l border-[var(--border)] pl-6">
+          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">권역</p>
+          <ul className="space-y-0.5" role="none">
             {regionRootGroups.map((group) => (
-              <div key={group.key} onMouseEnter={() => setActiveGroupKey(group.key)}>
+              <li key={group.key} role="none" onMouseEnter={() => setActiveGroupKey(group.key)}>
                 {group.labelHref ? (
                   <Link
                     href={group.labelHref}
                     role="menuitem"
                     className={cn(
-                      "block rounded-md py-1.5 px-2 type-small font-medium",
-                      activeGroupKey === group.key
-                        ? "bg-[var(--surface-muted)] text-[var(--primary)]"
-                        : "text-[var(--foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--primary)]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1",
+                      LINK_BASE,
+                      isGroupActive(group.key) ? cn(LINK_ACTIVE) : cn(LINK_DEFAULT, LINK_HOVER),
                     )}
                     onClick={() => onLeafClick({ key: group.key, label: group.label, href: group.labelHref! }, -1, -1)}
                   >
@@ -110,80 +118,71 @@ function RegionCascadePanel({
                 ) : (
                   <span
                     className={cn(
-                      "block rounded-md py-1.5 px-2 type-small font-medium",
-                      activeGroupKey === group.key ? "bg-[var(--surface-muted)] text-[var(--primary)]" : "text-[var(--foreground)]",
+                      LINK_BASE,
+                      isGroupActive(group.key) ? LINK_ACTIVE : "text-[var(--foreground)]",
                     )}
                   >
                     {group.label}
                   </span>
                 )}
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
-        <div className="space-y-1 min-w-[160px] border-l border-[var(--border)] pl-4">
+        {/* Column 3: 지역/국가 (중분류: 일본, 동남아, 남미 등) */}
+        <div className="space-y-3 border-l border-[var(--border)] pl-6">
+          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">지역/국가</p>
           {activeGroup && (
-            <>
-              <p className="type-small font-semibold text-[var(--text-muted)] px-2">{activeGroup.label}</p>
-              <ul className="space-y-0.5" role="none">
-                {activeGroup.subGroups.map((sub) => (
-                  <li key={sub.key} role="none" onMouseEnter={() => setActiveSubGroupKey(sub.key)}>
-                    {sub.labelHref ? (
-                      <Link
-                        href={sub.labelHref}
-                        role="menuitem"
-                        className={cn(
-                          "block rounded-md py-1.5 px-2 type-small",
-                          activeSubGroupKey === sub.key
-                            ? "bg-[var(--surface-muted)] text-[var(--primary)] font-medium"
-                            : "text-[var(--foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--primary)]",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1",
-                        )}
-                        onClick={() => onLeafClick({ key: sub.key, label: sub.label, href: sub.labelHref! }, -1, -1)}
-                      >
-                        {sub.label}
-                      </Link>
-                    ) : (
-                      <span
-                        className={cn(
-                          "block rounded-md py-1.5 px-2 type-small",
-                          activeSubGroupKey === sub.key ? "bg-[var(--surface-muted)] text-[var(--primary)] font-medium" : "text-[var(--foreground)]",
-                        )}
-                      >
-                        {sub.label}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </>
+            <ul className="space-y-0.5" role="none">
+              {activeGroup.subGroups.map((sub) => (
+                <li key={sub.key} role="none" onMouseEnter={() => setActiveSubGroupKey(sub.key)}>
+                  {sub.labelHref ? (
+                    <Link
+                      href={sub.labelHref}
+                      role="menuitem"
+                      className={cn(
+                        LINK_BASE,
+                        isSubGroupActive(sub.key) ? cn(LINK_ACTIVE) : cn(LINK_DEFAULT, LINK_HOVER),
+                      )}
+                      onClick={() => onLeafClick({ key: sub.key, label: sub.label, href: sub.labelHref! }, -1, -1)}
+                    >
+                      {sub.label}
+                    </Link>
+                  ) : (
+                    <span
+                      className={cn(
+                        LINK_BASE,
+                        isSubGroupActive(sub.key) ? LINK_ACTIVE : "text-[var(--foreground)]",
+                      )}
+                    >
+                      {sub.label}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
-        <div className="space-y-1 min-w-[160px] border-l border-[var(--border)] pl-4">
+        {/* Column 4: 국가/도시 (소분류: 도쿄, 오키나와, 베트남 등) */}
+        <div className="space-y-3 border-l border-[var(--border)] pl-6">
+          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">국가/도시</p>
           {activeSubGroup && (
-            <>
-              <p className="type-small font-semibold text-[var(--text-muted)] px-2">{activeSubGroup.label}</p>
-              <ul className="space-y-0.5" role="none">
-                {activeSubGroup.items.map((leaf, i) => (
-                  <li key={leaf.key} role="none">
-                    <Link
-                      href={leaf.href}
-                      role="menuitem"
-                      className={cn(
-                        "block rounded-md py-1.5 px-2 type-small text-[var(--foreground)]",
-                        "hover:bg-[var(--surface-muted)] hover:text-[var(--primary)]",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1",
-                      )}
-                      onClick={() => onLeafClick(leaf, regionRootGroups.indexOf(activeGroup), i)}
-                    >
-                      {leaf.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </>
+            <ul className="space-y-0.5" role="none">
+              {activeSubGroup.items.map((leaf, i) => (
+                <li key={leaf.key} role="none">
+                  <Link
+                    href={leaf.href}
+                    role="menuitem"
+                    className={cn(LINK_BASE, LINK_DEFAULT, LINK_HOVER)}
+                    onClick={() => onLeafClick(leaf, regionRootGroups.indexOf(activeGroup), i)}
+                  >
+                    {leaf.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
@@ -239,22 +238,19 @@ export function DesktopMegaMenuPanel({
   return (
     <div
       id={`mega-menu-panel-${item.key}`}
-      className={PANEL_BASE}
+      className={cn(PANEL_BASE, "min-w-[520px]")}
       role="menu"
       aria-label={item.label}
       onMouseLeave={onClose}
     >
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-8">
         {groups.map((group, groupIndex) => (
-          <div key={group.key} className="space-y-2">
+          <div key={group.key} className="space-y-3">
             {group.labelHref ? (
               <Link
                 href={group.labelHref}
                 role="menuitem"
-                className={cn(
-                  "block type-small font-semibold text-[var(--text-muted)]",
-                  "hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 rounded px-2 py-0.5 -mx-2",
-                )}
+                className={cn(LINK_BASE, "font-semibold text-[var(--text-muted)]", LINK_HOVER, "hover:text-[var(--primary)]")}
                 onClick={() => {
                   handleLeafClick({ key: group.key, label: group.label, href: group.labelHref! }, groupIndex, -1);
                 }}
@@ -262,21 +258,17 @@ export function DesktopMegaMenuPanel({
                 {group.label}
               </Link>
             ) : (
-              <p className="type-small font-semibold text-[var(--text-muted)] px-2">
+              <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                 {group.label}
               </p>
             )}
-            <ul className="space-y-1" role="none">
+            <ul className="space-y-0.5" role="none">
               {group.items.map((leaf, itemIndex) => (
                 <li key={leaf.key} role="none">
                   <Link
                     href={leaf.href}
                     role="menuitem"
-                    className={cn(
-                      "block rounded-md py-1.5 px-2 type-small text-[var(--foreground)]",
-                      "hover:bg-[var(--surface-muted)] hover:text-[var(--primary)]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1",
-                    )}
+                    className={cn(LINK_BASE, LINK_DEFAULT, LINK_HOVER)}
                     onClick={() => handleLeafClick(leaf, groupIndex, itemIndex)}
                   >
                     {leaf.label}

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import type { ProductTaxonomyWithUsage, TaxonomyType } from "@/types/productTaxonomy";
 import type { UpdateAdminTaxonomyPayload } from "@/components/admin/products/api/adminProductTaxonomy.client";
 import { cn } from "@/lib/cn";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminBadge from "@/components/admin/ui/AdminBadge";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { LANDING_HERO_FALLBACK_IMAGE } from "@/lib/landingMetadata";
 
 // --- 운영 인사이트: 검색/필터/정렬 (클라이언트 only, 원본 배열 비변경) ---
 const LANDING_CTR_LOW_THRESHOLD = 0.1;
@@ -437,6 +439,26 @@ export default function AdminProductTaxonomyView({
   const [editIsHubVisible, setEditIsHubVisible] = useState(true);
   const [editIsLandingEnabled, setEditIsLandingEnabled] = useState(false);
   const [editParentId, setEditParentId] = useState<string | null>(null);
+  const [editCardImageUrl, setEditCardImageUrl] = useState("");
+  const [editCardTitle, setEditCardTitle] = useState("");
+  const [editCardDescription, setEditCardDescription] = useState("");
+  const [editLandingTitle, setEditLandingTitle] = useState("");
+  const [editLandingDescription, setEditLandingDescription] = useState("");
+  const [editHeroImageUrl, setEditHeroImageUrl] = useState("");
+  const editCardImageUrlRef = useRef("");
+  const editCardTitleRef = useRef("");
+  const editCardDescriptionRef = useRef("");
+  const editLandingTitleRef = useRef("");
+  const editLandingDescriptionRef = useRef("");
+  const editHeroImageUrlRef = useRef("");
+  useEffect(() => {
+    editCardImageUrlRef.current = editCardImageUrl;
+    editCardTitleRef.current = editCardTitle;
+    editCardDescriptionRef.current = editCardDescription;
+    editLandingTitleRef.current = editLandingTitle;
+    editLandingDescriptionRef.current = editLandingDescription;
+    editHeroImageUrlRef.current = editHeroImageUrl;
+  }, [editCardImageUrl, editCardTitle, editCardDescription, editLandingTitle, editLandingDescription, editHeroImageUrl]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
@@ -503,6 +525,12 @@ export default function AdminProductTaxonomyView({
     setEditIsHubVisible(item.is_hub_visible ?? true);
     setEditIsLandingEnabled(item.is_landing_enabled ?? false);
     setEditParentId(item.parent_id?.trim() || null);
+    setEditCardImageUrl(item.card_image_url?.trim() ?? "");
+    setEditCardTitle(item.card_title?.trim() ?? "");
+    setEditCardDescription(item.card_description?.trim() ?? "");
+    setEditLandingTitle(item.landing_title?.trim() ?? "");
+    setEditLandingDescription(item.landing_description?.trim() ?? "");
+    setEditHeroImageUrl(item.hero_image_url?.trim() ?? "");
   }
 
   /** 이름 기반 URL-safe slug 생성 (영문/숫자/하이픈만) */
@@ -532,6 +560,20 @@ export default function AdminProductTaxonomyView({
     const currentParent = item.parent_id?.trim() || null;
     if ((activeTab === "destination" || activeTab === "theme") && editParentId !== currentParent)
       payload.parent_id = editParentId;
+    const cardUrl = editCardImageUrlRef.current.trim() || null;
+    const cardTitle = editCardTitleRef.current.trim() || null;
+    const cardDesc = editCardDescriptionRef.current.trim() || null;
+    if (cardUrl !== (item.card_image_url ?? "")) payload.card_image_url = cardUrl;
+    if (cardTitle !== (item.card_title ?? "")) payload.card_title = cardTitle || null;
+    if (cardDesc !== (item.card_description ?? "")) payload.card_description = cardDesc || null;
+    const landingTitle = editLandingTitle.trim() || null;
+    const landingDesc = editLandingDescription.trim() || null;
+    const heroUrl = editHeroImageUrl.trim() || null;
+    if (activeTab === "destination" || activeTab === "theme") {
+      payload.landing_title = landingTitle;
+      payload.landing_description = landingDesc;
+      payload.hero_image_url = heroUrl;
+    }
     if (Object.keys(payload).length === 0) {
       setEditingId(null);
       return;
@@ -938,6 +980,137 @@ export default function AdminProductTaxonomyView({
                                 )}
                               </td>
                             </tr>
+                            {editingId === item.id && (activeTab === "destination" || activeTab === "theme") ? (
+                              <tr>
+                                <td
+                                  colSpan={(activeTab === "destination" || activeTab === "theme") ? 13 : 12}
+                                  className="border-b border-[var(--border)] bg-[var(--surface)] p-3 align-top"
+                                >
+                                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                                    <p className="mb-3 text-xs font-semibold text-[var(--text-muted)]">카드 / 랜딩 메타 (허브·상세 페이지용)</p>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                      <div className="sm:col-span-2 lg:col-span-1">
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">카드 이미지</label>
+                                        <ImageUploadField
+                                          value={editCardImageUrl}
+                                          onChange={(v) => setEditCardImageUrl(v)}
+                                          onUploaded={(v) => setEditCardImageUrl(v)}
+                                          uploadedUrlKey="card"
+                                          optional
+                                          placeholder="카드 이미지 URL (비우면 상품 대표 이미지 사용)"
+                                          sizeHint="권장: 1200×800px 이상 (3:2)"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">카드 제목 (선택)</label>
+                                        <input
+                                          type="text"
+                                          value={editCardTitle}
+                                          onChange={(e) => setEditCardTitle(e.target.value)}
+                                          placeholder="비우면 이름 사용"
+                                          className={cn(inputBase, "w-full")}
+                                          aria-label="카드 제목"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">카드 설명 (선택)</label>
+                                        <input
+                                          type="text"
+                                          value={editCardDescription}
+                                          onChange={(e) => setEditCardDescription(e.target.value)}
+                                          placeholder="카드 부가 설명"
+                                          className={cn(inputBase, "w-full")}
+                                          aria-label="카드 설명"
+                                        />
+                                      </div>
+                                    </div>
+                                    <p className="mb-2 mt-4 text-xs font-semibold text-[var(--text-muted)]">히어로(랜딩 상단) 설정</p>
+                                    <p className="mb-3 text-xs text-[var(--text-secondary)]">지역/테마 상세 랜딩 페이지 상단 히어로 제목·설명·배경 이미지입니다.</p>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                      <div className="sm:col-span-2">
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">히어로 제목 (랜딩)</label>
+                                        <input
+                                          type="text"
+                                          value={editLandingTitle}
+                                          onChange={(e) => setEditLandingTitle(e.target.value)}
+                                          placeholder="비우면 이름 사용 (예: 일본 여행 추천)"
+                                          className={cn(inputBase, "w-full")}
+                                          aria-label="히어로 제목"
+                                        />
+                                        {!editLandingTitle?.trim() && (
+                                          <p className="mt-1 text-xs text-[var(--text-muted)]">비어 있음 → 이름 기반 자동 생성</p>
+                                        )}
+                                      </div>
+                                      <div className="sm:col-span-2">
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">히어로 설명 (랜딩)</label>
+                                        <input
+                                          type="text"
+                                          value={editLandingDescription}
+                                          onChange={(e) => setEditLandingDescription(e.target.value)}
+                                          placeholder="히어로 부가 설명"
+                                          className={cn(inputBase, "w-full")}
+                                          aria-label="히어로 설명"
+                                        />
+                                        {!editLandingDescription?.trim() && (
+                                          <p className="mt-1 text-xs text-[var(--text-muted)]">비어 있음 → 카드 설명 또는 기본 문구 사용</p>
+                                        )}
+                                      </div>
+                                      <div className="sm:col-span-2 lg:col-span-1">
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">히어로 배경 이미지 URL</label>
+                                        <ImageUploadField
+                                          value={editHeroImageUrl}
+                                          onChange={(v) => setEditHeroImageUrl(v)}
+                                          onUploaded={(v) => setEditHeroImageUrl(v)}
+                                          uploadedUrlKey="hero"
+                                          optional
+                                          placeholder="비우면 카드 이미지·fallback 사용"
+                                          sizeHint="권장: 1600×600px 이상"
+                                        />
+                                        <p className="mt-2 text-xs font-medium text-[var(--text-muted)]">적용 우선순위</p>
+                                        <ol className="mt-1 list-inside list-decimal space-y-0.5 text-xs text-[var(--text-secondary)]">
+                                          <li>히어로 배경 이미지</li>
+                                          <li>카드 이미지</li>
+                                          <li>공통 fallback 이미지</li>
+                                        </ol>
+                                        {!editHeroImageUrl?.trim() && (
+                                          <p className="mt-1.5 text-xs text-[var(--text-muted)]">히어로 이미지 없음 → 카드 이미지 또는 fallback 사용</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {/* Hero Preview: 랜딩 상단 배너 미리보기 */}
+                                    <div className="mt-4">
+                                      <p className="mb-2 text-xs font-semibold text-[var(--text-muted)]">Hero Preview</p>
+                                      <div
+                                        className="relative aspect-[1600/600] max-h-[200px] w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+                                        style={{ aspectRatio: "1600/600" }}
+                                      >
+                                        <img
+                                          src={
+                                            editHeroImageUrl?.trim() ||
+                                            editCardImageUrl?.trim() ||
+                                            LANDING_HERO_FALLBACK_IMAGE
+                                          }
+                                          alt=""
+                                          className="absolute inset-0 h-full w-full object-cover object-center"
+                                        />
+                                        <div
+                                          className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent"
+                                          aria-hidden
+                                        />
+                                        <div className="absolute inset-0 flex flex-col justify-end p-3 sm:p-4">
+                                          <span className="font-semibold text-white drop-shadow-sm line-clamp-1 text-sm sm:text-base">
+                                            {editLandingTitle?.trim() || item.name || "히어로 제목"}
+                                          </span>
+                                          <span className="mt-1 line-clamp-2 text-xs text-white/90 drop-shadow-sm sm:text-sm">
+                                            {editLandingDescription?.trim() || item.card_description?.trim() || "히어로 설명 문구"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : null}
                             {expandedItemKey === item.id ? (
                               <tr>
                                 <td colSpan={(activeTab === "destination" || activeTab === "theme") ? 13 : 12} className="bg-[var(--surface-muted)] p-0 align-top">

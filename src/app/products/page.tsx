@@ -3,7 +3,7 @@ import ProductsHero from "@/components/ProductsHero";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import { getProducts } from "@/lib/products";
-import { getProductTaxonomyOptions } from "@/lib/productTaxonomies";
+import { getProductTaxonomyOptions, getHubDestinations, getHubThemes, buildRegionTree, buildThemeTree } from "@/lib/productTaxonomies";
 import {
   resolveLandingParams,
   hasLandingParams,
@@ -29,7 +29,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const golfPresetActive = tourType === "golf-park";
   const presetCategories = golfPresetActive ? ["골프투어", "파크골프투어"] : undefined;
   const products = await getProducts();
-  const { categories, themes, productLines } = await getProductTaxonomyOptions(products);
+  const [taxonomyOptions, destinations, hubThemes] = await Promise.all([
+    getProductTaxonomyOptions(products),
+    getHubDestinations(),
+    getHubThemes(),
+  ]);
+  const { categories, themes, productLines } = taxonomyOptions;
+  const regionTree = buildRegionTree(destinations);
+  const themeTree = buildThemeTree(hubThemes);
 
   const landingResolved =
     hasLandingParams(query) ? await resolveLandingParams(query) : null;
@@ -52,7 +59,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             <ProductsPageContent
               products={products}
               regionOptions={categories}
+              regionTree={regionTree}
               themeOptions={themes}
+              themeTree={themeTree}
               productLineOptions={productLines}
               initialKeyword={initialKeywordFromLanding || searchKeyword}
               presetCategories={presetCategories}

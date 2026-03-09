@@ -8,22 +8,30 @@ import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import { getHomeBanners } from "@/lib/homeBanners";
+import { getHeroContent, resolveHeroContent } from "@/lib/heroContent";
 import HeroQuickConsultButton from "@/components/HeroQuickConsultButton";
 import CuratedBlock from "@/components/home/CuratedBlock";
+import { HeroRecommendedLinks } from "@/components/home/HeroRecommendedLinks";
+import { HomeHeroSearch } from "@/components/home/HomeHeroSearch";
 
 export default async function Home() {
-  const [homeCurated, topBanners] = await Promise.all([getHomeCuratedData(), getHomeBanners()]);
+  const [homeCurated, topBanners, heroContent] = await Promise.all([
+    getHomeCuratedData(),
+    getHomeBanners(),
+    getHeroContent(),
+  ]);
   const curatedSettings = homeCurated.settings;
   const curatedSections = homeCurated.sections;
   const primaryBanner = topBanners[0] ?? null;
+  const hero = resolveHeroContent(heroContent);
 
   return (
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
 
-      <main className="page-content flex w-full flex-col py-8 md:py-10">
-        {/* Full-bleed Hero: 배경/이미지는 화면 전체, 콘텐츠만 PageContainer로 정렬 */}
-        <section className="relative overflow-hidden bg-[var(--hero-bg)]">
+      <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
+        {/* Full-bleed Hero: 배경/이미지는 화면 전체, 콘텐츠만 PageContainer로 정렬. overflow-visible으로 검색 드롭다운이 잘리지 않도록 함 */}
+        <section className="relative bg-[var(--hero-bg)]">
           {primaryBanner ? (
             <>
               <div className="pointer-events-none absolute inset-0 hidden md:block">
@@ -76,20 +84,44 @@ export default async function Home() {
                 <div className="grid gap-10 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center">
                   <div className="space-y-6">
                     <p className="inline-flex items-center gap-2 rounded-full bg-[var(--hero-badge-bg)] px-4 py-1 section-label text-[var(--hero-text-secondary)] md:type-small ring-1 ring-[var(--hero-badge-border)]">
-                      THEALL TOUR PREMIUM GOLF
+                      {hero.badge}
                     </p>
                     <h1 className="heading-display-hero type-h1 font-semibold leading-[1.15] md:text-[2.5rem]">
-                      <span className="text-[var(--hero-accent)]">품격 있는</span> 골프와 여행의 시작
+                      {hero.main_copy_accent ? (
+                        <>
+                          <span className="text-[var(--hero-accent)]">{hero.main_copy_accent}</span>
+                          {hero.main_copy_tail}
+                        </>
+                      ) : (
+                        hero.main_copy_tail?.trim() || "골프와 여행의 시작"
+                      )}
                     </h1>
                     <p className="max-w-xl type-small font-semibold text-[var(--hero-text-secondary)] md:type-body">
-                      전담 상담사가 1:1 맞춤 설계를 진행하여, 일정·동행 구성·예산에 맞는 골프&여행 코스를 함께
-                      정리해 드립니다.
+                      {hero.sub_description}
                     </p>
                     <ul className="space-y-1.5 type-small text-[var(--hero-text-secondary)]/95">
-                      <li>· 전화·메신저로 편하게 상담 시작</li>
-                      <li>· 일정·항공·골프장까지 한 번에 비교 제안</li>
-                      <li>· 출발 전·후 안내까지 전담 상담사가 지속 케어</li>
+                      {hero.bullet_1 ? <li>· {hero.bullet_1}</li> : null}
+                      {hero.bullet_2 ? <li>· {hero.bullet_2}</li> : null}
+                      {hero.bullet_3 ? <li>· {hero.bullet_3}</li> : null}
                     </ul>
+                    <div className="pt-4 md:pt-6">
+                      <HomeHeroSearch placeholder={hero.search_placeholder} />
+                    </div>
+                    <p className="type-caption text-[var(--hero-text-secondary)]/80">
+                      {hero.recommended_text ? (
+                        <HeroRecommendedLinks text={hero.recommended_text} />
+                      ) : (
+                        <>
+                          또는{" "}
+                          <Link href="/destinations" className="underline hover:no-underline">지역별 여행</Link>
+                          {" · "}
+                          <Link href="/themes" className="underline hover:no-underline">테마별 여행</Link>
+                          {" · "}
+                          <Link href="/recommended" className="underline hover:no-underline">추천여행</Link>
+                          {" 으로 탐색"}
+                        </>
+                      )}
+                    </p>
                   </div>
                   <div className="hidden min-h-[260px] md:block" />
                 </div>

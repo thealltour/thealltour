@@ -26,7 +26,15 @@ function buildRegionGroupsFromTaxonomy(categories: ProductTaxonomy[]): HeaderNav
     if (sa !== sb) return sa - sb;
     return (a.name ?? "").localeCompare(b.name ?? "", "ko");
   };
-  roots.sort(sortByOrderThenName);
+  roots.sort((a, b) => {
+    const na = (a.name ?? "").trim();
+    const nb = (b.name ?? "").trim();
+    if (na === "해외" && nb !== "해외") return -1;
+    if (nb === "해외" && na !== "해외") return 1;
+    if (na === "국내" && nb !== "국내") return -1;
+    if (nb === "국내" && na !== "국내") return 1;
+    return sortByOrderThenName(a, b);
+  });
   for (const arr of byParent.values()) arr.sort(sortByOrderThenName);
 
   const groups: HeaderNavGroup[] = [];
@@ -86,6 +94,12 @@ function regionGroupsFromTaxonomy(categories: ProductTaxonomy[]): HeaderNavGroup
 
 function recommendedGroupsFromCurated(sections: { id: string; title: string }[]): HeaderNavGroup[] {
   const groups: HeaderNavGroup[] = [];
+  groups.push({
+    key: "recommended-products",
+    label: "전체 상품 보기",
+    labelHref: "/products",
+    items: [],
+  });
   if (sections.length > 0) {
     groups.push({
       key: "recommended-featured",
@@ -94,7 +108,7 @@ function recommendedGroupsFromCurated(sections: { id: string; title: string }[])
       items: [],
     });
     sections.slice(0, 4).forEach((sec) => {
-      if (sec.title) {
+      if (sec.title && sec.title.trim() !== "패키지여행") {
         groups.push({
           key: `recommended-section-${sec.id}`,
           label: sec.title,
@@ -104,7 +118,7 @@ function recommendedGroupsFromCurated(sections: { id: string; title: string }[])
       }
     });
   }
-  if (groups.length === 0) {
+  if (groups.length === 1) {
     groups.push({
       key: "recommended-featured",
       label: "이번 달 추천",

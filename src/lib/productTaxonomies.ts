@@ -9,6 +9,7 @@ import type {
   ProductCategoryType,
   TaxonomyType,
 } from "@/types/productTaxonomy";
+import type { RegionTreeNode } from "@/types/productTaxonomy";
 
 export function parseThemeTokens(value: string | undefined) {
   if (!value) return [] as string[];
@@ -265,6 +266,42 @@ const getHubThemesCached = unstable_cache(
 
 export async function getHubDestinations(): Promise<ProductTaxonomy[]> {
   return getHubDestinationsCached();
+}
+
+/** 허브 destination 목록을 대분류 > 중분류 > 소분류 트리로 변환. 상품 필터 좌측용. */
+export function buildRegionTree(destinations: ProductTaxonomy[]): RegionTreeNode[] {
+  const sortByOrderThenName = (a: ProductTaxonomy, b: ProductTaxonomy) => {
+    const sa = a.sort_order ?? 9999;
+    const sb = b.sort_order ?? 9999;
+    if (sa !== sb) return sa - sb;
+    return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+  };
+  const byParent = new Map<string, ProductTaxonomy[]>();
+  for (const d of destinations) {
+    const pid = (d.parent_id ?? "").trim() || "_root";
+    if (!byParent.has(pid)) byParent.set(pid, []);
+    byParent.get(pid)!.push(d);
+  }
+  for (const arr of byParent.values()) arr.sort(sortByOrderThenName);
+
+  function toNode(d: ProductTaxonomy): RegionTreeNode {
+    const children = byParent.get(d.id);
+    const sorted = children ? [...children].sort(sortByOrderThenName) : [];
+    return {
+      id: d.id,
+      name: d.name ?? "",
+      children: sorted.length > 0 ? sorted.map(toNode) : undefined,
+    };
+  }
+
+  const roots = byParent.get("_root") ?? [];
+  roots.sort(sortByOrderThenName);
+  return roots.map(toNode);
+}
+
+/** 허브 theme 목록을 부모>자식 트리로 변환. 상품 필터 좌측 테마 접이식용. */
+export function buildThemeTree(themes: ProductTaxonomy[]): RegionTreeNode[] {
+  return buildRegionTree(themes);
 }
 
 export async function getHubThemes(): Promise<ProductTaxonomy[]> {

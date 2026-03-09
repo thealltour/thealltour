@@ -79,6 +79,14 @@ function formatDate(dateStr?: string | null): string {
   });
 }
 
+const RATING_LABELS: Record<number, string> = {
+  1: "많이 아쉬웠어요",
+  2: "아쉬웠어요",
+  3: "보통이었어요",
+  4: "만족했어요",
+  5: "정말 만족했어요",
+};
+
 function StarRating({
   value,
   onChange,
@@ -86,6 +94,7 @@ function StarRating({
   size = "md",
   guideText,
   error,
+  showScoreLabels,
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
@@ -93,23 +102,26 @@ function StarRating({
   size?: "sm" | "md";
   guideText?: string;
   error?: string;
+  showScoreLabels?: boolean;
 }) {
-  const starSize = size === "sm" ? "text-lg" : "text-2xl";
-  const touchClass = "min-h-[44px] min-w-[44px] flex items-center justify-center";
+  const starSize = size === "sm" ? "text-lg" : "text-3xl";
+  const touchClass = "min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg transition-colors";
   return (
     <div className="flex flex-col gap-1">
       <span className="type-small font-medium text-content-secondary">{label}</span>
       {guideText && (
         <p className="mb-1 type-caption text-content-muted">{guideText}</p>
       )}
-      <div className="inline-flex items-center gap-0.5 sm:gap-1">
+      <div className="inline-flex items-center gap-1 sm:gap-1.5">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
             onClick={() => onChange(value === star ? null : star)}
-            className={`${starSize} ${touchClass} leading-none transition select-none ${
-              value !== null && star <= value ? "text-amber-400" : "text-slate-300 hover:text-amber-300 active:text-amber-400"
+            className={`${starSize} ${touchClass} leading-none select-none ${
+              value !== null && star <= value
+                ? "text-amber-400 hover:text-amber-500"
+                : "text-slate-300 hover:text-amber-200 hover:bg-amber-50/80 active:text-amber-400"
             }`}
             aria-label={`${star}점`}
           >
@@ -117,9 +129,14 @@ function StarRating({
           </button>
         ))}
         {value != null && (
-          <span className="ml-2 type-caption text-content-muted self-center">{value}점</span>
+          <span className="ml-2 type-small font-medium text-slate-600 self-center">
+            {showScoreLabels ? RATING_LABELS[value] : `${value}점`}
+          </span>
         )}
       </div>
+      {value == null && showScoreLabels && (
+        <p className="mt-0.5 type-caption text-content-muted">별을 눌러 만족도를 선택해 주세요</p>
+      )}
       {error && <p className="mt-1 type-caption text-red-600" role="alert">{error}</p>}
     </div>
   );
@@ -573,9 +590,9 @@ export default function ReviewWriteForm({
   }, []);
 
   return (
-    <div className="space-y-6 pb-24 md:pb-8">
+    <div className="space-y-5 pb-24 md:pb-8">
       {productInfo?.title && (
-        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm">
           <p className="text-sm font-medium text-blue-600">이번 여행 후기</p>
           <h2 className="mt-1 text-xl font-bold text-slate-900">{productInfo.title}</h2>
           {(productInfo.departureDate || productInfo.returnDate) && (
@@ -606,24 +623,28 @@ export default function ReviewWriteForm({
           <span className={progress.hasContent ? "text-green-600" : ""}>여행 경험</span>
           <span className={progress.hasImages ? "text-green-600" : ""}>사진</span>
         </div>
+        <p className="mt-2 text-xs text-slate-500">
+          별점, 한줄 요약, 여행 경험은 필수입니다. 사진은 선택 항목입니다. 지금 작성한 내용은 임시저장할 수 있습니다.
+        </p>
       </div>
 
-      <form className="space-y-8" onSubmit={handleSubmit}>
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">STEP 1</p>
           <h3 className="text-lg font-bold text-slate-900">전체 만족도</h3>
-          <div className="mt-4 rounded-xl bg-slate-50 p-4">
+          <div className="mt-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/60">
             <StarRating
               value={formData.rating}
               onChange={(v) => updateFormData("rating", v)}
               label="전체 여행 만족도를 평가해 주세요"
               size="md"
               guideText="별을 탭하여 선택하세요."
+              showScoreLabels
               error={fieldErrors.rating}
             />
           </div>
           {isEligibilityBased && (
-            <div className="mt-4 grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-4">
               <StarRating value={formData.ratingSchedule} onChange={(v) => updateFormData("ratingSchedule", v)} label="일정" size="sm" />
               <StarRating value={formData.ratingStay} onChange={(v) => updateFormData("ratingStay", v)} label="숙소" size="sm" />
               <StarRating value={formData.ratingGuide} onChange={(v) => updateFormData("ratingGuide", v)} label="가이드" size="sm" />
@@ -632,38 +653,45 @@ export default function ReviewWriteForm({
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">STEP 2</p>
           <h3 className="text-lg font-bold text-slate-900">한줄 요약</h3>
-          <Label className="mt-4 flex flex-col gap-2 text-content-secondary">
+          <p className="mt-1 text-xs text-slate-500">한줄 요약은 다른 여행자에게 후기를 빠르게 이해시키는 데 도움이 됩니다.</p>
+          <Label className="mt-3 flex flex-col gap-2 text-content-secondary">
             <Input
               type="text"
               value={formData.summary}
               onChange={(e) => updateFormData("summary", e.target.value)}
-              placeholder="이번 여행을 한 문장으로 표현한다면?"
+              placeholder="이번 여행을 한 문장으로 표현해 주세요 (예: 부모님과 함께한 만족도 높은 효도여행이었어요)"
               className="rounded-xl"
             />
           </Label>
           {!isEligibilityBased && (
-            <Label className="mt-4 flex flex-col gap-2 text-content-secondary">
+            <Label className="mt-3 flex flex-col gap-2 text-content-secondary">
               제목 (선택)
               <Input
                 type="text"
                 value={formData.title}
                 onChange={(e) => updateFormData("title", e.target.value)}
-                placeholder="후기 제목을 입력해 주세요"
+                placeholder="후기 제목을 입력해 주세요 (예: 치앙마이 골프 여행, 기대 이상이었습니다)"
                 className="rounded-xl"
               />
             </Label>
           )}
+          {isEligibilityBased && (
+            <p className="mt-2 text-xs text-slate-500">제목은 선택 항목입니다.</p>
+          )}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">STEP 3</p>
           <h3 className="text-lg font-bold text-slate-900">여행 경험 작성</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            일정, 숙소, 음식, 가이드, 이동 편의성 등을 자유롭게 적어주세요. 실제 경험이 담긴 후기는 다른 여행자에게 큰 도움이 됩니다.
+          </p>
 
           {isEligibilityBased ? (
-            <div className="mt-4 space-y-5">
+            <div className="mt-3 space-y-4">
               <div>
                 <Label className="flex flex-col gap-2 text-content-secondary">
                   좋았던 점
@@ -719,7 +747,7 @@ export default function ReviewWriteForm({
               </details>
             </div>
           ) : (
-            <div className="mt-4">
+            <div className="mt-3">
               <Label className="flex flex-col gap-2 text-content-secondary">
                 내용
                 <Textarea
@@ -727,7 +755,7 @@ export default function ReviewWriteForm({
                   rows={8}
                   value={formData.content}
                   onChange={(e) => updateFormData("content", e.target.value)}
-                  placeholder="여행 경험을 자유롭게 적어주세요."
+                  placeholder="여행 경험을 자유롭게 적어주세요. 좋았던 점, 아쉬웠던 점, 팁 등을 함께 남겨주시면 더 도움이 됩니다."
                   className="min-h-[180px] rounded-xl"
                   error={!!fieldErrors.content}
                 />
@@ -740,10 +768,12 @@ export default function ReviewWriteForm({
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">STEP 4</p>
           <h3 className="text-lg font-bold text-slate-900">사진 업로드</h3>
-          <p className="mt-1 text-sm text-slate-600">최대 {MAX_REVIEW_IMAGES}장 (선택)</p>
+          <p className="mt-1 text-sm text-slate-600">
+            사진을 추가하면 더 생생한 후기가 됩니다. 최대 {MAX_REVIEW_IMAGES}장까지 업로드할 수 있으며, 사진은 선택 항목입니다.
+          </p>
           <input
             id={imageInputId}
             type="file"
@@ -752,7 +782,7 @@ export default function ReviewWriteForm({
             onChange={handleFileSelect}
             className="sr-only"
           />
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <label
               htmlFor={imageInputId}
               className={buttonVariants({ variant: "secondary", size: "md", className: "cursor-pointer rounded-xl gap-2" })}
@@ -760,11 +790,13 @@ export default function ReviewWriteForm({
               <span aria-hidden>📷</span>
               사진 추가 (최대 {MAX_REVIEW_IMAGES}장)
             </label>
-            <span className="text-sm text-slate-500">{imageItems.length > 0 ? `${imageItems.length}장 선택됨` : "첨부된 사진 없음"}</span>
+            <span className="text-sm text-slate-500">
+              {imageItems.length > 0 ? `${imageItems.length}장 선택됨` : "첨부된 사진이 없습니다. 사진을 추가하면 더 생생한 후기가 됩니다."}
+            </span>
           </div>
 
           {imageItems.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-3">
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={imageItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -792,6 +824,9 @@ export default function ReviewWriteForm({
           <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">임시 저장됨</div>
         )}
 
+        <p className="text-center text-xs text-slate-500 sm:text-left">
+          필수 항목: 별점, 한줄 요약, 여행 경험 · 사진은 선택입니다
+        </p>
         <div className="hidden flex-col gap-3 sm:flex sm:flex-row sm:justify-end md:flex">
           <Button type="button" variant="secondary" disabled={isSavingDraft || isSubmitting} onClick={handleSaveDraft} className="rounded-xl px-6 py-3">
             {isSavingDraft || draftStatus === "saving" ? "저장 중..." : "임시저장"}

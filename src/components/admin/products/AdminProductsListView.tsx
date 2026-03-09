@@ -38,9 +38,36 @@ export default function AdminProductsListView({
   onFilterStatusChange,
   newProductHref,
   onRetryLoad,
+  taxonomyNameMap = {},
 }: AdminProductsListViewProps) {
   const isEmpty = products.length === 0;
   const isSearchEmpty = keyword.trim() !== "" && isEmpty;
+
+  function resolveTaxonomyName(id: string | null | undefined): string | null {
+    if (!id || typeof id !== "string") return null;
+    const name = taxonomyNameMap[id];
+    return name && name.trim() ? name.trim() : null;
+  }
+
+  function formatDestinationProductLineCell(product: Product) {
+    const destId = product.destination_id ?? null;
+    const lineId = product.product_line_id ?? null;
+    const destName = resolveTaxonomyName(destId);
+    const lineName = resolveTaxonomyName(lineId);
+    const hasDest = !!destId;
+    const hasLine = !!lineId;
+    if (!hasDest && !hasLine) return { label: "-", title: "" };
+    const destLabel = destName ?? (destId ? `지역 ${String(destId).slice(0, 8)}…` : "");
+    const lineLabel = lineName ?? (lineId ? `상품군 ${String(lineId).slice(0, 8)}…` : "");
+    const parts: string[] = [];
+    if (destLabel) parts.push(`지역 ${destLabel}`);
+    if (lineLabel) parts.push(`상품군 ${lineLabel}`);
+    const label = parts.join(" · ");
+    const titleLines: string[] = [];
+    if (hasDest) titleLines.push(`지역: ${destName ?? destId}`, `destination_id: ${destId}`);
+    if (hasLine) titleLines.push(`상품군: ${lineName ?? lineId}`, `product_line_id: ${lineId}`);
+    return { label, title: titleLines.join("\n") };
+  }
 
   function formatDate(iso?: string) {
     if (!iso) return "-";
@@ -214,6 +241,7 @@ export default function AdminProductsListView({
                     </span>
                   </button>
                 </th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">지역·상품군</th>
                 <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">테마/배지</th>
                 <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">
                   <button
@@ -248,7 +276,7 @@ export default function AdminProductsListView({
             <tbody>
               {isEmpty ? (
                 <tr className="border-t border-[var(--divider)]">
-                  <td colSpan={12} className="px-4 py-10 text-center text-[var(--text-muted)]">
+                  <td colSpan={13} className="px-4 py-10 text-center text-[var(--text-muted)]">
                     <div className="mx-auto flex max-w-md flex-col items-center gap-2">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)]">
                         {isSearchEmpty ? "🔍" : "📦"}
@@ -307,6 +335,16 @@ export default function AdminProductsListView({
                       {product.title}
                     </td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">{product.category}</td>
+                    <td className="px-4 py-3 text-center whitespace-nowrap text-xs text-[var(--text-secondary)]">
+                      {(() => {
+                        const { label, title } = formatDestinationProductLineCell(product);
+                        return title ? (
+                          <span title={title}>{label}</span>
+                        ) : (
+                          <span>{label}</span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap">{product.theme ?? "-"}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {typeof product.price === "number"

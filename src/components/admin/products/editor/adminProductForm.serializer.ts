@@ -109,6 +109,7 @@ export function serializeAdminProductForm(
     image_url: primaryImageUrl,
     images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
     category: form.category,
+    destination_id: form.destination_id.trim() === "" ? null : form.destination_id.trim(),
     theme: form.theme.trim() === "" ? null : form.theme,
     product_line_id: form.product_line_id.trim() === "" ? null : form.product_line_id.trim(),
     campaigns: ((): string[] | null => {

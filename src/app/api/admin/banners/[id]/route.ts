@@ -58,7 +58,8 @@ export async function PATCH(
     .maybeSingle();
 
   if (result.error || !result.data) {
-    return NextResponse.json({ message: "배너 수정에 실패했습니다." }, { status: 500 });
+    const msg = result.error?.message ?? "배너 수정에 실패했습니다.";
+    return NextResponse.json({ message: msg }, { status: 500 });
   }
 
   revalidateTag("home-banners", "max");
@@ -79,7 +80,8 @@ export async function DELETE(
     .maybeSingle();
 
   if (deleteResult.error || !deleteResult.data) {
-    return NextResponse.json({ message: "배너 삭제에 실패했습니다." }, { status: 500 });
+    const msg = deleteResult.error?.message ?? "배너 삭제에 실패했습니다.";
+    return NextResponse.json({ message: msg }, { status: 500 });
   }
 
   revalidateTag("home-banners", "max");

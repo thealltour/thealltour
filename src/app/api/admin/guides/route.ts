@@ -23,6 +23,8 @@ type GuideBody = Partial<
     | "tags"
     | "category"
     | "published_at"
+    | "destination_id"
+    | "theme_id"
     | "seo_title"
     | "seo_description"
     | "focus_keyword"
@@ -92,6 +94,8 @@ export async function POST(request: Request) {
     : null;
   const category = body.category?.trim() || null;
   const publishedAt = body.published_at?.trim() || null;
+  const destinationId = body.destination_id?.trim() || null;
+  const themeId = body.theme_id?.trim() || null;
   const seoTitle = body.seo_title?.trim() || null;
   const seoDescription = body.seo_description?.trim() || null;
   const focusKeyword = body.focus_keyword?.trim() || null;
@@ -129,6 +133,8 @@ export async function POST(request: Request) {
       tags,
       category,
       published_at: publishedAt,
+      destination_id: destinationId,
+      theme_id: themeId,
       seo_title: seoTitle,
       seo_description: seoDescription,
       focus_keyword: focusKeyword,

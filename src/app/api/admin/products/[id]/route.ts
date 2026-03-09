@@ -50,8 +50,10 @@ type ProductBody = {
   // image_card_url?: string;
   category?: string;
   theme?: string | null;
+  destination_id?: string | null;
   product_line_id?: string | null;
   campaigns?: string[] | null;
+  tags?: string[] | null;
   price?: number | null;
   duration?: string | null;
   itinerary?: string | null;
@@ -160,6 +162,9 @@ export async function PATCH(
   }
   if (body.category !== undefined) updates.category = body.category?.trim();
   if (body.theme !== undefined) updates.theme = body.theme?.trim() || null;
+  if (body.destination_id !== undefined) {
+    updates.destination_id = body.destination_id?.trim() || null;
+  }
   if (body.product_line_id !== undefined) {
     updates.product_line_id = body.product_line_id?.trim() || null;
   }
@@ -167,6 +172,12 @@ export async function PATCH(
     updates.campaigns_json =
       Array.isArray(body.campaigns) && body.campaigns.length > 0
         ? body.campaigns.filter((v): v is string => typeof v === "string").map((v) => v.trim()).filter(Boolean)
+        : null;
+  }
+  if (body.tags !== undefined) {
+    updates.tags_json =
+      Array.isArray(body.tags) && body.tags.length > 0
+        ? body.tags.filter((v): v is string => typeof v === "string").map((v) => v.trim()).filter(Boolean)
         : null;
   }
   if (body.duration !== undefined) updates.duration = body.duration?.trim() || null;

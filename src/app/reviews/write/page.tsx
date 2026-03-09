@@ -118,7 +118,11 @@ export default async function ReviewWritePage({ searchParams }: Props) {
               ? "여행 경험을 공유하면 다른 여행자에게 큰 도움이 됩니다. 아래 단계를 따라 작성해 주세요."
               : "실제 여행 경험을 남겨주시면 더올투어를 찾는 분들께 큰 도움이 됩니다."
           }
+          size="sm"
         />
+        <p className="-mt-2 text-center text-sm text-slate-600">
+          평균 작성 시간 2~3분 · 사진은 선택 항목입니다
+        </p>
         <ContentCard>
           {showNotOwnerWarning ? (
             <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-6 text-center">

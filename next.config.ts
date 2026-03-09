@@ -51,6 +51,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "quick-hen-cc9.notion.site",
+      },
+      {
+        protocol: "https",
         hostname: "image-tc.galaxy.tf",
       },
     ],

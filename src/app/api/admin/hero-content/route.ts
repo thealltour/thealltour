@@ -105,7 +105,8 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ message: msg }, { status: 500 });
     }
     revalidateTag("home-hero-content", "max");
-    revalidatePath("/");
+    revalidatePath("/", "page");
+    revalidatePath("/", "layout");
     return NextResponse.json(normalize(updated as Record<string, unknown>));
   }
 
@@ -133,6 +134,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: msg }, { status: 500 });
   }
   revalidateTag("home-hero-content", "max");
-  revalidatePath("/");
+  revalidatePath("/", "page");
+  revalidatePath("/", "layout");
   return NextResponse.json(normalize(inserted as Record<string, unknown>));
 }

@@ -9,6 +9,9 @@ import {
   deleteAdminProduct,
   patchAdminProduct,
 } from "@/components/admin/products/api/adminProducts.client";
+import {
+  fetchAdminProductTaxonomy,
+} from "@/components/admin/products/api/adminProductTaxonomy.client";
 import { DEFAULT_PRODUCTS_PAGE_SIZE, ADMIN_PRODUCTS_MESSAGES } from "@/components/admin/products/adminProducts.constants";
 
 export type { ProductSortKey } from "@/components/admin/products/api/adminProducts.types";
@@ -49,6 +52,7 @@ export function useAdminProductsListController({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
   const [pendingMoveId, setPendingMoveId] = useState<string | null>(null);
+  const [taxonomyNameMap, setTaxonomyNameMap] = useState<Record<string, string>>({});
   const loadRequestIdRef = useRef(0);
 
   async function loadProducts(args?: {
@@ -109,6 +113,32 @@ export function useAdminProductsListController({
 
   useEffect(() => {
     loadProducts({ page: 1 });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [destinations, productLines] = await Promise.all([
+          fetchAdminProductTaxonomy({ taxonomy_type: "destination" }),
+          fetchAdminProductTaxonomy({ taxonomy_type: "product_line" }),
+        ]);
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const t of destinations) {
+          if (t.id && t.name) map[t.id] = t.name;
+        }
+        for (const t of productLines) {
+          if (t.id && t.name) map[t.id] = t.name;
+        }
+        setTaxonomyNameMap(map);
+      } catch {
+        if (!cancelled) setTaxonomyNameMap({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -277,6 +307,7 @@ export function useAdminProductsListController({
 
   return {
     products,
+    taxonomyNameMap,
     totalCount,
     currentPage: safePage,
     pageSize,

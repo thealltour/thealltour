@@ -64,10 +64,14 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     image_url: product.image_url ?? "",
     images_json: normalizeImageList(product.images_json),
     category: product.category ?? "여행상품",
+    destination_id: (product.destination_id ?? "").toString().trim(),
     theme: product.theme ?? "",
     product_line_id: (product.product_line_id ?? "").toString().trim(),
     campaigns: ((): string => {
-      const arr = product.campaigns ?? (product as { campaigns_json?: string[] }).campaigns_json ?? [];
+      const arr =
+        product.campaigns ??
+        (product as { campaigns_json?: string[] }).campaigns_json ??
+        [];
       return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === "string").join(",") : "";
     })(),
     price: typeof product.price === "number" ? product.price.toLocaleString("ko-KR") : "",

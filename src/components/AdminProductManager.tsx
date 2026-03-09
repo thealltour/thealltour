@@ -732,6 +732,10 @@ export default function AdminProductManager() {
     () => categoryGroups.flatMap((g) => g.items.map((i) => i.name)),
     [categoryGroups],
   );
+  const activeDestinationIds = useMemo(
+    () => new Set(categoryGroups.flatMap((g) => g.items.map((i) => i.id))),
+    [categoryGroups],
+  );
   const selectedThemes = useMemo(() => parseThemeList(form.theme), [form.theme]);
   const themeGroups = useMemo(
     () =>
@@ -1139,6 +1143,12 @@ export default function AdminProductManager() {
     if (categoryOptions.includes(form.category)) return;
     setForm((prev) => ({ ...prev, category: categoryOptions[0] }));
   }, [categoryOptions, form.category]);
+
+  useEffect(() => {
+    if (form.destination_id && !activeDestinationIds.has(form.destination_id)) {
+      setForm((prev) => ({ ...prev, destination_id: "" }));
+    }
+  }, [activeDestinationIds, form.destination_id]);
 
   useEffect(() => {
     const allowedThemes = new Set(availableThemeOptions);
@@ -1731,7 +1741,54 @@ export default function AdminProductManager() {
                   {id === "taxonomy" && (
         <div className="flex flex-col gap-6" id="form-field-taxonomy-category">
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-[var(--text-primary)]">지역 (카테고리)</p>
+            <p className="text-xs font-semibold text-[var(--text-primary)]">지역 (destination)</p>
+            <p className="text-[11px] text-[var(--text-muted)]">상품에 연결할 지역 1개. DB taxonomy 축으로 저장됩니다.</p>
+            <div className="space-y-3">
+              {categoryGroups.length === 0 ? (
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-[var(--text-muted)] ring-1 ring-slate-200">
+                  지역을 먼저 추가해 주세요 (아래 카테고리에서 추가)
+                </span>
+              ) : (
+                categoryGroups.map((group) => (
+                  <div key={group.label || "ungrouped"} className="space-y-1.5">
+                    <span className="text-xs font-semibold text-[var(--text-muted)]">{group.label}</span>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, destination_id: "" }))}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                          !form.destination_id
+                            ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                            : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                        }`}
+                      >
+                        미선택
+                      </button>
+                      {group.items.map((item) => {
+                        const selected = form.destination_id === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, destination_id: item.id }))}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                              selected
+                                ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                            }`}
+                          >
+                            {item.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-[var(--text-primary)]">지역 (카테고리, legacy)</p>
             <div className="space-y-3">
               {categoryGroups.length === 0 ? (
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-[var(--text-muted)] ring-1 ring-slate-200">
@@ -3052,6 +3109,7 @@ export default function AdminProductManager() {
       {isListView && !editingId && !isFeaturedView ? (
         <AdminProductsListView
           products={pagedProducts}
+          taxonomyNameMap={listController.taxonomyNameMap}
           totalCount={listController.totalCount}
           currentPage={safePage}
           pageSize={pageSize}

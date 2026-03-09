@@ -149,10 +149,13 @@ export type ProductReviewSummaryForDisplay = {
 /** 리뷰 목록 정렬 옵션 */
 export type ReviewSortOption =
   | "latest"
+  | "rating"
   | "rating_high"
   | "rating_low"
   | "verified_first"
-  | "recommended";
+  | "recommended"
+  | "helpful"
+  | "photo";
 
 /** 리뷰 목록 필터 옵션 */
 export type ReviewFilterOption = {

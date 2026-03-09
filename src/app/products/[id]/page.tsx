@@ -8,6 +8,7 @@ import ProductDetailHero from "@/components/ProductDetailHero";
 import ProductDetailTabs from "@/components/ProductDetailTabs";
 import ProductDetailV2 from "@/components/products/ProductDetailV2";
 import { ProductReviewsSection } from "@/components/products/ProductReviewsSection";
+import { GuideCard } from "@/components/home/GuideCard";
 import {
   ProductDetailStickyDesktop,
   ProductDetailStickyMobile,
@@ -17,11 +18,14 @@ import {
   ProductDetailStickyV2Mobile,
 } from "@/components/products/ProductDetailStickyV2";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { SectionBlock } from "@/components/layout/SectionBlock";
+import { SectionHeader } from "@/components/layout/SectionHeader";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import AlertCard from "@/components/ui/AlertCard";
 import { ConsultModalProvider } from "@/components/ConsultModal";
 import { ENABLE_NEW_PRODUCT_UI } from "@/config/featureFlags";
 import { getProductByIdFresh } from "@/lib/products";
+import { getGuidesByDestinationId } from "@/lib/guides";
 import { getProductReviewStats, getProductReviews } from "@/lib/reviewStats";
 import { buildProductReviewJsonLd } from "@/lib/seo/products";
 import { addTrustScoresToReviews } from "@/lib/reviewTrustScore";
@@ -119,6 +123,8 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const { id } = await params;
   const rawSearch = searchParams ? await searchParams : {};
   const personalizationContext = parseReviewPersonalizationContext(rawSearch);
+  const reviewSort =
+    rawSearch?.reviewSort === "rating" ? "rating" : rawSearch?.reviewSort === "latest" ? "latest" : undefined;
   const cookieStore = await cookies();
   const subjectKey = cookieStore.get("review_exp_subject")?.value;
   const persistedVariant = cookieStore.get("review_exp_highlight")?.value;
@@ -230,6 +236,10 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const settings = await getSiteSettings();
   const kakaoHref = settings.kakao_chat_url || settings.kakao_channel_url || "https://pf.kakao.com";
   const sourcePath = `/products/${product.id}`;
+  const relatedGuides =
+    product.destination_id?.trim()
+      ? await getGuidesByDestinationId(product.destination_id.trim(), 3)
+      : [];
 
   if (!ENABLE_NEW_PRODUCT_UI) {
     return (
@@ -334,7 +344,37 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 personalizationContext={personalizationContext}
                 experimentKey="review_highlight_variant"
                 variant={reviewExperimentVariant}
+                reviewSort={reviewSort}
               />
+
+              {relatedGuides.length > 0 ? (
+                <SectionBlock surface="none" padding="md">
+                  <SectionHeader
+                    eyebrow="TRAVEL GUIDE"
+                    title="이 여행을 더 잘 즐기는 방법"
+                    description="이 지역과 관련된 가이드를 만나보세요."
+                    align="left"
+                  />
+                  <ul
+                    className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                    aria-label="관련 가이드"
+                  >
+                    {relatedGuides.map((guide) => (
+                      <li key={guide.id}>
+                        <GuideCard guide={guide} />
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4">
+                    <Link
+                      href="/guides"
+                      className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-2.5 text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+                    >
+                      가이드 더 보기
+                    </Link>
+                  </div>
+                </SectionBlock>
+              ) : null}
 
               <AlertCard variant="info" title="상담 안내">
                 문의를 남겨주시면 일정/예산/동행구성에 맞춰 맞춤 동선과 견적 옵션을 안내드립니다.

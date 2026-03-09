@@ -60,6 +60,16 @@ export function AdminReviewListItemCard({
             >
               {review.id.slice(0, 8)}…
             </Link>
+            {review.rating != null && review.rating >= 1 && review.rating <= 5 && (
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+                ★ {Number(review.rating).toFixed(1)}
+              </span>
+            )}
+            {imageCount > 0 && (
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">
+                사진 {imageCount}장
+              </span>
+            )}
             {verified && (
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
                 인증
@@ -108,9 +118,6 @@ export function AdminReviewListItemCard({
             )}
             {typeof authorReviewCount === "number" && authorReviewCount > 1 && (
               <span className="text-xs text-[var(--text-muted)]">동일 작성자 {authorReviewCount}건</span>
-            )}
-            {imageCount > 0 && (
-              <span className="text-xs text-[var(--text-muted)]">📷 {imageCount}</span>
             )}
           </div>
           {review.product_id && (

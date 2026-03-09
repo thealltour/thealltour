@@ -21,6 +21,8 @@ import type { RegionTreeNode } from "@/types/productTaxonomy";
 
 export type ProductsPageContentProps = {
   products: Product[];
+  /** id → name (destination_id, product_line_id FK resolve용). 있으면 필터 FK 우선 적용 */
+  taxonomyNameMap?: Record<string, string>;
   regionOptions: string[];
   /** 지역 트리(대분류>중분류>소분류). 있으면 좌측 필터에 접이식 트리로 표시 */
   regionTree?: RegionTreeNode[];
@@ -37,6 +39,7 @@ export type ProductsPageContentProps = {
 
 export function ProductsPageContent({
   products,
+  taxonomyNameMap,
   regionOptions,
   regionTree,
   themeOptions,
@@ -74,8 +77,8 @@ export function ProductsPageContent({
   }, [products, presetCategories]);
 
   const filteredProducts = useMemo(
-    () => applyProductFilters(baseProducts, filters),
-    [baseProducts, filters],
+    () => applyProductFilters(baseProducts, filters, taxonomyNameMap),
+    [baseProducts, filters, taxonomyNameMap],
   );
 
   function handleFilterChange(next: Partial<ProductFiltersState>) {

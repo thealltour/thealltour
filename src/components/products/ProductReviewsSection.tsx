@@ -31,6 +31,8 @@ export type ProductReviewsSectionProps = {
   /** PR26: 실험 variant (있으면 A/B 노출 + 계측) */
   experimentKey?: ReviewExperimentKey;
   variant?: ReviewExperimentVariant;
+  /** 상품 상세에서 리뷰 정렬 (최신순/평점순). 미설정 시 recommended */
+  reviewSort?: "latest" | "rating";
 };
 
 function formatDate(value?: string) {
@@ -132,19 +134,30 @@ export async function ProductReviewsSection({
   personalizationContext,
   experimentKey,
   variant,
+  reviewSort,
 }: ProductReviewsSectionProps) {
+  const sortOption = reviewSort === "rating" ? "rating" : "latest";
   const [stats, reviews, summary] = await Promise.all([
     getProductReviewStats(productId),
-    getProductReviews(productId, { limit: 30, sort: "recommended" }),
+    getProductReviews(productId, { limit: 30, sort: sortOption }),
     getProductReviewSummary(productId),
   ]);
 
   if (stats.reviewCount === 0) {
     return (
       <section id="reviews" className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6">
-        <h2 className="text-lg font-bold text-slate-900">여행 후기</h2>
+        <h2 className="text-lg font-bold text-slate-900">여행자 후기</h2>
         <p className="mt-1 text-sm text-slate-600">실제 여행자들의 생생한 후기를 확인하세요</p>
-        <p className="mt-4 text-sm text-slate-500">아직 등록된 후기가 없습니다.</p>
+        <p className="mt-4 text-sm text-slate-600">첫 후기를 남겨보세요.</p>
+        <p className="mt-1 text-sm text-slate-500">다른 여행자에게 도움이 되는 후기를 남겨보세요.</p>
+        <div className="mt-4">
+          <Link
+            href={`/reviews/write?productId=${encodeURIComponent(productId)}`}
+            className="inline-flex rounded-full bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+          >
+            후기 작성하기
+          </Link>
+        </div>
       </section>
     );
   }
@@ -217,7 +230,7 @@ export async function ProductReviewsSection({
   return (
     <section id="reviews" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-lg font-bold text-slate-900">여행 후기</h2>
+        <h2 className="text-lg font-bold text-slate-900">여행자 후기</h2>
         <p className="mt-1 text-sm text-slate-600">실제 여행자들의 생생한 후기를 확인하세요</p>
         <ProductReviewSeoSummary
           averageRating={stats.averageRating}
@@ -236,15 +249,39 @@ export async function ProductReviewsSection({
         />
       )}
 
-      <div className="mb-6 flex flex-wrap items-center gap-4 rounded-xl bg-slate-50 p-4">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-slate-900">★ {avg}</span>
-          <span className="text-sm text-slate-600">/ 5</span>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-slate-50 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-slate-900">★ {avg}</span>
+            <span className="text-sm text-slate-600">/ 5</span>
+          </div>
+          <span className="text-sm text-slate-600">후기 {stats.reviewCount}개</span>
+          {stats.verifiedCount > 0 && (
+            <span className="text-sm text-blue-700">인증 후기 {stats.verifiedCount}개</span>
+          )}
         </div>
-        <span className="text-sm text-slate-600">후기 {stats.reviewCount}개</span>
-        {stats.verifiedCount > 0 && (
-          <span className="text-sm text-blue-700">인증 후기 {stats.verifiedCount}개</span>
-        )}
+        <div className="flex gap-2">
+          <Link
+            href={`/products/${productId}?reviewSort=latest`}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+              reviewSort !== "rating"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            최신순
+          </Link>
+          <Link
+            href={`/products/${productId}?reviewSort=rating`}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+              reviewSort === "rating"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            평점순
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -257,12 +294,18 @@ export async function ProductReviewsSection({
         ))}
       </div>
 
-      <div className="mt-6 text-center">
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
         <Link
           href={`/reviews?productId=${encodeURIComponent(productId)}`}
           className="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
         >
-          전체 후기 보기
+          후기 더 보기
+        </Link>
+        <Link
+          href={`/reviews/write?productId=${encodeURIComponent(productId)}`}
+          className="inline-flex items-center justify-center rounded-full border border-blue-600 bg-white px-6 py-2.5 text-sm font-medium text-blue-600 transition hover:bg-blue-50"
+        >
+          후기 작성하기
         </Link>
       </div>
     </section>

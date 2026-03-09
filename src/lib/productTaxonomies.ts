@@ -308,6 +308,58 @@ export async function getHubThemes(): Promise<ProductTaxonomy[]> {
   return getHubThemesCached();
 }
 
+/** 필터/목록용: 활성 product_line taxonomy 목록 (id→name 맵 구성용). */
+const getActiveProductLineTaxonomiesCached = unstable_cache(
+  async (): Promise<ProductTaxonomy[]> => {
+    const result = await supabase
+      .from("product_taxonomies")
+      .select("*")
+      .eq("taxonomy_type", "product_line")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true });
+    if (result.error) return [];
+    return (result.data ?? []).map((r) => mapTaxonomy(r as Record<string, unknown>));
+  },
+  ["product-taxonomies:product-line"],
+  { revalidate: 300, tags: [CACHE_TAGS.TAXONOMY] },
+);
+
+export async function getActiveProductLineTaxonomies(): Promise<ProductTaxonomy[]> {
+  return getActiveProductLineTaxonomiesCached();
+}
+
+/**
+ * id로 taxonomy 1건 조회. guide의 destination_id/theme_id 연결용.
+ */
+export async function getTaxonomyById(id: string): Promise<ProductTaxonomy | null> {
+  const tid = id?.trim();
+  if (!tid) return null;
+  const result = await supabase
+    .from("product_taxonomies")
+    .select("*")
+    .eq("id", tid)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (result.error || !result.data) return null;
+  return mapTaxonomy(result.data as Record<string, unknown>);
+}
+
+/**
+ * id → name 맵 생성. destination_id / product_line_id resolve용.
+ */
+export function buildTaxonomyNameMap(
+  taxonomies: ProductTaxonomy[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const t of taxonomies) {
+    if (t.id && t.name) {
+      map[t.id] = t.name;
+    }
+  }
+  return map;
+}
+
 /**
  * slug로 destination 1건 조회. taxonomy_type='destination' 기준.
  * 상세 랜딩 공개 여부는 반환 후 is_landing_enabled로 확인.

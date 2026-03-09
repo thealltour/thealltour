@@ -9,6 +9,8 @@ import { LandingDetailHero } from "@/components/landing/LandingDetailHero";
 import { LandingSubCardsSection } from "@/components/landing/LandingSubCardsSection";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
+import { GuideCardGrid } from "@/components/home/GuideCardGrid";
+import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import {
   getThemeBySlugForPublicLanding,
   getHubThemes,
@@ -19,6 +21,8 @@ import {
   buildThemeTree,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
+import { getGuidesByThemeId } from "@/lib/guides";
+import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { getThemeLandingHref } from "@/lib/hubLandingLinks";
 import {
@@ -75,9 +79,11 @@ export default async function ThemeLandingPage({ params }: Props) {
     getLandingSubnodes("theme", slug),
     getHubThemes(),
   ]);
-  const [taxonomyOptions, destinations] = await Promise.all([
+  const [taxonomyOptions, destinations, themeGuides, reviewHighlights] = await Promise.all([
     getProductTaxonomyOptions(products),
     getHubDestinations(),
+    getGuidesByThemeId(theme.id, 4),
+    getTopRatedPublishedReviews(4),
   ]);
   const { categories, themes: themeNames, productLines } = taxonomyOptions;
   const regionTree = buildRegionTree(destinations);
@@ -168,6 +174,28 @@ export default async function ThemeLandingPage({ params }: Props) {
             nodes={subnodes}
           />
 
+          {themeGuides.length > 0 ? (
+            <SectionBlock surface="none" padding="md">
+              <SectionHeader
+                eyebrow="TRAVEL GUIDE"
+                title={`${theme.name} 가이드`}
+                description="이 테마와 관련된 가이드를 만나보세요."
+                align="left"
+              />
+              <div className="mt-6">
+                <GuideCardGrid guides={themeGuides} />
+              </div>
+              <div className="mt-4">
+                <Link
+                  href="/guides"
+                  className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-2.5 text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+                >
+                  가이드 더 보기
+                </Link>
+              </div>
+            </SectionBlock>
+          ) : null}
+
           {related.length > 0 ? (
             <CuratedBlock
               title={`${theme.name} 대표 상품`}
@@ -175,6 +203,32 @@ export default async function ThemeLandingPage({ params }: Props) {
               products={related}
               surface="none"
             />
+          ) : null}
+
+          {reviewHighlights.length > 0 ? (
+            <SectionBlock surface="none" padding="md">
+              <SectionHeader
+                eyebrow="TRAVEL REVIEWS"
+                title="여행자들의 실제 후기"
+                description="실제 여행객들의 생생한 후기를 만나보세요."
+                align="left"
+              />
+              <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {reviewHighlights.map((review) => (
+                  <li key={review.id}>
+                    <ReviewHighlightCard review={review} />
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4">
+                <Link
+                  href="/reviews"
+                  className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-2.5 text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+                >
+                  후기 전체 보기
+                </Link>
+              </div>
+            </SectionBlock>
           ) : null}
 
           <SectionBlock surface="muted" padding="lg">

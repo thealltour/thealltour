@@ -44,6 +44,8 @@ export type ProductFormState = {
   image_url: string;
   images_json: string[];
   category: string;
+  /** 지역 1개 (product_taxonomies.id, taxonomy_type=destination). 빈 문자열 = 미선택 */
+  destination_id: string;
   theme: string;
   /** 상품군 1개 (product_taxonomies.id). 빈 문자열 = 미선택 */
   product_line_id: string;
@@ -126,6 +128,7 @@ export function createEmptyProductFormState(): ProductFormState {
     image_url: "",
     images_json: [],
     category: "여행상품",
+    destination_id: "",
     theme: "",
     product_line_id: "",
     campaigns: "",

@@ -102,7 +102,7 @@ export default function AdminHeroContentForm() {
         return;
       }
       setContent(data as HomeHeroContent);
-      showToast("success", "히어로 문구를 저장했습니다.");
+      showToast("success", "히어로 문구를 저장했습니다. 메인 페이지를 새로고침하면 변경 사항이 반영됩니다.");
     } catch {
       setErrorMessage("저장 중 오류가 발생했습니다.");
       showToast("error", "저장 중 오류가 발생했습니다.");
@@ -170,27 +170,6 @@ export default function AdminHeroContentForm() {
             className={inputClass}
           />
         </label>
-        <div className="space-y-2">
-          <span className="block text-xs font-medium text-[var(--text-muted)]">불릿 3줄</span>
-          <input
-            value={form.bullet_1}
-            onChange={(e) => setForm((p) => ({ ...p, bullet_1: e.target.value }))}
-            placeholder={DEFAULT_HERO_CONTENT.bullet_1 ?? ""}
-            className={inputClass}
-          />
-          <input
-            value={form.bullet_2}
-            onChange={(e) => setForm((p) => ({ ...p, bullet_2: e.target.value }))}
-            placeholder={DEFAULT_HERO_CONTENT.bullet_2 ?? ""}
-            className={inputClass}
-          />
-          <input
-            value={form.bullet_3}
-            onChange={(e) => setForm((p) => ({ ...p, bullet_3: e.target.value }))}
-            placeholder={DEFAULT_HERO_CONTENT.bullet_3 ?? ""}
-            className={inputClass}
-          />
-        </div>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">추천 탐색 문구</span>
           <input

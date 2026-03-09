@@ -23,6 +23,8 @@ type GuideBody = Partial<
     | "tags"
     | "category"
     | "published_at"
+    | "destination_id"
+    | "theme_id"
     | "seo_title"
     | "seo_description"
     | "focus_keyword"
@@ -78,15 +80,25 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
   if (body.category !== undefined) updates.category = (body.category ?? "").trim() || null;
   if (body.published_at !== undefined) updates.published_at = body.published_at || null;
+  if (body.destination_id !== undefined) updates.destination_id = (body.destination_id ?? "").trim() || null;
+  if (body.theme_id !== undefined) updates.theme_id = (body.theme_id ?? "").trim() || null;
   if (body.seo_title !== undefined) updates.seo_title = (body.seo_title ?? "").trim() || null;
   if (body.seo_description !== undefined) updates.seo_description = (body.seo_description ?? "").trim() || null;
   if (body.focus_keyword !== undefined) updates.focus_keyword = (body.focus_keyword ?? "").trim() || null;
 
   const notionPageIdToValidate = (updates.notion_page_id as string | undefined) ?? null;
   if (notionPageIdToValidate) {
-    const validation = await validateNotionPageAccess(notionPageIdToValidate);
-    if (!validation.ok) {
-      return NextResponse.json({ message: validation.message }, { status: 400 });
+    try {
+      const validation = await validateNotionPageAccess(notionPageIdToValidate);
+      if (!validation.ok) {
+        return NextResponse.json({ message: validation.message }, { status: 400 });
+      }
+    } catch (err) {
+      console.error("[PATCH /api/admin/guides/[id]] validateNotionPageAccess error:", err);
+      return NextResponse.json(
+        { message: "노션 페이지 검증 중 오류가 발생했습니다." },
+        { status: 500 },
+      );
     }
   }
 
@@ -96,7 +108,12 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const { data, error } = await supabase.from("guides").update(updates).eq("id", id).select("*").maybeSingle();
   if (error) {
-    return NextResponse.json({ message: "여행가이드 수정에 실패했습니다." }, { status: 500 });
+    console.error("[PATCH /api/admin/guides/[id]] Supabase update error:", error);
+    const message =
+      process.env.NODE_ENV === "development"
+        ? `여행가이드 수정 실패: ${error.message}`
+        : "여행가이드 수정에 실패했습니다.";
+    return NextResponse.json({ message }, { status: 500 });
   }
 
   if (data?.notion_page_id) {
@@ -104,9 +121,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       await syncGuideFromNotion(id);
     } catch (error) {
       const reason = getErrorMessage(error);
-      return NextResponse.json({
-        message: `여행가이드는 수정되었지만 노션 동기화에 실패했습니다. (${reason})`,
-      });
+      return NextResponse.json(
+        { message: `여행가이드는 수정되었지만 노션 동기화에 실패했습니다. (${reason})` },
+        { status: 500 },
+      );
     }
   }
 

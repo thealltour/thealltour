@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import type { HomeBanner } from "@/types/homeBanner";
 
 type FormState = {
@@ -27,6 +28,7 @@ export default function AdminBannerManager() {
   const [banners, setBanners] = useState<HomeBanner[]>([]);
   const [form, setForm] = useState<FormState>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
@@ -57,6 +59,10 @@ export default function AdminBannerManager() {
 
   useEffect(() => {
     loadBanners();
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -207,19 +213,50 @@ export default function AdminBannerManager() {
             placeholder="클릭 이동 링크(선택, 예: /products)"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
-          <input
-            required
-            value={form.image_url}
-            onChange={(event) => setForm((prev) => ({ ...prev, image_url: event.target.value }))}
-            placeholder="PC 배너 이미지 URL (권장 1920x640)"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
-          />
-          <input
-            value={form.mobile_image_url}
-            onChange={(event) => setForm((prev) => ({ ...prev, mobile_image_url: event.target.value }))}
-            placeholder="모바일 배너 이미지 URL (선택, 권장 1200x800)"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
-          />
+          {mounted ? (
+            <>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">PC 배너 이미지 (필수)</label>
+                <ImageUploadField
+                  value={form.image_url}
+                  onChange={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
+                  onUploaded={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
+                  uploadedUrlKey="hero"
+                  optional={false}
+                  placeholder="PC 배너 이미지 URL 또는 아래에서 파일 업로드 (권장 1920x640)"
+                  sizeHint="권장: 웹(PC) 1920x640px. JPG/PNG/WebP 사용 가능"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">모바일 배너 이미지 (선택)</label>
+                <ImageUploadField
+                  value={form.mobile_image_url}
+                  onChange={(url) => setForm((prev) => ({ ...prev, mobile_image_url: url }))}
+                  onUploaded={(url) => setForm((prev) => ({ ...prev, mobile_image_url: url }))}
+                  uploadedUrlKey="hero"
+                  optional={true}
+                  placeholder="모바일 배너 이미지 URL 또는 아래에서 파일 업로드 (권장 1200x800)"
+                  sizeHint="권장: 모바일 1200x800px. 비우면 PC 이미지 사용. JPG/PNG/WebP 사용 가능"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <input
+                required
+                value={form.image_url}
+                onChange={(e) => setForm((prev) => ({ ...prev, image_url: e.target.value }))}
+                placeholder="PC 배너 이미지 URL (권장 1920x640)"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
+              />
+              <input
+                value={form.mobile_image_url}
+                onChange={(e) => setForm((prev) => ({ ...prev, mobile_image_url: e.target.value }))}
+                placeholder="모바일 배너 이미지 URL (선택, 권장 1200x800)"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
+              />
+            </>
+          )}
           <input
             value={form.sort_order}
             onChange={(event) => setForm((prev) => ({ ...prev, sort_order: event.target.value }))}

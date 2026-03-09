@@ -42,4 +42,6 @@ export type AdminProductsListViewProps = {
   newProductHref?: string;
   /** 목록 조회 실패 시 다시 불러오기 (없으면 버튼 비표시) */
   onRetryLoad?: () => void;
+  /** id → taxonomy name (destination_id, product_line_id용). 있으면 목록 "지역·상품군" 셀에서 이름 표시 */
+  taxonomyNameMap?: Record<string, string>;
 };

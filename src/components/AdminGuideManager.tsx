@@ -6,7 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import { GuidePdfUploadField } from "@/components/admin/GuidePdfUploadField";
+import { fetchAdminProductTaxonomy } from "@/components/admin/products/api/adminProductTaxonomy.client";
 import type { Guide } from "@/types/guide";
+import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 
 type GuideFormState = {
   title: string;
@@ -27,6 +29,8 @@ type GuideFormState = {
   seo_title: string;
   seo_description: string;
   focus_keyword: string;
+  destination_id: string;
+  theme_id: string;
 };
 
 const initialForm: GuideFormState = {
@@ -48,6 +52,8 @@ const initialForm: GuideFormState = {
   seo_title: "",
   seo_description: "",
   focus_keyword: "",
+  destination_id: "",
+  theme_id: "",
 };
 
 export default function AdminGuideManager() {
@@ -61,6 +67,8 @@ export default function AdminGuideManager() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [destinations, setDestinations] = useState<ProductTaxonomyWithUsage[]>([]);
+  const [themes, setThemes] = useState<ProductTaxonomyWithUsage[]>([]);
   const { showToast } = useAdminToast();
   const { confirm } = useAdminConfirm();
   const view = searchParams.get("view");
@@ -103,6 +111,18 @@ export default function AdminGuideManager() {
     loadGuides();
   }, []);
 
+  useEffect(() => {
+    Promise.all([
+      fetchAdminProductTaxonomy({ taxonomy_type: "destination" }),
+      fetchAdminProductTaxonomy({ taxonomy_type: "theme" }),
+    ])
+      .then(([d, t]) => {
+        setDestinations(d);
+        setThemes(t);
+      })
+      .catch(() => {});
+  }, []);
+
   function startEdit(item: Guide) {
     setEditingId(item.id);
     setEditingType(item.notion_url || item.notion_page_id ? "notion" : "general");
@@ -125,6 +145,8 @@ export default function AdminGuideManager() {
       seo_title: item.seo_title ?? "",
       seo_description: item.seo_description ?? "",
       focus_keyword: item.focus_keyword ?? "",
+      destination_id: item.destination_id ?? "",
+      theme_id: item.theme_id ?? "",
     });
     setMessage("");
     setErrorMessage("");
@@ -169,6 +191,8 @@ export default function AdminGuideManager() {
         seo_title: form.seo_title.trim() || null,
         seo_description: form.seo_description.trim() || null,
         focus_keyword: form.focus_keyword.trim() || null,
+        destination_id: form.destination_id.trim() || null,
+        theme_id: form.theme_id.trim() || null,
       };
 
       const response = await fetch(endpoint, {
@@ -351,6 +375,40 @@ export default function AdminGuideManager() {
             />
           </label>
           ) : null}
+          <div className="md:col-span-2 space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+            <p className="text-xs font-semibold text-[var(--text-secondary)]">랜딩 연결 (선택)</p>
+            <p className="text-xs text-[var(--text-muted)]">
+              연결 시 해당 지역/테마 랜딩 페이지에 이 가이드가 노출됩니다.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+                지역 (destination)
+                <select
+                  value={form.destination_id}
+                  onChange={(e) => setForm((prev) => ({ ...prev, destination_id: e.target.value }))}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                >
+                  <option value="">미선택</option>
+                  {destinations.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+                테마 (theme)
+                <select
+                  value={form.theme_id}
+                  onChange={(e) => setForm((prev) => ({ ...prev, theme_id: e.target.value }))}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                >
+                  <option value="">미선택</option>
+                  {themes.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
           {isNotionForm ? (
           <label className="md:col-span-2 flex flex-col gap-2 text-sm font-medium text-[var(--text-primary)]">
             태그 (쉼표 구분)
@@ -549,6 +607,7 @@ export default function AdminGuideManager() {
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold text-[var(--primary)]">정렬</th>
                   <th className="px-3 py-2 text-left font-semibold text-[var(--primary)]">제목</th>
+                  <th className="px-3 py-2 text-left font-semibold text-[var(--primary)]">지역/테마</th>
                   <th className="px-3 py-2 text-left font-semibold text-[var(--primary)]">유형</th>
                   <th className="px-3 py-2 text-left font-semibold text-[var(--primary)]">슬러그</th>
                   <th className="px-3 py-2 text-left font-semibold text-[var(--primary)]">상태</th>
@@ -563,6 +622,11 @@ export default function AdminGuideManager() {
                       <p className="font-medium text-[var(--text-primary)]">{item.title}</p>
                       {item.summary ? <p className="line-clamp-1 text-xs text-[var(--text-muted)]">{item.summary}</p> : null}
                     </td>
+                    <td className="px-3 py-2 text-xs text-[var(--text-muted)]">
+                      {item.destination_id || item.theme_id
+                        ? [item.destination_id ? `지역` : "", item.theme_id ? "테마" : ""].filter(Boolean).join(" · ")
+                        : "-"}
+                    </td>
                     <td className="px-3 py-2 text-[var(--text-secondary)]">
                       {item.notion_url || item.notion_page_id ? "노션" : "일반"}
                     </td>
@@ -576,6 +640,16 @@ export default function AdminGuideManager() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-2">
+                        {item.is_published !== false && item.slug?.trim() ? (
+                          <Link
+                            href={`/guides/${encodeURIComponent(item.slug.trim())}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+                          >
+                            상세 보기
+                          </Link>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => syncNow(item)}

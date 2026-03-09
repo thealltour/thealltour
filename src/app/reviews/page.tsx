@@ -9,12 +9,14 @@ import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { buildReviewListMetadata } from "@/lib/seo/reviews";
 import { getProductByIdFresh } from "@/lib/products";
 import ReviewListFilters from "@/components/reviews/ReviewListFilters";
+import { ReviewSearchBar } from "@/components/reviews/ReviewSearchBar";
 import PublicReviewCard from "@/components/reviews/PublicReviewCard";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
+import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 
 type Props = {
-  searchParams: Promise<{ sort?: string; verified?: string; photos?: string; minRating?: string; productId?: string }>;
+  searchParams: Promise<{ sort?: string; verified?: string; photos?: string; minRating?: string; productId?: string; q?: string }>;
 };
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -63,6 +65,7 @@ export default async function ReviewsPage({ searchParams }: Props) {
   const onlyWithImages = params.photos === "1";
   const minRating = params.minRating ? (Number(params.minRating) as 1 | 2 | 3 | 4 | 5) : undefined;
   const productId = params.productId ?? undefined;
+  const searchText = typeof params.q === "string" ? params.q : undefined;
 
   const reviews = await getPublicReviews({
     sort,
@@ -70,6 +73,7 @@ export default async function ReviewsPage({ searchParams }: Props) {
     onlyWithImages,
     minRating,
     productId,
+    searchText,
     limit: 50,
     offset: 0,
     viewerMemberId: session?.memberId,
@@ -84,9 +88,12 @@ export default async function ReviewsPage({ searchParams }: Props) {
           kicker="THEALL TOUR REVIEWS"
           title="여행후기"
           subtitle="실제 고객님들이 남긴 여행 후기를 카드형으로 한눈에 확인해 보세요. 여행후기 작성은 회원 전용입니다."
+          size="sm"
         />
+        <Breadcrumb items={[{ label: "홈", href: "/" }, { label: "여행후기" }]} />
 
         <section className="space-y-4">
+          <ReviewSearchBar />
           <div className="flex flex-wrap items-center justify-between gap-3">
             {session ? (
               <Link
@@ -121,8 +128,26 @@ export default async function ReviewsPage({ searchParams }: Props) {
           </Suspense>
 
           {reviews.length === 0 ? (
-            <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0]">
-              조건에 맞는 여행후기가 없습니다.
+            <div className="rounded-2xl bg-white p-8 shadow-md ring-1 ring-[#e2e8f0]">
+              <p className="type-small text-content-muted">조건에 맞는 여행후기가 없습니다.</p>
+              <p className="mt-2 type-body text-content-primary">여행을 다녀오셨나요? 후기를 남겨주세요.</p>
+              <div className="mt-4">
+                {session ? (
+                  <Link
+                    href="/reviews/write"
+                    className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
+                  >
+                    후기 작성하기
+                  </Link>
+                ) : (
+                  <Link
+                    href="/login?next=/reviews/write"
+                    className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
+                  >
+                    로그인 후 후기 작성
+                  </Link>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

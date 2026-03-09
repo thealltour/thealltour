@@ -75,6 +75,8 @@ export type GetPublicReviewsOptions = {
   offset?: number;
   /** PR8: 이 회원이 도움됨 투표한 리뷰 표시용 */
   viewerMemberId?: string;
+  /** 검색어: title, summary, content ilike (OR) */
+  searchText?: string;
 };
 
 export async function getPublicReviews(
@@ -89,6 +91,7 @@ export async function getPublicReviews(
     limit = 100,
     offset = 0,
     viewerMemberId,
+    searchText,
   } = options;
 
   const isRecommended = sort === "recommended";
@@ -98,6 +101,11 @@ export async function getPublicReviews(
     .from("reviews")
     .select("*, travel_bookings(product_id, product_title)")
     .eq("status", PUBLIC_STATUS);
+
+  if (searchText?.trim()) {
+    const term = `%${searchText.trim()}%`;
+    query = query.or(`title.ilike.${term},summary.ilike.${term},content.ilike.${term}`);
+  }
 
   if (productId) {
     const { data: bookings } = await supabase
@@ -118,6 +126,7 @@ export async function getPublicReviews(
   }
 
   switch (sort) {
+    case "rating":
     case "rating_high":
       query = query.order("rating", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
       break;
@@ -128,6 +137,8 @@ export async function getPublicReviews(
       query = query.order("eligibility_id", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
       break;
     case "recommended":
+    case "helpful":
+    case "photo":
       query = query.order("created_at", { ascending: false });
       break;
     default:
@@ -189,6 +200,28 @@ export async function getPublicReviews(
       const aVer = a.eligibility_id ? 1 : 0;
       const bVer = b.eligibility_id ? 1 : 0;
       if (bVer !== aVer) return bVer - aVer;
+      const aDate = a.created_at ?? "";
+      const bDate = b.created_at ?? "";
+      return bDate.localeCompare(aDate);
+    });
+  }
+
+  if (sort === "photo") {
+    items = [...items].sort((a, b) => {
+      const aHas = (a.image_urls?.length ?? 0) > 0 || !!a.image_url ? 1 : 0;
+      const bHas = (b.image_urls?.length ?? 0) > 0 || !!b.image_url ? 1 : 0;
+      if (bHas !== aHas) return bHas - aHas;
+      const aDate = a.created_at ?? "";
+      const bDate = b.created_at ?? "";
+      return bDate.localeCompare(aDate);
+    });
+  }
+
+  if (sort === "helpful") {
+    items = [...items].sort((a, b) => {
+      const aCount = a.helpfulCount ?? 0;
+      const bCount = b.helpfulCount ?? 0;
+      if (bCount !== aCount) return bCount - aCount;
       const aDate = a.created_at ?? "";
       const bDate = b.created_at ?? "";
       return bDate.localeCompare(aDate);

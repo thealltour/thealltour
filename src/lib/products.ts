@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cacheTags";
+import { getTaxonomyById, parseThemeTokens } from "@/lib/productTaxonomies";
 import { normalizeEventImages as normalizeEventImagesLib } from "@/lib/images/normalizeEventImages";
 import { dedupeEventImages } from "@/lib/images/dedupeEventImages";
 import type {
@@ -18,6 +19,21 @@ import type {
 import { normalizeImageList } from "@/lib/products/images";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
+
+function safeUuidOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  const s = typeof value === "string" ? value.trim() : String(value).trim();
+  return s === "" ? null : s;
+}
+
+function normalizeStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const arr = value
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return arr.length > 0 ? arr : undefined;
+}
 
 export function normalizeProduct(row: Record<string, unknown>): Product {
   const rawPrice = row.price;
@@ -38,6 +54,11 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     images_json: images.length > 0 ? images : undefined,
     category: String(row.category ?? row.type ?? "여행상품"),
     theme: typeof row.theme === "string" ? row.theme : undefined,
+    destination_id: safeUuidOrNull(row.destination_id),
+    product_line_id: safeUuidOrNull(row.product_line_id),
+    campaigns: normalizeStringArray(row.campaigns),
+    campaigns_json: normalizeStringArray(row.campaigns_json ?? row.campaigns),
+    tags: normalizeStringArray(row.tags_json ?? row.tags),
     price,
     duration:
       typeof row.duration === "string"
@@ -492,6 +513,55 @@ function normalizeOptions(raw: unknown, productPrice?: number): ProductOptions |
 /** 패키지상품 목록용: is_active인 전체 상품 (추천 여부 무관) */
 export async function getProducts() {
   return getProductsCached();
+}
+
+/** 가이드 상세용: guide의 destination_id / theme_id 기준 관련 상품. destination 우선, theme 보조, 최대 limit(기본 6). */
+export async function getProductsForGuide(
+  guide: { destination_id?: string | null; theme_id?: string | null },
+  limit = 6,
+): Promise<Product[]> {
+  const products = await getProducts();
+  if (products.length === 0) return [];
+
+  const destinationId = guide.destination_id?.trim() || null;
+  const themeId = guide.theme_id?.trim() || null;
+
+  const byDestination =
+    destinationId != null
+      ? products.filter((p) => p.destination_id === destinationId)
+      : [];
+  let byTheme: Product[] = [];
+  if (themeId) {
+    const themeTax = await getTaxonomyById(themeId);
+    const themeNameLower = themeTax?.name?.trim().toLowerCase();
+    if (themeNameLower) {
+      byTheme = products.filter((p) => {
+        const tokens = parseThemeTokens(p.theme).map((t) => t.toLowerCase());
+        return tokens.some(
+          (t) =>
+            t === themeNameLower ||
+            t.includes(themeNameLower) ||
+            themeNameLower.includes(t),
+        );
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  const merged: Product[] = [];
+  for (const p of byDestination) {
+    if (!seen.has(p.id)) {
+      seen.add(p.id);
+      merged.push(p);
+    }
+  }
+  for (const p of byTheme) {
+    if (!seen.has(p.id) && merged.length < limit) {
+      seen.add(p.id);
+      merged.push(p);
+    }
+  }
+  return merged.slice(0, limit);
 }
 
 const getProductsCached = unstable_cache(

@@ -30,8 +30,10 @@ export default function ReviewListFilters() {
         className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
       >
         <option value="latest">최신순</option>
+        <option value="rating">평점 높은순</option>
+        <option value="helpful">도움되는 후기순</option>
+        <option value="photo">사진 있는 후기 우선</option>
         <option value="recommended">추천순</option>
-        <option value="rating_high">평점 높은순</option>
         <option value="rating_low">평점 낮은순</option>
         <option value="verified_first">인증 후기 우선</option>
       </select>

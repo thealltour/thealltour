@@ -1,6 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import type { Review, ReviewStatus } from "@/types/review";
 
+/**
+ * 공개 리뷰 목록·정렬·필터가 필요하면 @see getPublicReviews, getProductReviews in lib/reviewStats 사용.
+ * 이 파일은 Review 타입 기반 조회(홈/마이페이지/상품 단순 목록) 및 draft/submit 처리용.
+ */
+
 function normalizeReview(row: Record<string, unknown>): Review {
   const imageUrls = Array.isArray(row.image_urls)
     ? row.image_urls.filter((item): item is string => typeof item === "string" && item.length > 0)
@@ -52,6 +57,74 @@ export async function getReviews() {
   if (error) {
     return [] as Review[];
   }
+  return (data ?? []).map((row) => normalizeReview(row as Record<string, unknown>));
+}
+
+/** 홈 페이지용: 노출 가능한 리뷰(approved/submitted) 최대 4건, rating 높은 순. */
+export async function getHomeReviewHighlights(limit = 4): Promise<Review[]> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("*")
+    .eq("status", "submitted")
+    .order("rating", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (error) {
+    return [];
+  }
+  return (data ?? []).map((row) => normalizeReview(row as Record<string, unknown>));
+}
+
+/** 홈/랜딩 공용: 최신 공개 리뷰. status=submitted, created_at desc. */
+export async function getRecentPublishedReviews(limit = 6): Promise<Review[]> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("*")
+    .eq("status", "submitted")
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (error) return [];
+  return (data ?? []).map((row) => normalizeReview(row as Record<string, unknown>));
+}
+
+/** 홈/랜딩 공용: 고평점 공개 리뷰. status=submitted, rating desc → created_at desc. */
+export async function getTopRatedPublishedReviews(limit = 6): Promise<Review[]> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("*")
+    .eq("status", "submitted")
+    .order("rating", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (error) return [];
+  return (data ?? []).map((row) => normalizeReview(row as Record<string, unknown>));
+}
+
+/** 상품별 공개 리뷰. travel_bookings.product_id 기준, rating 높은 순. */
+export async function getReviewsByProductId(
+  productId: string,
+  limit = 5,
+): Promise<Review[]> {
+  const pid = productId?.trim();
+  if (!pid) return [];
+  const { data: bookings } = await supabase
+    .from("travel_bookings")
+    .select("id")
+    .eq("product_id", pid);
+  const bookingIds = (bookings ?? []).map((b) => (b as { id: string }).id).filter(Boolean);
+  if (bookingIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("*")
+    .eq("status", "submitted")
+    .in("booking_id", bookingIds)
+    .order("rating", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) return [];
   return (data ?? []).map((row) => normalizeReview(row as Record<string, unknown>));
 }
 

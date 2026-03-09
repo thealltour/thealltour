@@ -21,7 +21,11 @@ export type ProductFormPayload = {
   image_url?: string;
   images_json?: string[];
   category?: string;
+  /** 지역 1개 (product_taxonomies.id). 빈 문자열 = 미선택 */
+  destination_id?: string;
   theme?: string;
+  product_line_id?: string;
+  campaigns?: string;
   price?: string;
   duration?: string;
   itinerary?: string;
@@ -116,7 +120,21 @@ export function formToPreviewProduct(
     image_url: primaryImageUrl as string,
     images_json: imagesJson.length > 0 ? imagesJson : undefined,
     category: (form.category?.trim() || "여행상품") as string,
+    destination_id: form.destination_id?.trim() || null,
     theme: form.theme?.trim() || undefined,
+    product_line_id: form.product_line_id?.trim() || null,
+    campaigns: (() => {
+      const s = form.campaigns?.trim();
+      if (!s) return undefined;
+      const arr = s.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+      return arr.length > 0 ? arr : undefined;
+    })(),
+    campaigns_json: (() => {
+      const s = form.campaigns?.trim();
+      if (!s) return undefined;
+      const arr = s.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+      return arr.length > 0 ? arr : undefined;
+    })(),
     price,
     duration: form.duration?.trim() || undefined,
     itinerary: form.itinerary?.trim() || undefined,

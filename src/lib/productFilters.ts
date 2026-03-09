@@ -128,16 +128,28 @@ export const SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
   { value: "popular", label: "인기순" },
 ];
 
-/** region = destination name(category), theme = theme token, product_line = category name(상품군). 정렬 적용. */
+/** region = destination name(category), theme = theme token, product_line = category name(상품군). 정렬 적용.
+ * taxonomyNameMap 있으면 destination_id / product_line_id FK 기반 우선, 없거나 매칭 실패 시 category/theme 문자열 fallback. */
 export function applyProductFilters(
   products: Product[],
   filters: ProductFiltersState,
+  taxonomyNameMap?: Record<string, string>,
 ): Product[] {
   let list = products;
+  const map = taxonomyNameMap ?? {};
 
   if (filters.region) {
     const r = filters.region.trim();
-    list = list.filter((p) => (p.category ?? "").trim() === r);
+    list = list.filter((p) => {
+      const destinationName =
+        p.destination_id && map[p.destination_id]
+          ? map[p.destination_id].trim()
+          : null;
+      if (destinationName !== null) {
+        return destinationName === r;
+      }
+      return (p.category ?? "").trim() === r;
+    });
   }
   if (filters.theme) {
     const t = filters.theme.trim();
@@ -145,7 +157,16 @@ export function applyProductFilters(
   }
   if (filters.product_line) {
     const pl = filters.product_line.trim();
-    list = list.filter((p) => (p.category ?? "").trim() === pl);
+    list = list.filter((p) => {
+      const lineName =
+        p.product_line_id && map[p.product_line_id]
+          ? map[p.product_line_id].trim()
+          : null;
+      if (lineName !== null) {
+        return lineName === pl;
+      }
+      return (p.category ?? "").trim() === pl;
+    });
   }
   if (filters.q) {
     const q = filters.q.trim().toLowerCase();

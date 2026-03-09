@@ -9,17 +9,28 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import { getHomeBanners } from "@/lib/homeBanners";
 import { getHeroContent, resolveHeroContent } from "@/lib/heroContent";
+import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
+import { getPublishedGuides } from "@/lib/guides";
+import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/HeroQuickConsultButton";
 import CuratedBlock from "@/components/home/CuratedBlock";
 import { HeroRecommendedLinks } from "@/components/home/HeroRecommendedLinks";
 import { HomeHeroSearch } from "@/components/home/HomeHeroSearch";
+import { HomeTaxonomyGrid } from "@/components/home/HomeTaxonomyGrid";
+import { HomeGuideSection } from "@/components/home/HomeGuideSection";
+import { HomeReviewSection } from "@/components/home/HomeReviewSection";
 
 export default async function Home() {
-  const [homeCurated, topBanners, heroContent] = await Promise.all([
-    getHomeCuratedData(),
-    getHomeBanners(),
-    getHeroContent(),
-  ]);
+  const [homeCurated, topBanners, heroContent, destinations, themes, homeGuides, homeReviews] =
+    await Promise.all([
+      getHomeCuratedData(),
+      getHomeBanners(),
+      getHeroContent(),
+      getHubDestinations(),
+      getHubThemes(),
+      getPublishedGuides(4),
+      getTopRatedPublishedReviews(4),
+    ]);
   const curatedSettings = homeCurated.settings;
   const curatedSections = homeCurated.sections;
   const primaryBanner = topBanners[0] ?? null;
@@ -55,8 +66,8 @@ export default async function Home() {
           ) : null}
 
           <PageContainer size="wide">
-            <div className="relative z-10 py-10 text-[var(--hero-text-primary)] sm:py-14 md:py-20">
-              <div className="space-y-8 md:space-y-10">
+            <div className="relative z-10 py-6 text-[var(--hero-text-primary)] sm:py-8 md:py-10">
+              <div className="space-y-4 md:space-y-5">
                 {primaryBanner ? (
                   <div className="overflow-hidden rounded-2xl ring-1 ring-[var(--hero-badge-border)] md:hidden">
                     <div className="relative aspect-[16/11] w-full">
@@ -81,8 +92,8 @@ export default async function Home() {
                   </div>
                 ) : null}
 
-                <div className="grid gap-10 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center">
-                  <div className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center">
+                  <div className="space-y-4">
                     <p className="inline-flex items-center gap-2 rounded-full bg-[var(--hero-badge-bg)] px-4 py-1 section-label text-[var(--hero-text-secondary)] md:type-small ring-1 ring-[var(--hero-badge-border)]">
                       {hero.badge}
                     </p>
@@ -99,12 +110,7 @@ export default async function Home() {
                     <p className="max-w-xl type-small font-semibold text-[var(--hero-text-secondary)] md:type-body">
                       {hero.sub_description}
                     </p>
-                    <ul className="space-y-1.5 type-small text-[var(--hero-text-secondary)]/95">
-                      {hero.bullet_1 ? <li>· {hero.bullet_1}</li> : null}
-                      {hero.bullet_2 ? <li>· {hero.bullet_2}</li> : null}
-                      {hero.bullet_3 ? <li>· {hero.bullet_3}</li> : null}
-                    </ul>
-                    <div className="pt-4 md:pt-6">
+                    <div className="pt-2 md:pt-3">
                       <HomeHeroSearch placeholder={hero.search_placeholder} />
                     </div>
                     <p className="type-caption text-[var(--hero-text-secondary)]/80">
@@ -123,7 +129,7 @@ export default async function Home() {
                       )}
                     </p>
                   </div>
-                  <div className="hidden min-h-[260px] md:block" />
+                  <div className="hidden min-h-[160px] md:block" />
                 </div>
               </div>
             </div>
@@ -131,7 +137,24 @@ export default async function Home() {
         </section>
 
         <PageContainer size="wide" className="flex flex-col gap-16 md:gap-20">
-          {/* 추천여행 (home curated) - 최상단 배치 */}
+          {/* 빠른 탐색: 지역(destination) */}
+          {destinations.length > 0 ? (
+            <SectionBlock surface="none" padding="md">
+              <SectionHeader
+                eyebrow="DESTINATIONS"
+                title="어디로 떠나고 싶으신가요?"
+                description="지역별 여행 상품을 만나보세요."
+                align="left"
+              />
+              <HomeTaxonomyGrid
+                items={destinations.slice(0, 8)}
+                type="destination"
+                className="mt-6"
+              />
+            </SectionBlock>
+          ) : null}
+
+          {/* 추천여행 (home curated) */}
           {curatedSettings?.is_active === true && curatedSections.length > 0 ? (
             <SectionBlock surface="none" padding="md">
               <SectionHeader
@@ -165,6 +188,29 @@ export default async function Home() {
               </p>
             </SectionBlock>
           )}
+
+          {/* 여행 가이드 */}
+          <HomeGuideSection guides={homeGuides} />
+
+          {/* 리뷰 하이라이트 */}
+          <HomeReviewSection reviews={homeReviews} />
+
+          {/* 테마 여행 */}
+          {themes.length > 0 ? (
+            <SectionBlock surface="none" padding="md">
+              <SectionHeader
+                eyebrow="TRAVEL THEMES"
+                title="이런 여행은 어떠세요?"
+                description="테마별로 여행 상품을 둘러보세요."
+                align="left"
+              />
+              <HomeTaxonomyGrid
+                items={themes.slice(0, 8)}
+                type="theme"
+                className="mt-6"
+              />
+            </SectionBlock>
+          ) : null}
 
         {/* 신뢰 강조 섹션 */}
         <SectionBlock surface="none" padding="md">
@@ -237,118 +283,6 @@ export default async function Home() {
           </div>
         </SectionBlock>
 
-        {/* 메인 카테고리 섹션 - 골프 우선 구조 */}
-        <SectionBlock surface="none" padding="md">
-          <SectionHeader
-            eyebrow="THEALL TOUR PREMIUM"
-            title="품격 있는 골프 컬렉션"
-            description="검증된 일정과 안정적인 운영으로 안내합니다."
-            align="left"
-            className="mb-0"
-          />
-          <div className="space-y-8">
-          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
-            <Link
-              href="/products?category=해외 골프 투어"
-              className="group relative overflow-hidden rounded-3xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-colors duration-150 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--surface-muted)] via-[var(--surface)] to-[var(--surface-muted)]" />
-              <div className="absolute inset-0 overlay-radial-gold opacity-80 group-hover:opacity-100 transition-opacity" />
-              <div className="relative flex h-full flex-col justify-between p-6 md:p-7">
-                <div className="space-y-2">
-                  <p className="section-label text-[var(--primary)]">
-                    해외 골프 투어
-                  </p>
-                  <h4 className="font-card-title type-h3 text-[var(--foreground)] md:text-[1.75rem]">
-                    일본·동남아 인기 골프 코스
-                  </h4>
-                  <p className="mt-1 type-caption leading-relaxed text-[var(--text-muted)]">
-                    항공·그린피·숙박까지 한 번에 맞춘 일정으로, 시즌에 맞는 해외 골프장을 추천해 드립니다.
-                  </p>
-                </div>
-                <span className="mt-4 inline-flex items-center section-label text-[var(--text-muted)]">
-                  자세히 보기
-                  <span className="ml-1 text-[var(--primary)]">→</span>
-                </span>
-              </div>
-            </Link>
-
-            <Link
-              href="/products?category=국내 골프 투어"
-              className="group relative overflow-hidden rounded-3xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-colors duration-150 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--surface-muted)] via-[var(--surface)] to-[var(--surface-muted)]" />
-              <div className="absolute inset-0 overlay-radial-blue opacity-80 group-hover:opacity-100 transition-opacity" />
-              <div className="relative flex h-full flex-col justify-between p-6 md:p-7">
-                <div className="space-y-2">
-                  <p className="section-label text-[var(--primary)]">
-                    국내 골프 투어
-                  </p>
-                  <h4 className="font-card-title type-h3 text-[var(--foreground)] md:text-[1.75rem]">
-                    제주·국내 프리미엄 라운딩
-                  </h4>
-                  <p className="mt-1 type-caption leading-relaxed text-[var(--text-muted)]">
-                    이동 시간이 부담스러운 고객님을 위해, 접근성 좋은 국내 골프장 중심으로 일정을 설계합니다.
-                  </p>
-                </div>
-                <span className="mt-4 inline-flex items-center section-label text-[var(--text-muted)]">
-                  자세히 보기
-                  <span className="ml-1 text-[var(--primary)]">→</span>
-                </span>
-              </div>
-            </Link>
-
-            <Link
-              href="/products?category=파크골프 전용 투어"
-              className="group relative overflow-hidden rounded-3xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-colors duration-150 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--surface-muted)] via-[var(--surface)] to-[var(--surface-muted)]" />
-              <div className="absolute inset-0 overlay-radial-green opacity-80 group-hover:opacity-100 transition-opacity" />
-              <div className="relative flex h-full flex-col justify-between p-6 md:p-7">
-                <div className="space-y-2">
-                  <p className="section-label text-[var(--success)]">
-                    파크골프 전용
-                  </p>
-                  <h4 className="font-card-title type-h3 text-[var(--foreground)] md:text-[1.75rem]">
-                    중장년층 파크골프 맞춤 일정
-                  </h4>
-                  <p className="mt-1 type-caption leading-relaxed text-[var(--text-muted)]">
-                    라운딩 강도와 휴식을 함께 고려해, 무리 없이 즐기실 수 있는 파크골프 중심 일정을 제안합니다.
-                  </p>
-                </div>
-                <span className="mt-4 inline-flex items-center section-label text-[var(--text-muted)]">
-                  자세히 보기
-                  <span className="ml-1 text-[var(--primary)]">→</span>
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          {/* 일반 해외/국내 여행 카테고리 (골프 아래 배치) */}
-          <Link
-            href="/products"
-            className="group relative mt-6 flex flex-col justify-between overflow-hidden rounded-3xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-colors duration-150 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)] md:flex-row md:items-center md:px-8 md:py-5"
-          >
-            <div className="relative px-5 py-5 md:px-0 md:py-4 md:pr-8">
-              <p className="section-label text-[var(--text-muted)]">
-                해외·국내 패키지
-              </p>
-              <h4 className="font-card-title mt-1 type-small font-semibold md:type-body text-[var(--foreground)]">
-                가족·지인과 떠나는 일반 여행
-              </h4>
-              <p className="mt-1 type-caption leading-relaxed text-[var(--text-muted)]">
-                휴양 중심 동남아, 유럽 패키지, 국내/제주 여행까지 폭넓게 비교 상담해 드립니다.
-              </p>
-            </div>
-            <div className="relative flex items-center justify-end px-5 pb-4 md:px-0 md:pb-0">
-              <span className="inline-flex items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface-muted)] px-4 py-2 type-caption font-semibold text-[var(--foreground)] hover:bg-[var(--surface)] hover:border-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2">
-                전체 패키지 상품 보기
-                <span className="ml-1 text-[var(--primary)]">→</span>
-              </span>
-            </div>
-          </Link>
-        </div>
-        </SectionBlock>
         <SectionBlock
           id="contact"
           surface="none"

@@ -101,9 +101,12 @@ export default async function DestinationsHubPage() {
 
   const destinationPreviews = hasDestinations
     ? destinations.slice(0, PREVIEW_DESTINATIONS_COUNT).map((d) => {
-        const items = products.filter(
-          (p) => p.category?.trim().toLowerCase() === d.name.trim().toLowerCase(),
-        );
+        const items = products.filter((p) => {
+          if (p.destination_id) {
+            return p.destination_id === d.id;
+          }
+          return p.category?.trim().toLowerCase() === d.name.trim().toLowerCase();
+        });
         return { destination: d, products: items.slice(0, PREVIEW_PRODUCTS_PER_DESTINATION) };
       })
     : [];

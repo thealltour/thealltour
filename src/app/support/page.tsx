@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getPublicNotices } from "@/lib/notices";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
+import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -23,7 +24,9 @@ export default async function SupportPage() {
           kicker="THEALL TOUR SUPPORT"
           title="고객센터"
           subtitle="운영시간, 대표번호, 이메일 및 공지사항을 한 곳에서 확인하실 수 있습니다."
+          size="sm"
         />
+        <Breadcrumb items={[{ label: "홈", href: "/" }, { label: "고객센터" }]} />
 
         <section className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-[#dbeafe] md:p-10">
           <div className="mb-5 space-y-2">

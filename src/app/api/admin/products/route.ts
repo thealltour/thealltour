@@ -60,10 +60,14 @@ type ProductBody = {
   // image_card_url?: string;
   category?: string;
   theme?: string | null;
+  /** 지역 1개 (product_taxonomies.id). uuid */
+  destination_id?: string | null;
   /** 상품군 1개 (product_taxonomies.id). uuid */
   product_line_id?: string | null;
   /** 기획/추천 다중. 이름 배열 → DB campaigns_json */
   campaigns?: string[] | null;
+  /** 태그 다중. 이름 배열 → DB tags_json */
+  tags?: string[] | null;
   price?: number | null;
   duration?: string | null;
   itinerary?: string | null;
@@ -211,10 +215,15 @@ export async function POST(request: Request) {
     images_json: images.length > 0 ? images : null,
     category,
     theme: body.theme?.trim() || null,
+    destination_id: body.destination_id?.trim() || null,
     product_line_id: body.product_line_id?.trim() || null,
     campaigns_json:
       Array.isArray(body.campaigns) && body.campaigns.length > 0
         ? body.campaigns.filter((v): v is string => typeof v === "string").map((v) => v.trim()).filter(Boolean)
+        : null,
+    tags_json:
+      Array.isArray(body.tags) && body.tags.length > 0
+        ? body.tags.filter((v): v is string => typeof v === "string").map((v) => v.trim()).filter(Boolean)
         : null,
     price: toSafeInteger(body.price),
     duration: body.duration?.trim() || null,

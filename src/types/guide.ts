@@ -18,6 +18,10 @@ export type Guide = {
   tags?: string[] | null;
   category?: string | null;
   published_at?: string | null;
+  /** 랜딩 연결: destination taxonomy id (product_taxonomies.id, taxonomy_type=destination) */
+  destination_id?: string | null;
+  /** 랜딩 연결: theme taxonomy id (product_taxonomies.id, taxonomy_type=theme) */
+  theme_id?: string | null;
   notion_last_edited_time?: string | null;
   last_synced_at?: string | null;
   // SEO 필드

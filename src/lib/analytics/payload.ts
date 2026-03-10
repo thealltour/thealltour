@@ -37,6 +37,7 @@ export function createAnalyticsPayload(
     resultCount: partial.resultCount ?? null,
     productId: partial.productId ?? null,
     occurredAt,
+    metadata: partial.metadata ?? null,
   };
 }
 

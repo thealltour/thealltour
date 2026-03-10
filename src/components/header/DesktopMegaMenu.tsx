@@ -6,6 +6,7 @@ import { HEADER_DESKTOP_PRIMARY_NAV_KEYS } from "./headerNav.constants";
 import type { HeaderPrimaryNavKey } from "./headerNav.constants";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { DesktopNavItem } from "./DesktopNavItem";
+import { DesktopMegaMenuPanel } from "./DesktopMegaMenuPanel";
 import { cn } from "@/lib/cn";
 
 function getNavLinkClass(isActive: boolean) {
@@ -52,7 +53,7 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
     closeTimeoutRef.current = setTimeout(() => {
       closeTimeoutRef.current = null;
       setOpenKey(null);
-    }, 150);
+    }, 180);
   }, []);
 
   const cancelClose = useCallback(() => {
@@ -87,21 +88,33 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
   }, []);
 
   return (
-    <nav ref={containerRef} className="flex shrink-0 items-center gap-x-8" aria-label="탐색 메뉴">
-      {items.map((item, index) => (
-        <DesktopNavItem
-          key={item.key}
-          item={item}
-          positionIndex={index}
-          isOpen={openKey === (item.key as HeaderPrimaryNavKey)}
-          onOpen={() => setOpenKey(item.key as HeaderPrimaryNavKey)}
-          onClose={onClose}
-          scheduleClose={scheduleClose}
-          cancelClose={cancelClose}
-          isActive={getIsActive(item, pathname)}
-          getNavLinkClass={getNavLinkClass}
-        />
-      ))}
-    </nav>
+    <div
+      ref={containerRef}
+      className="relative"
+      onMouseEnter={cancelClose}
+      onMouseLeave={scheduleClose}
+    >
+      <nav className="flex shrink-0 items-center gap-x-8" aria-label="탐색 메뉴">
+        {items.map((item, index) => (
+          <DesktopNavItem
+            key={item.key}
+            item={item}
+            positionIndex={index}
+            isOpen={openKey === (item.key as HeaderPrimaryNavKey)}
+            onOpen={() => setOpenKey(item.key as HeaderPrimaryNavKey)}
+            onClose={onClose}
+            scheduleClose={scheduleClose}
+            cancelClose={cancelClose}
+            isActive={getIsActive(item, pathname)}
+            getNavLinkClass={getNavLinkClass}
+            renderPanelInParent
+          />
+        ))}
+      </nav>
+      {openKey && (() => {
+        const item = items.find((i) => i.key === openKey);
+        return item ? <DesktopMegaMenuPanel item={item} onClose={onClose} /> : null;
+      })()}
+    </div>
   );
 }

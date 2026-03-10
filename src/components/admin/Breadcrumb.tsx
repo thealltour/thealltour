@@ -59,6 +59,10 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
         detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
       } else if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
         detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.FEATURED];
+      } else if (view === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS) {
+        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS];
+      } else if (view === ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS) {
+        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS];
       }
       return detail ? [...base, LABEL_PRODUCTS, detail] : [...base, LABEL_PRODUCTS];
     }

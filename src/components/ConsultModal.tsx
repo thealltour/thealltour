@@ -138,7 +138,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
         }
         setForm(initialFormState);
         closeModal();
-        showToast("success", "상담 요청이 접수되었습니다. 확인 후 순차적으로 연락드리겠습니다.");
+        showToast("success", "상담 요청이 접수되었습니다. 담당자가 곧 연락드립니다.");
       } catch {
         showToast("error", "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
       } finally {

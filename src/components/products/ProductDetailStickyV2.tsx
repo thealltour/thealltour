@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useConsultModal } from "@/components/ConsultModal";
-import { Button } from "@/components/ui/Button";
 import TrustSignals from "@/components/products/TrustSignals";
+import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
@@ -46,7 +45,6 @@ export function ProductDetailStickyV2Desktop({
   experimentKey,
   variant,
 }: ProductDetailStickyV2Props) {
-  const { openModal } = useConsultModal();
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
 
@@ -63,18 +61,6 @@ export function ProductDetailStickyV2Desktop({
   const displayPrice = quoteSummary?.total != null
     ? formatPriceKR(quoteSummary.total)
     : priceFormatted;
-
-  const handlePrimaryClick = () => {
-    if (requiredGroupsMissing) {
-      scrollToOptions();
-      return;
-    }
-    if (isSoldOut && typeof window !== "undefined") {
-      window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
-    }
-    trackReviewConversionCtaClick(productId, { experimentKey, variant });
-    openModal({ productId, productTitle, sourcePath });
-  };
 
   return (
     <aside
@@ -134,14 +120,18 @@ export function ProductDetailStickyV2Desktop({
       )}
       <TrustSignals trust={trust} className="mt-3" />
       <div className="mt-4 flex flex-col gap-2">
-        <Button variant="primary" size="md" onClick={handlePrimaryClick}>
-          {isSoldOut ? "대기 문의" : "상담 문의하기"}
-        </Button>
-        <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
-          <Button variant="outline" size="md" className="w-full">
-            카톡 상담
-          </Button>
-        </a>
+        <ProductConsultCTA
+          productId={productId}
+          productTitle={productTitle}
+          sourcePath={sourcePath}
+          status={status}
+          kakaoHref={kakaoHref}
+          section="top"
+          requiredGroupsMissing={requiredGroupsMissing}
+          scrollToOptions={scrollToOptions}
+          isSoldOut={isSoldOut}
+          onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
+        />
       </div>
       </div>
     </aside>
@@ -158,7 +148,6 @@ export function ProductDetailStickyV2Mobile({
   experimentKey,
   variant,
 }: ProductDetailStickyV2Props) {
-  const { openModal } = useConsultModal();
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
   const [compact, setCompact] = useState(false);
@@ -201,18 +190,6 @@ export function ProductDetailStickyV2Mobile({
     };
   }, [compact]);
 
-  const handlePrimaryClick = () => {
-    if (requiredGroupsMissing) {
-      scrollToOptions();
-      return;
-    }
-    if (isSoldOut && typeof window !== "undefined") {
-      window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
-    }
-    trackReviewConversionCtaClick(productId, { experimentKey, variant });
-    openModal({ productId, productTitle, sourcePath });
-  };
-
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-[var(--divider)] bg-[var(--glass-surface)] px-3 backdrop-blur transition-all duration-200 md:hidden"
@@ -221,23 +198,20 @@ export function ProductDetailStickyV2Mobile({
         paddingBottom: compact ? "max(8px, env(safe-area-inset-bottom))" : "max(12px, env(safe-area-inset-bottom))",
       }}
     >
-      {displayPrice ? (
-        <span className="font-price-strong text-sm font-bold text-[#1E3A8A]">
-          ₩{displayPrice}~
-        </span>
-      ) : (
-        <span className="text-sm font-semibold text-slate-600">상담 후 안내</span>
-      )}
-      <div className="flex flex-1 gap-2">
-        <Button variant="primary" size="md" onClick={handlePrimaryClick} className="flex-1">
-          {compact ? (isSoldOut ? "대기" : "상담") : isSoldOut ? "대기 문의" : "상담 문의"}
-        </Button>
-        <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
-          <Button variant="outline" size="md">
-            카톡
-          </Button>
-        </a>
-      </div>
+      <ProductConsultCTA
+        productId={productId}
+        productTitle={productTitle}
+        sourcePath={sourcePath}
+        status={status}
+        kakaoHref={kakaoHref}
+        section="sticky"
+        priceFormatted={displayPrice}
+        requiredGroupsMissing={requiredGroupsMissing}
+        scrollToOptions={scrollToOptions}
+        isSoldOut={isSoldOut}
+        compact={compact}
+        onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
+      />
     </div>
   );
 }

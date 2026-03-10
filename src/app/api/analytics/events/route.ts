@@ -33,6 +33,7 @@ type Body = {
   resultCount?: unknown;
   productId?: unknown;
   occurredAt?: unknown;
+  metadata?: unknown;
 };
 
 function isValidEventName(v: unknown): v is AnalyticsEventName {
@@ -92,6 +93,10 @@ export async function POST(request: NextRequest) {
     resultCount: typeof body.resultCount === "number" ? body.resultCount : undefined,
     productId: typeof body.productId === "string" ? body.productId : undefined,
     occurredAt: typeof body.occurredAt === "string" ? body.occurredAt : undefined,
+    metadata:
+      body.metadata != null && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+        ? (body.metadata as Record<string, unknown>)
+        : undefined,
   });
 
   const row = toRow(payload);

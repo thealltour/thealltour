@@ -22,6 +22,10 @@ export type Guide = {
   destination_id?: string | null;
   /** 랜딩 연결: theme taxonomy id (product_taxonomies.id, taxonomy_type=theme) */
   theme_id?: string | null;
+  /** 카드 뱃지용: destination_id로 조회한 지역명. API에서 채움 */
+  destination_name?: string | null;
+  /** 카드 뱃지용: theme_id로 조회한 테마명. API에서 채움 */
+  theme_name?: string | null;
   notion_last_edited_time?: string | null;
   last_synced_at?: string | null;
   // SEO 필드

@@ -6,9 +6,15 @@ import { ImageIcon } from "lucide-react";
 import type {
   TimelineModel,
   TimelineDay,
-  TimelineEvent,
 } from "@/lib/products/mapProductToTimelineModel";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { buildDaySummary } from "@/lib/products/buildDaySummary";
+import {
+  trackProductItineraryDayClick,
+  trackProductItineraryImageOpen,
+} from "@/lib/analytics/trackProductClick";
+import type { ProductDetailStatusTag } from "@/lib/products/productDetailCta";
+import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { TimelineEventCard } from "@/components/products/timeline/TimelineEventCard";
 
 export type InteractiveTimelineV2Props = {
@@ -16,10 +22,15 @@ export type InteractiveTimelineV2Props = {
   fallbackImageUrl?: string | null;
   onDayChange?: (day: number) => void;
   maxEventsVisible?: number;
-  /** 선택된 이벤트 (관리자 편집과 동기화). 해당 Day 탭으로 전환 후 카드 하이라이트 및 scrollIntoView */
   selectedDayIndex?: number;
   selectedEventIndex?: number;
   onEventSelect?: (dayIndex: number, eventIndex: number) => void;
+  /** PR20: 일정 하단 CTA 및 analytics */
+  productId?: string;
+  status?: ProductDetailStatusTag;
+  productTitle?: string;
+  sourcePath?: string;
+  kakaoHref?: string;
 };
 
 function CoverImage({
@@ -65,6 +76,11 @@ export function InteractiveTimelineV2({
   selectedDayIndex,
   selectedEventIndex,
   onEventSelect,
+  productId,
+  status,
+  productTitle,
+  sourcePath,
+  kakaoHref,
 }: InteractiveTimelineV2Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -107,10 +123,18 @@ export function InteractiveTimelineV2({
     maxEventsVisible != null && activeDay.events.length > maxEventsVisible && !isExpanded;
   const moreCount = hasMore ? activeDay.events.length - maxEventsVisible! : 0;
 
-  const handleDayTab = (index: number, scrollToTop = false) => {
+  const handleDayTab = (index: number, scrollToTop = false, source: "sticky_nav" | "tabs" = "tabs") => {
     setActiveIndex(index);
     const day = days[index];
     if (day) onDayChange?.(day.day);
+    if (productId) {
+      trackProductItineraryDayClick({
+        productId,
+        dayIndex: index,
+        dayLabel: `Day ${day?.day ?? index + 1}`,
+        source,
+      });
+    }
     if (scrollToTop) {
       requestAnimationFrame(() => {
         topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -147,6 +171,8 @@ export function InteractiveTimelineV2({
     ? `Day ${activeDay.day} - ${activeDay.dateText}`
     : `Day ${activeDay.day}`;
 
+  const daySummaryItems = buildDaySummary(activeDay.events);
+
   return (
     <section
       className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
@@ -154,25 +180,28 @@ export function InteractiveTimelineV2({
     >
       <div className="p-4 sm:p-6">
         <div ref={topAnchorRef} />
-        {/* 1) ??? Day ??*/}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {days.map((d, i) => (
-            <button
-              key={`day-${d.day}-${i}`}
-              type="button"
-              onClick={() => handleDayTab(i)}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                activeIndex === i
-                  ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-md"
-                  : "bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]/80"
-              }`}
-            >
-              Day {d.day}
-            </button>
-          ))}
+        {/* Sticky Day Navigation: 헤더 아래 고정, 모바일 가로 스크롤 */}
+        <div className="sticky top-16 z-10 -mx-4 -mt-4 mb-6 flex border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-sm sm:-mx-6 sm:-mt-6 sm:px-6 md:top-20">
+          <div className="scrollbar-hide flex w-full gap-2 overflow-x-auto">
+            {days.map((d, i) => (
+              <button
+                key={`day-nav-${d.day}-${i}`}
+                type="button"
+                onClick={() => handleDayTab(i, true, "sticky_nav")}
+                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  activeIndex === i
+                    ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-md"
+                    : "bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]/80"
+                }`}
+                aria-current={activeIndex === i ? "true" : undefined}
+              >
+                Day {d.day}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* 2) ??? Day: ??????? + ?????? + ??? ?????? */}
+        {/* Day 대표 이미지 + 제목 + Day Summary (2~4 키워드) */}
         <div className="mb-8 space-y-4">
           <CoverImage day={activeDay} fallbackImageUrl={fallback} />
           <div className="text-center">
@@ -183,6 +212,18 @@ export function InteractiveTimelineV2({
               <p className="mt-1 text-sm font-medium text-[var(--text-secondary)] sm:text-base">
                 {activeDay.title}
               </p>
+            )}
+            {daySummaryItems.length > 0 && (
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {daySummaryItems.map((item, idx) => (
+                  <span
+                    key={`${item}-${idx}`}
+                    className="rounded-full bg-[var(--surface-muted)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -233,7 +274,22 @@ export function InteractiveTimelineV2({
                             : undefined
                         }
                       >
-                        <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
+                        <TimelineEventCard
+                          event={ev}
+                          normalizeUrl={normalizeProductImageUrl}
+                          productId={productId}
+                          dayIndex={activeIndex}
+                          eventIndex={i}
+                          onImageOpen={(idx) =>
+                            productId &&
+                            trackProductItineraryImageOpen({
+                              productId,
+                              dayIndex: activeIndex,
+                              eventIndex: i,
+                              imageIndex: idx,
+                            })
+                          }
+                        />
                       </div>
                     </div>
                   );
@@ -275,7 +331,22 @@ export function InteractiveTimelineV2({
                           : undefined
                       }
                     >
-                      <TimelineEventCard event={ev} normalizeUrl={normalizeProductImageUrl} />
+                      <TimelineEventCard
+                        event={ev}
+                        normalizeUrl={normalizeProductImageUrl}
+                        productId={productId}
+                        dayIndex={activeIndex}
+                        eventIndex={i}
+                        onImageOpen={(idx) =>
+                          productId &&
+                          trackProductItineraryImageOpen({
+                            productId,
+                            dayIndex: activeIndex,
+                            eventIndex: i,
+                            imageIndex: idx,
+                          })
+                        }
+                      />
                     </div>
                   </div>
                 );
@@ -299,7 +370,7 @@ export function InteractiveTimelineV2({
                 <button
                   key={`day-bottom-${d.day}-${i}`}
                   type="button"
-                  onClick={() => handleDayTab(i, true)}
+                  onClick={() => handleDayTab(i, true, "tabs")}
                   className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                     activeIndex === i
                       ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-md"
@@ -310,6 +381,22 @@ export function InteractiveTimelineV2({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 일정 하단 CTA: 통합 ProductConsultCTA */}
+        {productId && productTitle != null && (
+          <div className="mt-8 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 text-center shadow-sm">
+            <ProductConsultCTA
+              productId={productId}
+              productTitle={productTitle}
+              sourcePath={sourcePath ?? ""}
+              status={status}
+              kakaoHref={kakaoHref}
+              section="itinerary"
+              copy="이 일정이 마음에 드시나요?"
+              subCopy="출발 가능 여부·맞춤 견적은 상담 후 안내해 드립니다."
+            />
           </div>
         )}
       </div>

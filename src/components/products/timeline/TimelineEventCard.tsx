@@ -50,9 +50,14 @@ function eventToMediaImages(event: TimelineEvent): EventMediaImage[] {
 export type TimelineEventCardProps = {
   event: TimelineEvent;
   normalizeUrl: (url: string) => string;
+  /** PR20: 이미지 lightbox 열 때 계측용 */
+  productId?: string;
+  dayIndex?: number;
+  eventIndex?: number;
+  onImageOpen?: (imageIndex: number) => void;
 };
 
-export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProps) {
+export function TimelineEventCard({ event, normalizeUrl, productId, dayIndex, eventIndex, onImageOpen }: TimelineEventCardProps) {
   const Icon = event.iconKey ? EVENT_ICONS[event.iconKey] : null;
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -66,44 +71,52 @@ export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProp
     returnFocusRef.current = triggerButton;
     setLightboxIndex(index);
     setLightboxOpen(true);
+    onImageOpen?.(index);
   };
 
   return (
     <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-      {/* 상단: 시간 뱃지 + 제목 + 아이콘 */}
-      <div className="mb-4 flex flex-wrap items-start gap-2">
-        {event.timeOfDay && (
-          <span className="inline-flex rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">
-            {TIMEOFDAY_LABELS[event.timeOfDay]}
-            {event.timeText?.trim() ? ` ${event.timeText.trim()}` : ""}
-          </span>
-        )}
-        {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
-            <Icon className="h-4 w-4" />
+      {/* 시간(왼쪽/강조) + 제목 + 아이콘 — 스캔 우선 */}
+      <div className="mb-3 flex items-start gap-3">
+        {(event.timeOfDay != null || event.timeText?.trim()) ? (
+          <div className="shrink-0 text-right">
+            <span className="block text-sm font-bold text-[var(--primary)]">
+              {event.timeText?.trim() || (event.timeOfDay != null ? TIMEOFDAY_LABELS[event.timeOfDay] : "")}
+            </span>
+            {event.timeText?.trim() && event.timeOfDay != null && (
+              <span className="text-xs text-[var(--text-muted)]">{TIMEOFDAY_LABELS[event.timeOfDay]}</span>
+            )}
           </div>
-        )}
-        <h4 className="min-w-0 flex-1 text-lg font-bold tracking-tight text-[var(--text-primary)]" title={event.heading}>
-          {event.heading}
-        </h4>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {Icon && (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
+                <Icon className="h-4 w-4" />
+              </div>
+            )}
+            <h4 className="min-w-0 flex-1 text-base font-bold leading-tight text-[var(--text-primary)] md:text-lg" title={event.heading}>
+              {event.heading}
+            </h4>
+          </div>
+          {/* 설명: line-clamp로 후순위, 보조 정보 */}
+          {event.description && (
+            <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
+              {event.description}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* 미디어 섹션: 대표 이미지 + 썸네일 스트립 + 크게보기 (이미지 있을 때만) */}
+      {/* 미디어: 시간/제목/설명 아래 */}
       {hasImages && (
-        <div className="mb-4">
+        <div className="mt-4">
           <EventMediaSection
             images={mediaImages}
             normalizeUrl={normalizeUrl}
             onOpenLightbox={openLightbox}
             eventTitle={event.heading}
           />
-        </div>
-      )}
-
-      {/* 설명 텍스트 */}
-      {event.description && (
-        <div className="text-sm leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
-          {event.description}
         </div>
       )}
 

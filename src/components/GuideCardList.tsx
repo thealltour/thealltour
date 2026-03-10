@@ -92,6 +92,33 @@ export function GuideCardList({ guides }: GuideCardListProps) {
                 </div>
               )}
               <div className="flex flex-1 flex-col gap-3 p-5">
+                {(guide.category || (guide.tags?.length ?? 0) > 0 || guide.destination_name || guide.theme_name) ? (
+                  <div className="flex flex-wrap items-center gap-1.5 section-label text-content-muted">
+                    {guide.category ? (
+                      <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption">
+                        {guide.category}
+                      </span>
+                    ) : null}
+                    {guide.tags?.slice(0, 2).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {!guide.category && (guide.tags?.length ?? 0) === 0 && guide.destination_name ? (
+                      <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption">
+                        {guide.destination_name}
+                      </span>
+                    ) : null}
+                    {!guide.category && (guide.tags?.length ?? 0) === 0 && guide.theme_name ? (
+                      <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption">
+                        {guide.theme_name}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="space-y-1.5">
                   <p className="section-label uppercase tracking-wide text-[#B8962E]">
                     TRAVEL GUIDE

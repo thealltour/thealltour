@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Guide } from "@/types/guide";
 import { unstable_cache } from "next/cache";
+import { getTaxonomyById } from "@/lib/productTaxonomies";
 
 function safeUuidOrNull(value: unknown): string | null {
   if (value == null) return null;
@@ -34,6 +35,8 @@ function normalizeGuide(row: Record<string, unknown>): Guide {
       typeof (row as any).published_at === "string" ? ((row as any).published_at as string) : null,
     destination_id: safeUuidOrNull((row as any).destination_id),
     theme_id: safeUuidOrNull((row as any).theme_id),
+    destination_name: typeof (row as any).destination_name === "string" ? ((row as any).destination_name as string) : null,
+    theme_name: typeof (row as any).theme_name === "string" ? ((row as any).theme_name as string) : null,
     notion_last_edited_time:
       typeof (row as any).notion_last_edited_time === "string"
         ? ((row as any).notion_last_edited_time as string)
@@ -68,6 +71,31 @@ export async function getPublishedGuides(limit?: number): Promise<Guide[]> {
   }
 
   return (data ?? []).map((row) => normalizeGuide(row as Record<string, unknown>));
+}
+
+/** 홈 페이지용: 발행 가이드 최대 limit건 + destination_id/theme_id에 대해 지역·테마명 채움 (카드 뱃지용). */
+export async function getHomeGuidesWithTaxonomyNames(limit = 4): Promise<Guide[]> {
+  return getPublishedGuidesWithTaxonomyNames(limit);
+}
+
+/** 발행 가이드 조회 + destination_id/theme_id에 대해 지역·테마명 채움 (카드 뱃지용). limit 없으면 전체. */
+export async function getPublishedGuidesWithTaxonomyNames(limit?: number): Promise<Guide[]> {
+  const guides = await getPublishedGuides(limit);
+  const destIds = [...new Set(guides.map((g) => g.destination_id).filter(Boolean))] as string[];
+  const themeIds = [...new Set(guides.map((g) => g.theme_id).filter(Boolean))] as string[];
+  const [destMap, themeMap] = await Promise.all([
+    Promise.all(destIds.map((id) => getTaxonomyById(id))).then((list) =>
+      new Map(list.map((t, i) => [destIds[i], t?.name ?? null])),
+    ),
+    Promise.all(themeIds.map((id) => getTaxonomyById(id))).then((list) =>
+      new Map(list.map((t, i) => [themeIds[i], t?.name ?? null])),
+    ),
+  ]);
+  return guides.map((g) => ({
+    ...g,
+    destination_name: g.destination_id ? (destMap.get(g.destination_id) ?? null) : null,
+    theme_name: g.theme_id ? (themeMap.get(g.theme_id) ?? null) : null,
+  }));
 }
 
 /** 홈 페이지용: 발행된 가이드 최대 4건. published_at 우선 정렬, 없으면 created_at. */

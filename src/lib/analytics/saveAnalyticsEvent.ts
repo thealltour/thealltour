@@ -28,7 +28,7 @@ export function toRow(payload: AnalyticsPayload): Record<string, unknown> {
     query: payload.query ?? null,
     result_count: payload.resultCount ?? null,
     product_id: payload.productId ?? null,
-    metadata: null,
+    metadata: payload.metadata ?? null,
     occurred_at: payload.occurredAt,
   };
 }

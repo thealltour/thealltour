@@ -1,11 +1,11 @@
 import SiteHeader from "@/components/SiteHeader";
-import { getPublishedGuides } from "@/lib/guides";
+import { getPublishedGuidesWithTaxonomyNames } from "@/lib/guides";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { GuideCardList } from "@/components/GuideCardList";
 
 export default async function BlogPage() {
-  const guides = await getPublishedGuides();
+  const guides = await getPublishedGuidesWithTaxonomyNames();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">

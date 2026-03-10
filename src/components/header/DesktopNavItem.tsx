@@ -19,6 +19,8 @@ type DesktopNavItemProps = {
   /** 부모에서 관리하는 닫기 지연. 다른 메뉴로 이동 시 대기 중인 닫기가 취소되도록 함 */
   scheduleClose?: () => void;
   cancelClose?: () => void;
+  /** true면 패널은 부모(DesktopMegaMenu)에서 렌더링. 트리거만 렌더하고, leave 시 scheduleClose 호출하지 않음 */
+  renderPanelInParent?: boolean;
   isActive: boolean;
   getNavLinkClass: (isActive: boolean) => string;
 };
@@ -31,6 +33,7 @@ export function DesktopNavItem({
   onClose,
   scheduleClose: scheduleCloseProp,
   cancelClose: cancelCloseProp,
+  renderPanelInParent = false,
   isActive,
   getNavLinkClass,
 }: DesktopNavItemProps) {
@@ -40,6 +43,7 @@ export function DesktopNavItem({
 
   const scheduleClose = scheduleCloseProp ?? onClose;
   const cancelClose = cancelCloseProp ?? (() => {});
+  const handleMouseLeave = renderPanelInParent ? undefined : scheduleClose;
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -92,7 +96,7 @@ export function DesktopNavItem({
           cancelClose();
           onOpen();
         }}
-        onMouseLeave={scheduleClose}
+        onMouseLeave={handleMouseLeave}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
       >
@@ -152,7 +156,7 @@ export function DesktopNavItem({
         >
           <ChevronDown className="h-3.5 w-3.5" aria-hidden />
         </button>
-        {isOpen && (
+        {!renderPanelInParent && isOpen && (
           <DesktopMegaMenuPanel item={item} onClose={onClose} />
         )}
       </div>
@@ -167,7 +171,7 @@ export function DesktopNavItem({
         cancelClose();
         onOpen();
       }}
-      onMouseLeave={scheduleClose}
+      onMouseLeave={handleMouseLeave}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
     >
@@ -211,7 +215,7 @@ export function DesktopNavItem({
       >
         {item.label}
       </button>
-      {hasPanel && isOpen && (
+      {!renderPanelInParent && hasPanel && isOpen && (
         <DesktopMegaMenuPanel item={item} onClose={onClose} />
       )}
     </div>

@@ -69,11 +69,6 @@ function RegionCascadePanel({
       className={cn(PANEL_BASE, "min-w-[900px] w-max")}
       role="menu"
       aria-label="지역별 여행"
-      onMouseLeave={() => {
-        setActiveGroupKey(null);
-        setActiveSubGroupKey(null);
-        onClose();
-      }}
     >
       <div className="grid grid-cols-[200px_200px_200px_260px] gap-8">
         {/* Column 1: 바로가기 */}
@@ -241,7 +236,6 @@ export function DesktopMegaMenuPanel({
       className={cn(PANEL_BASE, "min-w-[520px]")}
       role="menu"
       aria-label={item.label}
-      onMouseLeave={onClose}
     >
       <div className="grid grid-cols-2 gap-8">
         {groups.map((group, groupIndex) => (

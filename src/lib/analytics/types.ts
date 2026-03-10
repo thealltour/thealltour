@@ -17,10 +17,27 @@ export type AnalyticsEventName =
   | "search_recommended_click"
   | "search_result_click"
   | "search_no_result"
+  | "search_filter_change"
+  | "search_sort_change"
+  | "search_relevance_sort"
+  | "search_pagination_click"
+  | "search_recommendation_impression"
+  | "search_recommendation_click"
+  | "search_load_more_click"
+  | "hero_search"
+  | "hero_search_submit"
+  | "hero_autosuggest_impression"
+  | "hero_autosuggest_click"
   | "cta_click"
   | "landing_view"
   | "landing_product_click"
-  | "product_card_click";
+  | "product_card_click"
+  | "product_detail_cta_click"
+  | "product_detail_view_summary"
+  | "product_itinerary_day_click"
+  | "product_itinerary_image_open"
+  | "product_itinerary_cta_click"
+  | "product_cta_click";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =
@@ -35,7 +52,8 @@ export type AnalyticsSource =
   | "products_catalog"
   | "landing_region"
   | "landing_theme"
-  | "consult_cta";
+  | "consult_cta"
+  | "hero_search";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {
@@ -55,4 +73,6 @@ export type AnalyticsPayload = {
   resultCount: number | null;
   productId: string | null;
   occurredAt: string;
+  /** 상세 CTA 등 추가 속성 (metadata jsonb에 저장) */
+  metadata?: Record<string, unknown> | null;
 };

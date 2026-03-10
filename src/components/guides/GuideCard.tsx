@@ -22,7 +22,9 @@ export function GuideCard({ guide, className, variant = "default" }: GuideCardPr
   const thumbUrl =
     guide.cover_image_url ?? guide.thumbnail_url ?? guide.guide_thumbnail_url ?? "";
   const title = guide.title_override?.trim() || guide.title;
-  const showMeta = variant === "default" && (guide.category || (guide.tags?.length ?? 0) > 0);
+  const hasCategoryOrTags = guide.category || (guide.tags?.length ?? 0) > 0;
+  const hasTaxonomyNames = guide.destination_name || guide.theme_name;
+  const showMeta = variant === "default" && (hasCategoryOrTags || !!hasTaxonomyNames);
 
   return (
     <Link
@@ -63,6 +65,16 @@ export function GuideCard({ guide, className, variant = "default" }: GuideCardPr
                 {tag}
               </span>
             ))}
+            {!hasCategoryOrTags && guide.destination_name ? (
+              <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption">
+                {guide.destination_name}
+              </span>
+            ) : null}
+            {!hasCategoryOrTags && guide.theme_name ? (
+              <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption">
+                {guide.theme_name}
+              </span>
+            ) : null}
           </div>
         ) : null}
         <h3 className="font-card-title mt-1 line-clamp-2 type-small font-semibold text-[var(--foreground)]">

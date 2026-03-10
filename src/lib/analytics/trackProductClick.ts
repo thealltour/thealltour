@@ -7,6 +7,18 @@ import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, normalizeAnalyticsLabel } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 
+export type ProductDetailCtaSection = "top" | "sticky_mobile" | "sidebar";
+export type ProductDetailCtaType = "primary" | "kakao";
+
+export type TrackProductDetailCtaClickParams = {
+  productId: string;
+  ctaType: ProductDetailCtaType;
+  section: ProductDetailCtaSection;
+  status?: string;
+  hasPrice?: boolean;
+  pagePath?: string;
+};
+
 export type ProductCardClickSource = "home_curated" | "landing" | "product_list";
 
 export type TrackProductCardClickParams = {
@@ -66,5 +78,174 @@ export function trackProductCardClick(params: TrackProductCardClickParams): void
     );
   } catch {
     // no-op: tracking 실패가 클릭/이동을 막지 않음
+  }
+}
+
+/**
+ * 상품 상세 CTA 클릭 시 호출 (PR18). section = top | sticky_mobile | sidebar.
+ */
+export function trackProductDetailCtaClick(params: TrackProductDetailCtaClickParams): void {
+  try {
+    const pagePath =
+      typeof params.pagePath === "string" && params.pagePath.trim()
+        ? params.pagePath
+        : typeof window !== "undefined"
+          ? window.location.pathname
+          : null;
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS.product_detail_cta_click,
+        source: ANALYTICS_SOURCES.consult_cta,
+        pagePath,
+        productId: params.productId?.trim() || null,
+        section: params.section,
+        label: params.ctaType,
+        metadata: {
+          cta_type: params.ctaType,
+          section: params.section,
+          status: params.status ?? null,
+          has_price: params.hasPrice ?? null,
+        },
+      }),
+    );
+  } catch {
+    // no-op
+  }
+}
+
+/** 일정 Day 탭/네비 클릭 (PR20) */
+export type TrackProductItineraryDayClickParams = {
+  productId: string;
+  dayIndex: number;
+  dayLabel: string;
+  source: "sticky_nav" | "tabs";
+  pagePath?: string;
+};
+
+export function trackProductItineraryDayClick(params: TrackProductItineraryDayClickParams): void {
+  try {
+    const pagePath =
+      typeof params.pagePath === "string" && params.pagePath.trim()
+        ? params.pagePath
+        : typeof window !== "undefined"
+          ? window.location.pathname
+          : null;
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS.product_itinerary_day_click,
+        source: ANALYTICS_SOURCES.consult_cta,
+        pagePath,
+        productId: params.productId?.trim() || null,
+        section: params.source,
+        label: params.dayLabel,
+        metadata: { day_index: params.dayIndex, source: params.source },
+      }),
+    );
+  } catch {
+    // no-op
+  }
+}
+
+/** 일정 이미지 확대 보기 (PR20) */
+export type TrackProductItineraryImageOpenParams = {
+  productId: string;
+  dayIndex: number;
+  eventIndex: number;
+  imageIndex: number;
+  pagePath?: string;
+};
+
+export function trackProductItineraryImageOpen(params: TrackProductItineraryImageOpenParams): void {
+  try {
+    const pagePath =
+      typeof params.pagePath === "string" && params.pagePath.trim()
+        ? params.pagePath
+        : typeof window !== "undefined"
+          ? window.location.pathname
+          : null;
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS.product_itinerary_image_open,
+        source: ANALYTICS_SOURCES.consult_cta,
+        pagePath,
+        productId: params.productId?.trim() || null,
+        section: "itinerary",
+        label: null,
+        metadata: {
+          day_index: params.dayIndex,
+          event_index: params.eventIndex,
+          image_index: params.imageIndex,
+        },
+      }),
+    );
+  } catch {
+    // no-op
+  }
+}
+
+/** 일정 하단 CTA 클릭 (PR20) */
+export type TrackProductItineraryCtaClickParams = {
+  productId: string;
+  dayIndex?: number;
+  ctaType: "primary" | "kakao";
+  pagePath?: string;
+};
+
+export function trackProductItineraryCtaClick(params: TrackProductItineraryCtaClickParams): void {
+  try {
+    const pagePath =
+      typeof params.pagePath === "string" && params.pagePath.trim()
+        ? params.pagePath
+        : typeof window !== "undefined"
+          ? window.location.pathname
+          : null;
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS.product_itinerary_cta_click,
+        source: ANALYTICS_SOURCES.consult_cta,
+        pagePath,
+        productId: params.productId?.trim() || null,
+        section: "itinerary_bottom",
+        label: params.ctaType,
+        metadata: {
+          cta_type: params.ctaType,
+          day_index: params.dayIndex ?? null,
+        },
+      }),
+    );
+  } catch {
+    // no-op
+  }
+}
+
+/** CTA 통합 계측 (PR21): section = top | sticky | itinerary */
+export type TrackProductCtaClickParams = {
+  productId: string;
+  ctaType: "primary" | "kakao";
+  section: "top" | "sticky" | "itinerary";
+  pagePath?: string;
+};
+
+export function trackProductCtaClick(params: TrackProductCtaClickParams): void {
+  try {
+    const pagePath =
+      typeof params.pagePath === "string" && params.pagePath.trim()
+        ? params.pagePath
+        : typeof window !== "undefined"
+          ? window.location.pathname
+          : null;
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS.product_cta_click,
+        source: ANALYTICS_SOURCES.consult_cta,
+        pagePath,
+        productId: params.productId?.trim() || null,
+        section: params.section,
+        label: params.ctaType,
+        metadata: { cta_type: params.ctaType, section: params.section },
+      }),
+    );
+  } catch {
+    // no-op
   }
 }

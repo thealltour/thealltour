@@ -48,7 +48,9 @@ export type ProductCardV2Props = {
   productId?: string;
   /** 목록 페이지 1열 리스트용 레이아웃 시 이미지·타이틀 영역 확장 */
   layout?: "grid" | "list";
-};
+  /** 태그 최대 노출 개수 (기본 3). 과밀 방지 */
+  maxTags?: number;
+}
 
 const STATUS_LABELS: Record<ProductCardV2Status, string> = {
   AVAILABLE: "예약 가능",
@@ -95,6 +97,7 @@ export default function ProductCardV2({
   analyticsSection,
   productId,
   layout = "grid",
+  maxTags = 3,
 }: ProductCardV2Props) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -147,7 +150,8 @@ export default function ProductCardV2({
     variant: badgeTypeToTagVariant(b.type),
   }));
 
-  const topLeftChips = [statusChip, categoryChip, themeChip, ...badgeChips]
+  /** 우선순위: status → 지역/카테고리 1개 → 뱃지 1개, 최대 3개 */
+  const topLeftChipsRaw = [statusChip, categoryChip ?? themeChip, ...badgeChips]
     .filter(
       (x): x is { label: string; variant: "accent" | "muted" | "gold" } => Boolean(x),
     )
@@ -155,6 +159,7 @@ export default function ProductCardV2({
       const key = `${chip.variant}-${chip.label}`;
       return arr.findIndex((c) => `${c.variant}-${c.label}` === key) === index;
     });
+  const topLeftChips = topLeftChipsRaw.slice(0, 3);
 
   const metaLine = [duration, metaInfo].filter(Boolean).join(" · ");
   const isListLayout = layout === "list";
@@ -187,31 +192,38 @@ export default function ProductCardV2({
             alt={title || "상품 이미지"}
             fill
             sizes={isListLayout ? "(max-width: 768px) 38vw, 280px" : "(max-width: 768px) 42vw, 220px"}
-            className={cn("h-full w-full object-cover", CARD_TRANSITION, "group-hover:scale-[1.02]")}
+            className={cn("h-full w-full object-cover", CARD_TRANSITION, "group-hover:scale-[1.03]")}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
           />
-        ) : null}
+        ) : (
+          <div
+            className="flex h-full w-full items-center justify-center text-[var(--text-muted)]"
+            aria-hidden
+          >
+            <span className="text-[11px] font-medium">이미지 없음</span>
+          </div>
+        )}
         <div
           className={cn(
-            "absolute inset-0 bg-[var(--border)]",
+            "absolute inset-0 bg-[var(--surface-muted)]",
             CARD_TRANSITION,
             thumbnailUrl
               ? imageLoaded
                 ? "opacity-0"
-                : "animate-pulse opacity-100"
-              : "animate-pulse",
+                : "animate-pulse opacity-80"
+              : "opacity-0",
           )}
           aria-hidden
         />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
-        <div className="relative min-h-[1.25rem] overflow-hidden">
+        <div className="relative min-h-[2.5rem] overflow-hidden">
           <h2
             className={cn(
               "font-card-title pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] md:text-base",
-              isListLayout ? "line-clamp-2" : "line-clamp-1",
+              isListLayout ? "line-clamp-2" : "line-clamp-2",
             )}
           >
             {title || "상품명"}
@@ -223,24 +235,28 @@ export default function ProductCardV2({
         </div>
 
         {metaLine ? (
-          <p className="line-clamp-1 text-xs text-[var(--text-muted)]">{metaLine}</p>
+          <p className="line-clamp-1 text-[11px] text-[var(--text-muted)]">{metaLine}</p>
         ) : null}
 
-        <div className="mt-0.5 space-y-0.5">
+        <div className="mt-1 space-y-0.5">
           {priceFormatted != null ? (
-            <p className="font-price-strong text-lg font-bold text-[var(--primary)] md:text-xl">
-              {priceFormatted}원~
-            </p>
+            <>
+              <p className="font-price-strong text-xl font-bold leading-tight text-[var(--primary)] md:text-2xl">
+                {priceFormatted}원~
+              </p>
+              {priceMeta ? (
+                <p className="text-[10px] font-medium text-[var(--text-subtle)]">{priceMeta}</p>
+              ) : null}
+            </>
           ) : (
             <p className="text-sm font-semibold text-[var(--text-muted)]">상담 후 견적</p>
           )}
-          {priceMeta ? <p className="text-[11px] text-[var(--text-subtle)]">{priceMeta}</p> : null}
         </div>
 
         {tags.length > 0 ? (
-          <div className="relative mt-auto flex overflow-hidden">
+          <div className="relative mt-auto flex overflow-hidden pt-1">
             <div className="flex shrink-0 flex-nowrap gap-1.5 pr-8">
-              {tags.map((tag) => (
+              {tags.slice(0, maxTags).map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex shrink-0 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)]"
@@ -257,6 +273,17 @@ export default function ProductCardV2({
         ) : (
           <div className="mt-auto" />
         )}
+
+        {hrefDetail ? (
+          <div className="mt-1 flex justify-end">
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[var(--primary)] opacity-90 group-hover:opacity-100" aria-hidden>
+              자세히 보기
+              <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </span>
+          </div>
+        ) : null}
 
         {onClickConsult ? (
           <div className="pt-1">
@@ -300,7 +327,11 @@ export default function ProductCardV2({
       }
     };
     return (
-      <Link href={hrefDetail} className="block h-full" onClick={handleCardClick}>
+      <Link
+        href={hrefDetail}
+        className="block h-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
+        onClick={handleCardClick}
+      >
         <Card variant="interactive" className={wrapperClass}>
           {cardContent}
         </Card>
@@ -311,7 +342,7 @@ export default function ProductCardV2({
   return (
     <Card
       variant="interactive"
-      className={wrapperClass}
+      className={cn(wrapperClass, "outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2")}
       role="button"
       tabIndex={0}
       onClick={onClickDetail}

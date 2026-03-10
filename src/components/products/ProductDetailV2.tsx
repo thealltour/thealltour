@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import Tag from "@/components/ui/Tag";
@@ -11,7 +11,6 @@ import TrustSignals from "@/components/products/TrustSignals";
 import { OptionPanel } from "@/components/products/OptionPanel";
 import { QuoteSummary } from "@/components/products/QuoteSummary";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
-import { useConsultModal } from "@/components/ConsultModal";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
 import { calcQuote, formatPriceKR } from "@/lib/pricing/calcQuote";
 import type { Product, ProductTrust, ProductOptions, SelectedOptions } from "@/types/product";
@@ -24,6 +23,10 @@ import { ProductImageCarousel } from "@/components/products/ProductImageCarousel
 import type { ProductGalleryImage } from "@/components/products/ProductImageGalleryModal";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getPrimaryImageUrl } from "@/lib/products/images";
+import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
+import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
+import { ProductTripHighlights } from "@/components/products/ProductTripHighlights";
+import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -227,7 +230,6 @@ export default function ProductDetailV2({
     () => calcQuote(options, selectedOptions),
     [options, selectedOptions],
   );
-  const { openModal } = useConsultModal();
   const displayPrice = hasOptions && quote.total != null
     ? formatPriceKR(quote.total)
     : priceFormatted;
@@ -254,25 +256,6 @@ export default function ProductDetailV2({
     setSelectedOptions((prev) => ({ ...prev, [groupId]: optionId }));
   }, []);
 
-  const handlePrimaryCta = () => {
-    if (requiredGroupsMissing) {
-      optionsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    if (isSoldOut && typeof window !== "undefined") {
-      window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
-    }
-    if (productId != null) {
-      openModal({ productId, productTitle, sourcePath });
-      return;
-    }
-    if (consultHref) {
-      window.location.href = consultHref;
-      return;
-    }
-    onConsultClick?.();
-  };
-
   const scheduleDays = useMemo(() => parseScheduleDays(detailedSchedule), [detailedSchedule]);
   const includedLines = useMemo(() => parseBulletLines(includedItems), [includedItems]);
   const excludedLines = useMemo(() => parseBulletLines(excludedItems), [excludedItems]);
@@ -283,12 +266,27 @@ export default function ProductDetailV2({
   const listClass = "space-y-2 text-sm leading-[1.7] text-slate-700";
   const bulletClass = "mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]";
 
+  /** 상단 핵심 포인트 2~3개 (오버뷰 카드에서 값이 있는 것만) */
+  const heroKeyPoints = useMemo(() => {
+    const cards = overviewForCards?.cards ?? [];
+    const CONSULT = "상담 시 안내";
+    return cards
+      .filter((c) => c.value?.trim() && c.value.trim() !== CONSULT)
+      .slice(0, 3)
+      .map((c) => ({ label: c.label, value: c.value!.trim() }));
+  }, [overviewForCards]);
+
   return (
     <div className="space-y-8">
       {/* DetailHero */}
       <section className="space-y-5">
-        {/* TagRow: 지역/카테고리/상태 */}
+        {/* TagRow: 상태 우선, 그 다음 지역/카테고리 */}
         <div className="flex flex-wrap items-center gap-2">
+          {statusTag != null && (
+            <Tag variant={statusTag === "AVAILABLE" ? "accent" : statusTag === "LIMITED" ? "gold" : "muted"} size="sm">
+              {STATUS_LABELS[statusTag]}
+            </Tag>
+          )}
           {region ? (
             <Tag variant="accent" size="sm">
               {region}
@@ -299,11 +297,6 @@ export default function ProductDetailV2({
               {category}
             </Tag>
           ) : null}
-          {statusTag != null && (
-            <Tag variant={statusTag === "AVAILABLE" ? "accent" : statusTag === "LIMITED" ? "gold" : "muted"} size="sm">
-              {STATUS_LABELS[statusTag]}
-            </Tag>
-          )}
         </div>
 
         <h1 className="font-card-title text-2xl font-bold leading-tight text-[#0f172a] md:text-3xl">
@@ -324,9 +317,8 @@ export default function ProductDetailV2({
         {oneLiner ? (
           <p className="whitespace-pre-wrap text-sm leading-[1.75] text-slate-600 md:text-base">{oneLiner}</p>
         ) : null}
-        <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
 
-        {/* Price Summary Card: 모바일에서만 표시. 웹에서는 오른쪽 예상가 카드에 동일 정보 표시 */}
+        {/* Price Summary Card: 모바일에서만, 캐러셀 위에 배치해 첫 화면에서 가격 노출 */}
         <Card
           variant="default"
           className="border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe] md:hidden"
@@ -353,6 +345,8 @@ export default function ProductDetailV2({
           <p className="mt-0.5 text-xs text-slate-500">유류할증료는 상담 시 안내</p>
         </Card>
 
+        <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
+
         {hasOptions && (
           <div id="product-options-panel" ref={optionsPanelRef}>
             <OptionPanel
@@ -370,35 +364,72 @@ export default function ProductDetailV2({
         {/* Trust Signals: 데이터 있을 때만 */}
         <TrustSignals trust={trust} />
 
-        {/* CTA 2개: 모바일에서만 표시. 웹에서는 오른쪽 예상가 카드에 동일 버튼 있음 */}
+        {/* 핵심 포인트 2~3개: CTA 바로 위 */}
+        {heroKeyPoints.length > 0 && (
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="핵심 포인트">
+            {heroKeyPoints.map((p) => (
+              <li key={`${p.label}-${p.value}`} className="flex items-center gap-1.5">
+                <span className="h-1 w-1 shrink-0 rounded-full bg-[#2563eb]" aria-hidden />
+                <span><strong className="font-semibold text-slate-700">{p.label}</strong> {p.value}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* CTA: 모바일에서만 표시. 통합 ProductConsultCTA 사용 */}
         <div className="mb-0 md:hidden">
-          {requiredGroupsMissing && (
-            <p className="mb-2 text-sm text-amber-600">
-              필수 옵션을 선택해 주세요.
-            </p>
+          {productId ? (
+            <ProductConsultCTA
+              productId={productId}
+              productTitle={productTitle ?? ""}
+              sourcePath={sourcePath ?? ""}
+              status={statusTag}
+              kakaoHref={kakaoHref || undefined}
+              section="top"
+              requiredGroupsMissing={requiredGroupsMissing}
+              scrollToOptions={() => optionsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              isSoldOut={isSoldOut}
+            />
+          ) : (
+            <>
+              {requiredGroupsMissing && (
+                <p className="mb-2 text-sm text-amber-600">필수 옵션을 선택해 주세요.</p>
+              )}
+              <div className="flex flex-wrap gap-3">
+                {consultHref ? (
+                  <a href={consultHref}>
+                    <Button variant="primary" size="md">{getProductCtaLabel(statusTag)}</Button>
+                  </a>
+                ) : null}
+                {kakaoHref ? (
+                  <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="md">카톡 상담</Button>
+                  </a>
+                ) : null}
+              </div>
+              <p className="mt-2 text-[11px] text-slate-500">상담 후 확정 · 맞춤 견적 안내</p>
+            </>
           )}
-          <div className="flex flex-wrap gap-3">
-            {productId != null || isSoldOut || !consultHref ? (
-              <Button variant="primary" size="md" onClick={handlePrimaryCta}>
-                {isSoldOut ? "대기 문의" : "상담 문의"}
-              </Button>
-            ) : (
-              <a href={consultHref}>
-                <Button variant="primary" size="md">
-                  상담 문의
-                </Button>
-              </a>
-            )}
-            {kakaoHref ? (
-              <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="md">
-                  카톡 상담
-                </Button>
-              </a>
-            ) : null}
-          </div>
         </div>
       </section>
+
+      {/* Trip Highlights: 여행 핵심 특징 (최대 4개) */}
+      <ProductTripHighlights
+        product={product}
+        duration={duration}
+        region={region}
+        category={category}
+        theme={product?.theme}
+        maxItems={4}
+      />
+
+      {/* Itinerary Preview: 일정 미리보기 (최대 4일) */}
+      <ProductItineraryPreview
+        timelineModel={timelineModel?.days?.length ? timelineModel : null}
+        scheduleDays={scheduleDays}
+        maxDays={4}
+        itinerarySectionId="itinerary-section"
+      />
 
       {/* 여행 오버뷰: 항공 카드는 별도 섹션으로 분리 */}
       <TravelOverviewV2
@@ -431,6 +462,11 @@ export default function ProductDetailV2({
               <InteractiveTimelineV2
                 model={timelineModel}
                 fallbackImageUrl={resolvedOverviewFallbackUrl || null}
+                productId={productId}
+                status={statusTag}
+                productTitle={productTitle}
+                sourcePath={sourcePath}
+                kakaoHref={kakaoHref}
               />
             ) : hasSchedule ? (
               <>
@@ -469,13 +505,13 @@ export default function ProductDetailV2({
         {activeTab === "included" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
-              {/* 포함 사항 - 긍정 색상 박스, 웹에서 왼쪽 */}
+              {/* 포함 사항 - 체크 아이콘 리스트 */}
               <AlertCard variant="success" title="포함 사항">
                 {includedLines.length > 0 ? (
                   <ul className={listClass}>
                     {includedLines.map((line, i) => (
                       <li key={i} className="flex items-start gap-2">
-                        <span className={bulletClass} />
+                        <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
                         <span>{line}</span>
                       </li>
                     ))}
@@ -484,13 +520,13 @@ export default function ProductDetailV2({
                   <p className="text-sm text-slate-500">등록된 포함 사항이 없습니다.</p>
                 )}
               </AlertCard>
-              {/* 불포함 사항 - 웹에서 오른쪽 */}
+              {/* 불포함 사항 - X 아이콘 리스트 */}
               <AlertCard variant="warning" title="불포함 사항">
                 {excludedLines.length > 0 ? (
                   <ul className={listClass}>
                     {excludedLines.map((line, i) => (
                       <li key={i} className="flex items-start gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden />
                         <span>{line}</span>
                       </li>
                     ))}

@@ -36,13 +36,15 @@ const TIMEOFDAY_LABELS: Record<TimeOfDayLabel, string> = {
 function eventToLightboxImages(event: TimelineEvent): LightboxImage[] {
   const list = event.images ?? [];
   if (list.length === 0) return [];
-  return list.map((item) => ({ url: item.url, alt: item.alt }));
+  return list
+    .filter((item) => item?.url?.trim() && /^https?:\/\//i.test(item.url.trim()))
+    .map((item) => ({ url: item.url, alt: item.alt }));
 }
 
 function eventToMediaImages(event: TimelineEvent): EventMediaImage[] {
   const list = event.images ?? [];
   if (list.length === 0) return [];
-  return [...list];
+  return list.filter((item) => item?.url?.trim() && /^https?:\/\//i.test(item.url.trim()));
 }
 
 export type TimelineEventCardProps = {

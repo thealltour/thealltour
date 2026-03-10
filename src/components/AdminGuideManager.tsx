@@ -490,8 +490,7 @@ export default function AdminGuideManager() {
             />
           </div>
           ) : null}
-          {/* SEO 설정 */}
-          {isNotionForm ? (
+          {/* SEO 설정 — 노션/일반 공통 */}
           <div className="md:col-span-2 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3">
             <h4 className="text-sm font-semibold text-[var(--text-secondary)]">SEO 설정</h4>
             <label className="flex flex-col gap-2 text-sm font-medium text-[var(--text-primary)]">
@@ -514,7 +513,9 @@ export default function AdminGuideManager() {
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs font-normal text-[var(--text-muted)]">비우면 노션 첫 문단에서 자동 생성됩니다</span>
+                <span className="text-xs font-normal text-[var(--text-muted)]">
+                  {isNotionForm ? "비우면 노션 첫 문단에서 자동 생성됩니다" : "비우면 카드 요약(summary)을 사용합니다"}
+                </span>
                 <span
                   className={`text-xs font-medium ${
                     form.seo_description.length > 160 ? "text-[var(--danger)]" : "text-[var(--text-muted)]"
@@ -535,7 +536,6 @@ export default function AdminGuideManager() {
               <span className="text-xs font-normal text-[var(--text-muted)]">운영/콘텐츠 전략용 필드입니다</span>
             </label>
           </div>
-          ) : null}
           <label className="flex flex-col gap-2 text-sm font-medium text-[var(--text-primary)]">
             정렬 순서
             <input

@@ -7,6 +7,7 @@ import {
   extractImageUrlsFromNodeWithSizeFilter,
   filterUsefulImageUrls,
   normalizeModetourImageUrl,
+  toAbsoluteImageUrl,
 } from "~lib/images";
 
 const DAY_HEADER_REGEX = /(^|\s)(\d{1,2})일차(\s|$)/;
@@ -56,13 +57,16 @@ function getTimelineDescription(contentRoot: Element): string {
 }
 
 function getSwiperThumbUrls(contentRoot: Element): string[] {
+  const doc = contentRoot.ownerDocument;
+  const base = (doc?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
   const thumbs = contentRoot.querySelectorAll(".swiper-thumbs img[src]");
   const preferred: string[] = [];
   const fallback: string[] = [];
   thumbs.forEach((img) => {
     const src = (img as HTMLImageElement).getAttribute("src")?.trim();
     if (!src) return;
-    const normalized = normalizeModetourImageUrl(src);
+    const absolute = toAbsoluteImageUrl(src, base);
+    const normalized = normalizeModetourImageUrl(absolute);
     if (normalized.toLowerCase().includes(EAGLE_PHOTOIMG)) preferred.push(normalized);
     else fallback.push(normalized);
   });
@@ -136,7 +140,9 @@ function extractEventsInOrder(
       const imageUrls = getSwiperThumbUrls(contentRoot);
       if (descriptionText.length <= MIN_DESCRIPTION_FOR_ACCEPT && imageUrls.length === 0) continue;
       order += 1;
-      const fallbackUrls = filterUsefulImageUrls(extractImageUrlsFromNodeWithSizeFilter(contentRoot, 80, 80)).filter((u) => !imageUrls.includes(u));
+      const base = (contentRoot.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
+      const rawFallback = filterUsefulImageUrls(extractImageUrlsFromNodeWithSizeFilter(contentRoot, 80, 80));
+      const fallbackUrls = rawFallback.map((u) => toAbsoluteImageUrl(u, base)).filter((u) => !imageUrls.includes(u));
       const combined = [...imageUrls, ...fallbackUrls].slice(0, MAX_IMAGES_PER_EVENT);
       const timeMatch = (contentRoot as HTMLElement).textContent?.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
       events.push({
@@ -341,9 +347,13 @@ export function extractItineraryFromDom(root: Document): DomItineraryResult {
     debug.cardCount = (debug.cardCount ?? 0) + cardCount;
     debug.eventCountByDay.push(events.length);
 
-    const dayImageUrls = filterUsefulImageUrls(
-      extractImageUrlsFromNodeWithSizeFilter(dayContainer, 80, 80),
-    );
+    const dayImageUrls = (() => {
+      const base = (dayContainer.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
+      const raw = filterUsefulImageUrls(
+        extractImageUrlsFromNodeWithSizeFilter(dayContainer, 80, 80),
+      );
+      return raw.map((u) => toAbsoluteImageUrl(u, base));
+    })();
     const assignedToEvents = new Set(events.flatMap((e) => e.imageUrls ?? []));
     const dayOnlyUrls = dayImageUrls.filter((u) => !assignedToEvents.has(u)).slice(0, 5);
 

@@ -87,7 +87,7 @@ export default async function ReviewsPage({ searchParams }: Props) {
         <PageHero
           kicker="THEALL TOUR REVIEWS"
           title="여행후기"
-          subtitle="실제 고객님들이 남긴 여행 후기를 카드형으로 한눈에 확인해 보세요. 여행후기 작성은 회원 전용입니다."
+          subtitle="실제 고객님들이 남긴 여행 후기를 카드형으로 한눈에 확인해 보세요."
           size="sm"
         />
         <Breadcrumb items={[{ label: "홈", href: "/" }, { label: "여행후기" }]} />
@@ -95,29 +95,12 @@ export default async function ReviewsPage({ searchParams }: Props) {
         <section className="space-y-4">
           <ReviewSearchBar />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {session ? (
-              <Link
-                href="/reviews/write"
-                className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
-              >
-                여행후기 작성하기
-              </Link>
-            ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
-                  href="/login?next=/reviews/write"
-                  className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
-                >
-                  로그인 후 후기 작성
-                </Link>
-                <Link
-                  href="/signup"
-                  className="type-btn inline-flex rounded-full border border-[#1E3A8A]/40 bg-white px-5 py-2.5 text-[#1E3A8A] transition hover:bg-[#E9EEF5]"
-                >
-                  회원가입
-                </Link>
-              </div>
-            )}
+            <Link
+              href="/reviews/write"
+              className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
+            >
+              여행후기 작성하기
+            </Link>
             <p className="type-caption text-content-muted">
               등록된 후기 {reviews.length}건
             </p>
@@ -132,21 +115,12 @@ export default async function ReviewsPage({ searchParams }: Props) {
               <p className="type-small text-content-muted">조건에 맞는 여행후기가 없습니다.</p>
               <p className="mt-2 type-body text-content-primary">여행을 다녀오셨나요? 후기를 남겨주세요.</p>
               <div className="mt-4">
-                {session ? (
-                  <Link
-                    href="/reviews/write"
-                    className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
-                  >
-                    후기 작성하기
-                  </Link>
-                ) : (
-                  <Link
-                    href="/login?next=/reviews/write"
-                    className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
-                  >
-                    로그인 후 후기 작성
-                  </Link>
-                )}
+                <Link
+                  href="/reviews/write"
+                  className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
+                >
+                  후기 작성하기
+                </Link>
               </div>
             </div>
           ) : (

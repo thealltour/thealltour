@@ -56,21 +56,29 @@ export function modetourImportToDraft(input: ModetourImportV1): {
 
   if (input.itinerary?.days?.length) {
     const days: ItineraryV2Day[] = input.itinerary.days.map((d) => {
-      const events: ItineraryV2Event[] = (d.events ?? []).map((ev) => ({
-        order: ev.order,
-        timeText: ev.timeText?.trim() || undefined,
-        heading: ev.title?.trim() ?? "",
-        description: ev.descriptionText?.trim() || undefined,
-        iconKey: undefined,
-        images: ev.imageUrls?.length
-          ? ev.imageUrls.map((url, i) => ({ url: url.trim(), sortOrder: i, isCover: i === 0 }))
-          : undefined,
-      }));
+      const events: ItineraryV2Event[] = (d.events ?? []).map((ev) => {
+        const rawUrls = ev.imageUrls ?? [];
+        const absoluteUrls = rawUrls
+          .map((u) => u?.trim())
+          .filter((u) => u && /^https?:\/\//i.test(u));
+        return {
+          order: ev.order,
+          timeText: ev.timeText?.trim() || undefined,
+          heading: ev.title?.trim() ?? "",
+          description: ev.descriptionText?.trim() || undefined,
+          iconKey: undefined,
+          images:
+            absoluteUrls.length > 0
+              ? absoluteUrls.map((url, i) => ({ url, sortOrder: i, isCover: i === 0 }))
+              : undefined,
+        };
+      });
+      const dayCoverUrl = d.imageUrls?.[0]?.trim();
       return {
         day: d.dayNumber,
         title: d.title?.trim() || undefined,
         dateText: d.dateText?.trim() || undefined,
-        coverImageUrl: d.imageUrls?.[0]?.trim() || undefined,
+        coverImageUrl: dayCoverUrl && /^https?:\/\//i.test(dayCoverUrl) ? dayCoverUrl : undefined,
         events,
       };
     });

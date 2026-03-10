@@ -2,6 +2,20 @@
  * 이미지 수집 v3: hero(og:image 우선) + gallery/detail 강한 필터 + 일정 스코프 이미지.
  */
 
+/**
+ * 상대 URL을 base 기준 절대 URL로 변환. 이미 절대 URL이면 그대로 반환.
+ * 익스텐션에서 추출한 이미지 URL이 상대 경로일 때 우리 사이트에서 로드하려면 절대 URL이 필요함.
+ */
+export function toAbsoluteImageUrl(url: string, base: string): string {
+  const u = url?.trim();
+  if (!u) return "";
+  if (/^https?:\/\//i.test(u)) return u;
+  try {
+    return new URL(u, base).href;
+  } catch {
+    return u;
+  }
+}
 const EXCLUDE_EXT = /\.(svg|gif|ico)(\?|$)/i;
 const EXCLUDE_KEYWORDS = /icon|logo|sprite|blank|loading|spinner|btn|banner|ad|kakao|naver|facebook|share|button|arrow|close|menu|pixel|1x1/i;
 const EXCLUDE_SMALL_SIZE = /\bw=(?:16|24|32)\b/i;

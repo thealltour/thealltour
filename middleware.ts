@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ADMIN_AUTH_COOKIE } from "@/lib/adminAuth";
 
-const MEMBER_AUTH_COOKIE = "theall_member_auth";
 const LEGACY_ADMIN_PREFIX = "/admin";
 const MANAGER_PREFIX = "/theall_manager_only";
 const MANAGER_LOGIN_PATH = `${MANAGER_PREFIX}/login`;
@@ -12,14 +11,9 @@ function isAuthenticated(request: NextRequest) {
   return request.cookies.get(ADMIN_AUTH_COOKIE)?.value === "1";
 }
 
-function isMemberAuthenticated(request: NextRequest) {
-  return Boolean(request.cookies.get(MEMBER_AUTH_COOKIE)?.value);
-}
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const authenticated = isAuthenticated(request);
-  const memberAuthenticated = isMemberAuthenticated(request);
 
   if (pathname === LEGACY_ADMIN_PREFIX || pathname.startsWith(`${LEGACY_ADMIN_PREFIX}/`)) {
     const redirectedUrl = request.nextUrl.clone();
@@ -44,21 +38,6 @@ export function middleware(request: NextRequest) {
     if (!isAuthPath && !authenticated) {
       return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
     }
-  }
-
-  if (pathname === "/reviews/write" && !memberAuthenticated) {
-    return NextResponse.redirect(new URL("/login?next=/reviews/write", request.url));
-  }
-
-  if (pathname === "/api/reviews" && request.method === "POST" && !memberAuthenticated) {
-    return NextResponse.json({ message: "회원 로그인 후 작성할 수 있습니다." }, { status: 401 });
-  }
-  if (
-    pathname.startsWith("/api/reviews/") &&
-    (request.method === "PATCH" || request.method === "DELETE") &&
-    !memberAuthenticated
-  ) {
-    return NextResponse.json({ message: "회원 로그인 후 이용할 수 있습니다." }, { status: 401 });
   }
 
   if (pathname === "/api/inquiries" && request.method === "GET" && !authenticated) {

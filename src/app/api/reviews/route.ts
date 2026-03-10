@@ -19,6 +19,7 @@ type ReviewBody = {
   eligibility_id?: string;
   status?: "draft" | "submitted";
   summary?: string;
+  author_name?: string;
   content_good?: string;
   content_bad?: string;
   content_tip?: string;
@@ -38,11 +39,18 @@ export async function GET() {
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
-  if (!session) {
-    return NextResponse.json({ message: "회원 로그인 후 작성할 수 있습니다." }, { status: 401 });
-  }
 
   const body = (await request.json()) as ReviewBody;
+  const eligibilityId = typeof body.eligibility_id === "string" ? body.eligibility_id.trim() : null;
+  if (!session) {
+    if (eligibilityId) {
+      return NextResponse.json(
+        { message: "예약 연동 후기를 작성하려면 로그인이 필요합니다." },
+        { status: 403 },
+      );
+    }
+  }
+
   const title = body.title?.trim() ?? "";
   const content = body.content?.trim() ?? "";
   const summary = body.summary?.trim() ?? "";
@@ -58,7 +66,6 @@ export async function POST(request: Request) {
     typeof body.rating === "number" && Number.isFinite(body.rating)
       ? Math.round(body.rating)
       : undefined;
-  const eligibilityId = typeof body.eligibility_id === "string" ? body.eligibility_id.trim() : null;
   const isDraft = body.status === "draft";
 
   const parseDetailRating = (val: unknown): number | null => {
@@ -116,6 +123,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "유효하지 않은 후기 작성 권한입니다." }, { status: 404 });
     }
 
+    if (!session) {
+      return NextResponse.json(
+        { message: "예약 연동 후기를 작성하려면 로그인이 필요합니다." },
+        { status: 403 },
+      );
+    }
     if (eligibility.claimed_by_member_id !== session.memberId) {
       return NextResponse.json({ message: "본인에게 부여된 후기 작성 권한이 아닙니다." }, { status: 403 });
     }
@@ -177,18 +190,24 @@ export async function POST(request: Request) {
             authorName: session.name,
             title: title || summary || "후기",
           });
-          const reward = await createReviewReward({
-            id: existingReview.id,
-            member_id: session.memberId,
-            status: "submitted",
-            eligibility_id: eligibilityId,
-          });
+          let rewardCreated = false;
+          let pointsAwarded: number | undefined;
+          if (session) {
+            const reward = await createReviewReward({
+              id: existingReview.id,
+              member_id: session.memberId,
+              status: "submitted",
+              eligibility_id: eligibilityId,
+            });
+            rewardCreated = reward.rewardCreated;
+            pointsAwarded = reward.rewardCreated ? reward.points : undefined;
+          }
           return NextResponse.json({
             message: isDraft ? "임시저장되었습니다." : "후기가 등록되었습니다.",
             review_id: existingReview.id,
             eligibility_based: true,
-            rewardCreated: reward.rewardCreated,
-            pointsAwarded: reward.rewardCreated ? reward.points : undefined,
+            rewardCreated,
+            pointsAwarded,
           }, { status: isDraft ? 200 : 201 });
         }
       }
@@ -200,9 +219,10 @@ export async function POST(request: Request) {
 
   const finalContent = content || buildFallbackContent(contentGood, contentBad, contentTip);
 
+  const guestAuthorName = (body.author_name?.trim() || "비회원").slice(0, 100);
   const payload: Record<string, unknown> = {
-    member_id: session.memberId,
-    author_name: session.name,
+    member_id: session?.memberId ?? null,
+    author_name: session?.name ?? guestAuthorName,
     title,
     content: finalContent,
     summary: summary || null,
@@ -240,8 +260,8 @@ export async function POST(request: Request) {
     const insertLegacy = await supabase
       .from("reviews")
       .insert({
-        member_id: session.memberId,
-        author_name: session.name,
+        member_id: session?.memberId ?? null,
+        author_name: session?.name ?? guestAuthorName,
         title,
         content: finalContent,
         image_url: imageUrl,
@@ -284,18 +304,24 @@ export async function POST(request: Request) {
     if (eligibilityId) {
       await cancelReviewReminders(eligibilityId);
     }
-    const reward = await createReviewReward({
-      id: String(insertResult.data.id),
-      member_id: session.memberId,
-      status: "submitted",
-      eligibility_id: eligibilityId,
-    });
+    let rewardCreated = false;
+    let pointsAwarded: number | undefined;
+    if (session) {
+      const reward = await createReviewReward({
+        id: String(insertResult.data.id),
+        member_id: session.memberId,
+        status: "submitted",
+        eligibility_id: eligibilityId,
+      });
+      rewardCreated = reward.rewardCreated;
+      pointsAwarded = reward.rewardCreated ? reward.points : undefined;
+    }
     return NextResponse.json({
       message: "후기가 등록되었습니다.",
       review_id: String(insertResult.data.id),
       eligibility_based: true,
-      rewardCreated: reward.rewardCreated,
-      pointsAwarded: reward.rewardCreated ? reward.points : undefined,
+      rewardCreated,
+      pointsAwarded,
     }, { status: 201 });
   }
 

@@ -81,6 +81,8 @@ import {
   ADMIN_PRODUCTS_QUERY_KEYS,
   DEFAULT_PRODUCTS_PAGE_SIZE,
 } from "@/components/admin/products/adminProducts.constants";
+import { buildRegionTree } from "@/lib/productTaxonomies";
+import type { RegionTreeNode } from "@/types/productTaxonomy";
 
 function normalizeUrlForCompare(url: string): string {
   return url.trim();
@@ -161,6 +163,51 @@ function buildTaxonomyGroupsForForm(
     })
     .map((i) => ({ id: i.id, name: i.name ?? "" }));
   return flat.length > 0 ? [{ label: fallbackGroupLabel, items: flat }] : [];
+}
+
+/** 트리에서 id에 해당하는 노드까지의 경로(루트→리프) 반환. 없으면 []. */
+function getPathToNodeById(tree: RegionTreeNode[], targetId: string): RegionTreeNode[] {
+  const path: RegionTreeNode[] = [];
+  function find(nodes: RegionTreeNode[], target: string): boolean {
+    for (const node of nodes) {
+      path.push(node);
+      if (node.id === target) return true;
+      if (node.children?.length && find(node.children, target)) return true;
+      path.pop();
+    }
+    return false;
+  }
+  find(tree, targetId);
+  return path;
+}
+
+/** 트리 모든 노드 id 수집 (activeDestinationIds 등용). */
+function flattenTreeIds(nodes: RegionTreeNode[]): string[] {
+  const ids: string[] = [];
+  function walk(n: RegionTreeNode) {
+    ids.push(n.id);
+    n.children?.forEach(walk);
+  }
+  nodes.forEach(walk);
+  return ids;
+}
+
+/** 트리에서 name에 해당하는 노드까지의 경로(루트→리프) 반환. 첫 번째 일치. 없으면 []. */
+function getPathToNodeByName(tree: RegionTreeNode[], targetName: string): RegionTreeNode[] {
+  const path: RegionTreeNode[] = [];
+  const name = targetName.trim();
+  if (!name) return [];
+  function find(nodes: RegionTreeNode[], target: string): boolean {
+    for (const node of nodes) {
+      path.push(node);
+      if (node.name === target) return true;
+      if (node.children?.length && find(node.children, target)) return true;
+      path.pop();
+    }
+    return false;
+  }
+  find(tree, name);
+  return path;
 }
 
 const initialFormState: ProductFormState = createEmptyAdminProductFormState();
@@ -299,27 +346,18 @@ export default function AdminProductManager() {
       setForm((prev) => ({ ...prev, category: name }));
     },
     onThemeAdded(name) {
-      setForm((prev) => {
-        const current = parseThemeList(prev.theme);
-        if (current.includes(name)) return prev;
-        return { ...prev, theme: stringifyThemeList([...current, name]) };
-      });
+      setForm((prev) => ({ ...prev, theme: name }));
     },
   });
 
-  const [quickAddCategoryName, setQuickAddCategoryName] = useState("");
-  const [quickAddThemeName, setQuickAddThemeName] = useState("");
-
-  function parseThemeList(value: string) {
-    return value
-      .split(/[,\n|]+/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-  }
-
-  function stringifyThemeList(list: string[]) {
-    return list.join(",");
-  }
+  /** 대분류만 선택한 상태(중분류 표시용). destination_id가 있으면 path로 대체. */
+  const [selectedLevel1Id, setSelectedLevel1Id] = useState("");
+  /** 중분류만 선택한 상태(소분류 표시용). */
+  const [selectedLevel2Id, setSelectedLevel2Id] = useState("");
+  /** 테마 대분류만 선택한 상태(중분류 표시용). */
+  const [selectedThemeLevel1Id, setSelectedThemeLevel1Id] = useState("");
+  /** 테마 중분류만 선택한 상태(소분류 표시용). */
+  const [selectedThemeLevel2Id, setSelectedThemeLevel2Id] = useState("");
 
   function parseCampaignsList(value: string) {
     return value
@@ -728,27 +766,45 @@ export default function AdminProductManager() {
       ),
     [taxonomyController.destinationOptions],
   );
+  const destinationTree = useMemo(
+    () =>
+      buildRegionTree(
+        taxonomyController.destinationOptions.filter((i) => i.taxonomy_type === "destination"),
+      ),
+    [taxonomyController.destinationOptions],
+  );
   const categoryOptions = useMemo(
     () => categoryGroups.flatMap((g) => g.items.map((i) => i.name)),
     [categoryGroups],
   );
   const activeDestinationIds = useMemo(
-    () => new Set(categoryGroups.flatMap((g) => g.items.map((i) => i.id))),
-    [categoryGroups],
+    () => new Set(flattenTreeIds(destinationTree)),
+    [destinationTree],
   );
-  const selectedThemes = useMemo(() => parseThemeList(form.theme), [form.theme]);
-  const themeGroups = useMemo(
+  const destinationPath = useMemo(
+    () => (form.destination_id ? getPathToNodeById(destinationTree, form.destination_id) : []),
+    [destinationTree, form.destination_id],
+  );
+  const themeTree = useMemo(
     () =>
-      buildTaxonomyGroupsForForm(
+      buildRegionTree(
         taxonomyController.themeOptions.filter((i) => i.taxonomy_type === "theme"),
-        "테마",
       ),
     [taxonomyController.themeOptions],
   );
-  const availableThemeOptions = useMemo(
-    () => themeGroups.flatMap((g) => g.items.map((i) => i.name)),
-    [themeGroups],
+  const themePath = useMemo(
+    () => (form.theme.trim() ? getPathToNodeByName(themeTree, form.theme.trim()) : []),
+    [themeTree, form.theme],
   );
+  const availableThemeOptions = useMemo(() => {
+    const names: string[] = [];
+    function walk(n: RegionTreeNode) {
+      names.push(n.name);
+      n.children?.forEach(walk);
+    }
+    themeTree.forEach(walk);
+    return names;
+  }, [themeTree]);
   const activeProductLineOptions = useMemo(
     () =>
       taxonomyController.productLineOptions.filter(
@@ -1140,9 +1196,10 @@ export default function AdminProductManager() {
       setForm((prev) => ({ ...prev, category: "" }));
       return;
     }
+    if (form.destination_id) return;
     if (categoryOptions.includes(form.category)) return;
-    setForm((prev) => ({ ...prev, category: categoryOptions[0] }));
-  }, [categoryOptions, form.category]);
+    setForm((prev) => ({ ...prev, category: "" }));
+  }, [categoryOptions, form.category, form.destination_id]);
 
   useEffect(() => {
     if (form.destination_id && !activeDestinationIds.has(form.destination_id)) {
@@ -1151,19 +1208,38 @@ export default function AdminProductManager() {
   }, [activeDestinationIds, form.destination_id]);
 
   useEffect(() => {
+    setSelectedLevel1Id("");
+    setSelectedLevel2Id("");
+    setSelectedThemeLevel1Id("");
+    setSelectedThemeLevel2Id("");
+  }, [editingId]);
+
+  const themeSyncRef = useRef(false);
+  useEffect(() => {
+    if (themeSyncRef.current) return;
     const allowedThemes = new Set(availableThemeOptions);
-    const cleaned = parseThemeList(form.theme).filter((theme) => allowedThemes.has(theme));
-    const cleanedText = stringifyThemeList(cleaned);
-    if (cleanedText === form.theme) return;
-    setForm((prev) => ({ ...prev, theme: cleanedText }));
+    const current = form.theme.trim();
+    const cleaned = current && allowedThemes.has(current) ? current : "";
+    if (cleaned !== current) {
+      themeSyncRef.current = true;
+      setForm((prev) => ({ ...prev, theme: cleaned }));
+      queueMicrotask(() => { themeSyncRef.current = false; });
+    }
   }, [availableThemeOptions, form.theme]);
 
+  const campaignsSyncRef = useRef(false);
   useEffect(() => {
+    if (campaignsSyncRef.current) return;
     const allowedCampaigns = new Set(activeCampaignOptions.map((i) => i.name));
     const cleaned = parseCampaignsList(form.campaigns).filter((c) => allowedCampaigns.has(c));
-    const cleanedText = stringifyCampaignsList(cleaned);
-    if (cleanedText === form.campaigns) return;
-    setForm((prev) => ({ ...prev, campaigns: cleanedText }));
+    const cleanedSet = new Set(cleaned);
+    const currentSet = new Set(parseCampaignsList(form.campaigns));
+    if (cleanedSet.size !== currentSet.size || [...currentSet].some((c) => !cleanedSet.has(c))) {
+      campaignsSyncRef.current = true;
+      const cleanedText = stringifyCampaignsList(cleaned);
+      setForm((prev) => ({ ...prev, campaigns: cleanedText }));
+      queueMicrotask(() => { campaignsSyncRef.current = false; });
+    }
   }, [activeCampaignOptions, form.campaigns]);
 
   useEffect(() => {
@@ -1239,16 +1315,6 @@ export default function AdminProductManager() {
     } finally {
       setIsTermsTemplatesSaving(false);
     }
-  }
-
-  function toggleTheme(theme: string) {
-    setForm((prev) => {
-      const current = parseThemeList(prev.theme);
-      const next = current.includes(theme)
-        ? current.filter((item) => item !== theme)
-        : [...current, theme];
-      return { ...prev, theme: stringifyThemeList(next) };
-    });
   }
 
   function toggleCampaign(name: string) {
@@ -1742,167 +1808,289 @@ export default function AdminProductManager() {
         <div className="flex flex-col gap-6" id="form-field-taxonomy-category">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-[var(--text-primary)]">지역 (destination)</p>
-            <p className="text-[11px] text-[var(--text-muted)]">상품에 연결할 지역 1개. DB taxonomy 축으로 저장됩니다.</p>
-            <div className="space-y-3">
-              {categoryGroups.length === 0 ? (
+            <p className="text-[11px] text-[var(--text-muted)]">상품에 연결할 지역 1개. 대분류 → 중분류 → 소분류 순으로 선택합니다. DB taxonomy 축으로 저장됩니다.</p>
+            <div className="space-y-4">
+              {destinationTree.length === 0 ? (
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-[var(--text-muted)] ring-1 ring-slate-200">
-                  지역을 먼저 추가해 주세요 (아래 카테고리에서 추가)
+                  지역을 먼저 추가해 주세요 (카테고리/테마 관리에서 추가)
                 </span>
               ) : (
-                categoryGroups.map((group) => (
-                  <div key={group.label || "ungrouped"} className="space-y-1.5">
-                    <span className="text-xs font-semibold text-[var(--text-muted)]">{group.label}</span>
+                <>
+                  {/* 대분류 */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-semibold text-[var(--text-muted)]">대분류</span>
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, destination_id: "" }))}
+                        onClick={() => {
+                          setForm((prev) => ({ ...prev, destination_id: "", category: "" }));
+                          setSelectedLevel1Id("");
+                          setSelectedLevel2Id("");
+                        }}
                         className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                          !form.destination_id
+                          !form.destination_id && !selectedLevel1Id
                             ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
                             : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                         }`}
                       >
                         미선택
                       </button>
-                      {group.items.map((item) => {
-                        const selected = form.destination_id === item.id;
+                      {destinationTree.map((node) => {
+                        const selected = (destinationPath[0]?.id === node.id) || (!form.destination_id && selectedLevel1Id === node.id);
+                        const hasChildren = node.children && node.children.length > 0;
                         return (
                           <button
-                            key={item.id}
+                            key={node.id}
                             type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, destination_id: item.id }))}
+                            onClick={() => {
+                              if (hasChildren) {
+                                setSelectedLevel1Id(node.id);
+                                setSelectedLevel2Id("");
+                                setForm((prev) => ({ ...prev, destination_id: "", category: "" }));
+                              } else {
+                                setSelectedLevel1Id("");
+                                setSelectedLevel2Id("");
+                                setForm((prev) => ({ ...prev, destination_id: node.id, category: node.name }));
+                              }
+                            }}
                             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                              selected
+                              selected && !form.destination_id
                                 ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
-                                : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                                : destinationPath[0]?.id === node.id
+                                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                  : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                             }`}
                           >
-                            {item.name}
+                            {node.name}
                           </button>
                         );
                       })}
                     </div>
                   </div>
-                ))
+                  {/* 중분류 (대분류 선택 시에만) */}
+                  {(() => {
+                    const level1Node = destinationPath[0] ?? destinationTree.find((n) => n.id === selectedLevel1Id);
+                    const showMid = level1Node && (level1Node.children?.length ?? 0) > 0;
+                    if (!showMid) return null;
+                    const midChildren = level1Node.children ?? [];
+                    return (
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-[var(--text-muted)]">중분류</span>
+                        <div className="flex flex-wrap gap-2">
+                          {midChildren.map((node) => {
+                            const selected = (destinationPath[1]?.id === node.id) || (!form.destination_id && selectedLevel2Id === node.id);
+                            const hasChildren = node.children && node.children.length > 0;
+                            return (
+                              <button
+                                key={node.id}
+                                type="button"
+                                onClick={() => {
+                                  if (hasChildren) {
+                                    setSelectedLevel2Id(node.id);
+                                    setForm((prev) => ({ ...prev, destination_id: "", category: "" }));
+                                  } else {
+                                    setSelectedLevel1Id("");
+                                    setSelectedLevel2Id("");
+                                    setForm((prev) => ({ ...prev, destination_id: node.id, category: node.name }));
+                                  }
+                                }}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                  selected && !form.destination_id
+                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    : destinationPath[1]?.id === node.id
+                                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                      : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                                }`}
+                              >
+                                {node.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* 소분류 (중분류 선택 시에만) */}
+                  {(() => {
+                    const level1Node = destinationPath[0] ?? destinationTree.find((n) => n.id === selectedLevel1Id);
+                    const level2Node = destinationPath[1] ?? (level1Node?.children?.find((n) => n.id === selectedLevel2Id));
+                    const showSmall = level2Node && (level2Node.children?.length ?? 0) > 0;
+                    if (!showSmall) return null;
+                    const smallChildren = level2Node.children ?? [];
+                    return (
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-[var(--text-muted)]">소분류</span>
+                        <div className="flex flex-wrap gap-2">
+                          {smallChildren.map((node) => {
+                            const selected = form.destination_id === node.id;
+                            return (
+                              <button
+                                key={node.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedLevel1Id("");
+                                  setSelectedLevel2Id("");
+                                  setForm((prev) => ({ ...prev, destination_id: node.id, category: node.name }));
+                                }}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                  selected
+                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                                }`}
+                              >
+                                {node.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
           </div>
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-[var(--text-primary)]">지역 (카테고리, legacy)</p>
-            <div className="space-y-3">
-              {categoryGroups.length === 0 ? (
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-[var(--text-muted)] ring-1 ring-slate-200">
-                  카테고리를 먼저 추가해 주세요
-                </span>
-              ) : (
-                categoryGroups.map((group) => (
-                  <div key={group.label || "ungrouped"} className="space-y-1.5">
-                    <span className="text-xs font-semibold text-[var(--text-muted)]">{group.label}</span>
-                    <div className="flex flex-wrap gap-2">
-                      {group.items.map((item) => {
-                        const selected = form.category === item.name;
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, category: item.name }))}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                              selected
-                                ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
-                                : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
-                            }`}
-                          >
-                            {item.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                value={quickAddCategoryName}
-                onChange={(e) => setQuickAddCategoryName(e.target.value)}
-                placeholder="카테고리 직접 추가"
-                id="form-field-taxonomy-category"
-                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const name = quickAddCategoryName.trim();
-                  if (name) {
-                    taxonomyController.addCustomWithType("destination", name);
-                    setQuickAddCategoryName("");
-                  }
-                }}
-                disabled={taxonomyController.pendingCreateType !== null}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
-              >
-                {taxonomyController.pendingCreateType !== null ? "추가 중..." : "추가"}
-              </button>
-            </div>
-          </div>
-          <div className="space-y-2">
+          <div className="space-y-2" id="form-field-taxonomy-theme">
             <p className="text-xs font-semibold text-[var(--text-primary)]">테마</p>
-            <div className="space-y-3">
-              {themeGroups.length === 0 ? (
+            <p className="text-[11px] text-[var(--text-muted)]">대분류 → 중분류 순으로 선택합니다. 1개 선택.</p>
+            <div className="space-y-4">
+              {themeTree.length === 0 ? (
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-[var(--text-muted)] ring-1 ring-slate-200">
-                  테마를 먼저 추가해 주세요
+                  테마를 먼저 추가해 주세요 (카테고리/테마 관리에서 추가)
                 </span>
               ) : (
-                themeGroups.map((group) => (
-                  <div key={group.label || "ungrouped"} className="space-y-1.5">
-                    <span className="text-xs font-semibold text-[var(--text-muted)]">{group.label}</span>
+                <>
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-semibold text-[var(--text-muted)]">대분류</span>
                     <div className="flex flex-wrap gap-2">
-                      {group.items.map((item) => {
-                        const selected = selectedThemes.includes(item.name);
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({ ...prev, theme: "" }));
+                          setSelectedThemeLevel1Id("");
+                          setSelectedThemeLevel2Id("");
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                          !form.theme.trim() && !selectedThemeLevel1Id
+                            ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                            : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                        }`}
+                      >
+                        미선택
+                      </button>
+                      {themeTree.map((node) => {
+                        const selected = (themePath[0]?.id === node.id) || (!form.theme.trim() && selectedThemeLevel1Id === node.id);
+                        const hasChildren = node.children && node.children.length > 0;
                         return (
                           <button
-                            key={item.id}
+                            key={node.id}
                             type="button"
-                            onClick={() => toggleTheme(item.name)}
+                            onClick={() => {
+                              if (hasChildren) {
+                                setSelectedThemeLevel1Id(node.id);
+                                setSelectedThemeLevel2Id("");
+                                setForm((prev) => ({ ...prev, theme: "" }));
+                              } else {
+                                setSelectedThemeLevel1Id("");
+                                setSelectedThemeLevel2Id("");
+                                setForm((prev) => ({ ...prev, theme: node.name }));
+                              }
+                            }}
                             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                              selected
+                              selected && !form.theme.trim()
                                 ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
-                                : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                                : themePath[0]?.id === node.id
+                                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                  : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                             }`}
                           >
-                            {item.name}
+                            {node.name}
                           </button>
                         );
                       })}
                     </div>
                   </div>
-                ))
+                  {(() => {
+                    const level1Node = themePath[0] ?? themeTree.find((n) => n.id === selectedThemeLevel1Id);
+                    const showMid = level1Node && (level1Node.children?.length ?? 0) > 0;
+                    if (!showMid) return null;
+                    const midChildren = level1Node.children ?? [];
+                    return (
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-[var(--text-muted)]">중분류</span>
+                        <div className="flex flex-wrap gap-2">
+                          {midChildren.map((node) => {
+                            const selected = (themePath[1]?.id === node.id) || (!form.theme.trim() && selectedThemeLevel2Id === node.id);
+                            const hasChildren = node.children && node.children.length > 0;
+                            return (
+                              <button
+                                key={node.id}
+                                type="button"
+                                onClick={() => {
+                                  if (hasChildren) {
+                                    setSelectedThemeLevel2Id(node.id);
+                                    setForm((prev) => ({ ...prev, theme: "" }));
+                                  } else {
+                                    setSelectedThemeLevel1Id("");
+                                    setSelectedThemeLevel2Id("");
+                                    setForm((prev) => ({ ...prev, theme: node.name }));
+                                  }
+                                }}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                  selected && !form.theme.trim()
+                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    : themePath[1]?.id === node.id
+                                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                      : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                                }`}
+                              >
+                                {node.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {(() => {
+                    const level1Node = themePath[0] ?? themeTree.find((n) => n.id === selectedThemeLevel1Id);
+                    const level2Node = themePath[1] ?? (level1Node?.children?.find((n) => n.id === selectedThemeLevel2Id));
+                    const showSmall = level2Node && (level2Node.children?.length ?? 0) > 0;
+                    if (!showSmall) return null;
+                    const smallChildren = level2Node.children ?? [];
+                    return (
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-[var(--text-muted)]">소분류</span>
+                        <div className="flex flex-wrap gap-2">
+                          {smallChildren.map((node) => {
+                            const selected = form.theme.trim() === node.name;
+                            return (
+                              <button
+                                key={node.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedThemeLevel1Id("");
+                                  setSelectedThemeLevel2Id("");
+                                  setForm((prev) => ({ ...prev, theme: node.name }));
+                                }}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                  selected
+                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
+                                }`}
+                              >
+                                {node.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <p className="text-xs text-[var(--text-muted)]">선택된 테마: {form.theme.trim() || "-"}</p>
+                </>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                value={quickAddThemeName}
-                onChange={(event) => setQuickAddThemeName(event.target.value)}
-                placeholder="테마 직접 추가 (예: 가족여행)"
-                id="form-field-taxonomy-theme"
-                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const name = quickAddThemeName.trim();
-                  if (name) {
-                    taxonomyController.addCustomWithType("theme", name);
-                    setQuickAddThemeName("");
-                  }
-                }}
-                disabled={taxonomyController.pendingCreateType !== null}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
-              >
-                {taxonomyController.pendingCreateType !== null ? "추가 중..." : "추가"}
-              </button>
-            </div>
-            <p className="text-xs text-[var(--text-muted)]">선택된 테마: {selectedThemes.join(", ") || "-"}</p>
           </div>
           <div className="space-y-2">
             <p className="text-xs font-semibold text-[var(--text-primary)]">상품군</p>
@@ -3132,6 +3320,10 @@ export default function AdminProductManager() {
           onEditProduct={(product: Product) => {
             setEditingId(product.id);
             setForm(deserializeAdminProductToForm(product));
+            setSelectedLevel1Id("");
+            setSelectedLevel2Id("");
+            setSelectedThemeLevel1Id("");
+            setSelectedThemeLevel2Id("");
             setActiveSchedulePreviewIndex(0);
             setShowRawScheduleEditor(false);
             setErrorMessage("");

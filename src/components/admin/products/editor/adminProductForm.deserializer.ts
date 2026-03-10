@@ -65,7 +65,11 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     images_json: normalizeImageList(product.images_json),
     category: product.category ?? "여행상품",
     destination_id: (product.destination_id ?? "").toString().trim(),
-    theme: product.theme ?? "",
+    theme: (() => {
+      const t = product.theme ?? "";
+      const first = t.split(/[,\n|]+/).map((s) => s.trim()).filter(Boolean)[0];
+      return first ?? "";
+    })(),
     product_line_id: (product.product_line_id ?? "").toString().trim(),
     campaigns: ((): string => {
       const arr =

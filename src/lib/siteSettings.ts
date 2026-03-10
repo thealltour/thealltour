@@ -19,6 +19,8 @@ export type SiteSettings = {
   golf_hero_headline: string;
   golf_hero_subcopy: string;
   golf_hero_regions: string;
+  /** 메인 홈 DESTINATIONS 섹션에 노출할 지역(taxonomy) id 목록. JSON 배열 문자열. 비어 있으면 허브 노출 지역 전체를 기본 순서로 사용. */
+  home_region_card_ids: string;
   about_kicker: string;
   about_title: string;
   about_paragraph1: string;
@@ -57,6 +59,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
     { id: "golf-se-asia", label: "동남아 골프투어", searchKeyword: "동남아 골프" },
     { id: "golf-domestic", label: "국내 골프/파크골프", searchKeyword: "국내 골프" },
   ]),
+  home_region_card_ids: "[]",
   about_kicker: "ABOUT THEALL TOUR",
   about_title: "여행을 디자인해 드립니다",
   about_paragraph1:
@@ -104,6 +107,8 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
       map.get("golf_hero_subcopy") || DEFAULT_SITE_SETTINGS.golf_hero_subcopy,
     golf_hero_regions:
       map.get("golf_hero_regions") || DEFAULT_SITE_SETTINGS.golf_hero_regions,
+    home_region_card_ids:
+      map.get("home_region_card_ids") ?? DEFAULT_SITE_SETTINGS.home_region_card_ids,
     about_kicker: map.get("about_kicker") || DEFAULT_SITE_SETTINGS.about_kicker,
     about_title: map.get("about_title") || DEFAULT_SITE_SETTINGS.about_title,
     about_paragraph1:
@@ -123,5 +128,20 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     ["site-settings"],
     { revalidate: 300, tags: ["site-settings"] },
   )();
+}
+
+/** 메인 홈 지역카드에 노출할 destination taxonomy id 목록 (순서 유지). 비어 있으면 설정 미사용. */
+export function parseHomeRegionCardIds(settings: Pick<SiteSettings, "home_region_card_ids">): string[] {
+  const raw = settings.home_region_card_ids?.trim() ?? "";
+  if (!raw || raw === "[]") return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+      .map((v) => v.trim());
+  } catch {
+    return [];
+  }
 }
 

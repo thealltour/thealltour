@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { AdminReviewListItem } from "@/types/reviewSearch";
 import { getReviewContentPreview, getReviewImageCount } from "@/lib/reviewSearchConstants";
 import { ReviewStatusBadge } from "./ReviewStatusBadge";
@@ -29,6 +31,13 @@ function formatDate(value: string | undefined) {
   return d.toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric" });
 }
 
+async function handleDeleteReview(id: string): Promise<{ ok: boolean; message?: string }> {
+  const res = await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
+  const data = (await res.json()) as { message?: string };
+  if (!res.ok) return { ok: false, message: data.message ?? "삭제에 실패했습니다." };
+  return { ok: true };
+}
+
 /** 경량: 극단 평점 + 짧은 본문이면 검토 필요 힌트 */
 function needsReviewHint(review: AdminReviewListItem): boolean {
   const r = review.rating ?? 0;
@@ -44,6 +53,8 @@ export function AdminReviewListItemCard({
   authorTrustScore,
   authorReviewCount,
 }: AdminReviewListItemCardProps) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
   const imageCount = getReviewImageCount(review);
   const preview = getReviewContentPreview(review.content, 120);
   const verified = !!review.eligibility_id;
@@ -138,6 +149,27 @@ export function AdminReviewListItemCard({
             </span>
           )}
           <span className="text-xs text-[var(--text-muted)]">{formatDate(review.created_at)}</span>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!confirm("이 후기를 완전히 삭제할까요? 삭제 후 복구할 수 없습니다.")) return;
+              setDeleting(true);
+              try {
+                const result = await handleDeleteReview(review.id);
+                if (result.ok) {
+                  router.refresh();
+                } else {
+                  alert(result.message ?? "삭제에 실패했습니다.");
+                }
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            disabled={deleting}
+            className="text-xs text-red-600 hover:underline disabled:opacity-50"
+          >
+            {deleting ? "삭제 중…" : "삭제"}
+          </button>
         </div>
       </div>
       {review.title && (

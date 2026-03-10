@@ -10,6 +10,7 @@ import { getHomeCuratedData } from "@/lib/homeCurated";
 import { getHomeBanners } from "@/lib/homeBanners";
 import { getHeroContent, resolveHeroContent } from "@/lib/heroContent";
 import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
+import { getSiteSettings, parseHomeRegionCardIds } from "@/lib/siteSettings";
 import { getPublishedGuides } from "@/lib/guides";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/HeroQuickConsultButton";
@@ -21,11 +22,12 @@ import { HomeGuideSection } from "@/components/home/HomeGuideSection";
 import { HomeReviewSection } from "@/components/home/HomeReviewSection";
 
 export default async function Home() {
-  const [homeCurated, topBanners, heroContent, destinations, themes, homeGuides, homeReviews] =
+  const [homeCurated, topBanners, heroContent, settings, destinations, themes, homeGuides, homeReviews] =
     await Promise.all([
       getHomeCuratedData(),
       getHomeBanners(),
       getHeroContent(),
+      getSiteSettings(),
       getHubDestinations(),
       getHubThemes(),
       getPublishedGuides(4),
@@ -35,6 +37,15 @@ export default async function Home() {
   const curatedSections = homeCurated.sections;
   const primaryBanner = topBanners[0] ?? null;
   const hero = resolveHeroContent(heroContent);
+
+  const homeRegionCardIds = parseHomeRegionCardIds(settings);
+  const destinationsForHome =
+    homeRegionCardIds.length > 0
+      ? homeRegionCardIds
+          .map((id) => destinations.find((d) => d.id === id))
+          .filter((d): d is NonNullable<typeof d> => Boolean(d))
+          .slice(0, 8)
+      : destinations.slice(0, 8);
 
   return (
     <>
@@ -139,7 +150,7 @@ export default async function Home() {
 
         <PageContainer size="wide" className="flex flex-col gap-16 md:gap-20">
           {/* 빠른 탐색: 지역(destination) */}
-          {destinations.length > 0 ? (
+          {destinationsForHome.length > 0 ? (
             <SectionBlock surface="none" padding="md">
               <SectionHeader
                 eyebrow="DESTINATIONS"
@@ -148,7 +159,7 @@ export default async function Home() {
                 align="left"
               />
               <HomeTaxonomyGrid
-                items={destinations.slice(0, 8)}
+                items={destinationsForHome}
                 type="destination"
                 className="mt-6"
               />

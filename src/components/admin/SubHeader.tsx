@@ -39,7 +39,7 @@ function isReviewTabActive(href: string, pathname: string): boolean {
 
 export const menuMap = {
   dashboard: ["운영 현황", "통계"],
-  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 추천상품 관리"],
+  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 지역카드", "메인 추천상품 관리"],
   inquiry: ["전체 문의", "미처리 문의"],
   member: ["회원 목록"],
   rewards: ["신청", "승인", "발송", "완료", "반려"],
@@ -101,6 +101,8 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
       } else if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
         initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.FEATURED];
+      } else if (view === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS) {
+        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS];
       } else if (view === ADMIN_PRODUCTS_VIEW.CREATE) {
         initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.CREATE];
       } else if (view === ADMIN_PRODUCTS_VIEW.LIST) {

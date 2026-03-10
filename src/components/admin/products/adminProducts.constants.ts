@@ -8,6 +8,7 @@ export const ADMIN_PRODUCTS_VIEW = {
   CREATE: "create",
   TAXONOMY: "taxonomy",
   FEATURED: "featured",
+  HOME_REGION_CARDS: "home-region-cards",
 } as const;
 
 export type AdminProductsViewKey =
@@ -29,6 +30,7 @@ export const DEFAULT_PRODUCTS_PAGE_SIZE = 8;
 export const PRODUCT_LABEL_TO_VIEW: Record<string, AdminProductsViewKey> = {
   "카테고리/테마 관리": ADMIN_PRODUCTS_VIEW.TAXONOMY,
   "메인 추천상품 관리": ADMIN_PRODUCTS_VIEW.FEATURED,
+  "메인 지역카드": ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS,
   "상품 등록": ADMIN_PRODUCTS_VIEW.CREATE,
   "상품 목록": ADMIN_PRODUCTS_VIEW.LIST,
 };
@@ -37,6 +39,7 @@ export const PRODUCT_LABEL_TO_VIEW: Record<string, AdminProductsViewKey> = {
 export const PRODUCT_VIEW_TO_LABEL: Record<string, string> = {
   [ADMIN_PRODUCTS_VIEW.TAXONOMY]: "카테고리/테마 관리",
   [ADMIN_PRODUCTS_VIEW.FEATURED]: "메인 추천상품 관리",
+  [ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS]: "메인 지역카드",
   [ADMIN_PRODUCTS_VIEW.CREATE]: "상품 등록",
   [ADMIN_PRODUCTS_VIEW.LIST]: "상품 목록",
 };

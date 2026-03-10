@@ -33,6 +33,7 @@ export async function PATCH(request: Request) {
     { key: "golf_hero_headline", value: (body.golf_hero_headline ?? "").trim() },
     { key: "golf_hero_subcopy", value: (body.golf_hero_subcopy ?? "").trim() },
     { key: "golf_hero_regions", value: (body.golf_hero_regions ?? "").trim() },
+    { key: "home_region_card_ids", value: (body.home_region_card_ids ?? "[]").trim() },
     { key: "company_name", value: (body.company_name ?? "").trim() },
     { key: "ceo_name", value: (body.ceo_name ?? "").trim() },
     { key: "address", value: (body.address ?? "").trim() },

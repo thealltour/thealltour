@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { getReviewById } from "@/lib/reviews";
+import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
+import { getProductIdByBookingId } from "@/lib/travelBookings";
 
 type ReviewBody = {
   author_name?: string;
@@ -12,6 +17,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
   const body = (await request.json()) as ReviewBody;
 
@@ -44,4 +52,30 @@ export async function PATCH(
   }
 
   return NextResponse.json({ message: "후기가 수정되었습니다." });
+}
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+/** 관리자 전용: 리뷰 완전 삭제 (관련 신고/투표/리워드 등은 DB ON DELETE CASCADE로 정리) */
+export async function DELETE(_request: Request, context: RouteContext) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { id } = await context.params;
+  const review = await getReviewById(id);
+  if (!review) {
+    return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  const { error } = await supabaseAdmin.from("reviews").delete().eq("id", id);
+  if (error) {
+    return NextResponse.json({ message: "후기 삭제에 실패했습니다." }, { status: 500 });
+  }
+
+  if (review.booking_id) {
+    const productId = await getProductIdByBookingId(review.booking_id);
+    if (productId) await markProductReviewSummaryStale(productId);
+  }
+
+  return NextResponse.json({ message: "후기가 삭제되었습니다." });
 }

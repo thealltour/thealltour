@@ -37,18 +37,21 @@ export async function GET(_request: Request, context: RouteContext) {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
 
-  if (!session) {
-    return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
-  }
-
   const review = await getReviewById(id);
   if (!review) {
     return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  if (review.member_id !== session.memberId) {
-    return NextResponse.json({ message: "본인의 후기만 조회할 수 있습니다." }, { status: 403 });
+  // 회원 후기: 본인만 조회
+  if (review.member_id != null) {
+    if (!session) {
+      return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
+    }
+    if (review.member_id !== session.memberId) {
+      return NextResponse.json({ message: "본인의 후기만 조회할 수 있습니다." }, { status: 403 });
+    }
   }
+  // 비회원 후기(member_id null): 세션 없이 조회 허용 (reviewId로 본인 작성 확인)
 
   return NextResponse.json(review);
 }
@@ -58,18 +61,21 @@ export async function PATCH(request: Request, context: RouteContext) {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
 
-  if (!session) {
-    return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
-  }
-
   const review = await getReviewById(id);
   if (!review) {
     return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  if (review.member_id !== session.memberId) {
-    return NextResponse.json({ message: "본인의 후기만 수정할 수 있습니다." }, { status: 403 });
+  // 회원 후기: 세션 필요, 본인만 수정
+  if (review.member_id != null) {
+    if (!session) {
+      return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
+    }
+    if (review.member_id !== session.memberId) {
+      return NextResponse.json({ message: "본인의 후기만 수정할 수 있습니다." }, { status: 403 });
+    }
   }
+  // 비회원 후기(member_id null): 세션 없이 수정 허용
 
   if (review.status === "submitted") {
     return NextResponse.json({ message: "이미 제출된 후기는 수정할 수 없습니다." }, { status: 400 });

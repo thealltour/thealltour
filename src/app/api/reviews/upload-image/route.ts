@@ -15,9 +15,6 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
-  if (!session) {
-    return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
-  }
 
   const formData = await request.formData();
   const file = formData.get("file");
@@ -32,22 +29,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "reviewId가 필요합니다." }, { status: 400 });
   }
 
+  const review = await getReviewById(reviewIdStr);
+  if (!review) {
+    return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  // 회원: 세션 필요, 본인 후기만 수정 가능
+  if (review.member_id != null) {
+    if (!session) {
+      return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
+    }
+    if (review.member_id !== session.memberId) {
+      return NextResponse.json({ message: "본인 후기에만 이미지를 올릴 수 있습니다." }, { status: 403 });
+    }
+  }
+  // 비회원 후기(member_id null): 세션 없이 업로드 허용 (본인 작성 후기만 편집 가능하도록 reviewId로 식별)
+
+  if (review.status === "submitted") {
+    return NextResponse.json({ message: "제출된 후기는 수정할 수 없습니다." }, { status: 400 });
+  }
+
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json({ message: "jpg, png, webp, gif만 업로드할 수 있습니다." }, { status: 400 });
   }
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json({ message: "파일 크기는 10MB 이하여야 합니다." }, { status: 400 });
-  }
-
-  const review = await getReviewById(reviewIdStr);
-  if (!review) {
-    return NextResponse.json({ message: "후기를 찾을 수 없습니다." }, { status: 404 });
-  }
-  if (review.member_id !== session.memberId) {
-    return NextResponse.json({ message: "본인 후기에만 이미지를 올릴 수 있습니다." }, { status: 403 });
-  }
-  if (review.status === "submitted") {
-    return NextResponse.json({ message: "제출된 후기는 수정할 수 없습니다." }, { status: 400 });
   }
 
   const index = indexStr != null ? Math.max(0, parseInt(String(indexStr), 10) || 0) : 0;

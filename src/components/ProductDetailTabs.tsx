@@ -168,36 +168,40 @@ export default function ProductDetailTabs({
       {/* 포함/불포함 */}
       {activeTab === "included" && (
         <div key="included" className="fade-in-up space-y-6">
-          <div>
-            <h3 className="mb-3 text-sm font-bold text-[#1e3a8a]">포함 사항</h3>
-            {includedLines.length > 0 ? (
-              <ul className={listClass}>
-                {includedLines.map((line, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className={bulletClass} />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500">등록된 포함 사항이 없습니다.</p>
-            )}
-          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+            {/* 포함 사항 - 긍정 색상 박스, 웹에서 왼쪽 */}
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 ring-1 ring-emerald-200">
+              <h3 className="mb-3 text-sm font-bold text-emerald-800">포함 사항</h3>
+              {includedLines.length > 0 ? (
+                <ul className={listClass}>
+                  {includedLines.map((line, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500">등록된 포함 사항이 없습니다.</p>
+              )}
+            </div>
 
-          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 ring-1 ring-amber-200">
-            <h3 className="mb-3 text-sm font-bold text-amber-800">불포함 사항</h3>
-            {excludedLines.length > 0 ? (
-              <ul className={listClass}>
-                {excludedLines.map((line, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500">등록된 불포함 사항이 없습니다.</p>
-            )}
+            {/* 불포함 사항 - 웹에서 오른쪽 */}
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 ring-1 ring-amber-200">
+              <h3 className="mb-3 text-sm font-bold text-amber-800">불포함 사항</h3>
+              {excludedLines.length > 0 ? (
+                <ul className={listClass}>
+                  {excludedLines.map((line, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500">등록된 불포함 사항이 없습니다.</p>
+              )}
+            </div>
           </div>
 
           {optionalLines.length > 0 && (

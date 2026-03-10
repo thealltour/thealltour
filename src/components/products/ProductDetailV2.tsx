@@ -468,35 +468,38 @@ export default function ProductDetailV2({
 
         {activeTab === "included" && (
           <div className="space-y-6">
-            <div>
-              <h3 className="mb-3 text-sm font-bold text-[#1e3a8a]">포함 사항</h3>
-              {includedLines.length > 0 ? (
-                <ul className={listClass}>
-                  {includedLines.map((line, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className={bulletClass} />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-slate-500">등록된 포함 사항이 없습니다.</p>
-              )}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+              {/* 포함 사항 - 긍정 색상 박스, 웹에서 왼쪽 */}
+              <AlertCard variant="success" title="포함 사항">
+                {includedLines.length > 0 ? (
+                  <ul className={listClass}>
+                    {includedLines.map((line, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className={bulletClass} />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-500">등록된 포함 사항이 없습니다.</p>
+                )}
+              </AlertCard>
+              {/* 불포함 사항 - 웹에서 오른쪽 */}
+              <AlertCard variant="warning" title="불포함 사항">
+                {excludedLines.length > 0 ? (
+                  <ul className={listClass}>
+                    {excludedLines.map((line, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-500">등록된 불포함 사항이 없습니다.</p>
+                )}
+              </AlertCard>
             </div>
-            <AlertCard variant="warning" title="불포함 사항">
-              {excludedLines.length > 0 ? (
-                <ul className={listClass}>
-                  {excludedLines.map((line, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-slate-500">등록된 불포함 사항이 없습니다.</p>
-              )}
-            </AlertCard>
             {optionalLines.length > 0 && (
               <div>
                 <h3 className="mb-3 text-sm font-bold text-[#1e3a8a]">선택 관광</h3>

@@ -2,12 +2,14 @@
 
 import type { Guide } from "@/types/guide";
 
+export type GuideWithBadges = Guide & { badgeLabels: string[] };
+
 type GuidesListClientProps = {
-  guides: Guide[];
+  guides: GuideWithBadges[];
 };
 
 /** notion_url이 없을 때 notion_page_id로 fallback URL 생성 */
-function getNotionViewUrl(guide: Guide): string {
+function getNotionViewUrl(guide: GuideWithBadges): string {
   const url = guide.notion_url?.trim();
   if (url) return url;
   const pageId = guide.notion_page_id?.trim();
@@ -51,7 +53,20 @@ export function GuidesListClient({ guides }: GuidesListClientProps) {
                 />
               ) : null}
             </div>
-            <div className="flex flex-1 flex-col gap-2 p-4">
+            {/* 뱃지: 이미지 바로 아래, 홈 카드와 동일한 위치/스타일 */}
+            {guide.badgeLabels.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 pb-0">
+                {guide.badgeLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption text-[var(--text-muted)]"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex flex-1 flex-col gap-2 p-4 pt-2">
               <p className="section-label text-content-muted">여행가이드</p>
               <h3 className="font-card-title type-h3 text-content-primary">
                 {guide.title_override || guide.title}
@@ -79,7 +94,19 @@ export function GuidesListClient({ guides }: GuidesListClientProps) {
                 />
               ) : null}
             </div>
-            <div className="flex flex-1 flex-col gap-2 p-4">
+            {guide.badgeLabels.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 pb-0">
+                {guide.badgeLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 type-caption text-[var(--text-muted)]"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex flex-1 flex-col gap-2 p-4 pt-2">
               <p className="section-label text-content-muted">여행가이드</p>
               <h3 className="font-card-title type-h3 text-content-primary">
                 {guide.title_override || guide.title}

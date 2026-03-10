@@ -345,6 +345,50 @@ export async function getTaxonomyById(id: string): Promise<ProductTaxonomy | nul
   return mapTaxonomy(result.data as Record<string, unknown>);
 }
 
+/** id → taxonomy 맵에서 destination 계층 이름 배열 생성 (루트 → 리프). 맵에 없는 id는 무시. */
+export function buildDestinationNameChain(
+  destinationId: string | null | undefined,
+  idToTaxonomy: Map<string, ProductTaxonomy>,
+): string[] {
+  const id = destinationId?.trim();
+  if (!id) return [];
+  const chain: string[] = [];
+  let currentId: string | null = id;
+  const visited = new Set<string>();
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+    const t = idToTaxonomy.get(currentId);
+    if (!t) break;
+    chain.push(t.name);
+    currentId = t.parent_id?.trim() || null;
+  }
+  return chain.reverse();
+}
+
+/**
+ * 가이드 카드 뱃지용: destination 계층명 + theme명 + 태그를 합친 라벨 배열.
+ * idToTaxonomy는 getActiveTaxonomiesForHeader() 등으로 조회한 뒤 destination/theme만 필터해 맵으로 전달.
+ */
+export function buildGuideBadgeLabels(
+  guide: { destination_id?: string | null; theme_id?: string | null; tags?: string[] | null },
+  idToTaxonomy: Map<string, ProductTaxonomy>,
+): string[] {
+  const labels: string[] = [];
+  const destChain = buildDestinationNameChain(guide.destination_id, idToTaxonomy);
+  labels.push(...destChain);
+  const themeId = guide.theme_id?.trim();
+  if (themeId) {
+    const theme = idToTaxonomy.get(themeId);
+    if (theme?.name) labels.push(theme.name);
+  }
+  if (Array.isArray(guide.tags)) {
+    for (const t of guide.tags) {
+      if (typeof t === "string" && t.trim()) labels.push(t.trim());
+    }
+  }
+  return labels;
+}
+
 /**
  * id → name 맵 생성. destination_id / product_line_id resolve용.
  */

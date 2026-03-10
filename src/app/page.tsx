@@ -37,9 +37,10 @@ export default async function Home() {
   const hero = resolveHeroContent(heroContent);
 
   return (
-    <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
+    <>
       <SiteHeader />
 
+      <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
         {/* Full-bleed Hero: 배경/이미지는 화면 전체, 콘텐츠만 PageContainer로 정렬. overflow-visible으로 검색 드롭다운이 잘리지 않도록 함 */}
         <section className="relative bg-[var(--hero-bg)]">
@@ -324,7 +325,8 @@ export default async function Home() {
 
         </PageContainer>
       </main>
-    </div>
+      </div>
+    </>
   );
 }
 

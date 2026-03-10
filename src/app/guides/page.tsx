@@ -5,6 +5,7 @@ import { GuidesListClient } from "@/components/guides/GuidesListClient";
 import { GuideSearchBar } from "@/components/guides/GuideSearchBar";
 import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 import { getPublishedNotionGuidesWithSearch } from "@/lib/guides";
+import { getActiveTaxonomiesForHeader, buildGuideBadgeLabels } from "@/lib/productTaxonomies";
 
 export const revalidate = 300;
 
@@ -14,6 +15,14 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
   const params = await searchParams ?? {};
   const q = typeof params.q === "string" ? params.q : undefined;
   const guides = await getPublishedNotionGuidesWithSearch(q);
+
+  const taxonomies = await getActiveTaxonomiesForHeader();
+  const idToTaxonomy = new Map(taxonomies.map((t) => [t.id, t]));
+
+  const guidesWithBadges = guides.map((guide) => ({
+    ...guide,
+    badgeLabels: buildGuideBadgeLabels(guide, idToTaxonomy),
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
@@ -30,7 +39,7 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
 
         <section className="space-y-4">
           <GuideSearchBar />
-          <GuidesListClient guides={guides} />
+          <GuidesListClient guides={guidesWithBadges} />
         </section>
       </SectionBody>
     </div>

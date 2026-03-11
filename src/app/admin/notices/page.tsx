@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import AdminHeader from "@/components/AdminHeader";
-import AdminNoticeManager from "@/components/AdminNoticeManager";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminNoticeManager from "@/components/admin/AdminNoticeManager";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
 import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";

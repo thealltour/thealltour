@@ -7,6 +7,12 @@ import { cn } from "@/lib/cn";
 export type ThemeSectionProps = {
   /** 홈에 노출할 theme 목록 (최대 8개 권장) */
   items: ProductTaxonomy[];
+  /** 섹션 상단 라벨(eyebrow). 비어 있으면 메인에서 표시하지 않음 */
+  eyebrow?: string | null;
+  /** 섹션 제목. 비어 있으면 메인에서 표시하지 않음 */
+  title?: string | null;
+  /** 섹션 부제목. 비어 있으면 메인에서 표시하지 않음 */
+  description?: string | null;
   className?: string;
 };
 
@@ -14,18 +20,24 @@ export type ThemeSectionProps = {
  * 홈 Theme 섹션.
  * Destination 다음 단계의 탐색 축. 추후 product_taxonomies(theme) 연결 확장 용이.
  */
-export default function ThemeSection({ items, className }: ThemeSectionProps) {
+export default function ThemeSection({
+  items,
+  eyebrow,
+  title,
+  description,
+  className,
+}: ThemeSectionProps) {
   if (items.length === 0) return null;
 
   return (
-    <SectionBlock surface="none" padding="md" className={cn("space-y-4 sm:space-y-6", className)}>
+    <SectionBlock surface="none" padding="md" className={cn("space-y-3 sm:space-y-4", className)}>
       <SectionHeader
-        eyebrow="TRAVEL THEMES"
-        title="이런 여행은 어떠세요?"
-        description="테마별로 여행 상품을 둘러보세요."
+        eyebrow={eyebrow?.trim() || undefined}
+        title={title?.trim() || undefined}
+        description={description?.trim() || undefined}
         align="left"
       />
-      <HomeTaxonomyGrid items={items} type="theme" className="mt-6" />
+      <HomeTaxonomyGrid items={items} type="theme" layout="horizontal-scroll" />
     </SectionBlock>
   );
 }

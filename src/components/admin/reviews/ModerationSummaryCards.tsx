@@ -1,5 +1,7 @@
 "use client";
 
+import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
+
 type ModerationSummaryCardsProps = {
   pendingCount: number;
   highPriorityCount: number;
@@ -26,13 +28,7 @@ export function ModerationSummaryCards({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
       {cards.map(({ label, value }) => (
-        <div
-          key={label}
-          className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4"
-        >
-          <p className="text-xs font-medium text-[var(--text-muted)]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-[var(--text-primary)]">{value}</p>
-        </div>
+        <AdminSummaryCard key={label} title={label} value={value} />
       ))}
     </div>
   );

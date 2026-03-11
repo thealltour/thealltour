@@ -1,4 +1,4 @@
-import AdminHeader from "@/components/AdminHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import { getAllReviewsForAnalytics } from "@/lib/reviewAnalytics";
 import { buildProductReviewSummaries } from "@/lib/reviewSummaryBuilder";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";

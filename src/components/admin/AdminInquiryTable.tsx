@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, Fragment } from "react";
+import { Fragment } from "react";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
+import { useAdminInquiryTable, type StatusFilter, type InquirySortOption } from "@/components/admin/hooks/useAdminInquiryTable";
 
 function formatDate(dateText: string) {
   const date = new Date(dateText);
@@ -85,234 +86,10 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
   );
 }
 
-type StatusFilter =
-  | "all"
-  | "new"
-  | "contacted"
-  | "closed"
-  | "reserved"
-  | "completed"
-  | "pending";
-type SortOption = "pending_first" | "recent" | "oldest" | "name";
-
-type InquiryListResponse = {
-  items: Inquiry[];
-  total: number;
-  page: number;
-  pageSize: number;
-  pendingCount: number;
-  completedCount: number;
-  reservedCount?: number;
-  newCount?: number;
-  contactedCount?: number;
-  closedCount?: number;
-};
-
 export default function AdminInquiryTable() {
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [sortBy, setSortBy] = useState<SortOption>("pending_first");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [total, setTotal] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [completedCount, setCompletedCount] = useState(0);
-  const [reservedCount, setReservedCount] = useState(0);
-  const [expandedRows, setExpandedRows] = useState<string[]>([]);
-  const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
-  const [reserveModalInquiryId, setReserveModalInquiryId] = useState<string | null>(null);
-  const [reserveDeparture, setReserveDeparture] = useState("");
-  const [reserveReturn, setReserveReturn] = useState("");
-  const [isSubmittingReserve, setIsSubmittingReserve] = useState(false);
+  const api = useAdminInquiryTable();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery.trim());
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  async function loadInquiries(options?: { silent?: boolean; resetSelection?: boolean }) {
-    const silent = options?.silent ?? false;
-    const resetSelection = options?.resetSelection ?? true;
-
-    try {
-      if (silent) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-      setErrorMessage("");
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(pageSize),
-        status: statusFilter,
-        sort: sortBy,
-      });
-      if (debouncedSearch) params.set("search", debouncedSearch);
-
-      const response = await fetch(`/api/inquiries?${params.toString()}`, { cache: "no-store" });
-      if (!response.ok) {
-        setErrorMessage("문의 목록을 불러오지 못했습니다.");
-        return;
-      }
-
-      const data = (await response.json()) as Inquiry[] | InquiryListResponse;
-      if (Array.isArray(data)) {
-        setInquiries(data);
-        setTotal(data.length);
-      } else {
-        setInquiries(data.items ?? []);
-        setTotal(data.total ?? 0);
-        setPendingCount(data.pendingCount ?? 0);
-        setCompletedCount(data.completedCount ?? 0);
-        setReservedCount(data.reservedCount ?? 0);
-      }
-      if (resetSelection) {
-        setReserveModalInquiryId(null);
-      }
-    } catch {
-      setErrorMessage("문의 목록 조회 중 오류가 발생했습니다.");
-    } finally {
-      if (silent) {
-        setIsRefreshing(false);
-      } else {
-        setIsLoading(false);
-      }
-    }
-  }
-
-  useEffect(() => {
-    loadInquiries();
-  }, [page, pageSize, statusFilter, sortBy, debouncedSearch]);
-
-  async function updateConsultationStatus(id: string, consultation_status: ConsultationStatus) {
-    setPendingId(id);
-    setErrorMessage("");
-    const previous = inquiries;
-    setInquiries((current) =>
-      current.map((item) => (item.id === id ? { ...item, consultation_status } : item)),
-    );
-    try {
-      const response = await fetch(`/api/inquiries/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "update_status", consultation_status }),
-      });
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as { message?: string };
-        setInquiries(previous);
-        setErrorMessage(payload.message ?? "상담 상태 변경에 실패했습니다.");
-      }
-    } catch {
-      setInquiries(previous);
-      setErrorMessage("상담 상태 변경 중 오류가 발생했습니다.");
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  function openReserveModal(inquiry: Inquiry) {
-    setReserveModalInquiryId(inquiry.id);
-    setReserveDeparture("");
-    setReserveReturn("");
-    setErrorMessage("");
-  }
-
-  async function submitReserveBooking() {
-    if (!reserveModalInquiryId) return;
-    const dep = reserveDeparture.trim();
-    const ret = reserveReturn.trim();
-    if (!dep || !ret) {
-      setErrorMessage("출발일과 귀국일을 입력해 주세요.");
-      return;
-    }
-    const depDate = new Date(dep);
-    const retDate = new Date(ret);
-    if (Number.isNaN(depDate.getTime()) || Number.isNaN(retDate.getTime())) {
-      setErrorMessage("날짜 형식이 올바르지 않습니다.");
-      return;
-    }
-    if (retDate < depDate) {
-      setErrorMessage("귀국일은 출발일 이후여야 합니다.");
-      return;
-    }
-    setIsSubmittingReserve(true);
-    setErrorMessage("");
-    try {
-      const response = await fetch(`/api/inquiries/${reserveModalInquiryId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "reserve_booking",
-          departure_date: dep,
-          return_date: ret,
-        }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) {
-        setErrorMessage(payload.message ?? "예약 확정에 실패했습니다.");
-        return;
-      }
-      setReserveModalInquiryId(null);
-      setReserveDeparture("");
-      setReserveReturn("");
-      await loadInquiries({ silent: true });
-    } catch {
-      setErrorMessage("예약 확정 요청 중 오류가 발생했습니다.");
-    } finally {
-      setIsSubmittingReserve(false);
-    }
-  }
-
-  async function completeTrip(id: string) {
-    setPendingId(id);
-    setErrorMessage("");
-    const previous = inquiries;
-    setInquiries((current) =>
-      current.map((item) =>
-        item.id === id ? { ...item, booking_status: "completed" as BookingStatus } : item,
-      ),
-    );
-    try {
-      const response = await fetch(`/api/inquiries/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "complete_trip" }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) {
-        setInquiries(previous);
-        setErrorMessage(payload.message ?? "여행 완료 처리에 실패했습니다.");
-      } else {
-        await loadInquiries({ silent: true });
-      }
-    } catch {
-      setInquiries(previous);
-      setErrorMessage("여행 완료 처리 중 오류가 발생했습니다.");
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
-
-  function toggleExpand(id: string) {
-    setExpandedRows((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
-  }
-
-  function movePage(nextPage: number) {
-    setPage(Math.max(1, Math.min(nextPage, totalPages)));
-  }
-
-  if (isLoading) {
+  if (api.isLoading) {
     return (
       <div className="space-y-3 px-4 py-6">
         <div className="h-9 w-80 animate-pulse rounded-lg bg-[var(--surface-muted)]" />
@@ -330,10 +107,10 @@ export default function AdminInquiryTable() {
             검색(이름/연락처/문의내용)
             <input
               type="text"
-              value={searchQuery}
+              value={api.searchQuery}
               onChange={(event) => {
-                setSearchQuery(event.target.value);
-                setPage(1);
+                api.setSearchQuery(event.target.value);
+                api.setPage(1);
               }}
               placeholder="검색어를 입력하세요"
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
@@ -342,10 +119,10 @@ export default function AdminInquiryTable() {
           <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             상태 필터
             <select
-              value={statusFilter}
+              value={api.statusFilter}
               onChange={(event) => {
-                setStatusFilter(event.target.value as StatusFilter);
-                setPage(1);
+                api.setStatusFilter(event.target.value as StatusFilter);
+                api.setPage(1);
               }}
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
@@ -361,10 +138,10 @@ export default function AdminInquiryTable() {
           <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             정렬
             <select
-              value={sortBy}
+              value={api.sortBy}
               onChange={(event) => {
-                setSortBy(event.target.value as SortOption);
-                setPage(1);
+                api.setSortBy(event.target.value as InquirySortOption);
+                api.setPage(1);
               }}
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
@@ -377,10 +154,10 @@ export default function AdminInquiryTable() {
           <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             페이지 크기
             <select
-              value={pageSize}
+              value={api.pageSize}
               onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
+                api.setPageSize(Number(event.target.value));
+                api.setPage(1);
               }}
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
@@ -394,27 +171,27 @@ export default function AdminInquiryTable() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => loadInquiries({ silent: true })}
-            disabled={isRefreshing}
+            onClick={() => api.loadInquiries({ silent: true })}
+            disabled={api.isRefreshing}
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--primary)] transition hover:bg-[var(--primary-soft)] disabled:cursor-not-allowed"
           >
-            {isRefreshing ? "새로고침 중..." : "새로고침"}
+            {api.isRefreshing ? "새로고침 중..." : "새로고침"}
           </button>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 text-xs text-[var(--text-muted)]">
         <p>
-          전체 {total}건 · 미처리 {pendingCount}건 · 예약확정 {reservedCount}건 · 여행완료 {completedCount}건
+          전체 {api.total}건 · 미처리 {api.pendingCount}건 · 예약확정 {api.reservedCount}건 · 여행완료 {api.completedCount}건
         </p>
       </div>
 
-      {errorMessage ? (
+      {api.errorMessage ? (
         <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)] ring-1 ring-[var(--danger)]/30">
-          <span>{errorMessage}</span>
+          <span>{api.errorMessage}</span>
           <button
             type="button"
-            onClick={() => loadInquiries({ silent: true, resetSelection: false })}
+            onClick={() => api.loadInquiries({ silent: true, resetSelection: false })}
             className="rounded-md border border-[var(--danger)]/50 bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface-muted)]"
           >
             다시 시도
@@ -437,17 +214,17 @@ export default function AdminInquiryTable() {
             </tr>
           </thead>
           <tbody>
-            {inquiries.length === 0 ? (
+            {api.inquiries.length === 0 ? (
               <tr className="border-t border-[var(--divider)]">
                 <td colSpan={9} className="px-4 py-6 text-center text-[var(--text-muted)]">
                   조건에 맞는 문의가 없습니다.
                 </td>
               </tr>
             ) : (
-              inquiries.map((inquiry) => {
+              api.inquiries.map((inquiry) => {
                 const consultationStatus = (inquiry.consultation_status ?? "new") as ConsultationStatus;
                 const bookingStatus = (inquiry.booking_status ?? "none") as BookingStatus;
-                const isExpanded = expandedRows.includes(inquiry.id);
+                const isExpanded = api.expandedRows.includes(inquiry.id);
                 const canReserve = bookingStatus === "none" && inquiry.customer_profile_id;
                 const canCompleteTrip = bookingStatus === "reserved";
 
@@ -507,7 +284,7 @@ export default function AdminInquiryTable() {
                         {inquiry.content.length > 70 ? (
                           <button
                             type="button"
-                            onClick={() => toggleExpand(inquiry.id)}
+                            onClick={() => api.toggleExpand(inquiry.id)}
                             className="mt-1 text-xs font-semibold text-[var(--primary)] hover:underline"
                           >
                             {isExpanded ? "접기" : "더보기"}
@@ -522,11 +299,11 @@ export default function AdminInquiryTable() {
                           <button
                             type="button"
                             onClick={() =>
-                              setExpandedQuoteId((prev) => (prev === inquiry.id ? null : inquiry.id))
+                              api.setExpandedQuoteId(api.expandedQuoteId === inquiry.id ? null : inquiry.id)
                             }
                             className="text-xs font-semibold text-[var(--primary)] hover:underline"
                           >
-                            {expandedQuoteId === inquiry.id ? "접기" : "보기"}
+                            {api.expandedQuoteId === inquiry.id ? "접기" : "보기"}
                           </button>
                         ) : (
                           <span className="text-[var(--text-subtle)]">-</span>
@@ -537,8 +314,8 @@ export default function AdminInquiryTable() {
                           {consultationStatus === "new" && (
                             <button
                               type="button"
-                              disabled={pendingId === inquiry.id}
-                              onClick={() => updateConsultationStatus(inquiry.id, "contacted")}
+                              disabled={api.pendingId === inquiry.id}
+                              onClick={() => api.updateConsultationStatus(inquiry.id, "contacted")}
                               className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
                             >
                               상담중
@@ -547,8 +324,8 @@ export default function AdminInquiryTable() {
                           {consultationStatus === "contacted" && (
                             <button
                               type="button"
-                              disabled={pendingId === inquiry.id}
-                              onClick={() => updateConsultationStatus(inquiry.id, "closed")}
+                              disabled={api.pendingId === inquiry.id}
+                              onClick={() => api.updateConsultationStatus(inquiry.id, "closed")}
                               className="rounded border border-[var(--success)]/50 bg-[var(--success-bg)] px-2 py-1 text-xs font-medium text-[var(--success)] hover:opacity-90 disabled:opacity-50"
                             >
                               상담종료
@@ -557,8 +334,8 @@ export default function AdminInquiryTable() {
                           {canReserve && (
                             <button
                               type="button"
-                              disabled={pendingId === inquiry.id}
-                              onClick={() => openReserveModal(inquiry)}
+                              disabled={api.pendingId === inquiry.id}
+                              onClick={() => api.openReserveModal(inquiry)}
                               className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50"
                             >
                               예약 확정
@@ -567,8 +344,8 @@ export default function AdminInquiryTable() {
                           {canCompleteTrip && (
                             <button
                               type="button"
-                              disabled={pendingId === inquiry.id}
-                              onClick={() => completeTrip(inquiry.id)}
+                              disabled={api.pendingId === inquiry.id}
+                              onClick={() => api.completeTrip(inquiry.id)}
                               className="rounded border border-[var(--success)]/50 bg-[var(--success-bg)] px-2 py-1 text-xs font-medium text-[var(--success)] hover:opacity-90 disabled:opacity-50"
                             >
                               여행 완료
@@ -577,7 +354,7 @@ export default function AdminInquiryTable() {
                         </div>
                       </td>
                     </tr>
-                    {inquiry.quote_snapshot && expandedQuoteId === inquiry.id ? (
+                    {inquiry.quote_snapshot && api.expandedQuoteId === inquiry.id ? (
                       <tr className="border-t border-[var(--divider)] bg-[var(--surface-muted)]">
                         <td colSpan={9} className="px-4 py-3">
                           <QuoteSnapshotSection snapshot={inquiry.quote_snapshot} />
@@ -593,26 +370,26 @@ export default function AdminInquiryTable() {
       </div>
       <div className="flex items-center justify-between px-4 pb-4 pt-1 text-sm text-[var(--text-muted)]">
         <p>
-          총 {total}건 중 {total === 0 ? 0 : (safePage - 1) * pageSize + 1}
+          총 {api.total}건 중 {api.total === 0 ? 0 : (api.safePage - 1) * api.pageSize + 1}
           -
-          {Math.min(safePage * pageSize, total)}건 표시
+          {Math.min(api.safePage * api.pageSize, api.total)}건 표시
         </p>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => movePage(safePage - 1)}
-            disabled={safePage <= 1}
+            onClick={() => api.movePage(api.safePage - 1)}
+            disabled={api.safePage <= 1}
             className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             이전
           </button>
           <span className="text-xs font-semibold text-[var(--text-primary)]">
-            {safePage} / {totalPages}
+            {api.safePage} / {api.totalPages}
           </span>
           <button
             type="button"
-            onClick={() => movePage(safePage + 1)}
-            disabled={safePage >= totalPages}
+            onClick={() => api.movePage(api.safePage + 1)}
+            disabled={api.safePage >= api.totalPages}
             className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             다음
@@ -620,7 +397,7 @@ export default function AdminInquiryTable() {
         </div>
       </div>
 
-      {reserveModalInquiryId ? (
+      {api.reserveModalInquiryId ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
@@ -639,8 +416,8 @@ export default function AdminInquiryTable() {
                 <span className="text-xs font-semibold text-[var(--text-muted)]">출발일</span>
                 <input
                   type="date"
-                  value={reserveDeparture}
-                  onChange={(e) => setReserveDeparture(e.target.value)}
+                  value={api.reserveDeparture}
+                  onChange={(e) => api.setReserveDeparture(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                 />
               </label>
@@ -648,8 +425,8 @@ export default function AdminInquiryTable() {
                 <span className="text-xs font-semibold text-[var(--text-muted)]">귀국일</span>
                 <input
                   type="date"
-                  value={reserveReturn}
-                  onChange={(e) => setReserveReturn(e.target.value)}
+                  value={api.reserveReturn}
+                  onChange={(e) => api.setReserveReturn(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                 />
               </label>
@@ -657,22 +434,18 @@ export default function AdminInquiryTable() {
             <div className="mt-6 flex gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setReserveModalInquiryId(null);
-                  setReserveDeparture("");
-                  setReserveReturn("");
-                }}
+                onClick={api.closeReserveModal}
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
               >
                 취소
               </button>
               <button
                 type="button"
-                onClick={() => submitReserveBooking()}
-                disabled={isSubmittingReserve}
+                onClick={() => api.submitReserveBooking()}
+                disabled={api.isSubmittingReserve}
                 className="rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--on-primary)] disabled:opacity-50"
               >
-                {isSubmittingReserve ? "저장 중..." : "저장"}
+                {api.isSubmittingReserve ? "저장 중..." : "저장"}
               </button>
             </div>
           </div>

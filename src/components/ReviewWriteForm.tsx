@@ -29,6 +29,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import imageCompression from "browser-image-compression";
 import { uploadReviewImage } from "@/lib/reviewImageUpload";
+import {
+  MAX_REVIEW_IMAGES,
+  MAX_REVIEW_IMAGE_SIZE_MB,
+  REVIEW_IMAGE_ALLOWED_MIME_TYPES,
+} from "@/lib/constants/review";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Label } from "@/components/ui/Label";
@@ -36,9 +41,6 @@ import { Button, buttonVariants } from "@/components/ui/Button";
 import type { Review } from "@/types/review";
 import type { ReviewImageItem } from "@/types/review";
 
-const MAX_REVIEW_IMAGES = 10;
-const MAX_FILE_SIZE_MB = 10;
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const AUTO_SAVE_DEBOUNCE_MS = 5000;
 const CLIENT_IMAGE_MAX_WIDTH = 1600;
 const CLIENT_IMAGE_QUALITY = 0.85;
@@ -510,8 +512,8 @@ export default function ReviewWriteForm({
 
   const validateFiles = (files: File[]): string | null => {
     for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) return `지원하지 않는 파일 형식입니다: ${file.name}`;
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) return `파일 크기가 너무 큽니다 (최대 ${MAX_FILE_SIZE_MB}MB): ${file.name}`;
+      if (!REVIEW_IMAGE_ALLOWED_MIME_TYPES.includes(file.type)) return `지원하지 않는 파일 형식입니다: ${file.name}`;
+      if (file.size > MAX_REVIEW_IMAGE_SIZE_MB * 1024 * 1024) return `파일 크기가 너무 큽니다 (최대 ${MAX_REVIEW_IMAGE_SIZE_MB}MB): ${file.name}`;
     }
     return null;
   };
@@ -778,7 +780,7 @@ export default function ReviewWriteForm({
             id={imageInputId}
             type="file"
             multiple
-            accept={ALLOWED_TYPES.join(",")}
+            accept={REVIEW_IMAGE_ALLOWED_MIME_TYPES.join(",")}
             onChange={handleFileSelect}
             className="sr-only"
           />

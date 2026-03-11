@@ -1,25 +1,19 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Product } from "@/types/product";
-import type { ProductCardTag } from "@/components/ProductCard";
-import type { ProductCardV2Status } from "@/components/products/ProductCardV2";
-import ProductCard from "@/components/ProductCard";
-import ProductCardV2 from "@/components/products/ProductCardV2";
+import ProductCard from "@/components/products/ProductCard";
+import { productToProductCardProps } from "@/lib/productCardProps";
 import { useConsultModal } from "@/components/ConsultModal";
-import { ENABLE_NEW_PRODUCT_UI } from "@/config/featureFlags";
 import {
-  getProductBadges,
   getThemeTabs,
   groupProductsByTheme,
   matchesThemeTab,
   matchesProductTab,
   type ProductCategoryTabId,
 } from "@/lib/productCategory";
-import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 
 type ProductCatalogSectionProps = {
   products: Product[];
@@ -41,33 +35,6 @@ type ProductCatalogSectionProps = {
 
 function normalizeSearchKeyword(value: string) {
   return value.trim().toLowerCase();
-}
-
-const PRIORITY_BADGES = ["제철", "인기", "마감임박"];
-
-function buildV2Badges(product: Product, themeBadges: string[]): { type: string; label: string; priority?: number; isActive?: boolean }[] {
-  const badges: { type: string; label: string; priority?: number; isActive?: boolean }[] = [];
-  themeBadges.forEach((label) => {
-    badges.push({
-      type: PRIORITY_BADGES.includes(label) ? "gold" : "muted",
-      label,
-      priority: PRIORITY_BADGES.includes(label) ? 5 : 0,
-      isActive: true,
-    });
-  });
-  return badges;
-}
-
-function buildProductCardTags(product: Product, themeBadges: string[]): ProductCardTag[] {
-  const tags: ProductCardTag[] = [];
-  tags.push({ label: product.category, variant: "accent" });
-  themeBadges.forEach((label) => {
-    tags.push({
-      label,
-      variant: PRIORITY_BADGES.includes(label) ? "gold" : "muted",
-    });
-  });
-  return tags;
 }
 
 function matchesKeyword(product: Product, keyword: string) {
@@ -285,98 +252,20 @@ export default function ProductCatalogSection({
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
               <h3 className="font-card-title type-h3 text-[var(--primary)]">{group.theme}</h3>
-              <div className="flex flex-col gap-6">
-                {group.products.map((product) => {
-                  const badges = getProductBadges(product);
-                  const hashtags = parseMetaTitleAsHashtags(product.meta_title);
-                  const tags = buildProductCardTags(product, badges);
-                  const status: ProductCardV2Status = product.status ?? "AVAILABLE";
-                  if (ENABLE_NEW_PRODUCT_UI) {
-                    return (
-                      <ProductCardV2
-                        key={product.id}
-                        layout="list"
-                        title={product.title}
-                        price={product.price}
-                        duration={product.duration}
-                        region={product.theme}
-                        categories={[product.category]}
-                        tags={hashtags}
-                        status={status}
-                        badges={buildV2Badges(product, badges)}
-                        thumbnailUrl={product.image_url}
-                        priceMeta={product.price_meta || "1인 기준"}
-                        metaInfo={product.meta_info ?? ""}
-                        hrefDetail={`/products/${product.id}`}
-                        onClickDetail={() => router.push(`/products/${product.id}`)}
-                        onClickConsult={() => handleProductConsult(product)}
-                        analyticsSource="product_list"
-                        analyticsSection="catalog"
-                        productId={product.id}
+              <div className="flex flex-col gap-6 w-full max-w-[1344px]">
+                {group.products.map((product) => (
+                    <div key={product.id} className="w-full">
+                      <ProductCard
+                        {...productToProductCardProps(product, {
+                          layout: "list",
+                          analyticsSource: "product_list",
+                          analyticsSection: "catalog",
+                          onClickDetail: () => router.push(`/products/${product.id}`),
+                          onClickConsult: () => handleProductConsult(product),
+                        })}
                       />
-                    );
-                  }
-                  return (
-                    <Link
-                      key={product.id}
-                      href={`/products/${product.id}`}
-                      className="h-full overflow-hidden rounded-3xl bg-[var(--surface)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-soft-strong)]"
-                    >
-                      <article className="flex h-full flex-col">
-                        <Image
-                          src={product.image_url}
-                          alt={`${product.title} 상품 이미지`}
-                          width={900}
-                          height={560}
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                          loading="lazy"
-                          className="h-52 w-full object-cover"
-                        />
-                        <div className="flex flex-1 flex-col gap-3 p-5">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="inline-block rounded-full bg-[var(--surface-muted)] px-3 py-1 type-caption font-semibold text-[var(--primary)]">
-                              {product.category}
-                            </span>
-                            {badges.map((badge) => (
-                              <span
-                                key={`${product.id}-${badge}`}
-                                className="inline-block rounded-full bg-amber-50 px-2.5 py-1 type-caption font-semibold text-amber-700 ring-1 ring-amber-200"
-                              >
-                                {badge}
-                              </span>
-                            ))}
-                          </div>
-                          <h2 className="font-card-title type-body font-semibold text-[var(--text-primary)] md:type-small line-clamp-2">
-                            {product.title}
-                          </h2>
-                          <p className="line-clamp-1 type-small leading-6 text-[var(--text-secondary)]">
-                            {product.description}
-                          </p>
-                          {typeof product.price === "number" ? (
-                            <p className="font-price-strong type-body font-bold text-[var(--primary)]">
-                              {new Intl.NumberFormat("ko-KR").format(product.price)}원~
-                            </p>
-                          ) : null}
-                          {hashtags.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {hashtags.map((tag) => (
-                                <span
-                                  key={`${product.id}-${tag}`}
-                                  className="type-caption text-[var(--text-muted)]"
-                                >
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-                          <span className="type-btn mt-auto inline-flex w-fit rounded-lg bg-[var(--primary)] px-4 py-2 text-white">
-                            상세 보기
-                          </span>
-                        </div>
-                      </article>
-                    </Link>
-                  );
-                })}
+                    </div>
+                  ))}
               </div>
             </div>
           ))

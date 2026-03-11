@@ -8,9 +8,10 @@ import { cookies } from "next/headers";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getReviewById } from "@/lib/reviews";
 import { uploadReviewImageServer } from "@/lib/reviewImageUploadServer";
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+import {
+  MAX_REVIEW_IMAGE_SIZE_BYTES,
+  REVIEW_IMAGE_ALLOWED_MIME_TYPES,
+} from "@/lib/constants/review";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -49,10 +50,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "제출된 후기는 수정할 수 없습니다." }, { status: 400 });
   }
 
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (!REVIEW_IMAGE_ALLOWED_MIME_TYPES.includes(file.type)) {
     return NextResponse.json({ message: "jpg, png, webp, gif만 업로드할 수 있습니다." }, { status: 400 });
   }
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > MAX_REVIEW_IMAGE_SIZE_BYTES) {
     return NextResponse.json({ message: "파일 크기는 10MB 이하여야 합니다." }, { status: 400 });
   }
 

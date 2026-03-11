@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import MyPageLayout from "@/components/mypage/MyPageLayout";
+import { SectionHeader } from "@/components/layout/SectionHeader";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getMyPageReviewSections } from "@/lib/mypageReviews";
 import type {
@@ -118,15 +119,6 @@ function SubmittedReviewCard({ item }: { item: MyPageSubmittedReviewItem }) {
         </Link>
       </div>
     </article>
-  );
-}
-
-function SectionHeader({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="mb-3">
-      <h2 className="text-base font-bold text-[var(--text-primary)]">{title}</h2>
-      <p className="text-xs text-[var(--text-secondary)]">{description}</p>
-    </div>
   );
 }
 

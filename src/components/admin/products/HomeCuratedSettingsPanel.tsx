@@ -86,6 +86,11 @@ export default function HomeCuratedSettingsPanel({
           />
           <span className="text-sm text-[var(--text-primary)]">추천 섹션 노출</span>
         </label>
+        {!settings.is_active && (
+          <p className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            메인 홈에 추천 섹션이 표시되지 않습니다. 표시하려면 위 체크박스를 켜고 아래 [설정 저장]을 누르세요.
+          </p>
+        )}
       </div>
       <div className="mt-4">
         <button

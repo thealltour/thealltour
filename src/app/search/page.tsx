@@ -10,8 +10,7 @@ import SearchFilters from "@/components/search/SearchFilters";
 import SearchResults from "@/components/search/SearchResults";
 import SearchResultsContainer from "@/components/search/SearchResultsContainer";
 import SearchEmpty from "@/components/search/SearchEmpty";
-import RelatedDestinationSection from "@/components/search/RelatedDestinationSection";
-import RelatedThemeSection from "@/components/search/RelatedThemeSection";
+import RelatedTaxonomySection from "@/components/search/RelatedTaxonomySection";
 import RelatedProductsSection from "@/components/search/RelatedProductsSection";
 import SiteHeader from "@/components/SiteHeader";
 
@@ -115,14 +114,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             {hasCondition && (
               <>
                 {recommendations.destinations.length > 0 && (
-                  <RelatedDestinationSection
+                  <RelatedTaxonomySection
                     items={recommendations.destinations}
+                    taxonomyType="destination"
                     query={state.q}
                   />
                 )}
                 {recommendations.themes.length > 0 && (
-                  <RelatedThemeSection
+                  <RelatedTaxonomySection
                     items={recommendations.themes}
+                    taxonomyType="theme"
                     query={state.q}
                   />
                 )}

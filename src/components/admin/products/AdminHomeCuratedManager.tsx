@@ -107,6 +107,43 @@ export default function AdminHomeCuratedManager() {
     }
   }
 
+  async function setMainHomeExposure(enabled: boolean) {
+    setFeaturedSaving(true);
+    setFeaturedError("");
+    const nextForm = { ...featuredSettingsForm, is_active: enabled };
+    setFeaturedSettingsForm(nextForm);
+    try {
+      await updateAdminHomeCuratedSettings({ is_active: enabled });
+      setFeaturedSettings((prev) => (prev ? { ...prev, is_active: enabled } : null));
+      showToast("success", enabled ? "메인 홈에 추천 섹션이 노출됩니다." : "메인 홈 노출이 꺼졌습니다.");
+    } catch (err) {
+      setFeaturedSettingsForm(featuredSettingsForm);
+      const msg = err instanceof Error ? err.message : "저장에 실패했습니다.";
+      setFeaturedError(msg);
+      showToast("error", msg);
+    } finally {
+      setFeaturedSaving(false);
+    }
+  }
+
+  async function toggleSectionHomeExposure(sectionId: string, enabled: boolean) {
+    setFeaturedSaving(true);
+    setFeaturedError("");
+    try {
+      const data = await updateAdminHomeCuratedSection(sectionId, { is_active: enabled });
+      setFeaturedSections((prev) =>
+        prev.map((s) => (s.id === sectionId ? data : s)).sort((a, b) => a.sort_order - b.sort_order),
+      );
+      showToast("success", enabled ? "해당 섹션이 메인 홈에 노출됩니다." : "해당 섹션 메인 홈 노출이 꺼졌습니다.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "저장에 실패했습니다.";
+      setFeaturedError(msg);
+      showToast("error", msg);
+    } finally {
+      setFeaturedSaving(false);
+    }
+  }
+
   async function addFeaturedSection() {
     setFeaturedSaving(true);
     setFeaturedError("");
@@ -336,6 +373,28 @@ export default function AdminHomeCuratedManager() {
         <p className="text-sm text-[var(--text-muted)]">불러오는 중...</p>
       ) : (
         <>
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">메인 홈 노출</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                메인 홈(테마 섹션 아래)에 추천 상품 섹션을 표시합니다.
+              </p>
+            </div>
+            <label className="flex cursor-pointer items-center gap-2">
+              <span className="text-sm font-medium text-[var(--text-primary)]">
+                {featuredSettingsForm.is_active ? "노출 중" : "숨김"}
+              </span>
+              <input
+                type="checkbox"
+                checked={featuredSettingsForm.is_active}
+                onChange={(e) => setMainHomeExposure(e.target.checked)}
+                disabled={featuredSaving}
+                className="h-5 w-5 accent-[var(--primary)] disabled:opacity-50"
+                aria-label="메인 홈에 추천 섹션 노출"
+              />
+            </label>
+          </div>
+
           <HomeCuratedSettingsPanel
             settings={featuredSettingsForm}
             isSaving={featuredSaving}
@@ -378,6 +437,7 @@ export default function AdminHomeCuratedManager() {
               onCancelDelete={() => setPendingDeleteSectionId(null)}
               onMoveSectionUp={(id) => moveFeaturedSection(id, "up")}
               onMoveSectionDown={(id) => moveFeaturedSection(id, "down")}
+              onToggleSectionHomeExposure={toggleSectionHomeExposure}
             />
 
             <HomeCuratedSectionProductsPanel

@@ -1,4 +1,4 @@
-import AdminHeader from "@/components/AdminHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import EarnRequestRequestsManager from "@/components/admin/points/EarnRequestRequestsManager";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";

@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { LandingDetailHero } from "@/components/landing/LandingDetailHero";
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
 import { LandingSubCardsSection } from "@/components/landing/LandingSubCardsSection";
-import { GuideCardGrid } from "@/components/home/GuideCardGrid";
+import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";

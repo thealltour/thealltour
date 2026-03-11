@@ -84,8 +84,18 @@ export default async function Home() {
           />
 
           <PageContainer size="wide" className="flex flex-col gap-12 md:gap-20">
-            <DestinationSection items={destinationsForHome} />
-            <ThemeSection items={themesForHome} />
+            <DestinationSection
+              items={destinationsForHome}
+              eyebrow={settings.home_region_section_eyebrow}
+              title={settings.home_region_section_title}
+              description={settings.home_region_section_description}
+            />
+            <ThemeSection
+              items={themesForHome}
+              eyebrow={settings.home_theme_section_eyebrow}
+              title={settings.home_theme_section_title}
+              description={settings.home_theme_section_description}
+            />
             <CuratedProductsSection settings={curatedSettings} sections={curatedSections} />
 
             <HomeGuideSection guides={homeGuides} />

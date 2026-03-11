@@ -11,7 +11,9 @@ import { getProductsForGuide } from "@/lib/products";
 import { getTaxonomyById } from "@/lib/productTaxonomies";
 import { getDestinationLandingHref, getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
-import CuratedProductCard from "@/components/home/CuratedProductCard";
+import ProductCard from "@/components/products/ProductCard";
+import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
+import { productToProductCardProps } from "@/lib/productCardProps";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
 
@@ -224,13 +226,18 @@ export default async function GuideDetailPage({ params }: Props) {
                 description="연결된 지역·테마의 추천 상품입니다."
                 align="left"
               />
-              <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ProductCardGridSection>
                 {relatedProducts.map((product) => (
-                  <li key={product.id}>
-                    <CuratedProductCard product={product} />
-                  </li>
+                  <ProductCard
+                    key={product.id}
+                    {...productToProductCardProps(product, {
+                      layout: "grid",
+                      analyticsSource: "home_curated",
+                      analyticsSection: `guide_${slug}`,
+                    })}
+                  />
                 ))}
-              </ul>
+              </ProductCardGridSection>
               <div className="mt-4">
                 <Link
                   href="/products"

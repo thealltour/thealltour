@@ -1,6 +1,6 @@
-import AdminBannerManager from "@/components/AdminBannerManager";
+import AdminBannerManager from "@/components/admin/AdminBannerManager";
 import AdminHeroContentForm from "@/components/admin/AdminHeroContentForm";
-import AdminHeader from "@/components/AdminHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
 import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { getAdminCounts } from "@/lib/adminCounts";

@@ -1,4 +1,4 @@
-import AdminHeader from "@/components/AdminHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";
 import { getReviewExperimentEventsSummary, compareExperimentVariants } from "@/lib/reviewExperimentAnalytics";

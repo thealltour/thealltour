@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ProductDetailTabsLegacy from "@/components/ProductDetailTabsLegacy";
 import AlertCard from "@/components/ui/AlertCard";
+import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 
 export type FlightCardData = {
   fromAirport?: string;
@@ -57,15 +58,6 @@ function renderFlightCard(title: string, flight: FlightCardData) {
 function formatPrice(price?: number): string | null {
   if (typeof price !== "number") return null;
   return new Intl.NumberFormat("ko-KR").format(price);
-}
-
-function parseMetaTitleAsHashtags(metaTitle?: string): string[] {
-  if (!metaTitle?.trim()) return [];
-  return metaTitle
-    .trim()
-    .split(/\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
 }
 
 export type ProductDetailContentLegacyProps = {

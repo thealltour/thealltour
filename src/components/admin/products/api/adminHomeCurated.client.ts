@@ -33,6 +33,9 @@ export type AdminHomeCuratedSectionPayload = {
 
 export type AdminHomeCuratedSectionSortPayload = { sort_order: number };
 
+/** 섹션 활성/비활성 토글용 (PATCH 부분 업데이트) */
+export type AdminHomeCuratedSectionActivePayload = { is_active: boolean };
+
 export type AdminHomeCuratedSectionProductPayload = { productId: string };
 
 export type AdminHomeCuratedSectionProductSortPayload = { sort_order: number };
@@ -93,7 +96,10 @@ export async function createAdminHomeCuratedSection(
  */
 export async function updateAdminHomeCuratedSection(
   sectionId: string,
-  payload: AdminHomeCuratedSectionPayload | AdminHomeCuratedSectionSortPayload,
+  payload:
+    | AdminHomeCuratedSectionPayload
+    | AdminHomeCuratedSectionSortPayload
+    | AdminHomeCuratedSectionActivePayload,
 ): Promise<HomeCuratedSectionWithCount> {
   const response = await fetch(`${BASE}/sections/${sectionId}`, {
     method: "PATCH",

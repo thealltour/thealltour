@@ -28,6 +28,8 @@ export type HomeCuratedSectionsPanelProps = {
   onCancelDelete: () => void;
   onMoveSectionUp: (sectionId: string) => void;
   onMoveSectionDown: (sectionId: string) => void;
+  /** 섹션별 메인 홈 노출 토글 (해당 섹션을 메인 홈에 노출할지) */
+  onToggleSectionHomeExposure?: (sectionId: string, enabled: boolean) => void;
 };
 
 export default function HomeCuratedSectionsPanel({
@@ -48,6 +50,7 @@ export default function HomeCuratedSectionsPanel({
   onCancelDelete,
   onMoveSectionUp,
   onMoveSectionDown,
+  onToggleSectionHomeExposure,
 }: HomeCuratedSectionsPanelProps) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
@@ -120,10 +123,31 @@ export default function HomeCuratedSectionsPanel({
                   >
                     <p className="font-medium text-[var(--text-primary)]">{sec.title || "(제목 없음)"}</p>
                     <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                      순서 {sec.sort_order} · 상품 {sec.product_count}개 · {sec.is_active ? "노출" : "숨김"}
+                      순서 {sec.sort_order} · 상품 {sec.product_count}개
                     </p>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {typeof onToggleSectionHomeExposure === "function" ? (
+                      <label className="flex cursor-pointer items-center gap-1.5 rounded border border-[var(--border)] px-2 py-1 text-[10px] hover:bg-[var(--surface-muted)]">
+                        <input
+                          type="checkbox"
+                          checked={sec.is_active}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            onToggleSectionHomeExposure(sec.id, e.target.checked);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={isSaving}
+                          className="h-3.5 w-3.5 accent-[var(--primary)]"
+                          aria-label={`${sec.title || "섹션"} 메인 홈 노출`}
+                        />
+                        <span className={sec.is_active ? "text-[var(--primary)] font-semibold" : "text-[var(--text-muted)]"}>
+                          메인 홈 노출
+                        </span>
+                      </label>
+                    ) : (
+                      <span className="text-[10px] text-[var(--text-muted)]">{sec.is_active ? "노출" : "숨김"}</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => onStartEdit(sec.id)}

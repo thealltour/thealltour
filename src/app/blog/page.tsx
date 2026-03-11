@@ -2,7 +2,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { getPublishedGuidesWithTaxonomyNames } from "@/lib/guides";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
-import { GuideCardList } from "@/components/GuideCardList";
+import { GuideCardList } from "@/components/guides/GuideCardList";
 
 export default async function BlogPage() {
   const guides = await getPublishedGuidesWithTaxonomyNames();

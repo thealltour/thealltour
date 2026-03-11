@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import AdminDashboardKpiSectionWithProvider from "@/components/admin/AdminDashboardKpiSectionWithProvider";
-import AdminHeader from "@/components/AdminHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
 import { getAdminCounts } from "@/lib/adminCounts";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";

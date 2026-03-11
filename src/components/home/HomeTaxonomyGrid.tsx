@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
@@ -6,8 +9,16 @@ import {
   getThemeLandingHref,
   getProductLineLandingHref,
 } from "@/lib/hubLandingLinks";
-import { CARD_HOVER, CARD_TRANSITION } from "@/lib/cardTokens";
+import {
+  CARD_HOVER,
+  CARD_TRANSITION,
+  CARD_PADDING_HOME,
+  CARD_IMAGE_ASPECT_HOME,
+} from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+const SCROLL_AMOUNT = 320;
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-home/800/500";
 
@@ -45,17 +56,48 @@ export function HomeTaxonomyGrid({
   className,
   layout = "grid",
 }: HomeTaxonomyGridProps) {
+  const scrollRef = useRef<HTMLUListElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || layout !== "horizontal-scroll") return;
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState);
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      ro.disconnect();
+    };
+  }, [layout, updateScrollState]);
+
+  const scroll = (direction: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction === "left" ? -SCROLL_AMOUNT : SCROLL_AMOUNT, behavior: "smooth" });
+  };
+
   if (items.length === 0) return null;
 
   const isHorizontalScroll = layout === "horizontal-scroll";
 
-  return (
+  const listContent = (
     <ul
+      ref={isHorizontalScroll ? scrollRef : undefined}
       className={cn(
         isHorizontalScroll
           ? "flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0"
           : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4",
-        className,
+        !isHorizontalScroll && className,
       )}
       aria-label={type === "destination" ? "지역별 탐색" : type === "theme" ? "테마별 탐색" : "상품군별 탐색"}
     >
@@ -75,12 +117,12 @@ export function HomeTaxonomyGrid({
             <Link
               href={href}
               className={cn(
-                "group flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] transition sm:rounded-2xl",
+                "group flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] sm:rounded-2xl",
                 CARD_HOVER,
                 CARD_TRANSITION,
               )}
             >
-              <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden bg-[var(--surface-muted)] md:aspect-[4/3]">
+              <div className={cn("relative w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]", CARD_IMAGE_ASPECT_HOME)}>
                 <Image
                   src={imageUrl || FALLBACK_IMAGE}
                   alt=""
@@ -89,12 +131,12 @@ export function HomeTaxonomyGrid({
                   className="object-cover transition duration-200 group-hover:scale-[1.02]"
                 />
               </div>
-              <div className="flex flex-1 flex-col px-3 pt-2 pb-3 sm:p-4">
+              <div className={cn("flex flex-1 flex-col", CARD_PADDING_HOME)}>
                 <h3 className="font-card-title text-sm font-semibold leading-tight text-[var(--foreground)]">
                   {title}
                 </h3>
                 {description ? (
-                  <p className="mt-0.5 line-clamp-1 text-xs text-[var(--text-muted)] md:line-clamp-2 md:type-caption">
+                  <p className="mt-0.5 line-clamp-1 text-xs text-[var(--text-muted)] md:type-caption">
                     {description}
                   </p>
                 ) : null}
@@ -109,4 +151,34 @@ export function HomeTaxonomyGrid({
       })}
     </ul>
   );
+
+  if (isHorizontalScroll) {
+    return (
+      <div className={cn("relative group/scroll", className)}>
+        {canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => scroll("left")}
+            aria-label="왼쪽으로 스크롤"
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-soft)] text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition opacity-90 hover:opacity-100 -translate-x-1 sm:translate-x-0"
+          >
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" aria-hidden />
+          </button>
+        )}
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scroll("right")}
+            aria-label="오른쪽으로 스크롤"
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-soft)] text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition opacity-90 hover:opacity-100 translate-x-1 sm:translate-x-0"
+          >
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" aria-hidden />
+          </button>
+        )}
+        {listContent}
+      </div>
+    );
+  }
+
+  return listContent;
 }

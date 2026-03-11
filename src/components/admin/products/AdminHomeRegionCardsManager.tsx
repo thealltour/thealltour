@@ -13,9 +13,16 @@ import { cn } from "@/lib/cn";
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-card/400/250";
 const MAX_HOME_CARDS = 8;
 
+const DEFAULT_REGION_EYEBROW = "DESTINATIONS";
+const DEFAULT_REGION_TITLE = "어디로 떠나고 싶으신가요?";
+const DEFAULT_REGION_DESCRIPTION = "지역별 여행 상품을 만나보세요.";
+
 export default function AdminHomeRegionCardsManager() {
   const [destinations, setDestinations] = useState<ProductTaxonomyWithUsage[]>([]);
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
+  const [sectionEyebrow, setSectionEyebrow] = useState(DEFAULT_REGION_EYEBROW);
+  const [sectionTitle, setSectionTitle] = useState(DEFAULT_REGION_TITLE);
+  const [sectionDescription, setSectionDescription] = useState(DEFAULT_REGION_DESCRIPTION);
   const [addSelectValue, setAddSelectValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -35,9 +42,21 @@ export default function AdminHomeRegionCardsManager() {
 
       const settingsData = (await settingsRes.json()) as Record<string, string> | { message?: string };
       if (settingsRes.ok && settingsData && !("message" in settingsData)) {
-        const settings = { home_region_card_ids: (settingsData as Record<string, string>).home_region_card_ids ?? "[]" } as Pick<SiteSettings, "home_region_card_ids">;
+        const raw = settingsData as Record<string, string>;
+        const settings = {
+          home_region_card_ids: raw.home_region_card_ids ?? "[]",
+          home_region_section_eyebrow: raw.home_region_section_eyebrow ?? "",
+          home_region_section_title: raw.home_region_section_title ?? "",
+          home_region_section_description: raw.home_region_section_description ?? "",
+        } as Pick<
+          SiteSettings,
+          "home_region_card_ids" | "home_region_section_eyebrow" | "home_region_section_title" | "home_region_section_description"
+        >;
         const ids = parseHomeRegionCardIds(settings);
         setOrderedIds(ids.slice(0, MAX_HOME_CARDS));
+        setSectionEyebrow(settings.home_region_section_eyebrow ?? "");
+        setSectionTitle(settings.home_region_section_title ?? "");
+        setSectionDescription(settings.home_region_section_description ?? "");
       } else {
         setOrderedIds([]);
       }
@@ -80,7 +99,12 @@ export default function AdminHomeRegionCardsManager() {
       const res = await fetch("/api/admin/site-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ home_region_card_ids: JSON.stringify(orderedIds) }),
+        body: JSON.stringify({
+          home_region_card_ids: JSON.stringify(orderedIds),
+          home_region_section_eyebrow: sectionEyebrow.trim(),
+          home_region_section_title: sectionTitle.trim(),
+          home_region_section_description: sectionDescription.trim(),
+        }),
       });
       const data = (await res.json()) as { message?: string };
       if (!res.ok) {
@@ -117,6 +141,49 @@ export default function AdminHomeRegionCardsManager() {
         <p className="mt-1 text-sm text-[var(--text-muted)]">
           메인 페이지 &quot;어디로 떠나고 싶으신가요?&quot; 섹션에 노출할 지역을 카테고리/테마 관리에 등록된 지역 중에서 선택해 추가하고, 순서를 조정하거나 삭제할 수 있습니다. 최대 8개까지 노출됩니다.
         </p>
+      </div>
+
+      {/* 메인 홈 지역 섹션 문구 (상단 라벨·제목·부제목) */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">메인 홈 지역 섹션 문구</h3>
+        <p className="text-xs text-[var(--text-muted)]">
+          메인 페이지 지역 카드 섹션 상단에 보이는 텍스트입니다. 비우면 해당 항목은 메인에서 표시되지 않습니다.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-1">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">상단 라벨 (예: DESTINATIONS)</span>
+            <input
+              type="text"
+              value={sectionEyebrow}
+              onChange={(e) => setSectionEyebrow(e.target.value)}
+              placeholder={DEFAULT_REGION_EYEBROW}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+              aria-label="지역 섹션 상단 라벨"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">제목</span>
+            <input
+              type="text"
+              value={sectionTitle}
+              onChange={(e) => setSectionTitle(e.target.value)}
+              placeholder={DEFAULT_REGION_TITLE}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+              aria-label="지역 섹션 제목"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">부제목</span>
+            <input
+              type="text"
+              value={sectionDescription}
+              onChange={(e) => setSectionDescription(e.target.value)}
+              placeholder={DEFAULT_REGION_DESCRIPTION}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+              aria-label="지역 섹션 부제목"
+            />
+          </label>
+        </div>
       </div>
 
       {errorMessage ? (

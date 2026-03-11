@@ -48,8 +48,28 @@ export async function PATCH(request: Request) {
     .select("id")
     .maybeSingle();
 
-  if (result.error || !result.data) {
+  if (result.error) {
     return NextResponse.json({ message: "설정 수정에 실패했습니다." }, { status: 500 });
+  }
+
+  if (!result.data) {
+    const insertPayload = {
+      setting_key: "home_curated",
+      section_label: String(body.section_label ?? "").trim(),
+      section_title: String(body.section_title ?? "").trim(),
+      section_description: String(body.section_description ?? "").trim(),
+      catalog_button_label: String(body.catalog_button_label ?? "").trim(),
+      catalog_button_href: (body.catalog_button_href ?? "/products").trim() || "/products",
+      is_active: body.is_active !== undefined ? Boolean(body.is_active) : true,
+    };
+    const insertResult = await supabase
+      .from("home_curated_settings")
+      .upsert(insertPayload, { onConflict: "setting_key" })
+      .select("id")
+      .maybeSingle();
+    if (insertResult.error || !insertResult.data) {
+      return NextResponse.json({ message: "설정 저장에 실패했습니다. (초기 설정 행 생성 실패)" }, { status: 500 });
+    }
   }
 
   revalidateTag(CACHE_TAGS.HOME_CURATED, REVALIDATE_MAX);

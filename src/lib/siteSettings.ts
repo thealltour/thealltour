@@ -21,8 +21,20 @@ export type SiteSettings = {
   golf_hero_regions: string;
   /** 메인 홈 DESTINATIONS 섹션에 노출할 지역(taxonomy) id 목록. JSON 배열 문자열. 비어 있으면 허브 노출 지역 전체를 기본 순서로 사용. */
   home_region_card_ids: string;
+  /** 메인 홈 지역 섹션 상단 문구: eyebrow(작은 라벨). 비어 있으면 "DESTINATIONS" 사용 */
+  home_region_section_eyebrow: string;
+  /** 메인 홈 지역 섹션 제목. 비어 있으면 "어디로 떠나고 싶으신가요?" 사용 */
+  home_region_section_title: string;
+  /** 메인 홈 지역 섹션 부제목. 비어 있으면 "지역별 여행 상품을 만나보세요." 사용 */
+  home_region_section_description: string;
   /** 메인 홈 THEME 섹션에 노출할 테마(taxonomy) id 목록. JSON 배열 문자열. 비어 있으면 허브 노출 테마 전체를 기본 순서로 사용. 최대 8개. */
   home_theme_card_ids: string;
+  /** 메인 홈 테마 섹션 상단 문구: eyebrow(작은 라벨). 비어 있으면 "TRAVEL THEMES" 사용 */
+  home_theme_section_eyebrow: string;
+  /** 메인 홈 테마 섹션 제목. 비어 있으면 "이런 여행은 어떠세요?" 사용 */
+  home_theme_section_title: string;
+  /** 메인 홈 테마 섹션 부제목. 비어 있으면 "테마별로 여행 상품을 둘러보세요." 사용 */
+  home_theme_section_description: string;
   about_kicker: string;
   about_title: string;
   about_paragraph1: string;
@@ -62,7 +74,13 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
     { id: "golf-domestic", label: "국내 골프/파크골프", searchKeyword: "국내 골프" },
   ]),
   home_region_card_ids: "[]",
+  home_region_section_eyebrow: "DESTINATIONS",
+  home_region_section_title: "어디로 떠나고 싶으신가요?",
+  home_region_section_description: "지역별 여행 상품을 만나보세요.",
   home_theme_card_ids: "[]",
+  home_theme_section_eyebrow: "TRAVEL THEMES",
+  home_theme_section_title: "이런 여행은 어떠세요?",
+  home_theme_section_description: "테마별로 여행 상품을 둘러보세요.",
   about_kicker: "ABOUT THEALL TOUR",
   about_title: "여행을 디자인해 드립니다",
   about_paragraph1:
@@ -112,8 +130,20 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
       map.get("golf_hero_regions") || DEFAULT_SITE_SETTINGS.golf_hero_regions,
     home_region_card_ids:
       map.get("home_region_card_ids") ?? DEFAULT_SITE_SETTINGS.home_region_card_ids,
+    home_region_section_eyebrow:
+      map.get("home_region_section_eyebrow") ?? DEFAULT_SITE_SETTINGS.home_region_section_eyebrow,
+    home_region_section_title:
+      map.get("home_region_section_title") ?? DEFAULT_SITE_SETTINGS.home_region_section_title,
+    home_region_section_description:
+      map.get("home_region_section_description") ?? DEFAULT_SITE_SETTINGS.home_region_section_description,
     home_theme_card_ids:
       map.get("home_theme_card_ids") ?? DEFAULT_SITE_SETTINGS.home_theme_card_ids,
+    home_theme_section_eyebrow:
+      map.get("home_theme_section_eyebrow") ?? DEFAULT_SITE_SETTINGS.home_theme_section_eyebrow,
+    home_theme_section_title:
+      map.get("home_theme_section_title") ?? DEFAULT_SITE_SETTINGS.home_theme_section_title,
+    home_theme_section_description:
+      map.get("home_theme_section_description") ?? DEFAULT_SITE_SETTINGS.home_theme_section_description,
     about_kicker: map.get("about_kicker") || DEFAULT_SITE_SETTINGS.about_kicker,
     about_title: map.get("about_title") || DEFAULT_SITE_SETTINGS.about_title,
     about_paragraph1:

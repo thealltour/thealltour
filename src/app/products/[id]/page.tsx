@@ -3,12 +3,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
-import ProductDetailContentLegacy from "@/components/ProductDetailContentLegacy";
-import ProductDetailHero from "@/components/ProductDetailHero";
-import ProductDetailTabs from "@/components/ProductDetailTabs";
 import ProductDetailV2 from "@/components/products/ProductDetailV2";
 import { ProductReviewsSection } from "@/components/products/ProductReviewsSection";
-import { GuideCard } from "@/components/home/GuideCard";
+import { GuideCard } from "@/components/guides/GuideCard";
 import {
   ProductDetailStickyDesktop,
   ProductDetailStickyMobile,
@@ -23,7 +20,6 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import AlertCard from "@/components/ui/AlertCard";
 import { ConsultModalProvider } from "@/components/ConsultModal";
-import { ENABLE_NEW_PRODUCT_UI } from "@/config/featureFlags";
 import { getProductByIdFresh } from "@/lib/products";
 import { getGuidesByDestinationId } from "@/lib/guides";
 import { getProductReviewStats, getProductReviews } from "@/lib/reviewStats";
@@ -240,40 +236,6 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     product.destination_id?.trim()
       ? await getGuidesByDestinationId(product.destination_id.trim(), 3)
       : [];
-
-  if (!ENABLE_NEW_PRODUCT_UI) {
-    return (
-      <>
-        <SiteHeader activeTab="products" />
-        <ProductDetailContentLegacy
-        productId={product.id}
-        title={product.title}
-        description={product.description}
-        imageUrl={product.image_url}
-        imageAlt={`${product.title} 상세 이미지`}
-        category={product.category}
-        theme={product.theme}
-        price={product.price}
-        duration={product.duration}
-        metaTitle={product.meta_title}
-        pointBenefits={product.point_benefits}
-        pointTourism={product.point_tourism}
-        pointGuide={product.point_guide}
-        meetingInfo={product.meeting_info}
-        travelInsurance={product.travel_insurance}
-        includedItems={resolvedIncludedItems ?? ""}
-        excludedItems={resolvedExcludedItems ?? ""}
-        detailedSchedule={product.detailed_schedule ?? product.itinerary ?? ""}
-        optionalTours={resolvedOptionalTours ?? ""}
-        minDeparturePeople={product.min_departure_people ?? ""}
-        termsAndNotes={resolvedTermsAndNotes ?? ""}
-        departureFlight={departureFlight}
-        arrivalFlight={arrivalFlight}
-        kakaoHref={kakaoHref}
-      />
-      </>
-    );
-  }
 
   const statusV2 = product.status ?? "AVAILABLE";
   const oneLiner =

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import AdminLoginForm from "@/components/AdminLoginForm";
+import AdminLoginForm from "@/components/admin/AdminLoginForm";
 
 export default function AdminLoginPage() {
   return (

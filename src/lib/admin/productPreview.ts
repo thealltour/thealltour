@@ -1,7 +1,7 @@
 /**
  * 공용 미리보기 로직: 저장 API와 preview API가 동일한 규칙 사용
  * - form → Product (formToPreviewProduct)
- * - Product → ProductCardV2Props / ProductDetailV2Props (직렬화 가능한 payload만, CTA는 클라이언트에서 주입)
+ * - Product → ProductCardProps / ProductDetailV2Props (직렬화 가능한 payload만, CTA는 클라이언트에서 주입)
  */
 
 import type { Product, ProductOptions, ItineraryStructuredDay, ItineraryV2 } from "@/types/product";
@@ -204,7 +204,7 @@ export function formToPreviewProduct(
 }
 
 /** Product → 카드용 props (직렬화 가능, CTA는 클라이언트에서 추가) */
-export type ProductCardV2PropsPayload = {
+export type ProductCardPropsPayload = {
   title?: string;
   price?: number;
   duration?: string;
@@ -218,7 +218,7 @@ export type ProductCardV2PropsPayload = {
   metaInfo?: string;
 };
 
-export function productToCardV2PropsPayload(product: Product): ProductCardV2PropsPayload {
+export function productToCardPropsPayload(product: Product): ProductCardPropsPayload {
   const themeBadges = getProductBadges(product);
   const badges: { type: string; label: string; priority?: number; isActive?: boolean }[] = [];
   themeBadges.forEach((label) => {
@@ -236,7 +236,7 @@ export function productToCardV2PropsPayload(product: Product): ProductCardV2Prop
     region: product.theme,
     categories: [product.category],
     tags: parseMetaTitleAsHashtags(product.meta_title),
-    status: (product.status ?? "AVAILABLE") as ProductCardV2PropsPayload["status"],
+    status: (product.status ?? "AVAILABLE") as ProductCardPropsPayload["status"],
     badges,
     thumbnailUrl: getPrimaryImageUrl(product),
     priceMeta: product.price_meta || "1인 기준",

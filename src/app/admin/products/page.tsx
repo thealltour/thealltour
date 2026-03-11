@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import AdminProductManager from "@/components/AdminProductManager";
+import AdminProductManager from "@/components/admin/products/AdminProductManager";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
 import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";

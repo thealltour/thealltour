@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   formToPreviewProduct,
-  productToCardV2PropsPayload,
+  productToCardPropsPayload,
   productToDetailV2PropsPayload,
   type ProductFormPayload,
 } from "@/lib/admin/productPreview";
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     const previewProduct = formToPreviewProduct(form, imageUrl);
-    const cardProps = productToCardV2PropsPayload(previewProduct);
+    const cardProps = productToCardPropsPayload(previewProduct);
     const detailProps = productToDetailV2PropsPayload(previewProduct);
 
     return NextResponse.json({

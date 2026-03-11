@@ -1,5 +1,5 @@
-import AdminHeader from "@/components/AdminHeader";
-import AdminGuideManager from "@/components/AdminGuideManager";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminGuideManager from "@/components/admin/AdminGuideManager";
 
 export const dynamic = "force-dynamic";
 

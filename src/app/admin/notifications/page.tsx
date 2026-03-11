@@ -1,5 +1,5 @@
-import AdminHeader from "@/components/AdminHeader";
-import AdminNotificationList from "@/components/AdminNotificationList";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminNotificationList from "@/components/admin/AdminNotificationList";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";
 

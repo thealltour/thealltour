@@ -1,4 +1,4 @@
-import AdminHeader from "@/components/AdminHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import AdminReviewReportsTable from "@/components/admin/AdminReviewReportsTable";
 import { getAdminCounts } from "@/lib/adminCounts";
 import { getAdminReviewReports } from "@/lib/adminReviewReports";

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import AdminHeader from "@/components/AdminHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import AdminRewardsManager from "@/components/admin/AdminRewardsManager";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";

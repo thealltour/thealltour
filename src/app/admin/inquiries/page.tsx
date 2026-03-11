@@ -1,5 +1,5 @@
-import AdminHeader from "@/components/AdminHeader";
-import AdminInquiryTable from "@/components/AdminInquiryTable";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminInquiryTable from "@/components/admin/AdminInquiryTable";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";
 

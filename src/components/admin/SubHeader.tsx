@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, Moon, Search, Sun } from "lucide-react";
-import AdminLogoutButton from "@/components/AdminLogoutButton";
+import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
 import {
   ADMIN_PRODUCTS_VIEW,
   ADMIN_PRODUCTS_QUERY_KEYS,

@@ -1,5 +1,6 @@
 "use client";
 
+import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import type { ReviewNotificationSummary } from "@/types/reviewNotifications";
 
 const cards: Array<{ key: keyof ReviewNotificationSummary; label: string; className?: string }> = [
@@ -17,15 +18,12 @@ export function ReviewNotificationSummaryCards({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {cards.map(({ key, label, className }) => (
-        <div
+        <AdminSummaryCard
           key={key}
-          className={`rounded-xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ${className ?? ""}`}
-        >
-          <p className="text-sm text-[var(--text-muted)]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-[var(--text-primary)]">
-            {summary[key]}
-          </p>
-        </div>
+          title={label}
+          value={summary[key]}
+          className={className}
+        />
       ))}
     </div>
   );

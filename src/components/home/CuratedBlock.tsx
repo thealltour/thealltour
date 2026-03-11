@@ -1,7 +1,9 @@
 import type { Product } from "@/types/product";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/layout/SectionHeader";
-import CuratedProductCard from "@/components/home/CuratedProductCard";
+import ProductCard from "@/components/products/ProductCard";
+import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
+import { productToProductCardProps } from "@/lib/productCardProps";
 import { CARD_BASE, CARD_PADDING_RELAXED } from "@/lib/cardTokens";
 
 export type CuratedBlockSurface = "none" | "muted" | "card";
@@ -29,21 +31,24 @@ export default function CuratedBlock({
   if (!products || products.length === 0) return null;
 
   return (
-    <section className={cn("space-y-4", SURFACE_CLASS[surface])}>
+    <section className={cn("space-y-3 sm:space-y-4", SURFACE_CLASS[surface])}>
       <SectionHeader
         title={title}
         description={description}
-        className="[&_.section-title]:!text-[1.375rem] [&_.section-title]:!font-card-title [&_.section-title]:!font-semibold"
       />
 
-      <div className={cn(
-        "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-        "gap-3 sm:gap-4",
-      )}>
+      <ProductCardGridSection>
         {products.map((product) => (
-          <CuratedProductCard key={product.id} product={product} sectionTitle={title} />
+          <ProductCard
+            key={product.id}
+            {...productToProductCardProps(product, {
+              layout: "grid",
+              analyticsSource: "home_curated",
+              analyticsSection: title,
+            })}
+          />
         ))}
-      </div>
+      </ProductCardGridSection>
     </section>
   );
 }

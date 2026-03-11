@@ -7,6 +7,12 @@ import { cn } from "@/lib/cn";
 export type DestinationSectionProps = {
   /** 홈에 노출할 destination 목록 (최대 8개 권장) */
   items: ProductTaxonomy[];
+  /** 섹션 상단 라벨(eyebrow). 비어 있으면 메인에서 표시하지 않음 */
+  eyebrow?: string | null;
+  /** 섹션 제목. 비어 있으면 메인에서 표시하지 않음 */
+  title?: string | null;
+  /** 섹션 부제목. 비어 있으면 메인에서 표시하지 않음 */
+  description?: string | null;
   className?: string;
 };
 
@@ -14,18 +20,24 @@ export type DestinationSectionProps = {
  * 홈 Destination 섹션.
  * 여행지 기반 탐색의 첫 진입점. 카드 그리드는 허브/목록과 재사용 가능한 구조.
  */
-export default function DestinationSection({ items, className }: DestinationSectionProps) {
+export default function DestinationSection({
+  items,
+  eyebrow,
+  title,
+  description,
+  className,
+}: DestinationSectionProps) {
   if (items.length === 0) return null;
 
   return (
-    <SectionBlock surface="none" padding="md" className={cn("space-y-4 sm:space-y-6", className)}>
+    <SectionBlock surface="none" padding="md" className={cn("space-y-3 sm:space-y-4", className)}>
       <SectionHeader
-        eyebrow="DESTINATIONS"
-        title="어디로 떠나고 싶으신가요?"
-        description="지역별 여행 상품을 만나보세요."
+        eyebrow={eyebrow?.trim() || undefined}
+        title={title?.trim() || undefined}
+        description={description?.trim() || undefined}
         align="left"
       />
-      <HomeTaxonomyGrid items={items} type="destination" layout="horizontal-scroll" className="mt-6" />
+      <HomeTaxonomyGrid items={items} type="destination" layout="horizontal-scroll" />
     </SectionBlock>
   );
 }

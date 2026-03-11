@@ -9,7 +9,7 @@ import { LandingDetailHero } from "@/components/landing/LandingDetailHero";
 import { LandingSubCardsSection } from "@/components/landing/LandingSubCardsSection";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
-import { GuideCardGrid } from "@/components/home/GuideCardGrid";
+import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import {
   getThemeBySlugForPublicLanding,

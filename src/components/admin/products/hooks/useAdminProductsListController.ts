@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import type { Product } from "@/types/product";
 import { normalizeImageList } from "@/lib/products/images";
 import type { ProductSortKey } from "@/components/admin/products/api/adminProducts.types";
@@ -40,7 +41,7 @@ export function useAdminProductsListController({
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
-  const [debouncedKeyword, setDebouncedKeyword] = useState("");
+  const debouncedKeyword = useDebounce(keyword, 300);
   const [sortField, setSortField] = useState<ProductSortKey>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
@@ -142,17 +143,9 @@ export function useAdminProductsListController({
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedKeyword(keyword);
-      if (keyword.trim() !== "") {
-        setPage(1);
-        loadProducts({ page: 1, keywordOverride: keyword });
-      } else {
-        loadProducts({ page: 1, keywordOverride: "" });
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [keyword]);
+    setPage(1);
+    loadProducts({ page: 1, keywordOverride: debouncedKeyword });
+  }, [debouncedKeyword]);
 
   const isFilterMounted = useRef(false);
   useEffect(() => {

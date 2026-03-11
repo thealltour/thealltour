@@ -23,33 +23,54 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   const body = (await request.json()) as SiteSettingsBody;
-  const entries: { key: keyof SiteSettings; value: string }[] = [
-    { key: "kakao_channel_url", value: (body.kakao_channel_url ?? "").trim() },
-    { key: "instagram_url", value: (body.instagram_url ?? "").trim() },
-    { key: "kakao_chat_url", value: (body.kakao_chat_url ?? "").trim() },
-    { key: "products_hero_headline", value: (body.products_hero_headline ?? "").trim() },
-    { key: "products_hero_subcopy", value: (body.products_hero_subcopy ?? "").trim() },
-    { key: "products_hero_regions", value: (body.products_hero_regions ?? "").trim() },
-    { key: "golf_hero_headline", value: (body.golf_hero_headline ?? "").trim() },
-    { key: "golf_hero_subcopy", value: (body.golf_hero_subcopy ?? "").trim() },
-    { key: "golf_hero_regions", value: (body.golf_hero_regions ?? "").trim() },
-    { key: "home_region_card_ids", value: (body.home_region_card_ids ?? "[]").trim() },
-    { key: "home_theme_card_ids", value: (body.home_theme_card_ids ?? "[]").trim() },
-    { key: "company_name", value: (body.company_name ?? "").trim() },
-    { key: "ceo_name", value: (body.ceo_name ?? "").trim() },
-    { key: "address", value: (body.address ?? "").trim() },
-    { key: "business_reg_no", value: (body.business_reg_no ?? "").trim() },
-    { key: "tourism_reg_no", value: (body.tourism_reg_no ?? "").trim() },
-    { key: "mail_order_reg_no", value: (body.mail_order_reg_no ?? "").trim() },
-    { key: "main_phone", value: (body.main_phone ?? "").trim() },
-    { key: "main_email", value: (body.main_email ?? "").trim() },
-    { key: "about_kicker", value: (body.about_kicker ?? "").trim() },
-    { key: "about_title", value: (body.about_title ?? "").trim() },
-    { key: "about_paragraph1", value: (body.about_paragraph1 ?? "").trim() },
-    { key: "about_paragraph2", value: (body.about_paragraph2 ?? "").trim() },
-    { key: "about_cta_label", value: (body.about_cta_label ?? "").trim() },
-    { key: "about_cta_href", value: (body.about_cta_href ?? "").trim() },
+  type SiteSettingsKey = keyof SiteSettings;
+
+  const ALL_KEYS: { key: SiteSettingsKey; defaultValue: string }[] = [
+    { key: "kakao_channel_url", defaultValue: "" },
+    { key: "instagram_url", defaultValue: "" },
+    { key: "kakao_chat_url", defaultValue: "" },
+    { key: "products_hero_headline", defaultValue: "" },
+    { key: "products_hero_subcopy", defaultValue: "" },
+    { key: "products_hero_regions", defaultValue: "" },
+    { key: "golf_hero_headline", defaultValue: "" },
+    { key: "golf_hero_subcopy", defaultValue: "" },
+    { key: "golf_hero_regions", defaultValue: "" },
+    { key: "home_region_card_ids", defaultValue: "[]" },
+    { key: "home_region_section_eyebrow", defaultValue: "" },
+    { key: "home_region_section_title", defaultValue: "" },
+    { key: "home_region_section_description", defaultValue: "" },
+    { key: "home_theme_card_ids", defaultValue: "[]" },
+    { key: "home_theme_section_eyebrow", defaultValue: "" },
+    { key: "home_theme_section_title", defaultValue: "" },
+    { key: "home_theme_section_description", defaultValue: "" },
+    { key: "company_name", defaultValue: "" },
+    { key: "ceo_name", defaultValue: "" },
+    { key: "address", defaultValue: "" },
+    { key: "business_reg_no", defaultValue: "" },
+    { key: "tourism_reg_no", defaultValue: "" },
+    { key: "mail_order_reg_no", defaultValue: "" },
+    { key: "main_phone", defaultValue: "" },
+    { key: "main_email", defaultValue: "" },
+    { key: "about_kicker", defaultValue: "" },
+    { key: "about_title", defaultValue: "" },
+    { key: "about_paragraph1", defaultValue: "" },
+    { key: "about_paragraph2", defaultValue: "" },
+    { key: "about_cta_label", defaultValue: "" },
+    { key: "about_cta_href", defaultValue: "" },
   ];
+
+  const entries: { key: SiteSettingsKey; value: string }[] = [];
+  for (const { key, defaultValue } of ALL_KEYS) {
+    if (!(key in body)) continue;
+    const raw = body[key];
+    const value =
+      typeof raw === "string"
+        ? raw.trim()
+        : raw === undefined || raw === null
+          ? defaultValue
+          : String(raw).trim();
+    entries.push({ key, value });
+  }
 
   for (const entry of entries) {
     const upsertResult = await supabase

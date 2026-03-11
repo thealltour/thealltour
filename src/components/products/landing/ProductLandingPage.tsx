@@ -1,80 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { useMemo } from "react";
 import type { ProductLandingData, ProductLandingProductSummary } from "@/types/productLanding";
-import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getDestinationLandingHref, getThemeLandingHref } from "@/lib/hubLandingLinks";
-import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { trackLandingCtaClick } from "@/lib/analytics/trackLandingCta";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
+import ProductCard from "@/components/products/ProductCard";
+import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 
 export type ProductLandingPageProps = {
   data: ProductLandingData;
 };
-
-type LandingProductCardProps = {
-  item: ProductLandingProductSummary;
-  landingType: "region" | "theme";
-  taxonomySlug: string;
-};
-
-const LANDING_PRODUCT_FALLBACK_IMAGE =
-  "https://picsum.photos/seed/thealltour-landing-product/400/260";
-
-function LandingProductCard({ item, landingType, taxonomySlug }: LandingProductCardProps) {
-  const rawUrl = item.imageUrl?.trim() ? normalizeProductImageUrl(item.imageUrl) : null;
-  const imageUrl = rawUrl || LANDING_PRODUCT_FALLBACK_IMAGE;
-  const priceFormatted =
-    typeof item.price === "number"
-      ? new Intl.NumberFormat("ko-KR").format(item.price)
-      : typeof item.price === "string"
-        ? item.price
-        : null;
-
-  return (
-    <Link
-      href={item.href}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition-all duration-200 hover:shadow-[var(--shadow-soft-strong)] hover:ring-[var(--border-strong)]"
-      onClick={() =>
-        trackProductCardClick({
-          productId: item.id,
-          productTitle: item.title ?? "",
-          href: item.href,
-          source: "landing",
-          section: "recommended_products",
-          landingType,
-          taxonomySlug,
-        })
-      }
-    >
-      <div className="relative h-40 w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]">
-        <Image
-          src={imageUrl}
-          alt={item.title || "상품 이미지"}
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-        />
-      </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-4">
-        {item.categories?.[0] ? (
-          <span className="text-[11px] font-medium text-[var(--text-muted)]">{item.categories[0]}</span>
-        ) : null}
-        <h3 className="line-clamp-2 font-semibold text-[var(--text-primary)] md:text-base">{item.title}</h3>
-        {item.themes?.length ? (
-          <p className="line-clamp-1 text-xs text-[var(--text-muted)]">{item.themes.join(", ")}</p>
-        ) : null}
-        {priceFormatted != null ? (
-          <p className="mt-auto font-semibold text-[var(--primary)]">{priceFormatted}원~</p>
-        ) : (
-          <p className="mt-auto text-sm text-[var(--text-muted)]">상담 후 견적</p>
-        )}
-      </div>
-    </Link>
-  );
-}
 
 function getLandingCtaPayload(data: ProductLandingData, section: "hero" | "recommended_products" | "bottom_cta") {
   return {
@@ -87,6 +25,17 @@ function getLandingCtaPayload(data: ProductLandingData, section: "hero" | "recom
 
 export default function ProductLandingPage({ data }: ProductLandingPageProps) {
   const { hero, featuredLinks, recommendedProducts, relatedTaxonomies, type, taxonomyName, productCount, childDestinations, childThemes } = data;
+
+  /** 동일 id 중복 제거 (React key 충돌 방지) */
+  const uniqueRecommendedProducts = useMemo(() => {
+    const seen = new Set<string>();
+    return recommendedProducts.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [recommendedProducts]);
+
   const relatedTitle = type === "region" ? "함께 살펴볼 테마" : "함께 살펴볼 지역";
   const relatedDescription =
     type === "region"
@@ -267,11 +216,11 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
           <section>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-bold text-[var(--foreground)]">추천 상품</h2>
-              {productCount > 0 && recommendedProducts.length > 0 ? (
+              {productCount > 0 && uniqueRecommendedProducts.length > 0 ? (
                 <p className="text-sm text-[var(--text-muted)]">현재 {productCount}개 상품을 확인할 수 있습니다.</p>
               ) : null}
             </div>
-            {recommendedProducts.length === 0 ? (
+            {uniqueRecommendedProducts.length === 0 ? (
               <div className="mt-3 space-y-4">
                 <p className="rounded-xl bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)] ring-1 ring-[var(--border)]">
                   현재 준비된 추천 상품이 없습니다. 전체 상품 목록에서 더 많은 상품을 확인해보세요.
@@ -295,17 +244,24 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
               </div>
             ) : (
               <>
-                <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {recommendedProducts.map((item) => (
-                    <li key={item.id}>
-                      <LandingProductCard
-                        item={item}
-                        landingType={data.type}
-                        taxonomySlug={data.taxonomySlug ?? data.slug ?? ""}
-                      />
-                    </li>
+                <ProductCardGridSection>
+                  {uniqueRecommendedProducts.map((item) => (
+                    <ProductCard
+                      key={item.id}
+                      layout="grid"
+                      title={item.title}
+                      price={item.price ?? undefined}
+                      region={item.themes?.join(", ")}
+                      categories={item.categories ?? []}
+                      status="AVAILABLE"
+                      thumbnailUrl={item.imageUrl ?? ""}
+                      hrefDetail={item.href}
+                      analyticsSource="landing"
+                      analyticsSection={`${data.type}_${data.taxonomySlug ?? data.slug ?? ""}`}
+                      productId={item.id}
+                    />
                   ))}
-                </ul>
+                </ProductCardGridSection>
                 <div className="mt-4 flex justify-end">
                   <Link
                     href={hero.primaryCtaHref}

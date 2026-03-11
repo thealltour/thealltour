@@ -29,7 +29,7 @@ export type { SectionId, FormIssue, SectionIssue };
 export type { PreviewWarning } from "@/components/admin/products/editor/adminProductPreview.mapper";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
-import ProductCardV2, { type ProductCardV2Props } from "@/components/products/ProductCardV2";
+import ProductCard, { type ProductCardProps } from "@/components/products/ProductCard";
 import ProductDetailV2, { type ProductDetailV2StatusTag } from "@/components/products/ProductDetailV2";
 import {
   ProductDetailStickyV2Desktop,
@@ -38,7 +38,7 @@ import {
 import { ConsultModalProvider } from "@/components/ConsultModal";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import {
-  productToCardV2PropsPayload,
+  productToCardPropsPayload,
   productToDetailV2PropsPayload,
 } from "@/lib/admin/productPreview";
 import {
@@ -74,8 +74,7 @@ import AdminHomeCuratedManager from "@/components/admin/products/AdminHomeCurate
 import AdminHomeRegionCardsManager from "@/components/admin/products/AdminHomeRegionCardsManager";
 import AdminHomeThemeCardsManager from "@/components/admin/products/AdminHomeThemeCardsManager";
 import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
-import AdminProductsListView from "@/components/admin/products/AdminProductsListView";
-import { useAdminProductsListController } from "@/components/admin/products/hooks/useAdminProductsListController";
+import AdminProductListSection from "@/components/admin/products/AdminProductListSection";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
 import {
@@ -323,25 +322,10 @@ export default function AdminProductManager() {
   const [showCoverRecommendModal, setShowCoverRecommendModal] = useState(false);
   const [coverCandidates, setCoverCandidates] = useState<CoverCandidate[]>([]);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshListRef = useRef<(() => Promise<void>) | null>(null);
   const pageSize = DEFAULT_PRODUCTS_PAGE_SIZE;
   const { showToast } = useAdminToast();
   const { confirm } = useAdminConfirm();
-
-  const listController = useAdminProductsListController({
-    showToast,
-    confirm,
-    pageSize,
-    onAfterDelete(id) {
-      if (editingId === id) {
-        setEditingId(null);
-        setForm(initialFormState);
-        setActiveSchedulePreviewIndex(0);
-        setShowRawScheduleEditor(false);
-        setScheduleEditorMode("visual");
-        setErrorMessage("");
-      }
-    },
-  });
 
   const taxonomyController = useAdminProductTaxonomyController({
     showToast,
@@ -741,7 +725,7 @@ export default function AdminProductManager() {
       localStorage.removeItem(getDraftKey(editingId));
       setShowDraftBanner(false);
       setDraftData(null);
-      await listController.loadProducts();
+      await refreshListRef.current?.();
     } catch (error) {
       if (requestId !== submitRequestIdRef.current) return;
       const message = error instanceof Error ? error.message : "상품 저장 중 오류가 발생했습니다.";
@@ -754,14 +738,6 @@ export default function AdminProductManager() {
     }
   }
 
-  const editingProduct = useMemo(
-    () => listController.products.find((product) => product.id === editingId),
-    [listController.products, editingId],
-  );
-
-  const totalPages = listController.totalPages;
-  const safePage = listController.currentPage;
-  const pagedProducts = listController.products;
   const categoryGroups = useMemo(
     () =>
       buildTaxonomyGroupsForForm(
@@ -851,8 +827,8 @@ export default function AdminProductManager() {
   );
 
   /** 로컬 fallback: 카드/상세 props (API 실패 시 사용) */
-  const localCardProps = useMemo<ProductCardV2Props>(() => {
-    const payload = productToCardV2PropsPayload(previewProduct);
+  const localCardProps = useMemo<ProductCardProps>(() => {
+    const payload = productToCardPropsPayload(previewProduct);
     return {
       ...payload,
       onClickDetail: () => {},
@@ -873,12 +849,12 @@ export default function AdminProductManager() {
   /** 서버 preview API 응답 (우선 사용, 실패 시 로컬 fallback) */
   const [serverPreview, setServerPreview] = useState<{
     previewProduct: Product;
-    cardProps: ReturnType<typeof productToCardV2PropsPayload>;
+    cardProps: ReturnType<typeof productToCardPropsPayload>;
     detailProps: ReturnType<typeof productToDetailV2PropsPayload>;
   } | null>(null);
 
   const effectivePreviewProduct = serverPreview?.previewProduct ?? previewProduct;
-  const previewCardProps: ProductCardV2Props = serverPreview
+  const previewCardProps: ProductCardProps = serverPreview
     ? { ...serverPreview.cardProps, onClickDetail: () => {}, onClickConsult: () => {} }
     : localCardProps;
   const previewDetailProps = serverPreview
@@ -902,7 +878,7 @@ export default function AdminProductManager() {
       out[section.id] = section.getIssues(form);
     }
     return out;
-  }, [form, listController.products, editingId]);
+  }, [form, editingId]);
 
   const completedSectionCount = useMemo(() => {
     return SECTIONS.filter(
@@ -1180,7 +1156,7 @@ export default function AdminProductManager() {
           if (requestId !== previewRequestIdRef.current) return;
           setServerPreview({
             previewProduct: data.previewProduct,
-            cardProps: data.cardProps as ReturnType<typeof productToCardV2PropsPayload>,
+            cardProps: data.cardProps as ReturnType<typeof productToCardPropsPayload>,
             detailProps: data.detailProps as ReturnType<typeof productToDetailV2PropsPayload>,
           });
         })
@@ -3111,7 +3087,7 @@ export default function AdminProductManager() {
                   className={`${previewDevice === "mobile" ? "max-w-[360px]" : "max-w-[640px]"} mx-auto`}
                   data-preview-view={previewDevice}
                 >
-                  <ProductCardV2 {...previewCardProps} />
+                  <ProductCard {...previewCardProps} />
                 </div>
               </section>
 
@@ -3303,28 +3279,20 @@ export default function AdminProductManager() {
       ) : null}
 
       {isListView && !editingId && !isFeaturedView && !isHomeRegionCardsView && !isHomeThemeCardsView ? (
-        <AdminProductsListView
-          products={pagedProducts}
-          taxonomyNameMap={listController.taxonomyNameMap}
-          totalCount={listController.totalCount}
-          currentPage={safePage}
+        <AdminProductListSection
+          showToast={showToast}
+          confirm={confirm}
           pageSize={pageSize}
-          totalPages={totalPages}
-          sortField={listController.sortField}
-          sortDirection={listController.sortDirection}
-          keyword={listController.keyword}
-          isLoading={listController.isLoading}
-          errorMessage={listController.errorMessage || null}
-          selectedIds={listController.selectedIds}
-          pendingMoveId={listController.pendingMoveId}
-          pendingToggleId={listController.pendingToggleId}
-          onKeywordChange={listController.setKeyword}
-          onSortChange={listController.handleSortChange}
-          onPageChange={listController.movePage}
-          onToggleSelectAll={listController.toggleSelectAllForPage}
-          onToggleSelectOne={listController.toggleSelectOne}
-          onClearSelection={() => listController.setSelectedIds([])}
-          onBulkDelete={listController.handleBulkDeleteSelected}
+          onAfterDelete={(id) => {
+            if (editingId === id) {
+              setEditingId(null);
+              setForm(initialFormState);
+              setActiveSchedulePreviewIndex(0);
+              setShowRawScheduleEditor(false);
+              setScheduleEditorMode("visual");
+              setErrorMessage("");
+            }
+          }}
           onEditProduct={(product: Product) => {
             setEditingId(product.id);
             setForm(deserializeAdminProductToForm(product));
@@ -3336,15 +3304,10 @@ export default function AdminProductManager() {
             setShowRawScheduleEditor(false);
             setErrorMessage("");
           }}
-          onDeleteProduct={listController.handleDelete}
-          onQuickToggleActive={listController.quickToggleActive}
-          onMoveSortOrder={listController.moveSortOrder}
-          filterActive={listController.filterActive}
-          filterStatus={listController.filterStatus}
-          onFilterActiveChange={listController.setFilterActive}
-          onFilterStatusChange={listController.setFilterStatus}
           newProductHref={pathname ? `${pathname.replace(/\?.*$/, "")}?view=create` : undefined}
-          onRetryLoad={listController.loadProducts}
+          registerRefresh={(fn) => {
+            refreshListRef.current = fn;
+          }}
         />
       ) : null}
 

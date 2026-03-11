@@ -1,7 +1,8 @@
 import Link from "next/link";
-import CuratedBlock from "@/components/home/CuratedBlock";
+import { cn } from "@/lib/cn";
 import { SectionBlock } from "@/components/layout/SectionBlock";
-import { SectionHeader } from "@/components/layout/SectionHeader";
+import { SectionHeader, SECTION_HEADER_CTA_CLASS } from "@/components/layout/SectionHeader";
+import { CuratedSectionScrollBlock } from "@/components/home/CuratedSectionScrollBlock";
 import type {
   HomeCuratedSettings,
   HomeCuratedSectionWithProducts,
@@ -17,8 +18,8 @@ export type CuratedProductsSectionProps = {
 
 /**
  * 홈 Curated Products 섹션.
- * Theme 아래에 위치. home_curated 기반 추천 상품 노출.
- * 실제 데이터 정교한 연결은 후속 PR에서 확장 가능.
+ * Theme 아래에 위치. 노출 설정된 추천 섹션을 sort_order 순서대로 블록 단위로 노출.
+ * 각 섹션은 지역·테마와 동일한 가로 스크롤 + 좌/우 버튼 UX.
  */
 export default function CuratedProductsSection({
   settings,
@@ -26,32 +27,33 @@ export default function CuratedProductsSection({
   className,
 }: CuratedProductsSectionProps) {
   const isActive = settings?.is_active === true && sections.length > 0;
+  const hasMultipleSections = sections.length >= 2;
 
   if (isActive) {
     return (
-      <SectionBlock surface="none" padding="md" className={className}>
+      <SectionBlock surface="none" padding="md" className={cn("space-y-3 sm:space-y-4", className)}>
         <SectionHeader
           eyebrow={settings!.section_label}
           title={settings!.section_title}
           description={settings!.section_description}
-        />
-        <div className="space-y-8">
-          {sections.map((sec) => (
-            <CuratedBlock
-              key={sec.id}
-              title={sec.title}
-              description={sec.description}
-              products={sec.products}
-            />
-          ))}
-          <div className="pt-2">
+          action={
             <Link
               href={settings!.catalog_button_href}
-              className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-2.5 text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+              className={SECTION_HEADER_CTA_CLASS}
             >
               {settings!.catalog_button_label}
             </Link>
-          </div>
+          }
+        />
+
+        <div className="mx-auto w-full max-w-[1344px]">
+          {sections.map((sec) => (
+            <CuratedSectionScrollBlock
+              key={sec.id}
+              section={sec}
+              showTitle={hasMultipleSections}
+            />
+          ))}
         </div>
       </SectionBlock>
     );

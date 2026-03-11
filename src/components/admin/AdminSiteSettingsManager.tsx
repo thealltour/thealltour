@@ -53,7 +53,13 @@ const EMPTY_SETTINGS: SiteSettings = {
   golf_hero_subcopy: "",
   golf_hero_regions: "",
   home_region_card_ids: "[]",
+  home_region_section_eyebrow: "",
+  home_region_section_title: "",
+  home_region_section_description: "",
   home_theme_card_ids: "[]",
+  home_theme_section_eyebrow: "",
+  home_theme_section_title: "",
+  home_theme_section_description: "",
   about_kicker: "",
   about_title: "",
   about_paragraph1: "",
@@ -72,97 +78,103 @@ export default function AdminSiteSettingsManager() {
   const [heroRegions, setHeroRegions] = useState<HeroRegionConfig[]>(DEFAULT_HERO_REGIONS);
   const [golfHeroRegions, setGolfHeroRegions] = useState<HeroRegionConfig[]>(DEFAULT_GOLF_HERO_REGIONS);
 
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        setIsLoading(true);
-        setErrorMessage("");
-        const response = await fetch("/api/admin/site-settings", { cache: "no-store" });
-        const result = (await response.json()) as Record<string, string> | { message?: string };
-        if (!response.ok || !result || typeof result !== "object" || "message" in result) {
-          const msg = (result as { message?: string }).message ?? "환경설정 조회에 실패했습니다.";
-          setErrorMessage(msg ?? "환경설정 조회에 실패했습니다.");
-          return;
-        }
-        const data = result as Record<string, string>;
-        const nextSettings: SiteSettings = {
-          kakao_channel_url: data.kakao_channel_url ?? "",
-          instagram_url: data.instagram_url ?? "",
-          kakao_chat_url: data.kakao_chat_url ?? "",
-          company_name: data.company_name ?? "",
-          ceo_name: data.ceo_name ?? "",
-          address: data.address ?? "",
-          business_reg_no: data.business_reg_no ?? "",
-          tourism_reg_no: data.tourism_reg_no ?? "",
-          mail_order_reg_no: data.mail_order_reg_no ?? "",
-          main_phone: data.main_phone ?? "",
-          main_email: data.main_email ?? "",
-          products_hero_headline: data.products_hero_headline ?? "",
-          products_hero_subcopy: data.products_hero_subcopy ?? "",
-          products_hero_regions: data.products_hero_regions ?? "",
-          golf_hero_headline: data.golf_hero_headline ?? "",
-          golf_hero_subcopy: data.golf_hero_subcopy ?? "",
-          golf_hero_regions: data.golf_hero_regions ?? "",
-          home_region_card_ids: data.home_region_card_ids ?? "[]",
-          home_theme_card_ids: data.home_theme_card_ids ?? "[]",
-          about_kicker: data.about_kicker ?? "",
-          about_title: data.about_title ?? "",
-          about_paragraph1: data.about_paragraph1 ?? "",
-          about_paragraph2: data.about_paragraph2 ?? "",
-          about_cta_label: data.about_cta_label ?? "",
-          about_cta_href: data.about_cta_href ?? "",
-        };
-
-        setSettings(nextSettings);
-
-        const rawRegions = nextSettings.products_hero_regions;
-        if (typeof rawRegions === "string" && rawRegions.trim()) {
-          try {
-            const parsed = JSON.parse(rawRegions) as HeroRegionConfig[];
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const normalized = parsed
-                .map((item) => ({
-                  id: String(item.id ?? "").trim(),
-                  label: String(item.label ?? "").trim(),
-                  searchKeyword: String(item.searchKeyword ?? "").trim(),
-                }))
-                .filter((item) => item.id && item.label);
-              if (normalized.length > 0) {
-                setHeroRegions(normalized);
-              }
-            }
-          } catch {
-            // keep default
-          }
-        }
-
-        const rawGolfRegions = nextSettings.golf_hero_regions;
-        if (typeof rawGolfRegions === "string" && rawGolfRegions.trim()) {
-          try {
-            const parsed = JSON.parse(rawGolfRegions) as HeroRegionConfig[];
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const normalized = parsed
-                .map((item) => ({
-                  id: String(item.id ?? "").trim(),
-                  label: String(item.label ?? "").trim(),
-                  searchKeyword: String(item.searchKeyword ?? "").trim(),
-                }))
-                .filter((item) => item.id && item.label);
-              if (normalized.length > 0) {
-                setGolfHeroRegions(normalized);
-              }
-            }
-          } catch {
-            // keep default
-          }
-        }
-      } catch {
-        setErrorMessage("환경설정 조회 중 오류가 발생했습니다.");
-      } finally {
-        setIsLoading(false);
+  async function loadSettings(skipLoadingIndicator = false) {
+    try {
+      if (!skipLoadingIndicator) setIsLoading(true);
+      setErrorMessage("");
+      const response = await fetch("/api/admin/site-settings", { cache: "no-store" });
+      const result = (await response.json()) as Record<string, string> | { message?: string };
+      if (!response.ok || !result || typeof result !== "object" || "message" in result) {
+        const msg = (result as { message?: string }).message ?? "환경설정 조회에 실패했습니다.";
+        setErrorMessage(msg ?? "환경설정 조회에 실패했습니다.");
+        return;
       }
-    }
+      const data = result as Record<string, string>;
+      const nextSettings: SiteSettings = {
+        kakao_channel_url: data.kakao_channel_url ?? "",
+        instagram_url: data.instagram_url ?? "",
+        kakao_chat_url: data.kakao_chat_url ?? "",
+        company_name: data.company_name ?? "",
+        ceo_name: data.ceo_name ?? "",
+        address: data.address ?? "",
+        business_reg_no: data.business_reg_no ?? "",
+        tourism_reg_no: data.tourism_reg_no ?? "",
+        mail_order_reg_no: data.mail_order_reg_no ?? "",
+        main_phone: data.main_phone ?? "",
+        main_email: data.main_email ?? "",
+        products_hero_headline: data.products_hero_headline ?? "",
+        products_hero_subcopy: data.products_hero_subcopy ?? "",
+        products_hero_regions: data.products_hero_regions ?? "",
+        golf_hero_headline: data.golf_hero_headline ?? "",
+        golf_hero_subcopy: data.golf_hero_subcopy ?? "",
+        golf_hero_regions: data.golf_hero_regions ?? "",
+        home_region_card_ids: data.home_region_card_ids ?? "[]",
+        home_region_section_eyebrow: data.home_region_section_eyebrow ?? "",
+        home_region_section_title: data.home_region_section_title ?? "",
+        home_region_section_description: data.home_region_section_description ?? "",
+        home_theme_card_ids: data.home_theme_card_ids ?? "[]",
+        home_theme_section_eyebrow: data.home_theme_section_eyebrow ?? "",
+        home_theme_section_title: data.home_theme_section_title ?? "",
+        home_theme_section_description: data.home_theme_section_description ?? "",
+        about_kicker: data.about_kicker ?? "",
+        about_title: data.about_title ?? "",
+        about_paragraph1: data.about_paragraph1 ?? "",
+        about_paragraph2: data.about_paragraph2 ?? "",
+        about_cta_label: data.about_cta_label ?? "",
+        about_cta_href: data.about_cta_href ?? "",
+      };
 
+      setSettings(nextSettings);
+
+      const rawRegions = nextSettings.products_hero_regions;
+      if (typeof rawRegions === "string" && rawRegions.trim()) {
+        try {
+          const parsed = JSON.parse(rawRegions) as HeroRegionConfig[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const normalized = parsed
+              .map((item) => ({
+                id: String(item.id ?? "").trim(),
+                label: String(item.label ?? "").trim(),
+                searchKeyword: String(item.searchKeyword ?? "").trim(),
+              }))
+              .filter((item) => item.id && item.label);
+            if (normalized.length > 0) {
+              setHeroRegions(normalized);
+            }
+          }
+        } catch {
+          // keep default
+        }
+      }
+
+      const rawGolfRegions = nextSettings.golf_hero_regions;
+      if (typeof rawGolfRegions === "string" && rawGolfRegions.trim()) {
+        try {
+          const parsed = JSON.parse(rawGolfRegions) as HeroRegionConfig[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const normalized = parsed
+              .map((item) => ({
+                id: String(item.id ?? "").trim(),
+                label: String(item.label ?? "").trim(),
+                searchKeyword: String(item.searchKeyword ?? "").trim(),
+              }))
+              .filter((item) => item.id && item.label);
+            if (normalized.length > 0) {
+              setGolfHeroRegions(normalized);
+            }
+          }
+        } catch {
+          // keep default
+        }
+      }
+    } catch {
+      setErrorMessage("환경설정 조회 중 오류가 발생했습니다.");
+    } finally {
+      if (!skipLoadingIndicator) setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
     loadSettings();
   }, []);
 
@@ -188,6 +200,7 @@ export default function AdminSiteSettingsManager() {
         return;
       }
       setMessage("환경설정을 저장했습니다.");
+      await loadSettings(true);
     } catch {
       setErrorMessage("환경설정 저장 중 오류가 발생했습니다.");
     } finally {

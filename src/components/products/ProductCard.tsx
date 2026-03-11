@@ -10,28 +10,30 @@ import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
 
-export type ProductCardV2Status =
+export type ProductCardStatus =
   | "AVAILABLE"
   | "LIMITED"
   | "SOLD_OUT"
   | "CONSULT_REQUIRED";
 
-export type ProductCardV2Badge = {
+export type ProductCardBadge = {
   type: string;
   label: string;
   priority?: number;
   isActive?: boolean;
 };
 
-export type ProductCardV2Props = {
+export type ProductCardLayout = "grid" | "list";
+
+export type ProductCardProps = {
   title?: string;
   price?: number | string;
   duration?: string;
   region?: string;
   categories?: string[];
   tags?: string[];
-  status?: ProductCardV2Status;
-  badges?: ProductCardV2Badge[];
+  status?: ProductCardStatus;
+  badges?: ProductCardBadge[];
   thumbnailUrl?: string;
   /** 상세 페이지 URL. 있으면 카드 전체가 이 주소로 이동하는 링크 영역이 됨 */
   hrefDetail?: string;
@@ -46,13 +48,13 @@ export type ProductCardV2Props = {
   analyticsSection?: string;
   /** 계측 시 사용할 상품 ID (analyticsSource 설정 시 권장) */
   productId?: string;
-  /** 목록 페이지 1열 리스트용 레이아웃 시 이미지·타이틀 영역 확장 */
-  layout?: "grid" | "list";
+  /** grid: 홈/검색/추천. list: 상품 목록 1열 */
+  layout?: ProductCardLayout;
   /** 태그 최대 노출 개수 (기본 3). 과밀 방지 */
   maxTags?: number;
-}
+};
 
-const STATUS_LABELS: Record<ProductCardV2Status, string> = {
+const STATUS_LABELS: Record<ProductCardStatus, string> = {
   AVAILABLE: "예약 가능",
   LIMITED: "잔여 한정",
   SOLD_OUT: "마감",
@@ -78,7 +80,7 @@ function badgeVariantToChipStyle(variant: "accent" | "muted" | "gold") {
   return "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]";
 }
 
-export default function ProductCardV2({
+export default function ProductCard({
   title = "",
   price,
   duration = "",
@@ -98,7 +100,7 @@ export default function ProductCardV2({
   productId,
   layout = "grid",
   maxTags = 3,
-}: ProductCardV2Props) {
+}: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
   const priceFormatted =
@@ -113,7 +115,7 @@ export default function ProductCardV2({
   );
   const activeBadges = sortedBadges.filter((b) => b.isActive !== false);
 
-  const tagVariantFromStatus = (s?: ProductCardV2Status): "accent" | "muted" | "gold" => {
+  const tagVariantFromStatus = (s?: ProductCardStatus): "accent" | "muted" | "gold" => {
     if (!s) return "muted";
     if (s === "AVAILABLE") return "accent";
     if (s === "LIMITED") return "gold";
@@ -166,10 +168,10 @@ export default function ProductCardV2({
 
   const cardContent = (
     <div className="flex min-h-[140px] w-full">
-      {/* Left: thumbnail. Wider in list layout. */}
+      {/* Left: thumbnail. 고정 비율(4:3)로 카드 크기·구조 통일 */}
       <div
         className={cn(
-          "relative shrink-0 overflow-hidden bg-[var(--surface-muted)]",
+          "relative shrink-0 self-start overflow-hidden bg-[var(--surface-muted)] aspect-[4/3]",
           isListLayout
             ? "w-[38%] min-w-[180px] max-w-[280px]"
             : "w-[42%] min-w-[140px] max-w-[220px]",
@@ -218,12 +220,12 @@ export default function ProductCardV2({
         />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
-        <div className="relative min-h-[2.5rem] overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden p-4">
+        <div className={cn("relative overflow-hidden", isListLayout ? "min-h-[1.5rem]" : "min-h-[1.5rem]")}>
           <h2
             className={cn(
-              "font-card-title pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] md:text-base",
-              isListLayout ? "line-clamp-2" : "line-clamp-2",
+              "font-card-title pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] break-words md:text-base",
+              "line-clamp-1",
             )}
           >
             {title || "상품명"}
@@ -308,9 +310,10 @@ export default function ProductCardV2({
   );
 
   const wrapperClass = cn(
-    "group flex h-full overflow-hidden",
+    "group flex h-full w-full overflow-hidden",
     CARD_TRANSITION,
     "hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-soft-strong)]",
+    isListLayout && "max-w-[1344px]",
   );
 
   if (hrefDetail) {

@@ -9,6 +9,7 @@ import { createReviewReward } from "@/lib/reviewRewards";
 import { cancelReviewReminders } from "@/lib/reviewReminders";
 import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
 import { getProductIdByBookingId } from "@/lib/travelBookings";
+import { MAX_REVIEW_IMAGES } from "@/lib/constants/review";
 
 type ReviewPatchBody = {
   action?: "save_draft" | "submit";
@@ -25,8 +26,6 @@ type ReviewPatchBody = {
   rating_guide?: number;
   rating_food?: number;
 };
-
-const MAX_REVIEW_IMAGES = 10;
 
 type RouteContext = {
   params: Promise<{ id: string }>;

@@ -38,6 +38,10 @@ export async function resolveLandingParams(
   const themeParam = typeof query.theme === "string" ? query.theme.trim() : "";
   const q = typeof query.q === "string" ? query.q.trim() : "";
   const sort = typeof query.sort === "string" ? query.sort.trim() : "";
+  const collection =
+    typeof query.collection === "string" && query.collection.trim()
+      ? query.collection.trim()
+      : null;
 
   if (!destination && !city && !themeParam) return null;
 
@@ -71,6 +75,7 @@ export async function resolveLandingParams(
       product_line: null,
       q: keyword || null,
       sort: sortId,
+      collection,
     },
     initialKeyword: keyword,
   };

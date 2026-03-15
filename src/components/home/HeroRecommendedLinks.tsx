@@ -3,7 +3,7 @@ import Link from "next/link";
 const PHRASES: { label: string; href: string }[] = [
   { label: "지역별 여행", href: "/destinations" },
   { label: "테마별 여행", href: "/themes" },
-  { label: "추천여행", href: "/recommended" },
+  { label: "여행추천", href: "/recommended" },
 ];
 
 /**

@@ -67,45 +67,45 @@ export function serializeAdminProductForm(
   const payload: AdminProductSavePayload = {
     title: form.title.trim(),
     description: form.description,
-    meta_title: form.meta_title.trim() === "" ? undefined : form.meta_title,
-    meta_description: form.meta_description.trim() === "" ? undefined : form.meta_description,
-    point_benefits: form.point_benefits.trim() === "" ? undefined : form.point_benefits,
+    meta_title: form.meta_title.trim() === "" ? null : form.meta_title.trim(),
+    meta_description: form.meta_description.trim() === "" ? null : form.meta_description.trim(),
+    point_benefits: form.point_benefits.trim() === "" ? null : form.point_benefits.trim(),
     point_tourism: form.point_tourism,
     point_guide: form.point_guide,
     meeting_info: form.meeting_info,
     travel_insurance: form.travel_insurance,
-    included_items: resolvedIncludedItems === "" ? undefined : resolvedIncludedItems,
-    excluded_items: resolvedExcludedItems === "" ? undefined : resolvedExcludedItems,
+    included_items: resolvedIncludedItems === "" ? null : resolvedIncludedItems,
+    excluded_items: resolvedExcludedItems === "" ? null : resolvedExcludedItems,
     departure_from_airport:
-      form.departure_from_airport.trim() === "" ? undefined : form.departure_from_airport,
-    departure_from_date: form.departure_from_date.trim() === "" ? undefined : form.departure_from_date,
-    departure_from_time: form.departure_from_time.trim() === "" ? undefined : form.departure_from_time,
-    departure_to_airport: form.departure_to_airport.trim() === "" ? undefined : form.departure_to_airport,
-    departure_to_date: form.departure_to_date.trim() === "" ? undefined : form.departure_to_date,
-    departure_to_time: form.departure_to_time.trim() === "" ? undefined : form.departure_to_time,
+      form.departure_from_airport.trim() === "" ? null : form.departure_from_airport.trim(),
+    departure_from_date: form.departure_from_date.trim() === "" ? null : form.departure_from_date.trim(),
+    departure_from_time: form.departure_from_time.trim() === "" ? null : form.departure_from_time.trim(),
+    departure_to_airport: form.departure_to_airport.trim() === "" ? null : form.departure_to_airport.trim(),
+    departure_to_date: form.departure_to_date.trim() === "" ? null : form.departure_to_date.trim(),
+    departure_to_time: form.departure_to_time.trim() === "" ? null : form.departure_to_time.trim(),
     departure_flight_name:
-      form.departure_flight_name.trim() === "" ? undefined : form.departure_flight_name,
+      form.departure_flight_name.trim() === "" ? null : form.departure_flight_name.trim(),
     departure_baggage_limit:
-      form.departure_baggage_limit.trim() === "" ? undefined : form.departure_baggage_limit,
+      form.departure_baggage_limit.trim() === "" ? null : form.departure_baggage_limit.trim(),
     arrival_from_airport:
-      form.arrival_from_airport.trim() === "" ? undefined : form.arrival_from_airport,
-    arrival_from_date: form.arrival_from_date.trim() === "" ? undefined : form.arrival_from_date,
-    arrival_from_time: form.arrival_from_time.trim() === "" ? undefined : form.arrival_from_time,
-    arrival_to_airport: form.arrival_to_airport.trim() === "" ? undefined : form.arrival_to_airport,
-    arrival_to_date: form.arrival_to_date.trim() === "" ? undefined : form.arrival_to_date,
-    arrival_to_time: form.arrival_to_time.trim() === "" ? undefined : form.arrival_to_time,
-    arrival_flight_name: form.arrival_flight_name.trim() === "" ? undefined : form.arrival_flight_name,
+      form.arrival_from_airport.trim() === "" ? null : form.arrival_from_airport.trim(),
+    arrival_from_date: form.arrival_from_date.trim() === "" ? null : form.arrival_from_date.trim(),
+    arrival_from_time: form.arrival_from_time.trim() === "" ? null : form.arrival_from_time.trim(),
+    arrival_to_airport: form.arrival_to_airport.trim() === "" ? null : form.arrival_to_airport.trim(),
+    arrival_to_date: form.arrival_to_date.trim() === "" ? null : form.arrival_to_date.trim(),
+    arrival_to_time: form.arrival_to_time.trim() === "" ? null : form.arrival_to_time.trim(),
+    arrival_flight_name: form.arrival_flight_name.trim() === "" ? null : form.arrival_flight_name.trim(),
     arrival_baggage_limit:
-      form.arrival_baggage_limit.trim() === "" ? undefined : form.arrival_baggage_limit,
+      form.arrival_baggage_limit.trim() === "" ? null : form.arrival_baggage_limit.trim(),
     detailed_schedule:
       form.itinerary_days_json.length > 0
         ? serializeStructuredDaysToSchedule(form.itinerary_days_json)
-        : (form.detailed_schedule.trim() === "" ? undefined : form.detailed_schedule),
-    optional_tours: resolvedOptionalTours === "" ? undefined : resolvedOptionalTours,
-    min_departure_people: form.min_departure_people.trim() === "" ? undefined : form.min_departure_people,
-    terms_template_type: form.terms_template_type === "" ? undefined : form.terms_template_type,
-    terms_and_notes: resolvedTermsAndNotes === "" ? undefined : resolvedTermsAndNotes,
-    product_source_url: form.product_source_url.trim() === "" ? undefined : form.product_source_url,
+        : (form.detailed_schedule.trim() === "" ? null : form.detailed_schedule.trim()),
+    optional_tours: resolvedOptionalTours === "" ? null : resolvedOptionalTours,
+    min_departure_people: form.min_departure_people.trim() === "" ? null : form.min_departure_people.trim(),
+    terms_template_type: form.terms_template_type === "" ? null : form.terms_template_type,
+    terms_and_notes: resolvedTermsAndNotes === "" ? null : resolvedTermsAndNotes,
+    product_source_url: form.product_source_url.trim() === "" ? null : form.product_source_url.trim(),
     image_url: primaryImageUrl,
     images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
     category: form.category,
@@ -128,9 +128,9 @@ export function serializeAdminProductForm(
       form.status && ["AVAILABLE", "LIMITED", "SOLD_OUT", "CONSULT_REQUIRED"].includes(form.status)
         ? form.status
         : undefined,
-    one_liner: form.one_liner.trim() === "" ? undefined : form.one_liner.trim(),
-    price_meta: form.price_meta.trim() === "" ? undefined : form.price_meta.trim(),
-    meta_info: form.meta_info.trim() === "" ? undefined : form.meta_info.trim(),
+    one_liner: form.one_liner.trim() === "" ? null : form.one_liner.trim(),
+    price_meta: form.price_meta.trim() === "" ? null : form.price_meta.trim(),
+    meta_info: form.meta_info.trim() === "" ? null : form.meta_info.trim(),
     fuel_included:
       form.fuel_included === ""
         ? undefined
@@ -185,9 +185,9 @@ export function serializeAdminProductForm(
       return items.length >= 2 ? { items } : null;
     })(),
     overview_accommodation:
-      form.overview_accommodation.trim() === "" ? undefined : form.overview_accommodation.trim(),
-    overview_region: form.overview_region.trim() === "" ? undefined : form.overview_region.trim(),
-    overview_duration: form.overview_duration.trim() === "" ? undefined : form.overview_duration.trim(),
+      form.overview_accommodation.trim() === "" ? null : form.overview_accommodation.trim(),
+    overview_region: form.overview_region.trim() === "" ? null : form.overview_region.trim(),
+    overview_duration: form.overview_duration.trim() === "" ? null : form.overview_duration.trim(),
   };
 
   return payload;

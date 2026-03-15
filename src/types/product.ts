@@ -210,6 +210,10 @@ export type Product = {
   meta_title?: string;
   meta_description?: string;
   is_active?: boolean;
+  /** 추천 여행 컬렉션용. true면 /products?collection=recommend에 노출 */
+  is_recommend?: boolean;
+  /** 인기 여행 컬렉션용. true면 /products?collection=popular에 노출 */
+  is_popular?: boolean;
   sort_order?: number;
   created_at?: string;
   /** 상품 상태: 없으면 AVAILABLE로 간주 */

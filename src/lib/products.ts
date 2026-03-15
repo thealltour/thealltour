@@ -117,6 +117,8 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     meta_description:
       typeof row.meta_description === "string" ? row.meta_description : undefined,
     is_active: typeof row.is_active === "boolean" ? row.is_active : undefined,
+    is_recommend: typeof row.is_recommend === "boolean" ? row.is_recommend : undefined,
+    is_popular: typeof row.is_popular === "boolean" ? row.is_popular : undefined,
     sort_order: sortOrder,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
     status:

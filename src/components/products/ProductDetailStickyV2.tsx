@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
@@ -48,6 +49,43 @@ export function ProductDetailStickyV2Desktop({
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
 
+  /** PR7: 스크롤 기반 CTA 강조 (Desktop 전용). Hero 지나면 true */
+  const [isScrolled, setIsScrolled] = useState(false);
+  /** 본문 깊이 진입 시 true → CTA 시각 강조 */
+  const [isDeepScroll, setIsDeepScroll] = useState(false);
+  const scrollTickRef = useRef<number | null>(null);
+  const lastScrolledRef = useRef(false);
+  const lastDeepRef = useRef(false);
+
+  useEffect(() => {
+    const SCROLL_THRESHOLD_HERO = 300;
+    const SCROLL_THRESHOLD_DEEP = 900;
+
+    const onScroll = () => {
+      if (scrollTickRef.current != null) return;
+      scrollTickRef.current = requestAnimationFrame(() => {
+        scrollTickRef.current = null;
+        const y = window.scrollY;
+        const scrolled = y > SCROLL_THRESHOLD_HERO;
+        const deep = y > SCROLL_THRESHOLD_DEEP;
+        if (scrolled !== lastScrolledRef.current) {
+          lastScrolledRef.current = scrolled;
+          setIsScrolled(scrolled);
+        }
+        if (deep !== lastDeepRef.current) {
+          lastDeepRef.current = deep;
+          setIsDeepScroll(deep);
+        }
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (scrollTickRef.current != null) cancelAnimationFrame(scrollTickRef.current);
+    };
+  }, []);
+
   const chart = useMemo(() => {
     if (!product) return null;
     const overview = mapProductToOverview(product);
@@ -57,82 +95,132 @@ export function ProductDetailStickyV2Desktop({
     () => parseMetaTitleAsHashtags(product?.meta_title),
     [product?.meta_title],
   );
+  const MAX_KEYWORDS_STICKY = 5;
+  const displayKeywords = seoHashtags.slice(0, MAX_KEYWORDS_STICKY);
+  const keywordOverflowCount = Math.max(0, seoHashtags.length - MAX_KEYWORDS_STICKY);
 
   const displayPrice = quoteSummary?.total != null
     ? formatPriceKR(quoteSummary.total)
     : priceFormatted;
 
+  /** Desktop Sticky 전용: 행동 유도형 primary CTA 문구 (문의/예약 흐름 명확화) */
+  const desktopPrimaryLabel =
+    status === "AVAILABLE"
+      ? "일정/가격 문의하기"
+      : status === "LIMITED"
+        ? "잔여 좌석 문의하기"
+        : status === "SOLD_OUT"
+          ? "대기 문의하기"
+          : status === "CONSULT_REQUIRED"
+            ? "견적 문의하기"
+            : "상담 문의하기";
+
   return (
     <aside
-      className="hidden md:block sticky top-24 w-full max-w-[300px] shrink-0 space-y-4"
+      className="hidden md:block sticky top-24 w-full max-w-[300px] shrink-0"
       aria-label="상품 요약"
     >
-      <Link
-        href="/products"
-        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+      {/* 전환 핵심 그룹: 예상가 + CTA (가격 인지 → 즉시 액션). PR7: deep scroll 시 강조 */}
+      <div
+        className={cn(
+          "rounded-2xl border-2 bg-white p-5 transition-all duration-200",
+          isDeepScroll
+            ? "border-[#3b82f6] shadow-xl ring-2 ring-[#93c5fd]/50 bg-[#eff6ff]/50"
+            : isScrolled
+              ? "border-[#93c5fd] shadow-lg ring-2 ring-[#93c5fd]/30"
+              : "border-[#93c5fd] shadow-lg ring-1 ring-[#bfdbfe]",
+        )}
       >
-        ← 상품 목록으로
-      </Link>
-      {seoHashtags.length > 0 && (
-        <div className="rounded-2xl border border-[#dbeafe] bg-white p-4 shadow-lg ring-1 ring-[#dbeafe]">
-          <p className="mb-2 text-xs font-semibold text-slate-500">핵심 키워드</p>
-          <div className="flex flex-wrap gap-1.5">
-            {seoHashtags.map((tag, index) => (
-              <span
-                key={`detail-seo-${tag}-${index}`}
-                className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600"
-              >
-                #{tag}
-              </span>
-            ))}
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-medium text-slate-500">예상가</p>
+            {displayPrice ? (
+              <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[#1E3A8A]">
+                ₩{displayPrice}~
+              </p>
+            ) : (
+              <p className="mt-1 text-lg font-semibold text-slate-600">상담 후 안내</p>
+            )}
+            {product && (
+              <div className="mt-2 space-y-0.5">
+                {(product.duration || product.price_meta) && (
+                  <p className="text-xs text-slate-500">
+                    {[product.duration, product.price_meta || "1인 기준"].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+                {typeof product.fuel_included === "boolean" && (
+                  <p className="text-xs text-slate-500">
+                    {product.fuel_included ? "유류할증료 포함" : "유류할증료 별도"}
+                  </p>
+                )}
+                <p className="text-xs text-slate-500">유류할증료는 상담 시 안내</p>
+              </div>
+            )}
+          </div>
+          {/* 가격/전환 신뢰도 마이크로카피: 기준·포함·문의 안내 */}
+          <ul className="mt-3 list-none space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500" aria-label="가격 및 예약 안내">
+            <li>최종 금액은 일정과 인원 기준으로 안내됩니다.</li>
+            <li>포함사항과 옵션 내용은 상세 정보에서 확인 가능합니다.</li>
+            <li>상담 후 예약 가능 여부와 예상 비용을 안내해드립니다.</li>
+          </ul>
+          <TrustSignals trust={trust} />
+          <div
+            className={cn(
+              "flex flex-col gap-2 pt-0.5 rounded-xl transition-colors duration-200",
+              isDeepScroll && "bg-[#dbeafe]/30 -mx-1 px-3 py-2",
+            )}
+          >
+            <ProductConsultCTA
+              productId={productId}
+              productTitle={productTitle}
+              sourcePath={sourcePath}
+              status={status}
+              kakaoHref={kakaoHref}
+              section="top"
+              requiredGroupsMissing={requiredGroupsMissing}
+              scrollToOptions={scrollToOptions}
+              isSoldOut={isSoldOut}
+              onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
+              primaryLabel={desktopPrimaryLabel}
+              helperText="문의를 남기시면 가능 일정과 예상 비용을 안내해드립니다."
+            />
           </div>
         </div>
-      )}
-      {/* 웹: 예상가 위에 일정 테마 구성비 차트 */}
-      {chart && (
-        <div className="rounded-2xl border border-[#dbeafe] bg-white p-4 shadow-lg ring-1 ring-[#dbeafe]">
-          <ThemeChartCard items={chart.items} />
-        </div>
-      )}
-      <div className="rounded-2xl border border-[#dbeafe] bg-white p-5 shadow-lg ring-1 ring-[#dbeafe]">
-      <p className="text-sm font-semibold text-slate-500">예상가</p>
-      {displayPrice ? (
-        <p className="font-price-strong mt-1 text-xl font-bold text-[#1E3A8A]">
-          ₩{displayPrice}~
-        </p>
-      ) : (
-        <p className="mt-1 text-base font-semibold text-slate-600">상담 후 안내</p>
-      )}
-      {product && (
-        <div className="mt-2 space-y-0.5">
-          {(product.duration || product.price_meta) && (
-            <p className="text-xs text-slate-500">
-              {[product.duration, product.price_meta || "1인 기준"].filter(Boolean).join(" · ")}
-            </p>
-          )}
-          {typeof product.fuel_included === "boolean" && (
-            <p className="text-xs text-slate-500">
-              {product.fuel_included ? "유류할증료 포함" : "유류할증료 별도"}
-            </p>
-          )}
-          <p className="text-xs text-slate-500">유류할증료는 상담 시 안내</p>
-        </div>
-      )}
-      <TrustSignals trust={trust} className="mt-3" />
-      <div className="mt-4 flex flex-col gap-2">
-        <ProductConsultCTA
-          productId={productId}
-          productTitle={productTitle}
-          sourcePath={sourcePath}
-          status={status}
-          kakaoHref={kakaoHref}
-          section="top"
-          requiredGroupsMissing={requiredGroupsMissing}
-          scrollToOptions={scrollToOptions}
-          isSoldOut={isSoldOut}
-          onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
-        />
       </div>
+
+      {/* 보조 정보 그룹: 키워드 / 차트 / 목록 링크 (탐색 보조, CTA 방해 최소화) */}
+      <div className="sticky-supporting-info mt-5 space-y-3 border-t border-slate-200 pt-5" aria-label="보조 정보">
+        {displayKeywords.length > 0 && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">핵심 키워드</p>
+            <div className="flex flex-wrap items-center gap-1">
+              {displayKeywords.map((tag, index) => (
+                <span
+                  key={`detail-seo-${tag}-${index}`}
+                  className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
+                >
+                  #{tag}
+                </span>
+              ))}
+              {keywordOverflowCount > 0 && (
+                <span className="inline-flex shrink-0 items-center text-[10px] font-medium text-slate-400">
+                  +{keywordOverflowCount}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {chart && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
+            <ThemeChartCard items={chart.items} />
+          </div>
+        )}
+        <Link
+          href="/products"
+          className="block text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 transition hover:text-slate-700 hover:decoration-slate-500"
+        >
+          ← 다른 상품 보기
+        </Link>
       </div>
     </aside>
   );

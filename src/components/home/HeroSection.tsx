@@ -155,7 +155,7 @@ export default function HeroSection({
                         </Link>
                         {" · "}
                         <Link href="/recommended" className="underline hover:no-underline">
-                          추천여행
+                          여행추천
                         </Link>
                         {" 으로 탐색"}
                       </>

@@ -75,12 +75,12 @@ export function TimelineEventCard({ event, normalizeUrl, productId, dayIndex, ev
   };
 
   return (
-    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-      {/* 시간(왼쪽/강조) + 제목 + 아이콘 — 스캔 우선 */}
-      <div className="mb-3 flex items-start gap-3">
+    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+      {/* PR13: 1) 시간 2) 이벤트명 3) 설명 위계 강화 */}
+      <div className="flex items-start gap-3 space-y-0">
         {(event.timeOfDay != null || event.timeText?.trim()) ? (
           <div className="shrink-0 text-right">
-            <span className="block text-sm font-bold text-[var(--primary)]">
+            <span className="block text-sm font-semibold text-[var(--primary)]">
               {event.timeText?.trim() || (event.timeOfDay != null ? TIMEOFDAY_LABELS[event.timeOfDay] : "")}
             </span>
             {event.timeText?.trim() && event.timeOfDay != null && (
@@ -88,20 +88,19 @@ export function TimelineEventCard({ event, normalizeUrl, productId, dayIndex, ev
             )}
           </div>
         ) : null}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             {Icon && (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
                 <Icon className="h-4 w-4" />
               </div>
             )}
-            <h4 className="min-w-0 flex-1 text-base font-bold leading-tight text-[var(--text-primary)] md:text-lg" title={event.heading}>
+            <h4 className="min-w-0 flex-1 text-lg font-semibold leading-tight text-[var(--text-primary)]" title={event.heading}>
               {event.heading}
             </h4>
           </div>
-          {/* 설명: line-clamp로 후순위, 보조 정보 */}
           {event.description && (
-            <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
+            <p className="line-clamp-3 text-sm leading-6 text-[var(--text-muted)] whitespace-pre-wrap">
               {event.description}
             </p>
           )}

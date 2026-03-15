@@ -28,6 +28,10 @@ export type ProductConsultCTAProps = {
   compact?: boolean;
   /** 주 CTA 클릭 시 추가 콜백 (예: 리뷰 전환 계측) */
   onPrimaryClick?: () => void;
+  /** primary 버튼 문구 override (미전달 시 getProductCtaLabel 사용). Desktop Sticky 등 전환 최적화용 */
+  primaryLabel?: string;
+  /** section "top"에서 버튼 하단 보조 문구 override (미전달 시 기본 문구 사용) */
+  helperText?: string;
 };
 
 export function ProductConsultCTA({
@@ -46,9 +50,11 @@ export function ProductConsultCTA({
   className = "",
   compact = false,
   onPrimaryClick,
+  primaryLabel: primaryLabelOverride,
+  helperText: helperTextOverride,
 }: ProductConsultCTAProps) {
   const { openModal } = useConsultModal();
-  const primaryLabel = getProductCtaLabel(status);
+  const primaryLabel = primaryLabelOverride ?? getProductCtaLabel(status);
 
   const handlePrimary = () => {
     if (requiredGroupsMissing && scrollToOptions) {
@@ -111,22 +117,25 @@ export function ProductConsultCTA({
   }
 
   // section === "top"
+  const defaultHelper = "상담 후 확정 · 맞춤 견적 안내";
+  const helperText = helperTextOverride ?? defaultHelper;
+
   return (
     <div className={className}>
       {requiredGroupsMissing && (
         <p className="mb-2 text-sm text-amber-600">필수 옵션을 선택해 주세요.</p>
       )}
-      <div className="flex flex-wrap gap-3">
-        <Button variant="primary" size="md" onClick={handlePrimary}>
+      <div className="flex flex-col gap-2">
+        <Button variant="primary" size="md" onClick={handlePrimary} className="w-full">
           {primaryLabel}
         </Button>
         {kakaoHref && (
-          <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao}>
-            <Button variant="outline" size="md">카톡 상담</Button>
+          <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="block">
+            <Button variant="outline" size="md" className="w-full">카톡 상담</Button>
           </a>
         )}
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">상담 후 확정 · 맞춤 견적 안내</p>
+      <p className="mt-2 text-xs leading-relaxed text-slate-500">{helperText}</p>
     </div>
   );
 }

@@ -17,7 +17,7 @@ export type HeaderPrimaryNavKey = (typeof HEADER_PRIMARY_NAV_KEYS)[number];
 
 /** 1차 메뉴: key ↔ 사용자 노출 label */
 export const HEADER_PRIMARY_NAV_ITEMS: ReadonlyArray<{ key: HeaderPrimaryNavKey; label: string }> = [
-  { key: "recommended", label: "추천여행" },
+  { key: "recommended", label: "여행추천" },
   { key: "region", label: "지역별 여행" },
   { key: "theme", label: "테마별 여행" },
   { key: "inquiry", label: "맞춤/단체문의" },

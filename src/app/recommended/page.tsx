@@ -18,7 +18,7 @@ import {
 import { getProducts } from "@/lib/products";
 
 export const metadata = {
-  title: "추천여행 | 더올투어",
+  title: "여행추천 | 더올투어",
   description:
     "더올투어가 선별한 추천 여행·골프·패키지 상품을 만나보세요. 큐레이션된 코스로 쉽게 탐색할 수 있습니다.",
 };

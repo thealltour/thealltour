@@ -25,8 +25,8 @@ import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
-import { ProductTripHighlights } from "@/components/products/ProductTripHighlights";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
+import { ProductQuickSummaryCard } from "@/components/products/ProductQuickSummaryCard";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -219,6 +219,7 @@ export default function ProductDetailV2({
     [product, detailedSchedule],
   );
   const [activeTab, setActiveTab] = useState<MainTab>("schedule");
+  const [pendingPreviewDayIndex, setPendingPreviewDayIndex] = useState<number | null>(null);
   const [openAccordionIndex, setOpenAccordionIndex] = useState<number | null>(0);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({});
   const isSoldOut = statusTag === "SOLD_OUT";
@@ -256,6 +257,25 @@ export default function ProductDetailV2({
     setSelectedOptions((prev) => ({ ...prev, [groupId]: optionId }));
   }, []);
 
+  /** PR15-1 Step3: 일정 미리보기 Day 카드 클릭 → schedule 탭 + 해당 Day 전달 + 상세 일정 섹션으로 스크롤 (단일 Day 구조) */
+  const handlePreviewDayClick = useCallback((dayNumber: number) => {
+    setActiveTab("schedule");
+    setPendingPreviewDayIndex(dayNumber - 1);
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document.getElementById("itinerary-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+
+        setTimeout(() => {
+          setPendingPreviewDayIndex(null);
+        }, 100);
+      }, 150);
+    });
+  }, []);
+
   const scheduleDays = useMemo(() => parseScheduleDays(detailedSchedule), [detailedSchedule]);
   const includedLines = useMemo(() => parseBulletLines(includedItems), [includedItems]);
   const excludedLines = useMemo(() => parseBulletLines(excludedItems), [excludedItems]);
@@ -266,15 +286,65 @@ export default function ProductDetailV2({
   const listClass = "space-y-2 text-sm leading-[1.7] text-slate-700";
   const bulletClass = "mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]";
 
-  /** 상단 핵심 포인트 2~3개 (오버뷰 카드에서 값이 있는 것만) */
-  const heroKeyPoints = useMemo(() => {
-    const cards = overviewForCards?.cards ?? [];
-    const CONSULT = "상담 시 안내";
-    return cards
-      .filter((c) => c.value?.trim() && c.value.trim() !== CONSULT)
-      .slice(0, 3)
-      .map((c) => ({ label: c.label, value: c.value!.trim() }));
-  }, [overviewForCards]);
+  /** PR8-1: 메타 정보 바용 날짜 범위. startDate~endDate 단일 표현, 동일일이면 한 번만 */
+  const metaDateRange = useMemo(() => {
+    const from = product?.departure_from_date?.trim();
+    const to = product?.departure_to_date?.trim();
+    if (!from && !to) return "";
+    const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
+    const fmt = (s: string) => {
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return s;
+      const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+      return `${m[1]}.${m[2]}.${m[3]}(${WEEKDAY[d.getDay()]})`;
+    };
+    if (from && to) {
+      if (from === to) return fmt(from);
+      const start = fmt(from);
+      const mTo = to.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (mTo && from.startsWith(mTo[1])) return `${start} ~ ${mTo[2]}.${mTo[3]}(${WEEKDAY[new Date(parseInt(mTo[1], 10), parseInt(mTo[2], 10) - 1, parseInt(mTo[3], 10)).getDay()]})`;
+      return `${start} ~ ${fmt(to)}`;
+    }
+    return from ? fmt(from) : fmt(to!);
+  }, [product?.departure_from_date, product?.departure_to_date]);
+
+  /** PR8-1: 기간 한 종류만 (3박5일 우선, 중복 제거) */
+  const durationLabel = useMemo(() => {
+    const raw = displayDuration || product?.overview_duration?.trim() || product?.duration?.trim() || "";
+    return raw;
+  }, [displayDuration, product?.overview_duration, product?.duration]);
+
+  /** PR9: 카드 상단 테마 라벨 (중복 없이 1회) */
+  const themeLabel = useMemo(() => {
+    return product?.theme?.trim() || category || "";
+  }, [product?.theme, category]);
+
+  /** PR9: 단일 출발일일 때 "YYYY.MM.DD(요일) 출발" */
+  const departureLabel = useMemo(() => {
+    const from = product?.departure_from_date?.trim();
+    const to = product?.departure_to_date?.trim();
+    if (!from || (to && to !== from)) return "";
+    const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
+    const m = from.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+    return `${m[1]}.${m[2]}.${m[3]}(${WEEKDAY[d.getDay()]}) 출발`;
+  }, [product?.departure_from_date, product?.departure_to_date]);
+
+  /** PR9: 상품 특징 (카드 하단 chips, 최대 4개) */
+  const productHighlights = useMemo(() => {
+    const items: string[] = [];
+    if (product?.point_tourism?.trim()) items.push("핵심 관광 포함");
+    if (!hasOptions) items.push("노옵션");
+    const meta = product?.meta_info?.trim();
+    if (meta && items.length < 3) {
+      const isDuration = /^\d+박?\s*\d*일?\s*$/.test(meta) || /^\d+일\s*$/.test(meta);
+      const shoppingMatch = meta.match(/쇼핑\s*(\d+)\s*회?/i) || meta.match(/(\d+)\s*회\s*쇼핑/i);
+      if (shoppingMatch) items.push(`쇼핑 ${shoppingMatch[1]}회`);
+      else if (!isDuration && meta !== (product?.theme?.trim() || "")) items.push(meta.length > 20 ? `${meta.slice(0, 18)}…` : meta);
+    }
+    return items.slice(0, 4);
+  }, [product?.meta_info, product?.point_tourism, product?.theme, hasOptions]);
 
   return (
     <div className="space-y-8">
@@ -315,13 +385,13 @@ export default function ProductDetailV2({
         )}
 
         {oneLiner ? (
-          <p className="whitespace-pre-wrap text-sm leading-[1.75] text-slate-600 md:text-base">{oneLiner}</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 md:text-[15px]">{oneLiner}</p>
         ) : null}
 
         {/* Price Summary Card: 모바일에서만, 캐러셀 위에 배치해 첫 화면에서 가격 노출 */}
         <Card
           variant="default"
-          className="border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe] md:hidden"
+          className="mt-4 border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe] md:hidden"
         >
           {displayPrice ? (
             <p className="font-price-strong text-xl font-bold text-[#1E3A8A] md:text-2xl">
@@ -345,36 +415,39 @@ export default function ProductDetailV2({
           <p className="mt-0.5 text-xs text-slate-500">유류할증료는 상담 시 안내</p>
         </Card>
 
-        <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
+        <div className="mt-5">
+          <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
+        </div>
 
-        {hasOptions && (
-          <div id="product-options-panel" ref={optionsPanelRef}>
-            <OptionPanel
-              options={options}
-              selected={selectedOptions}
-              onSelectionChange={handleOptionChange}
-            />
-          </div>
-        )}
+        {/* PR9: 갤러리 하단 여행 핵심 요약 카드 (일정/테마/날짜/핵심 특징 구조화) */}
+        <div className="mt-4">
+          <ProductQuickSummaryCard
+            durationLabel={durationLabel || undefined}
+            themeLabel={themeLabel || undefined}
+            departureLabel={departureLabel || undefined}
+            dateRangeLabel={departureLabel ? undefined : (metaDateRange || undefined)}
+            highlightItems={productHighlights}
+          />
+        </div>
 
-        {hasOptions && (quote.total != null || quote.basePrice != null || quote.breakdown.length > 0) && (
-          <QuoteSummary quote={quote} />
-        )}
+        <div className="mt-6 space-y-4">
+          {hasOptions && (
+            <div id="product-options-panel" ref={optionsPanelRef}>
+              <OptionPanel
+                options={options}
+                selected={selectedOptions}
+                onSelectionChange={handleOptionChange}
+              />
+            </div>
+          )}
 
-        {/* Trust Signals: 데이터 있을 때만 */}
-        <TrustSignals trust={trust} />
+          {hasOptions && (quote.total != null || quote.basePrice != null || quote.breakdown.length > 0) && (
+            <QuoteSummary quote={quote} />
+          )}
 
-        {/* 핵심 포인트 2~3개: CTA 바로 위 */}
-        {heroKeyPoints.length > 0 && (
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="핵심 포인트">
-            {heroKeyPoints.map((p) => (
-              <li key={`${p.label}-${p.value}`} className="flex items-center gap-1.5">
-                <span className="h-1 w-1 shrink-0 rounded-full bg-[#2563eb]" aria-hidden />
-                <span><strong className="font-semibold text-slate-700">{p.label}</strong> {p.value}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+          {/* Trust Signals: 데이터 있을 때만 */}
+          <TrustSignals trust={trust} />
+        </div>
 
         {/* CTA: 모바일에서만 표시. 통합 ProductConsultCTA 사용 */}
         <div className="mb-0 md:hidden">
@@ -413,22 +486,14 @@ export default function ProductDetailV2({
         </div>
       </section>
 
-      {/* Trip Highlights: 여행 핵심 특징 (최대 4개) */}
-      <ProductTripHighlights
-        product={product}
-        duration={duration}
-        region={region}
-        category={category}
-        theme={product?.theme}
-        maxItems={4}
-      />
-
-      {/* Itinerary Preview: 일정 미리보기 (최대 4일) */}
+      {/* Itinerary Preview: 일정 미리보기 (PR14: Day 카드 클릭 시 해당 Day로 이동) */}
       <ProductItineraryPreview
         timelineModel={timelineModel?.days?.length ? timelineModel : null}
         scheduleDays={scheduleDays}
         maxDays={4}
         itinerarySectionId="itinerary-section"
+        onViewFullItinerary={() => setActiveTab("schedule")}
+        onPreviewDayClick={handlePreviewDayClick}
       />
 
       {/* 여행 오버뷰: 항공 카드는 별도 섹션으로 분리 */}
@@ -467,6 +532,7 @@ export default function ProductDetailV2({
                 productTitle={productTitle}
                 sourcePath={sourcePath}
                 kakaoHref={kakaoHref}
+                selectedDayIndex={pendingPreviewDayIndex ?? undefined}
               />
             ) : hasSchedule ? (
               <>

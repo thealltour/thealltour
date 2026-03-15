@@ -263,7 +263,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
             <div className="flex gap-8 xl:gap-10 lg:items-start">
             <div className="min-w-0 flex-1 space-y-6">
-              <section className="overflow-hidden rounded-none bg-transparent shadow-none ring-0 sm:rounded-3xl sm:bg-white sm:shadow-md sm:ring-1 sm:ring-[#dbeafe]">
+              <section className="rounded-none bg-transparent shadow-none ring-0 sm:rounded-3xl sm:bg-white sm:shadow-md sm:ring-1 sm:ring-[#dbeafe]">
                 <script
                   type="application/ld+json"
                   dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}

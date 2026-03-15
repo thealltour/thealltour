@@ -42,7 +42,7 @@ function buildRegionGroupsFromTaxonomy(categories: ProductTaxonomy[]): HeaderNav
     key: "region-hub",
     label: "지역별 여행",
     items: [
-      { key: "region-all", label: "전체 보기", href: "/destinations" },
+      { key: "region-all", label: "지역 전체 보기", href: "/destinations" },
       { key: "region-products", label: "전체 상품 보기", href: "/products" },
     ],
   });
@@ -79,7 +79,7 @@ function buildRegionGroupsFromTaxonomy(categories: ProductTaxonomy[]): HeaderNav
       href: getDestinationLandingHref(c),
     }));
     groups[0].items = [
-      { key: "region-all", label: "전체 보기", href: "/destinations" },
+      { key: "region-all", label: "지역 전체 보기", href: "/destinations" },
       ...flat,
       { key: "region-products", label: "전체 상품 보기", href: "/products" },
     ];
@@ -92,55 +92,22 @@ function regionGroupsFromTaxonomy(categories: ProductTaxonomy[]): HeaderNavGroup
   return buildRegionGroupsFromTaxonomy(categories);
 }
 
-function recommendedGroupsFromCurated(sections: { id: string; title: string }[]): HeaderNavGroup[] {
-  const groups: HeaderNavGroup[] = [];
-  groups.push({
-    key: "recommended-products",
-    label: "전체 상품 보기",
-    labelHref: "/products",
-    items: [],
-  });
-  if (sections.length > 0) {
-    groups.push({
-      key: "recommended-featured",
-      label: "이번 달 추천",
-      labelHref: "/",
-      items: [],
-    });
-    sections.slice(0, 4).forEach((sec) => {
-      if (sec.title && sec.title.trim() !== "패키지여행") {
-        groups.push({
-          key: `recommended-section-${sec.id}`,
-          label: sec.title,
-          labelHref: `/#section-${sec.id}`,
-          items: [],
-        });
-      }
-    });
-  }
-  if (groups.length === 1) {
-    groups.push({
-      key: "recommended-featured",
-      label: "이번 달 추천",
-      labelHref: "/",
-      items: [],
-    });
-  }
-  groups.push(
-    {
-      key: "recommended-popular",
-      label: "인기 상품",
-      labelHref: "/products?sort=popular",
-      items: [],
-    },
-    {
-      key: "recommended-new",
-      label: "신규 여행",
-      labelHref: "/products?sort=new",
-      items: [],
-    },
-  );
-  return groups;
+/** 여행추천 메가메뉴: /products collection 파라미터와 연결된 4개 고정 메뉴 */
+const RECOMMEND_MENU_GROUPS: HeaderNavGroup[] = [
+  {
+    key: "recommended-collection",
+    label: "여행추천",
+    items: [
+      { key: "recommended-all", label: "전체 여행 보기", href: "/products" },
+      { key: "recommended-recommend", label: "추천 여행", href: "/products?collection=recommend" },
+      { key: "recommended-popular", label: "인기 여행", href: "/products?collection=popular" },
+      { key: "recommended-new", label: "신규 여행", href: "/products?collection=new" },
+    ],
+  },
+];
+
+function recommendedGroupsFromCurated(): HeaderNavGroup[] {
+  return RECOMMEND_MENU_GROUPS;
 }
 
 /** parent_id 기준으로 대분류 → 세부 테마 트리 구성 후, 헤더용 그룹 배열로 변환. 다단계 하위 항목 평면 포함 */
@@ -180,7 +147,7 @@ function buildThemeGroupsFromTaxonomy(themes: ProductTaxonomy[]): HeaderNavGroup
     key: "theme-hub",
     label: "테마별 여행",
     items: [
-      { key: "theme-all", label: "전체 보기", href: "/themes" },
+      { key: "theme-all", label: "테마 전체 보기", href: "/themes" },
       { key: "theme-products", label: "전체 상품 보기", href: "/products" },
     ],
   });
@@ -207,7 +174,7 @@ function buildThemeGroupsFromTaxonomy(themes: ProductTaxonomy[]): HeaderNavGroup
       href: getThemeLandingHref(t),
     }));
     groups[0].items = [
-      { key: "theme-all", label: "전체 보기", href: "/themes" },
+      { key: "theme-all", label: "테마 전체 보기", href: "/themes" },
       ...flat,
       { key: "theme-products", label: "전체 상품 보기", href: "/products" },
     ];
@@ -227,16 +194,14 @@ async function getHeaderNavigationDataUncached(): Promise<HeaderNavigationData> 
     getHomeCuratedData(),
   ]);
 
-  const recommendedGroups = recommendedGroupsFromCurated(
-    curated.sections.map((s) => ({ id: s.id, title: s.title })),
-  );
+  const recommendedGroups = recommendedGroupsFromCurated();
   const regionGroups = regionGroupsFromTaxonomy(destinations);
   const themeGroups = themeGroupsFromTaxonomy(themes);
 
   const primaryNav: HeaderPrimaryNavItem[] = [
     {
       key: "recommended",
-      label: "추천여행",
+      label: "여행추천",
       href: "/recommended",
       groups: recommendedGroups.length > 0 ? recommendedGroups : [{ key: "recommended-default", label: "추천", items: [{ key: "home", label: "홈", href: "/" }] }],
     },

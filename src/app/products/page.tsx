@@ -17,6 +17,7 @@ type ProductsPageProps = {
     theme?: string;
     product_line?: string;
     sort?: string;
+    collection?: string;
     destination?: string;
     city?: string;
   }>;

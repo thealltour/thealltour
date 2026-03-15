@@ -71,9 +71,9 @@ function RegionCascadePanel({
       aria-label="지역별 여행"
     >
       <div className="grid grid-cols-[200px_200px_200px_260px] gap-8">
-        {/* Column 1: 바로가기 */}
+        {/* Column 1: 지역별 여행 */}
         <div className="space-y-3">
-          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">바로가기</p>
+          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">지역별 여행</p>
           {hubGroup && (
             <ul className="space-y-0.5" role="none">
               {hubGroup.items.map((leaf, i) => (

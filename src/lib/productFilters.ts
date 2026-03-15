@@ -12,6 +12,8 @@ export const PRODUCT_FILTER_KEYS = {
   PRODUCT_LINE: "product_line",
   SORT: "sort",
   Q: "q",
+  /** 여행추천 메가메뉴용: recommend | popular | new */
+  COLLECTION: "collection",
   TOUR_TYPE: "tourType",
   /** 랜딩에서 진입 시 상위 맥락용 (slug) */
   DESTINATION: "destination",
@@ -26,6 +28,7 @@ export type ProductFiltersState = {
   product_line: string | null;
   sort: ProductSortId;
   q: string | null;
+  collection: string | null;
 };
 
 const SORT_VALUES: ProductSortId[] = ["popular", "latest", "new"];
@@ -38,6 +41,7 @@ export function parseProductFiltersFromSearchParams(
   const product_line = params[PRODUCT_FILTER_KEYS.PRODUCT_LINE];
   const sort = params[PRODUCT_FILTER_KEYS.SORT];
   const q = params[PRODUCT_FILTER_KEYS.Q];
+  const collection = params[PRODUCT_FILTER_KEYS.COLLECTION];
 
   return {
     region: typeof region === "string" && region.trim() ? decodeURIComponent(region.trim()) : null,
@@ -48,6 +52,10 @@ export function parseProductFiltersFromSearchParams(
         ? (sort as ProductSortId)
         : "",
     q: typeof q === "string" && q.trim() ? q.trim() : null,
+    collection:
+      typeof collection === "string" && collection.trim()
+        ? decodeURIComponent(collection.trim())
+        : null,
   };
 }
 
@@ -58,6 +66,7 @@ export function buildProductsSearchParams(state: Partial<ProductFiltersState>): 
   if (state.product_line) p.set(PRODUCT_FILTER_KEYS.PRODUCT_LINE, state.product_line);
   if (state.sort) p.set(PRODUCT_FILTER_KEYS.SORT, state.sort);
   if (state.q) p.set(PRODUCT_FILTER_KEYS.Q, state.q);
+  if (state.collection) p.set(PRODUCT_FILTER_KEYS.COLLECTION, state.collection);
   return p.toString();
 }
 
@@ -74,6 +83,7 @@ export function buildProductsFilterHref(payload: {
   product_line?: string | null;
   q?: string | null;
   sort?: string | null;
+  collection?: string | null;
   tourType?: string | null;
 }): string {
   const p = new URLSearchParams();
@@ -84,6 +94,7 @@ export function buildProductsFilterHref(payload: {
   if (payload.product_line?.trim()) p.set(PRODUCT_FILTER_KEYS.PRODUCT_LINE, payload.product_line.trim());
   if (payload.q?.trim()) p.set(PRODUCT_FILTER_KEYS.Q, payload.q.trim());
   if (payload.sort?.trim()) p.set(PRODUCT_FILTER_KEYS.SORT, payload.sort.trim());
+  if (payload.collection?.trim()) p.set(PRODUCT_FILTER_KEYS.COLLECTION, payload.collection.trim());
   if (payload.tourType?.trim()) p.set(PRODUCT_FILTER_KEYS.TOUR_TYPE, payload.tourType.trim());
   const qs = p.toString();
   return qs ? `/products?${qs}` : "/products";
@@ -118,6 +129,10 @@ export function mergeFiltersIntoSearchParams(
   if (filters.q != null) {
     if (filters.q) next.set(PRODUCT_FILTER_KEYS.Q, filters.q);
     else next.delete(PRODUCT_FILTER_KEYS.Q);
+  }
+  if (filters.collection != null) {
+    if (filters.collection) next.set(PRODUCT_FILTER_KEYS.COLLECTION, filters.collection);
+    else next.delete(PRODUCT_FILTER_KEYS.COLLECTION);
   }
   return next;
 }
@@ -182,6 +197,23 @@ export function applyProductFilters(
         .toLowerCase();
       return tokens.some((token) => haystack.includes(token));
     });
+  }
+
+  if (filters.collection) {
+    const c = filters.collection.trim();
+    if (c === "recommend") {
+      list = list.filter((p) => p.is_recommend === true);
+    }
+    if (c === "popular") {
+      list = list.filter((p) => p.is_popular === true);
+    }
+    if (c === "new") {
+      list = [...list].sort((a, b) => {
+        const aAt = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bAt = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bAt - aAt;
+      });
+    }
   }
 
   if (filters.sort === "latest" || filters.sort === "new") {

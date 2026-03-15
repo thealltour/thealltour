@@ -108,9 +108,9 @@ export const SECTIONS: SectionConfig[] = [
         issues.push({
           sectionId: "description",
           fieldKey: "description",
-          message: "상품 설명을 입력해 주세요.",
+          message: "상품 설명을 입력하면 상세 페이지 노출에 유리합니다.",
           anchorId: "field-product-description",
-          severity: "required",
+          severity: "recommended",
         });
       }
       return issues;

@@ -23,6 +23,7 @@ const emptyFilters: ProductFiltersState = {
   product_line: null,
   sort: "",
   q: null,
+  collection: null,
 };
 
 /**

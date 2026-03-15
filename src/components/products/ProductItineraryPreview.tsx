@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback, type ComponentType } from "react";
+import { ChevronRight, Plane, MapPin, Camera, Bed, Sparkles, PlaneLanding } from "lucide-react";
 import type { TimelineModel } from "@/lib/products/mapProductToTimelineModel";
 
 export type ScheduleDayLegacy = { label: string; content: string };
@@ -14,9 +15,62 @@ export type ProductItineraryPreviewProps = {
   maxDays?: number;
   /** 일정 섹션으로 스크롤할 때 사용할 id (클릭 시 스크롤) */
   itinerarySectionId?: string;
+  /** PR11: 전체 일정 보기 클릭 시 호출. 일정 탭을 먼저 열기 위해 사용 */
+  onViewFullItinerary?: () => void;
+  /** PR14: Preview Day 카드 클릭 시 해당 Day(1-based)로 상세 일정 이동 */
+  onPreviewDayClick?: (dayNumber: number) => void;
 };
 
-type PreviewDay = { dayLabel: string; title: string };
+export type PreviewDayIconKey = "flight" | "map" | "camera" | "bed" | "sparkles" | "plane-landing";
+
+type PreviewDay = {
+  dayLabel: string;
+  title: string;
+  /** PR14: 상세 일정 Day anchor 이동용 (1-based) */
+  dayNumber: number;
+  activityTag?: string;
+  emphasisText?: string;
+  iconKey?: PreviewDayIconKey;
+};
+
+type PreviewMeta = Pick<PreviewDay, "activityTag" | "emphasisText" | "iconKey">;
+
+/** PR12: 규칙 기반 보조 메타 추론. title/heading/description 결합 텍스트로 키워드 매칭 */
+function getPreviewMetaFromText(text: string): PreviewMeta {
+  const t = (text || "").trim();
+  if (!t) return {};
+  if (/귀국|인천.*도착|복귀|귀국일/.test(t)) {
+    return { activityTag: "귀국", emphasisText: "귀국 및 해산", iconKey: "plane-landing" };
+  }
+  if (/출발|공항|탑승|출국|출발일|인천.*출발/.test(t)) {
+    return { activityTag: "이동", emphasisText: "출국 및 이동", iconKey: "flight" };
+  }
+  if (/도착|체크인|호텔|첫날/.test(t) && !/관광|체험/.test(t)) {
+    return { activityTag: "도착", emphasisText: "도착 후 휴식", iconKey: "bed" };
+  }
+  if (/관광|사원|시티투어|시내|핵심관광|투어/.test(t)) {
+    return { activityTag: "핵심 관광", emphasisText: "사원·시내 중심 일정", iconKey: "camera" };
+  }
+  if (/체험|전통|안마|보호소|클래스/.test(t)) {
+    return { activityTag: "체험", emphasisText: "대표 체험 일정", iconKey: "sparkles" };
+  }
+  if (/자유|휴양|힐링|휴식|자유일정|프리/.test(t)) {
+    return { activityTag: "휴양", emphasisText: "휴식 및 귀국 준비", iconKey: "bed" };
+  }
+  if (/이동|경유|차량|버스/.test(t)) {
+    return { activityTag: "이동", emphasisText: "이동 일정", iconKey: "map" };
+  }
+  return {};
+}
+
+const PREVIEW_ICONS: Record<PreviewDayIconKey, ComponentType<{ className?: string }>> = {
+  flight: Plane,
+  map: MapPin,
+  camera: Camera,
+  bed: Bed,
+  sparkles: Sparkles,
+  "plane-landing": PlaneLanding,
+};
 
 function fromTimelineModel(model: TimelineModel | null | undefined, maxDays: number): PreviewDay[] {
   if (!model?.days?.length) return [];
@@ -26,16 +80,75 @@ function fromTimelineModel(model: TimelineModel | null | undefined, maxDays: num
       d.events[0]?.heading?.trim() ||
       d.events[0]?.description?.trim() ||
       "일정";
-    return { dayLabel: `Day ${d.day}`, title };
+    const metaText = [d.title, d.events[0]?.heading, d.events[0]?.description, d.dateText].filter(Boolean).join(" ");
+    const meta = getPreviewMetaFromText(metaText);
+    return { dayLabel: `Day ${d.day}`, title, dayNumber: d.day, ...meta };
   });
 }
 
 function fromScheduleDays(days: ScheduleDayLegacy[] | undefined, maxDays: number): PreviewDay[] {
   if (!days?.length) return [];
-  return days.slice(0, maxDays).map((d) => {
+  return days.slice(0, maxDays).map((d, i) => {
     const firstLine = d.content?.split(/\r?\n/)[0]?.trim() || d.label;
-    return { dayLabel: d.label, title: firstLine };
+    const metaText = [firstLine, d.label].filter(Boolean).join(" ");
+    const meta = getPreviewMetaFromText(metaText);
+    return { dayLabel: d.label, title: firstLine, dayNumber: i + 1, ...meta };
   });
+}
+
+function PreviewDayCard({
+  day,
+  onPreviewDayClick,
+}: {
+  day: PreviewDay;
+  onPreviewDayClick?: (dayNumber: number) => void;
+}) {
+  const Icon = day.iconKey ? PREVIEW_ICONS[day.iconKey] : null;
+  const isClickable = Boolean(onPreviewDayClick);
+  const content = (
+    <>
+      <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex w-fit rounded-full bg-[var(--primary)] px-2.5 py-0.5 text-xs font-bold text-white">
+          {day.dayLabel}
+        </span>
+        {day.activityTag && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+            {Icon && <Icon className="hidden h-3.5 w-3.5 shrink-0 sm:block" aria-hidden />}
+            {day.activityTag}
+          </span>
+        )}
+      </div>
+      <p
+        className="min-h-0 flex-1 text-[15px] font-semibold leading-snug text-[var(--text-primary)] line-clamp-2"
+        title={day.title}
+      >
+        {day.title}
+      </p>
+      {day.emphasisText && (
+        <p className="mt-1 line-clamp-1 text-xs text-[var(--text-muted)]" title={day.emphasisText}>
+          {day.emphasisText}
+        </p>
+      )}
+    </>
+  );
+  const cardClass =
+    "flex w-full flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-left shadow-[var(--shadow-soft)] transition md:p-4 " +
+    (isClickable
+      ? "cursor-pointer hover:border-[var(--primary)]/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+      : "");
+  if (isClickable) {
+    return (
+      <button
+        type="button"
+        onClick={() => onPreviewDayClick?.(day.dayNumber)}
+        className={cardClass}
+        aria-label={`${day.dayLabel} 일정으로 이동`}
+      >
+        {content}
+      </button>
+    );
+  }
+  return <div className={cardClass}>{content}</div>;
 }
 
 export function ProductItineraryPreview({
@@ -43,6 +156,8 @@ export function ProductItineraryPreview({
   scheduleDays = [],
   maxDays = 4,
   itinerarySectionId = "itinerary-section",
+  onViewFullItinerary,
+  onPreviewDayClick,
 }: ProductItineraryPreviewProps) {
   const previewDays = useMemo(() => {
     const max = Math.min(4, maxDays);
@@ -51,51 +166,40 @@ export function ProductItineraryPreview({
     return fromScheduleDays(scheduleDays, max);
   }, [timelineModel, scheduleDays, maxDays]);
 
-  if (previewDays.length === 0) return null;
+  const handleViewFullItinerary = useCallback(() => {
+    onViewFullItinerary?.();
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document.getElementById(itinerarySectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    });
+  }, [onViewFullItinerary, itinerarySectionId]);
 
-  const scrollToItinerary = () => {
-    document.getElementById(itinerarySectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  if (previewDays.length === 0) return null;
 
   return (
     <section className="w-full" aria-label="일정 미리보기">
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-soft)] md:p-5">
         <h2 className="mb-4 text-lg font-bold text-[var(--text-primary)] md:text-xl">일정 미리보기</h2>
-        {/* Desktop: horizontal step list */}
-        <div className="hidden md:block">
-          <ol className="flex flex-wrap gap-2">
-            {previewDays.map((d, i) => (
-              <li key={`${d.dayLabel}-${i}`} className="flex min-w-0 flex-1 basis-[calc(25%-0.5rem)] items-start gap-2">
-                <span className="shrink-0 rounded-full bg-[var(--primary)] px-2 py-0.5 text-xs font-bold text-white">
-                  {d.dayLabel}
-                </span>
-                <span className="min-w-0 truncate text-sm font-medium text-[var(--text-primary)]" title={d.title}>
-                  {d.title}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-        {/* Mobile: vertical timeline */}
-        <ul className="space-y-3 md:hidden">
+        {/* Desktop: grid 카드 (PR14: 카드 클릭 시 해당 Day로 이동) */}
+        <div className="hidden grid-cols-2 gap-3 md:grid xl:grid-cols-4">
           {previewDays.map((d, i) => (
-            <li key={`${d.dayLabel}-${i}`} className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-white">
-                {i + 1}
-              </span>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <span className="text-xs font-semibold text-[var(--text-muted)]">{d.dayLabel}</span>
-                <p className="text-sm font-medium text-[var(--text-primary)]">{d.title}</p>
-              </div>
-            </li>
+            <PreviewDayCard key={`${d.dayLabel}-${i}`} day={d} onPreviewDayClick={onPreviewDayClick} />
           ))}
-        </ul>
+        </div>
+        {/* Mobile: 세로 카드 스택 */}
+        <div className="grid grid-cols-1 gap-3 md:hidden">
+          {previewDays.map((d, i) => (
+            <PreviewDayCard key={`${d.dayLabel}-${i}`} day={d} onPreviewDayClick={onPreviewDayClick} />
+          ))}
+        </div>
         <button
           type="button"
-          onClick={scrollToItinerary}
-          className="mt-4 text-sm font-semibold text-[var(--primary)] underline underline-offset-2 hover:no-underline"
+          onClick={handleViewFullItinerary}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-[var(--primary)] bg-transparent px-4 py-2.5 text-sm font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
         >
           전체 일정 보기
+          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
         </button>
       </div>
     </section>

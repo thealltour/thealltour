@@ -52,6 +52,12 @@ export type ProductCardProps = {
   layout?: ProductCardLayout;
   /** 태그 최대 노출 개수 (기본 3). 과밀 방지 */
   maxTags?: number;
+  /** 여행 오버뷰: 숙소 (/products 카드용) */
+  overviewStay?: string;
+  /** 여행 오버뷰: 지역 (/products 카드용) */
+  overviewRegion?: string;
+  /** 여행 오버뷰: 기간 (/products 카드용) */
+  overviewDuration?: string;
 };
 
 const STATUS_LABELS: Record<ProductCardStatus, string> = {
@@ -167,11 +173,11 @@ export default function ProductCard({
   const isListLayout = layout === "list";
 
   const cardContent = (
-    <div className="flex min-h-[140px] w-full">
-      {/* Left: thumbnail. 고정 비율(4:3)로 카드 크기·구조 통일 */}
+    <div className="flex min-h-[140px] w-full items-stretch">
+      {/* Left: thumbnail. 카드 높이에 맞춰 stretch (object-cover로 채움) */}
       <div
         className={cn(
-          "relative shrink-0 self-start overflow-hidden bg-[var(--surface-muted)] aspect-[4/3]",
+          "relative shrink-0 self-stretch overflow-hidden bg-[var(--surface-muted)]",
           isListLayout
             ? "w-[38%] min-w-[180px] max-w-[280px]"
             : "w-[42%] min-w-[140px] max-w-[220px]",
@@ -220,27 +226,31 @@ export default function ProductCard({
         />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden p-4">
-        <div className={cn("relative overflow-hidden", isListLayout ? "min-h-[1.5rem]" : "min-h-[1.5rem]")}>
-          <h2
-            className={cn(
-              "font-card-title pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] break-words md:text-base",
-              "line-clamp-1",
-            )}
-          >
-            {title || "상품명"}
-          </h2>
-          <div
-            className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-[var(--surface)] to-transparent"
-            aria-hidden
-          />
+      {/* 우측 본문: 상단 정보 → 가격 → 하단(태그/자세히 보기/상담) */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
+        {/* 1. 상단: 제목 + 메타 */}
+        <div className="min-w-0">
+          <div className={cn("relative overflow-hidden", isListLayout ? "min-h-[1.5rem]" : "min-h-[1.5rem]")}>
+            <h2
+              className={cn(
+                "font-card-title pr-8 text-sm font-semibold leading-snug text-[var(--text-primary)] break-words md:text-base",
+                "line-clamp-1",
+              )}
+            >
+              {title || "상품명"}
+            </h2>
+            <div
+              className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-[var(--surface)] to-transparent"
+              aria-hidden
+            />
+          </div>
+          {metaLine ? (
+            <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--text-muted)]">{metaLine}</p>
+          ) : null}
         </div>
 
-        {metaLine ? (
-          <p className="line-clamp-1 text-[11px] text-[var(--text-muted)]">{metaLine}</p>
-        ) : null}
-
-        <div className="mt-1 space-y-0.5">
+        {/* 2. 가격 블록 */}
+        <div className="mt-2 space-y-0.5">
           {priceFormatted != null ? (
             <>
               <p className="font-price-strong text-xl font-bold leading-tight text-[var(--primary)] md:text-2xl">
@@ -255,47 +265,46 @@ export default function ProductCard({
           )}
         </div>
 
-        {tags.length > 0 ? (
-          <div className="relative mt-auto flex overflow-hidden pt-1">
-            <div className="flex shrink-0 flex-nowrap gap-1.5 pr-8">
-              {tags.slice(0, maxTags).map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex shrink-0 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)]"
-                >
-                  #{tag}
-                </span>
-              ))}
+        {/* 3. 하단: 태그 + 자세히 보기 + 상담 버튼 */}
+        <div className="mt-auto flex flex-col gap-2 pt-3">
+          {tags.length > 0 ? (
+            <div className="relative flex overflow-hidden">
+              <div className="flex shrink-0 flex-nowrap gap-1.5 pr-8">
+                {tags.slice(0, maxTags).map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex shrink-0 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)]"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+              <div
+                className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-[var(--surface)] to-transparent"
+                aria-hidden
+              />
             </div>
-            <div
-              className="pointer-events-none absolute right-0 top-0 h-full w-12 shrink-0 bg-gradient-to-l from-[var(--surface)] to-transparent"
-              aria-hidden
-            />
-          </div>
-        ) : (
-          <div className="mt-auto" />
-        )}
-
-        {hrefDetail ? (
-          <div className="mt-1 flex justify-end">
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[var(--primary)] opacity-90 group-hover:opacity-100" aria-hidden>
-              자세히 보기
-              <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </span>
-          </div>
-        ) : null}
-
-        {onClickConsult ? (
-          <div className="pt-1">
+          ) : null}
+          {hrefDetail ? (
+            <div className="flex justify-end">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[var(--primary)] opacity-90 group-hover:opacity-100" aria-hidden>
+                자세히 보기
+                <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          ) : null}
+          {onClickConsult ? (
             <span
               role="button"
               tabIndex={0}
               aria-disabled={consultPressed}
-              className={`${buttonVariants({ variant: "outline", size: "sm" })} inline-flex !h-7 !px-2.5 !text-xs ${
-                consultPressed ? "pointer-events-none opacity-60" : ""
-              }`}
+              className={cn(
+                buttonVariants({ variant: "primary", size: "sm" }),
+                "inline-flex w-fit !h-7 !px-2.5 !text-xs",
+                consultPressed && "pointer-events-none opacity-60",
+              )}
               onClick={handleConsult}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") handleConsultKey(e);
@@ -303,8 +312,8 @@ export default function ProductCard({
             >
               {status === "SOLD_OUT" ? "대기 문의" : "상담 문의"}
             </span>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -312,7 +321,7 @@ export default function ProductCard({
   const wrapperClass = cn(
     "group flex h-full w-full overflow-hidden",
     CARD_TRANSITION,
-    "hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-soft-strong)]",
+    "hover:shadow-md hover:border-[var(--primary)]/30",
     isListLayout && "max-w-[1344px]",
   );
 

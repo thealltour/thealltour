@@ -4,7 +4,8 @@ import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Product } from "@/types/product";
-import ProductCard from "@/components/products/ProductCard";
+import ProductListCard from "@/components/products/ProductListCard";
+import ProductListCardMobile from "@/components/products/ProductListCardMobile";
 import { productToProductCardProps } from "@/lib/productCardProps";
 import { useConsultModal } from "@/components/ConsultModal";
 import {
@@ -252,20 +253,29 @@ export default function ProductCatalogSection({
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
               <h3 className="font-card-title type-h3 text-[var(--primary)]">{group.theme}</h3>
-              <div className="flex flex-col gap-6 w-full max-w-[1344px]">
-                {group.products.map((product) => (
+              <div className="flex w-full max-w-[1344px] flex-col gap-4 md:gap-5">
+                {group.products.map((product) => {
+                  const cardProps = productToProductCardProps(product, {
+                    analyticsSource: "product_list",
+                    analyticsSection: "catalog",
+                    onClickDetail: () => router.push(`/products/${product.id}`),
+                    onClickConsult: () => handleProductConsult(product),
+                  });
+
+                  return (
                     <div key={product.id} className="w-full">
-                      <ProductCard
-                        {...productToProductCardProps(product, {
-                          layout: "list",
-                          analyticsSource: "product_list",
-                          analyticsSection: "catalog",
-                          onClickDetail: () => router.push(`/products/${product.id}`),
-                          onClickConsult: () => handleProductConsult(product),
-                        })}
-                      />
+                      {/* Desktop */}
+                      <div className="hidden md:block">
+                        <ProductListCard {...cardProps} />
+                      </div>
+
+                      {/* Mobile */}
+                      <div className="md:hidden">
+                        <ProductListCardMobile {...cardProps} />
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             </div>
           ))

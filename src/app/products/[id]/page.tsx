@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import ProductDetailV2 from "@/components/products/ProductDetailV2";
 import { ProductReviewsSection } from "@/components/products/ProductReviewsSection";
+import { ProductReviewSection } from "@/components/products/ProductReviewSection";
+import RelatedProductsSection from "@/components/products/RelatedProductsSection";
 import { GuideCard } from "@/components/guides/GuideCard";
 import {
   ProductDetailStickyDesktop,
@@ -20,7 +22,8 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import AlertCard from "@/components/ui/AlertCard";
 import { ConsultModalProvider } from "@/components/ConsultModal";
-import { getProductByIdFresh } from "@/lib/products";
+import { getProductByIdFresh, getProducts } from "@/lib/products";
+import { getRelatedProducts } from "@/lib/products/getRelatedProducts";
 import { getGuidesByDestinationId } from "@/lib/guides";
 import { getProductReviewStats, getProductReviews } from "@/lib/reviewStats";
 import { buildProductReviewJsonLd } from "@/lib/seo/products";
@@ -232,10 +235,18 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const settings = await getSiteSettings();
   const kakaoHref = settings.kakao_chat_url || settings.kakao_channel_url || "https://pf.kakao.com";
   const sourcePath = `/products/${product.id}`;
-  const relatedGuides =
+  const [relatedGuides, allProducts] = await Promise.all([
     product.destination_id?.trim()
-      ? await getGuidesByDestinationId(product.destination_id.trim(), 3)
-      : [];
+      ? getGuidesByDestinationId(product.destination_id.trim(), 3)
+      : Promise.resolve([]),
+    getProducts(),
+  ]);
+
+  const relatedProducts = getRelatedProducts({
+    currentProduct: product,
+    allProducts,
+    limit: 6,
+  });
 
   const statusV2 = product.status ?? "AVAILABLE";
   const oneLiner =
@@ -262,7 +273,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             </div>
 
             <div className="flex gap-8 xl:gap-10 lg:items-start">
-            <div className="min-w-0 flex-1 space-y-6">
+            <div className="min-w-0 flex-1 space-y-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
               <section className="rounded-none bg-transparent shadow-none ring-0 sm:rounded-3xl sm:bg-white sm:shadow-md sm:ring-1 sm:ring-[#dbeafe]">
                 <script
                   type="application/ld+json"
@@ -300,6 +311,13 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 </div>
               </section>
 
+              {/* PR27: 리뷰 영역 신뢰도 카드 (평점/후기 수 또는 최근 예약 + 상담 CTA) */}
+              <ProductReviewSection
+                rating={productReviewStats.averageRating}
+                reviewCount={productReviewStats.reviewCount}
+                bookingCount={product.trust?.recentConsultCount}
+                consultHref={`/quote?productId=${encodeURIComponent(product.id)}`}
+              />
               <ProductReviewsSection
                 productId={product.id}
                 productTitle={product.title}
@@ -307,6 +325,14 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 experimentKey="review_highlight_variant"
                 variant={reviewExperimentVariant}
                 reviewSort={reviewSort}
+                hideWhenNoReviews
+              />
+
+              {/* PR43: 연관 상품 섹션 (관련도 우선 정렬, fallback 채움) */}
+              <RelatedProductsSection
+                title="이 상품과 비슷한 여행"
+                description="여행지, 테마, 상품 구성이 비슷한 상품을 모아봤어요."
+                products={relatedProducts}
               />
 
               {relatedGuides.length > 0 ? (

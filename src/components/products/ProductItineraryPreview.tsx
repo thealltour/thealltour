@@ -3,6 +3,7 @@
 import { useMemo, useCallback, type ComponentType } from "react";
 import { ChevronRight, Plane, MapPin, Camera, Bed, Sparkles, PlaneLanding } from "lucide-react";
 import type { TimelineModel } from "@/lib/products/mapProductToTimelineModel";
+import { getDayPreviewLabel, getLegacyDayPreviewLabel } from "@/lib/products/itineraryPreviewLabel";
 
 export type ScheduleDayLegacy = { label: string; content: string };
 
@@ -75,11 +76,7 @@ const PREVIEW_ICONS: Record<PreviewDayIconKey, ComponentType<{ className?: strin
 function fromTimelineModel(model: TimelineModel | null | undefined, maxDays: number): PreviewDay[] {
   if (!model?.days?.length) return [];
   return model.days.slice(0, maxDays).map((d) => {
-    const title =
-      d.title?.trim() ||
-      d.events[0]?.heading?.trim() ||
-      d.events[0]?.description?.trim() ||
-      "일정";
+    const title = getDayPreviewLabel(d);
     const metaText = [d.title, d.events[0]?.heading, d.events[0]?.description, d.dateText].filter(Boolean).join(" ");
     const meta = getPreviewMetaFromText(metaText);
     return { dayLabel: `Day ${d.day}`, title, dayNumber: d.day, ...meta };
@@ -89,10 +86,10 @@ function fromTimelineModel(model: TimelineModel | null | undefined, maxDays: num
 function fromScheduleDays(days: ScheduleDayLegacy[] | undefined, maxDays: number): PreviewDay[] {
   if (!days?.length) return [];
   return days.slice(0, maxDays).map((d, i) => {
-    const firstLine = d.content?.split(/\r?\n/)[0]?.trim() || d.label;
-    const metaText = [firstLine, d.label].filter(Boolean).join(" ");
+    const title = getLegacyDayPreviewLabel(d.label, d.content ?? "");
+    const metaText = [title, d.label].filter(Boolean).join(" ");
     const meta = getPreviewMetaFromText(metaText);
-    return { dayLabel: d.label, title: firstLine, dayNumber: i + 1, ...meta };
+    return { dayLabel: d.label, title, dayNumber: i + 1, ...meta };
   });
 }
 

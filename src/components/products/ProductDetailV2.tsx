@@ -17,7 +17,11 @@ import type { Product, ProductTrust, ProductOptions, SelectedOptions } from "@/t
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { mapProductToTimelineModel, getTimelineModelFromSchedule } from "@/lib/products/mapProductToTimelineModel";
-import { TravelOverviewV2 } from "@/components/products/TravelOverviewV2";
+import { ProductFeatureCard } from "@/components/products/ProductFeatureCard";
+import { FlightSummarySection } from "@/components/products/FlightSummarySection";
+import { ProductIncludeExclude } from "@/components/products/ProductIncludeExclude";
+import { ProductHotelCard } from "@/components/products/ProductHotelCard";
+import { getHotelValue } from "@/lib/products/mapProductToOverview";
 import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
 import { ProductImageCarousel } from "@/components/products/ProductImageCarousel";
 import type { ProductGalleryImage } from "@/components/products/ProductImageGalleryModal";
@@ -27,6 +31,20 @@ import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
 import { ProductQuickSummaryCard } from "@/components/products/ProductQuickSummaryCard";
+import { ProductHighlightsCard } from "@/components/products/ProductHighlightsCard";
+import { ProductQuickInfoBar } from "@/components/products/ProductQuickInfoBar";
+import { ProductTrustSummary } from "@/components/products/ProductTrustSummary";
+import { ProductHeroBadges } from "@/components/products/ProductHeroBadges";
+import ProductSummaryInfo from "@/components/products/ProductSummaryInfo";
+import ProductDepartureSelector from "@/components/products/ProductDepartureSelector";
+import ProductItineraryTimeline from "@/components/products/ProductItineraryTimeline";
+import { buildHeroBadges } from "@/lib/products/buildHeroBadges";
+import {
+  getLegacyDayPreviewLabel,
+  parseDayContentToSections,
+} from "@/lib/products/itineraryPreviewLabel";
+import { ProductDayScheduleCard } from "@/components/products/ProductDayScheduleCard";
+import { parseThemeTokens } from "@/lib/productTaxonomies";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -346,6 +364,60 @@ export default function ProductDetailV2({
     return items.slice(0, 4);
   }, [product?.meta_info, product?.point_tourism, product?.theme, hasOptions]);
 
+  /** PR34: Hero 배지 (모바일, 짧은 키워드만. QuickInfoBar/HighlightsCard와 역할 구분) */
+  const heroBadges = useMemo(
+    () => buildHeroBadges(product, { hasOptions }),
+    [product, hasOptions],
+  );
+
+  /** PR40: 상품 요약 블록 표시 여부 (값이 하나라도 있을 때만) */
+  const hasSummaryData = useMemo(() => {
+    const d = product?.duration ?? duration;
+    const dep = product?.departure ?? product?.overview_region ?? product?.theme;
+    const air = product?.airline ?? product?.departure_flight_name;
+    const hot = product?.hotel ?? product?.overview_accommodation;
+    const style = product?.travelStyle ?? product?.theme;
+    const pr = typeof product?.price === "number" && product.price > 0 ? product.price : undefined;
+    return Boolean(d || dep || air || hot || style || pr);
+  }, [product, duration]);
+
+  /** PR22: 핵심 여행 요약 카드용. highlights → tags → themes 순, 최대 5개 */
+  const highlightsForCard = useMemo(() => {
+    if (!product) return [];
+    const fromHighlights = product.highlights?.length ? product.highlights : undefined;
+    const fromTags = product.tags?.length ? product.tags : undefined;
+    const fromThemes = product.theme ? parseThemeTokens(product.theme) : undefined;
+    const source = fromHighlights ?? fromTags ?? fromThemes ?? [];
+    return source.slice(0, 5);
+  }, [product?.highlights, product?.tags, product?.theme]);
+
+  /** PR26: 호텔 안내 카드용 (overview_accommodation 우선, 없으면 meta_info/itinerary 패턴) */
+  const hotelValue = useMemo(
+    () => (product ? getHotelValue(product) : ""),
+    [product],
+  );
+
+  /** PR29: 핵심 정보 요약 바용 (모바일, 사실 정보만) */
+  const quickInfoBarProps = useMemo(() => {
+    const duration = durationLabel?.trim() || "";
+    const destination = themeLabel?.trim() || "";
+    const hasFlight =
+      product &&
+      (product.departure_from_airport?.trim() ||
+        product.departure_to_airport?.trim() ||
+        product.departure_flight_name?.trim());
+    const flight = hasFlight ? "항공 포함" : "";
+    const hotel = hotelValue?.trim() ? (hotelValue.length > 20 ? `${hotelValue.slice(0, 18)}…` : hotelValue) : "";
+    const status = statusTag != null ? STATUS_LABELS[statusTag] : "";
+    return {
+      durationLabel: duration || undefined,
+      destinationLabel: destination || undefined,
+      flightLabel: flight || undefined,
+      hotelLabel: hotel || undefined,
+      statusLabel: status || undefined,
+    };
+  }, [durationLabel, themeLabel, product, hotelValue, statusTag]);
+
   return (
     <div className="space-y-8">
       {/* DetailHero */}
@@ -419,8 +491,67 @@ export default function ProductDetailV2({
           <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
         </div>
 
-        {/* PR9: 갤러리 하단 여행 핵심 요약 카드 (일정/테마/날짜/핵심 특징 구조화) */}
-        <div className="mt-4">
+        {/* PR40: 상품 핵심 요약 정보 블록 (Hero 바로 아래) */}
+        {hasSummaryData && (
+          <div className="mt-6">
+            <ProductSummaryInfo
+              duration={product?.duration ?? duration}
+              departure={product?.departure ?? product?.overview_region ?? product?.theme}
+              airline={product?.airline ?? product?.departure_flight_name}
+              hotel={product?.hotel ?? product?.overview_accommodation}
+              travelStyle={product?.travelStyle ?? product?.theme}
+              price={product?.price}
+            />
+          </div>
+        )}
+
+        {/* PR41: 출발일 선택 영역 (Summary 다음) */}
+        {product?.departures?.length ? (
+          <div className="mt-6">
+            <ProductDepartureSelector
+              departures={product.departures}
+              onInquiryClick={onConsultClick}
+            />
+          </div>
+        ) : null}
+
+        {/* PR34: 모바일 Hero 직하단 핵심 배지 (인기·노옵션·가이드·테마 등). PR37: Hero 아래 첫 블록 mt-6 */}
+        {heroBadges.length > 0 && (
+          <div className="mt-6 md:hidden">
+            <ProductHeroBadges badges={heroBadges} />
+          </div>
+        )}
+
+        {/* PR33: 모바일 Hero 직하단 신뢰도 정보 바. PR37: 섹션 간격 mt-6 */}
+        <div className="mt-6 md:hidden">
+          <ProductTrustSummary
+            rating={reviewSummary?.averageRating}
+            reviewCount={reviewSummary?.reviewCount}
+            bookingCount={trust?.recentConsultCount}
+            statusLabel={statusTag != null ? STATUS_LABELS[statusTag] : undefined}
+          />
+        </div>
+
+        {/* PR29: 모바일 전용 핵심 정보 요약 바. PR37: 섹션 간격 mt-6 */}
+        {(quickInfoBarProps.durationLabel ||
+          quickInfoBarProps.destinationLabel ||
+          quickInfoBarProps.flightLabel ||
+          quickInfoBarProps.hotelLabel ||
+          quickInfoBarProps.statusLabel) && (
+          <div className="mt-6">
+            <ProductQuickInfoBar {...quickInfoBarProps} />
+          </div>
+        )}
+
+        {/* PR22: 핵심 여행 요약 카드. PR37: 주요 섹션 mt-8 */}
+        {highlightsForCard.length > 0 && (
+          <div className="mt-8">
+            <ProductHighlightsCard highlights={highlightsForCard} />
+          </div>
+        )}
+
+        {/* PR9: 여행 핵심 요약 카드. PR37: 주요 섹션 mt-8 */}
+        <div className="mt-8">
           <ProductQuickSummaryCard
             durationLabel={durationLabel || undefined}
             themeLabel={themeLabel || undefined}
@@ -430,7 +561,7 @@ export default function ProductDetailV2({
           />
         </div>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-8 space-y-4">
           {hasOptions && (
             <div id="product-options-panel" ref={optionsPanelRef}>
               <OptionPanel
@@ -486,6 +617,13 @@ export default function ProductDetailV2({
         </div>
       </section>
 
+      {/* PR42: 상세 일정 타임라인 (itinerary_days 있을 때만, 본문 아래 노출) */}
+      {product?.itinerary_days?.length ? (
+        <div className="mt-8">
+          <ProductItineraryTimeline itinerary={product.itinerary_days} />
+        </div>
+      ) : null}
+
       {/* Itinerary Preview: 일정 미리보기 (PR14: Day 카드 클릭 시 해당 Day로 이동) */}
       <ProductItineraryPreview
         timelineModel={timelineModel?.days?.length ? timelineModel : null}
@@ -496,20 +634,16 @@ export default function ProductDetailV2({
         onPreviewDayClick={handlePreviewDayClick}
       />
 
-      {/* 여행 오버뷰: 항공 카드는 별도 섹션으로 분리 */}
-      <TravelOverviewV2
-        model={overviewForCards}
-        product={product}
-        onGoToItinerary={() => {
-          setActiveTab("schedule");
-          setTimeout(() => {
-            document.getElementById("itinerary-section")?.scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-            });
-          }, 150);
-        }}
-      />
+      {/* PR24: 여행 특징 카드 (테마 구성비 오버뷰 영역 대체) */}
+      {highlightsForCard.length > 0 && (
+        <ProductFeatureCard features={highlightsForCard} />
+      )}
+
+      {/* 항공 정보 */}
+      <FlightSummarySection product={product ?? null} compact embedded />
+
+      {/* PR26: 호텔 안내 카드 */}
+      {hotelValue ? <ProductHotelCard hotelName={hotelValue} /> : null}
 
       {/* Tabs */}
       <section>
@@ -522,8 +656,10 @@ export default function ProductDetailV2({
 
         {activeTab === "schedule" && (
           <div id="itinerary-section" className="space-y-6">
-            {/* [STEP 5] v2 있으면 시각화 타임라인(탭 안에서도 동일 노출), 없으면 레거시 텍스트만 */}
-            {hasVisualItinerary && timelineModel?.days?.length ? (
+            {/* PR42: itinerary_days 있으면 타임라인 UI, 없으면 기존 v2/레거시 일정 */}
+            {product?.itinerary_days?.length ? (
+              <ProductItineraryTimeline itinerary={product.itinerary_days} />
+            ) : hasVisualItinerary && timelineModel?.days?.length ? (
               <InteractiveTimelineV2
                 model={timelineModel}
                 fallbackImageUrl={resolvedOverviewFallbackUrl || null}
@@ -537,71 +673,32 @@ export default function ProductDetailV2({
             ) : hasSchedule ? (
               <>
                 {scheduleDays.map((day, index) => {
-                  const isOpen = openAccordionIndex === index;
+                  const summary = getLegacyDayPreviewLabel(day.label, day.content ?? "");
+                  const sections = parseDayContentToSections(day.content ?? "");
                   return (
-                    <Card key={`${day.label}-${index}`} variant="default" className="overflow-hidden border-[var(--border)] bg-[var(--surface-muted)]">
-                      <button
-                        type="button"
-                        onClick={() => setOpenAccordionIndex(isOpen ? null : index)}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#eff6ff]"
-                      >
-                        <span className="flex-1 font-semibold text-[#0f172a]">{day.label}</span>
-                        <ChevronDown
-                          className={`h-5 w-5 shrink-0 text-slate-500 transition ${isOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      {isOpen && (
-                        <div className="border-t border-[var(--divider)] px-4 pb-4 pt-2">
-                          <p className="whitespace-pre-line text-sm leading-[1.7] text-slate-700">
-                            {day.content}
-                          </p>
-                        </div>
-                      )}
-                    </Card>
+                    <ProductDayScheduleCard
+                      key={`${day.label}-${index}`}
+                      dayLabel={day.label}
+                      summary={summary || undefined}
+                      experience={sections.experience}
+                      movement={sections.movement}
+                    />
                   );
                 })}
               </>
             ) : (
               <p className="text-sm text-slate-500">일정 정보 준비 중입니다.</p>
             )}
-            {/* 레거시 전용: 시각화 없을 때만 위에서 아코디언으로 이미 표시됨 */}
           </div>
         )}
 
         {activeTab === "included" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
-              {/* 포함 사항 - 체크 아이콘 리스트 */}
-              <AlertCard variant="success" title="포함 사항">
-                {includedLines.length > 0 ? (
-                  <ul className={listClass}>
-                    {includedLines.map((line, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-slate-500">등록된 포함 사항이 없습니다.</p>
-                )}
-              </AlertCard>
-              {/* 불포함 사항 - X 아이콘 리스트 */}
-              <AlertCard variant="warning" title="불포함 사항">
-                {excludedLines.length > 0 ? (
-                  <ul className={listClass}>
-                    {excludedLines.map((line, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden />
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-slate-500">등록된 불포함 사항이 없습니다.</p>
-                )}
-              </AlertCard>
-            </div>
+            {/* PR25: 포함/불포함 카드 UI */}
+            <ProductIncludeExclude included={includedLines} excluded={excludedLines} />
+            {(includedLines.length === 0 && excludedLines.length === 0) && (
+              <p className="text-sm text-slate-500">등록된 포함/불포함 사항이 없습니다.</p>
+            )}
             {optionalLines.length > 0 && (
               <div>
                 <h3 className="mb-3 text-sm font-bold text-[#1e3a8a]">선택 관광</h3>

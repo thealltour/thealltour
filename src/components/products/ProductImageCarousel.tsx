@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { ImageIcon } from "lucide-react";
+import { Camera, ImageIcon } from "lucide-react";
 import {
   ProductImageGalleryModal,
   type ProductGalleryImage,
@@ -49,7 +49,8 @@ export function ProductImageCarousel({
   const current = images[clampIndex(activeIndex, images.length)];
   const desktopThumbs = images.slice(1, 1 + maxDesktopThumbs);
   const hiddenDesktopCount = Math.max(0, images.length - 1 - maxDesktopThumbs);
-  const mobileThumbs = images.slice(0, 12);
+  /** PR30: 모바일 썸네일 3~4개만 노출 */
+  const mobileThumbs = images.slice(0, 4);
 
   function openModalAt(index: number) {
     const nextIndex = clampIndex(index, images.length);
@@ -82,7 +83,7 @@ export function ProductImageCarousel({
               type="button"
               onClick={() => openModalAt(activeIndex)}
               className="absolute inset-0 z-10"
-              aria-label={`상품 이미지 ${activeIndex + 1} 크게 보기`}
+              aria-label={`상품 이미지 ${activeIndex + 1}${images.length > 1 ? ` (${activeIndex + 1}/${images.length})` : ""} 크게 보기`}
             />
             <Image
               src={normalizeProductImageUrl(current.url, { width: 1400, quality: 80, mode: "cover" })}
@@ -116,13 +117,58 @@ export function ProductImageCarousel({
                 </button>
               </>
             )}
+            {/* PR39: 모바일 Hero 갤러리 UX - 현재 위치 / 전체 수 표시 (여러 장일 때만) */}
+            {images.length > 1 && (
+              <div
+                className="absolute bottom-3 left-3 z-20 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white"
+                aria-live="polite"
+                aria-label={`현재 ${activeIndex + 1}번째, 전체 ${images.length}장`}
+              >
+                {activeIndex + 1} / {images.length}
+              </div>
+            )}
+            {/* PR39: 전체 사진 보기 CTA - 여러 장이면 "사진 전체보기", 단일이면 "사진 보기" */}
             <button
               type="button"
               onClick={() => openModalAt(activeIndex)}
-              className="absolute bottom-3 right-3 z-20 rounded-lg bg-black/45 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-black/65"
+              className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-sm font-semibold text-white shadow-lg transition hover:bg-black/70 active:scale-[0.98]"
+              aria-label={images.length > 1 ? `사진 ${images.length}장 전체 보기` : "사진 크게 보기"}
             >
-              전체 사진 보기 ({images.length}장)
+              <Camera className="h-4 w-4 shrink-0" aria-hidden />
+              {images.length > 1 ? "사진 전체보기" : "사진 보기"}
             </button>
+            {/* PR39: dot indicator - 스와이프 가능성 인지 (여러 장일 때만) */}
+            {images.length > 1 && (
+              <div
+                className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-1"
+                role="tablist"
+                aria-label="이미지 위치"
+              >
+                {images.slice(0, 8).map((_, index) => (
+                  <button
+                    key={`dot-${index}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeIndex === index}
+                    aria-label={`이미지 ${index + 1}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveIndex(index);
+                    }}
+                    className={`h-1.5 rounded-full transition ${
+                      activeIndex === index
+                        ? "w-4 bg-white"
+                        : "w-1.5 bg-white/60 hover:bg-white/80"
+                    }`}
+                  />
+                ))}
+                {images.length > 8 && (
+                  <span className="ml-0.5 self-center text-[10px] font-medium text-white/90">
+                    +{images.length - 8}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -214,6 +260,16 @@ export function ProductImageCarousel({
                   />
                 </button>
               ))}
+              {images.length > 4 && (
+                <button
+                  type="button"
+                  onClick={() => openModalAt(0)}
+                  className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs font-semibold text-slate-600 transition hover:border-[#1E3A8A] hover:bg-[#eff6ff] hover:text-[#1E3A8A]"
+                  aria-label={`사진 ${images.length}장 전체 보기`}
+                >
+                  +{images.length - 4}
+                </button>
+              )}
             </div>
           </div>
         )}

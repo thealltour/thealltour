@@ -73,11 +73,8 @@ export function Lightbox({
       }
     };
     window.addEventListener("keydown", handleKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = prevOverflow;
       returnFocusRef?.current?.focus();
     };
   }, [images.length, onClose, returnFocusRef]);

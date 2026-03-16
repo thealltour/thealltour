@@ -404,9 +404,7 @@ body {
 }
 
 @media (max-width: 767px) {
-  html[data-mobile-cta="on"] body {
-    padding-bottom: calc(var(--cta-h) + env(safe-area-inset-bottom) + 12px);
-  }
+  /* 상품 상세 하단 CTA 여백: 전역 body padding 제거. 상세페이지 본문에만 pb 적용해 viewport 스크롤 시 잘림 방지 */
 
   /* 모바일 전역 가로 폭 규칙: 과도한 중첩 px-6을 px-4로 통일 */
   body :where(main, section, article, aside, div)[class~="px-6"] {

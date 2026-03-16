@@ -2,6 +2,11 @@ import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cacheTags";
 import { getTaxonomyById, parseThemeTokens } from "@/lib/productTaxonomies";
+import {
+  sortRelatedProducts,
+  scoreRelatedProduct,
+  MIN_RELATED_SCORE,
+} from "@/lib/products/relatedProductScoring";
 import { normalizeEventImages as normalizeEventImagesLib } from "@/lib/images/normalizeEventImages";
 import { dedupeEventImages } from "@/lib/images/dedupeEventImages";
 import type {
@@ -11,6 +16,7 @@ import type {
   ProductOptionGroup,
   ProductOptionItem,
   ProductOverview,
+  ProductItineraryDay,
   ItineraryStructuredDay,
   ItineraryStructuredEvent,
   ItineraryV2,
@@ -39,11 +45,18 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
   const rawPrice = row.price;
   const price = typeof rawPrice === "number" ? rawPrice : undefined;
   const sortOrder = typeof row.sort_order === "number" ? row.sort_order : undefined;
-  const images = normalizeImageList(
-    Array.isArray(row.images_json)
-      ? (row.images_json as Array<string | null | undefined>)
-      : null,
-  );
+  let imagesInput: Array<string | null | undefined> | null = null;
+  if (Array.isArray(row.images_json)) {
+    imagesInput = row.images_json as Array<string | null | undefined>;
+  } else if (typeof row.images_json === "string" && row.images_json.trim()) {
+    try {
+      const parsed = JSON.parse(row.images_json) as unknown;
+      imagesInput = Array.isArray(parsed) ? (parsed as Array<string | null | undefined>) : null;
+    } catch {
+      imagesInput = null;
+    }
+  }
+  const images = normalizeImageList(imagesInput);
   const primaryImage = images[0] ?? String(row.image_url ?? row.image ?? FALLBACK_IMAGE);
 
   return {
@@ -59,6 +72,7 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     campaigns: normalizeStringArray(row.campaigns),
     campaigns_json: normalizeStringArray(row.campaigns_json ?? row.campaigns),
     tags: normalizeStringArray(row.tags_json ?? row.tags),
+    highlights: normalizeStringArray(row.highlights_json ?? row.highlights),
     price,
     duration:
       typeof row.duration === "string"
@@ -66,6 +80,37 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
         : typeof row.duration_days === "number"
           ? `${row.duration_days}일`
           : undefined,
+    departure:
+      typeof row.departure === "string" && row.departure.trim() !== ""
+        ? row.departure.trim()
+        : undefined,
+    airline:
+      typeof row.airline === "string" && row.airline.trim() !== ""
+        ? row.airline.trim()
+        : undefined,
+    hotel:
+      typeof row.hotel === "string" && row.hotel.trim() !== ""
+        ? row.hotel.trim()
+        : undefined,
+    travelStyle:
+      typeof row.travel_style === "string" && row.travel_style.trim() !== ""
+        ? (row.travel_style as string).trim()
+        : typeof row.travelStyle === "string" && (row.travelStyle as string).trim() !== ""
+          ? (row.travelStyle as string).trim()
+          : undefined,
+    departures: (() => {
+      const raw = row.departures ?? row.departures_json;
+      if (Array.isArray(raw)) return normalizeStringArray(raw) ?? undefined;
+      if (typeof raw === "string" && raw.trim()) {
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          return Array.isArray(parsed) ? normalizeStringArray(parsed) ?? undefined : undefined;
+        } catch {
+          return undefined;
+        }
+      }
+      return undefined;
+    })(),
     itinerary: typeof row.itinerary === "string" ? row.itinerary : undefined,
     inclusions: typeof row.inclusions === "string" ? row.inclusions : undefined,
     point_benefits: typeof row.point_benefits === "string" ? row.point_benefits : undefined,
@@ -156,6 +201,7 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
         : undefined,
     overview_json: normalizeOverview(row.overview_json),
     itinerary_media_json: normalizeItineraryMedia(row.itinerary_media_json),
+    itinerary_days: normalizeProductItineraryDays(row.itinerary_days ?? row.itinerary_days_simple),
     itinerary_days_json: normalizeItineraryDays(row.itinerary_days_json),
     itinerary_v2_json: normalizeItineraryV2(row.itinerary_v2_json),
     theme_chart_json: normalizeThemeChartJson(row.theme_chart_json),
@@ -190,6 +236,50 @@ function normalizeItineraryMedia(raw: unknown): Record<string, string> | undefin
     if (typeof value === "string" && value.trim()) result[key] = value.trim();
   }
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/** PR42: ProductItineraryTimeline용 일차 배열 정규화 (day, title, subtitle, description, meals, hotel) */
+function normalizeProductItineraryDays(raw: unknown): ProductItineraryDay[] | undefined {
+  if (!raw) return undefined;
+  let arr: unknown[];
+  if (Array.isArray(raw)) {
+    arr = raw;
+  } else if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      arr = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return undefined;
+    }
+  } else {
+    return undefined;
+  }
+  const days: ProductItineraryDay[] = [];
+  for (const item of arr) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const day =
+      typeof o.day === "number"
+        ? o.day
+        : typeof o.day === "string"
+          ? parseInt(String(o.day).trim(), 10)
+          : undefined;
+    if (day == null || !Number.isFinite(day) || day < 1) continue;
+    const title = typeof o.title === "string" && o.title.trim() ? o.title.trim() : undefined;
+    const subtitle = typeof o.subtitle === "string" && o.subtitle.trim() ? o.subtitle.trim() : undefined;
+    const description =
+      typeof o.description === "string" && o.description.trim() ? o.description.trim() : undefined;
+    let meals: string[] | undefined;
+    if (Array.isArray(o.meals)) {
+      meals = (o.meals as unknown[])
+        .filter((m): m is string => typeof m === "string" && String(m).trim().length > 0)
+        .map((m) => String(m).trim());
+      if (meals.length === 0) meals = undefined;
+    }
+    const hotel = typeof o.hotel === "string" && o.hotel.trim() ? o.hotel.trim() : undefined;
+    days.push({ day, title, subtitle, description, meals, hotel });
+  }
+  return days.length > 0 ? days : undefined;
 }
 
 function normalizeItineraryDays(raw: unknown): ItineraryStructuredDay[] | undefined {
@@ -564,6 +654,19 @@ export async function getProductsForGuide(
     }
   }
   return merged.slice(0, limit);
+}
+
+/** PR31/PR35: 상품 상세 하단 추천용. 관련도 점수 기반 정렬, 현재 상품 제외, 품질 임계값 적용, 최대 limit(기본 6). */
+export async function getRelatedProducts(
+  currentProduct: Product,
+  limit = 6,
+): Promise<Product[]> {
+  const products = await getProducts();
+  const sorted = sortRelatedProducts(currentProduct, products);
+  const withScore = sorted.filter(
+    (p) => scoreRelatedProduct(currentProduct, p) >= MIN_RELATED_SCORE,
+  );
+  return withScore.slice(0, limit);
 }
 
 const getProductsCached = unstable_cache(

@@ -76,20 +76,28 @@ export function ProductConsultCTA({
 
   if (section === "sticky") {
     return (
-      <div className={`flex items-center gap-3 ${className}`}>
-        {priceFormatted != null && priceFormatted !== "" && (
-          <span className="font-price-strong text-sm font-bold text-[#1E3A8A]">₩{priceFormatted}~</span>
-        )}
-        {!priceFormatted && (
-          <span className="text-sm font-semibold text-slate-600">상담 후 안내</span>
-        )}
-        <div className="flex flex-1 gap-2">
-          <Button variant="primary" size="md" onClick={handlePrimary} className="flex-1">
-            {compact ? (isSoldOut ? "대기" : "상담") : primaryLabel}
+      <div className={`flex h-11 w-full min-w-0 items-center gap-3 sm:gap-4 ${className}`}>
+        <div className="flex shrink-0 flex-col justify-center" style={{ minWidth: "6rem" }}>
+          {priceFormatted != null && priceFormatted !== "" ? (
+            <>
+              <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[#1E3A8A]">
+                ₩{priceFormatted}~
+              </span>
+              <span className="mt-0.5 text-[0.6875rem] text-slate-600">1인 기준</span>
+            </>
+          ) : (
+            <span className="text-sm font-semibold text-slate-600">상담 후 안내</span>
+          )}
+        </div>
+        <div className="flex h-11 min-w-0 shrink flex-1 items-center gap-2">
+          <Button variant="primary" size="md" onClick={handlePrimary} className="h-11 min-h-11 flex-1 min-w-0 shrink-0 whitespace-nowrap">
+            {isSoldOut ? "대기" : "예약 상담"}
           </Button>
           {kakaoHref && (
-            <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao}>
-              <Button variant="outline" size="md">카톡</Button>
+            <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="min-w-0 shrink">
+              <Button variant="outline" size="md" className="h-11 min-h-11 w-full whitespace-nowrap">
+                카카오톡 상담
+              </Button>
             </a>
           )}
         </div>

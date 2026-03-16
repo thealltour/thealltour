@@ -23,7 +23,7 @@ export type ProductCardBadge = {
   isActive?: boolean;
 };
 
-export type ProductCardLayout = "grid" | "list";
+export type ProductCardLayout = "grid" | "list" | "related";
 
 export type ProductCardProps = {
   title?: string;
@@ -48,7 +48,7 @@ export type ProductCardProps = {
   analyticsSection?: string;
   /** 계측 시 사용할 상품 ID (analyticsSource 설정 시 권장) */
   productId?: string;
-  /** grid: 홈/검색/추천. list: 상품 목록 1열 */
+  /** grid: 홈/검색/추천. list: 상품 목록 1열. related: 상세 하단 추천용 세로 카드(이미지 상단, 기간·가격 강조) */
   layout?: ProductCardLayout;
   /** 태그 최대 노출 개수 (기본 3). 과밀 방지 */
   maxTags?: number;
@@ -106,6 +106,9 @@ export default function ProductCard({
   productId,
   layout = "grid",
   maxTags = 3,
+  overviewStay,
+  overviewRegion,
+  overviewDuration,
 }: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -171,8 +174,85 @@ export default function ProductCard({
 
   const metaLine = [duration, metaInfo].filter(Boolean).join(" · ");
   const isListLayout = layout === "list";
+  const isRelatedLayout = layout === "related";
 
-  const cardContent = (
+  /** PR36: 추천 상품 전용 세로 카드 (이미지 상단, 기간·가격 강조, 인기/추천 배지) */
+  const durationLabel = overviewDuration?.trim() || duration?.trim() || "";
+  const relatedCardContent = (
+    <div className="flex h-full flex-col">
+      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]">
+        {activeBadges.length > 0 && (
+          <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1">
+            {activeBadges.slice(0, 2).map((b) => (
+              <span
+                key={b.label}
+                className={cn(
+                  "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-none shadow-sm",
+                  badgeVariantToChipStyle(badgeTypeToTagVariant(b.type)),
+                )}
+              >
+                {b.label}
+              </span>
+            ))}
+          </div>
+        )}
+        {thumbnailUrl ? (
+          <Image
+            src={normalizeProductImageUrl(thumbnailUrl)}
+            alt={title || "상품 이미지"}
+            fill
+            sizes="(max-width: 768px) 78vw, 320px"
+            className={cn("object-cover", CARD_TRANSITION, "group-hover:scale-[1.03]")}
+            loading="lazy"
+            onLoad={() => setImageLoaded(true)}
+            unoptimized
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[var(--text-muted)]" aria-hidden>
+            <span className="text-xs font-medium">이미지 없음</span>
+          </div>
+        )}
+        <div
+          className={cn(
+            "absolute inset-0 bg-[var(--surface-muted)]",
+            CARD_TRANSITION,
+            thumbnailUrl
+              ? imageLoaded
+                ? "opacity-0"
+                : "animate-pulse opacity-80"
+              : "opacity-0",
+          )}
+          aria-hidden
+        />
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col p-3">
+        {durationLabel ? (
+          <span className="mb-1.5 inline-flex w-fit rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+            {durationLabel}
+          </span>
+        ) : null}
+        <h2 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-[var(--text-primary)]">
+          {title || "상품명"}
+        </h2>
+        <div className="mt-2">
+          {priceFormatted != null ? (
+            <>
+              <p className="font-price-strong text-base font-bold leading-tight text-[var(--primary)] md:text-lg">
+                ₩{priceFormatted}~
+              </p>
+              {priceMeta ? (
+                <p className="mt-0.5 text-[10px] font-medium text-[var(--text-subtle)]">{priceMeta}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm font-semibold text-[var(--text-muted)]">상담 후 견적</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const cardContent = isRelatedLayout ? relatedCardContent : (
     <div className="flex min-h-[140px] w-full items-stretch">
       {/* Left: thumbnail. 카드 높이에 맞춰 stretch (object-cover로 채움) */}
       <div
@@ -323,6 +403,7 @@ export default function ProductCard({
     CARD_TRANSITION,
     "hover:shadow-md hover:border-[var(--primary)]/30",
     isListLayout && "max-w-[1344px]",
+    isRelatedLayout && "flex-col",
   );
 
   if (hrefDetail) {

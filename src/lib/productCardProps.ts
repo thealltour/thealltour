@@ -33,6 +33,13 @@ export function productToProductCardProps(
   overrides?: ProductToProductCardOverrides,
 ): Omit<ProductCardProps, "onClickDetail" | "onClickConsult"> & ProductToProductCardOverrides {
   const status: ProductCardStatus = (product.status ?? "AVAILABLE") as ProductCardStatus;
+  const isRelatedSection = overrides?.analyticsSection === "related_products";
+  const baseBadges = buildProductCardBadges(product);
+  const relatedBadges: ProductCardBadge[] = [
+    ...baseBadges,
+    ...(product.is_popular ? [{ type: "accent", label: "인기", priority: 10, isActive: true }] : []),
+    ...(product.is_recommend ? [{ type: "accent", label: "추천", priority: 9, isActive: true }] : []),
+  ];
   return {
     title: product.title,
     price: product.price,
@@ -41,7 +48,7 @@ export function productToProductCardProps(
     categories: [product.category].filter(Boolean),
     tags: parseMetaTitleAsHashtags(product.meta_title),
     status,
-    badges: buildProductCardBadges(product),
+    badges: isRelatedSection ? relatedBadges : baseBadges,
     thumbnailUrl: getPrimaryImageUrl(product),
     priceMeta: product.price_meta ?? "1인 기준",
     metaInfo: product.meta_info ?? "",
@@ -52,5 +59,6 @@ export function productToProductCardProps(
     productId: product.id,
     layout: "grid",
     ...overrides,
+    ...(isRelatedSection ? { layout: "related" as const, badges: relatedBadges } : {}),
   };
 }

@@ -126,6 +126,16 @@ export type SelectedEventRef =
   | { editorType: "v2"; dayIndex: number; eventIndex: number }
   | { editorType: "structured"; dayIndex: number; eventIndex: number };
 
+/** PR42: 상세 일정 타임라인용 일차 데이터 (title/subtitle/description/meals/hotel) */
+export type ProductItineraryDay = {
+  day: number;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  meals?: string[];
+  hotel?: string;
+};
+
 /** 여행 오버뷰 (jsonb 1컬럼 스키마) */
 export type ProductOverview = {
   enabled: boolean;
@@ -172,8 +182,22 @@ export type Product = {
   campaigns_json?: string[] | null;
   /** 태그 이름 배열. 선택 */
   tags?: string[] | null;
+  /** PR22: 핵심 여행 요약용 문구 배열. 없으면 tags/themes로 대체 */
+  highlights?: string[] | null;
   price?: number;
   duration?: string;
+  /** 출발지역 (Summary 블록용) */
+  departure?: string;
+  /** 항공 요약 (Summary 블록용) */
+  airline?: string;
+  /** 숙소 요약 (Summary 블록용) */
+  hotel?: string;
+  /** 여행스타일 (Summary 블록용) */
+  travelStyle?: string;
+  /** 출발일 목록 (ProductDepartureSelector용). 예: ["2025-06-12", "2025-07-03"] */
+  departures?: string[];
+  /** PR42: 일차별 타임라인용 일정 (ProductItineraryTimeline). 없으면 기존 itinerary / detailed_schedule 사용 */
+  itinerary_days?: ProductItineraryDay[];
   itinerary?: string;
   inclusions?: string;
   point_benefits?: string;

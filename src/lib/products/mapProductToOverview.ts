@@ -100,8 +100,8 @@ function getFlightValue(p: Product): string {
   return "";
 }
 
-/** 숙소 카드 값 (overview_accommodation 우선, 없으면 meta_info / itinerary 패턴) */
-function getHotelValue(p: Product): string {
+/** 숙소 카드 값 (overview_accommodation 우선, 없으면 meta_info / itinerary 패턴). PR26 호텔 카드에서도 사용 */
+export function getHotelValue(p: Product): string {
   const override = p.overview_accommodation?.trim();
   if (override) return override;
   const meta = p.meta_info?.trim();

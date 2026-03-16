@@ -62,8 +62,6 @@ export function ProductImageGalleryModal({
     if (!isOpen) return;
 
     previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -107,7 +105,6 @@ export function ProductImageGalleryModal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
       previousFocusedElementRef.current?.focus();
     };

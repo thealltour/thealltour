@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { cn } from "@/lib/cn";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
@@ -49,43 +48,6 @@ export function ProductDetailStickyV2Desktop({
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
 
-  /** PR7: 스크롤 기반 CTA 강조 (Desktop 전용). Hero 지나면 true */
-  const [isScrolled, setIsScrolled] = useState(false);
-  /** 본문 깊이 진입 시 true → CTA 시각 강조 */
-  const [isDeepScroll, setIsDeepScroll] = useState(false);
-  const scrollTickRef = useRef<number | null>(null);
-  const lastScrolledRef = useRef(false);
-  const lastDeepRef = useRef(false);
-
-  useEffect(() => {
-    const SCROLL_THRESHOLD_HERO = 300;
-    const SCROLL_THRESHOLD_DEEP = 900;
-
-    const onScroll = () => {
-      if (scrollTickRef.current != null) return;
-      scrollTickRef.current = requestAnimationFrame(() => {
-        scrollTickRef.current = null;
-        const y = window.scrollY;
-        const scrolled = y > SCROLL_THRESHOLD_HERO;
-        const deep = y > SCROLL_THRESHOLD_DEEP;
-        if (scrolled !== lastScrolledRef.current) {
-          lastScrolledRef.current = scrolled;
-          setIsScrolled(scrolled);
-        }
-        if (deep !== lastDeepRef.current) {
-          lastDeepRef.current = deep;
-          setIsDeepScroll(deep);
-        }
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (scrollTickRef.current != null) cancelAnimationFrame(scrollTickRef.current);
-    };
-  }, []);
-
   const chart = useMemo(() => {
     if (!product) return null;
     const overview = mapProductToOverview(product);
@@ -115,22 +77,21 @@ export function ProductDetailStickyV2Desktop({
             ? "견적 문의하기"
             : "상담 문의하기";
 
+  /** PR23: 데스크톱 sticky 헤더 충돌 방지 — SiteHeader(유틸바 h-10 + 메인 h-72~76) + 여백 반영 */
+  const desktopStickyTop = 128;
+  const desktopStickyMaxHeight = `calc(100vh - ${desktopStickyTop}px - 16px)`;
+
   return (
     <aside
-      className="hidden md:block sticky top-24 w-full max-w-[300px] shrink-0"
+      className="hidden lg:block sticky w-full max-w-[300px] shrink-0 overflow-auto"
+      style={{
+        top: `${desktopStickyTop}px`,
+        maxHeight: desktopStickyMaxHeight,
+      }}
       aria-label="상품 요약"
     >
-      {/* 전환 핵심 그룹: 예상가 + CTA (가격 인지 → 즉시 액션). PR7: deep scroll 시 강조 */}
-      <div
-        className={cn(
-          "rounded-2xl border-2 bg-white p-5 transition-all duration-200",
-          isDeepScroll
-            ? "border-[#3b82f6] shadow-xl ring-2 ring-[#93c5fd]/50 bg-[#eff6ff]/50"
-            : isScrolled
-              ? "border-[#93c5fd] shadow-lg ring-2 ring-[#93c5fd]/30"
-              : "border-[#93c5fd] shadow-lg ring-1 ring-[#bfdbfe]",
-        )}
-      >
+      {/* 전환 핵심 그룹: 예상가 + CTA. 스크롤 위치와 무관하게 카드/버튼 UI 일관 유지 */}
+      <div className="rounded-2xl border-2 border-[#93c5fd] bg-white p-5 shadow-lg ring-1 ring-[#bfdbfe]">
         <div className="space-y-3">
           <div>
             <p className="text-xs font-medium text-slate-500">예상가</p>
@@ -164,12 +125,7 @@ export function ProductDetailStickyV2Desktop({
             <li>상담 후 예약 가능 여부와 예상 비용을 안내해드립니다.</li>
           </ul>
           <TrustSignals trust={trust} />
-          <div
-            className={cn(
-              "flex flex-col gap-2 pt-0.5 rounded-xl transition-colors duration-200",
-              isDeepScroll && "bg-[#dbeafe]/30 -mx-1 px-3 py-2",
-            )}
-          >
+          <div className="flex flex-col gap-2 pt-0.5 rounded-xl">
             <ProductConsultCTA
               productId={productId}
               productTitle={productTitle}
@@ -268,38 +224,74 @@ export function ProductDetailStickyV2Mobile({
     };
   }, []);
 
+  /** CTA 고정 높이 + visualViewport 보정: 주소창/하단 UI 표시 시에도 CTA가 잘리지 않도록 bottom offset 적용 */
+  const PADDING_TOP = 12;
+  const PADDING_BOTTOM_BASE = 12;
+
   useEffect(() => {
-    const nextHeight = compact ? 44 : 56;
-    document.documentElement.setAttribute("data-mobile-cta", "on");
-    document.documentElement.style.setProperty("--cta-h", `${nextHeight}px`);
-    return () => {
-      document.documentElement.removeAttribute("data-mobile-cta");
-      document.documentElement.style.setProperty("--cta-h", "0px");
+    const updateViewportOffset = () => {
+      if (typeof window === "undefined") return;
+      const vv = window.visualViewport;
+      if (!vv) {
+        document.documentElement.style.setProperty("--mobile-cta-viewport-offset", "0px");
+        return;
+      }
+      const viewportBottom = vv.offsetTop + vv.height;
+      const gap = window.innerHeight - viewportBottom;
+      const offsetPx = Math.max(0, gap);
+      document.documentElement.style.setProperty("--mobile-cta-viewport-offset", `${offsetPx}px`);
     };
-  }, [compact]);
+
+    updateViewportOffset();
+
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (vv) {
+      vv.addEventListener("resize", updateViewportOffset);
+      vv.addEventListener("scroll", updateViewportOffset);
+    }
+    window.addEventListener("resize", updateViewportOffset);
+    window.addEventListener("orientationchange", updateViewportOffset);
+
+    return () => {
+      if (vv) {
+        vv.removeEventListener("resize", updateViewportOffset);
+        vv.removeEventListener("scroll", updateViewportOffset);
+      }
+      window.removeEventListener("resize", updateViewportOffset);
+      window.removeEventListener("orientationchange", updateViewportOffset);
+      document.documentElement.style.setProperty("--mobile-cta-viewport-offset", "0px");
+    };
+  }, []);
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-[var(--divider)] bg-[var(--glass-surface)] px-3 backdrop-blur transition-all duration-200 md:hidden"
+      role="banner"
+      aria-label="상품 예약 상담"
+      className="fixed left-0 right-0 z-50 box-border w-full border-t border-[var(--divider)] bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:hidden"
       style={{
-        paddingTop: compact ? "8px" : "12px",
-        paddingBottom: compact ? "max(8px, env(safe-area-inset-bottom))" : "max(12px, env(safe-area-inset-bottom))",
+        bottom: "var(--mobile-cta-viewport-offset, 0px)",
+        paddingTop: `${PADDING_TOP}px`,
+        paddingBottom: `calc(${PADDING_BOTTOM_BASE}px + env(safe-area-inset-bottom, 0px))`,
+        paddingLeft: "max(12px, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(12px, env(safe-area-inset-right, 0px))",
       }}
     >
-      <ProductConsultCTA
-        productId={productId}
-        productTitle={productTitle}
-        sourcePath={sourcePath}
-        status={status}
-        kakaoHref={kakaoHref}
-        section="sticky"
-        priceFormatted={displayPrice}
-        requiredGroupsMissing={requiredGroupsMissing}
-        scrollToOptions={scrollToOptions}
-        isSoldOut={isSoldOut}
-        compact={compact}
-        onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
-      />
+      <div className="mx-auto flex min-h-[44px] w-full max-w-[100%] items-center gap-3">
+        <ProductConsultCTA
+          productId={productId}
+          productTitle={productTitle}
+          sourcePath={sourcePath}
+          status={status}
+          kakaoHref={kakaoHref}
+          section="sticky"
+          priceFormatted={displayPrice}
+          requiredGroupsMissing={requiredGroupsMissing}
+          scrollToOptions={scrollToOptions}
+          isSoldOut={isSoldOut}
+          compact={compact}
+          onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
+        />
+      </div>
     </div>
   );
 }

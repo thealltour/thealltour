@@ -33,6 +33,8 @@ export type ProductReviewsSectionProps = {
   variant?: ReviewExperimentVariant;
   /** 상품 상세에서 리뷰 정렬 (최신순/평점순). 미설정 시 recommended */
   reviewSort?: "latest" | "rating";
+  /** PR27: true면 후기가 없을 때 섹션 미렌더(상단 ProductReviewSection 카드만 표시) */
+  hideWhenNoReviews?: boolean;
 };
 
 function formatDate(value?: string) {
@@ -135,6 +137,7 @@ export async function ProductReviewsSection({
   experimentKey,
   variant,
   reviewSort,
+  hideWhenNoReviews = false,
 }: ProductReviewsSectionProps) {
   const sortOption = reviewSort === "rating" ? "rating" : "latest";
   const [stats, reviews, summary] = await Promise.all([
@@ -144,6 +147,7 @@ export async function ProductReviewsSection({
   ]);
 
   if (stats.reviewCount === 0) {
+    if (hideWhenNoReviews) return null;
     return (
       <section id="reviews" className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6">
         <h2 className="text-lg font-bold text-slate-900">여행자 후기</h2>
@@ -228,7 +232,7 @@ export async function ProductReviewsSection({
   const avg = stats.averageRating.toFixed(1);
 
   return (
-    <section id="reviews" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" aria-label="여행자 후기 목록">
       <div className="mb-4">
         <h2 className="text-lg font-bold text-slate-900">여행자 후기</h2>
         <p className="mt-1 text-sm text-slate-600">실제 여행자들의 생생한 후기를 확인하세요</p>

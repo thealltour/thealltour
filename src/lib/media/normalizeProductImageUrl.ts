@@ -1,14 +1,37 @@
 /**
  * 상품 이미지 URL 정규화
  *
- * 현재: 입력 URL 그대로 반환
- * 향후: /media/products/... 프록시 도입 시 이 함수만 수정
+ * - 모두투어(img.modetour.com) 썸네일 URL: resize_w=157 등 리사이즈 쿼리 제거 → 고해상도 원본 요청
+ * - Supabase storage: 옵션 시 render URL 변환
  */
 type ImageTransformOptions = {
   width?: number;
   quality?: number;
   mode?: "cover" | "contain" | "fill";
 };
+
+/** 모두투어 CDN 썸네일 URL을 고해상도 URL로 변환 (resize_w/resize_h 등 제거). */
+function toModetourHighResUrl(url: string): string {
+  try {
+    const u = new URL(url, "https://x");
+    if (u.hostname.toLowerCase() !== "img.modetour.com") return url;
+    const drop = new Set([
+      "resize", "resize_w", "resize_h", "w", "h", "width", "height",
+      "utm_source", "utm_medium", "utm_campaign", "cache", "v", "ver", "t", "timestamp", "quality",
+    ]);
+    let changed = false;
+    u.searchParams.forEach((_, k) => {
+      const low = k.toLowerCase();
+      if (drop.has(low) || /^_\d+$/.test(low)) {
+        u.searchParams.delete(k);
+        changed = true;
+      }
+    });
+    return changed ? u.href : url;
+  } catch {
+    return url;
+  }
+}
 
 function toSupabaseRenderUrl(url: string, options?: ImageTransformOptions): string {
   const enableRender = process.env.NEXT_PUBLIC_ENABLE_SUPABASE_RENDER === "true";
@@ -37,6 +60,7 @@ export function normalizeProductImageUrl(
   options?: ImageTransformOptions,
 ): string {
   if (!url?.trim()) return "";
-  const normalized = url.trim();
+  let normalized = url.trim();
+  normalized = toModetourHighResUrl(normalized);
   return toSupabaseRenderUrl(normalized, options);
 }

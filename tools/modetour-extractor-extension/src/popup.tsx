@@ -42,10 +42,21 @@ function useExtract() {
         return;
       }
 
+      const EXTRACT_RESPONSE_TIMEOUT_MS = 15000;
+
       let response: { extracted: ExtractedDomData; meta?: ExtractMeta };
       try {
-        response = await chrome.tabs.sendMessage(tab.id, { type: "extract" }) as { extracted: ExtractedDomData; meta?: ExtractMeta };
+        response = await Promise.race([
+          chrome.tabs.sendMessage(tab.id, { type: "extract" }) as Promise<{ extracted: ExtractedDomData; meta?: ExtractMeta }>,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("EXTRACT_TIMEOUT")), EXTRACT_RESPONSE_TIMEOUT_MS),
+          ),
+        ]);
       } catch (e) {
+        if (e instanceof Error && e.message === "EXTRACT_TIMEOUT") {
+          setError("이미지 검증 지연으로 추출이 시간 초과되었습니다. 다시 시도해주세요.");
+          return;
+        }
         // Content script가 아직 로드되지 않았을 수 있음 → 수동 주입 후 재시도
         const manifest = chrome.runtime.getManifest();
         const contentScripts = (manifest as { content_scripts?: Array<{ matches?: string[]; js?: string[] }> }).content_scripts;
@@ -54,10 +65,17 @@ function useExtract() {
           try {
             await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [js] });
             await new Promise((r) => setTimeout(r, 400));
-            response = await chrome.tabs.sendMessage(tab.id, { type: "extract" }) as { extracted: ExtractedDomData; meta?: ExtractMeta };
+            response = await Promise.race([
+              chrome.tabs.sendMessage(tab.id, { type: "extract" }) as Promise<{ extracted: ExtractedDomData; meta?: ExtractMeta }>,
+              new Promise<never>((_, rej) => setTimeout(() => rej(new Error("EXTRACT_TIMEOUT")), EXTRACT_RESPONSE_TIMEOUT_MS)),
+            ]);
           } catch (e2) {
             console.error("Inject + extract error", e2);
-            setError("DOM 추출에 실패했습니다. 페이지를 새로고침(F5)한 뒤 다시 시도하세요.");
+            if (e2 instanceof Error && e2.message === "EXTRACT_TIMEOUT") {
+              setError("이미지 검증 지연으로 추출이 시간 초과되었습니다. 다시 시도해주세요.");
+            } else {
+              setError("DOM 추출에 실패했습니다. 페이지를 새로고침(F5)한 뒤 다시 시도하세요.");
+            }
             return;
           }
         } else {

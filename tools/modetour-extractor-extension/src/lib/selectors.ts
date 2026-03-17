@@ -36,7 +36,7 @@ export const SELECTORS = {
     "[class*='duration']",
     ".info-tags",
   ],
-  /** 일정 루트 컨테이너 */
+  /** 일정 루트 컨테이너 (이미지 수집용 scope) */
   itineraryRoot: [
     "#itinerary",
     ".itinerary",
@@ -44,6 +44,38 @@ export const SELECTORS = {
     "[class*='itinerary']",
     ".schedule-detail",
     ".day-schedule",
+  ],
+  /** 히어로 갤러리 루트: 메인 상품 이미지가 들어 있는 컨테이너 (active + 비활성 slide 포함) */
+  heroGalleryRoot: [
+    ".swiper-container",
+    ".swiper",
+    "[class*='PackageDetailGallery']",
+    "[class*='DetailGallery']",
+    ".pkg-hero",
+    ".hero-image",
+    ".detail-gallery",
+    "[class*='detail-gallery']",
+    ".gallery-main",
+    "[class*='gallery'] .swiper",
+    "[class*='hero'] .swiper",
+    ".main-image",
+    "[class*='mainImage']",
+  ],
+  /** 히어로 슬라이드 컨테이너: 모든 슬라이드가 모인 wrapper (heroGalleryRoot 내부) */
+  heroSlideContainer: [
+    ".swiper-wrapper",
+    "[class*='swiper-wrapper']",
+    ".swiper-slide",
+    "[class*='swiper-slide']",
+  ],
+  /** 일정 내 이미지가 들어 있는 블록 (Day/Event 콘텐츠 루트) */
+  itineraryImageRoot: [
+    "[class*='itinerary'] [class*='content']",
+    "[class*='schedule'] [class*='content']",
+    ".swiper-thumbs",
+    "[class*='swiper-thumbs']",
+    "[class*='day'] img",
+    "[class*='event'] img",
   ],
   /** Day N 일차 섹션 */
   daySection: [
@@ -91,6 +123,15 @@ export const SELECTORS = {
     ".thumb-list img",
     ".detail-images img",
   ],
+  /** 상품 상세 본문 영역 (일정/약관/포함/추천/하단 배너 제외) */
+  detailContent: [
+    ".pkg-detail-content",
+    ".product-detail-body",
+    "[class*='detailContent']",
+    "[class*='productDetail']",
+    "main .content",
+    "main",
+  ],
 } as const;
 
 const MAX_SNIPPET_LEN = 5000;
@@ -127,7 +168,54 @@ export function queryText(
 }
 
 /**
- * 이미지 URL 추출: src, data-src, data-original, srcset 첫 URL
+ * srcset 문자열 파싱: "url 320w, url2 640w" → 후보 배열.
+ * 각 후보는 { url, w?, x? } 형태. w(픽셀 너비) 또는 x(픽셀 밀도) descriptor 지원.
+ */
+function parseSrcsetEntries(srcset: string, baseUrl: string): Array<{ url: string; w?: number; x?: number }> {
+  const entries: Array<{ url: string; w?: number; x?: number }> = [];
+  const parts = srcset.split(",").map((p) => p.trim()).filter(Boolean);
+  for (const part of parts) {
+    const tokens = part.split(/\s+/);
+    const urlRaw = tokens[0];
+    if (!urlRaw) continue;
+    const url = urlRaw.startsWith("http") ? urlRaw : new URL(urlRaw, baseUrl).href;
+    const descriptor = tokens[1];
+    if (descriptor?.endsWith("w")) {
+      const w = parseInt(descriptor.slice(0, -1), 10);
+      if (Number.isFinite(w)) entries.push({ url, w });
+      else entries.push({ url });
+    } else if (descriptor?.endsWith("x")) {
+      const x = parseFloat(descriptor.slice(0, -1));
+      if (Number.isFinite(x)) entries.push({ url, x });
+      else entries.push({ url });
+    } else {
+      entries.push({ url });
+    }
+  }
+  return entries;
+}
+
+/**
+ * srcset 후보 중 "가장 큰" URL 선택: 1) w 최대 → 2) x 최대 → 3) 마지막 후보.
+ */
+export function pickLargestUrlFromSrcset(srcset: string, baseUrl: string): string | null {
+  const entries = parseSrcsetEntries(srcset, baseUrl);
+  if (entries.length === 0) return null;
+  const withW = entries.filter((e) => e.w != null);
+  if (withW.length > 0) {
+    const best = withW.reduce((a, b) => ((a.w ?? 0) >= (b.w ?? 0) ? a : b));
+    return best.url.trim();
+  }
+  const withX = entries.filter((e) => e.x != null);
+  if (withX.length > 0) {
+    const best = withX.reduce((a, b) => ((a.x ?? 0) >= (b.x ?? 0) ? a : b));
+    return best.url.trim();
+  }
+  return entries[entries.length - 1].url.trim();
+}
+
+/**
+ * 이미지 URL 추출: src, data-src, data-original 우선, srcset이 있으면 가장 큰 후보 선택.
  */
 export function getImageUrl(img: HTMLImageElement): string | null {
   const u =
@@ -138,8 +226,9 @@ export function getImageUrl(img: HTMLImageElement): string | null {
 
   const srcset = img.getAttribute("srcset");
   if (srcset?.trim()) {
-    const first = srcset.split(",")[0]?.trim().split(/\s+/)[0];
-    if (first) return first;
+    const base = (img.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
+    const picked = pickLargestUrlFromSrcset(srcset, base);
+    if (picked) return picked;
   }
   return null;
 }

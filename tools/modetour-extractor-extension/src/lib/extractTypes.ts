@@ -92,6 +92,39 @@ export type ExtractMeta = {
   imageCounts?: { hero: number; gallery: number; itinerary: number };
   /** 이미지 신뢰도 낮음 플래그 */
   imagesLowConfidence?: boolean;
+  /** 이미지 필터 디버그: hard exclude·선택 이유 추적. 검증 미사용 시 totalValidated/failedToLoad 등은 0 */
+  imageDebug?: {
+    totalFound: number;
+    totalAfterFilter: number;
+    totalValidated: number;
+    excludedDataUri: number;
+    excludedSvg: number;
+    excludedTracking: number;
+    excludedStaticUi: number;
+    excludedPolicy: number;
+    excludedThumbnail: number;
+    excludedDuplicate: number;
+    failedToLoad: number;
+    pickedFromHero: number;
+    pickedFromItinerary: number;
+    pickedFromDetail: number;
+    pickedFromFallback: number;
+    /** 검증 사용 시에만 설정; 기본 경로에서는 0 또는 undefined */
+    validationAttempted?: number;
+    validationTimedOut?: number;
+    validationSkippedDueToLimit?: number;
+    softenedFilterApplied?: boolean;
+    thumbnailCandidatesRetained?: number;
+    fallbackValidationAttempted?: number;
+    /** scope별 raw 수집 개수 (필터 전) */
+    heroRawFound?: number;
+    itineraryRawFound?: number;
+    fallbackRawFound?: number;
+    /** itinerary 전용 필터 후 개수 */
+    itineraryAfterFilter?: number;
+    /** gallery에 반영한 itinerary 이미지 수 */
+    itineraryAssignedCount?: number;
+  };
   /** 추출 전 UI 준비: 일정 탭 클릭, 아코디언 펼침 */
   uiPrep?: {
     didClickTab: boolean;

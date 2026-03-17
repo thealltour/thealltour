@@ -108,9 +108,9 @@ export function serializeAdminProductForm(
     product_source_url: form.product_source_url.trim() === "" ? null : form.product_source_url.trim(),
     image_url: primaryImageUrl,
     images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
-    category: form.category,
+    category: String(form.category ?? "").trim(),
     destination_id: form.destination_id.trim() === "" ? null : form.destination_id.trim(),
-    theme: form.theme.trim() === "" ? null : form.theme,
+    theme: (form.theme ?? "").trim() === "" ? null : String(form.theme).trim(),
     product_line_id: form.product_line_id.trim() === "" ? null : form.product_line_id.trim(),
     campaigns: ((): string[] | null => {
       const s = form.campaigns.trim();

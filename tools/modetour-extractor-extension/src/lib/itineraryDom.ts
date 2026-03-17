@@ -4,8 +4,10 @@
 
 import type { ModetourImportV1, ModetourImportWarning } from "~types/modetourImport";
 import {
-  extractImageUrlsFromNodeWithSizeFilter,
-  filterUsefulImageUrls,
+  collectAllImageUrlsInScope,
+  extractItineraryImageUrlsFromNode,
+  filterItineraryImageUrls,
+  getFirstImageUrlInContainer,
   normalizeModetourImageUrl,
   toAbsoluteImageUrl,
 } from "~lib/images";
@@ -14,7 +16,7 @@ const DAY_HEADER_REGEX = /(^|\s)(\d{1,2})일차(\s|$)/;
 const DAY_HEADER_FULL = /(\d{1,2})일차\s*(.*)/;
 const DATE_LIKE = /(\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}(?:\([^)]*\))?)/;
 const MAX_DESCRIPTION_LEN = 2000;
-const MAX_IMAGES_PER_EVENT = 8;
+const MAX_IMAGES_PER_EVENT = 20;
 const MIN_DAY_CONTAINER_TEXT = 200;
 const MAX_DAY_CONTAINER_TEXT = 5000;
 const MAX_DAY_HEADER_TEXT_LEN = 120;
@@ -56,21 +58,20 @@ function getTimelineDescription(contentRoot: Element): string {
   return text.length > MAX_DESCRIPTION_LEN ? text.slice(0, MAX_DESCRIPTION_LEN) + "…" : text;
 }
 
-function getSwiperThumbUrls(contentRoot: Element): string[] {
-  const doc = contentRoot.ownerDocument;
-  const base = (doc?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
-  const thumbs = contentRoot.querySelectorAll(".swiper-thumbs img[src]");
+/**
+ * 이벤트 scope 내 이미지 수집 (itinerary 전용 약한 필터만 적용, 썸네일/리사이즈 보존).
+ */
+function getEventImageCandidates(contentRoot: Element, base: string): string[] {
+  const raw = extractItineraryImageUrlsFromNode(contentRoot, base);
+  const filtered = filterItineraryImageUrls(raw, base);
   const preferred: string[] = [];
-  const fallback: string[] = [];
-  thumbs.forEach((img) => {
-    const src = (img as HTMLImageElement).getAttribute("src")?.trim();
-    if (!src) return;
-    const absolute = toAbsoluteImageUrl(src, base);
-    const normalized = normalizeModetourImageUrl(absolute);
-    if (normalized.toLowerCase().includes(EAGLE_PHOTOIMG)) preferred.push(normalized);
-    else fallback.push(normalized);
+  const rest: string[] = [];
+  filtered.forEach((u) => {
+    const norm = normalizeModetourImageUrl(u);
+    if (norm.toLowerCase().includes(EAGLE_PHOTOIMG)) preferred.push(norm);
+    else rest.push(norm);
   });
-  return Array.from(new Set([...preferred, ...fallback])).slice(0, MAX_IMAGES_PER_EVENT);
+  return Array.from(new Set([...preferred, ...rest])).slice(0, MAX_IMAGES_PER_EVENT);
 }
 
 function inferTimelineTypeText(title: string): string {
@@ -137,13 +138,15 @@ function extractEventsInOrder(
       const title = getTimelineTitle(contentRoot);
       if (!title) continue;
       const descriptionText = getTimelineDescription(contentRoot);
-      const imageUrls = getSwiperThumbUrls(contentRoot);
+      const base = (contentRoot.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
+      let imageUrls = getEventImageCandidates(contentRoot, base);
+      if (imageUrls.length === 0) {
+        const firstUrl = getFirstImageUrlInContainer(contentRoot, base);
+        if (firstUrl) imageUrls = [firstUrl];
+      }
       if (descriptionText.length <= MIN_DESCRIPTION_FOR_ACCEPT && imageUrls.length === 0) continue;
       order += 1;
-      const base = (contentRoot.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
-      const rawFallback = filterUsefulImageUrls(extractImageUrlsFromNodeWithSizeFilter(contentRoot, 80, 80));
-      const fallbackUrls = rawFallback.map((u) => toAbsoluteImageUrl(u, base)).filter((u) => !imageUrls.includes(u));
-      const combined = [...imageUrls, ...fallbackUrls].slice(0, MAX_IMAGES_PER_EVENT);
+      const combined = imageUrls.slice(0, MAX_IMAGES_PER_EVENT);
       const timeMatch = (contentRoot as HTMLElement).textContent?.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
       events.push({
         order,
@@ -164,12 +167,14 @@ function extractEventsInOrder(
       }
       seenTitles.add(title);
       order += 1;
+      const base = (el.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
+      const cardImageUrl = getFirstImageUrlInContainer(el, base);
       events.push({
         order,
         title: title || undefined,
         typeText: inferCardTypeText(title, descriptionText),
         descriptionText: descriptionText || undefined,
-        imageUrls: undefined,
+        imageUrls: cardImageUrl ? [cardImageUrl] : undefined,
       });
     }
   }
@@ -347,15 +352,18 @@ export function extractItineraryFromDom(root: Document): DomItineraryResult {
     debug.cardCount = (debug.cardCount ?? 0) + cardCount;
     debug.eventCountByDay.push(events.length);
 
-    const dayImageUrls = (() => {
-      const base = (dayContainer.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
-      const raw = filterUsefulImageUrls(
-        extractImageUrlsFromNodeWithSizeFilter(dayContainer, 80, 80),
-      );
-      return raw.map((u) => toAbsoluteImageUrl(u, base));
-    })();
+    const base = (dayContainer.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
+    const dayScopeRaw = extractItineraryImageUrlsFromNode(dayContainer, base);
+    const dayImageUrlsFiltered = filterItineraryImageUrls(dayScopeRaw, base);
     const assignedToEvents = new Set(events.flatMap((e) => e.imageUrls ?? []));
-    const dayOnlyUrls = dayImageUrls.filter((u) => !assignedToEvents.has(u)).slice(0, 5);
+    let dayOnlyUrls = dayImageUrlsFiltered.filter((u) => !assignedToEvents.has(u)).slice(0, 15);
+    if (dayOnlyUrls.length === 0) {
+      const firstFromEvents = events.flatMap((e) => e.imageUrls ?? [])[0];
+      const firstFromDay = getFirstImageUrlInContainer(dayContainer, base);
+      const firstFromScope = dayImageUrlsFiltered[0];
+      const firstDayImage = firstFromEvents ?? firstFromDay ?? firstFromScope;
+      if (firstDayImage) dayOnlyUrls = [firstDayImage];
+    }
 
     days.push({
       dayNumber: h.dayNumber,

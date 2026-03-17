@@ -11,13 +11,15 @@ import { getScopedSection } from "~lib/sectionScope";
 import { parseItineraryText } from "~lib/itineraryParser";
 import { extractItineraryFromDom } from "~lib/itineraryDom";
 import {
-  extractImageUrlsFromDom,
-  extractImageUrlsFromNode,
-  pickHeroImage,
-  assignItineraryImagesToDays,
-  normalizeImageUrl,
-  normalizedKeyForDedupe,
+  collectAllImageUrlsInScope,
+  collectImageUrlsRaw,
+  collectImageUrlsRawFromDom,
+  collectHeroImageUrls,
+  filterItineraryImageUrls,
   filterUsefulImageUrls,
+  normalizedKeyForDedupe,
+  assignItineraryImagesToDays,
+  isAirlineLogoUrl,
 } from "~lib/images";
 import {
   SELECTORS,
@@ -36,6 +38,22 @@ export const config: PlasmoCSConfig = {
 
 const SNIPPET_MAX = 5000;
 const RAW_DOM_HINT_MAX = 800;
+const IMAGE_STABILIZE_POLL_MS = 250;
+const IMAGE_STABILIZE_MAX_MS = 1000;
+
+/** 이미지 수 안정화 대기. 최대 1초 내 종료 보장 */
+async function waitForImageStabilization(): Promise<void> {
+  const deadline = Date.now() + IMAGE_STABILIZE_MAX_MS;
+  let prevCount = -1;
+  while (Date.now() < deadline) {
+    await sleep(IMAGE_STABILIZE_POLL_MS);
+    const n = collectImageUrlsRawFromDom(document.body).length;
+    if (n === prevCount) break;
+    prevCount = n;
+  }
+}
+
+type ImageSource = "hero" | "itinerary" | "detail" | "fallback";
 
 async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: ExtractMeta }> {
   await waitForPageLoad();
@@ -43,9 +61,10 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
   await sleep(500);
 
   const uiPrep = await prepareItineraryUi();
-  await sleep(300);
+  await waitForImageStabilization();
 
   const doc = document;
+  const baseUrl = doc.defaultView?.location?.href ?? "https://www.modetour.com/";
   const missingSections: string[] = [];
   let usedJsonLd = false;
   let usedItineraryText = false;
@@ -193,10 +212,9 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
   const { nights, days } = parseNightsDays(metaText);
   const regionText = metaText.replace(/\d+\s*박\s*\d+\s*일/g, "").trim() || undefined;
 
-  const allImageUrls = extractImageUrlsFromDom();
   const firstActivityFirstImage = (() => {
-    const days = itinerary?.days ?? [];
-    for (const d of days) {
+    const dayList = itinerary?.days ?? [];
+    for (const d of dayList) {
       const ev = d.events?.find((e) => e.typeText === "activity");
       const first = ev?.imageUrls?.[0];
       if (first) return first;
@@ -204,80 +222,27 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
     return undefined;
   })();
   const jsonLdHero = jsonLdPartial?.media?.heroImageUrl;
-  const heroImageUrl = pickHeroImage(allImageUrls, jsonLdHero, firstActivityFirstImage);
 
-  const GALLERY_REPRESENTATIVE_MAX = 20;
-  const GALLERY_SUPPLEMENT_MAX = 30;
-  const UNASSIGNED_MAX = 30;
+  const imageDebug: NonNullable<ExtractMeta["imageDebug"]> = {
+    totalFound: 0,
+    totalAfterFilter: 0,
+    totalValidated: 0,
+    excludedDataUri: 0,
+    excludedSvg: 0,
+    excludedTracking: 0,
+    excludedStaticUi: 0,
+    excludedPolicy: 0,
+    excludedThumbnail: 0,
+    excludedDuplicate: 0,
+    failedToLoad: 0,
+    pickedFromHero: 0,
+    pickedFromItinerary: 0,
+    pickedFromDetail: 0,
+    pickedFromFallback: 0,
+  };
 
-  const galleryImageUrls: string[] = [];
-  const seen = new Set<string>();
-  if (heroImageUrl) seen.add(normalizedKeyForDedupe(heroImageUrl));
-
-  if (itinerary?.days?.length) {
-    const representative: string[] = [];
-    for (const d of itinerary.days) {
-      for (const e of d.events ?? []) {
-        const first = e.imageUrls?.[0];
-        if (first) {
-          const key = normalizedKeyForDedupe(first);
-          if (!seen.has(key)) {
-            seen.add(key);
-            representative.push(first);
-          }
-        }
-        if (representative.length >= GALLERY_REPRESENTATIVE_MAX) break;
-      }
-      if (representative.length >= GALLERY_REPRESENTATIVE_MAX) break;
-    }
-    galleryImageUrls.push(...representative.slice(0, GALLERY_REPRESENTATIVE_MAX));
-  }
-
-  if (galleryImageUrls.length < GALLERY_SUPPLEMENT_MAX) {
-    const filtered = filterUsefulImageUrls(allImageUrls);
-    for (const u of filtered) {
-      if (galleryImageUrls.length >= GALLERY_SUPPLEMENT_MAX) break;
-      const key = normalizedKeyForDedupe(u);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      galleryImageUrls.push(u);
-    }
-  }
-
-  for (const d of itinerary?.days ?? []) {
-    for (const e of d.events ?? []) {
-      for (const u of e.imageUrls ?? []) {
-        seen.add(normalizedKeyForDedupe(u));
-      }
-    }
-  }
-
-  const unassignedImageUrls: string[] = [];
-  doc.querySelectorAll("img[src], img[data-src], img[data-original]").forEach((el) => {
-    const img = el as HTMLImageElement;
-    const url = getImageUrl(img);
-    if (!url) return;
-    const key = normalizedKeyForDedupe(url);
-    if (seen.has(key)) return;
-    const lower = url.toLowerCase();
-    if (lower.includes("logo") || lower.includes("banner") || lower.includes("ad")) return;
-    const useful = filterUsefulImageUrls([url]);
-    if (useful.length === 0) return;
-    seen.add(key);
-    unassignedImageUrls.push(useful[0]);
-    if (unassignedImageUrls.length >= UNASSIGNED_MAX) return;
-  });
-  const unassignedTrimmed = unassignedImageUrls.slice(0, UNASSIGNED_MAX);
-
-  const media =
-    heroImageUrl || galleryImageUrls.length > 0 || unassignedTrimmed.length > 0
-      ? {
-          heroImageUrl,
-          galleryImageUrls,
-          unassignedImageUrls: unassignedTrimmed,
-        }
-      : undefined;
-
+  let media: ExtractedDomData["media"];
+  let imagesLowConfidence = true;
   const eventImageTotal =
     itinerary?.days?.reduce(
       (acc, d) =>
@@ -290,8 +255,181 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
         acc + (d.imageUrls?.length ?? 0) + (d.events?.reduce((eacc, e) => eacc + (e.imageUrls?.length ?? 0), 0) ?? 0),
       0,
     ) ?? 0);
-  const imagesLowConfidence =
-    !heroImageUrl && eventImageTotal === 0 && galleryImageUrls.length < 3;
+
+  try {
+    const heroRoot =
+      queryFirst(doc, SELECTORS.heroGalleryRoot) ??
+      queryFirst(doc, SELECTORS.heroImage)?.closest("div, section") ??
+      queryFirst(doc, SELECTORS.galleryImages)?.closest("div, section") ??
+      null;
+    const itineraryImageRoot = queryFirst(doc, SELECTORS.itineraryRoot) ?? itineraryScope.container ?? null;
+    const detailRoot = queryFirst(doc, SELECTORS.detailContent);
+
+    const heroRawUrls = heroRoot ? collectAllImageUrlsInScope(heroRoot, baseUrl) : [];
+    const itineraryRawUrls = itineraryImageRoot ? collectAllImageUrlsInScope(itineraryImageRoot, baseUrl) : [];
+    const detailRawUrls = detailRoot ? collectAllImageUrlsInScope(detailRoot, baseUrl) : [];
+    const fallbackRawUrls = collectImageUrlsRawFromDom(document.body);
+
+    imageDebug.heroRawFound = heroRawUrls.length;
+    imageDebug.itineraryRawFound = itineraryRawUrls.length;
+    imageDebug.fallbackRawFound = fallbackRawUrls.length;
+
+    const itineraryFilteredUrls = filterItineraryImageUrls(itineraryRawUrls, baseUrl);
+    imageDebug.itineraryAfterFilter = itineraryFilteredUrls.length;
+
+    const heroRaw: Array<{ url: string; source: ImageSource }> = heroRawUrls.map((u) => ({ url: u, source: "hero" }));
+    const detailRaw: Array<{ url: string; source: ImageSource }> = detailRawUrls.map((u) => ({ url: u, source: "detail" }));
+    const fallbackRaw: Array<{ url: string; source: ImageSource }> = fallbackRawUrls.map((u) => ({ url: u, source: "fallback" }));
+
+    const prioritized: Array<{ url: string; source: ImageSource }> = [];
+    const seenKey = new Set<string>();
+    for (const item of [...heroRaw, ...detailRaw, ...fallbackRaw]) {
+      const key = normalizedKeyForDedupe(item.url);
+      if (seenKey.has(key)) continue;
+      seenKey.add(key);
+      prioritized.push(item);
+    }
+
+    const filteredUrls = filterUsefulImageUrls(prioritized.map((x) => x.url), baseUrl, imageDebug);
+    const sourceByKey = new Map<string, ImageSource>();
+    for (const { url, source } of prioritized) {
+      const k = normalizedKeyForDedupe(url);
+      if (!sourceByKey.has(k)) sourceByKey.set(k, source);
+    }
+
+    // Hero 대표 1장: 우선순위 순 (jsonLd → hero → itinerary → detail → fallback), 검증 없이 첫 비-로고 URL
+    let heroImageUrl: string | undefined;
+    const heroCandidates = [jsonLdHero, firstActivityFirstImage, ...filteredUrls.filter((u) => !isAirlineLogoUrl(u))];
+    for (const u of heroCandidates) {
+      if (!u?.trim()) continue;
+      if (isAirlineLogoUrl(u)) continue;
+      heroImageUrl = normalizedKeyForDedupe(u);
+      const src = sourceByKey.get(normalizedKeyForDedupe(u));
+      if (src === "hero") imageDebug.pickedFromHero += 1;
+      else if (src === "itinerary") imageDebug.pickedFromItinerary += 1;
+      else if (src === "detail") imageDebug.pickedFromDetail += 1;
+      else if (src === "fallback") imageDebug.pickedFromFallback += 1;
+      break;
+    }
+
+    // 히어로 이미지 다수 수집: scope에서 수집한 heroRaw 우선, 없으면 img 셀렉터 fallback
+    const heroImages =
+      heroRawUrls.length > 0
+        ? filterUsefulImageUrls(heroRawUrls, baseUrl).slice(0, 10)
+        : filterUsefulImageUrls(collectHeroImageUrls(doc, baseUrl, SELECTORS.heroImage, 10), baseUrl);
+
+    const dayRepImageUrls: string[] = [];
+    for (const d of itinerary?.days ?? []) {
+      const first = d.imageUrls?.[0] ?? d.events?.find((e) => (e.imageUrls?.length ?? 0) > 0)?.imageUrls?.[0];
+      if (first) dayRepImageUrls.push(first);
+    }
+
+    const GALLERY_REPRESENTATIVE_MAX = 50;
+    const ITINERARY_GALLERY_MAX = 25;
+    const UNASSIGNED_MAX = 30;
+    const heroKey = heroImageUrl ? normalizedKeyForDedupe(heroImageUrl) : null;
+    const galleryImageUrls: string[] = [];
+    const galleryKeys = new Set<string>();
+    if (heroKey) galleryKeys.add(heroKey);
+    let itineraryAssignedCount = 0;
+
+    // 1) 히어로 이미지
+    for (const u of heroImages) {
+      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX) break;
+      const key = normalizedKeyForDedupe(u);
+      if (galleryKeys.has(key)) continue;
+      galleryKeys.add(key);
+      galleryImageUrls.push(u);
+      imageDebug.pickedFromHero += 1;
+    }
+    // 2) itinerary: Day별 대표 1장 먼저, 이후 나머지 itinerary 이미지 (전역 필터 거치지 않음)
+    for (const u of dayRepImageUrls) {
+      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX || itineraryAssignedCount >= ITINERARY_GALLERY_MAX) break;
+      const key = normalizedKeyForDedupe(u);
+      if (galleryKeys.has(key)) continue;
+      galleryKeys.add(key);
+      galleryImageUrls.push(u);
+      itineraryAssignedCount += 1;
+      imageDebug.pickedFromItinerary += 1;
+    }
+    for (const u of itineraryFilteredUrls) {
+      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX || itineraryAssignedCount >= ITINERARY_GALLERY_MAX) break;
+      const key = normalizedKeyForDedupe(u);
+      if (galleryKeys.has(key)) continue;
+      galleryKeys.add(key);
+      galleryImageUrls.push(u);
+      itineraryAssignedCount += 1;
+      imageDebug.pickedFromItinerary += 1;
+    }
+    imageDebug.itineraryAssignedCount = itineraryAssignedCount;
+    // 3) detail / fallback (전역 필터 통과분)
+    for (const u of filteredUrls) {
+      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX) break;
+      const key = normalizedKeyForDedupe(u);
+      if (galleryKeys.has(key)) continue;
+      galleryKeys.add(key);
+      galleryImageUrls.push(u);
+      const src = sourceByKey.get(key);
+      if (src === "hero") imageDebug.pickedFromHero += 1;
+      else if (src === "detail") imageDebug.pickedFromDetail += 1;
+      else if (src === "fallback") imageDebug.pickedFromFallback += 1;
+    }
+
+    const unassignedImageUrls: string[] = [];
+    for (const u of filteredUrls) {
+      if (unassignedImageUrls.length >= UNASSIGNED_MAX) break;
+      const key = normalizedKeyForDedupe(u);
+      if (galleryKeys.has(key)) continue;
+      galleryKeys.add(key);
+      unassignedImageUrls.push(u);
+      const src = sourceByKey.get(key);
+      if (src === "hero") imageDebug.pickedFromHero += 1;
+      else if (src === "detail") imageDebug.pickedFromDetail += 1;
+      else if (src === "fallback") imageDebug.pickedFromFallback += 1;
+    }
+    const unassignedTrimmed = unassignedImageUrls.slice(0, UNASSIGNED_MAX);
+
+    media =
+      heroImageUrl || galleryImageUrls.length > 0 || unassignedTrimmed.length > 0
+        ? {
+            heroImageUrl,
+            galleryImageUrls,
+            unassignedImageUrls: unassignedTrimmed,
+          }
+        : undefined;
+
+    const totalPicked = imageDebug.pickedFromHero + imageDebug.pickedFromItinerary + imageDebug.pickedFromDetail + imageDebug.pickedFromFallback;
+    const fallbackRatio = totalPicked > 0 ? imageDebug.pickedFromFallback / totalPicked : 0;
+    imagesLowConfidence =
+      !heroImageUrl ||
+      galleryImageUrls.length < 3 ||
+      fallbackRatio > 0.7;
+  } catch (_imageError) {
+    media = undefined;
+    imagesLowConfidence = true;
+  }
+
+  console.log("[modetour-extract] imageDebug", {
+    totalFound: imageDebug.totalFound,
+    totalAfterFilter: imageDebug.totalAfterFilter,
+    heroRawFound: imageDebug.heroRawFound,
+    itineraryRawFound: imageDebug.itineraryRawFound,
+    itineraryAfterFilter: imageDebug.itineraryAfterFilter,
+    itineraryAssignedCount: imageDebug.itineraryAssignedCount,
+    fallbackRawFound: imageDebug.fallbackRawFound,
+    excludedDataUri: imageDebug.excludedDataUri,
+    excludedSvg: imageDebug.excludedSvg,
+    excludedTracking: imageDebug.excludedTracking,
+    excludedStaticUi: imageDebug.excludedStaticUi,
+    excludedPolicy: imageDebug.excludedPolicy,
+    excludedThumbnail: imageDebug.excludedThumbnail,
+    excludedDuplicate: imageDebug.excludedDuplicate,
+    pickedFromHero: imageDebug.pickedFromHero,
+    pickedFromItinerary: imageDebug.pickedFromItinerary,
+    pickedFromDetail: imageDebug.pickedFromDetail,
+    pickedFromFallback: imageDebug.pickedFromFallback,
+  });
+
   if (imagesLowConfidence) missingSections.push("IMAGES_LOW_CONFIDENCE");
 
   return {
@@ -325,11 +463,12 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
       itineraryScopeFound: !!itineraryScope.container,
       itineraryTextLength: sectionItineraryText.length,
       imageCounts: {
-        hero: heroImageUrl ? 1 : 0,
-        gallery: galleryImageUrls.length,
+        hero: media?.heroImageUrl ? 1 : 0,
+        gallery: media?.galleryImageUrls?.length ?? 0,
         itinerary: itineraryImageCount,
       },
       imagesLowConfidence: imagesLowConfidence || undefined,
+      imageDebug,
     },
   };
 }

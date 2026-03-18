@@ -28,12 +28,12 @@ export function modetourImportToDraft(input: ModetourImportV1): {
     form.theme = input.product.regionText.trim();
   }
   if (input.product?.priceText?.trim()) {
-    form.price_meta = input.product.priceText.trim();
     const numMatch = input.product.priceText.replace(/\D/g, "");
     if (numMatch) {
       const num = parseInt(numMatch, 10);
       if (!Number.isNaN(num)) form.price = String(num);
     }
+    // price_meta(가격 기준 문구)는 익스텐션에서 추출하지 않음. 필요 시 관리자 폼에서 직접 입력.
   }
 
   if (input.source?.url?.trim()) {

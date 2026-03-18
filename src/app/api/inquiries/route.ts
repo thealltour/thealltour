@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabase";
 import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
 import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
-import { sendCustomerInquirySms, sendAdminInquirySms } from "@/lib/sms/aligo";
 import { inferAttribution } from "@/lib/analytics/attribution";
 import type { Inquiry, InquiryInput } from "@/types/inquiry";
 
@@ -466,6 +465,32 @@ export async function POST(request: Request) {
     }
   }
 
+  // 문의 저장 성공 이후: 가비아 알리고 중계 서버 호출 (부수효과, 실패해도 응답 유지)
+  if (process.env.NODE_ENV === "production") {
+    try {
+      await fetch("http://121.78.183.144:3000/send-aligo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          phone,
+          content: contentValue,
+          product_title: productTitle || null,
+          source_path: sourcePath || null,
+          first_touch: firstTouch ?? null,
+          inquiry_page_url: inquiryPageUrl || null,
+          acquisition_channel: attribution.acquisition_channel,
+          acquisition_source_label: attribution.acquisition_source_label,
+          acquisition_medium: attribution.acquisition_medium,
+          acquisition_summary: attribution.acquisition_summary,
+          first_landing_path: attribution.first_landing_path,
+        }),
+      });
+    } catch (error) {
+      console.error("[inquiries] failed to call aligo relay server", error);
+    }
+  }
+
   await Promise.allSettled([
     notifyInquiryCreated({ name, phone, content: contentValue }),
     createNewInquiryNotification({
@@ -474,12 +499,6 @@ export async function POST(request: Request) {
       phone,
       content: contentValue,
     }),
-    process.env.NODE_ENV === "production"
-      ? sendCustomerInquirySms({ phone, productTitle })
-      : Promise.resolve(),
-    process.env.NODE_ENV === "production"
-      ? sendAdminInquirySms({ name, phone, productTitle, sourcePath })
-      : Promise.resolve(),
   ]);
 
   return NextResponse.json({ message: "문의가 저장되었습니다." }, { status: 201 });

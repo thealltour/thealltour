@@ -12,6 +12,7 @@ import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
+import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import {
   getDestinationBySlugForPublicLanding,
   getHubDestinations,
@@ -19,6 +20,9 @@ import {
   buildRegionTree,
   buildThemeTree,
   getProductTaxonomyOptions,
+  buildTaxonomyNameMap,
+  getActiveProductLineTaxonomies,
+  getSelfAndDescendantIdsAndNames,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
 import { getGuidesByDestinationId } from "@/lib/guides";
@@ -78,15 +82,34 @@ export default async function DestinationLandingPage({ params }: Props) {
     getLandingSubnodes("destination", slug),
     getHubDestinations(),
   ]);
-  const [taxonomyOptions, hubThemes, destinationGuides, reviewHighlights] = await Promise.all([
-    getProductTaxonomyOptions(products),
-    getHubThemes(),
-    getGuidesByDestinationId(destination.id, 4),
-    getTopRatedPublishedReviews(4),
-  ]);
+  const [taxonomyOptions, hubThemes, destinationGuides, reviewHighlights, productLineTaxonomies] =
+    await Promise.all([
+      getProductTaxonomyOptions(products),
+      getHubThemes(),
+      getGuidesByDestinationId(destination.id, 4),
+      getTopRatedPublishedReviews(4),
+      getActiveProductLineTaxonomies(),
+    ]);
   const { categories, themes, productLines } = taxonomyOptions;
   const regionTree = buildRegionTree(allDestinations);
   const themeTree = buildThemeTree(hubThemes);
+  const taxonomyNameMap = buildTaxonomyNameMap([
+    ...allDestinations,
+    ...hubThemes,
+    ...productLineTaxonomies,
+  ]);
+  const initialFiltersFromServer = {
+    region: destination.name,
+    theme: null,
+    product_line: null,
+    q: null,
+    sort: "" as const,
+    collection: null,
+  };
+  const initialRegionDescendants = getSelfAndDescendantIdsAndNames(
+    allDestinations,
+    destination.name,
+  );
 
   const parentId = destination.id.trim();
   const childDestinations = allDestinations
@@ -225,23 +248,42 @@ export default async function DestinationLandingPage({ params }: Props) {
             </SectionBlock>
           ) : null}
 
-          <SectionBlock surface="muted" padding="lg">
-            <SectionHeader
-              title="더 많은 상품 보기"
-              description="전체 상품 목록에서 지역·테마·정렬로 탐색할 수 있습니다."
-              align="center"
-            />
-            <div className="mt-6 flex justify-center">
-              <Link
-                href="/products"
-                className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90"
-              >
-                전체 상품 보기
-              </Link>
-            </div>
-          </SectionBlock>
             </div>
           </div>
+
+          {/* 랜딩 직하단: 전체 상품 필터·리스트 (/products/region/[slug]와 동일 구조) */}
+          <section
+            className="min-h-screen border-t border-[var(--border)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-10 mt-12 sm:mt-16"
+            aria-labelledby="products-section-heading"
+          >
+            <div className="mx-auto w-full max-w-6xl px-3 py-8 sm:px-6 sm:py-10 md:px-10 md:py-14">
+              <div className="flex flex-col gap-8">
+                <h2
+                  id="products-section-heading"
+                  className="section-heading type-h2 text-[var(--foreground)] first:mt-0"
+                >
+                  {destination.name} 여행 상품 전체 보기
+                </h2>
+                <p className="section-description type-small text-[var(--text-muted)] -mt-4">
+                  조건을 변경하여 다양한 상품을 비교해보세요.
+                </p>
+                <ProductsPageContent
+                  products={products}
+                  taxonomyNameMap={taxonomyNameMap}
+                  regionOptions={categories}
+                  regionTree={regionTree}
+                  themeOptions={themes}
+                  themeTree={themeTree}
+                  productLineOptions={productLines}
+                  initialFiltersFromServer={initialFiltersFromServer}
+                  basePath={`/destinations/${slug}`}
+                  filterContextLabel={`현재 '${destination.name}' 기준으로 상품을 보여주고 있습니다.`}
+                  initialRegionDescendants={initialRegionDescendants}
+                  cardLayout="related"
+                />
+              </div>
+            </div>
+          </section>
         </PageContainer>
       </main>
     </div>

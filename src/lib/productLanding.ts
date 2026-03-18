@@ -7,7 +7,7 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cacheTags";
 import { getProducts } from "@/lib/products";
-import { getTaxonomyNameBySlug, getActiveTaxonomiesForHeader, parseThemeTokens } from "@/lib/productTaxonomies";
+import { getTaxonomyNameBySlug, getActiveTaxonomiesForHeader, parseThemeTokens, getSelfAndDescendantIdsAndNames } from "@/lib/productTaxonomies";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import type { Product } from "@/types/product";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
@@ -21,18 +21,41 @@ import type {
 
 const RECOMMENDED_MAX = 8;
 
-/** region = category name 일치, theme = theme 토큰에 name 포함. /products 필터와 동일 기준. */
+/** 옵션으로 하위 지역/테마 id·name 집합을 주면 해당 집합에 포함되는 상품도 매칭 (상위 랜딩 시 하위 포함). */
 function matchProductsByTaxonomyName(
   products: Product[],
   type: ProductLandingType,
   taxonomyName: string,
+  options?: {
+    regionIds?: string[];
+    regionNames?: string[];
+    themeNames?: string[];
+  },
 ): Product[] {
   const name = taxonomyName.trim();
   if (!name) return [];
   if (type === "region") {
+    const idsSet = options?.regionIds?.length ? new Set(options.regionIds) : null;
+    const namesSet = options?.regionNames?.length ? new Set(options.regionNames) : null;
+    if (idsSet || namesSet) {
+      return products.filter((p) => {
+        if (p.destination_id && idsSet?.has(p.destination_id)) return true;
+        const cat = (p.category ?? "").trim();
+        return cat && namesSet?.has(cat) === true;
+      });
+    }
     return products.filter((p) => (p.category ?? "").trim() === name);
   }
-  return products.filter((p) => parseThemeTokens(p.theme).includes(name));
+  if (type === "theme") {
+    const themeNamesSet = options?.themeNames?.length ? new Set(options.themeNames) : null;
+    if (themeNamesSet) {
+      return products.filter((p) =>
+        parseThemeTokens(p.theme).some((t) => themeNamesSet.has(t.trim())),
+      );
+    }
+    return products.filter((p) => parseThemeTokens(p.theme).includes(name));
+  }
+  return [];
 }
 
 /** Product → 랜딩 카드용 요약. null/undefined 안전 처리. */
@@ -138,14 +161,16 @@ function buildLandingRelatedTaxonomies(
 
 /**
  * 추천 상품: home curated에서 해당 taxonomy 매칭 우선, 그 다음 일반 상품 매칭. 중복 제거, 최대 8개.
+ * matchOptions 전달 시 해당 taxonomy + 하위 전체가 매칭 대상.
  */
 function selectRecommendedProductsForLanding(
   allProducts: Product[],
   curatedProducts: Product[],
   type: ProductLandingType,
   taxonomyName: string,
+  matchOptions?: Parameters<typeof matchProductsByTaxonomyName>[3],
 ): Product[] {
-  const matched = matchProductsByTaxonomyName(allProducts, type, taxonomyName);
+  const matched = matchProductsByTaxonomyName(allProducts, type, taxonomyName, matchOptions);
   const matchedIds = new Set(matched.map((p) => p.id));
   const fromCurated = curatedProducts.filter((p) => matchedIds.has(p.id));
   const curatedIds = new Set(fromCurated.map((p) => p.id));
@@ -172,13 +197,26 @@ async function getProductLandingDataUncached(params: {
   ]);
 
   const curatedProducts = curatedData.sections.flatMap((s) => s.products ?? []);
+  const destinations = taxonomies.filter((t) => t.taxonomy_type === "destination");
+  const themes = taxonomies.filter((t) => t.taxonomy_type === "theme");
+  const regionSet =
+    type === "region" ? getSelfAndDescendantIdsAndNames(destinations, taxonomyName) : null;
+  const themeSet =
+    type === "theme" ? getSelfAndDescendantIdsAndNames(themes, taxonomyName) : null;
+  const matchOptions =
+    type === "region" && regionSet
+      ? { regionIds: regionSet.ids, regionNames: regionSet.names }
+      : type === "theme" && themeSet
+        ? { themeNames: themeSet.names }
+        : undefined;
   const recommended = selectRecommendedProductsForLanding(
     products,
     curatedProducts,
     type,
     taxonomyName,
+    matchOptions,
   );
-  const matchedAll = matchProductsByTaxonomyName(products, type, taxonomyName);
+  const matchedAll = matchProductsByTaxonomyName(products, type, taxonomyName, matchOptions);
 
   const currentTaxonomy =
     taxonomies.find(

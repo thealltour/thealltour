@@ -19,7 +19,7 @@
   },
   "version": "0.1.0",
   "author": "thealltour",
-  "name": "모두투어 상품 추출기",
+  "name": "DEV | 모두투어 상품 추출기",
   "description": "모두투어 상품 상세 페이지에서 ModetourImportV1 JSON 추출 및 클립보드 복사",
   "permissions": [
     "activeTab",

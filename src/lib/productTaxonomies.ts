@@ -345,6 +345,35 @@ export async function getTaxonomyById(id: string): Promise<ProductTaxonomy | nul
   return mapTaxonomy(result.data as Record<string, unknown>);
 }
 
+/**
+ * 지역/테마 taxonomy 목록에서 부모 name에 해당하는 노드와 그 하위(자손) 전체의 id·name 집합 반환.
+ * 랜딩/필터에서 "해외" 선택 시 "일본", "도쿄" 등 하위 지역 상품까지 포함하기 위해 사용.
+ */
+export function getSelfAndDescendantIdsAndNames(
+  nodes: ProductTaxonomy[],
+  parentName: string,
+): { ids: string[]; names: string[] } {
+  const name = parentName.trim();
+  if (!name) return { ids: [], names: [] };
+  const byParent = new Map<string, ProductTaxonomy[]>();
+  for (const n of nodes) {
+    const pid = (n.parent_id ?? "").trim() || "_root";
+    if (!byParent.has(pid)) byParent.set(pid, []);
+    byParent.get(pid)!.push(n);
+  }
+  const root = nodes.find((n) => (n.name ?? "").trim() === name);
+  if (!root) return { ids: [], names: [name] };
+  const ids: string[] = [];
+  const names: string[] = [];
+  function collect(n: ProductTaxonomy) {
+    if (n.id) ids.push(n.id);
+    if (n.name) names.push(n.name.trim());
+    for (const c of byParent.get(n.id) ?? []) collect(c);
+  }
+  collect(root);
+  return { ids, names };
+}
+
 /** id → taxonomy 맵에서 destination 계층 이름 배열 생성 (루트 → 리프). 맵에 없는 id는 무시. */
 export function buildDestinationNameChain(
   destinationId: string | null | undefined,

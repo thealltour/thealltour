@@ -55,7 +55,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
 
       <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
-        <PageContainer size="full" className="flex flex-col gap-8">
+        <PageContainer size="wide" className="flex flex-col gap-6">
           <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
 
           {products.length === 0 ? (
@@ -75,6 +75,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               presetCategories={presetCategories}
               presetLabel={golfPresetActive ? "골프/파크골프" : undefined}
               initialFiltersFromServer={initialFiltersFromServer}
+              regionTaxonomies={destinations}
+              themeTaxonomies={hubThemes}
             />
           )}
         </PageContainer>

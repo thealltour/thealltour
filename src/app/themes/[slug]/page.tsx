@@ -9,6 +9,7 @@ import { LandingDetailHero } from "@/components/landing/LandingDetailHero";
 import { LandingSubCardsSection } from "@/components/landing/LandingSubCardsSection";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
+import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import {
@@ -19,6 +20,9 @@ import {
   getProductTaxonomyOptions,
   buildRegionTree,
   buildThemeTree,
+  buildTaxonomyNameMap,
+  getActiveProductLineTaxonomies,
+  getSelfAndDescendantIdsAndNames,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
 import { getGuidesByThemeId } from "@/lib/guides";
@@ -79,15 +83,34 @@ export default async function ThemeLandingPage({ params }: Props) {
     getLandingSubnodes("theme", slug),
     getHubThemes(),
   ]);
-  const [taxonomyOptions, destinations, themeGuides, reviewHighlights] = await Promise.all([
-    getProductTaxonomyOptions(products),
-    getHubDestinations(),
-    getGuidesByThemeId(theme.id, 4),
-    getTopRatedPublishedReviews(4),
-  ]);
+  const [taxonomyOptions, destinations, themeGuides, reviewHighlights, productLineTaxonomies] =
+    await Promise.all([
+      getProductTaxonomyOptions(products),
+      getHubDestinations(),
+      getGuidesByThemeId(theme.id, 4),
+      getTopRatedPublishedReviews(4),
+      getActiveProductLineTaxonomies(),
+    ]);
   const { categories, themes: themeNames, productLines } = taxonomyOptions;
   const regionTree = buildRegionTree(destinations);
   const themeTree = buildThemeTree(allThemes);
+  const taxonomyNameMap = buildTaxonomyNameMap([
+    ...destinations,
+    ...allThemes,
+    ...productLineTaxonomies,
+  ]);
+  const initialFiltersFromServer = {
+    region: null,
+    theme: theme.name,
+    product_line: null,
+    q: null,
+    sort: "" as const,
+    collection: null,
+  };
+  const initialThemeDescendantNames = getSelfAndDescendantIdsAndNames(
+    allThemes,
+    theme.name,
+  ).names;
 
   const parentId = theme.id.trim();
   const childThemes = allThemes
@@ -231,29 +254,42 @@ export default async function ThemeLandingPage({ params }: Props) {
             </SectionBlock>
           ) : null}
 
-          <SectionBlock surface="muted" padding="lg">
-            <SectionHeader
-              title="더 많은 상품 보기"
-              description="전체 상품 목록에서 지역·테마·정렬로 탐색하거나 맞춤 상담을 요청해 보세요."
-              align="center"
-            />
-            <div className="mt-6 flex flex-wrap justify-center gap-4">
-              <Link
-                href="/products"
-                className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90"
-              >
-                전체 상품 보기
-              </Link>
-              <Link
-                href="/quote"
-                className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-2.5 font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
-              >
-                맞춤 상담 문의
-              </Link>
-            </div>
-          </SectionBlock>
             </div>
           </div>
+
+          {/* 랜딩 직하단: 전체 상품 필터·리스트 (/products/theme/[slug]와 동일 구조) */}
+          <section
+            className="min-h-screen border-t border-[var(--border)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-10 mt-12 sm:mt-16"
+            aria-labelledby="products-section-heading"
+          >
+            <div className="mx-auto w-full max-w-6xl px-3 py-8 sm:px-6 sm:py-10 md:px-10 md:py-14">
+              <div className="flex flex-col gap-8">
+                <h2
+                  id="products-section-heading"
+                  className="section-heading type-h2 text-[var(--foreground)] first:mt-0"
+                >
+                  {theme.name} 테마 상품 전체 보기
+                </h2>
+                <p className="section-description type-small text-[var(--text-muted)] -mt-4">
+                  조건을 변경하여 다양한 상품을 비교해보세요.
+                </p>
+                <ProductsPageContent
+                  products={products}
+                  taxonomyNameMap={taxonomyNameMap}
+                  regionOptions={categories}
+                  regionTree={regionTree}
+                  themeOptions={themeNames}
+                  themeTree={themeTree}
+                  productLineOptions={productLines}
+                  initialFiltersFromServer={initialFiltersFromServer}
+                  basePath={`/themes/${slug}`}
+                  filterContextLabel={`현재 '${theme.name}' 기준으로 상품을 보여주고 있습니다.`}
+                  initialThemeDescendantNames={initialThemeDescendantNames}
+                  cardLayout="related"
+                />
+              </div>
+            </div>
+          </section>
         </PageContainer>
       </main>
     </div>

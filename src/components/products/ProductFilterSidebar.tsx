@@ -258,7 +258,7 @@ export function ProductFilterSidebar({
       className={cn("hidden w-72 shrink-0 lg:block", className)}
       aria-label="상품 필터"
     >
-      <div className="sticky top-24 space-y-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)]">
+      <div className="sticky top-24 space-y-0 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="border-b border-[var(--border)] px-4 py-3">
           <h2 className="type-small font-semibold text-[var(--foreground)]">필터</h2>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">

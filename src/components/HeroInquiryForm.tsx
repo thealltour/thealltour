@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { getFirstTouch } from "@/lib/analytics/firstTouch";
+import { inferAttribution } from "@/lib/analytics/attribution";
 
 type HeroFormState = {
   name: string;
@@ -33,11 +35,14 @@ export default function HeroInquiryForm() {
     setMessage("");
 
     try {
+      const firstTouch = getFirstTouch();
       const response = await fetch("/api/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          first_touch: firstTouch ?? undefined,
+          inquiry_page_url: typeof window !== "undefined" ? window.location.pathname : undefined,
         }),
       });
 
@@ -48,6 +53,21 @@ export default function HeroInquiryForm() {
         return;
       }
 
+      try {
+        if (typeof window !== "undefined" && typeof window.gtag === "function") {
+          const att = inferAttribution(firstTouch ?? undefined);
+          window.gtag("event", "generate_lead", {
+            event_category: "inquiry",
+            event_label: "general_inquiry",
+            inquiry_page_url: window.location.pathname,
+            acquisition_channel: att.acquisition_channel ?? undefined,
+            acquisition_source_label: att.acquisition_source_label ?? undefined,
+            acquisition_medium: att.acquisition_medium ?? undefined,
+          });
+        }
+      } catch {
+        /* GA4 전송 실패해도 문의 흐름에는 영향 없음 */
+      }
       setIsSuccess(true);
       setMessage("문의가 접수되었습니다. 확인 후 순차적으로 연락드리겠습니다.");
       setForm(initialState);

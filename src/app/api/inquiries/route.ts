@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
 import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
+import { sendCustomerInquirySms, sendAdminInquirySms } from "@/lib/sms/aligo";
+import { inferAttribution } from "@/lib/analytics/attribution";
 import type { Inquiry, InquiryInput } from "@/types/inquiry";
 
 function normalizeInquiryRow(row: Record<string, unknown>) {
@@ -46,6 +48,17 @@ function normalizeInquiryRow(row: Record<string, unknown>) {
     completed_at: typeof row.completed_at === "string" ? row.completed_at : undefined,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
     quote_snapshot: quote_snapshot ?? undefined,
+    first_touch:
+      row.first_touch != null && typeof row.first_touch === "object"
+        ? (row.first_touch as Inquiry["first_touch"])
+        : undefined,
+    inquiry_page_url: typeof row.inquiry_page_url === "string" ? row.inquiry_page_url : undefined,
+    acquisition_channel: typeof row.acquisition_channel === "string" ? row.acquisition_channel : undefined,
+    acquisition_source_label:
+      typeof row.acquisition_source_label === "string" ? row.acquisition_source_label : undefined,
+    acquisition_medium: typeof row.acquisition_medium === "string" ? row.acquisition_medium : undefined,
+    acquisition_summary: typeof row.acquisition_summary === "string" ? row.acquisition_summary : undefined,
+    first_landing_path: typeof row.first_landing_path === "string" ? row.first_landing_path : undefined,
   };
 }
 
@@ -298,9 +311,11 @@ export async function POST(request: Request) {
   const selectedOptions = body.selected_options;
   const quoteSummaryRaw = body.quote_summary;
   const inquiredAt = body.inquired_at?.trim();
+  const firstTouch = body.first_touch;
+  const inquiryPageUrl = body.inquiry_page_url?.trim();
 
-  if (!name || !phone || !content) {
-    return NextResponse.json({ message: "이름, 연락처, 문의 내용은 필수입니다." }, { status: 400 });
+  if (!name || !phone) {
+    return NextResponse.json({ message: "이름과 연락처를 입력해 주세요." }, { status: 400 });
   }
 
   const hasOptionPayload =
@@ -330,10 +345,11 @@ export async function POST(request: Request) {
     }
   }
 
+  const contentValue = content ?? "";
   const insertPayload: Record<string, unknown> = {
     name,
     phone,
-    content,
+    content: contentValue,
     product_id: productId || null,
     product_title: productTitle || null,
     source_path: sourcePath || null,
@@ -341,6 +357,19 @@ export async function POST(request: Request) {
   if (quoteSnapshot) {
     insertPayload.quote_snapshot = quoteSnapshot;
   }
+  if (firstTouch != null && typeof firstTouch === "object") {
+    insertPayload.first_touch = firstTouch;
+  }
+  if (inquiryPageUrl) {
+    insertPayload.inquiry_page_url = inquiryPageUrl;
+  }
+
+  const attribution = inferAttribution(firstTouch ?? undefined);
+  insertPayload.acquisition_channel = attribution.acquisition_channel;
+  insertPayload.acquisition_source_label = attribution.acquisition_source_label;
+  insertPayload.acquisition_medium = attribution.acquisition_medium;
+  insertPayload.acquisition_summary = attribution.acquisition_summary;
+  insertPayload.first_landing_path = attribution.first_landing_path;
 
   const profile = await findOrCreateCustomerProfile({
     name,
@@ -368,7 +397,7 @@ export async function POST(request: Request) {
       const withoutQuote: Record<string, unknown> = {
         name,
         phone,
-        content,
+        content: contentValue,
         product_id: productId || null,
         product_title: productTitle || null,
         source_path: sourcePath || null,
@@ -395,7 +424,7 @@ export async function POST(request: Request) {
       const withoutProfile: Record<string, unknown> = {
         name,
         phone,
-        content,
+        content: contentValue,
         product_id: productId || null,
         product_title: productTitle || null,
         source_path: sourcePath || null,
@@ -421,7 +450,7 @@ export async function POST(request: Request) {
         .insert({
           name,
           phone,
-          content,
+          content: contentValue,
         })
         .select("id")
         .maybeSingle();
@@ -437,13 +466,21 @@ export async function POST(request: Request) {
     }
   }
 
-  await notifyInquiryCreated({ name, phone, content });
-  await createNewInquiryNotification({
-    inquiryId: String(inquiryId),
-    name,
-    phone,
-    content,
-  });
+  await Promise.allSettled([
+    notifyInquiryCreated({ name, phone, content: contentValue }),
+    createNewInquiryNotification({
+      inquiryId: String(inquiryId),
+      name,
+      phone,
+      content: contentValue,
+    }),
+    process.env.NODE_ENV === "production"
+      ? sendCustomerInquirySms({ phone, productTitle })
+      : Promise.resolve(),
+    process.env.NODE_ENV === "production"
+      ? sendAdminInquirySms({ name, phone, productTitle, sourcePath })
+      : Promise.resolve(),
+  ]);
 
   return NextResponse.json({ message: "문의가 저장되었습니다." }, { status: 201 });
 }

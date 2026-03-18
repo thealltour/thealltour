@@ -167,7 +167,7 @@ export function ProductImageGalleryModal({
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div
-            className="relative min-h-0 flex-1 bg-slate-950"
+            className="relative min-h-[55vh] flex-1 bg-slate-950"
             onTouchStart={(event) => {
               if (event.touches.length >= 2) {
                 pinchStartDistanceRef.current = getDistance(event.touches[0], event.touches[1]);
@@ -257,7 +257,7 @@ export function ProductImageGalleryModal({
             ) : null}
           </div>
 
-          <div className="border-t border-[var(--divider)] bg-[var(--surface)] p-3">
+          <div className="flex-shrink-0 border-t border-[var(--divider)] bg-[var(--surface)] p-3">
             {mode === "default" ? (
               <>
                 <div className="flex gap-2 overflow-x-auto md:hidden">
@@ -283,7 +283,7 @@ export function ProductImageGalleryModal({
                   ))}
                 </div>
 
-                <div className="hidden grid-cols-4 gap-2 md:grid lg:grid-cols-6">
+                <div className="hidden max-h-[22vh] grid-cols-4 gap-2 overflow-y-auto md:grid lg:grid-cols-6">
                   {images.map((image, index) => (
                     <button
                       key={`${image.url}-grid-${index}`}

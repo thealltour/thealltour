@@ -3,6 +3,7 @@
 import { Fragment } from "react";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
 import { useAdminInquiryTable, type StatusFilter, type InquirySortOption } from "@/components/admin/hooks/useAdminInquiryTable";
+import { parseHostname } from "@/lib/analytics/attribution";
 
 function formatDate(dateText: string) {
   const date = new Date(dateText);
@@ -207,6 +208,7 @@ export default function AdminInquiryTable() {
               <th className="w-[120px] px-4 py-3 text-left font-semibold">고객명</th>
               <th className="w-[150px] px-4 py-3 text-left font-semibold">연락처</th>
               <th className="w-[220px] px-4 py-3 text-left font-semibold">유입 상품</th>
+              <th className="px-4 py-3 text-left font-semibold">최초유입</th>
               <th className="min-w-[320px] px-4 py-3 text-left font-semibold">문의 내용</th>
               <th className="w-[180px] px-4 py-3 text-left font-semibold">문의일시</th>
               <th className="w-[100px] px-4 py-3 text-left font-semibold">선택 구성</th>
@@ -216,7 +218,7 @@ export default function AdminInquiryTable() {
           <tbody>
             {api.inquiries.length === 0 ? (
               <tr className="border-t border-[var(--divider)]">
-                <td colSpan={9} className="px-4 py-6 text-center text-[var(--text-muted)]">
+                <td colSpan={10} className="px-4 py-6 text-center text-[var(--text-muted)]">
                   조건에 맞는 문의가 없습니다.
                 </td>
               </tr>
@@ -275,6 +277,51 @@ export default function AdminInquiryTable() {
                           </div>
                         ) : (
                           <span className="text-xs text-[var(--text-subtle)]">일반 문의</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {inquiry.acquisition_source_label != null || inquiry.first_touch ? (
+                          <div
+                            className="min-w-0 max-w-[200px] space-y-1"
+                            title={[
+                              inquiry.acquisition_summary,
+                              inquiry.inquiry_page_url,
+                              inquiry.first_touch?.firstReferrer,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ") || undefined}
+                          >
+                            <p className="truncate font-medium text-[var(--text-primary)]">
+                              {inquiry.acquisition_source_label ??
+                                inquiry.first_touch?.utm_source ??
+                                (inquiry.first_touch?.firstReferrer
+                                  ? parseHostname(inquiry.first_touch.firstReferrer) ?? inquiry.first_touch.firstReferrer
+                                  : null) ??
+                                "direct"}
+                            </p>
+                            <p className="flex items-center gap-1">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                  inquiry.acquisition_channel === "paid"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : inquiry.acquisition_channel === "social"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : inquiry.acquisition_channel === "organic"
+                                        ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                                        : inquiry.acquisition_channel === "referral"
+                                          ? "bg-slate-100 text-slate-700"
+                                          : "bg-[var(--text-muted)]/20 text-[var(--text-secondary)]"
+                                }`}
+                              >
+                                {inquiry.acquisition_channel ?? inquiry.first_touch?.utm_medium ?? "-"}
+                              </span>
+                            </p>
+                            <p className="truncate text-xs text-[var(--text-subtle)]" title={inquiry.acquisition_summary ?? undefined}>
+                              {inquiry.first_landing_path ?? inquiry.acquisition_summary ?? "-"}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[var(--text-subtle)]">미확인</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -356,7 +403,7 @@ export default function AdminInquiryTable() {
                     </tr>
                     {inquiry.quote_snapshot && api.expandedQuoteId === inquiry.id ? (
                       <tr className="border-t border-[var(--divider)] bg-[var(--surface-muted)]">
-                        <td colSpan={9} className="px-4 py-3">
+                        <td colSpan={10} className="px-4 py-3">
                           <QuoteSnapshotSection snapshot={inquiry.quote_snapshot} />
                         </td>
                       </tr>

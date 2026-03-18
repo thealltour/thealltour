@@ -37,7 +37,12 @@ export type AnalyticsEventName =
   | "product_itinerary_day_click"
   | "product_itinerary_image_open"
   | "product_itinerary_cta_click"
-  | "product_cta_click";
+  | "product_cta_click"
+  | "quote_page_view"
+  | "quote_submit_click"
+  | "quote_submit_success"
+  | "consult_open"
+  | "consult_submit";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =
@@ -53,7 +58,8 @@ export type AnalyticsSource =
   | "landing_region"
   | "landing_theme"
   | "consult_cta"
-  | "hero_search";
+  | "hero_search"
+  | "quote_page";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {

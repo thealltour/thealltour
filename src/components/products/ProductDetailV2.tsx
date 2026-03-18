@@ -370,6 +370,18 @@ export default function ProductDetailV2({
     [product, hasOptions],
   );
 
+  /** 포함사항 요약 (줄바꿈 기준 앞 2~3개만 쉼표로 연결, Summary 카드용) */
+  const includedSummary = useMemo(() => {
+    const raw = includedItems?.trim();
+    if (!raw) return undefined;
+    return raw
+      .split("\n")
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(", ");
+  }, [includedItems]);
+
   /** PR40: 상품 요약 블록 표시 여부 (값이 하나라도 있을 때만) */
   const hasSummaryData = useMemo(() => {
     const d = product?.duration ?? duration;
@@ -377,9 +389,10 @@ export default function ProductDetailV2({
     const air = product?.airline ?? product?.departure_flight_name;
     const hot = product?.hotel ?? product?.overview_accommodation;
     const style = product?.travelStyle ?? product?.theme;
+    const minPeople = product?.min_departure_people ?? minDeparturePeople;
     const pr = typeof product?.price === "number" && product.price > 0 ? product.price : undefined;
-    return Boolean(d || dep || air || hot || style || pr);
-  }, [product, duration]);
+    return Boolean(d || dep || air || hot || style || minPeople || includedSummary || pr);
+  }, [product, duration, minDeparturePeople, includedSummary]);
 
   /** PR22: 핵심 여행 요약 카드용. highlights → tags → themes 순, 최대 5개 */
   const highlightsForCard = useMemo(() => {
@@ -501,6 +514,13 @@ export default function ProductDetailV2({
               hotel={product?.hotel ?? product?.overview_accommodation}
               travelStyle={product?.travelStyle ?? product?.theme}
               price={product?.price}
+              minDeparturePeople={(product?.min_departure_people ?? minDeparturePeople) || undefined}
+              includedSummary={includedSummary}
+              consultHref={consultHref || undefined}
+              kakaoHref={kakaoHref || undefined}
+              productId={productId}
+              productTitle={productTitle ?? ""}
+              sourcePath={sourcePath ?? ""}
             />
           </div>
         )}

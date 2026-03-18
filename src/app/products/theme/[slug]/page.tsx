@@ -1,12 +1,20 @@
 import { redirect } from "next/navigation";
 import {
   getTaxonomyNameBySlug,
+  getHubDestinations,
   getHubThemes,
+  getProductTaxonomyOptions,
+  buildRegionTree,
+  buildThemeTree,
+  buildTaxonomyNameMap,
+  getActiveProductLineTaxonomies,
+  getSelfAndDescendantIdsAndNames,
   parseThemeTokens,
 } from "@/lib/productTaxonomies";
 import { getProductLandingData } from "@/lib/productLanding";
 import { getProducts } from "@/lib/products";
 import ProductLandingPage from "@/components/products/landing/ProductLandingPage";
+import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import SiteHeader from "@/components/SiteHeader";
 import type { Product } from "@/types/product";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
@@ -50,10 +58,22 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
 
   if (landingData && landingData.taxonomyName && landingData.hero?.primaryCtaHref) {
     let dataWithChildren = landingData;
-    const [allThemes, products] = await Promise.all([
+    const [allThemes, products, destinations, productLineTaxonomies] = await Promise.all([
       getHubThemes(),
       getProducts(),
+      getHubDestinations(),
+      getActiveProductLineTaxonomies(),
     ]);
+    const taxonomyOptions = await getProductTaxonomyOptions(products);
+    const { categories, themes, productLines } = taxonomyOptions;
+    const regionTree = buildRegionTree(destinations);
+    const themeTree = buildThemeTree(allThemes);
+    const taxonomyNameMap = buildTaxonomyNameMap([
+      ...destinations,
+      ...allThemes,
+      ...productLineTaxonomies,
+    ]);
+
     const normalizedSlug = trimmedSlug.toLowerCase().replace(/\s+/g, "-");
     const parent = allThemes.find(
       (t) =>
@@ -81,10 +101,57 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
       });
       dataWithChildren = { ...landingData, childThemes: childThemesWithImages };
     }
+
+    const initialFiltersFromServer = {
+      region: null,
+      theme: landingData.taxonomyName,
+      product_line: null,
+      q: null,
+      sort: "" as const,
+      collection: null,
+    };
+    const initialThemeDescendantNames = getSelfAndDescendantIdsAndNames(
+      allThemes,
+      landingData.taxonomyName,
+    ).names;
+
     return (
       <>
         <SiteHeader activeTab="products" />
         <ProductLandingPage data={dataWithChildren} />
+        <section
+          className="min-h-screen border-t border-[var(--border)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-10 mt-12 sm:mt-16"
+          aria-labelledby="products-section-heading"
+        >
+          {/* 랜딩 상단과 동일한 가로 폭·패딩 체계(max-w-6xl, px-3 sm:px-6 md:px-10)로 정렬 */}
+          <div className="mx-auto w-full max-w-6xl px-3 py-8 sm:px-6 sm:py-10 md:px-10 md:py-14">
+            <div className="flex flex-col gap-8">
+              <h2
+                id="products-section-heading"
+                className="section-heading type-h2 text-[var(--foreground)] first:mt-0"
+              >
+                {landingData.taxonomyName} 여행 상품 전체 보기
+              </h2>
+              <p className="section-description type-small text-[var(--text-muted)] -mt-4">
+                조건을 변경하여 다양한 상품을 비교해보세요.
+              </p>
+              <ProductsPageContent
+              products={products}
+              taxonomyNameMap={taxonomyNameMap}
+              regionOptions={categories}
+              regionTree={regionTree}
+              themeOptions={themes}
+              themeTree={themeTree}
+              productLineOptions={productLines}
+              initialFiltersFromServer={initialFiltersFromServer}
+              basePath={`/products/theme/${trimmedSlug}`}
+              filterContextLabel={`현재 '${landingData.taxonomyName}' 테마 기준 결과입니다.`}
+              initialThemeDescendantNames={initialThemeDescendantNames}
+              cardLayout="related"
+            />
+            </div>
+          </div>
+        </section>
       </>
     );
   }

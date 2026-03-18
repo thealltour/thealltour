@@ -143,32 +143,67 @@ export const SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
   { value: "popular", label: "인기순" },
 ];
 
+/** 랜딩 페이지에서 상위 지역/테마 선택 시 하위 전체 포함하려면 전달. */
+export type ProductFiltersApplyOptions = {
+  regionDescendants?: { ids: string[]; names: string[] };
+  regionDescendantForName?: string;
+  themeDescendantNames?: string[];
+  themeDescendantForName?: string;
+};
+
 /** region = destination name(category), theme = theme token, product_line = category name(상품군). 정렬 적용.
- * taxonomyNameMap 있으면 destination_id / product_line_id FK 기반 우선, 없거나 매칭 실패 시 category/theme 문자열 fallback. */
+ * taxonomyNameMap 있으면 destination_id / product_line_id FK 기반 우선, 없거나 매칭 실패 시 category/theme 문자열 fallback.
+ * options에 regionDescendants/themeDescendantNames 전달 시 해당 이름일 때 하위 전체 포함. */
 export function applyProductFilters(
   products: Product[],
   filters: ProductFiltersState,
   taxonomyNameMap?: Record<string, string>,
+  options?: ProductFiltersApplyOptions,
 ): Product[] {
   let list = products;
   const map = taxonomyNameMap ?? {};
 
   if (filters.region) {
     const r = filters.region.trim();
-    list = list.filter((p) => {
-      const destinationName =
-        p.destination_id && map[p.destination_id]
-          ? map[p.destination_id].trim()
-          : null;
-      if (destinationName !== null) {
-        return destinationName === r;
-      }
-      return (p.category ?? "").trim() === r;
-    });
+    const useDescendants =
+      options?.regionDescendants &&
+      options?.regionDescendantForName &&
+      options.regionDescendantForName.trim() === r;
+    if (useDescendants && options!.regionDescendants!) {
+      const idsSet = new Set(options.regionDescendants.ids);
+      const namesSet = new Set(options.regionDescendants.names);
+      list = list.filter((p) => {
+        if (p.destination_id && idsSet.has(p.destination_id)) return true;
+        const cat = (p.category ?? "").trim();
+        return cat && namesSet.has(cat);
+      });
+    } else {
+      list = list.filter((p) => {
+        const destinationName =
+          p.destination_id && map[p.destination_id]
+            ? map[p.destination_id].trim()
+            : null;
+        if (destinationName !== null) {
+          return destinationName === r;
+        }
+        return (p.category ?? "").trim() === r;
+      });
+    }
   }
   if (filters.theme) {
     const t = filters.theme.trim();
-    list = list.filter((p) => parseThemeTokens(p.theme).includes(t));
+    const useThemeDescendants =
+      options?.themeDescendantNames &&
+      options?.themeDescendantForName &&
+      options.themeDescendantForName.trim() === t;
+    if (useThemeDescendants && options!.themeDescendantNames!.length > 0) {
+      const namesSet = new Set(options.themeDescendantNames);
+      list = list.filter((p) =>
+        parseThemeTokens(p.theme).some((token) => namesSet.has(token.trim())),
+      );
+    } else {
+      list = list.filter((p) => parseThemeTokens(p.theme).includes(t));
+    }
   }
   if (filters.product_line) {
     const pl = filters.product_line.trim();

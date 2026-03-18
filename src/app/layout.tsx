@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import GlobalSiteFooter from "@/components/GlobalSiteFooter";
 import KakaoFloatingButton from "@/components/KakaoFloatingButton";
 import { ConsultModalProvider } from "@/components/ConsultModal";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
+import { FirstTouchInit } from "@/components/FirstTouchInit";
 
 export const metadata: Metadata = {
   title: "더올투어 | 맞춤형 해외/국내 골프투어/파크골프투어 전문",
@@ -30,6 +32,19 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        {/* GA4 */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID ?? ""}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${process.env.NEXT_PUBLIC_GA_ID ?? ""}');
+          `}
+        </Script>
         {/* LCP 히어로 이미지(Supabase Storage)용 - 초기 연결 선점 */}
         <link
           rel="preconnect"
@@ -40,6 +55,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://img.modetour.com" />
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-[color:color-mix(in_oklab,var(--primary)_18%,white)] selection:text-foreground">
+        <FirstTouchInit />
         <WebVitalsReporter />
         <ConsultModalProvider>
           <div className="flex-1">{children}</div>

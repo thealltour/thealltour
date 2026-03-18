@@ -40,6 +40,11 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   product_itinerary_image_open: "product_itinerary_image_open",
   product_itinerary_cta_click: "product_itinerary_cta_click",
   product_cta_click: "product_cta_click",
+  quote_page_view: "quote_page_view",
+  quote_submit_click: "quote_submit_click",
+  quote_submit_success: "quote_submit_success",
+  consult_open: "consult_open",
+  consult_submit: "consult_submit",
 } as const;
 
 /** 소스 상수 (enum 성격) */
@@ -57,4 +62,5 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   landing_theme: "landing_theme",
   consult_cta: "consult_cta",
   hero_search: "hero_search",
+  quote_page: "quote_page",
 } as const;

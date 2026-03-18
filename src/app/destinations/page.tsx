@@ -116,6 +116,7 @@ export default async function DestinationsHubPage() {
     { id: "destinations", label: "여행지" },
     { id: "recommended-products", label: "추천 상품" },
     { id: "themes", label: "테마 여행" },
+    { id: "all-products", label: "전체 상품 필터 조회" },
   ];
 
   return (
@@ -235,6 +236,25 @@ export default async function DestinationsHubPage() {
                         className="type-btn inline-flex rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                       >
                         테마별로 보기
+                      </Link>
+                    </div>
+                  </SectionBlock>
+                </section>
+
+                <section id="all-products" aria-labelledby="all-products-heading" className="mt-16">
+                  <SectionBlock surface="muted" padding="lg">
+                    <SectionHeader
+                      titleId="all-products-heading"
+                      title="전체 상품 필터 조회"
+                      description="전체 상품 목록에서 지역·테마·정렬로 탐색할 수 있습니다."
+                      align="center"
+                    />
+                    <div className="mt-6 flex justify-center">
+                      <Link
+                        href="/products"
+                        className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90"
+                      >
+                        전체 상품 보기
                       </Link>
                     </div>
                   </SectionBlock>

@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Product } from "@/types/product";
 import ProductListCard from "@/components/products/ProductListCard";
 import ProductListCardMobile from "@/components/products/ProductListCardMobile";
+import ProductCard from "@/components/products/ProductCard";
+import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
 import { useConsultModal } from "@/components/ConsultModal";
 import {
@@ -32,6 +34,8 @@ type ProductCatalogSectionProps = {
   onThemeChange?: (theme: string | null) => void;
   /** 0건일 때 필터 초기화(전체 상품 보기)용. 제공 시 빈 결과 UI에 "필터 초기화" CTA 노출 */
   onResetFilters?: () => void;
+  /** list: /products 본문용 비교 카드. related: 랜딩 하단용 간결 카드(이미지·가격 중심) */
+  cardLayout?: "list" | "related";
 };
 
 function normalizeSearchKeyword(value: string) {
@@ -70,6 +74,7 @@ export default function ProductCatalogSection({
   onCategoryChange,
   onThemeChange,
   onResetFilters,
+  cardLayout = "list",
 }: ProductCatalogSectionProps) {
   const [internalTab, setInternalTab] = useState<ProductCategoryTabId>("all");
   const [internalThemeTab, setInternalThemeTab] = useState("전체");
@@ -144,33 +149,27 @@ export default function ProductCatalogSection({
   const { openModal } = useConsultModal();
 
   function handleProductConsult(product: Product) {
-    const isMobile =
-      typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false;
-    if (isMobile) {
-      const query = searchParams.toString();
-      openModal({
-        productId: product.id,
-        productTitle: product.title,
-        sourcePath: query ? `${pathname}?${query}` : pathname,
-      });
-      return;
-    }
-    router.push(`/quote?productId=${encodeURIComponent(product.id)}`);
+    const query = searchParams.toString();
+    openModal({
+      productId: product.id,
+      productTitle: product.title,
+      sourcePath: query ? `${pathname}?${query}` : pathname,
+    });
   }
 
   return (
-    <section className="space-y-5">
-      <div className="sticky top-[76px] z-20 rounded-2xl bg-[var(--surface)]/95 p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] backdrop-blur sm:rounded-3xl sm:p-5">
-        <div className="space-y-4">
-          <p className="section-label text-[var(--text-muted)]">
+    <section className="space-y-4">
+      <div className="sticky top-[76px] z-20 rounded-xl border border-[var(--border)] bg-[var(--surface)]/98 px-3 py-2.5 backdrop-blur sm:rounded-xl sm:px-3 sm:py-3">
+        <div className="space-y-1">
+          <p className="text-xs leading-snug text-[var(--text-muted)] sm:text-sm">
             총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
           </p>
-          {presetLabel ? <p className="section-label text-[#15803d]">필터: {presetLabel}</p> : null}
+          {presetLabel ? <p className="text-xs leading-snug text-[#15803d] sm:text-sm">필터: {presetLabel}</p> : null}
           {keyword ? (
-            <p className="section-label text-[var(--primary)]">검색어: {initialKeyword}</p>
+            <p className="text-xs leading-snug text-[var(--primary)] sm:text-sm">검색어: {initialKeyword}</p>
           ) : null}
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         {categoryTabs.map((tab) => (
           <button
             key={tab}
@@ -183,7 +182,7 @@ export default function ProductCatalogSection({
               setInternalTab(tab === "전체" ? "all" : tab);
               setInternalThemeTab("전체");
             }}
-            className={`type-btn rounded-full px-3.5 py-1.5 transition ${
+            className={`min-h-[32px] rounded-full px-3 py-1.5 text-sm font-medium transition ${
               (tab === "전체" ? "all" : tab) === activeTab
                 ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                 : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
@@ -194,7 +193,7 @@ export default function ProductCatalogSection({
         ))}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {themeTabs.map((tab) => (
           <button
             key={`theme-${tab}`}
@@ -206,7 +205,7 @@ export default function ProductCatalogSection({
               }
               setInternalThemeTab(tab);
             }}
-            className={`type-caption rounded-full px-3 py-1 font-semibold transition ${
+            className={`min-h-[28px] rounded-full px-2.5 py-1 text-xs font-semibold transition sm:min-h-[32px] sm:px-3 sm:py-1.5 sm:text-sm ${
               activeThemeTab === tab
                 ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                 : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
@@ -218,7 +217,7 @@ export default function ProductCatalogSection({
         </div>
       </div>
 
-      <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-6">
+      <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-5">
         {keywordFilteredProducts.length === 0 ? (
           <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:rounded-3xl">
             {(initialRegion || initialTheme || (initialKeyword && initialKeyword.trim())) && onResetFilters ? (
@@ -253,30 +252,42 @@ export default function ProductCatalogSection({
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
               <h3 className="font-card-title type-h3 text-[var(--primary)]">{group.theme}</h3>
-              <div className="flex w-full max-w-[1344px] flex-col gap-4 md:gap-5">
-                {group.products.map((product) => {
-                  const cardProps = productToProductCardProps(product, {
-                    analyticsSource: "product_list",
-                    analyticsSection: "catalog",
-                    onClickDetail: () => router.push(`/products/${product.id}`),
-                    onClickConsult: () => handleProductConsult(product),
-                  });
+              {cardLayout === "related" ? (
+                <ProductCardGridSection desktopGridCols={2} className="w-full max-w-[1344px]">
+                  {group.products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      {...productToProductCardProps(product, {
+                        layout: "related",
+                        analyticsSource: "landing",
+                        analyticsSection: "landing_catalog",
+                      })}
+                    />
+                  ))}
+                </ProductCardGridSection>
+              ) : (
+                <div className="flex w-full max-w-[1344px] flex-col gap-4 md:gap-5">
+                  {group.products.map((product) => {
+                    const cardProps = productToProductCardProps(product, {
+                      analyticsSource: "product_list",
+                      analyticsSection: "catalog",
+                      onClickDetail: () => router.push(`/products/${product.id}`),
+                      onClickConsult: () => handleProductConsult(product),
+                    });
 
-                  return (
-                    <div key={product.id} className="w-full">
-                      {/* Desktop */}
-                      <div className="hidden md:block">
-                        <ProductListCard {...cardProps} />
+                    return (
+                      <div key={product.id} className="w-full">
+                        <div className="hidden md:block">
+                          <ProductListCard {...cardProps} />
+                        </div>
+                        <div className="md:hidden">
+                          <ProductListCardMobile {...cardProps} />
+                        </div>
                       </div>
-
-                      {/* Mobile */}
-                      <div className="md:hidden">
-                        <ProductListCardMobile {...cardProps} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))
         )}

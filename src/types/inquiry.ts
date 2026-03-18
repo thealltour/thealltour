@@ -4,6 +4,18 @@ export type ConsultationStatus = "new" | "contacted" | "closed";
 /** 예약/여행 상태 */
 export type BookingStatus = "none" | "reserved" | "completed" | "canceled";
 
+/** 최초 유입 경로 (first touch) 스냅샷 */
+export type FirstTouch = {
+  firstLandingUrl?: string;
+  firstReferrer?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_term?: string | null;
+  utm_content?: string | null;
+  firstVisitAt?: string;
+};
+
 export type Inquiry = {
   id: string;
   name: string;
@@ -25,6 +37,20 @@ export type Inquiry = {
   created_at?: string;
   /** 상품 옵션 선택 시: 선택 옵션 + 예상 견적 스냅샷 */
   quote_snapshot?: QuoteSnapshot | null;
+  /** 최초 유입 경로 (first touch) */
+  first_touch?: FirstTouch | null;
+  /** 문의 폼 제출 시 페이지 경로 */
+  inquiry_page_url?: string | null;
+  /** 자동 분류: 유입 채널 (paid | organic | social | referral | direct) */
+  acquisition_channel?: string | null;
+  /** 자동 분류: 소스 라벨 (google, naver, kakao 등) */
+  acquisition_source_label?: string | null;
+  /** 자동 분류: 미디엄 */
+  acquisition_medium?: string | null;
+  /** 자동 분류: 요약 (예: "naver / organic") */
+  acquisition_summary?: string | null;
+  /** 최초 랜딩 경로 (pathname) */
+  first_landing_path?: string | null;
 };
 
 /** 문의 시 함께 저장한 옵션/견적 스냅샷 (관리자 표시용, 서버 재계산용) */
@@ -54,4 +80,8 @@ export type InquiryInput = {
     breakdown: Array<{ group_label: string; option_label: string; price_delta: number }>;
   };
   inquired_at?: string;
+  /** 최초 유입 경로 (first touch) */
+  first_touch?: FirstTouch | null;
+  /** 문의 폼 제출 시 페이지 경로 */
+  inquiry_page_url?: string | null;
 };

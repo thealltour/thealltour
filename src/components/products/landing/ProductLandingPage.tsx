@@ -41,10 +41,6 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
     type === "region"
       ? `${taxonomyName} 여행과 함께 많이 찾는 테마를 둘러보세요.`
       : `${taxonomyName} 테마로 많이 찾는 지역을 확인해보세요.`;
-  const bottomCtaTitle =
-    type === "region"
-      ? `${taxonomyName} 여행을 찾고 계신가요?`
-      : `${taxonomyName} 중심 일정이 필요하신가요?`;
   const moreProductsLabel = type === "region" ? "이 지역 상품 더 보기" : "이 테마 상품 더 보기";
 
   const basePayload = getLandingCtaPayload(data, "hero");
@@ -244,7 +240,7 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
               </div>
             ) : (
               <>
-                <ProductCardGridSection>
+                <ProductCardGridSection desktopGridCols={2}>
                   {uniqueRecommendedProducts.map((item) => (
                     <ProductCard
                       key={item.id}
@@ -300,44 +296,6 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
               </div>
             </section>
           ) : null}
-
-          {/* 하단 전환 CTA */}
-          <section className="rounded-2xl bg-[var(--surface)] p-6 text-center ring-1 ring-[var(--border)] sm:p-8">
-            <h2 className="text-lg font-bold text-[var(--foreground)]">{bottomCtaTitle}</h2>
-            <p className="mt-2 text-sm text-[var(--text-muted)]">
-              원하시는 일정/예산/출발 시기에 맞춰 맞춤 상담을 받아보세요.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href={hero.primaryCtaHref}
-                className="inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-                onClick={() =>
-                  trackLandingCtaClick({
-                    ...getLandingCtaPayload(data, "bottom_cta"),
-                    section: "bottom_cta",
-                    label: "전체 상품 보기",
-                    href: hero.primaryCtaHref,
-                  })
-                }
-              >
-                전체 상품 보기
-              </Link>
-              <Link
-                href="/quote"
-                className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
-                onClick={() =>
-                  trackLandingCtaClick({
-                    ...getLandingCtaPayload(data, "bottom_cta"),
-                    section: "bottom_cta",
-                    label: "맞춤 상담 문의",
-                    href: "/quote",
-                  })
-                }
-              >
-                맞춤 상담 문의
-              </Link>
-            </div>
-          </section>
         </div>
       </main>
     </div>

@@ -1,9 +1,10 @@
-import InquiryForm from "@/components/InquiryForm";
 import SiteHeader from "@/components/SiteHeader";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
 import { Breadcrumb } from "@/components/navigation/Breadcrumb";
+import { QuotePageContent, type QuoteSummary } from "@/components/quote/QuotePageContent";
+import { getProductById } from "@/lib/products";
 
 type QuotePageProps = {
   searchParams?: Promise<{
@@ -15,6 +16,28 @@ type QuotePageProps = {
 
 export default async function QuotePage({ searchParams }: QuotePageProps) {
   const query = (await searchParams) ?? {};
+  const productId = query.product_id?.trim();
+  const productTitleFromQuery = query.product_title?.trim();
+
+  let productSummary: QuoteSummary | null = null;
+  if (productId) {
+    const product = await getProductById(productId);
+    if (product) {
+      productSummary = {
+        productTitle: product.title?.trim() || productTitleFromQuery || "상품",
+        duration: product.duration ?? undefined,
+        region: product.theme ?? product.overview_region ?? product.departure ?? undefined,
+        price: typeof product.price === "number" && product.price > 0 ? product.price : undefined,
+      };
+    } else if (productTitleFromQuery) {
+      productSummary = {
+        productTitle: productTitleFromQuery,
+        duration: undefined,
+        region: undefined,
+        price: undefined,
+      };
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
@@ -34,15 +57,16 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
             <p className="section-label text-[#B8962E]">THEALL TOUR CONTACT</p>
             <h2 className="section-title type-h2">견적 문의 작성</h2>
             <p className="type-small text-content-secondary">
-              이름, 연락처, 문의 내용을 남겨주시면 맞춤 견적으로 안내드리겠습니다.
+              간단한 정보만 남겨주시면 확인 후 안내드리겠습니다. 필수 항목만 입력하셔도 상담이 가능합니다.
             </p>
           </div>
-          <InquiryForm
+          <QuotePageContent
             source={{
               product_id: query.product_id,
-              product_title: query.product_title,
+              product_title: productSummary?.productTitle ?? query.product_title,
               source_path: query.source_path,
             }}
+            productSummary={productSummary}
           />
         </ContentCard>
       </SectionBody>

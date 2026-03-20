@@ -466,6 +466,18 @@ export async function POST(request: Request) {
   }
 
   // 문의 저장 성공 이후: 가비아 알리고 중계 서버 호출 (부수효과, 실패해도 응답 유지)
+  const normalizedPhone = phone.replace(/[^0-9]/g, "");
+  const message = [
+    "[더올투어 문의접수]",
+    `이름: ${name}`,
+    `연락처: ${normalizedPhone}`,
+    productTitle ? `상품: ${productTitle}` : null,
+    sourcePath ? `유입: ${sourcePath}` : null,
+    contentValue ? `문의내용: ${contentValue}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   const aligoController = new AbortController();
   const aligoTimeout = setTimeout(() => aligoController.abort(), 5000);
 
@@ -473,6 +485,7 @@ export async function POST(request: Request) {
     console.log("[inquiries] calling aligo relay server", {
       inquiryId,
       phone,
+      normalizedPhone,
       productTitle: productTitle || null,
       sourcePath: sourcePath || null,
     });
@@ -481,18 +494,8 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name,
-        phone,
-        content: contentValue,
-        product_title: productTitle || null,
-        source_path: sourcePath || null,
-        first_touch: firstTouch ?? null,
-        inquiry_page_url: inquiryPageUrl || null,
-        acquisition_channel: attribution.acquisition_channel,
-        acquisition_source_label: attribution.acquisition_source_label,
-        acquisition_medium: attribution.acquisition_medium,
-        acquisition_summary: attribution.acquisition_summary,
-        first_landing_path: attribution.first_landing_path,
+        receiver: normalizedPhone,
+        msg: message,
       }),
       signal: aligoController.signal,
     });

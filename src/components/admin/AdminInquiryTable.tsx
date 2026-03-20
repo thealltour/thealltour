@@ -398,6 +398,14 @@ export default function AdminInquiryTable() {
                               여행 완료
                             </button>
                           )}
+                          <button
+                            type="button"
+                            disabled={api.deletePendingId === inquiry.id || api.pendingId === inquiry.id}
+                            onClick={() => api.deleteInquiry(inquiry.id)}
+                            className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
+                          >
+                            삭제
+                          </button>
                         </div>
                       </td>
                     </tr>

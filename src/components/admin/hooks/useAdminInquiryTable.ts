@@ -34,6 +34,7 @@ export function useAdminInquiryTable() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -190,6 +191,34 @@ export function useAdminInquiryTable() {
     }
   }, [reserveModalInquiryId, reserveDeparture, reserveReturn, loadInquiries]);
 
+  const deleteInquiry = useCallback(
+    async (id: string) => {
+      if (
+        !window.confirm(
+          "이 문의를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.",
+        )
+      ) {
+        return;
+      }
+      setDeletePendingId(id);
+      setErrorMessage("");
+      try {
+        const response = await fetch(`/api/inquiries/${id}`, { method: "DELETE" });
+        const payload = (await response.json().catch(() => ({}))) as { message?: string };
+        if (!response.ok) {
+          setErrorMessage(payload.message ?? "문의 삭제에 실패했습니다.");
+          return;
+        }
+        await loadInquiries({ silent: true, resetSelection: false });
+      } catch {
+        setErrorMessage("문의 삭제 중 오류가 발생했습니다.");
+      } finally {
+        setDeletePendingId(null);
+      }
+    },
+    [loadInquiries],
+  );
+
   const completeTrip = useCallback(async (id: string) => {
     setPendingId(id);
     setErrorMessage("");
@@ -241,6 +270,7 @@ export function useAdminInquiryTable() {
     isRefreshing,
     errorMessage,
     pendingId,
+    deletePendingId,
     searchQuery,
     statusFilter,
     sortBy,
@@ -269,6 +299,7 @@ export function useAdminInquiryTable() {
     closeReserveModal,
     submitReserveBooking,
     completeTrip,
+    deleteInquiry,
     toggleExpand,
     setExpandedQuoteId: setExpandedQuoteIdHandler,
     movePage,

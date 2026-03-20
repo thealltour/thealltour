@@ -252,3 +252,36 @@ function handleInquiryUpdateError(error: { code?: string; message?: string }) {
   }
   return NextResponse.json({ message: "상담 상태 업데이트에 실패했습니다." }, { status: 500 });
 }
+
+function handleInquiryDeleteError(error: { code?: string; message?: string }) {
+  const code = error?.code;
+  if (code === "42501") {
+    return NextResponse.json(
+      { message: "inquiries 테이블 DELETE 권한(RLS 정책)이 없습니다. 마이그레이션 SQL을 적용해 주세요." },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({ message: "문의 삭제에 실패했습니다." }, { status: 500 });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id: inquiryId } = await context.params;
+  const id = inquiryId?.trim();
+  if (!id) {
+    return NextResponse.json({ message: "문의 ID가 필요합니다." }, { status: 400 });
+  }
+
+  const { data, error } = await supabase.from("inquiries").delete().eq("id", id).select("id");
+
+  if (error) {
+    return handleInquiryDeleteError(error);
+  }
+  if (!data || data.length === 0) {
+    return NextResponse.json({ message: "문의를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  return NextResponse.json({ message: "문의가 삭제되었습니다." });
+}

@@ -5,14 +5,12 @@ import { SectionBlock } from "@/components/layout/SectionBlock";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import { getHomeBanners } from "@/lib/homeBanners";
 import { getHeroContent, resolveHeroContent } from "@/lib/heroContent";
-import { getDestinationLandingHref, getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
 import { getSiteSettings, parseHomeRegionCardIds, parseHomeThemeCardIds } from "@/lib/siteSettings";
 import { getHomeGuidesWithTaxonomyNames } from "@/lib/guides";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/HeroQuickConsultButton";
 import HeroSection from "@/components/home/HeroSection";
-import type { HeroChipItem } from "@/components/home/HeroSection";
 import DestinationSection from "@/components/home/DestinationSection";
 import ThemeSection from "@/components/home/ThemeSection";
 import CuratedProductsSection from "@/components/home/CuratedProductsSection";
@@ -59,31 +57,15 @@ export default async function Home() {
           .slice(0, 8)
       : themes.slice(0, 8);
 
-  const heroChipDestinations: HeroChipItem[] = destinationsForHome.slice(0, 6).map((d) => ({
-    id: d.id,
-    name: (d.card_title ?? d.name).trim() || d.name,
-    href: getDestinationLandingHref(d),
-  }));
-  const heroChipThemes: HeroChipItem[] = themesForHome.slice(0, 6).map((t) => ({
-    id: t.id,
-    name: (t.card_title ?? t.name).trim() || t.name,
-    href: getThemeLandingHref(t),
-  }));
-
   return (
     <>
       <SiteHeader />
 
       <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
-        <main className="flex w-full flex-col pt-4 pb-6 sm:py-10 md:py-14">
-          <HeroSection
-            primaryBanner={primaryBanner}
-            hero={hero}
-            heroChipDestinations={heroChipDestinations}
-            heroChipThemes={heroChipThemes}
-          />
+        <main className="flex w-full flex-col pt-1 pb-6 sm:py-10 md:py-14">
+          <HeroSection primaryBanner={primaryBanner} hero={hero} />
 
-          <PageContainer size="wide" className="flex flex-col gap-12 md:gap-20">
+          <PageContainer size="wide" className="flex flex-col gap-7 sm:gap-10 md:gap-20">
             <DestinationSection
               items={destinationsForHome}
               eyebrow={settings.home_region_section_eyebrow}

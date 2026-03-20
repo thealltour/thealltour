@@ -1,12 +1,15 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { HeroRecommendedLinks } from "@/components/home/HeroRecommendedLinks";
 import { HomeHeroSearch } from "@/components/home/HomeHeroSearch";
+import { HomeQuickKeywords } from "@/components/home/HomeQuickKeywords";
 import type { HomeBanner } from "@/types/homeBanner";
 
+/** @deprecated Hero 모바일 칩용. 다른 화면에서 재사용 시에만 유지 */
 export type HeroChipItem = { id: string; name: string; href: string };
 
 export type HeroResolvedContent = {
@@ -17,6 +20,25 @@ export type HeroResolvedContent = {
   recommended_text: string | null;
   search_placeholder: string | null;
 };
+
+/** 모바일: 동일 DB 문구 기준으로 한 줄에 가까운 프리미엄 톤(데이터 필드 추가 없음). 긴 관용구만 짧게 치환. */
+function MobileHeroHeadline({ hero }: { hero: HeroResolvedContent }): ReactNode {
+  const accent = hero.main_copy_accent?.trim() ?? "";
+  const tail = (hero.main_copy_tail ?? "").trim();
+  if (!accent) {
+    return <>{tail || "골프와 여행의 시작"}</>;
+  }
+  let shortTail = tail.replace(/^,+/, "").trim();
+  if (/골프와 여행의 시작/.test(shortTail)) {
+    shortTail = shortTail.replace(/골프와 여행의 시작/g, "골프·여행");
+  }
+  return (
+    <>
+      <span className="text-[var(--hero-accent)]">{accent}</span>
+      {shortTail ? <span className="text-[var(--hero-text-primary)]"> {shortTail}</span> : null}
+    </>
+  );
+}
 
 export type HeroSectionProps = {
   /** 메인 비주얼 배너 (데스크탑만 사용, 모바일 Hero에서는 미노출) */
@@ -31,17 +53,10 @@ export type HeroSectionProps = {
 
 /**
  * 홈 최상단 Hero 섹션.
- * 모바일: 이미지 없이 텍스트 + 검색 + 인기 여행지/추천 테마 칩.
+ * 모바일: 이미지 없이 텍스트 + 검색 + 빠른 선택 허브(아이콘 액션).
  * 데스크탑: 기존 비주얼 배너 + 문구 + 검색 + 추천 링크 텍스트 유지.
  */
-export default function HeroSection({
-  primaryBanner = null,
-  hero,
-  heroChipDestinations = [],
-  heroChipThemes = [],
-}: HeroSectionProps) {
-  const hasChips = heroChipDestinations.length > 0 || heroChipThemes.length > 0;
-
+export default function HeroSection({ primaryBanner = null, hero }: HeroSectionProps) {
   return (
     <section className="relative bg-[var(--hero-bg)]">
       {/* 데스크탑 전용: 배경 이미지 + 오버레이 (모바일에서는 렌더하지 않음) */}
@@ -68,77 +83,45 @@ export default function HeroSection({
       ) : null}
 
       <PageContainer size="wide">
-        <div className="relative z-10 py-4 text-[var(--hero-text-primary)] sm:py-6 md:py-10">
-          <div className="space-y-4 md:space-y-5">
+        <div className="relative z-10 py-2.5 text-[var(--hero-text-primary)] sm:py-4 md:py-10">
+          <div className="space-y-2 md:space-y-5">
             {/* 모바일: Hero 이미지 카드 제거 — 이미지 블록 없음 */}
 
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center md:gap-6">
-              <div className="space-y-3 md:space-y-4">
-                <p className="inline-flex items-center gap-2 rounded-full bg-[var(--hero-badge-bg)] px-3 py-1 section-label text-[var(--hero-text-secondary)] ring-1 ring-[var(--hero-badge-border)] md:px-4 md:type-small">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center md:gap-6">
+              <div className="flex flex-col gap-2 md:space-y-4">
+                <p className="section-label inline-flex w-fit max-w-full items-center gap-1.5 rounded-full bg-[var(--hero-badge-bg)] px-2.5 py-0.5 text-[10px] font-medium text-[var(--hero-text-secondary)] ring-1 ring-[var(--hero-badge-border)] sm:px-3 sm:py-1 sm:text-[11px] md:px-4 md:py-1 md:type-small">
                   {hero.badge ?? "THEALL TOUR"}
                 </p>
-                <h1 className="heading-display-hero type-h1 font-semibold leading-[1.15] md:text-[2.5rem]">
-                  {hero.main_copy_accent ? (
-                    <>
-                      <span className="text-[var(--hero-accent)]">{hero.main_copy_accent}</span>
-                      {hero.main_copy_tail}
-                    </>
-                  ) : (
-                    hero.main_copy_tail?.trim() || "골프와 여행의 시작"
-                  )}
+                <h1 className="font-semibold leading-snug tracking-tight text-[var(--hero-text-primary)] text-xl sm:text-[1.65rem] sm:leading-tight md:heading-display-hero md:type-h1 md:text-[2.5rem] md:leading-[1.15]">
+                  <span className="md:hidden">
+                    <MobileHeroHeadline hero={hero} />
+                  </span>
+                  <span className="hidden md:inline">
+                    {hero.main_copy_accent ? (
+                      <>
+                        <span className="text-[var(--hero-accent)]">{hero.main_copy_accent}</span>
+                        {hero.main_copy_tail}
+                      </>
+                    ) : (
+                      hero.main_copy_tail?.trim() || "골프와 여행의 시작"
+                    )}
+                  </span>
                 </h1>
-                <p className="max-w-xl type-small font-semibold text-[var(--hero-text-secondary)] leading-snug md:type-body">
-                  {hero.sub_description ?? ""}
-                </p>
-                <div className="w-full max-w-[720px] space-y-1">
-                  <div className="pt-1 md:pt-3">
+                {hero.sub_description ? (
+                  <p className="hidden max-w-xl md:block type-small font-semibold text-[var(--hero-text-secondary)] leading-snug md:type-body">
+                    {hero.sub_description}
+                  </p>
+                ) : null}
+                <div className="w-full max-w-[720px] space-y-0 md:space-y-1">
+                  <div className="pt-0 md:pt-3">
                     <HomeHeroSearch
                       placeholder={hero.search_placeholder ?? "지역, 테마, 상품명을 검색해보세요"}
                       hideRecentSearchesOnMobile
                       variant="hero-mobile"
                     />
                   </div>
-                  {/* 모바일: 인기 여행지 / 추천 테마 칩 (검색 바로 아래) */}
-                  {hasChips ? (
-                    <div className="flex flex-col gap-3 pt-2 md:hidden">
-                      {heroChipDestinations.length > 0 ? (
-                        <div className="flex flex-col gap-1.5">
-                          <span className="section-label text-[11px] font-medium text-[var(--hero-text-secondary)]/90">
-                            인기 여행지
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {heroChipDestinations.map((item) => (
-                              <Link
-                                key={item.id}
-                                href={item.href}
-                                className="inline-flex items-center rounded-full border border-[var(--hero-badge-border)] bg-[var(--hero-badge-bg)] px-3 py-1.5 text-xs font-medium text-[var(--hero-text-primary)] transition hover:bg-[var(--hero-badge-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] active:opacity-90"
-                              >
-                                {item.name}
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      {heroChipThemes.length > 0 ? (
-                        <div className="flex flex-col gap-1.5">
-                          <span className="section-label text-[11px] font-medium text-[var(--hero-text-secondary)]/90">
-                            추천 테마
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {heroChipThemes.map((item) => (
-                              <Link
-                                key={item.id}
-                                href={item.href}
-                                className="inline-flex items-center rounded-full border border-[var(--hero-badge-border)] bg-[var(--hero-badge-bg)] px-3 py-1.5 text-xs font-medium text-[var(--hero-text-primary)] transition hover:bg-[var(--hero-badge-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] active:opacity-90"
-                              >
-                                {item.name}
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  {/* 모바일: 빠른 선택 허브 (아이콘 + 라벨, 5열) */}
+                  <HomeQuickKeywords />
                   {/* 데스크탑: 기존 추천 링크 텍스트 */}
                   <p className="hidden pt-1 type-caption text-[var(--hero-text-secondary)]/80 md:block">
                     {hero.recommended_text ? (

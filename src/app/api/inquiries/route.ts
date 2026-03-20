@@ -496,6 +496,11 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         receiver: normalizedPhone,
         msg: message,
+        name,
+        phone,
+        product_title: productTitle || null,
+        source_path: sourcePath || null,
+        content: contentValue || "",
       }),
       signal: aligoController.signal,
     });

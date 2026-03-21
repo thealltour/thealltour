@@ -65,9 +65,10 @@ export default async function Home() {
         <main className="flex w-full min-w-0 max-w-full flex-col pb-6 sm:pb-10 md:pb-14">
           <HeroSection heroBanners={topBanners} hero={hero} />
 
+          {/* max-w-full 금지: tailwind-merge 시 wide(1600px)가 무효화되어 헤더·추천/지역 허브와 폭이 어긋남 */}
           <PageContainer
             size="wide"
-            className="flex max-w-full flex-col px-4 max-md:gap-10 max-md:pt-8 sm:px-6 md:gap-20 md:pt-0 lg:px-8 xl:px-10"
+            className="flex flex-col max-md:gap-10 max-md:pt-8 md:gap-20 md:pt-0"
           >
             <DestinationSection
               items={destinationsForHome}

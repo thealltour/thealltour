@@ -19,6 +19,12 @@ function bannerSrcForMidViewport(banner: HomeBanner): string {
 
 const SLIDE_INTERVAL_MS = 5000;
 
+/** PageContainer `wide`와 동일 — 파노라마·srcset이 뷰포트 전체로 불필요 확대되지 않도록 */
+const HERO_PANORAMA_MAX_WIDTH_PX = 1600;
+
+/** md+ 파노라마 박스 높이(명시 필수: 자식이 absolute fill이라 max-h만으로는 높이 0) — 과도한 세로 확대 완화 */
+const HERO_PANORAMA_HEIGHT_CLASS = "min-h-[260px] h-[min(52vh,560px)]";
+
 type HeroPanoramaSlideshowProps = {
   banners: HomeBanner[];
 };
@@ -75,7 +81,7 @@ function HeroPanoramaSlideshow({ banners }: HeroPanoramaSlideshowProps) {
               src={getSrc(banner)}
               alt={banner.title}
               fill
-              sizes="100vw"
+              sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
               priority={i === 0}
               fetchPriority={i === 0 ? "high" : "auto"}
               quality={82}
@@ -160,7 +166,14 @@ export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps
   const hasBanners = heroBanners.length > 0;
 
   return (
-    <section className="relative overflow-hidden bg-[var(--hero-bg)] max-md:border-b max-md:border-slate-200/90 max-md:shadow-[inset_0_-1px_0_rgba(255,255,255,0.65)]">
+    <section
+      className={cn(
+        "relative w-full overflow-hidden bg-[var(--hero-bg)]",
+        /* md+: 헤더·본문과 동일 max-w-[1600px] 중앙 정렬 (/recommended, /destinations 와 정렬) */
+        "md:mx-auto md:max-w-[1600px]",
+        "max-md:border-b max-md:border-slate-200/90 max-md:shadow-[inset_0_-1px_0_rgba(255,255,255,0.65)]",
+      )}
+    >
       {/* 모바일 전용: 소프트 그라데이션 + 은은한 브랜드 글로우 (globals `.hero-mobile-atmosphere`) */}
       <div className="pointer-events-none absolute inset-0 z-0 md:hidden" aria-hidden>
         <div className="hero-mobile-atmosphere" />
@@ -169,7 +182,18 @@ export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps
       {/* md+ 전용: 배경 슬라이드 + 공통 오버레이 (모바일만 미노출). link_url·클릭은 미연결(pointer-events-none). */}
       {hasBanners ? (
         <>
-          <div className="pointer-events-none absolute inset-0 hidden md:block">
+          {/*
+            파노라마는 max 폭·세로 상한 박스 안에서만 object-cover (본문 컨테이너 1600px 정렬).
+            스크림은 섹션 전체 높이를 덮어 하단 콘텐츠 가독성 유지.
+          */}
+          <div
+            className={cn(
+              "pointer-events-none absolute left-1/2 top-0 z-0 hidden -translate-x-1/2 md:block",
+              "w-full max-w-[1600px]",
+              HERO_PANORAMA_HEIGHT_CLASS,
+              "overflow-hidden",
+            )}
+          >
             <HeroPanoramaSlideshow banners={heroBanners} />
             <div className="absolute inset-0 z-[2] hero-scrim" />
             <div className="absolute inset-y-0 right-0 z-[2] w-3/5 hero-overlay-warm mix-blend-soft-light" />

@@ -26,7 +26,7 @@ export function ProductHighlightsCard({ highlights }: ProductHighlightsCardProps
       <ul className="flex flex-col gap-2 text-sm text-slate-700">
         {items.map((label, i) => (
           <li key={`${i}-${label}`} className="flex items-center gap-2">
-            <span className="shrink-0 text-[#2563eb]" aria-hidden>
+            <span className="shrink-0 text-[var(--primary)]" aria-hidden>
               ✓
             </span>
             <span>{label.trim()}</span>

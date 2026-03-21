@@ -2,6 +2,8 @@
 
 import { useConsultModal } from "@/components/ConsultModal";
 import { InfoItem } from "@/components/products/detail/InfoItem";
+import { buttonVariants } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type ProductSummaryInfoProps = {
   duration?: string;
@@ -102,7 +104,13 @@ export default function ProductSummaryInfo({
               href={kakaoHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className={cn(
+                buttonVariants({
+                  variant: "kakao",
+                  size: "md",
+                  className: "min-h-11 flex-1 text-sm font-semibold sm:flex-none",
+                }),
+              )}
               aria-label="카카오톡으로 상담하기"
             >
               카카오 상담

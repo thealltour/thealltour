@@ -478,7 +478,7 @@ export default function ProductDetailV2({
           className="mt-4 border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe] md:hidden"
         >
           {displayPrice ? (
-            <p className="font-price-strong text-xl font-bold text-[#1E3A8A] md:text-2xl">
+            <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
               ₩{displayPrice}~
             </p>
           ) : (
@@ -621,12 +621,12 @@ export default function ProductDetailV2({
               <div className="flex flex-wrap gap-3">
                 {consultHref ? (
                   <a href={consultHref}>
-                    <Button variant="primary" size="md">{getProductCtaLabel(statusTag)}</Button>
+                    <Button variant="accent" size="md">{getProductCtaLabel(statusTag)}</Button>
                   </a>
                 ) : null}
                 {kakaoHref ? (
                   <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" size="md">카톡 상담</Button>
+                    <Button variant="kakao" size="md">카톡 상담</Button>
                   </a>
                 ) : null}
               </div>
@@ -720,7 +720,7 @@ export default function ProductDetailV2({
             )}
             {optionalLines.length > 0 && (
               <div>
-                <h3 className="mb-3 text-sm font-bold text-[#1e3a8a]">선택 관광</h3>
+                <h3 className="mb-3 text-sm font-bold text-[var(--primary)]">선택 관광</h3>
                 <ul className={listClass}>
                   {optionalLines.map((line, i) => (
                     <li key={i} className="flex items-start gap-2">
@@ -728,7 +728,7 @@ export default function ProductDetailV2({
                         name="check"
                         decorative
                         size={14}
-                        className="mt-1 shrink-0 text-[#2563eb]"
+                        className="mt-1 shrink-0 text-[var(--primary)]"
                       />
                       <span className="whitespace-normal">{line}</span>
                     </li>

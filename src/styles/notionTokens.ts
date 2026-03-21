@@ -79,7 +79,7 @@ export const notionTokens = {
       textSecondary: "#1E293B",
       textMuted: "#64748B",
       heading: "#0B1220",
-      link: "#1E3A8A",
+      link: "#1E5B8F",
       linkHover: "#1D4ED8",
       underline: "rgba(30, 58, 138, 0.62)",
       codeText: "#0F172A",

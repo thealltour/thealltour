@@ -206,7 +206,7 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
                       </p>
                     </div>
                     {typeof product.price === "number" ? (
-                      <p className="font-price-strong type-body font-bold text-[#1E3A8A]">
+                      <p className="font-price-strong type-body font-bold text-[var(--primary)]">
                         {new Intl.NumberFormat("ko-KR").format(product.price)}원
                       </p>
                     ) : null}

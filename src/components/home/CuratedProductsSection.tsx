@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { SectionBlock } from "@/components/layout/SectionBlock";
-import { SectionHeader, SECTION_HEADER_MOBILE_CTA_CLASS } from "@/components/layout/SectionHeader";
+import {
+  SectionHeader,
+  SECTION_HEADER_MOBILE_CTA_CLASS,
+  HOME_MAIN_SECTION_BLOCK_CLASS,
+} from "@/components/layout/SectionHeader";
 import { CuratedSectionScrollBlock } from "@/components/home/CuratedSectionScrollBlock";
 import type {
   HomeCuratedSettings,
@@ -34,15 +38,13 @@ export default function CuratedProductsSection({
       <SectionBlock
         surface="none"
         padding="md"
-        className={cn(
-          "space-y-2 sm:space-y-4 !p-3 sm:!p-6 md:!p-8",
-          className,
-        )}
+        className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
       >
         <SectionHeader
           eyebrow={settings!.section_label}
           title={settings!.section_title}
           description={settings!.section_description}
+          hideEyebrowOnTablet
           action={
             <Link
               href="/recommended"
@@ -55,7 +57,7 @@ export default function CuratedProductsSection({
           }
         />
 
-        <div className="mx-auto w-full max-w-[1344px]">
+        <div className="mx-auto flex w-full max-w-[1344px] flex-col gap-8 max-md:gap-10">
           {sections.map((sec) => (
             <CuratedSectionScrollBlock
               key={sec.id}
@@ -69,7 +71,11 @@ export default function CuratedProductsSection({
   }
 
   return (
-    <SectionBlock surface="card" padding="md" className={className}>
+    <SectionBlock
+      surface="card"
+      padding="md"
+      className={cn("!px-4 !py-3 sm:!p-6 md:!p-8", className)}
+    >
       <p className="type-small text-[var(--text-muted)]">
         메인 추천 상품이 없습니다. 관리자 페이지에서 추천 상품을 체크해 주세요.
       </p>

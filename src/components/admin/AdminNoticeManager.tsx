@@ -225,7 +225,7 @@ export default function AdminNoticeManager() {
       {view === "legal" && (
       <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-bold text-[#1e3a8a]">회원가입 법률 문서 관리</h3>
+          <h3 className="text-lg font-bold text-[var(--primary)]">회원가입 법률 문서 관리</h3>
           <button
             type="button"
             onClick={() => setIsLegalPanelOpen((prev) => !prev)}
@@ -264,7 +264,7 @@ export default function AdminNoticeManager() {
                     }))
                   }
                   placeholder="서비스 이용약관 전문을 입력하세요."
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--primary-soft)]"
                 />
               </label>
               <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
@@ -279,7 +279,7 @@ export default function AdminNoticeManager() {
                     }))
                   }
                   placeholder="개인정보처리방침 전문을 입력하세요."
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--primary-soft)]"
                 />
               </label>
             </div>
@@ -291,7 +291,7 @@ export default function AdminNoticeManager() {
       {view === "create" && (
       <section className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-bold text-[#1e3a8a]">{editingId ? "공지 수정" : "공지 등록"}</h3>
+          <h3 className="text-lg font-bold text-[var(--primary)]">{editingId ? "공지 수정" : "공지 등록"}</h3>
           {editingId ? (
             <button
               type="button"
@@ -308,7 +308,7 @@ export default function AdminNoticeManager() {
             value={form.title}
             onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
             placeholder="공지 제목"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />
           <textarea
             required
@@ -316,27 +316,27 @@ export default function AdminNoticeManager() {
             value={form.content}
             onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
             placeholder="공지 내용을 입력하세요."
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] md:col-span-2"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />
           <input
             value={form.sort_order}
             onChange={(event) => setForm((prev) => ({ ...prev, sort_order: event.target.value }))}
             placeholder="노출 순서 (숫자 작을수록 먼저)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={form.is_published}
               onChange={(event) => setForm((prev) => ({ ...prev, is_published: event.target.checked }))}
-              className="h-4 w-4 accent-[#1d4ed8]"
+              className="h-4 w-4 accent-[var(--primary)]"
             />
             게시(공개) 상태
           </label>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-lg bg-[#1d4ed8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd] md:col-span-2"
+            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
           >
             {isSubmitting ? "저장 중..." : editingId ? "수정 저장" : "공지 등록"}
           </button>
@@ -353,7 +353,7 @@ export default function AdminNoticeManager() {
 
       {view === "list" && (
       <section className="space-y-3">
-        <h3 className="text-lg font-bold text-[#1e3a8a]">등록된 공지</h3>
+        <h3 className="text-lg font-bold text-[var(--primary)]">등록된 공지</h3>
         {isLoading ? (
           <p className="text-sm text-[var(--text-muted)]">공지 목록을 불러오는 중입니다...</p>
         ) : notices.length === 0 ? (

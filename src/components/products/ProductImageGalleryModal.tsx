@@ -139,7 +139,7 @@ export function ProductImageGalleryModal({
               type="button"
               onClick={() => setMode("default")}
               className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                mode === "default" ? "bg-white text-[#1E3A8A]" : "text-slate-600"
+                mode === "default" ? "bg-white text-[var(--primary)]" : "text-slate-600"
               }`}
             >
               기본
@@ -148,7 +148,7 @@ export function ProductImageGalleryModal({
               type="button"
               onClick={() => setMode("collage")}
               className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                mode === "collage" ? "bg-white text-[#1E3A8A]" : "text-slate-600"
+                mode === "collage" ? "bg-white text-[var(--primary)]" : "text-slate-600"
               }`}
             >
               콜라주
@@ -268,7 +268,7 @@ export function ProductImageGalleryModal({
                       onClick={() => onSelectIndex(index)}
                       className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border ${
                         selectedIndex === index
-                          ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                          ? "border-[var(--accent)] ring-2 ring-[var(--accent-soft)]"
                           : "border-slate-200 opacity-80 hover:opacity-100"
                       }`}
                     >
@@ -291,7 +291,7 @@ export function ProductImageGalleryModal({
                       onClick={() => onSelectIndex(index)}
                       className={`relative aspect-square overflow-hidden rounded-lg border ${
                         selectedIndex === index
-                          ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                          ? "border-[var(--accent)] ring-2 ring-[var(--accent-soft)]"
                           : "border-slate-200 opacity-80 hover:opacity-100"
                       }`}
                     >
@@ -316,7 +316,7 @@ export function ProductImageGalleryModal({
                       onClick={() => onSelectIndex(index)}
                       className={`group relative mb-2 block w-full overflow-hidden rounded-lg border ${
                         selectedIndex === index
-                          ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                          ? "border-[var(--accent)] ring-2 ring-[var(--accent-soft)]"
                           : "border-slate-200"
                       }`}
                     >

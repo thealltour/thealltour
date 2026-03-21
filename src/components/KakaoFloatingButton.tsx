@@ -63,7 +63,8 @@ export default function KakaoFloatingButton() {
         className={buttonVariants({
           variant: "kakao",
           size: "sm",
-          className: "h-11 gap-2 px-4 text-[13px] active:scale-95 max-[360px]:px-3",
+          className:
+            "h-11 gap-2 rounded-full px-4 text-[13px] shadow-md hover:shadow-md active:scale-95 max-[360px]:px-3",
         })}
       >
         <MessageCircle className="h-5 w-5" aria-hidden="true" />

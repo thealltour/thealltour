@@ -3,52 +3,76 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Card } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/Button";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
-import type {
-  ProductCardProps,
-  ProductCardStatus,
-} from "@/components/products/ProductCard";
+import type { ProductCardProps } from "@/components/products/ProductCard";
+import {
+  displayChipSurfaceClass,
+  pickDisplayChips,
+} from "@/lib/productCardSignals";
 
 export type ProductListCardProps = ProductCardProps;
 
-const STATUS_LABELS: Record<ProductCardStatus, string> = {
-  AVAILABLE: "예약 가능",
-  LIMITED: "잔여 한정",
-  SOLD_OUT: "마감",
-  CONSULT_REQUIRED: "상담 후 안내",
-};
-
-function badgeTypeToTagVariant(
-  type: string,
-): "accent" | "muted" | "gold" {
-  const t = type?.toLowerCase() ?? "";
-  if (t === "accent" || t === "primary" || t === "인기" || t === "추천")
-    return "accent";
-  if (t === "gold" || t === "제철" || t === "마감임박") return "gold";
-  return "muted";
+/** duration/meta + overview를 한 줄로 합치되, 동일 조각은 한 번만 */
+function mergeDistinctMetaParts(a: string, b: string): string {
+  const parts = [...a.split(" · "), ...b.split(" · ")]
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of parts) {
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out.join(" · ");
 }
 
-function badgeVariantToChipStyle(variant: "accent" | "muted" | "gold") {
-  if (variant === "accent") {
-    return "border-blue-200 bg-blue-600/95 text-white";
-  }
-  if (variant === "gold") {
-    return "border-amber-200 bg-amber-500/95 text-white";
-  }
-  return "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]";
+function formatReviewCount(n: number): string {
+  return new Intl.NumberFormat("ko-KR").format(n);
+}
+
+/** ratingAvg 유효 + reviewCount > 0 — 형식 ★ 4.8 (127), 제목 우측 상단 배치용 */
+function ListRatingBlock({
+  ratingAvg,
+  reviewCount,
+  className,
+}: {
+  ratingAvg?: number;
+  reviewCount?: number;
+  className?: string;
+}) {
+  const hasRating =
+    typeof ratingAvg === "number" && Number.isFinite(ratingAvg) && ratingAvg > 0;
+  const rcPositive =
+    typeof reviewCount === "number" &&
+    Number.isFinite(reviewCount) &&
+    reviewCount > 0;
+  if (!hasRating || !rcPositive) return null;
+  return (
+    <p
+      className={cn(
+        "inline-flex shrink-0 items-baseline gap-1 tabular-nums text-sm font-medium text-neutral-700",
+        className,
+      )}
+    >
+      <span aria-hidden className="translate-y-px text-[0.95em] leading-none">
+        ★
+      </span>
+      <span>{ratingAvg!.toFixed(1)}</span>
+      <span>({formatReviewCount(reviewCount!)})</span>
+    </p>
+  );
 }
 
 export default function ProductListCard({
   title = "",
   price,
   duration = "",
-  region = "",
-  categories = [],
   tags = [],
   status,
   badges = [],
@@ -58,13 +82,15 @@ export default function ProductListCard({
   onClickConsult,
   priceMeta = "1인 기준",
   metaInfo = "",
+  oneLiner,
+  ratingAvg,
+  reviewCount,
   overviewStay = "",
   overviewRegion = "",
   overviewDuration = "",
   analyticsSource,
   analyticsSection,
   productId,
-  maxTags = 3,
 }: ProductListCardProps) {
   const [consultPressed, setConsultPressed] = useState(false);
 
@@ -79,15 +105,7 @@ export default function ProductListCard({
     (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
   );
   const activeBadges = sortedBadges.filter((b) => b.isActive !== false);
-
-  const tagVariantFromStatus = (
-    s?: ProductCardStatus,
-  ): "accent" | "muted" | "gold" => {
-    if (!s) return "muted";
-    if (s === "AVAILABLE") return "accent";
-    if (s === "LIMITED") return "gold";
-    return "muted";
-  };
+  const displayChips = pickDisplayChips(status, activeBadges);
 
   const handleCardClick = () => {
     onClickDetail?.();
@@ -131,49 +149,25 @@ export default function ProductListCard({
     onClickConsult?.();
   };
 
-  const statusChip =
-    status != null
-      ? { label: STATUS_LABELS[status], variant: tagVariantFromStatus(status) }
-      : null;
-  const categoryChip = categories[0]?.trim()
-    ? { label: categories[0].trim(), variant: "muted" as const }
-    : null;
-  const themeChip = region?.trim()
-    ? { label: region.trim(), variant: "muted" as const }
-    : null;
-  const badgeChips = activeBadges.slice(0, 1).map((b) => ({
-    label: b.label,
-    variant: badgeTypeToTagVariant(b.type),
-  }));
-
-  const topLeftChipsRaw = [statusChip, categoryChip ?? themeChip, ...badgeChips]
-    .filter(
-      (x): x is { label: string; variant: "accent" | "muted" | "gold" } =>
-        Boolean(x),
-    )
-    .filter((chip, index, arr) => {
-      const key = `${chip.variant}-${chip.label}`;
-      return arr.findIndex((c) => `${c.variant}-${c.label}` === key) === index;
-    });
-  const topLeftChips = topLeftChipsRaw.slice(0, 3);
-
   const metaLine = [duration, metaInfo].filter(Boolean).join(" · ");
-  const displayTags = tags.slice(0, maxTags);
+  const oneLine = oneLiner?.trim() ?? "";
+  const overviewLine = [overviewDuration, overviewRegion, overviewStay]
+    .map((s) => s?.trim())
+    .filter((s) => s && s !== "-")
+    .join(" · ");
+  const simpleMetaLine =
+    metaLine && overviewLine
+      ? mergeDistinctMetaParts(metaLine, overviewLine)
+      : metaLine || overviewLine;
+
+  /** SEO 메타 타이틀(스페이스 구분) → 상품등록 시 입력한 키워드를 해시태그로 노출 */
+  const seoHashtags = tags.map((t) => t.trim()).filter(Boolean);
 
   const cardContent = (
-    <div className="grid w-full grid-cols-[280px_minmax(0,1fr)_200px]">
-      {/* 좌측: 이미지 + 배지 */}
+    <div className="flex w-full flex-col">
+    <div className="grid w-full grid-cols-[280px_minmax(0,1fr)_300px]">
+      {/* 좌측: 이미지 (판단 칩은 중앙 열 상단 — CTR 흐름 정렬) */}
       <div className="relative h-full min-h-[220px] overflow-hidden rounded-l-2xl bg-[var(--surface-muted)]">
-        <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1">
-          {topLeftChips.map((chip) => (
-            <span
-              key={`${chip.variant}-${chip.label}`}
-              className={`inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none shadow-sm backdrop-blur ${badgeVariantToChipStyle(chip.variant)}`}
-            >
-              {chip.label}
-            </span>
-          ))}
-        </div>
         {thumbnailUrl ? (
           <Image
             src={normalizeProductImageUrl(thumbnailUrl)}
@@ -193,105 +187,120 @@ export default function ProductListCard({
         )}
       </div>
 
-      {/* 중앙: 제목 / 메타 / 오버뷰 / 태그 */}
-      <div className="flex min-w-0 flex-col gap-3 p-5">
-        <h2 className="line-clamp-2 text-lg font-semibold leading-snug text-[var(--text-primary)]">
-          {title || "상품명"}
-        </h2>
-        {metaLine ? (
-          <p className="text-sm text-[var(--text-muted)]">{metaLine}</p>
+      {/* 중앙: 배지 → [제목 + 평점 우측상단] → one-liner → 간단 메타 1줄 */}
+      <div className="flex min-w-0 flex-col gap-1.5 p-5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 gap-y-1">
+          {displayChips.map((chip) => (
+            <span
+              key={`${chip.variant}-${chip.label}`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none shadow-sm backdrop-blur",
+                displayChipSurfaceClass(chip.variant),
+              )}
+            >
+              {chip.label}
+            </span>
+          ))}
+        </div>
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <h2 className="line-clamp-2 min-w-0 flex-1 text-lg font-semibold leading-snug text-[var(--text-primary)]">
+            {title || "상품명"}
+          </h2>
+          <ListRatingBlock
+            ratingAvg={ratingAvg}
+            reviewCount={reviewCount}
+            className="pt-0.5"
+          />
+        </div>
+        {oneLine ? (
+          <p className="line-clamp-2 text-sm leading-snug text-[var(--text-muted)]">
+            {oneLine}
+          </p>
         ) : null}
-        {(overviewStay || overviewRegion || overviewDuration) && (
-          <div className="mt-3 grid grid-cols-3 gap-4">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-              <p className="text-xs text-[var(--text-muted)]">숙소</p>
-              <p className="mt-1 line-clamp-2 text-sm font-semibold text-[var(--text-primary)]">
-                {overviewStay || "-"}
-              </p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-              <p className="text-xs text-[var(--text-muted)]">지역</p>
-              <p className="mt-1 line-clamp-2 text-sm font-semibold text-[var(--text-primary)]">
-                {overviewRegion || "-"}
-              </p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-              <p className="text-xs text-[var(--text-muted)]">기간</p>
-              <p className="mt-1 line-clamp-2 text-sm font-semibold text-[var(--text-primary)]">
-                {overviewDuration || "-"}
-              </p>
-            </div>
-          </div>
-        )}
-        {displayTags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {displayTags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text-muted)]"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
+        {simpleMetaLine ? (
+          <p className="line-clamp-1 text-sm text-[var(--text-muted)]">
+            {simpleMetaLine}
+          </p>
         ) : null}
       </div>
 
-      {/* 우측: 가격 + 가격 기준 + CTA */}
-      <div className="flex h-full flex-col justify-between border-l border-[var(--border)] p-5">
-        <div>
-          {priceFormatted != null ? (
-            <>
-              <p className="text-2xl font-bold text-[var(--primary)]">
-                {priceFormatted}원~
-              </p>
-              {priceMeta ? (
-                <p className="text-xs text-[var(--text-subtle)]">
-                  {priceMeta}
+      {/* 우측: 하단 anchor — 가격 먼저, CTA는 보조(시각 비중 완화) */}
+      <div className="flex min-h-[220px] flex-col border-l border-[var(--border)] p-5">
+        <div className="min-h-0 flex-1" aria-hidden />
+        <div className="mt-auto space-y-4">
+          <div className="min-w-0">
+            {priceFormatted != null ? (
+              <>
+                <p className="font-price-strong text-3xl font-extrabold leading-tight tabular-nums text-[var(--primary)]">
+                  {priceFormatted}원~
                 </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-sm font-semibold text-[var(--text-muted)]">
-              상담 후 견적
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            className={cn(buttonVariants({ variant: "outline", size: "md" }), "w-full")}
-            onClick={handleDetailButtonClick}
-          >
-            자세히 보기
-          </button>
-          {onClickConsult ? (
+                {priceMeta ? (
+                  <p className="mt-1 text-xs font-medium text-[var(--text-subtle)]">
+                    {priceMeta}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-base font-semibold text-[var(--text-muted)]">
+                상담 후 견적
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
             <button
               type="button"
-              disabled={consultPressed}
-              className={cn(
-                buttonVariants({ variant: "primary", size: "md" }),
-                "w-full",
-                consultPressed && "pointer-events-none",
-              )}
-              onClick={handleConsultClick}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ")
-                  handleConsultKey(e);
-              }}
+              className="w-full text-center text-sm font-semibold text-[var(--primary)] underline-offset-2 hover:underline"
+              onClick={handleDetailButtonClick}
             >
-              {status === "SOLD_OUT" ? "대기 문의" : "상담 문의"}
+              자세히 보기
             </button>
-          ) : null}
+            {onClickConsult ? (
+              <button
+                type="button"
+                disabled={consultPressed}
+                className={cn(
+                  buttonVariants({ variant: "accent", size: "md" }),
+                  "w-full",
+                  consultPressed && "pointer-events-none",
+                )}
+                onClick={handleConsultClick}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    handleConsultKey(e);
+                }}
+              >
+                {status === "SOLD_OUT" ? "대기 문의" : "상담 문의"}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
+    {seoHashtags.length > 0 ? (
+      <div
+        className="flex w-full flex-wrap gap-x-2 gap-y-1 border-t border-[var(--border)]/25 px-5 py-2.5"
+        aria-label="상품 SEO 키워드"
+      >
+        {seoHashtags.map((tag, i) => (
+          <span
+            key={`${tag}-${i}`}
+            className="text-[0.9rem] font-medium leading-snug text-[var(--text-muted)]"
+          >
+            #{tag}
+          </span>
+        ))}
+      </div>
+    ) : null}
+    </div>
   );
 
+  /** 테두리·그림자 최소화: 목록이 관리 패널처럼 보이지 않게(콘텐츠 카드 톤). Card interactive는 border+shadow가 고정이라 div로 래핑. */
   const cardClassName = cn(
-    "group w-full cursor-pointer overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)]",
+    "group w-full cursor-pointer overflow-hidden rounded-2xl border-0 bg-[var(--surface)]",
+    "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_1px_3px_rgba(15,23,42,0.03)]",
+    "dark:shadow-[0_1px_2px_rgba(0,0,0,0.18),0_1px_3px_rgba(0,0,0,0.12)]",
     CARD_TRANSITION,
-    "hover:shadow-md hover:border-[var(--primary)]/30",
+    "hover:shadow-[0_2px_10px_rgba(15,23,42,0.055)] dark:hover:shadow-[0_2px_12px_rgba(0,0,0,0.22)]",
   );
 
   if (hrefDetail) {
@@ -313,23 +322,23 @@ export default function ProductListCard({
         className="block w-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
         onClick={handleLinkClick}
       >
-        <Card variant="interactive" className={cardClassName}>
-          {cardContent}
-        </Card>
+        <div className={cardClassName}>{cardContent}</div>
       </Link>
     );
   }
 
   return (
-    <Card
-      variant="interactive"
-      className={`${cardClassName} outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2`}
+    <div
+      className={cn(
+        cardClassName,
+        "outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]",
+      )}
       role="button"
       tabIndex={0}
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
     >
       {cardContent}
-    </Card>
+    </div>
   );
 }

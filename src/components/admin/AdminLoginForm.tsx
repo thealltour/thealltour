@@ -47,7 +47,7 @@ export default function AdminLoginForm() {
           value={id}
           onChange={(event) => setId(event.target.value)}
           placeholder="아이디를 입력하세요"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--primary-soft)]"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
@@ -58,13 +58,13 @@ export default function AdminLoginForm() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           placeholder="비밀번호를 입력하세요"
-          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--primary-soft)]"
         />
       </label>
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-lg bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
+        className="w-full rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "로그인 중..." : "로그인"}
       </button>

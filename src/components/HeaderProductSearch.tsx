@@ -14,6 +14,8 @@ import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 type HeaderProductSearchProps = {
   searchQuery?: string;
   mode: "desktop" | "mobile";
+  /** 모바일 헤더 2단 구조 하단: 캡슐 검색바 (항상 노출) */
+  headerBar?: boolean;
 };
 
 type ProductSuggestion = {
@@ -28,7 +30,7 @@ type RecommendedKeyword = {
   keyword: string;
 };
 
-export default function HeaderProductSearch({ searchQuery, mode }: HeaderProductSearchProps) {
+export default function HeaderProductSearch({ searchQuery, mode, headerBar = false }: HeaderProductSearchProps) {
   const router = useRouter();
   const [query, setQuery] = useState(searchQuery ?? "");
   const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
@@ -239,6 +241,71 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
               검색
             </Button>
           </div>
+        </div>
+        <HeaderSearchDropdown
+          open={showDropdown}
+          mode={mode}
+          query={query}
+          recentSearches={recentSearches}
+          recommended={recommended}
+          isLoadingRecommended={isLoadingRecommended}
+          productSuggestions={suggestions}
+          onSelectKeyword={handleSelectSuggestion}
+        />
+      </form>
+    );
+  }
+
+  if (mode === "mobile" && headerBar) {
+    return (
+      <form onSubmit={handleSubmit} ref={formRef} className="relative z-10 w-full">
+        <label htmlFor="header-product-search-mobile-bar" className="sr-only">
+          여행 상품 검색
+        </label>
+        <div
+          className={cn(
+            "relative flex w-full items-center gap-2 rounded-full px-3.5 py-2.5 transition",
+            "border border-transparent bg-[var(--mobile-header-search-bg)]",
+            isFocused && "border-[var(--primary)] ring-2 ring-[var(--focus-ring)]",
+          )}
+        >
+          <Icon
+            name="search"
+            decorative
+            size={18}
+            className="pointer-events-none h-[18px] w-[18px] shrink-0 text-[var(--text-muted)]"
+          />
+          <input
+            id="header-product-search-mobile-bar"
+            type="text"
+            ref={mobileInputRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 120)}
+            placeholder="어디로 떠나고 싶으세요?"
+            className="h-9 min-h-0 min-w-0 flex-1 border-0 bg-transparent text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-subtle)]"
+            autoComplete="off"
+          />
+          {query ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                mobileInputRef.current?.focus();
+              }}
+              aria-label="검색어 지우기"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)]"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          ) : null}
+          <button
+            type="submit"
+            className="shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium text-[var(--primary)] transition hover:bg-[var(--primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          >
+            검색
+          </button>
         </div>
         <HeaderSearchDropdown
           open={showDropdown}

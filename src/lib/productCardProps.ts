@@ -21,12 +21,25 @@ export function buildProductCardBadges(product: Product): ProductCardBadge[] {
 }
 
 export type ProductToProductCardOverrides = Partial<
-  Pick<ProductCardProps, "layout" | "analyticsSource" | "analyticsSection" | "onClickDetail" | "onClickConsult">
+  Pick<
+    ProductCardProps,
+    | "layout"
+    | "analyticsSource"
+    | "analyticsSection"
+    | "onClickDetail"
+    | "onClickConsult"
+    | "hrefDetail"
+    | "oneLiner"
+    | "ratingAvg"
+    | "reviewCount"
+    | "className"
+  >
 >;
 
 /**
  * Product → ProductCard에 넘길 공통 props.
- * CuratedBlock, SearchResults, RelatedProductsSection, ProductCatalogSection, guides 등에서 재사용.
+ * CuratedBlock, SearchResults, RelatedProductsSection, ProductCatalogSection, ProductListCard* , guides 등에서 재사용.
+ * CTR: oneLiner / ratingAvg / reviewCount 는 리스트 카드와 그리드 카드 동일 파이프라인.
  */
 export function productToProductCardProps(
   product: Product,
@@ -34,9 +47,8 @@ export function productToProductCardProps(
 ): Omit<ProductCardProps, "onClickDetail" | "onClickConsult"> & ProductToProductCardOverrides {
   const status: ProductCardStatus = (product.status ?? "AVAILABLE") as ProductCardStatus;
   const isRelatedSection = overrides?.analyticsSection === "related_products";
-  const baseBadges = buildProductCardBadges(product);
-  const relatedBadges: ProductCardBadge[] = [
-    ...baseBadges,
+  const baseBadges: ProductCardBadge[] = [
+    ...buildProductCardBadges(product),
     ...(product.is_popular ? [{ type: "accent", label: "인기", priority: 10, isActive: true }] : []),
     ...(product.is_recommend ? [{ type: "accent", label: "추천", priority: 9, isActive: true }] : []),
   ];
@@ -48,7 +60,7 @@ export function productToProductCardProps(
     categories: [product.category].filter(Boolean),
     tags: parseMetaTitleAsHashtags(product.meta_title),
     status,
-    badges: isRelatedSection ? relatedBadges : baseBadges,
+    badges: baseBadges,
     thumbnailUrl: getPrimaryImageUrl(product),
     priceMeta: product.price_meta ?? "1인 기준",
     metaInfo: product.meta_info ?? "",
@@ -58,7 +70,10 @@ export function productToProductCardProps(
     hrefDetail: `/products/${product.id}`,
     productId: product.id,
     layout: "grid",
+    oneLiner: product.one_liner?.trim() || undefined,
+    ratingAvg: product.trust?.ratingAvg,
+    reviewCount: product.trust?.reviewCount,
     ...overrides,
-    ...(isRelatedSection ? { layout: "related" as const, badges: relatedBadges } : {}),
+    ...(isRelatedSection ? { layout: "related" as const } : {}),
   };
 }

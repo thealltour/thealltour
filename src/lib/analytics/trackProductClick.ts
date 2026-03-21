@@ -47,6 +47,8 @@ function resolveSource(
 
 /**
  * 상품 카드 클릭 시 호출. fire-and-forget, 네비게이션 방해 없음.
+ * TODO(CTR 계측): landing 클릭 시 `landingType` / `taxonomySlug`를 ProductCard에서 넘기면
+ * 소스가 landing_region으로만 묶이는 문제를 줄일 수 있음 (스키마 확장은 후속 PR).
  */
 export function trackProductCardClick(params: TrackProductCardClickParams): void {
   try {

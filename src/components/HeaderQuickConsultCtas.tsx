@@ -116,6 +116,7 @@ export default function HeaderQuickConsultCtas({
       <div className="flex shrink-0 items-center gap-2.5">
         <Button
           type="button"
+          variant="accent"
           size="sm"
           onClick={() => setIsOpen(true)}
           className="h-11 px-4 text-[14px] md:px-5 md:text-[15px]"
@@ -227,6 +228,7 @@ export default function HeaderQuickConsultCtas({
                 <div className="flex items-center justify-end">
                   <Button
                     type="submit"
+                    variant="accent"
                     size="sm"
                     disabled={isSubmitting}
                     className="min-w-[180px] px-5 py-2.5"

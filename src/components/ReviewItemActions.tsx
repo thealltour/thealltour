@@ -205,7 +205,7 @@ export default function ReviewItemActions({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-lg bg-[#1d4ed8] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
+            className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? "저장 중..." : "저장"}
           </button>

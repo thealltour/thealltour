@@ -53,7 +53,7 @@ export function ProductDayScheduleCard({
       <header className="mb-3">
         <h3 className="text-base font-semibold text-slate-900">{dayLabel}</h3>
         {summary && (
-          <p className="mt-1 text-sm font-medium text-[#1E3A8A]">{summary}</p>
+          <p className="mt-1 text-sm font-medium text-[var(--primary)]">{summary}</p>
         )}
       </header>
 

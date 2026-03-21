@@ -80,7 +80,7 @@ export function ProductConsultCTA({
         <div className="flex shrink-0 flex-col justify-center" style={{ minWidth: "6rem" }}>
           {priceFormatted != null && priceFormatted !== "" ? (
             <>
-              <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[#1E3A8A]">
+              <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[var(--primary)]">
                 ₩{priceFormatted}~
               </span>
               <span className="mt-0.5 text-[0.6875rem] text-slate-600">1인 기준</span>
@@ -90,12 +90,12 @@ export function ProductConsultCTA({
           )}
         </div>
         <div className="flex h-11 min-w-0 shrink flex-1 items-center gap-2">
-          <Button variant="primary" size="md" onClick={handlePrimary} className="h-11 min-h-11 flex-1 min-w-0 shrink-0 whitespace-nowrap">
+          <Button variant="accent" size="md" onClick={handlePrimary} className="h-11 min-h-11 flex-1 min-w-0 shrink-0 whitespace-nowrap">
             {isSoldOut ? "대기" : "예약 상담"}
           </Button>
           {kakaoHref && (
             <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="min-w-0 shrink">
-              <Button variant="outline" size="md" className="h-11 min-h-11 w-full whitespace-nowrap">
+              <Button variant="kakao" size="md" className="h-11 min-h-11 w-full whitespace-nowrap">
                 카카오톡 상담
               </Button>
             </a>
@@ -111,12 +111,12 @@ export function ProductConsultCTA({
         {copy && <p className="mb-3 text-sm font-medium text-[var(--text-secondary)]">{copy}</p>}
         {subCopy && <p className="mb-4 text-xs text-[var(--text-muted)]">{subCopy}</p>}
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button variant="primary" size="md" onClick={handlePrimary}>
+          <Button variant="accent" size="md" onClick={handlePrimary}>
             {primaryLabel}
           </Button>
           {kakaoHref && (
             <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao}>
-              <Button variant="outline" size="md">카톡 상담</Button>
+              <Button variant="kakao" size="md">카톡 상담</Button>
             </a>
           )}
         </div>
@@ -134,12 +134,12 @@ export function ProductConsultCTA({
         <p className="mb-2 text-sm text-amber-600">필수 옵션을 선택해 주세요.</p>
       )}
       <div className="flex flex-col gap-2">
-        <Button variant="primary" size="md" onClick={handlePrimary} className="w-full">
+        <Button variant="accent" size="md" onClick={handlePrimary} className="w-full">
           {primaryLabel}
         </Button>
         {kakaoHref && (
           <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="block">
-            <Button variant="outline" size="md" className="w-full">카톡 상담</Button>
+            <Button variant="kakao" size="md" className="w-full">카톡 상담</Button>
           </a>
         )}
       </div>

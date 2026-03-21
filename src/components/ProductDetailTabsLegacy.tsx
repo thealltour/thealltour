@@ -96,7 +96,7 @@ export default function ProductDetailTabsLegacy({
   ];
 
   return (
-    <section className="space-y-5 rounded-3xl bg-white/95 p-4 shadow-sm ring-1 ring-[#dbeafe] backdrop-blur md:p-6">
+    <section className="space-y-5 rounded-3xl bg-white/95 p-4 shadow-sm ring-1 ring-[var(--primary-soft)] backdrop-blur md:p-6">
       <div className="flex flex-wrap gap-2">
         {mainTabs.map((tab) => (
           <button
@@ -105,7 +105,7 @@ export default function ProductDetailTabsLegacy({
             onClick={() => setActiveMainTab(tab.key)}
             className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
               activeMainTab === tab.key
-                ? "border-[#60a5fa] bg-[#eff6ff] text-[#1e3a8a] shadow-sm"
+                ? "border-[var(--primary)] bg-[var(--primary-bg)] text-[var(--primary)] shadow-sm"
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             }`}
           >
@@ -123,18 +123,18 @@ export default function ProductDetailTabsLegacy({
                 const isProvided = oxValue === "O";
                 const isNotProvided = oxValue === "X";
                 return (
-                  <article key={item.label} className="rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+                  <article key={item.label} className="rounded-2xl bg-[var(--primary-soft)] p-4 ring-1 ring-[var(--primary-soft)]">
                     {item.type === "text" ? (
                       <>
-                        <div className="mb-3 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#1e3a8a] ring-1 ring-[#dbeafe]">
+                        <div className="mb-3 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--primary)] ring-1 ring-[var(--primary-soft)]">
                           {item.badge}
                         </div>
-                        <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">{item.label}</h3>
+                        <h3 className="mb-2 text-sm font-bold text-[var(--primary)]">{item.label}</h3>
                         <p className="whitespace-pre-line text-sm leading-6 text-slate-700">{item.value?.trim()}</p>
                       </>
                     ) : (
                       <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-[15px] font-bold text-[#1e3a8a]">{item.label}</h3>
+                        <h3 className="text-[15px] font-bold text-[var(--primary)]">{item.label}</h3>
                         <span
                           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
                             isProvided ? "bg-emerald-100 text-emerald-700" : isNotProvided ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-500"
@@ -153,20 +153,20 @@ export default function ProductDetailTabsLegacy({
             )}
           </div>
           {minDeparturePeople?.trim() ? (
-            <article className="rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
-              <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">출발인원</h3>
+            <article className="rounded-2xl bg-[var(--primary-soft)] p-4 ring-1 ring-[var(--primary-soft)]">
+              <h3 className="mb-2 text-sm font-bold text-[var(--primary)]">출발인원</h3>
               <p className="text-sm leading-6 text-slate-700">{minDeparturePeople.trim()}명 이상 출발 확정</p>
             </article>
           ) : null}
           <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-            <article className="rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
-              <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">포함사항</h3>
+            <article className="rounded-2xl bg-[var(--primary-soft)] p-4 ring-1 ring-[var(--primary-soft)]">
+              <h3 className="mb-2 text-sm font-bold text-[var(--primary)]">포함사항</h3>
               <p className="whitespace-pre-line text-sm leading-6 text-slate-700">
                 {includedItems?.trim() || "등록된 포함사항이 없습니다."}
               </p>
             </article>
             <article className="rounded-2xl bg-[#fff7ed] p-4 ring-1 ring-[#fed7aa]">
-              <h3 className="mb-2 text-sm font-bold text-[#1e3a8a]">불포함사항</h3>
+              <h3 className="mb-2 text-sm font-bold text-[var(--primary)]">불포함사항</h3>
               <p className="whitespace-pre-line text-sm leading-6 text-slate-700">
                 {excludedItems?.trim() || "등록된 불포함사항이 없습니다."}
               </p>
@@ -187,7 +187,7 @@ export default function ProductDetailTabsLegacy({
                     onClick={() => setActiveScheduleIndex(index)}
                     className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                       index === activeScheduleIndex
-                        ? "bg-[#1d4ed8] text-white"
+                        ? "bg-[var(--accent)] text-[var(--on-accent)]"
                         : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
@@ -195,8 +195,8 @@ export default function ProductDetailTabsLegacy({
                   </button>
                 ))}
               </div>
-              <article className="fade-in-up rounded-2xl bg-[#f8fbff] p-5 ring-1 ring-[#dbeafe]">
-                <div className="mb-3 inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-bold text-[#1e3a8a] ring-1 ring-[#dbeafe]">
+              <article className="fade-in-up rounded-2xl bg-[var(--primary-soft)] p-5 ring-1 ring-[var(--primary-soft)]">
+                <div className="mb-3 inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-bold text-[var(--primary)] ring-1 ring-[var(--primary-soft)]">
                   {scheduleTabs[activeScheduleIndex]?.label}
                 </div>
                 <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
@@ -211,12 +211,12 @@ export default function ProductDetailTabsLegacy({
       )}
 
       {activeMainTab === "optional" && (
-        <div className="fade-in-up rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+        <div className="fade-in-up rounded-2xl bg-[var(--primary-soft)] p-4 ring-1 ring-[var(--primary-soft)]">
           {optionalLines.length > 0 ? (
             <ul className="space-y-2">
               {optionalLines.map((line, index) => (
                 <li key={`${line}-${index}`} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]" />
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--dot-indicator)]" />
                   <span>{line}</span>
                 </li>
               ))}
@@ -228,7 +228,7 @@ export default function ProductDetailTabsLegacy({
       )}
 
       {activeMainTab === "terms" && (
-        <div className="fade-in-up rounded-2xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+        <div className="fade-in-up rounded-2xl bg-[var(--primary-soft)] p-4 ring-1 ring-[var(--primary-soft)]">
           {termsLines.length > 0 ? (
             <ul className="space-y-2">
               {termsLines.map((line, index) => (

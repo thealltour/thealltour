@@ -95,7 +95,7 @@ export function HomeTaxonomyGrid({
       ref={isHorizontalScroll ? scrollRef : undefined}
       className={cn(
         isHorizontalScroll
-          ? "flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 sm:mx-0 sm:px-0"
+          ? "flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
           : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4",
         !isHorizontalScroll && className,
       )}

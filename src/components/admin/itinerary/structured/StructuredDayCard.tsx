@@ -60,7 +60,7 @@ export function StructuredDayCard({
       onFocus={onFocus}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="rounded bg-[#eff6ff] px-2.5 py-1 text-xs font-bold text-[#1d4ed8] dark:bg-[var(--primary-soft)] dark:text-[var(--primary)]">
+        <span className="rounded bg-[var(--primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--primary)] dark:bg-[var(--primary-soft)] dark:text-[var(--primary)]">
           Day {day.day}
         </span>
         <input

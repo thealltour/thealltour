@@ -24,7 +24,7 @@ export function CuratedSectionScrollBlock({
   if (section.products.length === 0) return null;
 
   return (
-    <div className={cn("space-y-2 sm:space-y-4", className)}>
+    <div className={cn("space-y-3 sm:space-y-4", className)}>
       {showTitle && section.title ? (
         <h3 className="font-card-title text-base font-semibold text-[var(--foreground)] md:text-lg">
           {section.title}

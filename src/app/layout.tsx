@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
+import {
+  THEALL_APPLE_TOUCH_ICON_SRC,
+  THEALL_FAVICON_16_SRC,
+  THEALL_FAVICON_32_SRC,
+} from "@/lib/brandAssets";
 import GlobalSiteFooter from "@/components/GlobalSiteFooter";
 import KakaoFloatingButton from "@/components/KakaoFloatingButton";
 import { ConsultModalProvider } from "@/components/ConsultModal";
@@ -12,9 +17,12 @@ export const metadata: Metadata = {
   description:
     "더올투어는 해외/국내 골프투어와 파크골프투어를 고객 맞춤형으로 설계하는 전문 여행사입니다. 상담부터 일정 운영, 현지 케어까지 신뢰 있게 안내합니다.",
   icons: {
-    icon: "/thealltour-logo.png",
-    shortcut: "/thealltour-logo.png",
-    apple: "/thealltour-logo.png",
+    icon: [
+      { url: THEALL_FAVICON_16_SRC, sizes: "16x16", type: "image/png" },
+      { url: THEALL_FAVICON_32_SRC, sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: THEALL_FAVICON_32_SRC,
+    apple: THEALL_APPLE_TOUCH_ICON_SRC,
   },
 };
 

@@ -4,6 +4,7 @@
 import "server-only";
 import type { PublicReviewItem } from "@/types/review";
 import type { ProductReviewStats } from "@/types/review";
+import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 
 const SITE_NAME = "더올투어";
 
@@ -46,7 +47,7 @@ export function buildProductReviewJsonLd(
   const productUrl = options?.productUrl ?? `${siteUrl}/products/${product.id}`;
   const imageUrl = product.image_url?.trim()
     ? toAbsoluteUrl(product.image_url)
-    : `${siteUrl}/thealltour-logo.png`;
+    : `${siteUrl}${THEALL_WORDMARK_IMAGE_SRC}`;
 
   const base: Record<string, unknown> = {
     "@context": "https://schema.org",

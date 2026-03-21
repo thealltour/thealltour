@@ -16,16 +16,24 @@
 
 @import "tailwindcss";
 
+/* `SubHeader` 등에서 `html.dark` 로 토글 — 미디어 쿼리만 쓰면 관리자 다크모드와 불일치 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  /* THEALL TOUR brand tokens v1.0 */
+  /* THEALL TOUR brand tokens v2.0 — 로고/아이콘 기준 UI 컬러 시스템 */
+  --theall-brand-blue: #1e5b8f;
+  --theall-brand-orange: #ff7a2f;
   --theall-primary-navy: #0f172a;
-  --theall-accent-blue: #1e3a8a;
+  /** @deprecated 레거시 명칭 — 브랜드 블루는 --theall-brand-blue */
+  --theall-accent-blue: var(--theall-brand-blue);
   --theall-premium-gold: #b8962e;
 
-  /* Kakao consult tokens (derived from brand) */
-  --theall-kakao-bg: var(--theall-primary-navy);
-  --theall-kakao-text: #fee500;
-  --theall-kakao-border: rgba(184, 150, 46, 0.55);
+  /* Kakao official CTA — Button `kakao` variant 및 링크 스타일과 동기화 */
+  --theall-kakao-bg: #fee500;
+  --theall-kakao-text: #111111;
+  --theall-kakao-border: rgba(0, 0, 0, 0.08);
+  --theall-kakao-hover-bg: #fdd835;
+  --theall-kakao-active-bg: #fbc02d;
 
   /* Base layer: Agoda-like friendly + premium */
   --theall-page-bg: #fafafa;
@@ -33,8 +41,9 @@
   --theall-card-muted-bg: #f6f7f9;
   --theall-card-border: #e6e8ee;
 
-  --theall-text-primary: #0b1220;
-  --theall-text-secondary: #374151;
+  /* 본문: 블루 톤 네이비 (가독 유지) */
+  --theall-text-primary: #0c1929;
+  --theall-text-secondary: #1e3a4a;
   --theall-text-muted: #4b5563;
 
   /* Light theme tokens (mapped from brand tokens) */
@@ -52,20 +61,36 @@
   --border-strong: #d1d6e0;
   --divider: #eceef3;
 
-  --primary: #2f6bff;
-  --primary-hover: #2457d6;
-  --primary-bg: rgba(47, 107, 255, 0.12);
-  --primary-soft: rgba(47, 107, 255, 0.08);
+  /* Primary: 네비·기본 버튼·링크·가격 강조 (브랜드 블루) */
+  --primary: var(--theall-brand-blue);
+  --primary-hover: color-mix(in srgb, var(--theall-brand-blue) 88%, black);
+  --primary-active: color-mix(in srgb, var(--theall-brand-blue) 78%, black);
+  --primary-bg: color-mix(in srgb, var(--theall-brand-blue) 14%, transparent);
+  --primary-soft: color-mix(in srgb, var(--theall-brand-blue) 9%, transparent);
   --on-primary: #ffffff;
-  /* 프리미엄 골드 포인트 (제한적 사용, primary 우선) */
+
+  /* Accent: 주요 CTA·선택·뱃지·dot (오렌지 — 남용 금지) */
+  --accent: var(--theall-brand-orange);
+  --accent-hover: color-mix(in srgb, var(--theall-brand-orange) 88%, black);
+  --accent-active: color-mix(in srgb, var(--theall-brand-orange) 78%, black);
+  --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 12%, transparent);
+  --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
+  --on-accent: #ffffff;
+
+  /** 아이콘 dot 확장: 선택/추천/지도 포인트 등 */
+  --dot-indicator: var(--accent);
+
+  /* 프리미엄 골드 포인트 (제한적 사용) */
   --accent-premium: var(--theall-premium-gold);
   --accent-premium-soft: rgba(184, 150, 46, 0.12);
-  --secondary: #0b1b3a;
-  --secondary-hover: #132a55;
-  --secondary-soft: rgba(11, 27, 58, 0.06);
 
-  /* Focus: primary보다 연한 블루, 친절한 느낌 */
-  --focus-ring: #79a7ff;
+  /* Secondary: 헤딩·보조 솔리드 (딥 블루) */
+  --secondary: #0f2f47;
+  --secondary-hover: #0a2438;
+  --secondary-soft: color-mix(in srgb, var(--theall-brand-blue) 8%, transparent);
+
+  /* Focus: 브랜드 블루 기반 */
+  --focus-ring: color-mix(in srgb, var(--theall-brand-blue) 55%, white);
 
   --success: #16a34a;
   --success-bg: #e9f9ef;
@@ -91,16 +116,16 @@
   --shadow-color: rgba(11, 18, 32, 0.12);
 
   /* Soft gradients (light) */
-  --gradient-primary: linear-gradient(135deg, #2f6bff 0%, #0b1b3a 100%);
+  --gradient-primary: linear-gradient(135deg, var(--theall-brand-blue) 0%, #0f2f47 100%);
   --gradient-soft: linear-gradient(
     135deg,
-    rgba(47, 107, 255, 0.15),
-    rgba(11, 27, 58, 0.15)
+    color-mix(in srgb, var(--theall-brand-blue) 18%, transparent),
+    color-mix(in srgb, #0f2f47 12%, transparent)
   );
 
   /* Chart tokens (light) */
-  --chart-1: #2f6bff;
-  --chart-2: #0b1b3a;
+  --chart-1: var(--theall-brand-blue);
+  --chart-2: var(--theall-brand-orange);
   --chart-3: #22c55e;
   --chart-4: #B8962E;
   --chart-5: #f87171;
@@ -159,28 +184,174 @@
   --site-bg-elevated: #111c2d;
   --site-bg-section: #162133;
   --site-bg-mid: #1b2431;
-  --site-accent: var(--theall-premium-gold);
+  --site-accent: var(--accent);
   /* Hero: theme-aware (light by default) */
   --hero-bg: var(--theall-page-bg);
-  --hero-scrim-from: rgba(255, 255, 255, 0.88);
+  /* 레거시/베일용 (메인 스크림은 .hero-scrim 다중 스톱 사용) */
+  --hero-scrim-from: rgba(255, 255, 255, 0.65);
   --hero-scrim-to: transparent;
+  --hero-scrim-veil-mid: rgba(255, 255, 255, 0.22);
   --hero-text-primary: var(--foreground);
   --hero-text-secondary: var(--text-muted);
-  --hero-accent: var(--primary);
+  --hero-accent: var(--accent);
   --hero-badge-bg: rgba(0, 0, 0, 0.06);
   --hero-badge-border: rgba(0, 0, 0, 0.12);
-  --hero-vignette-edge: rgba(255, 255, 255, 0.35);
+  --hero-vignette-edge: rgba(255, 255, 255, 0.25);
   --hero-vignette-soft: transparent;
-  --hero-overlay-warm-start: rgba(255, 248, 240, 0.2);
+  --hero-overlay-warm-start: rgba(255, 248, 240, 0.12);
   --hero-overlay-warm-end: transparent;
+  /* 모바일 히어로 소프트 배경 (파노라마 없음 · md 미만 전용 레이어) */
+  --hero-mobile-bg-base: #f3f7fb;
+  --hero-mobile-blue-mist: color-mix(in srgb, var(--theall-brand-blue) 14%, transparent);
+  --hero-mobile-orange-mist: color-mix(in srgb, var(--theall-brand-orange) 10%, transparent);
+  --hero-mobile-blue-veil: color-mix(in srgb, var(--theall-brand-blue) 7.5%, transparent);
+  --hero-mobile-warm-wash: color-mix(in srgb, var(--theall-brand-orange) 4.5%, white);
   /* Image overlay (mobile card etc.) */
   --overlay-image-from: rgba(0, 0, 0, 0.28);
   --overlay-image-via: rgba(0, 0, 0, 0.04);
   --overlay-accent-gold: rgba(184, 150, 46, 0.16);
-  --overlay-accent-blue: rgba(30, 58, 138, 0.18);
-  --overlay-accent-blue-subtle: rgba(30, 58, 138, 0.14);
+  --overlay-accent-blue: color-mix(in srgb, var(--theall-brand-blue) 22%, transparent);
+  --overlay-accent-blue-subtle: color-mix(in srgb, var(--theall-brand-blue) 16%, transparent);
   --overlay-accent-green: rgba(34, 197, 94, 0.2);
   --cta-h: 0px;
+
+  /**
+   * Site header — 데스크톱 메인 바 비율 토큰 (모바일 2단 헤더는 --mobile-header-* 사용)
+   */
+  --header-main-height-desktop: 64px;
+  --header-logo-height-mobile: 28px;
+  --header-logo-height-tablet: 32px;
+  --header-logo-height-desktop: 44px;
+  --header-logo-max-height: 48px;
+  --header-logo-wrapper-padding-left: 0px;
+
+  /* 모바일 2단 헤더 (탑바 + 검색) — 전환·탐색 동선 */
+  --mobile-header-top-height: 56px;
+  --mobile-header-search-row-height: 56px;
+  --mobile-header-search-bg: #f7f9fb;
+  --mobile-header-text-strong: #1a1a1a;
+}
+
+/* 헤더 메인 바 (유틸 바 h-10 제외, 데스크톱) */
+.header-main-bar--desktop {
+  height: var(--header-main-height-desktop);
+  min-height: var(--header-main-height-desktop);
+}
+
+/* 헤더 워드마크: 비율 왜곡 없음, 높이는 토큰만 사용 */
+.header-logo-link {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+  padding-left: var(--header-logo-wrapper-padding-left);
+  max-width: 100%;
+}
+/* 투명 PNG 워드마크: 배경 호버는 사각형이 보여 이질적 → 글리프만 살짝 흐리게 */
+.header-logo-link:hover .header-brand-logo-img {
+  opacity: 0.9;
+  transition: opacity 0.15s ease;
+}
+.header-logo-link:focus-visible .header-brand-logo-img {
+  opacity: 1;
+}
+/* 모바일 헤더 바: 로고 가운데 정렬 시 좌우 대칭 (데스크톱은 .header-logo-link 사용) */
+.header-logo-link--touch-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 0%;
+  padding-left: 0;
+  padding-right: 0;
+}
+/* 헤더 워드마크(img) — 높이/폭은 variant 클래스가 주도 */
+.header-brand-logo-img {
+  display: block;
+  width: auto !important;
+  max-height: var(--header-logo-max-height) !important;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: center;
+  overflow: visible;
+}
+.header-brand-logo-img--touch {
+  height: var(--header-logo-height-mobile) !important;
+  max-width: min(260px, 72vw);
+}
+@media (min-width: 768px) {
+  .header-brand-logo-img--touch {
+    height: var(--header-logo-height-tablet) !important;
+  }
+}
+.header-brand-logo-img--desktop {
+  height: var(--header-logo-height-desktop) !important;
+  max-width: min(340px, 36vw);
+}
+@media (min-width: 1280px) {
+  .header-brand-logo-img--desktop {
+    max-width: min(360px, 30vw);
+  }
+}
+
+/* 모바일 헤더 스택: 탑바(햄버거·로고·CTA) + 검색바 */
+.mobile-header-stack {
+  width: 100%;
+  background: var(--surface);
+  border-bottom: 1px solid var(--divider);
+}
+.mobile-header-top-bar {
+  position: relative;
+  display: flex;
+  height: var(--mobile-header-top-height);
+  min-height: var(--mobile-header-top-height);
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+@media (min-width: 768px) {
+  .mobile-header-top-bar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+.mobile-header-top-bar__cta {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.mobile-header-top-bar__cta:hover {
+  background: var(--accent-hover);
+}
+.mobile-header-top-bar__cta:active {
+  background: var(--accent-active);
+}
+.mobile-header-search-row {
+  display: flex;
+  min-height: var(--mobile-header-search-row-height);
+  align-items: center;
+  padding: 8px 12px 10px;
+}
+@media (min-width: 768px) {
+  .mobile-header-search-row {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+/* 모바일 탑바 중앙 로고: 과도 축소 완화 (햄버거·CTA와 간섭 방지 범위 내) */
+.header-brand-logo-img--touch.mobile-header-top-logo {
+  height: 28px !important;
+  max-height: 28px !important;
+  max-width: min(180px, 52vw);
 }
 
 /* iOS safe-area 대응: sticky 헤더가 노치/주소창에 가려지지 않도록 */
@@ -201,8 +372,24 @@
 }
 
 /* Hero / card overlay gradients (token-based, no inline rgba in components) */
+/* 왼쪽 텍스트 구역만 밝게, 오른쪽은 이미지 생동감 유지 */
 .hero-scrim {
-  background-image: linear-gradient(to right, var(--hero-scrim-from) 0%, var(--hero-scrim-from) 45%, var(--hero-scrim-to) 100%);
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0.35) 24%,
+    rgba(255, 255, 255, 0.12) 42%,
+    rgba(255, 255, 255, 0) 60%
+  );
+}
+.dark .hero-scrim {
+  background-image: linear-gradient(
+    to right,
+    rgba(15, 23, 42, 0.68) 0%,
+    rgba(15, 23, 42, 0.36) 24%,
+    rgba(15, 23, 42, 0.1) 42%,
+    rgba(15, 23, 42, 0) 60%
+  );
 }
 .hero-overlay-warm {
   background-image: linear-gradient(to left, var(--hero-overlay-warm-start) 0%, var(--hero-overlay-warm-end) 50%, transparent 100%);
@@ -213,6 +400,92 @@
 .hero-vignette-soft {
   background-image: radial-gradient(circle at top left, var(--hero-vignette-soft) 0%, transparent 60%);
 }
+
+/**
+ * 모바일 홈 히어로: 브랜드형 소프트 배경 (사진/진한 오버레이 없음).
+ * HeroSection에서 `md:hidden` 래퍼와 함께 사용.
+ */
+.hero-mobile-atmosphere {
+  position: absolute;
+  inset: 0;
+  background-color: var(--hero-mobile-bg-base);
+  background-image:
+    radial-gradient(ellipse 125% 65% at 50% -32%, var(--hero-mobile-blue-mist), transparent 56%),
+    radial-gradient(ellipse 72% 48% at 4% 8%, var(--hero-mobile-blue-veil), transparent 52%),
+    radial-gradient(ellipse 80% 55% at 98% 4%, var(--hero-mobile-orange-mist), transparent 48%),
+    radial-gradient(ellipse 90% 50% at 96% 96%, var(--hero-mobile-orange-mist), transparent 50%),
+    radial-gradient(ellipse 52% 36% at 6% 70%, var(--hero-mobile-blue-veil), transparent 46%),
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      var(--hero-mobile-warm-wash) 28%,
+      #eef4f9 52%,
+      var(--theall-page-bg) 100%
+    );
+}
+
+/* 하단 완만한 아치 — 경로/웨이브 느낌만 살짝 (콘텐츠보다 약하게) */
+.hero-mobile-atmosphere::before {
+  content: "";
+  position: absolute;
+  left: -28%;
+  right: -28%;
+  bottom: -42%;
+  height: 52%;
+  border-radius: 50% 50% 0 0 / 40% 40% 0 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theall-brand-blue) 6%, transparent) 0%,
+    transparent 72%
+  );
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+/* 좌상단 소프트 커브 (장식만, 낮은 대비) */
+.hero-mobile-atmosphere::after {
+  content: "";
+  position: absolute;
+  top: -18%;
+  left: -20%;
+  width: 72%;
+  height: 42%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 40%,
+    color-mix(in srgb, var(--theall-brand-blue) 5%, transparent) 0%,
+    transparent 68%
+  );
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.dark .hero-mobile-atmosphere {
+  background-color: #0f172a;
+  background-image:
+    radial-gradient(ellipse 135% 72% at 50% -28%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 58%),
+    radial-gradient(ellipse 88% 52% at 96% 96%, color-mix(in srgb, var(--theall-brand-orange) 10%, transparent), transparent 52%),
+    linear-gradient(180deg, #111827 0%, #0f172a 55%, #0c1220 100%);
+}
+
+.dark .hero-mobile-atmosphere::before {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 8%, transparent) 0%,
+    transparent 78%
+  );
+  opacity: 0.5;
+}
+
+.dark .hero-mobile-atmosphere::after {
+  background: radial-gradient(
+    circle at 30% 40%,
+    color-mix(in srgb, var(--primary) 12%, transparent) 0%,
+    transparent 68%
+  );
+  opacity: 0.35;
+}
+
 .hero-text-shadow-title {
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
 }
@@ -236,35 +509,54 @@
 }
 
 .dark {
-  /* Dark theme: premium navy anchor */
-  --theall-page-bg: #0b1220;
-  --bg: #0b1220;
-  --surface: #101a2c;
-  --surface-muted: #15223a;
-  --surface-elevated: #14233d;
+  /* Dark theme: 스펙 — bg #0F172A, surface #111827, text #FFF, sub #9CA3AF */
+  --theall-page-bg: #0f172a;
+  --bg: #0f172a;
+  --surface: #111827;
+  --surface-muted: #1f2937;
+  --surface-elevated: #1f2937;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #e2e8f0;
-  --text-muted: #cbd5e1;
-  --text-subtle: #93a4bf;
+  --theall-text-primary: #ffffff;
+  --theall-text-secondary: #e5e7eb;
+  --theall-text-muted: #9ca3af;
 
-  --border: #2a3a58;
-  --border-strong: #3b4f73;
-  --divider: #233553;
+  --text-primary: #ffffff;
+  --text-secondary: #e5e7eb;
+  --text-muted: #9ca3af;
+  --text-subtle: #9ca3af;
 
-  --primary: #79a7ff;
-  --primary-hover: #9bbdff;
-  --primary-bg: rgba(121, 167, 255, 0.18);
-  --primary-soft: rgba(121, 167, 255, 0.14);
-  --on-primary: #0b1220;
+  --mobile-header-search-bg: #111827;
+
+  --border: #374151;
+  --border-strong: #4b5563;
+  --divider: #1f2937;
+
+  /* Primary: 다크 배경에서 가독되는 브랜드 블루 톤 */
+  --primary: #5dade2;
+  --primary-hover: #7bc4ed;
+  --primary-active: #4a9fd4;
+  --primary-bg: color-mix(in srgb, var(--primary) 22%, transparent);
+  --primary-soft: color-mix(in srgb, var(--primary) 14%, transparent);
+  --on-primary: #0f172a;
+
+  /* Accent: CTA·dot (라이트와 동일 오렌지) */
+  --accent: var(--theall-brand-orange);
+  --accent-hover: color-mix(in srgb, var(--theall-brand-orange) 88%, white);
+  --accent-active: color-mix(in srgb, var(--theall-brand-orange) 78%, black);
+  --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
+  --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 22%, transparent);
+  --on-accent: #ffffff;
+  --dot-indicator: var(--accent);
+
   /* 프리미엄 골드 (다크 모드) */
   --accent-premium: #c9a83c;
   --accent-premium-soft: rgba(184, 150, 46, 0.18);
-  --secondary: #f8fafc;
-  --secondary-hover: #e2e8f0;
-  --secondary-soft: rgba(248, 250, 252, 0.1);
 
-  --focus-ring: #9bbdff;
+  --secondary: #374151;
+  --secondary-hover: #4b5563;
+  --secondary-soft: rgba(55, 65, 81, 0.35);
+
+  --focus-ring: #7bc4ed;
 
   --success: #22c55e;
   --success-bg: rgba(34, 197, 94, 0.16);
@@ -289,22 +581,22 @@
   --shadow-color: rgba(0, 0, 0, 0.38);
 
   /* Soft gradients (dark) */
-  --gradient-primary: linear-gradient(135deg, #79a7ff 0%, #0b1220 100%);
+  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, #0f172a 100%);
   --gradient-soft: linear-gradient(
     135deg,
-    rgba(121, 167, 255, 0.15),
-    rgba(11, 18, 32, 0.15)
+    color-mix(in srgb, var(--primary) 20%, transparent),
+    color-mix(in srgb, #111827 40%, transparent)
   );
 
   /* Chart tokens (dark) */
-  --chart-1: #79a7ff;
-  --chart-2: #9bbdff;
+  --chart-1: var(--primary);
+  --chart-2: var(--accent);
   --chart-3: #22c55e;
   --chart-4: #B8962E;
   --chart-5: #f87171;
   --chart-grid: #2a3a58;
-  --chart-tooltip-bg: #101a2c;
-  --chart-tooltip-border: #2a3a58;
+  --chart-tooltip-bg: #111827;
+  --chart-tooltip-border: #374151;
 
   /* Glass surface (dark premium SaaS) */
   --glass-surface: rgba(17, 24, 39, 0.75);
@@ -314,14 +606,15 @@
   --hero-bg: var(--site-bg);
   --hero-scrim-from: var(--site-bg);
   --hero-scrim-to: transparent;
+  --hero-scrim-veil-mid: rgba(15, 23, 42, 0.38);
   --hero-text-primary: var(--site-text-primary);
   --hero-text-secondary: var(--site-text-secondary);
   --hero-accent: var(--site-accent);
   --hero-badge-bg: rgba(255, 255, 255, 0.08);
   --hero-badge-border: rgba(255, 255, 255, 0.12);
-  --hero-vignette-edge: rgba(2, 6, 23, 0.85);
-  --hero-vignette-soft: rgba(148, 163, 184, 0.26);
-  --hero-overlay-warm-start: rgba(248, 196, 113, 0.26);
+  --hero-vignette-edge: rgba(2, 6, 23, 0.48);
+  --hero-vignette-soft: rgba(148, 163, 184, 0.16);
+  --hero-overlay-warm-start: rgba(248, 196, 113, 0.16);
   --hero-overlay-warm-end: rgba(248, 196, 113, 0.08);
   --overlay-image-from: rgba(0, 0, 0, 0.5);
   --overlay-image-via: rgba(0, 0, 0, 0.08);
@@ -339,6 +632,9 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-dot-indicator: var(--dot-indicator);
   --color-content-primary: var(--theall-text-primary);
   --color-content-secondary: var(--theall-text-secondary);
   --color-content-muted: var(--theall-text-muted);
@@ -538,6 +834,14 @@ body {
 .link-primary:visited {
   color: var(--primary);
 }
+.link-primary:active {
+  color: var(--primary-active);
+}
+
+/** 브랜드 dot: 선택 인디케이터·추천 뱃지·지도 포인트 등 — bg-[var(--dot-indicator)] 또는 이 유틸 */
+.brand-dot {
+  background-color: var(--dot-indicator);
+}
 
 /* 홈 섹션 레이아웃: 제목 H2, 설명, 카드 그리드 여백 */
 .section-heading {
@@ -717,28 +1021,83 @@ body {
   box-shadow: 0 0 0 3px color-mix(in_oklab, var(--primary) 15%, transparent);
 }
 
-/* Footer pill links: token-only, reusable */
+/* Footer: 라이트 기준 토큰만 (GlobalSiteFooter). 다크 전용 분기 없음. */
 .footer-pill {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   border-radius: 9999px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--divider);
   background: var(--surface);
-  color: var(--text-muted);
-  padding: 0.375rem 0.75rem;
-  font-size: var(--type-caption-size);
+  color: var(--foreground);
+  padding: 0.3125rem 0.65rem;
+  font-size: 0.8125rem;
   font-weight: 500;
+  line-height: 1.35;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .footer-pill:hover {
-  background: var(--surface-muted);
   border-color: var(--border-strong);
-  color: var(--foreground);
+  background: var(--surface-elevated);
 }
 .footer-pill:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
+
+/* 전화·메일 등 2차 액션 */
+.footer-pill-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.footer-pill-secondary:hover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface));
+  color: var(--primary);
+}
+.footer-pill-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* 인스타·약관 등 3차 */
+.footer-pill-tertiary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-subtle);
+  padding: 0.25rem 0.5rem;
+  font-size: var(--type-caption-size);
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.footer-pill-tertiary:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border-color: var(--divider);
+}
+.footer-pill-tertiary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/** @deprecated 푸터 리디자인 후 미사용. 하위 호환 필요 시 .footer-pill-secondary 와 유사 */
 .footer-pill-cta {
   border-color: var(--primary);
   background: var(--primary-soft);
@@ -752,6 +1111,20 @@ body {
 .footer-pill-cta:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* 모바일(<sm): 푸터 pill 밀도만 축소. sm 이상은 위 기본값 유지 */
+@media (max-width: 639px) {
+  .footer-pill {
+    padding: 0.25rem 0.5rem;
+  }
+  .footer-pill-secondary {
+    padding: 0.3125rem 0.65rem;
+    gap: 0.3rem;
+  }
+  .footer-pill-tertiary {
+    padding: 0.1875rem 0.375rem;
+  }
 }
 
 /* 타임라인 썸네일 스트립: 가로 스크롤 시 스크롤바 숨김 */

@@ -4,7 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import ProductDetailTabsLegacy from "@/components/ProductDetailTabsLegacy";
 import AlertCard from "@/components/ui/AlertCard";
+import { buttonVariants } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
+import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 
 export type FlightCardData = {
   fromAirport?: string;
@@ -133,7 +136,7 @@ export default function ProductDetailContentLegacy({
           <section className="overflow-hidden rounded-3xl bg-[var(--card)] shadow-[var(--shadow-soft-strong)] ring-1 ring-[var(--border)]">
             <div className="relative h-[340px] w-full md:h-[460px]">
               <Image
-                src={imageUrl || "/thealltour-logo.png"}
+                src={imageUrl || THEALL_WORDMARK_IMAGE_SRC}
                 alt={imageAlt ?? `${title || "상품"} 상세 이미지`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 1024px"
@@ -191,7 +194,7 @@ export default function ProductDetailContentLegacy({
                   href={kakaoHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
+                  className={cn(buttonVariants({ variant: "kakao", size: "md", className: "px-5 py-3 text-sm font-semibold" }))}
                 >
                   카톡 상담
                 </a>

@@ -85,14 +85,14 @@ function OptionRadioItem({
       : "";
   const metaText = item.meta ? ` · ${item.meta}` : "";
   return (
-    <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl border-2 bg-white px-4 py-3 transition has-[:checked]:border-[#1E3A8A] has-[:checked]:bg-[#f8fbff] has-[:hover]:border-[#93c5fd]">
+    <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 transition has-[:checked]:border-[var(--accent)] has-[:checked]:bg-[var(--accent-soft)] has-[:hover]:border-slate-300">
       <input
         type="radio"
         name={groupKey}
         value={item.value}
         checked={checked}
         onChange={onSelect}
-        className="h-4 w-4 shrink-0 border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A]"
+        className="h-4 w-4 shrink-0 border-slate-300 accent-[var(--accent)] focus:ring-[var(--accent)]"
       />
       <span className="flex-1 text-base font-medium text-slate-800">
         {item.label}

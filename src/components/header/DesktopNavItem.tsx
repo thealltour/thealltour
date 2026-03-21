@@ -183,11 +183,11 @@ export function DesktopNavItem({
         aria-controls={isOpen ? `mega-menu-panel-${item.key}` : undefined}
         id={`mega-menu-trigger-${item.key}`}
         className={cn(
-          "relative shrink-0 whitespace-nowrap type-nav transition-colors duration-150 py-1.5 px-2.5 rounded-lg border-0 bg-transparent cursor-pointer text-left",
+          "relative shrink-0 whitespace-nowrap text-sm lg:text-[15px] lg:leading-snug tracking-tight transition-colors duration-150 py-1.5 px-2.5 rounded-lg border-0 bg-transparent cursor-pointer text-left",
           isActive || isOpen
-            ? cn("bg-[var(--primary-soft)] font-semibold text-[var(--primary)]")
+            ? cn("bg-[var(--primary-soft)] font-medium text-[var(--primary)]")
             : cn(
-                "text-[var(--text-muted)]",
+                "font-normal text-[var(--text-muted)]",
                 "hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
               ),
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:rounded-lg",

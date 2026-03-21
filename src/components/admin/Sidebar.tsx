@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminRole } from "@/components/admin/AdminRoleContext";
 import { SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
+import { ThemedWordmarkImage } from "@/components/header/ThemedWordmarkImage";
 
 type SidebarProps = {
   activeMenu: MainMenuKey | null;
@@ -27,13 +27,9 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between px-4 pt-6 pb-4">
           <Link href="/" className="inline-flex items-center">
-            <Image
-              src="/thealltour-logo.png"
-              alt="THEALL TOUR logo"
-              width={140}
-              height={90}
-              className="h-auto w-[120px]"
+            <ThemedWordmarkImage
               sizes="120px"
+              imgClassName="h-auto w-[120px] max-w-full object-contain object-left"
             />
           </Link>
           <button

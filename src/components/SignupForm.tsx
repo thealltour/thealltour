@@ -214,7 +214,7 @@ export default function SignupForm() {
               type="button"
               onClick={checkDuplicateId}
               disabled={isCheckingId}
-              className="shrink-0 rounded-lg border border-[#93c5fd] bg-white px-4 py-3 text-sm font-semibold text-[#1e3a8a] hover:bg-[#eff6ff] disabled:cursor-not-allowed"
+              className="shrink-0 rounded-lg border border-[var(--primary-soft)] bg-white px-4 py-3 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)] disabled:cursor-not-allowed"
             >
               {isCheckingId ? "확인중..." : "중복확인"}
             </button>
@@ -338,7 +338,7 @@ export default function SignupForm() {
                 name="gender"
                 checked={form.gender === "male"}
                 onChange={() => updateField("gender", "male")}
-                className="h-4 w-4 accent-[#1d4ed8]"
+                className="h-4 w-4 accent-[var(--primary)]"
               />
               남성
             </label>
@@ -348,7 +348,7 @@ export default function SignupForm() {
                 name="gender"
                 checked={form.gender === "female"}
                 onChange={() => updateField("gender", "female")}
-                className="h-4 w-4 accent-[#1d4ed8]"
+                className="h-4 w-4 accent-[var(--primary)]"
               />
               여성
             </label>
@@ -358,7 +358,7 @@ export default function SignupForm() {
                 name="gender"
                 checked={form.gender === "other"}
                 onChange={() => updateField("gender", "other")}
-                className="h-4 w-4 accent-[#1d4ed8]"
+                className="h-4 w-4 accent-[var(--primary)]"
               />
               기타
             </label>
@@ -366,20 +366,20 @@ export default function SignupForm() {
         </fieldset>
       </div>
 
-      <div className="space-y-3 rounded-xl bg-[#f8fbff] p-4 ring-1 ring-[#dbeafe]">
+      <div className="space-y-3 rounded-xl bg-[var(--primary-soft)] p-4 ring-1 ring-[var(--primary-soft)]">
         <label className="flex items-start gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
             checked={form.agreeTerms}
             onChange={(event) => updateField("agreeTerms", event.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-[#1d4ed8]"
+            className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
           />
           <span>
             이용약관 동의 <span className="font-semibold text-red-500">(필수)</span>
             <button
               type="button"
               onClick={() => setOpenDocument("terms")}
-              className="ml-2 text-xs font-semibold text-[#2563eb] underline"
+              className="ml-2 text-xs font-semibold text-[var(--primary)] underline"
             >
               전문보기
             </button>
@@ -390,14 +390,14 @@ export default function SignupForm() {
             type="checkbox"
             checked={form.agreePrivacy}
             onChange={(event) => updateField("agreePrivacy", event.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-[#1d4ed8]"
+            className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
           />
           <span>
             개인정보 수집 및 이용 동의 <span className="font-semibold text-red-500">(필수)</span>
             <button
               type="button"
               onClick={() => setOpenDocument("privacy")}
-              className="ml-2 text-xs font-semibold text-[#2563eb] underline"
+              className="ml-2 text-xs font-semibold text-[var(--primary)] underline"
             >
               전문보기
             </button>
@@ -408,7 +408,7 @@ export default function SignupForm() {
             type="checkbox"
             checked={form.agreeEmail}
             onChange={(event) => updateField("agreeEmail", event.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-[#1d4ed8]"
+            className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
           />
           <span>이메일 수신 동의 (선택)</span>
         </label>
@@ -420,7 +420,7 @@ export default function SignupForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-lg bg-[#1d4ed8] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
+        className="w-full rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "가입 처리 중..." : "회원가입 완료"}
       </button>

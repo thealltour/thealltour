@@ -103,10 +103,10 @@ export default function ProductDetailTabs({
   ];
 
   const listClass = "space-y-2 text-sm leading-[1.7] text-slate-700";
-  const bulletClass = "mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]";
+  const bulletClass = "mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--dot-indicator)]";
 
   return (
-    <section className="space-y-5 rounded-3xl bg-white/95 p-4 shadow-sm ring-1 ring-[#dbeafe] backdrop-blur md:p-6">
+    <section className="space-y-5 rounded-3xl bg-white/95 p-4 shadow-sm ring-1 ring-[var(--primary-soft)] backdrop-blur md:p-6">
       <div className="flex flex-wrap gap-2">
         {mainTabs.map((tab) => (
           <button
@@ -115,8 +115,8 @@ export default function ProductDetailTabs({
             onClick={() => setActiveTab(tab.key)}
             className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
               activeTab === tab.key
-                ? "border-[#60a5fa] bg-[#eff6ff] text-[#1e3a8a] shadow-sm"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                ? "border-[var(--primary)] bg-[var(--primary-bg)] text-[var(--primary)] shadow-sm"
+                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
             }`}
           >
             {tab.label}
@@ -134,14 +134,14 @@ export default function ProductDetailTabs({
               return (
                 <div
                   key={`${day.label}-${index}`}
-                  className="overflow-hidden rounded-xl border border-[#dbeafe] bg-[#f8fbff] ring-1 ring-[#dbeafe]"
+                  className="overflow-hidden rounded-xl border border-[var(--primary-soft)] bg-[var(--primary-soft)] ring-1 ring-[var(--primary-soft)]"
                 >
                   <button
                     type="button"
                     onClick={() => setOpenScheduleIndex(isOpen ? null : index)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#eff6ff]"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--primary-bg)]"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#1e3a8a] ring-1 ring-[#dbeafe]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[var(--primary)] ring-1 ring-[var(--primary-soft)]">
                       <Icon className="h-4 w-4" />
                     </span>
                     <span className="flex-1 font-semibold text-[#0f172a]">{day.label}</span>
@@ -206,7 +206,7 @@ export default function ProductDetailTabs({
 
           {optionalLines.length > 0 && (
             <div>
-              <h3 className="mb-3 text-sm font-bold text-[#1e3a8a]">선택 관광</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--primary)]">선택 관광</h3>
               <ul className={listClass}>
                 {optionalLines.map((line, i) => (
                   <li key={i} className="flex items-start gap-2">

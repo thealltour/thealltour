@@ -42,7 +42,7 @@ export function QuoteSummary({ quote, className = "" }: QuoteSummaryProps) {
     >
       <p className="text-sm font-semibold text-slate-500">예상 금액</p>
       {totalFormatted ? (
-        <p className="font-price-strong mt-1 text-2xl font-bold text-[#1E3A8A] md:text-3xl">
+        <p className="font-price-strong mt-1 text-2xl font-bold text-[var(--primary)] md:text-3xl">
           ₩{totalFormatted}~
         </p>
       ) : null}

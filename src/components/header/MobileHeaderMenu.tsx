@@ -2,28 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { MessageCircle } from "lucide-react";
-import { Icon } from "@/components/ui/Icon";
 import { useConsultModal } from "@/components/ConsultModal";
 import { MobileHeaderDrawer } from "./MobileHeaderDrawer";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
+import HeaderProductSearch from "@/components/HeaderProductSearch";
 
 export type MobileHeaderMenuProps = {
   primaryNav: HeaderPrimaryNavItem[];
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
   searchQuery?: string;
   session: { name: string } | null;
+  /**
+   * false면 헤더 직하단 검색행 미렌더 (홈 모바일/태블릿: 히어로 검색만 사용).
+   * @default true
+   */
+  showHeaderSearchRow?: boolean;
 };
 
+/**
+ * 모바일 2단 헤더: [☰ | 로고 | 문의하기] + (옵션) 고정 검색바
+ * 검색 → 탐색(드로어) → 상담(CTA) 동선. CTA는 1개만(오렌지 캡슐).
+ */
 export function MobileHeaderMenu({
   primaryNav,
   activeTab: _activeTab,
   searchQuery,
   session,
+  showHeaderSearchRow = true,
 }: MobileHeaderMenuProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { openModal } = useConsultModal();
@@ -38,22 +47,18 @@ export function MobileHeaderMenu({
     };
   }, []);
 
-  function openDrawer() {
-    setIsDrawerOpen(true);
-  }
-
-  function openDrawerWithTrack(label: "hamburger" | "search_icon") {
+  function openDrawerWithTrack() {
     trackClientEvent(
       createAnalyticsPayload({
         eventName: ANALYTICS_EVENTS.mobile_menu_open,
         source: ANALYTICS_SOURCES.header_mobile_drawer,
-        label,
+        label: "hamburger",
         section: "mobile_header",
         pagePath: typeof window !== "undefined" ? window.location.pathname : null,
         deviceType: inferDeviceType("mobile"),
       }),
     );
-    openDrawer();
+    setIsDrawerOpen(true);
   }
 
   function closeDrawer() {
@@ -66,7 +71,7 @@ export function MobileHeaderMenu({
         eventName: ANALYTICS_EVENTS.cta_click,
         source: ANALYTICS_SOURCES.consult_cta,
         section: "mobile_header",
-        label: "상담 문의",
+        label: "문의하기",
         href: "/quote",
         pagePath: typeof window !== "undefined" ? window.location.pathname : null,
         deviceType: inferDeviceType("mobile"),
@@ -80,64 +85,43 @@ export function MobileHeaderMenu({
 
   return (
     <>
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-2 px-4 lg:hidden md:px-6">
-        <button
-          type="button"
-          aria-label="메뉴 열기"
-          onClick={() => openDrawerWithTrack("hamburger")}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-transparent text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
-        >
-          <span className="flex flex-col gap-[3px]" aria-hidden>
-            <span className="h-[2px] w-4 rounded-full bg-current" />
-            <span className="h-[2px] w-4 rounded-full bg-current" />
-            <span className="h-[2px] w-4 rounded-full bg-current" />
-          </span>
-        </button>
-
-        <Link
-          href="/"
-          className="flex min-w-0 flex-1 items-center justify-center gap-2 leading-tight"
-          aria-label="더올투어 홈"
-        >
-          <Image
-            src="/thealltour-logo.png"
-            alt=""
-            width={40}
-            height={40}
-            sizes="40px"
-            className="h-8 w-8 shrink-0 object-contain"
-          />
-          <div className="flex min-w-0 flex-col">
-            <span className="heading-display-hero type-small font-bold tracking-tight text-[var(--secondary)]">
-              더올투어
-            </span>
-            <span className="mt-0.5 type-caption font-medium tracking-wide text-[var(--text-muted)]">
-              Golf & Premium Travel
-            </span>
-          </div>
-        </Link>
-
-        <div className="flex shrink-0 items-center gap-1">
+      <div className="mobile-header-stack lg:hidden">
+        <div className="mobile-header-top-bar mx-auto max-w-6xl">
           <button
             type="button"
-            aria-label="검색"
-            onClick={() => openDrawerWithTrack("search_icon")}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            aria-label="메뉴 열기"
+            onClick={openDrawerWithTrack}
+            className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
           >
-            <Icon name="search" decorative size={20} className="h-5 w-5 shrink-0" />
+            <span className="flex flex-col gap-[3px]" aria-hidden>
+              <span className="h-[2px] w-4 rounded-full bg-current" />
+              <span className="h-[2px] w-4 rounded-full bg-current" />
+              <span className="h-[2px] w-4 rounded-full bg-current" />
+            </span>
           </button>
-          <a
-            href="/quote"
-            onClick={(e) => {
-              e.preventDefault();
-              handleConsultClick();
-            }}
-            aria-label="상담 문의"
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+
+          <Link
+            href="/"
+            className="absolute left-1/2 top-1/2 z-[1] -translate-x-1/2 -translate-y-1/2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            aria-label="더올투어 홈"
           >
-            <MessageCircle className="h-5 w-5" aria-hidden />
-          </a>
+            <HeaderBrandLogo variant="touch" className="mobile-header-top-logo" />
+          </Link>
+
+          <button
+            type="button"
+            onClick={handleConsultClick}
+            className="mobile-header-top-bar__cta relative z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
+          >
+            문의하기
+          </button>
         </div>
+
+        {showHeaderSearchRow ? (
+          <div className="mobile-header-search-row mx-auto w-full max-w-6xl border-t border-[var(--divider)]/80">
+            <HeaderProductSearch mode="mobile" headerBar searchQuery={searchQuery} />
+          </div>
+        ) : null}
       </div>
 
       <MobileHeaderDrawer

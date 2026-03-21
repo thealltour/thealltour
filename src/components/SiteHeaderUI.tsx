@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import HeaderQuickConsultCtas from "@/components/HeaderQuickConsultCtas";
 import UserMenuDropdown from "@/components/header/UserMenuDropdown";
 import { HeaderExpandSearch } from "@/components/HeaderExpandSearch";
 import { DesktopMegaMenu } from "@/components/header/DesktopMegaMenu";
 import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
+import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { HEADER_DESKTOP_PRIMARY_NAV_KEYS, HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF } from "@/components/header/headerNav.constants";
 import type { HeaderPrimaryNavKey } from "@/components/header/headerNav.constants";
@@ -37,17 +38,17 @@ function getFallbackPrimaryNav(): HeaderPrimaryNavItem[] {
 
 function getNavLinkClass(isActive: boolean) {
   const base =
-    "relative shrink-0 whitespace-nowrap type-nav font-medium transition-colors duration-150 py-1 px-0.5 rounded";
+    "relative shrink-0 whitespace-nowrap text-sm tracking-tight transition-colors duration-150 py-1 px-0.5 rounded";
   if (isActive) {
     return cn(
       base,
-      "text-[var(--foreground)] font-semibold",
+      "font-medium text-[var(--foreground)]",
       "after:absolute after:left-0 after:right-0 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--primary)]",
     );
   }
   return cn(
     base,
-    "text-[var(--text-muted)]",
+    "font-normal text-[var(--text-muted)]",
     "hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)]",
   );
 }
@@ -62,6 +63,9 @@ export default function SiteHeaderUI({
   session,
   memberPoints,
 }: SiteHeaderUIProps) {
+  const pathname = usePathname();
+  /** 모바일/태블릿 헤더 검색행: 홈에서만 숨겨 히어로 검색과 중복 제거 */
+  const isHomePath = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const primaryNav = headerNavigationData?.primaryNav?.length
     ? headerNavigationData.primaryNav
@@ -79,7 +83,7 @@ export default function SiteHeaderUI({
   return (
     <header
       className={cn(
-        "sticky z-40 transition-all duration-200 safe-top top-[env(safe-area-inset-top)]",
+        "sticky z-50 transition-all duration-200 safe-top top-[env(safe-area-inset-top)] lg:z-40",
         scrolled
           ? "border-b border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-soft)] backdrop-blur-sm"
           : "border-b border-[var(--divider)] bg-[var(--surface)]",
@@ -108,29 +112,14 @@ export default function SiteHeaderUI({
           </nav>
         </div>
 
-        {/* 메인 헤더바: 로고 | 메가메뉴 | 검색(비홈) | 마이페이지/CTA */}
-        <div className="flex h-[72px] min-h-[72px] items-center gap-x-10 md:h-[76px] md:min-h-[76px]">
+        {/* 메인 헤더바: 높이·로고 비율은 globals --header-* 토큰 (데스크톱 64px / 로고 높이·max는 토큰 참고) */}
+        <div className="header-main-bar--desktop flex items-center gap-x-5 lg:gap-x-6 xl:gap-x-7">
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2.5 rounded-xl px-2 py-2 transition-colors duration-150 hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            className="header-logo-link shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             aria-label="더올투어 홈"
           >
-            <Image
-              src="/thealltour-logo.png"
-              alt=""
-              width={64}
-              height={64}
-              sizes="64px"
-              className="h-10 w-10 object-contain md:h-11 md:w-11"
-            />
-            <div className="flex flex-col justify-center leading-tight">
-              <span className="heading-display-hero text-[15px] font-bold tracking-tight text-[var(--secondary)] md:text-[17px]">
-                더올투어
-              </span>
-              <span className="mt-0.5 type-caption font-medium tracking-wide text-[var(--text-muted)]">
-                Golf & Premium Travel
-              </span>
-            </div>
+            <HeaderBrandLogo variant="desktop" priority />
           </Link>
 
           <DesktopMegaMenu primaryNav={primaryNav} />
@@ -181,6 +170,7 @@ export default function SiteHeaderUI({
         activeTab={activeTab}
         searchQuery={searchQuery}
         session={session}
+        showHeaderSearchRow={!isHomePath}
       />
     </header>
   );

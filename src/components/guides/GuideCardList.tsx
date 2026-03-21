@@ -48,7 +48,7 @@ export function GuideCardList({ guides }: GuideCardListProps) {
         아직 등록된 여행가이드가 없습니다.{" "}
         <Link
           href="/theall_manager_only/guides"
-          className="font-medium text-[#1E3A8A] underline hover:text-[#0F172A]"
+          className="font-medium text-[var(--primary)] underline hover:text-[var(--primary-hover)]"
         >
           관리자 페이지
         </Link>

@@ -97,7 +97,7 @@ export default async function ReviewsPage({ searchParams }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
               href="/reviews/write"
-              className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
+              className="type-btn inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]"
             >
               여행후기 작성하기
             </Link>
@@ -117,7 +117,7 @@ export default async function ReviewsPage({ searchParams }: Props) {
               <div className="mt-4">
                 <Link
                   href="/reviews/write"
-                  className="type-btn inline-flex rounded-full bg-[#1E3A8A] px-5 py-2.5 text-white transition hover:bg-[#0F172A]"
+                  className="type-btn inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]"
                 >
                   후기 작성하기
                 </Link>

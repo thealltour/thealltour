@@ -4,7 +4,11 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { SectionBlock } from "@/components/layout/SectionBlock";
-import { SectionHeader, SECTION_HEADER_MOBILE_CTA_CLASS } from "@/components/layout/SectionHeader";
+import {
+  SectionHeader,
+  SECTION_HEADER_MOBILE_CTA_CLASS,
+  HOME_MAIN_SECTION_BLOCK_CLASS,
+} from "@/components/layout/SectionHeader";
 import { GuideCard } from "@/components/guides/GuideCard";
 import type { Guide } from "@/types/guide";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -63,6 +67,7 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
         eyebrow="TRAVEL GUIDE"
         title="여행 준비에 도움이 되는 가이드"
         description="지역별·테마별 꿀팁과 가이드를 만나보세요."
+        hideEyebrowOnTablet
         action={
           <Link
             href="/guides"
@@ -98,7 +103,7 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
         )}
         <ul
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 sm:mx-0 sm:px-0"
+          className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
           aria-label="여행 가이드"
         >
           {guides.map((guide) => (

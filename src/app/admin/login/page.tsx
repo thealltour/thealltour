@@ -1,19 +1,15 @@
-import Image from "next/image";
 import Link from "next/link";
 import AdminLoginForm from "@/components/admin/AdminLoginForm";
+import { ThemedWordmarkImage } from "@/components/header/ThemedWordmarkImage";
 
 export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-md rounded-2xl bg-[var(--surface)] p-8 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
         <Link href="/" className="mb-4 inline-flex items-center">
-          <Image
-            src="/thealltour-logo.png"
-            alt="더올투어 로고"
-            width={150}
-            height={96}
-            className="h-auto w-[130px]"
+          <ThemedWordmarkImage
             sizes="130px"
+            imgClassName="h-auto w-[130px] max-w-full object-contain object-left"
           />
         </Link>
         <div className="mb-6 space-y-2">

@@ -246,7 +246,7 @@ export function ProductImageCarousel({
                   onClick={() => setActiveIndex(index)}
                   className={`relative h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition ${
                     activeIndex === index
-                      ? "border-[#1E3A8A] ring-2 ring-[#bfdbfe]"
+                      ? "border-[var(--accent)] ring-2 ring-[var(--accent-soft)]"
                       : "border-slate-200 opacity-90 hover:opacity-100"
                   }`}
                   aria-label={`이미지 ${index + 1} 선택`}
@@ -264,7 +264,7 @@ export function ProductImageCarousel({
                 <button
                   type="button"
                   onClick={() => openModalAt(0)}
-                  className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs font-semibold text-slate-600 transition hover:border-[#1E3A8A] hover:bg-[#eff6ff] hover:text-[#1E3A8A]"
+                  className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs font-semibold text-slate-600 transition hover:border-[var(--primary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]"
                   aria-label={`사진 ${images.length}장 전체 보기`}
                 >
                   +{images.length - 4}
@@ -283,7 +283,7 @@ export function ProductImageCarousel({
                 onClick={() => setActiveIndex(index)}
                 className={`h-2 rounded-full transition ${
                   activeIndex === index
-                    ? "w-6 bg-[#1E3A8A]"
+                    ? "w-6 bg-[var(--dot-indicator)]"
                     : "w-2 bg-slate-300 hover:bg-slate-400"
                 }`}
                 aria-label={`이미지 ${index + 1}로 이동`}

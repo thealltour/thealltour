@@ -11,16 +11,16 @@ import { cn } from "@/lib/cn";
 
 function getNavLinkClass(isActive: boolean) {
   const base =
-    "relative shrink-0 whitespace-nowrap type-nav font-medium transition-colors duration-150 py-1.5 px-2.5 rounded-lg";
+    "relative shrink-0 whitespace-nowrap text-sm lg:text-[15px] lg:leading-snug tracking-tight transition-colors duration-150 py-1.5 px-2.5 rounded-lg";
   if (isActive) {
     return cn(
       base,
-      "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]",
+      "bg-[var(--primary-soft)] font-medium text-[var(--primary)]",
     );
   }
   return cn(
     base,
-    "text-[var(--text-muted)]",
+    "font-normal text-[var(--text-muted)]",
     "hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
   );
 }
@@ -94,7 +94,7 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
       onMouseEnter={cancelClose}
       onMouseLeave={scheduleClose}
     >
-      <nav className="flex shrink-0 items-center gap-x-8" aria-label="탐색 메뉴">
+      <nav className="flex shrink-0 items-center gap-x-6 lg:gap-x-7" aria-label="탐색 메뉴">
         {items.map((item, index) => (
           <DesktopNavItem
             key={item.key}

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useConsultModal } from "@/components/ConsultModal";
+import { buttonVariants } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type ProductDetailStickyProps = {
   priceFormatted: string | null;
@@ -44,7 +46,7 @@ export function ProductDetailStickyDesktop({
           href={kakaoHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="type-btn inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
+          className={cn(buttonVariants({ variant: "kakao", size: "md", className: "w-full px-4 py-3" }))}
         >
           카톡 상담
         </a>
@@ -121,7 +123,13 @@ export function ProductDetailStickyMobile({
           href={kakaoHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="type-btn shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+          className={cn(
+            buttonVariants({
+              variant: "kakao",
+              size: "md",
+              className: "h-11 min-h-11 shrink-0 px-4 text-sm font-semibold",
+            }),
+          )}
         >
           카톡
         </a>

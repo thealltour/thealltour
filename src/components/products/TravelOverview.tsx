@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { ProductOverview } from "@/types/product";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 
 export type TravelOverviewProps = {
   /** [STEP 2] 오버뷰 jsonb (enabled일 때만 호출됨) */
@@ -27,7 +28,7 @@ export function TravelOverview({ overview, fallbackCoverUrl }: TravelOverviewPro
       {/* 커버 이미지 (coverImageUrl 없으면 product.image_url) */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-slate-200">
         <Image
-          src={normalizeProductImageUrl(cover) || "/thealltour-logo.png"}
+          src={normalizeProductImageUrl(cover) || THEALL_WORDMARK_IMAGE_SRC}
           alt={title}
           fill
           sizes="(max-width: 1024px) 100vw, 1024px"

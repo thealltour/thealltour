@@ -146,15 +146,15 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
     <form className="flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5" onSubmit={handleSubmit}>
       <div className="md:col-span-2 flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-3 rounded-xl bg-[#f9fafb] p-4 border border-[#e2e8f0]">
         <div>
-          <p className="section-label text-[#1E3A8A]">응답 안내</p>
+          <p className="section-label text-[var(--primary)]">응답 안내</p>
           <p className="mt-1 type-small text-content-secondary">접수된 순서대로 확인 후 연락드립니다.</p>
         </div>
         <div>
-          <p className="section-label text-[#1E3A8A]">맞춤 제안</p>
+          <p className="section-label text-[var(--primary)]">맞춤 제안</p>
           <p className="mt-1 type-small text-content-secondary">일정/예산/동행 구성 중심으로 설계합니다.</p>
         </div>
         <div>
-          <p className="section-label text-[#1E3A8A]">개인정보 보호</p>
+          <p className="section-label text-[var(--primary)]">개인정보 보호</p>
           <p className="mt-1 type-small text-content-secondary">상담 목적 외에는 사용하지 않습니다.</p>
         </div>
       </div>

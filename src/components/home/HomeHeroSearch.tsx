@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
@@ -27,8 +26,6 @@ type RecommendedKeyword = {
 
 type HomeHeroSearchProps = {
   placeholder?: string | null;
-  /** 모바일 뷰에서 검색창 아래 '최근 검색어' 칩 블록 미노출 (PR22: 검색 중심 Hero) */
-  hideRecentSearchesOnMobile?: boolean;
   /** hero-mobile: 모바일에서 full width, 라운드·시인성 강화 */
   variant?: "default" | "hero-mobile";
 };
@@ -57,7 +54,7 @@ function loadRecentSearches(): string[] {
   }
 }
 
-export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false, variant = "default" }: HomeHeroSearchProps) {
+export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSearchProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -311,15 +308,17 @@ export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false
     <div
       className={cn(
         "space-y-2",
-        variant === "hero-mobile" && "space-y-1 md:space-y-2",
+        variant === "hero-mobile" && "space-y-1 md:space-y-1.5 lg:space-y-2",
       )}
     >
       <form
         ref={formRef}
         onSubmit={handleSubmit}
         className={cn(
-          "relative mx-auto w-full",
-          variant === "hero-mobile" ? "max-w-full md:max-w-[720px]" : "max-w-[720px]",
+          "relative w-full",
+          variant === "hero-mobile"
+            ? "mx-0 max-w-full"
+            : "mx-auto max-w-[720px]",
         )}
         role="search"
         aria-label="상품 검색"
@@ -328,14 +327,14 @@ export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false
           className={cn(
             "flex items-center border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]",
             variant === "hero-mobile"
-              ? "gap-1.5 px-3 py-1.5 sm:gap-2 sm:px-5 sm:py-2.5 rounded-2xl border-slate-200/95 bg-white shadow-md ring-slate-200/80 sm:rounded-[1.25rem] md:rounded-full md:border-[var(--border)] md:bg-[var(--surface)] md:shadow-[var(--shadow-soft)] md:ring-[var(--border)]"
+              ? "gap-2 px-3 py-2 sm:gap-2 sm:px-5 sm:py-2.5 rounded-2xl border-slate-400/70 bg-white shadow-md ring-1 ring-slate-300/95 sm:rounded-[1.25rem] max-md:shadow-[0_12px_44px_rgba(15,23,42,0.15)] max-md:ring-2 max-md:ring-white lg:rounded-full lg:border-[var(--border)] lg:bg-[var(--surface)] lg:shadow-[var(--shadow-soft)] lg:ring-1 lg:ring-[var(--border)]"
               : "gap-2 rounded-full px-4 py-2 sm:px-5 sm:py-2.5",
           )}
         >
           <Icon
             name="search"
             decorative
-            size={variant === "hero-mobile" ? 16 : 20}
+            size={variant === "hero-mobile" ? 18 : 20}
             className={cn(
               "shrink-0 text-[var(--text-muted)]",
               variant === "hero-mobile" && "sm:h-5 sm:w-5",
@@ -402,30 +401,6 @@ export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false
           />
         )}
       </form>
-
-      {recentSearches.length > 0 && !showAutosuggest ? (
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-2 pt-1",
-            hideRecentSearchesOnMobile && "hidden md:flex",
-          )}
-        >
-          <span className="text-[11px] font-semibold text-[var(--hero-text-secondary)]/90">
-            최근 검색어
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {recentSearches.map((keyword) => (
-              <Link
-                key={keyword}
-                href={`/search?q=${encodeURIComponent(keyword)}`}
-                className="inline-flex items-center rounded-full border border-[var(--hero-badge-border)] bg-[var(--hero-badge-bg)]/80 px-3 py-1 text-xs text-[var(--hero-text-primary)] transition hover:bg-[var(--hero-badge-bg)]"
-              >
-                {keyword}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

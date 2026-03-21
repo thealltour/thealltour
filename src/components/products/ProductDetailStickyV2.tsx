@@ -77,8 +77,8 @@ export function ProductDetailStickyV2Desktop({
             ? "견적 문의하기"
             : "상담 문의하기";
 
-  /** PR23: 데스크톱 sticky 헤더 충돌 방지 — SiteHeader(유틸바 h-10 + 메인 h-72~76) + 여백 반영 */
-  const desktopStickyTop = 128;
+  /** PR23: 데스크톱 sticky 헤더 충돌 방지 — SiteHeader(유틸바 40px + 메인 바 64px) + 여백 */
+  const desktopStickyTop = 120;
   const desktopStickyMaxHeight = `calc(100vh - ${desktopStickyTop}px - 16px)`;
 
   return (
@@ -96,7 +96,7 @@ export function ProductDetailStickyV2Desktop({
           <div>
             <p className="text-xs font-medium text-slate-500">예상가</p>
             {displayPrice ? (
-              <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[#1E3A8A]">
+              <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[var(--primary)]">
                 ₩{displayPrice}~
               </p>
             ) : (

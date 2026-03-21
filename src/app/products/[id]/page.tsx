@@ -37,6 +37,7 @@ import { cookies } from "next/headers";
 import { getSiteSettings } from "@/lib/siteSettings";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getTermsTemplateContent } from "@/lib/termsTemplates";
+import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -77,7 +78,7 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     buildSeoDescription(
       `${product.title} ${product.category} ${product.theme ?? ""} ${product.description} 더올투어 맞춤 여행 상담 가능`,
     );
-  const ogImage = toAbsoluteUrl(siteUrl, product.image_url?.trim() || "/thealltour-logo.png");
+  const ogImage = toAbsoluteUrl(siteUrl, product.image_url?.trim() || THEALL_WORDMARK_IMAGE_SRC);
 
   return {
     title,
@@ -165,7 +166,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
       : product.terms_and_notes;
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
   const productUrl = `${siteUrl}/products/${product.id}`;
-  const productImageUrl = toAbsoluteUrl(siteUrl, product.image_url?.trim() || "/thealltour-logo.png");
+  const productImageUrl = toAbsoluteUrl(siteUrl, product.image_url?.trim() || THEALL_WORDMARK_IMAGE_SRC);
   const productReviewStats = await getProductReviewStats(product.id);
   const productReviewsForSeo = await getProductReviews(product.id, {
     limit: 50,

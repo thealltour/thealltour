@@ -18,7 +18,7 @@ export type LogoFullProps = {
 
 /**
  * 심볼 + 워드마크 가로 조합.
- * TODO: `public/thealltour-logo.png` 대체 시 타이포·간격을 브랜드 가이드에 맞출 것.
+ * 헤더는 `ThemedWordmarkImage` / `HeaderBrandLogo`(라이트·다크 PNG 분기)를 사용합니다. 이 컴포넌트는 코드 내 마크용.
  */
 export function LogoFull({ className, size = "md", hideSub = false }: LogoFullProps) {
   const s = SIZE_CLASS[size];

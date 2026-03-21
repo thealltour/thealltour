@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Star } from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/Button";
@@ -9,49 +10,49 @@ import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
-import type {
-  ProductCardProps,
-  ProductCardStatus,
-} from "@/components/products/ProductCard";
+import type { ProductCardProps } from "@/components/products/ProductCard";
+import {
+  displayChipSurfaceClass,
+  pickDisplayChips,
+} from "@/lib/productCardSignals";
 
 export type ProductListCardMobileProps = ProductCardProps;
 
-const STATUS_LABELS: Record<ProductCardStatus, string> = {
-  AVAILABLE: "예약 가능",
-  LIMITED: "잔여 한정",
-  SOLD_OUT: "마감",
-  CONSULT_REQUIRED: "상담 후 안내",
-};
-
-function badgeTypeToTagVariant(
-  type: string,
-): "accent" | "muted" | "gold" {
-  const t = type?.toLowerCase() ?? "";
-  if (t === "accent" || t === "primary" || t === "인기" || t === "추천")
-    return "accent";
-  if (t === "gold" || t === "제철" || t === "마감임박") return "gold";
-  return "muted";
+function formatReviewCount(n: number): string {
+  return new Intl.NumberFormat("ko-KR").format(n);
 }
 
-function badgeVariantToChipStyle(variant: "accent" | "muted" | "gold") {
-  if (variant === "accent") {
-    return "border-blue-200 bg-blue-600/95 text-white";
-  }
-  if (variant === "gold") {
-    return "border-amber-200 bg-amber-500/95 text-white";
-  }
-  return "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]";
+function ListRatingBlockMobile({
+  ratingAvg,
+  reviewCount,
+}: {
+  ratingAvg?: number;
+  reviewCount?: number;
+}) {
+  const hasRating =
+    typeof ratingAvg === "number" && Number.isFinite(ratingAvg) && ratingAvg > 0;
+  const rcPositive =
+    typeof reviewCount === "number" &&
+    Number.isFinite(reviewCount) &&
+    reviewCount > 0;
+  if (!hasRating || !rcPositive) return null;
+  return (
+    <p className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-[11px] text-[var(--text-muted)]">
+      <Star
+        className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400"
+        strokeWidth={0}
+        aria-hidden
+      />
+      <span>{ratingAvg!.toFixed(1)}</span>
+      <span>({formatReviewCount(reviewCount!)})</span>
+    </p>
+  );
 }
-
-const MOBILE_MAX_BADGES = 3;
-const MOBILE_MAX_TAGS = 2;
 
 export default function ProductListCardMobile({
   title = "",
   price,
   duration = "",
-  region = "",
-  categories = [],
   tags = [],
   status,
   badges = [],
@@ -61,6 +62,9 @@ export default function ProductListCardMobile({
   onClickConsult,
   priceMeta = "1인 기준",
   metaInfo = "",
+  oneLiner,
+  ratingAvg,
+  reviewCount,
   analyticsSource,
   analyticsSection,
   productId,
@@ -78,15 +82,7 @@ export default function ProductListCardMobile({
     (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
   );
   const activeBadges = sortedBadges.filter((b) => b.isActive !== false);
-
-  const tagVariantFromStatus = (
-    s?: ProductCardStatus,
-  ): "accent" | "muted" | "gold" => {
-    if (!s) return "muted";
-    if (s === "AVAILABLE") return "accent";
-    if (s === "LIMITED") return "gold";
-    return "muted";
-  };
+  const displayChips = pickDisplayChips(status, activeBadges);
 
   const handleCardClick = () => {
     onClickDetail?.();
@@ -124,49 +120,15 @@ export default function ProductListCardMobile({
     onClickConsult?.();
   };
 
-  const statusChip =
-    status != null
-      ? { label: STATUS_LABELS[status], variant: tagVariantFromStatus(status) }
-      : null;
-  const categoryChip = categories[0]?.trim()
-    ? { label: categories[0].trim(), variant: "muted" as const }
-    : null;
-  const themeChip = region?.trim()
-    ? { label: region.trim(), variant: "muted" as const }
-    : null;
-  const badgeChips = activeBadges.slice(0, 1).map((b) => ({
-    label: b.label,
-    variant: badgeTypeToTagVariant(b.type),
-  }));
-
-  const topLeftChipsRaw = [statusChip, categoryChip ?? themeChip, ...badgeChips]
-    .filter(
-      (x): x is { label: string; variant: "accent" | "muted" | "gold" } =>
-        Boolean(x),
-    )
-    .filter((chip, index, arr) => {
-      const key = `${chip.variant}-${chip.label}`;
-      return arr.findIndex((c) => `${c.variant}-${c.label}` === key) === index;
-    });
-  const topLeftChips = topLeftChipsRaw.slice(0, MOBILE_MAX_BADGES);
-
   const metaLine = [duration, metaInfo].filter(Boolean).join(" · ");
-  const displayTags = tags.slice(0, MOBILE_MAX_TAGS);
+  const oneLine = oneLiner?.trim() ?? "";
+  const seoHashtags = tags.map((t) => t.trim()).filter(Boolean);
 
   const cardContent = (
+    <div className="flex w-full flex-col">
     <div className="flex min-h-[148px] w-full">
-      {/* 좌측: 이미지 + 배지 */}
+      {/* 좌측: 이미지 (칩은 텍스트 영역 상단) */}
       <div className="relative w-[34%] min-w-[112px] max-w-[136px] shrink-0 self-stretch overflow-hidden bg-[var(--surface-muted)]">
-        <div className="absolute left-1.5 top-1.5 z-10 flex flex-wrap gap-0.5">
-          {topLeftChips.map((chip) => (
-            <span
-              key={`${chip.variant}-${chip.label}`}
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-none shadow-sm backdrop-blur ${badgeVariantToChipStyle(chip.variant)}`}
-            >
-              {chip.label}
-            </span>
-          ))}
-        </div>
         {thumbnailUrl ? (
           <Image
             src={normalizeProductImageUrl(thumbnailUrl)}
@@ -186,20 +148,42 @@ export default function ProductListCardMobile({
         )}
       </div>
 
-      {/* 우측: 제목 / 메타 / 가격 / 태그 / CTA */}
-      <div className="flex min-w-0 flex-1 flex-col p-3.5">
+      {/* 우측: 배지 → 평점 → 제목 → one-liner → 가격 → 태그(최소) → 상담(보조) */}
+      <div className="flex min-w-0 flex-1 flex-col gap-1 p-3.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          {displayChips.map((chip) => (
+            <span
+              key={`${chip.variant}-${chip.label}`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm backdrop-blur",
+                displayChipSurfaceClass(chip.variant),
+              )}
+            >
+              {chip.label}
+            </span>
+          ))}
+          <ListRatingBlockMobile
+            ratingAvg={ratingAvg}
+            reviewCount={reviewCount}
+          />
+        </div>
         <h2 className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--text-primary)]">
           {title || "상품명"}
         </h2>
-        {metaLine ? (
-          <p className="mt-1 line-clamp-1 text-[11px] text-[var(--text-muted)]">
+        {oneLine ? (
+          <p className="line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)]">
+            {oneLine}
+          </p>
+        ) : null}
+        {!oneLine && metaLine ? (
+          <p className="line-clamp-1 text-[11px] text-[var(--text-muted)]">
             {metaLine}
           </p>
         ) : null}
-        <div className="mt-2">
+        <div className="mt-1">
           {priceFormatted != null ? (
             <>
-              <p className="text-xl font-bold leading-tight text-[var(--primary)]">
+              <p className="text-xl font-bold tabular-nums leading-tight text-[var(--primary)]">
                 {priceFormatted}원~
               </p>
               {priceMeta ? (
@@ -214,25 +198,13 @@ export default function ProductListCardMobile({
             </p>
           )}
         </div>
-        {displayTags.length > 0 ? (
-          <div className="mt-2 flex flex-nowrap gap-1 overflow-hidden">
-            {displayTags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex shrink-0 items-center rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        ) : null}
         {onClickConsult ? (
           <button
             type="button"
             disabled={consultPressed}
             className={cn(
-              buttonVariants({ variant: "primary", size: "sm" }),
-              "mt-2 w-full",
+              buttonVariants({ variant: "accent", size: "sm" }),
+              "mt-1 w-full shrink-0 text-xs font-semibold",
               consultPressed && "pointer-events-none",
             )}
             onClick={handleConsultClick}
@@ -244,6 +216,22 @@ export default function ProductListCardMobile({
           </button>
         ) : null}
       </div>
+    </div>
+    {seoHashtags.length > 0 ? (
+      <div
+        className="flex w-full flex-wrap gap-x-1.5 gap-y-1 border-t border-[var(--border)]/25 px-3.5 py-2"
+        aria-label="상품 SEO 키워드"
+      >
+        {seoHashtags.map((tag, i) => (
+          <span
+            key={`${tag}-${i}`}
+            className="text-[12px] font-medium leading-snug text-[var(--text-muted)]"
+          >
+            #{tag}
+          </span>
+        ))}
+      </div>
+    ) : null}
     </div>
   );
 

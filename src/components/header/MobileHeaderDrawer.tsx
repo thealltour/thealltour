@@ -82,7 +82,7 @@ export function MobileHeaderDrawer({
       role="dialog"
       aria-modal="true"
       aria-label="메뉴"
-      className="fixed inset-0 z-50 flex flex-col bg-[var(--overlay)] safe-top safe-bottom"
+      className="fixed inset-0 z-[70] flex flex-col bg-[var(--overlay)] safe-top safe-bottom"
       onClick={handleOverlayClick}
     >
       <div

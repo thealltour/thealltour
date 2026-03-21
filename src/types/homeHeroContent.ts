@@ -1,6 +1,7 @@
 /** 홈 히어로 문구 설정 (관리자에서 편집, 단일 행) */
 export type HomeHeroContent = {
   id: string;
+  /** 레거시 DB 컬럼 — UI 미사용 */
   badge: string | null;
   main_copy_accent: string | null;
   main_copy_tail: string | null;
@@ -15,7 +16,7 @@ export type HomeHeroContent = {
 };
 
 export const DEFAULT_HERO_CONTENT: Omit<HomeHeroContent, "id" | "created_at" | "updated_at"> = {
-  badge: "THEALL TOUR PREMIUM GOLF",
+  badge: null,
   main_copy_accent: "품격 있는",
   main_copy_tail: " 골프와 여행의 시작",
   sub_description:

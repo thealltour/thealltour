@@ -36,7 +36,6 @@ export default async function Home() {
 
   const curatedSettings = homeCurated.settings;
   const curatedSections = homeCurated.sections;
-  const primaryBanner = topBanners[0] ?? null;
   const hero = resolveHeroContent(heroContent);
 
   const homeRegionCardIds = parseHomeRegionCardIds(settings);
@@ -62,12 +61,13 @@ export default async function Home() {
       <SiteHeader />
 
       <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
-        <main className="flex w-full min-w-0 max-w-full flex-col pt-1 pb-6 sm:py-10 md:py-14">
-          <HeroSection primaryBanner={primaryBanner} hero={hero} />
+        {/* 모바일에서 main 상단 패딩 제거: 헤더와 히어로 사이 흰 여백 방지 */}
+        <main className="flex w-full min-w-0 max-w-full flex-col pb-6 sm:pb-10 md:pb-14">
+          <HeroSection heroBanners={topBanners} hero={hero} />
 
           <PageContainer
             size="wide"
-            className="flex flex-col gap-4 px-3 sm:gap-8 sm:px-6 lg:px-8 xl:px-10 md:gap-20"
+            className="flex max-w-full flex-col px-4 max-md:gap-10 max-md:pt-8 sm:px-6 md:gap-20 md:pt-0 lg:px-8 xl:px-10"
           >
             <DestinationSection
               items={destinationsForHome}
@@ -89,13 +89,13 @@ export default async function Home() {
             <SectionBlock
               surface="none"
               padding="md"
-              className="!p-3 sm:!p-6 md:!p-8"
+              className="!px-4 !py-3 sm:!p-6 md:!p-8"
             >
               <div className="mb-6 space-y-3 text-center sm:mb-8">
-                <p className="inline-flex items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-1 section-label text-[var(--foreground)] md:type-small">
+                <p className="inline-flex items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-1 section-label text-[var(--foreground)] md:type-small md:hidden">
                   대형 여행사 공식 제휴 파트너
                 </p>
-                <p className="section-label text-[var(--text-muted)] md:type-small">
+                <p className="section-label text-[var(--text-muted)] md:type-small md:hidden">
                   THEALL TOUR TRUST
                 </p>
                 <h3 className="heading-display section-title type-h3 md:text-[1.75rem] text-[var(--foreground)]">
@@ -157,31 +157,36 @@ export default async function Home() {
               id="contact"
               surface="none"
               padding="md"
-              className="!p-3 sm:!p-6 md:!py-8 md:!px-12"
+              className="!space-y-0 !rounded-none !px-4 !pb-2 !pt-2.5 sm:!rounded-3xl sm:!p-5 sm:!pb-4 sm:!pt-5 md:!px-9 md:!pb-5 md:!pt-6 border-b border-[var(--divider)]"
             >
-              <div className="grid items-start gap-10 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)]">
-                <div className="space-y-4">
-                  <p className="section-label text-[var(--text-muted)] md:type-small">THEALL TOUR CONTACT</p>
+              <div className="grid items-stretch gap-4 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)] md:gap-8">
+                <div className="flex min-h-0 flex-col justify-center space-y-2 md:space-y-3">
+                  <p className="section-label text-[var(--text-muted)] md:type-small md:hidden">
+                    THEALL TOUR CONTACT
+                  </p>
                   <h3 className="heading-display section-title type-h2 md:type-h2 text-[var(--foreground)]">
                     프리미엄 맞춤 상담으로 여정을 설계합니다
                   </h3>
-                  <p className="type-small text-[var(--text-muted)] md:type-body">
+                  <p className="type-small leading-snug text-[var(--text-muted)] md:type-body md:leading-relaxed">
                     간단한 내용을 남겨주시면 전담 상담사가 전화로 먼저 연락드려, 일정과 예산을 함께 정리해 드립니다.
                   </p>
-                  <div className="mt-3 space-y-1.5 type-caption text-[var(--text-muted)] md:type-small">
+                  <div className="mt-0.5 space-y-1 type-caption leading-normal text-[var(--text-muted)] md:mt-0 md:space-y-1.5 md:leading-snug md:type-small">
                     <p>· 통화가 편하신 시간대를 메모로 남겨주시면 최대한 맞춰 연락드립니다.</p>
                     <p>· 상담 이후에도 일정 조정·추가 문의를 언제든지 편하게 요청하실 수 있습니다.</p>
                     <p>· 전화 연결이 어려운 경우, 문자/메신저로도 차분히 안내해 드립니다.</p>
                   </div>
                 </div>
-                <div className="rounded-none bg-transparent p-0 shadow-none ring-0 text-[var(--foreground)] sm:rounded-2xl sm:bg-[var(--surface)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] md:p-7">
-                  <h4 className="mb-3 type-small font-semibold text-[var(--text-muted)] md:type-body">
+                <div className="flex min-h-0 flex-col justify-center rounded-none bg-transparent p-0 shadow-none ring-0 text-[var(--foreground)] sm:rounded-2xl sm:bg-[var(--surface-muted)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] md:p-6">
+                  <h4 className="mb-1.5 type-small font-semibold leading-snug text-[var(--text-muted)] sm:mb-2 md:type-body">
                     한 번의 클릭으로 프리미엄 상담을 요청해 주세요.
                   </h4>
-                  <p className="mb-4 type-caption text-[var(--text-muted)] md:type-small">
+                  <p className="mb-1.5 type-caption leading-snug text-[var(--text-muted)] sm:mb-2 md:type-small md:leading-relaxed">
                     문의 양식을 길게 작성하지 않아도, 간단한 정보만 남기면 전담 상담사가 직접 연락드립니다.
                   </p>
-                  <div className="rounded-none bg-transparent p-0 ring-0 sm:rounded-2xl sm:bg-[var(--surface-muted)] sm:p-4 sm:ring-1 sm:ring-[var(--border)] md:p-5">
+                  <p className="mb-2 type-caption font-medium leading-snug text-[var(--text-secondary)] sm:mb-3 md:type-small">
+                    문의 접수 후 담당 상담사가 순차적으로 연락드립니다.
+                  </p>
+                  <div className="mt-auto rounded-none bg-transparent p-0 pt-0 ring-0 sm:rounded-xl sm:bg-[var(--surface-muted)] sm:p-3 sm:pt-3 sm:ring-1 sm:ring-[var(--border)] md:p-4">
                     <HeroQuickConsultButton />
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -8,6 +9,102 @@ import { HeroRecommendedLinks } from "@/components/home/HeroRecommendedLinks";
 import { HomeHeroSearch } from "@/components/home/HomeHeroSearch";
 import { HomeQuickKeywords } from "@/components/home/HomeQuickKeywords";
 import type { HomeBanner } from "@/types/homeBanner";
+import { cn } from "@/lib/cn";
+
+/** 태블릿(md~lg 미만): mobile_image_url 우선, 없으면 PC 이미지 */
+function bannerSrcForMidViewport(banner: HomeBanner): string {
+  const m = banner.mobile_image_url?.trim();
+  return m && m.length > 0 ? m : banner.image_url;
+}
+
+const SLIDE_INTERVAL_MS = 5000;
+
+type HeroPanoramaSlideshowProps = {
+  banners: HomeBanner[];
+};
+
+/**
+ * 활성 배너 다중 장을 fade 전환. md~lg-1 / lg+ 각각 다른 소스(모바일 URL vs PC URL).
+ * prefers-reduced-motion: 자동 전환 없음, 첫 장만 표시.
+ */
+function HeroPanoramaSlideshow({ banners }: HeroPanoramaSlideshowProps) {
+  const [active, setActive] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReducedMotion(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (banners.length <= 1 || reducedMotion) return;
+    const id = window.setInterval(() => {
+      setActive((i) => (i + 1) % banners.length);
+    }, SLIDE_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [banners.length, reducedMotion]);
+
+  useEffect(() => {
+    if (active >= banners.length) setActive(0);
+  }, [banners.length, active]);
+
+  const fadeClass = reducedMotion ? "transition-none" : "transition-opacity duration-700 ease-in-out";
+
+  function renderStack(
+    keyPrefix: string,
+    getSrc: (b: HomeBanner) => string,
+    wrapperClass: string,
+    objectPositionClass: string,
+  ) {
+    return (
+      <div className={cn("absolute inset-0", wrapperClass)}>
+        {banners.map((banner, i) => (
+          <div
+            key={`${keyPrefix}-${banner.id}`}
+            className={cn("absolute inset-0", fadeClass)}
+            style={{
+              opacity: i === active ? 1 : 0,
+              zIndex: i === active ? 1 : 0,
+            }}
+            aria-hidden={i !== active}
+          >
+            <Image
+              src={getSrc(banner)}
+              alt={banner.title}
+              fill
+              sizes="100vw"
+              priority={i === 0}
+              fetchPriority={i === 0 ? "high" : "auto"}
+              quality={82}
+              className={cn("object-cover", objectPositionClass)}
+              loading={i === 0 ? undefined : "lazy"}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {renderStack(
+        "mid",
+        bannerSrcForMidViewport,
+        "md:block lg:hidden",
+        "object-center",
+      )}
+      {renderStack(
+        "lg",
+        (b) => b.image_url,
+        "hidden lg:block",
+        "object-[right_center]",
+      )}
+    </>
+  );
+}
 
 /** @deprecated Hero 모바일 칩용. 다른 화면에서 재사용 시에만 유지 */
 export type HeroChipItem = { id: string; name: string; href: string };
@@ -41,8 +138,10 @@ function MobileHeroHeadline({ hero }: { hero: HeroResolvedContent }): ReactNode 
 }
 
 export type HeroSectionProps = {
-  /** 메인 비주얼 배너 (데스크탑만 사용, 모바일 Hero에서는 미노출) */
-  primaryBanner?: HomeBanner | null;
+  /**
+   * 활성 배너 전부 (`getHomeBanners` 정렬 순). 0장이면 배경 없음, 1장이면 단일, 2장+ fade 슬라이드.
+   */
+  heroBanners?: HomeBanner[];
   /** 히어로 문구 (resolveHeroContent 결과) */
   hero: HeroResolvedContent;
   /** 모바일 Hero 검색 아래 인기 여행지 칩 (모바일만 노출) */
@@ -53,32 +152,31 @@ export type HeroSectionProps = {
 
 /**
  * 홈 최상단 Hero 섹션.
- * 모바일: 이미지 없이 텍스트 + 검색 + 빠른 선택 허브(아이콘 액션).
- * 데스크탑: 기존 비주얼 배너 + 문구 + 검색 + 추천 링크 텍스트 유지.
+ * 모바일(&lt;md): 배너 배경 없음 — 텍스트 + 검색 + 빠른 선택 허브.
+ * md+: 파노라마 배경 — `heroBanners`를 sort_order 순으로 fade 슬라이드(2장 이상 시).
+ * 태블릿(md~lg-1): `mobile_image_url ?? image_url`, 데스크톱(lg+): `image_url`.
  */
-export default function HeroSection({ primaryBanner = null, hero }: HeroSectionProps) {
+export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps) {
+  const hasBanners = heroBanners.length > 0;
+
   return (
-    <section className="relative bg-[var(--hero-bg)]">
-      {/* 데스크탑 전용: 배경 이미지 + 오버레이 (모바일에서는 렌더하지 않음) */}
-      {primaryBanner ? (
+    <section className="relative overflow-hidden bg-[var(--hero-bg)] max-md:border-b max-md:border-slate-200/90 max-md:shadow-[inset_0_-1px_0_rgba(255,255,255,0.65)]">
+      {/* 모바일 전용: 소프트 그라데이션 + 은은한 브랜드 글로우 (globals `.hero-mobile-atmosphere`) */}
+      <div className="pointer-events-none absolute inset-0 z-0 md:hidden" aria-hidden>
+        <div className="hero-mobile-atmosphere" />
+      </div>
+
+      {/* md+ 전용: 배경 슬라이드 + 공통 오버레이 (모바일만 미노출). link_url·클릭은 미연결(pointer-events-none). */}
+      {hasBanners ? (
         <>
           <div className="pointer-events-none absolute inset-0 hidden md:block">
-            <Image
-              src={primaryBanner.image_url}
-              alt={primaryBanner.title}
-              fill
-              sizes="100vw"
-              priority
-              fetchPriority="high"
-              quality={82}
-              className="object-cover object-[right_center]"
-            />
-            <div className="absolute inset-0 hero-scrim" />
-            <div className="absolute inset-y-0 right-0 w-3/5 hero-overlay-warm mix-blend-soft-light" />
-            <div className="absolute inset-y-0 left-1/2 w-[18%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--hero-scrim-from)]/40 to-transparent backdrop-blur-[2px]" />
-            <div className="absolute inset-0 hero-vignette" />
+            <HeroPanoramaSlideshow banners={heroBanners} />
+            <div className="absolute inset-0 z-[2] hero-scrim" />
+            <div className="absolute inset-y-0 right-0 z-[2] w-3/5 hero-overlay-warm mix-blend-soft-light" />
+            <div className="absolute inset-y-0 left-1/2 z-[2] w-[18%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--hero-scrim-veil-mid)] to-transparent backdrop-blur-[2px]" />
+            <div className="absolute inset-0 z-[2] hero-vignette" />
           </div>
-          <div className="pointer-events-none absolute inset-0 hidden md:block hero-vignette-soft" />
+          <div className="pointer-events-none absolute inset-0 z-[3] hidden md:block hero-vignette-soft" />
         </>
       ) : null}
 
@@ -86,16 +184,11 @@ export default function HeroSection({ primaryBanner = null, hero }: HeroSectionP
         size="wide"
         className="px-3 sm:px-6 lg:px-8 xl:px-10"
       >
-        <div className="relative z-10 min-w-0 max-w-full py-2 text-[var(--hero-text-primary)] sm:py-4 md:py-10">
-          <div className="min-w-0 space-y-1.5 md:space-y-5">
-            {/* 모바일: Hero 이미지 카드 제거 — 이미지 블록 없음 */}
-
-            <div className="grid min-w-0 max-w-full gap-1.5 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center md:gap-6">
-              <div className="flex min-w-0 max-w-full flex-col gap-1.5 md:space-y-4">
-                <p className="section-label inline-flex w-fit max-w-full items-center gap-1.5 rounded-full bg-[var(--hero-badge-bg)] px-2.5 py-0.5 text-[10px] font-medium text-[var(--hero-text-secondary)] ring-1 ring-[var(--hero-badge-border)] sm:px-3 sm:py-1 sm:text-[11px] md:px-4 md:py-1 md:type-small">
-                  {hero.badge ?? "THEALL TOUR"}
-                </p>
-                <h1 className="line-clamp-2 font-semibold leading-snug tracking-tight text-[var(--hero-text-primary)] text-lg sm:text-[1.65rem] sm:leading-tight md:line-clamp-none md:heading-display-hero md:type-h1 md:text-[2.5rem] md:leading-[1.15]">
+        <div className="relative z-10 min-w-0 max-w-full pt-2 pb-7 text-[var(--hero-text-primary)] sm:pt-4 sm:pb-6 md:py-7 lg:py-10">
+          <div className="min-w-0 space-y-1.5 md:space-y-4 lg:space-y-5">
+            <div className="grid min-w-0 max-w-full gap-1.5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] lg:items-center lg:gap-6">
+              <div className="flex w-full min-w-0 max-w-full flex-col gap-2 max-md:gap-2.5 md:mx-auto md:max-w-[560px] md:gap-3 lg:mx-0 lg:max-w-[720px] lg:gap-4">
+                <h1 className="line-clamp-2 font-semibold leading-snug tracking-tight text-[var(--hero-text-primary)] text-[1.4rem] sm:text-[2.06rem] sm:leading-tight md:line-clamp-none md:heading-display-hero md:text-[2.5rem] md:leading-[1.2] lg:type-h1 lg:text-[3.125rem] lg:leading-[1.15]">
                   <span className="md:hidden">
                     <MobileHeroHeadline hero={hero} />
                   </span>
@@ -111,21 +204,21 @@ export default function HeroSection({ primaryBanner = null, hero }: HeroSectionP
                   </span>
                 </h1>
                 {hero.sub_description ? (
-                  <p className="hidden max-w-xl md:block type-small font-semibold text-[var(--hero-text-secondary)] leading-snug md:type-body">
+                  <p className="hidden w-full max-w-[32rem] md:block type-small font-semibold text-[var(--hero-text-secondary)] leading-snug md:type-body lg:max-w-xl">
                     {hero.sub_description}
                   </p>
                 ) : null}
-                <div className="w-full min-w-0 max-w-[720px] space-y-0 md:space-y-1">
-                  <div className="pt-0 md:pt-3">
+                <div className="flex w-full min-w-0 flex-col max-md:gap-5 md:gap-1">
+                  <div className="relative z-[1] pt-0 md:pt-2 lg:pt-3">
                     <HomeHeroSearch
                       placeholder={hero.search_placeholder ?? "지역, 테마, 상품명을 검색해보세요"}
-                      hideRecentSearchesOnMobile
                       variant="hero-mobile"
                     />
                   </div>
-                  <HomeQuickKeywords />
-                  {/* 데스크탑: 기존 추천 링크 텍스트 */}
-                  <p className="hidden pt-1 type-caption text-[var(--hero-text-secondary)]/80 md:block">
+                  <div className="relative z-0 max-md:opacity-[0.96]">
+                    <HomeQuickKeywords />
+                  </div>
+                  <p className="hidden pt-1 type-caption text-[var(--hero-text-secondary)]/80 lg:block">
                     {hero.recommended_text ? (
                       <HeroRecommendedLinks text={hero.recommended_text} />
                     ) : (
@@ -148,7 +241,7 @@ export default function HeroSection({ primaryBanner = null, hero }: HeroSectionP
                   </p>
                 </div>
               </div>
-              <div className="hidden min-h-[160px] md:block" />
+              <div className="hidden min-h-[160px] lg:block" />
             </div>
           </div>
         </div>

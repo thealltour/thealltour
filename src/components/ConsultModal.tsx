@@ -338,7 +338,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         <button
                           type="submit"
                           disabled={isSubmitting}
-                          className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-[#60a5fa]/70 bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:border-[#93c5fd] hover:from-[#2563eb] hover:to-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-70 sm:min-w-[180px] sm:w-auto"
+                          className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-transparent bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--on-accent)] shadow-sm transition-colors duration-150 hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-70 sm:min-w-[180px] sm:w-auto"
                         >
                           <Send className="h-4 w-4 opacity-90" strokeWidth={1.5} />
                           {isSubmitting ? "전송 중..." : "상담 요청 보내기"}

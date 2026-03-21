@@ -2766,7 +2766,7 @@ export default function AdminProductManager() {
             {effectiveDayCount > 0 ? (
               <div className="rounded-xl border border-[var(--primary)]/20 bg-[var(--surface)] p-4">
                 <p className="mb-2 text-xs font-semibold text-blue-700">실시간 미리보기</p>
-                <div className="mb-2 inline-flex items-center rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-bold text-[#1d4ed8]">
+                <div className="mb-2 inline-flex items-center rounded-full bg-[var(--primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--primary)]">
                   {form.itinerary_days_json.length > 0
                     ? form.itinerary_days_json[activeSchedulePreviewIndex]?.title || `Day ${(form.itinerary_days_json[activeSchedulePreviewIndex]?.day ?? activeSchedulePreviewIndex + 1)}`
                     : scheduleDrafts[activeSchedulePreviewIndex]?.label || `${activeSchedulePreviewIndex + 1}일차`}
@@ -2987,7 +2987,7 @@ export default function AdminProductManager() {
               void handleSubmit();
             }}
             disabled={isSubmitting}
-            className="rounded-lg bg-[#1d4ed8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e40af] disabled:cursor-not-allowed disabled:bg-[#93c5fd]"
+            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? "저장 중..." : editingId ? "수정 저장" : "상품 등록"}
           </button>
@@ -3058,7 +3058,7 @@ export default function AdminProductManager() {
                   onClick={() => setPreviewDevice("desktop")}
                   className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                     previewDevice === "desktop"
-                      ? "bg-[#1e3a8a] text-white"
+                      ? "bg-[var(--primary)] text-[var(--on-primary)]"
                       : "bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
                   }`}
                 >
@@ -3071,7 +3071,7 @@ export default function AdminProductManager() {
                   onClick={() => setPreviewDevice("mobile")}
                   className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                     previewDevice === "mobile"
-                      ? "bg-[#1e3a8a] text-white"
+                      ? "bg-[var(--primary)] text-[var(--on-primary)]"
                       : "bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
                   }`}
                 >

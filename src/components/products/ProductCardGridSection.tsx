@@ -19,7 +19,7 @@ export type ProductCardGridSectionProps = {
 /**
  * 상품 카드 그리드·모바일 가로 스크롤 공통 래퍼.
  * - 모바일 기본: min-w-[78%] max-w-[320px], bleed -mx-1 px-1
- * - homeCuratedMobileCompact: 홈 추천 전용 — min-w-[47%] max-w-[200px], gap·bleed 축소
+ * - homeCuratedMobileCompact: 홈 추천 전용 — 모바일 `grid-cols-2` 고정(가로 스크롤 없음), gap·bleed 정리
  * - 데스크톱: 그리드 2열(sm) / desktopGridCols(lg), max-w 1344px
  */
 export function ProductCardGridSection({
@@ -32,30 +32,44 @@ export function ProductCardGridSection({
 
   if (items.length === 0) return null;
 
-  const mobileTrackClass = homeCuratedMobileCompact
-    ? "gap-2.5 -mx-5 px-5 sm:mx-0 sm:px-0"
-    : "gap-3 -mx-1 px-1 sm:mx-0 sm:px-0";
+  const mobileBleedClass = homeCuratedMobileCompact
+    ? "-mx-4 px-4 sm:mx-0 sm:px-0"
+    : "-mx-1 px-1 sm:mx-0 sm:px-0";
 
-  const mobileItemClass = homeCuratedMobileCompact
-    ? "min-w-[47%] max-w-[200px] shrink-0"
-    : "min-w-[78%] max-w-[320px] shrink-0";
+  const mobileItemClass = homeCuratedMobileCompact ? "min-w-0" : "min-w-[78%] max-w-[320px] shrink-0";
 
   return (
     <div className={className}>
       <div className="mx-auto w-full max-w-[1344px]">
-        {/* 모바일: 가로 스크롤 */}
-        <div
-          className={cn(
-            "flex overflow-x-auto pb-2 scrollbar-hide sm:hidden",
-            mobileTrackClass,
-          )}
-        >
-          {items.map((item, i) => (
-            <div key={i} className={mobileItemClass}>
-              {item}
-            </div>
-          ))}
-        </div>
+        {/* 모바일: 홈 큐레이션은 2열 그리드 / 그 외는 가로 스크롤 */}
+        {homeCuratedMobileCompact ? (
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-x-2 gap-y-2.5 pb-2 sm:hidden",
+              mobileBleedClass,
+            )}
+          >
+            {items.map((item, i) => (
+              <div key={i} className={mobileItemClass}>
+                {item}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "flex overflow-x-auto pb-2 scrollbar-hide sm:hidden",
+              "gap-3",
+              mobileBleedClass,
+            )}
+          >
+            {items.map((item, i) => (
+              <div key={i} className={mobileItemClass}>
+                {item}
+              </div>
+            ))}
+          </div>
+        )}
         {/* 데스크톱: 그리드 2열(sm) / desktopGridCols열(lg). 랜딩 추천은 2열로 카드 폭 확대 */}
         <div
           className={

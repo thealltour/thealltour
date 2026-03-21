@@ -110,7 +110,7 @@ function MobileFlightBlock({
   const airportLine = [from.city || fromAirport, to.city || toAirport].filter(Boolean).join(" → ");
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-semibold text-[#1e3a8a]">{label}</p>
+      <p className="text-[11px] font-semibold text-[var(--primary)]">{label}</p>
       <p className="text-sm font-semibold text-slate-800">{route}</p>
       {airportLine ? <p className="text-xs text-slate-500">{airportLine}</p> : null}
       <div className="flex items-end justify-between gap-3">
@@ -153,7 +153,7 @@ function FlightCard({
 }: FlightCardProps) {
   return (
     <div className={`rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm ${compact ? "p-3" : "p-4"}`}>
-      <p className={`font-semibold text-[#1e3a8a] ${compact ? "mb-2 text-[11px]" : "mb-3 text-xs"}`}>{title}</p>
+      <p className={`font-semibold text-[var(--primary)] ${compact ? "mb-2 text-[11px]" : "mb-3 text-xs"}`}>{title}</p>
       <div className={`flex flex-wrap items-center justify-between ${compact ? "gap-3" : "gap-4"}`}>
         <div className="min-w-0 flex-1 text-left">
           <p className={`font-semibold text-slate-800 ${compact ? "text-xs" : "text-sm"}`}>{fromAirport}</p>

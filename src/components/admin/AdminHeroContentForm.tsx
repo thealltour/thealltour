@@ -6,7 +6,6 @@ import type { HomeHeroContent } from "@/types/homeHeroContent";
 import { DEFAULT_HERO_CONTENT } from "@/types/homeHeroContent";
 
 type FormState = {
-  badge: string;
   main_copy_accent: string;
   main_copy_tail: string;
   sub_description: string;
@@ -20,7 +19,6 @@ type FormState = {
 function toFormState(c: HomeHeroContent | null): FormState {
   if (!c)
     return {
-      badge: DEFAULT_HERO_CONTENT.badge ?? "",
       main_copy_accent: DEFAULT_HERO_CONTENT.main_copy_accent ?? "",
       main_copy_tail: DEFAULT_HERO_CONTENT.main_copy_tail ?? "",
       sub_description: DEFAULT_HERO_CONTENT.sub_description ?? "",
@@ -31,7 +29,6 @@ function toFormState(c: HomeHeroContent | null): FormState {
       search_placeholder: DEFAULT_HERO_CONTENT.search_placeholder ?? "",
     };
   return {
-    badge: c.badge ?? "",
     main_copy_accent: c.main_copy_accent ?? "",
     main_copy_tail: c.main_copy_tail ?? "",
     sub_description: c.sub_description ?? "",
@@ -84,7 +81,6 @@ export default function AdminHeroContentForm() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          badge: form.badge.trim() || null,
           main_copy_accent: form.main_copy_accent.trim() || null,
           main_copy_tail: form.main_copy_tail.trim() || null,
           sub_description: form.sub_description.trim() || null,
@@ -131,15 +127,6 @@ export default function AdminHeroContentForm() {
       </p>
       {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">뱃지</span>
-          <input
-            value={form.badge}
-            onChange={(e) => setForm((p) => ({ ...p, badge: e.target.value }))}
-            placeholder={DEFAULT_HERO_CONTENT.badge ?? ""}
-            className={inputClass}
-          />
-        </label>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">메인 카피 (강조 부분)</span>

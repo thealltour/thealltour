@@ -30,15 +30,28 @@ export type SectionHeaderProps = {
   className?: string;
   /** h2에 부여할 id (섹션 aria-labelledby 연결용) */
   titleId?: string;
+  /** true: eyebrow는 sm 이상·md 미만(약 640–767px)에서만 노출. 태블릿·데스크톱에서는 숨김. 홈 섹션용 */
+  hideEyebrowOnTablet?: boolean;
 };
 
-/** 섹션 CTA용 텍스트 링크 스타일 (전체보기 등, 데스크톱 위주) */
-export const SECTION_HEADER_CTA_CLASS =
-  "inline-flex items-center gap-1 text-sm font-medium text-[var(--primary)] hover:underline";
+/**
+ * 홈·랜딩 섹션「더보기」등 텍스트 링크 (모바일·데스크톱 공통).
+ * `gap-1.5` + 화살표 span, `text-sm`, 브랜드 블루, hover 시 밑줄·살짝 투명.
+ */
+export const SECTION_HEADER_MORE_LINK_CLASS =
+  "inline-flex items-center gap-1.5 shrink-0 text-sm font-medium text-[var(--primary)] underline-offset-2 transition hover:underline hover:opacity-90";
 
-/** 홈 섹션 헤더「더보기」등 모바일·데스크톱 공통 CTA (text-xs → sm:text-sm) */
-export const SECTION_HEADER_MOBILE_CTA_CLASS =
-  "inline-flex items-center gap-1 shrink-0 text-xs font-medium text-[var(--primary)] hover:underline sm:text-sm";
+/** @deprecated `SECTION_HEADER_MORE_LINK_CLASS`와 동일 */
+export const SECTION_HEADER_CTA_CLASS = SECTION_HEADER_MORE_LINK_CLASS;
+
+/** @deprecated `SECTION_HEADER_MORE_LINK_CLASS`와 동일 */
+export const SECTION_HEADER_MOBILE_CTA_CLASS = SECTION_HEADER_MORE_LINK_CLASS;
+
+/**
+ * 홈 메인 콘텐츠 `SectionBlock` 공통: 좌우 px-4(모바일), 헤더↔리스트 리듬은 부모 `space-y-*`로 맞춤.
+ */
+export const HOME_MAIN_SECTION_BLOCK_CLASS =
+  "space-y-4 sm:space-y-5 !px-4 !py-3 sm:!p-6 md:!p-8";
 
 /**
  * 섹션 헤더. 홈·랜딩 등 섹션 공통.
@@ -52,7 +65,12 @@ export function SectionHeader({
   align = "left",
   className,
   titleId,
+  hideEyebrowOnTablet = false,
 }: SectionHeaderProps) {
+  const eyebrowClass = cn(
+    "type-caption tracking-wide text-[var(--text-muted)]",
+    hideEyebrowOnTablet ? "hidden sm:block md:hidden" : "hidden sm:block",
+  );
   const hasTop = Boolean(eyebrow ?? title ?? description);
   const isCenter = align === "center";
   const { mobile: actionMobile, desktop: actionDesktop } = duplicateActionForLayout(action);
@@ -68,12 +86,19 @@ export function SectionHeader({
       >
         <div className="flex flex-col items-center space-y-1">
           {eyebrow ? (
-            <p className="hidden sm:block type-caption tracking-wide text-[var(--text-muted)]">{eyebrow}</p>
+            <p
+              className={cn(
+                "type-caption tracking-wide text-[var(--text-muted)]",
+                hideEyebrowOnTablet ? "hidden sm:block md:hidden" : "hidden sm:block",
+              )}
+            >
+              {eyebrow}
+            </p>
           ) : null}
           {title ? (
             <h2
               id={titleId}
-              className="heading-display mt-0.5 font-semibold text-lg text-[var(--foreground)] sm:mt-0 sm:text-xl lg:text-2xl"
+              className="heading-display mt-0.5 font-semibold text-lg leading-snug text-[var(--foreground)] sm:mt-0 sm:text-xl sm:leading-tight lg:text-2xl lg:leading-tight"
             >
               {title}
             </h2>
@@ -95,27 +120,27 @@ export function SectionHeader({
       )}
     >
       <div className="min-w-0 flex-1 space-y-2 sm:space-y-1">
-        <div className="flex items-start justify-between gap-3 sm:block">
+        <div className="flex items-center justify-between gap-3 sm:block sm:space-y-0">
           <div className="min-w-0 flex-1 space-y-1">
-            {eyebrow ? (
-              <p className="hidden sm:block type-caption tracking-wide text-[var(--text-muted)]">{eyebrow}</p>
-            ) : null}
+            {eyebrow ? <p className={eyebrowClass}>{eyebrow}</p> : null}
             {title ? (
               <h2
                 id={titleId}
-                className="heading-display mt-0.5 font-semibold text-lg text-[var(--foreground)] sm:mt-0 sm:text-xl lg:text-2xl"
+                className="heading-display mt-0.5 font-semibold text-lg leading-snug text-[var(--foreground)] sm:mt-0 sm:text-xl sm:leading-tight lg:text-2xl lg:leading-tight"
               >
                 {title}
               </h2>
             ) : null}
           </div>
-          {action ? <div className="shrink-0 sm:hidden">{actionMobile}</div> : null}
+          {action ? <div className="flex shrink-0 items-center sm:hidden">{actionMobile}</div> : null}
         </div>
         {description ? (
           <p className="type-small max-w-[640px] text-[var(--text-muted)]">{description}</p>
         ) : null}
       </div>
-      {action ? <div className="hidden shrink-0 sm:block">{actionDesktop}</div> : null}
+      {action ? (
+        <div className="hidden shrink-0 items-center sm:flex">{actionDesktop}</div>
+      ) : null}
     </div>
   );
 }

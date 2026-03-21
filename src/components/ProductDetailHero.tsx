@@ -2,6 +2,8 @@
 
 import Tag from "@/components/ui/Tag";
 import { useConsultModal } from "@/components/ConsultModal";
+import { buttonVariants } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 export type DetailHeroProps = {
   title: string;
@@ -50,9 +52,9 @@ export default function ProductDetailHero({
       </p>
 
       {/* PriceBlock - 카드 형태 강조 */}
-      <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-5 ring-1 ring-[#dbeafe]">
+      <div className="rounded-2xl border border-[var(--primary-soft)] bg-[var(--primary-soft)] p-5 ring-1 ring-[var(--primary-soft)]">
         {priceFormatted ? (
-          <p className="font-price-strong text-xl font-bold text-[#1E3A8A] md:text-2xl">
+          <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
             ₩{priceFormatted}~
           </p>
         ) : (
@@ -73,7 +75,7 @@ export default function ProductDetailHero({
         <button
           type="button"
           onClick={() => openModal({ productId, productTitle, sourcePath })}
-          className="type-btn inline-flex items-center justify-center rounded-xl bg-[#1E3A8A] px-5 py-3 text-white shadow-md transition hover:bg-[#1d4ed8] hover:shadow-lg"
+          className="type-btn inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-[var(--on-accent)] shadow-md transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] hover:shadow-lg"
         >
           상담 문의하기
         </button>
@@ -81,7 +83,13 @@ export default function ProductDetailHero({
           href={kakaoHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="type-btn inline-flex items-center justify-center rounded-xl border border-[#d9e1ec] bg-white px-5 py-3 text-slate-700 transition hover:bg-slate-50"
+          className={cn(
+            buttonVariants({
+              variant: "kakao",
+              size: "md",
+              className: "w-full px-5 py-3 sm:w-auto",
+            }),
+          )}
         >
           카톡 상담
         </a>

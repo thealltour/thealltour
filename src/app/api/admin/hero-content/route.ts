@@ -113,7 +113,7 @@ export async function PATCH(request: Request) {
   const { data: inserted, error } = await supabase
     .from("home_hero_content")
     .insert({
-      badge: cleanPayload.badge ?? null,
+      badge: null,
       main_copy_accent: cleanPayload.main_copy_accent ?? null,
       main_copy_tail: cleanPayload.main_copy_tail ?? null,
       sub_description: cleanPayload.sub_description ?? null,

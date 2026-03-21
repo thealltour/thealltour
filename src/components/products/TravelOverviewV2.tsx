@@ -1,25 +1,19 @@
 "use client";
 
-import {
-  Plane,
-  Building2,
-  MapPin,
-  Sparkles,
-  CircleDot,
-  MoreHorizontal,
-} from "lucide-react";
+import type { IconName } from "@/icons";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { FlightSummarySection } from "@/components/products/FlightSummarySection";
+import { InfoItem } from "@/components/products/detail/InfoItem";
 import type { Product } from "@/types/product";
 
-const CARD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  flight: Plane,
-  hotel: Building2,
-  region: MapPin,
-  theme: Sparkles,
-  golf: CircleDot,
-  etc: MoreHorizontal,
+/** 오버뷰 요약 카드 → 브랜드 레지스트리 */
+const BRAND_CARD_ICONS: Partial<Record<string, IconName>> = {
+  flight: "flight",
+  hotel: "hotel",
+  region: "region",
+  golf: "golf",
+  etc: "calendar",
 };
 
 export type TravelOverviewV2Props = {
@@ -27,13 +21,14 @@ export type TravelOverviewV2Props = {
   model: TravelOverviewModel | null;
   /** 항공 카드 포함용 상품 데이터 */
   product?: Product | null;
-  /** 일정 타임라인은 오버뷰 아래 InteractiveTimelineV2에서 표시 (onGoToItinerary는 해당 섹션으로 스크롤용) */
+  /** 모바일에서만 오버뷰에 차트 표시 등 (기존과 동일) */
   onGoToItinerary?: () => void;
 };
 
 export function TravelOverviewV2({
   model,
   product = null,
+  onGoToItinerary: _onGoToItinerary,
 }: TravelOverviewV2Props) {
   if (!model || !model.cards?.length) {
     return null;
@@ -51,22 +46,20 @@ export function TravelOverviewV2({
       className="w-full overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft-strong)]"
       aria-label={title}
     >
-      <div className="p-6 md:p-8">
-        <div className="mb-6">
+      <div className="p-5 md:p-7">
+        <div className="mb-4">
           <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">{title}</h2>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{subtext}</p>
+          <p className="mt-1 text-sm text-content-muted">{subtext}</p>
         </div>
 
-        <div className="space-y-8">
-          {/* 1. 차트 (모바일에서만 오버뷰에 표시, 웹은 오른쪽 예상가 위에 표시) */}
+        <div className="space-y-6">
           <div
             className={
               hasChart
-                ? "grid grid-cols-1 gap-6"
+                ? "grid grid-cols-1 gap-4"
                 : "block"
             }
           >
-            {/* 차트 (도넛) - 모바일에서만 오버뷰에 표시 */}
             {hasChart && (
               <div className="md:hidden">
                 <ThemeChartCard items={chart!.items} />
@@ -74,8 +67,7 @@ export function TravelOverviewV2({
             )}
           </div>
 
-          {/* 2. 항공·숙소·지역 카드 */}
-          <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
+          <div className="flex flex-col space-y-2.5 sm:grid sm:grid-cols-3 sm:gap-3 sm:space-y-0">
             {cards.map((card, i) => (
               <SummaryCard key={`${card.iconKey}-${card.label}-${i}`} card={card} />
             ))}
@@ -91,19 +83,20 @@ export function TravelOverviewV2({
 
 type CardModel = { iconKey: string; label: string; value: string };
 
+function iconForCard(iconKey: string): IconName {
+  const mapped = BRAND_CARD_ICONS[iconKey];
+  if (mapped) return mapped;
+  if (iconKey === "theme") return "sparkles";
+  return "moreHorizontal";
+}
+
 function SummaryCard({ card }: { card: CardModel }) {
-  const Icon = CARD_ICONS[card.iconKey] ?? MoreHorizontal;
   const displayValue = card.value?.trim() || "상담 시 안내";
+  const icon = iconForCard(card.iconKey);
+
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition hover:shadow-[var(--shadow-soft-strong)]">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:color-mix(in_oklab,var(--primary)_12%,white)] text-[var(--primary)]">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{card.label}</p>
-        <p className="mt-0.5 line-clamp-2 break-words text-sm font-semibold text-[var(--text-primary)]">{displayValue}</p>
-      </div>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition hover:shadow-[var(--shadow-soft-strong)]">
+      <InfoItem icon={icon} label={card.label} value={displayValue} />
     </div>
   );
 }
-

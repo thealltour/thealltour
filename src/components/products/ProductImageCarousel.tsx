@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, ImageIcon } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import {
   ProductImageGalleryModal,
   type ProductGalleryImage,
@@ -39,7 +39,7 @@ export function ProductImageCarousel({
           className="relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-slate-100 text-slate-500"
           aria-hidden
         >
-          <ImageIcon className="h-12 w-12 opacity-50" />
+          <Icon name="image" decorative size={48} className="opacity-50" />
           <span className="text-sm font-medium">대표 이미지 없음</span>
         </div>
       </section>
@@ -134,7 +134,7 @@ export function ProductImageCarousel({
               className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-sm font-semibold text-white shadow-lg transition hover:bg-black/70 active:scale-[0.98]"
               aria-label={images.length > 1 ? `사진 ${images.length}장 전체 보기` : "사진 크게 보기"}
             >
-              <Camera className="h-4 w-4 shrink-0" aria-hidden />
+              <Icon name="camera" decorative size={16} className="h-4 w-4 shrink-0" />
               {images.length > 1 ? "사진 전체보기" : "사진 보기"}
             </button>
             {/* PR39: dot indicator - 스와이프 가능성 인지 (여러 장일 때만) */}

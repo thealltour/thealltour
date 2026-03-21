@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { SectionBlock } from "@/components/layout/SectionBlock";
-import { SectionHeader, SECTION_HEADER_CTA_CLASS } from "@/components/layout/SectionHeader";
+import { SectionHeader, SECTION_HEADER_MOBILE_CTA_CLASS } from "@/components/layout/SectionHeader";
 import { CuratedSectionScrollBlock } from "@/components/home/CuratedSectionScrollBlock";
 import type {
   HomeCuratedSettings,
@@ -31,17 +31,26 @@ export default function CuratedProductsSection({
 
   if (isActive) {
     return (
-      <SectionBlock surface="none" padding="md" className={cn("space-y-3 sm:space-y-4", className)}>
+      <SectionBlock
+        surface="none"
+        padding="md"
+        className={cn(
+          "space-y-2 sm:space-y-4 !p-3 sm:!p-6 md:!p-8",
+          className,
+        )}
+      >
         <SectionHeader
           eyebrow={settings!.section_label}
           title={settings!.section_title}
           description={settings!.section_description}
           action={
             <Link
-              href={settings!.catalog_button_href}
-              className={SECTION_HEADER_CTA_CLASS}
+              href="/recommended"
+              className={SECTION_HEADER_MOBILE_CTA_CLASS}
+              aria-label="THEALL PICKS 더보기"
             >
-              {settings!.catalog_button_label}
+              더보기
+              <span aria-hidden>→</span>
             </Link>
           }
         />

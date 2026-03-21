@@ -2,8 +2,8 @@
 
 import { useRef, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Search } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 import HeaderProductSearch from "@/components/HeaderProductSearch";
 
 type HeaderExpandSearchProps = {
@@ -51,7 +51,7 @@ export function HeaderExpandSearch({ searchQuery }: HeaderExpandSearchProps) {
           open && "bg-[var(--surface-muted)] text-[var(--foreground)]",
         )}
       >
-        <Search className="h-5 w-5" aria-hidden />
+        <Icon name="search" decorative size={20} className="h-5 w-5 shrink-0" />
       </button>
 
       {open && (

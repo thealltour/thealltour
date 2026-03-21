@@ -62,10 +62,13 @@ export default async function Home() {
       <SiteHeader />
 
       <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
-        <main className="flex w-full flex-col pt-1 pb-6 sm:py-10 md:py-14">
+        <main className="flex w-full min-w-0 max-w-full flex-col pt-1 pb-6 sm:py-10 md:py-14">
           <HeroSection primaryBanner={primaryBanner} hero={hero} />
 
-          <PageContainer size="wide" className="flex flex-col gap-7 sm:gap-10 md:gap-20">
+          <PageContainer
+            size="wide"
+            className="flex flex-col gap-4 px-3 sm:gap-8 sm:px-6 lg:px-8 xl:px-10 md:gap-20"
+          >
             <DestinationSection
               items={destinationsForHome}
               eyebrow={settings.home_region_section_eyebrow}
@@ -83,8 +86,12 @@ export default async function Home() {
             <HomeGuideSection guides={homeGuides} />
             <HomeReviewSection reviews={homeReviews} />
 
-            <SectionBlock surface="none" padding="md">
-              <div className="mb-8 space-y-3 text-center">
+            <SectionBlock
+              surface="none"
+              padding="md"
+              className="!p-3 sm:!p-6 md:!p-8"
+            >
+              <div className="mb-6 space-y-3 text-center sm:mb-8">
                 <p className="inline-flex items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-1 section-label text-[var(--foreground)] md:type-small">
                   대형 여행사 공식 제휴 파트너
                 </p>
@@ -146,7 +153,12 @@ export default async function Home() {
               </div>
             </SectionBlock>
 
-            <SectionBlock id="contact" surface="none" padding="md" className="md:px-12">
+            <SectionBlock
+              id="contact"
+              surface="none"
+              padding="md"
+              className="!p-3 sm:!p-6 md:!py-8 md:!px-12"
+            >
               <div className="grid items-start gap-10 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)]">
                 <div className="space-y-4">
                   <p className="section-label text-[var(--text-muted)] md:type-small">THEALL TOUR CONTACT</p>

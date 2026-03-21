@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { ImageIcon } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 
 const MAX_THUMBNAILS = 8;
 
@@ -35,7 +35,7 @@ function ImageWithFallback({
         className={`flex items-center justify-center bg-[var(--surface-muted)] text-[var(--text-muted)] ${fill ? "absolute inset-0" : ""} ${className ?? ""}`}
         aria-hidden
       >
-        <ImageIcon className="h-8 w-8 opacity-50" />
+        <Icon name="image" decorative size={32} className="opacity-50" />
       </div>
     );
   }

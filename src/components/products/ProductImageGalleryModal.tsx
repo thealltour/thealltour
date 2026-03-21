@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { X } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 
 export type ProductGalleryImage = {
@@ -161,7 +161,7 @@ export function ProductImageGalleryModal({
             className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
             aria-label="이미지 모달 닫기"
           >
-            <X className="h-5 w-5" />
+            <Icon name="close" decorative size={20} className="h-5 w-5" />
           </button>
         </div>
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
-import { ChevronDown, Check, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import Tag from "@/components/ui/Tag";
 import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
@@ -301,8 +301,7 @@ export default function ProductDetailV2({
   const termsLines = useMemo(() => parseBulletLines(termsAndNotes), [termsAndNotes]);
 
   const hasSchedule = scheduleDays.length > 0;
-  const listClass = "space-y-2 text-sm leading-[1.7] text-slate-700";
-  const bulletClass = "mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]";
+  const listClass = "space-y-2 text-sm leading-7 text-slate-700";
 
   /** PR8-1: 메타 정보 바용 날짜 범위. startDate~endDate 단일 표현, 동일일이면 한 번만 */
   const metaDateRange = useMemo(() => {
@@ -713,7 +712,7 @@ export default function ProductDetailV2({
         )}
 
         {activeTab === "included" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* PR25: 포함/불포함 카드 UI */}
             <ProductIncludeExclude included={includedLines} excluded={excludedLines} />
             {(includedLines.length === 0 && excludedLines.length === 0) && (
@@ -725,8 +724,13 @@ export default function ProductDetailV2({
                 <ul className={listClass}>
                   {optionalLines.map((line, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className={bulletClass} />
-                      <span>{line}</span>
+                      <Icon
+                        name="check"
+                        decorative
+                        size={14}
+                        className="mt-1 shrink-0 text-[#2563eb]"
+                      />
+                      <span className="whitespace-normal">{line}</span>
                     </li>
                   ))}
                 </ul>
@@ -736,25 +740,25 @@ export default function ProductDetailV2({
         )}
 
         {activeTab === "booking" && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <ul className="space-y-3">
               {minDeparturePeople?.trim() && (
                 <li className="flex items-start gap-3">
-                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                  <span className="text-sm leading-[1.7] text-slate-700">
+                  <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <span className="text-sm leading-7 text-slate-700 whitespace-normal">
                     출발 인원: {minDeparturePeople.trim()}명 이상 확정 시 출발
                   </span>
                 </li>
               )}
               <li className="flex items-start gap-3">
-                <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                <span className="text-sm leading-[1.7] text-slate-700">
+                <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+                <span className="text-sm leading-7 text-slate-700 whitespace-normal">
                   최종 일정·가격은 상담 후 확정됩니다.
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                <span className="text-sm leading-[1.7] text-slate-700">
+                <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+                <span className="text-sm leading-7 text-slate-700 whitespace-normal">
                   문의 주시면 맞춤 견적과 예약 절차를 안내해 드립니다.
                 </span>
               </li>

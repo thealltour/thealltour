@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { useConsultModal } from "@/components/ConsultModal";
 import { MobileHeaderDrawer } from "./MobileHeaderDrawer";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
@@ -123,7 +124,7 @@ export function MobileHeaderMenu({
             onClick={() => openDrawerWithTrack("search_icon")}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           >
-            <Search className="h-5 w-5" aria-hidden />
+            <Icon name="search" decorative size={20} className="h-5 w-5 shrink-0" />
           </button>
           <a
             href="/quote"

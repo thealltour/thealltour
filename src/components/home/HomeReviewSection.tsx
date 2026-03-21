@@ -17,7 +17,11 @@ export function HomeReviewSection({ reviews, className }: HomeReviewSectionProps
   if (reviews.length === 0) return null;
 
   return (
-    <SectionBlock surface="none" padding="md" className={cn("space-y-3 sm:space-y-4", className)}>
+    <SectionBlock
+      surface="none"
+      padding="md"
+      className={cn("space-y-2 sm:space-y-4 !p-3 sm:!p-6 md:!p-8", className)}
+    >
       <SectionHeader
         eyebrow="TRAVEL REVIEWS"
         title="여행자들의 실제 후기"

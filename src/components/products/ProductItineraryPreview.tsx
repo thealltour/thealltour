@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useCallback, type ComponentType } from "react";
-import { ChevronRight, Plane, MapPin, Camera, Bed, Sparkles, PlaneLanding } from "lucide-react";
+import { useMemo, useCallback } from "react";
+import type { IconName } from "@/icons";
+import { Icon } from "@/components/ui/Icon";
 import type { TimelineModel } from "@/lib/products/mapProductToTimelineModel";
 import { getDayPreviewLabel, getLegacyDayPreviewLabel } from "@/lib/products/itineraryPreviewLabel";
 
@@ -22,7 +23,17 @@ export type ProductItineraryPreviewProps = {
   onPreviewDayClick?: (dayNumber: number) => void;
 };
 
+/** 레거시 키 (메타 추론). 내부에서 IconName으로 매핑 */
 export type PreviewDayIconKey = "flight" | "map" | "camera" | "bed" | "sparkles" | "plane-landing";
+
+const PREVIEW_ICON_NAMES: Record<PreviewDayIconKey, IconName> = {
+  flight: "flight",
+  map: "region",
+  camera: "camera",
+  bed: "hotel",
+  sparkles: "sparkles",
+  "plane-landing": "planeLanding",
+};
 
 type PreviewDay = {
   dayLabel: string;
@@ -31,47 +42,38 @@ type PreviewDay = {
   dayNumber: number;
   activityTag?: string;
   emphasisText?: string;
-  iconKey?: PreviewDayIconKey;
+  iconName?: IconName;
 };
 
-type PreviewMeta = Pick<PreviewDay, "activityTag" | "emphasisText" | "iconKey">;
+type PreviewMeta = Pick<PreviewDay, "activityTag" | "emphasisText" | "iconName">;
 
 /** PR12: 규칙 기반 보조 메타 추론. title/heading/description 결합 텍스트로 키워드 매칭 */
 function getPreviewMetaFromText(text: string): PreviewMeta {
   const t = (text || "").trim();
   if (!t) return {};
   if (/귀국|인천.*도착|복귀|귀국일/.test(t)) {
-    return { activityTag: "귀국", emphasisText: "귀국 및 해산", iconKey: "plane-landing" };
+    return { activityTag: "귀국", emphasisText: "귀국 및 해산", iconName: PREVIEW_ICON_NAMES["plane-landing"] };
   }
   if (/출발|공항|탑승|출국|출발일|인천.*출발/.test(t)) {
-    return { activityTag: "이동", emphasisText: "출국 및 이동", iconKey: "flight" };
+    return { activityTag: "이동", emphasisText: "출국 및 이동", iconName: PREVIEW_ICON_NAMES.flight };
   }
   if (/도착|체크인|호텔|첫날/.test(t) && !/관광|체험/.test(t)) {
-    return { activityTag: "도착", emphasisText: "도착 후 휴식", iconKey: "bed" };
+    return { activityTag: "도착", emphasisText: "도착 후 휴식", iconName: PREVIEW_ICON_NAMES.bed };
   }
   if (/관광|사원|시티투어|시내|핵심관광|투어/.test(t)) {
-    return { activityTag: "핵심 관광", emphasisText: "사원·시내 중심 일정", iconKey: "camera" };
+    return { activityTag: "핵심 관광", emphasisText: "사원·시내 중심 일정", iconName: PREVIEW_ICON_NAMES.camera };
   }
   if (/체험|전통|안마|보호소|클래스/.test(t)) {
-    return { activityTag: "체험", emphasisText: "대표 체험 일정", iconKey: "sparkles" };
+    return { activityTag: "체험", emphasisText: "대표 체험 일정", iconName: PREVIEW_ICON_NAMES.sparkles };
   }
   if (/자유|휴양|힐링|휴식|자유일정|프리/.test(t)) {
-    return { activityTag: "휴양", emphasisText: "휴식 및 귀국 준비", iconKey: "bed" };
+    return { activityTag: "휴양", emphasisText: "휴식 및 귀국 준비", iconName: PREVIEW_ICON_NAMES.bed };
   }
   if (/이동|경유|차량|버스/.test(t)) {
-    return { activityTag: "이동", emphasisText: "이동 일정", iconKey: "map" };
+    return { activityTag: "이동", emphasisText: "이동 일정", iconName: PREVIEW_ICON_NAMES.map };
   }
   return {};
 }
-
-const PREVIEW_ICONS: Record<PreviewDayIconKey, ComponentType<{ className?: string }>> = {
-  flight: Plane,
-  map: MapPin,
-  camera: Camera,
-  bed: Bed,
-  sparkles: Sparkles,
-  "plane-landing": PlaneLanding,
-};
 
 function fromTimelineModel(model: TimelineModel | null | undefined, maxDays: number): PreviewDay[] {
   if (!model?.days?.length) return [];
@@ -100,7 +102,6 @@ function PreviewDayCard({
   day: PreviewDay;
   onPreviewDayClick?: (dayNumber: number) => void;
 }) {
-  const Icon = day.iconKey ? PREVIEW_ICONS[day.iconKey] : null;
   const isClickable = Boolean(onPreviewDayClick);
   const content = (
     <>
@@ -110,7 +111,14 @@ function PreviewDayCard({
         </span>
         {day.activityTag && (
           <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-            {Icon && <Icon className="hidden h-3.5 w-3.5 shrink-0 sm:block" aria-hidden />}
+            {day.iconName ? (
+              <Icon
+                name={day.iconName}
+                decorative
+                size={14}
+                className="hidden h-3.5 w-3.5 shrink-0 sm:block"
+              />
+            ) : null}
             {day.activityTag}
           </span>
         )}
@@ -177,7 +185,7 @@ export function ProductItineraryPreview({
   return (
     <section className="w-full" aria-label="일정 미리보기">
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-soft)] md:p-5">
-        <h2 className="mb-4 text-lg font-bold text-[var(--text-primary)] md:text-xl">일정 미리보기</h2>
+        <h2 className="mb-3 text-lg font-bold text-[var(--text-primary)] md:text-xl">일정 미리보기</h2>
         {/* Desktop: grid 카드 (PR14: 카드 클릭 시 해당 Day로 이동) */}
         <div className="hidden grid-cols-2 gap-3 md:grid xl:grid-cols-4">
           {previewDays.map((d, i) => (
@@ -193,10 +201,10 @@ export function ProductItineraryPreview({
         <button
           type="button"
           onClick={handleViewFullItinerary}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-[var(--primary)] bg-transparent px-4 py-2.5 text-sm font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--primary)] bg-transparent px-4 py-2.5 text-sm font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
         >
           전체 일정 보기
-          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+          <Icon name="chevronRight" decorative size={16} className="h-4 w-4 shrink-0" />
         </button>
       </div>
     </section>

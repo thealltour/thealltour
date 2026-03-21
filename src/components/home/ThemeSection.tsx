@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { SectionBlock } from "@/components/layout/SectionBlock";
-import { SectionHeader } from "@/components/layout/SectionHeader";
+import { SectionHeader, SECTION_HEADER_MOBILE_CTA_CLASS } from "@/components/layout/SectionHeader";
 import { HomeTaxonomyGrid } from "@/components/home/HomeTaxonomyGrid";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import { cn } from "@/lib/cn";
@@ -30,12 +31,26 @@ export default function ThemeSection({
   if (items.length === 0) return null;
 
   return (
-    <SectionBlock surface="none" padding="md" className={cn("space-y-3 sm:space-y-4", className)}>
+    <SectionBlock
+      surface="none"
+      padding="md"
+      className={cn("space-y-1.5 sm:space-y-4 !p-3 sm:!p-6 md:!p-8", className)}
+    >
       <SectionHeader
         eyebrow={eyebrow?.trim() || undefined}
         title={title?.trim() || undefined}
         description={description?.trim() || undefined}
         align="left"
+        action={
+          <Link
+            href="/themes"
+            className={SECTION_HEADER_MOBILE_CTA_CLASS}
+            aria-label="나만의 테마 여행 더보기"
+          >
+            더보기
+            <span aria-hidden>→</span>
+          </Link>
+        }
       />
       <HomeTaxonomyGrid items={items} type="theme" layout="horizontal-scroll" />
     </SectionBlock>

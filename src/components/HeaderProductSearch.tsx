@@ -2,8 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import HeaderSearchDropdown from "@/components/HeaderSearchDropdown";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
@@ -202,7 +203,12 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
             isFocused && "border-[var(--primary)] ring-[3px] ring-[var(--focus-ring)]",
           )}
         >
-          <Search className="pointer-events-none h-4 w-4 shrink-0 text-[var(--text-subtle)]" />
+          <Icon
+            name="search"
+            decorative
+            size={16}
+            className="pointer-events-none h-4 w-4 shrink-0 text-[var(--text-subtle)]"
+          />
           <input
             id="header-product-search-desktop"
             type="text"
@@ -264,7 +270,12 @@ export default function HeaderProductSearch({ searchQuery, mode }: HeaderProduct
           isFocused && "border-[var(--primary)] ring-[3px] ring-[var(--focus-ring)]",
         )}
       >
-        <Search className="pointer-events-none h-4 w-4 shrink-0 text-[var(--text-subtle)]" />
+        <Icon
+          name="search"
+          decorative
+          size={16}
+          className="pointer-events-none h-4 w-4 shrink-0 text-[var(--text-subtle)]"
+        />
         <input
           id="header-product-search-mobile"
           type="text"

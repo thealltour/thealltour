@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { SectionBlock } from "@/components/layout/SectionBlock";
-import { SectionHeader, SECTION_HEADER_CTA_CLASS } from "@/components/layout/SectionHeader";
+import { SectionHeader, SECTION_HEADER_MOBILE_CTA_CLASS } from "@/components/layout/SectionHeader";
 import { GuideCard } from "@/components/guides/GuideCard";
 import type { Guide } from "@/types/guide";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -54,14 +54,23 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
   if (guides.length === 0) return null;
 
   return (
-    <SectionBlock surface="none" padding="md" className={cn("space-y-3 sm:space-y-4", className)}>
+    <SectionBlock
+      surface="none"
+      padding="md"
+      className={cn("space-y-2 sm:space-y-4 !p-3 sm:!p-6 md:!p-8", className)}
+    >
       <SectionHeader
         eyebrow="TRAVEL GUIDE"
         title="여행 준비에 도움이 되는 가이드"
         description="지역별·테마별 꿀팁과 가이드를 만나보세요."
         action={
-          <Link href="/guides" className={SECTION_HEADER_CTA_CLASS}>
-            가이드 전체 보기 →
+          <Link
+            href="/guides"
+            className={SECTION_HEADER_MOBILE_CTA_CLASS}
+            aria-label="여행 가이드 더보기"
+          >
+            더보기
+            <span aria-hidden>→</span>
           </Link>
         }
         align="left"
@@ -89,11 +98,11 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
         )}
         <ul
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0"
+          className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 sm:mx-0 sm:px-0"
           aria-label="여행 가이드"
         >
           {guides.map((guide) => (
-            <li key={guide.id} className="min-w-[72%] sm:min-w-[260px] shrink-0">
+            <li key={guide.id} className="min-w-[58%] sm:min-w-[240px] shrink-0">
               <GuideCard guide={guide} />
             </li>
           ))}

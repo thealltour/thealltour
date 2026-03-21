@@ -2,6 +2,8 @@
 
 import type { Product } from "@/types/product";
 import { AirlineLogo } from "@/components/airlines/AirlineLogo";
+import { Icon } from "@/components/ui/Icon";
+import { InfoItem } from "@/components/products/detail/InfoItem";
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -106,11 +108,6 @@ function MobileFlightBlock({
       ? `${from.code} → ${to.code}`
       : `${from.city || fromAirport || "출발"} → ${to.city || toAirport || "도착"}`;
   const airportLine = [from.city || fromAirport, to.city || toAirport].filter(Boolean).join(" → ");
-  const metaParts = [flightName.trim()];
-  if (baggageLimit?.trim()) {
-    metaParts.push(`수하물 ${formatBaggageLimit(baggageLimit)}`);
-  }
-
   return (
     <div className="space-y-2">
       <p className="text-[11px] font-semibold text-[#1e3a8a]">{label}</p>
@@ -131,7 +128,12 @@ function MobileFlightBlock({
           {toDate ? <p className="text-[11px] text-slate-500">{toDate}</p> : null}
         </div>
       </div>
-      <p className="truncate text-[11px] text-slate-500">{metaParts.join(" · ")}</p>
+      <div className="mt-3 space-y-2 border-t border-slate-200/80 pt-3">
+        <InfoItem icon="flight" label="항공" value={flightName.trim() || "—"} />
+        {baggageLimit?.trim() ? (
+          <InfoItem icon="baggage" label="수하물" value={formatBaggageLimit(baggageLimit)} />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -159,13 +161,7 @@ function FlightCard({
           <p className={`mt-1 font-bold text-slate-900 ${compact ? "text-lg" : "text-xl"}`}>{fromTime}</p>
         </div>
         <div className={`flex shrink-0 flex-col items-center border-y border-slate-200 ${compact ? "gap-1 py-1.5 px-2.5" : "gap-1.5 py-2 px-3"}`}>
-          {baggageLimit ? (
-            <span className={`rounded-full bg-[#eff6ff] px-2 py-0.5 font-semibold text-[#1e3a8a] ${compact ? "text-[10px]" : "text-[11px]"}`}>
-              수하물 {formatBaggageLimit(baggageLimit)}
-            </span>
-          ) : null}
           <AirlineLogo airlineText={flightName} size={compact ? 32 : 40} />
-          <span className="text-center text-xs font-semibold text-slate-600">{flightName}</span>
         </div>
         <div className="min-w-0 flex-1 text-right">
           <p className={`font-semibold text-slate-800 ${compact ? "text-xs" : "text-sm"}`}>{toAirport}</p>
@@ -177,6 +173,12 @@ function FlightCard({
             <p className={`font-bold text-slate-900 ${compact ? "text-lg" : "text-xl"}`}>{toTime}</p>
           </div>
         </div>
+      </div>
+      <div className={`mt-3 space-y-2 border-t border-slate-200/80 ${compact ? "pt-2" : "pt-3"}`}>
+        <InfoItem icon="flight" label="항공" value={flightName.trim() || "—"} />
+        {baggageLimit?.trim() ? (
+          <InfoItem icon="baggage" label="수하물" value={formatBaggageLimit(baggageLimit)} />
+        ) : null}
       </div>
     </div>
   );
@@ -241,7 +243,10 @@ export function FlightSummarySection({
       aria-label="항공편"
     >
       <div className={embedded ? "" : "p-6 md:p-8"}>
-        <h2 className={compact ? "text-lg font-bold tracking-tight text-slate-900" : "text-xl font-bold tracking-tight text-slate-900 md:text-2xl"}>
+        <h2
+          className={`inline-flex items-center gap-2 font-bold tracking-tight text-slate-900 ${compact ? "text-lg" : "text-xl md:text-2xl"}`}
+        >
+          <Icon name="flight" decorative size={compact ? 20 : 22} className="shrink-0 text-slate-700" />
           항공
         </h2>
         {!compact && <p className="mt-1 text-sm text-slate-500">출발·도착 항공편 정보입니다.</p>}

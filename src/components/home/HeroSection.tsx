@@ -82,17 +82,20 @@ export default function HeroSection({ primaryBanner = null, hero }: HeroSectionP
         </>
       ) : null}
 
-      <PageContainer size="wide">
-        <div className="relative z-10 py-2.5 text-[var(--hero-text-primary)] sm:py-4 md:py-10">
-          <div className="space-y-2 md:space-y-5">
+      <PageContainer
+        size="wide"
+        className="px-3 sm:px-6 lg:px-8 xl:px-10"
+      >
+        <div className="relative z-10 min-w-0 max-w-full py-2 text-[var(--hero-text-primary)] sm:py-4 md:py-10">
+          <div className="min-w-0 space-y-1.5 md:space-y-5">
             {/* 모바일: Hero 이미지 카드 제거 — 이미지 블록 없음 */}
 
-            <div className="grid gap-2 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center md:gap-6">
-              <div className="flex flex-col gap-2 md:space-y-4">
+            <div className="grid min-w-0 max-w-full gap-1.5 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] md:items-center md:gap-6">
+              <div className="flex min-w-0 max-w-full flex-col gap-1.5 md:space-y-4">
                 <p className="section-label inline-flex w-fit max-w-full items-center gap-1.5 rounded-full bg-[var(--hero-badge-bg)] px-2.5 py-0.5 text-[10px] font-medium text-[var(--hero-text-secondary)] ring-1 ring-[var(--hero-badge-border)] sm:px-3 sm:py-1 sm:text-[11px] md:px-4 md:py-1 md:type-small">
                   {hero.badge ?? "THEALL TOUR"}
                 </p>
-                <h1 className="font-semibold leading-snug tracking-tight text-[var(--hero-text-primary)] text-xl sm:text-[1.65rem] sm:leading-tight md:heading-display-hero md:type-h1 md:text-[2.5rem] md:leading-[1.15]">
+                <h1 className="line-clamp-2 font-semibold leading-snug tracking-tight text-[var(--hero-text-primary)] text-lg sm:text-[1.65rem] sm:leading-tight md:line-clamp-none md:heading-display-hero md:type-h1 md:text-[2.5rem] md:leading-[1.15]">
                   <span className="md:hidden">
                     <MobileHeroHeadline hero={hero} />
                   </span>
@@ -112,7 +115,7 @@ export default function HeroSection({ primaryBanner = null, hero }: HeroSectionP
                     {hero.sub_description}
                   </p>
                 ) : null}
-                <div className="w-full max-w-[720px] space-y-0 md:space-y-1">
+                <div className="w-full min-w-0 max-w-[720px] space-y-0 md:space-y-1">
                   <div className="pt-0 md:pt-3">
                     <HomeHeroSearch
                       placeholder={hero.search_placeholder ?? "지역, 테마, 상품명을 검색해보세요"}
@@ -120,7 +123,6 @@ export default function HeroSection({ primaryBanner = null, hero }: HeroSectionP
                       variant="hero-mobile"
                     />
                   </div>
-                  {/* 모바일: 빠른 선택 허브 (아이콘 + 라벨, 5열) */}
                   <HomeQuickKeywords />
                   {/* 데스크탑: 기존 추천 링크 텍스트 */}
                   <p className="hidden pt-1 type-caption text-[var(--hero-text-secondary)]/80 md:block">

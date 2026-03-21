@@ -1,10 +1,10 @@
 "use client";
 
-import { Calendar, Sparkles } from "lucide-react";
+import { InfoItem } from "@/components/products/detail/InfoItem";
 
 /**
  * PR9/PR10: 갤러리(히어로) 아래 여행 핵심 요약 카드.
- * 정보 위계: 일정 → 날짜 → 테마 → 상품 특징. 정돈된 정보 카드 톤 유지.
+ * 정보 위계: 일정 → 날짜 → 테마 → 상품 특징. InfoItem 행으로 스캔 UX 통일.
  */
 
 export type ProductQuickSummaryCardProps = {
@@ -29,50 +29,32 @@ export function ProductQuickSummaryCard({
   dateRangeLabel = "",
   highlightItems = [],
 }: ProductQuickSummaryCardProps) {
-  const hasTop = Boolean(durationLabel || themeLabel);
-  const hasMiddle = Boolean(departureLabel || dateRangeLabel);
+  const dateLine = departureLabel || dateRangeLabel;
   const visibleHighlights = highlightItems.slice(0, MAX_HIGHLIGHTS);
   const hasBottom = visibleHighlights.length > 0;
+  const hasInfoRows = Boolean(durationLabel || themeLabel || dateLine);
 
-  if (!hasTop && !hasMiddle && !hasBottom) return null;
+  if (!hasInfoRows && !hasBottom) return null;
 
   return (
     <div
-      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-5"
+      className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:p-4"
       aria-label="여행 핵심 요약"
     >
-      {/* 상단 핵심: 일정 → 테마 (가장 먼저 읽히도록) */}
-      {hasTop && (
-        <div className="summary-top flex flex-wrap items-center gap-x-4 gap-y-1">
-          {durationLabel && (
-            <div className="summary-duration flex items-center gap-1.5">
-              <Calendar className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-              <span className="text-lg font-semibold text-slate-800">{durationLabel}</span>
-            </div>
-          )}
-          {themeLabel && (
-            <div className="summary-theme flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-              <span className="text-sm text-gray-600">{themeLabel}</span>
-            </div>
-          )}
+      {hasInfoRows && (
+        <div className="space-y-2.5">
+          {durationLabel ? <InfoItem icon="calendar" label="여행 기간" value={durationLabel} /> : null}
+          {themeLabel ? <InfoItem icon="sparkles" label="테마" value={themeLabel} /> : null}
+          {dateLine ? <InfoItem icon="calendar" label="출발·일정" value={dateLine} /> : null}
         </div>
       )}
 
-      {/* 중단 보조: 날짜 또는 출발일 */}
-      {hasMiddle && (
-        <div className="summary-date mt-2 text-sm text-gray-500">
-          {departureLabel || dateRangeLabel}
-        </div>
-      )}
-
-      {/* 하단: 상품 특징 chips (가독성·일관성) */}
       {hasBottom && (
-        <div className="summary-highlights mt-3 flex flex-wrap gap-2">
+        <div className={`summary-highlights flex flex-wrap gap-2 ${hasInfoRows ? "mt-3 border-t border-slate-100 pt-3" : ""}`}>
           {visibleHighlights.map((label, i) => (
             <span
               key={i}
-              className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700"
+              className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs leading-snug text-gray-700"
             >
               {label}
             </span>

@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
-import { ImageIcon } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import type {
   TimelineModel,
   TimelineDay,
@@ -198,7 +198,7 @@ function CoverImage({
       className="flex aspect-[21/9] w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[var(--surface-muted)] text-[var(--text-muted)]"
       aria-hidden
     >
-      <ImageIcon className="h-12 w-12 opacity-50" />
+      <Icon name="image" decorative size={48} className="opacity-50" />
       <span className="text-sm font-medium">Day {day.day} 일정 이미지 없음</span>
     </div>
   );

@@ -1,29 +1,23 @@
 "use client";
 
 import { useRef, useState, useMemo } from "react";
-import {
-  Plane,
-  Hotel,
-  UtensilsCrossed,
-  Landmark,
-  Flag,
-  Clock,
-} from "lucide-react";
+import type { IconName } from "@/icons";
+import { Icon } from "@/components/ui/Icon";
 import type { TimelineEvent, TimeOfDayLabel } from "@/lib/products/mapProductToTimelineModel";
 import { Lightbox, type LightboxImage } from "@/components/ui/Lightbox";
 import { EventMediaSection, type EventMediaImage } from "./EventMediaSection";
 
-const EVENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  plane: Plane,
-  hotel: Hotel,
-  utensils: UtensilsCrossed,
-  landmark: Landmark,
-  flag: Flag,
-  clock: Clock,
-  car: Plane,
-  map: Landmark,
-  golf: Flag,
-  sun: Clock,
+const EVENT_ICON_KEYS: Record<string, IconName> = {
+  plane: "flight",
+  hotel: "hotel",
+  utensils: "utensils",
+  landmark: "landmark",
+  flag: "flag",
+  clock: "clock",
+  car: "flight",
+  map: "region",
+  golf: "golf",
+  sun: "healing",
 };
 
 const TIMEOFDAY_LABELS: Record<TimeOfDayLabel, string> = {
@@ -57,8 +51,8 @@ export type TimelineEventCardProps = {
   onImageOpen?: (imageIndex: number) => void;
 };
 
-export function TimelineEventCard({ event, normalizeUrl, productId, dayIndex, eventIndex, onImageOpen }: TimelineEventCardProps) {
-  const Icon = event.iconKey ? EVENT_ICONS[event.iconKey] : null;
+export function TimelineEventCard({ event, normalizeUrl, onImageOpen }: TimelineEventCardProps) {
+  const brandIcon = event.iconKey ? EVENT_ICON_KEYS[event.iconKey] : undefined;
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const returnFocusRef = useRef<HTMLButtonElement>(null);
@@ -90,17 +84,17 @@ export function TimelineEventCard({ event, normalizeUrl, productId, dayIndex, ev
         ) : null}
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            {Icon && (
+            {brandIcon ? (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
-                <Icon className="h-4 w-4" />
+                <Icon name={brandIcon} decorative size={16} className="h-4 w-4" />
               </div>
-            )}
+            ) : null}
             <h4 className="min-w-0 flex-1 text-lg font-semibold leading-tight text-[var(--text-primary)]" title={event.heading}>
               {event.heading}
             </h4>
           </div>
           {event.description && (
-            <p className="line-clamp-3 text-sm leading-6 text-[var(--text-muted)] whitespace-pre-wrap">
+            <p className="line-clamp-3 text-sm leading-7 text-[var(--text-muted)] whitespace-pre-wrap">
               {event.description}
             </p>
           )}

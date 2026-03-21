@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/ui/Icon";
+
 export type ProductHotelCardProps = {
   /** 호텔 이름 또는 대표 숙소 문구 (예: Chiangmai Resort 또는 동급 호텔) */
   hotelName?: string;
@@ -30,20 +32,23 @@ export function ProductHotelCard({
       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
       aria-label="호텔 안내"
     >
-      <h3 className="mb-4 text-sm font-semibold text-slate-800">호텔 안내</h3>
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <Icon name="hotel" decorative size={16} className="h-4 w-4 shrink-0 text-slate-500" />
+        호텔 안내
+      </h3>
       <div className="space-y-1.5 text-sm text-slate-700">
         {name && (
           <p className="font-semibold text-slate-800">{name}</p>
         )}
         {desc && (
           <p className="flex items-start gap-1.5 text-gray-600">
-            <span aria-hidden>📍</span>
+            <Icon name="region" decorative size={14} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
             <span>{desc}</span>
           </p>
         )}
         {grade && (
           <p className="flex items-start gap-1.5 text-gray-600">
-            <span aria-hidden>🏨</span>
+            <Icon name="hotel" decorative size={14} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
             <span>{grade}</span>
           </p>
         )}

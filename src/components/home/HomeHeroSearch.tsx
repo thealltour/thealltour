@@ -3,7 +3,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
@@ -11,6 +10,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import HeaderSearchDropdown from "@/components/HeaderSearchDropdown";
 import SearchSuggestionsDropdown from "@/components/search/SearchSuggestionsDropdown";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 import type { SearchSuggestion } from "@/types/search";
 
 const HERO_RECENT_KEY = "hero_recent_searches";
@@ -308,7 +308,12 @@ export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false
   }
 
   return (
-    <div className="space-y-2">
+    <div
+      className={cn(
+        "space-y-2",
+        variant === "hero-mobile" && "space-y-1 md:space-y-2",
+      )}
+    >
       <form
         ref={formRef}
         onSubmit={handleSubmit}
@@ -321,13 +326,21 @@ export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false
       >
         <div
           className={cn(
-            "flex items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-4 py-2 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] sm:px-5 sm:py-2.5",
+            "flex items-center border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]",
             variant === "hero-mobile"
-              ? "rounded-2xl sm:rounded-[1.25rem] md:rounded-full"
-              : "rounded-full",
+              ? "gap-1.5 px-3 py-1.5 sm:gap-2 sm:px-5 sm:py-2.5 rounded-2xl border-slate-200/95 bg-white shadow-md ring-slate-200/80 sm:rounded-[1.25rem] md:rounded-full md:border-[var(--border)] md:bg-[var(--surface)] md:shadow-[var(--shadow-soft)] md:ring-[var(--border)]"
+              : "gap-2 rounded-full px-4 py-2 sm:px-5 sm:py-2.5",
           )}
         >
-          <Search className="h-5 w-5 shrink-0 text-[var(--text-muted)] md:h-5 md:w-5" aria-hidden />
+          <Icon
+            name="search"
+            decorative
+            size={variant === "hero-mobile" ? 16 : 20}
+            className={cn(
+              "shrink-0 text-[var(--text-muted)]",
+              variant === "hero-mobile" && "sm:h-5 sm:w-5",
+            )}
+          />
           <input
             ref={inputRef}
             type="search"
@@ -339,7 +352,7 @@ export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false
             placeholder={displayPlaceholder}
             className={cn(
               "min-h-10 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--text-muted)] sm:min-h-12 sm:text-[15px]",
-              variant === "hero-mobile" && "min-h-11 sm:min-h-12",
+              variant === "hero-mobile" && "min-h-10 sm:min-h-12",
             )}
             autoComplete="off"
             aria-label="검색어"
@@ -357,7 +370,7 @@ export function HomeHeroSearch({ placeholder, hideRecentSearchesOnMobile = false
             onMouseDown={() => (submitSourceRef.current = "button")}
             className={cn(
               "shrink-0 rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--on-primary)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 sm:px-6 sm:py-3 sm:text-base",
-              variant === "hero-mobile" && "px-4 py-2.5 sm:px-6 sm:py-3",
+              variant === "hero-mobile" && "px-3.5 py-2 sm:px-6 sm:py-3",
             )}
           >
             검색

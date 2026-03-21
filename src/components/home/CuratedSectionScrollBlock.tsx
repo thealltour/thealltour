@@ -1,8 +1,7 @@
 "use client";
 
-import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
-import { productToProductCardProps } from "@/lib/productCardProps";
+import { HomeProductCard } from "@/components/products/HomeProductCard";
 import type { HomeCuratedSectionWithProducts } from "@/types/homeCurated";
 import { cn } from "@/lib/cn";
 
@@ -25,21 +24,18 @@ export function CuratedSectionScrollBlock({
   if (section.products.length === 0) return null;
 
   return (
-    <div className={cn("space-y-3 sm:space-y-4", className)}>
+    <div className={cn("space-y-2 sm:space-y-4", className)}>
       {showTitle && section.title ? (
         <h3 className="font-card-title text-base font-semibold text-[var(--foreground)] md:text-lg">
           {section.title}
         </h3>
       ) : null}
-      <ProductCardGridSection>
+      <ProductCardGridSection homeCuratedMobileCompact>
         {section.products.map((product) => (
-          <ProductCard
+          <HomeProductCard
             key={product.id}
-            {...productToProductCardProps(product, {
-              layout: "grid",
-              analyticsSource: "home_curated",
-              analyticsSection: section.title ?? undefined,
-            })}
+            product={product}
+            analyticsSection={section.title ?? undefined}
           />
         ))}
       </ProductCardGridSection>

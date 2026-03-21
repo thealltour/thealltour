@@ -95,7 +95,7 @@ export function HomeTaxonomyGrid({
       ref={isHorizontalScroll ? scrollRef : undefined}
       className={cn(
         isHorizontalScroll
-          ? "flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0"
+          ? "flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 sm:mx-0 sm:px-0"
           : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4",
         !isHorizontalScroll && className,
       )}
@@ -111,7 +111,7 @@ export function HomeTaxonomyGrid({
           <li
             key={item.id}
             className={cn(
-              isHorizontalScroll && "min-w-[72%] sm:min-w-[260px] shrink-0",
+              isHorizontalScroll && "min-w-[58%] sm:min-w-[240px] shrink-0",
             )}
           >
             <Link
@@ -127,7 +127,7 @@ export function HomeTaxonomyGrid({
                   src={imageUrl || FALLBACK_IMAGE}
                   alt=""
                   fill
-                  sizes={isHorizontalScroll ? "(max-width: 640px) 72vw, 260px" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"}
+                  sizes={isHorizontalScroll ? "(max-width: 640px) 58vw, 240px" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"}
                   className="object-cover transition duration-200 group-hover:scale-[1.02]"
                 />
               </div>

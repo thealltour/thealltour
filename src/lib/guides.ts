@@ -199,6 +199,21 @@ export async function getRelatedGuidesByGuide(
   return (data ?? []).map((row) => normalizeGuide(row as Record<string, unknown>));
 }
 
+/**
+ * 노션 원문 URL. notion_url 우선, 없으면 notion_page_id로 https://notion.so/{hex} 생성.
+ * /guides 목록·홈 가이드 섹션 등 외부 노션 열기에 공통 사용.
+ */
+export function getGuideNotionViewUrl(guide: Guide): string {
+  const url = guide.notion_url?.trim();
+  if (url) return url;
+  const pageId = guide.notion_page_id?.trim();
+  if (pageId) {
+    const hex = pageId.replace(/-/g, "");
+    return `https://notion.so/${hex}`;
+  }
+  return "";
+}
+
 /** 가이드 카드/상세 링크. slug 있으면 /guides/[slug] 우선, 없으면 landing_url, 없으면 /guides */
 export function getGuideHref(guide: Guide): string {
   if (guide.slug?.trim()) return `/guides/${encodeURIComponent(guide.slug.trim())}`;

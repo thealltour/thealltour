@@ -108,7 +108,7 @@ export default function GlobalSiteFooter() {
               {/* 1순위: 카카오 */}
               <div>
                 <p className="mb-1.5 type-caption font-medium text-[var(--text-subtle)]">
-                  빠른 상담 · 채널
+                  상담 · 채널
                 </p>
                 <a
                   href={kakaoChannelUrl ?? "https://pf.kakao.com"}
@@ -124,7 +124,7 @@ export default function GlobalSiteFooter() {
                   )}
                 >
                   <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-                  카카오채널 문의하기
+                  카카오 채널
                 </a>
               </div>
 

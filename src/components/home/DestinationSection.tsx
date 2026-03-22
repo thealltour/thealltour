@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
-  SectionHeader,
   SECTION_HEADER_MOBILE_CTA_CLASS,
   HOME_MAIN_SECTION_BLOCK_CLASS,
 } from "@/components/layout/SectionHeader";
-import { HomeTaxonomyGrid } from "@/components/home/HomeTaxonomyGrid";
+import { ExploreRailSection } from "@/components/explore/ExploreRailSection";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import { cn } from "@/lib/cn";
 
@@ -23,7 +21,7 @@ export type DestinationSectionProps = {
 
 /**
  * 홈 Destination 섹션.
- * 여행지 기반 탐색의 첫 진입점. 카드 그리드는 허브/목록과 재사용 가능한 구조.
+ * `ExploreRailSection` + `ExploreCategoryCard` — /destinations 허브와 동일 카드·레일 UX.
  */
 export default function DestinationSection({
   items,
@@ -35,29 +33,28 @@ export default function DestinationSection({
   if (items.length === 0) return null;
 
   return (
-    <SectionBlock
+    <ExploreRailSection
+      layoutPreset="home"
       surface="none"
       padding="md"
-      className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
-    >
-      <SectionHeader
-        eyebrow={eyebrow?.trim() || undefined}
-        title={title?.trim() || undefined}
-        description={description?.trim() || undefined}
-        hideEyebrowOnTablet
-        align="left"
-        action={
-          <Link
-            href="/destinations"
-            className={SECTION_HEADER_MOBILE_CTA_CLASS}
-            aria-label="인기 여행지 더보기"
-          >
-            더보기
-            <span aria-hidden>→</span>
-          </Link>
-        }
-      />
-      <HomeTaxonomyGrid items={items} type="destination" layout="horizontal-scroll" />
-    </SectionBlock>
+      sectionBlockClassName={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
+      eyebrow={eyebrow?.trim() || undefined}
+      title={title?.trim() || undefined}
+      description={description?.trim() || undefined}
+      hideEyebrowOnTablet
+      action={
+        <Link
+          href="/destinations"
+          className={SECTION_HEADER_MOBILE_CTA_CLASS}
+          aria-label="인기 여행지 더보기"
+        >
+          더보기
+          <span aria-hidden>→</span>
+        </Link>
+      }
+      taxonomyType="destination"
+      items={items}
+      listAriaLabel="지역별 탐색"
+    />
   );
 }

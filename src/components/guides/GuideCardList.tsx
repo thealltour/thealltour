@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Guide } from "@/types/guide";
+import { getGuideNotionViewUrl } from "@/lib/guides";
 import { GuidePdfModal } from "@/components/GuidePdfModal";
 
 type GuideCardListProps = {
@@ -15,17 +16,6 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("ko-KR");
-}
-
-function getNotionViewUrl(guide: Guide): string {
-  const url = guide.notion_url?.trim();
-  if (url) return url;
-  const pageId = guide.notion_page_id?.trim();
-  if (pageId) {
-    const hex = pageId.replace(/-/g, "");
-    return `https://notion.so/${hex}`;
-  }
-  return "";
 }
 
 export function GuideCardList({ guides }: GuideCardListProps) {
@@ -165,7 +155,7 @@ export function GuideCardList({ guides }: GuideCardListProps) {
           }
 
           if (hasNotionDetail) {
-            const notionUrl = getNotionViewUrl(guide);
+            const notionUrl = getGuideNotionViewUrl(guide);
             return notionUrl ? (
               <a
                 key={guide.id}

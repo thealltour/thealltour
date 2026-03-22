@@ -85,18 +85,24 @@ export default function ProductSummaryInfo({
             <button
               type="button"
               onClick={() => openModal({ productId, productTitle, sourcePath })}
-              className="inline-flex flex-1 items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-              aria-label="상품 문의하기"
+              className={cn(
+                buttonVariants({ variant: "primary", size: "md" }),
+                "flex-1 text-sm font-semibold",
+              )}
+              aria-label="일정 및 가격 문의하기"
             >
-              문의하기
+              일정/가격 문의하기
             </button>
           ) : consultHref ? (
             <a
               href={consultHref}
-              className="inline-flex flex-1 items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-              aria-label="상품 문의하기"
+              className={cn(
+                buttonVariants({ variant: "primary", size: "md" }),
+                "flex-1 text-sm font-semibold",
+              )}
+              aria-label="일정 및 가격 문의하기"
             >
-              문의하기
+              일정/가격 문의하기
             </a>
           ) : null}
           {kakaoHref && (
@@ -111,9 +117,9 @@ export default function ProductSummaryInfo({
                   className: "min-h-11 flex-1 text-sm font-semibold sm:flex-none",
                 }),
               )}
-              aria-label="카카오톡으로 상담하기"
+              aria-label="카톡으로 상담하기"
             >
-              카카오 상담
+              카톡 상담
             </a>
           )}
         </div>

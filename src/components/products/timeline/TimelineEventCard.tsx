@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useMemo } from "react";
 import type { IconName } from "@/icons";
 import { Icon } from "@/components/ui/Icon";
 import type { TimelineEvent, TimeOfDayLabel } from "@/lib/products/mapProductToTimelineModel";
-import { Lightbox, type LightboxImage } from "@/components/ui/Lightbox";
 import { EventMediaSection, type EventMediaImage } from "./EventMediaSection";
 
 const EVENT_ICON_KEYS: Record<string, IconName> = {
@@ -27,14 +26,6 @@ const TIMEOFDAY_LABELS: Record<TimeOfDayLabel, string> = {
   종일: "종일",
 };
 
-function eventToLightboxImages(event: TimelineEvent): LightboxImage[] {
-  const list = event.images ?? [];
-  if (list.length === 0) return [];
-  return list
-    .filter((item) => item?.url?.trim() && /^https?:\/\//i.test(item.url.trim()))
-    .map((item) => ({ url: item.url, alt: item.alt }));
-}
-
 function eventToMediaImages(event: TimelineEvent): EventMediaImage[] {
   const list = event.images ?? [];
   if (list.length === 0) return [];
@@ -44,29 +35,17 @@ function eventToMediaImages(event: TimelineEvent): EventMediaImage[] {
 export type TimelineEventCardProps = {
   event: TimelineEvent;
   normalizeUrl: (url: string) => string;
-  /** PR20: 이미지 lightbox 열 때 계측용 */
   productId?: string;
   dayIndex?: number;
   eventIndex?: number;
+  /** 상세일정 이미지 모달 제거로 현재는 호출되지 않음 (API 호환용) */
   onImageOpen?: (imageIndex: number) => void;
 };
 
-export function TimelineEventCard({ event, normalizeUrl, onImageOpen }: TimelineEventCardProps) {
+export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProps) {
   const brandIcon = event.iconKey ? EVENT_ICON_KEYS[event.iconKey] : undefined;
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
-  const returnFocusRef = useRef<HTMLButtonElement>(null);
-
-  const lightboxImages = useMemo(() => eventToLightboxImages(event), [event.images]);
   const mediaImages = useMemo(() => eventToMediaImages(event), [event.images]);
-  const hasImages = lightboxImages.length > 0;
-
-  const openLightbox = (index: number, triggerButton: HTMLButtonElement) => {
-    returnFocusRef.current = triggerButton;
-    setLightboxIndex(index);
-    setLightboxOpen(true);
-    onImageOpen?.(index);
-  };
+  const hasImages = mediaImages.length > 0;
 
   return (
     <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
@@ -107,22 +86,9 @@ export function TimelineEventCard({ event, normalizeUrl, onImageOpen }: Timeline
           <EventMediaSection
             images={mediaImages}
             normalizeUrl={normalizeUrl}
-            onOpenLightbox={openLightbox}
             eventTitle={event.heading}
           />
         </div>
-      )}
-
-      {/* 라이트박스: 해당 이벤트 이미지만, 상단에 이벤트 제목 표시 */}
-      {lightboxOpen && hasImages && (
-        <Lightbox
-          images={lightboxImages}
-          initialIndex={lightboxIndex}
-          onClose={() => setLightboxOpen(false)}
-          returnFocusRef={returnFocusRef}
-          normalizeUrl={normalizeUrl}
-          title={event.heading}
-        />
       )}
     </article>
   );

@@ -12,10 +12,16 @@ import { ConsultModalProvider } from "@/components/ConsultModal";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/FirstTouchInit";
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://thealltour.com").replace(/\/$/, "");
+
 export const metadata: Metadata = {
-  title: "더올투어 | 맞춤형 해외/국내 골프투어/파크골프투어 전문",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "더올투어 | 맞춤형 해외·국내 골프투어",
+    template: "%s | 더올투어",
+  },
   description:
-    "더올투어는 해외/국내 골프투어와 파크골프투어를 고객 맞춤형으로 설계하는 전문 여행사입니다. 상담부터 일정 운영, 현지 케어까지 신뢰 있게 안내합니다.",
+    "가족여행, 효도여행, 골프투어, 테마여행까지. 상담부터 일정 제안까지 맞춤형으로 도와드립니다.",
   icons: {
     icon: [
       { url: THEALL_FAVICON_16_SRC, sizes: "16x16", type: "image/png" },
@@ -23,6 +29,30 @@ export const metadata: Metadata = {
     ],
     shortcut: THEALL_FAVICON_32_SRC,
     apple: THEALL_APPLE_TOUCH_ICON_SRC,
+  },
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName: "더올투어",
+    locale: "ko_KR",
+    title: "더올투어 | 맞춤형 해외·국내 골프투어",
+    description:
+      "가족여행, 효도여행, 골프투어, 테마여행까지. 상담부터 일정 제안까지 맞춤형으로 도와드립니다.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "더올투어 - 맞춤형 골프 및 테마 여행",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "더올투어 | 맞춤형 해외·국내 골프투어",
+    description:
+      "가족여행, 효도여행, 골프투어, 테마여행까지. 상담부터 일정 제안까지 맞춤형으로 도와드립니다.",
+    images: ["/twitter-image"],
   },
 };
 

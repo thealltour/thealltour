@@ -14,6 +14,10 @@ export type CuratedBlockProps = {
   products: Product[];
   /** 섹션 래퍼 강조. none: 헤더+그리드만, muted/card: 배경/박스 적용 */
   surface?: CuratedBlockSurface;
+  /**
+   * true: /destinations·/themes 허브 추천 상품 — md 미만 스냅 가로 레일, md+ 그리드(허브·지역 카드와 동일 브레이크포인트).
+   */
+  hubLandingLayout?: boolean;
 };
 
 const SURFACE_CLASS: Record<CuratedBlockSurface, string> = {
@@ -27,6 +31,7 @@ export default function CuratedBlock({
   description,
   products,
   surface = "none",
+  hubLandingLayout = false,
 }: CuratedBlockProps) {
   if (!products || products.length === 0) return null;
 
@@ -37,7 +42,7 @@ export default function CuratedBlock({
         description={description}
       />
 
-      <ProductCardGridSection>
+      <ProductCardGridSection hubLandingLayout={hubLandingLayout}>
         {products.map((product) => (
           <ProductCard
             key={product.id}

@@ -38,31 +38,23 @@ import { getSiteSettings } from "@/lib/siteSettings";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getTermsTemplateContent } from "@/lib/termsTemplates";
 import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
+import { getProductSeoData } from "@/lib/products/getProductSeoData";
+import { getSiteBaseUrl, toAbsoluteUrl } from "@/lib/seo/getSiteSeoDefaults";
 
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function buildSeoDescription(input: string) {
-  return input.replace(/\s+/g, " ").trim().slice(0, 155);
-}
-
-function toAbsoluteUrl(siteUrl: string, pathOrUrl: string) {
-  if (!pathOrUrl) return siteUrl;
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-  const normalizedPath = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
-  return `${siteUrl}${normalizedPath}`;
-}
-
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const product = await getProductByIdFresh(id);
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
+  const siteUrl = getSiteBaseUrl();
   const productPath = `/products/${id}`;
   const productUrl = `${siteUrl}${productPath}`;
+  /** 메타 description·OG 부제는 getProductSeoData 내부에서 DB SEO → slug 패턴 카피 → fallback 순으로 결정 */
+  const seo = await getProductSeoData(id);
 
-  if (!product) {
+  if (!seo) {
     return {
       title: "패키지상품 | 더올투어",
       description: "더올투어 패키지상품 정보를 확인해 보세요.",
@@ -72,17 +64,9 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     };
   }
 
-  const title = product.meta_title?.trim() || `${product.title} | ${product.category} 패키지 | 더올투어`;
-  const description =
-    product.meta_description?.trim() ||
-    buildSeoDescription(
-      `${product.title} ${product.category} ${product.theme ?? ""} ${product.description} 더올투어 맞춤 여행 상담 가능`,
-    );
-  const ogImage = toAbsoluteUrl(siteUrl, product.image_url?.trim() || THEALL_WORDMARK_IMAGE_SRC);
-
   return {
-    title,
-    description,
+    title: seo.browserTitle,
+    description: seo.metaDescription,
     alternates: {
       canonical: productUrl,
     },
@@ -90,16 +74,23 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
       type: "article",
       url: productUrl,
       siteName: "더올투어",
-      title,
-      description,
-      images: [{ url: ogImage }],
+      title: seo.browserTitle,
+      description: seo.metaDescription,
+      images: [
+        {
+          url: `${productPath}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: seo.name,
+        },
+      ],
       locale: "ko_KR",
     },
     twitter: {
       card: "summary_large_image",
-      title,
-      description,
-      images: [ogImage],
+      title: seo.browserTitle,
+      description: seo.metaDescription,
+      images: [`${productPath}/twitter-image`],
     },
   };
 }
@@ -164,7 +155,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     : shouldFallbackFromLegacyDetailFields
       ? undefined
       : product.terms_and_notes;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
+  const siteUrl = getSiteBaseUrl();
   const productUrl = `${siteUrl}/products/${product.id}`;
   const productImageUrl = toAbsoluteUrl(siteUrl, product.image_url?.trim() || THEALL_WORDMARK_IMAGE_SRC);
   const productReviewStats = await getProductReviewStats(product.id);
@@ -349,8 +340,8 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                     aria-label="관련 가이드"
                   >
                     {relatedGuides.map((guide) => (
-                      <li key={guide.id}>
-                        <GuideCard guide={guide} />
+                      <li key={guide.id} className="flex min-h-0 h-full min-w-0">
+                        <GuideCard guide={guide} className="w-full" />
                       </li>
                     ))}
                   </ul>

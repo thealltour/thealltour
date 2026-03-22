@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getThemeSeoData } from "@/lib/products/getThemeSeoData";
+import { getSiteBaseUrl } from "@/lib/seo/getSiteSeoDefaults";
 import {
   getTaxonomyNameBySlug,
   getHubDestinations,
@@ -22,6 +25,60 @@ import type { ProductTaxonomy } from "@/types/productTaxonomy";
 type ThemeLandingProps = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateMetadata({ params }: ThemeLandingProps): Promise<Metadata> {
+  const { slug } = await params;
+  const trimmed = slug?.trim() ?? "";
+  const siteUrl = getSiteBaseUrl();
+
+  if (!trimmed) {
+    return {
+      title: "테마별 여행",
+      description: "더올투어 테마별 맞춤 여행 상품을 확인해 보세요.",
+      alternates: { canonical: `${siteUrl}/products` },
+    };
+  }
+
+  const seo = await getThemeSeoData(trimmed);
+  const path = `/products/theme/${trimmed}`;
+  const url = `${siteUrl}${path}`;
+
+  if (!seo) {
+    return {
+      title: "테마별 여행",
+      description: "더올투어 테마별 맞춤 여행 상품을 확인해 보세요.",
+      alternates: { canonical: url },
+    };
+  }
+
+  return {
+    title: { absolute: seo.documentTitle },
+    description: seo.metaDescription,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      url,
+      siteName: "더올투어",
+      title: seo.documentTitle,
+      description: seo.metaDescription,
+      images: [
+        {
+          url: `${path}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: `${seo.ogTitle} 테마 여행`,
+        },
+      ],
+      locale: "ko_KR",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seo.documentTitle,
+      description: seo.metaDescription,
+      images: [`${path}/twitter-image`],
+    },
+  };
+}
 
 /** 카드 이미지 미설정 시 해당 테마 상품 대표 이미지로 채움. */
 function buildThemeFallbackImageMap(

@@ -69,7 +69,8 @@ function inDisplayOrder(images: EventMediaImage[]): EventMediaImage[] {
 export type EventMediaSectionProps = {
   images: EventMediaImage[];
   normalizeUrl: (url: string) => string;
-  onOpenLightbox: (index: number, triggerButton: HTMLButtonElement) => void;
+  /** 미전달 시 대표 이미지는 클릭 불가, 「크게 보기」도 숨김 */
+  onOpenLightbox?: (index: number, triggerButton: HTMLButtonElement) => void;
   eventTitle?: string;
 };
 
@@ -88,26 +89,35 @@ export function EventMediaSection({
   const displayImage = inOrder[selectedIndex] ?? inOrder[0];
   const hasMultiple = inOrder.length > 1;
   const thumbnails = inOrder.slice(0, MAX_THUMBNAILS);
+  const canOpenLightbox = typeof onOpenLightbox === "function";
+
+  const mainImage = (
+    <ImageWithFallback
+      src={normalizeUrl(displayImage.url)}
+      alt={displayImage.alt ?? eventTitle}
+      fill
+      className={`object-cover ${canOpenLightbox ? "transition hover:scale-[1.02]" : ""}`}
+      sizes="(max-width: 768px) 100vw, 560px"
+      unoptimized
+    />
+  );
 
   return (
     <div className="space-y-3">
-      {/* 대표 이미지: 썸네일 선택 반영, 클릭 시 lightbox */}
+      {/* 대표 이미지: 썸네일 선택 반영. onOpenLightbox 있을 때만 클릭으로 확대 */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-[var(--surface-muted)] shadow-sm">
-        <button
-          type="button"
-          onClick={(e) => onOpenLightbox(selectedIndex, e.currentTarget)}
-          className="absolute inset-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-inset focus:ring-offset-0"
-          aria-label={`${eventTitle} 대표 이미지 크게 보기`}
-        >
-          <ImageWithFallback
-            src={normalizeUrl(displayImage.url)}
-            alt={displayImage.alt ?? eventTitle}
-            fill
-            className="object-cover transition hover:scale-[1.02]"
-            sizes="(max-width: 768px) 100vw, 560px"
-            unoptimized
-          />
-        </button>
+        {canOpenLightbox ? (
+          <button
+            type="button"
+            onClick={(e) => onOpenLightbox(selectedIndex, e.currentTarget)}
+            className="absolute inset-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-inset focus:ring-offset-0"
+            aria-label={`${eventTitle} 대표 이미지 크게 보기`}
+          >
+            {mainImage}
+          </button>
+        ) : (
+          <div className="absolute inset-0">{mainImage}</div>
+        )}
       </div>
 
       {/* 썸네일 스트립: 클릭 시 대표 이미지만 변경 */}
@@ -141,17 +151,18 @@ export function EventMediaSection({
         </div>
       )}
 
-      {/* 크게 보기 */}
-      <div>
-        <button
-          type="button"
-          onClick={(e) => onOpenLightbox(selectedIndex, e.currentTarget)}
-          className="rounded text-sm font-medium text-[var(--primary)] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
-          aria-label={`${eventTitle} 이미지 ${inOrder.length}장 크게 보기`}
-        >
-          크게 보기
-        </button>
-      </div>
+      {canOpenLightbox ? (
+        <div>
+          <button
+            type="button"
+            onClick={(e) => onOpenLightbox(selectedIndex, e.currentTarget)}
+            className="rounded text-sm font-medium text-[var(--primary)] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+            aria-label={`${eventTitle} 이미지 ${inOrder.length}장 크게 보기`}
+          >
+            크게 보기
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

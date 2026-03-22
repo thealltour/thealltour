@@ -1,24 +1,13 @@
 "use client";
 
 import type { Guide } from "@/types/guide";
+import { getGuideNotionViewUrl } from "@/lib/guides";
 
 export type GuideWithBadges = Guide & { badgeLabels: string[] };
 
 type GuidesListClientProps = {
   guides: GuideWithBadges[];
 };
-
-/** notion_url이 없을 때 notion_page_id로 fallback URL 생성 */
-function getNotionViewUrl(guide: GuideWithBadges): string {
-  const url = guide.notion_url?.trim();
-  if (url) return url;
-  const pageId = guide.notion_page_id?.trim();
-  if (pageId) {
-    const hex = pageId.replace(/-/g, "");
-    return `https://notion.so/${hex}`;
-  }
-  return "";
-}
 
 export function GuidesListClient({ guides }: GuidesListClientProps) {
   if (guides.length === 0) {
@@ -32,7 +21,7 @@ export function GuidesListClient({ guides }: GuidesListClientProps) {
   return (
     <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
       {guides.map((guide) => {
-        const notionUrl = getNotionViewUrl(guide);
+        const notionUrl = getGuideNotionViewUrl(guide);
         const hasUrl = notionUrl.length > 0;
         return hasUrl ? (
           <a

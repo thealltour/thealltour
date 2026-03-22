@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
-  SectionHeader,
   SECTION_HEADER_MOBILE_CTA_CLASS,
   HOME_MAIN_SECTION_BLOCK_CLASS,
 } from "@/components/layout/SectionHeader";
-import { HomeTaxonomyGrid } from "@/components/home/HomeTaxonomyGrid";
+import { ExploreRailSection } from "@/components/explore/ExploreRailSection";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import { cn } from "@/lib/cn";
 
@@ -23,7 +21,7 @@ export type ThemeSectionProps = {
 
 /**
  * 홈 Theme 섹션.
- * Destination 다음 단계의 탐색 축. 추후 product_taxonomies(theme) 연결 확장 용이.
+ * `ExploreRailSection` + `ExploreCategoryCard` — /themes 허브와 동일 카드·레일 UX.
  */
 export default function ThemeSection({
   items,
@@ -35,29 +33,28 @@ export default function ThemeSection({
   if (items.length === 0) return null;
 
   return (
-    <SectionBlock
+    <ExploreRailSection
+      layoutPreset="home"
       surface="none"
       padding="md"
-      className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
-    >
-      <SectionHeader
-        eyebrow={eyebrow?.trim() || undefined}
-        title={title?.trim() || undefined}
-        description={description?.trim() || undefined}
-        hideEyebrowOnTablet
-        align="left"
-        action={
-          <Link
-            href="/themes"
-            className={SECTION_HEADER_MOBILE_CTA_CLASS}
-            aria-label="나만의 테마 여행 더보기"
-          >
-            더보기
-            <span aria-hidden>→</span>
-          </Link>
-        }
-      />
-      <HomeTaxonomyGrid items={items} type="theme" layout="horizontal-scroll" />
-    </SectionBlock>
+      sectionBlockClassName={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
+      eyebrow={eyebrow?.trim() || undefined}
+      title={title?.trim() || undefined}
+      description={description?.trim() || undefined}
+      hideEyebrowOnTablet
+      action={
+        <Link
+          href="/themes"
+          className={SECTION_HEADER_MOBILE_CTA_CLASS}
+          aria-label="나만의 테마 여행 더보기"
+        >
+          더보기
+          <span aria-hidden>→</span>
+        </Link>
+      }
+      taxonomyType="theme"
+      items={items}
+      listAriaLabel="테마별 탐색"
+    />
   );
 }

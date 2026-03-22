@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ShieldCheck, Users, Route, CheckCircle2 } from "lucide-react";
 import SiteHeader from "@/components/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -16,6 +17,12 @@ import ThemeSection from "@/components/home/ThemeSection";
 import CuratedProductsSection from "@/components/home/CuratedProductsSection";
 import { HomeGuideSection } from "@/components/home/HomeGuideSection";
 import { HomeReviewSection } from "@/components/home/HomeReviewSection";
+
+export const metadata: Metadata = {
+  title: "맞춤형 해외·국내 골프투어",
+  description:
+    "가족여행, 효도여행, 골프투어, 테마여행까지. 더올투어에서 맞춤형 일정으로 제안해드립니다.",
+};
 
 /**
  * 홈 페이지. 섹션 순서 고정: Hero → Destination → Theme → Curated Products.
@@ -179,13 +186,13 @@ export default async function Home() {
                 </div>
                 <div className="flex min-h-0 flex-col justify-center rounded-none bg-transparent p-0 shadow-none ring-0 text-[var(--foreground)] sm:rounded-2xl sm:bg-[var(--surface-muted)] sm:p-5 sm:shadow-[var(--shadow-soft)] sm:ring-1 sm:ring-[var(--border)] md:p-6">
                   <h4 className="mb-1.5 type-small font-semibold leading-snug text-[var(--text-muted)] sm:mb-2 md:type-body">
-                    한 번의 클릭으로 프리미엄 상담을 요청해 주세요.
+                    30초 작성 만으로 프리미엄 상담 요청이 가능합니다.
                   </h4>
                   <p className="mb-1.5 type-caption leading-snug text-[var(--text-muted)] sm:mb-2 md:type-small md:leading-relaxed">
-                    문의 양식을 길게 작성하지 않아도, 간단한 정보만 남기면 전담 상담사가 직접 연락드립니다.
+                    성함과 연락처, 그리고 대략적인 희망사항을 남겨주세요.
                   </p>
                   <p className="mb-2 type-caption font-medium leading-snug text-[var(--text-secondary)] sm:mb-3 md:type-small">
-                    문의 접수 후 담당 상담사가 순차적으로 연락드립니다.
+                    요청하신 부분을 최대한 반영하여 코스를 선별해드립니다.
                   </p>
                   <div className="mt-auto rounded-none bg-transparent p-0 pt-0 ring-0 sm:rounded-xl sm:bg-[var(--surface-muted)] sm:p-3 sm:pt-3 sm:ring-1 sm:ring-[var(--border)] md:p-4">
                     <HeroQuickConsultButton />

@@ -2,9 +2,9 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
-import { SectionHeader } from "@/components/layout/SectionHeader";
+import { SectionHeader, SECTION_HEADER_MORE_LINK_CLASS } from "@/components/layout/SectionHeader";
 import { LandingHero } from "@/components/landing/LandingHero";
-import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
+import { ExploreRailSection } from "@/components/explore/ExploreRailSection";
 import { StickySectionNav } from "@/components/navigation/StickySectionNav";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
@@ -17,7 +17,6 @@ import {
   buildThemeTree,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
-import { getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { getHubHeroConfig } from "@/lib/landingMetadata";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { Product } from "@/types/product";
@@ -80,11 +79,18 @@ export default async function ThemesHubPage() {
     : [];
   const hasPreviews = themePreviews.some((p) => p.products.length > 0);
 
+  const themeRailItems = themes.map((t) => {
+    const nameKey = t.name.trim().toLowerCase();
+    const cardImageUrl =
+      t.card_image_url?.trim() || themeFallbackImages.get(nameKey) || undefined;
+    return { ...t, card_image_url: cardImageUrl ?? t.card_image_url };
+  });
+
   const hubSections = [
     { id: "themes", label: "테마 여행" },
     { id: "recommended-products", label: "추천 상품" },
     { id: "destinations", label: "지역별 여행" },
-    { id: "all-products", label: "전체 상품 필터 조회" },
+    { id: "all-products", label: "전체 상품 조회" },
   ];
 
   return (
@@ -110,30 +116,21 @@ export default async function ThemesHubPage() {
               <div className="min-w-0 flex-1">
                 <StickySectionNav variant="mobile" sections={hubSections} />
                 <section id="themes" aria-labelledby="themes-heading">
-                  <SectionBlock surface="none" padding="md">
-                    <SectionHeader
-                      titleId="themes-heading"
-                      title="대표 테마"
-                      description="원하는 테마를 선택해 보세요."
-                      align="left"
-                    />
-                    <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {themes.map((t) => {
-                        const nameKey = t.name.trim().toLowerCase();
-                        const cardImageUrl =
-                          t.card_image_url?.trim() || themeFallbackImages.get(nameKey) || undefined;
-                        return (
-                          <li key={t.id}>
-                            <HubBrowseCard
-                              item={{ ...t, card_image_url: cardImageUrl ?? t.card_image_url }}
-                              href={getThemeLandingHref(t)}
-                              showImage={true}
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </SectionBlock>
+                  <ExploreRailSection
+                    titleId="themes-heading"
+                    title="대표 테마"
+                    description="원하는 테마를 선택해 보세요."
+                    action={
+                      <Link href="#all-products" className={SECTION_HEADER_MORE_LINK_CLASS}>
+                        전체 보기
+                        <span aria-hidden>→</span>
+                      </Link>
+                    }
+                    taxonomyType="theme"
+                    layoutPreset="hub"
+                    items={themeRailItems}
+                    listAriaLabel="대표 테마"
+                  />
                 </section>
 
                 {hasPreviews && (
@@ -154,6 +151,7 @@ export default async function ThemesHubPage() {
                               }
                               products={themeProducts}
                               surface="none"
+                              hubLandingLayout
                             />
                           ),
                       )}
@@ -184,8 +182,8 @@ export default async function ThemesHubPage() {
                   <SectionBlock surface="muted" padding="lg">
                     <SectionHeader
                       titleId="all-products-heading"
-                      title="전체 상품 필터 조회"
-                      description="전체 상품 목록에서 지역·테마·정렬로 탐색할 수 있습니다."
+                      title="전체 상품 조회"
+                      description="전체 상품을 지역·테마 별로 정렬하여 탐색할 수 있습니다."
                       align="center"
                     />
                     <div className="mt-6 flex justify-center">

@@ -103,12 +103,15 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
         )}
         <ul
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
+          className="flex items-stretch gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
           aria-label="여행 가이드"
         >
           {guides.map((guide) => (
-            <li key={guide.id} className="min-w-[58%] sm:min-w-[240px] shrink-0">
-              <GuideCard guide={guide} />
+            <li
+              key={guide.id}
+              className="flex min-h-0 min-w-[58%] shrink-0 self-stretch sm:min-w-[240px]"
+            >
+              <GuideCard guide={guide} linkBehavior="notion_external" className="w-full" />
             </li>
           ))}
         </ul>

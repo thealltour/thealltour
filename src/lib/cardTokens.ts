@@ -3,7 +3,7 @@
  * 홈/목록/상세 카드·섹션에서 일관된 rounded, shadow, ring, hover, padding 사용.
  *
  * PR26: 홈 카드 디자인 시스템 통합.
- * 기준 = 지역별 카드 섹션(HomeTaxonomyGrid). 테마/추천상품 카드와 공통 규칙 적용.
+ * 기준 = ExploreCategoryCard(홈·허브 지역/테마 레일). 테마/추천상품 카드와 공통 규칙 적용.
  */
 
 /** 카드 wrapper 기본: 배경·테두리·그림자·라운드 */

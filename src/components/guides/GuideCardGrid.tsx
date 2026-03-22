@@ -27,8 +27,8 @@ export function GuideCardGrid({
       aria-label="여행 가이드"
     >
       {guides.map((guide) => (
-        <li key={guide.id}>
-          <GuideCard guide={guide} />
+        <li key={guide.id} className="flex min-h-0 h-full min-w-0">
+          <GuideCard guide={guide} className="w-full" />
         </li>
       ))}
     </ul>

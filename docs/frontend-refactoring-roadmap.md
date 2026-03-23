@@ -26,10 +26,10 @@
 - [x] `@/components/<domain>/...` 직접 import로 통일 (`scripts/fix-component-imports.mjs` 참고)
 - [x] 루트 re-export 스텁 제거
 
-## 3단계 — 상품 상세 레거시
+## 3단계 — 상품 상세 레거시 ✅ (1차 완료)
 
-- [ ] `ProductDetailContentLegacy` / `ProductDetailTabsLegacy` 사용처 축소 및 제거 일정
-- [ ] 타임라인 V1 전용 코드 경로 정리
+- [x] `ProductDetailContentLegacy` / `ProductDetailTabsLegacy` / `ProductDetailHero` / `ProductDetailSticky`(구 스티키) 제거 — 본 페이지는 `ProductDetailV2` + `ProductDetailStickyV2`만 사용
+- [x] 미사용 `ScheduleTimelineV2`(구 시각화) 및 `mapProductToTimelineModel` 내 `TimelineViewModel` 레거시 어댑터 제거 — 일정 UI는 `InteractiveTimelineV2` + `TimelineModel` 경로
 
 ## 4단계 — 횡단 규칙
 

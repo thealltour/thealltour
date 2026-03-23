@@ -41,7 +41,6 @@ export default function DestinationSection({
       eyebrow={eyebrow?.trim() || undefined}
       title={title?.trim() || undefined}
       description={description?.trim() || undefined}
-      hideEyebrowOnTablet
       action={
         <Link
           href="/destinations"

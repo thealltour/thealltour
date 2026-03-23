@@ -10,6 +10,8 @@ import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import {
   getThemeTabs,
   groupProductsByTheme,
@@ -24,17 +26,17 @@ type ProductCatalogSectionProps = {
   initialKeyword?: string;
   presetCategories?: string[];
   presetLabel?: string;
-  /** URL 필터 연동 시: 초기 지역(카테고리) */
+  /** URL ?? ?? ?: ?? ??(????) */
   initialRegion?: string | null;
-  /** URL 필터 연동 시: 초기 테마 */
+  /** URL ?? ?? ?: ?? ?? */
   initialTheme?: string | null;
-  /** URL 필터 연동 시: 카테고리 탭 클릭 시 호출 */
+  /** URL ?? ?? ?: ???? ? ?? ? ?? */
   onCategoryChange?: (region: string | null) => void;
-  /** URL 필터 연동 시: 테마 탭 클릭 시 호출 */
+  /** URL ?? ?? ?: ?? ? ?? ? ?? */
   onThemeChange?: (theme: string | null) => void;
-  /** 0건일 때 필터 초기화(전체 상품 보기)용. 제공 시 빈 결과 UI에 "필터 초기화" CTA 노출 */
+  /** 0?? ? ?? ???(?? ?? ??)?. ?? ? ? ?? UI? "?? ???" CTA ?? */
   onResetFilters?: () => void;
-  /** list: /products 본문용 비교 카드. related: 랜딩 하단용 간결 카드(이미지·가격 중심) */
+  /** list: /products ??? ?? ??. related: ?? ??? ?? ??(?????? ??) */
   cardLayout?: "list" | "related";
 };
 
@@ -77,20 +79,20 @@ export default function ProductCatalogSection({
   cardLayout = "list",
 }: ProductCatalogSectionProps) {
   const [internalTab, setInternalTab] = useState<ProductCategoryTabId>("all");
-  const [internalThemeTab, setInternalThemeTab] = useState("전체");
+  const [internalThemeTab, setInternalThemeTab] = useState("??");
 
   const isUrlControlled = onCategoryChange != null && onThemeChange != null;
   const activeTab: ProductCategoryTabId = isUrlControlled
     ? (initialRegion ?? "all")
     : internalTab;
   const activeThemeTab = isUrlControlled
-    ? (initialTheme ?? "전체")
+    ? (initialTheme ?? "??")
     : internalThemeTab;
 
   useEffect(() => {
     if (!isUrlControlled) return;
     setInternalTab(initialRegion ?? "all");
-    setInternalThemeTab(initialTheme ?? "전체");
+    setInternalThemeTab(initialTheme ?? "??");
   }, [isUrlControlled, initialRegion, initialTheme]);
 
   const keyword = useMemo(() => normalizeSearchKeyword(initialKeyword), [initialKeyword]);
@@ -109,15 +111,15 @@ export default function ProductCatalogSection({
     () => (presetCategorySet.size > 0 ? categories.filter((category) => presetCategorySet.has(category)) : categories),
     [categories, presetCategorySet],
   );
-  const categoryTabs = useMemo(() => ["전체", ...visibleCategories], [visibleCategories]);
-  /** URL 연동 시 부모가 이미 region/theme 필터 적용함 → 키워드만 적용 */
+  const categoryTabs = useMemo(() => ["??", ...visibleCategories], [visibleCategories]);
+  /** URL ?? ? ??? ?? region/theme ?? ??? ? ???? ?? */
   const filteredProducts = useMemo(() => {
     if (isUrlControlled) return baseProducts;
     return baseProducts.filter((product) => matchesProductTab(product, activeTab));
   }, [baseProducts, activeTab, isUrlControlled]);
   const themeTabs = useMemo(() => {
     const inferred = getThemeTabs(baseProducts, activeTab);
-    return Array.from(new Set(["전체", ...inferred.slice(1)]));
+    return Array.from(new Set(["??", ...inferred.slice(1)]));
   }, [baseProducts, activeTab]);
   const themeFilteredProducts = useMemo(() => {
     if (isUrlControlled) return filteredProducts;
@@ -139,7 +141,7 @@ export default function ProductCatalogSection({
       groupedByTheme.length > 0
         ? groupedByTheme
         : keywordFilteredProducts.length > 0
-          ? [{ theme: "기타", products: keywordFilteredProducts }]
+          ? [{ theme: "??", products: keywordFilteredProducts }]
           : [],
     [groupedByTheme, keywordFilteredProducts],
   );
@@ -162,11 +164,11 @@ export default function ProductCatalogSection({
       <div className="sticky top-[76px] z-20 rounded-xl border border-[var(--border)] bg-[var(--surface)]/98 px-3 py-2.5 backdrop-blur sm:rounded-xl sm:px-3 sm:py-3">
         <div className="space-y-1">
           <p className="text-xs leading-snug text-[var(--text-muted)] sm:text-sm">
-            총 {keywordFilteredProducts.length}건 · 현재 카테고리 {activeTab === "all" ? "전체" : activeTab}
+            ? {keywordFilteredProducts.length}? ? ?? ???? {activeTab === "all" ? "??" : activeTab}
           </p>
-          {presetLabel ? <p className="text-xs leading-snug text-[#15803d] sm:text-sm">필터: {presetLabel}</p> : null}
+          {presetLabel ? <p className="text-xs leading-snug text-[#15803d] sm:text-sm">??: {presetLabel}</p> : null}
           {keyword ? (
-            <p className="text-xs leading-snug text-[var(--primary)] sm:text-sm">검색어: {initialKeyword}</p>
+            <p className="text-xs leading-snug text-[var(--primary)] sm:text-sm">???: {initialKeyword}</p>
           ) : null}
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -176,14 +178,14 @@ export default function ProductCatalogSection({
             type="button"
             onClick={() => {
               if (isUrlControlled && onCategoryChange) {
-                onCategoryChange(tab === "전체" ? null : tab);
+                onCategoryChange(tab === "??" ? null : tab);
                 return;
               }
-              setInternalTab(tab === "전체" ? "all" : tab);
-              setInternalThemeTab("전체");
+              setInternalTab(tab === "??" ? "all" : tab);
+              setInternalThemeTab("??");
             }}
             className={`min-h-[32px] rounded-full px-3 py-1.5 text-sm font-medium transition ${
-              (tab === "전체" ? "all" : tab) === activeTab
+              (tab === "??" ? "all" : tab) === activeTab
                 ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                 : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             }`}
@@ -200,7 +202,7 @@ export default function ProductCatalogSection({
             type="button"
             onClick={() => {
               if (isUrlControlled && onThemeChange) {
-                onThemeChange(tab === "전체" ? null : tab);
+                onThemeChange(tab === "??" ? null : tab);
                 return;
               }
               setInternalThemeTab(tab);
@@ -222,30 +224,33 @@ export default function ProductCatalogSection({
           <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:rounded-3xl">
             {(initialRegion || initialTheme || (initialKeyword && initialKeyword.trim())) && onResetFilters ? (
               <>
-                <p className="font-semibold text-[var(--text-primary)]">선택한 조건에 맞는 상품이 없습니다.</p>
+                <p className="font-semibold text-[var(--text-primary)]">??? ??? ?? ??? ????.</p>
                 <p className="mt-2 text-[var(--text-secondary)]">
-                  {[initialRegion && `지역: ${initialRegion}`, initialTheme && `테마: ${initialTheme}`, initialKeyword?.trim() && `키워드: ${initialKeyword.trim()}`].filter(Boolean).join(" · ")}
+                  {[initialRegion && `??: ${initialRegion}`, initialTheme && `??: ${initialTheme}`, initialKeyword?.trim() && `???: ${initialKeyword.trim()}`].filter(Boolean).join(" ? ")}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Link
                     href="/products"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90"
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90",
+                      solidButtonShadowClasses,
+                    )}
                   >
-                    전체 상품 보기
+                    ?? ?? ??
                   </Link>
                   <button
                     type="button"
                     onClick={onResetFilters}
                     className="inline-flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 type-btn font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                   >
-                    필터 초기화
+                    ?? ???
                   </button>
                 </div>
               </>
             ) : keyword ? (
-              "검색어와 일치하는 상품이 없습니다."
+              "???? ???? ??? ????."
             ) : (
-              "선택한 카테고리에 해당하는 상품이 없습니다."
+              "??? ????? ???? ??? ????."
             )}
           </div>
         ) : (

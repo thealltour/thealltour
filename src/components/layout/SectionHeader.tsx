@@ -30,7 +30,7 @@ export type SectionHeaderProps = {
   className?: string;
   /** h2에 부여할 id (섹션 aria-labelledby 연결용) */
   titleId?: string;
-  /** true: eyebrow는 sm 이상·md 미만(약 640–767px)에서만 노출. 태블릿·데스크톱에서는 숨김. 홈 섹션용 */
+  /** true: eyebrow를 모든 뷰포트에서 숨김(홈에서 라벨 제거 시 사용). 예전에는 sm~md만 노출이었으나 태블릿에서 잔존해 전 구간 숨김으로 통일 */
   hideEyebrowOnTablet?: boolean;
 };
 
@@ -69,7 +69,7 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   const eyebrowClass = cn(
     "type-caption tracking-wide text-[var(--text-muted)]",
-    hideEyebrowOnTablet ? "hidden sm:block md:hidden" : "hidden sm:block",
+    hideEyebrowOnTablet ? "hidden" : "hidden sm:block",
   );
   const hasTop = Boolean(eyebrow ?? title ?? description);
   const isCenter = align === "center";
@@ -89,7 +89,7 @@ export function SectionHeader({
             <p
               className={cn(
                 "type-caption tracking-wide text-[var(--text-muted)]",
-                hideEyebrowOnTablet ? "hidden sm:block md:hidden" : "hidden sm:block",
+                hideEyebrowOnTablet ? "hidden" : "hidden sm:block",
               )}
             >
               {eyebrow}

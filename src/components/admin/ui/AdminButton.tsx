@@ -2,6 +2,7 @@
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 
 type AdminButtonVariant = "primary" | "secondary" | "ghost";
 type AdminButtonSize = "sm" | "md";
@@ -35,8 +36,8 @@ function getVariantClasses(variant: AdminButtonVariant): string {
   if (variant === "ghost") {
     return "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] border border-transparent";
   }
-  // primary
-  return "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] border border-transparent";
+  // primary (솔리드 CTA와 동일 그림자)
+  return `bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] border border-transparent ${solidButtonShadowClasses}`;
 }
 
 function getSizeClasses(size: AdminButtonSize): string {

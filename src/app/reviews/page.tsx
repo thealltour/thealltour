@@ -1,5 +1,7 @@
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import Link from "next/link";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
@@ -97,7 +99,10 @@ export default async function ReviewsPage({ searchParams }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
               href="/reviews/write"
-              className="type-btn inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]"
+              className={cn(
+                "type-btn inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]",
+                solidButtonShadowClasses,
+              )}
             >
               여행후기 작성하기
             </Link>
@@ -117,7 +122,10 @@ export default async function ReviewsPage({ searchParams }: Props) {
               <div className="mt-4">
                 <Link
                   href="/reviews/write"
-                  className="type-btn inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]"
+                  className={cn(
+                    "type-btn inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]",
+                    solidButtonShadowClasses,
+                  )}
                 >
                   후기 작성하기
                 </Link>

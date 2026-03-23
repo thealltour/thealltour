@@ -9,10 +9,6 @@ import { ProductReviewSection } from "@/components/products/ProductReviewSection
 import RelatedProductsSection from "@/components/products/RelatedProductsSection";
 import { GuideCard } from "@/components/guides/GuideCard";
 import {
-  ProductDetailStickyDesktop,
-  ProductDetailStickyMobile,
-} from "@/components/product-detail/ProductDetailSticky";
-import {
   ProductDetailStickyV2Desktop,
   ProductDetailStickyV2Mobile,
 } from "@/components/products/ProductDetailStickyV2";

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 export type ProductReviewSectionProps = {
   /** 평균 평점 (1~5). 있으면 리뷰 있음 UI */
@@ -53,7 +55,10 @@ export function ProductReviewSection({
             <div className="mt-4">
               <Link
                 href={consultHref}
-                className="inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                className={cn(
+                  "inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]",
+                  solidButtonShadowClasses,
+                )}
               >
                 예약 상담하기
               </Link>

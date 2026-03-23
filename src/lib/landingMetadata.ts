@@ -57,8 +57,9 @@ export function getRecommendedSectionMetadataFallback(
 export const LANDING_HERO_FALLBACK_IMAGE =
   "https://picsum.photos/seed/thealltour-landing/1600/900";
 
-/** 허브 랜딩 히어로용 이미지 fallback (destinations/themes 상단). 확장 시 허브별 URL 관리 가능 */
-export const HUB_HERO_FALLBACK_IMAGE = LANDING_HERO_FALLBACK_IMAGE;
+/** `/destinations`·`/themes` 허브 히어로 배경 (정적 자산 `public/images/hub/*`) */
+export const HUB_HERO_DESTINATIONS_IMAGE = "/images/hub/hub-hero-destinations.png";
+export const HUB_HERO_THEMES_IMAGE = "/images/hub/hub-hero-themes.png";
 
 export type HubHeroConfig = {
   imageUrl: string;
@@ -76,10 +77,9 @@ export type HubHeroConfig = {
  * 향후 관리자에서 허브별 hero를 관리할 때 이 반환값을 덮어쓰면 됨.
  */
 export function getHubHeroConfig(hub: "destinations" | "themes"): HubHeroConfig {
-  const imageUrl = HUB_HERO_FALLBACK_IMAGE;
   if (hub === "destinations") {
     return {
-      imageUrl,
+      imageUrl: HUB_HERO_DESTINATIONS_IMAGE,
       eyebrow: "지역별 여행",
       title: "지역별 여행",
       description:
@@ -91,7 +91,7 @@ export function getHubHeroConfig(hub: "destinations" | "themes"): HubHeroConfig 
     };
   }
   return {
-    imageUrl,
+    imageUrl: HUB_HERO_THEMES_IMAGE,
     eyebrow: "테마별 여행",
     title: "테마별 여행",
     description:

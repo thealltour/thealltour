@@ -9,6 +9,7 @@ import HeaderProductSearch from "@/components/header/HeaderProductSearch";
 import { MobileHeaderAccordion } from "./MobileHeaderAccordion";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
@@ -151,7 +152,10 @@ export function MobileHeaderDrawer({
               <Link
                 href="/login"
                 onClick={onClose}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-4 py-3 type-small font-semibold text-[var(--on-primary)] active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-4 py-3 type-small font-semibold text-[var(--on-primary)] active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+                  solidButtonShadowClasses,
+                )}
               >
                 <LogIn className="h-4 w-4" aria-hidden />
                 로그인

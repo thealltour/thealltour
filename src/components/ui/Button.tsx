@@ -10,6 +10,13 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean;
 };
 
+/**
+ * 솔리드 CTA 공통 그림자 — primary/accent/secondary/kakao `Button`과 동일.
+ * 커스텀 `<button>`/`<a>`에도 붙여 시각적 통일을 유지합니다.
+ */
+export const solidButtonShadowClasses =
+  "shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-soft-strong)]";
+
 /** 높이: sm 36px, md 44px, lg 52px. radius 12px. focus-visible ring 3px --focus-ring. */
 export function buttonVariants(options?: {
   variant?: ButtonVariant;
@@ -35,16 +42,16 @@ export function buttonVariants(options?: {
   switch (variant) {
     case "accent":
       variantClass =
-        "bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]";
+        `bg-[var(--accent)] text-[var(--on-accent)] ${solidButtonShadowClasses} hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]`;
       break;
     case "secondary":
       variantClass =
-        "bg-[var(--secondary)] text-white hover:bg-[var(--secondary-hover)] active:opacity-90";
+        `bg-[var(--secondary)] text-white ${solidButtonShadowClasses} hover:bg-[var(--secondary-hover)] active:opacity-90`;
       break;
     case "kakao":
       /* 카카오 브랜드 옐로우 기반 솔리드 CTA (primary 오렌지로 대체 금지) */
       variantClass =
-        "rounded-lg border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] text-[var(--theall-kakao-text)] shadow-sm " +
+        `rounded-lg border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] text-[var(--theall-kakao-text)] ${solidButtonShadowClasses} ` +
         "hover:bg-[var(--theall-kakao-hover-bg)] active:bg-[var(--theall-kakao-active-bg)] " +
         "[&_svg]:text-[var(--theall-kakao-text)]";
       break;
@@ -60,7 +67,7 @@ export function buttonVariants(options?: {
     case "primary":
     default:
       variantClass =
-        "bg-[var(--primary)] text-[var(--on-primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]";
+        `bg-[var(--primary)] text-[var(--on-primary)] ${solidButtonShadowClasses} hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]`;
       break;
   }
 

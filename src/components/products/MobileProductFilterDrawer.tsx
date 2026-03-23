@@ -6,6 +6,7 @@ import { X, MapPin, Palette, Package, ChevronDown, ChevronRight } from "lucide-r
 import type { ProductFiltersState } from "@/lib/productFilters";
 import { PRODUCT_FILTER_KEYS } from "@/lib/productFilters";
 import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 
 /** 트리에서 name에 해당하는 노드까지의 경로(본인 포함) id 목록. 선택 시 자동 펼치기용 */
@@ -432,7 +433,10 @@ export function MobileProductFilterDrawer({
           <button
             type="button"
             onClick={handleApply}
-            className="flex-1 rounded-xl bg-[var(--primary)] py-3 type-small font-semibold text-[var(--on-primary)] transition-opacity active:opacity-90"
+            className={cn(
+              "flex-1 rounded-xl bg-[var(--primary)] py-3 type-small font-semibold text-[var(--on-primary)] transition-opacity active:opacity-90",
+              solidButtonShadowClasses,
+            )}
           >
             적용
           </button>

@@ -8,6 +8,8 @@ import { buildSearchUrl, updateSearchQueryParams, withPageOne } from "@/lib/sear
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 export type SearchEmptyProps = {
   /** 현재 검색어 */
@@ -87,7 +89,10 @@ export default function SearchEmpty({ keyword, current }: SearchEmptyProps) {
         </Link>
         <Link
           href="/recommended"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90",
+            solidButtonShadowClasses,
+          )}
         >
           추천 여행
         </Link>

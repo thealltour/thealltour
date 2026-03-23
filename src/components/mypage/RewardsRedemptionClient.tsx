@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type CatalogItem = {
   id: string;
@@ -183,7 +185,10 @@ export default function RewardsRedemptionClient({
               type="button"
               onClick={requestRedemption}
               disabled={!canSubmit || submitting}
-              className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--on-primary)] disabled:opacity-50"
+              className={cn(
+                "rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--on-primary)] disabled:opacity-50",
+                solidButtonShadowClasses,
+              )}
             >
               {submitting ? "신청 중..." : "신청하기"}
             </button>

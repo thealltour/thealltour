@@ -7,8 +7,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
 const files = [
-  { head: "src/components/ProductDetailHero.tsx", dest: "src/components/product-detail/ProductDetailHero.tsx" },
-  { head: "src/components/ProductDetailSticky.tsx", dest: "src/components/product-detail/ProductDetailSticky.tsx" },
   { head: "src/components/MobileFloatingMenu.tsx", dest: "src/components/site-chrome/MobileFloatingMenu.tsx" },
 ];
 

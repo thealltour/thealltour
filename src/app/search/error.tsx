@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import { useEffect } from "react";
 
 export default function SearchError({
@@ -25,7 +27,10 @@ export default function SearchError({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90",
+              solidButtonShadowClasses,
+            )}
           >
             다시 시도
           </button>

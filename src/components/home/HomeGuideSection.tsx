@@ -22,7 +22,7 @@ export type HomeGuideSectionProps = {
 };
 
 /**
- * 홈 여행 가이드 섹션. TRAVEL GUIDE / 여행 준비에 도움이 되는 가이드 + 카드.
+ * 홈 여행 가이드 섹션. 여행 준비에 도움이 되는 가이드 + 카드.
  * 지역·테마 섹션과 동일하게 가로 스크롤 레이아웃.
  */
 export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
@@ -65,10 +65,8 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
       className={cn("space-y-2 sm:space-y-4 !p-3 sm:!p-6 md:!p-8", className)}
     >
       <SectionHeader
-        eyebrow="TRAVEL GUIDE"
         title="여행 준비에 도움이 되는 가이드"
         description="지역별·테마별 꿀팁과 가이드를 만나보세요."
-        hideEyebrowOnTablet
         action={
           <Link
             href="/guides"

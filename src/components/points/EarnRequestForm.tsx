@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type Props = {
   onSubmitted: () => Promise<void> | void;
@@ -149,7 +151,10 @@ export default function EarnRequestForm({ onSubmitted }: Props) {
         type="button"
         onClick={submit}
         disabled={loading}
-        className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50"
+        className={cn(
+          "rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50",
+          solidButtonShadowClasses,
+        )}
       >
         {loading ? "제출 중..." : "적립 요청 제출"}
       </button>

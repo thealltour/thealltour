@@ -41,10 +41,9 @@ export default function CuratedProductsSection({
         className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
       >
         <SectionHeader
-          eyebrow={settings!.section_label}
+          eyebrow={settings!.section_label?.trim() || undefined}
           title={settings!.section_title}
           description={settings!.section_description}
-          hideEyebrowOnTablet
           action={
             <Link
               href="/recommended"

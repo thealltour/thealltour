@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 import MyPageLayout from "@/components/mypage/MyPageLayout";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
@@ -58,7 +60,10 @@ function WritableReviewCard({ item }: { item: MyPageWritableReviewItem }) {
       </div>
       <Link
         href={`/reviews/write?eligibility=${item.eligibility_id}`}
-        className="inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--primary-dark)]"
+        className={cn(
+          "inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--primary-dark)]",
+          solidButtonShadowClasses,
+        )}
       >
         후기 작성
       </Link>

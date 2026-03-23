@@ -9,6 +9,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import HeaderSearchDropdown from "@/components/header/HeaderSearchDropdown";
 import SearchSuggestionsDropdown from "@/components/search/SearchSuggestionsDropdown";
 import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import type { SearchSuggestion } from "@/types/search";
 
@@ -369,6 +370,7 @@ export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSea
             onMouseDown={() => (submitSourceRef.current = "button")}
             className={cn(
               "shrink-0 rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--on-primary)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 sm:px-6 sm:py-3 sm:text-base",
+              solidButtonShadowClasses,
               variant === "hero-mobile" && "px-3.5 py-2 sm:px-6 sm:py-3",
             )}
           >

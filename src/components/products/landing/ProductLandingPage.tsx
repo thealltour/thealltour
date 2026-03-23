@@ -9,6 +9,8 @@ import { HeroVisual } from "@/components/landing/HeroVisual";
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 export type ProductLandingPageProps = {
   data: ProductLandingData;
@@ -75,7 +77,10 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href={hero.primaryCtaHref}
-                  className="inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90",
+                    solidButtonShadowClasses,
+                  )}
                   onClick={() =>
                     trackLandingCtaClick({
                       ...basePayload,
@@ -120,7 +125,10 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href={hero.primaryCtaHref}
-                className="inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                className={cn(
+                  "inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90",
+                  solidButtonShadowClasses,
+                )}
                 onClick={() =>
                   trackLandingCtaClick({
                     ...basePayload,

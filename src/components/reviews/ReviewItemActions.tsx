@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import { uploadReviewImage } from "@/lib/reviewImageUpload";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 const MAX_REVIEW_IMAGES = 4;
 
@@ -205,7 +207,10 @@ export default function ReviewItemActions({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50",
+              solidButtonShadowClasses,
+            )}
           >
             {isSubmitting ? "저장 중..." : "저장"}
           </button>

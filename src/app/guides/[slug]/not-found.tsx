@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 
@@ -16,7 +18,10 @@ export default function GuideNotFound() {
           </p>
           <Link
             href="/guides"
-            className="mt-6 inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90"
+            className={cn(
+              "mt-6 inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90",
+              solidButtonShadowClasses,
+            )}
           >
             가이드 목록으로
           </Link>

@@ -1,13 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Trash2, Upload } from "lucide-react";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { deleteStorageUrlsClient } from "@/lib/admin/deleteStorageUrlsClient";
 import { deriveCardAndHeroWebp } from "@/lib/images/deriveCardAndHeroWebp";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** 같은 업로드 응답의 hero·card URL이면 둘 다 스토리지에서 제거 */
+function getStorageUrlsToPurge(
+  value: string,
+  uploadedUrls: { heroUrl: string; cardUrl: string } | null,
+): string[] {
+  const v = value.trim();
+  if (!v) return [];
+  if (uploadedUrls && (v === uploadedUrls.heroUrl || v === uploadedUrls.cardUrl)) {
+    const s = new Set<string>();
+    if (uploadedUrls.heroUrl) s.add(uploadedUrls.heroUrl);
+    if (uploadedUrls.cardUrl) s.add(uploadedUrls.cardUrl);
+    return [...s];
+  }
+  return [v];
 }
 
 type ImageUploadFieldProps = {
@@ -23,6 +41,8 @@ type ImageUploadFieldProps = {
   /** 권장 사이즈 문구. 미전달 시 기본 "1200x800px 이상 (3:2)" */
   sizeHint?: string;
   accept?: string;
+  /** false면 삭제/교체 시 Supabase 객체 삭제 API 호출 안 함 */
+  purgeStorageOnRemove?: boolean;
 };
 
 export function ImageUploadField({
@@ -34,10 +54,12 @@ export function ImageUploadField({
   placeholder = "이미지 URL (권장 1200x800)",
   sizeHint,
   accept = "image/jpeg,image/png,image/webp",
+  purgeStorageOnRemove = true,
 }: ImageUploadFieldProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedUrls, setUploadedUrls] = useState<{ heroUrl: string; cardUrl: string } | null>(null);
   const [sizeMeta, setSizeMeta] = useState<{
@@ -73,12 +95,27 @@ export function ImageUploadField({
         setWarnings([]);
         return;
       }
+      const urlsToPurgeBeforeReplace = getStorageUrlsToPurge(value, uploadedUrls);
       setSelectedFile(file);
       setIsLoading(true);
       setUploadedUrls(null);
       setSizeMeta(null);
       setWarnings([]);
       try {
+        if (purgeStorageOnRemove && urlsToPurgeBeforeReplace.length > 0) {
+          try {
+            const r = await deleteStorageUrlsClient(urlsToPurgeBeforeReplace);
+            if (r.errors.length > 0) {
+              showToast("warning", `이전 파일 스토리지 삭제: ${r.errors.join(" ")}`);
+            }
+          } catch (e) {
+            showToast(
+              "warning",
+              e instanceof Error ? e.message : "이전 이미지 스토리지 삭제에 실패했습니다. 교체 업로드는 계속합니다.",
+            );
+          }
+        }
+
         const { hero, card, meta, warnings: deriveWarnings } = await deriveCardAndHeroWebp(file);
         if (deriveWarnings?.length) {
           setWarnings(deriveWarnings);
@@ -121,8 +158,36 @@ export function ImageUploadField({
         setIsLoading(false);
       }
     },
-    [onUploaded, showToast, uploadedUrlKey]
+    [onUploaded, showToast, uploadedUrlKey, value, uploadedUrls, purgeStorageOnRemove]
   );
+
+  const handleRemoveImage = useCallback(async () => {
+    const urls = getStorageUrlsToPurge(value, uploadedUrls);
+    setIsPurging(true);
+    try {
+      if (purgeStorageOnRemove && urls.length > 0) {
+        try {
+          const r = await deleteStorageUrlsClient(urls);
+          if (r.errors.length > 0) {
+            showToast("warning", r.errors.join(" "));
+          } else if (r.deletedPaths.length > 0) {
+            showToast("success", "스토리지에서 이미지를 삭제했습니다.");
+          }
+        } catch (e) {
+          showToast("error", e instanceof Error ? e.message : "스토리지 삭제에 실패했습니다.");
+          return;
+        }
+      }
+      onChange("");
+      onUploaded("");
+      setUploadedUrls(null);
+      setSizeMeta(null);
+      setSelectedFile(null);
+      setWarnings([]);
+    } finally {
+      setIsPurging(false);
+    }
+  }, [value, uploadedUrls, purgeStorageOnRemove, onChange, onUploaded, showToast]);
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -166,7 +231,7 @@ export function ImageUploadField({
           isDragging
             ? "border-[var(--primary)] bg-[var(--primary-soft)]"
             : "border-[var(--border)] bg-[var(--surface-muted)] hover:border-[var(--border-strong)]"
-        } ${isLoading ? "pointer-events-none opacity-70" : ""}`}
+        } ${isLoading || isPurging ? "pointer-events-none opacity-70" : ""}`}
       >
         {previewUrl && (
           <div className="absolute inset-2 flex items-center justify-center overflow-hidden rounded-md">
@@ -178,24 +243,36 @@ export function ImageUploadField({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="relative z-[1] flex flex-wrap items-center justify-center gap-2">
           <label
-            className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition ${
-              isLoading
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              isLoading || isPurging
                 ? "cursor-not-allowed border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]"
                 : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
-            {isLoading ? "업로드 중…" : "파일 선택"}
+            <Upload className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+            {isLoading ? "업로드 중…" : previewUrl ? "파일로 교체" : "파일 선택"}
             <input
               ref={inputRef}
               type="file"
               accept={accept}
               className="sr-only"
-              disabled={isLoading}
+              disabled={isLoading || isPurging}
               onChange={onFileSelect}
             />
           </label>
+          {previewUrl ? (
+            <button
+              type="button"
+              disabled={isLoading || isPurging}
+              onClick={() => void handleRemoveImage()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-sm font-medium text-[var(--danger)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+              {isPurging ? "삭제 중…" : "이미지 삭제"}
+            </button>
+          ) : null}
           <span className="text-xs text-[var(--text-muted)]">
             {isDragging ? "여기에 놓기" : "또는 드래그 앤 드롭"}
           </span>

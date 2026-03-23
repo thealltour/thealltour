@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import { useRouter } from "next/navigation";
 
 type MemberLoginFormProps = {
@@ -64,7 +66,10 @@ export default function MemberLoginForm({ nextPath = "/" }: MemberLoginFormProps
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50"
+        className={cn(
+          "w-full rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-50",
+          solidButtonShadowClasses,
+        )}
       >
         {isSubmitting ? "로그인 중..." : "로그인"}
       </button>

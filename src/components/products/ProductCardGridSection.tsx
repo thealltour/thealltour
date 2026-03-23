@@ -7,8 +7,8 @@ export type ProductCardGridSectionProps = {
   /** 카드 목록 (보통 ProductCard 컴포넌트들). key는 각 카드에 부여해야 함. */
   children: React.ReactNode;
   className?: string;
-  /** 데스크톱(lg) 그리드 열 수. 기본 3열. 랜딩 추천 상품 등 카드 폭을 넓히고 싶을 때 2로 설정 */
-  desktopGridCols?: 2 | 3;
+  /** 데스크톱(lg) 그리드 열 수. 기본 3열. 랜딩 추천은 2, 홈 추천은 4열로 카드 폭 축소(약 75%) 등 */
+  desktopGridCols?: 2 | 3 | 4;
   /**
    * 홈 큐레이션 전용: 모바일에서 카드 폭·bleed·gap 축소(2장 인지 밀도).
    * 기본 false — 검색/랜딩/가이드 등은 기존 min-w-[78%] 유지.
@@ -26,7 +26,7 @@ export type ProductCardGridSectionProps = {
  * - 모바일 기본: min-w-[78%] max-w-[320px], bleed -mx-1 px-1
  * - homeCuratedMobileCompact: 홈 추천 전용 — 모바일 `grid-cols-2` 고정(가로 스크롤 없음), gap·bleed 정리
  * - hubLandingLayout: 스냅 레일 + 78~84% 카드 폭, md+ 그리드
- * - 데스크톱: 그리드 2열(sm 또는 md) / desktopGridCols(lg), max-w 1344px
+ * - 데스크톱: 그리드 2열(sm 또는 md) / desktopGridCols(lg, 2~4), max-w 1344px
  */
 export function ProductCardGridSection({
   children,
@@ -58,9 +58,13 @@ export function ProductCardGridSection({
       ? hubLandingLayout
         ? "hidden md:grid md:grid-cols-2 lg:grid-cols-2 md:gap-4"
         : "hidden sm:grid sm:grid-cols-2 lg:grid-cols-2 sm:gap-4"
-      : hubLandingLayout
-        ? "hidden md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4"
-        : "hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4";
+      : desktopGridCols === 4
+        ? hubLandingLayout
+          ? "hidden md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4"
+          : "hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4"
+        : hubLandingLayout
+          ? "hidden md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4"
+          : "hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4";
 
   return (
     <div className={className}>

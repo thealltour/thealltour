@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { deleteStorageUrlsClient } from "@/lib/admin/deleteStorageUrlsClient";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { deriveCardAndHeroWebp } from "@/lib/images/deriveCardAndHeroWebp";
 import type { SelectedEventRef } from "@/types/product";
@@ -15,6 +16,8 @@ type MultiImageUploadFieldProps = {
   /** 상품 이미지 → 선택된 이벤트에 추가 시 사용. 있으면 썸네일마다 "이 이벤트에 추가" 버튼 표시 */
   selectedEvent?: SelectedEventRef | null;
   onAddToEvent?: (url: string) => void;
+  /** false면 목록에서 삭제 시 스토리지 삭제 API 호출 안 함 */
+  purgeStorageOnRemove?: boolean;
 };
 
 function uniqueUrls(urls: string[]): string[] {
@@ -36,6 +39,7 @@ export function MultiImageUploadField({
   maxCount = 10,
   selectedEvent = null,
   onAddToEvent,
+  purgeStorageOnRemove = true,
 }: MultiImageUploadFieldProps) {
   const { showToast } = useAdminToast();
   const [isUploading, setIsUploading] = useState(false);
@@ -249,7 +253,26 @@ export function MultiImageUploadField({
                   </button>
                   <button
                     type="button"
-                    onClick={() => update(urls.filter((_, i) => i !== index))}
+                    onClick={() => {
+                      const removed = urls[index];
+                      void (async () => {
+                        if (purgeStorageOnRemove && removed?.trim()) {
+                          try {
+                            const r = await deleteStorageUrlsClient([removed]);
+                            if (r.errors.length > 0) {
+                              showToast("warning", r.errors.join(" "));
+                            }
+                          } catch (e) {
+                            showToast(
+                              "error",
+                              e instanceof Error ? e.message : "스토리지에서 이미지 삭제에 실패했습니다.",
+                            );
+                            return;
+                          }
+                        }
+                        update(urls.filter((_, i) => i !== index));
+                      })();
+                    }}
                     className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-2 py-1 text-xs text-[var(--danger)] hover:opacity-90"
                   >
                     삭제

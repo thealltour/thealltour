@@ -3,6 +3,8 @@
 import { useState, FormEvent } from "react";
 import { usePathname } from "next/navigation";
 import { Send, X } from "lucide-react";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type QuickFormState = {
   name: string;
@@ -75,7 +77,10 @@ export default function HeroQuickConsultButton() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[var(--primary)] bg-[var(--primary)] px-4 text-[14px] font-semibold text-[var(--on-primary)] transition-colors duration-150 hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] md:px-6 md:text-[15px]"
+        className={cn(
+          "inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[var(--primary)] bg-[var(--primary)] px-4 text-[14px] font-semibold text-[var(--on-primary)] transition-colors duration-150 hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] md:px-6 md:text-[15px]",
+          solidButtonShadowClasses,
+        )}
       >
         <Send
           className="h-4 w-4 opacity-90"
@@ -171,7 +176,10 @@ export default function HeroQuickConsultButton() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full border border-[var(--primary)] bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--on-primary)] transition-colors duration-150 hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] disabled:pointer-events-none disabled:opacity-70"
+                      className={cn(
+                        "inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full border border-[var(--primary)] bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--on-primary)] transition-colors duration-150 hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] disabled:pointer-events-none disabled:opacity-70",
+                        solidButtonShadowClasses,
+                      )}
                     >
                       {isSubmitting ? "전송 중..." : "상담 신청"}
                     </button>

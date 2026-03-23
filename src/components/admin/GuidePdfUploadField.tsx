@@ -8,19 +8,25 @@ import {
   type CropRect,
 } from "@/lib/pdf/renderFirstPageToWebp";
 import { ThumbnailCropSelector } from "@/components/admin/ThumbnailCropSelector";
+import { deleteStorageUrlsClient } from "@/lib/admin/deleteStorageUrlsClient";
+import { Trash2, Upload } from "lucide-react";
 
 type GuidePdfUploadFieldProps = {
   pdfUrl: string;
   thumbnailUrl: string;
   onChange: (result: { pdfUrl: string; thumbnailUrl: string }) => void;
+  /** 교체/삭제 시 Supabase guide-pdfs 버킷 객체 삭제 */
+  purgeStorageOnRemove?: boolean;
 };
 
 export function GuidePdfUploadField({
   pdfUrl,
   thumbnailUrl,
   onChange,
+  purgeStorageOnRemove = true,
 }: GuidePdfUploadFieldProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cropState, setCropState] = useState<{
@@ -33,6 +39,23 @@ export function GuidePdfUploadField({
 
   const uploadPdfAndThumb = useCallback(
     async (file: File, thumbFile: File) => {
+      if (purgeStorageOnRemove) {
+        const oldUrls = [pdfUrl, thumbnailUrl].map((u) => u.trim()).filter(Boolean);
+        if (oldUrls.length > 0) {
+          try {
+            const r = await deleteStorageUrlsClient(oldUrls);
+            if (r.errors.length > 0) {
+              showToast("warning", `기존 파일 스토리지 삭제: ${r.errors.join(" ")}`);
+            }
+          } catch (e) {
+            showToast(
+              "warning",
+              e instanceof Error ? e.message : "기존 파일 스토리지 삭제에 실패했습니다. 업로드는 계속합니다.",
+            );
+          }
+        }
+      }
+
       const formData = new FormData();
       formData.append("pdf", file, file.name);
       formData.append("thumb", thumbFile, thumbFile.name);
@@ -70,8 +93,31 @@ export function GuidePdfUploadField({
       onChange({ pdfUrl: newPdfUrl, thumbnailUrl: newThumbUrl });
       showToast("success", "PDF와 썸네일이 업로드되었습니다.");
     },
-    [onChange, showToast]
+    [onChange, showToast, pdfUrl, thumbnailUrl, purgeStorageOnRemove]
   );
+
+  const handleClearFiles = useCallback(async () => {
+    const oldUrls = [pdfUrl, thumbnailUrl].map((u) => u.trim()).filter(Boolean);
+    setIsPurging(true);
+    try {
+      if (purgeStorageOnRemove && oldUrls.length > 0) {
+        try {
+          const r = await deleteStorageUrlsClient(oldUrls);
+          if (r.errors.length > 0) {
+            showToast("warning", r.errors.join(" "));
+          } else if (r.deletedPaths.length > 0) {
+            showToast("success", "스토리지에서 PDF·썸네일을 삭제했습니다.");
+          }
+        } catch (e) {
+          showToast("error", e instanceof Error ? e.message : "스토리지 삭제에 실패했습니다.");
+          return;
+        }
+      }
+      onChange({ pdfUrl: "", thumbnailUrl: "" });
+    } finally {
+      setIsPurging(false);
+    }
+  }, [pdfUrl, thumbnailUrl, purgeStorageOnRemove, onChange, showToast]);
 
   const handleFile = useCallback(
     async (file: File | null) => {
@@ -162,7 +208,7 @@ export function GuidePdfUploadField({
           isDragging
             ? "border-[var(--primary)] bg-[var(--primary-soft)]"
             : "border-[var(--border)] bg-[var(--surface-muted)] hover:border-[var(--border-strong)]"
-        } ${isLoading ? "pointer-events-none opacity-70" : ""}`}
+        } ${isLoading || isPurging ? "pointer-events-none opacity-70" : ""}`}
       >
         {thumbnailUrl?.trim() ? (
           <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start">
@@ -186,7 +232,7 @@ export function GuidePdfUploadField({
                 </a>
               )}
               <p className="text-xs text-[var(--text-muted)]">
-                새 PDF를 선택하면 기존 파일을 덮어씁니다.
+                새 PDF를 선택하면 기존 파일을 교체합니다. (가능하면 스토리지에서 이전 파일도 삭제합니다.)
               </p>
             </div>
           </div>
@@ -194,21 +240,33 @@ export function GuidePdfUploadField({
 
         <div className="flex flex-wrap items-center justify-center gap-2">
           <label
-            className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition ${
-              isLoading
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              isLoading || isPurging
                 ? "cursor-not-allowed border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]"
                 : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
             }`}
           >
-            {isLoading ? "업로드 중…" : "PDF 선택"}
+            <Upload className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+            {isLoading ? "업로드 중…" : thumbnailUrl?.trim() ? "PDF 교체" : "PDF 선택"}
             <input
               type="file"
               accept="application/pdf"
               className="sr-only"
-              disabled={isLoading}
+              disabled={isLoading || isPurging}
               onChange={onFileSelect}
             />
           </label>
+          {(pdfUrl?.trim() || thumbnailUrl?.trim()) && (
+            <button
+              type="button"
+              disabled={isLoading || isPurging}
+              onClick={() => void handleClearFiles()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-sm font-medium text-[var(--danger)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+              {isPurging ? "삭제 중…" : "파일 삭제"}
+            </button>
+          )}
           <span className="text-xs text-[var(--text-muted)]">
             {isDragging ? "여기에 놓기" : "또는 드래그 앤 드롭"}
           </span>

@@ -7,6 +7,7 @@ import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 
 export type SearchPaginationProps = {
   currentPage: number;
@@ -92,7 +93,10 @@ export default function SearchPagination({ currentPage, totalPages, query }: Sea
             <span key={p}>
               {p === currentPage ? (
                 <span
-                  className="inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border-2 border-[var(--primary)] bg-[var(--primary)] px-2 type-small font-semibold text-[var(--on-primary)]"
+                  className={cn(
+                    "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border-2 border-[var(--primary)] bg-[var(--primary)] px-2 type-small font-semibold text-[var(--on-primary)]",
+                    solidButtonShadowClasses,
+                  )}
                   aria-current="page"
                 >
                   {p}

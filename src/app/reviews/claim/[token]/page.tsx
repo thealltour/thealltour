@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import SiteHeaderUI from "@/components/site-chrome/SiteHeaderUI";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
@@ -139,7 +141,10 @@ export default function ClaimTokenPage({
               <div className="flex flex-col gap-2 pt-2">
                 <Link
                   href={`/auth/signin?redirect=/reviews/claim/${token}`}
-                  className="inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-6 py-3 text-sm font-medium text-white transition hover:bg-[var(--primary-dark)]"
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-6 py-3 text-sm font-medium text-white transition hover:bg-[var(--primary-dark)]",
+                    solidButtonShadowClasses,
+                  )}
                 >
                   로그인하기
                 </Link>

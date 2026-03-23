@@ -15,6 +15,8 @@ import { trackReviewConversionInquiry } from "@/lib/reviewExperimentTracking";
 import { trackConsultOpen, trackConsultSubmit } from "@/lib/analytics/trackConsultModal";
 import { getFirstTouch } from "@/lib/analytics/firstTouch";
 import { inferAttribution } from "@/lib/analytics/attribution";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 export type ConsultModalParams = {
   productId?: string;
@@ -338,7 +340,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         <button
                           type="submit"
                           disabled={isSubmitting}
-                          className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-transparent bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--on-accent)] shadow-sm transition-colors duration-150 hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-70 sm:min-w-[180px] sm:w-auto"
+                          className={cn(
+                            "inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-transparent bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--on-accent)] transition-colors duration-150 hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-70 sm:min-w-[180px] sm:w-auto",
+                            solidButtonShadowClasses,
+                          )}
                         >
                           <Send className="h-4 w-4 opacity-90" strokeWidth={1.5} />
                           {isSubmitting ? "전송 중..." : "상담 요청 보내기"}

@@ -30,7 +30,7 @@ export function CuratedSectionScrollBlock({
           {section.title}
         </h3>
       ) : null}
-      <ProductCardGridSection homeCuratedMobileCompact>
+      <ProductCardGridSection homeCuratedMobileCompact desktopGridCols={4}>
         {section.products.map((product) => (
           <HomeProductCard
             key={product.id}

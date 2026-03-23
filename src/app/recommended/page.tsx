@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
@@ -102,7 +104,10 @@ export default async function RecommendedHubPage() {
               <div className="mt-6 flex justify-center">
                 <Link
                   href="/products"
-                  className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90"
+                  className={cn(
+                    "type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90",
+                    solidButtonShadowClasses,
+                  )}
                 >
                   전체 상품 보기
                 </Link>

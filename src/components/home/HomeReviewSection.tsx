@@ -15,7 +15,7 @@ export type HomeReviewSectionProps = {
 };
 
 /**
- * 홈 리뷰 하이라이트 섹션. TRAVEL REVIEWS / 여행자들의 실제 후기 + 카드 4개.
+ * 홈 리뷰 하이라이트 섹션. 여행자들의 실제 후기 + 카드 4개.
  */
 export function HomeReviewSection({ reviews, className }: HomeReviewSectionProps) {
   if (reviews.length === 0) return null;
@@ -27,10 +27,8 @@ export function HomeReviewSection({ reviews, className }: HomeReviewSectionProps
       className={cn("space-y-2 sm:space-y-4 !p-3 sm:!p-6 md:!p-8", className)}
     >
       <SectionHeader
-        eyebrow="TRAVEL REVIEWS"
         title="여행자들의 실제 후기"
         description="실제 여행객들의 생생한 후기를 만나보세요."
-        hideEyebrowOnTablet
         action={
           <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-3 sm:gap-y-1">
             <Link href="/reviews" className={SECTION_HEADER_MORE_LINK_CLASS} aria-label="여행 후기 더보기">

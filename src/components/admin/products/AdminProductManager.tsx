@@ -41,6 +41,7 @@ import {
   productToCardPropsPayload,
   productToDetailV2PropsPayload,
 } from "@/lib/admin/productPreview";
+import { hydrateProductWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 import {
   itineraryV2ToTimelineModel,
 } from "@/lib/products/mapProductToTimelineModel";
@@ -816,15 +817,14 @@ export default function AdminProductManager() {
     return termsTemplates[form.terms_template_type] ?? "";
   }, [form.terms_template_type, termsTemplates]);
 
-  /** 폼 + 이미지(URL 또는 File ObjectURL) 기반 미리보기용 Product (공용 로직) */
-  const previewProduct = useMemo(
-    () =>
-      mapAdminProductFormToPreviewProduct(
-        form,
-        previewImageObjectUrl ?? form.images_json[0] ?? form.image_url?.trim() ?? "",
-      ),
-    [form, previewImageObjectUrl],
-  );
+  /** 폼 + 이미지(URL 또는 File ObjectURL) 기반 미리보기용 Product (공용 로직). PR3: campaign taxonomy로 배지 해석 */
+  const previewProduct = useMemo(() => {
+    const base = mapAdminProductFormToPreviewProduct(
+      form,
+      previewImageObjectUrl ?? form.images_json[0] ?? form.image_url?.trim() ?? "",
+    );
+    return hydrateProductWithCampaignCardMeta(base, activeCampaignOptions);
+  }, [form, previewImageObjectUrl, activeCampaignOptions]);
 
   /** 로컬 fallback: 카드/상세 props (API 실패 시 사용) */
   const localCardProps = useMemo<ProductCardProps>(() => {

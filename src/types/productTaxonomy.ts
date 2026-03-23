@@ -52,6 +52,17 @@ export type ProductTaxonomy = {
   hero_image_url?: string | null;
   seo_title?: string | null;
   seo_description?: string | null;
+  // --- PR3: campaign 카드 배지 CMS (product_taxonomies, taxonomy_type=campaign)
+  /** 카드 배지 표시 라벨. 비어 있으면 name */
+  display_label?: string | null;
+  /** 배지 정렬. 낮을수록 우선. 기본 100 */
+  badge_priority?: number | null;
+  /** 카드 대표 배지 노출. 기본 true */
+  badge_visible?: boolean | null;
+  /** primary | highlight | neutral */
+  badge_tone?: string | null;
+  /** 카드 피치 1줄 */
+  badge_description?: string | null;
 };
 
 export type ProductTaxonomyWithUsage = ProductTaxonomy & {

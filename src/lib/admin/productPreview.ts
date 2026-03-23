@@ -7,7 +7,9 @@
 import type { Product, ProductOptions, ItineraryStructuredDay, ItineraryV2 } from "@/types/product";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
-import { getProductBadges } from "@/lib/productCategory";
+import { buildProductCardInfoBadges } from "@/lib/productCardProps";
+import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
+import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresentation";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { getPrimaryImageUrl, normalizeImageList } from "@/lib/products/images";
@@ -74,8 +76,6 @@ export type ProductFormPayload = {
   itinerary_v2_json?: ItineraryV2;
   theme_chart_json?: Array<{ label: string; percent: number }>;
 };
-
-const PREVIEW_PRIORITY_BADGES = ["제철", "인기", "마감임박"];
 
 /** 폼 → 미리보기용 Product (저장 API와 동일한 보정 규칙) */
 export function formToPreviewProduct(
@@ -212,23 +212,18 @@ export type ProductCardPropsPayload = {
   categories?: string[];
   tags?: string[];
   status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
+  /** campaign 대표 배지 */
   badges?: { type: string; label: string; priority?: number; isActive?: boolean }[];
+  /** 테마·카테고리 정보성 배지 */
+  infoBadges?: { type: string; label: string; priority?: number; isActive?: boolean }[];
   thumbnailUrl?: string;
   priceMeta?: string;
   metaInfo?: string;
+  /** grid 미리보기 — 피치는 보통 생략 */
+  campaignPitchLine?: string;
 };
 
 export function productToCardPropsPayload(product: Product): ProductCardPropsPayload {
-  const themeBadges = getProductBadges(product);
-  const badges: { type: string; label: string; priority?: number; isActive?: boolean }[] = [];
-  themeBadges.forEach((label) => {
-    badges.push({
-      type: PREVIEW_PRIORITY_BADGES.includes(label) ? "gold" : "muted",
-      label,
-      priority: PREVIEW_PRIORITY_BADGES.includes(label) ? 5 : 0,
-      isActive: true,
-    });
-  });
   return {
     title: product.title,
     price: product.price,
@@ -237,10 +232,12 @@ export function productToCardPropsPayload(product: Product): ProductCardPropsPay
     categories: [product.category],
     tags: parseMetaTitleAsHashtags(product.meta_title),
     status: (product.status ?? "AVAILABLE") as ProductCardPropsPayload["status"],
-    badges,
+    badges: buildCampaignRepresentativeBadges(product),
+    infoBadges: buildProductCardInfoBadges(product),
     thumbnailUrl: getPrimaryImageUrl(product),
     priceMeta: product.price_meta || "1인 기준",
     metaInfo: product.meta_info ?? "",
+    campaignPitchLine: buildCampaignPitchLineFromProduct(product, "grid"),
   };
 }
 

@@ -34,12 +34,21 @@ function parseTaxonomyType(val: unknown): TaxonomyType {
   return "destination";
 }
 
-function mapTaxonomy(row: Record<string, unknown>): ProductTaxonomy {
+export function mapTaxonomy(row: Record<string, unknown>): ProductTaxonomy {
   const r = row as Record<string, unknown>;
   const optStr = (key: string): string | null =>
     typeof r[key] === "string" ? (r[key] as string) : null;
   const optBool = (key: string, fallback: boolean): boolean =>
     typeof r[key] === "boolean" ? (r[key] as boolean) : fallback;
+  const optInt = (key: string, fallback: number): number => {
+    const v = r[key];
+    if (typeof v === "number" && Number.isFinite(v)) return Math.round(v);
+    if (typeof v === "string" && v.trim() !== "") {
+      const n = parseInt(v, 10);
+      if (!Number.isNaN(n)) return n;
+    }
+    return fallback;
+  };
 
   const taxonomy_type =
     r.taxonomy_type != null && String(r.taxonomy_type).trim() !== ""
@@ -75,6 +84,11 @@ function mapTaxonomy(row: Record<string, unknown>): ProductTaxonomy {
     hero_image_url: optStr("hero_image_url") ?? undefined,
     seo_title: optStr("seo_title") ?? undefined,
     seo_description: optStr("seo_description") ?? undefined,
+    display_label: optStr("display_label"),
+    badge_priority: optInt("badge_priority", 100),
+    badge_visible: optBool("badge_visible", true),
+    badge_tone: optStr("badge_tone") ?? undefined,
+    badge_description: optStr("badge_description"),
   };
 }
 
@@ -215,6 +229,30 @@ const getActiveTaxonomiesCached = unstable_cache(
   ["product-taxonomies:active"],
   { revalidate: 300, tags: [CACHE_TAGS.TAXONOMY, CACHE_TAGS.HEADER_NAV] },
 );
+
+/** PR3: 상품 카드 캠페인 배지 해석용 활성 campaign taxonomy만 (캐시 분리). */
+const getCampaignTaxonomiesCached = unstable_cache(
+  async (): Promise<ProductTaxonomy[]> => {
+    const result = await supabase
+      .from("product_taxonomies")
+      .select("*")
+      .eq("taxonomy_type", "campaign")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true });
+    if (result.error) {
+      console.error("[product-taxonomies:campaign]", result.error.message);
+      return [];
+    }
+    return (result.data ?? []).map((r) => mapTaxonomy(r as Record<string, unknown>));
+  },
+  ["product-taxonomies:campaign-card"],
+  { revalidate: 300, tags: [CACHE_TAGS.TAXONOMY, CACHE_TAGS.PRODUCTS] },
+);
+
+export async function getCampaignTaxonomiesForCard(): Promise<ProductTaxonomy[]> {
+  return getCampaignTaxonomiesCached();
+}
 
 /**
  * 헤더/필터용 활성 taxonomy 목록 (캐시 공유).

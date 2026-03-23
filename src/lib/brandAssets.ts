@@ -16,7 +16,10 @@ export const THEALL_WORDMARK_DARK_SRC = "/thealltour-wordmark-dark-v6.png" as co
 /** OG·JSON-LD·폴백 등 단일 URL이 필요할 때 — 라이트 자산 */
 export const THEALL_WORDMARK_IMAGE_SRC = THEALL_WORDMARK_LIGHT_SRC;
 
-/** 파비콘·앱 아이콘 (`public/favicon-*-v2.png`, `apple-touch-icon-v2.png`) — 캐시 무효화 시 버전 접미사 변경 */
-export const THEALL_FAVICON_16_SRC = "/favicon-16-v2.png" as const;
-export const THEALL_FAVICON_32_SRC = "/favicon-32-v2.png" as const;
-export const THEALL_APPLE_TOUCH_ICON_SRC = "/apple-touch-icon-v2.png" as const;
+/**
+ * 파비콘·앱 아이콘 — 브라우저·크롤러가 기대하는 표준 경로 (`public/` 루트).
+ * 소스 자산은 `favicon-*-v2.png` 등으로 두고, 배포 시 동일 내용을 `favicon-16.png` 등으로 복사해 둠.
+ */
+export const THEALL_FAVICON_16_SRC = "/favicon-16.png" as const;
+export const THEALL_FAVICON_32_SRC = "/favicon-32.png" as const;
+export const THEALL_APPLE_TOUCH_ICON_SRC = "/apple-touch-icon.png" as const;

@@ -7,6 +7,8 @@ import { searchProductsByParams } from "@/lib/search/searchProducts";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import { supabase } from "@/lib/supabase";
 import { normalizeProduct } from "@/lib/products";
+import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
+import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 
 const MAX_DESTINATIONS = 6;
 const MAX_THEMES = 6;
@@ -210,5 +212,6 @@ async function resolveRecommendedProducts(opts: {
     if (out.length >= MAX_PRODUCTS) break;
   }
 
-  return out.slice(0, MAX_PRODUCTS);
+  const campaignTax = await getCampaignTaxonomiesForCard();
+  return hydrateProductsWithCampaignCardMeta(out.slice(0, MAX_PRODUCTS), campaignTax);
 }

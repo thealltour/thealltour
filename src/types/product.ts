@@ -1,3 +1,5 @@
+import type { ProductCampaignCardMeta } from "@/types/productCampaignCard";
+
 export type ProductTrust = {
   recentConsultCount?: number;
   recentDays?: number;
@@ -267,4 +269,9 @@ export type Product = {
   trust?: ProductTrust;
   /** 옵션 정의. 없거나 groups가 비어 있으면 옵션 UI 미노출 */
   options?: ProductOptions;
+  /**
+   * PR3: 기획(campaign) taxonomy 기반 카드 배지 해석.
+   * `getProducts` 등에서 hydrate; 없으면 `campaigns` 문자열 + 레거시 규칙 사용.
+   */
+  campaign_card_meta?: ProductCampaignCardMeta[];
 };

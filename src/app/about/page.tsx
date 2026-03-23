@@ -5,8 +5,6 @@ import { buttonVariants } from "@/components/ui/Button";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
-import { Breadcrumb } from "@/components/navigation/Breadcrumb";
-
 export default async function AboutPage() {
   const settings = await getSiteSettings();
 
@@ -24,7 +22,6 @@ export default async function AboutPage() {
 
       <SectionBody className="flex flex-col gap-[var(--space-5)]">
         <PageHero kicker={kicker} title={title} size="sm" />
-        <Breadcrumb items={[{ label: "홈", href: "/" }, { label: "회사소개" }]} />
 
         <ContentCard>
           <div className="space-y-6 type-body text-content-secondary">

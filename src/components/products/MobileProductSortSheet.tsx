@@ -54,12 +54,15 @@ export function MobileProductSortSheet({
           <h2 className="type-small font-semibold text-[var(--foreground)]">정렬</h2>
         </div>
         <ul className="py-2">
-          {SORT_OPTIONS.filter((o) => o.value).map((opt) => (
-            <li key={opt.value}>
+          {[
+            { value: "" as ProductSortId, label: "기본순" },
+            ...SORT_OPTIONS,
+          ].map((opt) => (
+            <li key={opt.value === "" ? "sort-default" : opt.value}>
               <button
                 type="button"
                 onClick={() => {
-                  onSelect(opt.value as ProductSortId);
+                  onSelect(opt.value);
                   onClose();
                 }}
                 className={cn(

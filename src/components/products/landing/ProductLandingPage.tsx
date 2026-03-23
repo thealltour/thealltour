@@ -11,9 +11,19 @@ import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { NavigationContextHeader } from "@/components/navigation/NavigationContextHeader";
+import type { BreadcrumbItem } from "@/components/navigation/Breadcrumb";
+
+export type ProductLandingNavigationContext = {
+  items: BreadcrumbItem[];
+  pageTitle: string;
+  fallbackHref: string;
+};
 
 export type ProductLandingPageProps = {
   data: ProductLandingData;
+  /** 지역/테마 랜딩 상단: 모바일 백 + 데스크톱 브레드크럼 */
+  navigationContext?: ProductLandingNavigationContext;
 };
 
 function getLandingCtaPayload(data: ProductLandingData, section: "hero" | "recommended_products" | "bottom_cta") {
@@ -25,7 +35,7 @@ function getLandingCtaPayload(data: ProductLandingData, section: "hero" | "recom
   };
 }
 
-export default function ProductLandingPage({ data }: ProductLandingPageProps) {
+export default function ProductLandingPage({ data, navigationContext }: ProductLandingPageProps) {
   const { hero, featuredLinks, recommendedProducts, relatedTaxonomies, type, taxonomyName, productCount, childDestinations, childThemes } = data;
 
   /** 동일 id 중복 제거 (React key 충돌 방지) */
@@ -51,6 +61,14 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <main className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-6 sm:py-10 md:px-10 md:py-14">
         <div className="flex flex-col gap-10">
+          {navigationContext ? (
+            <NavigationContextHeader
+              items={navigationContext.items}
+              pageTitle={navigationContext.pageTitle}
+              fallbackHref={navigationContext.fallbackHref}
+              withMarginBottom={false}
+            />
+          ) : null}
           {/* Hero: 이미지 있으면 배경 히어로, 없으면 카드 스타일 */}
           {hero.imageUrl ? (
             <HeroVisual
@@ -258,6 +276,7 @@ export default function ProductLandingPage({ data }: ProductLandingPageProps) {
                       region={item.themes?.join(", ")}
                       categories={item.categories ?? []}
                       status="AVAILABLE"
+                      badges={item.badges ?? []}
                       thumbnailUrl={item.imageUrl ?? ""}
                       hrefDetail={item.href}
                       analyticsSource="landing"

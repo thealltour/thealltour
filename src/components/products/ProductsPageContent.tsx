@@ -2,12 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
-import { SlidersHorizontal, ArrowDownUp } from "lucide-react";
 import ProductCatalogSection from "@/components/product-detail/ProductCatalogSection";
 import { ProductFilterSidebar } from "@/components/products/ProductFilterSidebar";
 import { ProductFilterChips } from "@/components/products/ProductFilterChips";
 import { MobileProductFilterDrawer } from "@/components/products/MobileProductFilterDrawer";
 import { MobileProductSortSheet } from "@/components/products/MobileProductSortSheet";
+import { ProductListToolbar } from "@/components/products/ProductListToolbar";
 import {
   parseProductFiltersFromSearchParams,
   mergeFiltersIntoSearchParams,
@@ -47,6 +47,11 @@ export type ProductsPageContentProps = {
   initialThemeDescendantNames?: string[] | null;
   /** list: /products 본문용 비교 카드. related: 랜딩 하단용 간결 카드(이미지·가격 중심) */
   cardLayout?: "list" | "related";
+  /**
+   * /products 퍼널에서 상단에 MobileBackHeader가 있을 때 true.
+   * 허브(/destinations 등)만 목록 쓰는 경우 false.
+   */
+  mobileListToolbarBelowBackHeader?: boolean;
   /** 지역 선택 시 하위 지역(도쿄 등) 포함용. /products에서 상위 선택 시 하위 상품까지 노출 */
   regionTaxonomies?: ProductTaxonomy[] | null;
   /** 테마 선택 시 하위 테마 포함용 */
@@ -70,6 +75,7 @@ export function ProductsPageContent({
   initialRegionDescendants = null,
   initialThemeDescendantNames = null,
   cardLayout = "list",
+  mobileListToolbarBelowBackHeader = false,
   regionTaxonomies = null,
   themeTaxonomies = null,
 }: ProductsPageContentProps) {
@@ -213,27 +219,14 @@ export function ProductsPageContent({
       />
 
       <div className="min-w-0 flex-1 space-y-4">
-        {/* 모바일 전용: 필터/정렬 버튼 + 선택 칩 */}
-        <div className="flex flex-wrap items-center gap-2 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setFilterDrawerOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 type-small font-semibold text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)]"
-            aria-label="필터 열기"
-          >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
-            필터
-          </button>
-          <button
-            type="button"
-            onClick={() => setSortSheetOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 type-small font-semibold text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)]"
-            aria-label="정렬 열기"
-          >
-            <ArrowDownUp className="h-4 w-4 shrink-0" aria-hidden />
-            {sortLabel ?? "정렬"}
-          </button>
-        </div>
+        <ProductListToolbar
+          sortLabel={sortLabel}
+          currentSort={filters.sort}
+          onFilterClick={() => setFilterDrawerOpen(true)}
+          onSortClick={() => setSortSheetOpen(true)}
+          onSortChange={(sort) => handleFilterChange({ sort })}
+          belowMobileBackHeader={mobileListToolbarBelowBackHeader}
+        />
 
         <div className="space-y-2">
           {filterContextLabel && (

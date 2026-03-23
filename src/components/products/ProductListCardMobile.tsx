@@ -11,10 +11,8 @@ import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
 import type { ProductCardProps } from "@/components/products/ProductCard";
-import {
-  displayChipSurfaceClass,
-  pickDisplayChips,
-} from "@/lib/productCardSignals";
+import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
+import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
 
 export type ProductListCardMobileProps = ProductCardProps;
 
@@ -56,6 +54,7 @@ export default function ProductListCardMobile({
   tags = [],
   status,
   badges = [],
+  infoBadges = [],
   thumbnailUrl = "",
   hrefDetail,
   onClickDetail,
@@ -78,11 +77,11 @@ export default function ProductListCardMobile({
         ? price
         : null;
 
-  const sortedBadges = [...badges].sort(
-    (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
-  );
-  const activeBadges = sortedBadges.filter((b) => b.isActive !== false);
-  const displayChips = pickDisplayChips(status, activeBadges);
+  const visibleCampaignBadges = [...badges]
+    .filter((b) => b.isActive !== false)
+    .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
+    .slice(0, 2);
+  const infoDisplayChips = pickInfoDisplayChips(status, infoBadges);
 
   const handleCardClick = () => {
     onClickDetail?.();
@@ -127,8 +126,27 @@ export default function ProductListCardMobile({
   const cardContent = (
     <div className="flex w-full flex-col">
     <div className="flex min-h-[148px] w-full">
-      {/* 좌측: 이미지 (칩은 텍스트 영역 상단) */}
+      {/* 좌측: 이미지 + 캠페인 배지 오버레이(데스크 목록과 동일 소스) */}
       <div className="relative w-[34%] min-w-[112px] max-w-[136px] shrink-0 self-stretch overflow-hidden bg-[var(--surface-muted)]">
+        {visibleCampaignBadges.length > 0 ? (
+          <div
+            className="pointer-events-none absolute left-1 top-1 z-10 flex max-w-[calc(100%-0.5rem)] flex-col items-start gap-0.5 sm:left-1.5 sm:top-1.5 sm:flex-row sm:flex-wrap sm:gap-1"
+            aria-label="기획 배지"
+          >
+            {visibleCampaignBadges.map((b, i) => (
+              <ProductCampaignBadge
+                key={`m-ov-${b.label}-${i}`}
+                label={b.label}
+                isPrimary={i === 0}
+                kind="mobile"
+                badgeTone={b.campaignTone}
+                size="sm"
+                surface="overlay"
+                className="max-w-full"
+              />
+            ))}
+          </div>
+        ) : null}
         {thumbnailUrl ? (
           <Image
             src={normalizeProductImageUrl(thumbnailUrl)}
@@ -148,15 +166,15 @@ export default function ProductListCardMobile({
         )}
       </div>
 
-      {/* 우측: 배지 → 평점 → 제목 → one-liner → 가격 → 태그(최소) → 상담(보조) */}
+      {/* 우측: 칩·평점 → 제목 → one-liner → 가격 → 상담(보조) */}
       <div className="flex min-w-0 flex-1 flex-col gap-1 p-3.5">
         <div className="flex min-w-0 flex-wrap items-center gap-1">
-          {displayChips.map((chip) => (
+          {infoDisplayChips.map((chip) => (
             <span
               key={`${chip.variant}-${chip.label}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm backdrop-blur",
-                displayChipSurfaceClass(chip.variant),
+                infoDisplayChipSurfaceClass(chip.variant),
               )}
             >
               {chip.label}

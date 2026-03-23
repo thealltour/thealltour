@@ -50,12 +50,12 @@ export const metadata: Metadata = {
     "\uac00\uc871\uc5ec\ud589, \ud6a8\ub3c4\uc5ec\ud589, \uace8\ud504\ud22c\uc5b4, \ud14c\ub9c8\uc5ec\ud589\uae4c\uc9c0. \uc0c1\ub2f4\ubd80\ud130 \uc77c\uc815 \uc81c\uc548\uae4c\uc9c0 \ub9de\ucda4\ud615\uc73c\ub85c \ub3c4\uc640\ub4dc\ub9bd\ub2c8\ub2e4.",
   icons: {
     icon: [
-      { url: "/favicon.ico?v=2" },
+      { url: "/favicon.ico", sizes: "any" },
       { url: THEALL_FAVICON_16_SRC, sizes: "16x16", type: "image/png" },
       { url: THEALL_FAVICON_32_SRC, sizes: "32x32", type: "image/png" },
     ],
-    shortcut: "/favicon.ico?v=2",
-    apple: THEALL_APPLE_TOUCH_ICON_SRC,
+    shortcut: "/favicon.ico",
+    apple: [{ url: THEALL_APPLE_TOUCH_ICON_SRC, sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     type: "website",
@@ -97,6 +97,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        {/* 파비콘: metadata 외에 표준 경로 직접 링크 (일부 환경·캐시 호환) */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href={THEALL_FAVICON_32_SRC} />
+        <link rel="icon" type="image/png" sizes="16x16" href={THEALL_FAVICON_16_SRC} />
+        <link rel="apple-touch-icon" href={THEALL_APPLE_TOUCH_ICON_SRC} />
         {/* GA4 */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID ?? ""}`}

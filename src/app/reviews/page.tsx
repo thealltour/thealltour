@@ -15,8 +15,6 @@ import { ReviewSearchBar } from "@/components/reviews/ReviewSearchBar";
 import PublicReviewCard from "@/components/reviews/PublicReviewCard";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
-import { Breadcrumb } from "@/components/navigation/Breadcrumb";
-
 type Props = {
   searchParams: Promise<{ sort?: string; verified?: string; photos?: string; minRating?: string; productId?: string; q?: string }>;
 };
@@ -92,7 +90,6 @@ export default async function ReviewsPage({ searchParams }: Props) {
           subtitle="실제 고객님들이 남긴 여행 후기를 카드형으로 한눈에 확인해 보세요."
           size="sm"
         />
-        <Breadcrumb items={[{ label: "홈", href: "/" }, { label: "여행후기" }]} />
 
         <section className="space-y-4">
           <ReviewSearchBar />

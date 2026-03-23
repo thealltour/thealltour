@@ -296,20 +296,32 @@ export default function ProductCatalogSection({
               ) : (
                 <div className="flex w-full max-w-[1344px] flex-col gap-4 md:gap-5">
                   {group.products.map((product) => {
-                    const cardProps = productToProductCardProps(product, {
-                      analyticsSource: "product_list",
+                    const catalogOverrides = {
+                      analyticsSource: "product_list" as const,
                       analyticsSection: "catalog",
                       onClickDetail: () => router.push(`/products/${product.id}`),
                       onClickConsult: () => handleProductConsult(product),
-                    });
+                      /** /destinations 추천 카드와 동일하게 대표 배지 최대 2개(이미지 오버레이) */
+                      campaignBadgeMax: 2,
+                    };
 
                     return (
                       <div key={product.id} className="w-full">
                         <div className="hidden md:block">
-                          <ProductListCard {...cardProps} />
+                          <ProductListCard
+                            {...productToProductCardProps(product, {
+                              ...catalogOverrides,
+                              campaignPresentationKind: "list",
+                            })}
+                          />
                         </div>
                         <div className="md:hidden">
-                          <ProductListCardMobile {...cardProps} />
+                          <ProductListCardMobile
+                            {...productToProductCardProps(product, {
+                              ...catalogOverrides,
+                              campaignPresentationKind: "mobile",
+                            })}
+                          />
                         </div>
                       </div>
                     );

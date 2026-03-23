@@ -2,7 +2,6 @@ import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
-import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 import { QuotePageContent, type QuoteSummary } from "@/components/quote/QuotePageContent";
 import { getProductById } from "@/lib/products";
 
@@ -50,7 +49,6 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
           subtitle="여행 희망 조건을 남겨주시면 접수 순서대로 맞춤 일정과 견적 옵션을 안내드립니다."
           size="sm"
         />
-        <Breadcrumb items={[{ label: "홈", href: "/" }, { label: "견적문의" }]} />
 
         <ContentCard>
           <div className="mb-6 space-y-2">

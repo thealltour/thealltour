@@ -39,7 +39,20 @@ type PatchBody = {
   landing_description?: string | null;
   /** 랜딩(히어로) 배경 이미지 URL */
   hero_image_url?: string | null;
+  display_label?: string | null;
+  badge_priority?: number | null;
+  badge_visible?: boolean;
+  badge_tone?: string | null;
+  badge_description?: string | null;
 };
+
+const BADGE_TONE_VALUES = new Set(["primary", "highlight", "neutral"]);
+
+function normalizeBadgeTone(raw: string | null | undefined): string | null {
+  if (raw == null || raw.trim() === "") return null;
+  const s = raw.trim().toLowerCase();
+  return BADGE_TONE_VALUES.has(s) ? s : null;
+}
 
 export async function PATCH(
   request: Request,
@@ -143,6 +156,25 @@ export async function PATCH(
   if (body.landing_title !== undefined) updates.landing_title = body.landing_title?.trim() || null;
   if (body.landing_description !== undefined) updates.landing_description = body.landing_description?.trim() || null;
   if (body.hero_image_url !== undefined) updates.hero_image_url = body.hero_image_url?.trim() || null;
+  if (body.display_label !== undefined) updates.display_label = body.display_label?.trim() || null;
+  if (body.badge_priority !== undefined) {
+    updates.badge_priority =
+      typeof body.badge_priority === "number" && Number.isFinite(body.badge_priority)
+        ? body.badge_priority
+        : null;
+  }
+  if (body.badge_visible !== undefined) updates.badge_visible = Boolean(body.badge_visible);
+  if (body.badge_tone !== undefined) {
+    const t = normalizeBadgeTone(body.badge_tone ?? null);
+    if (body.badge_tone != null && body.badge_tone.trim() !== "" && t === null) {
+      return NextResponse.json(
+        { message: "badge_tone은 primary, highlight, neutral 중 하나여야 합니다." },
+        { status: 400 },
+      );
+    }
+    updates.badge_tone = t;
+  }
+  if (body.badge_description !== undefined) updates.badge_description = body.badge_description?.trim() || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ message: "변경 사항이 없습니다." }, { status: 200 });
@@ -170,7 +202,9 @@ export async function PATCH(
     .from("product_taxonomies")
     .update(updates)
     .eq("id", id)
-    .select("id, taxonomy_type, type, name, slug, is_active, sort_order, is_hub_visible, is_landing_enabled, category_type, parent_id, card_image_url, card_title, card_description, landing_title, landing_description, hero_image_url")
+    .select(
+      "id, taxonomy_type, type, name, slug, is_active, sort_order, is_hub_visible, is_landing_enabled, category_type, parent_id, card_image_url, card_title, card_description, landing_title, landing_description, hero_image_url, display_label, badge_priority, badge_visible, badge_tone, badge_description",
+    )
     .maybeSingle();
 
   if (updateResult.error) {
@@ -185,6 +219,7 @@ export async function PATCH(
 
   revalidateTag(CACHE_TAGS.TAXONOMY, REVALIDATE_MAX);
   revalidateTag(CACHE_TAGS.HEADER_NAV, REVALIDATE_MAX);
+  revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
   return NextResponse.json({ message: "수정되었습니다.", item: updateResult.data });
 }
 
@@ -256,5 +291,6 @@ export async function DELETE(
 
   revalidateTag(CACHE_TAGS.TAXONOMY, REVALIDATE_MAX);
   revalidateTag(CACHE_TAGS.HEADER_NAV, REVALIDATE_MAX);
+  revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
   return NextResponse.json({ message: "삭제되었습니다." });
 }

@@ -3,7 +3,11 @@ import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
-import { productToProductCardProps } from "@/lib/productCardProps";
+import {
+  getFeaturedHighlightLine,
+  buildProductExperienceSummary,
+  productToProductCardProps,
+} from "@/lib/productCardProps";
 import { CARD_BASE, CARD_PADDING_RELAXED } from "@/lib/cardTokens";
 
 export type CuratedBlockSurface = "none" | "muted" | "card";
@@ -15,9 +19,14 @@ export type CuratedBlockProps = {
   /** 섹션 래퍼 강조. none: 헤더+그리드만, muted/card: 배경/박스 적용 */
   surface?: CuratedBlockSurface;
   /**
-   * true: /destinations·/themes 허브 추천 상품 — md 미만 스냅 가로 레일, md+ 그리드(허브·지역 카드와 동일 브레이크포인트).
+   * true: /destinations·/themes 허브 추천 상품 — md 미만 가로 스냅 레일, md+ 그리드.
    */
   hubLandingLayout?: boolean;
+  /**
+   * true: **[slug] 랜딩** 상단 대표 상품 — 브리지 수준(선택 유도 문구·related 카드·첫 카드 강조·✔ 한 줄·타이트 레일).
+   * `/recommended`·허브 인덱스 등에서는 false.
+   */
+  featuredLanding?: boolean;
 };
 
 const SURFACE_CLASS: Record<CuratedBlockSurface, string> = {
@@ -32,25 +41,49 @@ export default function CuratedBlock({
   products,
   surface = "none",
   hubLandingLayout = false,
+  featuredLanding = false,
 }: CuratedBlockProps) {
   if (!products || products.length === 0) return null;
 
+  const useHubRail = hubLandingLayout || featuredLanding;
+  const useTightMobileGap = featuredLanding;
+
   return (
     <section className={cn("space-y-3 sm:space-y-4", SURFACE_CLASS[surface])}>
-      <SectionHeader
-        title={title}
-        description={description}
-      />
+      <SectionHeader title={title} description={description} />
 
-      <ProductCardGridSection hubLandingLayout={hubLandingLayout}>
-        {products.map((product) => (
+      {featuredLanding ? (
+        <p className="mt-1 text-sm text-[var(--text-muted)] sm:mt-0.5">
+          가장 많이 선택되는 일정부터 확인해보세요.
+        </p>
+      ) : null}
+
+      <ProductCardGridSection
+        hubLandingLayout={useHubRail}
+        guideBridgeMobileTightGap={useTightMobileGap}
+      >
+        {products.map((product, index) => (
           <ProductCard
             key={product.id}
-            {...productToProductCardProps(product, {
-              layout: "grid",
-              analyticsSource: "home_curated",
-              analyticsSection: title,
-            })}
+            {...productToProductCardProps(
+              product,
+              featuredLanding
+                ? {
+                    layout: "related",
+                    analyticsSource: "landing",
+                    analyticsSection: title,
+                    guideBridgeNarrowCopy: true,
+                    experienceSummary: buildProductExperienceSummary(product),
+                    selectionHighlightLine: getFeaturedHighlightLine(product),
+                    emphasizeFirstOnMobile: index === 0,
+                    topPickLabel: index === 0 ? "가장 많이 선택된" : undefined,
+                  }
+                : {
+                    layout: "grid",
+                    analyticsSource: "home_curated",
+                    analyticsSection: title,
+                  },
+            )}
           />
         ))}
       </ProductCardGridSection>

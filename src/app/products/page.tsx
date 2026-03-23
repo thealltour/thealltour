@@ -1,6 +1,11 @@
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import ProductsHero from "@/components/product-detail/ProductsHero";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { NavigationContextHeader } from "@/components/navigation/NavigationContextHeader";
+import {
+  buildProductsBreadcrumbItems,
+  getProductsNavFallbackHref,
+} from "@/components/navigation/breadcrumb-config";
 import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import { getProducts } from "@/lib/products";
 import { getProductTaxonomyOptions, getHubDestinations, getHubThemes, buildRegionTree, buildThemeTree, buildTaxonomyNameMap, getActiveProductLineTaxonomies } from "@/lib/productTaxonomies";
@@ -56,6 +61,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
       <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
         <PageContainer size="wide" className="flex flex-col gap-6">
+          <NavigationContextHeader
+            items={buildProductsBreadcrumbItems("index", { currentLabel: "여행상품" })}
+            pageTitle="여행상품"
+            fallbackHref={getProductsNavFallbackHref("index")}
+            withMarginBottom={false}
+          />
           <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
 
           {products.length === 0 ? (
@@ -77,6 +88,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               initialFiltersFromServer={initialFiltersFromServer}
               regionTaxonomies={destinations}
               themeTaxonomies={hubThemes}
+              mobileListToolbarBelowBackHeader
             />
           )}
         </PageContainer>

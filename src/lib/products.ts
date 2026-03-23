@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cacheTags";
-import { getTaxonomyById, parseThemeTokens } from "@/lib/productTaxonomies";
+import { getTaxonomyById, parseThemeTokens, getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
+import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 import {
   sortRelatedProducts,
   scoreRelatedProduct,
@@ -981,24 +982,30 @@ export async function getRelatedProducts(
 
 const getProductsCached = unstable_cache(
   async () => {
-  const advancedQuery = await supabase
-    .from("products")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false, nullsFirst: false });
+    const [advancedQuery, campaignTaxonomies] = await Promise.all([
+      supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false }),
+      getCampaignTaxonomiesForCard(),
+    ]);
 
-  if (!advancedQuery.error) {
-    return (advancedQuery.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
-  }
+    let rows: Record<string, unknown>[] = [];
+    if (!advancedQuery.error) {
+      rows = (advancedQuery.data ?? []) as Record<string, unknown>[];
+    } else {
+      const fallbackQuery = await supabase.from("products").select("*");
+      if (fallbackQuery.error) {
+        console.error("[products] list fetch error:", fallbackQuery.error.message);
+        return [] as Product[];
+      }
+      rows = (fallbackQuery.data ?? []) as Record<string, unknown>[];
+    }
 
-  const fallbackQuery = await supabase.from("products").select("*");
-  if (fallbackQuery.error) {
-    console.error("[products] list fetch error:", fallbackQuery.error.message);
-    return [] as Product[];
-  }
-
-  return (fallbackQuery.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
+    const normalized = rows.map((row) => normalizeProduct(row));
+    return hydrateProductsWithCampaignCardMeta(normalized, campaignTaxonomies);
   },
   ["products:list"],
   { revalidate: 60, tags: [CACHE_TAGS.PRODUCTS] },
@@ -1010,24 +1017,32 @@ export async function getProductById(id: string) {
 
 /** 상세 페이지용: 캐시 없이 항상 최신 데이터 조회 (수정 저장 후 즉시 반영) */
 export async function getProductByIdFresh(id: string) {
-  const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+  const [{ data, error }, campaignTaxonomies] = await Promise.all([
+    supabase.from("products").select("*").eq("id", id).maybeSingle(),
+    getCampaignTaxonomiesForCard(),
+  ]);
 
   if (error || !data) {
     return null;
   }
 
-  return normalizeProduct(data as Record<string, unknown>);
+  const p = normalizeProduct(data as Record<string, unknown>);
+  return hydrateProductsWithCampaignCardMeta([p], campaignTaxonomies)[0]!;
 }
 
 const getProductByIdCached = unstable_cache(
   async (id: string) => {
-    const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+    const [{ data, error }, campaignTaxonomies] = await Promise.all([
+      supabase.from("products").select("*").eq("id", id).maybeSingle(),
+      getCampaignTaxonomiesForCard(),
+    ]);
 
     if (error || !data) {
       return null;
     }
 
-    return normalizeProduct(data as Record<string, unknown>);
+    const p = normalizeProduct(data as Record<string, unknown>);
+    return hydrateProductsWithCampaignCardMeta([p], campaignTaxonomies)[0]!;
   },
   ["products:by-id"],
   { revalidate: 120, tags: [CACHE_TAGS.PRODUCTS] },

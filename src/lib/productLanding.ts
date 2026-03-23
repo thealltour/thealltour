@@ -10,6 +10,7 @@ import { getProducts } from "@/lib/products";
 import { getTaxonomyNameBySlug, getActiveTaxonomiesForHeader, parseThemeTokens, getSelfAndDescendantIdsAndNames } from "@/lib/productTaxonomies";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import type { Product } from "@/types/product";
+import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type {
   ProductLandingData,
@@ -77,6 +78,7 @@ export function toLandingProductSummary(product: Product): ProductLandingProduct
     href,
     categories,
     themes,
+    badges: buildCampaignRepresentativeBadges(product, { max: 2 }),
   };
 }
 

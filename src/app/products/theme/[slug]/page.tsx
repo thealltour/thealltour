@@ -17,6 +17,10 @@ import {
 import { getProductLandingData } from "@/lib/productLanding";
 import { getProducts } from "@/lib/products";
 import ProductLandingPage from "@/components/products/landing/ProductLandingPage";
+import {
+  buildProductsBreadcrumbItems,
+  getProductsNavFallbackHref,
+} from "@/components/navigation/breadcrumb-config";
 import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import type { Product } from "@/types/product";
@@ -198,7 +202,16 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
     return (
       <>
         <SiteHeader activeTab="products" />
-        <ProductLandingPage data={dataWithChildren} />
+        <ProductLandingPage
+          data={dataWithChildren}
+          navigationContext={{
+            items: buildProductsBreadcrumbItems("theme", {
+              currentLabel: landingData.taxonomyName,
+            }),
+            pageTitle: landingData.taxonomyName,
+            fallbackHref: getProductsNavFallbackHref("theme"),
+          }}
+        />
         <section
           className="min-h-screen border-t border-[var(--border)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-10 mt-12 sm:mt-16"
           aria-labelledby="products-section-heading"
@@ -228,6 +241,7 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
               filterContextLabel={`현재 '${landingData.taxonomyName}' 테마 기준 결과입니다.`}
               initialThemeDescendantNames={initialThemeDescendantNames}
               cardLayout="related"
+              mobileListToolbarBelowBackHeader
             />
             </div>
           </div>

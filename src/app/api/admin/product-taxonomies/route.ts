@@ -40,6 +40,12 @@ type TaxonomyBody = {
   landing_title?: string | null;
   landing_description?: string | null;
   hero_image_url?: string | null;
+  /** PR3: campaign 카드 배지 CMS */
+  display_label?: string | null;
+  badge_priority?: number | null;
+  badge_visible?: boolean;
+  badge_tone?: string | null;
+  badge_description?: string | null;
 };
 
 const VALID_TYPES: ProductTaxonomyType[] = ["category", "theme"];
@@ -160,6 +166,15 @@ export async function GET(request: Request) {
       searchInboundCount: metricsRow?.searchInboundCount ?? 0,
       landingViewCount: metricsRow?.landingViewCount ?? 0,
       landingCtr: metricsRow?.landingCtr ?? null,
+      display_label: typeof r.display_label === "string" ? r.display_label.trim() || null : null,
+      badge_priority:
+        typeof r.badge_priority === "number" && Number.isFinite(r.badge_priority)
+          ? r.badge_priority
+          : null,
+      badge_visible: typeof r.badge_visible === "boolean" ? r.badge_visible : true,
+      badge_tone: typeof r.badge_tone === "string" ? r.badge_tone.trim() || null : null,
+      badge_description:
+        typeof r.badge_description === "string" ? r.badge_description.trim() || null : null,
     };
   });
 
@@ -287,6 +302,18 @@ export async function POST(request: Request) {
   if (body.landing_title !== undefined) insertPayload.landing_title = body.landing_title?.trim() || null;
   if (body.landing_description !== undefined) insertPayload.landing_description = body.landing_description?.trim() || null;
   if (body.hero_image_url !== undefined) insertPayload.hero_image_url = body.hero_image_url?.trim() || null;
+  if (body.display_label !== undefined) insertPayload.display_label = body.display_label?.trim() || null;
+  if (body.badge_priority !== undefined) {
+    insertPayload.badge_priority =
+      typeof body.badge_priority === "number" && Number.isFinite(body.badge_priority)
+        ? body.badge_priority
+        : null;
+  }
+  if (body.badge_visible !== undefined) insertPayload.badge_visible = Boolean(body.badge_visible);
+  if (body.badge_tone !== undefined) insertPayload.badge_tone = body.badge_tone?.trim() || null;
+  if (body.badge_description !== undefined) {
+    insertPayload.badge_description = body.badge_description?.trim() || null;
+  }
 
   const insertResult = await supabase
     .from("product_taxonomies")
@@ -300,6 +327,7 @@ export async function POST(request: Request) {
 
   revalidateTag(CACHE_TAGS.TAXONOMY, REVALIDATE_MAX);
   revalidateTag(CACHE_TAGS.HEADER_NAV, REVALIDATE_MAX);
+  revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
   return NextResponse.json(
     {
       message:

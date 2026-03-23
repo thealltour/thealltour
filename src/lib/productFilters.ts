@@ -20,7 +20,14 @@ export const PRODUCT_FILTER_KEYS = {
   CITY: "city",
 } as const;
 
-export type ProductSortId = "popular" | "latest" | "new" | "";
+export type ProductSortId =
+  | "recommended"
+  | "price_asc"
+  | "price_desc"
+  | "popular"
+  | "latest"
+  | "new"
+  | "";
 
 export type ProductFiltersState = {
   region: string | null;
@@ -138,6 +145,9 @@ export function mergeFiltersIntoSearchParams(
 }
 
 export const SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
+  { value: "recommended", label: "추천순" },
+  { value: "price_asc", label: "가격 낮은순" },
+  { value: "price_desc", label: "가격 높은순" },
   { value: "latest", label: "최신순" },
   { value: "new", label: "신규순" },
   { value: "popular", label: "인기순" },
@@ -257,11 +267,23 @@ export function applyProductFilters(
       const bAt = b.created_at ? new Date(b.created_at).getTime() : 0;
       return bAt - aAt;
     });
-  } else if (filters.sort === "popular") {
+  } else if (filters.sort === "popular" || filters.sort === "recommended") {
     list = [...list].sort((a, b) => {
       const aOrder = typeof a.sort_order === "number" ? a.sort_order : 9999;
       const bOrder = typeof b.sort_order === "number" ? b.sort_order : 9999;
       return aOrder - bOrder;
+    });
+  } else if (filters.sort === "price_asc") {
+    list = [...list].sort((a, b) => {
+      const ap = typeof a.price === "number" && !Number.isNaN(a.price) ? a.price : Number.POSITIVE_INFINITY;
+      const bp = typeof b.price === "number" && !Number.isNaN(b.price) ? b.price : Number.POSITIVE_INFINITY;
+      return ap - bp;
+    });
+  } else if (filters.sort === "price_desc") {
+    list = [...list].sort((a, b) => {
+      const ap = typeof a.price === "number" && !Number.isNaN(a.price) ? a.price : Number.NEGATIVE_INFINITY;
+      const bp = typeof b.price === "number" && !Number.isNaN(b.price) ? b.price : Number.NEGATIVE_INFINITY;
+      return bp - ap;
     });
   }
 

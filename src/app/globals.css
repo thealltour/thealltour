@@ -230,6 +230,19 @@
   --mobile-header-search-row-height: 56px;
   --mobile-header-search-bg: #f7f9fb;
   --mobile-header-text-strong: #1a1a1a;
+  /**
+   * 상품 탐색: 모바일 SiteHeader(탑바+검색) 바로 아래 sticky 앵커
+   * (safe-area + 탑바 + 검색행 — products 등 검색행 있는 화면 기준)
+   */
+  --products-mobile-stack-top: calc(
+    env(safe-area-inset-top, 0px) + var(--mobile-header-top-height) +
+      var(--mobile-header-search-row-height)
+  );
+  --mobile-back-header-height: 2.75rem;
+  /* 모바일 뒤로 헤더(h-11) 아래에 두는 리스트 툴바 sticky 앵커 */
+  --products-mobile-toolbar-top: calc(
+    var(--products-mobile-stack-top) + var(--mobile-back-header-height)
+  );
 }
 
 /* 헤더 메인 바 (유틸 바 h-10 제외, 데스크톱) */

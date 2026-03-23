@@ -5,15 +5,18 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Star } from "lucide-react";
 import type { Product } from "@/types/product";
-import type { ProductCardBadge, ProductCardStatus } from "@/components/products/ProductCard";
+import type { ProductCardStatus } from "@/components/products/ProductCard";
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_HOVER, CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
-import { buildProductCardBadges } from "@/lib/productCardProps";
-import { displayChipSurfaceClass, pickDisplayChips } from "@/lib/productCardSignals";
+import { buildProductCardInfoBadges, CAMPAIGN_BADGE_MAX } from "@/lib/productCardProps";
+import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
+import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresentation";
+import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
+import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
 
 export type HomeProductCardProps = {
   product: Product;
@@ -28,15 +31,6 @@ const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/thealltour-home-card/800/6
 
 function formatReviewCount(n: number): string {
   return new Intl.NumberFormat("ko-KR").format(n);
-}
-
-/** ProductCard / productToProductCardProps와 동일 뱃지 풀 */
-function buildHomeBadges(product: Product): ProductCardBadge[] {
-  return [
-    ...buildProductCardBadges(product),
-    ...(product.is_popular ? [{ type: "accent", label: "인기", priority: 10, isActive: true }] : []),
-    ...(product.is_recommend ? [{ type: "accent", label: "추천", priority: 9, isActive: true }] : []),
-  ];
 }
 
 /** one_liner 없을 때만 보조 한 줄 (ProductCard meta와 유사 역할) */
@@ -63,10 +57,18 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
   const normalized = rawImage?.trim() ? normalizeProductImageUrl(rawImage.trim()) : "";
   const imageSrc = normalized || PLACEHOLDER_IMAGE;
 
-  const displayChips = useMemo(() => {
+  const visibleCampaignBadges = useMemo(
+    () =>
+      buildCampaignRepresentativeBadges(product, { max: CAMPAIGN_BADGE_MAX.home }).filter(
+        (b) => b.isActive !== false,
+      ),
+    [product],
+  );
+  const infoDisplayChips = useMemo(() => {
     const st = (product.status ?? "AVAILABLE") as ProductCardStatus;
-    return pickDisplayChips(st, buildHomeBadges(product));
+    return pickInfoDisplayChips(st, buildProductCardInfoBadges(product));
   }, [product]);
+  const campaignPitch = useMemo(() => buildCampaignPitchLineFromProduct(product, "home"), [product]);
 
   const ratingAvg = product.trust?.ratingAvg;
   const reviewCount = product.trust?.reviewCount;
@@ -117,6 +119,21 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
     >
       {/* 모바일 2열: 이미지 높이 축소(16:9), sm+ 기존 4:3 */}
       <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-[var(--surface-muted)] sm:aspect-[4/3]">
+        {visibleCampaignBadges.length > 0 ? (
+          <div className="absolute left-1.5 top-1.5 z-10 flex max-w-[calc(100%-0.75rem)] flex-wrap items-start gap-1 sm:left-2 sm:top-2">
+            {visibleCampaignBadges.map((b, i) => (
+              <ProductCampaignBadge
+                key={`camp-${b.label}-${i}`}
+                label={b.label}
+                isPrimary={i === 0}
+                kind="home"
+                badgeTone={b.campaignTone}
+                size="md"
+                surface="overlay"
+              />
+            ))}
+          </div>
+        ) : null}
         <Image
           src={imageSrc}
           alt={titleText}
@@ -129,13 +146,13 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
       <div className="flex min-h-0 flex-1 flex-col gap-1 px-2.5 py-2 sm:gap-1.5 sm:px-4 sm:py-4">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1">
-            {displayChips.map((chip, i) => (
+            {infoDisplayChips.map((chip, i) => (
               <span
                 key={`${chip.variant}-${chip.label}`}
                 className={cn(
                   "inline-flex max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm sm:px-2 sm:py-1 sm:text-[11px]",
                   i >= 1 && "hidden sm:inline-flex",
-                  displayChipSurfaceClass(chip.variant),
+                  infoDisplayChipSurfaceClass(chip.variant),
                 )}
               >
                 {chip.label}
@@ -164,6 +181,12 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
         <h3 className="line-clamp-2 text-[13px] font-semibold leading-tight text-[var(--foreground)] sm:text-sm sm:leading-snug">
           {titleText}
         </h3>
+
+        {campaignPitch ? (
+          <p className="line-clamp-2 text-[10px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-[11px]">
+            {campaignPitch}
+          </p>
+        ) : null}
 
         {oneLine ? (
           <p className="hidden line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)] sm:block sm:text-xs">

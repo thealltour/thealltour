@@ -11,7 +11,10 @@ import { buttonVariants } from "@/components/ui/Button";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
-import { displayChipSurfaceClass, pickDisplayChips } from "@/lib/productCardSignals";
+import type { CampaignCardKind } from "@/lib/productCampaignPresentation";
+import { resolveCampaignCardKind } from "@/lib/productCampaignPresentation";
+import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
+import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
 
 export type ProductCardStatus =
   | "AVAILABLE"
@@ -24,6 +27,8 @@ export type ProductCardBadge = {
   label: string;
   priority?: number;
   isActive?: boolean;
+  /** PR3: taxonomy badge_tone — 있으면 라벨 기반 톤 추론 생략 */
+  campaignTone?: "primary" | "highlight" | "neutral";
 };
 
 export type ProductCardLayout = "grid" | "list" | "related" | "stack";
@@ -36,7 +41,10 @@ export type ProductCardProps = {
   categories?: string[];
   tags?: string[];
   status?: ProductCardStatus;
+  /** 기획/추천(campaign) 대표 배지 — 이미지 오버레이 전용, 최대 2개 권장 */
   badges?: ProductCardBadge[];
+  /** 테마·카테고리 등 정보성 배지 — 본문 칩 행 전용 (대표 배지와 분리) */
+  infoBadges?: ProductCardBadge[];
   thumbnailUrl?: string;
   /** 상세 페이지 URL. 있으면 카드 전체가 이 주소로 이동하는 링크 영역이 됨 */
   hrefDetail?: string;
@@ -78,6 +86,10 @@ export type ProductCardProps = {
   guideBridgeNarrowCopy?: boolean;
   /** related + 가이드 브리지: 가격 아래 선택 이유 1줄(✔ 포함 권장). 없으면 미표시 */
   selectionHighlightLine?: string;
+  /** 대표 캠페인 1줄 피치 (라벨 매핑). grid에서는 보통 미전달 */
+  campaignPitchLine?: string;
+  /** 리스트/모바일 등 layout이 grid여도 피치·톤을 맞출 때 */
+  campaignPresentationKind?: CampaignCardKind;
 };
 
 function formatReviewCount(n: number): string {
@@ -126,6 +138,7 @@ export default function ProductCard({
   tags = [],
   status,
   badges = [],
+  infoBadges = [],
   thumbnailUrl = "",
   hrefDetail,
   onClickDetail,
@@ -149,6 +162,8 @@ export default function ProductCard({
   emphasizeFirstOnMobile = false,
   guideBridgeNarrowCopy = false,
   selectionHighlightLine = "",
+  campaignPitchLine = "",
+  campaignPresentationKind,
 }: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -159,11 +174,23 @@ export default function ProductCard({
         ? price
         : null;
 
-  const sortedBadges = [...badges].sort(
-    (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
-  );
-  const activeBadges = sortedBadges.filter((b) => b.isActive !== false);
-  const displayChips = pickDisplayChips(status, activeBadges);
+  const infoDisplayChips = pickInfoDisplayChips(status, infoBadges);
+
+  const campaignKind: CampaignCardKind = resolveCampaignCardKind({
+    layout,
+    analyticsSection: analyticsSection ?? null,
+    presentationKind: campaignPresentationKind,
+  });
+
+  const visibleCampaignBadges = (() => {
+    const sorted = [...badges]
+      .filter((b) => b.isActive !== false)
+      .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+    if (layout === "list") return sorted.slice(0, 1);
+    return sorted.slice(0, 2);
+  })();
+
+  const campaignPitch = campaignPitchLine?.trim() ?? "";
 
   const handleConsult = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -227,13 +254,13 @@ export default function ProductCard({
 
   const chipRow = (compact?: boolean) => (
     <div className="flex min-w-0 flex-wrap items-center gap-1">
-      {displayChips.map((chip) => (
+      {infoDisplayChips.map((chip) => (
         <span
           key={`${chip.variant}-${chip.label}`}
           className={cn(
             "inline-flex items-center rounded-full border font-semibold leading-none shadow-sm backdrop-blur",
             compact ? "px-1.5 py-0.5 text-[10px] sm:px-2 sm:py-1 sm:text-[11px]" : "px-2 py-1 text-[11px]",
-            displayChipSurfaceClass(chip.variant),
+            infoDisplayChipSurfaceClass(chip.variant),
           )}
         >
           {chip.label}
@@ -258,7 +285,7 @@ export default function ProductCard({
   const relatedCardContent = (
     <div className="flex h-full flex-col">
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]">
-        {(topPick || displayChips.length > 0) && (
+        {(topPick || visibleCampaignBadges.length > 0) && (
           <div className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1">
             {topPick ? (
               <span
@@ -268,16 +295,16 @@ export default function ProductCard({
                 {topPick}
               </span>
             ) : null}
-            {displayChips.map((chip) => (
-              <span
-                key={`${chip.variant}-${chip.label}`}
-                className={cn(
-                  "inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-none shadow-sm",
-                  displayChipSurfaceClass(chip.variant),
-                )}
-              >
-                {chip.label}
-              </span>
+            {visibleCampaignBadges.map((b, i) => (
+              <ProductCampaignBadge
+                key={`${b.label}-${i}`}
+                label={b.label}
+                isPrimary={i === 0}
+                kind={campaignKind}
+                badgeTone={b.campaignTone}
+                size="md"
+                surface="overlay"
+              />
             ))}
           </div>
         )}
@@ -312,6 +339,21 @@ export default function ProductCard({
           emphasizeFirstOnMobile && "max-sm:px-3.5 max-sm:pb-3.5 max-sm:pt-3",
         )}
       >
+        {infoDisplayChips.length > 0 ? (
+          <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1">
+            {infoDisplayChips.map((chip) => (
+              <span
+                key={`info-${chip.variant}-${chip.label}`}
+                className={cn(
+                  "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm backdrop-blur sm:px-2 sm:py-1 sm:text-[11px]",
+                  infoDisplayChipSurfaceClass(chip.variant),
+                )}
+              >
+                {chip.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {guideBridgeNarrowCopy ? (
           <>
             {titleBlock(2, "sm")}
@@ -321,9 +363,20 @@ export default function ProductCard({
               </p>
             ) : null}
             <div className="mt-1.5">{priceBlock}</div>
+            {campaignPitch ? (
+              <p
+                className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-[11px]"
+                title={campaignPitch}
+              >
+                {campaignPitch}
+              </p>
+            ) : null}
             {selectionLine ? (
               <p
-                className="mt-1 truncate text-[10px] font-medium leading-snug text-[var(--foreground)]/78 sm:text-[11px]"
+                className={cn(
+                  "truncate text-[10px] font-medium leading-snug text-[var(--foreground)]/78 sm:text-[11px]",
+                  campaignPitch ? "mt-0.5" : "mt-1",
+                )}
                 title={selectionLine}
               >
                 {selectionLine}
@@ -371,8 +424,21 @@ export default function ProductCard({
               <p className="mt-1 line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)]">{oneLine}</p>
             ) : null}
             <div className="mt-2">{priceBlock}</div>
+            {campaignPitch ? (
+              <p
+                className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1"
+                title={campaignPitch}
+              >
+                {campaignPitch}
+              </p>
+            ) : null}
             {expLine ? (
-              <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-[var(--text-muted)] sm:line-clamp-1 sm:text-[11px]">
+              <p
+                className={cn(
+                  "line-clamp-2 text-[10px] leading-snug text-[var(--text-muted)] sm:line-clamp-1 sm:text-[11px]",
+                  campaignPitch ? "mt-0.5" : "mt-1",
+                )}
+              >
                 {expLine}
               </p>
             ) : null}
@@ -392,6 +458,21 @@ export default function ProductCard({
             : "w-[42%] min-w-[140px] max-w-[220px]",
         )}
       >
+        {!isListLayout && visibleCampaignBadges.length > 0 ? (
+          <div className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1">
+            {visibleCampaignBadges.map((b, i) => (
+              <ProductCampaignBadge
+                key={`grid-camp-${b.label}-${i}`}
+                label={b.label}
+                isPrimary={i === 0}
+                kind={isListLayout ? "list" : "grid"}
+                badgeTone={b.campaignTone}
+                size="md"
+                surface="overlay"
+              />
+            ))}
+          </div>
+        ) : null}
         {thumbnailUrl ? (
           <Image
             src={normalizeProductImageUrl(thumbnailUrl)}
@@ -421,6 +502,24 @@ export default function ProductCard({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
+        {isListLayout && visibleCampaignBadges.length > 0 ? (
+          <div
+            className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5"
+            aria-label="기획 배지"
+          >
+            {visibleCampaignBadges.map((b, i) => (
+              <ProductCampaignBadge
+                key={`list-inline-${b.label}-${i}`}
+                label={b.label}
+                isPrimary={i === 0}
+                kind="list"
+                badgeTone={b.campaignTone}
+                size="sm"
+                surface="inline"
+              />
+            ))}
+          </div>
+        ) : null}
         <div className="flex items-start justify-between gap-2">
           {chipRow(false)}
           <CardRatingBlock ratingAvg={ratingAvg} reviewCount={reviewCount} className="pt-0.5" />

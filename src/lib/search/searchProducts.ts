@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { normalizeProduct } from "@/lib/products";
-import { parseThemeTokens } from "@/lib/productTaxonomies";
+import { parseThemeTokens, getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
+import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 import { getProductLineIdByName } from "@/lib/search/getSearchFilterOptions";
 import { DEFAULT_PAGE, SEARCH_PAGE_SIZE } from "@/lib/search/searchQueryParams";
 import type { Product } from "@/types/product";
@@ -72,6 +73,7 @@ export async function searchProductsByParams(
   }
 
   const productLineId = productLineParam ? await getProductLineIdByName(productLineParam) : null;
+  const campaignTaxonomies = await getCampaignTaxonomiesForCard();
 
   function baseQuery() {
     let qb = supabase
@@ -201,6 +203,7 @@ export async function searchProductsByParams(
     return { items: [], totalCount: total, page: safePage, pageSize, totalPages };
   }
   let products = (data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
+  products = hydrateProductsWithCampaignCardMeta(products, campaignTaxonomies);
   const seen = new Set<string>();
   products = products.filter((p) => {
     if (seen.has(p.id)) return false;

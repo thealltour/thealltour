@@ -29,6 +29,7 @@ import { getGuidesByDestinationId } from "@/lib/guides";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { getDestinationLandingHref } from "@/lib/hubLandingLinks";
+import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
 import {
   getTaxonomyMetadataFallback,
   getTaxonomyHeroImageFallback,
@@ -140,6 +141,13 @@ export default async function DestinationLandingPage({ params }: Props) {
 
       <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
         <PageContainer size="wide" className="flex flex-col gap-8">
+          <BreadcrumbWrapper
+            items={[
+              { label: "홈", href: "/" },
+              { label: "여행지", href: "/destinations" },
+              { label: heroTitle },
+            ]}
+          />
           <LandingDetailHero
             title={heroTitle}
             description={heroDescription}
@@ -214,12 +222,20 @@ export default async function DestinationLandingPage({ params }: Props) {
           ) : null}
 
           {related.length > 0 ? (
-            <CuratedBlock
-              title={`${destination.name} 대표 상품`}
-              description={`${destination.name} 지역과 연결된 상품입니다.`}
-              products={related}
-              surface="none"
-            />
+            <>
+              <CuratedBlock
+                title={`${destination.name} 대표 상품`}
+                description={`${destination.name} 지역과 연결된 상품입니다.`}
+                products={related}
+                surface="none"
+                featuredLanding
+                hubLandingLayout
+              />
+              <div
+                className="border-b border-[var(--border)] my-8 sm:my-10"
+                aria-hidden
+              />
+            </>
           ) : null}
 
           {reviewHighlights.length > 0 ? (
@@ -253,7 +269,7 @@ export default async function DestinationLandingPage({ params }: Props) {
 
           {/* 랜딩 직하단: 전체 상품 필터·리스트 (/products/region/[slug]와 동일 구조) */}
           <section
-            className="min-h-screen border-t border-[var(--border)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-10 mt-12 sm:mt-16"
+            className="min-h-screen border-t-2 border-[var(--border-strong)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-12 mt-16 shadow-[0_-1px_0_0_color-mix(in_srgb,var(--border)_80%,transparent)] sm:mt-20 sm:pt-14"
             aria-labelledby="products-section-heading"
           >
             <div className="mx-auto w-full max-w-6xl px-3 py-8 sm:px-6 sm:py-10 md:px-10 md:py-14">

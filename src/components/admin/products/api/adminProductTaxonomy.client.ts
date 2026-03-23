@@ -26,6 +26,11 @@ export type CreateAdminTaxonomyPayload = {
   landing_title?: string | null;
   landing_description?: string | null;
   hero_image_url?: string | null;
+  display_label?: string | null;
+  badge_priority?: number | null;
+  badge_visible?: boolean;
+  badge_tone?: string | null;
+  badge_description?: string | null;
 };
 
 /**
@@ -76,6 +81,11 @@ export async function createAdminProductTaxonomy(
   if (payload.landing_title !== undefined) body.landing_title = payload.landing_title?.trim() || null;
   if (payload.landing_description !== undefined) body.landing_description = payload.landing_description?.trim() || null;
   if (payload.hero_image_url !== undefined) body.hero_image_url = payload.hero_image_url?.trim() || null;
+  if (payload.display_label !== undefined) body.display_label = payload.display_label?.trim() || null;
+  if (payload.badge_priority !== undefined) body.badge_priority = payload.badge_priority;
+  if (payload.badge_visible !== undefined) body.badge_visible = payload.badge_visible;
+  if (payload.badge_tone !== undefined) body.badge_tone = payload.badge_tone?.trim() || null;
+  if (payload.badge_description !== undefined) body.badge_description = payload.badge_description?.trim() || null;
 
   const response = await fetch(BASE, {
     method: "POST",
@@ -124,6 +134,11 @@ export type UpdateAdminTaxonomyPayload = {
   landing_description?: string | null;
   /** 랜딩(히어로) 배경 이미지 URL */
   hero_image_url?: string | null;
+  display_label?: string | null;
+  badge_priority?: number | null;
+  badge_visible?: boolean;
+  badge_tone?: string | null;
+  badge_description?: string | null;
 };
 
 /**

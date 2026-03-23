@@ -5,6 +5,8 @@ import {
   productToDetailV2PropsPayload,
   type ProductFormPayload,
 } from "@/lib/admin/productPreview";
+import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
+import { hydrateProductWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 
 type PreviewRequestBody = {
   form: ProductFormPayload;
@@ -24,7 +26,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const previewProduct = formToPreviewProduct(form, imageUrl);
+    const campaignTaxonomies = await getCampaignTaxonomiesForCard();
+    const previewProduct = hydrateProductWithCampaignCardMeta(
+      formToPreviewProduct(form, imageUrl),
+      campaignTaxonomies,
+    );
     const cardProps = productToCardPropsPayload(previewProduct);
     const detailProps = productToDetailV2PropsPayload(previewProduct);
 

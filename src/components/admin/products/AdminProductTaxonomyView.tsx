@@ -445,6 +445,12 @@ export default function AdminProductTaxonomyView({
   const [editLandingTitle, setEditLandingTitle] = useState("");
   const [editLandingDescription, setEditLandingDescription] = useState("");
   const [editHeroImageUrl, setEditHeroImageUrl] = useState("");
+  /** PR3: campaign 탭 — 상품 카드 대표 배지 CMS */
+  const [editDisplayLabel, setEditDisplayLabel] = useState("");
+  const [editBadgeVisible, setEditBadgeVisible] = useState(true);
+  const [editBadgePriority, setEditBadgePriority] = useState("100");
+  const [editBadgeTone, setEditBadgeTone] = useState<"primary" | "highlight" | "neutral">("neutral");
+  const [editBadgeDescription, setEditBadgeDescription] = useState("");
   const editCardImageUrlRef = useRef("");
   const editCardTitleRef = useRef("");
   const editCardDescriptionRef = useRef("");
@@ -516,6 +522,13 @@ export default function AdminProductTaxonomyView({
   );
   const insightTitle = INSIGHT_TITLES[activeTab];
 
+  const taxonomyTableColSpan =
+    activeTab === "destination" || activeTab === "theme"
+      ? 13
+      : activeTab === "campaign"
+        ? 15
+        : 12;
+
   function startEdit(item: ProductTaxonomyWithUsage) {
     setExpandedItemKey(null);
     setEditingId(item.id);
@@ -531,6 +544,20 @@ export default function AdminProductTaxonomyView({
     setEditLandingTitle(item.landing_title?.trim() ?? "");
     setEditLandingDescription(item.landing_description?.trim() ?? "");
     setEditHeroImageUrl(item.hero_image_url?.trim() ?? "");
+    if (activeTab === "campaign") {
+      setEditDisplayLabel(item.display_label?.trim() ?? "");
+      setEditBadgeVisible(item.badge_visible !== false);
+      setEditBadgePriority(
+        item.badge_priority != null && Number.isFinite(item.badge_priority)
+          ? String(item.badge_priority)
+          : "100",
+      );
+      const tone = (item.badge_tone ?? "").trim().toLowerCase();
+      setEditBadgeTone(
+        tone === "primary" || tone === "highlight" || tone === "neutral" ? tone : "neutral",
+      );
+      setEditBadgeDescription(item.badge_description?.trim() ?? "");
+    }
   }
 
   /** 이름 기반 URL-safe slug 생성 (영문/숫자/하이픈만) */
@@ -573,6 +600,34 @@ export default function AdminProductTaxonomyView({
       payload.landing_title = landingTitle;
       payload.landing_description = landingDesc;
       payload.hero_image_url = heroUrl;
+    }
+    if (activeTab === "campaign") {
+      const dl = editDisplayLabel.trim();
+      const currentDl = (item.display_label ?? "").trim();
+      if (dl !== currentDl) payload.display_label = dl || null;
+
+      const vis = editBadgeVisible;
+      const curVis = item.badge_visible !== false;
+      if (vis !== curVis) payload.badge_visible = vis;
+
+      const bpRaw = editBadgePriority.trim();
+      const bp = bpRaw === "" ? null : Number(bpRaw);
+      const curBp = item.badge_priority ?? null;
+      if (bp !== null && !Number.isFinite(bp)) {
+        /* 잘못된 숫자는 payload에 넣지 않음 */
+      } else if (bp !== curBp) {
+        payload.badge_priority = bp;
+      }
+
+      const tone = editBadgeTone;
+      const curRaw = (item.badge_tone ?? "").trim().toLowerCase();
+      const curTone =
+        curRaw === "primary" || curRaw === "highlight" || curRaw === "neutral" ? curRaw : "neutral";
+      if (tone !== curTone) payload.badge_tone = tone;
+
+      const bd = editBadgeDescription.trim();
+      const curBd = (item.badge_description ?? "").trim();
+      if (bd !== curBd) payload.badge_description = bd || null;
     }
     if (Object.keys(payload).length === 0) {
       setEditingId(null);
@@ -726,6 +781,19 @@ export default function AdminProductTaxonomyView({
                   <thead>
                     <tr className="border-b border-[var(--border)]">
                       <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)]">이름</th>
+                      {activeTab === "campaign" ? (
+                        <>
+                          <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                            카드 라벨
+                          </th>
+                          <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                            배지
+                          </th>
+                          <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                            순위
+                          </th>
+                        </>
+                      ) : null}
                       {(activeTab === "destination" || activeTab === "theme") ? (
                         <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">상위</th>
                       ) : null}
@@ -745,7 +813,7 @@ export default function AdminProductTaxonomyView({
                   <tbody>
                     {visibleItems.length === 0 ? (
                       <tr>
-                        <td colSpan={(activeTab === "destination" || activeTab === "theme") ? 13 : 12} className="py-8 text-center text-sm text-[var(--text-muted)]">
+                        <td colSpan={taxonomyTableColSpan} className="py-8 text-center text-sm text-[var(--text-muted)]">
                           조건에 맞는 항목이 없습니다.
                         </td>
                       </tr>
@@ -778,6 +846,23 @@ export default function AdminProductTaxonomyView({
                                   ) : null}
                                 </div>
                               </td>
+                              {activeTab === "campaign" ? (
+                                <>
+                                  <td className="py-2 pr-2 text-xs text-[var(--text-muted)]">
+                                    {(item.display_label ?? "").trim() || item.name || "—"}
+                                  </td>
+                                  <td className="py-2 pr-2 text-xs">
+                                    {item.badge_visible !== false ? (
+                                      <span className="text-green-600">노출</span>
+                                    ) : (
+                                      <span className="text-[var(--text-muted)]">숨김</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 pr-2 text-xs text-[var(--text-muted)]">
+                                    {item.badge_priority != null ? item.badge_priority : "—"}
+                                  </td>
+                                </>
+                              ) : null}
                               {activeTab === "destination" || activeTab === "theme" ? (
                                 <td className="py-2 pr-2">
                                   {editingId === item.id ? (
@@ -980,10 +1065,99 @@ export default function AdminProductTaxonomyView({
                                 )}
                               </td>
                             </tr>
+                            {editingId === item.id && activeTab === "campaign" ? (
+                              <tr>
+                                <td
+                                  colSpan={taxonomyTableColSpan}
+                                  className="border-b border-[var(--border)] bg-[var(--surface)] p-3 align-top"
+                                >
+                                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                                    <p className="mb-3 text-xs font-semibold text-[var(--text-muted)]">
+                                      상품 카드 대표 배지 (PR3)
+                                    </p>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                      <div>
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
+                                          표시 라벨
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={editDisplayLabel}
+                                          onChange={(e) => setEditDisplayLabel(e.target.value)}
+                                          placeholder="비우면 관리용 이름과 동일"
+                                          className={cn(inputBase, "w-full")}
+                                          aria-label="카드 표시 라벨"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
+                                          배지 우선순위 (낮을수록 먼저)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editBadgePriority}
+                                          onChange={(e) => setEditBadgePriority(e.target.value)}
+                                          placeholder="100"
+                                          className={cn(inputBase, "w-full max-w-[120px]")}
+                                          aria-label="배지 우선순위"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
+                                          배지 스타일 (톤)
+                                        </label>
+                                        <select
+                                          value={editBadgeTone}
+                                          onChange={(e) =>
+                                            setEditBadgeTone(e.target.value as "primary" | "highlight" | "neutral")
+                                          }
+                                          className={cn(inputBase, "w-full max-w-[200px]")}
+                                          aria-label="배지 톤"
+                                        >
+                                          <option value="primary">primary (강조·추천 계열)</option>
+                                          <option value="highlight">highlight (인기 계열)</option>
+                                          <option value="neutral">neutral (신규·기타)</option>
+                                        </select>
+                                      </div>
+                                      <div className="flex items-end pb-0.5">
+                                        <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                          <input
+                                            type="checkbox"
+                                            checked={editBadgeVisible}
+                                            onChange={(e) => setEditBadgeVisible(e.target.checked)}
+                                            aria-label="카드 대표 배지 노출"
+                                          />
+                                          <span>카드 대표 배지로 노출</span>
+                                        </label>
+                                      </div>
+                                      <div className="sm:col-span-2 lg:col-span-3">
+                                        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
+                                          카드 설명 1줄 (피치)
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={editBadgeDescription}
+                                          onChange={(e) => setEditBadgeDescription(e.target.value)}
+                                          placeholder="예: MD가 추천하는 일정"
+                                          className={cn(inputBase, "w-full max-w-xl")}
+                                          aria-label="카드 피치 설명"
+                                        />
+                                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                                          비우면 카드에서 기본 문구(라벨 기반)를 사용할 수 있습니다.
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p className="mt-3 text-[11px] text-[var(--text-muted)]">
+                                      변경 후 위 행의 <strong>저장</strong>을 눌러 반영합니다.
+                                    </p>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : null}
                             {editingId === item.id && (activeTab === "destination" || activeTab === "theme") ? (
                               <tr>
                                 <td
-                                  colSpan={(activeTab === "destination" || activeTab === "theme") ? 13 : 12}
+                                  colSpan={taxonomyTableColSpan}
                                   className="border-b border-[var(--border)] bg-[var(--surface)] p-3 align-top"
                                 >
                                   <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
@@ -1113,7 +1287,7 @@ export default function AdminProductTaxonomyView({
                             ) : null}
                             {expandedItemKey === item.id ? (
                               <tr>
-                                <td colSpan={(activeTab === "destination" || activeTab === "theme") ? 13 : 12} className="bg-[var(--surface-muted)] p-0 align-top">
+                                <td colSpan={taxonomyTableColSpan} className="bg-[var(--surface-muted)] p-0 align-top">
                                   <div className="border-t border-[var(--border)] p-4">
                                     {priorityTag ? (
                                       <p className="mb-3 text-xs font-medium text-[var(--text-muted)]">

@@ -16,7 +16,7 @@ import { getTaxonomyById } from "@/lib/productTaxonomies";
 import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { GuideBridgeHeroCtas } from "@/components/guides/GuideBridgeHeroCtas";
 import { HeroVisual } from "@/components/landing/HeroVisual";
-import { Breadcrumb } from "@/components/navigation/Breadcrumb";
+import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
 import { LANDING_HERO_FALLBACK_IMAGE } from "@/lib/landingMetadata";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
@@ -205,7 +205,7 @@ export default async function GuideDetailPage({ params }: Props) {
 
       <main className="flex w-full flex-col py-5 sm:py-10 md:py-14">
         <PageContainer size="wide" className="flex flex-col gap-5 md:gap-8">
-          <Breadcrumb
+          <BreadcrumbWrapper
             items={[
               { label: "홈", href: "/" },
               { label: "여행가이드", href: "/blog" },

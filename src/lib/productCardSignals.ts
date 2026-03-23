@@ -16,6 +16,19 @@ export function displayChipSurfaceClass(variant: DisplayChip["variant"]): string
   return "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]";
 }
 
+/**
+ * 테마·상태 등 **정보성** 칩 — 캠페인 대표 배지보다 한 단계 낮은 계층 (PR2).
+ */
+export function infoDisplayChipSurfaceClass(variant: DisplayChip["variant"]): string {
+  if (variant === "gold") {
+    return "border-amber-200/70 bg-amber-500/88 text-white";
+  }
+  if (variant === "accent") {
+    return "border-[var(--border)]/70 bg-[var(--surface-muted)] text-[var(--text-muted)]";
+  }
+  return "border-[var(--border)]/60 bg-[var(--surface-muted)]/80 text-[var(--text-subtle)]";
+}
+
 function badgeTypeToTagVariant(type: string): "accent" | "muted" | "gold" {
   const t = type?.toLowerCase() ?? "";
   if (t === "accent" || t === "primary" || t === "인기" || t === "추천") return "accent";
@@ -24,12 +37,12 @@ function badgeTypeToTagVariant(type: string): "accent" | "muted" | "gold" {
 }
 
 /**
- * CTR용 카드 상단 배지 최대 2개.
- * 1) 마감 / 마감임박(LIMITED)  2) 인기·추천  3) 프로모션·기타
+ * 상태 + 테마 등 **정보성** 배지 칩 (최대 2개).
+ * 캠페인 대표 배지는 `badges`(campaign)와 분리 — 여기서는 다루지 않음.
  */
-export function pickDisplayChips(
+export function pickInfoDisplayChips(
   status: ProductCardStatus | undefined,
-  activeBadges: ProductCardBadge[],
+  infoBadges: ProductCardBadge[],
 ): DisplayChip[] {
   const chips: DisplayChip[] = [];
 
@@ -41,15 +54,12 @@ export function pickDisplayChips(
     chips.push({ label: "상담 후 안내", variant: "muted" });
   }
 
-  const rank = (b: ProductCardBadge): number => {
-    const L = b.label.toLowerCase();
-    if (L.includes("인기")) return 1;
-    if (L.includes("추천")) return 2;
-    if (L.includes("프로모션") || L.includes("혜택")) return 3;
-    return 10;
-  };
-
-  const sorted = [...activeBadges].filter((b) => b.isActive !== false).sort((a, b) => rank(a) - rank(b));
+  const sorted = [...infoBadges].filter((b) => b.isActive !== false).sort((a, b) => {
+    const pa = a.priority ?? 0;
+    const pb = b.priority ?? 0;
+    if (pb !== pa) return pb - pa;
+    return a.label.localeCompare(b.label, "ko");
+  });
 
   for (const b of sorted) {
     if (chips.length >= 2) break;
@@ -65,4 +75,32 @@ export function pickDisplayChips(
   }
 
   return chips.slice(0, 2);
+}
+
+/** 이미지 오버레이용: 캠페인 대표 배지(badges) → DisplayChip, 최대 2개 */
+export function campaignBadgesToDisplayChips(badges: ProductCardBadge[]): DisplayChip[] {
+  const sorted = [...badges].filter((b) => b.isActive !== false).sort((a, b) => {
+    const pa = a.priority ?? 0;
+    const pb = b.priority ?? 0;
+    if (pb !== pa) return pb - pa;
+    return a.label.localeCompare(b.label, "ko");
+  });
+  const out: DisplayChip[] = [];
+  for (const b of sorted) {
+    if (out.length >= 2) break;
+    const label = b.label.trim();
+    if (!label) continue;
+    out.push({ label, variant: badgeTypeToTagVariant(b.type) });
+  }
+  return out;
+}
+
+/**
+ * @deprecated `pickInfoDisplayChips` 사용 — 인자는 정보성 배지(`infoBadges`)만 넘기세요.
+ */
+export function pickDisplayChips(
+  status: ProductCardStatus | undefined,
+  activeBadges: ProductCardBadge[],
+): DisplayChip[] {
+  return pickInfoDisplayChips(status, activeBadges);
 }

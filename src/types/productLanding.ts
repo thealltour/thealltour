@@ -25,6 +25,15 @@ export type ProductLandingFeaturedLink = {
   href: string;
 };
 
+/** ProductCard `badges`와 동일 형태 — 랜딩 직렬화용 */
+export type ProductLandingCardBadge = {
+  type: string;
+  label: string;
+  priority?: number;
+  isActive?: boolean;
+  campaignTone?: "primary" | "highlight" | "neutral";
+};
+
 export type ProductLandingProductSummary = {
   id: string;
   title: string;
@@ -34,6 +43,8 @@ export type ProductLandingProductSummary = {
   href: string;
   categories?: string[];
   themes?: string[];
+  /** campaign 대표 배지 — 이미지 오버레이(다른 랜딩·목록과 동일 소스) */
+  badges?: ProductLandingCardBadge[];
 };
 
 export type ProductLandingData = {

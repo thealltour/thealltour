@@ -13,6 +13,11 @@ import {
   ProductDetailStickyV2Mobile,
 } from "@/components/products/ProductDetailStickyV2";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { NavigationContextHeader } from "@/components/navigation/NavigationContextHeader";
+import {
+  buildProductsBreadcrumbItems,
+  getProductsNavFallbackHref,
+} from "@/components/navigation/breadcrumb-config";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
@@ -274,14 +279,13 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
       <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white py-6 sm:py-10 md:py-14">
         <PageContainer size="wide">
           <main className="w-full">
-            <div className="mb-6 md:hidden">
-              <Link
-                href="/products"
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                ← 상품 목록으로
-              </Link>
-            </div>
+            <NavigationContextHeader
+              items={buildProductsBreadcrumbItems("product_detail", {
+                currentLabel: product.title,
+              })}
+              pageTitle={product.title}
+              fallbackHref={getProductsNavFallbackHref("product_detail")}
+            />
 
             <div className="flex gap-8 xl:gap-10 lg:items-start">
             <div className="min-w-0 flex-1 space-y-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">

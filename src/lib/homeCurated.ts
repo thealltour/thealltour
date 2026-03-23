@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cacheTags";
 import { normalizeProduct } from "@/lib/products";
+import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
+import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 import type {
   HomeCuratedSettings,
   HomeCuratedSection,
@@ -97,6 +99,11 @@ async function getHomeCuratedDataUncached(): Promise<HomeCuratedData> {
     if (!productsError && productRows?.length) {
       for (const row of productRows) {
         const p = normalizeProduct(row as Record<string, unknown>);
+        productMap.set(p.id, p);
+      }
+      const campaignTax = await getCampaignTaxonomiesForCard();
+      const hydrated = hydrateProductsWithCampaignCardMeta([...productMap.values()], campaignTax);
+      for (const p of hydrated) {
         productMap.set(p.id, p);
       }
     }

@@ -897,6 +897,18 @@ body {
   color: var(--on-primary);
 }
 
+/* 히어로는 --primary 위에 올라가므로, 전역 .section-label / .section-title 의 페이지 본문 색이
+   Tailwind text-white 보다 나중에 적용되어 대비가 깨지는 문제를 방지 */
+.page-hero .section-label {
+  color: color-mix(in srgb, var(--on-primary) 72%, transparent);
+}
+.page-hero .section-title {
+  color: var(--on-primary);
+}
+.page-hero .type-small {
+  color: color-mix(in srgb, var(--on-primary) 90%, transparent);
+}
+
 .section-body {
   max-width: 1200px;
   margin-inline: auto;

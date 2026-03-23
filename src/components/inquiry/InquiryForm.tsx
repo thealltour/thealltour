@@ -221,7 +221,7 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
           name="desiredDeparture"
           value={form.desiredDeparture}
           onChange={(e) => setForm((prev) => ({ ...prev, desiredDeparture: e.target.value }))}
-          placeholder="예: 2025년 5월"
+          placeholder="예: 20xx년 10월"
           className="py-3"
         />
       </Label>

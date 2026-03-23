@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { HeroVisual } from "@/components/landing/HeroVisual";
+import { LandingConsultCtaButton } from "@/components/landing/LandingConsultCtaButton";
 import { cn } from "@/lib/cn";
 
 export type LandingHeroProps = {
@@ -73,12 +74,19 @@ export function LandingHero({
             </Link>
           ) : null}
           {secondaryCtaLabel?.trim() && secondaryCtaHref?.trim() ? (
-            <Link
-              href={secondaryCtaHref}
-              className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
-            >
-              {secondaryCtaLabel}
-            </Link>
+            secondaryCtaHref === "/quote" ? (
+              <LandingConsultCtaButton
+                label={secondaryCtaLabel}
+                className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+              />
+            ) : (
+              <Link
+                href={secondaryCtaHref}
+                className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+              >
+                {secondaryCtaLabel}
+              </Link>
+            )
           ) : null}
         </div>
       </HeroVisual>

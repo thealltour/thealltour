@@ -32,6 +32,8 @@ export type SectionHeaderProps = {
   titleId?: string;
   /** true: eyebrow를 모든 뷰포트에서 숨김(홈에서 라벨 제거 시 사용). 예전에는 sm~md만 노출이었으나 태블릿에서 잔존해 전 구간 숨김으로 통일 */
   hideEyebrowOnTablet?: boolean;
+  /** description `<p>`에 추가 클래스 (가이드 브리지 등 보조 설명 톤 분리) */
+  descriptionClassName?: string;
 };
 
 /**
@@ -66,6 +68,7 @@ export function SectionHeader({
   className,
   titleId,
   hideEyebrowOnTablet = false,
+  descriptionClassName,
 }: SectionHeaderProps) {
   const eyebrowClass = cn(
     "type-caption tracking-wide text-[var(--text-muted)]",
@@ -104,7 +107,14 @@ export function SectionHeader({
             </h2>
           ) : null}
           {description ? (
-            <p className="type-small max-w-[640px] text-[var(--text-muted)] sm:mx-auto">{description}</p>
+            <p
+              className={cn(
+                "type-small max-w-[640px] text-[var(--text-muted)] sm:mx-auto",
+                descriptionClassName,
+              )}
+            >
+              {description}
+            </p>
           ) : null}
         </div>
         {action ? <div className="shrink-0 sm:pt-1">{action}</div> : null}
@@ -135,7 +145,14 @@ export function SectionHeader({
           {action ? <div className="flex shrink-0 items-center sm:hidden">{actionMobile}</div> : null}
         </div>
         {description ? (
-          <p className="type-small max-w-[640px] text-[var(--text-muted)]">{description}</p>
+          <p
+            className={cn(
+              "type-small max-w-[640px] text-[var(--text-muted)]",
+              descriptionClassName,
+            )}
+          >
+            {description}
+          </p>
         ) : null}
       </div>
       {action ? (

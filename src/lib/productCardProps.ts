@@ -6,6 +6,83 @@ import { getPrimaryImageUrl } from "@/lib/products/images";
 
 const PRIORITY_BADGES = ["제철", "인기", "마감임박"];
 
+const GUIDE_BRIDGE_SELECTION_MAX = 40;
+
+/**
+ * 가이드 브리지 related 카드: 가격 아래 1줄 클릭 맥락 (메타·숙소·태그·테마·카테고리·기간 순).
+ * 데이터가 없으면 undefined (렌더 생략).
+ */
+export function buildGuideBridgeSelectionLine(product: Product): string | undefined {
+  const withCheck = (raw: string) => {
+    const t = raw.replace(/\s+/g, " ").trim();
+    if (t.length < 2) return undefined;
+    const clipped =
+      t.length > GUIDE_BRIDGE_SELECTION_MAX
+        ? `${t.slice(0, Math.max(2, GUIDE_BRIDGE_SELECTION_MAX - 1))}…`
+        : t;
+    return clipped.startsWith("✔") ? clipped : `✔ ${clipped}`;
+  };
+
+  const stay = product.overview_accommodation?.trim();
+  if (stay) {
+    const line = stay.length <= 28 ? stay : `${stay.slice(0, 26)}…`;
+    const w = withCheck(line);
+    if (w) return w;
+  }
+
+  const meta = product.meta_info?.trim() ?? "";
+  if (meta.length >= 4 && meta.length <= 34) {
+    const w = withCheck(meta);
+    if (w) return w;
+  }
+
+  const tags = parseMetaTitleAsHashtags(product.meta_title);
+  const tag0 = tags[0]?.trim();
+  if (tag0 && tag0.length <= 30) {
+    const w = withCheck(tag0.replace(/^#+/, ""));
+    if (w) return w;
+  }
+
+  const themeRaw = product.theme?.trim();
+  if (themeRaw) {
+    const first = themeRaw.split(/[,，]/)[0]?.trim();
+    if (first && first.length <= 26) {
+      const w = withCheck(`${first} 일정`);
+      if (w) return w;
+    }
+  }
+
+  const cat = product.category?.trim();
+  if (cat && cat.length <= 22) {
+    const w = withCheck(`${cat} 코스`);
+    if (w) return w;
+  }
+
+  const d = product.duration?.trim();
+  if (d) {
+    const w = withCheck(`${d} 일정`);
+    if (w) return w;
+  }
+
+  return undefined;
+}
+
+/** 가이드 브리지 등: 기간·카테고리·테마로 클릭 맥락 한 줄 */
+export function buildProductExperienceSummary(product: Product): string {
+  const parts: string[] = [];
+  const d = product.duration?.trim();
+  if (d) parts.push(d);
+  const c = product.category?.trim();
+  if (c) parts.push(c);
+  const raw = product.theme?.trim();
+  if (raw) {
+    const first = raw.split(/[,，]/)[0]?.trim();
+    if (first) parts.push(first.length > 24 ? `${first.slice(0, 22)}…` : first);
+  }
+  if (parts.length === 0) return "일정과 구성은 상세에서 확인할 수 있어요";
+  return parts.join(" · ");
+}
+
 /**
  * Product → ProductCard badges (테마/카테고리 배지).
  * SearchResults, RelatedProductsSection, ProductCatalogSection, CuratedBlock 등에서 공통 사용.
@@ -33,6 +110,11 @@ export type ProductToProductCardOverrides = Partial<
     | "ratingAvg"
     | "reviewCount"
     | "className"
+    | "topPickLabel"
+    | "experienceSummary"
+    | "emphasizeFirstOnMobile"
+    | "guideBridgeNarrowCopy"
+    | "selectionHighlightLine"
   >
 >;
 

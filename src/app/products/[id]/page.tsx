@@ -47,22 +47,45 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
   const siteUrl = getSiteBaseUrl();
   const productPath = `/products/${id}`;
   const productUrl = `${siteUrl}${productPath}`;
+  const defaultOgImageUrl = `${siteUrl}/og-default-v1.png`;
   /** 메타 description·OG 부제는 getProductSeoData 내부에서 DB SEO → slug 패턴 카피 → fallback 순으로 결정 */
   const seo = await getProductSeoData(id);
 
   if (!seo) {
+    const title = "여행 상품 상세 | 일정·가격·후기 한눈에 | 더올투어";
+    const description =
+      "여행 상품 상세 정보입니다. 일정, 가격, 후기까지 한 번에 확인하고 상담으로 맞춤 여행을 준비해보세요.";
     return {
-      title: "패키지상품 | 더올투어",
-      description: "더올투어 패키지상품 정보를 확인해 보세요.",
+      title,
+      description,
       alternates: {
         canonical: productUrl,
+      },
+      openGraph: {
+        type: "article",
+        url: productUrl,
+        siteName: "더올투어",
+        title,
+        description,
+        images: [
+          {
+            url: defaultOgImageUrl,
+            width: 1200,
+            height: 630,
+            alt: "여행 상품 상세",
+          },
+        ],
+        locale: "ko_KR",
       },
     };
   }
 
+  const title = `${seo.name} | 일정·가격·후기 한눈에 | 더올투어`;
+  const description = `${seo.name} 여행 상품 상세 정보입니다. 일정, 가격, 후기까지 한 번에 확인하고 상담으로 맞춤 여행을 준비해보세요.`;
+
   return {
-    title: seo.browserTitle,
-    description: seo.metaDescription,
+    title,
+    description,
     alternates: {
       canonical: productUrl,
     },
@@ -70,11 +93,11 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
       type: "article",
       url: productUrl,
       siteName: "더올투어",
-      title: seo.browserTitle,
-      description: seo.metaDescription,
+      title,
+      description,
       images: [
         {
-          url: `${productPath}/opengraph-image`,
+          url: defaultOgImageUrl,
           width: 1200,
           height: 630,
           alt: seo.name,
@@ -84,8 +107,8 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     },
     twitter: {
       card: "summary_large_image",
-      title: seo.browserTitle,
-      description: seo.metaDescription,
+      title,
+      description,
       images: [`${productPath}/twitter-image`],
     },
   };
@@ -305,6 +328,9 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 reviewCount={productReviewStats.reviewCount}
                 bookingCount={product.trust?.recentConsultCount}
                 consultHref={`/quote?productId=${encodeURIComponent(product.id)}`}
+                productId={product.id}
+                productTitle={product.title}
+                sourcePath={`${sourcePath}#reviews`}
               />
               <ProductReviewsSection
                 productId={product.id}

@@ -20,23 +20,28 @@ import {
   type ProductCategoryTabId,
 } from "@/lib/productCategory";
 
+/** 지역 칩 첫 항목 라벨 (내부 탭 id는 `all`) */
+const REGION_ALL_LABEL = "전체";
+/** 테마 칩 전체 (matchesThemeTab / getThemeTabs 와 동일) */
+const THEME_ALL_LABEL = "전체";
+
 type ProductCatalogSectionProps = {
   products: Product[];
   categories: string[];
   initialKeyword?: string;
   presetCategories?: string[];
   presetLabel?: string;
-  /** URL ?? ?? ?: ?? ??(????) */
+  /** URL 연동 시 초기 지역(상품 category 문자열) */
   initialRegion?: string | null;
-  /** URL ?? ?? ?: ?? ?? */
+  /** URL 연동 시 초기 테마 */
   initialTheme?: string | null;
-  /** URL ?? ?? ?: ???? ? ?? ? ?? */
+  /** URL 연동 시 지역 변경 콜백 */
   onCategoryChange?: (region: string | null) => void;
-  /** URL ?? ?? ?: ?? ? ?? ? ?? */
+  /** URL 연동 시 테마 변경 콜백 */
   onThemeChange?: (theme: string | null) => void;
-  /** 0?? ? ?? ???(?? ?? ??)?. ?? ? ? ?? UI? "?? ???" CTA ?? */
+  /** 결과 0건일 때 필터 초기화 CTA */
   onResetFilters?: () => void;
-  /** list: /products ??? ?? ??. related: ?? ??? ?? ??(?????? ??) */
+  /** list: /products 목록형. related: 연관·랜딩용 카드 그리드 */
   cardLayout?: "list" | "related";
 };
 
@@ -79,20 +84,18 @@ export default function ProductCatalogSection({
   cardLayout = "list",
 }: ProductCatalogSectionProps) {
   const [internalTab, setInternalTab] = useState<ProductCategoryTabId>("all");
-  const [internalThemeTab, setInternalThemeTab] = useState("??");
+  const [internalThemeTab, setInternalThemeTab] = useState(THEME_ALL_LABEL);
 
   const isUrlControlled = onCategoryChange != null && onThemeChange != null;
   const activeTab: ProductCategoryTabId = isUrlControlled
     ? (initialRegion ?? "all")
     : internalTab;
-  const activeThemeTab = isUrlControlled
-    ? (initialTheme ?? "??")
-    : internalThemeTab;
+  const activeThemeTab = isUrlControlled ? (initialTheme ?? THEME_ALL_LABEL) : internalThemeTab;
 
   useEffect(() => {
     if (!isUrlControlled) return;
     setInternalTab(initialRegion ?? "all");
-    setInternalThemeTab(initialTheme ?? "??");
+    setInternalThemeTab(initialTheme ?? THEME_ALL_LABEL);
   }, [isUrlControlled, initialRegion, initialTheme]);
 
   const keyword = useMemo(() => normalizeSearchKeyword(initialKeyword), [initialKeyword]);
@@ -111,20 +114,23 @@ export default function ProductCatalogSection({
     () => (presetCategorySet.size > 0 ? categories.filter((category) => presetCategorySet.has(category)) : categories),
     [categories, presetCategorySet],
   );
-  const categoryTabs = useMemo(() => ["??", ...visibleCategories], [visibleCategories]);
-  /** URL ?? ? ??? ?? region/theme ?? ??? ? ???? ?? */
+  const categoryTabs = useMemo(() => [REGION_ALL_LABEL, ...visibleCategories], [visibleCategories]);
+
   const filteredProducts = useMemo(() => {
     if (isUrlControlled) return baseProducts;
     return baseProducts.filter((product) => matchesProductTab(product, activeTab));
   }, [baseProducts, activeTab, isUrlControlled]);
+
   const themeTabs = useMemo(() => {
     const inferred = getThemeTabs(baseProducts, activeTab);
-    return Array.from(new Set(["??", ...inferred.slice(1)]));
+    return Array.from(new Set(inferred));
   }, [baseProducts, activeTab]);
+
   const themeFilteredProducts = useMemo(() => {
     if (isUrlControlled) return filteredProducts;
     return filteredProducts.filter((product) => matchesThemeTab(product, activeThemeTab));
   }, [filteredProducts, activeThemeTab, isUrlControlled]);
+
   const keywordFilteredProducts = useMemo(
     () =>
       (isUrlControlled ? filteredProducts : themeFilteredProducts).filter((product) =>
@@ -132,19 +138,22 @@ export default function ProductCatalogSection({
       ),
     [isUrlControlled, filteredProducts, themeFilteredProducts, keyword],
   );
+
   const groupedByTheme = useMemo(
     () => groupProductsByTheme(keywordFilteredProducts, themeTabs),
     [keywordFilteredProducts, themeTabs],
   );
+
   const displayGroups = useMemo(
     () =>
       groupedByTheme.length > 0
         ? groupedByTheme
         : keywordFilteredProducts.length > 0
-          ? [{ theme: "??", products: keywordFilteredProducts }]
+          ? [{ theme: "상품", products: keywordFilteredProducts }]
           : [],
     [groupedByTheme, keywordFilteredProducts],
   );
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -159,63 +168,69 @@ export default function ProductCatalogSection({
     });
   }
 
+  const regionSummary = activeTab === "all" ? REGION_ALL_LABEL : activeTab;
+
   return (
     <section className="space-y-4">
       <div className="sticky top-[76px] z-20 rounded-xl border border-[var(--border)] bg-[var(--surface)]/98 px-3 py-2.5 backdrop-blur sm:rounded-xl sm:px-3 sm:py-3">
         <div className="space-y-1">
           <p className="text-xs leading-snug text-[var(--text-muted)] sm:text-sm">
-            ? {keywordFilteredProducts.length}? ? ?? ???? {activeTab === "all" ? "??" : activeTab}
+            총 {keywordFilteredProducts.length}개 · 지역 {regionSummary}
           </p>
-          {presetLabel ? <p className="text-xs leading-snug text-[#15803d] sm:text-sm">??: {presetLabel}</p> : null}
+          {presetLabel ? (
+            <p className="text-xs leading-snug text-[#15803d] sm:text-sm">프리셋: {presetLabel}</p>
+          ) : null}
           {keyword ? (
-            <p className="text-xs leading-snug text-[var(--primary)] sm:text-sm">???: {initialKeyword}</p>
+            <p className="text-xs leading-snug text-[var(--primary)] sm:text-sm">
+              검색어: {initialKeyword}
+            </p>
           ) : null}
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        {categoryTabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => {
-              if (isUrlControlled && onCategoryChange) {
-                onCategoryChange(tab === "??" ? null : tab);
-                return;
-              }
-              setInternalTab(tab === "??" ? "all" : tab);
-              setInternalThemeTab("??");
-            }}
-            className={`min-h-[32px] rounded-full px-3 py-1.5 text-sm font-medium transition ${
-              (tab === "??" ? "all" : tab) === activeTab
-                ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+          {categoryTabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => {
+                if (isUrlControlled && onCategoryChange) {
+                  onCategoryChange(tab === REGION_ALL_LABEL ? null : tab);
+                  return;
+                }
+                setInternalTab(tab === REGION_ALL_LABEL ? "all" : tab);
+                setInternalThemeTab(THEME_ALL_LABEL);
+              }}
+              className={`min-h-[32px] rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                (tab === REGION_ALL_LABEL ? "all" : tab) === activeTab
+                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                  : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {themeTabs.map((tab) => (
-          <button
-            key={`theme-${tab}`}
-            type="button"
-            onClick={() => {
-              if (isUrlControlled && onThemeChange) {
-                onThemeChange(tab === "??" ? null : tab);
-                return;
-              }
-              setInternalThemeTab(tab);
-            }}
-            className={`min-h-[28px] rounded-full px-2.5 py-1 text-xs font-semibold transition sm:min-h-[32px] sm:px-3 sm:py-1.5 sm:text-sm ${
-              activeThemeTab === tab
-                ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+          {themeTabs.map((tab) => (
+            <button
+              key={`theme-${tab}`}
+              type="button"
+              onClick={() => {
+                if (isUrlControlled && onThemeChange) {
+                  onThemeChange(tab === THEME_ALL_LABEL ? null : tab);
+                  return;
+                }
+                setInternalThemeTab(tab);
+              }}
+              className={`min-h-[28px] rounded-full px-2.5 py-1 text-xs font-semibold transition sm:min-h-[32px] sm:px-3 sm:py-1.5 sm:text-sm ${
+                activeThemeTab === tab
+                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                  : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -224,9 +239,17 @@ export default function ProductCatalogSection({
           <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:rounded-3xl">
             {(initialRegion || initialTheme || (initialKeyword && initialKeyword.trim())) && onResetFilters ? (
               <>
-                <p className="font-semibold text-[var(--text-primary)]">??? ??? ?? ??? ????.</p>
+                <p className="font-semibold text-[var(--text-primary)]">
+                  선택한 조건에 맞는 상품이 없습니다.
+                </p>
                 <p className="mt-2 text-[var(--text-secondary)]">
-                  {[initialRegion && `??: ${initialRegion}`, initialTheme && `??: ${initialTheme}`, initialKeyword?.trim() && `???: ${initialKeyword.trim()}`].filter(Boolean).join(" ? ")}
+                  {[
+                    initialRegion && `지역: ${initialRegion}`,
+                    initialTheme && `테마: ${initialTheme}`,
+                    initialKeyword?.trim() && `검색어: ${initialKeyword.trim()}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Link
@@ -236,21 +259,21 @@ export default function ProductCatalogSection({
                       solidButtonShadowClasses,
                     )}
                   >
-                    ?? ?? ??
+                    전체 상품 보기
                   </Link>
                   <button
                     type="button"
                     onClick={onResetFilters}
                     className="inline-flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 type-btn font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                   >
-                    ?? ???
+                    필터 초기화
                   </button>
                 </div>
               </>
             ) : keyword ? (
-              "???? ???? ??? ????."
+              "검색 조건에 맞는 상품이 없습니다."
             ) : (
-              "??? ????? ???? ??? ????."
+              "표시할 상품이 없습니다. 지역·테마 칩을 바꿔 보세요."
             )}
           </div>
         ) : (

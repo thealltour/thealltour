@@ -68,6 +68,16 @@ export type ProductCardProps = {
   overviewDuration?: string;
   /** Link 래퍼 className (stack·grid 공통) */
   className?: string;
+  /** related 레이아웃: 이미지 좌상단 강조 배지 (가이드 브리지 1순위 등) */
+  topPickLabel?: string;
+  /** related 레이아웃: 가격 아래 경험/구성 한 줄 */
+  experienceSummary?: string;
+  /** 가이드 브리지: 모바일에서 첫 카드 링·그림자·미세 확대 */
+  emphasizeFirstOnMobile?: boolean;
+  /** 가이드 브리지: 모바일에서 oneLiner 숨김·경험 요약 2토큰만 */
+  guideBridgeNarrowCopy?: boolean;
+  /** related + 가이드 브리지: 가격 아래 선택 이유 1줄(✔ 포함 권장). 없으면 미표시 */
+  selectionHighlightLine?: string;
 };
 
 function formatReviewCount(n: number): string {
@@ -134,6 +144,11 @@ export default function ProductCard({
   overviewRegion,
   overviewDuration,
   className,
+  topPickLabel = "",
+  experienceSummary = "",
+  emphasizeFirstOnMobile = false,
+  guideBridgeNarrowCopy = false,
+  selectionHighlightLine = "",
 }: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -178,6 +193,13 @@ export default function ProductCard({
   const isRelatedLayout = layout === "related";
 
   const durationLabel = overviewDuration?.trim() || duration?.trim() || "";
+  const topPick = topPickLabel?.trim() ?? "";
+  const expLine = experienceSummary?.trim() ?? "";
+  const expParts = expLine.split(/\s*·\s*/).filter(Boolean);
+  const expLineMobileTwo =
+    guideBridgeNarrowCopy && expParts.length > 0 ? expParts.slice(0, 2).join(" · ") : expLine;
+
+  const selectionLine = selectionHighlightLine?.trim() ?? "";
 
   const priceBlock = (
     <div className="space-y-0.5">
@@ -187,7 +209,8 @@ export default function ProductCard({
             className={cn(
               "font-price-strong font-bold leading-tight text-[var(--primary)] tabular-nums",
               "text-xl md:text-2xl",
-              isRelatedLayout && "text-base md:text-lg",
+              isRelatedLayout &&
+                (guideBridgeNarrowCopy ? "text-lg sm:text-xl md:text-2xl" : "text-base md:text-lg"),
             )}
           >
             {isRelatedLayout ? `₩${priceFormatted}~` : `${priceFormatted}원~`}
@@ -235,8 +258,16 @@ export default function ProductCard({
   const relatedCardContent = (
     <div className="flex h-full flex-col">
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]">
-        {displayChips.length > 0 && (
-          <div className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap gap-1">
+        {(topPick || displayChips.length > 0) && (
+          <div className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1">
+            {topPick ? (
+              <span
+                className="inline-flex max-w-[min(100%,10rem)] shrink-0 truncate rounded bg-[var(--primary)]/92 px-1.5 py-[3px] text-[9px] font-semibold leading-tight text-[var(--on-primary)] shadow-sm ring-1 ring-black/5"
+                title={topPick}
+              >
+                {topPick}
+              </span>
+            ) : null}
             {displayChips.map((chip) => (
               <span
                 key={`${chip.variant}-${chip.label}`}
@@ -275,22 +306,78 @@ export default function ProductCard({
           aria-hidden
         />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col p-3">
-        <div className="mb-1 flex items-start justify-between gap-2">
-          {durationLabel ? (
-            <span className="inline-flex w-fit max-w-[65%] truncate rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-              {durationLabel}
-            </span>
-          ) : (
-            <span />
-          )}
-          <CardRatingBlock ratingAvg={ratingAvg} reviewCount={reviewCount} />
-        </div>
-        {titleBlock(2, "sm")}
-        {oneLine ? (
-          <p className="mt-1 line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)]">{oneLine}</p>
-        ) : null}
-        <div className="mt-2">{priceBlock}</div>
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col p-3",
+          emphasizeFirstOnMobile && "max-sm:px-3.5 max-sm:pb-3.5 max-sm:pt-3",
+        )}
+      >
+        {guideBridgeNarrowCopy ? (
+          <>
+            {titleBlock(2, "sm")}
+            {oneLine ? (
+              <p className="mt-0.5 hidden text-[10px] leading-snug text-[var(--text-muted)] sm:block sm:line-clamp-1">
+                {oneLine}
+              </p>
+            ) : null}
+            <div className="mt-1.5">{priceBlock}</div>
+            {selectionLine ? (
+              <p
+                className="mt-1 truncate text-[10px] font-medium leading-snug text-[var(--foreground)]/78 sm:text-[11px]"
+                title={selectionLine}
+              >
+                {selectionLine}
+              </p>
+            ) : null}
+            <div className="mt-1 flex min-h-0 items-center justify-between gap-2">
+              {durationLabel ? (
+                <span className="max-w-[58%] truncate text-[9px] font-normal tracking-wide text-[var(--text-subtle)]/90 sm:max-w-[65%] sm:text-[10px]">
+                  {durationLabel}
+                </span>
+              ) : (
+                <span />
+              )}
+              <CardRatingBlock
+                ratingAvg={ratingAvg}
+                reviewCount={reviewCount}
+                className="text-[10px] text-[var(--text-subtle)] sm:text-[11px]"
+              />
+            </div>
+            {expLine ? (
+              <>
+                <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-[var(--text-subtle)]/75 sm:hidden">
+                  {expLineMobileTwo}
+                </p>
+                <p className="mt-0.5 hidden line-clamp-1 text-[10px] leading-snug text-[var(--text-subtle)]/75 sm:block">
+                  {expLine}
+                </p>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <div className="mb-1 flex items-start justify-between gap-2">
+              {durationLabel ? (
+                <span className="inline-flex w-fit max-w-[65%] truncate rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                  {durationLabel}
+                </span>
+              ) : (
+                <span />
+              )}
+              <CardRatingBlock ratingAvg={ratingAvg} reviewCount={reviewCount} />
+            </div>
+            {titleBlock(2, "sm")}
+            {oneLine ? (
+              <p className="mt-1 line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)]">{oneLine}</p>
+            ) : null}
+            <div className="mt-2">{priceBlock}</div>
+            {expLine ? (
+              <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-[var(--text-muted)] sm:line-clamp-1 sm:text-[11px]">
+                {expLine}
+              </p>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );
@@ -410,6 +497,9 @@ export default function ProductCard({
     "hover:shadow-md hover:border-[var(--primary)]/30",
     isListLayout && "max-w-[1344px]",
     isRelatedLayout && "flex-col",
+    emphasizeFirstOnMobile &&
+      isRelatedLayout &&
+      "max-sm:shadow-md max-sm:ring-1 max-sm:ring-[var(--primary)]/20",
   );
 
   if (hrefDetail) {

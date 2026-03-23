@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Guide } from "@/types/guide";
-import { getGuideHref, getGuideNotionViewUrl } from "@/lib/guides";
+import { getGuideHref } from "@/lib/guides";
 import { cn } from "@/lib/cn";
 
 export type GuideCardProps = {
@@ -11,11 +11,6 @@ export type GuideCardProps = {
   className?: string;
   /** 요약/태그 표시 줄 수 등 조정용. 기본은 카드형 */
   variant?: "default" | "compact";
-  /**
-   * default: 사이트 내 링크(getGuideHref).
-   * notion_external: /guides 목록과 동일하게 노션 원문(새 탭). URL 없으면 getGuideHref로 폴백.
-   */
-  linkBehavior?: "default" | "notion_external";
 };
 
 /** 이미지:텍스트 = 5:5(50%:50%). 행 높이는 카드 전체(h-full) 기준으로 균일. */
@@ -24,18 +19,14 @@ const CARD_LINK_CLASS =
 
 /**
  * 단일 가이드 카드. 썸네일, 제목, 요약, 카테고리/태그 일부.
- * 홈 / destination·theme 랜딩 / 가이드 상세 관련 가이드에서 공통 사용.
+ * 클릭 시 /guides/[slug] 브리지(또는 slug 없으면 landing /blog)로 이동. 노션은 브리지에서 연다.
  */
 export function GuideCard({
   guide,
   className,
   variant = "default",
-  linkBehavior = "default",
 }: GuideCardProps) {
-  const notionUrl = linkBehavior === "notion_external" ? getGuideNotionViewUrl(guide).trim() : "";
-  const siteHref = getGuideHref(guide);
-  const openNotion = linkBehavior === "notion_external" && notionUrl.length > 0;
-  const href = openNotion ? notionUrl : siteHref;
+  const href = getGuideHref(guide);
   const thumbUrl =
     guide.cover_image_url ?? guide.thumbnail_url ?? guide.guide_thumbnail_url ?? "";
   const title = guide.title_override?.trim() || guide.title;
@@ -110,19 +101,6 @@ export function GuideCard({
       </div>
     </>
   );
-
-  if (openNotion) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={wrapperClass}
-      >
-        {inner}
-      </a>
-    );
-  }
 
   return (
     <Link href={href} className={wrapperClass}>

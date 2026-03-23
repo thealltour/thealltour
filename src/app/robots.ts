@@ -1,0 +1,17 @@
+import type { MetadataRoute } from "next";
+
+import { getSiteBaseUrl } from "@/lib/seo/getSiteSeoDefaults";
+
+export default function robots(): MetadataRoute.Robots {
+  const base = getSiteBaseUrl();
+
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+      },
+    ],
+    sitemap: `${base}/sitemap.xml`,
+  };
+}

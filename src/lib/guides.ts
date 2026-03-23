@@ -9,6 +9,91 @@ function safeUuidOrNull(value: unknown): string | null {
   return s === "" ? null : s;
 }
 
+/** 가이드 브리지 추천용: 제목/요약 등에서 뽑은 토큰의 불용어(일반어) */
+const GUIDE_BRIDGE_STOPWORDS = new Set([
+  "여행",
+  "가이드",
+  "추천",
+  "정보",
+  "정리",
+  "최신",
+  "보기",
+  "투어",
+  "코스",
+  "전체",
+  "방법",
+  "소개",
+  "준비",
+  "출발",
+  "비용",
+  "가격",
+  "어디",
+  "좋은",
+  "하기",
+  "위한",
+  "관련",
+  "확인",
+  "선택",
+  "예약",
+  "the",
+  "and",
+  "for",
+  "with",
+]);
+
+function shouldKeepGuideBridgeToken(tok: string): boolean {
+  if (!tok) return false;
+  if (/^\d+$/.test(tok)) return false;
+  const hasCjk = /[\u3000-\u9fff\uac00-\ud7af]/.test(tok);
+  if (hasCjk) return tok.length >= 2;
+  return tok.length >= 3;
+}
+
+/**
+ * 브리지 추천 점수용 검색 토큰. 불용어·짧은 토큰·숫자 제거 후 지역/테마 앵커는 보존.
+ * @param anchors taxonomy에서 온 지역·테마 표기(소문자), 고유명 검색에 포함
+ */
+export function extractGuideBridgeSearchTokens(
+  guide: Guide,
+  anchors?: { destinationLower?: string | null; themeLower?: string | null },
+): string[] {
+  const pieces: string[] = [];
+  for (const t of [guide.title_override, guide.title, guide.summary, guide.category]) {
+    if (typeof t === "string" && t.trim()) pieces.push(t);
+  }
+  if (Array.isArray(guide.tags)) {
+    for (const tag of guide.tags) {
+      if (typeof tag === "string" && tag.trim()) pieces.push(tag);
+    }
+  }
+  const raw = pieces.join(" ");
+  const split = raw
+    .split(/[\s,./·|[\]()"'`／、，\-_]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  const out = new Set<string>();
+  for (const tok of split) {
+    if (!shouldKeepGuideBridgeToken(tok)) continue;
+    if (GUIDE_BRIDGE_STOPWORDS.has(tok)) continue;
+    out.add(tok);
+  }
+
+  const addAnchor = (s: string | null | undefined) => {
+    const v = s?.trim().toLowerCase();
+    if (!v) return;
+    for (const part of v.split(/[/|·,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean)) {
+      if (!shouldKeepGuideBridgeToken(part)) continue;
+      if (GUIDE_BRIDGE_STOPWORDS.has(part)) continue;
+      out.add(part);
+    }
+  };
+  addAnchor(anchors?.destinationLower);
+  addAnchor(anchors?.themeLower);
+
+  return [...out];
+}
+
 function normalizeGuide(row: Record<string, unknown>): Guide {
   return {
     id: String(row.id ?? ""),
@@ -200,6 +285,63 @@ export async function getRelatedGuidesByGuide(
 }
 
 /**
+ * /blog 여행가이드 목록과 동일한 정렬·풀(getPublishedGuidesWithTaxonomyNames)에서 slug 기준 이전·다음.
+ * (sort_order asc → published_at desc → created_at desc)
+ */
+export async function getAdjacentPublishedGuidesBySlug(
+  slug: string,
+): Promise<{ prev: Guide | null; next: Guide | null }> {
+  const orderedGuides = await getPublishedGuidesWithTaxonomyNames();
+  const s = slug.trim();
+  const idx = orderedGuides.findIndex((g) => (g.slug ?? "").trim() === s);
+  if (idx < 0) return { prev: null, next: null };
+  return {
+    prev: idx > 0 ? orderedGuides[idx - 1]! : null,
+    next: idx < orderedGuides.length - 1 ? orderedGuides[idx + 1]! : null,
+  };
+}
+
+/**
+ * 브리지(/guides/[slug]) 하단 연관 가이드: /blog와 동일한 공개 풀·정렬을 베이스로,
+ * 동일 destination/theme 우선, 나머지는 목록 순서를 유지해 채움 (노션 전용 /guides 목록과 무관).
+ */
+export async function getRelatedGuidesForBlogBridge(guide: Guide, limit = 4): Promise<Guide[]> {
+  const allOrdered = await getPublishedGuidesWithTaxonomyNames();
+  const excludeId = guide.id;
+  const destinationId = guide.destination_id?.trim() || null;
+  const themeId = guide.theme_id?.trim() || null;
+
+  const indexMap = new Map(allOrdered.map((g, i) => [g.id, i]));
+
+  const entries = allOrdered
+    .filter((g) => g.id !== excludeId)
+    .map((g) => {
+      let rank = 0;
+      if (destinationId && g.destination_id === destinationId) rank += 2;
+      if (themeId && g.theme_id === themeId) rank += 1;
+      return { g, rank, idx: indexMap.get(g.id) ?? 0 };
+    });
+
+  entries.sort((a, b) => {
+    if (b.rank !== a.rank) return b.rank - a.rank;
+    return a.idx - b.idx;
+  });
+
+  return entries.slice(0, limit).map((e) => e.g);
+}
+
+/** 브리지 하단: 현재 가이드 제외 + 추가 제외 ID 이후 상위 limit건 (/blog 동일 풀·정렬) */
+export async function getMoreGuidesForBridge(
+  excludeId: string,
+  alsoExcludeIds: string[],
+  limit = 8,
+): Promise<Guide[]> {
+  const exclude = new Set([excludeId, ...alsoExcludeIds]);
+  const all = await getPublishedGuidesWithTaxonomyNames();
+  return all.filter((g) => !exclude.has(g.id)).slice(0, limit);
+}
+
+/**
  * 노션 원문 URL. notion_url 우선, 없으면 notion_page_id로 https://notion.so/{hex} 생성.
  * /guides 목록·홈 가이드 섹션 등 외부 노션 열기에 공통 사용.
  */
@@ -214,11 +356,11 @@ export function getGuideNotionViewUrl(guide: Guide): string {
   return "";
 }
 
-/** 가이드 카드/상세 링크. slug 있으면 /guides/[slug] 우선, 없으면 landing_url, 없으면 /guides */
+/** 가이드 카드/상세 링크. slug 있으면 /guides/[slug] 브리지, 없으면 landing_url, 없으면 사용자 목록 /blog */
 export function getGuideHref(guide: Guide): string {
   if (guide.slug?.trim()) return `/guides/${encodeURIComponent(guide.slug.trim())}`;
   if (guide.landing_url?.trim()) return guide.landing_url.trim();
-  return "/guides";
+  return "/blog";
 }
 
 // Notion 기반 상세 페이지(/guides)용: slug와 notion_page_id가 있는 가이드만

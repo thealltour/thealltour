@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Guide } from "@/types/guide";
-import { getGuideNotionViewUrl } from "@/lib/guides";
 import { GuidePdfModal } from "@/components/guides/GuidePdfModal";
 
 type GuideCardListProps = {
@@ -154,22 +153,12 @@ export function GuideCardList({ guides }: GuideCardListProps) {
             );
           }
 
-          if (hasNotionDetail) {
-            const notionUrl = getGuideNotionViewUrl(guide);
-            return notionUrl ? (
-              <a
-                key={guide.id}
-                href={notionUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cardClass}
-              >
+          if (hasNotionDetail && guide.slug?.trim()) {
+            const s = guide.slug.trim();
+            return (
+              <Link key={guide.id} href={`/guides/${encodeURIComponent(s)}`} className={cardClass}>
                 {cardContent}
-              </a>
-            ) : (
-              <article key={guide.id} className={cardClass}>
-                {cardContent}
-              </article>
+              </Link>
             );
           }
 

@@ -19,6 +19,15 @@ export type ProductCardGridSectionProps = {
    * md 이상부터 그리드(태블릿 세로 나열 방지).
    */
   hubLandingLayout?: boolean;
+  /**
+   * /guides/[slug] 상단 추천: 모바일은 세로 스택·gap 축소, 3번째 카드 숨김, 첫·둘째 사이에 interstitial.
+   * sm 이상은 3열 그리드.
+   */
+  guideBridgeTopPicksLayout?: boolean;
+  /** guideBridgeTopPicksLayout 전용: 모바일에서 첫 카드 직후 삽입 (sm 이상 hidden) */
+  mobileInterstitial?: React.ReactNode;
+  /** 가이드 브리지 보조 추천 등: 모바일 가로 레일 gap 축소 (gap-3 → gap-2) */
+  guideBridgeMobileTightGap?: boolean;
 };
 
 /**
@@ -34,10 +43,31 @@ export function ProductCardGridSection({
   desktopGridCols = 3,
   homeCuratedMobileCompact = false,
   hubLandingLayout = false,
+  guideBridgeTopPicksLayout = false,
+  mobileInterstitial,
+  guideBridgeMobileTightGap = false,
 }: ProductCardGridSectionProps) {
   const items = React.Children.toArray(children);
 
   if (items.length === 0) return null;
+
+  if (guideBridgeTopPicksLayout) {
+    const first = items[0];
+    const second = items[1];
+    const third = items[2];
+    return (
+      <div className={className}>
+        <div className="mx-auto w-full max-w-[1344px]">
+          <div className="flex flex-col gap-1 sm:grid sm:grid-cols-3 sm:gap-4">
+            {first ? <div className="min-w-0">{first}</div> : null}
+            {mobileInterstitial ? <div className="sm:hidden">{mobileInterstitial}</div> : null}
+            {second ? <div className="min-w-0">{second}</div> : null}
+            {third ? <div className="min-w-0 max-sm:hidden">{third}</div> : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const mobileBleedClass = homeCuratedMobileCompact
     ? "-mx-4 px-4 sm:mx-0 sm:px-0"
@@ -88,7 +118,7 @@ export function ProductCardGridSection({
             className={cn(
               "flex overflow-x-auto pb-2 scrollbar-hide",
               hubLandingLayout && "snap-x snap-mandatory scroll-smooth [touch-action:pan-x]",
-              hubLandingLayout ? "gap-4" : "gap-3",
+              hubLandingLayout ? "gap-4" : guideBridgeMobileTightGap ? "gap-1.5" : "gap-3",
               mobileRailHidden,
               mobileBleedClass,
             )}

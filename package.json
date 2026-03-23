@@ -15,7 +15,8 @@
     "taxonomy:verify": "npx tsx scripts/verify-taxonomy-mapping.ts",
     "taxonomy:migrate": "npx tsx scripts/migrate-taxonomies.ts",
     "taxonomy:migrate:apply": "npx tsx scripts/migrate-taxonomies.ts --apply",
-    "fix:imports": "node scripts/fix-component-imports.mjs"
+    "fix:imports": "node scripts/fix-component-imports.mjs",
+    "favicon:build": "node scripts/build-favicon-ico.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -41,6 +42,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "png-to-ico": "^3.0.1",
     "supabase": "^2.77.0",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",

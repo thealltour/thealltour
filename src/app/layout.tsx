@@ -5,14 +5,40 @@ import {
   THEALL_APPLE_TOUCH_ICON_SRC,
   THEALL_FAVICON_16_SRC,
   THEALL_FAVICON_32_SRC,
+  THEALL_WORDMARK_LIGHT_SRC,
 } from "@/lib/brandAssets";
+import { getSiteBaseUrl } from "@/lib/seo/getSiteSeoDefaults";
 import GlobalSiteFooter from "@/components/site-chrome/GlobalSiteFooter";
 import KakaoFloatingButton from "@/components/site-chrome/KakaoFloatingButton";
 import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
 import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://thealltour.com").replace(/\/$/, "");
+const siteUrl = getSiteBaseUrl();
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "더올투어",
+  url: siteUrl,
+  logo: `${siteUrl}${THEALL_WORDMARK_LIGHT_SRC}`,
+  sameAs: [
+    "https://www.instagram.com/",
+    "https://blog.naver.com/",
+  ],
+} as const;
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "더올투어",
+  url: siteUrl,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${siteUrl}/products?search={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+} as const;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -24,10 +50,11 @@ export const metadata: Metadata = {
     "\uac00\uc871\uc5ec\ud589, \ud6a8\ub3c4\uc5ec\ud589, \uace8\ud504\ud22c\uc5b4, \ud14c\ub9c8\uc5ec\ud589\uae4c\uc9c0. \uc0c1\ub2f4\ubd80\ud130 \uc77c\uc815 \uc81c\uc548\uae4c\uc9c0 \ub9de\ucda4\ud615\uc73c\ub85c \ub3c4\uc640\ub4dc\ub9bd\ub2c8\ub2e4.",
   icons: {
     icon: [
+      { url: "/favicon.ico?v=2" },
       { url: THEALL_FAVICON_16_SRC, sizes: "16x16", type: "image/png" },
       { url: THEALL_FAVICON_32_SRC, sizes: "32x32", type: "image/png" },
     ],
-    shortcut: THEALL_FAVICON_32_SRC,
+    shortcut: "/favicon.ico?v=2",
     apple: THEALL_APPLE_TOUCH_ICON_SRC,
   },
   openGraph: {
@@ -91,6 +118,16 @@ export default function RootLayout({
         />
         {/* Product images: dns-prefetch */}
         <link rel="dns-prefetch" href="https://img.modetour.com" />
+        <Script
+          id="organization-jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <Script
+          id="website-jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-[color:color-mix(in_oklab,var(--primary)_18%,white)] selection:text-foreground">
         <FirstTouchInit />

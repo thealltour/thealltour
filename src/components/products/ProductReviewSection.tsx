@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -13,6 +14,10 @@ export type ProductReviewSectionProps = {
   bookingCount?: number;
   /** 예약 상담하기 CTA 링크 (예: /quote?productId=...) */
   consultHref?: string;
+  /** 모달 파라미터 (있으면 예약 상담하기 클릭 시 모달 오픈) */
+  productId?: string;
+  productTitle?: string;
+  sourcePath?: string;
 };
 
 /**
@@ -24,10 +29,15 @@ export function ProductReviewSection({
   reviewCount = 0,
   bookingCount,
   consultHref,
+  productId,
+  productTitle,
+  sourcePath,
 }: ProductReviewSectionProps) {
+  const { openModal } = useConsultModal();
   const hasReviews = typeof reviewCount === "number" && reviewCount > 0;
   const displayRating = typeof rating === "number" && rating >= 0 && rating <= 5 ? rating : null;
   const displayBooking = typeof bookingCount === "number" && bookingCount >= 0 ? bookingCount : null;
+  const canOpenModal = Boolean(productId);
 
   return (
     <section
@@ -53,15 +63,34 @@ export function ProductReviewSection({
           <p className="mt-1 text-sm text-gray-600">아직 등록된 후기가 없습니다</p>
           {consultHref && (
             <div className="mt-4">
-              <Link
-                href={consultHref}
-                className={cn(
-                  "inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]",
-                  solidButtonShadowClasses,
-                )}
-              >
-                예약 상담하기
-              </Link>
+              {canOpenModal ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openModal({
+                      productId,
+                      productTitle,
+                      sourcePath: sourcePath || `${consultHref}#product-review-section`,
+                    })
+                  }
+                  className={cn(
+                    "inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]",
+                    solidButtonShadowClasses,
+                  )}
+                >
+                  예약 상담하기
+                </button>
+              ) : (
+                <Link
+                  href={consultHref}
+                  className={cn(
+                    "inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]",
+                    solidButtonShadowClasses,
+                  )}
+                >
+                  예약 상담하기
+                </Link>
+              )}
             </div>
           )}
         </>

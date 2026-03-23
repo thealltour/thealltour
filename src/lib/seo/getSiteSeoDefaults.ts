@@ -4,7 +4,21 @@
  */
 
 export function getSiteBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://thealltour.com").replace(/\/$/, "");
+  const fallback = "https://thealltour.com";
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return fallback;
+
+  try {
+    const parsed = new URL(raw);
+    const normalized = `${parsed.protocol}//${parsed.host}`;
+    // production 빌드/런타임에서는 개발 도메인 유출 방지
+    if (process.env.NODE_ENV === "production" && /localhost|127\.0\.0\.1/i.test(parsed.hostname)) {
+      return fallback;
+    }
+    return normalized.replace(/\/$/, "");
+  } catch {
+    return fallback;
+  }
 }
 
 export function toAbsoluteUrl(siteUrl: string, pathOrUrl: string): string {

@@ -41,28 +41,51 @@ export async function generateMetadata({ params }: RegionLandingProps): Promise<
   const seo = await getRegionSeoData(trimmed);
   const path = `/products/region/${trimmed}`;
   const url = `${siteUrl}${path}`;
+  const defaultOgImageUrl = `${siteUrl}/og-default-v1.png`;
 
   if (!seo) {
+    const title = "지역 골프여행 추천";
+    const description =
+      "지역 골프여행 가격, 일정, 추천 패키지를 한 번에 확인하세요.";
     return {
-      title: "지역별 여행",
-      description: "더올투어 지역별 맞춤 여행 상품을 확인해 보세요.",
+      title,
+      description,
       alternates: { canonical: url },
+      openGraph: {
+        type: "website",
+        url,
+        siteName: "더올투어",
+        title,
+        description,
+        images: [
+          {
+            url: defaultOgImageUrl,
+            width: 1200,
+            height: 630,
+            alt: "지역 골프여행 추천",
+          },
+        ],
+        locale: "ko_KR",
+      },
     };
   }
 
+  const title = `${seo.ogTitle} 골프여행 추천`;
+  const description = `${seo.ogTitle} 골프여행 가격, 일정, 추천 패키지를 한 번에 확인하세요.`;
+
   return {
-    title: { absolute: seo.documentTitle },
-    description: seo.metaDescription,
+    title: { absolute: title },
+    description,
     alternates: { canonical: url },
     openGraph: {
       type: "website",
       url,
       siteName: "더올투어",
-      title: seo.documentTitle,
-      description: seo.metaDescription,
+      title,
+      description,
       images: [
         {
-          url: `${path}/opengraph-image`,
+          url: defaultOgImageUrl,
           width: 1200,
           height: 630,
           alt: `${seo.ogTitle} 지역 여행`,
@@ -72,8 +95,8 @@ export async function generateMetadata({ params }: RegionLandingProps): Promise<
     },
     twitter: {
       card: "summary_large_image",
-      title: seo.documentTitle,
-      description: seo.metaDescription,
+      title,
+      description,
       images: [`${path}/twitter-image`],
     },
   };

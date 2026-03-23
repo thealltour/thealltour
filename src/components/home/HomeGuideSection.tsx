@@ -7,7 +7,6 @@ import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
   SectionHeader,
   SECTION_HEADER_MOBILE_CTA_CLASS,
-  HOME_MAIN_SECTION_BLOCK_CLASS,
 } from "@/components/layout/SectionHeader";
 import { GuideCard } from "@/components/guides/GuideCard";
 import type { Guide } from "@/types/guide";
@@ -110,7 +109,7 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
               key={guide.id}
               className="flex w-[58%] max-w-[300px] shrink-0 self-stretch sm:w-[260px] sm:max-w-none md:w-[272px]"
             >
-              <GuideCard guide={guide} linkBehavior="notion_external" className="w-full min-w-0" />
+              <GuideCard guide={guide} className="w-full min-w-0" />
             </li>
           ))}
         </ul>

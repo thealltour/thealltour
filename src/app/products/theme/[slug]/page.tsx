@@ -42,28 +42,51 @@ export async function generateMetadata({ params }: ThemeLandingProps): Promise<M
   const seo = await getThemeSeoData(trimmed);
   const path = `/products/theme/${trimmed}`;
   const url = `${siteUrl}${path}`;
+  const defaultOgImageUrl = `${siteUrl}/og-default-v1.png`;
 
   if (!seo) {
+    const title = "테마 여행 추천";
+    const description =
+      "테마 여행을 찾고 있다면 맞춤 일정과 인기 패키지를 확인하세요.";
     return {
-      title: "테마별 여행",
-      description: "더올투어 테마별 맞춤 여행 상품을 확인해 보세요.",
+      title,
+      description,
       alternates: { canonical: url },
+      openGraph: {
+        type: "website",
+        url,
+        siteName: "더올투어",
+        title,
+        description,
+        images: [
+          {
+            url: defaultOgImageUrl,
+            width: 1200,
+            height: 630,
+            alt: "테마 여행 추천",
+          },
+        ],
+        locale: "ko_KR",
+      },
     };
   }
 
+  const title = `${seo.ogTitle} 여행 추천`;
+  const description = `${seo.ogTitle} 여행을 찾고 있다면 맞춤 일정과 인기 패키지를 확인하세요.`;
+
   return {
-    title: { absolute: seo.documentTitle },
-    description: seo.metaDescription,
+    title: { absolute: title },
+    description,
     alternates: { canonical: url },
     openGraph: {
       type: "website",
       url,
       siteName: "더올투어",
-      title: seo.documentTitle,
-      description: seo.metaDescription,
+      title,
+      description,
       images: [
         {
-          url: `${path}/opengraph-image`,
+          url: defaultOgImageUrl,
           width: 1200,
           height: 630,
           alt: `${seo.ogTitle} 테마 여행`,
@@ -73,8 +96,8 @@ export async function generateMetadata({ params }: ThemeLandingProps): Promise<M
     },
     twitter: {
       card: "summary_large_image",
-      title: seo.documentTitle,
-      description: seo.metaDescription,
+      title,
+      description,
       images: [`${path}/twitter-image`],
     },
   };

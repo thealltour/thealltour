@@ -32,7 +32,7 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
         <PageHero
           kicker="THEALL TOUR GUIDE"
           title="여행가이드"
-          subtitle="지역별 골프장 정보, 시즌별 추천 코스, 출발 전 꼭 알아두면 좋은 팁들을 정리한 가이드입니다. 카드를 클릭하면 원문(노션)을 바로 확인할 수 있습니다."
+          subtitle="지역별 골프장 정보, 시즌별 추천 코스, 출발 전 꼭 알아두면 좋은 팁들을 정리한 가이드입니다. 카드를 누르면 가이드 브리지 페이지로 이동한 뒤, 추천 여행과 원문(노션)을 이어서 확인할 수 있습니다."
           size="sm"
         />
         <Breadcrumb items={[{ label: "홈", href: "/" }, { label: "여행가이드" }]} />

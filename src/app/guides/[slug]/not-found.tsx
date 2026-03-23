@@ -17,13 +17,13 @@ export default function GuideNotFound() {
             요청하신 여행 가이드가 없거나 비공개 상태입니다.
           </p>
           <Link
-            href="/guides"
+            href="/blog"
             className={cn(
               "mt-6 inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--on-primary)] transition hover:opacity-90",
               solidButtonShadowClasses,
             )}
           >
-            가이드 목록으로
+            여행가이드 목록으로
           </Link>
         </PageContainer>
       </main>

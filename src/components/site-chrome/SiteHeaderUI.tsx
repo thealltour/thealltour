@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import HeaderQuickConsultCtas from "@/components/HeaderQuickConsultCtas";
+import HeaderQuickConsultCtas from "@/components/header/HeaderQuickConsultCtas";
 import UserMenuDropdown from "@/components/header/UserMenuDropdown";
-import { HeaderExpandSearch } from "@/components/HeaderExpandSearch";
+import { HeaderExpandSearch } from "@/components/header/HeaderExpandSearch";
 import { DesktopMegaMenu } from "@/components/header/DesktopMegaMenu";
 import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";

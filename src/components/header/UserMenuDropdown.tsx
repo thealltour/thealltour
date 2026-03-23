@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import MemberLogoutButton from "@/components/MemberLogoutButton";
+import MemberLogoutButton from "@/components/auth/MemberLogoutButton";
 import { cn } from "@/lib/cn";
 
 export type UserMenuDropdownProps = {

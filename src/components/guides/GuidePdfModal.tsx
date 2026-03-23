@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
-import { PdfViewer } from "@/components/PdfViewer";
+import { PdfViewer } from "@/components/pdf/PdfViewer";
 
 type GuidePdfModalProps = {
   isOpen: boolean;

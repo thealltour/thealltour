@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import SiteHeaderUI from "@/components/SiteHeaderUI";
+import SiteHeaderUI from "@/components/site-chrome/SiteHeaderUI";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabase } from "@/lib/supabase";
 import { getHeaderNavigationData } from "@/lib/headerNavigation";

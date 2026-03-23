@@ -13,7 +13,8 @@ import { GuideCard } from "@/components/guides/GuideCard";
 import type { Guide } from "@/types/guide";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const SCROLL_AMOUNT = 320;
+/** 카드 폭(sm 기준 260px) + gap(12px)에 맞춘 스크롤 스텝 */
+const SCROLL_AMOUNT = 280;
 
 export type HomeGuideSectionProps = {
   guides: Guide[];
@@ -109,9 +110,9 @@ export function HomeGuideSection({ guides, className }: HomeGuideSectionProps) {
           {guides.map((guide) => (
             <li
               key={guide.id}
-              className="flex min-h-0 min-w-[58%] shrink-0 self-stretch sm:min-w-[240px]"
+              className="flex w-[58%] max-w-[300px] shrink-0 self-stretch sm:w-[260px] sm:max-w-none md:w-[272px]"
             >
-              <GuideCard guide={guide} linkBehavior="notion_external" className="w-full" />
+              <GuideCard guide={guide} linkBehavior="notion_external" className="w-full min-w-0" />
             </li>
           ))}
         </ul>

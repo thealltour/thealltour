@@ -1,5 +1,5 @@
-import SignupForm from "@/components/SignupForm";
-import SiteHeader from "@/components/SiteHeader";
+import SignupForm from "@/components/auth/SignupForm";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 
 export default function SignupPage() {
   return (

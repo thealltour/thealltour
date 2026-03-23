@@ -1,4 +1,4 @@
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { getPublishedGuidesWithTaxonomyNames } from "@/lib/guides";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";

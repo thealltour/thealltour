@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useConsultModal } from "@/components/ConsultModal";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { MobileHeaderDrawer } from "./MobileHeaderDrawer";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
-import HeaderProductSearch from "@/components/HeaderProductSearch";
+import HeaderProductSearch from "@/components/header/HeaderProductSearch";
 
 export type MobileHeaderMenuProps = {
   primaryNav: HeaderPrimaryNavItem[];

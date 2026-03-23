@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
-import HeaderSearchDropdown from "@/components/HeaderSearchDropdown";
+import HeaderSearchDropdown from "@/components/header/HeaderSearchDropdown";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";

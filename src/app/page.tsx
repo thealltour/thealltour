@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ShieldCheck, Users, Route, CheckCircle2 } from "lucide-react";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { getHomeCuratedData } from "@/lib/homeCurated";
@@ -10,7 +10,7 @@ import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
 import { getSiteSettings, parseHomeRegionCardIds, parseHomeThemeCardIds } from "@/lib/siteSettings";
 import { getHomeGuidesWithTaxonomyNames } from "@/lib/guides";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
-import HeroQuickConsultButton from "@/components/HeroQuickConsultButton";
+import HeroQuickConsultButton from "@/components/inquiry/HeroQuickConsultButton";
 import HeroSection from "@/components/home/HeroSection";
 import DestinationSection from "@/components/home/DestinationSection";
 import ThemeSection from "@/components/home/ThemeSection";

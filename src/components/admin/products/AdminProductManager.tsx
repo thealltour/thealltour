@@ -35,7 +35,7 @@ import {
   ProductDetailStickyV2Desktop,
   ProductDetailStickyV2Mobile,
 } from "@/components/products/ProductDetailStickyV2";
-import { ConsultModalProvider } from "@/components/ConsultModal";
+import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import {
   productToCardPropsPayload,

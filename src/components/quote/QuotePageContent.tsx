@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import InquiryForm from "@/components/InquiryForm";
+import InquiryForm from "@/components/inquiry/InquiryForm";
 import { QuoteSummaryCard } from "@/components/quote/QuoteSummaryCard";
 import { trackQuotePageView } from "@/lib/analytics/trackQuoteEvent";
 import type { InquiryInput } from "@/types/inquiry";

@@ -8,31 +8,31 @@ import Breadcrumb from "@/components/admin/Breadcrumb";
 import SubHeader, { type MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminRole } from "@/components/admin/AdminRoleContext";
 import { SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
+import {
+  getAdminConsoleRelativePath,
+  isAdminConsolePublicPath,
+  isAdminReviewSectionRelativePath,
+} from "@/lib/adminConsolePaths";
 
 type AdminLayoutProps = {
   children: ReactNode;
 };
 
 function inferMainMenuKey(pathname: string): MainMenuKey | null {
-  if (pathname === "/theall_manager_only") return "dashboard";
-  if (pathname.startsWith("/theall_manager_only/products")) return "product";
-  if (pathname.startsWith("/theall_manager_only/inquiries")) return "inquiry";
-  if (pathname.startsWith("/theall_manager_only/members")) return "member";
-  if (pathname.startsWith("/theall_manager_only/rewards")) return "rewards";
-  if (pathname.startsWith("/theall_manager_only/points")) return "points";
-  if (pathname.startsWith("/theall_manager_only/settings")) return "settings";
-  if (pathname.startsWith("/admin/reviews")) return "reviews";
-  if (
-    pathname.startsWith("/theall_manager_only/reviews") ||
-    pathname.startsWith("/theall_manager_only/review-reports") ||
-    pathname.startsWith("/theall_manager_only/review-reminders") ||
-    pathname.startsWith("/theall_manager_only/review-summaries")
-  )
-    return "reviews";
-  if (pathname.startsWith("/theall_manager_only/guides")) return "guides";
-  if (pathname.startsWith("/theall_manager_only/banners")) return "banners";
-  if (pathname.startsWith("/theall_manager_only/notices")) return "notices";
-  if (pathname.startsWith("/theall_manager_only/notifications")) return "notifications";
+  const rel = getAdminConsoleRelativePath(pathname);
+  if (rel == null) return null;
+  if (rel === "/" || rel === "") return "dashboard";
+  if (rel.startsWith("/products")) return "product";
+  if (rel.startsWith("/inquiries")) return "inquiry";
+  if (rel.startsWith("/members")) return "member";
+  if (rel.startsWith("/rewards")) return "rewards";
+  if (rel.startsWith("/points")) return "points";
+  if (rel.startsWith("/settings")) return "settings";
+  if (isAdminReviewSectionRelativePath(rel)) return "reviews";
+  if (rel.startsWith("/guides")) return "guides";
+  if (rel.startsWith("/banners")) return "banners";
+  if (rel.startsWith("/notices")) return "notices";
+  if (rel.startsWith("/notifications")) return "notifications";
   return null;
 }
 
@@ -41,19 +41,21 @@ function canAccessPath(
   role: string,
   items: typeof SIDEBAR_ITEMS,
 ): boolean {
+  if (isAdminConsolePublicPath(pathname)) return true;
+
   const roleOk = role as "admin" | "manager" | "viewer";
+  const pathStem = getAdminConsoleRelativePath(pathname);
+  if (pathStem == null) return false;
+
   for (const item of items) {
     if (!item.roles.includes(roleOk)) continue;
     if (item.mainKey === "reviews") {
-      const isReviewPath =
-        pathname.startsWith("/admin/reviews") ||
-        pathname === "/theall_manager_only/reviews" ||
-        pathname.startsWith("/theall_manager_only/review-");
-      if (isReviewPath) return true;
+      if (isAdminReviewSectionRelativePath(pathStem)) return true;
       continue;
     }
-    const matchItem = pathname === item.href || pathname.startsWith(item.href + "/");
-    if (matchItem) return true;
+    const itemStem = getAdminConsoleRelativePath(item.href);
+    if (itemStem == null) continue;
+    if (pathStem === itemStem || pathStem.startsWith(`${itemStem}/`)) return true;
   }
   return false;
 }

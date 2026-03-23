@@ -17,7 +17,7 @@ import { getProductLandingData } from "@/lib/productLanding";
 import { getProducts } from "@/lib/products";
 import ProductLandingPage from "@/components/products/landing/ProductLandingPage";
 import { ProductsPageContent } from "@/components/products/ProductsPageContent";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import type { Product } from "@/types/product";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 

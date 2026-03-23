@@ -1,5 +1,5 @@
 import Link from "next/link";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { getSiteSettings } from "@/lib/siteSettings";
 import { buttonVariants } from "@/components/ui/Button";
 import { PageHero } from "@/components/layout/PageHero";

@@ -1,4 +1,4 @@
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import Link from "next/link";
 import { getPublicNotices } from "@/lib/notices";
 import { PageHero } from "@/components/layout/PageHero";

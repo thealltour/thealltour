@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info, FileText, Map, LifeBuoy, PackageSearch, Star, LogIn, LogOut } from "lucide-react";
-import { useConsultModal } from "@/components/ConsultModal";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { cn } from "@/lib/cn";
 
 type MobileFloatingMenuProps = {

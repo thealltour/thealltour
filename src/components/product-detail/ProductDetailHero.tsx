@@ -1,7 +1,7 @@
 "use client";
 
 import Tag from "@/components/ui/Tag";
-import { useConsultModal } from "@/components/ConsultModal";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -55,7 +55,7 @@ export default function ProductDetailHero({
       <div className="rounded-2xl border border-[var(--primary-soft)] bg-[var(--primary-soft)] p-5 ring-1 ring-[var(--primary-soft)]">
         {priceFormatted ? (
           <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
-            ₩{priceFormatted}~
+            ?{priceFormatted}~
           </p>
         ) : (
           <p className="font-price-strong text-xl font-semibold text-slate-600 md:text-2xl">

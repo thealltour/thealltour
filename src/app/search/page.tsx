@@ -12,7 +12,7 @@ import SearchResultsContainer from "@/components/search/SearchResultsContainer";
 import SearchEmpty from "@/components/search/SearchEmpty";
 import RelatedTaxonomySection from "@/components/search/RelatedTaxonomySection";
 import RelatedProductsSection from "@/components/search/RelatedProductsSection";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 
 type SearchPageProps = {
   searchParams: Promise<{

@@ -1,4 +1,4 @@
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";

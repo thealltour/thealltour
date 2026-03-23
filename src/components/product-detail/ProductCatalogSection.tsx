@@ -9,7 +9,7 @@ import ProductListCardMobile from "@/components/products/ProductListCardMobile";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
-import { useConsultModal } from "@/components/ConsultModal";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import {
   getThemeTabs,
   groupProductsByTheme,

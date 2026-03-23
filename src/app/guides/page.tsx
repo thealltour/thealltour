@@ -1,4 +1,4 @@
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { GuidesListClient } from "@/components/guides/GuidesListClient";

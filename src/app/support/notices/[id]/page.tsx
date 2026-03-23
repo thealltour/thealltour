@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { getNoticeById } from "@/lib/notices";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";

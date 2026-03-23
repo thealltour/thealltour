@@ -1,5 +1,5 @@
 import { PageContainer } from "@/components/layout/PageContainer";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 
 export default function SearchLoading() {
   return (

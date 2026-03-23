@@ -44,7 +44,11 @@ export function GuideCard({
   const showMeta = variant === "default" && (hasCategoryOrTags || !!hasTaxonomyNames);
 
   /** h-full: 레일·그리드에서 행 높이 맞춤. min-h: 비율 그리드가 쓸 최소 카드 높이. */
-  const wrapperClass = cn(CARD_LINK_CLASS, "h-full min-h-[240px] sm:min-h-[260px]", className);
+  const wrapperClass = cn(
+    CARD_LINK_CLASS,
+    "h-full min-h-[240px] min-w-0 max-w-full sm:min-h-[260px]",
+    className,
+  );
 
   const inner = (
     <>

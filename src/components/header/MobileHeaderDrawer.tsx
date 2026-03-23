@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { X, LogIn, LogOut } from "lucide-react";
-import HeaderProductSearch from "@/components/HeaderProductSearch";
+import HeaderProductSearch from "@/components/header/HeaderProductSearch";
 import { MobileHeaderAccordion } from "./MobileHeaderAccordion";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { cn } from "@/lib/cn";

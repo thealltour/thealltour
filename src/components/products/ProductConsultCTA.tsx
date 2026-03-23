@@ -1,6 +1,6 @@
 "use client";
 
-import { useConsultModal } from "@/components/ConsultModal";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { Button } from "@/components/ui/Button";
 import { getProductCtaLabel, type ProductCtaStatus } from "@/lib/products/getProductCtaLabel";
 import { trackProductCtaClick } from "@/lib/analytics/trackProductClick";

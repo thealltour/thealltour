@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import ProductDetailV2 from "@/components/products/ProductDetailV2";
 import { ProductReviewsSection } from "@/components/products/ProductReviewsSection";
 import { ProductReviewSection } from "@/components/products/ProductReviewSection";
@@ -11,7 +11,7 @@ import { GuideCard } from "@/components/guides/GuideCard";
 import {
   ProductDetailStickyDesktop,
   ProductDetailStickyMobile,
-} from "@/components/ProductDetailSticky";
+} from "@/components/product-detail/ProductDetailSticky";
 import {
   ProductDetailStickyV2Desktop,
   ProductDetailStickyV2Mobile,
@@ -21,7 +21,7 @@ import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import AlertCard from "@/components/ui/AlertCard";
-import { ConsultModalProvider } from "@/components/ConsultModal";
+import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
 import { getProductByIdFresh, getProducts } from "@/lib/products";
 import { getRelatedProducts } from "@/lib/products/getRelatedProducts";
 import { getGuidesByDestinationId } from "@/lib/guides";

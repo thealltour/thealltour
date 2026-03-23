@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Guide } from "@/types/guide";
 import { getGuideNotionViewUrl } from "@/lib/guides";
-import { GuidePdfModal } from "@/components/GuidePdfModal";
+import { GuidePdfModal } from "@/components/guides/GuidePdfModal";
 
 type GuideCardListProps = {
   guides: Guide[];

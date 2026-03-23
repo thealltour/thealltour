@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import SiteHeader from "@/components/SiteHeader";
-import ReviewWriteForm from "@/components/ReviewWriteForm";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
+import ReviewWriteForm from "@/components/reviews/ReviewWriteForm";
 import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";

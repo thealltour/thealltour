@@ -1,5 +1,5 @@
-import SiteHeader from "@/components/SiteHeader";
-import ProductsHero from "@/components/ProductsHero";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
+import ProductsHero from "@/components/product-detail/ProductsHero";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import { getProducts } from "@/lib/products";

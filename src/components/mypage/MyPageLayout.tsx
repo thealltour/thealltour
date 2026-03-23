@@ -1,4 +1,4 @@
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import MyPageSidebar from "@/components/mypage/MyPageSidebar";
 
 type MyPageLayoutProps = {

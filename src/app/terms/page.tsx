@@ -1,4 +1,4 @@
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { getLegalDocuments } from "@/lib/legalDocuments";
 
 export default async function TermsPage() {

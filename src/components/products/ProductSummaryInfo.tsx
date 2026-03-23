@@ -1,6 +1,6 @@
 "use client";
 
-import { useConsultModal } from "@/components/ConsultModal";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { InfoItem } from "@/components/products/detail/InfoItem";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";

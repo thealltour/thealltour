@@ -6,7 +6,7 @@ import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { useDebounce } from "@/hooks/useDebounce";
-import HeaderSearchDropdown from "@/components/HeaderSearchDropdown";
+import HeaderSearchDropdown from "@/components/header/HeaderSearchDropdown";
 import SearchSuggestionsDropdown from "@/components/search/SearchSuggestionsDropdown";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";

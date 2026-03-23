@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import ProductDetailTabsLegacy from "@/components/ProductDetailTabsLegacy";
+import ProductDetailTabsLegacy from "@/components/product-detail/ProductDetailTabsLegacy";
 import AlertCard from "@/components/ui/AlertCard";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";

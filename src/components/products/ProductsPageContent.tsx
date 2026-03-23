@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
 import { SlidersHorizontal, ArrowDownUp } from "lucide-react";
-import ProductCatalogSection from "@/components/ProductCatalogSection";
+import ProductCatalogSection from "@/components/product-detail/ProductCatalogSection";
 import { ProductFilterSidebar } from "@/components/products/ProductFilterSidebar";
 import { ProductFilterChips } from "@/components/products/ProductFilterChips";
 import { MobileProductFilterDrawer } from "@/components/products/MobileProductFilterDrawer";

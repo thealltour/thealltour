@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
-import HeaderProductSearch from "@/components/HeaderProductSearch";
+import HeaderProductSearch from "@/components/header/HeaderProductSearch";
 
 type HeaderMobileShellProps = {
   activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";

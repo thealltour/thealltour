@@ -8,7 +8,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { getPublicReviewById, isVerifiedReview } from "@/lib/reviewStats";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { buildReviewDetailMetadata, buildReviewJsonLd } from "@/lib/seo/reviews";

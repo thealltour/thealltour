@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
         hostname: "img.modetour.com",
       },
       {
@@ -43,6 +47,14 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "www.notion.so",
+      },
+      {
+        protocol: "https",
+        hostname: "notion.so",
+      },
+      {
+        protocol: "https",
         hostname: "images.notion.so",
       },
       {
@@ -51,11 +63,20 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "img.notionusercontent.com",
+      },
+      {
+        protocol: "https",
         hostname: "quick-hen-cc9.notion.site",
       },
       {
         protocol: "https",
         hostname: "image-tc.galaxy.tf",
+      },
+      /* Google Photos / Drive 공유 링크 썸네일 (lh3~lh6 등) */
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
       },
     ],
   },

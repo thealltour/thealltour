@@ -1,5 +1,5 @@
-import SiteHeader from "@/components/SiteHeader";
-import MemberLoginForm from "@/components/MemberLoginForm";
+import SiteHeader from "@/components/site-chrome/SiteHeader";
+import MemberLoginForm from "@/components/auth/MemberLoginForm";
 
 type LoginPageProps = {
   searchParams?: Promise<{ next?: string }>;

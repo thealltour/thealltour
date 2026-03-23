@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import SiteHeaderUI from "@/components/SiteHeaderUI";
+import SiteHeaderUI from "@/components/site-chrome/SiteHeaderUI";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
 

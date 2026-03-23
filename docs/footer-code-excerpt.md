@@ -198,11 +198,11 @@ import {
   THEALL_FAVICON_16_SRC,
   THEALL_FAVICON_32_SRC,
 } from "@/lib/brandAssets";
-import GlobalSiteFooter from "@/components/GlobalSiteFooter";
-import KakaoFloatingButton from "@/components/KakaoFloatingButton";
-import { ConsultModalProvider } from "@/components/ConsultModal";
-import { WebVitalsReporter } from "@/components/WebVitalsReporter";
-import { FirstTouchInit } from "@/components/FirstTouchInit";
+import GlobalSiteFooter from "@/components/site-chrome/GlobalSiteFooter";
+import KakaoFloatingButton from "@/components/site-chrome/KakaoFloatingButton";
+import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
+import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
+import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 
 export const metadata: Metadata = {
   title: "더올투어 | 맞춤형 해외/국내 골프투어/파크골프투어 전문",

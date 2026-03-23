@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
-import HeaderProductSearch from "@/components/HeaderProductSearch";
+import HeaderProductSearch from "@/components/header/HeaderProductSearch";
 
 type HeaderExpandSearchProps = {
   searchQuery?: string;

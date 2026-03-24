@@ -19,6 +19,10 @@ import {
   matchesProductTab,
   type ProductCategoryTabId,
 } from "@/lib/productCategory";
+import {
+  normalizeProductCatalogSearchKeyword,
+  productCatalogMatchesKeyword,
+} from "@/lib/products/productCatalogKeyword";
 
 /** 지역 칩 첫 항목 라벨 (내부 탭 id는 `all`) */
 const REGION_ALL_LABEL = "전체";
@@ -44,31 +48,6 @@ type ProductCatalogSectionProps = {
   /** list: /products 목록형. related: 연관·랜딩용 카드 그리드 */
   cardLayout?: "list" | "related";
 };
-
-function normalizeSearchKeyword(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function matchesKeyword(product: Product, keyword: string) {
-  if (!keyword) {
-    return true;
-  }
-
-  const haystack = [product.title, product.description, product.category, product.theme ?? ""]
-    .join(" ")
-    .toLowerCase();
-
-  const tokens = keyword
-    .split(/[,\s]+/)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 0);
-
-  if (tokens.length === 0) {
-    return true;
-  }
-
-  return tokens.some((token) => haystack.includes(token));
-}
 
 export default function ProductCatalogSection({
   products,
@@ -98,7 +77,10 @@ export default function ProductCatalogSection({
     setInternalThemeTab(initialTheme ?? THEME_ALL_LABEL);
   }, [isUrlControlled, initialRegion, initialTheme]);
 
-  const keyword = useMemo(() => normalizeSearchKeyword(initialKeyword), [initialKeyword]);
+  const keyword = useMemo(
+    () => normalizeProductCatalogSearchKeyword(initialKeyword),
+    [initialKeyword],
+  );
   const presetCategorySet = useMemo(
     () => new Set((presetCategories ?? []).map((item) => item.trim()).filter(Boolean)),
     [presetCategories],
@@ -134,7 +116,7 @@ export default function ProductCatalogSection({
   const keywordFilteredProducts = useMemo(
     () =>
       (isUrlControlled ? filteredProducts : themeFilteredProducts).filter((product) =>
-        matchesKeyword(product, keyword),
+        productCatalogMatchesKeyword(product, keyword),
       ),
     [isUrlControlled, filteredProducts, themeFilteredProducts, keyword],
   );

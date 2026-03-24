@@ -310,6 +310,7 @@ export async function POST(request: Request) {
         : null;
   }
   if (body.badge_visible !== undefined) insertPayload.badge_visible = Boolean(body.badge_visible);
+  // TODO(3단계): PATCH와 동일하게 `badge_tone` enum 검증 정합화 — 2단계는 동작 변경 없음 (`docs/products-funnel-stage2-policy-notes.md`).
   if (body.badge_tone !== undefined) insertPayload.badge_tone = body.badge_tone?.trim() || null;
   if (body.badge_description !== undefined) {
     insertPayload.badge_description = body.badge_description?.trim() || null;

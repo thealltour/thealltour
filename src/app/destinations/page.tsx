@@ -12,9 +12,9 @@ import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
 import { getHubDestinations, getHubThemes, buildRegionTree, buildThemeTree, getProductTaxonomyOptions } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
+import { buildDestinationFallbackImageMap } from "@/lib/landing/buildDestinationFallbackImageMap";
 import { getHubHeroConfig } from "@/lib/landingMetadata";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
-import type { Product } from "@/types/product";
 
 /** 대표 지역 카드용: 해외(루트+중분류) → 국내(루트+하위지역) 순으로 두 그룹 반환. */
 function orderDestinationsOverseasThenDomestic(
@@ -52,25 +52,6 @@ function orderDestinationsOverseasThenDomestic(
     }
   }
   return { overseas, domestic };
-}
-
-/** 카드 이미지 미설정 시 해당 지역 상품의 대표 이미지로 채움. id/name -> image_url */
-function buildDestinationFallbackImageMap(
-  destinations: ProductTaxonomy[],
-  products: Product[],
-): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const d of destinations) {
-    const first = products.find(
-      (p) =>
-        (p.image_url?.trim() && (p.destination_id === d.id || (p.category?.trim().toLowerCase() === d.name.trim().toLowerCase()))),
-    );
-    if (first?.image_url?.trim()) {
-      map.set(d.id, first.image_url.trim());
-      map.set(d.name.trim().toLowerCase(), first.image_url.trim());
-    }
-  }
-  return map;
 }
 
 export const metadata = {

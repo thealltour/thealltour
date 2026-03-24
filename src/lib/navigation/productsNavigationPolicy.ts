@@ -4,34 +4,27 @@
  */
 
 import { getFallbackPath } from "@/lib/navigation/getFallbackPath";
+import {
+  getProductsFunnelPathKind,
+  PRODUCTS_REGION_HUB,
+  PRODUCTS_THEME_HUB,
+} from "@/lib/routing/getProductsFunnelPathKind";
 
-const PRODUCTS_ROOT = "/products";
-
-/** 지역/테마 허브 경로 (브레드크럼·fallback 공통) */
-export const PRODUCTS_REGION_HUB = `${PRODUCTS_ROOT}/region`;
-export const PRODUCTS_THEME_HUB = `${PRODUCTS_ROOT}/theme`;
+export { PRODUCTS_REGION_HUB, PRODUCTS_THEME_HUB };
 
 /**
  * NavigationContextHeader(MobileBack + Desktop Breadcrumb)를 붙일지 여부.
  */
 export function showProductsNavigationContext(pathname: string): boolean {
-  if (pathname === PRODUCTS_ROOT) return true;
-  if (pathname === PRODUCTS_REGION_HUB || pathname === PRODUCTS_THEME_HUB) return true;
-  if (!pathname.startsWith(`${PRODUCTS_ROOT}/`)) return false;
-  const rest = pathname.slice(PRODUCTS_ROOT.length + 1);
-  if (!rest || rest.includes("//")) return false;
-  if (rest.startsWith("region/")) {
-    const slug = rest.slice("region/".length);
-    return slug.length > 0 && !slug.includes("/");
-  }
-  if (rest.startsWith("theme/")) {
-    const slug = rest.slice("theme/".length);
-    return slug.length > 0 && !slug.includes("/");
-  }
-  if (!rest.includes("/")) {
-    return rest.length > 0;
-  }
-  return false;
+  const k = getProductsFunnelPathKind(pathname);
+  return (
+    k === "products_root" ||
+    k === "products_region_hub" ||
+    k === "products_theme_hub" ||
+    k === "products_region_landing" ||
+    k === "products_theme_landing" ||
+    k === "products_product_detail"
+  );
 }
 
 export type ProductsNavPathKind =
@@ -44,21 +37,23 @@ export type ProductsNavPathKind =
   | "unknown";
 
 export function getProductsNavPathKind(pathname: string): ProductsNavPathKind {
-  if (pathname === PRODUCTS_ROOT) return "products_index";
-  if (pathname === PRODUCTS_REGION_HUB) return "products_region_hub";
-  if (pathname === PRODUCTS_THEME_HUB) return "products_theme_hub";
-  if (!pathname.startsWith(`${PRODUCTS_ROOT}/`)) return "unknown";
-  const rest = pathname.slice(PRODUCTS_ROOT.length + 1);
-  if (rest.startsWith("region/") && !rest.slice("region/".length).includes("/")) {
-    return "products_region";
+  const k = getProductsFunnelPathKind(pathname);
+  switch (k) {
+    case "products_root":
+      return "products_index";
+    case "products_region_hub":
+      return "products_region_hub";
+    case "products_theme_hub":
+      return "products_theme_hub";
+    case "products_region_landing":
+      return "products_region";
+    case "products_theme_landing":
+      return "products_theme";
+    case "products_product_detail":
+      return "product_detail";
+    default:
+      return "unknown";
   }
-  if (rest.startsWith("theme/") && !rest.slice("theme/".length).includes("/")) {
-    return "products_theme";
-  }
-  if (!rest.includes("/") && rest !== "region" && rest !== "theme") {
-    return "product_detail";
-  }
-  return "unknown";
 }
 
 /**

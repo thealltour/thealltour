@@ -5,6 +5,10 @@
 
 import type { Product } from "@/types/product";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
+import {
+  buildProductsKeywordHaystack,
+  tokenizeListingQueryKeyword,
+} from "@/lib/products/productsSearchPolicy";
 
 export const PRODUCT_FILTER_KEYS = {
   REGION: "region",
@@ -110,37 +114,29 @@ export function buildProductsFilterHref(payload: {
 /** 기존 params에 필터만 반영 (q, tourType 등 유지). 랜딩 slug(destination, city)는 제거해 canonical하게 유지.
  * 즉, 칩 제거·정렬 변경·추가 필터 시 URL은 region/theme/q/sort 만 남고 진입용 destination/city 는 재추가하지 않음.
  */
+/**
+ * `filters`는 보통 `ProductsPageContent`에서 `{ ...현재상태, ...변경분 }` 전체 `ProductFiltersState`로 넘긴다.
+ * `region`/`theme` 등이 `null`일 때도 URL에서 해당 키를 **반드시 제거**해야 칩·사이드바와 쿼리가 일치한다.
+ */
 export function mergeFiltersIntoSearchParams(
   current: URLSearchParams,
-  filters: Partial<ProductFiltersState>,
+  filters: ProductFiltersState,
 ): URLSearchParams {
   const next = new URLSearchParams(current.toString());
   next.delete(PRODUCT_FILTER_KEYS.DESTINATION);
   next.delete(PRODUCT_FILTER_KEYS.CITY);
-  if (filters.region != null) {
-    if (filters.region) next.set(PRODUCT_FILTER_KEYS.REGION, filters.region);
-    else next.delete(PRODUCT_FILTER_KEYS.REGION);
-  }
-  if (filters.theme != null) {
-    if (filters.theme) next.set(PRODUCT_FILTER_KEYS.THEME, filters.theme);
-    else next.delete(PRODUCT_FILTER_KEYS.THEME);
-  }
-  if (filters.product_line != null) {
-    if (filters.product_line) next.set(PRODUCT_FILTER_KEYS.PRODUCT_LINE, filters.product_line);
-    else next.delete(PRODUCT_FILTER_KEYS.PRODUCT_LINE);
-  }
-  if (filters.sort != null) {
-    if (filters.sort) next.set(PRODUCT_FILTER_KEYS.SORT, filters.sort);
-    else next.delete(PRODUCT_FILTER_KEYS.SORT);
-  }
-  if (filters.q != null) {
-    if (filters.q) next.set(PRODUCT_FILTER_KEYS.Q, filters.q);
-    else next.delete(PRODUCT_FILTER_KEYS.Q);
-  }
-  if (filters.collection != null) {
-    if (filters.collection) next.set(PRODUCT_FILTER_KEYS.COLLECTION, filters.collection);
-    else next.delete(PRODUCT_FILTER_KEYS.COLLECTION);
-  }
+  if (filters.region) next.set(PRODUCT_FILTER_KEYS.REGION, filters.region);
+  else next.delete(PRODUCT_FILTER_KEYS.REGION);
+  if (filters.theme) next.set(PRODUCT_FILTER_KEYS.THEME, filters.theme);
+  else next.delete(PRODUCT_FILTER_KEYS.THEME);
+  if (filters.product_line) next.set(PRODUCT_FILTER_KEYS.PRODUCT_LINE, filters.product_line);
+  else next.delete(PRODUCT_FILTER_KEYS.PRODUCT_LINE);
+  if (filters.sort) next.set(PRODUCT_FILTER_KEYS.SORT, filters.sort);
+  else next.delete(PRODUCT_FILTER_KEYS.SORT);
+  if (filters.q) next.set(PRODUCT_FILTER_KEYS.Q, filters.q);
+  else next.delete(PRODUCT_FILTER_KEYS.Q);
+  if (filters.collection) next.set(PRODUCT_FILTER_KEYS.COLLECTION, filters.collection);
+  else next.delete(PRODUCT_FILTER_KEYS.COLLECTION);
   return next;
 }
 
@@ -230,16 +226,9 @@ export function applyProductFilters(
   }
   if (filters.q) {
     const q = filters.q.trim().toLowerCase();
-    const tokens = q.split(/\s+/).filter(Boolean);
+    const tokens = tokenizeListingQueryKeyword(q);
     list = list.filter((p) => {
-      const haystack = [
-        p.title,
-        p.description,
-        p.category,
-        p.theme ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
+      const haystack = buildProductsKeywordHaystack(p);
       return tokens.some((token) => haystack.includes(token));
     });
   }

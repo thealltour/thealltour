@@ -164,6 +164,7 @@ export async function PATCH(
         : null;
   }
   if (body.badge_visible !== undefined) updates.badge_visible = Boolean(body.badge_visible);
+  // POST(create)와 검증 수준이 다름 — 2단계 고정만, 3단계에서 write path 정합화 예정 (`docs/products-funnel-stage2-policy-notes.md`).
   if (body.badge_tone !== undefined) {
     const t = normalizeBadgeTone(body.badge_tone ?? null);
     if (body.badge_tone != null && body.badge_tone.trim() !== "" && t === null) {

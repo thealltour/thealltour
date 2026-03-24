@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { ProductLandingData, ProductLandingProductSummary } from "@/types/productLanding";
 import { getDestinationLandingHref, getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { trackLandingCtaClick } from "@/lib/analytics/trackLandingCta";
+import { buildLandingCtaPayload } from "@/lib/analytics/landingCtaPayload";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
 import ProductCard from "@/components/products/ProductCard";
@@ -26,15 +27,6 @@ export type ProductLandingPageProps = {
   navigationContext?: ProductLandingNavigationContext;
 };
 
-function getLandingCtaPayload(data: ProductLandingData, section: "hero" | "recommended_products" | "bottom_cta") {
-  return {
-    landingType: data.type,
-    taxonomySlug: data.taxonomySlug ?? data.slug ?? null,
-    taxonomyName: data.taxonomyName ?? null,
-    section,
-  };
-}
-
 export default function ProductLandingPage({ data, navigationContext }: ProductLandingPageProps) {
   const { hero, featuredLinks, recommendedProducts, relatedTaxonomies, type, taxonomyName, productCount, childDestinations, childThemes } = data;
 
@@ -55,7 +47,7 @@ export default function ProductLandingPage({ data, navigationContext }: ProductL
       : `${taxonomyName} 테마로 많이 찾는 지역을 확인해보세요.`;
   const moreProductsLabel = type === "region" ? "이 지역 상품 더 보기" : "이 테마 상품 더 보기";
 
-  const basePayload = getLandingCtaPayload(data, "hero");
+  const basePayload = buildLandingCtaPayload(data, "hero");
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
@@ -253,7 +245,7 @@ export default function ProductLandingPage({ data, navigationContext }: ProductL
                     className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                     onClick={() =>
                       trackLandingCtaClick({
-                        ...getLandingCtaPayload(data, "recommended_products"),
+                        ...buildLandingCtaPayload(data, "recommended_products"),
                         section: "recommended_products",
                         label: "전체 상품 보기",
                         href: hero.primaryCtaHref,
@@ -291,7 +283,7 @@ export default function ProductLandingPage({ data, navigationContext }: ProductL
                     className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] sm:px-5"
                     onClick={() =>
                       trackLandingCtaClick({
-                        ...getLandingCtaPayload(data, "recommended_products"),
+                        ...buildLandingCtaPayload(data, "recommended_products"),
                         section: "recommended_products",
                         label: moreProductsLabel,
                         href: hero.primaryCtaHref,

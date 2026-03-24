@@ -2,7 +2,7 @@ import type { BreadcrumbItem } from "@/components/navigation/Breadcrumb";
 import {
   PRODUCTS_REGION_HUB,
   PRODUCTS_THEME_HUB,
-} from "@/lib/navigation/productsNavigationPolicy";
+} from "@/lib/routing/getProductsFunnelPathKind";
 
 /**
  * 상품 탐색 퍼널 page type — 라벨/트레일 생성 시 단일 진입점.

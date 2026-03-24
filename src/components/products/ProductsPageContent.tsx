@@ -9,17 +9,19 @@ import { MobileProductFilterDrawer } from "@/components/products/MobileProductFi
 import { MobileProductSortSheet } from "@/components/products/MobileProductSortSheet";
 import { ProductListToolbar } from "@/components/products/ProductListToolbar";
 import {
-  parseProductFiltersFromSearchParams,
   mergeFiltersIntoSearchParams,
   applyProductFilters,
   SORT_OPTIONS,
   type ProductFiltersState,
   type ProductSortId,
 } from "@/lib/productFilters";
+import { resolveProductsPageInitialFilters } from "@/lib/products/productsListingPolicy";
 import type { Product } from "@/types/product";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import { getSelfAndDescendantIdsAndNames } from "@/lib/productTaxonomies";
-import type { ProductTaxonomy } from "@/types/productTaxonomy";
+import type { ProductsPageContentListingConfig } from "@/lib/products/productsPageContentConfig";
+
+export type { ProductsPageContentListingConfig };
 
 export type ProductsPageContentProps = {
   products: Product[];
@@ -35,27 +37,8 @@ export type ProductsPageContentProps = {
   initialKeyword?: string;
   presetCategories?: string[];
   presetLabel?: string;
-  /** 랜딩(destination/city/theme slug) 진입 시 서버에서 해석한 초기 필터 */
-  initialFiltersFromServer?: ProductFiltersState | null;
-  /** 필터 변경 시 라우팅 기준 경로. 기본값 /products. 랜딩 하위에서 재사용 시 해당 경로 전달 */
-  basePath?: string;
-  /** 랜딩 페이지에서 칩 상단에 표시할 안내 문구 (예: "현재 '도쿄' 기준으로 상품을 보여주고 있습니다.") */
-  filterContextLabel?: string | null;
-  /** 랜딩 지역이 상위일 때 하위 지역 상품까지 포함하기 위한 id/name 집합. initialFiltersFromServer.region과 함께 사용 */
-  initialRegionDescendants?: { ids: string[]; names: string[] } | null;
-  /** 랜딩 테마가 상위일 때 하위 테마 상품까지 포함하기 위한 name 집합. initialFiltersFromServer.theme와 함께 사용 */
-  initialThemeDescendantNames?: string[] | null;
-  /** list: /products 본문용 비교 카드. related: 랜딩 하단용 간결 카드(이미지·가격 중심) */
-  cardLayout?: "list" | "related";
-  /**
-   * /products 퍼널에서 상단에 MobileBackHeader가 있을 때 true.
-   * 허브(/destinations 등)만 목록 쓰는 경우 false.
-   */
-  mobileListToolbarBelowBackHeader?: boolean;
-  /** 지역 선택 시 하위 지역(도쿄 등) 포함용. /products에서 상위 선택 시 하위 상품까지 노출 */
-  regionTaxonomies?: ProductTaxonomy[] | null;
-  /** 테마 선택 시 하위 테마 포함용 */
-  themeTaxonomies?: ProductTaxonomy[] | null;
+  /** 목록 퍼널 옵션(랜딩·basePath·카드 레이아웃 등). 미전달 시 각 필드 기본값 */
+  listing?: ProductsPageContentListingConfig;
 };
 
 export function ProductsPageContent({
@@ -69,42 +52,24 @@ export function ProductsPageContent({
   initialKeyword = "",
   presetCategories,
   presetLabel,
-  initialFiltersFromServer = null,
-  basePath = "/products",
-  filterContextLabel = null,
-  initialRegionDescendants = null,
-  initialThemeDescendantNames = null,
-  cardLayout = "list",
-  mobileListToolbarBelowBackHeader = false,
-  regionTaxonomies = null,
-  themeTaxonomies = null,
+  listing,
 }: ProductsPageContentProps) {
+  const initialFiltersFromServer = listing?.initialFiltersFromServer ?? null;
+  const basePath = listing?.basePath ?? "/products";
+  const filterContextLabel = listing?.filterContextLabel ?? null;
+  const initialRegionDescendants = listing?.initialRegionDescendants ?? null;
+  const initialThemeDescendantNames = listing?.initialThemeDescendantNames ?? null;
+  const cardLayout = listing?.cardLayout ?? "list";
+  const mobileListToolbarBelowBackHeader = listing?.mobileListToolbarBelowBackHeader ?? false;
+  const regionTaxonomies = listing?.regionTaxonomies ?? null;
+  const themeTaxonomies = listing?.themeTaxonomies ?? null;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
 
   const filters = useMemo(
-    () => {
-      const hasLanding =
-        searchParams.get("destination") ||
-        searchParams.get("city") ||
-        searchParams.get("theme");
-      if (hasLanding && initialFiltersFromServer != null)
-        return initialFiltersFromServer;
-      // 랜딩 하위 페이지(/products/region/[slug], /products/theme/[slug]) 첫 진입 시 쿼리 없이 서버에서 넘긴 초기 필터 사용
-      const hasFilterInUrl =
-        searchParams.get("region") ||
-        searchParams.get("theme") ||
-        searchParams.get("product_line") ||
-        searchParams.get("sort") ||
-        searchParams.get("q");
-      if (!hasFilterInUrl && initialFiltersFromServer != null)
-        return initialFiltersFromServer;
-      return parseProductFiltersFromSearchParams(
-        Object.fromEntries(searchParams.entries()),
-      );
-    },
+    () => resolveProductsPageInitialFilters(searchParams, initialFiltersFromServer),
     [searchParams, initialFiltersFromServer],
   );
 
@@ -182,10 +147,8 @@ export function ProductsPageContent({
   );
 
   function handleFilterChange(next: Partial<ProductFiltersState>) {
-    const nextParams = mergeFiltersIntoSearchParams(searchParams, {
-      ...filters,
-      ...next,
-    });
+    const merged: ProductFiltersState = { ...filters, ...next };
+    const nextParams = mergeFiltersIntoSearchParams(searchParams, merged);
     const qs = nextParams.toString();
     router.push(qs ? `${basePath}?${qs}` : basePath);
   }

@@ -10,6 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=mobile --throttling.cpuSlowdownMultiplier=4 --chrome-flags=\"--headless\"",
     "lighthouse:desktop": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=desktop",
     "taxonomy:verify": "npx tsx scripts/verify-taxonomy-mapping.ts",
@@ -37,16 +39,22 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "jsdom": "^29.0.1",
     "png-to-ico": "^3.0.1",
     "supabase": "^2.77.0",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.1"
   },
   "browserslist": [
     "last 2 Chrome versions",

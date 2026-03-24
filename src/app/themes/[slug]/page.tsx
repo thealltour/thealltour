@@ -15,18 +15,11 @@ import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import {
   getThemeBySlugForPublicLanding,
   getHubThemes,
-  getHubDestinations,
   parseThemeTokens,
-  getProductTaxonomyOptions,
-  buildRegionTree,
-  buildThemeTree,
-  buildTaxonomyNameMap,
-  getActiveProductLineTaxonomies,
   getSelfAndDescendantIdsAndNames,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
-import { getGuidesByThemeId } from "@/lib/guides";
-import { getTopRatedPublishedReviews } from "@/lib/reviews";
+import { loadProductsListingContextForThemeDetail } from "@/lib/products/loadProductsListingContext";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
@@ -84,22 +77,16 @@ export default async function ThemeLandingPage({ params }: Props) {
     getLandingSubnodes("theme", slug),
     getHubThemes(),
   ]);
-  const [taxonomyOptions, destinations, themeGuides, reviewHighlights, productLineTaxonomies] =
-    await Promise.all([
-      getProductTaxonomyOptions(products),
-      getHubDestinations(),
-      getGuidesByThemeId(theme.id, 4),
-      getTopRatedPublishedReviews(4),
-      getActiveProductLineTaxonomies(),
-    ]);
-  const { categories, themes: themeNames, productLines } = taxonomyOptions;
-  const regionTree = buildRegionTree(destinations);
-  const themeTree = buildThemeTree(allThemes);
-  const taxonomyNameMap = buildTaxonomyNameMap([
-    ...destinations,
-    ...allThemes,
-    ...productLineTaxonomies,
-  ]);
+  const {
+    categories,
+    themes: themeNames,
+    productLines,
+    regionTree,
+    themeTree,
+    taxonomyNameMap,
+    themeGuides,
+    reviewHighlights,
+  } = await loadProductsListingContextForThemeDetail(products, allThemes, theme.id);
   const initialFiltersFromServer = {
     region: null,
     theme: theme.name,
@@ -297,11 +284,13 @@ export default async function ThemeLandingPage({ params }: Props) {
                   themeOptions={themeNames}
                   themeTree={themeTree}
                   productLineOptions={productLines}
-                  initialFiltersFromServer={initialFiltersFromServer}
-                  basePath={`/themes/${slug}`}
-                  filterContextLabel={`현재 '${theme.name}' 기준으로 상품을 보여주고 있습니다.`}
-                  initialThemeDescendantNames={initialThemeDescendantNames}
-                  cardLayout="related"
+                  listing={{
+                    initialFiltersFromServer,
+                    basePath: `/themes/${slug}`,
+                    filterContextLabel: `현재 '${theme.name}' 기준으로 상품을 보여주고 있습니다.`,
+                    initialThemeDescendantNames,
+                    cardLayout: "related",
+                  }}
                 />
               </div>
             </div>

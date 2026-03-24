@@ -16,49 +16,20 @@ import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import {
   getDestinationBySlugForPublicLanding,
   getHubDestinations,
-  getHubThemes,
-  buildRegionTree,
-  buildThemeTree,
-  getProductTaxonomyOptions,
-  buildTaxonomyNameMap,
-  getActiveProductLineTaxonomies,
   getSelfAndDescendantIdsAndNames,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
-import { getGuidesByDestinationId } from "@/lib/guides";
-import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
+import { buildDestinationFallbackImageMap } from "@/lib/landing/buildDestinationFallbackImageMap";
+import { loadProductsListingContextForDestinationDetail } from "@/lib/products/loadProductsListingContext";
 import { getDestinationLandingHref } from "@/lib/hubLandingLinks";
 import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
 import {
   getTaxonomyMetadataFallback,
   getTaxonomyHeroImageFallback,
 } from "@/lib/landingMetadata";
-import type { Product } from "@/types/product";
-import type { ProductTaxonomy } from "@/types/productTaxonomy";
 
 const RELATED_PRODUCTS_LIMIT = 12;
-
-/** 카드 이미지 미설정 시 해당 지역 상품 대표 이미지로 채움. */
-function buildDestinationFallbackImageMap(
-  destinations: ProductTaxonomy[],
-  products: Product[],
-): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const d of destinations) {
-    const first = products.find(
-      (p) =>
-        p.image_url?.trim() &&
-        (p.destination_id === d.id ||
-          p.category?.trim().toLowerCase() === d.name.trim().toLowerCase()),
-    );
-    if (first?.image_url?.trim()) {
-      map.set(d.id, first.image_url.trim());
-      map.set(d.name.trim().toLowerCase(), first.image_url.trim());
-    }
-  }
-  return map;
-}
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -83,22 +54,20 @@ export default async function DestinationLandingPage({ params }: Props) {
     getLandingSubnodes("destination", slug),
     getHubDestinations(),
   ]);
-  const [taxonomyOptions, hubThemes, destinationGuides, reviewHighlights, productLineTaxonomies] =
-    await Promise.all([
-      getProductTaxonomyOptions(products),
-      getHubThemes(),
-      getGuidesByDestinationId(destination.id, 4),
-      getTopRatedPublishedReviews(4),
-      getActiveProductLineTaxonomies(),
-    ]);
-  const { categories, themes, productLines } = taxonomyOptions;
-  const regionTree = buildRegionTree(allDestinations);
-  const themeTree = buildThemeTree(hubThemes);
-  const taxonomyNameMap = buildTaxonomyNameMap([
-    ...allDestinations,
-    ...hubThemes,
-    ...productLineTaxonomies,
-  ]);
+  const {
+    categories,
+    themes,
+    productLines,
+    regionTree,
+    themeTree,
+    taxonomyNameMap,
+    destinationGuides,
+    reviewHighlights,
+  } = await loadProductsListingContextForDestinationDetail(
+    products,
+    allDestinations,
+    destination.id,
+  );
   const initialFiltersFromServer = {
     region: destination.name,
     theme: null,
@@ -291,11 +260,13 @@ export default async function DestinationLandingPage({ params }: Props) {
                   themeOptions={themes}
                   themeTree={themeTree}
                   productLineOptions={productLines}
-                  initialFiltersFromServer={initialFiltersFromServer}
-                  basePath={`/destinations/${slug}`}
-                  filterContextLabel={`현재 '${destination.name}' 기준으로 상품을 보여주고 있습니다.`}
-                  initialRegionDescendants={initialRegionDescendants}
-                  cardLayout="related"
+                  listing={{
+                    initialFiltersFromServer,
+                    basePath: `/destinations/${slug}`,
+                    filterContextLabel: `현재 '${destination.name}' 기준으로 상품을 보여주고 있습니다.`,
+                    initialRegionDescendants,
+                    cardLayout: "related",
+                  }}
                 />
               </div>
             </div>

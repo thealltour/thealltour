@@ -7,8 +7,7 @@ import {
   getProductsNavFallbackHref,
 } from "@/components/navigation/breadcrumb-config";
 import { ProductsPageContent } from "@/components/products/ProductsPageContent";
-import { getProducts } from "@/lib/products";
-import { getProductTaxonomyOptions, getHubDestinations, getHubThemes, buildRegionTree, buildThemeTree, buildTaxonomyNameMap, getActiveProductLineTaxonomies } from "@/lib/productTaxonomies";
+import { loadProductsListingContext } from "@/lib/products/loadProductsListingContext";
 import {
   resolveLandingParams,
   hasLandingParams,
@@ -34,21 +33,18 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const tourType = typeof query.tourType === "string" ? query.tourType.trim() : "";
   const golfPresetActive = tourType === "golf-park";
   const presetCategories = golfPresetActive ? ["골프투어", "파크골프투어"] : undefined;
-  const products = await getProducts();
-  const [taxonomyOptions, destinations, hubThemes, productLineTaxonomies] = await Promise.all([
-    getProductTaxonomyOptions(products),
-    getHubDestinations(),
-    getHubThemes(),
-    getActiveProductLineTaxonomies(),
-  ]);
-  const { categories, themes, productLines } = taxonomyOptions;
-  const regionTree = buildRegionTree(destinations);
-  const themeTree = buildThemeTree(hubThemes);
-  const taxonomyNameMap = buildTaxonomyNameMap([
-    ...destinations,
-    ...hubThemes,
-    ...productLineTaxonomies,
-  ]);
+  const listingCtx = await loadProductsListingContext("products_index");
+  const {
+    products,
+    categories,
+    themes,
+    productLines,
+    regionTree,
+    themeTree,
+    taxonomyNameMap,
+    hubDestinations,
+    hubThemes,
+  } = listingCtx;
 
   const landingResolved =
     hasLandingParams(query) ? await resolveLandingParams(query) : null;
@@ -85,10 +81,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               initialKeyword={initialKeywordFromLanding || searchKeyword}
               presetCategories={presetCategories}
               presetLabel={golfPresetActive ? "골프/파크골프" : undefined}
-              initialFiltersFromServer={initialFiltersFromServer}
-              regionTaxonomies={destinations}
-              themeTaxonomies={hubThemes}
-              mobileListToolbarBelowBackHeader
+              listing={{
+                initialFiltersFromServer,
+                regionTaxonomies: hubDestinations,
+                themeTaxonomies: hubThemes,
+                mobileListToolbarBelowBackHeader: true,
+              }}
             />
           )}
         </PageContainer>

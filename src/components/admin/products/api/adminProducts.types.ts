@@ -18,6 +18,12 @@ export type FetchAdminProductsParams = {
   is_active?: boolean;
   /** 예약 상태 필터: AVAILABLE | LIMITED | SOLD_OUT | CONSULT_REQUIRED, 미설정=전체 */
   status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
+  /** 지역 taxonomy id */
+  destination_id?: string;
+  /** 상품군 taxonomy id */
+  product_line_id?: string;
+  /** theme 컬럼 부분 일치 (관리자 빠른 필터) */
+  theme_q?: string;
 };
 
 export type AdminProductsListResponse = {

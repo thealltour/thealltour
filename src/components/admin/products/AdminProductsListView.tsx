@@ -3,12 +3,53 @@
 import Link from "next/link";
 import type { Product } from "@/types/product";
 import type { AdminProductsListViewProps } from "./adminProducts.types";
+import type { ProductSortKey } from "@/components/admin/products/api/adminProducts.types";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import AdminProductsQuickFilters from "@/components/admin/products/AdminProductsQuickFilters";
+import AdminProductsQuickActions from "@/components/admin/products/AdminProductsQuickActions";
+import AdminProductsRowWarnings from "@/components/admin/products/AdminProductsRowWarnings";
+import {
+  getAdminProductWarnings,
+  hasProductPrimaryImage,
+  hasProductItinerary,
+  formatAdminProductTaxonomyCompactLine,
+  buildAdminProductListRowTooltip,
+} from "@/components/admin/products/adminProductsList.helpers";
 
 export type { AdminProductsListViewProps } from "./adminProducts.types";
 
+const STATUS_LABELS: Record<string, string> = {
+  AVAILABLE: "예약 가능",
+  LIMITED: "잔여 한정",
+  SOLD_OUT: "마감",
+  CONSULT_REQUIRED: "상담 후 안내",
+};
+
+function sortStateLabel(field: ProductSortKey, direction: "asc" | "desc"): string {
+  const desc = direction === "desc";
+  const map: Record<ProductSortKey, { asc: string; desc: string }> = {
+    updated_at: { desc: "최근 반영순", asc: "오래된 반영순" },
+    created_at: { desc: "최근 생성순", asc: "오래된 생성순" },
+    title: { asc: "제목 가나다순", desc: "제목 역순" },
+    category: { asc: "카테고리순", desc: "카테고리 역순" },
+    price: { asc: "가격 낮은순", desc: "가격 높은순" },
+    sort_order: { asc: "노출순서순", desc: "노출순서 역순" },
+  };
+  return desc ? map[field].desc : map[field].asc;
+}
+
+function statusBadgeClass(status: string): string {
+  if (status === "SOLD_OUT") return "bg-[var(--danger-bg)] text-[var(--danger)]";
+  if (status === "LIMITED") return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200";
+  if (status === "CONSULT_REQUIRED") return "bg-[var(--surface-muted)] text-[var(--text-secondary)]";
+  return "bg-[var(--primary-soft)] text-[var(--primary)]";
+}
+
 export default function AdminProductsListView({
   products,
+  pageSourceCount,
+  pageActiveCount,
+  pageWarningStats,
   totalCount,
   currentPage,
   pageSize,
@@ -16,13 +57,22 @@ export default function AdminProductsListView({
   sortField,
   sortDirection,
   keyword,
+  isSearchPending = false,
   isLoading,
   errorMessage,
   selectedIds,
   pendingMoveId,
   pendingToggleId,
+  pendingDeleteId,
   filterActive,
   filterStatus,
+  filterDestinationId,
+  filterProductLineId,
+  filterThemeQuery,
+  filterIssuesOnly,
+  destinationOptions,
+  productLineOptions,
+  themeNameOptions,
   onKeywordChange,
   onSortChange,
   onPageChange,
@@ -36,61 +86,281 @@ export default function AdminProductsListView({
   onMoveSortOrder,
   onFilterActiveChange,
   onFilterStatusChange,
+  onFilterDestinationIdChange,
+  onFilterProductLineIdChange,
+  onFilterThemeQueryChange,
+  onFilterIssuesOnlyChange,
   newProductHref,
   onRetryLoad,
   taxonomyNameMap = {},
 }: AdminProductsListViewProps) {
-  const isEmpty = products.length === 0;
-  const isSearchEmpty = keyword.trim() !== "" && isEmpty;
+  const isDisplayEmpty = products.length === 0;
+  const hadSourceRows = pageSourceCount > 0;
+  const issuesOnlyEmpty = filterIssuesOnly && hadSourceRows && isDisplayEmpty;
 
-  function resolveTaxonomyName(id: string | null | undefined): string | null {
-    if (!id || typeof id !== "string") return null;
-    const name = taxonomyNameMap[id];
-    return name && name.trim() ? name.trim() : null;
+  const hasServerFilters =
+    keyword.trim().length > 0 ||
+    filterActive !== "all" ||
+    filterStatus !== "all" ||
+    filterDestinationId.trim().length > 0 ||
+    filterProductLineId.trim().length > 0 ||
+    filterThemeQuery.trim().length > 0;
+
+  const { issueProductCount, criticalTotal, warningTotal } = pageWarningStats;
+  const tableColSpan = 9;
+
+  function renderProductRow(product: Product) {
+    const title = product.title?.trim() || "(제목 없음)";
+    const warnings = getAdminProductWarnings(product);
+    const { text: taxCompact, titleAttr: taxTitle } = formatAdminProductTaxonomyCompactLine(
+      product,
+      taxonomyNameMap,
+    );
+    const rowTip = buildAdminProductListRowTooltip(product, taxonomyNameMap);
+    const imgOk = hasProductPrimaryImage(product);
+    const itOk = hasProductItinerary(product);
+
+    return (
+      <tr
+        key={product.id}
+        className="border-t border-[var(--divider)] leading-tight hover:bg-[var(--surface-muted)]"
+      >
+        <td className="w-8 px-1 py-1.5 align-middle text-center">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-[var(--primary)]"
+            checked={selectedIds.includes(product.id)}
+            onChange={() => onToggleSelectOne(product.id)}
+            aria-label={`${title} 선택`}
+          />
+        </td>
+        <td className="w-[1.85rem] min-w-[1.85rem] px-0 py-1.5 text-center align-middle">
+          <AdminProductsRowWarnings warnings={warnings} />
+        </td>
+        <td className="w-11 px-1 py-1.5 align-middle text-center">
+          {product.image_url?.trim() ? (
+            <div className="mx-auto h-8 w-8 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-muted)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={normalizeProductImageUrl(product.image_url)}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <span className="text-[10px] text-[var(--text-muted)]">—</span>
+          )}
+        </td>
+        <td className="min-w-[200px] max-w-[min(46vw,480px)] px-2 py-1.5 align-middle">
+          <div className="flex min-w-0 flex-col gap-px" title={rowTip}>
+            <span className="line-clamp-2 min-w-0 text-[13px] font-semibold leading-snug text-[var(--primary)]">
+              {title}
+            </span>
+            <p
+              className="truncate text-[9px] font-normal leading-tight tracking-tight text-[var(--text-muted)]"
+              title={taxTitle}
+            >
+              {taxCompact}
+            </p>
+          </div>
+        </td>
+        <td className="min-w-[112px] max-w-[140px] px-1 py-1.5 align-middle">
+          <div className="inline-flex flex-nowrap items-center gap-0.5 rounded-md border border-[var(--border)]/70 bg-[var(--surface-muted)]/40 px-1 py-0.5">
+            {product.is_active === false ? (
+              <span className="inline-flex shrink-0 rounded-full bg-[var(--surface-muted)] px-1.5 py-px text-[10px] font-medium text-[var(--text-muted)]">
+                비노출
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 rounded-full bg-[var(--success-bg)] px-1.5 py-px text-[10px] font-medium text-[var(--success)]">
+                노출
+              </span>
+            )}
+            {product.status && STATUS_LABELS[product.status] ? (
+              <span
+                className={`inline-flex min-w-0 max-w-[4.75rem] truncate rounded-full px-1.5 py-px text-[10px] font-medium ${statusBadgeClass(product.status)}`}
+                title={STATUS_LABELS[product.status]}
+              >
+                {STATUS_LABELS[product.status]}
+              </span>
+            ) : (
+              <span className="text-[10px] text-[var(--text-muted)]">—</span>
+            )}
+          </div>
+        </td>
+        <td className="w-[84px] whitespace-nowrap px-1 py-1.5 align-middle text-[11px] font-medium text-[var(--text-primary)]">
+          {typeof product.price === "number"
+            ? `${new Intl.NumberFormat("ko-KR").format(product.price)}원`
+            : "—"}
+        </td>
+        <td className="w-[72px] whitespace-nowrap px-0.5 py-1.5 align-middle">
+          <div className="flex items-center justify-center gap-0.5">
+            <span className="inline-flex min-w-[1.25rem] justify-center rounded bg-[var(--surface-muted)] px-0.5 py-0.5 text-[10px] font-semibold ring-1 ring-[var(--border)]">
+              {typeof product.sort_order === "number" ? product.sort_order : "—"}
+            </span>
+            <button
+              type="button"
+              disabled={pendingMoveId === product.id}
+              onClick={() => onMoveSortOrder(product, "up")}
+              className="rounded border border-[var(--border)] px-0.5 py-0 text-[9px] leading-none hover:bg-[var(--surface-muted)] disabled:opacity-50"
+              title="위로"
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              disabled={pendingMoveId === product.id}
+              onClick={() => onMoveSortOrder(product, "down")}
+              className="rounded border border-[var(--border)] px-0.5 py-0 text-[9px] leading-none hover:bg-[var(--surface-muted)] disabled:opacity-50"
+              title="아래로"
+            >
+              ▼
+            </button>
+          </div>
+        </td>
+        <td
+          className="w-9 whitespace-nowrap px-0 py-1.5 text-center align-middle text-[9px] leading-none"
+          title={`이미지: ${imgOk ? "있음" : "없음"} · 일정: ${itOk ? "있음" : "없음"}`}
+        >
+          <span className={imgOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-[var(--danger)]"} aria-hidden>
+            {imgOk ? "🖼" : "❌"}
+          </span>
+          <span className="inline-block w-px select-none opacity-20" aria-hidden>
+            {" "}
+          </span>
+          <span
+            className={itOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-amber-800/90 dark:text-amber-400/90"}
+            aria-hidden
+          >
+            {itOk ? "📅" : "❌"}
+          </span>
+        </td>
+        <td className="w-[132px] min-w-[132px] px-1 py-1.5 align-middle">
+          <AdminProductsQuickActions
+            product={product}
+            pendingToggleId={pendingToggleId}
+            pendingDeleteId={pendingDeleteId}
+            onEdit={onEditProduct}
+            onDelete={onDeleteProduct}
+            onToggleActive={onQuickToggleActive}
+            dense
+          />
+        </td>
+      </tr>
+    );
   }
 
-  function formatDestinationProductLineCell(product: Product) {
-    const destId = product.destination_id ?? null;
-    const lineId = product.product_line_id ?? null;
-    const destName = resolveTaxonomyName(destId);
-    const lineName = resolveTaxonomyName(lineId);
-    const hasDest = !!destId;
-    const hasLine = !!lineId;
-    if (!hasDest && !hasLine) return { label: "-", title: "" };
-    const destLabel = destName ?? (destId ? `지역 ${String(destId).slice(0, 8)}…` : "");
-    const lineLabel = lineName ?? (lineId ? `상품군 ${String(lineId).slice(0, 8)}…` : "");
-    const parts: string[] = [];
-    if (destLabel) parts.push(`지역 ${destLabel}`);
-    if (lineLabel) parts.push(`상품군 ${lineLabel}`);
-    const label = parts.join(" · ");
-    const titleLines: string[] = [];
-    if (hasDest) titleLines.push(`지역: ${destName ?? destId}`, `destination_id: ${destId}`);
-    if (hasLine) titleLines.push(`상품군: ${lineName ?? lineId}`, `product_line_id: ${lineId}`);
-    return { label, title: titleLines.join("\n") };
-  }
+  function renderMobileRow(product: Product) {
+    const title = product.title?.trim() || "(제목 없음)";
+    const warnings = getAdminProductWarnings(product);
+    const { text: taxCompact, titleAttr: taxTitle } = formatAdminProductTaxonomyCompactLine(
+      product,
+      taxonomyNameMap,
+    );
+    const rowTip = buildAdminProductListRowTooltip(product, taxonomyNameMap);
+    const imgOk = hasProductPrimaryImage(product);
+    const itOk = hasProductItinerary(product);
 
-  function formatDate(iso?: string) {
-    if (!iso) return "-";
-    try {
-      const d = new Date(iso);
-      return new Intl.DateTimeFormat("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(d);
-    } catch {
-      return "-";
-    }
+    return (
+      <div
+        key={product.id}
+        className="flex min-w-0 items-center gap-2 overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1.5 pl-2 pr-1"
+      >
+        <input
+          type="checkbox"
+          className="h-3.5 w-3.5 shrink-0 accent-[var(--primary)]"
+          checked={selectedIds.includes(product.id)}
+          onChange={() => onToggleSelectOne(product.id)}
+          aria-label={`${title} 선택`}
+        />
+        <div className="shrink-0 self-center">
+          <AdminProductsRowWarnings warnings={warnings} />
+        </div>
+        <div className="h-8 w-8 shrink-0 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-muted)]">
+          {product.image_url?.trim() ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={normalizeProductImageUrl(product.image_url)}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1 shrink" title={rowTip}>
+          <p className="line-clamp-1 text-[13px] font-semibold leading-snug text-[var(--primary)]">{title}</p>
+          <p
+            className="truncate text-[9px] font-normal leading-tight tracking-tight text-[var(--text-muted)]"
+            title={taxTitle}
+          >
+            {taxCompact}
+          </p>
+        </div>
+        <div className="inline-flex shrink-0 flex-nowrap items-center gap-0.5 rounded-md border border-[var(--border)]/70 bg-[var(--surface-muted)]/40 px-1 py-0.5">
+          {product.is_active === false ? (
+            <span className="rounded-full bg-[var(--surface-muted)] px-1.5 py-px text-[10px] text-[var(--text-muted)]">
+              끔
+            </span>
+          ) : (
+            <span className="rounded-full bg-[var(--success-bg)] px-1.5 py-px text-[10px] text-[var(--success)]">
+              켬
+            </span>
+          )}
+          {product.status && STATUS_LABELS[product.status] ? (
+            <span
+              className={`max-w-[4rem] truncate rounded-full px-1.5 py-px text-[10px] font-medium ${statusBadgeClass(product.status)}`}
+            >
+              {STATUS_LABELS[product.status]}
+            </span>
+          ) : null}
+        </div>
+        <span className="shrink-0 text-[11px] font-medium text-[var(--text-primary)]">
+          {typeof product.price === "number"
+            ? `${new Intl.NumberFormat("ko-KR").format(product.price)}원`
+            : "—"}
+        </span>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <span className="rounded bg-[var(--surface-muted)] px-1 py-0.5 text-[10px] ring-1 ring-[var(--border)]">
+            {typeof product.sort_order === "number" ? product.sort_order : "—"}
+          </span>
+          <button
+            type="button"
+            disabled={pendingMoveId === product.id}
+            onClick={() => onMoveSortOrder(product, "up")}
+            className="rounded border border-[var(--border)] px-0.5 text-[9px] disabled:opacity-50"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            disabled={pendingMoveId === product.id}
+            onClick={() => onMoveSortOrder(product, "down")}
+            className="rounded border border-[var(--border)] px-0.5 text-[9px] disabled:opacity-50"
+          >
+            ▼
+          </button>
+        </div>
+        <span
+          className="flex shrink-0 items-center gap-px text-[9px] leading-none"
+          title={`이미지: ${imgOk ? "있음" : "없음"} · 일정: ${itOk ? "있음" : "없음"}`}
+        >
+          <span className={imgOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-[var(--danger)]"} aria-hidden>
+            {imgOk ? "🖼" : "❌"}
+          </span>
+          <span className={itOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-amber-800/90 dark:text-amber-400/90"} aria-hidden>
+            {itOk ? "📅" : "❌"}
+          </span>
+        </span>
+        <AdminProductsQuickActions
+          product={product}
+          pendingToggleId={pendingToggleId}
+          pendingDeleteId={pendingDeleteId}
+          onEdit={onEditProduct}
+          onDelete={onDeleteProduct}
+          onToggleActive={onQuickToggleActive}
+          compact
+        />
+      </div>
+    );
   }
-
-  const STATUS_LABELS: Record<string, string> = {
-    AVAILABLE: "예약 가능",
-    LIMITED: "잔여 한정",
-    SOLD_OUT: "마감",
-    CONSULT_REQUIRED: "상담 후 안내",
-  };
 
   return (
     <div className="space-y-3">
@@ -106,61 +376,58 @@ export default function AdminProductsListView({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-        <input
-          type="text"
-          value={keyword}
-          onChange={(e) => onKeywordChange(e.target.value)}
-          placeholder="상품명·설명·카테고리·테마·원본주소 검색"
-          className="min-w-[200px] flex-1 rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-soft)]"
-        />
-        <select
-          value={filterActive}
-          onChange={(e) => onFilterActiveChange(e.target.value as "all" | "active" | "inactive")}
-          className="rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)]"
-        >
-          <option value="all">노출: 전체</option>
-          <option value="active">노출만</option>
-          <option value="inactive">비노출만</option>
-        </select>
-        <select
-          value={filterStatus}
-          onChange={(e) =>
-            onFilterStatusChange(
-              e.target.value as "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED",
-            )
-          }
-          className="rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)]"
-        >
-          <option value="all">상태: 전체</option>
-          <option value="AVAILABLE">예약 가능</option>
-          <option value="LIMITED">잔여 한정</option>
-          <option value="SOLD_OUT">마감</option>
-          <option value="CONSULT_REQUIRED">상담 후 안내</option>
-        </select>
-        <select
-          value={`${sortField}:${sortDirection}`}
-          onChange={(e) => {
-            const [f, d] = (e.target.value as string).split(":");
-            onSortChange(f as Parameters<typeof onSortChange>[0], d as "asc" | "desc");
-          }}
-          className="rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-primary)]"
-        >
-          <option value="created_at:desc">최근 생성순</option>
-          <option value="created_at:asc">오래된 생성순</option>
-          <option value="updated_at:desc">최근 수정순</option>
-          <option value="title:asc">제목 가나다순</option>
-          <option value="title:desc">제목 가나다 역순</option>
-          <option value="sort_order:asc">노출순서순</option>
-          <option value="price:asc">가격 낮은순</option>
-          <option value="price:desc">가격 높은순</option>
-        </select>
+      <AdminProductsQuickFilters
+        keyword={keyword}
+        onKeywordChange={onKeywordChange}
+        isSearchPending={isSearchPending}
+        filterActive={filterActive}
+        onFilterActiveChange={onFilterActiveChange}
+        filterStatus={filterStatus}
+        onFilterStatusChange={onFilterStatusChange}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortChange={onSortChange}
+        destinationId={filterDestinationId}
+        onDestinationIdChange={onFilterDestinationIdChange}
+        productLineId={filterProductLineId}
+        onProductLineIdChange={onFilterProductLineIdChange}
+        themeQuery={filterThemeQuery}
+        onThemeQueryChange={onFilterThemeQueryChange}
+        filterIssuesOnly={filterIssuesOnly}
+        onFilterIssuesOnlyChange={onFilterIssuesOnlyChange}
+        destinationOptions={destinationOptions}
+        productLineOptions={productLineOptions}
+        themeNameOptions={themeNameOptions}
+      />
+
+      <div className="rounded-md border border-[var(--border)]/80 bg-[var(--surface-muted)]/40 px-3 py-1.5">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="text-sm font-bold text-[var(--text-primary)]">
+            문제 상품 {issueProductCount}건{" "}
+            <span className="font-semibold text-red-700 dark:text-red-400/95">
+              (치명 {criticalTotal}
+            </span>
+            <span className="font-medium text-amber-800/90 dark:text-amber-200/90">
+              {" "}
+              / 주의 {warningTotal})
+            </span>
+          </span>
+          <span className="text-[10px] text-[var(--text-muted)]/90">이 페이지 기준</span>
+        </div>
+        <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--text-muted)]">
+          전체 {totalCount} · 페이지 {pageSourceCount}
+          {filterIssuesOnly && hadSourceRows ? <> · 표시 {products.length}</> : null} · 노출 {pageActiveCount}
+          <span className="hidden sm:inline">
+            {" "}
+            · 정렬 {sortStateLabel(sortField, sortDirection)}
+          </span>
+        </p>
       </div>
 
       {selectedIds.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
           <p>
-            선택된 상품 <span className="font-semibold">{selectedIds.length}</span>개
+            선택된 상품 <span className="font-semibold text-[var(--text-primary)]">{selectedIds.length}</span>개
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -195,272 +462,139 @@ export default function AdminProductsListView({
           ) : null}
         </div>
       ) : null}
+
       {isLoading ? (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
           상품 목록을 불러오는 중입니다...
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1200px] border-collapse text-sm">
-            <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
-              <tr>
-                <th className="w-[42px] px-4 py-3 text-center">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-[var(--primary)]"
-                    onChange={onToggleSelectAll}
-                    checked={
-                      products.length > 0 &&
-                      products.every((product) => selectedIds.includes(product.id))
-                    }
-                  />
-                </th>
-                <th className="w-[56px] px-2 py-3 text-center font-semibold whitespace-nowrap">대표</th>
-                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">원본주소</th>
-                <th className="px-4 py-3 text-left font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => onSortChange("title")}
-                    className="inline-flex items-center gap-1"
-                  >
-                    <span>상품명</span>
-                    <span className="text-[10px] text-[var(--text-muted)]">
-                      {sortField === "title" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                    </span>
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">
-                  <button
-                    type="button"
-                    onClick={() => onSortChange("category")}
-                    className="inline-flex items-center gap-1"
-                  >
-                    <span>카테고리</span>
-                    <span className="text-[10px] text-[var(--text-muted)]">
-                      {sortField === "category" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                    </span>
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">지역·상품군</th>
-                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">테마/배지</th>
-                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">
-                  <button
-                    type="button"
-                    onClick={() => onSortChange("price")}
-                    className="inline-flex items-center gap-1"
-                  >
-                    <span>가격</span>
-                    <span className="text-[10px] text-[var(--text-muted)]">
-                      {sortField === "price" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                    </span>
-                  </button>
-                </th>
-                <th className="w-[170px] px-4 py-3 text-left font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => onSortChange("sort_order")}
-                    className="inline-flex items-center gap-1"
-                  >
-                    <span>노출순서</span>
-                    <span className="text-[10px] text-[var(--text-muted)]">
-                      {sortField === "sort_order" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                    </span>
-                  </button>
-                </th>
-                <th className="w-[110px] px-4 py-3 text-left font-semibold whitespace-nowrap">활성화</th>
-                <th className="w-[100px] px-4 py-3 text-left font-semibold whitespace-nowrap">예약상태</th>
-                <th className="w-[120px] px-4 py-3 text-left font-semibold whitespace-nowrap">생성일</th>
-                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">작업</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isEmpty ? (
-                <tr className="border-t border-[var(--divider)]">
-                  <td colSpan={13} className="px-4 py-10 text-center text-[var(--text-muted)]">
-                    <div className="mx-auto flex max-w-md flex-col items-center gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)]">
-                        {isSearchEmpty ? "🔍" : "📦"}
-                      </div>
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">
-                        {isSearchEmpty ? "검색 결과가 없습니다." : "등록된 상품이 없습니다."}
-                      </p>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        {isSearchEmpty
-                          ? "다른 검색어로 시도해 보세요."
-                          : '상단의 "새 상품 등록" 또는 "상품 등록" 탭에서 첫 번째 상품을 추가해 보세요.'}
-                      </p>
-                    </div>
-                  </td>
+        <>
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse text-sm">
+              <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
+                <tr>
+                  <th className="w-8 px-1 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 accent-[var(--primary)]"
+                      onChange={onToggleSelectAll}
+                      checked={
+                        products.length > 0 && products.every((product) => selectedIds.includes(product.id))
+                      }
+                      aria-label="이 페이지 표시 행 전체 선택"
+                    />
+                  </th>
+                  <th className="w-[1.85rem] min-w-[1.85rem] px-0 py-2 text-center text-[10px] font-semibold" title="경고">
+                    !
+                  </th>
+                  <th className="w-11 px-1 py-2 text-center text-[10px] font-semibold">썸네일</th>
+                  <th className="min-w-[200px] px-2 py-2 text-left text-xs font-semibold">
+                    <button type="button" onClick={() => onSortChange("title")} className="inline-flex items-center gap-1">
+                      상품
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {sortField === "title" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                  <th className="min-w-[112px] max-w-[140px] px-1 py-2 text-left text-[10px] font-semibold">상태</th>
+                  <th className="w-[84px] px-1 py-2 text-left text-[10px] font-semibold">
+                    <button type="button" onClick={() => onSortChange("price")} className="inline-flex items-center gap-1">
+                      가격
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {sortField === "price" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                  <th className="w-[72px] px-0.5 py-2 text-center text-[10px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => onSortChange("sort_order")}
+                      className="inline-flex items-center gap-1"
+                    >
+                      순서
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {sortField === "sort_order" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                  <th className="w-9 px-0 py-2 text-center text-[10px] font-semibold" title="이미지·일정">
+                    자산
+                  </th>
+                  <th className="w-[132px] min-w-[132px] px-1 py-2 text-right text-[10px] font-semibold">작업</th>
                 </tr>
-              ) : (
-                products.map((product) => (
-                  <tr key={product.id} className="group border-t border-[var(--divider)] hover:bg-[var(--surface-muted)]">
-                    <td className="px-4 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-[var(--primary)]"
-                        checked={selectedIds.includes(product.id)}
-                        onChange={() => onToggleSelectOne(product.id)}
-                      />
+              </thead>
+              <tbody>
+                {issuesOnlyEmpty ? (
+                  <tr className="border-t border-[var(--divider)]">
+                    <td colSpan={tableColSpan} className="px-4 py-10 text-center text-[var(--text-muted)]">
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">
+                        이 페이지에는 치명·주의 문제가 있는 상품이 없습니다.
+                      </p>
+                      <p className="mt-1 text-xs">다른 페이지를 보거나 필터를 끄면 전체 목록이 다시 표시됩니다.</p>
                     </td>
-                    <td className="px-2 py-3 text-center">
-                      {product.image_url?.trim() ? (
-                        <div className="relative mx-auto h-10 w-10 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-muted)]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={normalizeProductImageUrl(product.image_url)}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
+                  </tr>
+                ) : isDisplayEmpty ? (
+                  <tr className="border-t border-[var(--divider)]">
+                    <td colSpan={tableColSpan} className="px-4 py-10 text-center text-[var(--text-muted)]">
+                      <div className="mx-auto flex max-w-md flex-col items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)]">
+                          {keyword.trim() || hasServerFilters ? "🔍" : "📦"}
                         </div>
-                      ) : (
-                        <span className="text-[10px] text-[var(--text-muted)]">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {product.product_source_url ? (
-                        <a
-                          href={product.product_source_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-semibold text-[var(--primary)] underline-offset-2 hover:underline"
-                        >
-                          원본 보기
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="max-w-[270px] px-4 py-3 font-medium text-[var(--primary)] truncate" title={product.title}>
-                      {product.title}
-                    </td>
-                    <td className="px-4 py-3 text-center whitespace-nowrap">{product.category}</td>
-                    <td className="px-4 py-3 text-center whitespace-nowrap text-xs text-[var(--text-secondary)]">
-                      {(() => {
-                        const { label, title } = formatDestinationProductLineCell(product);
-                        return title ? (
-                          <span title={title}>{label}</span>
-                        ) : (
-                          <span>{label}</span>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{product.theme ?? "-"}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {typeof product.price === "number"
-                        ? `${new Intl.NumberFormat("ko-KR").format(product.price)}원`
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <span className="inline-flex min-w-8 justify-center rounded bg-[var(--surface-muted)] px-2 py-1 text-xs font-semibold text-[var(--text-primary)] ring-1 ring-[var(--border)]">
-                          {typeof product.sort_order === "number" ? product.sort_order : "-"}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={pendingMoveId === product.id}
-                          onClick={() => onMoveSortOrder(product, "up")}
-                          className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-                          title="위로 이동"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          disabled={pendingMoveId === product.id}
-                          onClick={() => onMoveSortOrder(product, "down")}
-                          className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-                          title="아래로 이동"
-                        >
-                          ▼
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {product.is_active === false ? (
-                        <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs text-[var(--text-muted)]">
-                          비노출
-                        </span>
-                      ) : (
-                        <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--success-bg)] px-2.5 py-1 text-xs text-[var(--success)]">
-                          노출
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {product.status && STATUS_LABELS[product.status] ? (
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                            product.status === "SOLD_OUT"
-                              ? "bg-[var(--danger-bg)] text-[var(--danger)]"
-                              : product.status === "LIMITED"
-                                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-                                : product.status === "CONSULT_REQUIRED"
-                                  ? "bg-[var(--surface-muted)] text-[var(--text-secondary)]"
-                                  : "bg-[var(--primary-soft)] text-[var(--primary)]"
-                          }`}
-                        >
-                          {STATUS_LABELS[product.status]}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-[var(--text-muted)]">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-[var(--text-secondary)]" title={product.created_at}>
-                      {formatDate(product.created_at)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2 whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                        <Link
-                          href={`/products/${product.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded border border-[var(--primary)]/50 bg-[var(--primary-soft)] px-2 py-1 text-xs font-medium text-[var(--primary)] hover:opacity-90"
-                        >
-                          미리보기
-                        </Link>
-                        <button
-                          type="button"
-                          disabled={pendingToggleId === product.id}
-                          onClick={() => onQuickToggleActive(product)}
-                          className={`rounded px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
-                            product.is_active === false
-                              ? "border border-[var(--success)]/30 bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90"
-                              : "border border-[var(--danger)]/30 bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-90"
-                          }`}
-                        >
-                          {product.is_active === false ? "활성화" : "비활성화"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onEditProduct(product)}
-                          className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)]"
-                        >
-                          수정
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteProduct(product.id)}
-                          className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                        >
-                          삭제
-                        </button>
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">
+                          {totalCount === 0
+                            ? hasServerFilters
+                              ? "조건에 맞는 상품이 없습니다."
+                              : "등록된 상품이 없습니다."
+                            : "이 페이지에 표시할 상품이 없습니다."}
+                        </p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          {keyword.trim() || hasServerFilters
+                            ? "검색어·필터를 바꿔 보세요."
+                            : '상단의 "새 상품 등록"에서 첫 상품을 추가할 수 있습니다.'}
+                        </p>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  products.map(renderProductRow)
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-1.5 lg:hidden">
+            {issuesOnlyEmpty ? (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                <p className="font-semibold text-[var(--text-primary)]">
+                  이 페이지에는 치명·주의 문제가 있는 상품이 없습니다.
+                </p>
+                <p className="mt-1 text-xs">필터를 끄거나 다른 페이지를 확인해 보세요.</p>
+              </div>
+            ) : isDisplayEmpty ? (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                <p className="font-semibold text-[var(--text-primary)]">
+                  {totalCount === 0
+                    ? hasServerFilters
+                      ? "조건에 맞는 상품이 없습니다."
+                      : "등록된 상품이 없습니다."
+                    : "이 페이지에 표시할 상품이 없습니다."}
+                </p>
+              </div>
+            ) : (
+              products.map(renderMobileRow)
+            )}
+          </div>
+        </>
       )}
-      <div className="flex items-center justify-between text-sm text-[var(--text-secondary)]">
+
+      <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
         <p>
-          총 {totalCount}건 중 {totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1}-{Math.min(
-            currentPage * pageSize,
-            totalCount,
-          )}
-          건 표시
+          총 {totalCount}건 중{" "}
+          {totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)}건
+          범위 표시
+          {isSearchPending ? (
+            <span className="ml-2 text-xs text-[var(--text-muted)]">(검색 반영 중…)</span>
+          ) : null}
         </p>
         <div className="flex items-center gap-2">
           <button

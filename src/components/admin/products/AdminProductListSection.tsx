@@ -47,7 +47,10 @@ export default function AdminProductListSection({
 
   return (
     <AdminProductsListView
-      products={ctrl.products}
+      products={ctrl.displayProducts}
+      pageSourceCount={ctrl.products.length}
+      pageActiveCount={ctrl.pageActiveCount}
+      pageWarningStats={ctrl.pageWarningStats}
       taxonomyNameMap={ctrl.taxonomyNameMap}
       totalCount={ctrl.totalCount}
       currentPage={ctrl.currentPage}
@@ -56,11 +59,13 @@ export default function AdminProductListSection({
       sortField={ctrl.sortField}
       sortDirection={ctrl.sortDirection}
       keyword={ctrl.keyword}
+      isSearchPending={ctrl.isSearchPending}
       isLoading={ctrl.isLoading}
       errorMessage={ctrl.errorMessage || null}
       selectedIds={ctrl.selectedIds}
       pendingMoveId={ctrl.pendingMoveId}
       pendingToggleId={ctrl.pendingToggleId}
+      pendingDeleteId={ctrl.pendingDeleteId}
       onKeywordChange={ctrl.setKeyword}
       onSortChange={ctrl.handleSortChange}
       onPageChange={ctrl.movePage}
@@ -74,8 +79,19 @@ export default function AdminProductListSection({
       onMoveSortOrder={ctrl.moveSortOrder}
       filterActive={ctrl.filterActive}
       filterStatus={ctrl.filterStatus}
+      filterDestinationId={ctrl.filterDestinationId}
+      filterProductLineId={ctrl.filterProductLineId}
+      filterThemeQuery={ctrl.filterThemeQuery}
+      filterIssuesOnly={ctrl.filterIssuesOnly}
+      destinationOptions={ctrl.destinationOptions}
+      productLineOptions={ctrl.productLineOptions}
+      themeNameOptions={ctrl.themeNameOptions}
       onFilterActiveChange={ctrl.setFilterActive}
       onFilterStatusChange={ctrl.setFilterStatus}
+      onFilterDestinationIdChange={ctrl.setFilterDestinationId}
+      onFilterProductLineIdChange={ctrl.setFilterProductLineId}
+      onFilterThemeQueryChange={ctrl.setFilterThemeQuery}
+      onFilterIssuesOnlyChange={ctrl.setFilterIssuesOnly}
       newProductHref={newProductHref}
       onRetryLoad={ctrl.loadProducts}
     />

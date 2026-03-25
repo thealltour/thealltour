@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Product } from "@/types/product";
 import { normalizeImageList } from "@/lib/products/images";
@@ -10,10 +10,10 @@ import {
   deleteAdminProduct,
   patchAdminProduct,
 } from "@/components/admin/products/api/adminProducts.client";
-import {
-  fetchAdminProductTaxonomy,
-} from "@/components/admin/products/api/adminProductTaxonomy.client";
+import { fetchAdminProductTaxonomy } from "@/components/admin/products/api/adminProductTaxonomy.client";
 import { DEFAULT_PRODUCTS_PAGE_SIZE, ADMIN_PRODUCTS_MESSAGES } from "@/components/admin/products/adminProducts.constants";
+import type { AdminProductsTaxonomyOption } from "@/components/admin/products/adminProductsList.types";
+import { productHasIssueForFilter, aggregatePageWarningStats } from "@/components/admin/products/adminProductsList.helpers";
 
 export type { ProductSortKey } from "@/components/admin/products/api/adminProducts.types";
 
@@ -26,9 +26,24 @@ export type UseAdminProductsListControllerParams = {
     cancelLabel: string;
   }) => Promise<boolean>;
   pageSize?: number;
-  /** 상품 삭제 성공 후 호출 (현재 편집 중이던 상품이 삭제된 경우 상위에서 편집 상태 초기화용) */
   onAfterDelete?: (deletedId: string) => void;
 };
+
+function flattenTaxonomyOptions(
+  items: { id: string; name: string; parent_id?: string | null }[],
+): AdminProductsTaxonomyOption[] {
+  const out: AdminProductsTaxonomyOption[] = [];
+  for (const t of items) {
+    if (t.id && t.name?.trim()) out.push({ id: t.id, name: t.name.trim() });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
+function uniqueSortedStrings(values: string[]): string[] {
+  return Array.from(new Set(values.map((s) => s.trim()).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b, "ko"),
+  );
+}
 
 export function useAdminProductsListController({
   showToast,
@@ -42,87 +57,129 @@ export function useAdminProductsListController({
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
   const debouncedKeyword = useDebounce(keyword, 300);
-  const [sortField, setSortField] = useState<ProductSortKey>("created_at");
+  const [sortField, setSortField] = useState<ProductSortKey>("updated_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
   const [filterStatus, setFilterStatus] = useState<
     "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED"
   >("all");
+  const [filterDestinationId, setFilterDestinationId] = useState("");
+  const [filterProductLineId, setFilterProductLineId] = useState("");
+  const [filterThemeQuery, setFilterThemeQuery] = useState("");
+  const [filterIssuesOnly, setFilterIssuesOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingMoveId, setPendingMoveId] = useState<string | null>(null);
   const [taxonomyNameMap, setTaxonomyNameMap] = useState<Record<string, string>>({});
+  const [destinationOptions, setDestinationOptions] = useState<AdminProductsTaxonomyOption[]>([]);
+  const [productLineOptions, setProductLineOptions] = useState<AdminProductsTaxonomyOption[]>([]);
+  const [themeNameOptions, setThemeNameOptions] = useState<string[]>([]);
   const loadRequestIdRef = useRef(0);
 
-  async function loadProducts(args?: {
-    page?: number;
-    sortField?: ProductSortKey;
-    sortDirection?: "asc" | "desc";
-    keywordOverride?: string;
-    filterActiveOverride?: "all" | "active" | "inactive";
-    filterStatusOverride?: "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
-  }) {
-    const effectivePage = args?.page ?? page;
-    const effectiveSortField = args?.sortField ?? sortField;
-    const effectiveSortDirection = args?.sortDirection ?? sortDirection;
-    const effectiveKeyword = args?.keywordOverride ?? debouncedKeyword;
-    const effectiveActive = args?.filterActiveOverride ?? filterActive;
-    const effectiveStatus = args?.filterStatusOverride ?? filterStatus;
+  const isSearchPending = keyword.trim() !== debouncedKeyword.trim();
 
-    const requestId = ++loadRequestIdRef.current;
-    try {
-      setErrorMessage("");
-      setIsLoading(true);
-      const result = await fetchAdminProducts({
-        page: effectivePage,
-        pageSize: pageSize,
-        sortField: effectiveSortField,
-        sortDirection: effectiveSortDirection,
-        q: effectiveKeyword.trim() !== "" ? effectiveKeyword.trim() : undefined,
-        is_active:
-          effectiveActive === "all"
-            ? undefined
-            : effectiveActive === "active"
-              ? true
-              : false,
-        status:
-          effectiveStatus === "all" ? undefined : effectiveStatus,
-      });
-      if (requestId !== loadRequestIdRef.current) return;
-      setProducts(
-        result.items.map((item) => {
-          const images = normalizeImageList(item.images_json);
-          return {
-            ...item,
-            images_json: images,
-            image_url: images[0] ?? item.image_url ?? "",
-          };
-        }),
-      );
-      setTotalCount(result.total);
-    } catch (err) {
-      if (requestId !== loadRequestIdRef.current) return;
-      setErrorMessage(err instanceof Error ? err.message : ADMIN_PRODUCTS_MESSAGES.LIST_FETCH_ERROR);
-    } finally {
-      if (requestId === loadRequestIdRef.current) {
-        setIsLoading(false);
+  const displayProducts = useMemo(() => {
+    if (!filterIssuesOnly) return products;
+    return products.filter(productHasIssueForFilter);
+  }, [products, filterIssuesOnly]);
+
+  const pageActiveCount = useMemo(
+    () => products.filter((p) => p.is_active !== false).length,
+    [products],
+  );
+
+  const pageWarningStats = useMemo(() => aggregatePageWarningStats(products), [products]);
+
+  const loadProducts = useCallback(
+    async (args?: {
+      page?: number;
+      sortField?: ProductSortKey;
+      sortDirection?: "asc" | "desc";
+      keywordOverride?: string;
+      filterActiveOverride?: "all" | "active" | "inactive";
+      filterStatusOverride?: "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
+      destinationIdOverride?: string;
+      productLineIdOverride?: string;
+      themeQOverride?: string;
+    }) => {
+      const effectivePage = args?.page ?? page;
+      const effectiveSortField = args?.sortField ?? sortField;
+      const effectiveSortDirection = args?.sortDirection ?? sortDirection;
+      const effectiveKeyword = args?.keywordOverride ?? debouncedKeyword;
+      const effectiveActive = args?.filterActiveOverride ?? filterActive;
+      const effectiveStatus = args?.filterStatusOverride ?? filterStatus;
+      const effectiveDest =
+        (args?.destinationIdOverride !== undefined ? args.destinationIdOverride : filterDestinationId).trim() ||
+        undefined;
+      const effectiveLine =
+        (args?.productLineIdOverride !== undefined ? args.productLineIdOverride : filterProductLineId).trim() ||
+        undefined;
+      const effectiveThemeQ =
+        (args?.themeQOverride !== undefined ? args.themeQOverride : filterThemeQuery).trim() || undefined;
+
+      const requestId = ++loadRequestIdRef.current;
+      try {
+        setErrorMessage("");
+        setIsLoading(true);
+        const result = await fetchAdminProducts({
+          page: effectivePage,
+          pageSize: pageSize,
+          sortField: effectiveSortField,
+          sortDirection: effectiveSortDirection,
+          q: effectiveKeyword.trim() !== "" ? effectiveKeyword.trim() : undefined,
+          is_active:
+            effectiveActive === "all" ? undefined : effectiveActive === "active" ? true : false,
+          status: effectiveStatus === "all" ? undefined : effectiveStatus,
+          destination_id: effectiveDest,
+          product_line_id: effectiveLine,
+          theme_q: effectiveThemeQ,
+        });
+        if (requestId !== loadRequestIdRef.current) return;
+        setProducts(
+          result.items.map((item) => {
+            const images = normalizeImageList(item.images_json);
+            return {
+              ...item,
+              images_json: images,
+              image_url: images[0] ?? item.image_url ?? "",
+            };
+          }),
+        );
+        setTotalCount(result.total);
+      } catch (err) {
+        if (requestId !== loadRequestIdRef.current) return;
+        setErrorMessage(err instanceof Error ? err.message : ADMIN_PRODUCTS_MESSAGES.LIST_FETCH_ERROR);
+      } finally {
+        if (requestId === loadRequestIdRef.current) {
+          setIsLoading(false);
+        }
       }
-    }
-  }
-
-  useEffect(() => {
-    loadProducts({ page: 1 });
-  }, []);
+    },
+    [
+      page,
+      sortField,
+      sortDirection,
+      debouncedKeyword,
+      filterActive,
+      filterStatus,
+      filterDestinationId,
+      filterProductLineId,
+      filterThemeQuery,
+      pageSize,
+    ],
+  );
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [destinations, productLines] = await Promise.all([
+        const [destinations, productLines, themes] = await Promise.all([
           fetchAdminProductTaxonomy({ taxonomy_type: "destination" }),
           fetchAdminProductTaxonomy({ taxonomy_type: "product_line" }),
+          fetchAdminProductTaxonomy({ taxonomy_type: "theme" }),
         ]);
         if (cancelled) return;
         const map: Record<string, string> = {};
@@ -132,9 +189,20 @@ export function useAdminProductsListController({
         for (const t of productLines) {
           if (t.id && t.name) map[t.id] = t.name;
         }
+        for (const t of themes) {
+          if (t.id && t.name) map[t.id] = t.name;
+        }
         setTaxonomyNameMap(map);
+        setDestinationOptions(flattenTaxonomyOptions(destinations));
+        setProductLineOptions(flattenTaxonomyOptions(productLines));
+        setThemeNameOptions(uniqueSortedStrings(themes.map((t) => t.name).filter(Boolean) as string[]));
       } catch {
-        if (!cancelled) setTaxonomyNameMap({});
+        if (!cancelled) {
+          setTaxonomyNameMap({});
+          setDestinationOptions([]);
+          setProductLineOptions([]);
+          setThemeNameOptions([]);
+        }
       }
     })();
     return () => {
@@ -144,8 +212,8 @@ export function useAdminProductsListController({
 
   useEffect(() => {
     setPage(1);
-    loadProducts({ page: 1, keywordOverride: debouncedKeyword });
-  }, [debouncedKeyword]);
+    void loadProducts({ page: 1, keywordOverride: debouncedKeyword });
+  }, [debouncedKeyword, loadProducts]);
 
   const isFilterMounted = useRef(false);
   useEffect(() => {
@@ -154,12 +222,18 @@ export function useAdminProductsListController({
       return;
     }
     setPage(1);
-    loadProducts({
-      page: 1,
-      filterActiveOverride: filterActive,
-      filterStatusOverride: filterStatus,
-    });
-  }, [filterActive, filterStatus]);
+    void loadProducts({ page: 1, filterActiveOverride: filterActive, filterStatusOverride: filterStatus });
+  }, [filterActive, filterStatus, loadProducts]);
+
+  const auxFilterMounted = useRef(false);
+  useEffect(() => {
+    if (!auxFilterMounted.current) {
+      auxFilterMounted.current = true;
+      return;
+    }
+    setPage(1);
+    void loadProducts({ page: 1 });
+  }, [filterDestinationId, filterProductLineId, filterThemeQuery, loadProducts]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -167,12 +241,12 @@ export function useAdminProductsListController({
   function movePage(nextPage: number) {
     const clamped = Math.max(1, Math.min(nextPage, totalPages));
     setPage(clamped);
-    loadProducts({ page: clamped });
+    void loadProducts({ page: clamped });
   }
 
   function toggleSelectAllForPage() {
-    if (products.length === 0) return;
-    const pageIds = products.map((product) => product.id);
+    if (displayProducts.length === 0) return;
+    const pageIds = displayProducts.map((product) => product.id);
     const allSelected = pageIds.every((id) => selectedIds.includes(id));
     if (allSelected) {
       setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
@@ -210,8 +284,8 @@ export function useAdminProductsListController({
           }
         }),
       );
-      await loadProducts({ page: 1 });
       setPage(1);
+      await loadProducts({ page: 1 });
       showToast("success", "선택한 상품을 삭제했습니다.");
     } catch {
       showToast("error", "선택 상품 삭제 중 오류가 발생했습니다.");
@@ -220,7 +294,8 @@ export function useAdminProductsListController({
 
   function handleSortChange(field: ProductSortKey, direction?: "asc" | "desc") {
     const nextDirection: "asc" | "desc" =
-      direction ?? (sortField === field
+      direction ??
+      (sortField === field
         ? sortDirection === "asc"
           ? "desc"
           : "asc"
@@ -230,7 +305,7 @@ export function useAdminProductsListController({
     setSortField(field);
     setSortDirection(nextDirection);
     setPage(1);
-    loadProducts({ page: 1, sortField: field, sortDirection: nextDirection });
+    void loadProducts({ page: 1, sortField: field, sortDirection: nextDirection });
   }
 
   async function handleDelete(id: string) {
@@ -243,6 +318,7 @@ export function useAdminProductsListController({
     if (!ok) return;
 
     setErrorMessage("");
+    setPendingDeleteId(id);
     try {
       await deleteAdminProduct(id);
       showToast("success", "상품이 삭제되었습니다.");
@@ -250,23 +326,25 @@ export function useAdminProductsListController({
       await loadProducts();
     } catch (err) {
       showToast("error", err instanceof Error ? err.message : "상품 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setPendingDeleteId(null);
     }
   }
 
   async function quickToggleActive(product: Product) {
+    const prev = product.is_active ?? true;
+    const next = !prev;
     setPendingToggleId(product.id);
-    setErrorMessage("");
+    setProducts((current) =>
+      current.map((item) => (item.id === product.id ? { ...item, is_active: next } : item)),
+    );
     try {
-      await patchAdminProduct(product.id, {
-        is_active: !(product.is_active ?? true),
-      });
-      setProducts((current) =>
-        current.map((item) =>
-          item.id === product.id ? { ...item, is_active: !(item.is_active ?? true) } : item,
-        ),
-      );
+      await patchAdminProduct(product.id, { is_active: next });
       showToast("success", "상품 활성화 상태를 변경했습니다.");
     } catch (err) {
+      setProducts((current) =>
+        current.map((item) => (item.id === product.id ? { ...item, is_active: prev } : item)),
+      );
       showToast("error", err instanceof Error ? err.message : "활성화 상태 변경에 실패했습니다.");
     } finally {
       setPendingToggleId(null);
@@ -300,6 +378,9 @@ export function useAdminProductsListController({
 
   return {
     products,
+    displayProducts,
+    pageActiveCount,
+    pageWarningStats,
     taxonomyNameMap,
     totalCount,
     currentPage: safePage,
@@ -312,12 +393,25 @@ export function useAdminProductsListController({
     errorMessage,
     selectedIds,
     pendingToggleId,
+    pendingDeleteId,
     pendingMoveId,
     filterActive,
     filterStatus,
+    filterDestinationId,
+    filterProductLineId,
+    filterThemeQuery,
+    filterIssuesOnly,
+    destinationOptions,
+    productLineOptions,
+    themeNameOptions,
+    isSearchPending,
     setKeyword,
     setFilterActive,
     setFilterStatus,
+    setFilterDestinationId,
+    setFilterProductLineId,
+    setFilterThemeQuery,
+    setFilterIssuesOnly,
     loadProducts,
     movePage,
     toggleSelectAllForPage,

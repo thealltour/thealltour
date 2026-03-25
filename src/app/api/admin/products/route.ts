@@ -118,17 +118,31 @@ export async function GET(request: NextRequest) {
   const keyword = (searchParams.get("q") ?? "").trim();
   const isActiveParam = searchParams.get("is_active");
   const statusParam = searchParams.get("status")?.trim();
+  const destinationIdParam = (searchParams.get("destination_id") ?? "").trim();
+  const productLineIdParam = (searchParams.get("product_line_id") ?? "").trim();
+  const themeQParam = (searchParams.get("theme_q") ?? "").trim();
 
   try {
     const from = Math.max(0, (page - 1) * pageSize);
     const to = from + pageSize - 1;
 
+    /** products 테이블에 updated_at 이 없을 수 있어 정렬은 created_at 에 매핑 */
     const orderColumn = sortField === "updated_at" ? "created_at" : sortField;
     let query = supabase
       .from("products")
       .select("*", { count: "exact" })
       .order(orderColumn, { ascending: sortDirection === "asc", nullsFirst: false })
       .range(from, to);
+
+    if (destinationIdParam !== "") {
+      query = query.eq("destination_id", destinationIdParam);
+    }
+    if (productLineIdParam !== "") {
+      query = query.eq("product_line_id", productLineIdParam);
+    }
+    if (themeQParam !== "") {
+      query = query.ilike("theme", `%${themeQParam}%`);
+    }
 
     if (keyword !== "") {
       const ilike = `%${keyword}%`;

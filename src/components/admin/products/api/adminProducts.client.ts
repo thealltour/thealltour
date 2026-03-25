@@ -27,6 +27,9 @@ export async function fetchAdminProducts(
     q: params.q?.trim() || undefined,
     is_active: params.is_active,
     status: params.status,
+    destination_id: params.destination_id?.trim() || undefined,
+    product_line_id: params.product_line_id?.trim() || undefined,
+    theme_q: params.theme_q?.trim() || undefined,
   });
   const response = await fetch(`${BASE}?${qs}`, { cache: "no-store" });
   const result = await parseJsonResponse<AdminProductsListResponse | AdminProductMessageResponse>(

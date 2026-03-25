@@ -242,6 +242,8 @@ export type Product = {
   is_popular?: boolean;
   sort_order?: number;
   created_at?: string;
+  /** DB에 컬럼이 있으면 목록 등에서 사용. 없으면 undefined */
+  updated_at?: string;
   /** 상품 상태: 없으면 AVAILABLE로 간주 */
   status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
   /** 유류할증료 포함 여부. null이면 상세에서 문구 미노출 */

@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminRole } from "@/components/admin/AdminRoleContext";
 import { SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
+import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
 import { ThemedWordmarkImage } from "@/components/header/ThemedWordmarkImage";
 
 type SidebarProps = {
@@ -58,6 +59,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
                   type="button"
                   title={item.label}
                   onClick={() => {
+                    if (!confirmAdminProductUnsavedIfNeeded()) return;
                     if (item.mainKey) setActiveMenu(item.mainKey);
                     router.push(item.href);
                   }}

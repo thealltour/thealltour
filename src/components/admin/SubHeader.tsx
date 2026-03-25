@@ -11,6 +11,7 @@ import {
   PRODUCT_LABEL_TO_VIEW,
   PRODUCT_VIEW_TO_LABEL,
 } from "@/components/admin/products/adminProducts.constants";
+import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
 
 export type SubHeaderTab = { label: string; href: string };
 
@@ -242,6 +243,8 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   };
 
   function handleTabClick(label: string) {
+    if (!confirmAdminProductUnsavedIfNeeded()) return;
+
     setActiveLabel(label);
     onTabChange?.(label);
 
@@ -381,6 +384,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
           <button
             type="button"
             onClick={() => {
+              if (!confirmAdminProductUnsavedIfNeeded()) return;
               router.push(`/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.CREATE}`);
             }}
             className="btn-admin-primary"
@@ -389,7 +393,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
           </button>
           <button
             type="button"
-            onClick={() => router.push("/theall_manager_only/notifications")}
+            onClick={() => {
+              if (!confirmAdminProductUnsavedIfNeeded()) return;
+              router.push("/theall_manager_only/notifications");
+            }}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--primary)] transition-colors duration-150 hover:bg-[var(--surface-muted)]"
             aria-label="알림 보기"
           >

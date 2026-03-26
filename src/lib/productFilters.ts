@@ -42,7 +42,16 @@ export type ProductFiltersState = {
   collection: string | null;
 };
 
-const SORT_VALUES: ProductSortId[] = ["popular", "latest", "new"];
+export const SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
+  { value: "recommended", label: "추천순" },
+  { value: "price_asc", label: "가격 낮은순" },
+  { value: "price_desc", label: "가격 높은순" },
+  { value: "latest", label: "최신순" },
+  { value: "new", label: "신규순" },
+  { value: "popular", label: "인기순" },
+];
+
+const SORT_VALUES: ProductSortId[] = SORT_OPTIONS.map((o) => o.value);
 
 export function parseProductFiltersFromSearchParams(
   params: Record<string, string | string[] | undefined>,
@@ -139,15 +148,6 @@ export function mergeFiltersIntoSearchParams(
   else next.delete(PRODUCT_FILTER_KEYS.COLLECTION);
   return next;
 }
-
-export const SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
-  { value: "recommended", label: "추천순" },
-  { value: "price_asc", label: "가격 낮은순" },
-  { value: "price_desc", label: "가격 높은순" },
-  { value: "latest", label: "최신순" },
-  { value: "new", label: "신규순" },
-  { value: "popular", label: "인기순" },
-];
 
 /** 랜딩 페이지에서 상위 지역/테마 선택 시 하위 전체 포함하려면 전달. */
 export type ProductFiltersApplyOptions = {

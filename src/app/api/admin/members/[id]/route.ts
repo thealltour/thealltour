@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminSession } from "@/lib/apiAuth";
 import { supabase } from "@/lib/supabase";
 
 type MemberBody = {
@@ -11,10 +12,40 @@ type MemberBody = {
   points?: number;
 };
 
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { id } = await context.params;
+
+  const { data, error } = await supabase
+    .from("members")
+    .select(
+      "id,username,name,phone,email,birth_date,gender,agree_email,points,point_balance,point_pending,created_at",
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ message: "회원 정보를 불러오지 못했습니다." }, { status: 500 });
+  }
+  if (!data) {
+    return NextResponse.json({ message: "회원을 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  return NextResponse.json(data);
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
   const body = (await request.json()) as MemberBody;
 

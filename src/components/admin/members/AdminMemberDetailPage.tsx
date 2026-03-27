@@ -1,0 +1,657 @@
+"use client";
+
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+
+type Props = {
+  memberId: string;
+  mode?: "page" | "drawer";
+  onClose?: () => void;
+  navigation?: {
+    currentIndex: number;
+    total: number;
+    onPrev: () => void;
+    onNext: () => void;
+    hasPrev: boolean;
+    hasNext: boolean;
+  };
+};
+
+type MemberDetail = {
+  id: string;
+  username: string;
+  name: string;
+  phone: string;
+  email: string;
+  birth_date: string;
+  gender: "male" | "female" | "other";
+  agree_email: boolean;
+  points?: number;
+  point_balance?: number;
+  point_pending?: number;
+  created_at: string | null;
+};
+
+type PointLedgerRow = {
+  id: string;
+  type: string;
+  status: string;
+  amount: number;
+  reason: string | null;
+  ref_type: string | null;
+  ref_id: string | null;
+  expires_at: string | null;
+  created_at: string;
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  EARN: "적립",
+  USE: "사용",
+  ADJUST: "조정",
+  EXPIRE: "소멸",
+  RESERVE: "예약",
+  RELEASE: "해제",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  CONFIRMED: "확정",
+  PENDING: "대기",
+  CANCELED: "취소",
+};
+
+const REASON_PRESETS = [
+  "관리자 지급",
+  "예약 확인 적립",
+  "이벤트 지급",
+  "CS 보상",
+  "수동 조정",
+];
+
+function formatDate(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("ko-KR");
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ko-KR");
+}
+
+function genderLabel(gender: MemberDetail["gender"]) {
+  if (gender === "male") return "남성";
+  if (gender === "female") return "여성";
+  return "기타";
+}
+
+function formatNumber(value: string) {
+  const num = Number(value.replace(/,/g, ""));
+  if (!Number.isFinite(num)) return "";
+  return num.toLocaleString("ko-KR");
+}
+
+export default function AdminMemberDetailPage({
+  memberId,
+  mode = "page",
+  onClose,
+  navigation,
+}: Props) {
+  const router = useRouter();
+  const [member, setMember] = useState<MemberDetail | null>(null);
+  const [ledger, setLedger] = useState<PointLedgerRow[]>([]);
+  const [isLoadingMember, setIsLoadingMember] = useState(true);
+  const [isLoadingLedger, setIsLoadingLedger] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [ledgerErrorMessage, setLedgerErrorMessage] = useState("");
+  const [grantAmount, setGrantAmount] = useState("");
+  const [grantReason, setGrantReason] = useState("관리자 지급");
+  const [grantStatus, setGrantStatus] = useState<"CONFIRMED" | "PENDING">("CONFIRMED");
+  const [grantRefType, setGrantRefType] = useState("");
+  const [grantRefId, setGrantRefId] = useState("");
+  const [grantExpiresAt, setGrantExpiresAt] = useState("");
+  const [grantSubmitting, setGrantSubmitting] = useState(false);
+  const [grantMessage, setGrantMessage] = useState<{ type: "ok" | "err"; text: string } | null>(
+    null,
+  );
+  const [highlightLedgerId, setHighlightLedgerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      try {
+        setErrorMessage("");
+        setLedgerErrorMessage("");
+        setIsLoadingMember(true);
+        setIsLoadingLedger(true);
+
+        const [memberResponse, ledgerResponse] = await Promise.all([
+          fetch(`/api/admin/members/${memberId}`, { cache: "no-store" }),
+          fetch(`/api/admin/members/${memberId}/point-ledger?limit=20`, { cache: "no-store" }),
+        ]);
+
+        const memberResult = (await memberResponse.json()) as
+          | MemberDetail
+          | { message?: string };
+        if (!memberResponse.ok) {
+          const msg =
+            "message" in memberResult
+              ? memberResult.message
+              : "회원 정보를 불러오지 못했습니다.";
+          if (mounted) setErrorMessage(msg ?? "회원 정보를 불러오지 못했습니다.");
+          return;
+        }
+
+        if (mounted) setMember(memberResult as MemberDetail);
+
+        const ledgerResult = (await ledgerResponse.json()) as
+          | PointLedgerRow[]
+          | { message?: string };
+        if (!ledgerResponse.ok) {
+          const msg =
+            "message" in ledgerResult
+              ? ledgerResult.message
+              : "포인트 내역을 불러오지 못했습니다.";
+          if (mounted) {
+            setLedger([]);
+            setLedgerErrorMessage(msg ?? "포인트 내역을 불러오지 못했습니다.");
+          }
+          return;
+        }
+
+        if (mounted) setLedger(Array.isArray(ledgerResult) ? ledgerResult : []);
+      } catch {
+        if (mounted) {
+          setErrorMessage("회원 상세 정보를 불러오는 중 오류가 발생했습니다.");
+          setLedger([]);
+        }
+      } finally {
+        if (mounted) {
+          setIsLoadingMember(false);
+          setIsLoadingLedger(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [memberId]);
+
+  useEffect(() => {
+    if (!highlightLedgerId) return;
+    const t = setTimeout(() => setHighlightLedgerId(null), 2500);
+    return () => clearTimeout(t);
+  }, [highlightLedgerId]);
+
+  const pointBalance = useMemo(() => {
+    if (!member) return 0;
+    const raw = member.point_balance ?? member.points ?? 0;
+    return Number(raw) || 0;
+  }, [member]);
+
+  const pointPending = useMemo(() => {
+    if (!member) return 0;
+    return Number(member.point_pending ?? 0) || 0;
+  }, [member]);
+
+  const formattedAmount = grantAmount ? formatNumber(grantAmount) : "";
+  const parsedGrantAmount = Number(grantAmount || "0");
+  const isGrantAmountValid = Number.isFinite(parsedGrantAmount) && parsedGrantAmount > 0;
+
+  function handleAmountChange(e: ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/[^0-9]/g, "");
+    setGrantAmount(raw);
+  }
+
+  async function handleGrant() {
+    if (grantSubmitting) return;
+    if (!member) return;
+
+    const amount = Number(grantAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setGrantMessage({ type: "err", text: "포인트는 1 이상의 숫자여야 합니다." });
+      return;
+    }
+
+    setGrantSubmitting(true);
+    setGrantMessage(null);
+
+    try {
+      const expiresAtIso =
+        grantExpiresAt.trim() && !Number.isNaN(new Date(grantExpiresAt).getTime())
+          ? new Date(grantExpiresAt).toISOString()
+          : undefined;
+
+      const response = await fetch("/api/admin/points/grant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: member.id,
+          amount,
+          reason: grantReason.trim() || "관리자 지급",
+          status: grantStatus,
+          refType: grantRefType.trim() || undefined,
+          refId: grantRefId.trim() || undefined,
+          expiresAt: expiresAtIso,
+        }),
+      });
+
+      const result = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        ledgerId?: string;
+      };
+
+      if (!response.ok) {
+        setGrantMessage({ type: "err", text: result.message || "포인트 지급에 실패했습니다." });
+        return;
+      }
+
+      const amountText = formatNumber(grantAmount) || amount.toLocaleString("ko-KR");
+      const successText =
+        grantStatus === "CONFIRMED"
+          ? `${amountText}P가 즉시 반영되었습니다.`
+          : `${amountText}P가 대기 포인트로 기록되었습니다.`;
+      setGrantMessage({ type: "ok", text: successText });
+
+      setMember((current) => {
+        if (!current) return current;
+
+        if (grantStatus === "CONFIRMED") {
+          if (current.point_balance !== undefined) {
+            return {
+              ...current,
+              point_balance: Number(current.point_balance ?? 0) + amount,
+            };
+          }
+          return {
+            ...current,
+            points: Number(current.points ?? 0) + amount,
+          };
+        }
+
+        return {
+          ...current,
+          point_pending: Number(current.point_pending ?? 0) + amount,
+        };
+      });
+
+      const newId = result.ledgerId || `temp-${Date.now()}`;
+      setLedger((prev) => [
+        {
+          id: newId,
+          type: "EARN",
+          status: grantStatus,
+          amount,
+          reason: grantReason.trim() || "관리자 지급",
+          ref_type: grantRefType.trim() || null,
+          ref_id: grantRefId.trim() || null,
+          expires_at: expiresAtIso ?? null,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+      setHighlightLedgerId(newId);
+
+      setGrantAmount("");
+      setGrantReason("관리자 지급");
+      setGrantRefType("");
+      setGrantRefId("");
+      setGrantExpiresAt("");
+    } finally {
+      setGrantSubmitting(false);
+    }
+  }
+
+  if (isLoadingMember) {
+    return <p className="px-6 py-8 text-sm text-[var(--text-muted)]">회원 정보를 불러오는 중입니다...</p>;
+  }
+
+  if (errorMessage || !member) {
+    return (
+      <div className="space-y-4 px-6 py-8">
+        <p className="text-sm text-[var(--danger)]">
+          {errorMessage || "회원 정보를 불러오지 못했습니다."}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => router.push("/theall_manager_only/members")}
+        >
+          회원 목록으로
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      {mode === "drawer" ? (
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-sm text-[var(--text-muted)]">회원 상세</p>
+            <p className="text-base font-semibold text-[var(--text-primary)]">
+              {member.name || "-"} · {member.username}
+            </p>
+            <p className="text-xs text-[var(--text-muted)]">
+              {member.email || "-"} · {member.phone || "-"}
+            </p>
+            <div className="flex items-center gap-2">
+              <Badge variant={member.agree_email ? "success" : "neutral"} className="px-2 py-0.5 text-xs">
+                {member.agree_email ? "이메일 수신 동의" : "이메일 수신 미동의"}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {navigation ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={navigation.onPrev}
+                  disabled={!navigation.hasPrev}
+                  className="min-h-0 py-1 text-xs disabled:cursor-not-allowed"
+                >
+                  이전
+                </Button>
+                <span className="text-xs text-[var(--text-muted)]">
+                  {Math.max(0, navigation.currentIndex + 1)} / {navigation.total}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={navigation.onNext}
+                  disabled={!navigation.hasNext}
+                  className="min-h-0 py-1 text-xs disabled:cursor-not-allowed"
+                >
+                  다음
+                </Button>
+              </>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-0 py-1 text-xs"
+              onClick={() => router.push(`/theall_manager_only/members/${member.id}`)}
+            >
+              전체 페이지 보기
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-0 py-1 text-xs"
+              onClick={onClose}
+            >
+              닫기
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/theall_manager_only/members")}
+          >
+            회원 목록으로
+          </Button>
+          <p className="text-sm text-[var(--text-muted)]">
+            <span className="font-semibold text-[var(--text-primary)]">{member.name || "-"}</span>
+            {" · "}
+            {member.username}
+          </p>
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <p className="text-xs text-[var(--text-muted)]">현재 사용 가능 포인트</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--primary)]">
+            {pointBalance.toLocaleString("ko-KR")}P
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <p className="text-xs text-[var(--text-muted)]">대기 포인트</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+            {pointPending.toLocaleString("ko-KR")}P
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <p className="text-xs text-[var(--text-muted)]">가입일</p>
+          <p className="mt-2 text-xl font-semibold text-[var(--text-primary)]">
+            {formatDate(member.created_at)}
+          </p>
+        </div>
+      </div>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <h3 className="text-base font-semibold text-[var(--text-primary)]">포인트 지급</h3>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
+          이 회원에게 포인트를 수동 지급합니다.
+        </p>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium text-[var(--text-muted)]">포인트(amount) *</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={formattedAmount}
+              onChange={handleAmountChange}
+              className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-muted)]">상태(status)</label>
+            <select
+              value={grantStatus}
+              onChange={(e) => setGrantStatus(e.target.value as "CONFIRMED" | "PENDING")}
+              className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            >
+              <option value="CONFIRMED">CONFIRMED (즉시 반영)</option>
+              <option value="PENDING">PENDING (대기 적립)</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs font-medium text-[var(--text-muted)]">사유(reason) *</label>
+            <input
+              type="text"
+              value={grantReason}
+              onChange={(e) => setGrantReason(e.target.value)}
+              className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {REASON_PRESETS.map((preset) => (
+                <Button
+                  key={preset}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setGrantReason(preset)}
+                  className="min-h-0 rounded-full px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+                >
+                  {preset}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-muted)]">refType (선택)</label>
+            <input
+              type="text"
+              value={grantRefType}
+              onChange={(e) => setGrantRefType(e.target.value)}
+              className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-muted)]">refId (선택)</label>
+            <input
+              type="text"
+              value={grantRefId}
+              onChange={(e) => setGrantRefId(e.target.value)}
+              className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-muted)]">expiresAt (선택)</label>
+            <input
+              type="datetime-local"
+              value={grantExpiresAt}
+              onChange={(e) => setGrantExpiresAt(e.target.value)}
+              className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+          </div>
+        </div>
+
+        {member && grantAmount ? (
+          <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--text-muted)]">
+            <p>
+              지급 대상: {member.name || "-"} · {member.username}
+            </p>
+            <p>지급 포인트: {formattedAmount}P</p>
+            <p>상태: {grantStatus === "CONFIRMED" ? "즉시 반영" : "대기 적립"}</p>
+            <p>사유: {grantReason || "-"}</p>
+          </div>
+        ) : null}
+
+        {grantMessage ? (
+          <p
+            className={`mt-3 text-sm ${
+              grantMessage.type === "ok" ? "text-[var(--success)]" : "text-[var(--danger)]"
+            }`}
+          >
+            {grantMessage.text}
+          </p>
+        ) : null}
+
+        <div className="mt-4 flex justify-end">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={handleGrant}
+            disabled={grantSubmitting || !grantAmount || !isGrantAmountValid || !member}
+            loading={grantSubmitting}
+          >
+            {grantSubmitting ? "처리 중…" : "포인트 지급"}
+          </Button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <h3 className="text-base font-semibold text-[var(--text-primary)]">기본 정보</h3>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">이름</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{member.name || "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">아이디</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{member.username || "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">이메일</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{member.email || "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">연락처</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{member.phone || "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">이메일 수신동의</p>
+            <div className="mt-1">
+              <Badge variant={member.agree_email ? "success" : "neutral"}>
+                {member.agree_email ? "이메일 수신 동의" : "이메일 수신 미동의"}
+              </Badge>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">생년월일</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{member.birth_date || "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">성별</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{genderLabel(member.gender)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">가입일시</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{formatDateTime(member.created_at)}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">최근 포인트 내역</h3>
+          <p className="text-xs text-[var(--text-muted)]">최신 20건</p>
+        </div>
+
+        {ledgerErrorMessage ? (
+          <p className="mt-3 text-sm text-[var(--danger)]">{ledgerErrorMessage}</p>
+        ) : null}
+
+        {isLoadingLedger ? (
+          <p className="mt-3 text-sm text-[var(--text-muted)]">포인트 내역을 불러오는 중입니다...</p>
+        ) : ledger.length === 0 ? (
+          <p className="mt-3 text-sm text-[var(--text-muted)]">포인트 내역이 없습니다.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[680px] border-collapse text-sm">
+              <thead className="bg-[var(--surface-muted)] text-[var(--text-secondary)]">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold">일시</th>
+                  <th className="px-3 py-2 text-left font-semibold">유형</th>
+                  <th className="px-3 py-2 text-left font-semibold">상태</th>
+                  <th className="px-3 py-2 text-right font-semibold">포인트</th>
+                  <th className="px-3 py-2 text-left font-semibold">사유</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      "border-t border-[var(--divider)]",
+                      highlightLedgerId === row.id && "bg-[var(--primary-soft)]",
+                    )}
+                  >
+                    <td className="px-3 py-2 text-[var(--text-secondary)]">
+                      {formatDateTime(row.created_at)}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--text-primary)]">
+                      {TYPE_LABEL[row.type] ?? row.type}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant="neutral" className="px-2 py-0.5 text-[11px]">
+                        {STATUS_LABEL[row.status] ?? row.status}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums text-[var(--text-primary)]">
+                      {Number(row.amount ?? 0).toLocaleString("ko-KR")}P
+                    </td>
+                    <td className="px-3 py-2 text-[var(--text-secondary)]">{row.reason || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

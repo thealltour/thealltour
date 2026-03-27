@@ -42,6 +42,30 @@ export type ProductFiltersState = {
   collection: string | null;
 };
 
+export type ProductCollectionId = "recommend" | "popular" | "new";
+
+export const PRODUCT_COLLECTION_LABELS: Record<ProductCollectionId, string> = {
+  recommend: "추천상품",
+  popular: "인기상품",
+  new: "신규상품",
+};
+
+export const PRODUCT_COLLECTION_SWITCH_OPTIONS: ReadonlyArray<{
+  value: ProductCollectionId | null;
+  label: string;
+}> = [
+  { value: null, label: "전체" },
+  { value: "recommend", label: PRODUCT_COLLECTION_LABELS.recommend },
+  { value: "popular", label: PRODUCT_COLLECTION_LABELS.popular },
+  { value: "new", label: PRODUCT_COLLECTION_LABELS.new },
+];
+
+export function getCollectionLabel(collection: string | null): string | null {
+  if (!collection) return null;
+  const key = collection.trim() as ProductCollectionId;
+  return PRODUCT_COLLECTION_LABELS[key] ?? collection.trim();
+}
+
 export const SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
   { value: "recommended", label: "추천순" },
   { value: "price_asc", label: "가격 낮은순" },
@@ -155,7 +179,19 @@ export type ProductFiltersApplyOptions = {
   regionDescendantForName?: string;
   themeDescendantNames?: string[];
   themeDescendantForName?: string;
+  /**
+   * `collection=recommend|popular` 시 상품 `campaigns`와 매칭할 기획 taxonomy **이름**.
+   * `site_settings`의 campaign id를 서버에서 풀어 전달.
+   */
+  collectionCampaignNames?: { recommend: string[]; popular: string[] };
 };
+
+function productMatchesCampaignNameSet(product: Product, nameSet: Set<string>): boolean {
+  if (nameSet.size === 0) return false;
+  const camps = product.campaigns ?? product.campaigns_json ?? [];
+  if (!Array.isArray(camps)) return false;
+  return camps.some((c) => typeof c === "string" && nameSet.has(c.trim()));
+}
 
 /** region = destination name(category), theme = theme token, product_line = category name(상품군). 정렬 적용.
  * taxonomyNameMap 있으면 destination_id / product_line_id FK 기반 우선, 없거나 매칭 실패 시 category/theme 문자열 fallback.
@@ -235,11 +271,22 @@ export function applyProductFilters(
 
   if (filters.collection) {
     const c = filters.collection.trim();
+    const recNames = options?.collectionCampaignNames?.recommend ?? [];
+    const popNames = options?.collectionCampaignNames?.popular ?? [];
+    const recommendNameSet = new Set(recNames.map((n) => n.trim()).filter(Boolean));
+    const popularNameSet = new Set(popNames.map((n) => n.trim()).filter(Boolean));
+
     if (c === "recommend") {
-      list = list.filter((p) => p.is_recommend === true);
+      list = list.filter(
+        (p) =>
+          p.is_recommend === true || productMatchesCampaignNameSet(p, recommendNameSet),
+      );
     }
     if (c === "popular") {
-      list = list.filter((p) => p.is_popular === true);
+      list = list.filter(
+        (p) =>
+          p.is_popular === true || productMatchesCampaignNameSet(p, popularNameSet),
+      );
     }
     if (c === "new") {
       list = [...list].sort((a, b) => {

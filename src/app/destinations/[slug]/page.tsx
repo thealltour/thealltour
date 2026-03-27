@@ -22,6 +22,7 @@ import { getProducts } from "@/lib/products";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { buildDestinationFallbackImageMap } from "@/lib/landing/buildDestinationFallbackImageMap";
 import { loadProductsListingContextForDestinationDetail } from "@/lib/products/loadProductsListingContext";
+import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
 import { getDestinationLandingHref } from "@/lib/hubLandingLinks";
 import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
 import {
@@ -49,10 +50,11 @@ export default async function DestinationLandingPage({ params }: Props) {
   const destination = await getDestinationBySlugForPublicLanding(slug);
   if (!destination) notFound();
 
-  const [products, subnodes, allDestinations] = await Promise.all([
+  const [products, subnodes, allDestinations, collectionCampaignNames] = await Promise.all([
     getProducts(),
     getLandingSubnodes("destination", slug),
     getHubDestinations(),
+    getCollectionCampaignNamesForListing(),
   ]);
   const {
     categories,
@@ -266,6 +268,7 @@ export default async function DestinationLandingPage({ params }: Props) {
                     filterContextLabel: `현재 '${destination.name}' 기준으로 상품을 보여주고 있습니다.`,
                     initialRegionDescendants,
                     cardLayout: "related",
+                    collectionCampaignNames,
                   }}
                 />
               </div>

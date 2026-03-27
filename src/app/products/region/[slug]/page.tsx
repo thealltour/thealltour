@@ -11,6 +11,7 @@ import { ProductsPageContent } from "@/components/products/ProductsPageContent";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { loadProductRegionLandingMetadata } from "@/lib/landing/productSlugLandingMetadata";
 import { loadProductsRegionLandingPageBundle } from "@/lib/landing/loadProductsSlugLandingPage";
+import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
 
 type RegionLandingProps = {
   params: Promise<{ slug: string }>;
@@ -37,8 +38,11 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
   const name = await getTaxonomyNameBySlug("category", trimmedSlug);
 
   if (landingData && landingData.taxonomyName && landingData.hero?.primaryCtaHref) {
-    const { dataWithChildren, listing, initialFiltersFromServer, initialRegionDescendants } =
-      await loadProductsRegionLandingPageBundle(trimmedSlug, landingData);
+    const [{ dataWithChildren, listing, initialFiltersFromServer, initialRegionDescendants }, collectionCampaignNames] =
+      await Promise.all([
+        loadProductsRegionLandingPageBundle(trimmedSlug, landingData),
+        getCollectionCampaignNamesForListing(),
+      ]);
     const {
       products,
       categories,
@@ -93,6 +97,7 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
                   initialRegionDescendants,
                   cardLayout: "related",
                   mobileListToolbarBelowBackHeader: true,
+                  collectionCampaignNames,
                 }}
               />
             </div>

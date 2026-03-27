@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ProductFiltersState } from "@/lib/productFilters";
-import { SORT_OPTIONS } from "@/lib/productFilters";
+import { SORT_OPTIONS, getCollectionLabel } from "@/lib/productFilters";
 import { cn } from "@/lib/cn";
 
 export type ProductFilterChipsProps = {
@@ -11,6 +11,7 @@ export type ProductFilterChipsProps = {
   onRemoveTheme: () => void;
   onRemoveProductLine?: () => void;
   onRemoveKeyword?: () => void;
+  onRemoveCollection?: () => void;
   onRemoveSort: () => void;
   className?: string;
 };
@@ -21,6 +22,7 @@ export function ProductFilterChips({
   onRemoveTheme,
   onRemoveProductLine,
   onRemoveKeyword,
+  onRemoveCollection,
   onRemoveSort,
   className,
 }: ProductFilterChipsProps) {
@@ -28,11 +30,13 @@ export function ProductFilterChips({
   const hasTheme = Boolean(filters.theme);
   const hasProductLine = Boolean(filters.product_line);
   const hasKeyword = Boolean(filters.q);
+  const collectionLabel = getCollectionLabel(filters.collection);
+  const hasCollection = Boolean(collectionLabel);
   const sortLabel = filters.sort
     ? SORT_OPTIONS.find((o) => o.value === filters.sort)?.label ?? filters.sort
     : null;
   const hasSort = Boolean(sortLabel);
-  const hasAny = hasRegion || hasTheme || hasProductLine || hasKeyword || hasSort;
+  const hasAny = hasRegion || hasTheme || hasProductLine || hasKeyword || hasCollection || hasSort;
 
   if (!hasAny) return null;
 
@@ -102,6 +106,22 @@ export function ProductFilterChips({
             onClick={onRemoveKeyword}
             aria-label={`키워드 ${filters.q} 제거`}
             className="rounded-full p-0.5 transition hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </span>
+      )}
+      {hasCollection && onRemoveCollection && (
+        <span
+          role="listitem"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-1.5 type-caption font-semibold text-[var(--primary)]"
+        >
+          {collectionLabel}
+          <button
+            type="button"
+            onClick={onRemoveCollection}
+            aria-label={`${collectionLabel} 제거`}
+            className="rounded-full p-0.5 transition hover:bg-[var(--primary)]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           >
             <X className="h-3.5 w-3.5" aria-hidden />
           </button>

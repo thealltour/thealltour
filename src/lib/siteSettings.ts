@@ -35,6 +35,13 @@ export type SiteSettings = {
   home_theme_section_title: string;
   /** 메인 홈 테마 섹션 부제목. 비어 있으면 "테마별로 여행 상품을 둘러보세요." 사용 */
   home_theme_section_description: string;
+  /**
+   * /products?collection=recommend 에 노출할 기획(taxonomy_type=campaign) id 목록. JSON 배열 문자열.
+   * 상품에 동일 이름이 `campaigns`로 붙어 있으면 추천 컬렉션에 포함. `is_recommend`와 OR.
+   */
+  products_collection_recommend_campaign_ids: string;
+  /** /products?collection=popular — 동일. `is_popular`와 OR. */
+  products_collection_popular_campaign_ids: string;
   about_kicker: string;
   about_title: string;
   about_paragraph1: string;
@@ -81,6 +88,8 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   home_theme_section_eyebrow: "TRAVEL THEMES",
   home_theme_section_title: "이런 여행은 어떠세요?",
   home_theme_section_description: "테마별로 여행 상품을 둘러보세요.",
+  products_collection_recommend_campaign_ids: "[]",
+  products_collection_popular_campaign_ids: "[]",
   about_kicker: "ABOUT THEALL TOUR",
   about_title: "여행을 디자인해 드립니다",
   about_paragraph1:
@@ -144,6 +153,12 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
       map.get("home_theme_section_title") ?? DEFAULT_SITE_SETTINGS.home_theme_section_title,
     home_theme_section_description:
       map.get("home_theme_section_description") ?? DEFAULT_SITE_SETTINGS.home_theme_section_description,
+    products_collection_recommend_campaign_ids:
+      map.get("products_collection_recommend_campaign_ids") ??
+      DEFAULT_SITE_SETTINGS.products_collection_recommend_campaign_ids,
+    products_collection_popular_campaign_ids:
+      map.get("products_collection_popular_campaign_ids") ??
+      DEFAULT_SITE_SETTINGS.products_collection_popular_campaign_ids,
     about_kicker: map.get("about_kicker") || DEFAULT_SITE_SETTINGS.about_kicker,
     about_title: map.get("about_title") || DEFAULT_SITE_SETTINGS.about_title,
     about_paragraph1:
@@ -194,5 +209,33 @@ export function parseHomeThemeCardIds(settings: Pick<SiteSettings, "home_theme_c
   } catch {
     return [];
   }
+}
+
+function parseJsonTaxonomyIdArray(raw: string | undefined): string[] {
+  const s = raw?.trim() ?? "";
+  if (!s || s === "[]") return [];
+  try {
+    const parsed = JSON.parse(s) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+      .map((v) => v.trim());
+  } catch {
+    return [];
+  }
+}
+
+/** 추천 컬렉션용 campaign taxonomy id (순서 유지). */
+export function parseProductsCollectionRecommendCampaignIds(
+  settings: Pick<SiteSettings, "products_collection_recommend_campaign_ids">,
+): string[] {
+  return parseJsonTaxonomyIdArray(settings.products_collection_recommend_campaign_ids);
+}
+
+/** 인기 컬렉션용 campaign taxonomy id (순서 유지). */
+export function parseProductsCollectionPopularCampaignIds(
+  settings: Pick<SiteSettings, "products_collection_popular_campaign_ids">,
+): string[] {
+  return parseJsonTaxonomyIdArray(settings.products_collection_popular_campaign_ids);
 }
 

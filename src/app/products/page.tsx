@@ -12,6 +12,7 @@ import {
   resolveLandingParams,
   hasLandingParams,
 } from "@/lib/productFiltersLanding";
+import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
 
 type ProductsPageProps = {
   searchParams?: Promise<{
@@ -51,6 +52,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const initialFiltersFromServer = landingResolved?.initialFilters ?? null;
   const initialKeywordFromLanding = landingResolved?.initialKeyword ?? "";
 
+  const collectionCampaignNames = await getCollectionCampaignNamesForListing();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
@@ -86,6 +89,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 regionTaxonomies: hubDestinations,
                 themeTaxonomies: hubThemes,
                 mobileListToolbarBelowBackHeader: true,
+                collectionCampaignNames,
               }}
             />
           )}

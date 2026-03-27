@@ -28,4 +28,9 @@ export type ProductsPageContentListingConfig = {
   /** FK/이름 매핑·하위 전개용 지역 택소노미(전체 트리) */
   regionTaxonomies?: ProductTaxonomy[] | null;
   themeTaxonomies?: ProductTaxonomy[] | null;
+  /**
+   * `/products?collection=recommend|popular` — 기획(campaign) taxonomy 이름 집합.
+   * 서버에서 `site_settings`의 campaign id를 이름으로 해석해 전달.
+   */
+  collectionCampaignNames?: { recommend: string[]; popular: string[] };
 };

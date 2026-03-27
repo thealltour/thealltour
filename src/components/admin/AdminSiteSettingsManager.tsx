@@ -66,6 +66,8 @@ const EMPTY_SETTINGS: SiteSettings = {
   about_paragraph2: "",
   about_cta_label: "",
   about_cta_href: "",
+  products_collection_recommend_campaign_ids: "[]",
+  products_collection_popular_campaign_ids: "[]",
 };
 
 export default function AdminSiteSettingsManager() {
@@ -122,6 +124,10 @@ export default function AdminSiteSettingsManager() {
         about_paragraph2: data.about_paragraph2 ?? "",
         about_cta_label: data.about_cta_label ?? "",
         about_cta_href: data.about_cta_href ?? "",
+        products_collection_recommend_campaign_ids:
+          data.products_collection_recommend_campaign_ids ?? "[]",
+        products_collection_popular_campaign_ids:
+          data.products_collection_popular_campaign_ids ?? "[]",
       };
 
       setSettings(nextSettings);

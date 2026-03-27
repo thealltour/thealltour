@@ -23,6 +23,7 @@ import {
   normalizeProductCatalogSearchKeyword,
   productCatalogMatchesKeyword,
 } from "@/lib/products/productCatalogKeyword";
+import { getCollectionLabel } from "@/lib/productFilters";
 
 /** 지역 칩 첫 항목 라벨 (내부 탭 id는 `all`) */
 const REGION_ALL_LABEL = "전체";
@@ -43,6 +44,10 @@ type ProductCatalogSectionProps = {
   onCategoryChange?: (region: string | null) => void;
   /** URL 연동 시 테마 변경 콜백 */
   onThemeChange?: (theme: string | null) => void;
+  /** URL 연동 시 초기 컬렉션 */
+  initialCollection?: string | null;
+  /** URL 연동 시 컬렉션 해제 콜백 */
+  onClearCollection?: () => void;
   /** 결과 0건일 때 필터 초기화 CTA */
   onResetFilters?: () => void;
   /** list: /products 목록형. related: 연관·랜딩용 카드 그리드 */
@@ -59,6 +64,8 @@ export default function ProductCatalogSection({
   initialTheme,
   onCategoryChange,
   onThemeChange,
+  initialCollection,
+  onClearCollection,
   onResetFilters,
   cardLayout = "list",
 }: ProductCatalogSectionProps) {
@@ -151,6 +158,7 @@ export default function ProductCatalogSection({
   }
 
   const regionSummary = activeTab === "all" ? REGION_ALL_LABEL : activeTab;
+  const collectionLabel = getCollectionLabel(initialCollection ?? null);
 
   return (
     <section className="space-y-4">
@@ -165,6 +173,11 @@ export default function ProductCatalogSection({
           {keyword ? (
             <p className="text-xs leading-snug text-[var(--primary)] sm:text-sm">
               검색어: {initialKeyword}
+            </p>
+          ) : null}
+          {collectionLabel ? (
+            <p className="text-xs leading-snug text-[var(--text-secondary)] sm:text-sm">
+              컬렉션: {collectionLabel}
             </p>
           ) : null}
         </div>
@@ -219,7 +232,11 @@ export default function ProductCatalogSection({
       <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-5">
         {keywordFilteredProducts.length === 0 ? (
           <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:rounded-3xl">
-            {(initialRegion || initialTheme || (initialKeyword && initialKeyword.trim())) && onResetFilters ? (
+            {(initialRegion ||
+              initialTheme ||
+              (initialKeyword && initialKeyword.trim()) ||
+              initialCollection) &&
+            (onResetFilters || onClearCollection) ? (
               <>
                 <p className="font-semibold text-[var(--text-primary)]">
                   선택한 조건에 맞는 상품이 없습니다.
@@ -229,11 +246,21 @@ export default function ProductCatalogSection({
                     initialRegion && `지역: ${initialRegion}`,
                     initialTheme && `테마: ${initialTheme}`,
                     initialKeyword?.trim() && `검색어: ${initialKeyword.trim()}`,
+                    collectionLabel && `컬렉션: ${collectionLabel}`,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {onClearCollection && initialCollection ? (
+                    <button
+                      type="button"
+                      onClick={onClearCollection}
+                      className="inline-flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 type-btn font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
+                    >
+                      컬렉션 해제
+                    </button>
+                  ) : null}
                   <Link
                     href="/products"
                     className={cn(
@@ -243,13 +270,15 @@ export default function ProductCatalogSection({
                   >
                     전체 상품 보기
                   </Link>
-                  <button
-                    type="button"
-                    onClick={onResetFilters}
-                    className="inline-flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 type-btn font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
-                  >
-                    필터 초기화
-                  </button>
+                  {onResetFilters ? (
+                    <button
+                      type="button"
+                      onClick={onResetFilters}
+                      className="inline-flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 type-btn font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
+                    >
+                      필터 초기화
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : keyword ? (

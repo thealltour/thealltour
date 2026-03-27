@@ -28,6 +28,7 @@ import {
   getTaxonomyHeroImageFallback,
 } from "@/lib/landingMetadata";
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
+import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { Product } from "@/types/product";
 
@@ -72,10 +73,11 @@ export default async function ThemeLandingPage({ params }: Props) {
   const theme = await getThemeBySlugForPublicLanding(slug);
   if (!theme) notFound();
 
-  const [products, subnodes, allThemes] = await Promise.all([
+  const [products, subnodes, allThemes, collectionCampaignNames] = await Promise.all([
     getProducts(),
     getLandingSubnodes("theme", slug),
     getHubThemes(),
+    getCollectionCampaignNamesForListing(),
   ]);
   const {
     categories,
@@ -290,6 +292,7 @@ export default async function ThemeLandingPage({ params }: Props) {
                     filterContextLabel: `현재 '${theme.name}' 기준으로 상품을 보여주고 있습니다.`,
                     initialThemeDescendantNames,
                     cardLayout: "related",
+                    collectionCampaignNames,
                   }}
                 />
               </div>

@@ -69,6 +69,7 @@ import { getProductDiffSummary } from "@/lib/adminProductDiff";
 import AdminHomeCuratedManager from "@/components/admin/products/AdminHomeCuratedManager";
 import AdminHomeRegionCardsManager from "@/components/admin/products/AdminHomeRegionCardsManager";
 import AdminHomeThemeCardsManager from "@/components/admin/products/AdminHomeThemeCardsManager";
+import AdminProductsCollectionCampaignsManager from "@/components/admin/products/AdminProductsCollectionCampaignsManager";
 import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
 import AdminProductListSection from "@/components/admin/products/AdminProductListSection";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
@@ -1402,7 +1403,12 @@ export default function AdminProductManager() {
         />
       )}
 
-      {isFeaturedView && <AdminHomeCuratedManager />}
+      {isFeaturedView && (
+        <div className="space-y-10">
+          <AdminProductsCollectionCampaignsManager />
+          <AdminHomeCuratedManager />
+        </div>
+      )}
 
       {isHomeRegionCardsView && <AdminHomeRegionCardsManager />}
 

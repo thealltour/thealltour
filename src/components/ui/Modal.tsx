@@ -10,6 +10,8 @@ type ModalProps = {
   children: ReactNode;
   /** 백드롭 클릭 시 닫기 (기본 true) */
   closeOnBackdropClick?: boolean;
+  /** 모달 외곽 래퍼 클래스 (정렬/패딩 조정) */
+  wrapperClassName?: string;
   /** 컨테이너 추가 클래스 (크기·패딩 등) */
   className?: string;
   /** role="dialog" 등 접근성용 */
@@ -26,6 +28,7 @@ export function Modal({
   onClose,
   children,
   closeOnBackdropClick = true,
+  wrapperClassName = "",
   className = "",
   "aria-label": ariaLabel,
 }: ModalProps) {
@@ -42,7 +45,10 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-[2px]"
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-[2px]",
+        wrapperClassName,
+      )}
       onClick={closeOnBackdropClick ? onClose : undefined}
       role="presentation"
     >

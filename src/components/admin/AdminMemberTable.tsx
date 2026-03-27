@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import AdminMemberDetailDrawer from "@/components/admin/members/AdminMemberDetailDrawer";
 
 type MemberItem = {
   id: string;
@@ -13,16 +17,6 @@ type MemberItem = {
   agree_email: boolean;
   points: number;
   created_at: string | null;
-};
-
-type MemberForm = {
-  name: string;
-  phone: string;
-  email: string;
-  birth_date: string;
-  gender: "male" | "female" | "other";
-  agree_email: boolean;
-  points: string;
 };
 
 type SortKey =
@@ -99,22 +93,31 @@ function SortButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="sm"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded px-1 py-0.5 transition ${
-        isActive ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+      className={`h-auto min-h-0 rounded-md px-1.5 py-0.5 text-xs ${
+        isActive
+          ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
+          : "text-[var(--primary)] hover:bg-[var(--primary-soft)]"
       }`}
     >
       <span>{label}</span>
       <span className="text-[10px] leading-none">
         {isActive ? (direction === "asc" ? "▲" : "▼") : "↕"}
       </span>
-    </button>
+    </Button>
   );
 }
 
 export default function AdminMemberTable() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const selectedMemberId = searchParams.get("memberId");
+  const isDrawerOpen = Boolean(selectedMemberId);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -123,9 +126,6 @@ export default function AdminMemberTable() {
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<MemberForm | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
   const pageSize = 8;
 
   async function loadMembers() {
@@ -230,70 +230,18 @@ export default function AdminMemberTable() {
     setPage(1);
   }
 
-  function startEdit(item: MemberItem) {
-    setEditingId(item.id);
-    setEditForm({
-      name: item.name,
-      phone: item.phone,
-      email: item.email,
-      birth_date: item.birth_date,
-      gender: item.gender,
-      agree_email: item.agree_email,
-      points: String(item.points ?? 0),
-    });
-    setErrorMessage("");
+  function openMemberDrawer(memberId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("memberId", memberId);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
 
-  function cancelEdit() {
-    setEditingId(null);
-    setEditForm(null);
-  }
-
-  async function saveEdit(id: string) {
-    if (!editForm) return;
-    setPendingId(id);
-    setErrorMessage("");
-    try {
-      const response = await fetch(`/api/admin/members/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editForm.name,
-          phone: editForm.phone,
-          email: editForm.email,
-          birth_date: editForm.birth_date,
-          gender: editForm.gender,
-          agree_email: editForm.agree_email,
-          points: Number(editForm.points.replace(/,/g, "")),
-        }),
-      });
-      const result = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        setErrorMessage(result.message ?? "회원 정보 수정에 실패했습니다.");
-        return;
-      }
-      setMembers((current) =>
-        current.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                name: editForm.name,
-                phone: editForm.phone,
-                email: editForm.email,
-                birth_date: editForm.birth_date,
-                gender: editForm.gender,
-                agree_email: editForm.agree_email,
-                points: Number(editForm.points.replace(/,/g, "")) || 0,
-              }
-            : item,
-        ),
-      );
-      cancelEdit();
-    } catch {
-      setErrorMessage("회원 정보 수정 중 오류가 발생했습니다.");
-    } finally {
-      setPendingId(null);
-    }
+  function closeDrawer() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("memberId");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
 
   if (isLoading) {
@@ -333,89 +281,53 @@ export default function AdminMemberTable() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 px-4">
-        <button
+        <Button
           type="button"
           onClick={() =>
             downloadCsv(`members-agree-email-${getDateStamp()}.csv`, agreeEmailMembers)
           }
-          className="rounded border border-[var(--success)]/40 bg-[var(--success-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--success)] transition hover:bg-[color:color-mix(in_oklab,var(--success)_8%,transparent)]"
+          variant="secondary"
+          size="sm"
+          className="min-h-0 border border-[var(--success)]/40 bg-[var(--success-bg)] py-1.5 text-xs text-[var(--success)] hover:bg-[color:color-mix(in_oklab,var(--success)_8%,transparent)]"
         >
           동의회원 전체 CSV 다운로드
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() =>
             downloadCsv(`members-current-filter-${getDateStamp()}.csv`, sortedMembers)
           }
-          className="rounded border border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)]"
+          variant="outline"
+          size="sm"
+          className="min-h-0 py-1.5 text-xs"
         >
           현재 검색된 회원 전체 CSV 다운로드
-        </button>
+        </Button>
       </div>
 
       {errorMessage ? <p className="px-4 text-sm text-[var(--danger)]">{errorMessage}</p> : null}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1180px] border-collapse text-sm">
+        <table className="min-w-full table-fixed border-collapse text-sm">
           <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold">
+              <th className="w-[40%] px-4 py-3 text-left font-semibold">
                 <SortButton
-                  label="아이디"
-                  isActive={sortKey === "username"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("username")}
-                />
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                <SortButton
-                  label="이름"
+                  label="회원"
                   isActive={sortKey === "name"}
                   direction={sortDirection}
                   onClick={() => handleSort("name")}
                 />
               </th>
-              <th className="px-4 py-3 text-left font-semibold">
+              <th className="w-[15%] px-4 py-3 text-left font-semibold">
                 <SortButton
-                  label="연락처"
-                  isActive={sortKey === "phone"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("phone")}
-                />
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                <SortButton
-                  label="이메일"
-                  isActive={sortKey === "email"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("email")}
-                />
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                <SortButton
-                  label="생년월일"
-                  isActive={sortKey === "birth_date"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("birth_date")}
-                />
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                <SortButton
-                  label="성별"
-                  isActive={sortKey === "gender"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("gender")}
-                />
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                <SortButton
-                  label="이메일수신"
+                  label="수신동의"
                   isActive={sortKey === "agree_email"}
                   direction={sortDirection}
                   onClick={() => handleSort("agree_email")}
                 />
               </th>
-              <th className="px-4 py-3 text-left font-semibold">
+              <th className="w-[15%] px-4 py-3 text-right font-semibold">
                 <SortButton
                   label="포인트"
                   isActive={sortKey === "points"}
@@ -423,172 +335,69 @@ export default function AdminMemberTable() {
                   onClick={() => handleSort("points")}
                 />
               </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                포인트(P)
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
+              <th className="w-[20%] px-4 py-3 text-left font-semibold">
                 <SortButton
-                  label="가입일시"
+                  label="가입일"
                   isActive={sortKey === "created_at"}
                   direction={sortDirection}
                   onClick={() => handleSort("created_at")}
                 />
               </th>
-              <th className="px-4 py-3 text-left font-semibold">작업</th>
+              <th className="w-[10%] px-4 py-3 text-left font-semibold">작업</th>
             </tr>
           </thead>
           <tbody>
             {pagedMembers.length === 0 ? (
               <tr className="border-t border-[var(--divider)]">
-                <td colSpan={9} className="px-4 py-6 text-center text-[var(--text-muted)]">
+                <td colSpan={5} className="px-4 py-6 text-center text-[var(--text-muted)]">
                   회원 데이터가 없습니다.
                 </td>
               </tr>
             ) : (
-              pagedMembers.map((item) => {
-                const isEditing = editingId === item.id && editForm;
-                return (
-                  <tr key={item.id} className="border-t border-[var(--divider)]">
-                    <td className="px-4 py-3 font-medium text-[var(--primary)]">{item.username}</td>
-                <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          value={editForm.name}
-                          onChange={(event) => setEditForm({ ...editForm, name: event.target.value })}
-                          className="w-28 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
-                        />
-                      ) : (
-                        item.name
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          value={editForm.phone}
-                          onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })}
-                          className="w-32 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
-                        />
-                      ) : (
-                        item.phone
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          value={editForm.email}
-                          onChange={(event) => setEditForm({ ...editForm, email: event.target.value })}
-                          className="w-44 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
-                        />
-                      ) : (
-                        item.email
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          type="date"
-                          value={editForm.birth_date}
-                          onChange={(event) => setEditForm({ ...editForm, birth_date: event.target.value })}
-                          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
-                        />
-                      ) : (
-                        item.birth_date
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <select
-                          value={editForm.gender}
-                          onChange={(event) =>
-                            setEditForm({
-                              ...editForm,
-                              gender: event.target.value as "male" | "female" | "other",
-                            })
-                          }
-                          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
-                        >
-                          <option value="male">남성</option>
-                          <option value="female">여성</option>
-                          <option value="other">기타</option>
-                        </select>
-                      ) : item.gender === "male" ? (
-                        "남성"
-                      ) : item.gender === "female" ? (
-                        "여성"
-                      ) : (
-                        "기타"
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <label className="inline-flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={editForm.agree_email}
-                            onChange={(event) =>
-                              setEditForm({ ...editForm, agree_email: event.target.checked })
-                            }
-                            className="h-4 w-4 accent-[var(--primary)]"
-                          />
-                          동의
-                        </label>
-                      ) : item.agree_email ? (
-                        "동의"
-                      ) : (
-                        "미동의"
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          value={editForm.points}
-                          onChange={(event) => {
-                            const raw = event.target.value.replace(/[^\d]/g, "");
-                            const formatted = raw ? Number(raw).toLocaleString("ko-KR") : "0";
-                            setEditForm({ ...editForm, points: formatted });
-                          }}
-                          className="w-24 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-right text-[var(--text-primary)]"
-                        />
-                      ) : (
-                        <span className="tabular-nums">
-                          {Number(item.points ?? 0).toLocaleString("ko-KR")}P
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{formatDate(item.created_at)}</td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={pendingId === item.id}
-                            onClick={() => saveEdit(item.id)}
-                            className="rounded border border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[var(--success-bg)] px-2 py-1 text-xs text-[var(--primary)]"
-                          >
-                            저장
-                          </button>
-                          <button
-                            type="button"
-                            disabled={pendingId === item.id}
-                            onClick={cancelEdit}
-                            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)]"
-                          >
-                            취소
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => startEdit(item)}
-                          className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)]"
-                        >
-                          수정
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+              pagedMembers.map((item) => (
+                <tr
+                  key={item.id}
+                  className="cursor-pointer border-t border-[var(--divider)] transition-colors hover:bg-[var(--surface-muted)]"
+                  onClick={() => openMemberDrawer(item.id)}
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-[var(--text-primary)]">{item.name || "-"}</span>
+                      <span className="text-xs text-[var(--text-secondary)]">{item.username}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{item.email || "-"}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{item.phone || "-"}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      variant={item.agree_email ? "success" : "neutral"}
+                      className="px-2 py-0.5 text-xs font-semibold"
+                    >
+                      {item.agree_email ? "이메일 동의" : "미동의"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums text-[var(--text-primary)]">
+                    {item.points?.toLocaleString?.() ?? 0}
+                  </td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
+                  </td>
+                  <td
+                    className="px-4 py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto min-h-0 px-0 py-0 text-sm font-semibold text-[var(--primary)] hover:underline"
+                      onClick={() => openMemberDrawer(item.id)}
+                    >
+                      상세
+                    </Button>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -600,27 +409,38 @@ export default function AdminMemberTable() {
           {Math.min(safePage * pageSize, sortedMembers.length)}건 표시
         </p>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => setPage(Math.max(1, safePage - 1))}
             disabled={safePage <= 1}
-            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            variant="outline"
+            size="sm"
+            className="min-h-0 py-1 text-xs"
           >
             이전
-          </button>
+          </Button>
           <span className="text-xs font-semibold text-[var(--text-primary)]">
             {safePage} / {totalPages}
           </span>
-          <button
+          <Button
             type="button"
             onClick={() => setPage(Math.min(totalPages, safePage + 1))}
             disabled={safePage >= totalPages}
-            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            variant="outline"
+            size="sm"
+            className="min-h-0 py-1 text-xs"
           >
             다음
-          </button>
+          </Button>
         </div>
       </div>
+
+      <AdminMemberDetailDrawer
+        memberId={selectedMemberId}
+        isOpen={isDrawerOpen}
+        onClose={closeDrawer}
+        members={pagedMembers}
+      />
     </div>
   );
 }

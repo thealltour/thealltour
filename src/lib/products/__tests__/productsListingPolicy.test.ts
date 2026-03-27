@@ -68,6 +68,15 @@ describe("productsListingPolicy", () => {
     expect(r.theme).toBeNull();
   });
 
+  it("resolveProductsPageInitialFilters: canonical + collection 이면 collection도 URL 기준 유지", () => {
+    const r = resolveProductsPageInitialFilters(
+      sp({ region: "미국", collection: "popular" }),
+      serverFilters,
+    );
+    expect(r.region).toBe("미국");
+    expect(r.collection).toBe("popular");
+  });
+
   it("resolveProductsPageInitialFilters: collection 만 있으면 canonical 아님 → 서버 우선", () => {
     const r = resolveProductsPageInitialFilters(sp({ collection: "popular" }), serverFilters);
     expect(r).toEqual(serverFilters);
@@ -110,6 +119,21 @@ describe("productsListingPolicy", () => {
       collection: null,
     });
     expect(out.get("region")).toBeNull();
+    expect(out.get("theme")).toBe("골프");
+  });
+
+  it("mergeFiltersIntoSearchParams: collection null이면 제거되고 tourType은 유지", () => {
+    const cur = new URLSearchParams("collection=recommend&tourType=golf&theme=골프");
+    const out = mergeFiltersIntoSearchParams(cur, {
+      region: null,
+      theme: "골프",
+      product_line: null,
+      sort: "",
+      q: null,
+      collection: null,
+    });
+    expect(out.get("collection")).toBeNull();
+    expect(out.get("tourType")).toBe("golf");
     expect(out.get("theme")).toBe("골프");
   });
 

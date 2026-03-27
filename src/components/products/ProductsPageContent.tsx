@@ -11,7 +11,9 @@ import { ProductListToolbar } from "@/components/products/ProductListToolbar";
 import {
   mergeFiltersIntoSearchParams,
   applyProductFilters,
+  getCollectionLabel,
   SORT_OPTIONS,
+  type ProductCollectionId,
   type ProductFiltersState,
   type ProductSortId,
 } from "@/lib/productFilters";
@@ -122,7 +124,12 @@ export function ProductsPageContent({
       }
     }
 
-    if (!regionDescendants && !themeDescendantNames) return undefined;
+    const ccn = listing?.collectionCampaignNames;
+    const hasCollectionCampaigns =
+      ccn &&
+      ((ccn.recommend?.length ?? 0) > 0 || (ccn.popular?.length ?? 0) > 0);
+
+    if (!regionDescendants && !themeDescendantNames && !hasCollectionCampaigns) return undefined;
     return {
       ...(regionDescendants && regionDescendantForName
         ? { regionDescendants, regionDescendantForName }
@@ -130,6 +137,7 @@ export function ProductsPageContent({
       ...(themeDescendantNames && themeDescendantForName
         ? { themeDescendantNames, themeDescendantForName }
         : {}),
+      ...(hasCollectionCampaigns && ccn ? { collectionCampaignNames: ccn } : {}),
     };
   }, [
     filters.region,
@@ -139,6 +147,7 @@ export function ProductsPageContent({
     initialThemeDescendantNames,
     regionTaxonomies,
     themeTaxonomies,
+    listing?.collectionCampaignNames,
   ]);
 
   const filteredProducts = useMemo(
@@ -165,9 +174,18 @@ export function ProductsPageContent({
         sort: "",
       });
     } else {
-      handleFilterChange({ region: null, theme: null, product_line: null, q: null, sort: "" });
+      handleFilterChange({
+        region: null,
+        theme: null,
+        product_line: null,
+        q: null,
+        sort: "",
+        collection: null,
+      });
     }
   };
+
+  const collectionLabel = getCollectionLabel(filters.collection);
 
   return (
     <div className="flex w-full max-w-full gap-8 items-start">
@@ -185,13 +203,35 @@ export function ProductsPageContent({
         <ProductListToolbar
           sortLabel={sortLabel}
           currentSort={filters.sort}
+          currentCollection={filters.collection}
           onFilterClick={() => setFilterDrawerOpen(true)}
           onSortClick={() => setSortSheetOpen(true)}
           onSortChange={(sort) => handleFilterChange({ sort })}
+          onCollectionChange={(collection: ProductCollectionId | null) =>
+            handleFilterChange({ collection })
+          }
           belowMobileBackHeader={mobileListToolbarBelowBackHeader}
         />
 
         <div className="space-y-2">
+          {collectionLabel && (
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2"
+              role="status"
+            >
+              <p className="type-small text-[var(--text-secondary)]">
+                현재 <span className="font-semibold text-[var(--foreground)]">{collectionLabel}</span>
+                {" "}내에서 상품을 보여주고 있습니다.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleFilterChange({ collection: null })}
+                className="inline-flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 type-caption font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface)]/70"
+              >
+                전체 상품 보기
+              </button>
+            </div>
+          )}
           {filterContextLabel && (
             <p className="type-small text-[var(--text-muted)]" role="status">
               {filterContextLabel}
@@ -203,6 +243,7 @@ export function ProductsPageContent({
             onRemoveTheme={() => handleFilterChange({ theme: null })}
             onRemoveProductLine={() => handleFilterChange({ product_line: null })}
             onRemoveKeyword={() => handleFilterChange({ q: null })}
+            onRemoveCollection={() => handleFilterChange({ collection: null })}
             onRemoveSort={() => handleFilterChange({ sort: "" })}
           />
         </div>
@@ -218,6 +259,8 @@ export function ProductsPageContent({
           onCategoryChange={(region) => handleFilterChange({ region: region ?? null })}
           onThemeChange={(theme) => handleFilterChange({ theme: theme ?? null })}
           onResetFilters={handleResetFilters}
+          initialCollection={filters.collection}
+          onClearCollection={() => handleFilterChange({ collection: null })}
           cardLayout={cardLayout}
         />
       </div>

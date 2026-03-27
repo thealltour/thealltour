@@ -43,6 +43,8 @@ export async function PATCH(request: Request) {
     { key: "home_theme_section_eyebrow", defaultValue: "" },
     { key: "home_theme_section_title", defaultValue: "" },
     { key: "home_theme_section_description", defaultValue: "" },
+    { key: "products_collection_recommend_campaign_ids", defaultValue: "[]" },
+    { key: "products_collection_popular_campaign_ids", defaultValue: "[]" },
     { key: "company_name", defaultValue: "" },
     { key: "ceo_name", defaultValue: "" },
     { key: "address", defaultValue: "" },

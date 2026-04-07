@@ -10,6 +10,10 @@ import { serializeStructuredDaysToSchedule } from "@/lib/products/mapProductToTi
 import { serializeItineraryImages } from "@/lib/images/serializeItineraryImages";
 import { parseDetailedSchedule } from "./adminProductForm.helpers";
 import type { AdminProductSavePayload } from "./adminProductForm.types";
+import {
+  sanitizeSeasonalPriceBandsFromFormStrings,
+  seasonalPriceBandsToJsonColumn,
+} from "@/lib/products/seasonalPriceBands";
 
 /** PostgreSQL integer 호환: 유한 정수만, 범위 초과 시 null */
 function toSafeInteger(value: unknown): number | null {
@@ -55,6 +59,12 @@ export function serializeAdminProductForm(
   const resolvedTermsAndNotes = shouldRepairLegacyDetailMix ? "" : normalizedTermsAndNotes;
 
   const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
+  const bandsSanitized = sanitizeSeasonalPriceBandsFromFormStrings(form.seasonal_price_bands);
+  const bandsForDb = seasonalPriceBandsToJsonColumn(bandsSanitized);
+
+  const priceForPayload: number | null =
+    normalizedPrice === "" ? null : toSafeInteger(Number(normalizedPrice));
+  /* PR-D: 대표가(price)는 구간가에서 자동 보정하지 않음 — 운영자가 price를 직접 관리 */
   const normalizedImages = normalizeImageList(form.images_json);
   const primaryImageUrl = form.image_url.trim() || normalizedImages[0] || "";
 
@@ -118,7 +128,8 @@ export function serializeAdminProductForm(
       const arr = s.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
       return arr.length > 0 ? arr : null;
     })(),
-    price: normalizedPrice === "" ? null : toSafeInteger(Number(normalizedPrice)),
+    price: priceForPayload,
+    seasonal_price_bands: bandsForDb,
     duration: form.duration.trim() === "" ? null : form.duration,
     itinerary: form.itinerary.trim() === "" ? null : form.itinerary,
     inclusions: form.inclusions.trim() === "" ? null : form.inclusions,

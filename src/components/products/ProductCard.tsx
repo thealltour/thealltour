@@ -15,6 +15,18 @@ import type { CampaignCardKind } from "@/lib/productCampaignPresentation";
 import { resolveCampaignCardKind } from "@/lib/productCampaignPresentation";
 import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
 import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
+import type { SeasonalPriceBands } from "@/types/product";
+import {
+  getProductCardSeasonalBandInfo,
+  getSeasonalCardCompactAmountDigits,
+  getSeasonalCardMainLineFull,
+  SEASONAL_CARD_SUBLINE,
+} from "@/lib/products/productCardSeasonalPriceDisplay";
+import {
+  PRODUCT_CARD_HIGHLIGHT_LABELS,
+  type ProductCardHighlightTag,
+} from "@/lib/products/productCardHighlightTag";
+import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
 
 export type ProductCardStatus =
   | "AVAILABLE"
@@ -90,6 +102,10 @@ export type ProductCardProps = {
   campaignPitchLine?: string;
   /** 리스트/모바일 등 layout이 grid여도 피치·톤을 맞출 때 */
   campaignPresentationKind?: CampaignCardKind;
+  /** PR-B: 구간가. 있으면 단일 `price`보다 우선 표시 */
+  seasonal_price_bands?: SeasonalPriceBands | null;
+  /** PR-F: 전환 신호 1개 — 있으면 캠페인 오버레이 배지 대신 이것만 표시 */
+  highlightTag?: ProductCardHighlightTag;
 };
 
 function formatReviewCount(n: number): string {
@@ -164,6 +180,8 @@ export default function ProductCard({
   selectionHighlightLine = "",
   campaignPitchLine = "",
   campaignPresentationKind,
+  seasonal_price_bands,
+  highlightTag,
 }: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -218,6 +236,14 @@ export default function ProductCard({
 
   const isListLayout = layout === "list";
   const isRelatedLayout = layout === "related";
+  const isStackLayout = layout === "stack";
+
+  const highlightLabel = highlightTag ? PRODUCT_CARD_HIGHLIGHT_LABELS[highlightTag] : null;
+  const overlayCampaignBadges = highlightLabel ? [] : visibleCampaignBadges;
+  const showHighlightPriceLine =
+    Boolean(highlightLabel) && (isListLayout || isRelatedLayout);
+  const useCompactSeasonalPrice = isRelatedLayout || isStackLayout;
+  const seasonalBandInfo = getProductCardSeasonalBandInfo(seasonal_price_bands);
 
   const durationLabel = overviewDuration?.trim() || duration?.trim() || "";
   const topPick = topPickLabel?.trim() ?? "";
@@ -228,29 +254,51 @@ export default function ProductCard({
 
   const selectionLine = selectionHighlightLine?.trim() ?? "";
 
-  const priceBlock = (
-    <div className="space-y-0.5">
-      {priceFormatted != null ? (
-        <>
-          <p
-            className={cn(
-              "font-price-strong font-bold leading-tight text-[var(--primary)] tabular-nums",
-              "text-xl md:text-2xl",
-              isRelatedLayout &&
-                (guideBridgeNarrowCopy ? "text-lg sm:text-xl md:text-2xl" : "text-base md:text-lg"),
-            )}
-          >
-            {isRelatedLayout ? `₩${priceFormatted}~` : `${priceFormatted}원~`}
-          </p>
-          {priceMeta ? (
-            <p className="text-[10px] font-medium text-[var(--text-subtle)] sm:text-[11px]">{priceMeta}</p>
-          ) : null}
-        </>
-      ) : (
-        <p className="font-semibold text-sm text-[var(--text-muted)]">상담 후 견적</p>
-      )}
-    </div>
+  const priceMainClass = cn(
+    "font-price-strong font-bold leading-tight text-[var(--primary)] tabular-nums",
+    "text-xl md:text-2xl",
+    isRelatedLayout &&
+      (guideBridgeNarrowCopy ? "text-lg sm:text-xl md:text-2xl" : "text-base md:text-lg"),
   );
+
+  const priceBlock = (() => {
+    if (seasonalBandInfo && seasonal_price_bands) {
+      if (useCompactSeasonalPrice) {
+        const digits = getSeasonalCardCompactAmountDigits(seasonalBandInfo);
+        return (
+          <div className="space-y-0.5">
+            <p className={priceMainClass}>{`최저 ₩${digits}~`}</p>
+          </div>
+        );
+      }
+      const mainLine = getSeasonalCardMainLineFull(seasonal_price_bands, seasonalBandInfo);
+      return (
+        <div className="space-y-0.5">
+          <p className={priceMainClass}>{mainLine}</p>
+          <p className="text-[10px] font-medium text-[var(--text-subtle)] sm:text-[11px]">
+            {SEASONAL_CARD_SUBLINE}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-0.5">
+        {priceFormatted != null ? (
+          <>
+            <p className={priceMainClass}>
+              {isRelatedLayout ? `₩${priceFormatted}~` : `${priceFormatted}원~`}
+            </p>
+            {priceMeta ? (
+              <p className="text-[10px] font-medium text-[var(--text-subtle)] sm:text-[11px]">{priceMeta}</p>
+            ) : null}
+          </>
+        ) : (
+          <p className="font-semibold text-sm text-[var(--text-muted)]">상담 후 견적</p>
+        )}
+      </div>
+    );
+  })();
 
   const chipRow = (compact?: boolean) => (
     <div className="flex min-w-0 flex-wrap items-center gap-1">
@@ -285,27 +333,38 @@ export default function ProductCard({
   const relatedCardContent = (
     <div className="flex h-full flex-col">
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]">
-        {(topPick || visibleCampaignBadges.length > 0) && (
+        {(highlightLabel || topPick || overlayCampaignBadges.length > 0) && (
           <div className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1">
-            {topPick ? (
+            {highlightLabel ? (
               <span
-                className="inline-flex max-w-[min(100%,10rem)] shrink-0 truncate rounded bg-[var(--primary)]/92 px-1.5 py-[3px] text-[9px] font-semibold leading-tight text-[var(--on-primary)] shadow-sm ring-1 ring-black/5"
-                title={topPick}
+                className="inline-flex max-w-[min(100%,11rem)] shrink-0 truncate rounded-md bg-amber-500/95 px-2 py-1 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30"
+                title={highlightLabel}
               >
-                {topPick}
+                {highlightLabel}
               </span>
-            ) : null}
-            {visibleCampaignBadges.map((b, i) => (
-              <ProductCampaignBadge
-                key={`${b.label}-${i}`}
-                label={b.label}
-                isPrimary={i === 0}
-                kind={campaignKind}
-                badgeTone={b.campaignTone}
-                size="md"
-                surface="overlay"
-              />
-            ))}
+            ) : (
+              <>
+                {topPick ? (
+                  <span
+                    className="inline-flex max-w-[min(100%,10rem)] shrink-0 truncate rounded bg-[var(--primary)]/92 px-1.5 py-[3px] text-[9px] font-semibold leading-tight text-[var(--on-primary)] shadow-sm ring-1 ring-black/5"
+                    title={topPick}
+                  >
+                    {topPick}
+                  </span>
+                ) : null}
+                {overlayCampaignBadges.map((b, i) => (
+                  <ProductCampaignBadge
+                    key={`${b.label}-${i}`}
+                    label={b.label}
+                    isPrimary={i === 0}
+                    kind={campaignKind}
+                    badgeTone={b.campaignTone}
+                    size="md"
+                    surface="overlay"
+                  />
+                ))}
+              </>
+            )}
           </div>
         )}
         {thumbnailUrl ? (
@@ -363,6 +422,9 @@ export default function ProductCard({
               </p>
             ) : null}
             <div className="mt-1.5">{priceBlock}</div>
+            {showHighlightPriceLine ? (
+              <p className="mt-1 line-clamp-1 text-[10px] text-slate-500 sm:text-[11px]">{highlightLabel}</p>
+            ) : null}
             {campaignPitch ? (
               <p
                 className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-[11px]"
@@ -424,6 +486,9 @@ export default function ProductCard({
               <p className="mt-1 line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)]">{oneLine}</p>
             ) : null}
             <div className="mt-2">{priceBlock}</div>
+            {showHighlightPriceLine ? (
+              <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{highlightLabel}</p>
+            ) : null}
             {campaignPitch ? (
               <p
                 className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1"
@@ -458,9 +523,15 @@ export default function ProductCard({
             : "w-[42%] min-w-[140px] max-w-[220px]",
         )}
       >
-        {!isListLayout && visibleCampaignBadges.length > 0 ? (
+        {highlightLabel && !isListLayout ? (
+          <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
+            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[11px]">
+              {highlightLabel}
+            </span>
+          </div>
+        ) : !isListLayout && overlayCampaignBadges.length > 0 ? (
           <div className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1">
-            {visibleCampaignBadges.map((b, i) => (
+            {overlayCampaignBadges.map((b, i) => (
               <ProductCampaignBadge
                 key={`grid-camp-${b.label}-${i}`}
                 label={b.label}
@@ -471,6 +542,13 @@ export default function ProductCard({
                 surface="overlay"
               />
             ))}
+          </div>
+        ) : null}
+        {isListLayout && highlightLabel ? (
+          <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
+            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30">
+              {highlightLabel}
+            </span>
           </div>
         ) : null}
         {thumbnailUrl ? (
@@ -502,12 +580,12 @@ export default function ProductCard({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
-        {isListLayout && visibleCampaignBadges.length > 0 ? (
+        {isListLayout && overlayCampaignBadges.length > 0 ? (
           <div
             className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5"
             aria-label="기획 배지"
           >
-            {visibleCampaignBadges.map((b, i) => (
+            {overlayCampaignBadges.map((b, i) => (
               <ProductCampaignBadge
                 key={`list-inline-${b.label}-${i}`}
                 label={b.label}
@@ -545,6 +623,9 @@ export default function ProductCard({
         ) : null}
 
         <div className="mt-2">{priceBlock}</div>
+        {showHighlightPriceLine ? (
+          <p className="mt-1 line-clamp-1 text-xs text-slate-500">{highlightLabel}</p>
+        ) : null}
 
         <div className="mt-auto flex flex-col gap-2 pt-3">
           {tags.length > 0 ? (
@@ -580,7 +661,7 @@ export default function ProductCard({
                 if (e.key === "Enter" || e.key === " ") handleConsultKey(e);
               }}
             >
-              {status === "SOLD_OUT" ? "대기 문의" : "상담 문의"}
+              {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status)}
             </span>
           ) : null}
         </div>

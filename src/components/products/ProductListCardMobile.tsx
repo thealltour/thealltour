@@ -13,6 +13,13 @@ import { cn } from "@/lib/cn";
 import type { ProductCardProps } from "@/components/products/ProductCard";
 import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
 import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
+import {
+  getProductCardSeasonalBandInfo,
+  getSeasonalCardMainLineFull,
+  SEASONAL_CARD_SUBLINE,
+} from "@/lib/products/productCardSeasonalPriceDisplay";
+import { PRODUCT_CARD_HIGHLIGHT_LABELS } from "@/lib/products/productCardHighlightTag";
+import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
 
 export type ProductListCardMobileProps = ProductCardProps;
 
@@ -50,6 +57,7 @@ function ListRatingBlockMobile({
 export default function ProductListCardMobile({
   title = "",
   price,
+  seasonal_price_bands,
   duration = "",
   tags = [],
   status,
@@ -67,6 +75,7 @@ export default function ProductListCardMobile({
   analyticsSource,
   analyticsSection,
   productId,
+  highlightTag,
 }: ProductListCardMobileProps) {
   const [consultPressed, setConsultPressed] = useState(false);
 
@@ -77,10 +86,14 @@ export default function ProductListCardMobile({
         ? price
         : null;
 
+  const seasonalBandInfo = getProductCardSeasonalBandInfo(seasonal_price_bands);
+
   const visibleCampaignBadges = [...badges]
     .filter((b) => b.isActive !== false)
     .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
     .slice(0, 2);
+  const highlightLabel = highlightTag ? PRODUCT_CARD_HIGHLIGHT_LABELS[highlightTag] : null;
+  const overlayCampaignBadges = highlightLabel ? [] : visibleCampaignBadges;
   const infoDisplayChips = pickInfoDisplayChips(status, infoBadges);
 
   const handleCardClick = () => {
@@ -128,12 +141,18 @@ export default function ProductListCardMobile({
     <div className="flex min-h-[148px] w-full">
       {/* 좌측: 이미지 + 캠페인 배지 오버레이(데스크 목록과 동일 소스) */}
       <div className="relative w-[34%] min-w-[112px] max-w-[136px] shrink-0 self-stretch overflow-hidden bg-[var(--surface-muted)]">
-        {visibleCampaignBadges.length > 0 ? (
+        {highlightLabel ? (
+          <div className="pointer-events-none absolute left-1 top-1 z-10 max-w-[calc(100%-0.5rem)] sm:left-1.5 sm:top-1.5">
+            <span className="inline-flex max-w-full truncate rounded-md bg-amber-500/95 px-1.5 py-0.5 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:px-2 sm:py-1 sm:text-[10px]">
+              {highlightLabel}
+            </span>
+          </div>
+        ) : overlayCampaignBadges.length > 0 ? (
           <div
             className="pointer-events-none absolute left-1 top-1 z-10 flex max-w-[calc(100%-0.5rem)] flex-col items-start gap-0.5 sm:left-1.5 sm:top-1.5 sm:flex-row sm:flex-wrap sm:gap-1"
             aria-label="기획 배지"
           >
-            {visibleCampaignBadges.map((b, i) => (
+            {overlayCampaignBadges.map((b, i) => (
               <ProductCampaignBadge
                 key={`m-ov-${b.label}-${i}`}
                 label={b.label}
@@ -199,7 +218,19 @@ export default function ProductListCardMobile({
           </p>
         ) : null}
         <div className="mt-1">
-          {priceFormatted != null ? (
+          {seasonalBandInfo && seasonal_price_bands ? (
+            <>
+              <p className="line-clamp-2 text-xl font-bold tabular-nums leading-tight text-[var(--primary)]">
+                {getSeasonalCardMainLineFull(seasonal_price_bands, seasonalBandInfo)}
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium text-[var(--text-subtle)]">
+                {SEASONAL_CARD_SUBLINE}
+              </p>
+              {highlightLabel ? (
+                <p className="mt-1 line-clamp-1 text-[10px] text-slate-500">{highlightLabel}</p>
+              ) : null}
+            </>
+          ) : priceFormatted != null ? (
             <>
               <p className="text-xl font-bold tabular-nums leading-tight text-[var(--primary)]">
                 {priceFormatted}원~
@@ -208,6 +239,9 @@ export default function ProductListCardMobile({
                 <p className="mt-0.5 text-[10px] font-medium text-[var(--text-subtle)]">
                   {priceMeta}
                 </p>
+              ) : null}
+              {highlightLabel ? (
+                <p className="mt-1 line-clamp-1 text-[10px] text-slate-500">{highlightLabel}</p>
               ) : null}
             </>
           ) : (
@@ -230,7 +264,7 @@ export default function ProductListCardMobile({
               if (e.key === "Enter" || e.key === " ") handleConsultKey(e);
             }}
           >
-            {status === "SOLD_OUT" ? "대기 문의" : "상담 문의"}
+            {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status)}
           </button>
         ) : null}
       </div>

@@ -9,6 +9,7 @@ import { formToPreviewProduct } from "@/lib/admin/productPreview";
 import {
   hasRealText,
   hasValidNumber,
+  hasAnyValidSeasonalPriceBand,
   hasValidPriceOptionJson,
   hasCoverImage,
   hasNonEmptyArray,
@@ -47,7 +48,11 @@ export function getPreviewWarnings(
     });
   }
 
-  if (!hasValidNumber(form.price) && !hasValidPriceOptionJson(form.options_json)) {
+  if (
+    !hasValidNumber(form.price) &&
+    !hasAnyValidSeasonalPriceBand(form) &&
+    !hasValidPriceOptionJson(form.options_json)
+  ) {
     warnings.push({
       id: "price",
       message: "가격 미입력 또는 0원 → 카드/상세에 '상담 후 견적'으로만 표시됩니다.",

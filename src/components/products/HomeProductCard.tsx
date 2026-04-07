@@ -17,6 +17,15 @@ import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
 import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresentation";
 import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
 import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
+import {
+  getProductCardSeasonalBandInfo,
+  getSeasonalCardMainLineFull,
+  SEASONAL_CARD_SUBLINE,
+} from "@/lib/products/productCardSeasonalPriceDisplay";
+import {
+  pickProductCardHighlightTag,
+  PRODUCT_CARD_HIGHLIGHT_LABELS,
+} from "@/lib/products/productCardHighlightTag";
 
 export type HomeProductCardProps = {
   product: Product;
@@ -57,6 +66,9 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
   const normalized = rawImage?.trim() ? normalizeProductImageUrl(rawImage.trim()) : "";
   const imageSrc = normalized || PLACEHOLDER_IMAGE;
 
+  const highlightTag = useMemo(() => pickProductCardHighlightTag(product), [product]);
+  const highlightLabel = highlightTag ? PRODUCT_CARD_HIGHLIGHT_LABELS[highlightTag] : null;
+
   const visibleCampaignBadges = useMemo(
     () =>
       buildCampaignRepresentativeBadges(product, { max: CAMPAIGN_BADGE_MAX.home }).filter(
@@ -64,6 +76,7 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
       ),
     [product],
   );
+  const overlayCampaignBadges = highlightLabel ? [] : visibleCampaignBadges;
   const infoDisplayChips = useMemo(() => {
     const st = (product.status ?? "AVAILABLE") as ProductCardStatus;
     return pickInfoDisplayChips(st, buildProductCardInfoBadges(product));
@@ -84,6 +97,7 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
   const hasNumericPrice = typeof price === "number" && Number.isFinite(price) && price > 0;
   const priceFormatted = hasNumericPrice ? formatPriceKR(price) : null;
   const priceMetaLine = product.price_meta?.trim() || "1인 기준";
+  const seasonalBandInfo = getProductCardSeasonalBandInfo(product.seasonal_price_bands);
 
   const regionLabel =
     product.overview_region?.trim() ||
@@ -119,9 +133,15 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
     >
       {/* 모바일 2열: 이미지 높이 축소(16:9), sm+ 기존 4:3 */}
       <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-[var(--surface-muted)] sm:aspect-[4/3]">
-        {visibleCampaignBadges.length > 0 ? (
+        {highlightLabel ? (
+          <div className="absolute left-1.5 top-1.5 z-10 max-w-[calc(100%-0.75rem)] sm:left-2 sm:top-2">
+            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[10px]">
+              {highlightLabel}
+            </span>
+          </div>
+        ) : overlayCampaignBadges.length > 0 ? (
           <div className="absolute left-1.5 top-1.5 z-10 flex max-w-[calc(100%-0.75rem)] flex-wrap items-start gap-1 sm:left-2 sm:top-2">
-            {visibleCampaignBadges.map((b, i) => (
+            {overlayCampaignBadges.map((b, i) => (
               <ProductCampaignBadge
                 key={`camp-${b.label}-${i}`}
                 label={b.label}
@@ -182,7 +202,7 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
           {titleText}
         </h3>
 
-        {campaignPitch ? (
+        {!highlightLabel && campaignPitch ? (
           <p className="line-clamp-2 text-[10px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-[11px]">
             {campaignPitch}
           </p>
@@ -197,7 +217,16 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
         ) : null}
 
         <div className="mt-auto border-t border-[var(--border)]/60 pt-1.5 sm:border-0 sm:pt-1">
-          {priceFormatted ? (
+          {seasonalBandInfo && product.seasonal_price_bands ? (
+            <>
+              <p className="line-clamp-2 text-[13px] font-bold leading-tight text-[var(--primary)] tabular-nums sm:text-[15px] sm:leading-snug md:text-base">
+                {getSeasonalCardMainLineFull(product.seasonal_price_bands, seasonalBandInfo)}
+              </p>
+              <p className="mt-0.5 text-[10px] leading-tight text-[var(--text-muted)] sm:text-[11px]">
+                {SEASONAL_CARD_SUBLINE}
+              </p>
+            </>
+          ) : priceFormatted ? (
             <>
               <p className="text-[15px] font-bold leading-tight text-[var(--primary)] tabular-nums sm:text-lg">
                 ₩{priceFormatted}~

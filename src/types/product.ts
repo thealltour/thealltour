@@ -1,5 +1,12 @@
 import type { ProductCampaignCardMeta } from "@/types/productCampaignCard";
 
+/** 모두투어 등 계절·주말·성수기 구간가 (KRW 정수). 비어 있으면 필드 생략 또는 null */
+export type SeasonalPriceBands = {
+  offSeason?: number | null;
+  weekend?: number | null;
+  peakSeason?: number | null;
+};
+
 export type ProductTrust = {
   recentConsultCount?: number;
   recentDays?: number;
@@ -187,6 +194,8 @@ export type Product = {
   /** PR22: 핵심 여행 요약용 문구 배열. 없으면 tags/themes로 대체 */
   highlights?: string[] | null;
   price?: number;
+  /** 비수기·주말·성수기 구간가 (jsonb). 없으면 undefined — 목록/상세는 기존 price 사용 */
+  seasonal_price_bands?: SeasonalPriceBands | null;
   duration?: string;
   /** 출발지역 (Summary 블록용) */
   departure?: string;

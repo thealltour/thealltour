@@ -36,7 +36,6 @@ export type RemainingAccordionSectionsProps = {
   activeCampaignOptions: ProductTaxonomyWithUsage[];
   selectedCampaigns: string[];
   toggleCampaign: (name: string) => void;
-  formatPriceWithCommas: (raw: string) => string;
   termsTemplates: TermsTemplateMap;
   setTermsTemplates: Dispatch<SetStateAction<TermsTemplateMap>>;
   selectedTermsTemplateContent: string;
@@ -70,7 +69,6 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
     activeCampaignOptions,
     selectedCampaigns,
     toggleCampaign,
-    formatPriceWithCommas,
     termsTemplates,
     setTermsTemplates,
     selectedTermsTemplateContent,
@@ -458,15 +456,10 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
     case "price":
       return (
         <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-          <input
-            value={form.price}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, price: formatPriceWithCommas(event.target.value) }))
-            }
-            placeholder="가격(숫자)"
-            id="field-price-main"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-          />
+          <p className="text-xs text-[var(--text-muted)] md:col-span-2">
+            기본 가격·가격 구간(비수기·주말·성수기)은 <strong className="text-[var(--text-secondary)]">기본 정보</strong> 섹션에서
+            입력합니다.
+          </p>
           <input
             value={form.duration}
             onChange={(event) => setForm((prev) => ({ ...prev, duration: event.target.value }))}

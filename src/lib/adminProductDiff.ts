@@ -103,6 +103,16 @@ export function getProductDiffSummary(
   if (priceNormalized(initial.price) !== priceNormalized(current.price)) {
     basic.push("가격 정보가 변경되었습니다.");
   }
+  const bandsEq =
+    priceNormalized(initial.seasonal_price_bands?.offSeason) ===
+      priceNormalized(current.seasonal_price_bands?.offSeason) &&
+    priceNormalized(initial.seasonal_price_bands?.weekend) ===
+      priceNormalized(current.seasonal_price_bands?.weekend) &&
+    priceNormalized(initial.seasonal_price_bands?.peakSeason) ===
+      priceNormalized(current.seasonal_price_bands?.peakSeason);
+  if (!bandsEq) {
+    basic.push("가격 구간(비수기·주말·성수기)이 변경되었습니다.");
+  }
   if (!strEq(initial.duration, current.duration)) {
     basic.push("여행 기간이 변경되었습니다.");
   }

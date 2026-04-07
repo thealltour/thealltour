@@ -11,6 +11,12 @@ import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtag
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { trackReviewConversionCtaClick } from "@/lib/reviewExperimentTracking";
 import type { Product, ProductTrust } from "@/types/product";
+import {
+  getProductCardSeasonalBandInfo,
+  SEASONAL_CARD_SUBLINE,
+} from "@/lib/products/productCardSeasonalPriceDisplay";
+import { STICKY_SEASONAL_VOLATILITY_HINT } from "@/lib/products/detailSeasonalPriceDisplay";
+import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
 
 export type ProductDetailStickyV2Status =
   | "AVAILABLE"
@@ -32,6 +38,63 @@ type ProductDetailStickyV2Props = {
   experimentKey?: string;
   variant?: string;
 };
+
+type StickyPriceParts = {
+  digits: string | null;
+  prefix: string | undefined;
+  subLabel: string | undefined;
+  /** 구간가 표시 시 모바일 sticky 두 번째 힌트 */
+  seasonalSecondLine: string | undefined;
+  mode: "quote" | "seasonal" | "single" | "none";
+};
+
+function getStickyPriceParts(
+  priceFormatted: string | null,
+  quoteTotal: number | null | undefined,
+  product: Product | null | undefined,
+): StickyPriceParts {
+  const quoteDigits = quoteTotal != null ? formatPriceKR(quoteTotal) : null;
+  if (quoteDigits) {
+    return {
+      digits: quoteDigits,
+      prefix: undefined,
+      subLabel: undefined,
+      seasonalSecondLine: undefined,
+      mode: "quote",
+    };
+  }
+  const seasonalInfo = getProductCardSeasonalBandInfo(product?.seasonal_price_bands ?? null);
+  if (seasonalInfo && product?.seasonal_price_bands) {
+    const bands = product.seasonal_price_bands;
+    const amount = seasonalInfo.hasOffSeason ? bands.offSeason! : seasonalInfo.min;
+    const digits = formatPriceKR(amount);
+    if (digits) {
+      return {
+        digits,
+        prefix: seasonalInfo.hasOffSeason ? "비수기 기준 " : "최저가 기준 ",
+        subLabel: SEASONAL_CARD_SUBLINE,
+        seasonalSecondLine: STICKY_SEASONAL_VOLATILITY_HINT,
+        mode: "seasonal",
+      };
+    }
+  }
+  if (priceFormatted != null && String(priceFormatted).trim() !== "") {
+    return {
+      digits: priceFormatted,
+      prefix: undefined,
+      subLabel: undefined,
+      seasonalSecondLine: undefined,
+      mode: "single",
+    };
+  }
+  return {
+    digits: null,
+    prefix: undefined,
+    subLabel: undefined,
+    seasonalSecondLine: undefined,
+    mode: "none",
+  };
+}
 
 export function ProductDetailStickyV2Desktop({
   priceFormatted,
@@ -61,21 +124,10 @@ export function ProductDetailStickyV2Desktop({
   const displayKeywords = seoHashtags.slice(0, MAX_KEYWORDS_STICKY);
   const keywordOverflowCount = Math.max(0, seoHashtags.length - MAX_KEYWORDS_STICKY);
 
-  const displayPrice = quoteSummary?.total != null
-    ? formatPriceKR(quoteSummary.total)
-    : priceFormatted;
-
-  /** Desktop Sticky 전용: 행동 유도형 primary CTA 문구 (문의/예약 흐름 명확화) */
-  const desktopPrimaryLabel =
-    status === "AVAILABLE"
-      ? "일정/가격 문의하기"
-      : status === "LIMITED"
-        ? "잔여 좌석 문의하기"
-        : status === "SOLD_OUT"
-          ? "대기 문의하기"
-          : status === "CONSULT_REQUIRED"
-            ? "견적 문의하기"
-            : "상담 문의하기";
+  const stickyPrice = useMemo(
+    () => getStickyPriceParts(priceFormatted, quoteSummary?.total, product),
+    [priceFormatted, quoteSummary?.total, product],
+  );
 
   /** PR23: 데스크톱 sticky 헤더 충돌 방지 — SiteHeader(유틸바 40px + 메인 바 64px) + 여백 */
   const desktopStickyTop = 120;
@@ -95,26 +147,40 @@ export function ProductDetailStickyV2Desktop({
         <div className="space-y-3">
           <div>
             <p className="text-xs font-medium text-slate-500">예상가</p>
-            {displayPrice ? (
-              <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[var(--primary)]">
-                ₩{displayPrice}~
-              </p>
+            {stickyPrice.digits ? (
+              <>
+                <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[var(--primary)]">
+                  {stickyPrice.prefix ?? ""}₩{stickyPrice.digits}~
+                </p>
+                {stickyPrice.mode === "seasonal" ? (
+                  <>
+                    <p className="mt-0.5 text-xs text-slate-500">{SEASONAL_CARD_SUBLINE}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{STICKY_SEASONAL_VOLATILITY_HINT}</p>
+                  </>
+                ) : null}
+              </>
             ) : (
               <p className="mt-1 text-lg font-semibold text-slate-600">상담 후 안내</p>
             )}
             {product && (
               <div className="mt-2 space-y-0.5">
-                {(product.duration || product.price_meta) && (
-                  <p className="text-xs text-slate-500">
-                    {[product.duration, product.price_meta || "1인 기준"].filter(Boolean).join(" · ")}
-                  </p>
-                )}
+                {(() => {
+                  const metaLine =
+                    stickyPrice.mode === "seasonal"
+                      ? [product.duration].filter(Boolean).join(" · ")
+                      : [product.duration, product.price_meta || "1인 기준"].filter(Boolean).join(" · ");
+                  return metaLine ? (
+                    <p className="text-xs text-slate-500">{metaLine}</p>
+                  ) : null;
+                })()}
                 {typeof product.fuel_included === "boolean" && (
                   <p className="text-xs text-slate-500">
                     {product.fuel_included ? "유류할증료 포함" : "유류할증료 별도"}
                   </p>
                 )}
-                <p className="text-xs text-slate-500">유류할증료는 상담 시 안내</p>
+                {stickyPrice.mode !== "seasonal" ? (
+                  <p className="text-xs text-slate-500">유류할증료는 상담 시 안내</p>
+                ) : null}
               </div>
             )}
           </div>
@@ -137,8 +203,8 @@ export function ProductDetailStickyV2Desktop({
               scrollToOptions={scrollToOptions}
               isSoldOut={isSoldOut}
               onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
-              primaryLabel={desktopPrimaryLabel}
-              helperText="문의를 남기시면 가능 일정과 예상 비용을 안내해드립니다."
+              primaryLabel={getProductCtaLabel(status)}
+              helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
             />
           </div>
         </div>
@@ -191,6 +257,7 @@ export function ProductDetailStickyV2Mobile({
   status = "AVAILABLE",
   experimentKey,
   variant,
+  product,
 }: ProductDetailStickyV2Props) {
   const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
@@ -198,9 +265,10 @@ export function ProductDetailStickyV2Mobile({
   const lastScrollYRef = useRef(0);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const displayPrice = quoteSummary?.total != null
-    ? formatPriceKR(quoteSummary.total)
-    : priceFormatted;
+  const stickyPrice = useMemo(
+    () => getStickyPriceParts(priceFormatted, quoteSummary?.total, product),
+    [priceFormatted, quoteSummary?.total, product],
+  );
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY;
@@ -284,7 +352,10 @@ export function ProductDetailStickyV2Mobile({
           status={status}
           kakaoHref={kakaoHref}
           section="sticky"
-          priceFormatted={displayPrice}
+          priceFormatted={stickyPrice.digits}
+          stickyPricePrefix={stickyPrice.prefix}
+          stickyPriceSubLabel={stickyPrice.subLabel}
+          stickyPriceSecondLine={stickyPrice.seasonalSecondLine}
           requiredGroupsMissing={requiredGroupsMissing}
           scrollToOptions={scrollToOptions}
           isSoldOut={isSoldOut}

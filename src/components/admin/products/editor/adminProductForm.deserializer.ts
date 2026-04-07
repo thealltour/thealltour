@@ -79,6 +79,16 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
       return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === "string").join(",") : "";
     })(),
     price: typeof product.price === "number" ? product.price.toLocaleString("ko-KR") : "",
+    seasonal_price_bands: (() => {
+      const b = product.seasonal_price_bands;
+      const fmt = (n: number | null | undefined) =>
+        typeof n === "number" && Number.isFinite(n) && n > 0 ? n.toLocaleString("ko-KR") : "";
+      return {
+        offSeason: fmt(b?.offSeason),
+        weekend: fmt(b?.weekend),
+        peakSeason: fmt(b?.peakSeason),
+      };
+    })(),
     duration: product.duration ?? "",
     itinerary: product.itinerary ?? "",
     inclusions: product.inclusions ?? "",

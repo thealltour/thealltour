@@ -14,12 +14,15 @@ type ProductSummaryInfoProps = {
   price?: number;
   minDeparturePeople?: string;
   includedSummary?: string;
+  excludedSummary?: string;
   consultHref?: string;
   kakaoHref?: string;
   /** 있으면 문의하기 클릭 시 빠른 상담 모달 오픈 (consultHref는 모달 내 폼 기본 링크로 사용) */
   productId?: string;
   productTitle?: string;
   sourcePath?: string;
+  /** true면 숫자 가격 대신 상단 대표 출발가 안내 참고 문구 */
+  usePriceHeroGuide?: boolean;
 };
 
 export default function ProductSummaryInfo({
@@ -31,11 +34,13 @@ export default function ProductSummaryInfo({
   price,
   minDeparturePeople,
   includedSummary,
+  excludedSummary,
   consultHref,
   kakaoHref,
   productId,
   productTitle = "",
   sourcePath = "",
+  usePriceHeroGuide = false,
 }: ProductSummaryInfoProps) {
   const { openModal } = useConsultModal();
   const hasAny =
@@ -46,6 +51,8 @@ export default function ProductSummaryInfo({
     travelStyle ||
     minDeparturePeople ||
     includedSummary ||
+    excludedSummary ||
+    usePriceHeroGuide ||
     (typeof price === "number" && price > 0);
   if (!hasAny) return null;
 
@@ -68,12 +75,35 @@ export default function ProductSummaryInfo({
         {minDeparturePeople ? (
           <InfoItem icon="users" label="출발인원" value={minDeparturePeople} />
         ) : null}
-        {includedSummary ? (
-          <InfoItem icon="included" label="포함사항" value={includedSummary} className="md:col-span-2" />
-        ) : null}
+        {(includedSummary || excludedSummary) && (
+          <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 md:col-span-2 md:grid-cols-2">
+            <div className="min-w-0">
+              {includedSummary ? (
+                <InfoItem icon="included" label="포함사항" value={includedSummary} />
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              {excludedSummary ? (
+                <InfoItem icon="xCircle" label="불포함사항" value={excludedSummary} />
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
 
-      {priceFormatted ? (
+      {usePriceHeroGuide ? (
+        <div className="border-t border-slate-200 pt-3">
+          <InfoItem
+            icon="price"
+            label="가격"
+            value={
+              <span className="text-sm leading-relaxed text-slate-600">
+                상단 &quot;대표 출발가 안내&quot;와 동일한 기준입니다. 정확한 요금은 상담을 통해 안내드립니다.
+              </span>
+            }
+          />
+        </div>
+      ) : priceFormatted ? (
         <div className="border-t border-slate-200 pt-3">
           <InfoItem icon="price" label="가격" value={priceFormatted} />
         </div>
@@ -89,9 +119,9 @@ export default function ProductSummaryInfo({
                 buttonVariants({ variant: "primary", size: "md" }),
                 "flex-1 text-sm font-semibold",
               )}
-              aria-label="일정 및 가격 문의하기"
+              aria-label="일정·견적 문의하기"
             >
-              일정/가격 문의하기
+              일정·견적 문의하기
             </button>
           ) : consultHref ? (
             <a
@@ -100,9 +130,9 @@ export default function ProductSummaryInfo({
                 buttonVariants({ variant: "primary", size: "md" }),
                 "flex-1 text-sm font-semibold",
               )}
-              aria-label="일정 및 가격 문의하기"
+              aria-label="일정·견적 문의하기"
             >
-              일정/가격 문의하기
+              일정·견적 문의하기
             </a>
           ) : null}
           {kakaoHref && (
@@ -117,9 +147,9 @@ export default function ProductSummaryInfo({
                   className: "min-h-11 flex-1 text-sm font-semibold sm:flex-none",
                 }),
               )}
-              aria-label="카톡으로 상담하기"
+              aria-label="카톡으로 견적 문의하기"
             >
-              카톡 상담
+              카톡 견적 문의
             </a>
           )}
         </div>

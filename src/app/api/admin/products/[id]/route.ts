@@ -3,6 +3,10 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import type { ItineraryV2 } from "@/types/product";
+import {
+  parseSeasonalPriceBandsFromUnknown,
+  seasonalPriceBandsToJsonColumn,
+} from "@/lib/products/seasonalPriceBands";
 
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
@@ -88,6 +92,7 @@ type ProductBody = {
   overview_accommodation?: string | null;
   overview_region?: string | null;
   overview_duration?: string | null;
+  seasonal_price_bands?: Record<string, unknown> | null;
 };
 
 export async function PATCH(
@@ -242,6 +247,14 @@ export async function PATCH(
   }
   if (body.overview_duration !== undefined) {
     updates.overview_duration = body.overview_duration?.trim() || null;
+  }
+  if (body.seasonal_price_bands !== undefined) {
+    if (body.seasonal_price_bands == null) {
+      updates.seasonal_price_bands = null;
+    } else {
+      const parsed = parseSeasonalPriceBandsFromUnknown(body.seasonal_price_bands);
+      updates.seasonal_price_bands = seasonalPriceBandsToJsonColumn(parsed);
+    }
   }
   // overview_json: 저장 제거. 상세 화면은 mapProductToOverview(product)로 자동 생성
 

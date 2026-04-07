@@ -52,6 +52,12 @@ export type ProductFormState = {
   /** 기획/추천 다중 선택. 쉼표 등으로 구분된 이름 문자열 (테마와 동일 방식) */
   campaigns: string;
   price: string;
+  /** 계절·주말·성수기 구간가 (폼은 문자열 + 콤마, 저장 시 serializer에서 정규화) */
+  seasonal_price_bands: {
+    offSeason: string;
+    weekend: string;
+    peakSeason: string;
+  };
   duration: string;
   itinerary: string;
   inclusions: string;
@@ -88,6 +94,23 @@ export type ProductFormDraft = {
   form: ProductFormState;
   savedAt: number;
 };
+
+/**
+ * 구버전 임시저장 draft 등 `seasonal_price_bands` 누락 폼을 현재 스키마에 맞게 보정
+ */
+export function mergeProductFormWithSchemaDefaults(
+  form: Partial<ProductFormState> | ProductFormState,
+): ProductFormState {
+  const base = createEmptyProductFormState();
+  return {
+    ...base,
+    ...form,
+    seasonal_price_bands: {
+      ...base.seasonal_price_bands,
+      ...(form.seasonal_price_bands ?? {}),
+    },
+  };
+}
 
 /** 빈 폼 상태 생성 (상품 등록 초기값·Import base 등) */
 export function createEmptyProductFormState(): ProductFormState {
@@ -133,6 +156,11 @@ export function createEmptyProductFormState(): ProductFormState {
     product_line_id: "",
     campaigns: "",
     price: "",
+    seasonal_price_bands: {
+      offSeason: "",
+      weekend: "",
+      peakSeason: "",
+    },
     duration: "",
     itinerary: "",
     inclusions: "",

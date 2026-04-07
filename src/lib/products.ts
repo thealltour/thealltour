@@ -26,6 +26,7 @@ import type {
 import type { Guide } from "@/types/guide";
 import { extractGuideBridgeSearchTokens } from "@/lib/guides";
 import { normalizeImageList } from "@/lib/products/images";
+import { parseSeasonalPriceBandsFromUnknown } from "@/lib/products/seasonalPriceBands";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
 
@@ -77,6 +78,8 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     tags: normalizeStringArray(row.tags_json ?? row.tags),
     highlights: normalizeStringArray(row.highlights_json ?? row.highlights),
     price,
+    seasonal_price_bands:
+      parseSeasonalPriceBandsFromUnknown(row.seasonal_price_bands) ?? undefined,
     duration:
       typeof row.duration === "string"
         ? row.duration

@@ -5,6 +5,9 @@ import { createEmptyProductFormState } from "@/types/adminProductForm";
 
 // PR16 정책: Modetour import는 설명/포함·불포함/약관 데이터를 자동 주입하지 않는다.
 // 운영자가 관리자 편집 화면에서 직접 작성하도록 한다. (일정·이미지·기본 정보만 자동 반영)
+// PR-A: seasonal_price_bands(비수기·주말·성수기)는 익스텐션/임포트에서 추출하지 않는다.
+// PR-D: 임포트 draft에 구간가를 넣지 않음 → DB 관점과 동일하게 운영자가 관리자에서만 설정.
+// createEmptyProductFormState + merge 시 기본 빈 문자열 구간 필드가 유지된다.
 
 /** Import → Draft 변환 결과 (빈 필드만 채우는 merge용 patch) */
 export function modetourImportToDraft(input: ModetourImportV1): {

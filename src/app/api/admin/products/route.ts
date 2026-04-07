@@ -3,6 +3,10 @@ import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import type { ItineraryV2 } from "@/types/product";
+import {
+  parseSeasonalPriceBandsFromUnknown,
+  seasonalPriceBandsToJsonColumn,
+} from "@/lib/products/seasonalPriceBands";
 
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
@@ -101,6 +105,7 @@ type ProductBody = {
   overview_accommodation?: string | null;
   overview_region?: string | null;
   overview_duration?: string | null;
+  seasonal_price_bands?: Record<string, unknown> | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -240,6 +245,9 @@ export async function POST(request: Request) {
         ? body.tags.filter((v): v is string => typeof v === "string").map((v) => v.trim()).filter(Boolean)
         : null,
     price: toSafeInteger(body.price),
+    seasonal_price_bands: seasonalPriceBandsToJsonColumn(
+      parseSeasonalPriceBandsFromUnknown(body.seasonal_price_bands),
+    ),
     duration: body.duration?.trim() || null,
     itinerary: body.itinerary?.trim() || null,
     inclusions: body.inclusions?.trim() || null,

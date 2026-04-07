@@ -2,7 +2,11 @@
 
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { Button } from "@/components/ui/Button";
-import { getProductCtaLabel, type ProductCtaStatus } from "@/lib/products/getProductCtaLabel";
+import {
+  getProductCtaLabel,
+  getProductCtaStickyPrimaryLabel,
+  type ProductCtaStatus,
+} from "@/lib/products/getProductCtaLabel";
 import { trackProductCtaClick } from "@/lib/analytics/trackProductClick";
 
 export type ProductConsultCTASection = "top" | "sticky" | "itinerary";
@@ -32,6 +36,12 @@ export type ProductConsultCTAProps = {
   primaryLabel?: string;
   /** section "top"에서 버튼 하단 보조 문구 override (미전달 시 기본 문구 사용) */
   helperText?: string;
+  /** section "sticky": 금액 앞 접두 (예: "비수기 기준 ") */
+  stickyPricePrefix?: string;
+  /** section "sticky": 금액 아래 보조문구. 미전달 시 "1인 기준" */
+  stickyPriceSubLabel?: string;
+  /** section "sticky": 두 번째 보조 줄 (예: 구간가 변동 힌트) */
+  stickyPriceSecondLine?: string;
 };
 
 export function ProductConsultCTA({
@@ -52,9 +62,13 @@ export function ProductConsultCTA({
   onPrimaryClick,
   primaryLabel: primaryLabelOverride,
   helperText: helperTextOverride,
+  stickyPricePrefix,
+  stickyPriceSubLabel,
+  stickyPriceSecondLine,
 }: ProductConsultCTAProps) {
   const { openModal } = useConsultModal();
   const primaryLabel = primaryLabelOverride ?? getProductCtaLabel(status);
+  const stickyPrimaryLabel = primaryLabelOverride ?? getProductCtaStickyPrimaryLabel(status);
 
   const handlePrimary = () => {
     if (requiredGroupsMissing && scrollToOptions) {
@@ -81,9 +95,16 @@ export function ProductConsultCTA({
           {priceFormatted != null && priceFormatted !== "" ? (
             <>
               <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[var(--primary)]">
-                ₩{priceFormatted}~
+                {stickyPricePrefix ?? ""}₩{priceFormatted}~
               </span>
-              <span className="mt-0.5 text-[0.6875rem] text-slate-600">1인 기준</span>
+              <span className="mt-0.5 block text-[0.6875rem] leading-snug text-slate-600">
+                {stickyPriceSubLabel ?? "1인 기준"}
+              </span>
+              {stickyPriceSecondLine ? (
+                <span className="mt-0.5 block text-[0.625rem] leading-snug text-slate-500">
+                  {stickyPriceSecondLine}
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="text-sm font-semibold text-slate-600">상담 후 안내</span>
@@ -91,12 +112,12 @@ export function ProductConsultCTA({
         </div>
         <div className="flex h-11 min-w-0 shrink flex-1 items-center gap-2">
           <Button variant="accent" size="md" onClick={handlePrimary} className="h-11 min-h-11 flex-1 min-w-0 shrink-0 whitespace-nowrap">
-            {isSoldOut ? "대기" : "예약 상담"}
+            {isSoldOut ? "대기" : stickyPrimaryLabel}
           </Button>
           {kakaoHref && (
             <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="min-w-0 shrink">
               <Button variant="kakao" size="md" className="h-11 min-h-11 w-full whitespace-nowrap">
-                카카오톡 상담
+                카톡 견적 문의
               </Button>
             </a>
           )}
@@ -116,7 +137,7 @@ export function ProductConsultCTA({
           </Button>
           {kakaoHref && (
             <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao}>
-              <Button variant="kakao" size="md">카톡 상담</Button>
+              <Button variant="kakao" size="md">카톡 견적 문의</Button>
             </a>
           )}
         </div>
@@ -125,7 +146,7 @@ export function ProductConsultCTA({
   }
 
   // section === "top"
-  const defaultHelper = "상담 후 확정 · 맞춤 견적 안내";
+  const defaultHelper = "일정과 요금은 상담을 통해 개별 안내됩니다.";
   const helperText = helperTextOverride ?? defaultHelper;
 
   return (
@@ -139,7 +160,7 @@ export function ProductConsultCTA({
         </Button>
         {kakaoHref && (
           <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="block">
-            <Button variant="kakao" size="md" className="w-full">카톡 상담</Button>
+            <Button variant="kakao" size="md" className="w-full">카톡 견적 문의</Button>
           </a>
         )}
       </div>

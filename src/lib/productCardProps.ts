@@ -5,6 +5,7 @@ import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtag
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
 import { buildCampaignPitchLineFromProduct, resolveCampaignCardKind } from "@/lib/productCampaignPresentation";
+import { pickProductCardHighlightTag } from "@/lib/products/productCardHighlightTag";
 
 const PRIORITY_BADGES = ["제철", "인기", "마감임박"];
 
@@ -192,6 +193,7 @@ export type ProductToProductCardOverrides = Partial<
     | "infoBadges"
     | "campaignPitchLine"
     | "campaignPresentationKind"
+    | "highlightTag"
   >
 > & {
   /** 기본: list/mobile presentation이면 1, 그 외 2 */
@@ -250,19 +252,23 @@ export function productToProductCardProps(
   });
   const maxBadges = defaultCampaignBadgeMax(overrides);
   const campaignBadges = buildCampaignRepresentativeBadges(product, { max: maxBadges });
+  const highlightTag = pickProductCardHighlightTag(product);
+  const overlayBadges = highlightTag ? [] : campaignBadges;
   const infoBadges = buildProductCardInfoBadges(product);
-  const campaignPitchLine = defaultOmitCampaignPitch(overrides)
-    ? undefined
-    : buildCampaignPitchLineFromProduct(product, campaignKind);
+  const campaignPitchLine =
+    highlightTag || defaultOmitCampaignPitch(overrides)
+      ? undefined
+      : buildCampaignPitchLineFromProduct(product, campaignKind);
   return {
     title: product.title,
     price: product.price,
+    seasonal_price_bands: product.seasonal_price_bands ?? undefined,
     duration: product.duration,
     region: product.theme,
     categories: [product.category].filter(Boolean),
     tags: parseMetaTitleAsHashtags(product.meta_title),
     status,
-    badges: campaignBadges,
+    badges: overlayBadges,
     infoBadges,
     campaignPitchLine,
     thumbnailUrl: getPrimaryImageUrl(product),
@@ -277,6 +283,7 @@ export function productToProductCardProps(
     oneLiner: product.one_liner?.trim() || undefined,
     ratingAvg: product.trust?.ratingAvg,
     reviewCount: product.trust?.reviewCount,
+    highlightTag,
     ...restOverrides,
     ...(isRelatedSection ? { layout: "related" as const } : {}),
   };

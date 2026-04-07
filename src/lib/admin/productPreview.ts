@@ -4,7 +4,16 @@
  * - Product → ProductCardProps / ProductDetailV2Props (직렬화 가능한 payload만, CTA는 클라이언트에서 주입)
  */
 
-import type { Product, ProductOptions, ItineraryStructuredDay, ItineraryV2 } from "@/types/product";
+import type {
+  Product,
+  ProductOptions,
+  ItineraryStructuredDay,
+  ItineraryV2,
+  SeasonalPriceBands,
+} from "@/types/product";
+import {
+  sanitizeSeasonalPriceBandsFromFormStrings,
+} from "@/lib/products/seasonalPriceBands";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { buildProductCardInfoBadges } from "@/lib/productCardProps";
@@ -29,6 +38,11 @@ export type ProductFormPayload = {
   product_line_id?: string;
   campaigns?: string;
   price?: string;
+  seasonal_price_bands?: {
+    offSeason: string;
+    weekend: string;
+    peakSeason: string;
+  };
   duration?: string;
   itinerary?: string;
   inclusions?: string;
@@ -77,14 +91,18 @@ export type ProductFormPayload = {
   theme_chart_json?: Array<{ label: string; percent: number }>;
 };
 
-/** 폼 → 미리보기용 Product (저장 API와 동일한 보정 규칙) */
+/** 폼 → 미리보기용 Product (저장 payload와 동일한 sanitize; 대표가는 구간가로 채우지 않음) */
 export function formToPreviewProduct(
   form: ProductFormPayload,
   imageUrlForPreview: string,
 ): Product {
-  const priceNum = form.price ? parseInt(String(form.price).replace(/\D/g, ""), 10) : undefined;
-  const price =
-    priceNum !== undefined && !Number.isNaN(priceNum) ? priceNum : undefined;
+  const priceNumRaw = form.price ? parseInt(String(form.price).replace(/\D/g, ""), 10) : undefined;
+  let price =
+    priceNumRaw !== undefined && !Number.isNaN(priceNumRaw) && priceNumRaw > 0 ? priceNumRaw : undefined;
+  const bandsSanitized: SeasonalPriceBands | null = form.seasonal_price_bands
+    ? sanitizeSeasonalPriceBandsFromFormStrings(form.seasonal_price_bands)
+    : null;
+  /* PR-D: 미리보기도 구간가로 대표가를 채우지 않음(PR-B 카드는 seasonal 밴드 우선 표시) */
   const oneLiner = (
     (form.one_liner?.trim() ||
       form.description?.trim().split(/\n/)[0]?.slice(0, 200) ||
@@ -136,6 +154,7 @@ export function formToPreviewProduct(
       return arr.length > 0 ? arr : undefined;
     })(),
     price,
+    seasonal_price_bands: bandsSanitized ?? undefined,
     duration: form.duration?.trim() || undefined,
     itinerary: form.itinerary?.trim() || undefined,
     inclusions: form.inclusions?.trim() || undefined,
@@ -207,6 +226,7 @@ export function formToPreviewProduct(
 export type ProductCardPropsPayload = {
   title?: string;
   price?: number;
+  seasonal_price_bands?: SeasonalPriceBands | null;
   duration?: string;
   region?: string;
   categories?: string[];
@@ -227,6 +247,7 @@ export function productToCardPropsPayload(product: Product): ProductCardPropsPay
   return {
     title: product.title,
     price: product.price,
+    seasonal_price_bands: product.seasonal_price_bands ?? undefined,
     duration: product.duration,
     region: product.theme,
     categories: [product.category],

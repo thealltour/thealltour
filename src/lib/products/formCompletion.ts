@@ -75,6 +75,16 @@ export function hasValidJsonText(jsonText: unknown): boolean {
  * 가격 옵션 JSON으로 유효한 groups 배열이 있는지.
  * (form.options_json 전용)
  */
+/**
+ * 계절·주말·성수기 구간가 중 하나라도 유효한 양의 숫자인지
+ */
+export function hasAnyValidSeasonalPriceBand(form: {
+  seasonal_price_bands: { offSeason: string; weekend: string; peakSeason: string };
+}): boolean {
+  const b = form.seasonal_price_bands;
+  return hasValidNumber(b.offSeason) || hasValidNumber(b.weekend) || hasValidNumber(b.peakSeason);
+}
+
 export function hasValidPriceOptionJson(jsonText: unknown): boolean {
   if (!hasValidJsonText(jsonText)) return false;
   try {

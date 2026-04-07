@@ -45,6 +45,14 @@ import {
 } from "@/lib/products/itineraryPreviewLabel";
 import { ProductDayScheduleCard } from "@/components/products/ProductDayScheduleCard";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
+import {
+  DETAIL_UNIFIED_PRICE_NOTICE_LINES,
+  getSeasonalPriceDisplayModel,
+} from "@/lib/products/detailSeasonalPriceDisplay";
+import {
+  ProductDetailRecommendedAudience,
+  SeasonalPriceComparison,
+} from "@/components/products/ProductDetailPriceGuide";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -254,6 +262,13 @@ export default function ProductDetailV2({
     : priceFormatted;
   const displayDuration = hasOptions && quote.durationLabel ? quote.durationLabel : duration;
 
+  const seasonalModel = useMemo(
+    () => getSeasonalPriceDisplayModel(product?.seasonal_price_bands),
+    [product?.seasonal_price_bands],
+  );
+  const showingOptionQuotePrice = Boolean(hasOptions && quote.total != null);
+  const showSeasonalBandCard = seasonalModel.hasAny && !showingOptionQuotePrice;
+
   const requiredGroupsMissing = useMemo(() => {
     if (!hasOptions || !options?.requiredGroups?.length) return false;
     return options.requiredGroups.some((key) => !selectedOptions[key]);
@@ -381,6 +396,18 @@ export default function ProductDetailV2({
       .join(", ");
   }, [includedItems]);
 
+  /** 불포함사항 요약 (포함사항과 동일 규칙) */
+  const excludedSummary = useMemo(() => {
+    const raw = excludedItems?.trim();
+    if (!raw) return undefined;
+    return raw
+      .split("\n")
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(", ");
+  }, [excludedItems]);
+
   /** PR40: 상품 요약 블록 표시 여부 (값이 하나라도 있을 때만) */
   const hasSummaryData = useMemo(() => {
     const d = product?.duration ?? duration;
@@ -390,8 +417,19 @@ export default function ProductDetailV2({
     const style = product?.travelStyle ?? product?.theme;
     const minPeople = product?.min_departure_people ?? minDeparturePeople;
     const pr = typeof product?.price === "number" && product.price > 0 ? product.price : undefined;
-    return Boolean(d || dep || air || hot || style || minPeople || includedSummary || pr);
-  }, [product, duration, minDeparturePeople, includedSummary]);
+    return Boolean(
+      d ||
+        dep ||
+        air ||
+        hot ||
+        style ||
+        minPeople ||
+        includedSummary ||
+        excludedSummary ||
+        pr ||
+        showSeasonalBandCard,
+    );
+  }, [product, duration, minDeparturePeople, includedSummary, excludedSummary, showSeasonalBandCard]);
 
   /** PR22: 핵심 여행 요약 카드용. highlights → tags → themes 순, 최대 5개 */
   const highlightsForCard = useMemo(() => {
@@ -472,21 +510,48 @@ export default function ProductDetailV2({
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 md:text-[15px]">{oneLiner}</p>
         ) : null}
 
-        {/* Price Summary Card: 모바일에서만, 캐러셀 위에 배치해 첫 화면에서 가격 노출 */}
+        {/* Price Summary Card: 캐러셀 위 대표가·구간 비교·추천 대상(PR-F) */}
         <Card
           variant="default"
-          className="mt-4 border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe] md:hidden"
+          className="mt-4 border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe]"
         >
-          {displayPrice ? (
-            <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
-              ₩{displayPrice}~
-            </p>
+          {showSeasonalBandCard ? (
+            <>
+              <p className="text-sm font-semibold text-[#0f172a]">대표 출발가 안내</p>
+              {(displayDuration || priceMeta) && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              {product?.seasonal_price_bands ? (
+                <SeasonalPriceComparison bands={product.seasonal_price_bands} />
+              ) : null}
+              <ProductDetailRecommendedAudience />
+            </>
+          ) : displayPrice ? (
+            <>
+              <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
+                ₩{displayPrice}~
+              </p>
+              {(displayDuration || priceMeta) && (
+                <p className="mt-1 text-sm text-slate-500">
+                  {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                {DETAIL_UNIFIED_PRICE_NOTICE_LINES[1]}
+              </p>
+              <ProductDetailRecommendedAudience />
+            </>
           ) : (
             <p className="font-price-strong text-xl font-semibold text-slate-600 md:text-2xl">
               상담 후 견적 안내
             </p>
           )}
-          {(displayDuration || priceMeta) && (
+          {!showSeasonalBandCard && !displayPrice && (displayDuration || priceMeta) && (
             <p className="mt-1 text-sm text-slate-500">
               {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
             </p>
@@ -496,7 +561,10 @@ export default function ProductDetailV2({
               {fuelIncluded ? "유류할증료 포함" : "유류할증료 별도"}
             </p>
           )}
-          <p className="mt-0.5 text-xs text-slate-500">유류할증료는 상담 시 안내</p>
+          {!(showSeasonalBandCard || displayPrice) ? (
+            <p className="mt-0.5 text-xs text-slate-500">유류할증료는 상담 시 안내</p>
+          ) : null}
+          {!(showSeasonalBandCard || displayPrice) ? <ProductDetailRecommendedAudience /> : null}
         </Card>
 
         <div className="mt-5">
@@ -513,8 +581,10 @@ export default function ProductDetailV2({
               hotel={product?.hotel ?? product?.overview_accommodation}
               travelStyle={product?.travelStyle ?? product?.theme}
               price={product?.price}
+              usePriceHeroGuide={showSeasonalBandCard}
               minDeparturePeople={(product?.min_departure_people ?? minDeparturePeople) || undefined}
               includedSummary={includedSummary}
+              excludedSummary={excludedSummary}
               consultHref={consultHref || undefined}
               kakaoHref={kakaoHref || undefined}
               productId={productId}
@@ -612,6 +682,7 @@ export default function ProductDetailV2({
               requiredGroupsMissing={requiredGroupsMissing}
               scrollToOptions={() => optionsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
               isSoldOut={isSoldOut}
+              helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
             />
           ) : (
             <>
@@ -630,7 +701,7 @@ export default function ProductDetailV2({
                   </a>
                 ) : null}
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">상담 후 확정 · 맞춤 견적 안내</p>
+              <p className="mt-2 text-[11px] text-slate-500">일정과 요금은 상담을 통해 개별 안내됩니다.</p>
             </>
           )}
         </div>

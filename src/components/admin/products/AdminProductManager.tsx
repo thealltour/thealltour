@@ -5,6 +5,7 @@ import { useSearchParams, usePathname } from "next/navigation";
 import type { Product, ItineraryStructuredDay, ItineraryV2, SelectedEventRef } from "@/types/product";
 import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 import type { ProductFormState, ProductFormDraft, TermsTemplateType } from "@/types/adminProductForm";
+import { mergeProductFormWithSchemaDefaults } from "@/types/adminProductForm";
 import { createEmptyAdminProductFormState } from "@/components/admin/products/editor/adminProductForm.defaults";
 import { serializeAdminProductForm } from "@/components/admin/products/editor/adminProductForm.serializer";
 import { deserializeAdminProductToForm } from "@/components/admin/products/editor/adminProductForm.deserializer";
@@ -1113,8 +1114,9 @@ export default function AdminProductManager() {
 
   function handleRestoreDraft() {
     if (!draftData) return;
-    setForm(draftData.form);
-    resetBaseSnapshot(draftData.form);
+    const restored = mergeProductFormWithSchemaDefaults(draftData.form);
+    setForm(restored);
+    resetBaseSnapshot(restored);
     markSafeNavigation();
     localStorage.removeItem(getDraftKey(editingId));
     setDraftData(null);
@@ -1554,6 +1556,7 @@ export default function AdminProductManager() {
             setPreviewImageFile,
             openCoverRecommendModal,
             setShowImageImportGuideModal,
+            formatPriceWithCommas,
           }}
           scheduleProps={{
             form,
@@ -1597,7 +1600,6 @@ export default function AdminProductManager() {
             activeCampaignOptions,
             selectedCampaigns,
             toggleCampaign,
-            formatPriceWithCommas,
             termsTemplates,
             setTermsTemplates,
             selectedTermsTemplateContent,

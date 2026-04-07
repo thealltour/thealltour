@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { getProductCtaLabel, type ProductCtaStatus } from "@/lib/products/getProductCtaLabel";
 
 export type ProductReviewSectionProps = {
   /** 평균 평점 (1~5). 있으면 리뷰 있음 UI */
@@ -18,6 +19,8 @@ export type ProductReviewSectionProps = {
   productId?: string;
   productTitle?: string;
   sourcePath?: string;
+  /** 상품 상태(CTA 문구). 미전달 시 AVAILABLE */
+  status?: ProductCtaStatus;
 };
 
 /**
@@ -32,8 +35,10 @@ export function ProductReviewSection({
   productId,
   productTitle,
   sourcePath,
+  status = "AVAILABLE",
 }: ProductReviewSectionProps) {
   const { openModal } = useConsultModal();
+  const reviewCtaLabel = getProductCtaLabel(status);
   const hasReviews = typeof reviewCount === "number" && reviewCount > 0;
   const displayRating = typeof rating === "number" && rating >= 0 && rating <= 5 ? rating : null;
   const displayBooking = typeof bookingCount === "number" && bookingCount >= 0 ? bookingCount : null;
@@ -78,7 +83,7 @@ export function ProductReviewSection({
                     solidButtonShadowClasses,
                   )}
                 >
-                  예약 상담하기
+                  {reviewCtaLabel}
                 </button>
               ) : (
                 <Link
@@ -88,7 +93,7 @@ export function ProductReviewSection({
                     solidButtonShadowClasses,
                   )}
                 >
-                  예약 상담하기
+                  {reviewCtaLabel}
                 </Link>
               )}
             </div>

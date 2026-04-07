@@ -10,6 +10,8 @@ import { BOOKMARKLET_EXTRACT_IMAGE_URLS } from "@/lib/bookmarkletExtractImageUrl
 export type BasicInfoSectionProps = {
   form: ProductFormState;
   setForm: Dispatch<SetStateAction<ProductFormState>>;
+  /** 가격·구간 필드 콤마 포맷 (숫자만 허용, 음수·문자 제거) */
+  formatPriceWithCommas: (raw: string) => string;
   setTitleExtractPaste: (v: string) => void;
   setTitleCandidates: (v: string[]) => void;
   setShowTitleExtractModal: (open: boolean) => void;
@@ -25,6 +27,7 @@ export type BasicInfoSectionProps = {
 export function BasicInfoSection({
   form,
   setForm,
+  formatPriceWithCommas,
   setTitleExtractPaste,
   setTitleCandidates,
   setShowTitleExtractModal,
@@ -69,6 +72,116 @@ export function BasicInfoSection({
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             />
           </div>
+
+          <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="space-y-1">
+              <label
+                htmlFor="field-price-main"
+                className="block text-xs font-semibold text-[var(--text-secondary)]"
+              >
+                기본 가격 (대표가, fallback)
+              </label>
+              <input
+                id="field-price-main"
+                value={form.price}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, price: formatPriceWithCommas(e.target.value) }))
+                }
+                placeholder="예: 899000"
+                inputMode="numeric"
+                autoComplete="off"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              />
+              <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+                기본 가격(최저가 기준)입니다. 가격 구간을 입력하면 상세페이지에 함께 표시됩니다.
+              </p>
+            </div>
+
+            <div className="space-y-3 border-t border-[var(--border)] pt-4">
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">가격 구간 (선택 입력)</p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                  비수기/주말/성수기 대표 가격만 입력하세요. 모든 날짜를 입력할 필요는 없습니다. 정확한 가격은
+                  상담을 통해 안내됩니다.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="space-y-1">
+                  <label htmlFor="field-seasonal-off" className="block text-xs font-medium text-[var(--text-secondary)]">
+                    비수기
+                  </label>
+                  <input
+                    id="field-seasonal-off"
+                    value={form.seasonal_price_bands.offSeason}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        seasonal_price_bands: {
+                          ...prev.seasonal_price_bands,
+                          offSeason: formatPriceWithCommas(e.target.value),
+                        },
+                      }))
+                    }
+                    placeholder="예: 789000"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="field-seasonal-weekend"
+                    className="block text-xs font-medium text-[var(--text-secondary)]"
+                  >
+                    주말
+                  </label>
+                  <input
+                    id="field-seasonal-weekend"
+                    value={form.seasonal_price_bands.weekend}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        seasonal_price_bands: {
+                          ...prev.seasonal_price_bands,
+                          weekend: formatPriceWithCommas(e.target.value),
+                        },
+                      }))
+                    }
+                    placeholder="예: 999000"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="field-seasonal-peak" className="block text-xs font-medium text-[var(--text-secondary)]">
+                    성수기
+                  </label>
+                  <input
+                    id="field-seasonal-peak"
+                    value={form.seasonal_price_bands.peakSeason}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        seasonal_price_bands: {
+                          ...prev.seasonal_price_bands,
+                          peakSeason: formatPriceWithCommas(e.target.value),
+                        },
+                      }))
+                    }
+                    placeholder="예: 1299000"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                입력하지 않으면 기본 가격만 노출됩니다. 비우고 저장하면 구간 데이터는 DB에서 제거(null)됩니다.
+              </p>
+            </div>
+          </div>
+
             <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
               <p className="text-xs font-semibold text-[var(--text-primary)]">여행 오버뷰 카드 (숙소·지역·기간)</p>
               <p className="text-xs text-[var(--text-muted)]">

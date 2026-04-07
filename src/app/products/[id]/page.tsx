@@ -335,6 +335,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 productId={product.id}
                 productTitle={product.title}
                 sourcePath={`${sourcePath}#reviews`}
+                status={statusV2}
               />
               <ProductReviewsSection
                 productId={product.id}
@@ -411,6 +412,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           kakaoHref={kakaoHref}
           status={statusV2}
           trust={product.trust}
+          product={product}
           experimentKey="review_highlight_variant"
           variant={reviewExperimentVariant}
         />

@@ -7,6 +7,7 @@ import type { ProductFormState } from "@/types/adminProductForm";
 import {
   hasRealText,
   hasValidNumber,
+  hasAnyValidSeasonalPriceBand,
   hasValidPriceOptionJson,
   hasCoverImage,
   hasNonEmptyArray,
@@ -51,6 +52,39 @@ export const SECTIONS: SectionConfig[] = [
           severity: "recommended",
         });
       }
+      const hasValidPrice = hasValidNumber(form.price);
+      const hasOptions = hasValidPriceOption(form);
+      const hasSeasonal = hasAnyValidSeasonalPriceBand(form);
+      const seasonalFields: Array<{
+        key: keyof ProductFormState["seasonal_price_bands"];
+        label: string;
+        anchorId: string;
+      }> = [
+        { key: "offSeason", label: "비수기", anchorId: "field-seasonal-off" },
+        { key: "weekend", label: "주말", anchorId: "field-seasonal-weekend" },
+        { key: "peakSeason", label: "성수기", anchorId: "field-seasonal-peak" },
+      ];
+      for (const { key, label, anchorId } of seasonalFields) {
+        const raw = form.seasonal_price_bands[key];
+        if (hasRealText(raw) && !hasValidNumber(raw)) {
+          issues.push({
+            sectionId: "basic",
+            fieldKey: `seasonal_${key}`,
+            message: `${label} 가격은 0보다 큰 숫자여야 합니다.`,
+            anchorId,
+            severity: "required",
+          });
+        }
+      }
+      if (!hasValidPrice && !hasOptions && !hasSeasonal) {
+        issues.push({
+          sectionId: "basic",
+          fieldKey: "price",
+          message: "가격(숫자), 가격 구간(비수기·주말·성수기) 중 하나, 또는 가격 옵션 JSON을 등록해 주세요.",
+          anchorId: "field-price-main",
+          severity: "required",
+        });
+      }
       return issues;
     },
   },
@@ -83,20 +117,9 @@ export const SECTIONS: SectionConfig[] = [
   {
     id: "price",
     title: "가격·노출",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      const hasValidPrice = hasValidNumber(form.price);
-      const hasOptions = hasValidPriceOption(form);
-      if (!hasValidPrice && !hasOptions) {
-        issues.push({
-          sectionId: "price",
-          fieldKey: "price",
-          message: "가격(숫자)을 입력하거나, 가격 옵션 JSON을 등록해 주세요.",
-          anchorId: "field-price-main",
-          severity: "required",
-        });
-      }
-      return issues;
+    getIssues(_form) {
+      /* 기본 가격·구간 검증은 기본 정보 섹션(field-price-main 등)으로 이동 */
+      return [];
     },
   },
   {

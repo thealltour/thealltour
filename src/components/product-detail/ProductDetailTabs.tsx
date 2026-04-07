@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   Plane,
@@ -23,7 +23,10 @@ type ProductDetailTabsProps = {
   detailedSchedule?: string;
   optionalTours?: string;
   minDeparturePeople?: string;
-  termsAndNotes?: string;
+  bookingNotes?: string;
+  travelNotes?: string;
+  bookingConditions?: string;
+  refundPolicy?: string;
 };
 
 type ScheduleDay = {
@@ -31,7 +34,7 @@ type ScheduleDay = {
   content: string;
 };
 
-type MainTab = "schedule" | "included" | "booking" | "refund";
+type MainTab = "schedule" | "included" | "booking" | "travel" | "refund";
 
 function parseScheduleDays(raw?: string): ScheduleDay[] {
   const source = raw?.trim();
@@ -85,7 +88,10 @@ export default function ProductDetailTabs({
   detailedSchedule,
   optionalTours,
   minDeparturePeople,
-  termsAndNotes,
+  bookingNotes = "",
+  travelNotes = "",
+  bookingConditions = "",
+  refundPolicy = "",
 }: ProductDetailTabsProps) {
   const [activeTab, setActiveTab] = useState<MainTab>("schedule");
   const [openScheduleIndex, setOpenScheduleIndex] = useState<number | null>(0);
@@ -93,13 +99,36 @@ export default function ProductDetailTabs({
   const includedLines = useMemo(() => parseBulletLines(includedItems), [includedItems]);
   const excludedLines = useMemo(() => parseBulletLines(excludedItems), [excludedItems]);
   const optionalLines = useMemo(() => parseBulletLines(optionalTours), [optionalTours]);
-  const termsLines = useMemo(() => parseBulletLines(termsAndNotes), [termsAndNotes]);
+  const bookingLines = useMemo(() => parseBulletLines(bookingNotes), [bookingNotes]);
+  const travelLines = useMemo(() => parseBulletLines(travelNotes), [travelNotes]);
+  const bookingConditionLines = useMemo(
+    () => parseBulletLines(bookingConditions),
+    [bookingConditions],
+  );
+  const refundLines = useMemo(() => parseBulletLines(refundPolicy), [refundPolicy]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (bookingNotes && travelNotes && bookingNotes === travelNotes) {
+      console.warn("[TERMS DUPLICATION WARNING] bookingNotes === travelNotes");
+    }
+    if (bookingNotes && bookingConditions && bookingNotes === bookingConditions) {
+      console.warn("[TERMS DUPLICATION WARNING] bookingNotes === bookingConditions");
+    }
+    if (bookingNotes && refundPolicy && bookingNotes === refundPolicy) {
+      console.warn("[TERMS DUPLICATION WARNING] bookingNotes === refundPolicy");
+    }
+    if (travelNotes && refundPolicy && travelNotes === refundPolicy) {
+      console.warn("[TERMS DUPLICATION WARNING] travelNotes === refundPolicy");
+    }
+  }, [bookingNotes, travelNotes, bookingConditions, refundPolicy]);
 
   const mainTabs: { key: MainTab; label: string }[] = [
     { key: "schedule", label: "일정 안내" },
     { key: "included", label: "포함/불포함" },
     { key: "booking", label: "예약 조건" },
-    { key: "refund", label: "환불 규정" },
+    { key: "travel", label: "여행 시 유의사항" },
+    { key: "refund", label: "환불/취소 규정" },
   ];
 
   const listClass = "space-y-2 text-sm leading-[1.7] text-slate-700";
@@ -107,13 +136,13 @@ export default function ProductDetailTabs({
 
   return (
     <section className="space-y-5 rounded-3xl bg-white/95 p-4 shadow-sm ring-1 ring-[var(--primary-soft)] backdrop-blur md:p-6">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex w-full max-w-full flex-wrap gap-2">
         {mainTabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
-            className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+            className={`min-h-[44px] shrink-0 rounded-full border px-3 py-2 text-xs font-semibold leading-snug transition sm:px-4 sm:text-sm ${
               activeTab === tab.key
                 ? "border-[var(--primary)] bg-[var(--primary-bg)] text-[var(--primary)] shadow-sm"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
@@ -223,15 +252,15 @@ export default function ProductDetailTabs({
       {/* 예약 조건 - 체크리스트 + 약관 요약 */}
       {activeTab === "booking" && (
         <div key="booking" className="fade-in-up space-y-5">
+          {minDeparturePeople?.trim() ? (
+            <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3">
+              <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+              <span className="text-sm leading-[1.7] text-slate-700">
+                출발 인원: {minDeparturePeople.trim()}명 이상 확정 시 출발
+              </span>
+            </div>
+          ) : null}
           <ul className="space-y-3">
-            {minDeparturePeople?.trim() && (
-              <li className="flex items-start gap-3">
-                <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                <span className="text-sm leading-[1.7] text-slate-700">
-                  출발 인원: {minDeparturePeople.trim()}명 이상 확정 시 출발
-                </span>
-              </li>
-            )}
             <li className="flex items-start gap-3">
               <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
               <span className="text-sm leading-[1.7] text-slate-700">
@@ -245,13 +274,45 @@ export default function ProductDetailTabs({
               </span>
             </li>
           </ul>
-          {termsLines.length > 0 && (
+          {bookingConditionLines.length > 0 ? (
+            <AlertCard variant="info" title="예약조건">
+              <ul className="mt-2 space-y-2">
+                {bookingConditionLines.map((line, i) => (
+                  <li key={`cond-${i}`} className="flex items-start gap-3">
+                    <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                    <span className="text-sm leading-[1.7] text-slate-700">{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </AlertCard>
+          ) : null}
+          {bookingLines.length > 0 ? (
             <AlertCard variant="info" title="예약 시 유의사항">
               <ul className="mt-2 space-y-1">
-                {termsLines.map((line, i) => (
+                {bookingLines.map((line, i) => (
                   <li key={i}>{line}</li>
                 ))}
               </ul>
+            </AlertCard>
+          ) : null}
+        </div>
+      )}
+
+      {activeTab === "travel" && (
+        <div key="travel" className="fade-in-up">
+          {travelLines.length > 0 ? (
+            <AlertCard variant="info" title="여행 시 유의사항">
+              <ul className="mt-2 space-y-2 leading-[1.7]">
+                {travelLines.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            </AlertCard>
+          ) : (
+            <AlertCard variant="neutral" title="여행 시 유의사항">
+              <p className="text-sm leading-[1.7] text-slate-700">
+                여행 준비물·현지 진행 유의사항은 상담 시 안내해 드립니다.
+              </p>
             </AlertCard>
           )}
         </div>
@@ -260,19 +321,19 @@ export default function ProductDetailTabs({
       {/* 환불 규정 */}
       {activeTab === "refund" && (
         <div key="refund" className="fade-in-up">
-          {termsLines.length > 0 ? (
-            <AlertCard variant="neutral" title="환불 및 취소 규정">
-              <ul className="mt-2 space-y-2 leading-[1.7]">
-                {termsLines.map((line, i) => (
+          {refundLines.length > 0 ? (
+            <AlertCard variant="neutral" title="환불/취소 규정">
+              <ul className="mt-2 space-y-2 text-sm leading-[1.7] text-slate-700">
+                {refundLines.map((line, i) => (
                   <li key={i}>{line}</li>
                 ))}
               </ul>
             </AlertCard>
           ) : (
-            <AlertCard variant="info" title="환불 규정">
-              <p>
-                상품별 상세 환불·취소 규정은 상담 시 안내해 드립니다. 문의해 주시면 기간별 취소 수수료와
-                절차를 안내해 드립니다.
+            <AlertCard variant="info" title="환불/취소 규정">
+              <p className="text-sm leading-[1.7] text-slate-700">
+                상품별 상세 환불·취소 규정은 상담 시 안내해 드립니다. 문의해 주시면 기간별 취소 수수료와 절차를
+                안내해 드립니다.
               </p>
             </AlertCard>
           )}

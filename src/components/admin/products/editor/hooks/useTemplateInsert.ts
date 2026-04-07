@@ -5,7 +5,12 @@ import type { IncludedTemplateItem } from "@/components/admin/products/editor/ad
 export type TemplateInsertMode = "replace" | "append";
 
 /** 스니펫 삽입 대상 문자열 필드 */
-export type TemplateTextFieldKey = "description" | "terms_and_notes";
+export type TemplateTextFieldKey =
+  | "description"
+  | "booking_notes"
+  | "travel_notes"
+  | "booking_conditions"
+  | "refund_policy";
 
 export function useTemplateInsert(setForm: Dispatch<SetStateAction<ProductFormState>>) {
   function insertText(field: TemplateTextFieldKey, value: string, mode: TemplateInsertMode) {

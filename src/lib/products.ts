@@ -130,6 +130,27 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     optional_tours: typeof row.optional_tours === "string" ? row.optional_tours : undefined,
     min_departure_people: typeof row.min_departure_people === "string" ? row.min_departure_people : undefined,
     terms_and_notes: typeof row.terms_and_notes === "string" ? row.terms_and_notes : undefined,
+    booking_notes: typeof row.booking_notes === "string" ? row.booking_notes : undefined,
+    travel_notes: typeof row.travel_notes === "string" ? row.travel_notes : undefined,
+    booking_conditions:
+      typeof row.booking_conditions === "string" ? row.booking_conditions : undefined,
+    refund_policy: typeof row.refund_policy === "string" ? row.refund_policy : undefined,
+    refund_policy_template_type:
+      typeof row.refund_policy_template_type === "string"
+        ? row.refund_policy_template_type
+        : undefined,
+    booking_notes_template_type:
+      typeof row.booking_notes_template_type === "string"
+        ? row.booking_notes_template_type
+        : undefined,
+    travel_notes_template_type:
+      typeof row.travel_notes_template_type === "string"
+        ? row.travel_notes_template_type
+        : undefined,
+    booking_conditions_template_type:
+      typeof row.booking_conditions_template_type === "string"
+        ? row.booking_conditions_template_type
+        : undefined,
     terms_template_type:
       typeof row.terms_template_type === "string" ? row.terms_template_type : undefined,
     departure_from_airport:

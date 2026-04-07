@@ -2,6 +2,10 @@
  * 공용 미리보기 로직: 저장 API와 preview API가 동일한 규칙 사용
  * - form → Product (formToPreviewProduct)
  * - Product → ProductCardProps / ProductDetailV2Props (직렬화 가능한 payload만, CTA는 클라이언트에서 주입)
+ *
+ * 성능(PR-H): 상세 SSR·POST /api/admin/products/preview 는 resolveProductNoticesForDetailPage로
+ * 4필드를 한 번에 병렬 해석하고, 템플릿은 getNoticeTemplatesByGroup(unstable_cache)를 공유한다.
+ * 클라이언트 로컬 미리보기는 맵이 있을 때만 sync 해석(불필요한 재렌더는 useMemo로 상세 컴포넌트 쪽에서 차단).
  */
 
 import type {
@@ -22,6 +26,29 @@ import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresenta
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { getPrimaryImageUrl, normalizeImageList } from "@/lib/products/images";
+import type { TermsTemplateMap } from "@/lib/termsTemplates";
+import type {
+  NoticeTemplatesByGroup,
+  ResolvedProductNoticesForDetail,
+} from "@/lib/noticeTemplates";
+import {
+  resolveBookingConditionsForDetailSync,
+  resolveBookingNoticeForDetailSync,
+  resolveRefundPolicyForDetailSync,
+  resolveTravelNoticeForDetailSync,
+} from "@/lib/noticeTemplates";
+
+/** 개발 환경: travel_notes 미입력인데 레거시 terms만 남은 상품 표시(수동 마이그레이션 후보) */
+function logProductNoticeMigrationCheckDev(product: Product) {
+  if (process.env.NODE_ENV !== "development") return;
+  const id = product.id?.trim();
+  if (!id || id === "_preview") return;
+  const travelEmpty = !(product.travel_notes?.trim());
+  const legacy = product.terms_and_notes?.trim();
+  if (travelEmpty && legacy) {
+    console.warn("[MIGRATION CHECK] travel_notes empty but legacy exists:", id);
+  }
+}
 
 /** 폼 필드 (API POST body 및 클라이언트 form과 호환) */
 export type ProductFormPayload = {
@@ -57,6 +84,15 @@ export type ProductFormPayload = {
   optional_tours?: string;
   min_departure_people?: string;
   terms_and_notes?: string;
+  terms_template_type?: string;
+  booking_notes?: string;
+  travel_notes?: string;
+  booking_conditions?: string;
+  booking_notes_template_type?: string;
+  travel_notes_template_type?: string;
+  booking_conditions_template_type?: string;
+  refund_policy?: string;
+  refund_policy_template_type?: string;
   product_source_url?: string;
   departure_from_airport?: string;
   departure_from_date?: string;
@@ -169,6 +205,19 @@ export function formToPreviewProduct(
     optional_tours: form.optional_tours?.trim() || undefined,
     min_departure_people: form.min_departure_people?.trim() || undefined,
     terms_and_notes: form.terms_and_notes?.trim() || undefined,
+    terms_template_type: form.terms_template_type?.trim() || undefined,
+    booking_notes: form.booking_notes?.trim() || undefined,
+    travel_notes: form.travel_notes?.trim() || undefined,
+    booking_conditions: form.booking_conditions?.trim() || undefined,
+    booking_notes_template_type:
+      form.booking_notes_template_type?.trim() || undefined,
+    travel_notes_template_type:
+      form.travel_notes_template_type?.trim() || undefined,
+    booking_conditions_template_type:
+      form.booking_conditions_template_type?.trim() || undefined,
+    refund_policy: form.refund_policy?.trim() || undefined,
+    refund_policy_template_type:
+      form.refund_policy_template_type?.trim() || undefined,
     product_source_url: form.product_source_url?.trim() || undefined,
     departure_from_airport: form.departure_from_airport?.trim() || undefined,
     departure_from_date: form.departure_from_date?.trim() || undefined,
@@ -278,7 +327,10 @@ export type ProductDetailV2PropsPayload = {
   detailedSchedule?: string;
   optionalTours?: string;
   minDeparturePeople?: string;
-  termsAndNotes?: string;
+  bookingNotes?: string;
+  travelNotes?: string;
+  bookingConditions?: string;
+  refundPolicy?: string;
   trust?: unknown;
   options?: ProductOptions;
   basePrice?: number;
@@ -289,13 +341,60 @@ export type ProductDetailV2PropsPayload = {
   overviewFallbackUrl?: string;
 };
 
-export function productToDetailV2PropsPayload(product: Product): ProductDetailV2PropsPayload {
+export function productToDetailV2PropsPayload(
+  product: Product,
+  noticeTemplatesByGroup?: NoticeTemplatesByGroup | null,
+  legacyTermsTemplateMap?: TermsTemplateMap | null,
+  /** 있으면 상세 페이지와 동일한 서버 해석(resolveProductNoticesForDetailPage) 결과를 그대로 사용 */
+  resolvedNotices?: ResolvedProductNoticesForDetail | null,
+): ProductDetailV2PropsPayload {
+  logProductNoticeMigrationCheckDev(product);
   const oneLiner =
     product.one_liner?.trim() ||
     product.description?.trim().split(/\n/)[0]?.slice(0, 200) ||
     product.title ||
     "";
   const priceFormatted = product.price != null ? formatPriceKR(product.price) : null;
+
+  let bookingNotes: string;
+  let travelNotes: string;
+  let bookingConditions: string;
+  let refundPolicy: string;
+  if (resolvedNotices) {
+    bookingNotes = resolvedNotices.bookingNotes;
+    travelNotes = resolvedNotices.travelNotes;
+    bookingConditions = resolvedNotices.bookingConditions;
+    refundPolicy = resolvedNotices.refundPolicy;
+  } else if (noticeTemplatesByGroup) {
+    bookingNotes = resolveBookingNoticeForDetailSync(
+      product.booking_notes,
+      product.booking_notes_template_type,
+      product.terms_and_notes,
+      noticeTemplatesByGroup,
+      legacyTermsTemplateMap,
+    );
+    travelNotes = resolveTravelNoticeForDetailSync(
+      product.travel_notes,
+      product.travel_notes_template_type,
+      noticeTemplatesByGroup,
+    );
+    bookingConditions = resolveBookingConditionsForDetailSync(
+      product.booking_conditions,
+      product.booking_conditions_template_type,
+      noticeTemplatesByGroup,
+    );
+    refundPolicy = resolveRefundPolicyForDetailSync(
+      product.refund_policy,
+      product.refund_policy_template_type,
+      noticeTemplatesByGroup,
+    );
+  } else {
+    /* 템플릿 맵 로드 전(관리자 클라이언트 초깃값): 직접입력 필드만 — 상세 SSR과 다를 수 있음 */
+    bookingNotes = product.booking_notes?.trim() ?? "";
+    travelNotes = product.travel_notes?.trim() ?? "";
+    bookingConditions = product.booking_conditions?.trim() ?? "";
+    refundPolicy = product.refund_policy?.trim() ?? "";
+  }
   return {
     title: product.title,
     region: product.theme,
@@ -311,7 +410,10 @@ export function productToDetailV2PropsPayload(product: Product): ProductDetailV2
     detailedSchedule: product.detailed_schedule ?? product.itinerary ?? "",
     optionalTours: product.optional_tours ?? "",
     minDeparturePeople: product.min_departure_people ?? "",
-    termsAndNotes: product.terms_and_notes ?? "",
+    bookingNotes,
+    travelNotes,
+    bookingConditions,
+    refundPolicy,
     trust: undefined,
     options: product.options,
     basePrice: product.price,

@@ -50,3 +50,14 @@ export async function getTermsTemplateContent(type?: string) {
   const map = await getTermsTemplateMap();
   return map[type as TermsTemplateType] ?? "";
 }
+
+/** 동기: 이미 로드한 맵으로 본문 조회 (미리보기·클라이언트) */
+export function getTermsTemplateContentFromMap(
+  map: TermsTemplateMap,
+  type?: string | null,
+): string {
+  if (!type || !(TERMS_TEMPLATE_TYPES as readonly string[]).includes(type)) return "";
+  return map[type as TermsTemplateType] ?? "";
+}
+
+/** 상세/미리보기 병합은 `@/lib/noticeTemplates` 의 resolve* 사용 (PR-E). */

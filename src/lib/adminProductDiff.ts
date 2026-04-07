@@ -214,7 +214,31 @@ export function getProductDiffSummary(
     metadata.push("불포함 사항이 수정되었습니다.");
   }
   if (!strEq(initial.terms_and_notes, current.terms_and_notes)) {
-    metadata.push("약관/참고 내용이 수정되었습니다.");
+    metadata.push("레거시 약관/참고(terms_and_notes) 필드가 수정되었습니다.");
+  }
+  if (!strEq(initial.booking_notes, current.booking_notes)) {
+    metadata.push("예약 시 유의사항이 수정되었습니다.");
+  }
+  if (!strEq(initial.travel_notes, current.travel_notes)) {
+    metadata.push("여행 시 유의사항이 수정되었습니다.");
+  }
+  if (!strEq(initial.booking_conditions, current.booking_conditions)) {
+    metadata.push("예약조건이 수정되었습니다.");
+  }
+  if (!strEq(initial.booking_notes_template_type, current.booking_notes_template_type)) {
+    metadata.push("예약 유의사항 템플릿 키가 변경되었습니다.");
+  }
+  if (!strEq(initial.travel_notes_template_type, current.travel_notes_template_type)) {
+    metadata.push("여행 유의사항 템플릿 키가 변경되었습니다.");
+  }
+  if (!strEq(initial.booking_conditions_template_type, current.booking_conditions_template_type)) {
+    metadata.push("예약조건 템플릿 키가 변경되었습니다.");
+  }
+  if (!strEq(initial.refund_policy, current.refund_policy)) {
+    metadata.push("환불/취소 규정이 수정되었습니다.");
+  }
+  if (!strEq(initial.refund_policy_template_type, current.refund_policy_template_type)) {
+    metadata.push("환불 규정 템플릿 키가 변경되었습니다.");
   }
   if (!strEq(initial.optional_tours, current.optional_tours)) {
     metadata.push("선택 관광이 수정되었습니다.");

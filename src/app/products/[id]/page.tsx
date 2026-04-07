@@ -37,10 +37,10 @@ import { getReviewExperimentVariant } from "@/lib/reviewExperimentAssignment";
 import { cookies } from "next/headers";
 import { getSiteSettings } from "@/lib/siteSettings";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
-import { getTermsTemplateContent } from "@/lib/termsTemplates";
 import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 import { getProductSeoData } from "@/lib/products/getProductSeoData";
 import { getSiteBaseUrl, toAbsoluteUrl } from "@/lib/seo/getSiteSeoDefaults";
+import { resolveProductNoticesForDetailPage } from "@/lib/noticeTemplates";
 
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -173,12 +173,12 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     ? product.terms_and_notes
     : product.excluded_items;
   const resolvedOptionalTours = shouldFallbackFromLegacyDetailFields ? undefined : product.optional_tours;
-  const selectedTermsTemplateContent = await getTermsTemplateContent(product.terms_template_type);
-  const resolvedTermsAndNotes = selectedTermsTemplateContent.trim()
-    ? selectedTermsTemplateContent
-    : shouldFallbackFromLegacyDetailFields
-      ? undefined
-      : product.terms_and_notes;
+  const {
+    bookingNotes: resolvedBookingNotes,
+    travelNotes: resolvedTravelNotes,
+    bookingConditions: resolvedBookingConditions,
+    refundPolicy: resolvedRefundPolicy,
+  } = await resolveProductNoticesForDetailPage(product);
   const siteUrl = getSiteBaseUrl();
   const productUrl = `${siteUrl}/products/${product.id}`;
   const productImageUrl = toAbsoluteUrl(siteUrl, product.image_url?.trim() || THEALL_WORDMARK_IMAGE_SRC);
@@ -310,7 +310,10 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                     detailedSchedule={product.detailed_schedule ?? product.itinerary ?? ""}
                     optionalTours={resolvedOptionalTours ?? ""}
                     minDeparturePeople={product.min_departure_people ?? ""}
-                    termsAndNotes={resolvedTermsAndNotes ?? ""}
+                    bookingNotes={resolvedBookingNotes}
+                    travelNotes={resolvedTravelNotes}
+                    bookingConditions={resolvedBookingConditions}
+                    refundPolicy={resolvedRefundPolicy}
                     consultHref={`/quote?productId=${encodeURIComponent(product.id)}`}
                     productId={product.id}
                     productTitle={product.title}

@@ -7,6 +7,7 @@ import {
 } from "@/lib/admin/productPreview";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import { hydrateProductWithCampaignCardMeta } from "@/lib/productCampaignResolve";
+import { resolveProductNoticesForDetailPage } from "@/lib/noticeTemplates";
 
 type PreviewRequestBody = {
   form: ProductFormPayload;
@@ -31,8 +32,14 @@ export async function POST(request: Request) {
       formToPreviewProduct(form, imageUrl),
       campaignTaxonomies,
     );
+    const resolvedNotices = await resolveProductNoticesForDetailPage(previewProduct);
     const cardProps = productToCardPropsPayload(previewProduct);
-    const detailProps = productToDetailV2PropsPayload(previewProduct);
+    const detailProps = productToDetailV2PropsPayload(
+      previewProduct,
+      null,
+      null,
+      resolvedNotices,
+    );
 
     return NextResponse.json({
       previewProduct,

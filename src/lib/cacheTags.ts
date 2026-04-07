@@ -12,7 +12,7 @@
  * Revalidate 호출 위치:
  * - taxonomy: product-taxonomies API (POST/PATCH/DELETE) → TAXONOMY + HEADER_NAV
  * - curated: home-curated settings/sections/products API → HOME_CURATED + revalidatePath("/")
- * - products: products API (POST/PATCH/DELETE), terms-templates API → PRODUCTS + revalidatePath("/products", "/products/[id]")
+ * - products: products API (POST/PATCH/DELETE), terms-templates / notice-templates API → PRODUCTS + revalidatePath("/products", "/products/[id]")
  */
 
 export const CACHE_TAGS = {

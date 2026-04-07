@@ -56,7 +56,27 @@ export function serializeAdminProductForm(
     ? normalizedTermsAndNotes
     : normalizedExcludedItems;
   const resolvedOptionalTours = shouldRepairLegacyDetailMix ? "" : normalizedOptionalTours;
-  const resolvedTermsAndNotes = shouldRepairLegacyDetailMix ? "" : normalizedTermsAndNotes;
+  const legacyTermsColumnAfterRepair = shouldRepairLegacyDetailMix ? "" : normalizedTermsAndNotes;
+
+  const normalizedBookingNotes = form.booking_notes.trim();
+  const normalizedTravelNotes = form.travel_notes.trim();
+  const normalizedBookingConditions = form.booking_conditions.trim();
+  const normalizedRefundPolicy = form.refund_policy.trim();
+  const hasSplitNoticeFields =
+    normalizedBookingNotes.length > 0 ||
+    normalizedTravelNotes.length > 0 ||
+    normalizedBookingConditions.length > 0 ||
+    normalizedRefundPolicy.length > 0 ||
+    form.booking_notes_template_type !== "" ||
+    form.travel_notes_template_type !== "" ||
+    form.booking_conditions_template_type !== "" ||
+    form.refund_policy_template_type !== "";
+  /**
+   * PR-B: 분리 필드·환불 규정 중 하나라도 쓰이면 terms_and_notes는 저장하지 않음(레거시 단일 컬럼 정리).
+   * TODO(PR-H): legacy column (terms_and_notes) is temporary — remove after full migration
+   */
+  const termsAndNotesForPayload =
+    hasSplitNoticeFields ? null : legacyTermsColumnAfterRepair === "" ? null : legacyTermsColumnAfterRepair;
 
   const normalizedPrice = form.price.replace(/,/g, "").replace(/~/g, "").trim();
   const bandsSanitized = sanitizeSeasonalPriceBandsFromFormStrings(form.seasonal_price_bands);
@@ -114,7 +134,22 @@ export function serializeAdminProductForm(
     optional_tours: resolvedOptionalTours === "" ? null : resolvedOptionalTours,
     min_departure_people: form.min_departure_people.trim() === "" ? null : form.min_departure_people.trim(),
     terms_template_type: form.terms_template_type === "" ? null : form.terms_template_type,
-    terms_and_notes: resolvedTermsAndNotes === "" ? null : resolvedTermsAndNotes,
+    terms_and_notes: termsAndNotesForPayload,
+    booking_notes: normalizedBookingNotes === "" ? null : normalizedBookingNotes,
+    travel_notes: normalizedTravelNotes === "" ? null : normalizedTravelNotes,
+    booking_conditions:
+      normalizedBookingConditions === "" ? null : normalizedBookingConditions,
+    booking_notes_template_type:
+      form.booking_notes_template_type === "" ? null : form.booking_notes_template_type,
+    travel_notes_template_type:
+      form.travel_notes_template_type === "" ? null : form.travel_notes_template_type,
+    booking_conditions_template_type:
+      form.booking_conditions_template_type === ""
+        ? null
+        : form.booking_conditions_template_type,
+    refund_policy: normalizedRefundPolicy === "" ? null : normalizedRefundPolicy,
+    refund_policy_template_type:
+      form.refund_policy_template_type === "" ? null : form.refund_policy_template_type,
     product_source_url: form.product_source_url.trim() === "" ? null : form.product_source_url.trim(),
     image_url: primaryImageUrl,
     images_json: normalizedImages.length > 0 ? normalizedImages : undefined,

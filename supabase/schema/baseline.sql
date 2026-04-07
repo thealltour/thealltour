@@ -634,6 +634,43 @@ drop policy if exists "terms_templates_delete_anon" on public.product_terms_temp
 create policy "terms_templates_delete_anon" on public.product_terms_templates for delete to anon using (true);
 
 -- -----------------------------------------------------------------------------
+-- 21b) public.product_notice_templates (PR-E 그룹별 안내 템플릿)
+-- -----------------------------------------------------------------------------
+create table if not exists public.product_notice_templates (
+  id uuid primary key default gen_random_uuid(),
+  template_group text not null,
+  type text not null,
+  label text,
+  content text,
+  sort_order integer not null default 0,
+  updated_at timestamptz not null default now(),
+  constraint product_notice_templates_group_chk check (
+    template_group in (
+      'booking_notes',
+      'travel_notes',
+      'booking_conditions',
+      'refund_policy',
+      'legacy'
+    )
+  ),
+  constraint product_notice_templates_type_nonempty check (char_length(trim(type)) > 0),
+  constraint product_notice_templates_unique_group_type unique (template_group, type)
+);
+
+create index if not exists idx_product_notice_templates_group_sort
+  on public.product_notice_templates (template_group, sort_order asc, type asc);
+
+alter table public.product_notice_templates enable row level security;
+drop policy if exists "notice_templates_select_anon" on public.product_notice_templates;
+create policy "notice_templates_select_anon" on public.product_notice_templates for select to anon using (true);
+drop policy if exists "notice_templates_insert_anon" on public.product_notice_templates;
+create policy "notice_templates_insert_anon" on public.product_notice_templates for insert to anon with check (true);
+drop policy if exists "notice_templates_update_anon" on public.product_notice_templates;
+create policy "notice_templates_update_anon" on public.product_notice_templates for update to anon using (true) with check (true);
+drop policy if exists "notice_templates_delete_anon" on public.product_notice_templates;
+create policy "notice_templates_delete_anon" on public.product_notice_templates for delete to anon using (true);
+
+-- -----------------------------------------------------------------------------
 -- 22) public.point_earn_requests, earn_request_attachments
 -- -----------------------------------------------------------------------------
 create table if not exists public.point_earn_requests (

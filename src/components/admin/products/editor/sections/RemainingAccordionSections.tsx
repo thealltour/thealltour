@@ -13,8 +13,7 @@ import {
   DESCRIPTION_TEMPLATES,
 } from "@/components/admin/products/editor/adminProductTemplates";
 import { useTemplateInsert } from "@/components/admin/products/editor/hooks/useTemplateInsert";
-
-export type TermsTemplateMap = Record<TermsTemplateType, string>;
+import type { NoticeTemplateGroup, NoticeTemplatesByGroup } from "@/lib/noticeTemplates";
 
 export type RemainingAccordionSectionsProps = {
   sectionId: "taxonomy" | "price" | "description" | "included" | "flight" | "terms";
@@ -36,12 +35,11 @@ export type RemainingAccordionSectionsProps = {
   activeCampaignOptions: ProductTaxonomyWithUsage[];
   selectedCampaigns: string[];
   toggleCampaign: (name: string) => void;
-  termsTemplates: TermsTemplateMap;
-  setTermsTemplates: Dispatch<SetStateAction<TermsTemplateMap>>;
-  selectedTermsTemplateContent: string;
+  noticeTemplatesByGroup: NoticeTemplatesByGroup;
+  setNoticeTemplatesByGroup: Dispatch<SetStateAction<NoticeTemplatesByGroup>>;
   isTermsTemplatesPanelOpen: boolean;
   setIsTermsTemplatesPanelOpen: Dispatch<SetStateAction<boolean>>;
-  saveTermsTemplates: () => Promise<void>;
+  saveNoticeTemplates: () => Promise<void>;
   isTermsTemplatesLoading: boolean;
   isTermsTemplatesSaving: boolean;
   termsTemplatesErrorMessage: string;
@@ -69,12 +67,11 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
     activeCampaignOptions,
     selectedCampaigns,
     toggleCampaign,
-    termsTemplates,
-    setTermsTemplates,
-    selectedTermsTemplateContent,
+    noticeTemplatesByGroup,
+    setNoticeTemplatesByGroup,
     isTermsTemplatesPanelOpen,
     setIsTermsTemplatesPanelOpen,
-    saveTermsTemplates,
+    saveNoticeTemplates,
     isTermsTemplatesLoading,
     isTermsTemplatesSaving,
     termsTemplatesErrorMessage,
@@ -83,7 +80,13 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
   const { insertText, insertIncludedTemplate } = useTemplateInsert(setForm);
   const [includedTemplateSelect, setIncludedTemplateSelect] = useState("");
   const [termsSnippetSelect, setTermsSnippetSelect] = useState("");
+  const [travelTermsSnippetSelect, setTravelTermsSnippetSelect] = useState("");
+  const [conditionTermsSnippetSelect, setConditionTermsSnippetSelect] = useState("");
+  const [refundTermsSnippetSelect, setRefundTermsSnippetSelect] = useState("");
   const [descriptionSnippetSelect, setDescriptionSnippetSelect] = useState("");
+
+  const termsPreview = (group: NoticeTemplateGroup, type: "" | TermsTemplateType) =>
+    type ? (noticeTemplatesByGroup[group][type]?.trim() ?? "") : "";
 
   switch (sectionId) {
     case "taxonomy":
@@ -852,65 +855,252 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
     case "terms":
       return (
         <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-          <div className="md:col-span-2 space-y-2">
-            <p className="text-[11px] text-[var(--text-muted)]">템플릿으로 빠르게 입력할 수 있습니다</p>
-            <select
-              value={termsSnippetSelect}
-              onChange={(e) => {
-                const id = e.target.value;
-                if (!id) return;
-                const t = TERMS_TEMPLATES.find((x) => x.id === id);
-                if (t) insertText("terms_and_notes", t.content, "replace");
-                setTermsSnippetSelect("");
-              }}
-              className="w-full max-w-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-            >
-              <option value="">약관 템플릿</option>
-              {TERMS_TEMPLATES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <p className="text-[11px] text-[var(--text-muted)] md:col-span-2">
+            각 항목마다 <strong className="text-[var(--text-secondary)]">공통 템플릿 키</strong>를 고를 수 있습니다. 직접 입력이
+            비어 있을 때만 해당 템플릿 본문이 상세 페이지에 반영됩니다. (예약 유의만 레거시 &quot;약관 및 참조사항&quot; 필드로
+            폴백할 수 있습니다.)
+          </p>
           <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
-            <p className="text-sm font-semibold text-[var(--primary)]">약관 및 참조사항 템플릿 적용</p>
+            <p className="text-sm font-semibold text-[var(--primary)]">예약 시 유의사항</p>
             <select
-              value={form.terms_template_type}
+              value={form.booking_notes_template_type}
               onChange={(event) =>
                 setForm((prev) => ({
                   ...prev,
-                  terms_template_type: event.target.value as "" | TermsTemplateType,
+                  booking_notes_template_type: event.target.value as "" | TermsTemplateType,
                 }))
               }
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
-              <option value="">직접 입력 (템플릿 미사용)</option>
+              <option value="">직접 입력만 (템플릿 키 없음)</option>
               {TERMS_TEMPLATE_OPTIONS.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
               ))}
             </select>
-            {form.terms_template_type ? (
+            {form.booking_notes_template_type ? (
               <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-                <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">선택 템플릿 미리보기</p>
+                <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">선택 키의 공통 템플릿 미리보기</p>
                 <p className="whitespace-pre-line text-xs leading-6 text-[var(--text-secondary)]">
-                  {selectedTermsTemplateContent.trim() || "템플릿 내용이 비어 있습니다. 아래에서 수정해 주세요."}
+                  {termsPreview("booking_notes", form.booking_notes_template_type) ||
+                    "템플릿 내용이 비어 있습니다. 아래 공통 템플릿 관리에서 채워 주세요."}
                 </p>
               </div>
             ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={termsSnippetSelect}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const t = TERMS_TEMPLATES.find((x) => x.id === id);
+                  if (t) insertText("booking_notes", t.content, "replace");
+                  setTermsSnippetSelect("");
+                }}
+                className="w-full max-w-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              >
+                <option value="">문구 스니펫 삽입 (예약 유의)</option>
+                {TERMS_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <textarea
-              value={form.terms_and_notes}
-              onChange={(event) => setForm((prev) => ({ ...prev, terms_and_notes: event.target.value }))}
+              id="form-field-booking_notes"
+              value={form.booking_notes}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, booking_notes: event.target.value }))
+              }
               rows={4}
-              placeholder="예약 조건·환불·취소 규정 등 (운영자가 직접 확인 후 입력해 주세요. 모두투어 import는 자동 반영하지 않습니다.)"
+              placeholder="예약 진행 시 유의사항 입력"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+          </div>
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
+            <p className="text-sm font-semibold text-[var(--primary)]">여행 시 유의사항</p>
+            <select
+              value={form.travel_notes_template_type}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  travel_notes_template_type: event.target.value as "" | TermsTemplateType,
+                }))
+              }
+              className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            >
+              <option value="">직접 입력만 (템플릿 키 없음)</option>
+              {TERMS_TEMPLATE_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {form.travel_notes_template_type ? (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">선택 키의 공통 템플릿 미리보기</p>
+                <p className="whitespace-pre-line text-xs leading-6 text-[var(--text-secondary)]">
+                  {termsPreview("travel_notes", form.travel_notes_template_type) ||
+                    "템플릿 내용이 비어 있습니다. 아래 공통 템플릿 관리에서 채워 주세요."}
+                </p>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={travelTermsSnippetSelect}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const t = TERMS_TEMPLATES.find((x) => x.id === id);
+                  if (t) insertText("travel_notes", t.content, "replace");
+                  setTravelTermsSnippetSelect("");
+                }}
+                className="w-full max-w-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              >
+                <option value="">문구 스니펫 삽입 (여행 유의)</option>
+                {TERMS_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              id="form-field-travel_notes"
+              value={form.travel_notes}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, travel_notes: event.target.value }))
+              }
+              rows={4}
+              placeholder="여행 중 유의사항 입력"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+          </div>
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
+            <p className="text-sm font-semibold text-[var(--primary)]">예약조건</p>
+            <select
+              value={form.booking_conditions_template_type}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  booking_conditions_template_type: event.target.value as "" | TermsTemplateType,
+                }))
+              }
+              className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            >
+              <option value="">직접 입력만 (템플릿 키 없음)</option>
+              {TERMS_TEMPLATE_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {form.booking_conditions_template_type ? (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">선택 키의 공통 템플릿 미리보기</p>
+                <p className="whitespace-pre-line text-xs leading-6 text-[var(--text-secondary)]">
+                  {termsPreview("booking_conditions", form.booking_conditions_template_type) ||
+                    "템플릿 내용이 비어 있습니다. 아래 공통 템플릿 관리에서 채워 주세요."}
+                </p>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={conditionTermsSnippetSelect}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const t = TERMS_TEMPLATES.find((x) => x.id === id);
+                  if (t) insertText("booking_conditions", t.content, "replace");
+                  setConditionTermsSnippetSelect("");
+                }}
+                className="w-full max-w-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              >
+                <option value="">문구 스니펫 삽입 (예약조건)</option>
+                {TERMS_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              id="form-field-booking_conditions"
+              value={form.booking_conditions}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, booking_conditions: event.target.value }))
+              }
+              rows={4}
+              placeholder="예약 조건 입력"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            />
+          </div>
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
+            <p className="text-sm font-semibold text-[var(--primary)]">환불/취소 규정</p>
+            <select
+              value={form.refund_policy_template_type}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  refund_policy_template_type: event.target.value as "" | TermsTemplateType,
+                }))
+              }
+              className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            >
+              <option value="">직접 입력만 (템플릿 키 없음)</option>
+              {TERMS_TEMPLATE_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {form.refund_policy_template_type ? (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">선택 키의 공통 템플릿 미리보기</p>
+                <p className="whitespace-pre-line text-xs leading-6 text-[var(--text-secondary)]">
+                  {termsPreview("refund_policy", form.refund_policy_template_type) ||
+                    "템플릿 내용이 비어 있습니다. 아래 공통 템플릿 관리에서 채워 주세요."}
+                </p>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={refundTermsSnippetSelect}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const t = TERMS_TEMPLATES.find((x) => x.id === id);
+                  if (t) insertText("refund_policy", t.content, "replace");
+                  setRefundTermsSnippetSelect("");
+                }}
+                className="w-full max-w-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              >
+                <option value="">문구 스니펫 삽입 (환불 규정)</option>
+                {TERMS_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              id="form-field-refund_policy"
+              value={form.refund_policy}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, refund_policy: event.target.value }))
+              }
+              rows={4}
+              placeholder="환불 및 취소 규정을 입력하세요 (예: 출발 7일 전 100% 환불 등)"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             />
           </div>
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 p-3 md:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">약관 템플릿 관리 (공통)</p>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">
+                공통 안내 템플릿 관리 (예약·여행·예약조건·환불)
+              </p>
               <button
                 type="button"
                 onClick={() => setIsTermsTemplatesPanelOpen((prev) => !prev)}
@@ -928,7 +1118,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={saveTermsTemplates}
+                    onClick={saveNoticeTemplates}
                     disabled={isTermsTemplatesLoading || isTermsTemplatesSaving}
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
                   >
@@ -938,22 +1128,45 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                 {termsTemplatesErrorMessage ? (
                   <p className="text-xs text-rose-600">{termsTemplatesErrorMessage}</p>
                 ) : null}
-                <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-                  {TERMS_TEMPLATE_OPTIONS.map((item) => (
-                    <div key={item.value} className="space-y-1 rounded-lg border border-[var(--border)] bg-slate-50 p-2.5">
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">{item.label}</p>
-                      <textarea
-                        value={termsTemplates[item.value]}
-                        onChange={(event) =>
-                          setTermsTemplates((prev) => ({
-                            ...prev,
-                            [item.value]: event.target.value,
-                          }))
-                        }
-                        rows={5}
-                        placeholder={`${item.label} 약관 템플릿을 입력하세요.`}
-                        className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-xs leading-5 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                      />
+                <div className="flex flex-col space-y-6">
+                  {(
+                    [
+                      { group: "booking_notes" as const, title: "예약 시 유의사항 템플릿" },
+                      { group: "travel_notes" as const, title: "여행 시 유의사항 템플릿" },
+                      { group: "booking_conditions" as const, title: "예약조건 템플릿" },
+                      { group: "refund_policy" as const, title: "환불/취소 규정 템플릿" },
+                    ] as const
+                  ).map(({ group, title }) => (
+                    <div
+                      key={group}
+                      className="space-y-2 rounded-lg border border-[var(--border)] bg-slate-50/80 p-3"
+                    >
+                      <p className="text-xs font-semibold text-[var(--primary)]">{title}</p>
+                      <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+                        {TERMS_TEMPLATE_OPTIONS.map((item) => (
+                          <div
+                            key={`${group}-${item.value}`}
+                            className="space-y-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5"
+                          >
+                            <p className="text-xs font-semibold text-[var(--text-primary)]">{item.label}</p>
+                            <textarea
+                              value={noticeTemplatesByGroup[group][item.value]}
+                              onChange={(event) =>
+                                setNoticeTemplatesByGroup((prev) => ({
+                                  ...prev,
+                                  [group]: {
+                                    ...prev[group],
+                                    [item.value]: event.target.value,
+                                  },
+                                }))
+                              }
+                              rows={5}
+                              placeholder={`${item.label} 템플릿 본문`}
+                              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-xs leading-5 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>

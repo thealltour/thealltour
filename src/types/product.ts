@@ -221,7 +221,21 @@ export type Product = {
   detailed_schedule?: string;
   optional_tours?: string;
   min_departure_people?: string;
-  terms_and_notes?: string;
+  /** 레거시 단일 약관/유의. 상세 노출은 예약 유의사항 폴백에만 사용(PR-H). */
+  terms_and_notes?: string | null;
+  /** 예약 시 유의사항 (직접입력; 비면 템플릿·레거시 순) */
+  booking_notes?: string | null;
+  /** 여행 시 유의사항 (직접입력; 비면 템플릿만) */
+  travel_notes?: string | null;
+  /** 예약조건 (직접입력; 비면 템플릿만) */
+  booking_conditions?: string | null;
+  /** 환불·취소 규정 전용 (직접입력; 비면 refund 템플릿만, 타 필드 폴백 없음) */
+  refund_policy?: string | null;
+  refund_policy_template_type?: string | null;
+  /** 예약 유의사항에 적용할 공통 템플릿 키 (product_terms_templates.type) */
+  booking_notes_template_type?: string | null;
+  travel_notes_template_type?: string | null;
+  booking_conditions_template_type?: string | null;
   terms_template_type?: string;
   product_source_url?: string;
   departure_from_airport?: string;

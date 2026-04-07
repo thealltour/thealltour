@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import ProductDetailV2 from "@/components/products/ProductDetailV2";
 import { getProductById } from "@/lib/products";
 import { getSiteSettings } from "@/lib/siteSettings";
-import { getTermsTemplateContent } from "@/lib/termsTemplates";
+import { resolveProductNoticesForDetailPage } from "@/lib/noticeTemplates";
 
 type DevProductDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -36,13 +36,12 @@ export default async function DevProductDetailPage({ params }: DevProductDetailP
     ? product.terms_and_notes
     : product.excluded_items;
   const resolvedOptionalTours = shouldFallbackFromLegacyDetailFields ? undefined : product.optional_tours;
-  const selectedTermsTemplateContent = await getTermsTemplateContent(product.terms_template_type);
-  const resolvedTermsAndNotes = selectedTermsTemplateContent.trim()
-    ? selectedTermsTemplateContent
-    : shouldFallbackFromLegacyDetailFields
-      ? undefined
-      : product.terms_and_notes;
-
+  const {
+    bookingNotes: resolvedBookingNotes,
+    travelNotes: resolvedTravelNotes,
+    bookingConditions: resolvedBookingConditions,
+    refundPolicy: resolvedRefundPolicy,
+  } = await resolveProductNoticesForDetailPage(product);
   const settings = await getSiteSettings();
   const kakaoHref = settings.kakao_chat_url || settings.kakao_channel_url || "https://pf.kakao.com";
   const formattedPrice = formatPrice(product.price);
@@ -94,7 +93,10 @@ export default async function DevProductDetailPage({ params }: DevProductDetailP
               detailedSchedule={product.detailed_schedule ?? product.itinerary ?? ""}
               optionalTours={resolvedOptionalTours ?? ""}
               minDeparturePeople={product.min_departure_people ?? ""}
-              termsAndNotes={resolvedTermsAndNotes ?? ""}
+              bookingNotes={resolvedBookingNotes}
+              travelNotes={resolvedTravelNotes}
+              bookingConditions={resolvedBookingConditions}
+              refundPolicy={resolvedRefundPolicy}
               consultHref={`/quote?productId=${encodeURIComponent(product.id)}`}
               kakaoHref={kakaoHref}
               options={product.options}

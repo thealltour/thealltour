@@ -26,6 +26,16 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
   const shouldRepairLegacyDetailMix =
     !includedItems && !excludedItems && (optionalTours.length > 0 || termsAndNotes.length > 0);
 
+  const rawBookingNotes = product.booking_notes?.trim() ?? "";
+  /**
+   * PR-D: 신규 필드 우선, 없을 때만 레거시 terms → 예약 유의에만 주입.
+   * TODO(PR-H): legacy fallback (terms_and_notes) is temporary — remove after full migration
+   */
+  const bookingNotesForForm = shouldRepairLegacyDetailMix
+    ? ""
+    : rawBookingNotes || termsAndNotes;
+  const legacyTermsTemplate = (product.terms_template_type as "" | TermsTemplateType | undefined) ?? "";
+
   return {
     title: product.title ?? "",
     description: product.description ?? "",
@@ -56,9 +66,27 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     detailed_schedule: product.detailed_schedule ?? "",
     optional_tours: shouldRepairLegacyDetailMix ? "" : product.optional_tours ?? "",
     min_departure_people: product.min_departure_people ?? "",
-    terms_template_type:
-      (product.terms_template_type as "" | TermsTemplateType | undefined) ?? "",
-    terms_and_notes: shouldRepairLegacyDetailMix ? "" : product.terms_and_notes ?? "",
+    terms_template_type: "",
+    terms_and_notes: shouldRepairLegacyDetailMix
+      ? ""
+      : rawBookingNotes
+        ? product.terms_and_notes ?? ""
+        : "",
+    booking_notes: bookingNotesForForm,
+    travel_notes: product.travel_notes ?? "",
+    booking_conditions: product.booking_conditions ?? "",
+    refund_policy: product.refund_policy ?? "",
+    refund_policy_template_type:
+      (product.refund_policy_template_type as "" | TermsTemplateType | undefined) ?? "",
+    booking_notes_template_type: (() => {
+      const t = product.booking_notes_template_type?.trim();
+      if (t) return t as TermsTemplateType;
+      return legacyTermsTemplate || "";
+    })(),
+    travel_notes_template_type:
+      (product.travel_notes_template_type as "" | TermsTemplateType | undefined) ?? "",
+    booking_conditions_template_type:
+      (product.booking_conditions_template_type as "" | TermsTemplateType | undefined) ?? "",
     meta_title: product.meta_title ?? "",
     meta_description: product.meta_description ?? "",
     image_url: product.image_url ?? "",

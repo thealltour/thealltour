@@ -39,6 +39,14 @@ type ProductBody = {
   optional_tours?: string | null;
   min_departure_people?: string | null;
   terms_and_notes?: string | null;
+  booking_notes?: string | null;
+  travel_notes?: string | null;
+  booking_conditions?: string | null;
+  booking_notes_template_type?: string | null;
+  travel_notes_template_type?: string | null;
+  booking_conditions_template_type?: string | null;
+  refund_policy?: string | null;
+  refund_policy_template_type?: string | null;
   terms_template_type?: string | null;
   departure_from_airport?: string | null;
   departure_from_date?: string | null;
@@ -293,6 +301,33 @@ export async function POST(request: Request) {
   }
   if (body.terms_and_notes !== undefined) {
     insertPayload.terms_and_notes = body.terms_and_notes?.trim() || null;
+  }
+  if (body.booking_notes !== undefined) {
+    insertPayload.booking_notes = body.booking_notes?.trim() || null;
+  }
+  if (body.travel_notes !== undefined) {
+    insertPayload.travel_notes = body.travel_notes?.trim() || null;
+  }
+  if (body.booking_conditions !== undefined) {
+    insertPayload.booking_conditions = body.booking_conditions?.trim() || null;
+  }
+  if (body.booking_notes_template_type !== undefined) {
+    insertPayload.booking_notes_template_type =
+      body.booking_notes_template_type?.trim() || null;
+  }
+  if (body.travel_notes_template_type !== undefined) {
+    insertPayload.travel_notes_template_type = body.travel_notes_template_type?.trim() || null;
+  }
+  if (body.booking_conditions_template_type !== undefined) {
+    insertPayload.booking_conditions_template_type =
+      body.booking_conditions_template_type?.trim() || null;
+  }
+  if (body.refund_policy !== undefined) {
+    insertPayload.refund_policy = body.refund_policy?.trim() || null;
+  }
+  if (body.refund_policy_template_type !== undefined) {
+    insertPayload.refund_policy_template_type =
+      body.refund_policy_template_type?.trim() || null;
   }
   if (body.terms_template_type !== undefined) {
     insertPayload.terms_template_type = body.terms_template_type?.trim() || null;

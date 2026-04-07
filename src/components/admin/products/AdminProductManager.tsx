@@ -83,6 +83,10 @@ import {
 import { buildRegionTree } from "@/lib/productTaxonomies";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import { ProductEditorShell } from "@/components/admin/products/editor/ProductEditorShell";
+import {
+  createEmptyNoticeTemplatesByGroup,
+  type NoticeTemplatesByGroup,
+} from "@/lib/noticeTemplates";
 
 function normalizeUrlForCompare(url: string): string {
   return url.trim();
@@ -259,7 +263,12 @@ export default function AdminProductManager() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [toast, setToast] = useState<ToastState>(null);
-  const [termsTemplates, setTermsTemplates] = useState<TermsTemplateMap>(createEmptyTermsTemplateMap());
+  const [noticeTemplatesByGroup, setNoticeTemplatesByGroup] = useState<NoticeTemplatesByGroup>(() =>
+    createEmptyNoticeTemplatesByGroup(),
+  );
+  const [legacyTermsTemplateMap, setLegacyTermsTemplateMap] = useState<TermsTemplateMap>(() =>
+    createEmptyTermsTemplateMap(),
+  );
   const [isTermsTemplatesLoading, setIsTermsTemplatesLoading] = useState(true);
   const [isTermsTemplatesSaving, setIsTermsTemplatesSaving] = useState(false);
   const [termsTemplatesErrorMessage, setTermsTemplatesErrorMessage] = useState("");
@@ -599,33 +608,37 @@ export default function AdminProductManager() {
     return 0;
   }
 
-  async function loadTermsTemplates() {
+  async function loadNoticeTemplates() {
     try {
       setIsTermsTemplatesLoading(true);
       setTermsTemplatesErrorMessage("");
-      const response = await fetch("/api/admin/terms-templates", { cache: "no-store" });
-      const result = (await response.json()) as Partial<TermsTemplateMap> | { message?: string };
+      const response = await fetch("/api/admin/notice-templates", { cache: "no-store" });
+      const result = (await response.json()) as
+        | { notice?: NoticeTemplatesByGroup; legacy?: Partial<TermsTemplateMap>; message?: string }
+        | { message?: string };
       if (!response.ok) {
-        const msg = "message" in result ? result.message : "약관 템플릿 조회에 실패했습니다.";
-        setTermsTemplatesErrorMessage(msg ?? "약관 템플릿 조회에 실패했습니다.");
+        const msg = "message" in result ? result.message : "공지 템플릿 조회에 실패했습니다.";
+        setTermsTemplatesErrorMessage(msg ?? "공지 템플릿 조회에 실패했습니다.");
         return;
       }
-      const templateResult = result as Partial<TermsTemplateMap>;
-      setTermsTemplates({
-        overseas_brokerage: templateResult.overseas_brokerage ?? "",
-        domestic_brokerage: templateResult.domestic_brokerage ?? "",
-        overseas_direct: templateResult.overseas_direct ?? "",
-        domestic_direct: templateResult.domestic_direct ?? "",
+      const notice = "notice" in result && result.notice ? result.notice : createEmptyNoticeTemplatesByGroup();
+      const leg = "legacy" in result && result.legacy ? result.legacy : {};
+      setNoticeTemplatesByGroup(notice);
+      setLegacyTermsTemplateMap({
+        overseas_brokerage: leg.overseas_brokerage ?? "",
+        domestic_brokerage: leg.domestic_brokerage ?? "",
+        overseas_direct: leg.overseas_direct ?? "",
+        domestic_direct: leg.domestic_direct ?? "",
       });
     } catch {
-      setTermsTemplatesErrorMessage("약관 템플릿 조회 중 오류가 발생했습니다.");
+      setTermsTemplatesErrorMessage("공지 템플릿 조회 중 오류가 발생했습니다.");
     } finally {
       setIsTermsTemplatesLoading(false);
     }
   }
 
   useEffect(() => {
-    loadTermsTemplates();
+    loadNoticeTemplates();
   }, []);
 
   const urlEditingId = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID);
@@ -886,11 +899,6 @@ export default function AdminProductManager() {
     form.itinerary_days_json.length > 0
       ? form.itinerary_days_json.length
       : scheduleDrafts.length;
-  const selectedTermsTemplateContent = useMemo(() => {
-    if (!form.terms_template_type) return "";
-    return termsTemplates[form.terms_template_type] ?? "";
-  }, [form.terms_template_type, termsTemplates]);
-
   /** 폼 + 이미지(URL 또는 File ObjectURL) 기반 미리보기용 Product (공용 로직). PR3: campaign taxonomy로 배지 해석 */
   const previewProduct = useMemo(() => {
     const base = mapAdminProductFormToPreviewProduct(
@@ -911,14 +919,18 @@ export default function AdminProductManager() {
   }, [previewProduct]);
 
   const localDetailProps = useMemo(() => {
-    const payload = productToDetailV2PropsPayload(previewProduct);
+    const payload = productToDetailV2PropsPayload(
+      previewProduct,
+      noticeTemplatesByGroup,
+      legacyTermsTemplateMap,
+    );
     return {
       ...payload,
       onConsultClick: () => {},
       kakaoHref: "#",
       trust: undefined,
     };
-  }, [previewProduct]);
+  }, [previewProduct, noticeTemplatesByGroup, legacyTermsTemplateMap]);
 
   /** 서버 preview API 응답 (우선 사용, 실패 시 로컬 fallback) */
   const [serverPreview, setServerPreview] = useState<{
@@ -1345,23 +1357,28 @@ export default function AdminProductManager() {
     setActiveSchedulePreviewIndex(index);
   }
 
-  async function saveTermsTemplates() {
+  async function saveNoticeTemplates() {
     try {
       setIsTermsTemplatesSaving(true);
       setTermsTemplatesErrorMessage("");
-      const response = await fetch("/api/admin/terms-templates", {
+      const response = await fetch("/api/admin/notice-templates", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(termsTemplates),
+        body: JSON.stringify({
+          booking_notes: noticeTemplatesByGroup.booking_notes,
+          travel_notes: noticeTemplatesByGroup.travel_notes,
+          booking_conditions: noticeTemplatesByGroup.booking_conditions,
+          refund_policy: noticeTemplatesByGroup.refund_policy,
+        }),
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
-        setTermsTemplatesErrorMessage(result.message ?? "약관 템플릿 저장에 실패했습니다.");
+        setTermsTemplatesErrorMessage(result.message ?? "공지 템플릿 저장에 실패했습니다.");
         return;
       }
-      showToast("success", "약관 템플릿을 저장했습니다.");
+      showToast("success", "공지 템플릿을 저장했습니다.");
     } catch {
-      setTermsTemplatesErrorMessage("약관 템플릿 저장 중 오류가 발생했습니다.");
+      setTermsTemplatesErrorMessage("공지 템플릿 저장 중 오류가 발생했습니다.");
     } finally {
       setIsTermsTemplatesSaving(false);
     }
@@ -1600,12 +1617,11 @@ export default function AdminProductManager() {
             activeCampaignOptions,
             selectedCampaigns,
             toggleCampaign,
-            termsTemplates,
-            setTermsTemplates,
-            selectedTermsTemplateContent,
+            noticeTemplatesByGroup,
+            setNoticeTemplatesByGroup,
             isTermsTemplatesPanelOpen,
             setIsTermsTemplatesPanelOpen,
-            saveTermsTemplates,
+            saveNoticeTemplates,
             isTermsTemplatesLoading,
             isTermsTemplatesSaving,
             termsTemplatesErrorMessage,

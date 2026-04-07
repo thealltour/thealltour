@@ -7,6 +7,9 @@ export type TermsTemplateType =
   | "overseas_direct"
   | "domestic_direct";
 
+/** PR-E: 그룹별 공통 템플릿 키 (DB product_notice_templates.type 과 동일 스키마) */
+export type NoticeTemplateType = TermsTemplateType;
+
 export type ProductFormState = {
   title: string;
   description: string;
@@ -37,8 +40,18 @@ export type ProductFormState = {
   detailed_schedule: string;
   optional_tours: string;
   min_departure_people: string;
+  /** 레거시·fallback 전용 (UI 비노출). 마이그레이션 완료 후 제거 예정(PR-H). */
   terms_template_type: "" | TermsTemplateType;
+  /** DB null/빈값은 폼에서는 ""로 정규화 */
   terms_and_notes: string;
+  booking_notes: string;
+  travel_notes: string;
+  booking_conditions: string;
+  booking_notes_template_type: "" | NoticeTemplateType;
+  travel_notes_template_type: "" | NoticeTemplateType;
+  booking_conditions_template_type: "" | NoticeTemplateType;
+  refund_policy: string;
+  refund_policy_template_type: "" | NoticeTemplateType;
   meta_title: string;
   meta_description: string;
   image_url: string;
@@ -146,6 +159,14 @@ export function createEmptyProductFormState(): ProductFormState {
     min_departure_people: "",
     terms_template_type: "",
     terms_and_notes: "",
+    booking_notes: "",
+    travel_notes: "",
+    booking_conditions: "",
+    booking_notes_template_type: "",
+    travel_notes_template_type: "",
+    booking_conditions_template_type: "",
+    refund_policy: "",
+    refund_policy_template_type: "",
     meta_title: "",
     meta_description: "",
     image_url: "",

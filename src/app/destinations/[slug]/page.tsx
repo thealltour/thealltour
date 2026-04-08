@@ -12,18 +12,18 @@ import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
-import { ProductsPageContent } from "@/components/products/ProductsPageContent";
+import { StickySectionNav } from "@/components/navigation/StickySectionNav";
+import { AllProductsBrowseCtaSection } from "@/components/landing/AllProductsBrowseCtaSection";
 import {
   getDestinationBySlugForPublicLanding,
   getHubDestinations,
-  getSelfAndDescendantIdsAndNames,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { buildDestinationFallbackImageMap } from "@/lib/landing/buildDestinationFallbackImageMap";
 import { loadProductsListingContextForDestinationDetail } from "@/lib/products/loadProductsListingContext";
-import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
 import { getDestinationLandingHref } from "@/lib/hubLandingLinks";
+import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavSections";
 import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
 import {
   getTaxonomyMetadataFallback,
@@ -50,11 +50,10 @@ export default async function DestinationLandingPage({ params }: Props) {
   const destination = await getDestinationBySlugForPublicLanding(slug);
   if (!destination) notFound();
 
-  const [products, subnodes, allDestinations, collectionCampaignNames] = await Promise.all([
+  const [products, subnodes, allDestinations] = await Promise.all([
     getProducts(),
     getLandingSubnodes("destination", slug),
     getHubDestinations(),
-    getCollectionCampaignNamesForListing(),
   ]);
   const {
     categories,
@@ -62,7 +61,6 @@ export default async function DestinationLandingPage({ params }: Props) {
     productLines,
     regionTree,
     themeTree,
-    taxonomyNameMap,
     destinationGuides,
     reviewHighlights,
   } = await loadProductsListingContextForDestinationDetail(
@@ -70,19 +68,6 @@ export default async function DestinationLandingPage({ params }: Props) {
     allDestinations,
     destination.id,
   );
-  const initialFiltersFromServer = {
-    region: destination.name,
-    theme: null,
-    product_line: null,
-    q: null,
-    sort: "" as const,
-    collection: null,
-  };
-  const initialRegionDescendants = getSelfAndDescendantIdsAndNames(
-    allDestinations,
-    destination.name,
-  );
-
   const parentId = destination.id.trim();
   const childDestinations = allDestinations
     .filter((d) => (d.parent_id ?? "").trim() === parentId)
@@ -106,6 +91,20 @@ export default async function DestinationLandingPage({ params }: Props) {
     `${destination.name} 지역의 여행·골프·패키지 상품을 소개합니다.`;
   const heroImage = getTaxonomyHeroImageFallback(destination);
 
+  const hubSections = buildTaxonomyDetailNavSections({
+    childSection:
+      childDestinations.length > 0
+        ? { id: "child-destinations", label: "도시·지역" }
+        : undefined,
+    hasFeaturedLinks: false,
+    hasGuides: destinationGuides.length > 0,
+    hasRecommended: related.length > 0,
+    hasRelatedTaxonomies: false,
+    hasReviews: reviewHighlights.length > 0,
+  });
+
+  const allProductsHref = `/products?region=${encodeURIComponent(destination.name)}`;
+
   return (
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
@@ -126,7 +125,7 @@ export default async function DestinationLandingPage({ params }: Props) {
           />
 
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-            <div className="hidden w-72 shrink-0 lg:block">
+            <div className="hidden w-72 shrink-0 lg:flex lg:flex-col lg:gap-6">
               <HubFilterSidebar
                 regionOptions={categories}
                 regionTree={regionTree}
@@ -135,10 +134,12 @@ export default async function DestinationLandingPage({ params }: Props) {
                 productLineOptions={productLines}
                 initialFilters={{ region: destination.name }}
               />
+              <StickySectionNav variant="desktop" sections={hubSections} />
             </div>
             <div className="min-w-0 flex-1">
+              <StickySectionNav variant="mobile" sections={hubSections} />
           {childDestinations.length > 0 ? (
-            <SectionBlock surface="none" padding="md">
+            <SectionBlock id="child-destinations" surface="none" padding="md" className="scroll-mt-28">
               <SectionHeader
                 title="도시·지역 선택"
                 description="원하는 도시·지역을 선택해 보세요."
@@ -165,13 +166,15 @@ export default async function DestinationLandingPage({ params }: Props) {
             </SectionBlock>
           ) : null}
 
-          <LandingSubCardsSection
-            contextTitle={destination.name}
-            nodes={subnodes}
-          />
+          <div id="landing-subnodes" className="scroll-mt-28">
+            <LandingSubCardsSection
+              contextTitle={destination.name}
+              nodes={subnodes}
+            />
+          </div>
 
           {destinationGuides.length > 0 ? (
-            <SectionBlock surface="none" padding="md">
+            <SectionBlock id="guides" surface="none" padding="md" className="scroll-mt-28">
               <SectionHeader
                 eyebrow="TRAVEL GUIDE"
                 title={`${destination.name} 여행 가이드`}
@@ -193,24 +196,19 @@ export default async function DestinationLandingPage({ params }: Props) {
           ) : null}
 
           {related.length > 0 ? (
-            <>
+            <section id="recommended-products" className="scroll-mt-28">
               <CuratedBlock
                 title={`${destination.name} 대표 상품`}
                 description={`${destination.name} 지역과 연결된 상품입니다.`}
                 products={related}
                 surface="none"
-                featuredLanding
                 hubLandingLayout
               />
-              <div
-                className="border-b border-[var(--border)] my-8 sm:my-10"
-                aria-hidden
-              />
-            </>
+            </section>
           ) : null}
 
           {reviewHighlights.length > 0 ? (
-            <SectionBlock surface="none" padding="md">
+            <SectionBlock id="reviews" surface="none" padding="md" className="scroll-mt-28">
               <SectionHeader
                 eyebrow="TRAVEL REVIEWS"
                 title="여행자들의 실제 후기"
@@ -235,45 +233,9 @@ export default async function DestinationLandingPage({ params }: Props) {
             </SectionBlock>
           ) : null}
 
+              <AllProductsBrowseCtaSection href={allProductsHref} />
             </div>
           </div>
-
-          {/* 랜딩 직하단: 전체 상품 필터·리스트 (/products/region/[slug]와 동일 구조) */}
-          <section
-            className="min-h-screen border-t-2 border-[var(--border-strong)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-12 mt-16 shadow-[0_-1px_0_0_color-mix(in_srgb,var(--border)_80%,transparent)] sm:mt-20 sm:pt-14"
-            aria-labelledby="products-section-heading"
-          >
-            <div className="mx-auto w-full max-w-6xl px-3 py-8 sm:px-6 sm:py-10 md:px-10 md:py-14">
-              <div className="flex flex-col gap-8">
-                <h2
-                  id="products-section-heading"
-                  className="section-heading type-h2 text-[var(--foreground)] first:mt-0"
-                >
-                  {destination.name} 여행 상품 전체 보기
-                </h2>
-                <p className="section-description type-small text-[var(--text-muted)] -mt-4">
-                  조건을 변경하여 다양한 상품을 비교해보세요.
-                </p>
-                <ProductsPageContent
-                  products={products}
-                  taxonomyNameMap={taxonomyNameMap}
-                  regionOptions={categories}
-                  regionTree={regionTree}
-                  themeOptions={themes}
-                  themeTree={themeTree}
-                  productLineOptions={productLines}
-                  listing={{
-                    initialFiltersFromServer,
-                    basePath: `/destinations/${slug}`,
-                    filterContextLabel: `현재 '${destination.name}' 기준으로 상품을 보여주고 있습니다.`,
-                    initialRegionDescendants,
-                    cardLayout: "related",
-                    collectionCampaignNames,
-                  }}
-                />
-              </div>
-            </div>
-          </section>
         </PageContainer>
       </main>
     </div>

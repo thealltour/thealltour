@@ -22,7 +22,7 @@ const HERO_MIN_HEIGHT = "min-h-[260px] sm:min-h-[320px] md:min-h-[380px]";
 /**
  * 이미지 기반 hero 공통 시각 레이어.
  * backdrop blur + main image + dual overlay + content area.
- * LandingDetailHero, ProductLandingPage image hero 등에서 재사용.
+ * LandingDetailHero 등 이미지 히어로에서 재사용.
  */
 export function HeroVisual({
   imageUrl,

@@ -9,14 +9,14 @@ import { LandingDetailHero } from "@/components/landing/LandingDetailHero";
 import { LandingSubCardsSection } from "@/components/landing/LandingSubCardsSection";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
-import { ProductsPageContent } from "@/components/products/ProductsPageContent";
+import { StickySectionNav } from "@/components/navigation/StickySectionNav";
+import { AllProductsBrowseCtaSection } from "@/components/landing/AllProductsBrowseCtaSection";
 import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import {
   getThemeBySlugForPublicLanding,
   getHubThemes,
   parseThemeTokens,
-  getSelfAndDescendantIdsAndNames,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
 import { loadProductsListingContextForThemeDetail } from "@/lib/products/loadProductsListingContext";
@@ -28,7 +28,7 @@ import {
   getTaxonomyHeroImageFallback,
 } from "@/lib/landingMetadata";
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
-import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
+import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavSections";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { Product } from "@/types/product";
 
@@ -73,11 +73,10 @@ export default async function ThemeLandingPage({ params }: Props) {
   const theme = await getThemeBySlugForPublicLanding(slug);
   if (!theme) notFound();
 
-  const [products, subnodes, allThemes, collectionCampaignNames] = await Promise.all([
+  const [products, subnodes, allThemes] = await Promise.all([
     getProducts(),
     getLandingSubnodes("theme", slug),
     getHubThemes(),
-    getCollectionCampaignNamesForListing(),
   ]);
   const {
     categories,
@@ -85,22 +84,9 @@ export default async function ThemeLandingPage({ params }: Props) {
     productLines,
     regionTree,
     themeTree,
-    taxonomyNameMap,
     themeGuides,
     reviewHighlights,
   } = await loadProductsListingContextForThemeDetail(products, allThemes, theme.id);
-  const initialFiltersFromServer = {
-    region: null,
-    theme: theme.name,
-    product_line: null,
-    q: null,
-    sort: "" as const,
-    collection: null,
-  };
-  const initialThemeDescendantNames = getSelfAndDescendantIdsAndNames(
-    allThemes,
-    theme.name,
-  ).names;
 
   const parentId = theme.id.trim();
   const childThemes = allThemes
@@ -130,6 +116,20 @@ export default async function ThemeLandingPage({ params }: Props) {
     `${theme.name} 테마의 여행·골프·패키지 상품을 소개합니다.`;
   const heroImage = getTaxonomyHeroImageFallback(theme);
 
+  const hubSections = buildTaxonomyDetailNavSections({
+    childSection:
+      childThemes.length > 0
+        ? { id: "child-themes", label: "세부 테마" }
+        : undefined,
+    hasFeaturedLinks: false,
+    hasGuides: themeGuides.length > 0,
+    hasRecommended: related.length > 0,
+    hasRelatedTaxonomies: false,
+    hasReviews: reviewHighlights.length > 0,
+  });
+
+  const allProductsHref = `/products?theme=${encodeURIComponent(theme.name)}`;
+
   return (
     <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
       <SiteHeader />
@@ -150,7 +150,7 @@ export default async function ThemeLandingPage({ params }: Props) {
           />
 
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-            <div className="hidden w-72 shrink-0 lg:block">
+            <div className="hidden w-72 shrink-0 lg:flex lg:flex-col lg:gap-6">
               <HubFilterSidebar
                 regionOptions={categories}
                 regionTree={regionTree}
@@ -159,10 +159,12 @@ export default async function ThemeLandingPage({ params }: Props) {
                 productLineOptions={productLines}
                 initialFilters={{ theme: theme.name }}
               />
+              <StickySectionNav variant="desktop" sections={hubSections} />
             </div>
             <div className="min-w-0 flex-1">
+              <StickySectionNav variant="mobile" sections={hubSections} />
           {childThemes.length > 0 ? (
-            <SectionBlock surface="none" padding="md">
+            <SectionBlock id="child-themes" surface="none" padding="md" className="scroll-mt-28">
               <SectionHeader
                 title="세부 테마 선택"
                 description="원하는 테마를 선택해 보세요."
@@ -189,13 +191,15 @@ export default async function ThemeLandingPage({ params }: Props) {
             </SectionBlock>
           ) : null}
 
-          <LandingSubCardsSection
-            contextTitle={theme.name}
-            nodes={subnodes}
-          />
+          <div id="landing-subnodes" className="scroll-mt-28">
+            <LandingSubCardsSection
+              contextTitle={theme.name}
+              nodes={subnodes}
+            />
+          </div>
 
           {themeGuides.length > 0 ? (
-            <SectionBlock surface="none" padding="md">
+            <SectionBlock id="guides" surface="none" padding="md" className="scroll-mt-28">
               <SectionHeader
                 eyebrow="TRAVEL GUIDE"
                 title={`${theme.name} 가이드`}
@@ -217,24 +221,19 @@ export default async function ThemeLandingPage({ params }: Props) {
           ) : null}
 
           {related.length > 0 ? (
-            <>
+            <section id="recommended-products" className="scroll-mt-28">
               <CuratedBlock
                 title={`${theme.name} 대표 상품`}
                 description={`${theme.name} 테마와 연결된 상품입니다.`}
                 products={related}
                 surface="none"
-                featuredLanding
                 hubLandingLayout
               />
-              <div
-                className="border-b border-[var(--border)] my-8 sm:my-10"
-                aria-hidden
-              />
-            </>
+            </section>
           ) : null}
 
           {reviewHighlights.length > 0 ? (
-            <SectionBlock surface="none" padding="md">
+            <SectionBlock id="reviews" surface="none" padding="md" className="scroll-mt-28">
               <SectionHeader
                 eyebrow="TRAVEL REVIEWS"
                 title="여행자들의 실제 후기"
@@ -259,45 +258,9 @@ export default async function ThemeLandingPage({ params }: Props) {
             </SectionBlock>
           ) : null}
 
+              <AllProductsBrowseCtaSection href={allProductsHref} />
             </div>
           </div>
-
-          {/* 랜딩 직하단: 전체 상품 필터·리스트 (/products/theme/[slug]와 동일 구조) */}
-          <section
-            className="min-h-screen border-t-2 border-[var(--border-strong)] bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] pt-12 mt-16 shadow-[0_-1px_0_0_color-mix(in_srgb,var(--border)_80%,transparent)] sm:mt-20 sm:pt-14"
-            aria-labelledby="products-section-heading"
-          >
-            <div className="mx-auto w-full max-w-6xl px-3 py-8 sm:px-6 sm:py-10 md:px-10 md:py-14">
-              <div className="flex flex-col gap-8">
-                <h2
-                  id="products-section-heading"
-                  className="section-heading type-h2 text-[var(--foreground)] first:mt-0"
-                >
-                  {theme.name} 테마 상품 전체 보기
-                </h2>
-                <p className="section-description type-small text-[var(--text-muted)] -mt-4">
-                  조건을 변경하여 다양한 상품을 비교해보세요.
-                </p>
-                <ProductsPageContent
-                  products={products}
-                  taxonomyNameMap={taxonomyNameMap}
-                  regionOptions={categories}
-                  regionTree={regionTree}
-                  themeOptions={themeNames}
-                  themeTree={themeTree}
-                  productLineOptions={productLines}
-                  listing={{
-                    initialFiltersFromServer,
-                    basePath: `/themes/${slug}`,
-                    filterContextLabel: `현재 '${theme.name}' 기준으로 상품을 보여주고 있습니다.`,
-                    initialThemeDescendantNames,
-                    cardLayout: "related",
-                    collectionCampaignNames,
-                  }}
-                />
-              </div>
-            </div>
-          </section>
         </PageContainer>
       </main>
     </div>

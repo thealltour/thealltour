@@ -25,6 +25,7 @@ export type ScheduleEditorProps = {
   onReturnImageToPool?: (url: string) => void;
   imagePlacementIssuesByUrl?: Record<string, ImagePlacementIssue[]>;
   showPlacementWarnings?: boolean;
+  modetourImageReviewMode?: boolean;
 };
 
 export function ScheduleEditor({
@@ -42,6 +43,7 @@ export function ScheduleEditor({
   onReturnImageToPool,
   imagePlacementIssuesByUrl,
   showPlacementWarnings = true,
+  modetourImageReviewMode = false,
 }: ScheduleEditorProps) {
   const selectedEvent =
     selectedEventIndex != null && events[selectedEventIndex] != null
@@ -92,6 +94,7 @@ export function ScheduleEditor({
           onReturnImageToPool={onReturnImageToPool}
           imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
           showPlacementWarnings={showPlacementWarnings}
+          modetourImageReviewMode={modetourImageReviewMode}
         />
       </div>
     </div>

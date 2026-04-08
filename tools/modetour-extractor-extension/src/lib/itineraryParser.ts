@@ -5,6 +5,7 @@
 
 import type { ModetourImportV1 } from "~types/modetourImport";
 import type { ModetourImportWarning } from "~types/modetourImport";
+import { isShortButImportant } from "~lib/itineraryKeywords";
 
 type DayBlock = {
   dayNumber: number;
@@ -67,9 +68,11 @@ function splitByDayBlocks(itineraryText: string): { num: number; start: number; 
 function isEventLine(line: string): boolean {
   const t = line.trim();
   if (!t) return false;
+  if (FORBIDDEN_WORDS.test(t)) return false;
+  if (isShortButImportant(t)) return true;
   if (TIME_PATTERN.test(t)) return true;
   if (BULLET_OR_NUMBER.test(t)) return true;
-  if (t.length >= MIN_EVENT_LINE_LEN && !FORBIDDEN_WORDS.test(t)) return true;
+  if (t.length >= MIN_EVENT_LINE_LEN) return true;
   return false;
 }
 

@@ -42,6 +42,8 @@ export type EventEditorProps = {
   /** URL별 검증 이슈 (개별 이미지 카드 표시용) */
   imagePlacementIssuesByUrl?: Record<string, ImagePlacementIssue[]>;
   showPlacementWarnings?: boolean;
+  /** 모두투어 이미지 1차 검수 UI */
+  modetourImageReviewMode?: boolean;
 };
 
 export function EventEditor({
@@ -56,6 +58,7 @@ export function EventEditor({
   onReturnImageToPool,
   imagePlacementIssuesByUrl,
   showPlacementWarnings = true,
+  modetourImageReviewMode = false,
 }: EventEditorProps) {
   if (event == null) {
     return (
@@ -225,6 +228,7 @@ export function EventEditor({
               }
               issuesByUrl={imagePlacementIssuesByUrl}
               showWarnings={showPlacementWarnings}
+              modetourImageReviewMode={modetourImageReviewMode}
             />
           </div>
         </details>

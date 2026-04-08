@@ -35,6 +35,7 @@ export type V2DayCardProps = {
   onReturnImageToPool?: (url: string) => void;
   imagePlacementIssuesByUrl?: Record<string, ImagePlacementIssue[]>;
   showPlacementWarnings?: boolean;
+  modetourImageReviewMode?: boolean;
 };
 
 export function V2DayCard({
@@ -60,6 +61,7 @@ export function V2DayCard({
   onReturnImageToPool,
   imagePlacementIssuesByUrl,
   showPlacementWarnings = true,
+  modetourImageReviewMode = false,
 }: V2DayCardProps) {
   const events = day.events ?? [];
 
@@ -233,6 +235,7 @@ export function V2DayCard({
           onReturnImageToPool={onReturnImageToPool}
           imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
           showPlacementWarnings={showPlacementWarnings}
+          modetourImageReviewMode={modetourImageReviewMode}
         />
       </div>
     </article>

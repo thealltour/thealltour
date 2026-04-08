@@ -56,6 +56,10 @@ export type ScheduleVisualEditorV2Props = {
   onAutoAssignImages?: () => void;
   /** 미할당 이미지 수 (자동 배치 버튼 표시용) */
   unassignedImageCount?: number;
+  /** 모두투어 검수: 현재 선택된 이벤트 안내 */
+  modetourSelectionSummary?: string | null;
+  /** 모두투어 이벤트 이미지 1차 검수(삭제 예정·미할당·휴리스틱) */
+  modetourImageReviewMode?: boolean;
 };
 
 export function ScheduleVisualEditorV2({
@@ -73,6 +77,8 @@ export function ScheduleVisualEditorV2({
   showPlacementWarnings = true,
   onAutoAssignImages,
   unassignedImageCount = 0,
+  modetourSelectionSummary,
+  modetourImageReviewMode = false,
 }: ScheduleVisualEditorV2Props) {
   const v2 = form.itinerary_v2_json;
   const days = v2.days ?? [];
@@ -308,6 +314,13 @@ export function ScheduleVisualEditorV2({
           </div>
         </div>
 
+        {modetourSelectionSummary ? (
+          <div className="rounded-lg border border-[var(--primary)]/35 bg-[var(--primary)]/10 px-3 py-2 text-xs text-[var(--text-primary)]">
+            <span className="font-semibold text-[var(--primary)]">현재 선택 이벤트: </span>
+            {modetourSelectionSummary}
+          </div>
+        ) : null}
+
         <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)]/50 p-3">
           <HintDisclosure
             id="schedule.legacyTextGuide"
@@ -373,6 +386,7 @@ export function ScheduleVisualEditorV2({
                 onReturnImageToPool={onReturnImageToPool}
                 imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
                 showPlacementWarnings={showPlacementWarnings}
+                modetourImageReviewMode={modetourImageReviewMode}
               />
             ))}
             <button

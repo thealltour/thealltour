@@ -1,6 +1,7 @@
 /**
  * PR8.10: 저장/로드 데이터 → editor state 복원 시 이미지 정규화.
  * - hydrate(serialize(editorState)) ≈ editorState (의미적으로 동일).
+ * PR-IMAGE-4: 검수 UX(미할당 풀·휴리스틱)는 UI에서 처리; 본 모듈은 강한 필터를 추가하지 않음.
  */
 
 import type { ItineraryV2Day, ItineraryStructuredDay } from "@/types/product";
@@ -8,6 +9,10 @@ import { normalizeEventImages } from "./normalizeEventImages";
 import { dedupeEventImages } from "./dedupeEventImages";
 import { getEventImageUrl } from "./getEventImageUrl";
 import { normalizeImageUrl } from "./normalizeImageUrl";
+
+function isEventImageDeleted(img: unknown): boolean {
+  return typeof img === "object" && img != null && (img as { status?: string }).status === "deleted";
+}
 
 export type HydrateItineraryImagesParams = {
   v2Days?: ItineraryV2Day[] | null;
@@ -28,12 +33,18 @@ function collectPlacedUrlSet(
   const set = new Set<string>();
   v2Days.forEach((day) => {
     (day.events ?? []).forEach((ev) => {
-      (ev.images ?? []).forEach((img) => set.add(getEventImageUrl(img)));
+      (ev.images ?? []).forEach((img) => {
+        if (isEventImageDeleted(img)) return;
+        set.add(getEventImageUrl(img));
+      });
     });
   });
   structuredDays.forEach((day) => {
     day.events.forEach((ev) => {
-      (ev.images ?? []).forEach((img) => set.add(getEventImageUrl(img)));
+      (ev.images ?? []).forEach((img) => {
+        if (isEventImageDeleted(img)) return;
+        set.add(getEventImageUrl(img));
+      });
     });
   });
   return set;

@@ -1,3 +1,9 @@
+export type ModetourImageHeuristicHints = {
+  isThumbnailCandidate: boolean;
+  isLogoCandidate: boolean;
+  isLowResolution: boolean;
+};
+
 export type ModetourImportWarning = {
   code: string;
   message: string;
@@ -67,6 +73,7 @@ export type ModetourImportV1 = {
     heroImageUrl?: string;
     galleryImageUrls?: string[];
     unassignedImageUrls?: string[];
+    imageHintsByUrl?: Record<string, ModetourImageHeuristicHints>;
   };
 
   warnings?: ModetourImportWarning[];

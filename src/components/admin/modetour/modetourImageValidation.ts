@@ -35,10 +35,17 @@ export type ValidateImagePlacementParams = {
   unassignedImageUrls: string[];
 };
 
+export function isEventImageMarkedDeleted(img: EventImageInput | null | undefined): boolean {
+  if (img == null || typeof img !== "object") return false;
+  return (img as { status?: string }).status === "deleted";
+}
+
 /** 한 이벤트 내 이미지 URL 목록 수집 (정규화된 값) */
 export function collectEventImageUrls(images: EventImageInput[] | undefined): string[] {
   if (!images || !Array.isArray(images)) return [];
-  return images.map((img) => normalizeImageUrl(getEventImageUrl(img)));
+  return images
+    .filter((img) => !isEventImageMarkedDeleted(img))
+    .map((img) => normalizeImageUrl(getEventImageUrl(img)));
 }
 
 /** 모든 이벤트에서 사용 중인 URL 집합 수집 (v2 + structured) */
@@ -59,9 +66,10 @@ export function collectAllEventImageUrls(params: ValidateImagePlacementParams): 
 
 /** 한 이벤트 내 중복 URL 찾기. 반환: [정규화된 URL][] (2개 이상 등장한 URL만) */
 export function findDuplicateUrlsInEvent(images: EventImageInput[] | undefined): string[] {
-  if (!images || images.length < 2) return [];
+  const active = images?.filter((img) => !isEventImageMarkedDeleted(img)) ?? [];
+  if (active.length < 2) return [];
   const counts = new Map<string, number>();
-  images.forEach((img) => {
+  active.forEach((img) => {
     const u = normalizeImageUrl(getEventImageUrl(img));
     if (u) counts.set(u, (counts.get(u) ?? 0) + 1);
   });
@@ -94,8 +102,10 @@ export function validateImagePlacementState(params: ValidateImagePlacementParams
     days.forEach((day, dayIndex) => {
       (day.events ?? []).forEach((ev, eventIndex) => {
         const images = ev.images ?? [];
+        const activeImages = images.filter((img) => !isEventImageMarkedDeleted(img));
 
         images.forEach((img, imageIndex) => {
+          if (isEventImageMarkedDeleted(img)) return;
           const url = getEventImageUrl(img);
           const normalized = normalizeImageUrl(url);
           if (!normalized) {
@@ -118,7 +128,7 @@ export function validateImagePlacementState(params: ValidateImagePlacementParams
           );
         });
 
-        if (images.length === 0) {
+        if (activeImages.length === 0) {
           pushIssue(
             "warning",
             "EMPTY_EVENT",
@@ -137,9 +147,9 @@ export function validateImagePlacementState(params: ValidateImagePlacementParams
   unassignedNormalized.forEach((u) => {
     if (eventUrls.has(u)) {
       pushIssue(
-        "error",
+        "warning",
         "DUPLICATE_BETWEEN_EVENT_AND_UNASSIGNED",
-        "일정 이벤트와 미할당 풀에 동일한 이미지가 동시에 존재합니다. 한쪽으로만 배치해 주세요.",
+        "일정 이벤트와 미할당 풀에 동일한 이미지가 동시에 존재합니다. 저장은 가능합니다. 검수 후 한쪽만 남기는 것을 권장합니다.",
         { url: u },
       );
     }

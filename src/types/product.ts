@@ -85,6 +85,18 @@ export type OverviewTimelineDay = {
   bullets: string[];
 };
 
+/** 일정 이벤트 이미지 1건 (모두투어 검수 status·수집 휴리스틱 메타) */
+export type ItineraryEventImage = {
+  url: string;
+  alt?: string;
+  sortOrder?: number;
+  isCover?: boolean;
+  status?: "active" | "deleted" | "unassigned";
+  isThumbnailCandidate?: boolean;
+  isLogoCandidate?: boolean;
+  isLowResolution?: boolean;
+};
+
 /** [STEP 0] 구조화 일정 이벤트 1개 (시간대·아이콘 지원) */
 export type ItineraryStructuredEvent = {
   heading: string;
@@ -92,7 +104,7 @@ export type ItineraryStructuredEvent = {
   timeOfDay?: "오전" | "오후" | "저녁" | "종일";
   iconKey?: string;
   /** 이벤트별 이미지 URL 목록 (대표·정렬 포함) */
-  images?: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }>;
+  images?: ItineraryEventImage[];
 };
 
 /** [STEP 0] 구조화 일정 Day 1개 */
@@ -115,7 +127,7 @@ export type ItineraryV2Event = {
   location?: string;
   order?: number;
   /** 이벤트별 이미지 URL 목록 (대표·정렬 포함) */
-  images?: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }>;
+  images?: ItineraryEventImage[];
 };
 
 export type ItineraryV2Day = {

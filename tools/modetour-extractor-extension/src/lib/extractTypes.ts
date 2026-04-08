@@ -3,6 +3,8 @@
  * buildImport.ts에서 ModetourImportV1으로 변환.
  */
 
+import type { ModetourImageHeuristicHints } from "~types/modetourImport";
+
 export type ExtractedDomData = {
   source: {
     url: string;
@@ -54,6 +56,7 @@ export type ExtractedDomData = {
     heroImageUrl?: string;
     galleryImageUrls: string[];
     unassignedImageUrls: string[];
+    imageHintsByUrl?: Record<string, ModetourImageHeuristicHints>;
   };
   /** raw 스니펫 (파싱 실패/불확실 시 원문) */
   rawSnippets?: {

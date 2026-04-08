@@ -12,6 +12,10 @@ export type EventImageInput = {
   alt?: string;
   sortOrder?: number;
   isCover?: boolean;
+  status?: "active" | "deleted" | "unassigned";
+  isThumbnailCandidate?: boolean;
+  isLogoCandidate?: boolean;
+  isLowResolution?: boolean;
 };
 
 export type EventImageNormalized = {
@@ -19,6 +23,10 @@ export type EventImageNormalized = {
   alt?: string;
   sortOrder: number;
   isCover: boolean;
+  status?: "active" | "deleted" | "unassigned";
+  isThumbnailCandidate?: boolean;
+  isLogoCandidate?: boolean;
+  isLowResolution?: boolean;
 };
 
 /**
@@ -37,12 +45,17 @@ export function normalizeEventImages(
     const obj = typeof item === "object" && item !== null && !Array.isArray(item)
       ? (item as EventImageInput)
       : { url };
-    withNormalizedUrl.push({
+    const row: EventImageNormalized = {
       url,
       alt: obj.alt,
       sortOrder: typeof obj.sortOrder === "number" && Number.isFinite(obj.sortOrder) ? obj.sortOrder : i,
       isCover: obj.isCover === true,
-    });
+    };
+    if (obj.status != null) row.status = obj.status;
+    if (typeof obj.isThumbnailCandidate === "boolean") row.isThumbnailCandidate = obj.isThumbnailCandidate;
+    if (typeof obj.isLogoCandidate === "boolean") row.isLogoCandidate = obj.isLogoCandidate;
+    if (typeof obj.isLowResolution === "boolean") row.isLowResolution = obj.isLowResolution;
+    withNormalizedUrl.push(row);
   }
 
   const sorted = [...withNormalizedUrl].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -52,11 +65,16 @@ export function normalizeEventImages(
   return sorted.map((item, index) => {
     const isCover = hasAnyCover ? item.isCover === true && !coverAssigned : index === 0;
     if (isCover) coverAssigned = true;
-    return {
+    const out: EventImageNormalized = {
       url: item.url,
       alt: item.alt,
       sortOrder: index,
       isCover,
     };
+    if (item.status != null) out.status = item.status;
+    if (typeof item.isThumbnailCandidate === "boolean") out.isThumbnailCandidate = item.isThumbnailCandidate;
+    if (typeof item.isLogoCandidate === "boolean") out.isLogoCandidate = item.isLogoCandidate;
+    if (typeof item.isLowResolution === "boolean") out.isLowResolution = item.isLowResolution;
+    return out;
   });
 }

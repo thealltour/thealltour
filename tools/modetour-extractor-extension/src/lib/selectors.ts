@@ -3,6 +3,8 @@
  * 못 찾으면 warnings로 남기고, raw 스니펫으로 대체.
  */
 
+import { collectPreferredImgCandidates } from "~lib/images";
+
 export const SELECTORS = {
   /** 상품명 (메인 타이틀) */
   title: [
@@ -215,22 +217,14 @@ export function pickLargestUrlFromSrcset(srcset: string, baseUrl: string): strin
 }
 
 /**
- * 이미지 URL 추출: src, data-src, data-original 우선, srcset이 있으면 가장 큰 후보 선택.
+ * 단일 후보 URL (레거시 헬퍼). PR-IMAGE-2: lazy 우선순위·srcset 고해상도는 collectPreferredImgCandidates와 동일.
  */
 export function getImageUrl(img: HTMLImageElement): string | null {
-  const u =
-    img.getAttribute("src") ||
-    img.getAttribute("data-src") ||
-    img.getAttribute("data-original");
-  if (u?.trim()) return u.trim();
-
-  const srcset = img.getAttribute("srcset");
-  if (srcset?.trim()) {
-    const base = (img.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
-    const picked = pickLargestUrlFromSrcset(srcset, base);
-    if (picked) return picked;
-  }
-  return null;
+  const base =
+    (img.ownerDocument?.defaultView as Window | undefined)?.location?.href ??
+    "https://www.modetour.com/";
+  const list = collectPreferredImgCandidates(img, base);
+  return list[0] ?? null;
 }
 
 /**

@@ -12,24 +12,27 @@ import { parseItineraryText } from "~lib/itineraryParser";
 import { extractItineraryFromDom } from "~lib/itineraryDom";
 import {
   collectAllImageUrlsInScope,
-  collectImageUrlsRaw,
   collectImageUrlsRawFromDom,
   collectHeroImageUrls,
-  filterItineraryImageUrls,
+  collectPictureCandidates,
+  collectPreferredImgCandidates,
   filterUsefulImageUrls,
-  normalizedKeyForDedupe,
+  normalizeOpenImageUrl,
   assignItineraryImagesToDays,
-  isAirlineLogoUrl,
+  scoreImageCandidate,
+  extractImageUrlsFromNode,
+  finalizeOpenImageUrlsPreserveAll,
+  buildImageHintsByUrl,
 } from "~lib/images";
 import {
   SELECTORS,
   queryFirst,
   queryText,
-  getImageUrl,
   truncateSnippet,
 } from "~lib/selectors";
 import { parseNightsDays, parseDayPatternsFromText } from "~lib/parseText";
 import { prepareItineraryUi } from "~lib/modetourUiPrep";
+import { mergeDomAndTextDays, shouldSupplementWithText } from "~lib/mergeItineraryEvents";
 
 export const config: PlasmoCSConfig = {
   matches: ["https://www.modetour.com/package/*"],
@@ -40,6 +43,20 @@ const SNIPPET_MAX = 5000;
 const RAW_DOM_HINT_MAX = 800;
 const IMAGE_STABILIZE_POLL_MS = 250;
 const IMAGE_STABILIZE_MAX_MS = 1000;
+
+/** 동일 문자열 URL만 제거, 순서 유지, max까지 */
+function mergeUniqueUrlsPreserveOrder(urls: string[], max: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const u of urls) {
+    const t = u?.trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+    if (out.length >= max) break;
+  }
+  return out;
+}
 
 /** 이미지 수 안정화 대기. 최대 1초 내 종료 보장 */
 async function waitForImageStabilization(): Promise<void> {
@@ -89,43 +106,37 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
   const domSuccess = domResult.days.length >= 1 && totalDomEvents >= 1;
   const domDaysNoEvents = domResult.days.length >= 1 && totalDomEvents === 0;
 
+  const parsedTextSource = (sectionItineraryText.trim() || doc.body?.textContent?.trim()) ?? "";
+  let textDaysForMerge: NonNullable<ExtractedDomData["itinerary"]>["days"] = [];
+  if (domResult.days.length >= 1) {
+    const parsedMerge = parseItineraryText(parsedTextSource);
+    const textParseUncertain = parsedMerge.warnings.some((w) => w.code === "ITINERARY_PARSE_UNCERTAIN");
+    textDaysForMerge = textParseUncertain ? [] : (parsedMerge.itinerary?.days ?? []);
+  }
+
   if (domSuccess) {
-    let days = domResult.days;
     const lowEvents = totalDomEvents <= domResult.days.length;
-    if (lowEvents) {
+    if (lowEvents || shouldSupplementWithText(domResult.days)) {
       missingSections.push("ITINERARY_DOM_LOW_EVENTS");
-      const parsed = parseItineraryText((sectionItineraryText.trim() || doc.body?.textContent?.trim()) ?? "");
-      const textDays = parsed.itinerary?.days ?? [];
-      days = domResult.days.map((domDay) => {
-        const eventCount = domDay.events?.length ?? 0;
-        const needSupplement = eventCount <= 1 || (domDay.events?.[0]?.title === "(내용 없음)");
-        if (!needSupplement) return domDay;
-        const textDay = textDays.find((t) => t.dayNumber === domDay.dayNumber);
-        const events = textDay?.events?.length
-          ? textDay.events
-          : (domDay.events?.length ? domDay.events : [{ order: 1, title: "(내용 없음)" }]);
-        return { ...domDay, events };
-      });
-      usedItineraryText = true;
     }
-    itinerary = { days };
-    itinerarySource = "DOM";
-    itineraryDomDebug = domResult.debug;
-  } else if (domDaysNoEvents) {
-    missingSections.push("ITINERARY_DOM_EVENTS_EMPTY");
-    const parsed = parseItineraryText((sectionItineraryText.trim() || doc.body?.textContent?.trim()) ?? "");
-    const textDays = parsed.itinerary?.days ?? [];
-    const mergedDays = domResult.days.map((domDay) => {
-      const textDay = textDays.find((t) => t.dayNumber === domDay.dayNumber);
-      const events = (domDay.events?.length && domDay.events[0]?.title !== "(내용 없음)")
-        ? domDay.events
-        : (textDay?.events?.length ? textDay.events : domDay.events);
-      return { ...domDay, events: events ?? [{ order: 1, title: "(내용 없음)" }] };
+    const mergedDays = mergeDomAndTextDays({
+      domDays: domResult.days,
+      textDays: textDaysForMerge,
     });
     itinerary = { days: mergedDays };
     itinerarySource = "DOM";
     itineraryDomDebug = domResult.debug;
-    usedItineraryText = true;
+    usedItineraryText = textDaysForMerge.length > 0;
+  } else if (domDaysNoEvents) {
+    missingSections.push("ITINERARY_DOM_EVENTS_EMPTY");
+    const mergedDays = mergeDomAndTextDays({
+      domDays: domResult.days,
+      textDays: textDaysForMerge,
+    });
+    itinerary = { days: mergedDays };
+    itinerarySource = "DOM";
+    itineraryDomDebug = domResult.debug;
+    usedItineraryText = textDaysForMerge.length > 0;
   } else {
     missingSections.push("ITINERARY_DOM_NOT_FOUND");
     if (domResult.debug?.dayHeaderTexts?.length || domResult.debug?.firstDayContainerTextPrefix || domResult.debug?.sampleDomPaths?.length) {
@@ -214,12 +225,14 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
 
   const firstActivityFirstImage = (() => {
     const dayList = itinerary?.days ?? [];
+    const pool: string[] = [];
     for (const d of dayList) {
       const ev = d.events?.find((e) => e.typeText === "activity");
-      const first = ev?.imageUrls?.[0];
-      if (first) return first;
+      if (ev?.imageUrls?.length) pool.push(...ev.imageUrls);
+      if (pool.length) break;
     }
-    return undefined;
+    if (pool.length === 0) return undefined;
+    return [...pool].sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a))[0];
   })();
   const jsonLdHero = jsonLdPartial?.media?.heroImageUrl;
 
@@ -274,7 +287,8 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
     imageDebug.itineraryRawFound = itineraryRawUrls.length;
     imageDebug.fallbackRawFound = fallbackRawUrls.length;
 
-    const itineraryFilteredUrls = filterItineraryImageUrls(itineraryRawUrls, baseUrl);
+    /* itineraryRawUrls 는 이미 collectAllImageUrlsInScope 에서 정규화·중복 제거됨 */
+    const itineraryFilteredUrls = itineraryRawUrls;
     imageDebug.itineraryAfterFilter = itineraryFilteredUrls.length;
 
     const heroRaw: Array<{ url: string; source: ImageSource }> = heroRawUrls.map((u) => ({ url: u, source: "hero" }));
@@ -282,112 +296,142 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
     const fallbackRaw: Array<{ url: string; source: ImageSource }> = fallbackRawUrls.map((u) => ({ url: u, source: "fallback" }));
 
     const prioritized: Array<{ url: string; source: ImageSource }> = [];
-    const seenKey = new Set<string>();
+    const seenUrl = new Set<string>();
     for (const item of [...heroRaw, ...detailRaw, ...fallbackRaw]) {
-      const key = normalizedKeyForDedupe(item.url);
-      if (seenKey.has(key)) continue;
-      seenKey.add(key);
+      if (seenUrl.has(item.url)) continue;
+      seenUrl.add(item.url);
       prioritized.push(item);
     }
 
     const filteredUrls = filterUsefulImageUrls(prioritized.map((x) => x.url), baseUrl, imageDebug);
-    const sourceByKey = new Map<string, ImageSource>();
+    const sourceByUrl = new Map<string, ImageSource>();
     for (const { url, source } of prioritized) {
-      const k = normalizedKeyForDedupe(url);
-      if (!sourceByKey.has(k)) sourceByKey.set(k, source);
+      if (!sourceByUrl.has(url)) sourceByUrl.set(url, source);
     }
 
-    // Hero 대표 1장: 우선순위 순 (jsonLd → hero → itinerary → detail → fallback), 검증 없이 첫 비-로고 URL
+    // Hero: JSON-LD → hero 영역 picture/source·고해상도 → 동일 영역 단독 img → 일정 activity 최고점 → filteredUrls
     let heroImageUrl: string | undefined;
-    const heroCandidates = [jsonLdHero, firstActivityFirstImage, ...filteredUrls.filter((u) => !isAirlineLogoUrl(u))];
-    for (const u of heroCandidates) {
-      if (!u?.trim()) continue;
-      if (isAirlineLogoUrl(u)) continue;
-      heroImageUrl = normalizedKeyForDedupe(u);
-      const src = sourceByKey.get(normalizedKeyForDedupe(u));
+
+    const heroPictureUrls: string[] = [];
+    const heroStandaloneImgUrls: string[] = [];
+    if (heroRoot) {
+      heroRoot.querySelectorAll("picture").forEach((p) => {
+        heroPictureUrls.push(...collectPictureCandidates(p as HTMLPictureElement, baseUrl));
+      });
+      heroRoot.querySelectorAll("img").forEach((img) => {
+        if (img.closest("picture")) return;
+        heroStandaloneImgUrls.push(...collectPreferredImgCandidates(img as HTMLImageElement, baseUrl));
+      });
+    }
+    const pictureTier = finalizeOpenImageUrlsPreserveAll(heroPictureUrls, baseUrl);
+    pictureTier.sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a));
+    const imgTier = finalizeOpenImageUrlsPreserveAll(heroStandaloneImgUrls, baseUrl);
+    imgTier.sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a));
+
+    const jsonAbs = jsonLdHero?.trim() ? normalizeOpenImageUrl(jsonLdHero.trim(), baseUrl) : undefined;
+    const actAbs = firstActivityFirstImage?.trim()
+      ? normalizeOpenImageUrl(firstActivityFirstImage.trim(), baseUrl)
+      : undefined;
+
+    for (const c of [jsonAbs, pictureTier[0], imgTier[0], actAbs].filter(Boolean) as string[]) {
+      heroImageUrl = c;
+      break;
+    }
+    if (!heroImageUrl) {
+      for (const u of filteredUrls) {
+        heroImageUrl = u;
+        break;
+      }
+    }
+
+    if (typeof console !== "undefined" && console.log) {
+      console.log("[IMAGE][HERO_SELECTED]", heroImageUrl ?? null);
+    }
+
+    const heroImages =
+      heroRawUrls.length > 0
+        ? heroRawUrls.slice(0, 40)
+        : collectHeroImageUrls(doc, baseUrl, SELECTORS.heroImage, 40);
+
+    const dayRepImageUrls: string[] = [];
+    for (const d of itinerary?.days ?? []) {
+      const pool: string[] = [];
+      if (d.imageUrls?.length) pool.push(...d.imageUrls);
+      for (const e of d.events ?? []) {
+        if (e.imageUrls?.length) pool.push(...e.imageUrls);
+      }
+      const dedupedDay = finalizeOpenImageUrlsPreserveAll(pool, baseUrl);
+      const rep = dedupedDay.length
+        ? [...dedupedDay].sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a))[0]
+        : undefined;
+      if (rep) dayRepImageUrls.push(rep);
+    }
+
+    const GALLERY_MERGED_MAX = 150;
+    const UNASSIGNED_MAX = 120;
+
+    const galleryPool: string[] = [];
+    for (const u of heroImages) galleryPool.push(u);
+    for (const u of dayRepImageUrls) galleryPool.push(u);
+    for (const u of itineraryFilteredUrls) galleryPool.push(u);
+    for (const u of filteredUrls) galleryPool.push(u);
+
+    const galleryMerged = mergeUniqueUrlsPreserveOrder(galleryPool, GALLERY_MERGED_MAX);
+
+    if (typeof console !== "undefined" && console.log) {
+      console.log("[IMAGE][GALLERY_PIPELINE]", {
+        poolRaw: galleryPool.length,
+        afterMergeUnique: galleryMerged.length,
+      });
+    }
+
+    const galleryImageUrls: string[] = [];
+    if (heroImageUrl) galleryImageUrls.push(heroImageUrl);
+    for (const u of galleryMerged) {
+      if (galleryImageUrls.length >= GALLERY_MERGED_MAX) break;
+      if (heroImageUrl && u === heroImageUrl) continue;
+      galleryImageUrls.push(u);
+    }
+
+    const itineraryKeySet = new Set(itineraryFilteredUrls);
+    imageDebug.itineraryAssignedCount = galleryImageUrls.filter((u) => itineraryKeySet.has(u)).length;
+
+    const galleryUrlSet = new Set(galleryImageUrls);
+    const unassignedPool = [...filteredUrls]
+      .filter((u) => !galleryUrlSet.has(u))
+      .sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a));
+    const unassignedTrimmed = unassignedPool.slice(0, UNASSIGNED_MAX);
+
+    imageDebug.pickedFromHero = 0;
+    imageDebug.pickedFromItinerary = 0;
+    imageDebug.pickedFromDetail = 0;
+    imageDebug.pickedFromFallback = 0;
+    const bumpGallerySource = (u: string | undefined) => {
+      if (!u) return;
+      const src = sourceByUrl.get(u);
       if (src === "hero") imageDebug.pickedFromHero += 1;
       else if (src === "itinerary") imageDebug.pickedFromItinerary += 1;
       else if (src === "detail") imageDebug.pickedFromDetail += 1;
       else if (src === "fallback") imageDebug.pickedFromFallback += 1;
-      break;
+    };
+    for (const u of galleryImageUrls) bumpGallerySource(u);
+    for (const u of unassignedTrimmed) bumpGallerySource(u);
+
+    if (typeof console !== "undefined" && console.log) {
+      console.log("[IMAGE][GALLERY_COUNT]", galleryImageUrls.length);
     }
 
-    // 히어로 이미지 다수 수집: scope에서 수집한 heroRaw 우선, 없으면 img 셀렉터 fallback
-    const heroImages =
-      heroRawUrls.length > 0
-        ? filterUsefulImageUrls(heroRawUrls, baseUrl).slice(0, 10)
-        : filterUsefulImageUrls(collectHeroImageUrls(doc, baseUrl, SELECTORS.heroImage, 10), baseUrl);
-
-    const dayRepImageUrls: string[] = [];
+    const hintUrlList: string[] = [];
+    if (heroImageUrl) hintUrlList.push(heroImageUrl);
+    for (const u of galleryImageUrls) hintUrlList.push(u);
+    for (const u of unassignedTrimmed) hintUrlList.push(u);
     for (const d of itinerary?.days ?? []) {
-      const first = d.imageUrls?.[0] ?? d.events?.find((e) => (e.imageUrls?.length ?? 0) > 0)?.imageUrls?.[0];
-      if (first) dayRepImageUrls.push(first);
+      for (const u of d.imageUrls ?? []) hintUrlList.push(u);
+      for (const e of d.events ?? []) {
+        for (const u of e.imageUrls ?? []) hintUrlList.push(u);
+      }
     }
-
-    const GALLERY_REPRESENTATIVE_MAX = 50;
-    const ITINERARY_GALLERY_MAX = 25;
-    const UNASSIGNED_MAX = 30;
-    const heroKey = heroImageUrl ? normalizedKeyForDedupe(heroImageUrl) : null;
-    const galleryImageUrls: string[] = [];
-    const galleryKeys = new Set<string>();
-    if (heroKey) galleryKeys.add(heroKey);
-    let itineraryAssignedCount = 0;
-
-    // 1) 히어로 이미지
-    for (const u of heroImages) {
-      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX) break;
-      const key = normalizedKeyForDedupe(u);
-      if (galleryKeys.has(key)) continue;
-      galleryKeys.add(key);
-      galleryImageUrls.push(u);
-      imageDebug.pickedFromHero += 1;
-    }
-    // 2) itinerary: Day별 대표 1장 먼저, 이후 나머지 itinerary 이미지 (전역 필터 거치지 않음)
-    for (const u of dayRepImageUrls) {
-      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX || itineraryAssignedCount >= ITINERARY_GALLERY_MAX) break;
-      const key = normalizedKeyForDedupe(u);
-      if (galleryKeys.has(key)) continue;
-      galleryKeys.add(key);
-      galleryImageUrls.push(u);
-      itineraryAssignedCount += 1;
-      imageDebug.pickedFromItinerary += 1;
-    }
-    for (const u of itineraryFilteredUrls) {
-      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX || itineraryAssignedCount >= ITINERARY_GALLERY_MAX) break;
-      const key = normalizedKeyForDedupe(u);
-      if (galleryKeys.has(key)) continue;
-      galleryKeys.add(key);
-      galleryImageUrls.push(u);
-      itineraryAssignedCount += 1;
-      imageDebug.pickedFromItinerary += 1;
-    }
-    imageDebug.itineraryAssignedCount = itineraryAssignedCount;
-    // 3) detail / fallback (전역 필터 통과분)
-    for (const u of filteredUrls) {
-      if (galleryImageUrls.length >= GALLERY_REPRESENTATIVE_MAX) break;
-      const key = normalizedKeyForDedupe(u);
-      if (galleryKeys.has(key)) continue;
-      galleryKeys.add(key);
-      galleryImageUrls.push(u);
-      const src = sourceByKey.get(key);
-      if (src === "hero") imageDebug.pickedFromHero += 1;
-      else if (src === "detail") imageDebug.pickedFromDetail += 1;
-      else if (src === "fallback") imageDebug.pickedFromFallback += 1;
-    }
-
-    const unassignedImageUrls: string[] = [];
-    for (const u of filteredUrls) {
-      if (unassignedImageUrls.length >= UNASSIGNED_MAX) break;
-      const key = normalizedKeyForDedupe(u);
-      if (galleryKeys.has(key)) continue;
-      galleryKeys.add(key);
-      unassignedImageUrls.push(u);
-      const src = sourceByKey.get(key);
-      if (src === "hero") imageDebug.pickedFromHero += 1;
-      else if (src === "detail") imageDebug.pickedFromDetail += 1;
-      else if (src === "fallback") imageDebug.pickedFromFallback += 1;
-    }
-    const unassignedTrimmed = unassignedImageUrls.slice(0, UNASSIGNED_MAX);
+    const imageHintsByUrl = buildImageHintsByUrl(hintUrlList);
 
     media =
       heroImageUrl || galleryImageUrls.length > 0 || unassignedTrimmed.length > 0
@@ -395,6 +439,7 @@ async function extractFromDom(): Promise<{ extracted: ExtractedDomData; meta: Ex
             heroImageUrl,
             galleryImageUrls,
             unassignedImageUrls: unassignedTrimmed,
+            imageHintsByUrl,
           }
         : undefined;
 

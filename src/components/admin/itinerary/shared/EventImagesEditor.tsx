@@ -8,12 +8,18 @@ import { extractImageUrls } from "@/lib/images/extractImageUrls";
 import { normalizeEventImages } from "./normalizeEventImages";
 import { getDragData, setDragData, type ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
 import type { ImagePlacementIssue } from "@/components/admin/modetour/modetourImageValidation";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { getAdminImageBadgeLabels } from "@/components/admin/modetour/modetourImageHeuristics";
 
 export type EventImageItem = {
   url: string;
   alt?: string;
   sortOrder?: number;
   isCover?: boolean;
+  status?: "active" | "deleted" | "unassigned";
+  isThumbnailCandidate?: boolean;
+  isLogoCandidate?: boolean;
+  isLowResolution?: boolean;
 };
 
 export type EventImagesEditorDndContext = {
@@ -42,6 +48,8 @@ export type EventImagesEditorProps = {
   issuesByUrl?: Record<string, ImagePlacementIssue[]>;
   /** false면 경고는 숨기고 오류만 표시 */
   showWarnings?: boolean;
+  /** 모두투어 1차 검수: 삭제 예정·미할당·복구·휴리스틱 배지·필터 */
+  modetourImageReviewMode?: boolean;
 };
 
 type PasteMode = "url" | "html";
@@ -64,7 +72,9 @@ export function EventImagesEditor({
   dndContext,
   issuesByUrl,
   showWarnings = true,
+  modetourImageReviewMode = false,
 }: EventImagesEditorProps) {
+  const [reviewFilter, setReviewFilter] = useState<"all" | "deleted" | "thumbnail">("all");
   const [pasteInput, setPasteInput] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
   const [pasteMode, setPasteMode] = useState<PasteMode>("url");
@@ -73,12 +83,43 @@ export function EventImagesEditor({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const [externalDragOver, setExternalDragOver] = useState(false);
+  const [brokenSrc, setBrokenSrc] = useState<Record<string, boolean>>({});
   /** drop indicator: hover 중인 카드 인덱스 (sortedItems.length = 끝에 추가) */
   const [hoverImageIndex, setHoverImageIndex] = useState<number | null>(null);
   /** drop indicator: 카드 앞/뒤 */
   const [hoverPosition, setHoverPosition] = useState<"before" | "after" | null>(null);
 
   const sortedItems = useMemo(() => sortByOrder(value), [value]);
+
+  const markImageDeleted = (originalIndex: number) => {
+    const next = sortedItems.map((it, i) =>
+      i === originalIndex ? { ...it, status: "deleted" as const } : it,
+    );
+    onChange(normalizeEventImages(next));
+  };
+
+  const restoreImage = (originalIndex: number) => {
+    const next = sortedItems.map((it, i) =>
+      i === originalIndex ? { ...it, status: "active" as const } : it,
+    );
+    onChange(normalizeEventImages(next));
+  };
+
+  const moveImageToUnassignedPool = (originalIndex: number) => {
+    const item = sortedItems[originalIndex];
+    if (!item) return;
+    if (dndContext?.onReturnImageToPool) dndContext.onReturnImageToPool(item.url);
+    const next = value.filter((i) => getEventImageUrl(i) !== getEventImageUrl(item));
+    onChange(normalizeEventImages(next));
+  };
+
+  const importHintLabels = (item: EventImageItem): string[] => {
+    const labels: string[] = [];
+    if (item.isThumbnailCandidate) labels.push("썸네일 의심");
+    if (item.isLogoCandidate) labels.push("로고 의심");
+    if (item.isLowResolution) labels.push("저해상도");
+    return labels;
+  };
 
   const applyPaste = () => {
     const raw = parseUrls(pasteInput);
@@ -462,11 +503,48 @@ export function EventImagesEditor({
             이미지 {sortedItems.length}장 (드래그로 순서 변경)
           </p>
           <p className="text-[10px] text-[var(--text-muted)]">
-            첫 번째 이미지가 대표 이미지로 사용됩니다.
+            「대표」또는 왼쪽부터 순서를 조정하세요. 카드의 「대표」가 이벤트 커버로 쓰입니다.
           </p>
+          {modetourImageReviewMode && (
+            <div className="flex flex-wrap gap-1">
+              {(
+                [
+                  { id: "all" as const, label: "전체" },
+                  { id: "deleted" as const, label: "삭제 예정 강조" },
+                  { id: "thumbnail" as const, label: "썸네일·로고 의심 강조" },
+                ] as const
+              ).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setReviewFilter(t.id)}
+                  className={`rounded border px-2 py-0.5 text-[10px] font-medium ${
+                    reviewFilter === t.id
+                      ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2 overflow-x-auto pb-1 items-start">
             {sortedItems.map((item, index) => {
-              const urlKey = normalizeImageUrl(getEventImageUrl(item));
+              const rawUrl = getEventImageUrl(item);
+              const urlKey = normalizeImageUrl(rawUrl);
+              const imgBrokenKey = urlKey || `row-${index}-${rawUrl.slice(0, 24)}`;
+              const displaySrc = normalizeProductImageUrl(rawUrl) || rawUrl;
+              const heuristicLabels = getAdminImageBadgeLabels(rawUrl);
+              const hintLabels = importHintLabels(item);
+              const badgeLabels = [...new Set([...hintLabels, ...heuristicLabels])];
+              const dimmed =
+                modetourImageReviewMode &&
+                ((reviewFilter === "deleted" && item.status !== "deleted") ||
+                  (reviewFilter === "thumbnail" &&
+                    !item.isThumbnailCandidate &&
+                    !item.isLogoCandidate &&
+                    !item.isLowResolution));
               const issuesForUrl = urlKey ? issuesByUrl?.[urlKey] : undefined;
               const hasError = issuesForUrl?.some((i) => i.level === "error");
               const hasWarning = showWarnings && issuesForUrl?.some((i) => i.level === "warning");
@@ -481,7 +559,10 @@ export function EventImagesEditor({
                         ? "배치 확인 필요"
                         : null;
               return (
-              <div key={`${urlKey}-${index}`} className="flex shrink-0 items-center gap-0">
+              <div
+                key={`${urlKey}-${index}`}
+                className={`flex shrink-0 items-center gap-0 transition ${dimmed ? "opacity-[0.28]" : ""}`}
+              >
                 {/* 카드 앞 drop indicator 라인 (최소 4px로 드롭 가능) */}
                 <div
                   className={`h-full min-h-[80px] shrink-0 rounded-full transition ${
@@ -516,11 +597,13 @@ export function EventImagesEditor({
                   }}
                 />
                 <div
-                  className={`flex shrink-0 flex-col items-center gap-1 rounded-lg border bg-[var(--surface)] p-2 transition ${
+                  className={`group flex shrink-0 flex-col items-center gap-1 rounded-lg border bg-[var(--surface)] p-2 transition ${
                     dragIndex === index ? "opacity-50 border-[var(--border)]" : ""
                   } ${overIndex === index ? "ring-2 ring-[var(--primary)] border-[var(--primary)]" : "border-[var(--border)]"} ${
                     hoverImageIndex === index && hoverPosition === "after" ? "ring-2 ring-[var(--primary)] ring-offset-1" : ""
-                  } ${hasError ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""} ${hasWarning && !hasError ? "border-amber-500/70" : ""}`}
+                  } ${hasError ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""} ${hasWarning && !hasError ? "border-amber-500/70" : ""} ${
+                    item.isCover ? "ring-2 ring-amber-500/80 border-amber-500/60" : ""
+                  } ${item.status === "deleted" ? "opacity-50" : ""}`}
                   onDragOver={handleDragOverCard(index)}
                   onDragLeave={handleDragLeave}
                   onDragEnd={handleDragEnd}
@@ -535,20 +618,55 @@ export function EventImagesEditor({
                   ≡ 드래그
                 </div>
                 <div className="relative h-16 w-20 overflow-hidden rounded bg-[var(--surface-muted)]">
-                  <img
-                    src={item.url}
-                    alt={item.alt ?? ""}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.background = "var(--surface-muted)";
-                    }}
-                  />
+                  {brokenSrc[imgBrokenKey] ? (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 p-1 text-center text-[8px] leading-tight text-[var(--text-muted)]">
+                      <span>로드 실패</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={displaySrc}
+                      alt={item.alt ?? ""}
+                      className="h-full w-full object-cover"
+                      onError={() =>
+                        setBrokenSrc((prev) => ({ ...prev, [imgBrokenKey]: true }))
+                      }
+                    />
+                  )}
+                  <span className="absolute bottom-0 right-0 rounded-tl bg-black/65 px-1 py-0.5 text-[9px] font-mono text-white/90">
+                    #{index + 1}
+                  </span>
                   {item.isCover && (
-                    <span className="absolute left-0 top-0 rounded-br bg-[var(--primary)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--on-primary)]">
+                    <span className="absolute left-0 top-0 rounded-br bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
                       대표
                     </span>
                   )}
+                  {item.status === "deleted" && (
+                    <span className="absolute left-0 bottom-0 rounded-tr bg-red-900/85 px-1 py-0.5 text-[8px] font-bold text-red-100">
+                      삭제 예정
+                    </span>
+                  )}
+                  {item.status === "deleted" && (
+                    <button
+                      type="button"
+                      onClick={() => restoreImage(index)}
+                      className="absolute right-0 bottom-0 rounded-tl bg-emerald-800/90 px-1 py-0.5 text-[8px] font-semibold text-emerald-100 opacity-0 transition group-hover:opacity-100"
+                    >
+                      복구
+                    </button>
+                  )}
                 </div>
+                {badgeLabels.length > 0 && (
+                  <div className="flex max-w-[5.5rem] flex-wrap justify-center gap-0.5">
+                    {badgeLabels.slice(0, 5).map((lb) => (
+                      <span
+                        key={lb}
+                        className="rounded bg-amber-950/50 px-0.5 py-0 text-[8px] text-amber-200/90"
+                      >
+                        {lb}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {caption && (
                   <p
                     className={`text-[10px] text-center max-w-[5rem] truncate ${hasError ? "text-[var(--danger)] font-medium" : "text-amber-600 dark:text-amber-400"}`}
@@ -563,18 +681,18 @@ export function EventImagesEditor({
                     onClick={() => moveAt(index, "up")}
                     disabled={index === 0}
                     className="rounded border border-[var(--border)] bg-[var(--surface)] p-0.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:opacity-40"
-                    title="위로"
+                    title="왼쪽으로 이동"
                   >
-                    ▲
+                    ◀
                   </button>
                   <button
                     type="button"
                     onClick={() => moveAt(index, "down")}
                     disabled={index === sortedItems.length - 1}
                     className="rounded border border-[var(--border)] bg-[var(--surface)] p-0.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:opacity-40"
-                    title="아래로"
+                    title="오른쪽으로 이동"
                   >
-                    ▼
+                    ▶
                   </button>
                   <button
                     type="button"
@@ -584,22 +702,49 @@ export function EventImagesEditor({
                         ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
                         : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
                     }`}
-                    title="대표 지정"
+                    title="이 이미지를 이벤트 대표(cover)로"
                   >
                     대표
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => removeAt(index)}
-                    className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-1 py-0.5 text-[10px] text-[var(--danger)] hover:opacity-90"
-                    title={
-                      dndContext?.enabled && dndContext?.onReturnImageToPool
-                        ? "이미지를 이벤트에서 제거합니다. 미할당 이미지로 이동합니다."
-                        : "이미지 제거"
-                    }
-                  >
-                    삭제
-                  </button>
+                  {modetourImageReviewMode ? (
+                    <>
+                      {item.status !== "deleted" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => markImageDeleted(index)}
+                            className="rounded border border-red-800/40 bg-red-950/35 px-1 py-0.5 text-[10px] text-red-200 hover:opacity-90"
+                            title="저장 시 제외(삭제 예정)"
+                          >
+                            삭제 예정
+                          </button>
+                          {dndContext?.enabled && dndContext?.onReturnImageToPool && (
+                            <button
+                              type="button"
+                              onClick={() => moveImageToUnassignedPool(index)}
+                              className="rounded border border-sky-700/40 bg-sky-950/30 px-1 py-0.5 text-[10px] text-sky-200 hover:opacity-90"
+                              title="미할당 풀로 이동"
+                            >
+                              미할당
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeAt(index)}
+                      className="rounded border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-1 py-0.5 text-[10px] text-[var(--danger)] hover:opacity-90"
+                      title={
+                        dndContext?.enabled && dndContext?.onReturnImageToPool
+                          ? "이벤트에서 제거 후 미할당 풀로"
+                          : "이미지 제거"
+                      }
+                    >
+                      {dndContext?.enabled && dndContext?.onReturnImageToPool ? "제거→풀" : "삭제"}
+                    </button>
+                  )}
                 </div>
                 </div>
               </div>

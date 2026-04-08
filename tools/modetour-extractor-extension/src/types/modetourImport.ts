@@ -3,6 +3,13 @@
  * version / source.provider 는 반드시 동일해야 함.
  */
 
+/** 익스텐션 수집 휴리스틱 — 자동 삭제 금지, 관리자 배지용 */
+export type ModetourImageHeuristicHints = {
+  isThumbnailCandidate: boolean;
+  isLogoCandidate: boolean;
+  isLowResolution: boolean;
+};
+
 export type ModetourImportWarning = {
   code: string;
   message: string;
@@ -72,6 +79,8 @@ export type ModetourImportV1 = {
     heroImageUrl?: string;
     galleryImageUrls?: string[];
     unassignedImageUrls?: string[];
+    /** 정규화된 절대 URL 키 — 썸네일/로고/저해상도 의심 배지용 */
+    imageHintsByUrl?: Record<string, ModetourImageHeuristicHints>;
   };
 
   warnings?: ModetourImportWarning[];

@@ -3,6 +3,8 @@ import type { ProductFormState, ProductFormDraft } from "@/types/adminProductFor
 import type { ModetourImportV1, ModetourImportWarning } from "@/types/modetourImport";
 import { createEmptyProductFormState } from "@/types/adminProductForm";
 
+// PR-IMAGE-3: 외부 이미지 URL은 검증 단계에서 POST /api/admin/modetour/normalize-import-images 로
+// Supabase product-images(JPG)에 재호스팅된 뒤 이 함수에 전달된다. 실패 시 원본 URL이 유지된다.
 // PR16 정책: Modetour import는 설명/포함·불포함/약관 데이터를 자동 주입하지 않는다.
 // 운영자가 관리자 편집 화면에서 직접 작성하도록 한다. (일정·이미지·기본 정보만 자동 반영)
 // PR-A: seasonal_price_bands(비수기·주말·성수기)는 익스텐션/임포트에서 추출하지 않는다.
@@ -72,7 +74,12 @@ export function modetourImportToDraft(input: ModetourImportV1): {
           iconKey: undefined,
           images:
             absoluteUrls.length > 0
-              ? absoluteUrls.map((url, i) => ({ url, sortOrder: i, isCover: i === 0 }))
+              ? absoluteUrls.map((url, i) => ({
+                  url,
+                  sortOrder: i,
+                  isCover: i === 0,
+                  status: "active" as const,
+                }))
               : undefined,
         };
       });

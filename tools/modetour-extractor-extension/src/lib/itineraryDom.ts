@@ -6,10 +6,8 @@ import type { ModetourImportV1, ModetourImportWarning } from "~types/modetourImp
 import {
   collectAllImageUrlsInScope,
   extractItineraryImageUrlsFromNode,
-  filterItineraryImageUrls,
   getFirstImageUrlInContainer,
-  normalizeModetourImageUrl,
-  toAbsoluteImageUrl,
+  scoreImageCandidate,
 } from "~lib/images";
 
 const DAY_HEADER_REGEX = /(^|\s)(\d{1,2})일차(\s|$)/;
@@ -21,8 +19,6 @@ const MIN_DAY_CONTAINER_TEXT = 200;
 const MAX_DAY_CONTAINER_TEXT = 5000;
 const MAX_DAY_HEADER_TEXT_LEN = 120;
 const RAW_DOM_HINT_MAX = 800;
-const MIN_DESCRIPTION_FOR_ACCEPT = 10;
-const EAGLE_PHOTOIMG = "img.modetour.com/eagle/photoimg";
 
 function getTimelineItems(dayContainer: Element): Element[] {
   const out: Element[] = [];
@@ -31,7 +27,6 @@ function getTimelineItems(dayContainer: Element): Element[] {
     const cls = (el.className && typeof el.className === "string" ? el.className : "") || "";
     if (cls.includes("space-x-[12px]")) continue;
     if (!cls.includes("space-x-[6px]")) continue;
-    if (((el as HTMLElement).textContent?.trim().length ?? 0) < 20) continue;
     out.push(el);
   }
   return out;
@@ -59,19 +54,11 @@ function getTimelineDescription(contentRoot: Element): string {
 }
 
 /**
- * 이벤트 scope 내 이미지 수집 (itinerary 전용 약한 필터만 적용, 썸네일/리사이즈 보존).
+ * 이벤트 scope 내 이미지 수집 (PR-IMAGE-2: 동일 노드 내 대표 URL은 extract 경로에서 이미 정리됨 → 점수순 상한).
  */
 function getEventImageCandidates(contentRoot: Element, base: string): string[] {
-  const raw = extractItineraryImageUrlsFromNode(contentRoot, base);
-  const filtered = filterItineraryImageUrls(raw, base);
-  const preferred: string[] = [];
-  const rest: string[] = [];
-  filtered.forEach((u) => {
-    const norm = normalizeModetourImageUrl(u);
-    if (norm.toLowerCase().includes(EAGLE_PHOTOIMG)) preferred.push(norm);
-    else rest.push(norm);
-  });
-  return Array.from(new Set([...preferred, ...rest])).slice(0, MAX_IMAGES_PER_EVENT);
+  const list = extractItineraryImageUrlsFromNode(contentRoot, base);
+  return [...list].sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a)).slice(0, MAX_IMAGES_PER_EVENT);
 }
 
 function inferTimelineTypeText(title: string): string {
@@ -135,7 +122,7 @@ function extractEventsInOrder(
     if (type === "timeline") {
       const contentRoot = getTimelineContentRoot(el);
       if (!contentRoot) continue;
-      const title = getTimelineTitle(contentRoot);
+      const title = getTimelineTitle(contentRoot).trim();
       if (!title) continue;
       const descriptionText = getTimelineDescription(contentRoot);
       const base = (contentRoot.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
@@ -144,7 +131,6 @@ function extractEventsInOrder(
         const firstUrl = getFirstImageUrlInContainer(contentRoot, base);
         if (firstUrl) imageUrls = [firstUrl];
       }
-      if (descriptionText.length <= MIN_DESCRIPTION_FOR_ACCEPT && imageUrls.length === 0) continue;
       order += 1;
       const combined = imageUrls.slice(0, MAX_IMAGES_PER_EVENT);
       const timeMatch = (contentRoot as HTMLElement).textContent?.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
@@ -157,7 +143,7 @@ function extractEventsInOrder(
         imageUrls: combined.length > 0 ? combined : undefined,
       });
     } else {
-      const title = getCardTitle(el);
+      const title = getCardTitle(el).trim();
       if (!title) continue;
       const descriptionText = getCardDescription(el);
       if (seenTitles.has(title)) {
@@ -354,13 +340,12 @@ export function extractItineraryFromDom(root: Document): DomItineraryResult {
 
     const base = (dayContainer.ownerDocument?.defaultView as Window | undefined)?.location?.href ?? "https://www.modetour.com/";
     const dayScopeRaw = extractItineraryImageUrlsFromNode(dayContainer, base);
-    const dayImageUrlsFiltered = filterItineraryImageUrls(dayScopeRaw, base);
     const assignedToEvents = new Set(events.flatMap((e) => e.imageUrls ?? []));
-    let dayOnlyUrls = dayImageUrlsFiltered.filter((u) => !assignedToEvents.has(u)).slice(0, 15);
+    let dayOnlyUrls = dayScopeRaw.filter((u) => !assignedToEvents.has(u)).slice(0, 15);
     if (dayOnlyUrls.length === 0) {
       const firstFromEvents = events.flatMap((e) => e.imageUrls ?? [])[0];
       const firstFromDay = getFirstImageUrlInContainer(dayContainer, base);
-      const firstFromScope = dayImageUrlsFiltered[0];
+      const firstFromScope = dayScopeRaw[0];
       const firstDayImage = firstFromEvents ?? firstFromDay ?? firstFromScope;
       if (firstDayImage) dayOnlyUrls = [firstDayImage];
     }

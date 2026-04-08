@@ -1,6 +1,24 @@
 /**
  * "n박 m일" 형태 파싱. 예: "3박 5일", "2박 3일"
  */
+
+import { isShortButImportant } from "~lib/itineraryKeywords";
+
+const FALLBACK_LINE_FORBIDDEN = /상품|약관|포함|불포함|SEO/i;
+const FALLBACK_TIME_PATTERN = /\b([01]?\d|2[0-3]):[0-5]\d\b/;
+const FALLBACK_BULLET = /^[\s]*([•\-*]\s*|\d+\.\s*)/;
+const MIN_FALLBACK_LINE_LEN = 4;
+
+function keepFallbackEventLine(line: string): boolean {
+  const t = line.trim();
+  if (!t) return false;
+  if (FALLBACK_LINE_FORBIDDEN.test(t)) return false;
+  if (isShortButImportant(t)) return true;
+  if (FALLBACK_TIME_PATTERN.test(t)) return true;
+  if (FALLBACK_BULLET.test(t)) return true;
+  return t.length >= MIN_FALLBACK_LINE_LEN;
+}
+
 export function parseNightsDays(text: string): { nights?: number; days?: number } {
   const m = text.match(/(\d+)\s*박\s*(\d+)\s*일/);
   if (!m) return {};
@@ -69,12 +87,16 @@ export function parseDayPatternsFromText(fullText: string): Array<{
     if (dateMatch) dateText = dateMatch[1];
     title = firstLine.replace(dayRegex, "").replace(/\d{4}[.-]\d{1,2}[.-]\d{1,2}/g, "").trim() || undefined;
 
-    const lines = rest.split(/\n/).filter((l) => l.trim());
-    const events = lines.map((line, idx) => ({
-      order: idx + 1,
-      title: line.trim().slice(0, 200) || undefined,
-      descriptionText: line.trim().length > 200 ? line.trim().slice(200) : undefined,
-    }));
+    const lines = rest.split(/\n/).map((l) => l.trim()).filter(Boolean).filter(keepFallbackEventLine);
+    const events = lines.map((line, idx) => {
+      const trimmed = line.trim();
+      const titleMax = 200;
+      return {
+        order: idx + 1,
+        title: trimmed.slice(0, titleMax) || undefined,
+        descriptionText: trimmed.length > titleMax ? trimmed.slice(titleMax) : undefined,
+      };
+    });
 
     days.push({
       dayNumber: dayStarts[i].num,

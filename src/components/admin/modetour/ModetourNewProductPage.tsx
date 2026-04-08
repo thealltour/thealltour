@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ModetourImportV1, ModetourImportWarning } from "@/types/modetourImport";
 import type { Product } from "@/types/product";
 import type { SelectedEventRef } from "@/types/product";
@@ -14,6 +15,7 @@ import {
   validateModetourImportV1,
   modetourImportToDraft,
   mergeDraftOnlyEmpty,
+  mergeModetourImageHintsIntoV2Days,
 } from "@/lib/admin/modetourImport";
 import { formToPreviewProduct } from "@/lib/admin/productPreview";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
@@ -31,6 +33,11 @@ import { hydrateItineraryImages } from "@/lib/images/hydrateItineraryImages";
 import { UnassignedImagePool } from "@/components/admin/modetour/UnassignedImagePool";
 import { ScheduleVisualEditorV2 } from "@/components/admin/ScheduleVisualEditorV2";
 import { getProductDiffSummary } from "@/lib/adminProductDiff";
+import {
+  buildUnassignedDuplicateMeta,
+  getImageHeuristicFlags,
+  pickRecommendedHeroUrl,
+} from "@/components/admin/modetour/modetourImageHeuristics";
 
 const SNIPPET_LEN = 200;
 const PRODUCTS_LIST_PATH = "/theall_manager_only/products";
@@ -71,6 +78,7 @@ function targetHasUrl(images: EventImageObj[] | undefined, normalizedUrl: string
 }
 
 export default function ModetourNewProductPage() {
+  const router = useRouter();
   const [jsonText, setJsonText] = useState("");
   const [importData, setImportData] = useState<ModetourImportV1 | null>(null);
   const [warnings, setWarnings] = useState<ModetourImportWarning[]>([]);
@@ -83,14 +91,43 @@ export default function ModetourNewProductPage() {
   const [formState, setFormState] = useState<ProductFormState>(() => createEmptyProductFormState());
   /** 미할당 이미지 풀. 검증 시 importData.media?.unassignedImageUrls로 초기화 */
   const [unassignedImageUrls, setUnassignedImageUrls] = useState<string[]>([]);
+  /** normalizeImageUrl 기준 — 저장 시 미할당에서 제외(삭제 예정) */
+  const [unassignedDeletedNorm, setUnassignedDeletedNorm] = useState<Set<string>>(() => new Set());
+
+  const toggleUnassignedMarkedDeleted = useCallback((norm: string) => {
+    if (!norm) return;
+    setUnassignedDeletedNorm((prev) => {
+      const next = new Set(prev);
+      if (next.has(norm)) next.delete(norm);
+      else next.add(norm);
+      return next;
+    });
+  }, []);
+
+  const activeUnassignedImageUrls = useMemo(
+    () => unassignedImageUrls.filter((u) => !unassignedDeletedNorm.has(normalizeImageUrl(u))),
+    [unassignedImageUrls, unassignedDeletedNorm],
+  );
 
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [selectedEvent, setSelectedEvent] = useState<SelectedEventRef | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isNormalizingImages, setIsNormalizingImages] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [existingProductId, setExistingProductId] = useState<string | null>(null);
+  const [reviewToast, setReviewToast] = useState<string | null>(null);
+
+  const pushToast = useCallback((message: string) => {
+    setReviewToast(message);
+  }, []);
+
+  useEffect(() => {
+    if (!reviewToast) return;
+    const t = window.setTimeout(() => setReviewToast(null), 4200);
+    return () => window.clearTimeout(t);
+  }, [reviewToast]);
 
   const initialFormSnapshotRef = useRef<ProductFormState | null>(null);
   const initialUnassignedCountRef = useRef<number>(0);
@@ -100,9 +137,9 @@ export default function ModetourNewProductPage() {
       validateImagePlacementState({
         v2Days: formState.itinerary_v2_json?.days,
         structuredDays: formState.itinerary_days_json,
-        unassignedImageUrls,
+        unassignedImageUrls: activeUnassignedImageUrls,
       }),
-    [formState.itinerary_v2_json?.days, formState.itinerary_days_json, unassignedImageUrls],
+    [formState.itinerary_v2_json?.days, formState.itinerary_days_json, activeUnassignedImageUrls],
   );
 
   const imagePlacementIssuesByUrl = useMemo(
@@ -110,15 +147,70 @@ export default function ModetourNewProductPage() {
     [imagePlacementValidation.issues],
   );
 
+  const selectedEventSummary = useMemo(() => {
+    if (!selectedEvent || selectedEvent.editorType !== "v2") return null;
+    const day = formState.itinerary_v2_json?.days?.[selectedEvent.dayIndex];
+    const ev = day?.events?.[selectedEvent.eventIndex];
+    const title = ev?.heading?.trim() || "(제목 없음)";
+    return `Day ${selectedEvent.dayIndex + 1} - ${title}`;
+  }, [selectedEvent, formState.itinerary_v2_json?.days]);
+
+  const imageReviewSummary = useMemo(() => {
+    const v2 = formState.itinerary_v2_json?.days ?? [];
+    let placedInEvents = 0;
+    for (const d of v2) {
+      for (const ev of d.events ?? []) {
+        for (const img of ev.images ?? []) {
+          if ((img as { status?: string }).status !== "deleted") placedInEvents += 1;
+        }
+      }
+    }
+    const hero = formState.image_url?.trim();
+    const gallery = formState.images_json ?? [];
+    const totalListed =
+      (hero ? 1 : 0) + gallery.length + unassignedImageUrls.length + placedInEvents;
+    const pool = [...(hero ? [hero] : []), ...gallery, ...activeUnassignedImageUrls];
+    const dupMeta = buildUnassignedDuplicateMeta(pool);
+    let dupSus = 0;
+    for (const u of pool) {
+      if ((dupMeta.urlToGroupSize.get(u) ?? 1) > 1) dupSus += 1;
+    }
+    const seenNorm = new Set<string>();
+    let logoThumbSus = 0;
+    for (const raw of pool) {
+      const k = normalizeImageUrl(raw);
+      if (!k || seenNorm.has(k)) continue;
+      seenNorm.add(k);
+      const f = getImageHeuristicFlags(raw);
+      if (f.isLikelyLogo || f.isLikelyThumbnail) logoThumbSus += 1;
+    }
+    return {
+      totalListed,
+      unassigned: activeUnassignedImageUrls.length,
+      unassignedDeletedPending: unassignedDeletedNorm.size,
+      placedInEvents,
+      hasHero: Boolean(hero),
+      dupSus,
+      logoThumbSus,
+    };
+  }, [
+    formState.image_url,
+    formState.images_json,
+    formState.itinerary_v2_json?.days,
+    activeUnassignedImageUrls,
+    unassignedImageUrls,
+    unassignedDeletedNorm,
+  ]);
+
   const diffSummary = useMemo(() => {
     const initial = initialFormSnapshotRef.current ?? formState;
     return getProductDiffSummary(initial, formState, {
       initialUnassignedCount: initialUnassignedCountRef.current,
-      currentUnassignedCount: unassignedImageUrls.length,
+      currentUnassignedCount: activeUnassignedImageUrls.length,
     });
-  }, [formState, unassignedImageUrls.length]);
+  }, [formState, activeUnassignedImageUrls.length]);
 
-  function handleValidate() {
+  async function handleValidate() {
     setParseError(null);
     setPreviewError(null);
     setMappedDraft(null);
@@ -127,54 +219,127 @@ export default function ModetourNewProductPage() {
     setCreatedProductId(null);
     setExistingProductId(null);
 
+    let parsed: ModetourImportV1;
     try {
-      const parsed = JSON.parse(jsonText);
-
-      if (!isModetourImportV1(parsed)) {
-        setParseError("ModetourImportV1 형식이 아닙니다.");
-        return;
-      }
-
-      const result = validateModetourImportV1(parsed);
-      const { draft: patch, warnings: mapWarnings } = modetourImportToDraft(parsed);
-
-      setImportData(parsed);
-      setWarnings([...result.warnings, ...mapWarnings]);
-      setMappedDraft(patch);
-
-      const emptyForm = createEmptyProductFormState();
-      const emptyDraft = { version: 1 as const, form: emptyForm, savedAt: 0 };
-      const merged = mergeDraftOnlyEmpty(emptyDraft, patch);
-      const hydrated = hydrateItineraryImages({
-        v2Days: merged.form.itinerary_v2_json?.days,
-        structuredDays: merged.form.itinerary_days_json,
-        unassignedImageUrls: parsed.media?.unassignedImageUrls ?? [],
-      });
-      setFormState({
-        ...merged.form,
-        itinerary_v2_json: { days: hydrated.v2Days },
-        itinerary_days_json: hydrated.structuredDays,
-      });
-      setUnassignedImageUrls(hydrated.unassignedImageUrls);
-      initialFormSnapshotRef.current = structuredClone({
-        ...merged.form,
-        itinerary_v2_json: { days: hydrated.v2Days },
-        itinerary_days_json: hydrated.structuredDays,
-      });
-      initialUnassignedCountRef.current = hydrated.unassignedImageUrls.length;
-
-      const imageUrl =
-        merged.form.image_url?.trim() ||
-        merged.form.images_json?.[0]?.trim() ||
-        "";
-      try {
-        const product = formToPreviewProduct(merged.form, imageUrl);
-        setPreviewProduct(product);
-      } catch (e) {
-        setPreviewError(e instanceof Error ? e.message : "미리보기 생성 실패");
-      }
+      parsed = JSON.parse(jsonText) as ModetourImportV1;
     } catch {
       setParseError("JSON 파싱 실패");
+      return;
+    }
+
+    if (!isModetourImportV1(parsed)) {
+      setParseError("ModetourImportV1 형식이 아닙니다.");
+      return;
+    }
+
+    setIsNormalizingImages(true);
+    type NormalizeStats = {
+      uniqueUrls: number;
+      attempted: number;
+      uploaded: number;
+      failed: number;
+      skippedInternal: number;
+      skipped: boolean;
+      reason?: string;
+    };
+    let working = parsed;
+    let normalizeStats: NormalizeStats | null = null;
+    try {
+      const res = await fetch("/api/admin/modetour/normalize-import-images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ payload: parsed }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { payload: ModetourImportV1; stats: NormalizeStats };
+        if (data.payload && isModetourImportV1(data.payload)) {
+          working = data.payload;
+          normalizeStats = data.stats ?? null;
+        }
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        console.warn("[IMAGE][NORMALIZE_IMPORT_HTTP]", res.status, errBody);
+      }
+    } catch (e) {
+      console.warn("[IMAGE][NORMALIZE_IMPORT_NETWORK]", e);
+    } finally {
+      setIsNormalizingImages(false);
+    }
+
+    if (normalizeStats && typeof console !== "undefined" && console.log) {
+      const rate =
+        normalizeStats.attempted > 0
+          ? Math.round((normalizeStats.uploaded / normalizeStats.attempted) * 1000) / 10
+          : null;
+      console.log("[IMAGE][NORMALIZE_IMPORT_STATS]", {
+        ...normalizeStats,
+        successRatePercent: rate,
+      });
+    }
+
+    const result = validateModetourImportV1(working);
+    const { draft: patch, warnings: mapWarnings } = modetourImportToDraft(working);
+
+    const extraWarnings: ModetourImportWarning[] = [];
+    if (normalizeStats?.skipped && normalizeStats.reason === "missing_supabase_env") {
+      extraWarnings.push({
+        code: "IMAGE_REHOST_SKIPPED",
+        message: "Supabase 서버 키/URL이 없어 이미지 정규화를 건너뛰었습니다.",
+        path: "media",
+      });
+    } else if (
+      normalizeStats &&
+      !normalizeStats.skipped &&
+      normalizeStats.uniqueUrls > 0 &&
+      normalizeStats.failed > 0
+    ) {
+      extraWarnings.push({
+        code: "IMAGE_REHOST_PARTIAL",
+        message: `이미지 ${normalizeStats.failed}개 업로드 실패 — 해당 항목은 원본 URL을 유지했습니다.`,
+        path: "media",
+      });
+    }
+
+    setImportData(working);
+    setWarnings([...result.warnings, ...mapWarnings, ...extraWarnings]);
+    setMappedDraft(patch);
+
+    const emptyForm = createEmptyProductFormState();
+    const emptyDraft = { version: 1 as const, form: emptyForm, savedAt: 0 };
+    const merged = mergeDraftOnlyEmpty(emptyDraft, patch);
+    const hydrated = hydrateItineraryImages({
+      v2Days: merged.form.itinerary_v2_json?.days,
+      structuredDays: merged.form.itinerary_days_json,
+      unassignedImageUrls: working.media?.unassignedImageUrls ?? [],
+    });
+    const v2WithHints = mergeModetourImageHintsIntoV2Days(
+      hydrated.v2Days,
+      working.media?.imageHintsByUrl,
+    );
+    setFormState({
+      ...merged.form,
+      itinerary_v2_json: { days: v2WithHints },
+      itinerary_days_json: hydrated.structuredDays,
+    });
+    setUnassignedImageUrls(hydrated.unassignedImageUrls);
+    setUnassignedDeletedNorm(new Set());
+    initialFormSnapshotRef.current = structuredClone({
+      ...merged.form,
+      itinerary_v2_json: { days: v2WithHints },
+      itinerary_days_json: hydrated.structuredDays,
+    });
+    initialUnassignedCountRef.current = hydrated.unassignedImageUrls.length;
+
+    const imageUrl =
+      merged.form.image_url?.trim() ||
+      merged.form.images_json?.[0]?.trim() ||
+      "";
+    try {
+      const product = formToPreviewProduct(merged.form, imageUrl);
+      setPreviewProduct(product);
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : "미리보기 생성 실패");
     }
   }
 
@@ -188,6 +353,7 @@ export default function ModetourNewProductPage() {
     setPreviewError(null);
     setFormState(createEmptyProductFormState());
     setUnassignedImageUrls([]);
+    setUnassignedDeletedNorm(new Set());
     setSaveError(null);
     setCreatedProductId(null);
     setExistingProductId(null);
@@ -255,6 +421,86 @@ export default function ModetourNewProductPage() {
 
   function returnEventImageToUnassigned(params: { url: string }) {
     setUnassignedImageUrls((prev) => [...prev, params.url]);
+  }
+
+  function removeUnassignedUrls(urls: string[]) {
+    if (urls.length === 0) return;
+    const drop = new Set(urls.map((u) => normalizeImageUrl(u)).filter(Boolean));
+    setUnassignedImageUrls((prev) => prev.filter((u) => !drop.has(normalizeImageUrl(u))));
+    setUnassignedDeletedNorm((prev) => {
+      const next = new Set(prev);
+      for (const k of drop) next.delete(k);
+      return next;
+    });
+  }
+
+  function applyProductHeroUrl(url: string) {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setFormState((prev) => {
+      const imgs = [...(prev.images_json ?? [])];
+      const n = normalizeImageUrl(trimmed);
+      const ix = imgs.findIndex((x) => normalizeImageUrl(x) === n);
+      if (ix > 0) {
+        const [it] = imgs.splice(ix, 1);
+        imgs.unshift(it!);
+      } else if (ix === -1) {
+        imgs.unshift(trimmed);
+      }
+      const next: ProductFormState = { ...prev, image_url: trimmed, images_json: imgs };
+      const imageUrl = next.image_url?.trim() || next.images_json?.[0]?.trim() || "";
+      try {
+        setPreviewProduct(formToPreviewProduct(next, imageUrl));
+      } catch {
+        /* ignore preview sync errors */
+      }
+      return next;
+    });
+  }
+
+  function recommendHeroFromHeuristic() {
+    const pool = [
+      formState.image_url,
+      ...(formState.images_json ?? []),
+      ...unassignedImageUrls,
+    ].filter((x): x is string => Boolean(x?.trim()));
+    const best = pickRecommendedHeroUrl(pool);
+    if (best) {
+      applyProductHeroUrl(best);
+      pushToast("추천 규칙으로 대표 이미지를 반영했습니다.");
+    } else {
+      pushToast("추천할 대표 이미지 후보가 없습니다.");
+    }
+  }
+
+  function assignUnassignedToSelectedEvent(url: string) {
+    if (!selectedEvent || selectedEvent.editorType !== "v2") return;
+    assignUnassignedImageToEvent({
+      editorType: "v2",
+      dayIndex: selectedEvent.dayIndex,
+      eventIndex: selectedEvent.eventIndex,
+      url,
+    });
+  }
+
+  function assignUnassignedToDayFirstEvent(url: string, dayIndex: number) {
+    assignUnassignedImageToEvent({
+      editorType: "v2",
+      dayIndex,
+      eventIndex: 0,
+      url,
+    });
+  }
+
+  function assignUnassignedToDayLastEvent(url: string, dayIndex: number) {
+    const events = formState.itinerary_v2_json?.days?.[dayIndex]?.events ?? [];
+    const last = Math.max(0, events.length - 1);
+    assignUnassignedImageToEvent({
+      editorType: "v2",
+      dayIndex,
+      eventIndex: last,
+      url,
+    });
   }
 
   function handleAutoAssignImages() {
@@ -577,6 +823,7 @@ export default function ModetourNewProductPage() {
     if (payload.source === "unassigned") {
       if (targetHasUrl(destEvent.images ?? [], normalizedUrl)) {
         setUnassignedImageUrls((prev) => removeFirstMatch(prev, payload.url));
+        pushToast("이미 해당 이벤트에 있는 이미지라 미할당 풀에서만 제거했습니다.");
       } else {
         assignUnassignedImageToEvent({
           editorType: destEditorType,
@@ -585,6 +832,7 @@ export default function ModetourNewProductPage() {
           url: payload.url,
           insertAt: destInsertAt,
         });
+        pushToast(`이미지를 Day ${destDayIndex + 1} 이벤트에 추가했습니다.`);
       }
       return;
     }
@@ -657,7 +905,7 @@ export default function ModetourNewProductPage() {
     const validation = validateImagePlacementState({
       v2Days: formState.itinerary_v2_json?.days,
       structuredDays: formState.itinerary_days_json,
-      unassignedImageUrls,
+      unassignedImageUrls: activeUnassignedImageUrls,
     });
     if (validation.hasError) {
       const firstError = validation.errors[0];
@@ -671,7 +919,7 @@ export default function ModetourNewProductPage() {
       product_source_url: sourceUrl || formState.product_source_url,
     };
     const payload = serializeAdminProductForm(formForSerialize, {
-      unassignedImageUrls,
+      unassignedImageUrls: activeUnassignedImageUrls,
     }) as Record<string, unknown>;
 
     // API 필수값 보정: 상품명·이미지 URL만 필수. 설명은 비어 있어도 생성 가능(편집에서 입력)
@@ -733,6 +981,8 @@ export default function ModetourNewProductPage() {
 
       if (result.id) {
         setCreatedProductId(result.id);
+        pushToast("상품이 생성되었습니다. 상품 편집 화면으로 이동합니다.");
+        router.push(`${PRODUCTS_LIST_PATH}?editingId=${result.id}`);
       }
     } catch {
       setSaveError("상품 생성 중 오류가 발생했습니다.");
@@ -772,10 +1022,11 @@ export default function ModetourNewProductPage() {
         <div className="mt-3 flex gap-3">
           <button
             type="button"
-            onClick={handleValidate}
-            className="rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] hover:opacity-90"
+            disabled={isNormalizingImages}
+            onClick={() => void handleValidate()}
+            className="rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            검증하기
+            {isNormalizingImages ? "이미지 정규화 중…" : "검증하기"}
           </button>
           <button
             type="button"
@@ -861,6 +1112,7 @@ export default function ModetourNewProductPage() {
                     src={normalizeProductImageUrl(previewProduct.image_url)}
                     alt={previewProduct.title || "대표 이미지"}
                     fill
+                    unoptimized
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 672px"
                   />
@@ -969,8 +1221,25 @@ export default function ModetourNewProductPage() {
               </p>
               <UnassignedImagePool
                 imageUrls={unassignedImageUrls}
-                title={`미할당 이미지 (${unassignedImageUrls.length}장)`}
+                title={`미할당 이미지 (${unassignedImageUrls.length}장 · 저장 반영 ${activeUnassignedImageUrls.length}장)`}
                 className="mb-4"
+                heroImageUrl={formState.image_url}
+                issuesByUrl={imagePlacementIssuesByUrl}
+                activeDayIndex={activeDayIndex}
+                v2Days={formState.itinerary_v2_json?.days ?? []}
+                selectedEvent={selectedEvent}
+                selectedEventSummary={selectedEventSummary}
+                onRemoveUrls={removeUnassignedUrls}
+                onSetHero={applyProductHeroUrl}
+                onAddToSelectedEvent={assignUnassignedToSelectedEvent}
+                onAddToDayFirstEvent={assignUnassignedToDayFirstEvent}
+                onAddToDayLastEvent={assignUnassignedToDayLastEvent}
+                onToast={pushToast}
+                onAutoAssignImages={handleAutoAssignImages}
+                onRecommendHero={recommendHeroFromHeuristic}
+                imageReviewMode
+                markedDeletedNormUrls={unassignedDeletedNorm}
+                onToggleMarkedDeleted={toggleUnassignedMarkedDeleted}
               />
               <ScheduleVisualEditorV2
                 form={{
@@ -999,11 +1268,16 @@ export default function ModetourNewProductPage() {
                 onSelectEvent={setSelectedEvent}
                 modetourDnDEnabled
                 onDropExternalImage={handleDropOnEvent}
-                onReturnImageToPool={(url) => returnEventImageToUnassigned({ url })}
+                onReturnImageToPool={(url) => {
+                  returnEventImageToUnassigned({ url });
+                  pushToast("이미지를 미할당 풀로 옮겼습니다.");
+                }}
                 imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
                 showPlacementWarnings={true}
                 onAutoAssignImages={handleAutoAssignImages}
-                unassignedImageCount={unassignedImageUrls.length}
+                unassignedImageCount={activeUnassignedImageUrls.length}
+                modetourSelectionSummary={selectedEventSummary}
+                modetourImageReviewMode
               />
             </div>
 
@@ -1027,6 +1301,28 @@ export default function ModetourNewProductPage() {
 
             {/* 상품 생성 액션 */}
             <div className="mt-6 flex flex-col gap-4 border-t border-slate-700 pt-4">
+              <div
+                className="rounded-lg border border-slate-600 bg-slate-800/60 px-4 py-3 text-sm text-slate-200"
+                role="region"
+                aria-label="이미지 검수 요약"
+              >
+                <p className="mb-2 font-semibold text-slate-100">이미지 검수 요약</p>
+                <ul className="grid gap-1 text-xs text-slate-300 sm:grid-cols-2">
+                  <li>총 수집(대표+갤러리+미할당+일정 배치 합산): {imageReviewSummary.totalListed}장</li>
+                  <li>현재 미할당(저장 반영): {imageReviewSummary.unassigned}장</li>
+                  {imageReviewSummary.unassignedDeletedPending > 0 ? (
+                    <li>미할당 삭제 예정: {imageReviewSummary.unassignedDeletedPending}장</li>
+                  ) : null}
+                  <li>일정 이벤트에 배치됨(삭제 예정 제외): {imageReviewSummary.placedInEvents}장</li>
+                  <li>대표 이미지 지정: {imageReviewSummary.hasHero ? "예" : "아니오"}</li>
+                  <li>중복 의심(동일 그룹 다건): {imageReviewSummary.dupSus}건</li>
+                  <li>로고/썸네일 의심(URL 기준): {imageReviewSummary.logoThumbSus}건</li>
+                </ul>
+              </div>
+              <p className="text-xs text-slate-400">
+                자동 삭제·자동 정리는 하지 않습니다. 이벤트별 이미지에서 삭제 예정·미할당 이동을 선택하고, 저장 시
+                반영됩니다.
+              </p>
               <button
                 type="button"
                 onClick={handleCreateProduct}
@@ -1093,6 +1389,15 @@ export default function ModetourNewProductPage() {
           </div>
         )}
       </div>
+
+      {reviewToast && (
+        <div
+          className="fixed bottom-6 left-1/2 z-[80] max-w-[min(90vw,420px)] -translate-x-1/2 rounded-lg border border-slate-600 bg-slate-900 px-4 py-3 text-center text-sm text-slate-100 shadow-lg"
+          role="status"
+        >
+          {reviewToast}
+        </div>
+      )}
     </div>
   );
 }

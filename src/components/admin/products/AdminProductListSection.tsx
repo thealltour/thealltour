@@ -19,6 +19,8 @@ export type AdminProductListSectionProps = {
   onAfterDelete?: (deletedId: string) => void;
   /** 상품 수정 클릭 시 (상위에서 편집 모드로 전환) */
   onEditProduct: (product: Product) => void;
+  /** 스마트스토어 HTML 생성 (목록 작업 열) */
+  onOpenSmartstoreHtml?: (product: Product) => void;
   /** 새 상품 등록 링크 (없으면 버튼 비표시) */
   newProductHref?: string;
   /** 목록 새로고침 함수 등록 (저장 후 등 호출용) */
@@ -31,6 +33,7 @@ export default function AdminProductListSection({
   pageSize = DEFAULT_PRODUCTS_PAGE_SIZE,
   onAfterDelete,
   onEditProduct,
+  onOpenSmartstoreHtml,
   newProductHref,
   registerRefresh,
 }: AdminProductListSectionProps) {
@@ -74,6 +77,7 @@ export default function AdminProductListSection({
       onClearSelection={() => ctrl.setSelectedIds([])}
       onBulkDelete={ctrl.handleBulkDeleteSelected}
       onEditProduct={onEditProduct}
+      onOpenSmartstoreHtml={onOpenSmartstoreHtml}
       onDeleteProduct={ctrl.handleDelete}
       onQuickToggleActive={ctrl.quickToggleActive}
       onMoveSortOrder={ctrl.moveSortOrder}

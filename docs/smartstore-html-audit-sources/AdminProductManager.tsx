@@ -73,7 +73,6 @@ import AdminHomeThemeCardsManager from "@/components/admin/products/AdminHomeThe
 import AdminProductsCollectionCampaignsManager from "@/components/admin/products/AdminProductsCollectionCampaignsManager";
 import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
 import AdminProductListSection from "@/components/admin/products/AdminProductListSection";
-import SmartstoreHtmlGenerateModal from "@/components/admin/products/modals/SmartstoreHtmlGenerateModal";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
 import {
@@ -320,8 +319,6 @@ export default function AdminProductManager() {
   /** 상세 미리보기에서 Sticky CTA 표시 여부 (UX 방해 시 숨김) */
   const [showDetailSticky, setShowDetailSticky] = useState(true);
   /** 상품명 추출 모달 */
-  const [smartstoreHtmlModalOpen, setSmartstoreHtmlModalOpen] = useState(false);
-  const [smartstoreHtmlProduct, setSmartstoreHtmlProduct] = useState<Product | null>(null);
   const [showTitleExtractModal, setShowTitleExtractModal] = useState(false);
   const [titleExtractPaste, setTitleExtractPaste] = useState("");
   const [titleCandidates, setTitleCandidates] = useState<string[]>([]);
@@ -2000,23 +1997,8 @@ export default function AdminProductManager() {
           registerRefresh={(fn) => {
             refreshListRef.current = fn;
           }}
-          onOpenSmartstoreHtml={(product) => {
-            setSmartstoreHtmlProduct(product);
-            setSmartstoreHtmlModalOpen(true);
-          }}
         />
       ) : null}
-
-      <SmartstoreHtmlGenerateModal
-        open={smartstoreHtmlModalOpen}
-        productId={smartstoreHtmlProduct?.id ?? null}
-        productTitle={smartstoreHtmlProduct?.title?.trim() ?? ""}
-        onClose={() => {
-          setSmartstoreHtmlModalOpen(false);
-          setSmartstoreHtmlProduct(null);
-        }}
-        onCopied={() => showToast("success", "HTML이 복사되었습니다.")}
-      />
 
       <ImageImportGuideModal
         open={showImageImportGuideModal}

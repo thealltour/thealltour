@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Pencil, Trash2, Power } from "lucide-react";
+import { ExternalLink, FileCode2, Pencil, Trash2, Power } from "lucide-react";
 import type { Product } from "@/types/product";
 
 type AdminProductsQuickActionsProps = {
@@ -11,6 +11,8 @@ type AdminProductsQuickActionsProps = {
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onToggleActive: (product: Product) => void;
+  /** 스마트스토어 상세 HTML 생성 모달 */
+  onSmartstoreHtml?: (product: Product) => void;
   /** 모바일 등에서 텍스트 라벨 표시 */
   compact?: boolean;
   /** 목록 한 줄 행용 더 작은 버튼 */
@@ -24,6 +26,7 @@ export default function AdminProductsQuickActions({
   onEdit,
   onDelete,
   onToggleActive,
+  onSmartstoreHtml,
   compact = false,
   dense = false,
 }: AdminProductsQuickActionsProps) {
@@ -62,6 +65,18 @@ export default function AdminProductsQuickActions({
         <Power className={icoCls} aria-hidden />
         {!compact && !dense ? <span>{active ? "비활성" : "활성"}</span> : null}
       </button>
+      {onSmartstoreHtml ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onSmartstoreHtml(product)}
+          className={`${btnBase} ${iconBtn} border-sky-200/80 bg-sky-50 text-sky-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-1 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100`}
+          title="스마트스토어 상세 HTML 생성"
+        >
+          <FileCode2 className={icoCls} aria-hidden />
+          {!compact && !dense ? <span className="max-w-[4.5rem] truncate">HTML 생성</span> : null}
+        </button>
+      ) : null}
       <Link
         href={`/products/${product.id}`}
         target="_blank"

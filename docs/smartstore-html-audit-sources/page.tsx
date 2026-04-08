@@ -41,7 +41,6 @@ import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 import { getProductSeoData } from "@/lib/products/getProductSeoData";
 import { getSiteBaseUrl, toAbsoluteUrl } from "@/lib/seo/getSiteSeoDefaults";
 import { resolveProductNoticesForDetailPage } from "@/lib/noticeTemplates";
-import { resolveProductDetailBodyFields } from "@/lib/products/resolveProductDetailBodyFields";
 
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -161,8 +160,19 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   }
 
   const formattedPrice = formatPrice(product.price);
-  const { resolvedIncludedItems, resolvedExcludedItems, resolvedOptionalTours } =
-    resolveProductDetailBodyFields(product);
+  const normalizedIncluded = product.included_items?.trim() ?? "";
+  const normalizedExcluded = product.excluded_items?.trim() ?? "";
+  const normalizedOptional = product.optional_tours?.trim() ?? "";
+  const normalizedTerms = product.terms_and_notes?.trim() ?? "";
+  const shouldFallbackFromLegacyDetailFields =
+    !normalizedIncluded && !normalizedExcluded && (normalizedOptional || normalizedTerms);
+  const resolvedIncludedItems = shouldFallbackFromLegacyDetailFields
+    ? product.optional_tours ?? product.inclusions
+    : product.included_items ?? product.inclusions;
+  const resolvedExcludedItems = shouldFallbackFromLegacyDetailFields
+    ? product.terms_and_notes
+    : product.excluded_items;
+  const resolvedOptionalTours = shouldFallbackFromLegacyDetailFields ? undefined : product.optional_tours;
   const {
     bookingNotes: resolvedBookingNotes,
     travelNotes: resolvedTravelNotes,

@@ -62,6 +62,9 @@ export const DEFAULT_FLYER_LAYOUT_OPTIONS: FlyerLayoutOptions = {
   spacingMode: "normal",
 };
 
+/** 롱폼 갤러리·저장·미리보기 공통 이미지 상한 */
+export const FLYER_MAX_GALLERY_IMAGES = 5;
+
 export type FlyerEditableFields = {
   title: string;
   subtitle: string;

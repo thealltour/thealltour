@@ -14,7 +14,11 @@ import {
   parseLayoutOptions,
   parseSectionToggles,
 } from "@/lib/flyers/serializeFlyerDraft";
-import type { FlyerDraftState, SaveFlyerDraftResponse } from "@/lib/flyers/flyer.types";
+import {
+  type FlyerDraftState,
+  type SaveFlyerDraftResponse,
+  FLYER_MAX_GALLERY_IMAGES,
+} from "@/lib/flyers/flyer.types";
 
 function isUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
@@ -45,7 +49,7 @@ function parseBodyToDraftState(
     fields,
     weather,
     outfit,
-    selectedImageUrls: imageUrls.slice(0, 4),
+    selectedImageUrls: imageUrls.slice(0, FLYER_MAX_GALLERY_IMAGES),
   };
   return { ok: true, productId, state };
 }

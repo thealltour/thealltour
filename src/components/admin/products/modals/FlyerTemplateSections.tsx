@@ -28,8 +28,9 @@ const typoBody = (t: "normal" | "compact") =>
   t === "compact" ? "flyer-body flyer-body--compact" : "flyer-body";
 const typoList = (t: "normal" | "compact") =>
   t === "compact" ? "flyer-list flyer-list--compact" : "flyer-list";
+/** 포함/불포함 — 롱폼에서 13px·lh 1.6 보수 스케일 (`.flyer-included-excluded-list`) */
 const typoListC = (t: "normal" | "compact") =>
-  t === "compact" ? "flyer-list-compact flyer-list-compact--sm" : "flyer-list-compact";
+  `${typoList(t)} flyer-included-excluded-list`;
 const typoSec = (t: "normal" | "compact") =>
   t === "compact" ? "flyer-section-title flyer-section-title--compact" : "flyer-section-title";
 
@@ -80,7 +81,7 @@ function FlyerWeatherBlock({
 
   return (
     <section
-      className={`flyer-card flyer-weather-card overflow-hidden rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 shadow-sm ${sp.cardPad}`}
+      className={`flyer-card flyer-weather-card rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 shadow-sm ${sp.cardPad}`}
     >
       <div className="flex items-start gap-3 sm:gap-3.5">
         <span
@@ -92,10 +93,10 @@ function FlyerWeatherBlock({
         <div className="min-w-0 flex-1">
           <p className={`${typoSec(typo)} text-slate-900`}>{title}</p>
           <p
-            className={`${typoBody(typo)} mt-2 text-pretty leading-snug ${
+            className={`mt-2.5 text-pretty leading-[1.7] ${
               summary
-                ? "font-semibold text-slate-800"
-                : "font-medium text-slate-600"
+                ? "text-[14px] font-semibold text-slate-900 sm:text-[15px]"
+                : `${typoBody(typo)} font-medium text-slate-600`
             }`}
           >
             {summaryLine}
@@ -108,7 +109,7 @@ function FlyerWeatherBlock({
           {chips.map((label) => (
             <span
               key={label}
-              className="inline-flex max-w-full items-center rounded-full border border-slate-200/90 bg-white/90 px-2.5 py-1 text-[0.5625rem] font-medium leading-none text-slate-700 shadow-sm"
+              className="inline-flex max-w-full items-center rounded-full border border-slate-200/90 bg-white/90 px-3 py-1.5 text-[12px] font-medium leading-snug text-slate-700 shadow-sm"
             >
               <span className="truncate">{label}</span>
             </span>
@@ -118,36 +119,41 @@ function FlyerWeatherBlock({
 
       {weatherDays.length > 0 ? (
         <div
-          className={`${chips.length ? "mt-4" : "mt-3.5"} space-y-2.5 border-t border-slate-200/70 pt-3.5`}
+          className={`${chips.length ? "mt-4" : "mt-3.5"} space-y-3 border-t border-slate-200/70 pt-4`}
         >
           {weatherDays.slice(0, 5).map((d) => (
             <div
               key={d.date}
-              className="flex items-center justify-between gap-3 rounded-lg border border-slate-100/90 bg-white px-3 py-3 shadow-sm"
+              className="flex items-center justify-between gap-3 rounded-lg border border-slate-100/90 bg-white px-4 py-5 shadow-sm"
             >
-              <div className="flex min-w-0 items-start gap-2.5 sm:items-center">
-                <span className="shrink-0 pt-0.5 text-[1.1rem] leading-none sm:pt-0 sm:text-xl" aria-hidden>
+              <div className="flex min-w-0 items-start gap-3 sm:items-center">
+                <span
+                  className="shrink-0 pt-0.5 text-[1.25rem] leading-none sm:pt-0 sm:text-2xl"
+                  aria-hidden
+                >
                   {weatherConditionEmoji(d.condition)}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[0.65rem] font-semibold leading-tight text-slate-900">
+                  <p className="text-[13px] font-bold leading-snug text-slate-900">
                     {formatFlyerWeatherDateLabel(d.date)}
                   </p>
-                  <p className="mt-0.5 truncate text-[0.5625rem] leading-snug text-slate-500">
+                  <p className="mt-1 truncate text-[13px] leading-snug text-slate-500">
                     {d.condition?.trim() || "상세 없음"}
                   </p>
                 </div>
               </div>
               <div className="shrink-0 text-right">
                 {d.maxC != null && d.minC != null ? (
-                  <p className="text-[0.65rem] font-semibold tabular-nums text-slate-800">
+                  <p className="text-[14px] font-bold tabular-nums text-slate-900">
                     {Math.round(d.minC)}° / {Math.round(d.maxC)}°
                   </p>
                 ) : (
-                  <p className="text-[0.5625rem] text-slate-400">—</p>
+                  <p className="text-[14px] text-slate-400">—</p>
                 )}
                 {d.chanceOfRain != null && d.chanceOfRain > 0 ? (
-                  <p className="mt-0.5 text-[0.5rem] font-medium text-sky-700">비 {Math.round(d.chanceOfRain)}%</p>
+                  <p className="mt-1 text-[12px] font-semibold text-sky-700">
+                    비 {Math.round(d.chanceOfRain)}%
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -171,7 +177,7 @@ export function FlyerHeaderBlock({ sections, f, sp, typo }: BlockCtx) {
 
   return (
     <header
-      className={`flyer-block flyer-header-block relative shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-[var(--primary-soft)]/25 px-4 py-4 sm:px-5 sm:py-5 ${sp.headerMb}`}
+      className={`flyer-block flyer-header-block relative shrink-0 rounded-xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-[var(--primary-soft)]/25 px-4 py-4 sm:px-5 sm:py-5 ${sp.headerMb}`}
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--primary)] via-[var(--primary)]/70 to-[var(--primary)]/30"
@@ -188,7 +194,7 @@ export function FlyerHeaderBlock({ sections, f, sp, typo }: BlockCtx) {
           {pills.map((p) => (
             <li
               key={p}
-              className="rounded-full border border-slate-200/90 bg-white/80 px-2.5 py-1 text-[0.5625rem] font-medium leading-none text-slate-600 shadow-sm backdrop-blur-sm"
+              className="rounded-full border border-slate-200/90 bg-white/80 px-3.5 py-2 text-base font-medium leading-snug text-slate-600 shadow-sm backdrop-blur-sm"
             >
               {p}
             </li>
@@ -205,16 +211,16 @@ export function FlyerDepartureBlock({ sections, f, sp, typo }: BlockCtx) {
   if (!sections.departure) return null;
   const row = (label: string, body: string) => (
     <div className="min-w-0">
-      <dt className="flyer-kicker text-slate-500">{label}</dt>
-      <dd className={`${typoBody(typo)} mt-1 whitespace-pre-wrap text-slate-800`}>{body}</dd>
+      <dt className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className={`${typoBody(typo)} mt-1.5 whitespace-pre-wrap text-slate-800`}>{body}</dd>
     </div>
   );
 
   return (
     <section
-      className={`flyer-card flyer-card--departure shrink-0 overflow-hidden rounded-xl border-2 border-[var(--primary)]/45 bg-gradient-to-br from-[var(--primary-soft)]/85 via-[var(--primary-soft)]/35 to-white ${sp.cardPad} shadow-md ring-1 ring-[var(--primary)]/10`}
+      className={`flyer-card flyer-card--departure shrink-0 rounded-xl border-2 border-[var(--primary)]/45 bg-gradient-to-br from-[var(--primary-soft)]/85 via-[var(--primary-soft)]/35 to-white ${sp.cardPad} shadow-md ring-1 ring-[var(--primary)]/10`}
     >
-      <div className="mb-3.5 flex items-center gap-3 border-b border-[var(--primary)]/25 pb-3.5">
+      <div className="mb-4 flex items-center gap-3 border-b border-[var(--primary)]/25 pb-4">
         <span
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary)]/18 text-lg text-[var(--primary)] shadow-sm ring-2 ring-white/80"
           aria-hidden
@@ -223,12 +229,12 @@ export function FlyerDepartureBlock({ sections, f, sp, typo }: BlockCtx) {
         </span>
         <div>
           <p className={`${typoSec(typo)} text-slate-950`}>출발 · 미팅</p>
-          <p className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-wider text-slate-600">
+          <p className="mt-1 text-[12px] font-semibold uppercase tracking-wider text-slate-600">
             핵심 일정
           </p>
         </div>
       </div>
-      <dl className="space-y-4">
+      <dl className="space-y-6">
         {f.departureText?.trim() ? row("일정 · 출발", f.departureText.trim()) : null}
         {f.meetingText?.trim() ? row("집합 · 미팅", f.meetingText.trim()) : null}
         {f.airlineText?.trim() ? row("항공 · 이동", f.airlineText.trim()) : null}
@@ -256,10 +262,12 @@ export function FlyerMainStackBlocks({
           className={`flyer-card rounded-xl border border-amber-200/55 bg-gradient-to-br from-amber-50/75 to-white ${sp.cardPad} shadow-sm print:border-amber-200/80 print:bg-amber-50/45`}
         >
           <p className={`${typoSec(typo)} text-amber-950/95`}>{f.baggageTitle}</p>
-          <p className="mt-1 text-[0.5rem] font-medium text-amber-900/75">수하물 · 기내 안내</p>
-          <ul className={`${typoList(typo)} mt-3 list-outside list-disc space-y-1.5 pl-4 text-slate-800`}>
+          <p className="mt-2 text-[12px] font-medium leading-snug text-amber-900/80">수하물 · 기내 안내</p>
+          <ul
+            className={`${typoList(typo)} mt-4 list-outside list-disc space-y-4 pl-5 leading-[1.65] text-slate-800 marker:text-amber-700/70`}
+          >
             {f.baggageLines.map((line, i) => (
-              <li key={i} className="break-words [text-wrap:pretty]">
+              <li key={i} className="break-words ps-0.5 [text-wrap:pretty]">
                 {line}
               </li>
             ))}
@@ -268,60 +276,72 @@ export function FlyerMainStackBlocks({
       ) : null}
 
       {sections.preparation ? (
-        <section
-          className={`flyer-card rounded-xl border border-sky-100/90 bg-gradient-to-br from-sky-50/95 via-white to-white ${sp.cardPad} shadow-sm ring-1 ring-sky-100/50 print:border-sky-100 print:from-sky-50/80`}
-        >
-          <p className={`${typoSec(typo)} text-slate-900`}>{f.preparationTitle}</p>
-          <p className="mt-1 text-[0.5rem] font-semibold text-[var(--primary)]">준비물 체크</p>
-          <ul className={`${typoList(typo)} mt-3 list-outside list-disc space-y-1.5 pl-4 text-slate-800`}>
-            {f.preparationLines.map((line, i) => (
-              <li key={i} className="break-words [text-wrap:pretty]">
-                {line}
-              </li>
-            ))}
-          </ul>
+        <>
+          <section
+            className={`flyer-card rounded-xl border border-sky-100/90 bg-gradient-to-br from-sky-50/95 via-white to-white ${sp.cardPad} shadow-sm ring-1 ring-sky-100/50 print:border-sky-100 print:from-sky-50/80`}
+          >
+            <p className={`${typoSec(typo)} text-slate-900`}>{f.preparationTitle}</p>
+            <p className="mt-2 text-[12px] font-semibold leading-snug text-[var(--primary)]">준비물 체크</p>
+            <ul
+              className={`${typoList(typo)} mt-4 list-outside list-disc space-y-4 pl-5 leading-[1.65] text-slate-800 marker:text-sky-700/70`}
+            >
+              {f.preparationLines.map((line, i) => (
+                <li key={i} className="break-words ps-0.5 [text-wrap:pretty]">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </section>
           {outfitIncluded.length > 0 ? (
-            <div className="mt-4 border-t border-sky-200/50 pt-3.5">
-              <p className={`${typoSec(typo)} text-slate-900`}>여행 준비물</p>
+            <section
+              className={`flyer-card rounded-xl border border-sky-200/60 bg-white ${sp.cardPad} shadow-sm ring-1 ring-sky-100/40 print:border-sky-200/70`}
+            >
+              <p className={`${typoSec(typo)} text-slate-900`}>여행 준비물 (체크)</p>
               {outfit?.summaryText?.trim() ? (
-                <p className={`${typoBody(typo)} mt-2 text-pretty text-slate-600`}>{outfit.summaryText}</p>
+                <p className={`${typoBody(typo)} mt-3 text-pretty leading-[1.68] text-slate-600`}>
+                  {outfit.summaryText}
+                </p>
               ) : null}
-              <ul className={`${typoList(typo)} mt-2.5 list-none space-y-2 pl-0 text-slate-800`}>
+              <ul className={`${typoList(typo)} mt-4 list-none space-y-4 pl-0 text-slate-800`}>
                 {outfitIncluded.map((item, i) => (
-                  <li key={`${item.text}-${i}`} className="flex gap-2 break-words [text-wrap:pretty]">
-                    <span className="mt-0.5 shrink-0 text-[var(--primary)]" aria-hidden>
+                  <li key={`${item.text}-${i}`} className="flex gap-4 break-words [text-wrap:pretty]">
+                    <span className="mt-0.5 shrink-0 text-lg text-[var(--primary)]" aria-hidden>
                       ✓
                     </span>
-                    <span>{item.text}</span>
+                    <span className="leading-[1.65]">{item.text}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+            </section>
           ) : null}
-        </section>
+        </>
       ) : null}
 
       {sections.includedExcluded ? (
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5">
+        <section className="flex w-full flex-col gap-4">
           <div
-            className={`flyer-card rounded-xl border border-emerald-200/40 bg-emerald-50/25 ${sp.cardPad} shadow-sm print:border-emerald-200/50 print:bg-emerald-50/30`}
+            className={`flyer-card rounded-xl border border-emerald-200/40 bg-emerald-50/25 ${sp.cardPad} ${sp.includedExcludedPadTweak} shadow-sm print:border-emerald-200/50 print:bg-emerald-50/30`}
           >
             <p className={`${typoSec(typo)} text-emerald-900/90`}>{f.includedTitle}</p>
-            <ul className={`${typoListC(typo)} mt-2.5 list-outside list-disc space-y-1.5 pl-3.5 text-slate-800`}>
+            <ul
+              className={`${typoListC(typo)} mt-3 list-outside list-disc space-y-[17px] pl-5 text-slate-800 marker:text-emerald-700/65`}
+            >
               {f.includedLines.slice(0, 10).map((line, i) => (
-                <li key={i} className="break-words [text-wrap:pretty]">
+                <li key={i} className="break-words ps-0.5 [text-wrap:pretty]">
                   {line}
                 </li>
               ))}
             </ul>
           </div>
           <div
-            className={`flyer-card rounded-xl border border-rose-200/40 bg-rose-50/22 ${sp.cardPad} shadow-sm print:border-rose-200/50 print:bg-rose-50/28`}
+            className={`flyer-card rounded-xl border border-rose-200/40 bg-rose-50/22 ${sp.cardPad} ${sp.includedExcludedPadTweak} shadow-sm print:border-rose-200/50 print:bg-rose-50/28`}
           >
             <p className={`${typoSec(typo)} text-rose-900/90`}>{f.excludedTitle}</p>
-            <ul className={`${typoListC(typo)} mt-2.5 list-outside list-disc space-y-1.5 pl-3.5 text-slate-800`}>
+            <ul
+              className={`${typoListC(typo)} mt-3 list-outside list-disc space-y-[17px] pl-5 text-slate-800 marker:text-rose-700/65`}
+            >
               {f.excludedLines.slice(0, 10).map((line, i) => (
-                <li key={i} className="break-words [text-wrap:pretty]">
+                <li key={i} className="break-words ps-0.5 [text-wrap:pretty]">
                   {line}
                 </li>
               ))}
@@ -332,10 +352,12 @@ export function FlyerMainStackBlocks({
 
       {sections.notice ? (
         <section
-          className={`flyer-card rounded-xl border border-slate-200/70 bg-slate-50/70 ${sp.cardPad} shadow-sm print:bg-slate-50/90`}
+          className={`flyer-card rounded-xl border border-slate-200/70 bg-slate-50/70 ${sp.cardPad} !pt-8 !pb-8 sm:!pt-9 sm:!pb-9 shadow-sm print:bg-slate-50/90`}
         >
           <p className={`${typoSec(typo)} text-slate-700`}>유의사항</p>
-          <p className={`${typoBody(typo)} mt-2.5 whitespace-pre-wrap font-normal leading-relaxed text-slate-600`}>
+          <p
+            className={`${typoBody(typo)} mt-3 whitespace-pre-wrap font-normal leading-[1.7] text-slate-600`}
+          >
             {f.noticeText}
           </p>
         </section>
@@ -365,7 +387,7 @@ export function FlyerGallerySection({
   return (
     <section
       aria-label="이미지 갤러리"
-      className={`flyer-gallery-longform grid w-full ${sp.galleryGridClass} ${sp.galleryGap}`}
+      className={`flyer-gallery-longform mt-1.5 grid w-full ${sp.galleryGridClass} ${sp.galleryGap}`}
     >
       {images.length > 0 ? (
         images.map((url, i) => (
@@ -399,8 +421,8 @@ export function FlyerGallerySection({
             <GalleryPlaceholderIcon className="h-10 w-10" />
           </div>
           <div className="text-center">
-            <p className="text-[0.65rem] font-semibold tracking-wide text-slate-600">이미지 준비 중</p>
-            <p className="mt-1.5 max-w-[15rem] text-[0.5rem] leading-relaxed text-slate-500">
+            <p className="text-base font-semibold tracking-wide text-slate-600">이미지 준비 중</p>
+            <p className="mt-2 max-w-[18rem] text-base leading-[1.7] text-slate-500">
               상품에서 갤러리 이미지를 선택하면 여기에 표시됩니다.
             </p>
           </div>
@@ -423,7 +445,7 @@ export function FlyerFooterBlock({ sections, f, typo, exportMode = false }: Bloc
 
   return (
     <footer className="flyer-footer mt-6 shrink-0 border-t border-slate-200/80 pt-10 pb-2">
-      <div className="flex flex-col items-center gap-4 px-1">
+      <div className="flex flex-col items-center gap-[18px] px-1">
         <div className="h-px w-16 bg-gradient-to-r from-transparent via-slate-300/90 to-transparent" aria-hidden />
         {exportMode ? (
           <img
@@ -447,7 +469,7 @@ export function FlyerFooterBlock({ sections, f, typo, exportMode = false }: Bloc
         )}
         {showExtraBrand ? (
           <p
-            className={`text-center font-medium text-slate-600 ${typo === "compact" ? "text-[0.5rem]" : "text-[0.5625rem]"}`}
+            className="text-center text-base font-medium leading-snug text-slate-600"
           >
             {f.footerBrandText.trim()}
           </p>

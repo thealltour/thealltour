@@ -59,14 +59,18 @@ export function FlyerTemplateVisual({
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
             {sections.header ? (
-              <div className="absolute inset-x-3 bottom-3">
+              <div className="absolute inset-x-4 bottom-4">
                 <h1
-                  className={`${typo === "compact" ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"} font-bold leading-tight tracking-tight text-white drop-shadow-sm [text-wrap:balance]`}
+                  className={`${
+                    typo === "compact"
+                      ? "text-[20px] sm:text-[22px]"
+                      : "text-[22px] sm:text-[23px]"
+                  } font-bold leading-snug tracking-tight text-white drop-shadow-sm [text-wrap:balance]`}
                 >
                   {f.title}
                 </h1>
                 {f.subtitle ? (
-                  <p className="mt-1 text-xs sm:text-sm leading-snug text-white/90 drop-shadow-sm [text-wrap:pretty]">
+                  <p className="mt-1.5 text-[13px] sm:text-sm leading-snug text-white/88 drop-shadow-sm [text-wrap:pretty]">
                     {f.subtitle}
                   </p>
                 ) : null}

@@ -3,9 +3,8 @@
 import Image from "next/image";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import type { Product } from "@/types/product";
+import { FLYER_MAX_GALLERY_IMAGES } from "@/lib/flyers/flyer.types";
 import { collectFlyerCandidateImageUrls } from "./flyerModal.utils";
-
-const MAX = 4;
 
 function thumbUnoptimized(url: string) {
   return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:");
@@ -28,7 +27,7 @@ export function FlyerImageSelector({ product, selected, onChange, disabled }: Fl
       onChange(selected.filter((u) => u !== url));
       return;
     }
-    if (selected.length >= MAX) return;
+    if (selected.length >= FLYER_MAX_GALLERY_IMAGES) return;
     onChange([...selected, url]);
   };
 
@@ -43,7 +42,9 @@ export function FlyerImageSelector({ product, selected, onChange, disabled }: Fl
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-[var(--text-muted)]">최대 {MAX}장 · 클릭으로 선택/해제 · 순서는 화살표로 조정</p>
+      <p className="text-[11px] text-[var(--text-muted)]">
+        최대 {FLYER_MAX_GALLERY_IMAGES}장 · 클릭으로 선택/해제 · 순서는 화살표로 조정
+      </p>
 
       {selected.length > 0 ? (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/40 p-2">
@@ -106,7 +107,7 @@ export function FlyerImageSelector({ product, selected, onChange, disabled }: Fl
             {candidates.map((url) => {
               const sel = selected.indexOf(url);
               const on = sel >= 0;
-              const atMax = !on && selected.length >= MAX;
+              const atMax = !on && selected.length >= FLYER_MAX_GALLERY_IMAGES;
               return (
                 <li key={url}>
                   <button

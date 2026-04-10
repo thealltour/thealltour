@@ -127,7 +127,7 @@ export default function AdminProductsListView({
         key={product.id}
         className="border-t border-[var(--divider)] leading-tight hover:bg-[var(--surface-muted)]"
       >
-        <td className="w-8 px-1 py-1.5 align-middle text-center">
+        <td className="w-8 px-1 py-2 align-middle text-center">
           <input
             type="checkbox"
             className="h-3.5 w-3.5 accent-[var(--primary)]"
@@ -136,12 +136,12 @@ export default function AdminProductsListView({
             aria-label={`${title} 선택`}
           />
         </td>
-        <td className="w-[1.85rem] min-w-[1.85rem] px-0 py-1.5 text-center align-middle">
+        <td className="w-[1.85rem] min-w-[1.85rem] px-0 py-2 text-center align-middle">
           <AdminProductsRowWarnings warnings={warnings} />
         </td>
-        <td className="w-11 px-1 py-1.5 align-middle text-center">
+        <td className="min-w-[3.25rem] px-2 py-2 align-middle text-center">
           {product.image_url?.trim() ? (
-            <div className="mx-auto h-8 w-8 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-muted)]">
+            <div className="mx-auto h-12 w-12 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={normalizeProductImageUrl(product.image_url)}
@@ -150,60 +150,60 @@ export default function AdminProductsListView({
               />
             </div>
           ) : (
-            <span className="text-[10px] text-[var(--text-muted)]">—</span>
+            <span className="text-xs text-[var(--text-muted)]">—</span>
           )}
         </td>
-        <td className="min-w-[200px] max-w-[min(46vw,480px)] px-2 py-1.5 align-middle">
-          <div className="flex min-w-0 flex-col gap-px" title={rowTip}>
-            <span className="line-clamp-2 min-w-0 text-[13px] font-semibold leading-snug text-[var(--primary)]">
+        <td className="min-w-[220px] max-w-[min(46vw,480px)] px-2 py-2 align-middle">
+          <div className="flex min-w-0 flex-col gap-0.5" title={rowTip}>
+            <span className="line-clamp-2 min-w-0 text-[15px] font-semibold leading-snug text-[var(--primary)]">
               {title}
             </span>
             <p
-              className="truncate text-[9px] font-normal leading-tight tracking-tight text-[var(--text-muted)]"
+              className="truncate text-[11px] font-normal leading-snug tracking-tight text-[var(--text-muted)]"
               title={taxTitle}
             >
               {taxCompact}
             </p>
           </div>
         </td>
-        <td className="min-w-[112px] max-w-[140px] px-1 py-1.5 align-middle">
-          <div className="inline-flex flex-nowrap items-center gap-0.5 rounded-md border border-[var(--border)]/70 bg-[var(--surface-muted)]/40 px-1 py-0.5">
+        <td className="min-w-[120px] max-w-[160px] px-2 py-2 align-middle">
+          <div className="inline-flex flex-nowrap items-center gap-1 rounded-md border border-[var(--border)]/70 bg-[var(--surface-muted)]/40 px-1.5 py-1">
             {product.is_active === false ? (
-              <span className="inline-flex shrink-0 rounded-full bg-[var(--surface-muted)] px-1.5 py-px text-[10px] font-medium text-[var(--text-muted)]">
+              <span className="inline-flex shrink-0 rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
                 비노출
               </span>
             ) : (
-              <span className="inline-flex shrink-0 rounded-full bg-[var(--success-bg)] px-1.5 py-px text-[10px] font-medium text-[var(--success)]">
+              <span className="inline-flex shrink-0 rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-xs font-medium text-[var(--success)]">
                 노출
               </span>
             )}
             {product.status && STATUS_LABELS[product.status] ? (
               <span
-                className={`inline-flex min-w-0 max-w-[4.75rem] truncate rounded-full px-1.5 py-px text-[10px] font-medium ${statusBadgeClass(product.status)}`}
+                className={`inline-flex min-w-0 max-w-[5.5rem] truncate rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(product.status)}`}
                 title={STATUS_LABELS[product.status]}
               >
                 {STATUS_LABELS[product.status]}
               </span>
             ) : (
-              <span className="text-[10px] text-[var(--text-muted)]">—</span>
+              <span className="text-xs text-[var(--text-muted)]">—</span>
             )}
           </div>
         </td>
-        <td className="w-[84px] whitespace-nowrap px-1 py-1.5 align-middle text-[11px] font-medium text-[var(--text-primary)]">
+        <td className="min-w-[5.5rem] whitespace-nowrap px-2 py-2 align-middle text-sm font-medium text-[var(--text-primary)]">
           {typeof product.price === "number"
             ? `${new Intl.NumberFormat("ko-KR").format(product.price)}원`
             : "—"}
         </td>
-        <td className="w-[72px] whitespace-nowrap px-0.5 py-1.5 align-middle">
+        <td className="min-w-[5.5rem] whitespace-nowrap px-1 py-2 align-middle">
           <div className="flex items-center justify-center gap-0.5">
-            <span className="inline-flex min-w-[1.25rem] justify-center rounded bg-[var(--surface-muted)] px-0.5 py-0.5 text-[10px] font-semibold ring-1 ring-[var(--border)]">
+            <span className="inline-flex min-w-[1.35rem] justify-center rounded bg-[var(--surface-muted)] px-1 py-0.5 text-xs font-semibold ring-1 ring-[var(--border)]">
               {typeof product.sort_order === "number" ? product.sort_order : "—"}
             </span>
             <button
               type="button"
               disabled={pendingMoveId === product.id}
               onClick={() => onMoveSortOrder(product, "up")}
-              className="rounded border border-[var(--border)] px-0.5 py-0 text-[9px] leading-none hover:bg-[var(--surface-muted)] disabled:opacity-50"
+              className="rounded border border-[var(--border)] px-1 py-0.5 text-xs leading-none hover:bg-[var(--surface-muted)] disabled:opacity-50"
               title="위로"
             >
               ▲
@@ -212,7 +212,7 @@ export default function AdminProductsListView({
               type="button"
               disabled={pendingMoveId === product.id}
               onClick={() => onMoveSortOrder(product, "down")}
-              className="rounded border border-[var(--border)] px-0.5 py-0 text-[9px] leading-none hover:bg-[var(--surface-muted)] disabled:opacity-50"
+              className="rounded border border-[var(--border)] px-1 py-0.5 text-xs leading-none hover:bg-[var(--surface-muted)] disabled:opacity-50"
               title="아래로"
             >
               ▼
@@ -220,7 +220,7 @@ export default function AdminProductsListView({
           </div>
         </td>
         <td
-          className="w-9 whitespace-nowrap px-0 py-1.5 text-center align-middle text-[9px] leading-none"
+          className="min-w-[2.75rem] whitespace-nowrap px-1 py-2 text-center align-middle text-sm leading-none"
           title={`이미지: ${imgOk ? "있음" : "없음"} · 일정: ${itOk ? "있음" : "없음"}`}
         >
           <span className={imgOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-[var(--danger)]"} aria-hidden>
@@ -236,7 +236,7 @@ export default function AdminProductsListView({
             {itOk ? "📅" : "❌"}
           </span>
         </td>
-        <td className="w-[182px] min-w-[182px] px-1 py-1.5 align-middle">
+        <td className="w-[182px] min-w-[182px] px-1 py-2 align-middle">
           <AdminProductsQuickActions
             product={product}
             pendingToggleId={pendingToggleId}
@@ -279,7 +279,7 @@ export default function AdminProductsListView({
         <div className="shrink-0 self-center">
           <AdminProductsRowWarnings warnings={warnings} />
         </div>
-        <div className="h-8 w-8 shrink-0 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-muted)]">
+        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)]">
           {product.image_url?.trim() ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -290,46 +290,46 @@ export default function AdminProductsListView({
           ) : null}
         </div>
         <div className="min-w-0 flex-1 shrink" title={rowTip}>
-          <p className="line-clamp-1 text-[13px] font-semibold leading-snug text-[var(--primary)]">{title}</p>
+          <p className="line-clamp-1 text-[15px] font-semibold leading-snug text-[var(--primary)]">{title}</p>
           <p
-            className="truncate text-[9px] font-normal leading-tight tracking-tight text-[var(--text-muted)]"
+            className="truncate text-[11px] font-normal leading-snug tracking-tight text-[var(--text-muted)]"
             title={taxTitle}
           >
             {taxCompact}
           </p>
         </div>
-        <div className="inline-flex shrink-0 flex-nowrap items-center gap-0.5 rounded-md border border-[var(--border)]/70 bg-[var(--surface-muted)]/40 px-1 py-0.5">
+        <div className="inline-flex shrink-0 flex-nowrap items-center gap-1 rounded-md border border-[var(--border)]/70 bg-[var(--surface-muted)]/40 px-1.5 py-1">
           {product.is_active === false ? (
-            <span className="rounded-full bg-[var(--surface-muted)] px-1.5 py-px text-[10px] text-[var(--text-muted)]">
+            <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
               끔
             </span>
           ) : (
-            <span className="rounded-full bg-[var(--success-bg)] px-1.5 py-px text-[10px] text-[var(--success)]">
+            <span className="rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-xs text-[var(--success)]">
               켬
             </span>
           )}
           {product.status && STATUS_LABELS[product.status] ? (
             <span
-              className={`max-w-[4rem] truncate rounded-full px-1.5 py-px text-[10px] font-medium ${statusBadgeClass(product.status)}`}
+              className={`max-w-[4.5rem] truncate rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(product.status)}`}
             >
               {STATUS_LABELS[product.status]}
             </span>
           ) : null}
         </div>
-        <span className="shrink-0 text-[11px] font-medium text-[var(--text-primary)]">
+        <span className="shrink-0 text-sm font-medium text-[var(--text-primary)]">
           {typeof product.price === "number"
             ? `${new Intl.NumberFormat("ko-KR").format(product.price)}원`
             : "—"}
         </span>
         <div className="flex shrink-0 items-center gap-0.5">
-          <span className="rounded bg-[var(--surface-muted)] px-1 py-0.5 text-[10px] ring-1 ring-[var(--border)]">
+          <span className="rounded bg-[var(--surface-muted)] px-1 py-0.5 text-xs ring-1 ring-[var(--border)]">
             {typeof product.sort_order === "number" ? product.sort_order : "—"}
           </span>
           <button
             type="button"
             disabled={pendingMoveId === product.id}
             onClick={() => onMoveSortOrder(product, "up")}
-            className="rounded border border-[var(--border)] px-0.5 text-[9px] disabled:opacity-50"
+            className="rounded border border-[var(--border)] px-1 py-0.5 text-xs disabled:opacity-50"
           >
             ▲
           </button>
@@ -337,13 +337,13 @@ export default function AdminProductsListView({
             type="button"
             disabled={pendingMoveId === product.id}
             onClick={() => onMoveSortOrder(product, "down")}
-            className="rounded border border-[var(--border)] px-0.5 text-[9px] disabled:opacity-50"
+            className="rounded border border-[var(--border)] px-1 py-0.5 text-xs disabled:opacity-50"
           >
             ▼
           </button>
         </div>
         <span
-          className="flex shrink-0 items-center gap-px text-[9px] leading-none"
+          className="flex shrink-0 items-center gap-px text-sm leading-none"
           title={`이미지: ${imgOk ? "있음" : "없음"} · 일정: ${itOk ? "있음" : "없음"}`}
         >
           <span className={imgOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-[var(--danger)]"} aria-hidden>
@@ -476,10 +476,10 @@ export default function AdminProductsListView({
       ) : (
         <>
           <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-sm">
+            <table className="w-full min-w-[940px] border-collapse text-base">
               <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
                 <tr>
-                  <th className="w-8 px-1 py-2 text-center">
+                  <th className="w-8 px-1 py-2.5 text-center">
                     <input
                       type="checkbox"
                       className="h-3.5 w-3.5 accent-[var(--primary)]"
@@ -490,43 +490,55 @@ export default function AdminProductsListView({
                       aria-label="이 페이지 표시 행 전체 선택"
                     />
                   </th>
-                  <th className="w-[1.85rem] min-w-[1.85rem] px-0 py-2 text-center text-[10px] font-semibold" title="경고">
+                  <th className="w-[1.85rem] min-w-[1.85rem] px-0 py-2.5 text-center text-base font-semibold" title="경고">
                     !
                   </th>
-                  <th className="w-11 px-1 py-2 text-center text-[10px] font-semibold">썸네일</th>
-                  <th className="min-w-[200px] px-2 py-2 text-left text-xs font-semibold">
-                    <button type="button" onClick={() => onSortChange("title")} className="inline-flex items-center gap-1">
+                  <th className="min-w-[4.5rem] whitespace-nowrap px-2 py-2.5 text-center text-base font-semibold">
+                    썸네일
+                  </th>
+                  <th className="min-w-[220px] px-2 py-2.5 text-center text-base font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => onSortChange("title")}
+                      className="mx-auto flex items-center justify-center gap-1 whitespace-nowrap"
+                    >
                       상품
-                      <span className="text-[10px] text-[var(--text-muted)]">
+                      <span className="text-sm text-[var(--text-muted)]">
                         {sortField === "title" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
                       </span>
                     </button>
                   </th>
-                  <th className="min-w-[112px] max-w-[140px] px-1 py-2 text-left text-[10px] font-semibold">상태</th>
-                  <th className="w-[84px] px-1 py-2 text-left text-[10px] font-semibold">
-                    <button type="button" onClick={() => onSortChange("price")} className="inline-flex items-center gap-1">
+                  <th className="min-w-[120px] max-w-[160px] whitespace-nowrap px-2 py-2.5 text-center text-base font-semibold">
+                    상태
+                  </th>
+                  <th className="min-w-[5.5rem] px-2 py-2.5 text-center text-base font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => onSortChange("price")}
+                      className="mx-auto flex items-center justify-center gap-1 whitespace-nowrap"
+                    >
                       가격
-                      <span className="text-[10px] text-[var(--text-muted)]">
+                      <span className="text-sm text-[var(--text-muted)]">
                         {sortField === "price" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
                       </span>
                     </button>
                   </th>
-                  <th className="w-[72px] px-0.5 py-2 text-center text-[10px] font-semibold">
+                  <th className="min-w-[5.5rem] px-1 py-2.5 text-center text-base font-semibold">
                     <button
                       type="button"
                       onClick={() => onSortChange("sort_order")}
-                      className="inline-flex items-center gap-1"
+                      className="mx-auto flex items-center justify-center gap-1 whitespace-nowrap"
                     >
                       순서
-                      <span className="text-[10px] text-[var(--text-muted)]">
+                      <span className="text-sm text-[var(--text-muted)]">
                         {sortField === "sort_order" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
                       </span>
                     </button>
                   </th>
-                  <th className="w-9 px-0 py-2 text-center text-[10px] font-semibold" title="이미지·일정">
+                  <th className="min-w-[2.75rem] whitespace-nowrap px-1 py-2.5 text-center text-base font-semibold" title="이미지·일정">
                     자산
                   </th>
-                  <th className="w-[182px] min-w-[182px] px-1 py-2 text-right text-[10px] font-semibold">작업</th>
+                  <th className="w-[182px] min-w-[182px] px-1 py-2.5 text-center text-base font-semibold">작업</th>
                 </tr>
               </thead>
               <tbody>

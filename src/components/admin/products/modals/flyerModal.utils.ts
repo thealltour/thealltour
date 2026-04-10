@@ -3,7 +3,12 @@ import { resolveProductDetailBodyFields } from "@/lib/products/resolveProductDet
 import { getPrimaryImageUrl, normalizeImageList } from "@/lib/products/images";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import type { FlyerDraftState, FlyerSectionToggles } from "@/lib/flyers/flyer.types";
-import { DEFAULT_FLYER_LAYOUT_OPTIONS, DEFAULT_FLYER_TEMPLATE_KEY, FLYER_SECTION_KEYS } from "@/lib/flyers/flyer.types";
+import {
+  DEFAULT_FLYER_LAYOUT_OPTIONS,
+  DEFAULT_FLYER_TEMPLATE_KEY,
+  FLYER_MAX_GALLERY_IMAGES,
+  FLYER_SECTION_KEYS,
+} from "@/lib/flyers/flyer.types";
 import {
   mergeLayoutOptions,
   normalizeFlyerTemplateKey,
@@ -41,6 +46,11 @@ export function collectFlyerCandidateImageUrls(product: Product): string[] {
   return merged;
 }
 
+/** 신규 유인물에 자동 선택되는 이미지 (후보 중 최대 `FLYER_MAX_GALLERY_IMAGES`장, 갤러리 상한과 동일) */
+export function getFlyerDefaultSelectedImageUrls(product: Product): string[] {
+  return collectFlyerCandidateImageUrls(product).slice(0, FLYER_MAX_GALLERY_IMAGES);
+}
+
 /** 줄바꿈·쉼표·불릿(·, -, *) 기준으로 나누어 배열화 (과도한 정제 없음) */
 export function splitLinesLoose(raw: string): string[] {
   if (!raw?.trim()) return [];
@@ -69,9 +79,11 @@ export function multilineToLines(text: string): string[] {
     .filter((l) => l.length > 0);
 }
 
-function allSectionsTrue(): FlyerSectionToggles {
+/** 신규 draft 기본: 포함/불포함만 끔, 나머지 켬 */
+function defaultFlyerSectionToggles(): FlyerSectionToggles {
   const o = {} as FlyerSectionToggles;
   for (const k of FLYER_SECTION_KEYS) o[k] = true;
+  o.includedExcluded = false;
   return o;
 }
 
@@ -173,13 +185,12 @@ export function buildFlyerWeatherPrefill(product: Product): FlyerDraftState["wea
 export function buildInitialFlyerDraft(product: Product): FlyerDraftState {
   const { resolvedIncludedItems, resolvedExcludedItems } = resolveProductDetailBodyFields(product);
 
-  const merged = collectFlyerCandidateImageUrls(product);
-  const selectedImageUrls = merged.slice(0, 4);
+  const selectedImageUrls = getFlyerDefaultSelectedImageUrls(product);
 
   return {
     templateKey: DEFAULT_FLYER_TEMPLATE_KEY,
     layoutOptions: { ...DEFAULT_FLYER_LAYOUT_OPTIONS },
-    sections: allSectionsTrue(),
+    sections: defaultFlyerSectionToggles(),
     fields: {
       title: product.title?.trim() || "(제목 없음)",
       subtitle: buildSubtitle(product),
@@ -227,7 +238,7 @@ export function normalizePersistedFlyerDraft(input: Partial<FlyerDraftState> | F
     outfit: input.outfit !== undefined ? parseFlyerOutfitDraft(input.outfit) : base.outfit,
     selectedImageUrls: (() => {
       const raw = input.selectedImageUrls?.filter(Boolean) ?? [];
-      return (raw.length > 0 ? raw : base.selectedImageUrls).slice(0, 4);
+      return (raw.length > 0 ? raw : base.selectedImageUrls).slice(0, FLYER_MAX_GALLERY_IMAGES);
     })(),
   };
 }

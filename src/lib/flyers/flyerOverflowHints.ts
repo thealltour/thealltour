@@ -1,4 +1,5 @@
 import type { FlyerDraftState } from "@/lib/flyers/flyer.types";
+import { FLYER_MAX_GALLERY_IMAGES } from "@/lib/flyers/flyer.types";
 
 /** A4 초과 시 운영자용 구체 가이드 (휴리스틱) */
 export function buildFlyerOverflowHints(draft: FlyerDraftState): string[] {
@@ -17,8 +18,10 @@ export function buildFlyerOverflowHints(draft: FlyerDraftState): string[] {
       hints.push("포함/불포함 항목이 많습니다. 상위 항목만 남기는 것을 권장합니다.");
     }
   }
-  if (sections.gallery && selectedImageUrls.length >= 4) {
-    hints.push("이미지가 4장입니다. 2장으로 줄이면 본문 공간이 넓어집니다.");
+  if (sections.gallery && selectedImageUrls.length >= FLYER_MAX_GALLERY_IMAGES) {
+    hints.push(
+      `이미지가 ${FLYER_MAX_GALLERY_IMAGES}장입니다. 2~3장으로 줄이면 본문 공간이 넓어집니다.`,
+    );
   }
   if (sections.departure) {
     const block = [fields.departureText, fields.meetingText, fields.airlineText].join("\n");

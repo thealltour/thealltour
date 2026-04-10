@@ -5,11 +5,10 @@ import type { Product } from "@/types/product";
 import type { FlyerDraftState } from "@/lib/flyers/flyer.types";
 import { isFlyerTemplateVisualVariant } from "@/lib/flyers/flyer.types";
 import { buildFlyerExportImageUrl } from "@/lib/flyers/exportImageUrl";
+import { FLYER_MAX_GALLERY_IMAGES } from "@/lib/flyers/flyer.types";
 import { getFlyerSpacing } from "./flyerSpacing";
 import { FlyerTemplateDefault } from "./FlyerTemplateDefault";
 import { FlyerTemplateVisual } from "./FlyerTemplateVisual";
-
-const MAX_GALLERY = 4;
 
 export type FlyerLongformPreviewProps = {
   draft: FlyerDraftState;
@@ -25,7 +24,7 @@ export type FlyerLongformPreviewProps = {
  */
 export const FlyerLongformPreview = forwardRef<HTMLDivElement, FlyerLongformPreviewProps>(
   function FlyerLongformPreview({ draft, className, exportMode = false }, ref) {
-    const rawImages = draft.selectedImageUrls.filter(Boolean).slice(0, MAX_GALLERY);
+    const rawImages = draft.selectedImageUrls.filter(Boolean).slice(0, FLYER_MAX_GALLERY_IMAGES);
     const images = exportMode ? rawImages.map(buildFlyerExportImageUrl) : rawImages;
     const sp = getFlyerSpacing(draft);
     const isVisual = isFlyerTemplateVisualVariant(draft.templateKey);

@@ -7,9 +7,11 @@ import {
   type FlyerDraftState,
   type FlyerSectionKey,
   type FlyerTemplateKey,
+  FLYER_MAX_GALLERY_IMAGES,
+  FLYER_SECTION_KEYS,
+  FLYER_SECTION_LABELS,
   isFlyerTemplateVisualVariant,
 } from "@/lib/flyers/flyer.types";
-import { FLYER_SECTION_KEYS, FLYER_SECTION_LABELS } from "@/lib/flyers/flyer.types";
 import type { FlyerGenerateModalProps } from "./flyerModal.types";
 import {
   buildInitialFlyerDraft,
@@ -34,7 +36,7 @@ const SECTION_HINTS: Record<FlyerSectionKey, string> = {
   includedExcluded: "포함/불포함 (미리보기 각 최대 10항목)",
   notice: "유의사항·일정 변경 안내",
   weather: "날씨·현지 정보",
-  gallery: "최대 4장, 순서는 화살표로 조정",
+  gallery: "최대 5장, 순서는 화살표로 조정",
   footer: "브랜드·문의처",
 };
 
@@ -323,7 +325,7 @@ function FlyerModalShell({ product, onClose, showToast, persistedBootstrap }: Fl
         fields: d.fields,
         weather: d.weather,
         outfit: d.outfit,
-        imageUrls: d.selectedImageUrls.slice(0, 4),
+        imageUrls: d.selectedImageUrls.slice(0, FLYER_MAX_GALLERY_IMAGES),
       };
 
       const idForPatch = savedDraftIdRef.current;
@@ -988,7 +990,12 @@ function FlyerModalShell({ product, onClose, showToast, persistedBootstrap }: Fl
                 <FlyerImageSelector
                   product={product}
                   selected={draft.selectedImageUrls}
-                  onChange={(urls) => commitDraft({ ...draftRef.current, selectedImageUrls: urls.slice(0, 4) })}
+                  onChange={(urls) =>
+                    commitDraft({
+                      ...draftRef.current,
+                      selectedImageUrls: urls.slice(0, FLYER_MAX_GALLERY_IMAGES),
+                    })
+                  }
                 />
               </SectionAccordion>
 
@@ -1031,9 +1038,10 @@ function FlyerModalShell({ product, onClose, showToast, persistedBootstrap }: Fl
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto p-4 lg:p-6">
-            {draft.selectedImageUrls.length > 4 ? (
+            {draft.selectedImageUrls.length > FLYER_MAX_GALLERY_IMAGES ? (
               <div className="mb-3 rounded-lg border border-sky-300/50 bg-sky-500/10 px-3 py-2 text-xs text-sky-900 dark:text-sky-100 print:hidden">
-                갤러리는 최대 4장만 표시·저장됩니다. (현재 {draft.selectedImageUrls.length}장)
+                갤러리는 최대 {FLYER_MAX_GALLERY_IMAGES}장만 표시·저장됩니다. (현재{" "}
+                {draft.selectedImageUrls.length}장)
               </div>
             ) : null}
             <div className="flex justify-center">

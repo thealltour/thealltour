@@ -1,6 +1,7 @@
 import {
   DEFAULT_FLYER_LAYOUT_OPTIONS,
   DEFAULT_FLYER_TEMPLATE_KEY,
+  FLYER_MAX_GALLERY_IMAGES,
   FLYER_SECTION_KEYS,
   type FlyerDraftApiRecord,
   type FlyerDraftRow,
@@ -58,7 +59,11 @@ export function parseSectionToggles(raw: unknown): FlyerSectionToggles {
   const o = isRecord(raw) ? raw : {};
   const next = {} as FlyerSectionToggles;
   for (const key of FLYER_SECTION_KEYS) {
-    next[key] = typeof o[key] === "boolean" ? o[key] : true;
+    if (typeof o[key] === "boolean") {
+      next[key] = o[key];
+    } else {
+      next[key] = key === "includedExcluded" ? false : true;
+    }
   }
   return next;
 }
@@ -205,7 +210,7 @@ export function flyerDraftStateFromRowParts(
     fields: parseEditableFields(fieldsJson),
     weather: parseFlyerWeatherDraft(fieldsJson),
     outfit: parseFlyerOutfitDraft(fieldsJson),
-    selectedImageUrls: parseStringArray(imageUrlsJson).slice(0, 4),
+    selectedImageUrls: parseStringArray(imageUrlsJson).slice(0, FLYER_MAX_GALLERY_IMAGES),
   };
 }
 
@@ -220,7 +225,7 @@ export function flyerDraftStateToDbPayload(state: FlyerDraftState): {
   return {
     sections_json: state.sections,
     fields_json: { ...state.fields, weather: state.weather, outfit: state.outfit },
-    image_urls_json: state.selectedImageUrls.slice(0, 4),
+    image_urls_json: state.selectedImageUrls.slice(0, FLYER_MAX_GALLERY_IMAGES),
     layout_options_json: state.layoutOptions,
     title: state.fields.title?.trim() || "",
     subtitle: state.fields.subtitle?.trim() || "",

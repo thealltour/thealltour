@@ -15,6 +15,7 @@ import {
   parseSectionToggles,
 } from "@/lib/flyers/serializeFlyerDraft";
 import type { FlyerDraftState } from "@/lib/flyers/flyer.types";
+import { FLYER_MAX_GALLERY_IMAGES } from "@/lib/flyers/flyer.types";
 import { generateFlyerShareSlug } from "@/lib/flyers/generateFlyerShareSlug";
 
 function isUuid(s: string): boolean {
@@ -137,7 +138,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
     if (body.imageUrls !== undefined) {
       next.selectedImageUrls = Array.isArray(body.imageUrls)
-        ? body.imageUrls.filter((x): x is string => typeof x === "string").map((s) => s.trim()).slice(0, 4)
+        ? body.imageUrls.filter((x): x is string => typeof x === "string").map((s) => s.trim()).slice(0, FLYER_MAX_GALLERY_IMAGES)
         : [];
     }
 

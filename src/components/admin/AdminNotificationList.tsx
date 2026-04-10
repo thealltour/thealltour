@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type NotificationItem = {
   id: string;
@@ -15,6 +15,7 @@ type NotificationItem = {
 
 const NOTIFICATION_FILTER_TABS = [
   { id: "all", label: "전체" },
+  { id: "unread", label: "미읽음" },
   { id: "birthday_upcoming", label: "생일" },
   { id: "new_member", label: "신규회원" },
   { id: "new_review", label: "신규후기" },
@@ -32,6 +33,7 @@ function formatDate(value: string | null) {
 
 export default function AdminNotificationList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,6 +69,12 @@ export default function AdminNotificationList() {
   useEffect(() => {
     loadNotifications();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("filter") === "unread") {
+      setActiveTab("unread");
+    }
+  }, [searchParams]);
 
   async function markAllAsRead() {
     setIsMarkingAll(true);
@@ -113,7 +121,11 @@ export default function AdminNotificationList() {
   }
 
   const filteredNotifications =
-    activeTab === "all" ? notifications : notifications.filter((item) => item.type === activeTab);
+    activeTab === "all"
+      ? notifications
+      : activeTab === "unread"
+        ? notifications.filter((item) => !item.is_read)
+        : notifications.filter((item) => item.type === activeTab);
 
   return (
     <div className="space-y-4">

@@ -1,5 +1,5 @@
-/** 상담 진행 상태 */
-export type ConsultationStatus = "new" | "contacted" | "closed";
+/** 상담 진행 상태 — on_hold: DB 유지·당장 응답 큐에서 제외(보류) */
+export type ConsultationStatus = "new" | "contacted" | "closed" | "on_hold";
 
 /** 예약/여행 상태 */
 export type BookingStatus = "none" | "reserved" | "completed" | "canceled";

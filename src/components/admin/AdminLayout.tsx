@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 데스크톱 관리자 전용 레이아웃 (고정 Sidebar + SubHeader + ml-64).
+ * 모바일 MVP는 AdminResponsiveFrame → MobileAdminShell 경로에서 이 컴포넌트를 사용하지 않습니다.
+ */
+
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";

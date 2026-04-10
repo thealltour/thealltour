@@ -93,7 +93,7 @@ export async function createNewReviewNotification(input: NewReviewNotificationIn
       type: "new_review",
       title: "신규 후기 등록",
       message: `${input.authorName}님이 후기 "${input.title}"를 등록했습니다.`,
-      target_url: "/theall_manager_only/reviews",
+      target_url: "/admin/reviews/moderation?filter=flagged",
       unique_key: `new_review:${input.reviewId}`,
       is_read: false,
       payload: {
@@ -113,7 +113,7 @@ export async function createNewInquiryNotification(input: NewInquiryNotification
       type: "new_inquiry",
       title: "신규 상담 신청",
       message: `${input.name} (${input.phone})님 문의: ${shortContent}`,
-      target_url: "/theall_manager_only/inquiries",
+      target_url: `/admin/inquiries?id=${input.inquiryId}`,
       unique_key: `new_inquiry:${input.inquiryId}`,
       is_read: false,
       payload: {

@@ -1,3 +1,6 @@
+/**
+ * 데스크톱 사이드바 항목. 모바일 허용 메뉴는 `mobile/mobileAdmin.constants.ts`에서 별도 관리합니다.
+ */
 import type { MainMenuKey } from "@/components/admin/SubHeader";
 import type { AdminRole } from "@/types/adminRole";
 import {

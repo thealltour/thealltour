@@ -115,7 +115,7 @@ create table if not exists public.inquiries (
   content text not null,
   is_completed boolean not null default false,
   customer_profile_id uuid,
-  consultation_status text not null default 'new' check (consultation_status in ('new', 'contacted', 'closed')),
+  consultation_status text not null default 'new' check (consultation_status in ('new', 'contacted', 'closed', 'on_hold')),
   booking_status text not null default 'none' check (booking_status in ('none', 'reserved', 'completed', 'canceled')),
   completed_at timestamptz,
   created_at timestamptz not null default now()

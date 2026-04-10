@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { postReviewModerationAction, type ReviewModerationActionName } from "@/components/admin/reviews/reviewModeration.actions";
 import { ReviewStatusBadge } from "./ReviewStatusBadge";
 import { ReviewReportReasonBadgeList } from "./ReviewReportReasonBadgeList";
 import { ReviewAuthorRiskBadge } from "./ReviewAuthorRiskBadge";
@@ -52,18 +53,14 @@ export function ModerationReviewCard({
   authorTrustScore,
   authorReviewCount,
 }: ModerationReviewCardProps) {
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState<ReviewModerationActionName | null>(null);
 
-  async function runAction(action: string, reason?: string) {
+  async function runAction(action: ReviewModerationActionName, reason?: string) {
     setLoading(action);
     try {
-      const res = await fetch(`/api/admin/reviews/${review.id}/moderation`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason }),
-      });
-      if (res.ok) onActionDone?.();
-      else alert((await res.json()).message ?? "실패");
+      const result = await postReviewModerationAction(review.id, action, { reason });
+      if (result.ok) onActionDone?.();
+      else alert(result.message);
     } finally {
       setLoading(null);
     }

@@ -1,4 +1,4 @@
-import AdminHeader from "@/components/admin/AdminHeader";
+import { ReviewModerationPageBody } from "@/components/admin/reviews/ReviewModerationPageBody";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminCounts } from "@/lib/adminCounts";
 import { getReviewsForModeration } from "@/lib/reviewModeration";
@@ -7,7 +7,6 @@ import { getReviewReportSummariesBatch } from "@/lib/reviewReports";
 import { buildReviewAuthorProfiles } from "@/lib/reviewAuthorProfiles";
 import { getReviewAuthorKey } from "@/lib/reviewAuthorIdentity";
 import { getAuthorProfileMap } from "@/lib/reviewAuthorSelectors";
-import { ReviewModerationDashboard } from "@/components/admin/reviews/ReviewModerationDashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -61,29 +60,19 @@ export default async function AdminReviewModerationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
-      <main className="mx-auto w-full max-w-6xl space-y-6">
-        <AdminHeader
-          activeTab="reviews"
-          title="리뷰 검토"
-          description="검토 대기·신고된 리뷰·숨김 리뷰를 관리하고, 숨김/복원/검토/해결 처리할 수 있습니다."
-          inquiryCount={counts.inquiryCount}
-          productCount={counts.productCount}
-          memberCount={counts.memberCount}
-          reviewCount={counts.reviewCount}
-          unreadNotificationCount={unreadNotificationCount}
-        />
-
-        <section className="overflow-hidden rounded-2xl bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
-          <ReviewModerationDashboard
-            reviews={reviews}
-            queueItems={queueItems}
-            reportSummaries={Object.fromEntries(reportSummaries)}
-            summary={summary}
-            authorProfileByReviewId={authorProfileByReviewId}
-          />
-        </section>
-      </main>
-    </div>
+    <ReviewModerationPageBody
+      inquiryCount={counts.inquiryCount}
+      productCount={counts.productCount}
+      memberCount={counts.memberCount}
+      reviewCount={counts.reviewCount}
+      unreadNotificationCount={unreadNotificationCount}
+      moderation={{
+        reviews,
+        queueItems,
+        reportSummaries: Object.fromEntries(reportSummaries),
+        summary,
+        authorProfileByReviewId,
+      }}
+    />
   );
 }

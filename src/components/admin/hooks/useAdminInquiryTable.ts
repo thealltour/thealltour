@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
 
@@ -9,9 +10,11 @@ export type StatusFilter =
   | "new"
   | "contacted"
   | "closed"
+  | "on_hold"
   | "reserved"
   | "completed"
-  | "pending";
+  | "pending"
+  | "delayed";
 
 export type InquirySortOption = "pending_first" | "recent" | "oldest" | "name";
 
@@ -26,9 +29,73 @@ type InquiryListResponse = {
   newCount?: number;
   contactedCount?: number;
   closedCount?: number;
+  onHoldCount?: number;
 };
 
+function parseStatusFromSearchParams(raw: string | null): StatusFilter {
+  if (
+    raw === "new" ||
+    raw === "contacted" ||
+    raw === "closed" ||
+    raw === "on_hold" ||
+    raw === "reserved" ||
+    raw === "completed" ||
+    raw === "pending" ||
+    raw === "delayed" ||
+    raw === "all"
+  ) {
+    return raw;
+  }
+  return "all";
+}
+
+function parsePageFromSearchParams(raw: string | null): number {
+  const n = Number.parseInt(raw ?? "1", 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+/** 테이블·카드 UI 공통 — 문의 목록 fetch·상태·예약 모달 상태를 한곳에서 제공 */
 export function useAdminInquiryTable() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const statusFilter = parseStatusFromSearchParams(searchParams.get("status"));
+  const page = parsePageFromSearchParams(searchParams.get("page"));
+  const focusInquiryId = searchParams.get("id")?.trim() ?? "";
+
+  const replaceListQuery = useCallback(
+    (mutate: (p: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+      mutate(params);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+
+  const setStatusFilter = useCallback(
+    (v: StatusFilter) => {
+      replaceListQuery((params) => {
+        if (v === "all") params.delete("status");
+        else params.set("status", v);
+        params.delete("page");
+        params.delete("id");
+      });
+    },
+    [replaceListQuery],
+  );
+
+  const setPage = useCallback(
+    (p: number) => {
+      replaceListQuery((params) => {
+        if (p <= 1) params.delete("page");
+        else params.set("page", String(p));
+      });
+    },
+    [replaceListQuery],
+  );
+
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -37,74 +104,111 @@ export function useAdminInquiryTable() {
   const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<InquirySortOption>("pending_first");
-  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [reservedCount, setReservedCount] = useState(0);
+  const [onHoldCount, setOnHoldCount] = useState(0);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
   const [reserveModalInquiryId, setReserveModalInquiryId] = useState<string | null>(null);
   const [reserveDeparture, setReserveDeparture] = useState("");
   const [reserveReturn, setReserveReturn] = useState("");
   const [isSubmittingReserve, setIsSubmittingReserve] = useState(false);
+  const lastFocusScrollKey = useRef<string | null>(null);
 
-  const loadInquiries = useCallback(async (options?: { silent?: boolean; resetSelection?: boolean }) => {
-    const silent = options?.silent ?? false;
-    const resetSelection = options?.resetSelection ?? true;
+  const loadInquiries = useCallback(
+    async (options?: { silent?: boolean; resetSelection?: boolean }) => {
+      const silent = options?.silent ?? false;
+      const resetSelection = options?.resetSelection ?? true;
 
-    try {
-      if (silent) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-      setErrorMessage("");
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(pageSize),
-        status: statusFilter,
-        sort: sortBy,
-      });
-      if (debouncedSearch) params.set("search", debouncedSearch.trim());
+      try {
+        if (silent) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
+        setErrorMessage("");
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(pageSize),
+          status: statusFilter,
+          sort: sortBy,
+        });
+        if (debouncedSearch) params.set("search", debouncedSearch.trim());
 
-      const response = await fetch(`/api/inquiries?${params.toString()}`, { cache: "no-store" });
-      if (!response.ok) {
-        setErrorMessage("문의 목록을 불러오지 못했습니다.");
-        return;
-      }
+        const response = await fetch(`/api/inquiries?${params.toString()}`, { cache: "no-store" });
+        if (!response.ok) {
+          setErrorMessage("문의 목록을 불러오지 못했습니다.");
+          return;
+        }
 
-      const data = (await response.json()) as Inquiry[] | InquiryListResponse;
-      if (Array.isArray(data)) {
-        setInquiries(data);
-        setTotal(data.length);
-      } else {
-        setInquiries(data.items ?? []);
-        setTotal(data.total ?? 0);
-        setPendingCount(data.pendingCount ?? 0);
-        setCompletedCount(data.completedCount ?? 0);
-        setReservedCount(data.reservedCount ?? 0);
+        const data = (await response.json()) as Inquiry[] | InquiryListResponse;
+        if (Array.isArray(data)) {
+          setInquiries(data);
+          setTotal(data.length);
+        } else {
+          setInquiries(data.items ?? []);
+          setTotal(data.total ?? 0);
+          setPendingCount(data.pendingCount ?? 0);
+          setCompletedCount(data.completedCount ?? 0);
+          setReservedCount(data.reservedCount ?? 0);
+          setOnHoldCount(data.onHoldCount ?? 0);
+        }
+        if (resetSelection) {
+          setReserveModalInquiryId(null);
+        }
+      } catch {
+        setErrorMessage("문의 목록 조회 중 오류가 발생했습니다.");
+      } finally {
+        if (silent) {
+          setIsRefreshing(false);
+        } else {
+          setIsLoading(false);
+        }
       }
-      if (resetSelection) {
-        setReserveModalInquiryId(null);
-      }
-    } catch {
-      setErrorMessage("문의 목록 조회 중 오류가 발생했습니다.");
-    } finally {
-      if (silent) {
-        setIsRefreshing(false);
-      } else {
-        setIsLoading(false);
-      }
-    };
-  }, [page, pageSize, statusFilter, sortBy, debouncedSearch]);
+    },
+    [page, pageSize, statusFilter, sortBy, debouncedSearch],
+  );
 
   useEffect(() => {
     loadInquiries();
-  }, [page, pageSize, statusFilter, sortBy, debouncedSearch]);
+  }, [loadInquiries]);
+
+  useEffect(() => {
+    if (!focusInquiryId) {
+      lastFocusScrollKey.current = null;
+      return;
+    }
+    const scrollKey = `${focusInquiryId}:${inquiries.map((i) => i.id).join(",")}`;
+    if (lastFocusScrollKey.current === scrollKey) return;
+    const exists = inquiries.some((i) => i.id === focusInquiryId);
+    if (!exists) return;
+    lastFocusScrollKey.current = scrollKey;
+    setExpandedRows((prev) => (prev.includes(focusInquiryId) ? prev : [...prev, focusInquiryId]));
+    const t = window.requestAnimationFrame(() => {
+      const safe =
+        typeof CSS !== "undefined" && typeof CSS.escape === "function"
+          ? CSS.escape(focusInquiryId)
+          : focusInquiryId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      document.querySelector(`[data-inquiry-id="${safe}"]`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+    return () => window.cancelAnimationFrame(t);
+  }, [focusInquiryId, inquiries]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+
+  useEffect(() => {
+    if (page > 1 && page > totalPages && totalPages >= 1) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages, setPage]);
 
   const updateConsultationStatus = useCallback(async (id: string, consultation_status: ConsultationStatus) => {
     setPendingId(id);
@@ -219,38 +323,38 @@ export function useAdminInquiryTable() {
     [loadInquiries],
   );
 
-  const completeTrip = useCallback(async (id: string) => {
-    setPendingId(id);
-    setErrorMessage("");
-    const previous = inquiries;
-    setInquiries((current) =>
-      current.map((item) =>
-        item.id === id ? { ...item, booking_status: "completed" as BookingStatus } : item,
-      ),
-    );
-    try {
-      const response = await fetch(`/api/inquiries/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "complete_trip" }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) {
+  const completeTrip = useCallback(
+    async (id: string) => {
+      setPendingId(id);
+      setErrorMessage("");
+      const previous = inquiries;
+      setInquiries((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, booking_status: "completed" as BookingStatus } : item,
+        ),
+      );
+      try {
+        const response = await fetch(`/api/inquiries/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "complete_trip" }),
+        });
+        const payload = (await response.json().catch(() => ({}))) as { message?: string };
+        if (!response.ok) {
+          setInquiries(previous);
+          setErrorMessage(payload.message ?? "여행 완료 처리에 실패했습니다.");
+        } else {
+          await loadInquiries({ silent: true });
+        }
+      } catch {
         setInquiries(previous);
-        setErrorMessage(payload.message ?? "여행 완료 처리에 실패했습니다.");
-      } else {
-        await loadInquiries({ silent: true });
+        setErrorMessage("여행 완료 처리 중 오류가 발생했습니다.");
+      } finally {
+        setPendingId(null);
       }
-    } catch {
-      setInquiries(previous);
-      setErrorMessage("여행 완료 처리 중 오류가 발생했습니다.");
-    } finally {
-      setPendingId(null);
-    }
-  }, [inquiries, loadInquiries]);
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
+    },
+    [inquiries, loadInquiries],
+  );
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedRows((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
@@ -260,9 +364,34 @@ export function useAdminInquiryTable() {
     setExpandedQuoteId(id);
   }, []);
 
-  const movePage = useCallback((nextPage: number) => {
-    setPage(Math.max(1, Math.min(nextPage, totalPages)));
-  }, [totalPages]);
+  const movePage = useCallback(
+    (nextPage: number) => {
+      const clamped = Math.max(1, Math.min(nextPage, totalPages));
+      setPage(clamped);
+    },
+    [totalPages, setPage],
+  );
+
+  const setSortByAndResetPage = useCallback(
+    (v: InquirySortOption) => {
+      setSortBy(v);
+      replaceListQuery((params) => {
+        params.delete("page");
+        params.delete("id");
+      });
+    },
+    [replaceListQuery],
+  );
+
+  const setPageSizeAndReset = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      replaceListQuery((params) => {
+        params.delete("page");
+      });
+    },
+    [replaceListQuery],
+  );
 
   return {
     inquiries,
@@ -280,6 +409,7 @@ export function useAdminInquiryTable() {
     pendingCount,
     completedCount,
     reservedCount,
+    onHoldCount,
     expandedRows,
     expandedQuoteId,
     reserveModalInquiryId,
@@ -288,11 +418,12 @@ export function useAdminInquiryTable() {
     isSubmittingReserve,
     totalPages,
     safePage,
+    focusInquiryId,
     setSearchQuery,
     setStatusFilter,
-    setSortBy,
+    setSortBy: setSortByAndResetPage,
     setPage,
-    setPageSize,
+    setPageSize: setPageSizeAndReset,
     loadInquiries,
     updateConsultationStatus,
     openReserveModal,
@@ -307,5 +438,7 @@ export function useAdminInquiryTable() {
     setReserveReturn,
   };
 }
+
+export type AdminInquiryTableController = ReturnType<typeof useAdminInquiryTable>;
 
 export type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus };

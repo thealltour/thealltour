@@ -66,18 +66,22 @@ type ListStatus =
   | "new"
   | "contacted"
   | "closed"
+  | "on_hold"
   | "reserved"
   | "completed"
   | "pending"
+  | "delayed"
   | "completed_legacy";
 type SortOption = "pending_first" | "recent" | "oldest" | "name";
 type SafeSummary = {
+  /** 응답 필요 상담: new + contacted (보류·종료 제외) */
   pendingCount: number;
   completedCount: number;
   reservedCount: number;
   newCount: number;
   contactedCount: number;
   closedCount: number;
+  onHoldCount: number;
 };
 
 async function getInquirySummarySafe(): Promise<SafeSummary> {
@@ -88,16 +92,15 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     newSummary,
     contactedSummary,
     closedSummary,
+    onHoldSummary,
   ] = await Promise.all([
-    supabase
-      .from("inquiries")
-      .select("*", { count: "exact", head: true })
-      .or("consultation_status.neq.closed,booking_status.eq.none"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).in("consultation_status", ["new", "contacted"]),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "completed"),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "reserved"),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "new"),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "contacted"),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "closed"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "on_hold"),
   ]);
 
   if (
@@ -106,7 +109,8 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     reservedSummary.error ||
     newSummary.error ||
     contactedSummary.error ||
-    closedSummary.error
+    closedSummary.error ||
+    onHoldSummary.error
   ) {
     const [legacyPending, legacyCompleted] = await Promise.all([
       supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
@@ -119,6 +123,7 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
       newCount: 0,
       contactedCount: 0,
       closedCount: 0,
+      onHoldCount: 0,
     };
   }
 
@@ -129,6 +134,7 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     newCount: newSummary.count ?? 0,
     contactedCount: contactedSummary.count ?? 0,
     closedCount: closedSummary.count ?? 0,
+    onHoldCount: onHoldSummary.count ?? 0,
   };
 }
 
@@ -140,9 +146,11 @@ export async function GET(request: Request) {
     statusParam === "new" ||
     statusParam === "contacted" ||
     statusParam === "closed" ||
+    statusParam === "on_hold" ||
     statusParam === "reserved" ||
     statusParam === "completed" ||
     statusParam === "pending" ||
+    statusParam === "delayed" ||
     statusParam === "completed_legacy"
       ? statusParam
       : "all";
@@ -170,10 +178,14 @@ export async function GET(request: Request) {
   if (status === "new") query = query.eq("consultation_status", "new");
   else if (status === "contacted") query = query.eq("consultation_status", "contacted");
   else if (status === "closed") query = query.eq("consultation_status", "closed");
+  else if (status === "on_hold") query = query.eq("consultation_status", "on_hold");
   else if (status === "reserved") query = query.eq("booking_status", "reserved");
   else if (status === "completed") query = query.eq("booking_status", "completed");
   else if (status === "pending") {
-    query = query.or("consultation_status.neq.closed,booking_status.eq.none");
+    query = query.in("consultation_status", ["new", "contacted"]);
+  } else if (status === "delayed") {
+    const delayedThresholdIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    query = query.in("consultation_status", ["new", "contacted"]).lt("created_at", delayedThresholdIso);
   } else if (status === "completed_legacy") {
     query = query.eq("is_completed", true);
   }
@@ -222,6 +234,7 @@ export async function GET(request: Request) {
     newCount: summary.newCount,
     contactedCount: summary.contactedCount,
     closedCount: summary.closedCount,
+    onHoldCount: summary.onHoldCount,
   });
 }
 
@@ -230,7 +243,7 @@ type BulkPatchBody = {
   /** @deprecated 단계적 deprecated. consultation_status / booking_status 사용 권장.
    * TODO(후속 PR): 관리자 문의 UI를 consultation_status/booking_status 기반으로 개편 후 is_completed 제거. */
   is_completed?: boolean;
-  consultation_status?: "new" | "contacted" | "closed";
+  consultation_status?: "new" | "contacted" | "closed" | "on_hold";
   booking_status?: "none" | "reserved" | "completed" | "canceled";
 };
 

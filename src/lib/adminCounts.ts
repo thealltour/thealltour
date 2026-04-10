@@ -1,7 +1,14 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
 
-/** 집계 기준: consultation_status / booking_status. pending = 미상담종료 또는 미예약. */
+/**
+ * 집계 기준: consultation_status / booking_status.
+ * - pendingInquiries: 상담 응답 큐 — consultation_status in (new, contacted). 보류·종료 제외.
+ * - delayedInquiries: new/contacted 중 접수 24시간 초과.
+ * - onHoldInquiries: consultation_status === on_hold (DB 보관·큐 제외).
+ * - reservedInquiries: booking_status === "reserved"
+ * - completionRate: completedInquiries / totalInquiries × 100
+ */
 
 function percentChange(current: number, previous: number): number {
   if (previous <= 0) {
@@ -24,6 +31,9 @@ async function fetchAdminCountsRaw() {
 
   const delayedThresholdIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
+  const activeConsultation = () =>
+    supabase.from("inquiries").select("id", { count: "exact", head: true }).in("consultation_status", ["new", "contacted"]);
+
   const [
     productsResult,
     pendingInquiriesResult,
@@ -32,6 +42,7 @@ async function fetchAdminCountsRaw() {
     totalInquiriesResult,
     completedInquiriesResult,
     reservedInquiriesResult,
+    onHoldInquiriesResult,
     delayedResult,
     todayTotalResult,
     yesterdayTotalResult,
@@ -41,19 +52,17 @@ async function fetchAdminCountsRaw() {
     yesterdayDelayedResult,
   ] = await Promise.all([
     supabase.from("products").select("id", { count: "exact", head: true }),
-    supabase
-      .from("inquiries")
-      .select("id", { count: "exact", head: true })
-      .or("consultation_status.neq.closed,booking_status.eq.none"),
+    activeConsultation(),
     supabase.from("members").select("id", { count: "exact", head: true }),
     supabase.from("reviews").select("id", { count: "exact", head: true }),
     supabase.from("inquiries").select("id", { count: "exact", head: true }),
     supabase.from("inquiries").select("id", { count: "exact", head: true }).eq("booking_status", "completed"),
     supabase.from("inquiries").select("id", { count: "exact", head: true }).eq("booking_status", "reserved"),
+    supabase.from("inquiries").select("id", { count: "exact", head: true }).eq("consultation_status", "on_hold"),
     supabase
       .from("inquiries")
       .select("id", { count: "exact", head: true })
-      .neq("consultation_status", "closed")
+      .in("consultation_status", ["new", "contacted"])
       .lt("created_at", delayedThresholdIso),
     supabase
       .from("inquiries")
@@ -68,25 +77,25 @@ async function fetchAdminCountsRaw() {
     supabase
       .from("inquiries")
       .select("id", { count: "exact", head: true })
-      .or("consultation_status.neq.closed,booking_status.eq.none")
+      .in("consultation_status", ["new", "contacted"])
       .gte("created_at", startOfToday.toISOString())
       .lt("created_at", startOfTomorrow.toISOString()),
     supabase
       .from("inquiries")
       .select("id", { count: "exact", head: true })
-      .or("consultation_status.neq.closed,booking_status.eq.none")
+      .in("consultation_status", ["new", "contacted"])
       .gte("created_at", startOfYesterday.toISOString())
       .lt("created_at", startOfToday.toISOString()),
     supabase
       .from("inquiries")
       .select("id", { count: "exact", head: true })
-      .neq("consultation_status", "closed")
+      .in("consultation_status", ["new", "contacted"])
       .lt("created_at", delayedThresholdIso)
       .gte("created_at", startOfToday.toISOString()),
     supabase
       .from("inquiries")
       .select("id", { count: "exact", head: true })
-      .neq("consultation_status", "closed")
+      .in("consultation_status", ["new", "contacted"])
       .lt("created_at", delayedThresholdIso)
       .gte("created_at", startOfYesterday.toISOString())
       .lt("created_at", startOfToday.toISOString()),
@@ -96,6 +105,7 @@ async function fetchAdminCountsRaw() {
   const totalInquiries = totalInquiriesResult.error ? 0 : (totalInquiriesResult.count ?? 0);
   const completedInquiries = completedInquiriesResult.error ? 0 : (completedInquiriesResult.count ?? 0);
   const reservedInquiries = reservedInquiriesResult.error ? 0 : (reservedInquiriesResult.count ?? 0);
+  const onHoldInquiries = onHoldInquiriesResult.error ? 0 : (onHoldInquiriesResult.count ?? 0);
   const completionRate =
     totalInquiries === 0 ? 0 : Math.round((completedInquiries / totalInquiries) * 100);
 
@@ -115,6 +125,7 @@ async function fetchAdminCountsRaw() {
     pendingInquiries: pendingCount,
     completedInquiries,
     reservedInquiries,
+    onHoldInquiries,
     delayedInquiries: delayedResult.error ? 0 : (delayedResult.count ?? 0),
     completionRate,
     totalInquiriesDeltaPercent: percentChange(todayTotal, yesterdayTotal),

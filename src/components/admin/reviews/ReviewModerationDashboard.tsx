@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+/**
+ * 데스크톱 전용 리뷰 검토 대시보드(요약·큐 테이블·배치 액션·이력).
+ * 모바일은 MobileReviewModerationSection 을 사용합니다.
+ */
+
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ModerationReviewCard } from "./ModerationReviewCard";
 import { ModerationSummaryCards } from "./ModerationSummaryCards";
 import { ModerationQueueTable } from "./ModerationQueueTable";
@@ -39,7 +44,7 @@ type Summary = {
   recentReportsCount: number;
 };
 
-type ReviewModerationDashboardProps = {
+export type ReviewModerationDashboardProps = {
   reviews: ModerationReview[];
   queueItems: ReviewModerationQueueItem[];
   reportSummaries: Record<string, ReviewReportSummary>;
@@ -75,7 +80,16 @@ export function ReviewModerationDashboard({
   authorProfileByReviewId = {},
 }: ReviewModerationDashboardProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (searchParams.get("filter") !== "flagged") return;
+    const timer = window.setTimeout(() => {
+      document.getElementById("moderation-flagged")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [searchParams]);
 
   const handleBatchAction = async (action: string, ids: string[]) => {
     const res = await fetch("/api/admin/reviews/batch-moderation", {
@@ -149,7 +163,7 @@ export function ReviewModerationDashboard({
       )}
 
       {flagged.length > 0 && (
-        <section>
+        <section id="moderation-flagged">
           <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">신고된 리뷰</h2>
           <ul className="space-y-3">
             {flagged.map((r) => {

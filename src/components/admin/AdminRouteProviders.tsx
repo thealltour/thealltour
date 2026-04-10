@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Suspense } from "react";
-import AdminLayout from "@/components/admin/AdminLayout";
+import { AdminResponsiveFrame } from "@/components/admin/AdminResponsiveFrame";
 import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
 import { AdminRoleProvider } from "@/components/admin/AdminRoleContext";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
@@ -16,8 +16,8 @@ export type AdminRouteProvidersProps = {
 };
 
 /**
- * /admin·/theall_manager_only 공통: Query/Role/Toast/Confirm + AdminLayout 래퍼.
- * 레이아웃 파일 중복을 막기 위해 한 컴포넌트로 묶습니다.
+ * /admin·/theall_manager_only 공통: Query/Role/Toast/Confirm + AdminResponsiveFrame.
+ * 뷰포트에 따라 AdminLayout(데스크톱) 또는 MobileAdminShell(모바일)을 선택합니다.
  */
 export function AdminRouteProviders({ children, role = "admin" }: AdminRouteProvidersProps) {
   return (
@@ -32,7 +32,7 @@ export function AdminRouteProviders({ children, role = "admin" }: AdminRouteProv
                 </div>
               }
             >
-              <AdminLayout>{children}</AdminLayout>
+              <AdminResponsiveFrame>{children}</AdminResponsiveFrame>
             </Suspense>
           </AdminConfirmProvider>
         </AdminToastProvider>

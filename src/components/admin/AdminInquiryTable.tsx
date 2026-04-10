@@ -1,8 +1,15 @@
 "use client";
 
-import { Fragment } from "react";
+/** 데스크톱 전용 문의 테이블 UI. 모바일은 MobileAdminInquiryList를 사용합니다. */
+
+import { Fragment, useCallback, useEffect, useState } from "react";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
-import { useAdminInquiryTable, type StatusFilter, type InquirySortOption } from "@/components/admin/hooks/useAdminInquiryTable";
+import {
+  useAdminInquiryTable,
+  type AdminInquiryTableController,
+  type StatusFilter,
+  type InquirySortOption,
+} from "@/components/admin/hooks/useAdminInquiryTable";
 import { parseHostname } from "@/lib/analytics/attribution";
 
 function formatDate(dateText: string) {
@@ -20,6 +27,7 @@ const CONSULTATION_LABELS: Record<ConsultationStatus, string> = {
   new: "신규",
   contacted: "상담중",
   closed: "상담종료",
+  on_hold: "보류",
 };
 
 const BOOKING_LABELS: Record<BookingStatus, string> = {
@@ -87,8 +95,183 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
   );
 }
 
+function getInquiryActionFlags(inquiry: Inquiry) {
+  const consultationStatus = (inquiry.consultation_status ?? "new") as ConsultationStatus;
+  const bookingStatus = (inquiry.booking_status ?? "none") as BookingStatus;
+  const canReserve =
+    bookingStatus === "none" &&
+    Boolean(inquiry.customer_profile_id) &&
+    (consultationStatus === "new" ||
+      consultationStatus === "contacted" ||
+      consultationStatus === "closed");
+  const canHoldFromClosed = consultationStatus === "closed" && bookingStatus === "none";
+  const canCompleteTrip = bookingStatus === "reserved";
+  return { consultationStatus, bookingStatus, canReserve, canHoldFromClosed, canCompleteTrip };
+}
+
+/** MobileAdminInquiryCard와 동일 팔레트(라이트/다크) */
+const INQUIRY_ACTION_STYLES = {
+  amber:
+    "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
+  success:
+    "border-[var(--success)]/50 bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90",
+  slate:
+    "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900/40 dark:text-slate-200",
+  blue: "border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100",
+  red: "border-red-300 bg-red-50 text-red-900 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100",
+} as const;
+
+function inquiryActionBtnClass(variant: "table" | "modal", tone: keyof typeof INQUIRY_ACTION_STYLES): string {
+  const base =
+    variant === "table"
+      ? "shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+      : "min-h-9 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50";
+  return `${base} ${INQUIRY_ACTION_STYLES[tone]}`;
+}
+
+function InquiryActionButtons({
+  inquiry,
+  api,
+  variant,
+  onBeforeReserve,
+}: {
+  inquiry: Inquiry;
+  api: AdminInquiryTableController;
+  variant: "table" | "modal";
+  onBeforeReserve?: () => void;
+}) {
+  const { consultationStatus, bookingStatus, canReserve, canHoldFromClosed, canCompleteTrip } =
+    getInquiryActionFlags(inquiry);
+  const b = (tone: keyof typeof INQUIRY_ACTION_STYLES) => inquiryActionBtnClass(variant, tone);
+
+  const openReserve = () => {
+    onBeforeReserve?.();
+    api.openReserveModal(inquiry);
+  };
+
+  return (
+    <div
+      className={
+        variant === "table"
+          ? "flex w-full max-w-full flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain py-0.5 [scrollbar-width:thin]"
+          : "flex flex-wrap items-center gap-1.5"
+      }
+    >
+      {consultationStatus === "new" && (
+        <button
+          type="button"
+          disabled={api.pendingId === inquiry.id}
+          onClick={() => api.updateConsultationStatus(inquiry.id, "contacted")}
+          className={b("amber")}
+        >
+          상담중
+        </button>
+      )}
+      {consultationStatus === "contacted" && (
+        <>
+          <button
+            type="button"
+            disabled={api.pendingId === inquiry.id}
+            onClick={() => api.updateConsultationStatus(inquiry.id, "closed")}
+            className={b("success")}
+          >
+            상담종료
+          </button>
+          <button
+            type="button"
+            disabled={api.pendingId === inquiry.id}
+            onClick={() => api.updateConsultationStatus(inquiry.id, "on_hold")}
+            className={b("slate")}
+          >
+            보류
+          </button>
+        </>
+      )}
+      {consultationStatus === "on_hold" && (
+        <button
+          type="button"
+          disabled={api.pendingId === inquiry.id}
+          onClick={() => api.updateConsultationStatus(inquiry.id, "contacted")}
+          className={b("amber")}
+        >
+          재개
+        </button>
+      )}
+      {canHoldFromClosed ? (
+        <>
+          <button
+            type="button"
+            disabled={api.pendingId === inquiry.id}
+            onClick={() => api.updateConsultationStatus(inquiry.id, "on_hold")}
+            className={b("slate")}
+          >
+            보류
+          </button>
+          <button
+            type="button"
+            disabled={api.pendingId === inquiry.id}
+            onClick={() => api.updateConsultationStatus(inquiry.id, "contacted")}
+            className={b("amber")}
+          >
+            상담 재개
+          </button>
+        </>
+      ) : null}
+      {canReserve && (
+        <button
+          type="button"
+          disabled={api.pendingId === inquiry.id}
+          onClick={openReserve}
+          className={b("blue")}
+        >
+          예약 확정
+        </button>
+      )}
+      {canCompleteTrip && (
+        <button
+          type="button"
+          disabled={api.pendingId === inquiry.id}
+          onClick={() => api.completeTrip(inquiry.id)}
+          className={b("success")}
+        >
+          여행 완료
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={api.deletePendingId === inquiry.id || api.pendingId === inquiry.id}
+        onClick={() => api.deleteInquiry(inquiry.id)}
+        className={b("red")}
+      >
+        삭제
+      </button>
+    </div>
+  );
+}
+
 export default function AdminInquiryTable() {
   const api = useAdminInquiryTable();
+  const [detailInquiry, setDetailInquiry] = useState<Inquiry | null>(null);
+
+  const closeDetailModal = useCallback(() => setDetailInquiry(null), []);
+
+  useEffect(() => {
+    if (!detailInquiry) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDetailModal();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detailInquiry, closeDetailModal]);
+
+  const handleRowBackgroundClick = useCallback((inquiry: Inquiry, e: React.MouseEvent<HTMLTableRowElement>) => {
+    const el = e.target as HTMLElement;
+    if (el.closest("button, a, input, select, textarea, label")) return;
+    setDetailInquiry(inquiry);
+  }, []);
+
+  const detailInquiryLive =
+    detailInquiry != null ? (api.inquiries.find((i) => i.id === detailInquiry.id) ?? detailInquiry) : null;
 
   if (api.isLoading) {
     return (
@@ -131,9 +314,11 @@ export default function AdminInquiryTable() {
               <option value="new">신규 문의</option>
               <option value="contacted">상담중</option>
               <option value="closed">상담종료</option>
+              <option value="on_hold">보류</option>
               <option value="reserved">예약확정</option>
               <option value="completed">여행완료</option>
-              <option value="pending">미처리 (미종료·미예약)</option>
+              <option value="pending">미처리 (신규·상담중)</option>
+              <option value="delayed">지연 (접수 24시간+)</option>
             </select>
           </label>
           <label className="flex flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
@@ -158,7 +343,6 @@ export default function AdminInquiryTable() {
               value={api.pageSize}
               onChange={(event) => {
                 api.setPageSize(Number(event.target.value));
-                api.setPage(1);
               }}
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
@@ -183,7 +367,8 @@ export default function AdminInquiryTable() {
 
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 text-xs text-[var(--text-muted)]">
         <p>
-          전체 {api.total}건 · 미처리 {api.pendingCount}건 · 예약확정 {api.reservedCount}건 · 여행완료 {api.completedCount}건
+          전체 {api.total}건 · 미처리 {api.pendingCount}건 · 보류 {api.onHoldCount}건 · 예약확정 {api.reservedCount}건 · 여행완료{" "}
+          {api.completedCount}건
         </p>
       </div>
 
@@ -200,19 +385,39 @@ export default function AdminInquiryTable() {
         </div>
       ) : null}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-sm">
+        <table className="w-full min-w-[1000px] table-fixed border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--primary-soft)] text-[var(--primary)]">
             <tr>
-              <th className="w-[100px] px-4 py-3 text-left font-semibold">상담 상태</th>
-              <th className="w-[100px] px-4 py-3 text-left font-semibold">여행 상태</th>
-              <th className="w-[120px] px-4 py-3 text-left font-semibold">고객명</th>
-              <th className="w-[150px] px-4 py-3 text-left font-semibold">연락처</th>
-              <th className="w-[220px] px-4 py-3 text-left font-semibold">유입 상품</th>
-              <th className="px-4 py-3 text-left font-semibold">최초유입</th>
-              <th className="min-w-[320px] px-4 py-3 text-left font-semibold">문의 내용</th>
-              <th className="w-[180px] px-4 py-3 text-left font-semibold">문의일시</th>
-              <th className="w-[100px] px-4 py-3 text-left font-semibold">선택 구성</th>
-              <th className="w-[200px] px-4 py-3 text-left font-semibold">액션</th>
+              <th className="w-[92px] px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                상담 상태
+              </th>
+              <th className="w-[92px] px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                여행 상태
+              </th>
+              <th className="w-[112px] px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                고객명
+              </th>
+              <th className="w-[132px] px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                연락처
+              </th>
+              <th className="w-[120px] px-2 py-3 text-left align-top text-xs font-semibold leading-snug">
+                유입 상품
+              </th>
+              <th className="w-[108px] px-2 py-3 text-left align-top text-xs font-semibold leading-snug">
+                최초 유입
+              </th>
+              <th className="min-w-0 px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                문의 내용
+              </th>
+              <th className="w-[152px] px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                문의일시
+              </th>
+              <th className="w-[72px] px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                선택 구성
+              </th>
+              <th className="min-w-[360px] w-[400px] px-3 py-3 text-left align-top text-xs font-semibold leading-snug">
+                액션
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -224,33 +429,38 @@ export default function AdminInquiryTable() {
               </tr>
             ) : (
               api.inquiries.map((inquiry) => {
-                const consultationStatus = (inquiry.consultation_status ?? "new") as ConsultationStatus;
-                const bookingStatus = (inquiry.booking_status ?? "none") as BookingStatus;
+                const { consultationStatus, bookingStatus } = getInquiryActionFlags(inquiry);
                 const isExpanded = api.expandedRows.includes(inquiry.id);
-                const canReserve = bookingStatus === "none" && inquiry.customer_profile_id;
-                const canCompleteTrip = bookingStatus === "reserved";
+                const rowQueueHighlight =
+                  consultationStatus === "new" || consultationStatus === "contacted"
+                    ? "bg-[var(--warning-bg)]/30 hover:bg-[var(--warning-bg)]/50"
+                    : consultationStatus === "on_hold"
+                      ? "bg-[var(--surface-muted)]/80 hover:bg-[var(--surface-muted)]"
+                      : "hover:bg-[var(--surface-muted)]";
 
                 return (
                   <Fragment key={inquiry.id}>
                     <tr
-                      className={`border-t border-[var(--divider)] ${
-                        consultationStatus !== "closed" ? "bg-[var(--warning-bg)]/30 hover:bg-[var(--warning-bg)]/50" : "hover:bg-[var(--surface-muted)]"
-                      }`}
+                      data-inquiry-id={inquiry.id}
+                      className={`cursor-pointer border-t border-[var(--divider)] ${rowQueueHighlight}`}
+                      onClick={(e) => handleRowBackgroundClick(inquiry, e)}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 align-top text-left">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                             consultationStatus === "new"
                               ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                               : consultationStatus === "contacted"
                                 ? "bg-amber-100 text-amber-800"
-                                : "bg-[var(--success-bg)] text-[var(--success)]"
+                                : consultationStatus === "on_hold"
+                                  ? "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
+                                  : "bg-[var(--success-bg)] text-[var(--success)]"
                           }`}
                         >
                           {CONSULTATION_LABELS[consultationStatus]}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 align-top text-left">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                             bookingStatus === "none"
@@ -265,24 +475,31 @@ export default function AdminInquiryTable() {
                           {BOOKING_LABELS[bookingStatus]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-[var(--primary)]">{inquiry.name}</td>
-                      <td className="px-4 py-3 tabular-nums">{inquiry.phone}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 align-top text-left font-medium text-[var(--primary)]">{inquiry.name}</td>
+                      <td className="px-3 py-3 align-top text-left tabular-nums">{inquiry.phone}</td>
+                      <td className="min-w-0 max-w-[120px] px-2 py-3 align-top text-left">
                         {inquiry.product_title ? (
-                          <div className="space-y-1">
-                            <p className="font-medium text-[var(--text-secondary)]">{inquiry.product_title}</p>
+                          <div className="min-w-0 space-y-0.5">
+                            <p
+                              className="truncate text-sm font-medium text-[var(--text-secondary)]"
+                              title={inquiry.product_title}
+                            >
+                              {inquiry.product_title}
+                            </p>
                             {inquiry.source_path ? (
-                              <p className="text-xs text-[var(--text-subtle)]">{inquiry.source_path}</p>
+                              <p className="truncate text-xs text-[var(--text-subtle)]" title={inquiry.source_path}>
+                                {inquiry.source_path}
+                              </p>
                             ) : null}
                           </div>
                         ) : (
                           <span className="text-xs text-[var(--text-subtle)]">일반 문의</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="min-w-0 max-w-[108px] px-2 py-3 align-top text-left">
                         {inquiry.acquisition_source_label != null || inquiry.first_touch ? (
                           <div
-                            className="min-w-0 max-w-[200px] space-y-1"
+                            className="min-w-0 space-y-1"
                             title={[
                               inquiry.acquisition_summary,
                               inquiry.inquiry_page_url,
@@ -324,7 +541,7 @@ export default function AdminInquiryTable() {
                           <span className="text-xs text-[var(--text-subtle)]">미확인</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="min-w-0 px-3 py-3 align-top text-left">
                         <p className={isExpanded ? "whitespace-pre-wrap text-sm leading-6" : "line-clamp-2 text-sm leading-6"}>
                           {inquiry.content}
                         </p>
@@ -338,10 +555,10 @@ export default function AdminInquiryTable() {
                           </button>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3 text-xs tabular-nums text-[var(--text-muted)]">
+                      <td className="px-3 py-3 align-top text-left text-xs tabular-nums text-[var(--text-muted)]">
                         {formatDate(inquiry.created_at ?? "")}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 align-top text-left">
                         {inquiry.quote_snapshot ? (
                           <button
                             type="button"
@@ -356,57 +573,8 @@ export default function AdminInquiryTable() {
                           <span className="text-[var(--text-subtle)]">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {consultationStatus === "new" && (
-                            <button
-                              type="button"
-                              disabled={api.pendingId === inquiry.id}
-                              onClick={() => api.updateConsultationStatus(inquiry.id, "contacted")}
-                              className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                            >
-                              상담중
-                            </button>
-                          )}
-                          {consultationStatus === "contacted" && (
-                            <button
-                              type="button"
-                              disabled={api.pendingId === inquiry.id}
-                              onClick={() => api.updateConsultationStatus(inquiry.id, "closed")}
-                              className="rounded border border-[var(--success)]/50 bg-[var(--success-bg)] px-2 py-1 text-xs font-medium text-[var(--success)] hover:opacity-90 disabled:opacity-50"
-                            >
-                              상담종료
-                            </button>
-                          )}
-                          {canReserve && (
-                            <button
-                              type="button"
-                              disabled={api.pendingId === inquiry.id}
-                              onClick={() => api.openReserveModal(inquiry)}
-                              className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50"
-                            >
-                              예약 확정
-                            </button>
-                          )}
-                          {canCompleteTrip && (
-                            <button
-                              type="button"
-                              disabled={api.pendingId === inquiry.id}
-                              onClick={() => api.completeTrip(inquiry.id)}
-                              className="rounded border border-[var(--success)]/50 bg-[var(--success-bg)] px-2 py-1 text-xs font-medium text-[var(--success)] hover:opacity-90 disabled:opacity-50"
-                            >
-                              여행 완료
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={api.deletePendingId === inquiry.id || api.pendingId === inquiry.id}
-                            onClick={() => api.deleteInquiry(inquiry.id)}
-                            className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
-                          >
-                            삭제
-                          </button>
-                        </div>
+                      <td className="px-3 py-3 align-top text-left">
+                        <InquiryActionButtons inquiry={inquiry} api={api} variant="table" />
                       </td>
                     </tr>
                     {inquiry.quote_snapshot && api.expandedQuoteId === inquiry.id ? (
@@ -452,9 +620,171 @@ export default function AdminInquiryTable() {
         </div>
       </div>
 
+      {detailInquiryLive ? (
+        <div
+          className="fixed inset-0 z-[55] flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inquiry-detail-title"
+          onClick={closeDetailModal}
+        >
+          <div
+            className="max-h-[min(90dvh,880px)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const inv = detailInquiryLive;
+              const { consultationStatus, bookingStatus } = getInquiryActionFlags(inv);
+              return (
+                <>
+                  <div className="sticky top-0 z-[1] flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+                    <div className="min-w-0">
+                      <h2 id="inquiry-detail-title" className="text-lg font-semibold text-[var(--text-primary)]">
+                        문의 상세
+                      </h2>
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">
+                        전체 내용 확인 · 아래에서 동일하게 처리할 수 있습니다.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeDetailModal}
+                      className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                  <div className="space-y-4 px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          consultationStatus === "new"
+                            ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                            : consultationStatus === "contacted"
+                              ? "bg-amber-100 text-amber-800"
+                              : consultationStatus === "on_hold"
+                                ? "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
+                                : "bg-[var(--success-bg)] text-[var(--success)]"
+                        }`}
+                      >
+                        상담 · {CONSULTATION_LABELS[consultationStatus]}
+                      </span>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          bookingStatus === "none"
+                            ? "bg-[var(--text-muted)]/20 text-[var(--text-secondary)]"
+                            : bookingStatus === "reserved"
+                              ? "bg-blue-100 text-blue-800"
+                              : bookingStatus === "completed"
+                                ? "bg-[var(--success-bg)] text-[var(--success)]"
+                                : "bg-[var(--danger-bg)] text-[var(--danger)]"
+                        }`}
+                      >
+                        여행 · {BOOKING_LABELS[bookingStatus]}
+                      </span>
+                    </div>
+                    <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-xs font-semibold text-[var(--text-muted)]">고객명</dt>
+                        <dd className="mt-0.5 font-medium text-[var(--primary)]">{inv.name}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold text-[var(--text-muted)]">연락처</dt>
+                        <dd className="mt-0.5 tabular-nums text-[var(--text-primary)]">{inv.phone}</dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-xs font-semibold text-[var(--text-muted)]">문의일시</dt>
+                        <dd className="mt-0.5 text-xs tabular-nums text-[var(--text-secondary)]">
+                          {formatDate(inv.created_at ?? "")}
+                        </dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-xs font-semibold text-[var(--text-muted)]">유입 상품</dt>
+                        <dd className="mt-0.5 text-[var(--text-primary)]">
+                          {inv.product_title ? (
+                            <span>
+                              {inv.product_title}
+                              {inv.source_path ? (
+                                <span className="mt-1 block text-xs text-[var(--text-subtle)]">{inv.source_path}</span>
+                              ) : null}
+                            </span>
+                          ) : (
+                            <span className="text-[var(--text-subtle)]">일반 문의</span>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div>
+                      <h3 className="text-xs font-semibold text-[var(--text-muted)]">최초 유입</h3>
+                      <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 p-3 text-sm">
+                        {inv.acquisition_source_label != null || inv.first_touch ? (
+                          <div className="space-y-2">
+                            <p className="font-medium text-[var(--text-primary)]">
+                              {inv.acquisition_source_label ??
+                                inv.first_touch?.utm_source ??
+                                (inv.first_touch?.firstReferrer
+                                  ? parseHostname(inv.first_touch.firstReferrer) ?? inv.first_touch.firstReferrer
+                                  : null) ??
+                                "direct"}
+                            </p>
+                            <p className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                  inv.acquisition_channel === "paid"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : inv.acquisition_channel === "social"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : inv.acquisition_channel === "organic"
+                                        ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                                        : inv.acquisition_channel === "referral"
+                                          ? "bg-slate-100 text-slate-700"
+                                          : "bg-[var(--text-muted)]/20 text-[var(--text-secondary)]"
+                                }`}
+                              >
+                                {inv.acquisition_channel ?? inv.first_touch?.utm_medium ?? "-"}
+                              </span>
+                            </p>
+                            <p className="break-all text-xs text-[var(--text-subtle)]">
+                              {inv.first_landing_path ?? inv.acquisition_summary ?? "-"}
+                            </p>
+                            {inv.inquiry_page_url ? (
+                              <p className="break-all text-xs text-[var(--text-muted)]">{inv.inquiry_page_url}</p>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[var(--text-subtle)]">미확인</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-semibold text-[var(--text-muted)]">문의 내용</h3>
+                      <p className="mt-2 whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/30 p-3 text-sm leading-relaxed text-[var(--text-primary)]">
+                        {(inv.content ?? "").trim() || "(내용 없음)"}
+                      </p>
+                    </div>
+                    {inv.quote_snapshot ? (
+                      <QuoteSnapshotSection snapshot={inv.quote_snapshot} />
+                    ) : null}
+                  </div>
+                  <div className="sticky bottom-0 border-t border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+                    <p className="mb-2 text-xs font-semibold text-[var(--text-muted)]">처리</p>
+                    <InquiryActionButtons
+                      inquiry={inv}
+                      api={api}
+                      variant="modal"
+                      onBeforeReserve={closeDetailModal}
+                    />
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      ) : null}
+
       {api.reserveModalInquiryId ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="reserve-modal-title"

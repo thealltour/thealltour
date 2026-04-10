@@ -1,5 +1,7 @@
 "use client";
 
+/** 데스크톱 관리자 사이드바. 모바일 관리자(MobileAdminShell)에서는 사용하지 않습니다. */
+
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";

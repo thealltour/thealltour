@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 데스크톱 관리자 상단 서브헤더. 모바일 관리자 레이아웃에서는 렌더되지 않습니다.
+ * 모바일 리뷰 서브내비는 하단 탭·앱 내 링크로만 연결합니다(SubHeader 축소판 없음).
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";

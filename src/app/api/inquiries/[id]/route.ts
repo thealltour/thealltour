@@ -23,7 +23,7 @@ function isActionBody(b: PatchBody): b is PatchBodyAction {
   return "action" in b && typeof (b as PatchBodyAction).action === "string";
 }
 
-const CONSULTATION_STATUSES: ConsultationStatus[] = ["new", "contacted", "closed"];
+const CONSULTATION_STATUSES: ConsultationStatus[] = ["new", "contacted", "closed", "on_hold"];
 const BOOKING_STATUSES: BookingStatus[] = ["none", "reserved", "completed", "canceled"];
 
 export async function PATCH(
@@ -78,12 +78,23 @@ export async function PATCH(
 
       const { data: inquiry, error: fetchError } = await supabase
         .from("inquiries")
-        .select("id, customer_profile_id, product_id, product_title, source_path")
+        .select("id, customer_profile_id, product_id, product_title, source_path, consultation_status")
         .eq("id", inquiryId)
         .single();
 
       if (fetchError || !inquiry) {
         return NextResponse.json({ message: "문의를 찾을 수 없습니다." }, { status: 404 });
+      }
+
+      const consultationRow = (inquiry as { consultation_status?: string | null }).consultation_status;
+      if (consultationRow === "on_hold") {
+        return NextResponse.json(
+          {
+            message:
+              "보류 상태입니다. 먼저 상담 상태를 「상담중」으로 재개한 뒤 예약 확정해 주세요.",
+          },
+          { status: 400 },
+        );
       }
 
       const customerProfileId = (inquiry as { customer_profile_id?: string | null }).customer_profile_id;
@@ -238,6 +249,15 @@ export async function PATCH(
 
 function handleInquiryUpdateError(error: { code?: string; message?: string }) {
   const code = error?.code;
+  if (code === "23514") {
+    return NextResponse.json(
+      {
+        message:
+          "DB 제약 조건 위반입니다. consultation_status에 on_hold 등을 허용하는 마이그레이션을 Supabase에 적용했는지 확인해 주세요. (예: supabase/migrations/20260407120100_inquiries_consultation_status_on_hold.sql)",
+      },
+      { status: 400 },
+    );
+  }
   if (code === "42703") {
     return NextResponse.json(
       { message: "inquiries 테이블에 요청한 컬럼이 없습니다. DB 업그레이드 SQL을 실행해 주세요." },

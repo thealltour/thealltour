@@ -74,6 +74,7 @@ import AdminProductsCollectionCampaignsManager from "@/components/admin/products
 import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
 import AdminProductListSection from "@/components/admin/products/AdminProductListSection";
 import SmartstoreHtmlGenerateModal from "@/components/admin/products/modals/SmartstoreHtmlGenerateModal";
+import { FlyerGenerateModal } from "@/components/admin/products/modals/FlyerGenerateModal";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
 import {
@@ -322,6 +323,8 @@ export default function AdminProductManager() {
   /** 상품명 추출 모달 */
   const [smartstoreHtmlModalOpen, setSmartstoreHtmlModalOpen] = useState(false);
   const [smartstoreHtmlProduct, setSmartstoreHtmlProduct] = useState<Product | null>(null);
+  const [flyerModalOpen, setFlyerModalOpen] = useState(false);
+  const [flyerProduct, setFlyerProduct] = useState<Product | null>(null);
   const [showTitleExtractModal, setShowTitleExtractModal] = useState(false);
   const [titleExtractPaste, setTitleExtractPaste] = useState("");
   const [titleCandidates, setTitleCandidates] = useState<string[]>([]);
@@ -2004,6 +2007,10 @@ export default function AdminProductManager() {
             setSmartstoreHtmlProduct(product);
             setSmartstoreHtmlModalOpen(true);
           }}
+          onOpenFlyer={(product) => {
+            setFlyerProduct(product);
+            setFlyerModalOpen(true);
+          }}
         />
       ) : null}
 
@@ -2016,6 +2023,16 @@ export default function AdminProductManager() {
           setSmartstoreHtmlProduct(null);
         }}
         onCopied={() => showToast("success", "HTML이 복사되었습니다.")}
+      />
+
+      <FlyerGenerateModal
+        open={flyerModalOpen}
+        product={flyerProduct}
+        showToast={showToast}
+        onClose={() => {
+          setFlyerModalOpen(false);
+          setFlyerProduct(null);
+        }}
       />
 
       <ImageImportGuideModal

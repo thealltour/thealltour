@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, FileCode2, Pencil, Trash2, Power } from "lucide-react";
+import { ExternalLink, FileCode2, FileImage, Pencil, Trash2, Power } from "lucide-react";
 import type { Product } from "@/types/product";
 
 type AdminProductsQuickActionsProps = {
@@ -13,6 +13,8 @@ type AdminProductsQuickActionsProps = {
   onToggleActive: (product: Product) => void;
   /** 스마트스토어 상세 HTML 생성 모달 */
   onSmartstoreHtml?: (product: Product) => void;
+  /** A4 유인물 빌더 모달 */
+  onFlyer?: (product: Product) => void;
   /** 모바일 등에서 텍스트 라벨 표시 */
   compact?: boolean;
   /** 목록 한 줄 행용 더 작은 버튼 */
@@ -27,6 +29,7 @@ export default function AdminProductsQuickActions({
   onDelete,
   onToggleActive,
   onSmartstoreHtml,
+  onFlyer,
   compact = false,
   dense = false,
 }: AdminProductsQuickActionsProps) {
@@ -75,6 +78,18 @@ export default function AdminProductsQuickActions({
         >
           <FileCode2 className={icoCls} aria-hidden />
           {!compact && !dense ? <span className="max-w-[4.5rem] truncate">HTML 생성</span> : null}
+        </button>
+      ) : null}
+      {onFlyer ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onFlyer(product)}
+          className={`${btnBase} ${iconBtn} border-violet-200/80 bg-violet-50 text-violet-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40 focus-visible:ring-offset-1 dark:border-violet-800 dark:bg-violet-950/45 dark:text-violet-100`}
+          title="유인물 생성"
+        >
+          <FileImage className={icoCls} aria-hidden />
+          {!compact && !dense ? <span className="max-w-[4.5rem] truncate">유인물</span> : null}
         </button>
       ) : null}
       <Link

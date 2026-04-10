@@ -758,7 +758,7 @@ export function isLikelyThumbnailUrl(_url: string): boolean {
 }
 
 export function isItineraryExcludedUrl(_url: string): boolean {
-  return false;
+    return false;
 }
 
 /** @deprecated PR-IMAGE-2: collectPreferredImgCandidates 사용 */

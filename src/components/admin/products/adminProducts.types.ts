@@ -56,6 +56,8 @@ export type AdminProductsListViewProps = {
   onEditProduct: (product: Product) => void;
   /** 스마트스토어 HTML 생성 모달 (목록 작업 열) */
   onOpenSmartstoreHtml?: (product: Product) => void;
+  /** A4 유인물 빌더 모달 (목록 작업 열) */
+  onOpenFlyer?: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;
   onQuickToggleActive: (product: Product) => void;
   onMoveSortOrder: (product: Product, direction: "up" | "down") => void;

@@ -91,7 +91,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
   switch (sectionId) {
     case "taxonomy":
       return (
-        <div className="flex flex-col gap-6" id="form-field-taxonomy-category">
+﻿        <div className="flex flex-col gap-6" id="form-field-taxonomy-category">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-[var(--text-primary)]">지역 (destination)</p>
             <p className="text-[11px] text-[var(--text-muted)]">상품에 연결할 지역 1개. 대분류 → 중분류 → 소분류 순으로 선택합니다. DB taxonomy 축으로 저장됩니다.</p>
@@ -458,7 +458,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
       );
     case "price":
       return (
-        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <p className="text-xs text-[var(--text-muted)] md:col-span-2">
             기본 가격·가격 구간(비수기·주말·성수기)은 <strong className="text-[var(--text-secondary)]">기본 정보</strong> 섹션에서
             입력합니다.
@@ -541,7 +541,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
       );
     case "description":
       return (
-        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <textarea
             value={form.description}
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
@@ -609,7 +609,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
       );
     case "included":
       return (
-        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="md:col-span-2 space-y-2">
             <p className="text-[11px] text-[var(--text-muted)]">템플릿으로 빠르게 입력할 수 있습니다</p>
             <div className="flex flex-wrap items-center gap-2">
@@ -684,7 +684,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
       );
     case "flight":
       return (
-        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[var(--primary)]">항공편 정보</p>
             <p className="text-xs text-[var(--text-secondary)]">
@@ -854,7 +854,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
       );
     case "terms":
       return (
-        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <p className="text-[11px] text-[var(--text-muted)] md:col-span-2">
             각 항목마다 <strong className="text-[var(--text-secondary)]">공통 템플릿 키</strong>를 고를 수 있습니다. 직접 입력이
             비어 있을 때만 해당 템플릿 본문이 상세 페이지에 반영됩니다. (예약 유의만 레거시 &quot;약관 및 참조사항&quot; 필드로

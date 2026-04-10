@@ -55,6 +55,9 @@ export function useAdminProductsListController({
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
+  /** `page`가 `loadProducts` 의존성에 들어가면 페이지 전환 시 콜백이 바뀌고, debounce/필터 effect가 `setPage(1)`을 다시 쏴서 다음 페이지로 못 가는 버그가 난다. */
+  const pageRef = useRef(page);
+  pageRef.current = page;
   const [keyword, setKeyword] = useState("");
   const debouncedKeyword = useDebounce(keyword, 300);
   const [sortField, setSortField] = useState<ProductSortKey>("updated_at");
@@ -105,7 +108,7 @@ export function useAdminProductsListController({
       productLineIdOverride?: string;
       themeQOverride?: string;
     }) => {
-      const effectivePage = args?.page ?? page;
+      const effectivePage = args?.page ?? pageRef.current;
       const effectiveSortField = args?.sortField ?? sortField;
       const effectiveSortDirection = args?.sortDirection ?? sortDirection;
       const effectiveKeyword = args?.keywordOverride ?? debouncedKeyword;
@@ -159,7 +162,6 @@ export function useAdminProductsListController({
       }
     },
     [
-      page,
       sortField,
       sortDirection,
       debouncedKeyword,

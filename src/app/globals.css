@@ -1176,3 +1176,181 @@ body {
   animation: mega-menu-panel-enter 0.18s ease-out forwards;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Flyer A4 — 스크린 타이포 + 인쇄/PDF (브로슈어 톤, --primary 연동)           */
+/* -------------------------------------------------------------------------- */
+.flyer-title {
+  font-size: clamp(0.95rem, 2.6vw, 1.2rem);
+  line-height: 1.22;
+}
+.flyer-subtitle {
+  font-size: clamp(0.68rem, 1.9vw, 0.8rem);
+  line-height: 1.45;
+}
+.flyer-kicker {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+.flyer-section-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.flyer-body {
+  font-size: 0.625rem;
+  line-height: 1.5;
+}
+.flyer-list {
+  font-size: 0.625rem;
+  line-height: 1.48;
+}
+.flyer-list-compact {
+  font-size: 0.5625rem;
+  line-height: 1.45;
+}
+.flyer-brand {
+  font-size: 0.625rem;
+  line-height: 1.3;
+}
+.flyer-footer-info {
+  font-size: 0.5rem;
+  line-height: 1.45;
+}
+.flyer-gallery-empty {
+  font-size: 0.5rem;
+  line-height: 1.35;
+}
+
+/* 롱포맷 문서 카드 내부: 섹션 타이틀·본문 리듬 */
+.flyer-longform-doc-surface .flyer-section-title {
+  font-size: 0.7rem;
+  letter-spacing: -0.02em;
+}
+.flyer-longform-doc-surface .flyer-body {
+  line-height: 1.58;
+}
+.flyer-longform-doc-surface .flyer-list,
+.flyer-longform-doc-surface .flyer-list-compact {
+  line-height: 1.62;
+}
+.flyer-longform-doc-surface .flyer-title {
+  line-height: 1.18;
+}
+.flyer-longform-doc-surface .flyer-subtitle {
+  line-height: 1.5;
+}
+
+.flyer-title--compact {
+  font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+  line-height: 1.2;
+}
+.flyer-subtitle--compact {
+  font-size: clamp(0.62rem, 1.7vw, 0.72rem);
+  line-height: 1.4;
+}
+.flyer-section-title--compact {
+  font-size: 0.625rem;
+  line-height: 1.3;
+}
+.flyer-body--compact {
+  font-size: 0.5625rem;
+  line-height: 1.45;
+}
+.flyer-list--compact {
+  font-size: 0.5625rem;
+  line-height: 1.42;
+}
+.flyer-list-compact--sm {
+  font-size: 0.5rem;
+  line-height: 1.38;
+}
+.flyer-footer-info--compact {
+  font-size: 0.45rem;
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  .flyer-print-hide {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 롱포맷 유인물: 세로 문서 전체가 인쇄되도록 높이·overflow 강제 없음 */
+  [data-flyer-document] {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .flyer-longform-preview-root {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  /* 레거시 A4 미리보기(구 빌드 HTML 캐시 등) fallback */
+  [data-flyer-paper] {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .flyer-a4-preview-root {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  .flyer-sheet-inner {
+    padding: 0 !important;
+  }
+}
+
+/* 관리자 모달 인쇄: 미리보기만 보이게 */
+@media print {
+  body.print-flyer-only * {
+    visibility: hidden;
+  }
+  body.print-flyer-only .flyer-longform-preview-root,
+  body.print-flyer-only .flyer-longform-preview-root *,
+  body.print-flyer-only .flyer-a4-preview-root,
+  body.print-flyer-only .flyer-a4-preview-root * {
+    visibility: visible;
+  }
+  body.print-flyer-only .flyer-longform-preview-root,
+  body.print-flyer-only .flyer-a4-preview-root {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    z-index: 99999;
+    display: flex !important;
+    justify-content: center;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+

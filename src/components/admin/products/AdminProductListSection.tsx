@@ -21,6 +21,8 @@ export type AdminProductListSectionProps = {
   onEditProduct: (product: Product) => void;
   /** 스마트스토어 HTML 생성 (목록 작업 열) */
   onOpenSmartstoreHtml?: (product: Product) => void;
+  /** A4 유인물 빌더 (목록 작업 열) */
+  onOpenFlyer?: (product: Product) => void;
   /** 새 상품 등록 링크 (없으면 버튼 비표시) */
   newProductHref?: string;
   /** 목록 새로고침 함수 등록 (저장 후 등 호출용) */
@@ -34,6 +36,7 @@ export default function AdminProductListSection({
   onAfterDelete,
   onEditProduct,
   onOpenSmartstoreHtml,
+  onOpenFlyer,
   newProductHref,
   registerRefresh,
 }: AdminProductListSectionProps) {
@@ -78,6 +81,7 @@ export default function AdminProductListSection({
       onBulkDelete={ctrl.handleBulkDeleteSelected}
       onEditProduct={onEditProduct}
       onOpenSmartstoreHtml={onOpenSmartstoreHtml}
+      onOpenFlyer={onOpenFlyer}
       onDeleteProduct={ctrl.handleDelete}
       onQuickToggleActive={ctrl.quickToggleActive}
       onMoveSortOrder={ctrl.moveSortOrder}

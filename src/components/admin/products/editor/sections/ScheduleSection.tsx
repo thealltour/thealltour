@@ -57,7 +57,7 @@ export function ScheduleSection({
   appendScheduleTemplate,
 }: ScheduleSectionProps) {
   return (
-        <div className="space-y-3" id="field-schedule-root" tabIndex={-1}>
+﻿        <div className="space-y-3" id="field-schedule-root" tabIndex={-1}>
           {selectedEvent && getSelectedEventLabel() && (
             <div className="rounded-lg border border-[var(--primary)] bg-[var(--primary-soft)]/40 px-3 py-2">
               <p className="text-sm font-semibold text-[var(--primary)]">

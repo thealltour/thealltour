@@ -77,11 +77,7 @@ import SmartstoreHtmlGenerateModal from "@/components/admin/products/modals/Smar
 import { FlyerGenerateModal } from "@/components/admin/products/modals/FlyerGenerateModal";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
-import {
-  ADMIN_PRODUCTS_VIEW,
-  ADMIN_PRODUCTS_QUERY_KEYS,
-  DEFAULT_PRODUCTS_PAGE_SIZE,
-} from "@/components/admin/products/adminProducts.constants";
+import { ADMIN_PRODUCTS_VIEW, ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
 import { buildRegionTree } from "@/lib/productTaxonomies";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import { ProductEditorShell } from "@/components/admin/products/editor/ProductEditorShell";
@@ -333,7 +329,6 @@ export default function AdminProductManager() {
   const [coverCandidates, setCoverCandidates] = useState<CoverCandidate[]>([]);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshListRef = useRef<(() => Promise<void>) | null>(null);
-  const pageSize = DEFAULT_PRODUCTS_PAGE_SIZE;
   const { showToast } = useAdminToast();
   const { confirm } = useAdminConfirm();
 
@@ -1955,7 +1950,6 @@ export default function AdminProductManager() {
         <AdminProductListSection
           showToast={showToast}
           confirm={confirm}
-          pageSize={pageSize}
           onAfterDelete={(id) => {
             if (editingId === id) {
               markSafeNavigation();

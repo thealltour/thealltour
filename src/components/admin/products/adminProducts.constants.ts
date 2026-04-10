@@ -25,7 +25,35 @@ export const ADMIN_PRODUCTS_QUERY_KEYS = {
 } as const;
 
 /** 상품 목록 기본 페이지 크기 */
-export const DEFAULT_PRODUCTS_PAGE_SIZE = 8;
+export const DEFAULT_PRODUCTS_PAGE_SIZE = 10;
+
+/** 목록에서 선택 가능한 페이지 크기 (/theall_manager_only/products 등) */
+export const ADMIN_PRODUCTS_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+
+export type AdminProductsPageSizeOption = (typeof ADMIN_PRODUCTS_PAGE_SIZE_OPTIONS)[number];
+
+const PAGE_SIZE_SET = new Set<number>(ADMIN_PRODUCTS_PAGE_SIZE_OPTIONS);
+
+/** sessionStorage 키: 관리자 상품 목록 페이지 크기 선호 */
+export const ADMIN_PRODUCTS_LIST_PAGE_SIZE_STORAGE_KEY = "admin_products_list_page_size";
+
+export function normalizeAdminProductsPageSize(
+  raw: number | string | null | undefined,
+): AdminProductsPageSizeOption {
+  const n = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
+  if (Number.isFinite(n) && PAGE_SIZE_SET.has(n)) return n as AdminProductsPageSizeOption;
+  return DEFAULT_PRODUCTS_PAGE_SIZE;
+}
+
+export function readStoredAdminProductsPageSize(): AdminProductsPageSizeOption {
+  if (typeof window === "undefined") return DEFAULT_PRODUCTS_PAGE_SIZE;
+  try {
+    const raw = window.sessionStorage.getItem(ADMIN_PRODUCTS_LIST_PAGE_SIZE_STORAGE_KEY);
+    return normalizeAdminProductsPageSize(raw);
+  } catch {
+    return DEFAULT_PRODUCTS_PAGE_SIZE;
+  }
+}
 
 /** SubHeader 등: 메뉴 라벨 → view param */
 export const PRODUCT_LABEL_TO_VIEW: Record<string, AdminProductsViewKey> = {

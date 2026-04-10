@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Product } from "@/types/product";
 import { normalizeImageList } from "@/lib/products/images";
@@ -11,7 +11,15 @@ import {
   patchAdminProduct,
 } from "@/components/admin/products/api/adminProducts.client";
 import { fetchAdminProductTaxonomy } from "@/components/admin/products/api/adminProductTaxonomy.client";
-import { DEFAULT_PRODUCTS_PAGE_SIZE, ADMIN_PRODUCTS_MESSAGES } from "@/components/admin/products/adminProducts.constants";
+import {
+  ADMIN_PRODUCTS_LIST_PAGE_SIZE_STORAGE_KEY,
+  ADMIN_PRODUCTS_PAGE_SIZE_OPTIONS,
+  ADMIN_PRODUCTS_MESSAGES,
+  DEFAULT_PRODUCTS_PAGE_SIZE,
+  normalizeAdminProductsPageSize,
+  readStoredAdminProductsPageSize,
+  type AdminProductsPageSizeOption,
+} from "@/components/admin/products/adminProducts.constants";
 import type { AdminProductsTaxonomyOption } from "@/components/admin/products/adminProductsList.types";
 import { productHasIssueForFilter, aggregatePageWarningStats } from "@/components/admin/products/adminProductsList.helpers";
 
@@ -25,7 +33,6 @@ export type UseAdminProductsListControllerParams = {
     confirmLabel: string;
     cancelLabel: string;
   }) => Promise<boolean>;
-  pageSize?: number;
   onAfterDelete?: (deletedId: string) => void;
 };
 
@@ -48,10 +55,18 @@ function uniqueSortedStrings(values: string[]): string[] {
 export function useAdminProductsListController({
   showToast,
   confirm,
-  pageSize: pageSizeParam = DEFAULT_PRODUCTS_PAGE_SIZE,
   onAfterDelete,
 }: UseAdminProductsListControllerParams) {
-  const pageSize = pageSizeParam;
+  const [pageSize, setPageSizeState] = useState<AdminProductsPageSizeOption>(DEFAULT_PRODUCTS_PAGE_SIZE);
+  const pageSizeRef = useRef<AdminProductsPageSizeOption>(DEFAULT_PRODUCTS_PAGE_SIZE);
+  pageSizeRef.current = pageSize;
+
+  useLayoutEffect(() => {
+    const stored = readStoredAdminProductsPageSize();
+    pageSizeRef.current = stored;
+    setPageSizeState(stored);
+  }, []);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -129,7 +144,7 @@ export function useAdminProductsListController({
         setIsLoading(true);
         const result = await fetchAdminProducts({
           page: effectivePage,
-          pageSize: pageSize,
+          pageSize: pageSizeRef.current,
           sortField: effectiveSortField,
           sortDirection: effectiveSortDirection,
           q: effectiveKeyword.trim() !== "" ? effectiveKeyword.trim() : undefined,
@@ -170,8 +185,25 @@ export function useAdminProductsListController({
       filterDestinationId,
       filterProductLineId,
       filterThemeQuery,
-      pageSize,
     ],
+  );
+
+  const setPageSize = useCallback(
+    (next: number) => {
+      const n = normalizeAdminProductsPageSize(next);
+      if (n === pageSizeRef.current) return;
+      pageSizeRef.current = n;
+      setPageSizeState(n);
+      try {
+        window.sessionStorage.setItem(ADMIN_PRODUCTS_LIST_PAGE_SIZE_STORAGE_KEY, String(n));
+      } catch {
+        /* ignore */
+      }
+      setPage(1);
+      pageRef.current = 1;
+      void loadProducts({ page: 1 });
+    },
+    [loadProducts],
   );
 
   useEffect(() => {
@@ -415,6 +447,8 @@ export function useAdminProductsListController({
     setFilterThemeQuery,
     setFilterIssuesOnly,
     loadProducts,
+    setPageSize,
+    pageSizeOptions: ADMIN_PRODUCTS_PAGE_SIZE_OPTIONS,
     movePage,
     toggleSelectAllForPage,
     toggleSelectOne,

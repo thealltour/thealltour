@@ -26,6 +26,9 @@ export type AdminProductsListViewProps = {
   totalCount: number;
   currentPage: number;
   pageSize: number;
+  /** 페이지당 개수 선택 (없으면 셀렉트 미표시) */
+  pageSizeOptions?: readonly number[];
+  onPageSizeChange?: (size: number) => void;
   totalPages: number;
   sortField: ProductSortKey;
   sortDirection: "asc" | "desc";

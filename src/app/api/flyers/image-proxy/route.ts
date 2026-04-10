@@ -114,6 +114,20 @@ export async function GET(req: NextRequest) {
   const headers = new Headers();
   headers.set("Content-Type", contentType);
   headers.set("Cache-Control", mergeCacheControl(upstream.headers.get("cache-control")));
+  /** html-to-image / canvas: 동일 출처라도 fetch·CORS 조합에서 응답이 노출 가능해야 비트맵 복사가 안정적입니다. */
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Cross-Origin-Resource-Policy", "cross-origin");
 
   return new NextResponse(body, { status: 200, headers });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
 }

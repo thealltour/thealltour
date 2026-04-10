@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { FlyerDraftState } from "@/lib/flyers/flyer.types";
+import { flyerExportImageCrossOrigin } from "@/lib/flyers/exportImageUrl";
 import { flyerTypographyScale, getFlyerSpacing } from "./flyerSpacing";
 import {
   FlyerDepartureBlock,
@@ -43,7 +44,7 @@ export function FlyerTemplateVisual({
               <img
                 src={heroUrl}
                 alt=""
-                crossOrigin="anonymous"
+                crossOrigin={flyerExportImageCrossOrigin(heroUrl)}
                 referrerPolicy="no-referrer"
                 className="absolute inset-0 h-full w-full object-cover object-center"
               />

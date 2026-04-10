@@ -53,6 +53,8 @@ export default function AdminProductsListView({
   totalCount,
   currentPage,
   pageSize,
+  pageSizeOptions,
+  onPageSizeChange,
   totalPages,
   sortField,
   sortDirection,
@@ -605,7 +607,7 @@ export default function AdminProductsListView({
         </>
       )}
 
-      <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
         <p>
           총 {totalCount}건 중{" "}
           {totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)}건
@@ -614,26 +616,46 @@ export default function AdminProductsListView({
             <span className="ml-2 text-xs text-[var(--text-muted)]">(검색 반영 중…)</span>
           ) : null}
         </p>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage <= 1}
-            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            이전
-          </button>
-          <span className="text-xs font-semibold text-[var(--text-primary)]">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            다음
-          </button>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange ? (
+            <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+              <span className="shrink-0 whitespace-nowrap">페이지당</span>
+              <select
+                value={pageSize}
+                onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                disabled={isLoading}
+                className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-medium text-[var(--text-primary)] disabled:opacity-50"
+                aria-label="페이지당 상품 개수"
+              >
+                {pageSizeOptions.map((n) => (
+                  <option key={n} value={n}>
+                    {n}개
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              이전
+            </button>
+            <span className="text-xs font-semibold text-[var(--text-primary)]">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              다음
+            </button>
+          </div>
         </div>
       </div>
     </div>

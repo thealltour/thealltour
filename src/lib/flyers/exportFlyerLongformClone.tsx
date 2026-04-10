@@ -37,6 +37,9 @@ export async function exportFlyerLongformDraftToPng(
     root.render(<FlyerLongformPreview draft={draft} product={product ?? null} exportMode />);
     await flushLayout();
     await waitForImages(container);
+    await new Promise<void>((r) => {
+      setTimeout(r, 80);
+    });
     if (process.env.NODE_ENV === "development") {
       const imgs = container.querySelectorAll("img");
       console.info("[flyer png export] img count:", imgs.length);

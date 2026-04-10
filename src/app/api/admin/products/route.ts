@@ -7,6 +7,7 @@ import {
   parseSeasonalPriceBandsFromUnknown,
   seasonalPriceBandsToJsonColumn,
 } from "@/lib/products/seasonalPriceBands";
+import { normalizeAdminProductsPageSize } from "@/components/admin/products/adminProducts.constants";
 
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
@@ -119,7 +120,7 @@ type ProductBody = {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const page = Number(searchParams.get("page") ?? "1");
-  const pageSize = Number(searchParams.get("pageSize") ?? "8");
+  const pageSize = normalizeAdminProductsPageSize(searchParams.get("pageSize"));
   const sortField = (searchParams.get("sortField") ?? "created_at") as
     | "title"
     | "category"

@@ -4,8 +4,6 @@ import { useEffect } from "react";
 import type { Product } from "@/types/product";
 import AdminProductsListView from "@/components/admin/products/AdminProductsListView";
 import { useAdminProductsListController } from "@/components/admin/products/hooks/useAdminProductsListController";
-import { DEFAULT_PRODUCTS_PAGE_SIZE } from "@/components/admin/products/adminProducts.constants";
-
 export type AdminProductListSectionProps = {
   showToast: (type: "success" | "error", message: string) => void;
   confirm: (options: {
@@ -14,7 +12,6 @@ export type AdminProductListSectionProps = {
     confirmLabel: string;
     cancelLabel: string;
   }) => Promise<boolean>;
-  pageSize?: number;
   /** 상품 삭제 성공 후 호출 (현재 편집 중이던 상품이 삭제된 경우 상위에서 편집 상태 초기화용) */
   onAfterDelete?: (deletedId: string) => void;
   /** 상품 수정 클릭 시 (상위에서 편집 모드로 전환) */
@@ -32,7 +29,6 @@ export type AdminProductListSectionProps = {
 export default function AdminProductListSection({
   showToast,
   confirm,
-  pageSize = DEFAULT_PRODUCTS_PAGE_SIZE,
   onAfterDelete,
   onEditProduct,
   onOpenSmartstoreHtml,
@@ -43,7 +39,6 @@ export default function AdminProductListSection({
   const ctrl = useAdminProductsListController({
     showToast,
     confirm,
-    pageSize,
     onAfterDelete,
   });
 
@@ -60,7 +55,9 @@ export default function AdminProductListSection({
       taxonomyNameMap={ctrl.taxonomyNameMap}
       totalCount={ctrl.totalCount}
       currentPage={ctrl.currentPage}
-      pageSize={pageSize}
+      pageSize={ctrl.pageSize}
+      pageSizeOptions={ctrl.pageSizeOptions}
+      onPageSizeChange={ctrl.setPageSize}
       totalPages={ctrl.totalPages}
       sortField={ctrl.sortField}
       sortDirection={ctrl.sortDirection}

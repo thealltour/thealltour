@@ -10,6 +10,7 @@ import {
   weatherLeadEmojiForDays,
   weatherPrepChipLabels,
 } from "@/lib/flyers/weather/flyerWeatherVisual";
+import { flyerExportImageCrossOrigin } from "@/lib/flyers/exportImageUrl";
 import type { FlyerSpacingClasses } from "./flyerSpacing";
 
 type BlockCtx = {
@@ -399,7 +400,7 @@ export function FlyerGallerySection({
               <img
                 src={url}
                 alt=""
-                crossOrigin="anonymous"
+                crossOrigin={flyerExportImageCrossOrigin(url)}
                 referrerPolicy="no-referrer"
                 className="absolute inset-0 h-full w-full object-cover object-center"
               />
@@ -451,7 +452,7 @@ export function FlyerFooterBlock({ sections, f, typo, exportMode = false }: Bloc
           <img
             src={LOGO_PATH}
             alt="더올투어"
-            crossOrigin="anonymous"
+            crossOrigin={flyerExportImageCrossOrigin(LOGO_PATH)}
             referrerPolicy="no-referrer"
             width={252}
             height={76}

@@ -1,18 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, FileCode2, FileImage, Pencil, Trash2, Power } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  BookOpen,
+  ChevronDown,
+  Download,
+  ExternalLink,
+  FileCode2,
+  FileImage,
+  Pencil,
+  Trash2,
+  Power,
+} from "lucide-react";
 import type { Product } from "@/types/product";
+import type { StoredImageDownloadPreset } from "@/lib/images/imageDownloadPreset.storage";
+import ProductImageDownloadMenu from "@/components/admin/products/dropdowns/ProductImageDownloadMenu";
 
 type AdminProductsQuickActionsProps = {
   product: Product;
   pendingToggleId: string | null;
   pendingDeleteId: string | null;
+  pendingDownloadId?: string | null;
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onToggleActive: (product: Product) => void;
   /** 스마트스토어 상세 HTML 생성 모달 */
   onSmartstoreHtml?: (product: Product) => void;
+  /** 네이버 블로그용 텍스트 생성 모달 */
+  onBlogPost?: (product: Product) => void;
+  /** 옵션 모달만 열기 (레거시 단일 버튼용) */
+  onOpenDownloadOptions?: (product: Product) => void;
+  /** preset 선택 메뉴 + 즉시 실행 */
+  downloadPresets?: StoredImageDownloadPreset[];
+  downloadDefaultPresetId?: string | null;
+  downloadRecentPresetIds?: string[];
+  onRunProductImageDownloadWithPreset?: (product: Product, preset: StoredImageDownloadPreset) => void;
+  /** preset 관리 모달 */
+  onOpenDownloadPresetManager?: () => void;
+  /** 이미지 선택 다운로드 모달 */
+  onOpenImageSelector?: (product: Product) => void;
   /** A4 유인물 빌더 모달 */
   onFlyer?: (product: Product) => void;
   /** 모바일 등에서 텍스트 라벨 표시 */
@@ -25,16 +52,60 @@ export default function AdminProductsQuickActions({
   product,
   pendingToggleId,
   pendingDeleteId,
+  pendingDownloadId = null,
   onEdit,
   onDelete,
   onToggleActive,
   onSmartstoreHtml,
+  onBlogPost,
+  onOpenDownloadOptions,
+  downloadPresets,
+  downloadDefaultPresetId,
+  downloadRecentPresetIds,
+  onRunProductImageDownloadWithPreset,
+  onOpenDownloadPresetManager,
+  onOpenImageSelector,
   onFlyer,
   compact = false,
   dense = false,
 }: AdminProductsQuickActionsProps) {
-  const busy = pendingToggleId === product.id || pendingDeleteId === product.id;
+  const rowDownloadBusy = pendingDownloadId === product.id;
+  const busy =
+    pendingToggleId === product.id || pendingDeleteId === product.id || rowDownloadBusy;
+  const anyZipDownloadPending = pendingDownloadId != null;
+  const downloadDisabled =
+    busy || (anyZipDownloadPending && !rowDownloadBusy);
   const active = product.is_active !== false;
+
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const downloadMenuWrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!downloadMenuOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = downloadMenuWrapRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setDownloadMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDownloadMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [downloadMenuOpen]);
+
+  const showDownloadMenu =
+    onOpenDownloadOptions != null &&
+    onRunProductImageDownloadWithPreset != null &&
+    downloadPresets != null &&
+    downloadRecentPresetIds != null &&
+    onOpenDownloadPresetManager != null &&
+    onOpenImageSelector != null;
 
   const btnBase = dense
     ? "inline-flex items-center justify-center gap-0.5 rounded border text-[10px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
@@ -78,6 +149,95 @@ export default function AdminProductsQuickActions({
         >
           <FileCode2 className={icoCls} aria-hidden />
           {!compact && !dense ? <span className="max-w-[4.5rem] truncate">HTML 생성</span> : null}
+        </button>
+      ) : null}
+      {onBlogPost ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onBlogPost(product)}
+          className={`${btnBase} ${iconBtn} border-emerald-200/80 bg-emerald-50 text-emerald-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 focus-visible:ring-offset-1 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100`}
+          title="블로그 텍스트 생성"
+        >
+          <BookOpen className={icoCls} aria-hidden />
+          {!compact && !dense ? (
+            <span className="max-w-[7.5rem] truncate">블로그 텍스트</span>
+          ) : null}
+        </button>
+      ) : null}
+      {showDownloadMenu ? (
+        <div ref={downloadMenuWrapRef} className="relative shrink-0">
+          <button
+            type="button"
+            disabled={downloadDisabled}
+            aria-expanded={downloadMenuOpen}
+            aria-haspopup="menu"
+            onClick={() => {
+              if (downloadDisabled) return;
+              setDownloadMenuOpen((v) => !v);
+            }}
+            className={`${btnBase} ${iconBtn} border-indigo-200/80 bg-indigo-50 text-indigo-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 focus-visible:ring-offset-1 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100`}
+            title={
+              rowDownloadBusy
+                ? "이미지 ZIP 생성 중"
+                : anyZipDownloadPending
+                  ? "다른 상품 ZIP 작업 진행 중"
+                  : "이미지 ZIP 다운로드"
+            }
+          >
+            <Download className={icoCls} aria-hidden />
+            {!compact && !dense ? (
+              <span className="max-w-[4rem] truncate">이미지 ZIP</span>
+            ) : null}
+            <ChevronDown
+              className={`${icoCls} opacity-70 ${downloadMenuOpen ? "rotate-180" : ""} transition-transform`}
+              aria-hidden
+            />
+          </button>
+          {downloadMenuOpen ? (
+            <div className="absolute right-0 top-full z-[70] mt-0.5 w-[min(100vw-1rem,17.5rem)]">
+              <ProductImageDownloadMenu
+                product={product}
+                presets={downloadPresets}
+                defaultPresetId={downloadDefaultPresetId ?? null}
+                recentPresetIds={downloadRecentPresetIds}
+                onRunWithPreset={(preset) => {
+                  onRunProductImageDownloadWithPreset?.(product, preset);
+                  setDownloadMenuOpen(false);
+                }}
+                onOpenOptions={(p) => {
+                  onOpenDownloadOptions?.(p);
+                  setDownloadMenuOpen(false);
+                }}
+                onOpenPresetManager={() => {
+                  onOpenDownloadPresetManager?.();
+                  setDownloadMenuOpen(false);
+                }}
+                onOpenImageSelector={(p) => {
+                  onOpenImageSelector?.(p);
+                  setDownloadMenuOpen(false);
+                }}
+                onClose={() => setDownloadMenuOpen(false)}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : onOpenDownloadOptions ? (
+        <button
+          type="button"
+          disabled={downloadDisabled}
+          onClick={() => onOpenDownloadOptions(product)}
+          className={`${btnBase} ${iconBtn} border-indigo-200/80 bg-indigo-50 text-indigo-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 focus-visible:ring-offset-1 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100`}
+          title={
+            rowDownloadBusy
+              ? "이미지 ZIP 생성 중"
+              : anyZipDownloadPending
+                ? "다른 상품 ZIP 작업 진행 중"
+                : "이미지 ZIP 다운로드"
+          }
+        >
+          <Download className={icoCls} aria-hidden />
+          {!compact && !dense ? <span className="max-w-[5rem] truncate">이미지 ZIP</span> : null}
         </button>
       ) : null}
       {onFlyer ? (

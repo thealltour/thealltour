@@ -21,7 +21,6 @@ function baseProduct(overrides: Partial<Product> = {}): Product {
 function meta(partial: Partial<ProductCampaignCardMeta> & Pick<ProductCampaignCardMeta, "displayLabel">): ProductCampaignCardMeta {
   return {
     name: "n",
-    displayLabel: partial.displayLabel,
     badge_priority: partial.badge_priority ?? 1,
     badge_visible: partial.badge_visible ?? true,
     badge_tone: partial.badge_tone ?? "neutral",

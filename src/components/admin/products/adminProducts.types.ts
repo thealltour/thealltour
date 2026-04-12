@@ -4,6 +4,7 @@
  */
 
 import type { Product } from "@/types/product";
+import type { StoredImageDownloadPreset } from "@/lib/images/imageDownloadPreset.storage";
 import type { ProductSortKey } from "@/components/admin/products/api/adminProducts.types";
 import type { AdminProductsTaxonomyOption } from "@/components/admin/products/adminProductsList.types";
 
@@ -40,6 +41,8 @@ export type AdminProductsListViewProps = {
   pendingMoveId: string | null;
   pendingToggleId: string | null;
   pendingDeleteId: string | null;
+  /** 이미지 ZIP 생성·다운로드 중인 상품 id (연타 방지) */
+  pendingDownloadId?: string | null;
   filterActive: "all" | "active" | "inactive";
   filterStatus: "all" | "AVAILABLE" | "LIMITED" | "SOLD_OUT" | "CONSULT_REQUIRED";
   filterDestinationId: string;
@@ -59,6 +62,19 @@ export type AdminProductsListViewProps = {
   onEditProduct: (product: Product) => void;
   /** 스마트스토어 HTML 생성 모달 (목록 작업 열) */
   onOpenSmartstoreHtml?: (product: Product) => void;
+  /** 블로그 텍스트 생성 모달 (목록 작업 열) */
+  onOpenBlogPost?: (product: Product) => void;
+  /** 이미지 ZIP 옵션 모달 열기 (메뉴·레거시 버튼) */
+  onOpenDownloadOptions?: (product: Product) => void;
+  /** preset 즉시 다운로드 (메뉴) */
+  onRunProductImageDownloadWithPreset?: (product: Product, preset: StoredImageDownloadPreset) => void;
+  downloadPresets?: StoredImageDownloadPreset[];
+  downloadDefaultPresetId?: string | null;
+  downloadRecentPresetIds?: string[];
+  /** 이미지 다운로드 preset 관리 모달 (상품 무관 공통 설정) */
+  onOpenDownloadPresetManager?: () => void;
+  /** 이미지 선택 후 부분 ZIP */
+  onOpenImageSelector?: (product: Product) => void;
   /** A4 유인물 빌더 모달 (목록 작업 열) */
   onOpenFlyer?: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;

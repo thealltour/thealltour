@@ -66,6 +66,7 @@ export default function AdminProductsListView({
   pendingMoveId,
   pendingToggleId,
   pendingDeleteId,
+  pendingDownloadId = null,
   filterActive,
   filterStatus,
   filterDestinationId,
@@ -84,6 +85,14 @@ export default function AdminProductsListView({
   onBulkDelete,
   onEditProduct,
   onOpenSmartstoreHtml,
+  onOpenBlogPost,
+  onOpenDownloadOptions,
+  onRunProductImageDownloadWithPreset,
+  downloadPresets,
+  downloadDefaultPresetId,
+  downloadRecentPresetIds,
+  onOpenDownloadPresetManager,
+  onOpenImageSelector,
   onOpenFlyer,
   onDeleteProduct,
   onQuickToggleActive,
@@ -238,13 +247,22 @@ export default function AdminProductsListView({
             {itOk ? "📅" : "❌"}
           </span>
         </td>
-        <td className="w-[182px] min-w-[182px] px-1 py-2 align-middle">
+        <td className="w-[218px] min-w-[218px] px-1 py-2 align-middle">
           <AdminProductsQuickActions
             product={product}
             pendingToggleId={pendingToggleId}
             pendingDeleteId={pendingDeleteId}
+            pendingDownloadId={pendingDownloadId}
             onEdit={onEditProduct}
             onSmartstoreHtml={onOpenSmartstoreHtml}
+            onBlogPost={onOpenBlogPost}
+            onOpenDownloadOptions={onOpenDownloadOptions}
+            onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
+            downloadPresets={downloadPresets}
+            downloadDefaultPresetId={downloadDefaultPresetId}
+            downloadRecentPresetIds={downloadRecentPresetIds}
+            onOpenDownloadPresetManager={onOpenDownloadPresetManager}
+            onOpenImageSelector={onOpenImageSelector}
             onFlyer={onOpenFlyer}
             onDelete={onDeleteProduct}
             onToggleActive={onQuickToggleActive}
@@ -359,8 +377,17 @@ export default function AdminProductsListView({
           product={product}
           pendingToggleId={pendingToggleId}
           pendingDeleteId={pendingDeleteId}
+          pendingDownloadId={pendingDownloadId}
           onEdit={onEditProduct}
           onSmartstoreHtml={onOpenSmartstoreHtml}
+          onBlogPost={onOpenBlogPost}
+          onOpenDownloadOptions={onOpenDownloadOptions}
+          onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
+          downloadPresets={downloadPresets}
+          downloadDefaultPresetId={downloadDefaultPresetId}
+          downloadRecentPresetIds={downloadRecentPresetIds}
+          onOpenDownloadPresetManager={onOpenDownloadPresetManager}
+          onOpenImageSelector={onOpenImageSelector}
           onFlyer={onOpenFlyer}
           onDelete={onDeleteProduct}
           onToggleActive={onQuickToggleActive}
@@ -540,7 +567,7 @@ export default function AdminProductsListView({
                   <th className="min-w-[2.75rem] whitespace-nowrap px-1 py-2.5 text-center text-base font-semibold" title="이미지·일정">
                     자산
                   </th>
-                  <th className="w-[182px] min-w-[182px] px-1 py-2.5 text-center text-base font-semibold">작업</th>
+                  <th className="w-[218px] min-w-[218px] px-1 py-2.5 text-center text-base font-semibold">작업</th>
                 </tr>
               </thead>
               <tbody>

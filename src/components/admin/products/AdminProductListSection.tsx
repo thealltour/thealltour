@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { Product } from "@/types/product";
+import type { StoredImageDownloadPreset } from "@/lib/images/imageDownloadPreset.storage";
 import AdminProductsListView from "@/components/admin/products/AdminProductsListView";
 import { useAdminProductsListController } from "@/components/admin/products/hooks/useAdminProductsListController";
 export type AdminProductListSectionProps = {
@@ -18,6 +19,21 @@ export type AdminProductListSectionProps = {
   onEditProduct: (product: Product) => void;
   /** 스마트스토어 HTML 생성 (목록 작업 열) */
   onOpenSmartstoreHtml?: (product: Product) => void;
+  /** 블로그 텍스트 생성 (목록 작업 열) */
+  onOpenBlogPost?: (product: Product) => void;
+  /** 이미지 ZIP 옵션 모달 (목록 작업 열) */
+  onOpenDownloadOptions?: (product: Product) => void;
+  /** preset 즉시 다운로드 */
+  onRunProductImageDownloadWithPreset?: (product: Product, preset: StoredImageDownloadPreset) => void;
+  downloadPresets?: StoredImageDownloadPreset[];
+  downloadDefaultPresetId?: string | null;
+  downloadRecentPresetIds?: string[];
+  /** preset 관리 모달 */
+  onOpenDownloadPresetManager?: () => void;
+  /** 이미지 선택 다운로드 */
+  onOpenImageSelector?: (product: Product) => void;
+  /** ZIP 다운로드 진행 중인 상품 id */
+  pendingDownloadId?: string | null;
   /** A4 유인물 빌더 (목록 작업 열) */
   onOpenFlyer?: (product: Product) => void;
   /** 새 상품 등록 링크 (없으면 버튼 비표시) */
@@ -32,6 +48,15 @@ export default function AdminProductListSection({
   onAfterDelete,
   onEditProduct,
   onOpenSmartstoreHtml,
+  onOpenBlogPost,
+  onOpenDownloadOptions,
+  onRunProductImageDownloadWithPreset,
+  downloadPresets,
+  downloadDefaultPresetId,
+  downloadRecentPresetIds,
+  onOpenDownloadPresetManager,
+  onOpenImageSelector,
+  pendingDownloadId,
   onOpenFlyer,
   newProductHref,
   registerRefresh,
@@ -69,6 +94,7 @@ export default function AdminProductListSection({
       pendingMoveId={ctrl.pendingMoveId}
       pendingToggleId={ctrl.pendingToggleId}
       pendingDeleteId={ctrl.pendingDeleteId}
+      pendingDownloadId={pendingDownloadId}
       onKeywordChange={ctrl.setKeyword}
       onSortChange={ctrl.handleSortChange}
       onPageChange={ctrl.movePage}
@@ -78,6 +104,14 @@ export default function AdminProductListSection({
       onBulkDelete={ctrl.handleBulkDeleteSelected}
       onEditProduct={onEditProduct}
       onOpenSmartstoreHtml={onOpenSmartstoreHtml}
+      onOpenBlogPost={onOpenBlogPost}
+      onOpenDownloadOptions={onOpenDownloadOptions}
+      onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
+      downloadPresets={downloadPresets}
+      downloadDefaultPresetId={downloadDefaultPresetId}
+      downloadRecentPresetIds={downloadRecentPresetIds}
+      onOpenDownloadPresetManager={onOpenDownloadPresetManager}
+      onOpenImageSelector={onOpenImageSelector}
       onOpenFlyer={onOpenFlyer}
       onDeleteProduct={ctrl.handleDelete}
       onQuickToggleActive={ctrl.quickToggleActive}

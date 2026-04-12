@@ -74,10 +74,38 @@ import AdminProductsCollectionCampaignsManager from "@/components/admin/products
 import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
 import AdminProductListSection from "@/components/admin/products/AdminProductListSection";
 import SmartstoreHtmlGenerateModal from "@/components/admin/products/modals/SmartstoreHtmlGenerateModal";
+import BlogPostGenerateModal from "@/components/admin/products/modals/BlogPostGenerateModal";
 import { FlyerGenerateModal } from "@/components/admin/products/modals/FlyerGenerateModal";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
 import { ADMIN_PRODUCTS_VIEW, ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
+import { downloadProductImagesAsZip } from "@/lib/images/downloadProductImagesAsZip";
+import type { ProductImageDownloadProgress } from "@/lib/images/imageDownloadProgress.types";
+import ProductImageDownloadProgressModal from "@/components/admin/products/modals/ProductImageDownloadProgressModal";
+import ProductImageDownloadOptionsModal from "@/components/admin/products/modals/ProductImageDownloadOptionsModal";
+import ProductImageDownloadPresetManagerModal from "@/components/admin/products/modals/ProductImageDownloadPresetManagerModal";
+import ProductImageSelectorModal from "@/components/admin/products/modals/ProductImageSelectorModal";
+import type { DownloadProductImagesOptions, ProductImageEntry } from "@/lib/images/imageDownload.types";
+import { collectProductImageEntries } from "@/lib/images/collectProductImageEntries";
+import {
+  getDefaultImageDownloadPresetCollection,
+  IMAGE_DOWNLOAD_OPTION_FALLBACK,
+  loadImageDownloadPresetCollection,
+  normalizeStoredImageDownloadPresetCollection,
+  saveImageDownloadPresetCollection,
+  storedPresetToDownloadOptions,
+  type StoredImageDownloadPresetCollection,
+} from "@/lib/images/imageDownloadPreset.storage";
+import {
+  createImageDownloadPreset,
+  deleteImageDownloadPreset,
+  duplicateImageDownloadPreset,
+  getDefaultImageDownloadPreset,
+  setDefaultImageDownloadPreset,
+  setQuickRunEnabled,
+  updateImageDownloadPreset,
+} from "@/lib/images/imageDownloadPreset.helpers";
+import { pushRecentPreset } from "@/lib/images/imageDownloadPreset.recent";
 import { buildRegionTree } from "@/lib/productTaxonomies";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import { ProductEditorShell } from "@/components/admin/products/editor/ProductEditorShell";
@@ -319,8 +347,40 @@ export default function AdminProductManager() {
   /** 상품명 추출 모달 */
   const [smartstoreHtmlModalOpen, setSmartstoreHtmlModalOpen] = useState(false);
   const [smartstoreHtmlProduct, setSmartstoreHtmlProduct] = useState<Product | null>(null);
+  const [blogPostModalOpen, setBlogPostModalOpen] = useState(false);
+  const [blogPostProduct, setBlogPostProduct] = useState<Product | null>(null);
   const [flyerModalOpen, setFlyerModalOpen] = useState(false);
   const [flyerProduct, setFlyerProduct] = useState<Product | null>(null);
+  const [pendingDownloadId, setPendingDownloadId] = useState<string | null>(null);
+  const [zipDownloadModalOpen, setZipDownloadModalOpen] = useState(false);
+  const [zipDownloadProductTitle, setZipDownloadProductTitle] = useState("");
+  const [downloadProgress, setDownloadProgress] = useState<ProductImageDownloadProgress | null>(null);
+  const zipDownloadBusyRef = useRef(false);
+  const [downloadOptionOpen, setDownloadOptionOpen] = useState(false);
+  const [downloadOptionProduct, setDownloadOptionProduct] = useState<Product | null>(null);
+  const [downloadPresetCollection, setDownloadPresetCollection] =
+    useState<StoredImageDownloadPresetCollection>(getDefaultImageDownloadPresetCollection);
+  const [presetManagerOpen, setPresetManagerOpen] = useState(false);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectorProduct, setSelectorProduct] = useState<Product | null>(null);
+  const [selectorEntries, setSelectorEntries] = useState<ProductImageEntry[]>([]);
+  const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(() => new Set());
+
+  const defaultDownloadPreset = useMemo(
+    () => getDefaultImageDownloadPreset(downloadPresetCollection),
+    [downloadPresetCollection],
+  );
+
+  const downloadOptionInitials = useMemo(() => {
+    if (defaultDownloadPreset) {
+      return {
+        format: defaultDownloadPreset.format,
+        quality: defaultDownloadPreset.quality,
+        namingMode: defaultDownloadPreset.namingMode,
+      };
+    }
+    return IMAGE_DOWNLOAD_OPTION_FALLBACK;
+  }, [defaultDownloadPreset]);
   const [showTitleExtractModal, setShowTitleExtractModal] = useState(false);
   const [titleExtractPaste, setTitleExtractPaste] = useState("");
   const [titleCandidates, setTitleCandidates] = useState<string[]>([]);
@@ -401,6 +461,137 @@ export default function AdminProductManager() {
 
   const openSectionAndScrollToRef = useRef(openSectionAndScrollTo);
   openSectionAndScrollToRef.current = openSectionAndScrollTo;
+
+  function commitPresetCollection(
+    produceNext: (
+      prev: StoredImageDownloadPresetCollection,
+    ) => StoredImageDownloadPresetCollection,
+  ) {
+    setDownloadPresetCollection((prev) => {
+      const raw = produceNext(prev);
+      const normalized = normalizeStoredImageDownloadPresetCollection(raw);
+      saveImageDownloadPresetCollection(normalized);
+      return normalized;
+    });
+  }
+
+  async function runProductImageDownload(
+    product: Product,
+    options: DownloadProductImagesOptions & { entries?: ProductImageEntry[] },
+  ): Promise<void> {
+    if (zipDownloadBusyRef.current) {
+      showToast("error", "다른 이미지 다운로드 작업이 진행 중입니다.");
+      return;
+    }
+    zipDownloadBusyRef.current = true;
+    setPendingDownloadId(product.id);
+    setZipDownloadProductTitle(product.title?.trim() ?? "");
+    setDownloadProgress({
+      productId: product.id,
+      stage: "idle",
+      total: 0,
+      completed: 0,
+      failed: 0,
+    });
+    setZipDownloadModalOpen(true);
+
+    const fmtLabel =
+      (options.format ?? "png") === "jpg"
+        ? `JPG, 품질 ${(options.quality ?? 0.92).toFixed(1)}`
+        : "PNG";
+
+    try {
+      const result = await downloadProductImagesAsZip(product, {
+        format: options.format ?? "png",
+        quality: options.quality,
+        namingMode: options.namingMode ?? "detailed",
+        onProgress: setDownloadProgress,
+        entries: options.entries,
+      });
+
+      if (result.total === 0) {
+        showToast("error", "다운로드할 이미지가 없습니다.");
+        await new Promise((r) => setTimeout(r, 800));
+        setZipDownloadModalOpen(false);
+        setDownloadProgress(null);
+        return;
+      }
+
+      if (result.failedCount > 0) {
+        showToast(
+          "success",
+          `이미지 ZIP 다운로드 완료 (${result.failedCount}장 실패) (${fmtLabel})`,
+        );
+      } else {
+        showToast("success", `이미지 ZIP 다운로드를 시작했습니다. (${fmtLabel})`);
+      }
+
+      await new Promise((r) => setTimeout(r, 1000));
+      setZipDownloadModalOpen(false);
+      setDownloadProgress(null);
+    } catch (e) {
+      console.error("[IMAGE_ZIP]", e);
+      showToast("error", "이미지 ZIP 생성 중 오류가 발생했습니다.");
+    } finally {
+      setPendingDownloadId(null);
+      zipDownloadBusyRef.current = false;
+    }
+  }
+
+  function handleOpenImageSelector(product: Product) {
+    if (zipDownloadBusyRef.current || pendingDownloadId) {
+      showToast("error", "다른 이미지 다운로드 작업이 진행 중입니다.");
+      return;
+    }
+    const entries = collectProductImageEntries(product);
+    if (entries.length === 0) {
+      showToast("error", "다운로드할 이미지가 없습니다.");
+      return;
+    }
+    setSelectorProduct(product);
+    setSelectorEntries(entries);
+    setSelectedImageIds(new Set(entries.map((e) => e.id)));
+    setSelectorOpen(true);
+  }
+
+  function handleSelectorToggle(id: string) {
+    setSelectedImageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleSelectorToggleAll() {
+    setSelectedImageIds((prev) => {
+      if (selectorEntries.length > 0 && prev.size === selectorEntries.length) {
+        return new Set();
+      }
+      return new Set(selectorEntries.map((e) => e.id));
+    });
+  }
+
+  function handleSelectorConfirm() {
+    const p = selectorProduct;
+    if (!p) return;
+    const selectedEntries = selectorEntries.filter((e) => selectedImageIds.has(e.id));
+    if (selectedEntries.length === 0) {
+      showToast("error", "선택된 이미지가 없습니다.");
+      return;
+    }
+    setSelectorOpen(false);
+    setSelectorProduct(null);
+    setSelectorEntries([]);
+    setSelectedImageIds(new Set());
+    const baseOpts = defaultDownloadPreset
+      ? storedPresetToDownloadOptions(defaultDownloadPreset)
+      : {
+          format: IMAGE_DOWNLOAD_OPTION_FALLBACK.format,
+          namingMode: IMAGE_DOWNLOAD_OPTION_FALLBACK.namingMode,
+        };
+    void runProductImageDownload(p, { ...baseOpts, entries: selectedEntries });
+  }
 
   /** 아코디언 헤더 클릭: 토글(열려 있으면 접기, 닫혀 있으면 열고 스크롤). */
   function toggleSection(sectionId: SectionId) {
@@ -640,6 +831,10 @@ export default function AdminProductManager() {
 
   useEffect(() => {
     loadNoticeTemplates();
+  }, []);
+
+  useEffect(() => {
+    setDownloadPresetCollection(loadImageDownloadPresetCollection());
   }, []);
 
   const urlEditingId = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID);
@@ -2001,6 +2196,34 @@ export default function AdminProductManager() {
             setSmartstoreHtmlProduct(product);
             setSmartstoreHtmlModalOpen(true);
           }}
+          onOpenBlogPost={(product) => {
+            setBlogPostProduct(product);
+            setBlogPostModalOpen(true);
+          }}
+          pendingDownloadId={pendingDownloadId}
+          onOpenDownloadOptions={(product) => {
+            if (zipDownloadBusyRef.current || pendingDownloadId) {
+              showToast("error", "다른 이미지 다운로드 작업이 진행 중입니다.");
+              return;
+            }
+            setDownloadOptionProduct(product);
+            setDownloadOptionOpen(true);
+          }}
+          onRunProductImageDownloadWithPreset={(product, preset) => {
+            if (zipDownloadBusyRef.current || pendingDownloadId) {
+              showToast("error", "다른 이미지 다운로드 작업이 진행 중입니다.");
+              return;
+            }
+            commitPresetCollection((prev) => pushRecentPreset(prev, preset.id));
+            void runProductImageDownload(product, storedPresetToDownloadOptions(preset));
+          }}
+          downloadPresets={downloadPresetCollection.presets}
+          downloadDefaultPresetId={downloadPresetCollection.defaultPresetId}
+          downloadRecentPresetIds={downloadPresetCollection.recentPresetIds}
+          onOpenDownloadPresetManager={() => {
+            setPresetManagerOpen(true);
+          }}
+          onOpenImageSelector={handleOpenImageSelector}
           onOpenFlyer={(product) => {
             setFlyerProduct(product);
             setFlyerModalOpen(true);
@@ -2019,6 +2242,17 @@ export default function AdminProductManager() {
         onCopied={() => showToast("success", "HTML이 복사되었습니다.")}
       />
 
+      <BlogPostGenerateModal
+        open={blogPostModalOpen}
+        productId={blogPostProduct?.id ?? null}
+        productTitle={blogPostProduct?.title?.trim() ?? ""}
+        onClose={() => {
+          setBlogPostModalOpen(false);
+          setBlogPostProduct(null);
+        }}
+        onCopied={() => showToast("success", "블로그 텍스트가 복사되었습니다.")}
+      />
+
       <FlyerGenerateModal
         open={flyerModalOpen}
         product={flyerProduct}
@@ -2032,6 +2266,86 @@ export default function AdminProductManager() {
       <ImageImportGuideModal
         open={showImageImportGuideModal}
         onClose={() => setShowImageImportGuideModal(false)}
+      />
+
+      <ProductImageDownloadProgressModal
+        open={zipDownloadModalOpen}
+        productTitle={zipDownloadProductTitle}
+        progress={downloadProgress}
+        onClose={() => setZipDownloadModalOpen(false)}
+      />
+
+      <ProductImageDownloadOptionsModal
+        open={downloadOptionOpen}
+        productTitle={downloadOptionProduct?.title?.trim() ?? ""}
+        initialFormat={downloadOptionInitials.format}
+        initialQuality={downloadOptionInitials.quality}
+        initialNamingMode={downloadOptionInitials.namingMode}
+        onClose={() => {
+          setDownloadOptionOpen(false);
+          setDownloadOptionProduct(null);
+        }}
+        onConfirm={(options) => {
+          const p = downloadOptionProduct;
+          if (!p) return;
+          setDownloadOptionOpen(false);
+          setDownloadOptionProduct(null);
+          void runProductImageDownload(p, options);
+        }}
+      />
+
+      <ProductImageSelectorModal
+        open={selectorOpen}
+        product={selectorProduct}
+        entries={selectorEntries}
+        selectedIds={selectedImageIds}
+        onToggle={handleSelectorToggle}
+        onToggleAll={handleSelectorToggleAll}
+        onClose={() => {
+          setSelectorOpen(false);
+          setSelectorProduct(null);
+          setSelectorEntries([]);
+          setSelectedImageIds(new Set());
+        }}
+        onConfirm={handleSelectorConfirm}
+      />
+
+      <ProductImageDownloadPresetManagerModal
+        open={presetManagerOpen}
+        presets={downloadPresetCollection.presets}
+        defaultPresetId={downloadPresetCollection.defaultPresetId}
+        quickRunEnabled={downloadPresetCollection.quickRunEnabled}
+        onClose={() => setPresetManagerOpen(false)}
+        requestConfirm={confirm}
+        onCreatePreset={(input) => {
+          commitPresetCollection((prev) => createImageDownloadPreset(prev, input));
+          showToast("success", "다운로드 preset이 저장되었습니다.");
+        }}
+        onUpdatePreset={(presetId, patch) => {
+          commitPresetCollection((prev) => updateImageDownloadPreset(prev, presetId, patch));
+          showToast("success", "다운로드 preset이 수정되었습니다.");
+        }}
+        onDeletePreset={(presetId) => {
+          commitPresetCollection((prev) => deleteImageDownloadPreset(prev, presetId));
+          showToast("success", "다운로드 preset이 삭제되었습니다.");
+        }}
+        onDuplicatePreset={(presetId) => {
+          commitPresetCollection((prev) => duplicateImageDownloadPreset(prev, presetId));
+          showToast("success", "다운로드 preset이 저장되었습니다.");
+        }}
+        onSetDefaultPreset={(presetId) => {
+          commitPresetCollection((prev) => setDefaultImageDownloadPreset(prev, presetId));
+          showToast("success", "기본 다운로드 preset이 변경되었습니다.");
+        }}
+        onSetQuickRunEnabled={(enabled) => {
+          commitPresetCollection((prev) => setQuickRunEnabled(prev, enabled));
+          showToast(
+            "success",
+            enabled
+              ? "기본 preset으로 바로 다운로드하도록 설정되었습니다."
+              : "다운로드 시 옵션 창을 먼저 열도록 변경되었습니다.",
+          );
+        }}
       />
 
       {toast ? (

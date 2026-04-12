@@ -29,6 +29,7 @@
     "@tanstack/react-query": "^5.90.21",
     "browser-image-compression": "^2.0.2",
     "html-to-image": "^1.11.13",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
     "pdfjs-dist": "^5.4.624",

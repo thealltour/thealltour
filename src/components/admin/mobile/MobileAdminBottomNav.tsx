@@ -2,17 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Home, MessageSquare, Star } from "lucide-react";
+import { Bell, Home, MessageSquare, Search, Star } from "lucide-react";
 import { MOBILE_ADMIN_PRIMARY_NAV } from "@/components/admin/mobile/mobileAdmin.constants";
+import { getAdminConsoleRelativePath } from "@/lib/adminConsolePaths";
 
 const ICONS = {
   home: Home,
+  landing: Search,
   inquiry: MessageSquare,
   bell: Bell,
   star: Star,
 } as const;
 
 function isNavItemActive(pathname: string, href: string): boolean {
+  const currentRel = getAdminConsoleRelativePath(pathname);
+  const targetRel = getAdminConsoleRelativePath(href);
+  if (currentRel != null && targetRel != null) {
+    if (currentRel === targetRel) return true;
+    if (targetRel !== "/" && currentRel.startsWith(`${targetRel}/`)) return true;
+  }
   if (pathname === href) return true;
   if (href === "/admin/reviews" && pathname.startsWith("/admin/reviews")) return true;
   if (href === "/theall_manager_only" && (pathname === "/theall_manager_only" || pathname === "/admin")) {

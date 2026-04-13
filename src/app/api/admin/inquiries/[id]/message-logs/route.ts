@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { InquiryMessageLog } from "@/types/inquiry";
 
 function mapRow(row: Record<string, unknown>): InquiryMessageLog {
@@ -29,7 +29,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { id: inquiryId } = await context.params;
   const limit = 10;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("inquiry_message_logs")
     .select("id, inquiry_id, recipient_phone, message, send_status, failure_reason, created_at, channel, provider, actor_name, provider_response")
     .eq("inquiry_id", inquiryId)

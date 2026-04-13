@@ -11,6 +11,7 @@ export const MOBILE_ADMIN_MAX_WIDTH_PX = 768;
 /** 메뉴/정책 키 (표시·로깅용) */
 export const MOBILE_ADMIN_MENU_KEYS = {
   DASHBOARD: "dashboard",
+  LANDINGS: "landings",
   INQUIRIES: "inquiries",
   NOTIFICATIONS: "notifications",
   REVIEWS: "reviews",
@@ -21,20 +22,21 @@ export type MobileAdminMenuKey = (typeof MOBILE_ADMIN_MENU_KEYS)[keyof typeof MO
 /** 정책상 허용되는 메뉴 키 집합 */
 export const MOBILE_ADMIN_ALLOWED_MENU_KEYS: readonly MobileAdminMenuKey[] = [
   MOBILE_ADMIN_MENU_KEYS.DASHBOARD,
+  MOBILE_ADMIN_MENU_KEYS.LANDINGS,
   MOBILE_ADMIN_MENU_KEYS.INQUIRIES,
   MOBILE_ADMIN_MENU_KEYS.NOTIFICATIONS,
   MOBILE_ADMIN_MENU_KEYS.REVIEWS,
 ] as const;
 
 /** 알림 하위 상세 등 */
-export const MOBILE_ADMIN_ALLOWED_PATH_PREFIXES = ["/notifications"] as const;
+export const MOBILE_ADMIN_ALLOWED_PATH_PREFIXES = ["/landings", "/notifications"] as const;
 
 export type MobileAdminNavItem = {
   key: MobileAdminMenuKey;
   label: string;
   href: string;
   /** lucide icon name 대신 컴포넌트는 BottomNav에서 매핑 */
-  icon: "home" | "inquiry" | "bell" | "star";
+  icon: "home" | "landing" | "inquiry" | "bell" | "star";
 };
 
 /** 하단 탭 — 실제 href. 리뷰는 목록 진입(`/admin/reviews`); 검토는 앱 내 링크로 이동 가능 */
@@ -44,6 +46,12 @@ export const MOBILE_ADMIN_PRIMARY_NAV: readonly MobileAdminNavItem[] = [
     label: "홈",
     href: "/theall_manager_only",
     icon: "home",
+  },
+  {
+    key: MOBILE_ADMIN_MENU_KEYS.LANDINGS,
+    label: "랜딩",
+    href: "/theall_manager_only/landings",
+    icon: "landing",
   },
   {
     key: MOBILE_ADMIN_MENU_KEYS.INQUIRIES,

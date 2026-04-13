@@ -8,6 +8,7 @@ type AdminHeaderProps = {
     | "dashboard"
     | "settings"
     | "products"
+    | "landings"
     | "inquiries"
     | "members"
     | "rewards"

@@ -6,6 +6,7 @@ import type { AdminRole } from "@/types/adminRole";
 import {
   LayoutDashboard,
   Package,
+  Search,
   MessageSquare,
   Users,
   Settings,
@@ -43,6 +44,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: Package,
     section: "main",
     mainKey: "product",
+    roles: ["admin", "manager"],
+  },
+  {
+    href: "/theall_manager_only/landings",
+    label: "검색/유입 랜딩 관리",
+    icon: Search,
+    section: "main",
+    mainKey: "landings",
     roles: ["admin", "manager"],
   },
   {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { appendInquiryActivityLog } from "@/lib/inquiries/inquiryActivityLog";
 import {
   AligoRelayError,
@@ -137,7 +138,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const providerJson = jsonSafe(providerResponse) ?? (providerResponse === null ? null : { raw: providerResponse });
 
-  const { data: inserted, error: insertErr } = await supabase
+  const { data: inserted, error: insertErr } = await supabaseAdmin
     .from("inquiry_message_logs")
     .insert({
       inquiry_id: inquiryId,

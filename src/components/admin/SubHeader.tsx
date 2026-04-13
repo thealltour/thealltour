@@ -46,6 +46,7 @@ function isReviewTabActive(href: string, pathname: string): boolean {
 export const menuMap = {
   dashboard: ["운영 현황", "통계"],
   product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 지역카드", "메인 테마카드", "메인 추천상품 관리"],
+  landings: [],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
   inquiry_dashboard: ["전체 문의", "미처리 문의", "운영 대시보드"],
   member: ["회원 목록"],
@@ -64,6 +65,7 @@ export type MainMenuKey = keyof typeof menuMap;
 const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   dashboard: "대시보드",
   product: "상품 관리",
+  landings: "검색/유입 랜딩 관리",
   inquiry: "문의 관리",
   inquiry_dashboard: "문의 운영",
   member: "회원 관리",

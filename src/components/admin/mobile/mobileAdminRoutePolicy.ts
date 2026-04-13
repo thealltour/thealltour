@@ -37,6 +37,7 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   if (relativePath == null) return "관리자";
   const path = relativePath === "" ? "/" : relativePath;
   if (path === "/") return "대시보드";
+  if (path === "/landings" || path.startsWith("/landings/")) return "검색/유입 랜딩 관리";
   if (path === "/inquiries" || path.startsWith("/inquiries/")) return "문의 관리";
   if (path.startsWith("/notifications")) return "알림";
   if (path === "/reviews/moderation") return "리뷰 검토";

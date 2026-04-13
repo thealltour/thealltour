@@ -53,10 +53,13 @@ function pickMissingColumn(message: string): string | null {
   return m ? m[1] : null;
 }
 
+const INSERT_COLUMN_FALLBACK_MAX = 24;
+
 async function insertWithUnknownColumnFallback(payload: Record<string, unknown>): Promise<SectionRow> {
   const attempt: Record<string, unknown> = { ...payload };
+  let lastErrorMessage = "";
   // PostgREST 에러 메시지에서 존재하지 않는 컬럼을 제거하며 재시도
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < INSERT_COLUMN_FALLBACK_MAX; i += 1) {
     const { data, error } = await supabase
       .from("home_curated_sections")
       .insert(attempt)
@@ -65,11 +68,16 @@ async function insertWithUnknownColumnFallback(payload: Record<string, unknown>)
     if (!error && data) return data as SectionRow;
     if (!error && !data) throw new Error("랜딩 생성 결과를 확인할 수 없습니다.");
     if (!error) throw new Error("랜딩 생성 중 알 수 없는 오류가 발생했습니다.");
-    const missing = pickMissingColumn(error.message ?? "");
-    if (!missing || !(missing in attempt)) throw new Error(error.message);
+    lastErrorMessage = error.message ?? "";
+    const missing = pickMissingColumn(lastErrorMessage);
+    if (!missing || !(missing in attempt)) throw new Error(lastErrorMessage);
     delete attempt[missing];
   }
-  throw new Error("랜딩 생성에 실패했습니다.");
+  throw new Error(
+    lastErrorMessage
+      ? `랜딩 생성에 실패했습니다. (${lastErrorMessage})`
+      : "랜딩 생성에 실패했습니다.",
+  );
 }
 
 async function updateWithUnknownColumnFallback(
@@ -77,7 +85,8 @@ async function updateWithUnknownColumnFallback(
   payload: Record<string, unknown>,
 ): Promise<SectionRow | null> {
   const attempt: Record<string, unknown> = { ...payload };
-  for (let i = 0; i < 8; i += 1) {
+  let lastErrorMessage = "";
+  for (let i = 0; i < INSERT_COLUMN_FALLBACK_MAX; i += 1) {
     const { data, error } = await supabase
       .from("home_curated_sections")
       .update(attempt)
@@ -85,11 +94,16 @@ async function updateWithUnknownColumnFallback(
       .select("*")
       .maybeSingle();
     if (!error) return data ? (data as SectionRow) : null;
-    const missing = pickMissingColumn(error.message ?? "");
-    if (!missing || !(missing in attempt)) throw new Error(error.message);
+    lastErrorMessage = error.message ?? "";
+    const missing = pickMissingColumn(lastErrorMessage);
+    if (!missing || !(missing in attempt)) throw new Error(lastErrorMessage);
     delete attempt[missing];
   }
-  throw new Error("랜딩 수정에 실패했습니다.");
+  throw new Error(
+    lastErrorMessage
+      ? `랜딩 수정에 실패했습니다. (${lastErrorMessage})`
+      : "랜딩 수정에 실패했습니다.",
+  );
 }
 
 async function ensureHomeCuratedSettingId(): Promise<string> {

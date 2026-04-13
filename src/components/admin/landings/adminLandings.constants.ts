@@ -13,6 +13,7 @@ export const ADMIN_LANDINGS_FUTURE_EDIT_ROUTE = "/theall_manager_only/landings/[
 export const ADMIN_LANDINGS_PREVIEW_ROUTE = "/theall_manager_only/landings/[id]/preview";
 export const ADMIN_LANDINGS_GENERATE_FROM_TAXONOMY_ROUTE =
   "/theall_manager_only/landings/generate-from-taxonomy";
+export const ADMIN_LANDINGS_ANALYTICS_ROUTE = "/theall_manager_only/landings/analytics";
 export const ADMIN_LANDINGS_ROUTE = "/theall_manager_only/landings";
 
 export const ADMIN_LANDINGS_SUMMARY_DEFAULT: AdminLandingSummary = {
@@ -31,6 +32,7 @@ export const LANDING_STATUS_LABELS: Record<AdminLandingStatus, string> = {
 export const LANDING_TEMPLATE_LABELS: Partial<Record<AdminLandingTemplateType, string>> = {
   destination_consulting: "지역 상담형",
   theme_consulting: "테마 상담형",
+  product_line_consulting: "상품군 상담형",
   recommended_collection: "추천 컬렉션형",
   custom: "커스텀",
 };
@@ -38,6 +40,7 @@ export const LANDING_TEMPLATE_LABELS: Partial<Record<AdminLandingTemplateType, s
 export const LANDING_TEMPLATE_OPTIONS: { value: AdminLandingTemplateType; label: string }[] = [
   { value: "destination_consulting", label: "목적지 상담형" },
   { value: "theme_consulting", label: "테마 상담형" },
+  { value: "product_line_consulting", label: "상품군 상담형" },
   { value: "recommended_collection", label: "추천 컬렉션형" },
   { value: "custom", label: "사용자 정의" },
 ];

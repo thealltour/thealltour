@@ -48,7 +48,29 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   try {
+    const existing = await getAdminLandingById(id);
+    if (!existing) return NextResponse.json({ error: "Landing not found" }, { status: 404 });
+
     const payload = sanitizeLandingInput(body);
+    if (payload.status === "published" && existing.status !== "published") {
+      return NextResponse.json(
+        {
+          error: "공개하려면 Publish API(POST .../publish)를 사용하세요.",
+          code: "USE_PUBLISH_ENDPOINT",
+        },
+        { status: 400 },
+      );
+    }
+    if (payload.status === "draft" && existing.status === "published") {
+      return NextResponse.json(
+        {
+          error: "비공개하려면 Unpublish API(POST .../unpublish)를 사용하세요.",
+          code: "USE_UNPUBLISH_ENDPOINT",
+        },
+        { status: 400 },
+      );
+    }
+
     const item = await updateAdminLanding(id, payload);
     if (!item) return NextResponse.json({ error: "Landing not found" }, { status: 404 });
     return NextResponse.json({ item });

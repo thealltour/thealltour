@@ -1,4 +1,9 @@
 import type { Metadata } from "next";
+import {
+  buildOgBrandFallbackMetadata,
+  buildOgMetadataFromSeoData,
+} from "@/lib/seo/buildOgPageMetadata";
+import { getProductThemeOgPageSeo } from "@/lib/products/productRegionThemeOgPageSeo";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTaxonomyNameBySlug, parseThemeTokens } from "@/lib/productTaxonomies";
@@ -8,7 +13,6 @@ import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
-import { loadProductThemeLandingMetadata } from "@/lib/landing/productSlugLandingMetadata";
 import { loadProductsThemeLandingPageBundle } from "@/lib/landing/loadProductsSlugLandingPage";
 import { loadProductsListingContextForThemeDetail } from "@/lib/products/loadProductsListingContext";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
@@ -34,7 +38,24 @@ type ThemeLandingProps = {
 export async function generateMetadata({ params }: ThemeLandingProps): Promise<Metadata> {
   const { slug } = await params;
   const trimmed = slug?.trim() ?? "";
-  return loadProductThemeLandingMetadata(trimmed);
+  if (!trimmed) {
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: "/products",
+      documentTitle: "테마별 여행",
+      description: "더올투어 테마별 맞춤 여행 상품을 확인해 보세요.",
+      useAbsolutePageTitle: true,
+    });
+  }
+  const seo = await getProductThemeOgPageSeo(trimmed);
+  if (!seo) {
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: "/products",
+      documentTitle: "테마별 여행",
+      description: "더올투어 테마별 맞춤 여행 상품을 확인해 보세요.",
+      useAbsolutePageTitle: true,
+    });
+  }
+  return buildOgMetadataFromSeoData(seo);
 }
 
 /**

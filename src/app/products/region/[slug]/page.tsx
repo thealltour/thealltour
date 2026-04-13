@@ -1,4 +1,9 @@
 import type { Metadata } from "next";
+import {
+  buildOgBrandFallbackMetadata,
+  buildOgMetadataFromSeoData,
+} from "@/lib/seo/buildOgPageMetadata";
+import { getProductRegionOgPageSeo } from "@/lib/products/productRegionThemeOgPageSeo";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTaxonomyNameBySlug } from "@/lib/productTaxonomies";
@@ -8,7 +13,6 @@ import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { SectionHeader } from "@/components/layout/SectionHeader";
-import { loadProductRegionLandingMetadata } from "@/lib/landing/productSlugLandingMetadata";
 import { loadProductsRegionLandingPageBundle } from "@/lib/landing/loadProductsSlugLandingPage";
 import { loadProductsListingContextForDestinationDetail } from "@/lib/products/loadProductsListingContext";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
@@ -34,7 +38,24 @@ type RegionLandingProps = {
 export async function generateMetadata({ params }: RegionLandingProps): Promise<Metadata> {
   const { slug } = await params;
   const trimmed = slug?.trim() ?? "";
-  return loadProductRegionLandingMetadata(trimmed);
+  if (!trimmed) {
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: "/products",
+      documentTitle: "지역별 여행",
+      description: "더올투어 지역별 맞춤 골프·테마 여행 상품을 확인해 보세요.",
+      useAbsolutePageTitle: true,
+    });
+  }
+  const seo = await getProductRegionOgPageSeo(trimmed);
+  if (!seo) {
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: "/products",
+      documentTitle: "지역별 여행",
+      description: "더올투어 지역별 맞춤 골프·테마 여행 상품을 확인해 보세요.",
+      useAbsolutePageTitle: true,
+    });
+  }
+  return buildOgMetadataFromSeoData(seo);
 }
 
 /**

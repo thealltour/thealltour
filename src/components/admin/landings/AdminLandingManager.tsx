@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import AdminLandingEmptyState from "@/components/admin/landings/AdminLandingEmptyState";
 import AdminLandingListTable from "@/components/admin/landings/AdminLandingListTable";
-import { listAdminLandingsClient } from "@/components/admin/landings/api/adminLandings.client";
+import {
+  AdminLandingPublishClientError,
+  listAdminLandingsClient,
+  publishAdminLandingClient,
+  unpublishAdminLandingClient,
+} from "@/components/admin/landings/api/adminLandings.client";
 import {
   ADMIN_LANDINGS_GENERATE_FROM_TAXONOMY_ROUTE,
   ADMIN_LANDINGS_EMPTY_DESCRIPTION,
@@ -25,6 +30,7 @@ export default function AdminLandingManager() {
   const [items, setItems] = useState<AdminLandingListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [rowBusyId, setRowBusyId] = useState<string | null>(null);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -65,13 +71,44 @@ export default function AdminLandingManager() {
     router.push(ADMIN_LANDINGS_GENERATE_FROM_TAXONOMY_ROUTE);
   }
 
+  async function handlePublishRow(item: AdminLandingListItem) {
+    setRowBusyId(item.id);
+    try {
+      await publishAdminLandingClient(item.id);
+      showToast("success", `「${item.title}」랜딩을 공개했습니다.`);
+      await loadItems();
+    } catch (e) {
+      if (e instanceof AdminLandingPublishClientError) {
+        const summary = e.issues.map((i) => i.message).join(" · ");
+        showToast("error", summary || "Publish 검증에 실패했습니다. 편집 화면에서 상세 사유를 확인하세요.");
+        return;
+      }
+      showToast("error", e instanceof Error ? e.message : "Publish에 실패했습니다.");
+    } finally {
+      setRowBusyId(null);
+    }
+  }
+
+  async function handleUnpublishRow(item: AdminLandingListItem) {
+    setRowBusyId(item.id);
+    try {
+      await unpublishAdminLandingClient(item.id);
+      showToast("success", `「${item.title}」랜딩을 비공개했습니다.`);
+      await loadItems();
+    } catch (e) {
+      showToast("error", e instanceof Error ? e.message : "Unpublish에 실패했습니다.");
+    } finally {
+      setRowBusyId(null);
+    }
+  }
+
   return (
     <section className="space-y-6 rounded-2xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">랜딩 목록</p>
           <p className="mt-1 text-xs text-[var(--text-muted)]">
-            후속 PR에서 DB/API/편집기/미리보기가 연결됩니다.
+            Publish는 검증을 통과한 경우에만 공개되며, Unpublish 시 즉시 공개 URL에서 제외됩니다.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -132,11 +169,18 @@ export default function AdminLandingManager() {
       ) : (
         <AdminLandingListTable
           items={items}
+          busyId={rowBusyId}
           onEdit={(item) => {
             router.push(buildAdminLandingEditHref(item.id));
           }}
           onPreview={(item) => {
             router.push(buildAdminLandingPreviewHref(item.id));
+          }}
+          onPublish={(item) => {
+            void handlePublishRow(item);
+          }}
+          onUnpublish={(item) => {
+            void handleUnpublishRow(item);
           }}
         />
       )}

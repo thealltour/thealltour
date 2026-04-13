@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const payload = sanitizeLandingInput(body);
+    const payload = sanitizeLandingInput({ ...body, status: "draft" });
     const item = await createAdminLanding(payload);
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {

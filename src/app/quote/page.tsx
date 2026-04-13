@@ -10,6 +10,8 @@ type QuotePageProps = {
     product_id?: string;
     product_title?: string;
     source_path?: string;
+    landing_slug?: string;
+    quote_category?: string;
   }>;
 };
 
@@ -63,6 +65,8 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
               product_id: query.product_id,
               product_title: productSummary?.productTitle ?? query.product_title,
               source_path: query.source_path,
+              landing_slug: query.landing_slug,
+              quote_category: query.quote_category,
             }}
             productSummary={productSummary}
           />

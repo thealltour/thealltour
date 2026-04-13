@@ -5,11 +5,12 @@ import type {
   LandingGenerationRequestItem,
   LandingGenerationResult,
   LandingGenerationResultEntry,
+  LandingTaxonomyType,
 } from "@/types/adminLanding";
 
 function toSummary(item: {
   taxonomyId: string;
-  taxonomyType: "destination" | "theme";
+  taxonomyType: LandingTaxonomyType;
   taxonomyName: string;
   landingId?: string | null;
   landingSlug?: string | null;
@@ -26,7 +27,7 @@ function toSummary(item: {
 }
 
 export async function getLandingGenerationCandidates(input: {
-  taxonomyType?: "all" | "destination" | "theme";
+  taxonomyType?: "all" | LandingTaxonomyType;
   alreadyGenerated?: boolean | null;
 }): Promise<LandingGenerationCandidatesResponse> {
   const items = await listLandingGenerationCandidates({

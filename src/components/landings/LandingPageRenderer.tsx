@@ -1,6 +1,7 @@
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { LandingSectionRenderer } from "@/components/landings/LandingSectionRenderer";
+import { LandingViewTracker } from "@/components/landings/LandingViewTracker";
 import type { AdminLandingDetail, AdminLandingSection } from "@/types/adminLanding";
 
 type LandingPageRendererProps = {
@@ -20,6 +21,7 @@ export default function LandingPageRenderer({ landing, mode, sourcePath }: Landi
 
   return (
     <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
+      {mode === "public" ? <LandingViewTracker landing={landing} sourcePath={sourcePath} /> : null}
       <PageContainer size="wide" className="flex flex-col gap-8">
         {sections.length > 0 ? (
           sections.map((section) => (

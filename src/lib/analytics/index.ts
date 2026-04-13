@@ -22,3 +22,15 @@ export { saveAnalyticsEvent } from "./saveAnalyticsEvent";
 export type { SaveAnalyticsEventResult } from "./saveAnalyticsEvent";
 
 export { trackClientEvent } from "./trackClientEvent";
+
+export { trackClientAnalytics } from "./trackEvent";
+export {
+  landingSlugFromSourcePath,
+  ensureLandingSourcePath,
+} from "./createAnalyticsPayload";
+export {
+  trackLandingView,
+  trackLandingCtaClick,
+  trackQuoteView,
+} from "./trackLandingQuoteFunnel";
+export { persistAnalyticsEventAdmin } from "./persistAnalyticsEventAdmin";

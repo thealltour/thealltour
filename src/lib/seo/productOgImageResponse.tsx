@@ -2,7 +2,8 @@ import { ImageResponse } from "next/og";
 import { BrandOgCard } from "@/components/seo/BrandOgCard";
 import { ProductOgCard } from "@/components/seo/ProductOgCard";
 import { getProductSeoData } from "@/lib/products/getProductSeoData";
-import { fetchOgImageAsDataUrl } from "@/lib/seo/fetchOgImageAsDataUrl";
+import { mapProductSeoToOgPage } from "@/lib/seo/mapProductSeoToOgPage";
+import { fetchOgHeroDataUrl } from "@/lib/seo/fetchOgHeroDataUrl";
 import { loadTheallLogoDataUrl } from "@/lib/seo/loadOgLogo";
 
 const size = { width: 1200, height: 630 } as const;
@@ -12,9 +13,9 @@ const size = { width: 1200, height: 630 } as const;
  */
 export async function getProductOpenGraphImageResponse(id: string): Promise<ImageResponse> {
   const logoDataUrl = await loadTheallLogoDataUrl();
-  const seo = await getProductSeoData(id);
+  const productSeo = await getProductSeoData(id);
 
-  if (!seo) {
+  if (!productSeo) {
     return new ImageResponse(
       (
         <BrandOgCard
@@ -27,24 +28,21 @@ export async function getProductOpenGraphImageResponse(id: string): Promise<Imag
     );
   }
 
-  let heroDataUrl: string | null = null;
-  for (const url of seo.imageCandidates) {
-    heroDataUrl = await fetchOgImageAsDataUrl(url);
-    if (heroDataUrl) break;
-  }
+  const seo = mapProductSeoToOgPage(productSeo);
+  const heroDataUrl = await fetchOgHeroDataUrl(seo);
 
   const themeLine =
-    seo.themeNames.length > 0 ? seo.themeNames.slice(0, 3).join(" · ") : null;
+    productSeo.themeNames.length > 0 ? productSeo.themeNames.slice(0, 3).join(" · ") : null;
 
   return new ImageResponse(
     (
       <ProductOgCard
         logoDataUrl={logoDataUrl}
-        productTitle={seo.name}
-        regionLine={seo.regionName}
+        productTitle={productSeo.name?.trim() || "여행 상품"}
+        regionLine={productSeo.regionName ?? null}
         themeLine={themeLine}
-        summaryLine={seo.ogCardSubtitle}
-        priceLabel={seo.priceLabel}
+        summaryLine={productSeo.ogCardSubtitle ?? null}
+        priceLabel={productSeo.priceLabel ?? null}
         heroImageDataUrl={heroDataUrl}
       />
     ),

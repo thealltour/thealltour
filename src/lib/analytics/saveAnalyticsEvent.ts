@@ -28,6 +28,10 @@ export function toRow(payload: AnalyticsPayload): Record<string, unknown> {
     query: payload.query ?? null,
     result_count: payload.resultCount ?? null,
     product_id: payload.productId ?? null,
+    source_path: payload.sourcePath ?? null,
+    landing_slug: payload.landingSlug ?? null,
+    template_type: payload.templateType ?? null,
+    quote_category: payload.quoteCategory ?? null,
     metadata: payload.metadata ?? null,
     occurred_at: payload.occurredAt,
   };

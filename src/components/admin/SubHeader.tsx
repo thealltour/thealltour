@@ -46,7 +46,7 @@ function isReviewTabActive(href: string, pathname: string): boolean {
 export const menuMap = {
   dashboard: ["운영 현황", "통계"],
   product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 지역카드", "메인 테마카드", "메인 추천상품 관리"],
-  landings: [],
+  landings: ["랜딩 목록", "taxonomy 기반 생성", "성과 분석"],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
   inquiry_dashboard: ["전체 문의", "미처리 문의", "운영 대시보드"],
   member: ["회원 목록"],
@@ -163,6 +163,15 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         initial = "미처리 문의";
       } else {
         initial = "전체 문의";
+      }
+    }
+    if (activeMenu === "landings") {
+      if (pathname.includes("/landings/analytics")) {
+        initial = "성과 분석";
+      } else if (pathname.includes("/landings/generate-from-taxonomy")) {
+        initial = "taxonomy 기반 생성";
+      } else {
+        initial = "랜딩 목록";
       }
     }
 
@@ -336,6 +345,18 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         return;
       }
       router.push("/theall_manager_only/inquiries");
+      return;
+    }
+    if (activeMenu === "landings") {
+      if (label === "taxonomy 기반 생성") {
+        router.push("/theall_manager_only/landings/generate-from-taxonomy");
+        return;
+      }
+      if (label === "성과 분석") {
+        router.push("/theall_manager_only/landings/analytics");
+        return;
+      }
+      router.push("/theall_manager_only/landings");
     }
   }
 

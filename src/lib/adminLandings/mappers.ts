@@ -67,6 +67,9 @@ export function mapRecordToAdminLandingDetail(record: AdminLandingRecord): Admin
     seoDescription: record.seo_description,
     sourcePath: resolveSourcePath(record, slug),
     quoteCategory: record.quote_category,
+    sourceTaxonomyId: record.source_taxonomy_id,
+    sourceTaxonomyType: record.source_taxonomy_type,
+    sourceTaxonomySlug: record.source_taxonomy_slug,
     updatedAt: resolveUpdatedAt(record),
     publishedAt: resolvePublishedAt(record),
   };

@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { SectionBlock } from "@/components/layout/SectionBlock";
+import { trackLandingCtaClick } from "@/lib/analytics/trackLandingQuoteFunnel";
 import type { AdminLandingDetail, AdminLandingSection } from "@/types/adminLanding";
 
 type LandingCtaSectionProps = {
@@ -12,6 +15,7 @@ function buildQuoteHref(landing: AdminLandingDetail, sourcePath: string): string
   const params = new URLSearchParams();
   params.set("source_path", sourcePath);
   params.set("product_title", landing.title);
+  params.set("landing_slug", landing.slug);
   if (landing.quoteCategory) {
     params.set("quote_category", landing.quoteCategory);
   }
@@ -32,6 +36,9 @@ export default function LandingCtaSection({ landing, section, sourcePath }: Land
       <div className="mt-4">
         <Link
           href={href}
+          onClick={() => {
+            trackLandingCtaClick(landing, sourcePath);
+          }}
           className="inline-flex items-center rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] hover:opacity-90"
         >
           상담 문의하기

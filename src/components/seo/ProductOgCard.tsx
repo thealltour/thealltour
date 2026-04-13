@@ -1,7 +1,15 @@
 /**
  * 상품 상세 OG 전용 카드 (next/og / Satori).
- * 대표 이미지 유무에 따라 레이아웃 분기 — 실패 시에도 텍스트만으로 렌더.
  */
+
+import {
+  OG_ACCENT_SOFT,
+  OG_MUTED,
+  OG_TEXT,
+  OgCardShell,
+  ogClipOneLine,
+  ogSplitTitle,
+} from "@/components/seo/ogCardShared";
 
 export type ProductOgCardProps = {
   productTitle: string;
@@ -13,189 +21,173 @@ export type ProductOgCardProps = {
   heroImageDataUrl?: string | null;
 };
 
-const FONT =
-  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif';
-const PANEL_BG =
-  "linear-gradient(160deg, #0b1220 0%, #0f172a 42%, #1a2332 100%)";
-const ACCENT_BAR = "linear-gradient(90deg, #ea580c, #fb923c, #ea580c)";
-const TEXT = "#f8fafc";
-const MUTED = "#94a3b8";
+function pickMetaLines(
+  regionLine: string | null | undefined,
+  themeLine: string | null | undefined,
+  summaryLine: string | null | undefined,
+): { eyebrow: string | null; detail: string | null } {
+  const region = regionLine?.trim() || null;
+  const theme = themeLine?.trim() || null;
+  const summary = summaryLine?.trim() || null;
 
-function clipTitle(s: string, max = 68): string {
-  const t = s.trim();
-  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+  if (region) {
+    const detail = theme || summary || null;
+    return { eyebrow: region, detail: detail ? ogClipOneLine(detail, 72) : null };
+  }
+  if (theme) {
+    const detail = summary ? ogClipOneLine(summary, 72) : null;
+    return { eyebrow: theme, detail };
+  }
+  if (summary) return { eyebrow: null, detail: ogClipOneLine(summary, 72) };
+  return { eyebrow: null, detail: null };
 }
 
-function clipLine(s: string, max = 96): string {
-  const t = s.replace(/\s+/g, " ").trim();
-  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
-}
+type ContentBlockProps = {
+  productTitle: string;
+  eyebrow: string | null;
+  detail: string | null;
+  priceLabel: string | null;
+  hasHero: boolean;
+};
 
-function TextPanel({
-  productTitle,
-  regionLine,
-  themeLine,
-  summaryLine,
-  priceLabel,
-  logoDataUrl,
-  compactPadding,
-}: Omit<ProductOgCardProps, "heroImageDataUrl"> & { compactPadding: boolean }) {
-  const title = clipTitle(productTitle);
-  const metaParts = [regionLine?.trim(), themeLine?.trim()].filter(Boolean) as string[];
-  const metaRow = metaParts.length ? clipLine(metaParts.join(" · "), 72) : null;
-  const summary = summaryLine?.trim() ? clipLine(summaryLine.trim(), 120) : null;
-  const titleSize = compactPadding ? 38 : 48;
-  const pad = compactPadding ? "40px 48px 44px 52px" : "48px 72px 56px";
+function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHero }: ContentBlockProps) {
+  const { line1, line2 } = ogSplitTitle(productTitle);
+  const priceText = priceLabel?.trim() || null;
+  const showConsultBadge = !priceText;
 
   return (
     <div
       style={{
-        flex: 1,
         display: "flex",
         flexDirection: "column",
-        minWidth: 0,
-        background: PANEL_BG,
+        alignItems: "stretch",
+        justifyContent: "flex-end",
+        maxWidth: hasHero ? 920 : 980,
       }}
     >
-      <div style={{ height: 5, width: "100%", flexShrink: 0, background: ACCENT_BAR }} />
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: pad,
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
-          {logoDataUrl ? (
-            <img
-              src={logoDataUrl}
-              alt=""
-              height={36}
-              style={{ height: 36, width: "auto", objectFit: "contain", marginRight: 16 }}
-            />
-          ) : null}
-          <span style={{ fontSize: 22, fontWeight: 700, color: TEXT }}>더올투어</span>
-        </div>
-
+      {eyebrow ? (
         <div
           style={{
-            fontSize: titleSize,
-            fontWeight: 800,
-            color: TEXT,
-            lineHeight: 1.15,
-            letterSpacing: "-0.02em",
-            marginBottom: metaRow || summary || priceLabel ? 14 : 0,
+            fontSize: 20,
+            fontWeight: 600,
+            color: hasHero ? "rgba(226, 232, 240, 0.92)" : OG_MUTED,
+            letterSpacing: "0.02em",
+            marginBottom: 12,
+            textShadow: hasHero ? "0 1px 12px rgba(0,0,0,0.65)" : undefined,
           }}
         >
-          {title}
+          {ogClipOneLine(eyebrow, 56)}
         </div>
+      ) : null}
 
-        {metaRow ? (
-          <div style={{ fontSize: 22, fontWeight: 600, color: MUTED, marginBottom: summary ? 10 : 0 }}>
-            {metaRow}
-          </div>
-        ) : null}
-
-        {summary ? (
-          <div style={{ fontSize: 20, fontWeight: 500, color: MUTED, lineHeight: 1.4 }}>{summary}</div>
-        ) : null}
-
-        {priceLabel?.trim() ? (
-          <div style={{ marginTop: 18, fontSize: 26, fontWeight: 700, color: "#fdba74" }}>
-            {priceLabel.trim()}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          marginBottom: detail ? 10 : priceText || showConsultBadge ? 14 : 0,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 54,
+            fontWeight: 800,
+            color: OG_TEXT,
+            lineHeight: 1.12,
+            letterSpacing: "-0.03em",
+            textShadow: hasHero ? "0 2px 24px rgba(0,0,0,0.55)" : undefined,
+          }}
+        >
+          {line1}
+        </div>
+        {line2 ? (
+          <div
+            style={{
+              fontSize: 54,
+              fontWeight: 800,
+              color: OG_TEXT,
+              lineHeight: 1.12,
+              letterSpacing: "-0.03em",
+              marginTop: 4,
+              textShadow: hasHero ? "0 2px 24px rgba(0,0,0,0.55)" : undefined,
+            }}
+          >
+            {line2}
           </div>
         ) : null}
       </div>
+
+      {detail ? (
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: 500,
+            color: hasHero ? "rgba(203, 213, 225, 0.95)" : OG_MUTED,
+            lineHeight: 1.35,
+            marginBottom: priceText || showConsultBadge ? 16 : 0,
+            textShadow: hasHero ? "0 1px 14px rgba(0,0,0,0.6)" : undefined,
+          }}
+        >
+          {detail}
+        </div>
+      ) : null}
+
+      {priceText ? (
+        <div
+          style={{
+            alignSelf: "flex-start",
+            marginTop: detail ? 0 : 4,
+            padding: "10px 20px",
+            borderRadius: 10,
+            background: "rgba(234, 88, 12, 0.22)",
+            border: "1px solid rgba(251, 146, 60, 0.38)",
+            fontSize: 24,
+            fontWeight: 700,
+            color: OG_ACCENT_SOFT,
+            letterSpacing: "-0.02em",
+            textShadow: hasHero ? "0 1px 10px rgba(0,0,0,0.45)" : undefined,
+          }}
+        >
+          {priceText}
+        </div>
+      ) : showConsultBadge ? (
+        <div
+          style={{
+            alignSelf: "flex-start",
+            marginTop: detail ? 0 : 4,
+            padding: "8px 18px",
+            borderRadius: 10,
+            background: "rgba(248, 250, 252, 0.08)",
+            border: "1px solid rgba(255, 255, 255, 0.16)",
+            fontSize: 19,
+            fontWeight: 600,
+            color: "rgba(226, 232, 240, 0.88)",
+            letterSpacing: "-0.01em",
+            textShadow: hasHero ? "0 1px 10px rgba(0,0,0,0.45)" : undefined,
+          }}
+        >
+          맞춤 견적 · 상담
+        </div>
+      ) : null}
     </div>
   );
 }
 
 export function ProductOgCard(props: ProductOgCardProps) {
-  const {
-    productTitle,
-    regionLine,
-    themeLine,
-    summaryLine,
-    priceLabel,
-    logoDataUrl,
-    heroImageDataUrl,
-  } = props;
-  const hasPhoto = Boolean(heroImageDataUrl);
-
-  if (!hasPhoto) {
-    return (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          fontFamily: FONT,
-        }}
-      >
-        <TextPanel
-          productTitle={productTitle}
-          regionLine={regionLine}
-          themeLine={themeLine}
-          summaryLine={summaryLine}
-          priceLabel={priceLabel}
-          logoDataUrl={logoDataUrl}
-          compactPadding={false}
-        />
-      </div>
-    );
-  }
+  const { productTitle, regionLine, themeLine, summaryLine, priceLabel, logoDataUrl, heroImageDataUrl } =
+    props;
+  const hasHero = Boolean(heroImageDataUrl?.trim());
+  const { eyebrow, detail } = pickMetaLines(regionLine, themeLine, summaryLine);
+  const safeTitle = productTitle?.trim() || "여행 상품";
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "row",
-        fontFamily: FONT,
-        background: "#0f172a",
-      }}
-    >
-      <div
-        style={{
-          width: 520,
-          height: "100%",
-          position: "relative",
-          display: "flex",
-          flexShrink: 0,
-          overflow: "hidden",
-        }}
-      >
-        <img
-          src={heroImageDataUrl!}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(90deg, transparent 55%, rgba(15,23,42,0.92) 100%)",
-          }}
-        />
-      </div>
-      <TextPanel
-        productTitle={productTitle}
-        regionLine={regionLine}
-        themeLine={themeLine}
-        summaryLine={summaryLine}
-        priceLabel={priceLabel}
-        logoDataUrl={logoDataUrl}
-        compactPadding
+    <OgCardShell logoDataUrl={logoDataUrl} heroImageDataUrl={heroImageDataUrl}>
+      <ProductContentBlock
+        productTitle={safeTitle}
+        eyebrow={eyebrow}
+        detail={detail}
+        priceLabel={priceLabel ?? null}
+        hasHero={hasHero}
       />
-    </div>
+    </OgCardShell>
   );
 }

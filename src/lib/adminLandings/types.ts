@@ -8,6 +8,9 @@ export type AdminLandingRecord = {
   template_type: string | null;
   source_path: string | null;
   quote_category: string | null;
+  source_taxonomy_id: string | null;
+  source_taxonomy_type: string | null;
+  source_taxonomy_slug: string | null;
   seo_title: string | null;
   seo_description: string | null;
   created_at: string | null;
@@ -25,7 +28,7 @@ export type CreateLandingInput = {
   sourcePath?: string | null;
   quoteCategory?: string | null;
   sourceTaxonomyId?: string | null;
-  sourceTaxonomyType?: "destination" | "theme" | null;
+  sourceTaxonomyType?: "destination" | "theme" | "product_line" | null;
   sourceTaxonomySlug?: string | null;
 };
 

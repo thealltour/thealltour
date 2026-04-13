@@ -157,6 +157,9 @@ export type InquiryInput = {
   product_id?: string;
   product_title?: string;
   source_path?: string;
+  /** 랜딩 유입 분석용 (쿼리에서 전달) */
+  landing_slug?: string;
+  quote_category?: string;
   /** 옵션 선택 시에만 전송 (빈 객체 금지) */
   selected_options?: Record<string, string>;
   /** 예상 금액/breakdown (옵션 선택 시) */

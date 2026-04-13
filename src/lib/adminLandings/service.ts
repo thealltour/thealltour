@@ -2,7 +2,8 @@ import { mapRecordToAdminLandingDetail, mapRecordToAdminLandingListItem } from "
 import { createAdminLandingsRepository } from "@/lib/adminLandings/repository";
 import { createDefaultLandingSections, listLandingSections } from "@/lib/adminLandings/sectionService";
 import type { CreateLandingInput, UpdateLandingInput } from "@/lib/adminLandings/types";
-import type { AdminLandingDetail, AdminLandingListResponse } from "@/types/adminLanding";
+import { validateLandingForPublish } from "@/lib/adminLandings/validation";
+import type { AdminLandingDetail, AdminLandingListResponse, LandingPublishValidationIssue } from "@/types/adminLanding";
 
 const repository = createAdminLandingsRepository();
 
@@ -13,6 +14,18 @@ export class AdminLandingServiceError extends Error {
     super(message);
     this.status = status;
     this.code = code;
+  }
+}
+
+/** Publish 검증 실패 — API는 422 + issues 반환 */
+export class AdminLandingPublishValidationError extends Error {
+  status = 422;
+  code = "VALIDATION_FAILED";
+  issues: LandingPublishValidationIssue[];
+  constructor(issues: LandingPublishValidationIssue[]) {
+    super("Publish 검증에 실패했습니다.");
+    this.name = "AdminLandingPublishValidationError";
+    this.issues = issues;
   }
 }
 
@@ -31,6 +44,7 @@ function validateTemplateType(templateType: string): boolean {
   return (
     templateType === "destination_consulting" ||
     templateType === "theme_consulting" ||
+    templateType === "product_line_consulting" ||
     templateType === "recommended_collection" ||
     templateType === "custom"
   );
@@ -47,7 +61,7 @@ export function sanitizeLandingInput(input: {
   sourcePath?: string | null;
   quoteCategory?: string | null;
   sourceTaxonomyId?: string | null;
-  sourceTaxonomyType?: "destination" | "theme" | null;
+  sourceTaxonomyType?: "destination" | "theme" | "product_line" | null;
   sourceTaxonomySlug?: string | null;
 }) {
   const title = String(input.title ?? "").trim();
@@ -140,6 +154,32 @@ export async function updateAdminLanding(id: string, input: UpdateLandingInput):
     }
     throw new AdminLandingServiceError(500, "UPDATE_FAILED", error instanceof Error ? error.message : "랜딩 수정에 실패했습니다.");
   }
+}
+
+/**
+ * 검증 통과 시에만 published. (PATCH로 status만 올리는 것은 막음 — 전용 API 사용)
+ */
+export async function publishLanding(id: string): Promise<AdminLandingDetail | null> {
+  const detail = await getAdminLandingById(id);
+  if (!detail) return null;
+  if (detail.status === "published") {
+    return detail;
+  }
+  const v = validateLandingForPublish(detail);
+  if (!v.ok) {
+    throw new AdminLandingPublishValidationError(v.issues);
+  }
+  return updateAdminLanding(id, { status: "published" });
+}
+
+/** 공개 즉시 차단 — draft + landing_enabled false 매핑 */
+export async function unpublishLanding(id: string): Promise<AdminLandingDetail | null> {
+  const detail = await getAdminLandingById(id);
+  if (!detail) return null;
+  if (detail.status === "draft") {
+    return detail;
+  }
+  return updateAdminLanding(id, { status: "draft" });
 }
 
 export async function deleteAdminLanding(id: string): Promise<boolean> {

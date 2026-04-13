@@ -23,10 +23,12 @@ import { loadProductsListingContextForThemeDetail } from "@/lib/products/loadPro
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
+import { getTaxonomyHeroImageFallback } from "@/lib/landingMetadata";
+import { getThemeSeoData } from "@/lib/themes/getThemeSeoData";
 import {
-  getTaxonomyMetadataFallback,
-  getTaxonomyHeroImageFallback,
-} from "@/lib/landingMetadata";
+  buildOgBrandFallbackMetadata,
+  buildOgMetadataFromSeoData,
+} from "@/lib/seo/buildOgPageMetadata";
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
 import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavSections";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
@@ -57,15 +59,15 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const theme = await getThemeBySlugForPublicLanding(slug);
-  if (!theme) return { title: "Not Found" };
-  const { title, description } = getTaxonomyMetadataFallback(theme);
-  return {
-    title: `${title} | 더올투어`,
-    description:
-      description ||
-      `${title} 테마의 여행·골프·패키지 상품을 만나보세요.`,
-  };
+  const seo = await getThemeSeoData(slug);
+  if (!seo) {
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: `/themes/${slug}`,
+      documentTitle: "테마 | 더올투어",
+      description: "요청하신 테마 페이지를 찾을 수 없습니다.",
+    });
+  }
+  return buildOgMetadataFromSeoData(seo);
 }
 
 export default async function ThemeLandingPage({ params }: Props) {

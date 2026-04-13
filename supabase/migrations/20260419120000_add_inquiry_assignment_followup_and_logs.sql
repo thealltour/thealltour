@@ -22,16 +22,55 @@ ALTER TABLE public.inquiries
   ADD CONSTRAINT inquiries_lead_priority_check
   CHECK (lead_priority IS NULL OR lead_priority IN ('high', 'medium', 'low'));
 
-CREATE TABLE IF NOT EXISTS public.inquiry_activity_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  inquiry_id uuid NOT NULL REFERENCES public.inquiries (id) ON DELETE CASCADE,
-  activity_type text NOT NULL,
-  actor_id uuid NULL,
-  actor_name text NULL,
-  summary text NOT NULL,
-  metadata jsonb NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+-- inquiries.id 가 환경마다 uuid 또는 bigint 일 수 있음 (legacy). FK 타입을 맞춤.
+DO $$
+DECLARE
+  id_type text;
+  tbl_exists boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'inquiry_activity_logs'
+  ) INTO tbl_exists;
+
+  IF tbl_exists THEN
+    NULL;
+  ELSE
+    SELECT c.data_type INTO id_type
+    FROM information_schema.columns c
+    WHERE c.table_schema = 'public'
+      AND c.table_name = 'inquiries'
+      AND c.column_name = 'id';
+
+    IF id_type = 'uuid' THEN
+      CREATE TABLE public.inquiry_activity_logs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        inquiry_id uuid NOT NULL REFERENCES public.inquiries (id) ON DELETE CASCADE,
+        activity_type text NOT NULL,
+        actor_id uuid NULL,
+        actor_name text NULL,
+        summary text NOT NULL,
+        metadata jsonb NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    ELSIF id_type = 'bigint' THEN
+      CREATE TABLE public.inquiry_activity_logs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        inquiry_id bigint NOT NULL REFERENCES public.inquiries (id) ON DELETE CASCADE,
+        activity_type text NOT NULL,
+        actor_id uuid NULL,
+        actor_name text NULL,
+        summary text NOT NULL,
+        metadata jsonb NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    ELSE
+      RAISE EXCEPTION 'Unsupported public.inquiries.id type for inquiry_activity_logs: %', id_type;
+    END IF;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_inquiry_activity_logs_inquiry_created_at
   ON public.inquiry_activity_logs (inquiry_id, created_at DESC);

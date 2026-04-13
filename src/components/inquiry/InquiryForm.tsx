@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Label } from "@/components/ui/Label";
-import { trackQuoteSubmitClick, trackQuoteSubmitSuccess } from "@/lib/analytics/trackQuoteEvent";
+import { trackQuoteSubmitClick } from "@/lib/analytics/trackQuoteEvent";
 import { getFirstTouch } from "@/lib/analytics/firstTouch";
 import { inferAttribution } from "@/lib/analytics/attribution";
 
@@ -38,8 +38,10 @@ function validate(form: FormState): Errors {
 }
 
 type InquiryFormProps = {
-  source?: Partial<Pick<InquiryInput, "product_id" | "product_title" | "source_path">>;
-  /** quote 페이지에서 전달 시 submit_click / submit_success 트래킹에 사용 */
+  source?: Partial<
+    Pick<InquiryInput, "product_id" | "product_title" | "source_path" | "landing_slug" | "quote_category">
+  >;
+  /** quote 페이지에서 전달 시 submit_click 트래킹에 사용 */
   productIdForTracking?: string;
 };
 
@@ -47,6 +49,8 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
   const sourceProductId = source?.product_id?.trim() ?? "";
   const sourceProductTitle = source?.product_title?.trim() ?? "";
   const sourcePath = source?.source_path?.trim() ?? "";
+  const landingSlug = source?.landing_slug?.trim() ?? "";
+  const quoteCategory = source?.quote_category?.trim() ?? "";
   const [form, setForm] = useState<FormState>(initialFormState);
   const [touched, setTouched] = useState<Touched>({});
   const [errors, setErrors] = useState<Errors>({});
@@ -93,6 +97,8 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
           product_id: sourceProductId || undefined,
           product_title: sourceProductTitle || undefined,
           source_path: sourcePath || undefined,
+          landing_slug: landingSlug || undefined,
+          quote_category: quoteCategory || undefined,
           first_touch: firstTouch ?? undefined,
           inquiry_page_url: typeof window !== "undefined" ? window.location.pathname : undefined,
         }),
@@ -106,7 +112,6 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
         return;
       }
 
-      if (productIdForTracking) trackQuoteSubmitSuccess(productIdForTracking);
       try {
         if (typeof window !== "undefined" && typeof window.gtag === "function") {
           const att = inferAttribution(firstTouch ?? undefined);

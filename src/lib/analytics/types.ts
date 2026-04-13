@@ -39,8 +39,11 @@ export type AnalyticsEventName =
   | "product_itinerary_cta_click"
   | "product_cta_click"
   | "quote_page_view"
+  | "quote_view"
+  | "quote_submit"
   | "quote_submit_click"
   | "quote_submit_success"
+  | "landing_cta_click"
   | "consult_open"
   | "consult_submit";
 
@@ -59,7 +62,8 @@ export type AnalyticsSource =
   | "landing_theme"
   | "consult_cta"
   | "hero_search"
-  | "quote_page";
+  | "quote_page"
+  | "recommended_landing";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {
@@ -67,10 +71,15 @@ export type AnalyticsPayload = {
   source: AnalyticsSource;
   pagePath: string | null;
   deviceType: "desktop" | "mobile" | "unknown";
-  taxonomyType: "category" | "theme" | null;
+  taxonomyType: "category" | "theme" | "destination" | "product_line" | null;
   taxonomyId: string | null;
   taxonomySlug: string | null;
   taxonomyName: string | null;
+  /** 랜딩→quote funnel (DB 컬럼) */
+  sourcePath: string | null;
+  landingSlug: string | null;
+  templateType: string | null;
+  quoteCategory: string | null;
   section: string | null;
   label: string | null;
   href: string | null;

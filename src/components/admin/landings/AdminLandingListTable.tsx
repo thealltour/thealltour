@@ -5,6 +5,9 @@ type AdminLandingListTableProps = {
   items: AdminLandingListItem[];
   onEdit: (item: AdminLandingListItem) => void;
   onPreview: (item: AdminLandingListItem) => void;
+  onPublish?: (item: AdminLandingListItem) => void;
+  onUnpublish?: (item: AdminLandingListItem) => void;
+  busyId?: string | null;
 };
 
 function formatTemplateType(templateType: AdminLandingListItem["templateType"]): string {
@@ -27,7 +30,20 @@ function formatUpdatedAt(value: string): string {
   });
 }
 
-export default function AdminLandingListTable({ items, onEdit, onPreview }: AdminLandingListTableProps) {
+function statusBadgeClass(status: AdminLandingListItem["status"]): string {
+  if (status === "published") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (status === "draft") return "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]";
+  return "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]";
+}
+
+export default function AdminLandingListTable({
+  items,
+  onEdit,
+  onPreview,
+  onPublish,
+  onUnpublish,
+  busyId,
+}: AdminLandingListTableProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--border)]">
       <table className="min-w-full divide-y divide-[var(--border)] text-sm">
@@ -48,27 +64,51 @@ export default function AdminLandingListTable({ items, onEdit, onPreview }: Admi
               <td className="px-4 py-3 text-[var(--text-muted)]">/{item.slug}</td>
               <td className="px-4 py-3">{formatTemplateType(item.templateType)}</td>
               <td className="px-4 py-3">
-                <span className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-xs">
+                <span
+                  className={`rounded-md border px-2 py-1 text-xs font-medium ${statusBadgeClass(item.status)}`}
+                >
                   {LANDING_STATUS_LABELS[item.status]}
                 </span>
               </td>
               <td className="px-4 py-3 text-[var(--text-muted)]">{formatUpdatedAt(item.updatedAt)}</td>
               <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => onEdit(item)}
-                    className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)]"
+                    disabled={busyId === item.id}
+                    className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)] disabled:opacity-50"
                   >
                     수정
                   </button>
                   <button
                     type="button"
                     onClick={() => onPreview(item)}
-                    className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)]"
+                    disabled={busyId === item.id}
+                    className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)] disabled:opacity-50"
                   >
                     미리보기
                   </button>
+                  {item.status !== "published" && onPublish ? (
+                    <button
+                      type="button"
+                      onClick={() => onPublish(item)}
+                      disabled={busyId === item.id}
+                      className="rounded-md border border-emerald-600/30 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                      {busyId === item.id ? "처리 중..." : "Publish"}
+                    </button>
+                  ) : null}
+                  {item.status === "published" && onUnpublish ? (
+                    <button
+                      type="button"
+                      onClick={() => onUnpublish(item)}
+                      disabled={busyId === item.id}
+                      className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]/80 disabled:opacity-50"
+                    >
+                      {busyId === item.id ? "처리 중..." : "Unpublish"}
+                    </button>
+                  ) : null}
                 </div>
               </td>
             </tr>

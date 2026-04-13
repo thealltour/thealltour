@@ -12,7 +12,9 @@ function isValidItem(item: LandingGenerationRequestItem): boolean {
     item &&
       typeof item.taxonomyId === "string" &&
       item.taxonomyId.trim() &&
-      (item.taxonomyType === "destination" || item.taxonomyType === "theme"),
+      (item.taxonomyType === "destination" ||
+        item.taxonomyType === "theme" ||
+        item.taxonomyType === "product_line"),
   );
 }
 

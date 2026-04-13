@@ -41,8 +41,11 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   product_itinerary_cta_click: "product_itinerary_cta_click",
   product_cta_click: "product_cta_click",
   quote_page_view: "quote_page_view",
+  quote_view: "quote_view",
+  quote_submit: "quote_submit",
   quote_submit_click: "quote_submit_click",
   quote_submit_success: "quote_submit_success",
+  landing_cta_click: "landing_cta_click",
   consult_open: "consult_open",
   consult_submit: "consult_submit",
 } as const;
@@ -63,4 +66,5 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   consult_cta: "consult_cta",
   hero_search: "hero_search",
   quote_page: "quote_page",
+  recommended_landing: "recommended_landing",
 } as const;

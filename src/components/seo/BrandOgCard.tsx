@@ -63,7 +63,7 @@ export function BrandOgCard({
           top: 0,
           left: 0,
           right: 0,
-          height: 6,
+          height: 4,
           background: `linear-gradient(90deg, ${ACCENT} 0%, #fb923c 55%, ${ACCENT} 100%)`,
         }}
       />
@@ -74,7 +74,7 @@ export function BrandOgCard({
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          padding: "56px 72px 64px",
+          padding: "52px 64px 60px",
         }}
       >
         {tagLabel ? (

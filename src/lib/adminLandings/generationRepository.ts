@@ -1,23 +1,24 @@
 import { supabase } from "@/lib/supabase";
 import {
   resolveDestinationProductCounts,
+  resolveProductLineProductCounts,
   resolveThemeProductCounts,
 } from "@/lib/adminLandings/taxonomyCandidateResolver";
 import type {
   LandingGenerationCandidate,
+  LandingGenerationEligibilityReason,
   LandingGenerationRequestItem,
+  LandingTaxonomyType,
 } from "@/types/adminLanding";
 
-type TaxonomyType = "destination" | "theme";
-
 type CandidateFilter = {
-  taxonomyType?: "all" | TaxonomyType;
+  taxonomyType?: "all" | LandingTaxonomyType;
   alreadyGenerated?: boolean | null;
 };
 
 type RawTaxonomy = {
   id: string;
-  taxonomy_type: TaxonomyType;
+  taxonomy_type: LandingTaxonomyType;
   name: string;
   slug: string | null;
   is_active: boolean;
@@ -45,17 +46,21 @@ function normalizeSlug(input: string): string {
     .replace(/-+$/, "");
 }
 
-function buildSuggested(baseSlug: string, taxonomyName: string, taxonomyType: TaxonomyType) {
+function buildSuggested(baseSlug: string, taxonomyName: string, taxonomyType: LandingTaxonomyType) {
   const name = taxonomyName.trim();
   const root = baseSlug.trim() ? normalizeSlug(baseSlug) : normalizeSlug(name);
   const slug = root.endsWith("-travel") ? root : `${root}-travel`;
   const templateType =
-    taxonomyType === "destination" ? "destination_consulting" : "theme_consulting";
+    taxonomyType === "destination"
+      ? "destination_consulting"
+      : taxonomyType === "theme"
+        ? "theme_consulting"
+        : "product_line_consulting";
   const title = `${name} 여행 상담`;
   return {
     title,
     slug,
-    templateType: templateType as "destination_consulting" | "theme_consulting",
+    templateType: templateType as LandingGenerationCandidate["suggestedTemplateType"],
     quoteCategory: root || null,
   };
 }
@@ -87,7 +92,7 @@ export async function listLandingGenerationCandidates(
   const { data: taxRows, error: taxErr } = await supabase
     .from("product_taxonomies")
     .select("id, taxonomy_type, name, slug, is_active")
-    .in("taxonomy_type", ["destination", "theme"])
+    .in("taxonomy_type", ["destination", "theme", "product_line"])
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
@@ -99,10 +104,12 @@ export async function listLandingGenerationCandidates(
   );
   const themeTax = taxonomies.filter((t) => t.taxonomy_type === "theme");
   const themeActiveTax = themeTax.filter((t) => t.name.trim().length > 0);
+  const productLineTax = taxonomies.filter((t) => t.taxonomy_type === "product_line");
 
-  const [destinationCount, themeCount] = await Promise.all([
+  const [destinationCount, themeCount, productLineCount] = await Promise.all([
     resolveDestinationProductCounts(destinationTax),
     resolveThemeProductCounts(themeActiveTax),
+    resolveProductLineProductCounts(productLineTax),
   ]);
 
   const { data: existingRows, error: existingErr } = await supabase
@@ -126,6 +133,7 @@ export async function listLandingGenerationCandidates(
     if (
       row.template_type === "destination_consulting" ||
       row.template_type === "theme_consulting" ||
+      row.template_type === "product_line_consulting" ||
       row.template_type === "recommended_collection" ||
       row.template_type === "custom"
     ) {
@@ -138,11 +146,23 @@ export async function listLandingGenerationCandidates(
   for (const tax of taxonomies) {
     if (targetType !== "all" && tax.taxonomy_type !== targetType) continue;
     if (!tax.name?.trim()) continue;
+    const taxonomySlug = normalizeSlug(tax.slug ?? tax.name);
+    if (!taxonomySlug) continue;
+
     const productCount =
       tax.taxonomy_type === "destination"
         ? (destinationCount.get(tax.id) ?? 0)
-        : (themeCount.get(tax.id) ?? 0);
-    if (productCount <= 0) continue;
+        : tax.taxonomy_type === "theme"
+          ? (themeCount.get(tax.id) ?? 0)
+          : (productLineCount.get(tax.id) ?? 0);
+
+    if (tax.taxonomy_type !== "product_line" && productCount <= 0) continue;
+
+    const eligibilityReason: LandingGenerationEligibilityReason =
+      tax.taxonomy_type === "product_line" && productCount === 0
+        ? "PRODUCT_LINE_PRESEED"
+        : "HAS_PRODUCTS";
+    const isPreseedCandidate = eligibilityReason === "PRODUCT_LINE_PRESEED";
 
     const suggested = buildSuggested(tax.slug ?? "", tax.name, tax.taxonomy_type);
     const matched = matchExistingLanding(existing, tax, suggested.slug);
@@ -150,8 +170,10 @@ export async function listLandingGenerationCandidates(
       taxonomyId: tax.id,
       taxonomyType: tax.taxonomy_type,
       taxonomyName: tax.name,
-      taxonomySlug: normalizeSlug(tax.slug ?? tax.name),
+      taxonomySlug,
       productCount,
+      eligibilityReason,
+      isPreseedCandidate,
       suggestedTitle: suggested.title,
       suggestedSlug: suggested.slug,
       suggestedTemplateType: suggested.templateType,

@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
 import { ShieldCheck, Users, Route, CheckCircle2 } from "lucide-react";
+import type { Metadata } from "next";
+import { buildOgMetadataFromSeoData } from "@/lib/seo/buildOgPageMetadata";
+import { getHomeOgPageSeo } from "@/lib/seo/getHomeOgPageSeo";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SectionBlock } from "@/components/layout/SectionBlock";
@@ -17,12 +19,6 @@ import ThemeSection from "@/components/home/ThemeSection";
 import CuratedProductsSection from "@/components/home/CuratedProductsSection";
 import { HomeGuideSection } from "@/components/home/HomeGuideSection";
 import { HomeReviewSection } from "@/components/home/HomeReviewSection";
-
-/** Korean copy as ASCII-only escapes (avoids invalid UTF-8 in tooling / mixed encodings). */
-const META_TITLE =
-  "\uace8\ud504\uc5ec\ud589\u00b7\ud328\ud0a4\uc9c0\u0020\uc5ec\ud589\u0020\ucd94\ucc9c\u0020\u007c\u0020\ub9de\ucda4\u0020\uc77c\uc815\u0020\uc0c1\ub2f4\u0020\u007c\u0020\ub354\uc62c\ud22c\uc5b4";
-const META_DESC =
-  "\ud328\ud0a4\uc9c0\u0020\uc5ec\ud589\u0020\uc120\ud0dd\uc774\u0020\uc5b4\ub835\ub2e4\uba74\u003f\u0020\ub354\uc62c\ud22c\uc5b4\ub294\u0020\uc0c1\ub2f4\u0020\uae30\ubc18\uc73c\ub85c\u0020\uace0\uac1d\u0020\ub9de\ucda4\uc5ec\ud589\u0020\uc77c\uc815\uc744\u0020\uc81c\uc548\ud569\ub2c8\ub2e4\u002e\u0020\uace8\ud504\uc5ec\ud589\u002c\u0020\ud328\ud0a4\uc9c0\u0020\ube44\uad50\ubd80\ud130\u0020\ub9de\ucda4\uc5ec\ud589\u0020\ucd94\ucc9c\uae4c\uc9c0\u0020\ud55c\u0020\ubc88\uc5d0\u0020\ud655\uc778\ud574\ubcf4\uc138\uc694\u002e";
 
 const TRUST_H3 =
   "\uc548\uc2ec\ud558\uace0\u0020\ub9e1\uae38\u0020\uc218\u0020\uc788\ub294\u0020\uc5ec\ud589\u0020\ud30c\ud2b8\ub108";
@@ -59,10 +55,7 @@ const C_P2 =
 const C_P3 =
   "\uc694\uccad\ud558\uc2e0\u0020\ubd80\ubd84\uc744\u0020\ucd5c\ub300\ud55c\u0020\ubc18\uc601\ud558\uc5ec\u0020\ucf54\uc2a4\ub97c\u0020\uc120\ubcc4\ud574\ub4dc\ub9bd\ub2c8\ub2e4\u002e";
 
-export const metadata: Metadata = {
-  title: META_TITLE,
-  description: META_DESC,
-};
+export const metadata: Metadata = buildOgMetadataFromSeoData(getHomeOgPageSeo());
 
 export default async function Home() {
   const [homeCurated, topBanners, heroContent, settings, destinations, themes, homeGuides, homeReviews] =

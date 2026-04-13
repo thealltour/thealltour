@@ -3,7 +3,7 @@ import { parseThemeTokens } from "@/lib/productTaxonomies";
 
 type RawTaxonomy = {
   id: string;
-  taxonomy_type: "destination" | "theme";
+  taxonomy_type: "destination" | "theme" | "product_line";
   name: string;
   slug: string | null;
 };
@@ -101,4 +101,26 @@ export async function resolveThemeProductCounts(taxonomies: RawTaxonomy[]): Prom
   const byFk = await resolveThemeCountsByFk(taxonomies);
   if (byFk) return byFk;
   return resolveThemeCountsByLegacyText(taxonomies);
+}
+
+export async function resolveProductLineProductCounts(taxonomies: RawTaxonomy[]): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("product_line_id")
+    .eq("is_active", true)
+    .not("product_line_id", "is", null);
+
+  if (error) {
+    if (isMissingColumnError(error.message)) return new Map();
+    throw new Error(error.message);
+  }
+
+  const taxonomyIds = new Set(taxonomies.map((t) => t.id));
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    const lineId = String((row as { product_line_id?: string | null }).product_line_id ?? "").trim();
+    if (!lineId || !taxonomyIds.has(lineId)) continue;
+    counts.set(lineId, (counts.get(lineId) ?? 0) + 1);
+  }
+  return counts;
 }

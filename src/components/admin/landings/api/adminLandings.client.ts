@@ -6,6 +6,7 @@ import type {
   LandingGenerationCandidatesResponse,
   LandingGenerationRequestItem,
   LandingGenerationResult,
+  LandingPublishValidationIssue,
 } from "@/types/adminLanding";
 import type { AdminLandingSection } from "@/types/adminLanding";
 import { parseJsonResponse } from "@/components/admin/products/api/adminApiClient.shared";
@@ -22,6 +23,23 @@ function extractErrorMessage(payload: unknown, fallback: string): string {
     if (typeof message === "string" && message.trim()) return message;
   }
   return fallback;
+}
+
+export class AdminLandingPublishClientError extends Error {
+  issues: LandingPublishValidationIssue[];
+  constructor(issues: LandingPublishValidationIssue[]) {
+    super("VALIDATION_FAILED");
+    this.name = "AdminLandingPublishClientError";
+    this.issues = issues;
+  }
+}
+
+function isPublishValidationPayload(
+  payload: unknown,
+): payload is { error: string; issues: LandingPublishValidationIssue[] } {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as { error?: unknown; issues?: unknown };
+  return p.error === "VALIDATION_FAILED" && Array.isArray(p.issues);
 }
 
 export async function listAdminLandingsClient(): Promise<AdminLandingListResponse> {
@@ -96,6 +114,40 @@ export async function updateAdminLandingClient(
   return data.item;
 }
 
+export async function publishAdminLandingClient(id: string): Promise<AdminLandingDetail> {
+  const response = await fetch(`${BASE}/${encodeURIComponent(id)}/publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = await parseJsonResponse<
+    { item?: AdminLandingDetail; error?: string; issues?: LandingPublishValidationIssue[] } | unknown
+  >(response).catch(() => ({}));
+  if (response.status === 422 && isPublishValidationPayload(data)) {
+    throw new AdminLandingPublishClientError(data.issues);
+  }
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(data, "Publish에 실패했습니다."));
+  }
+  const ok = data as { item?: AdminLandingDetail };
+  if (!ok.item) throw new Error("Publish 응답이 비어 있습니다.");
+  return ok.item;
+}
+
+export async function unpublishAdminLandingClient(id: string): Promise<AdminLandingDetail> {
+  const response = await fetch(`${BASE}/${encodeURIComponent(id)}/unpublish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = await parseJsonResponse<{ item?: AdminLandingDetail; error?: string; message?: string }>(
+    response,
+  ).catch(() => ({} as { item?: AdminLandingDetail; error?: string; message?: string }));
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(data, "Unpublish에 실패했습니다."));
+  }
+  if (!data.item) throw new Error("Unpublish 응답이 비어 있습니다.");
+  return data.item;
+}
+
 export async function listLandingSectionsClient(landingId: string): Promise<AdminLandingSection[]> {
   const response = await fetch(`${BASE}/${encodeURIComponent(landingId)}/sections`, { cache: "no-store" });
   const data = await parseJsonResponse<{ items?: AdminLandingSection[]; error?: string; message?: string }>(
@@ -137,7 +189,7 @@ export async function updateLandingSectionClient(
 }
 
 export async function listLandingGenerationCandidatesClient(params?: {
-  taxonomyType?: "all" | "destination" | "theme";
+  taxonomyType?: "all" | "destination" | "theme" | "product_line";
   alreadyGenerated?: boolean;
 }): Promise<LandingGenerationCandidatesResponse> {
   const sp = new URLSearchParams();

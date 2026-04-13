@@ -21,7 +21,7 @@ function candidateKey(item: LandingGenerationCandidate): string {
 
 export default function AdminLandingGenerationManager() {
   const router = useRouter();
-  const [taxonomyType, setTaxonomyType] = useState<"all" | "destination" | "theme">("all");
+  const [taxonomyType, setTaxonomyType] = useState<"all" | "destination" | "theme" | "product_line">("all");
   const [onlyNotGenerated, setOnlyNotGenerated] = useState(true);
   const [items, setItems] = useState<LandingGenerationCandidate[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -95,7 +95,7 @@ export default function AdminLandingGenerationManager() {
       <div className="space-y-1">
         <p className="text-sm font-semibold text-[var(--text-primary)]">taxonomy 기반 랜딩 초안 생성</p>
         <p className="text-xs text-[var(--text-muted)]">
-          상품이 연결된 지역/테마 taxonomy를 기준으로 랜딩 draft를 생성합니다.
+          지역·테마는 활성 상품이 연결된 taxonomy만, 상품군은 상품 수와 관계없이 사전 초안 후보로 포함됩니다. 생성 시 항상 draft만 만들어집니다.
         </p>
       </div>
 

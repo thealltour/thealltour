@@ -1,10 +1,21 @@
 export type AdminLandingStatus = "draft" | "published" | "archived";
 
+/** Publish 검증 실패 시 API·UI에 전달되는 항목 */
+export type LandingPublishValidationIssue = {
+  field: string;
+  message: string;
+};
+
 export type AdminLandingTemplateType =
   | "destination_consulting"
   | "theme_consulting"
+  | "product_line_consulting"
   | "recommended_collection"
   | "custom";
+
+export type LandingTaxonomyType = "destination" | "theme" | "product_line";
+
+export type LandingGenerationEligibilityReason = "HAS_PRODUCTS" | "PRODUCT_LINE_PRESEED";
 
 export type AdminLandingSectionType =
   | "hero"
@@ -49,6 +60,10 @@ export type AdminLandingDetail = {
   seoDescription?: string | null;
   sourcePath?: string | null;
   quoteCategory?: string | null;
+  /** taxonomy 기반 생성 랜딩 — analytics funnel용 */
+  sourceTaxonomyId?: string | null;
+  sourceTaxonomyType?: LandingTaxonomyType | string | null;
+  sourceTaxonomySlug?: string | null;
   updatedAt: string;
   publishedAt?: string | null;
   sections?: AdminLandingSection[];
@@ -68,13 +83,18 @@ export type AdminLandingListResponse = {
 
 export type LandingGenerationCandidate = {
   taxonomyId: string;
-  taxonomyType: "destination" | "theme";
+  taxonomyType: LandingTaxonomyType;
   taxonomyName: string;
   taxonomySlug: string;
   productCount: number;
+  eligibilityReason: LandingGenerationEligibilityReason;
+  isPreseedCandidate: boolean;
   suggestedTitle: string;
   suggestedSlug: string;
-  suggestedTemplateType: "destination_consulting" | "theme_consulting";
+  suggestedTemplateType:
+    | "destination_consulting"
+    | "theme_consulting"
+    | "product_line_consulting";
   suggestedQuoteCategory: string | null;
   existingLandingId?: string | null;
   existingLandingSlug?: string | null;
@@ -88,12 +108,12 @@ export type LandingGenerationCandidatesResponse = {
 
 export type LandingGenerationRequestItem = {
   taxonomyId: string;
-  taxonomyType: "destination" | "theme";
+  taxonomyType: LandingTaxonomyType;
 };
 
 export type LandingGenerationResultEntry = {
   taxonomyId: string;
-  taxonomyType: "destination" | "theme";
+  taxonomyType: LandingTaxonomyType;
   taxonomyName: string;
   landingId?: string;
   landingSlug?: string;

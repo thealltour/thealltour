@@ -23,6 +23,12 @@ type AdminLandingFormProps = {
   errorMessage: string;
   onSubmit: (value: AdminLandingFormValue) => Promise<void>;
   onCancel: () => void;
+  /** true면 상태 셀렉트 대신 배지(저장/Publish로만 전환) */
+  omitStatusField?: boolean;
+  /** Publish 검증 실패 시 해당 메타 필드 강조 */
+  highlightIssueFields?: string[];
+  /** 상단 툴바 등에서 submit 버튼을 연결할 때 사용 */
+  formId?: string;
 };
 
 function normalizeSlug(input: string): string {
@@ -36,6 +42,11 @@ function normalizeSlug(input: string): string {
     .replace(/-+$/, "");
 }
 
+function fieldRing(highlightIssueFields: string[] | undefined, field: string): string {
+  if (!highlightIssueFields?.includes(field)) return "";
+  return "rounded-lg ring-2 ring-amber-400/90 ring-offset-2 ring-offset-[var(--surface)]";
+}
+
 export default function AdminLandingForm({
   mode,
   initialValue,
@@ -43,6 +54,9 @@ export default function AdminLandingForm({
   errorMessage,
   onSubmit,
   onCancel,
+  omitStatusField = false,
+  highlightIssueFields,
+  formId,
 }: AdminLandingFormProps) {
   const [form, setForm] = useState<AdminLandingFormValue>(initialValue);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -99,11 +113,12 @@ export default function AdminLandingForm({
 
   return (
     <form
+      id={formId}
       className="space-y-5 rounded-2xl bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]"
       onSubmit={handleSubmit}
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-1 md:col-span-2">
+        <label className={`space-y-1 md:col-span-2 ${fieldRing(highlightIssueFields, "title")}`}>
           <span className="text-xs text-[var(--text-muted)]">랜딩 제목 *</span>
           <input
             value={form.title}
@@ -112,7 +127,7 @@ export default function AdminLandingForm({
             placeholder="예: 방콕 골프 상담 랜딩"
           />
         </label>
-        <label className="space-y-1">
+        <label className={`space-y-1 ${fieldRing(highlightIssueFields, "slug")}`}>
           <span className="text-xs text-[var(--text-muted)]">slug *</span>
           <input
             value={form.slug}
@@ -124,7 +139,7 @@ export default function AdminLandingForm({
             placeholder="bangkok-golf-consulting"
           />
         </label>
-        <label className="space-y-1">
+        <label className={`space-y-1 ${fieldRing(highlightIssueFields, "templateType")}`}>
           <span className="text-xs text-[var(--text-muted)]">템플릿 유형 *</span>
           <select
             value={form.templateType}
@@ -140,20 +155,32 @@ export default function AdminLandingForm({
             ))}
           </select>
         </label>
-        <label className="space-y-1">
-          <span className="text-xs text-[var(--text-muted)]">상태 *</span>
-          <select
-            value={form.status}
-            onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as AdminLandingStatus }))}
-            className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
-          >
-            {Object.entries(LANDING_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {omitStatusField ? (
+          <div className="space-y-1 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+            <span className="text-xs text-[var(--text-muted)]">상태</span>
+            <p className="text-sm font-medium text-[var(--text-primary)]">
+              {LANDING_STATUS_LABELS[form.status]}
+              {mode === "create" ? (
+                <span className="ml-1 text-xs font-normal text-[var(--text-muted)]">(저장 시 초안으로 생성)</span>
+              ) : null}
+            </p>
+          </div>
+        ) : (
+          <label className="space-y-1">
+            <span className="text-xs text-[var(--text-muted)]">상태 *</span>
+            <select
+              value={form.status}
+              onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as AdminLandingStatus }))}
+              className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+            >
+              {Object.entries(LANDING_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="space-y-1 md:col-span-2">
           <span className="text-xs text-[var(--text-muted)]">요약 설명</span>
           <textarea

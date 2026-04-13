@@ -10,6 +10,8 @@ type AdminLandingSectionsPanelProps = {
   landingId: string;
   initialSections: AdminLandingSection[];
   reloadDetail?: () => Promise<void>;
+  /** Publish 검증에서 섹션 관련 이슈가 있을 때 강조 */
+  highlightIssue?: boolean;
 };
 
 function normalizeSort(items: AdminLandingSection[]): AdminLandingSection[] {
@@ -22,6 +24,7 @@ export default function AdminLandingSectionsPanel({
   landingId,
   initialSections,
   reloadDetail,
+  highlightIssue,
 }: AdminLandingSectionsPanelProps) {
   const { showToast } = useAdminToast();
   const [items, setItems] = useState<AdminLandingSection[]>(() => normalizeSort(initialSections));
@@ -88,7 +91,11 @@ export default function AdminLandingSectionsPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-2xl bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)]">
+    <section
+      className={`space-y-4 rounded-2xl bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] ${
+        highlightIssue ? "ring-2 ring-amber-400/90" : ""
+      }`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-base font-semibold text-[var(--text-primary)]">섹션 구성</h3>

@@ -16,7 +16,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const taxonomyTypeRaw = searchParams.get("taxonomyType");
   const taxonomyType =
-    taxonomyTypeRaw === "destination" || taxonomyTypeRaw === "theme" ? taxonomyTypeRaw : "all";
+    taxonomyTypeRaw === "destination" ||
+    taxonomyTypeRaw === "theme" ||
+    taxonomyTypeRaw === "product_line"
+      ? taxonomyTypeRaw
+      : "all";
   const alreadyGenerated = parseAlreadyGenerated(searchParams.get("alreadyGenerated"));
 
   try {

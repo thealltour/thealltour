@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
+import { buildOgMetadataFromSeoData } from "@/lib/seo/buildOgPageMetadata";
+import { getProductsIndexOgPageSeo } from "@/lib/seo/getProductsIndexOgPageSeo";
 import ProductsHero from "@/components/product-detail/ProductsHero";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { NavigationContextHeader } from "@/components/navigation/NavigationContextHeader";
@@ -13,6 +16,10 @@ import {
   hasLandingParams,
 } from "@/lib/productFiltersLanding";
 import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return buildOgMetadataFromSeoData(getProductsIndexOgPageSeo());
+}
 
 type ProductsPageProps = {
   searchParams?: Promise<{

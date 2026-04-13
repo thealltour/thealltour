@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -36,9 +35,13 @@ import { parseReviewPersonalizationContext } from "@/lib/reviewPersonalizationCo
 import { getReviewExperimentVariant } from "@/lib/reviewExperimentAssignment";
 import { cookies } from "next/headers";
 import { getSiteSettings } from "@/lib/siteSettings";
-import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 import { getProductSeoData } from "@/lib/products/getProductSeoData";
+import {
+  buildOgBrandFallbackMetadata,
+  buildOgMetadataFromSeoData,
+} from "@/lib/seo/buildOgPageMetadata";
+import { mapProductSeoToOgPage } from "@/lib/seo/mapProductSeoToOgPage";
 import { getSiteBaseUrl, toAbsoluteUrl } from "@/lib/seo/getSiteSeoDefaults";
 import { resolveProductNoticesForDetailPage } from "@/lib/noticeTemplates";
 import { resolveProductDetailBodyFields } from "@/lib/products/resolveProductDetailBodyFields";
@@ -50,74 +53,22 @@ type ProductDetailPageProps = {
 
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const siteUrl = getSiteBaseUrl();
   const productPath = `/products/${id}`;
-  const productUrl = `${siteUrl}${productPath}`;
-  const defaultOgImageUrl = `${siteUrl}/og-default-v1.png`;
-  /** 메타 description·OG 부제는 getProductSeoData 내부에서 DB SEO → slug 패턴 카피 → fallback 순으로 결정 */
   const seo = await getProductSeoData(id);
 
   if (!seo) {
-    const title = "여행 상품 상세 | 일정·가격·후기 한눈에 | 더올투어";
-    const description =
-      "여행 상품 상세 정보입니다. 일정, 가격, 후기까지 한 번에 확인하고 상담으로 맞춤 여행을 준비해보세요.";
-    return {
-      title,
-      description,
-      alternates: {
-        canonical: productUrl,
-      },
-      openGraph: {
-        type: "article",
-        url: productUrl,
-        siteName: "더올투어",
-        title,
-        description,
-        images: [
-          {
-            url: defaultOgImageUrl,
-            width: 1200,
-            height: 630,
-            alt: "여행 상품 상세",
-          },
-        ],
-        locale: "ko_KR",
-      },
-    };
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: productPath,
+      documentTitle: "여행 상품 상세 | 일정·가격·후기 한눈에 | 더올투어",
+      description:
+        "여행 상품 상세 정보입니다. 일정, 가격, 후기까지 한 번에 확인하고 상담으로 맞춤 여행을 준비해보세요.",
+      ogImageAlt: "여행 상품 상세",
+      openGraphType: "article",
+      useAbsolutePageTitle: true,
+    });
   }
 
-  const title = `${seo.name} | 일정·가격·후기 한눈에 | 더올투어`;
-  const description = `${seo.name} 여행 상품 상세 정보입니다. 일정, 가격, 후기까지 한 번에 확인하고 상담으로 맞춤 여행을 준비해보세요.`;
-
-  return {
-    title,
-    description,
-    alternates: {
-      canonical: productUrl,
-    },
-    openGraph: {
-      type: "article",
-      url: productUrl,
-      siteName: "더올투어",
-      title,
-      description,
-      images: [
-        {
-          url: defaultOgImageUrl,
-          width: 1200,
-          height: 630,
-          alt: seo.name,
-        },
-      ],
-      locale: "ko_KR",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [`${productPath}/twitter-image`],
-    },
-  };
+  return buildOgMetadataFromSeoData(mapProductSeoToOgPage(seo));
 }
 
 function formatPrice(price?: number) {

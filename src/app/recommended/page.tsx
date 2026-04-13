@@ -1,5 +1,8 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { cn } from "@/lib/cn";
+import { buildOgMetadataFromSeoData } from "@/lib/seo/buildOgPageMetadata";
+import { getRecommendedOgPageSeo } from "@/lib/seo/getRecommendedOgPageSeo";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -19,11 +22,7 @@ import {
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
 
-export const metadata = {
-  title: "여행추천 | 더올투어",
-  description:
-    "더올투어가 선별한 추천 여행·골프·패키지 상품을 만나보세요. 큐레이션된 코스로 쉽게 탐색할 수 있습니다.",
-};
+export const metadata: Metadata = buildOgMetadataFromSeoData(getRecommendedOgPageSeo());
 
 export default async function RecommendedHubPage() {
   const [{ settings, sections }, products, destinations, hubThemes] = await Promise.all([

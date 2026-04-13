@@ -4,6 +4,9 @@ import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
 import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
 import { inferAttribution } from "@/lib/analytics/attribution";
+import { ensureLandingSourcePath, landingSlugFromSourcePath } from "@/lib/analytics/createAnalyticsPayload";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
 import type { Inquiry, InquiryInput } from "@/types/inquiry";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
 import { normalizeReceiverPhone, sendAligoRelay } from "@/lib/notifications/sendAligoRelay";
@@ -421,6 +424,8 @@ export async function POST(request: Request) {
   const productId = body.product_id?.trim();
   const productTitle = body.product_title?.trim();
   const sourcePath = body.source_path?.trim();
+  const landingSlugBody = body.landing_slug?.trim();
+  const quoteCategoryBody = body.quote_category?.trim();
   const selectedOptions = body.selected_options;
   const quoteSummaryRaw = body.quote_summary;
   const inquiredAt = body.inquired_at?.trim();
@@ -577,6 +582,29 @@ export async function POST(request: Request) {
       inquiryId = insertLegacy.data.id;
       console.error("[inquiries POST] fallback: 최소 필드(name,phone,content)만 저장됨. product/customer_profile 등 유실 가능.");
     }
+  }
+
+  if (inquiryId) {
+    const resolvedLandingSlug = landingSlugBody || landingSlugFromSourcePath(sourcePath) || null;
+    const resolvedSourcePath =
+      sourcePath ||
+      (resolvedLandingSlug ? ensureLandingSourcePath(null, resolvedLandingSlug) : "/quote");
+
+    void persistAnalyticsEventAdmin({
+      eventName: ANALYTICS_EVENTS.quote_submit,
+      source: ANALYTICS_SOURCES.quote_page,
+      pagePath: inquiryPageUrl || "/quote",
+      sourcePath: resolvedSourcePath,
+      landingSlug: resolvedLandingSlug,
+      quoteCategory: quoteCategoryBody || null,
+      productId: productId || null,
+      metadata: {
+        form_type: "inquiry_quote",
+        product_linked: Boolean(productId),
+        has_message_body: Boolean(contentValue?.trim()),
+        inquiry_id: String(inquiryId),
+      },
+    });
   }
 
   // 문의 저장 성공 이후: 가비아 알리고 중계 서버 호출 (부수효과, 실패해도 응답 유지)

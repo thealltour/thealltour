@@ -32,6 +32,10 @@ type Body = {
   query?: unknown;
   resultCount?: unknown;
   productId?: unknown;
+  sourcePath?: unknown;
+  landingSlug?: unknown;
+  templateType?: unknown;
+  quoteCategory?: unknown;
   occurredAt?: unknown;
   metadata?: unknown;
 };
@@ -73,6 +77,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const taxonomyTypeRaw = body.taxonomyType;
+  const taxonomyType =
+    taxonomyTypeRaw === "category" ||
+    taxonomyTypeRaw === "theme" ||
+    taxonomyTypeRaw === "destination" ||
+    taxonomyTypeRaw === "product_line"
+      ? taxonomyTypeRaw
+      : undefined;
+
   const payload = createAnalyticsPayload({
     eventName: body.eventName,
     source: body.source,
@@ -81,7 +94,7 @@ export async function POST(request: NextRequest) {
       body.deviceType === "desktop" || body.deviceType === "mobile" || body.deviceType === "unknown"
         ? body.deviceType
         : undefined,
-    taxonomyType: body.taxonomyType === "category" || body.taxonomyType === "theme" ? body.taxonomyType : undefined,
+    taxonomyType,
     taxonomyId: typeof body.taxonomyId === "string" ? body.taxonomyId : undefined,
     taxonomySlug: typeof body.taxonomySlug === "string" ? body.taxonomySlug : undefined,
     taxonomyName: typeof body.taxonomyName === "string" ? body.taxonomyName : undefined,
@@ -92,6 +105,10 @@ export async function POST(request: NextRequest) {
     query: typeof body.query === "string" ? body.query : undefined,
     resultCount: typeof body.resultCount === "number" ? body.resultCount : undefined,
     productId: typeof body.productId === "string" ? body.productId : undefined,
+    sourcePath: typeof body.sourcePath === "string" ? body.sourcePath : undefined,
+    landingSlug: typeof body.landingSlug === "string" ? body.landingSlug : undefined,
+    templateType: typeof body.templateType === "string" ? body.templateType : undefined,
+    quoteCategory: typeof body.quoteCategory === "string" ? body.quoteCategory : undefined,
     occurredAt: typeof body.occurredAt === "string" ? body.occurredAt : undefined,
     metadata:
       body.metadata != null && typeof body.metadata === "object" && !Array.isArray(body.metadata)

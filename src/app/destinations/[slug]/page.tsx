@@ -25,10 +25,12 @@ import { loadProductsListingContextForDestinationDetail } from "@/lib/products/l
 import { getDestinationLandingHref } from "@/lib/hubLandingLinks";
 import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavSections";
 import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
+import { getTaxonomyHeroImageFallback } from "@/lib/landingMetadata";
+import { getDestinationSeoData } from "@/lib/destinations/getDestinationSeoData";
 import {
-  getTaxonomyMetadataFallback,
-  getTaxonomyHeroImageFallback,
-} from "@/lib/landingMetadata";
+  buildOgBrandFallbackMetadata,
+  buildOgMetadataFromSeoData,
+} from "@/lib/seo/buildOgPageMetadata";
 
 const RELATED_PRODUCTS_LIMIT = 12;
 
@@ -36,13 +38,15 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const destination = await getDestinationBySlugForPublicLanding(slug);
-  if (!destination) return { title: "Not Found" };
-  const { title, description } = getTaxonomyMetadataFallback(destination);
-  return {
-    title: `${title} | 더올투어`,
-    description: description || `${title} 지역 여행·골프·패키지 상품을 만나보세요.`,
-  };
+  const seo = await getDestinationSeoData(slug);
+  if (!seo) {
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: `/destinations/${slug}`,
+      documentTitle: "여행지 | 더올투어",
+      description: "요청하신 여행지 페이지를 찾을 수 없습니다.",
+    });
+  }
+  return buildOgMetadataFromSeoData(seo);
 }
 
 export default async function DestinationLandingPage({ params }: Props) {

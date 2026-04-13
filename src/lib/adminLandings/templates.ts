@@ -67,6 +67,19 @@ const themeConsultingSections: DefaultLandingSectionSeed[] = [
   { ...destinationConsultingSections[4], sortOrder: 4 },
 ];
 
+const productLineConsultingSections: DefaultLandingSectionSeed[] = [
+  {
+    ...destinationConsultingSections[0],
+    title: "상품군 상담 랜딩",
+    description: "상품군(라인) 중심으로 여행 상담을 진행합니다.",
+    body: "골프·파크골프 등 상품군별 니즈에 맞춰 일정과 상품 구성을 제안합니다.",
+  },
+  { ...themeConsultingSections[1], sortOrder: 1 },
+  { ...themeConsultingSections[2], sortOrder: 2 },
+  { ...destinationConsultingSections[3], sortOrder: 3 },
+  { ...destinationConsultingSections[4], sortOrder: 4 },
+];
+
 const recommendedCollectionSections: DefaultLandingSectionSeed[] = [
   {
     sectionType: "hero",
@@ -132,6 +145,7 @@ const customSections: DefaultLandingSectionSeed[] = [
 const TEMPLATE_DEFAULTS: Record<AdminLandingTemplateType, DefaultLandingSectionSeed[]> = {
   destination_consulting: destinationConsultingSections,
   theme_consulting: themeConsultingSections,
+  product_line_consulting: productLineConsultingSections,
   recommended_collection: recommendedCollectionSections,
   custom: customSections,
 };

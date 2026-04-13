@@ -28,59 +28,26 @@ import {
 import type { Product } from "@/types/product";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
-
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
-
-function toAbsoluteUrl(pathOrUrl: string): string {
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-  const p = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
-  return `${SITE_URL}${p}`;
-}
+import { getGuideSeoData } from "@/lib/guides/getGuideSeoData";
+import {
+  buildOgBrandFallbackMetadata,
+  buildOgMetadataFromSeoData,
+} from "@/lib/seo/buildOgPageMetadata";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const guide = await getGuideBySlug(slug);
-  if (!guide) return { title: "가이드 | 더올투어" };
-
-  const baseTitle =
-    guide.seo_title?.trim() ||
-    guide.title_override?.trim() ||
-    guide.title ||
-    "여행 가이드";
-  const title = `${baseTitle} | 여행 가이드 | 더올투어`;
-  const description =
-    guide.seo_description?.trim() ||
-    guide.summary?.trim() ||
-    `${baseTitle} 여행 준비와 관련 여행 정보를 더올투어에서 확인해 보세요.`;
-  const ogImage =
-    guide.cover_image_url?.trim() ||
-    guide.guide_thumbnail_url?.trim() ||
-    guide.thumbnail_url?.trim() ||
-    null;
-  const canonicalUrl = toAbsoluteUrl(`/guides/${encodeURIComponent(slug)}`);
-
-  return {
-    title,
-    description,
-    alternates: { canonical: canonicalUrl },
-    openGraph: {
-      type: "article",
-      url: canonicalUrl,
-      siteName: "더올투어",
-      title,
-      description,
-      images: ogImage ? [{ url: toAbsoluteUrl(ogImage) }] : [],
-      locale: "ko_KR",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: ogImage ? [toAbsoluteUrl(ogImage)] : [],
-    },
-  };
+  const seo = await getGuideSeoData(slug);
+  if (!seo) {
+    return buildOgBrandFallbackMetadata({
+      canonicalPath: `/guides/${slug}`,
+      documentTitle: "가이드 | 더올투어",
+      description: "더올투어 여행 가이드를 찾을 수 없거나 비공개입니다.",
+      openGraphType: "website",
+    });
+  }
+  return buildOgMetadataFromSeoData(seo);
 }
 
 function productsFilterHrefForTag(tag: string) {

@@ -57,7 +57,11 @@ export function MobileAdminInquiryCard({
   onDelete,
 }: MobileAdminInquiryCardProps) {
   const [showQuote, setShowQuote] = useState(false);
+  const [contentExpanded, setContentExpanded] = useState(false);
+  const [metaExpanded, setMetaExpanded] = useState(false);
   const hasQuote = Boolean(inquiry.quote_snapshot);
+  const rawContent = (inquiry.content ?? "").trim();
+  const metaLine = (inquiry.acquisition_summary ?? inquiry.source_path ?? "").trim();
 
   return (
     <article
@@ -115,13 +119,49 @@ export function MobileAdminInquiryCard({
         {formatInquiryDate(inquiry.created_at ?? "")}
       </p>
 
-      <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[var(--text-primary)]">{inquiry.content}</p>
-
-      {(inquiry.acquisition_summary || inquiry.source_path) && (
-        <p className="mt-2 truncate text-xs text-[var(--text-subtle)]" title={inquiry.acquisition_summary ?? undefined}>
-          {inquiry.acquisition_summary ?? inquiry.source_path}
-        </p>
+      {rawContent ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setContentExpanded((v) => !v)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setContentExpanded((v) => !v);
+            }
+          }}
+          className={`mt-2 cursor-pointer text-sm leading-relaxed text-[var(--text-primary)] outline-none ring-[var(--primary)]/40 focus-visible:ring-2 ${
+            contentExpanded ? "whitespace-pre-wrap break-words" : "line-clamp-3"
+          }`}
+          aria-expanded={contentExpanded}
+          aria-label={contentExpanded ? "문의 내용 접기" : "문의 내용 전체 보기"}
+        >
+          {rawContent}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-[var(--text-muted)]">내용 없음</p>
       )}
+
+      {metaLine ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setMetaExpanded((v) => !v)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setMetaExpanded((v) => !v);
+            }
+          }}
+          className={`mt-2 cursor-pointer text-xs text-[var(--text-subtle)] outline-none ring-[var(--primary)]/40 focus-visible:ring-2 ${
+            metaExpanded ? "break-words whitespace-pre-wrap" : "truncate"
+          }`}
+          aria-expanded={metaExpanded}
+          aria-label={metaExpanded ? "유입 경로 접기" : "유입 경로 전체 보기"}
+        >
+          {metaLine}
+        </div>
+      ) : null}
 
       {hasQuote ? (
         <button

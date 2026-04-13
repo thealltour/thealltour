@@ -3,7 +3,57 @@ import { supabase } from "@/lib/supabase";
 import { getTravelBookingByInquiryId, createTravelBooking, updateTravelBookingStatus } from "@/lib/travelBookings";
 import { createEligibilityIfNotExists } from "@/lib/reviewEligibilities";
 import { createReviewReminders } from "@/lib/reviewReminders";
+import {
+  appendInquiryActivityLog,
+  BOOKING_STATUS_KO,
+  CONSULTATION_STATUS_KO,
+} from "@/lib/inquiries/inquiryActivityLog";
 import type { ConsultationStatus, BookingStatus } from "@/types/inquiry";
+
+const STATUS_LOG_ACTOR = "관리자";
+
+function consultationLabelKo(key: string): string {
+  if (!key) return "—";
+  return CONSULTATION_STATUS_KO[key] ?? key;
+}
+
+function bookingLabelKo(key: string): string {
+  if (!key) return "—";
+  return BOOKING_STATUS_KO[key] ?? key;
+}
+
+async function logConsultationAndBookingChanges(
+  inquiryId: string,
+  prevC: string | null | undefined,
+  prevB: string | null | undefined,
+  nextC: string | null | undefined,
+  nextB: string | null | undefined,
+) {
+  const pc = prevC ?? "";
+  const pb = prevB ?? "";
+  const nc = nextC ?? "";
+  const nb = nextB ?? "";
+  if (pc !== nc) {
+    const { error } = await appendInquiryActivityLog(supabase, {
+      inquiry_id: inquiryId,
+      activity_type: "consultation_status_changed",
+      actor_name: STATUS_LOG_ACTOR,
+      summary: `상담 상태 변경: ${consultationLabelKo(pc)} → ${consultationLabelKo(nc)}`,
+      metadata: { from: pc || null, to: nc || null },
+    });
+    if (error) console.error("[inquiries PATCH] consultation log failed", error);
+  }
+  if (pb !== nb) {
+    const { error } = await appendInquiryActivityLog(supabase, {
+      inquiry_id: inquiryId,
+      activity_type: "booking_status_changed",
+      actor_name: STATUS_LOG_ACTOR,
+      summary: `여행 상태 변경: ${bookingLabelKo(pb)} → ${bookingLabelKo(nb)}`,
+      metadata: { from: pb || null, to: nb || null },
+    });
+    if (error) console.error("[inquiries PATCH] booking log failed", error);
+  }
+}
 
 type PatchBodyLegacy = {
   is_completed?: boolean;
@@ -35,6 +85,18 @@ export async function PATCH(
 
   if (isActionBody(body)) {
     if (body.action === "update_status") {
+      const { data: prevSnap, error: prevErr } = await supabase
+        .from("inquiries")
+        .select("consultation_status, booking_status")
+        .eq("id", inquiryId)
+        .maybeSingle();
+      if (prevErr || !prevSnap) {
+        return NextResponse.json({ message: "문의를 찾을 수 없습니다." }, { status: 404 });
+      }
+      const prevRow = prevSnap as { consultation_status?: string | null; booking_status?: string | null };
+      const prevC = prevRow.consultation_status ?? undefined;
+      const prevB = prevRow.booking_status ?? undefined;
+
       const updatePayload: Record<string, unknown> = {};
       if (body.consultation_status && CONSULTATION_STATUSES.includes(body.consultation_status)) {
         updatePayload.consultation_status = body.consultation_status;
@@ -51,10 +113,18 @@ export async function PATCH(
           { status: 400 },
         );
       }
+      updatePayload.last_activity_at = new Date().toISOString();
+
+      let nextC = prevC;
+      let nextB = prevB;
+      if (updatePayload.consultation_status !== undefined) nextC = String(updatePayload.consultation_status);
+      if (updatePayload.booking_status !== undefined) nextB = String(updatePayload.booking_status);
+
       const { error } = await supabase.from("inquiries").update(updatePayload).eq("id", inquiryId);
       if (error) {
         return handleInquiryUpdateError(error);
       }
+      await logConsultationAndBookingChanges(inquiryId, prevC, prevB, nextC, nextB);
       return NextResponse.json({ message: "상담 상태가 업데이트되었습니다." });
     }
 
@@ -78,7 +148,7 @@ export async function PATCH(
 
       const { data: inquiry, error: fetchError } = await supabase
         .from("inquiries")
-        .select("id, customer_profile_id, product_id, product_title, source_path, consultation_status")
+        .select("id, customer_profile_id, product_id, product_title, source_path, consultation_status, booking_status")
         .eq("id", inquiryId)
         .single();
 
@@ -133,17 +203,23 @@ export async function PATCH(
         return NextResponse.json({ message: "예약 생성에 실패했습니다." }, { status: 500 });
       }
 
+      const rowBooking = (inquiry as { booking_status?: string | null }).booking_status ?? "none";
+      const rowConsultation = consultationRow ?? "new";
+
       const { error: updateErr } = await supabase
         .from("inquiries")
         .update({
           consultation_status: "closed",
           booking_status: "reserved",
+          last_activity_at: new Date().toISOString(),
         })
         .eq("id", inquiryId);
 
       if (updateErr) {
         return NextResponse.json({ message: "문의 상태 업데이트에 실패했습니다." }, { status: 500 });
       }
+
+      await logConsultationAndBookingChanges(inquiryId, rowConsultation, rowBooking, "closed", "reserved");
 
       return NextResponse.json({ message: "예약이 확정되었습니다." });
     }
@@ -190,17 +266,22 @@ export async function PATCH(
         return NextResponse.json({ message: "예약 상태 업데이트에 실패했습니다." }, { status: 500 });
       }
 
+      const prevBook = bookingStatus ?? "none";
+
       const { error: inquiryUpdateErr } = await supabase
         .from("inquiries")
         .update({
           booking_status: "completed",
           completed_at: now,
+          last_activity_at: now,
         })
         .eq("id", inquiryId);
 
       if (inquiryUpdateErr) {
         return NextResponse.json({ message: "문의 상태 업데이트에 실패했습니다." }, { status: 500 });
       }
+
+      await logConsultationAndBookingChanges(inquiryId, undefined, prevBook, undefined, "completed");
 
       const eligibility = await createEligibilityIfNotExists(booking.id, customerProfileId, {
         withClaimToken: true,
@@ -220,6 +301,18 @@ export async function PATCH(
   }
 
   // Legacy: no action, direct field update
+  const { data: prevLegacy, error: prevLegErr } = await supabase
+    .from("inquiries")
+    .select("consultation_status, booking_status")
+    .eq("id", inquiryId)
+    .maybeSingle();
+  if (prevLegErr || !prevLegacy) {
+    return NextResponse.json({ message: "문의를 찾을 수 없습니다." }, { status: 404 });
+  }
+  const leg = prevLegacy as { consultation_status?: string | null; booking_status?: string | null };
+  const prevLC = leg.consultation_status ?? undefined;
+  const prevLB = leg.booking_status ?? undefined;
+
   const updatePayload: Record<string, unknown> = {};
   if (typeof body.is_completed === "boolean") {
     updatePayload.is_completed = body.is_completed;
@@ -240,10 +333,18 @@ export async function PATCH(
     );
   }
 
+  updatePayload.last_activity_at = new Date().toISOString();
+
+  let nextLC = prevLC;
+  let nextLB = prevLB;
+  if (updatePayload.consultation_status !== undefined) nextLC = String(updatePayload.consultation_status);
+  if (updatePayload.booking_status !== undefined) nextLB = String(updatePayload.booking_status);
+
   const { error } = await supabase.from("inquiries").update(updatePayload).eq("id", inquiryId);
   if (error) {
     return handleInquiryUpdateError(error);
   }
+  await logConsultationAndBookingChanges(inquiryId, prevLC, prevLB, nextLC, nextLB);
   return NextResponse.json({ message: "상담 상태가 업데이트되었습니다." });
 }
 

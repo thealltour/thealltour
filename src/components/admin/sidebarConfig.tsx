@@ -16,6 +16,7 @@ import {
   Bell,
   Gift,
   Coins,
+  BarChart2,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -50,6 +51,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: MessageSquare,
     section: "main",
     mainKey: "inquiry",
+    roles: ["admin", "manager"],
+  },
+  {
+    href: "/theall_manager_only/inquiries/dashboard",
+    label: "문의 운영",
+    icon: BarChart2,
+    section: "main",
+    mainKey: "inquiry_dashboard",
     roles: ["admin", "manager"],
   },
   {

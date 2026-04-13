@@ -46,7 +46,8 @@ function isReviewTabActive(href: string, pathname: string): boolean {
 export const menuMap = {
   dashboard: ["운영 현황", "통계"],
   product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 지역카드", "메인 테마카드", "메인 추천상품 관리"],
-  inquiry: ["전체 문의", "미처리 문의"],
+  inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
+  inquiry_dashboard: ["전체 문의", "미처리 문의", "운영 대시보드"],
   member: ["회원 목록"],
   rewards: ["신청", "승인", "발송", "완료", "반려"],
   points: ["포인트 지급"],
@@ -64,6 +65,7 @@ const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   dashboard: "대시보드",
   product: "상품 관리",
   inquiry: "문의 관리",
+  inquiry_dashboard: "문의 운영",
   member: "회원 관리",
   rewards: "리워드 교환 관리",
   points: "포인트 지급 관리",
@@ -152,12 +154,21 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       };
       initial = (status && tabByStatus[status]) || "신청";
     }
+    if (activeMenu === "inquiry" || activeMenu === "inquiry_dashboard") {
+      if (pathname.includes("/inquiries/dashboard")) {
+        initial = "운영 대시보드";
+      } else if (searchParams.get("status") === "pending") {
+        initial = "미처리 문의";
+      } else {
+        initial = "전체 문의";
+      }
+    }
 
     setActiveLabel(initial);
     if (initial && onTabChange) {
       onTabChange(initial);
     }
-  }, [items, onTabChange, activeMenu, searchParams]);
+  }, [items, onTabChange, activeMenu, searchParams, pathname]);
 
   useEffect(() => {
     function handleScroll() {
@@ -312,6 +323,17 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       const target = query ? `${pathname}?${query}` : pathname;
       router.push(target);
       return;
+    }
+    if (activeMenu === "inquiry" || activeMenu === "inquiry_dashboard") {
+      if (label === "운영 대시보드") {
+        router.push("/theall_manager_only/inquiries/dashboard");
+        return;
+      }
+      if (label === "미처리 문의") {
+        router.push("/theall_manager_only/inquiries?status=pending");
+        return;
+      }
+      router.push("/theall_manager_only/inquiries");
     }
   }
 

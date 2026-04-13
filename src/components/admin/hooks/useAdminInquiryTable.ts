@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
+import {
+  extractAssignees,
+  readInquirySelfDisplayName,
+  sortInquiriesByQueuePriority,
+  toInquiryListAssigneeParam,
+  writeInquirySelfDisplayName,
+  type AssigneeFilter,
+  type QuickFilter,
+} from "@/components/admin/inquiries/inquiryQueue.utils";
 
 export type StatusFilter =
   | "all"
@@ -14,9 +23,10 @@ export type StatusFilter =
   | "reserved"
   | "completed"
   | "pending"
-  | "delayed";
+  | "delayed"
+  | "in_progress";
 
-export type InquirySortOption = "pending_first" | "recent" | "oldest" | "name";
+export type InquirySortOption = "priority_queue" | "pending_first" | "recent" | "oldest" | "name";
 
 type InquiryListResponse = {
   items: Inquiry[];
@@ -30,6 +40,12 @@ type InquiryListResponse = {
   contactedCount?: number;
   closedCount?: number;
   onHoldCount?: number;
+  queueOverdueCount?: number;
+  queueFollowUpTodayCount?: number;
+  queueHotLeadCount?: number;
+  queueUnassignedCount?: number;
+  assigneeWorkload?: { byName: Record<string, number>; unassigned: number };
+  assigneeWorkloadCapped?: boolean;
 };
 
 function parseStatusFromSearchParams(raw: string | null): StatusFilter {
@@ -42,6 +58,7 @@ function parseStatusFromSearchParams(raw: string | null): StatusFilter {
     raw === "completed" ||
     raw === "pending" ||
     raw === "delayed" ||
+    raw === "in_progress" ||
     raw === "all"
   ) {
     return raw;
@@ -104,13 +121,26 @@ export function useAdminInquiryTable() {
   const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [sortBy, setSortBy] = useState<InquirySortOption>("pending_first");
+  const [sortBy, setSortBy] = useState<InquirySortOption>("priority_queue");
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
+  const [selfDisplayName, setSelfDisplayNameState] = useState("");
+  const [assigneeWorkload, setAssigneeWorkload] = useState<{ byName: Record<string, number>; unassigned: number }>({
+    byName: {},
+    unassigned: 0,
+  });
+  const [assigneeWorkloadCapped, setAssigneeWorkloadCapped] = useState(false);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [reservedCount, setReservedCount] = useState(0);
   const [onHoldCount, setOnHoldCount] = useState(0);
+  const [newCount, setNewCount] = useState(0);
+  const [queueOverdueCount, setQueueOverdueCount] = useState(0);
+  const [queueFollowUpTodayCount, setQueueFollowUpTodayCount] = useState(0);
+  const [queueHotLeadCount, setQueueHotLeadCount] = useState(0);
+  const [queueUnassignedCount, setQueueUnassignedCount] = useState(0);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
   const [reserveModalInquiryId, setReserveModalInquiryId] = useState<string | null>(null);
@@ -118,6 +148,54 @@ export function useAdminInquiryTable() {
   const [reserveReturn, setReserveReturn] = useState("");
   const [isSubmittingReserve, setIsSubmittingReserve] = useState(false);
   const lastFocusScrollKey = useRef<string | null>(null);
+  const urlBootstrapRef = useRef(false);
+
+  useEffect(() => {
+    setSelfDisplayNameState(readInquirySelfDisplayName());
+  }, []);
+
+  useEffect(() => {
+    if (urlBootstrapRef.current) return;
+    urlBootstrapRef.current = true;
+    const qfRaw = searchParams.get("quickFilter") ?? searchParams.get("quick");
+    const pr = searchParams.get("priority");
+    let nextQuick: QuickFilter = "all";
+    if (
+      qfRaw === "unresponded" ||
+      qfRaw === "overdue" ||
+      qfRaw === "today" ||
+      qfRaw === "hot" ||
+      qfRaw === "unassigned"
+    ) {
+      nextQuick = qfRaw;
+    } else if (pr === "high") {
+      nextQuick = "hot";
+    }
+    if (nextQuick !== "all") setQuickFilter(nextQuick);
+
+    const af = searchParams.get("assigneeFilter");
+    if (af === "mine" || af === "unassigned") setAssigneeFilter(af);
+    else if (af && af !== "all") setAssigneeFilter(af);
+
+    const sq = searchParams.get("search")?.trim();
+    if (sq) setSearchQuery(sq);
+
+    const st = searchParams.get("sort");
+    if (
+      st === "priority_queue" ||
+      st === "pending_first" ||
+      st === "recent" ||
+      st === "oldest" ||
+      st === "name"
+    ) {
+      setSortBy(st);
+    }
+  }, [searchParams]);
+
+  const setSelfDisplayName = useCallback((v: string) => {
+    writeInquirySelfDisplayName(v);
+    setSelfDisplayNameState(v.trim());
+  }, []);
 
   const loadInquiries = useCallback(
     async (options?: { silent?: boolean; resetSelection?: boolean }) => {
@@ -137,7 +215,16 @@ export function useAdminInquiryTable() {
           status: statusFilter,
           sort: sortBy,
         });
+        if (quickFilter !== "all") params.set("quick", quickFilter);
         if (debouncedSearch) params.set("search", debouncedSearch.trim());
+        const assigneeParam = toInquiryListAssigneeParam(assigneeFilter, selfDisplayName);
+        if (assigneeParam) params.set("assigneeName", assigneeParam);
+
+        const createdAfterRaw = searchParams.get("createdAfter")?.trim() ?? "";
+        if (createdAfterRaw) {
+          const t = new Date(createdAfterRaw).getTime();
+          if (!Number.isNaN(t)) params.set("createdAfter", new Date(t).toISOString());
+        }
 
         const response = await fetch(`/api/inquiries?${params.toString()}`, { cache: "no-store" });
         if (!response.ok) {
@@ -146,16 +233,38 @@ export function useAdminInquiryTable() {
         }
 
         const data = (await response.json()) as Inquiry[] | InquiryListResponse;
+        const applyPriorityOrder = (list: Inquiry[]) =>
+          sortBy === "priority_queue" ? [...list].sort(sortInquiriesByQueuePriority) : list;
+
         if (Array.isArray(data)) {
-          setInquiries(data);
+          setInquiries(applyPriorityOrder(data));
           setTotal(data.length);
+          setNewCount(0);
+          setQueueOverdueCount(0);
+          setQueueFollowUpTodayCount(0);
+          setQueueHotLeadCount(0);
+          setQueueUnassignedCount(0);
+          setAssigneeWorkload({ byName: {}, unassigned: 0 });
+          setAssigneeWorkloadCapped(false);
         } else {
-          setInquiries(data.items ?? []);
+          setInquiries(applyPriorityOrder(data.items ?? []));
           setTotal(data.total ?? 0);
           setPendingCount(data.pendingCount ?? 0);
           setCompletedCount(data.completedCount ?? 0);
           setReservedCount(data.reservedCount ?? 0);
           setOnHoldCount(data.onHoldCount ?? 0);
+          setNewCount(data.newCount ?? 0);
+          setQueueOverdueCount(data.queueOverdueCount ?? 0);
+          setQueueFollowUpTodayCount(data.queueFollowUpTodayCount ?? 0);
+          setQueueHotLeadCount(data.queueHotLeadCount ?? 0);
+          setQueueUnassignedCount(data.queueUnassignedCount ?? 0);
+          setAssigneeWorkload(
+            data.assigneeWorkload ?? {
+              byName: {},
+              unassigned: 0,
+            },
+          );
+          setAssigneeWorkloadCapped(Boolean(data.assigneeWorkloadCapped));
         }
         if (resetSelection) {
           setReserveModalInquiryId(null);
@@ -170,7 +279,13 @@ export function useAdminInquiryTable() {
         }
       }
     },
-    [page, pageSize, statusFilter, sortBy, debouncedSearch],
+    [page, pageSize, statusFilter, sortBy, quickFilter, assigneeFilter, selfDisplayName, debouncedSearch, searchParams],
+  );
+
+  /** 응대 저장 등으로 목록이 바뀐 뒤에도 처리 우선순위 정렬 유지 */
+  const resortIfPriority = useCallback(
+    (list: Inquiry[]) => (sortBy === "priority_queue" ? [...list].sort(sortInquiriesByQueuePriority) : list),
+    [sortBy],
   );
 
   useEffect(() => {
@@ -201,6 +316,28 @@ export function useAdminInquiryTable() {
     return () => window.cancelAnimationFrame(t);
   }, [focusInquiryId, inquiries]);
 
+  const setQuickFilterAndResetPage = useCallback(
+    (f: QuickFilter) => {
+      setQuickFilter(f);
+      setPage(1);
+    },
+    [setPage],
+  );
+
+  const setAssigneeFilterAndResetPage = useCallback(
+    (f: AssigneeFilter) => {
+      setAssigneeFilter(f);
+      setPage(1);
+    },
+    [setPage],
+  );
+
+  const assigneePickList = useMemo(() => {
+    const s = new Set<string>(Object.keys(assigneeWorkload.byName));
+    extractAssignees(inquiries).forEach((n) => s.add(n));
+    return Array.from(s).sort((a, b) => a.localeCompare(b, "ko"));
+  }, [assigneeWorkload.byName, inquiries]);
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
 
@@ -215,7 +352,7 @@ export function useAdminInquiryTable() {
     setErrorMessage("");
     const previous = inquiries;
     setInquiries((current) =>
-      current.map((item) => (item.id === id ? { ...item, consultation_status } : item)),
+      resortIfPriority(current.map((item) => (item.id === id ? { ...item, consultation_status } : item))),
     );
     try {
       const response = await fetch(`/api/inquiries/${id}`, {
@@ -234,7 +371,7 @@ export function useAdminInquiryTable() {
     } finally {
       setPendingId(null);
     }
-  }, [inquiries]);
+  }, [inquiries, resortIfPriority]);
 
   const openReserveModal = useCallback((inquiry: Inquiry) => {
     setReserveModalInquiryId(inquiry.id);
@@ -329,8 +466,10 @@ export function useAdminInquiryTable() {
       setErrorMessage("");
       const previous = inquiries;
       setInquiries((current) =>
-        current.map((item) =>
-          item.id === id ? { ...item, booking_status: "completed" as BookingStatus } : item,
+        resortIfPriority(
+          current.map((item) =>
+            item.id === id ? { ...item, booking_status: "completed" as BookingStatus } : item,
+          ),
         ),
       );
       try {
@@ -353,7 +492,7 @@ export function useAdminInquiryTable() {
         setPendingId(null);
       }
     },
-    [inquiries, loadInquiries],
+    [inquiries, loadInquiries, resortIfPriority],
   );
 
   const toggleExpand = useCallback((id: string) => {
@@ -370,6 +509,16 @@ export function useAdminInquiryTable() {
       setPage(clamped);
     },
     [totalPages, setPage],
+  );
+
+  /** 응대 매뉴얼 PATCH 응답 등으로 목록 중 1건 필드만 병합 */
+  const applyInquiryMerge = useCallback(
+    (id: string, patch: Partial<Inquiry>) => {
+      setInquiries((current) =>
+        resortIfPriority(current.map((item) => (item.id === id ? { ...item, ...patch } : item))),
+      );
+    },
+    [resortIfPriority],
   );
 
   const setSortByAndResetPage = useCallback(
@@ -403,6 +552,15 @@ export function useAdminInquiryTable() {
     searchQuery,
     statusFilter,
     sortBy,
+    quickFilter,
+    setQuickFilter: setQuickFilterAndResetPage,
+    assigneeFilter,
+    setAssigneeFilter: setAssigneeFilterAndResetPage,
+    selfDisplayName,
+    setSelfDisplayName,
+    assigneeWorkload,
+    assigneeWorkloadCapped,
+    assigneePickList,
     page,
     pageSize,
     total,
@@ -410,6 +568,11 @@ export function useAdminInquiryTable() {
     completedCount,
     reservedCount,
     onHoldCount,
+    newCount,
+    queueOverdueCount,
+    queueFollowUpTodayCount,
+    queueHotLeadCount,
+    queueUnassignedCount,
     expandedRows,
     expandedQuoteId,
     reserveModalInquiryId,
@@ -436,6 +599,7 @@ export function useAdminInquiryTable() {
     movePage,
     setReserveDeparture,
     setReserveReturn,
+    applyInquiryMerge,
   };
 }
 

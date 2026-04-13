@@ -28,6 +28,7 @@ function inferMainMenuKey(pathname: string): MainMenuKey | null {
   if (rel == null) return null;
   if (rel === "/" || rel === "") return "dashboard";
   if (rel.startsWith("/products")) return "product";
+  if (rel.startsWith("/inquiries/dashboard")) return "inquiry_dashboard";
   if (rel.startsWith("/inquiries")) return "inquiry";
   if (rel.startsWith("/members")) return "member";
   if (rel.startsWith("/rewards")) return "rewards";

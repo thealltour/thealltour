@@ -5,61 +5,11 @@ import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
 import { inferAttribution } from "@/lib/analytics/attribution";
 import type { Inquiry, InquiryInput } from "@/types/inquiry";
-
-function normalizeInquiryRow(row: Record<string, unknown>) {
-  const quoteSnapshotRaw = row.quote_snapshot;
-  let quote_snapshot: Inquiry["quote_snapshot"] = undefined;
-  if (quoteSnapshotRaw && typeof quoteSnapshotRaw === "object") {
-    const o = quoteSnapshotRaw as Record<string, unknown>;
-    const qs = o.quoteSummary as Record<string, unknown> | undefined;
-    quote_snapshot = {
-      selectedOptions:
-        o.selectedOptions && typeof o.selectedOptions === "object"
-          ? (o.selectedOptions as Record<string, string>)
-          : undefined,
-      quoteSummary: qs
-        ? {
-            total: qs.total as number | null,
-            basePrice: qs.basePrice as number | null,
-            breakdown: Array.isArray(qs.breakdown)
-              ? (qs.breakdown as Array<{ groupLabel: string; optionLabel: string; priceDelta: number }>)
-              : [],
-          }
-        : undefined,
-      inquiredAt: typeof o.inquiredAt === "string" ? o.inquiredAt : undefined,
-    };
-    if (!quote_snapshot.selectedOptions && !quote_snapshot.quoteSummary && !quote_snapshot.inquiredAt) {
-      quote_snapshot = undefined;
-    }
-  }
-  return {
-    id: String(row.id ?? ""),
-    name: String(row.name ?? ""),
-    phone: String(row.phone ?? ""),
-    content: String(row.content ?? ""),
-    product_id: typeof row.product_id === "string" ? row.product_id : undefined,
-    product_title: typeof row.product_title === "string" ? row.product_title : undefined,
-    source_path: typeof row.source_path === "string" ? row.source_path : undefined,
-    is_completed: typeof row.is_completed === "boolean" ? row.is_completed : undefined,
-    customer_profile_id: typeof row.customer_profile_id === "string" ? row.customer_profile_id : undefined,
-    consultation_status: typeof row.consultation_status === "string" ? row.consultation_status : undefined,
-    booking_status: typeof row.booking_status === "string" ? row.booking_status : undefined,
-    completed_at: typeof row.completed_at === "string" ? row.completed_at : undefined,
-    created_at: typeof row.created_at === "string" ? row.created_at : undefined,
-    quote_snapshot: quote_snapshot ?? undefined,
-    first_touch:
-      row.first_touch != null && typeof row.first_touch === "object"
-        ? (row.first_touch as Inquiry["first_touch"])
-        : undefined,
-    inquiry_page_url: typeof row.inquiry_page_url === "string" ? row.inquiry_page_url : undefined,
-    acquisition_channel: typeof row.acquisition_channel === "string" ? row.acquisition_channel : undefined,
-    acquisition_source_label:
-      typeof row.acquisition_source_label === "string" ? row.acquisition_source_label : undefined,
-    acquisition_medium: typeof row.acquisition_medium === "string" ? row.acquisition_medium : undefined,
-    acquisition_summary: typeof row.acquisition_summary === "string" ? row.acquisition_summary : undefined,
-    first_landing_path: typeof row.first_landing_path === "string" ? row.first_landing_path : undefined,
-  };
-}
+import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
+import {
+  INQUIRY_API_ASSIGNEE_NO_SELF,
+  INQUIRY_API_ASSIGNEE_UNASSIGNED,
+} from "@/components/admin/inquiries/inquiryQueue.utils";
 
 type ListStatus =
   | "all"
@@ -71,8 +21,11 @@ type ListStatus =
   | "completed"
   | "pending"
   | "delayed"
-  | "completed_legacy";
-type SortOption = "pending_first" | "recent" | "oldest" | "name";
+  | "completed_legacy"
+  | "in_progress";
+type SortOption = "pending_first" | "recent" | "oldest" | "name" | "priority_queue";
+type ListQuickFilter = "all" | "unresponded" | "overdue" | "today" | "hot" | "unassigned";
+
 type SafeSummary = {
   /** 응답 필요 상담: new + contacted (보류·종료 제외) */
   pendingCount: number;
@@ -82,9 +35,97 @@ type SafeSummary = {
   contactedCount: number;
   closedCount: number;
   onHoldCount: number;
+  /** 대기열 요약(전체 DB 기준, 퀵 필터 카드용) */
+  queueOverdueCount: number;
+  queueFollowUpTodayCount: number;
+  queueHotLeadCount: number;
+  queueUnassignedCount: number;
 };
 
+function kstYmd(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function kstDayBoundsIso(): { start: string; end: string } {
+  const d = kstYmd();
+  const start = new Date(`${d}T00:00:00+09:00`);
+  const end = new Date(`${d}T23:59:59.999+09:00`);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function applyInquiryListFilters(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  search: string,
+  status: ListStatus,
+  quick: ListQuickFilter,
+  createdAfterIso: string | null,
+) {
+  if (createdAfterIso) {
+    query = query.gte("created_at", createdAfterIso);
+  }
+
+  if (search) {
+    const escaped = search.replace(/[%_]/g, "\\$&");
+    query = query.or(
+      `name.ilike.%${escaped}%,phone.ilike.%${escaped}%,content.ilike.%${escaped}%,product_title.ilike.%${escaped}%`,
+    );
+  }
+
+  if (status === "in_progress") {
+    query = query.in("consultation_status", ["new", "contacted", "on_hold"]);
+  } else if (status === "new") query = query.eq("consultation_status", "new");
+  else if (status === "contacted") query = query.eq("consultation_status", "contacted");
+  else if (status === "closed") query = query.eq("consultation_status", "closed");
+  else if (status === "on_hold") query = query.eq("consultation_status", "on_hold");
+  else if (status === "reserved") query = query.eq("booking_status", "reserved");
+  else if (status === "completed") query = query.eq("booking_status", "completed");
+  else if (status === "pending") {
+    query = query.in("consultation_status", ["new", "contacted"]);
+  } else if (status === "delayed") {
+    const delayedThresholdIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    query = query.in("consultation_status", ["new", "contacted"]).lt("created_at", delayedThresholdIso);
+  } else if (status === "completed_legacy") {
+    query = query.eq("is_completed", true);
+  }
+
+  if (quick === "unresponded") {
+    query = query.eq("consultation_status", "new");
+  } else if (quick === "overdue") {
+    const nowIso = new Date().toISOString();
+    query = query.not("follow_up_at", "is", null).lt("follow_up_at", nowIso);
+  } else if (quick === "today") {
+    const { start, end } = kstDayBoundsIso();
+    query = query.gte("follow_up_at", start).lte("follow_up_at", end);
+  } else if (quick === "hot") {
+    query = query.eq("lead_priority", "high");
+  } else if (quick === "unassigned") {
+    query = query.is("assignee_name", null);
+  }
+
+  return query;
+}
+
+function aggregateAssigneeWorkloadFromRows(rows: { assignee_name: string | null }[] | null) {
+  const byName: Record<string, number> = {};
+  let unassigned = 0;
+  for (const r of rows ?? []) {
+    const n = typeof r.assignee_name === "string" ? r.assignee_name.trim() : "";
+    if (!n) unassigned += 1;
+    else byName[n] = (byName[n] ?? 0) + 1;
+  }
+  return { byName, unassigned };
+}
+
 async function getInquirySummarySafe(): Promise<SafeSummary> {
+  const nowIso = new Date().toISOString();
+  const { start: kstStart, end: kstEnd } = kstDayBoundsIso();
+
   const [
     pendingSummary,
     completedSummary,
@@ -93,6 +134,10 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     contactedSummary,
     closedSummary,
     onHoldSummary,
+    overdueSummary,
+    todaySummary,
+    hotSummary,
+    unassignedSummary,
   ] = await Promise.all([
     supabase.from("inquiries").select("*", { count: "exact", head: true }).in("consultation_status", ["new", "contacted"]),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "completed"),
@@ -101,6 +146,10 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "contacted"),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "closed"),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "on_hold"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).not("follow_up_at", "is", null).lt("follow_up_at", nowIso),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).gte("follow_up_at", kstStart).lte("follow_up_at", kstEnd),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("lead_priority", "high"),
+    supabase.from("inquiries").select("*", { count: "exact", head: true }).is("assignee_name", null),
   ]);
 
   if (
@@ -124,6 +173,10 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
       contactedCount: 0,
       closedCount: 0,
       onHoldCount: 0,
+      queueOverdueCount: 0,
+      queueFollowUpTodayCount: 0,
+      queueHotLeadCount: 0,
+      queueUnassignedCount: 0,
     };
   }
 
@@ -135,6 +188,10 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     contactedCount: contactedSummary.count ?? 0,
     closedCount: closedSummary.count ?? 0,
     onHoldCount: onHoldSummary.count ?? 0,
+    queueOverdueCount: overdueSummary.error ? 0 : (overdueSummary.count ?? 0),
+    queueFollowUpTodayCount: todaySummary.error ? 0 : (todaySummary.count ?? 0),
+    queueHotLeadCount: hotSummary.error ? 0 : (hotSummary.count ?? 0),
+    queueUnassignedCount: unassignedSummary.error ? 0 : (unassignedSummary.count ?? 0),
   };
 }
 
@@ -151,14 +208,36 @@ export async function GET(request: Request) {
     statusParam === "completed" ||
     statusParam === "pending" ||
     statusParam === "delayed" ||
-    statusParam === "completed_legacy"
+    statusParam === "completed_legacy" ||
+    statusParam === "in_progress"
       ? statusParam
       : "all";
+
+  const createdAfterRaw = url.searchParams.get("createdAfter")?.trim() ?? "";
+  let createdAfterIso: string | null = null;
+  if (createdAfterRaw) {
+    const t = new Date(createdAfterRaw).getTime();
+    if (!Number.isNaN(t)) createdAfterIso = new Date(t).toISOString();
+  }
   const sortParam = url.searchParams.get("sort");
   const sort: SortOption =
-    sortParam === "recent" || sortParam === "oldest" || sortParam === "name" || sortParam === "pending_first"
+    sortParam === "recent" ||
+    sortParam === "oldest" ||
+    sortParam === "name" ||
+    sortParam === "pending_first" ||
+    sortParam === "priority_queue"
       ? sortParam
-      : "pending_first";
+      : "priority_queue";
+
+  const quickParam = url.searchParams.get("quick");
+  const quick: ListQuickFilter =
+    quickParam === "unresponded" ||
+    quickParam === "overdue" ||
+    quickParam === "today" ||
+    quickParam === "hot" ||
+    quickParam === "unassigned"
+      ? quickParam
+      : "all";
   const pageRaw = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
   const pageSizeRaw = Number.parseInt(url.searchParams.get("pageSize") ?? "10", 10);
   const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
@@ -166,51 +245,60 @@ export async function GET(request: Request) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let query = supabase.from("inquiries").select("*", { count: "exact" });
+  const assigneeNameRaw = url.searchParams.get("assigneeName")?.trim() ?? "";
 
-  if (search) {
-    const escaped = search.replace(/[%_]/g, "\\$&");
-    query = query.or(
-      `name.ilike.%${escaped}%,phone.ilike.%${escaped}%,content.ilike.%${escaped}%,product_title.ilike.%${escaped}%`,
-    );
-  }
+  const applyAssigneeToListQuery = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    q: any,
+  ) => {
+    if (assigneeNameRaw === INQUIRY_API_ASSIGNEE_UNASSIGNED) return q.is("assignee_name", null);
+    if (assigneeNameRaw === INQUIRY_API_ASSIGNEE_NO_SELF) return q.eq("assignee_name", INQUIRY_API_ASSIGNEE_NO_SELF);
+    if (assigneeNameRaw) return q.eq("assignee_name", assigneeNameRaw);
+    return q;
+  };
 
-  if (status === "new") query = query.eq("consultation_status", "new");
-  else if (status === "contacted") query = query.eq("consultation_status", "contacted");
-  else if (status === "closed") query = query.eq("consultation_status", "closed");
-  else if (status === "on_hold") query = query.eq("consultation_status", "on_hold");
-  else if (status === "reserved") query = query.eq("booking_status", "reserved");
-  else if (status === "completed") query = query.eq("booking_status", "completed");
-  else if (status === "pending") {
-    query = query.in("consultation_status", ["new", "contacted"]);
-  } else if (status === "delayed") {
-    const delayedThresholdIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    query = query.in("consultation_status", ["new", "contacted"]).lt("created_at", delayedThresholdIso);
-  } else if (status === "completed_legacy") {
-    query = query.eq("is_completed", true);
-  }
+  const orderSort: Exclude<SortOption, "priority_queue"> = sort === "priority_queue" ? "pending_first" : sort;
 
-  if (sort === "pending_first") {
-    query = query.order("consultation_status", { ascending: true }).order("created_at", { ascending: false });
-  } else if (sort === "oldest") {
-    query = query.order("created_at", { ascending: true });
-  } else if (sort === "name") {
-    query = query.order("name", { ascending: true }).order("created_at", { ascending: false });
-  } else {
-    query = query.order("created_at", { ascending: false });
-  }
+  const applyListOrdering = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    q: any,
+  ) => {
+    if (orderSort === "pending_first") {
+      return q.order("consultation_status", { ascending: true }).order("created_at", { ascending: false });
+    }
+    if (orderSort === "oldest") {
+      return q.order("created_at", { ascending: true });
+    }
+    if (orderSort === "name") {
+      return q.order("name", { ascending: true }).order("created_at", { ascending: false });
+    }
+    return q.order("created_at", { ascending: false });
+  };
 
-  let { data, error, count } = await query.range(from, to);
+  const workloadLimit = 5000;
+  let listQuery = applyAssigneeToListQuery(
+    applyInquiryListFilters(supabase.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
+  );
+  listQuery = applyListOrdering(listQuery);
+
+  const workloadQuery = applyInquiryListFilters(
+    supabase.from("inquiries").select("assignee_name"),
+    search,
+    status,
+    quick,
+    createdAfterIso,
+  ).limit(workloadLimit);
+
+  const [listResult, workloadResult] = await Promise.all([listQuery.range(from, to), workloadQuery]);
+
+  let { data, error, count } = listResult;
 
   if (error) {
-    let fallback = supabase.from("inquiries").select("*", { count: "exact" });
-    if (search) {
-      const escaped = search.replace(/[%_]/g, "\\$&");
-      fallback = fallback.or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%,content.ilike.%${escaped}%`);
-    }
-    const fallbackResult = await fallback
-      .order("created_at", { ascending: false, nullsFirst: false })
-      .range(from, to);
+    let fallback = applyAssigneeToListQuery(
+      applyInquiryListFilters(supabase.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
+    );
+    fallback = fallback.order("created_at", { ascending: false, nullsFirst: false });
+    const fallbackResult = await fallback.range(from, to);
 
     data = fallbackResult.data;
     error = fallbackResult.error;
@@ -221,10 +309,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "문의 목록 조회에 실패했습니다." }, { status: 500 });
   }
 
+  const assigneeWorkload = workloadResult.error
+    ? { byName: {} as Record<string, number>, unassigned: 0 }
+    : aggregateAssigneeWorkloadFromRows(workloadResult.data as { assignee_name: string | null }[] | null);
+  const assigneeWorkloadCapped =
+    !workloadResult.error && (workloadResult.data?.length ?? 0) >= workloadLimit;
+
   const summary = await getInquirySummarySafe();
 
   return NextResponse.json({
-    items: (data ?? []).map((row) => normalizeInquiryRow(row as Record<string, unknown>)),
+    items: ((data ?? []) as Record<string, unknown>[]).map((row) => normalizeInquiryRow(row)),
     total: count ?? 0,
     page,
     pageSize,
@@ -235,6 +329,12 @@ export async function GET(request: Request) {
     contactedCount: summary.contactedCount,
     closedCount: summary.closedCount,
     onHoldCount: summary.onHoldCount,
+    queueOverdueCount: summary.queueOverdueCount,
+    queueFollowUpTodayCount: summary.queueFollowUpTodayCount,
+    queueHotLeadCount: summary.queueHotLeadCount,
+    queueUnassignedCount: summary.queueUnassignedCount,
+    assigneeWorkload,
+    assigneeWorkloadCapped,
   });
 }
 

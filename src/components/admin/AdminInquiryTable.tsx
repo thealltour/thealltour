@@ -11,6 +11,16 @@ import {
   type InquirySortOption,
 } from "@/components/admin/hooks/useAdminInquiryTable";
 import { parseHostname } from "@/lib/analytics/attribution";
+import { InquiryResponseGuide } from "@/components/admin/inquiries/InquiryResponseGuide";
+import { InquiryAssigneeFilters } from "@/components/admin/inquiries/InquiryAssigneeFilters";
+import { InquiryQuickFilters } from "@/components/admin/inquiries/InquiryQuickFilters";
+import { InquirySummaryCards } from "@/components/admin/inquiries/InquirySummaryCards";
+import { InquiryWorkloadSummary } from "@/components/admin/inquiries/InquiryWorkloadSummary";
+import {
+  formatInquiryOpsDetailLine,
+  isFollowUpOverdue,
+  isHotLead,
+} from "@/components/admin/inquiries/inquiryQueue.utils";
 
 function formatDate(dateText: string) {
   const date = new Date(dateText);
@@ -285,7 +295,33 @@ export default function AdminInquiryTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4">
+      <div className="space-y-3 px-4 pt-4">
+        <InquirySummaryCards
+          unresponded={api.newCount}
+          overdue={api.queueOverdueCount}
+          today={api.queueFollowUpTodayCount}
+          hot={api.queueHotLeadCount}
+          unassigned={api.queueUnassignedCount}
+          activeQuick={api.quickFilter}
+          onSelectQuick={api.setQuickFilter}
+        />
+        <InquiryQuickFilters value={api.quickFilter} onChange={api.setQuickFilter} />
+        <InquiryAssigneeFilters
+          assigneeFilter={api.assigneeFilter}
+          onAssigneeFilterChange={api.setAssigneeFilter}
+          assignees={api.assigneePickList}
+          selfDisplayName={api.selfDisplayName}
+          onSelfDisplayNameCommit={api.setSelfDisplayName}
+        />
+        <InquiryWorkloadSummary
+          workload={api.assigneeWorkload}
+          assigneeFilter={api.assigneeFilter}
+          onPickAssignee={api.setAssigneeFilter}
+          capped={api.assigneeWorkloadCapped}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-0">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex min-w-64 flex-col gap-2 text-xs font-semibold text-[var(--text-muted)]">
             검색(이름/연락처/문의내용)
@@ -318,6 +354,7 @@ export default function AdminInquiryTable() {
               <option value="reserved">예약확정</option>
               <option value="completed">여행완료</option>
               <option value="pending">미처리 (신규·상담중)</option>
+              <option value="in_progress">진행중 (신규·상담중·보류)</option>
               <option value="delayed">지연 (접수 24시간+)</option>
             </select>
           </label>
@@ -331,8 +368,9 @@ export default function AdminInquiryTable() {
               }}
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
             >
-              <option value="pending_first">미완료 우선</option>
-              <option value="recent">최신순</option>
+            <option value="priority_queue">처리 우선순위 (대기열)</option>
+            <option value="pending_first">미완료 우선</option>
+            <option value="recent">최신순</option>
               <option value="oldest">오래된순</option>
               <option value="name">이름순</option>
             </select>
@@ -431,8 +469,11 @@ export default function AdminInquiryTable() {
               api.inquiries.map((inquiry) => {
                 const { consultationStatus, bookingStatus } = getInquiryActionFlags(inquiry);
                 const isExpanded = api.expandedRows.includes(inquiry.id);
-                const rowQueueHighlight =
-                  consultationStatus === "new" || consultationStatus === "contacted"
+                const overdue = isFollowUpOverdue(inquiry);
+                const hot = isHotLead(inquiry);
+                const rowQueueHighlight = overdue
+                  ? "bg-red-50/90 hover:bg-red-100/80 dark:bg-red-950/25 dark:hover:bg-red-950/35"
+                  : consultationStatus === "new" || consultationStatus === "contacted"
                     ? "bg-[var(--warning-bg)]/30 hover:bg-[var(--warning-bg)]/50"
                     : consultationStatus === "on_hold"
                       ? "bg-[var(--surface-muted)]/80 hover:bg-[var(--surface-muted)]"
@@ -442,7 +483,9 @@ export default function AdminInquiryTable() {
                   <Fragment key={inquiry.id}>
                     <tr
                       data-inquiry-id={inquiry.id}
-                      className={`cursor-pointer border-t border-[var(--divider)] ${rowQueueHighlight}`}
+                      className={`cursor-pointer border-t border-[var(--divider)] ${rowQueueHighlight} ${
+                        hot ? "border-l-[3px] border-l-red-400 dark:border-l-red-500" : ""
+                      }`}
                       onClick={(e) => handleRowBackgroundClick(inquiry, e)}
                     >
                       <td className="px-3 py-3 align-top text-left">
@@ -475,7 +518,9 @@ export default function AdminInquiryTable() {
                           {BOOKING_LABELS[bookingStatus]}
                         </span>
                       </td>
-                      <td className="px-3 py-3 align-top text-left font-medium text-[var(--primary)]">{inquiry.name}</td>
+                      <td className="px-3 py-3 align-top text-left">
+                        <div className="font-medium text-[var(--primary)]">{inquiry.name}</div>
+                      </td>
                       <td className="px-3 py-3 align-top text-left tabular-nums">{inquiry.phone}</td>
                       <td className="min-w-0 max-w-[120px] px-2 py-3 align-top text-left">
                         {inquiry.product_title ? (
@@ -544,6 +589,9 @@ export default function AdminInquiryTable() {
                       <td className="min-w-0 px-3 py-3 align-top text-left">
                         <p className={isExpanded ? "whitespace-pre-wrap text-sm leading-6" : "line-clamp-2 text-sm leading-6"}>
                           {inquiry.content}
+                        </p>
+                        <p className="mt-1 text-[11px] leading-snug text-[var(--text-subtle)]">
+                          {formatInquiryOpsDetailLine(inquiry)}
                         </p>
                         {inquiry.content.length > 70 ? (
                           <button
@@ -629,7 +677,7 @@ export default function AdminInquiryTable() {
           onClick={closeDetailModal}
         >
           <div
-            className="max-h-[min(90dvh,880px)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+            className="flex max-h-[min(92dvh,920px)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
@@ -637,7 +685,7 @@ export default function AdminInquiryTable() {
               const { consultationStatus, bookingStatus } = getInquiryActionFlags(inv);
               return (
                 <>
-                  <div className="sticky top-0 z-[1] flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+                  <div className="sticky top-0 z-[1] flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
                     <div className="min-w-0">
                       <h2 id="inquiry-detail-title" className="text-lg font-semibold text-[var(--text-primary)]">
                         문의 상세
@@ -654,7 +702,9 @@ export default function AdminInquiryTable() {
                       닫기
                     </button>
                   </div>
-                  <div className="space-y-4 px-5 py-4">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row">
+                    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4">
+                      <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -762,11 +812,22 @@ export default function AdminInquiryTable() {
                         {(inv.content ?? "").trim() || "(내용 없음)"}
                       </p>
                     </div>
-                    {inv.quote_snapshot ? (
-                      <QuoteSnapshotSection snapshot={inv.quote_snapshot} />
-                    ) : null}
+                        {inv.quote_snapshot ? (
+                          <QuoteSnapshotSection snapshot={inv.quote_snapshot} />
+                        ) : null}
+                      </div>
+                    </div>
+                    <aside className="min-h-0 w-full max-h-[min(50vh,480px)] shrink-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/30 px-4 py-4 xl:max-h-none xl:w-[360px] xl:border-l xl:border-t-0">
+                      <InquiryResponseGuide
+                        key={inv.id}
+                        inquiry={inv}
+                        onSaved={(updated) => {
+                          api.applyInquiryMerge(updated.id, updated);
+                        }}
+                      />
+                    </aside>
                   </div>
-                  <div className="sticky bottom-0 border-t border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+                  <div className="sticky bottom-0 z-[1] shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-5 py-4">
                     <p className="mb-2 text-xs font-semibold text-[var(--text-muted)]">처리</p>
                     <InquiryActionButtons
                       inquiry={inv}

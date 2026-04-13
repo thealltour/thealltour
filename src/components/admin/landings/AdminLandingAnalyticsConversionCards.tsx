@@ -74,7 +74,7 @@ export default function AdminLandingAnalyticsConversionCards({ summary, trend }:
         <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--text-primary)]">
           {formatLandingAnalyticsRate(summary.avgCTR, 2)}
         </p>
-        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">선택 기간 합산 · 클릭 ÷ 조회</p>
+        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">기간 내 전역 합산 · 클릭 ÷ 조회</p>
         <MiniRateLine data={ctrSeries} dataKey="v" color="#a78bfa" empty={trendEmpty} />
       </div>
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
@@ -82,7 +82,7 @@ export default function AdminLandingAnalyticsConversionCards({ summary, trend }:
         <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--text-primary)]">
           {formatLandingAnalyticsRate(summary.avgCVR, 2)}
         </p>
-        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">선택 기간 합산 · 문의 ÷ 클릭</p>
+        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">기간 내 전역 합산 · 문의 ÷ 클릭</p>
         <MiniRateLine data={cvrSeries} dataKey="v" color="#4ade80" empty={trendEmpty} />
       </div>
     </div>

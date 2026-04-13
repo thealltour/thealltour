@@ -17,20 +17,20 @@ export default function LandingConsultingPointsSection({ section }: LandingConsu
   const lines = toLines(section);
 
   return (
-    <SectionBlock surface="card" padding="md">
-      <h2 className="text-xl font-bold text-[var(--text-primary)]">{section.title}</h2>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+    <SectionBlock surface="none" padding="sm">
+      <h2 className="text-base font-semibold text-[var(--text-primary)]">{section.title}</h2>
+      <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
         {lines.length > 0
           ? lines.map((line, idx) => (
               <li
                 key={`${section.id}-${idx}`}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-secondary)]"
+                className="rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] sm:text-sm"
               >
-                {line}
+                {line.replace(/^\-\s+/, "")}
               </li>
             ))
           : (
-            <li className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-muted)]">
+            <li className="rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-muted)]">
               준비 중입니다.
             </li>
             )}

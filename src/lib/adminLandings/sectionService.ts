@@ -1,3 +1,4 @@
+import type { LandingSectionDraftCopy } from "@/lib/adminLandings/draftCopyBuilder";
 import { createAdminLandingSectionsRepository } from "@/lib/adminLandings/sectionRepository";
 import type { UpdateLandingSectionInput } from "@/lib/adminLandings/sectionTypes";
 import type { AdminLandingSection } from "@/types/adminLanding";
@@ -40,8 +41,20 @@ export async function listLandingSections(landingId: string): Promise<AdminLandi
 export async function createDefaultLandingSections(
   landingId: string,
   templateType: string,
+  taxonomyDisplayName?: string | null,
+  taxonomyType?: "destination" | "theme" | "product_line" | null,
+  defaultSectionCopy?: LandingSectionDraftCopy | null,
 ): Promise<AdminLandingSection[]> {
-  const rows = await sectionRepository.createDefaults(landingId, templateType);
+  if (!String(landingId ?? "").trim()) {
+    throw new Error("landingId 없이 section 생성 시도");
+  }
+  const rows = await sectionRepository.createDefaults({
+    landingId,
+    templateType,
+    taxonomyDisplayName,
+    taxonomyType,
+    defaultSectionCopy,
+  });
   return rows.map(mapRecordToSection);
 }
 

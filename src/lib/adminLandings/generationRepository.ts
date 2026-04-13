@@ -56,12 +56,15 @@ function buildSuggested(baseSlug: string, taxonomyName: string, taxonomyType: La
       : taxonomyType === "theme"
         ? "theme_consulting"
         : "product_line_consulting";
-  const title = `${name} 여행 상담`;
+  const title = `${name} 여행 상품`;
+  const suggestedSourcePath = slug ? `/recommended/${encodeURIComponent(slug)}` : null;
   return {
     title,
     slug,
     templateType: templateType as LandingGenerationCandidate["suggestedTemplateType"],
     quoteCategory: root || null,
+    normalizedRootSlug: root || null,
+    suggestedSourcePath,
   };
 }
 
@@ -171,6 +174,8 @@ export async function listLandingGenerationCandidates(
       taxonomyType: tax.taxonomy_type,
       taxonomyName: tax.name,
       taxonomySlug,
+      normalizedRootSlug: suggested.normalizedRootSlug ?? null,
+      suggestedSourcePath: suggested.suggestedSourcePath ?? null,
       productCount,
       eligibilityReason,
       isPreseedCandidate,

@@ -159,7 +159,9 @@ export default function AdminLandingAnalyticsPage() {
   const topPerformers = data?.topPerformers ?? emptyTopPerformers();
 
   const tableEmpty = items.length === 0;
-  const showGlobalEmptyCopy = !loading && tableEmpty && trend.length === 0;
+  const hasNoFunnelActivity =
+    summary.totalViews === 0 && summary.totalClicks === 0 && summary.totalSubmits === 0;
+  const showGlobalEmptyCopy = !loading && hasNoFunnelActivity;
 
   return (
     <div className="space-y-6">

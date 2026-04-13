@@ -1,3 +1,12 @@
+/**
+ * 랜딩 slug를 알 수 없는 퍼널 이벤트 집계용 버킷.
+ * 실제 랜딩 slug와 충돌하지 않도록 예약된 값이다.
+ */
+export const LANDING_ANALYTICS_UNATTRIBUTED_SLUG = "__unattributed__";
+
+/** 관리자 UI에 표시할 미식별 버킷 제목 */
+export const LANDING_ANALYTICS_UNATTRIBUTED_TITLE = "미분류 (랜딩 미식별)";
+
 /** 상위 랜딩 각 축별 노출 개수 */
 export const LANDING_ANALYTICS_TOP_PERFORMERS_LIMIT = 5;
 

@@ -13,14 +13,14 @@ export default function AdminLandingAnalyticsSummary({ summary }: Props) {
     { label: "총 CTA 클릭", value: summary.totalClicks.toLocaleString("ko-KR") },
     { label: "총 문의 전환", value: summary.totalSubmits.toLocaleString("ko-KR") },
     {
-      label: "평균 CTR",
+      label: "CTR (전체)",
       value: formatLandingAnalyticsRate(summary.avgCTR, 1),
-      hint: "전체 클릭 ÷ 전체 조회",
+      hint: "전체 클릭 ÷ 전체 조회 (합산 비율)",
     },
     {
-      label: "평균 CVR",
+      label: "CVR (전체)",
       value: formatLandingAnalyticsRate(summary.avgCVR, 1),
-      hint: "전체 문의 ÷ 전체 클릭",
+      hint: "전체 문의 ÷ 전체 클릭 (합산 비율)",
     },
   ];
 

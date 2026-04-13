@@ -1,3 +1,4 @@
+import { buildLandingDraftCopy } from "@/lib/adminLandings/draftCopyBuilder";
 import { createAdminLanding } from "@/lib/adminLandings/service";
 import { listLandingGenerationCandidates, toCandidateKey } from "@/lib/adminLandings/generationRepository";
 import type {
@@ -80,17 +81,28 @@ export async function generateLandingsFromTaxonomy(
     }
 
     try {
+      const copy = buildLandingDraftCopy({
+        taxonomyName: candidate.taxonomyName,
+        taxonomyType: candidate.taxonomyType,
+        suggestedSlug: candidate.suggestedSlug,
+        suggestedSourcePath: candidate.suggestedSourcePath,
+        suggestedQuoteCategory: candidate.suggestedQuoteCategory,
+      });
       const item = await createAdminLanding({
-        title: candidate.suggestedTitle,
+        title: copy.title,
         slug: candidate.suggestedSlug,
         templateType: candidate.suggestedTemplateType,
         status: "draft",
-        summary: `${candidate.taxonomyName} 기준 맞춤 상담 랜딩 초안입니다.`,
-        quoteCategory: candidate.suggestedQuoteCategory,
+        summary: copy.summary,
+        seoTitle: copy.seoTitle,
+        seoDescription: copy.seoDescription,
+        quoteCategory: copy.quoteCategory,
         sourceTaxonomyId: candidate.taxonomyId,
         sourceTaxonomyType: candidate.taxonomyType,
         sourceTaxonomySlug: candidate.taxonomySlug,
-        sourcePath: null,
+        sourcePath: copy.sourcePath,
+        taxonomyDisplayName: candidate.taxonomyName,
+        defaultSectionCopy: copy.sections,
       });
       created.push(
         toSummary({

@@ -1,8 +1,15 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import type { AdminLandingListItem } from "@/types/adminLanding";
 import { LANDING_STATUS_LABELS, LANDING_TEMPLATE_LABELS } from "@/components/admin/landings/adminLandings.constants";
 
 type AdminLandingListTableProps = {
   items: AdminLandingListItem[];
+  selectedIds: ReadonlySet<string>;
+  onToggleSelect: (id: string, selected: boolean) => void;
+  onToggleSelectAll: (selected: boolean) => void;
+  selectionDisabled?: boolean;
   onEdit: (item: AdminLandingListItem) => void;
   onPreview: (item: AdminLandingListItem) => void;
   onPublish?: (item: AdminLandingListItem) => void;
@@ -38,17 +45,43 @@ function statusBadgeClass(status: AdminLandingListItem["status"]): string {
 
 export default function AdminLandingListTable({
   items,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  selectionDisabled = false,
   onEdit,
   onPreview,
   onPublish,
   onUnpublish,
   busyId,
 }: AdminLandingListTableProps) {
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id));
+  const someSelected = items.some((i) => selectedIds.has(i.id));
+
+  useEffect(() => {
+    const el = selectAllRef.current;
+    if (!el) return;
+    el.indeterminate = someSelected && !allSelected;
+  }, [someSelected, allSelected]);
+
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--border)]">
       <table className="min-w-full divide-y divide-[var(--border)] text-sm">
         <thead className="bg-[var(--surface-muted)] text-left text-xs text-[var(--text-muted)]">
           <tr>
+            <th className="w-10 px-3 py-3 font-medium">
+              <span className="sr-only">전체 선택</span>
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                className="h-4 w-4 rounded border-[var(--border)]"
+                checked={allSelected}
+                disabled={selectionDisabled || items.length === 0}
+                onChange={(e) => onToggleSelectAll(e.target.checked)}
+                aria-label="목록 전체 선택"
+              />
+            </th>
             <th className="px-4 py-3 font-medium">랜딩명</th>
             <th className="px-4 py-3 font-medium">slug</th>
             <th className="px-4 py-3 font-medium">템플릿 유형</th>
@@ -60,6 +93,16 @@ export default function AdminLandingListTable({
         <tbody className="divide-y divide-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]">
           {items.map((item) => (
             <tr key={item.id}>
+              <td className="px-3 py-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-[var(--border)]"
+                  checked={selectedIds.has(item.id)}
+                  disabled={selectionDisabled || busyId === item.id}
+                  onChange={(e) => onToggleSelect(item.id, e.target.checked)}
+                  aria-label={`${item.title} 선택`}
+                />
+              </td>
               <td className="px-4 py-3 font-medium">{item.title}</td>
               <td className="px-4 py-3 text-[var(--text-muted)]">/{item.slug}</td>
               <td className="px-4 py-3">{formatTemplateType(item.templateType)}</td>

@@ -13,7 +13,7 @@ export default async function AdminLandingPreviewPage({ params }: AdminLandingPr
   if (!landing) notFound();
 
   return (
-    <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--foreground)]">
       <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8 xl:px-10">
           <div className="text-sm text-[var(--text-muted)]">

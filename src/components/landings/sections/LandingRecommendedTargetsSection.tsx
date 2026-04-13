@@ -15,8 +15,8 @@ function toCards(section: AdminLandingSection): string[] {
 export default function LandingRecommendedTargetsSection({ section }: LandingRecommendedTargetsSectionProps) {
   const cards = toCards(section);
   return (
-    <SectionBlock surface="card" padding="md">
-      <h2 className="text-xl font-bold text-[var(--text-primary)]">{section.title}</h2>
+    <SectionBlock surface="none" padding="sm">
+      <h2 className="text-lg font-semibold text-[var(--text-primary)]">{section.title}</h2>
       {section.description ? (
         <p className="mt-2 text-sm text-[var(--text-muted)]">{section.description}</p>
       ) : null}
@@ -27,11 +27,11 @@ export default function LandingRecommendedTargetsSection({ section }: LandingRec
                 key={`${section.id}-${idx}`}
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-secondary)]"
               >
-                {card}
+                {card.replace(/^\-\s+/, "")}
               </div>
             ))
           : (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-muted)]">
+            <div className="rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-muted)]">
               대상 안내가 아직 준비되지 않았습니다.
             </div>
             )}

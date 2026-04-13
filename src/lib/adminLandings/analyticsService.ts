@@ -4,6 +4,8 @@ import {
   LANDING_ANALYTICS_MIN_CLICKS_FOR_CVR_TOP,
   LANDING_ANALYTICS_MIN_VIEWS_FOR_CTR_TOP,
   LANDING_ANALYTICS_TOP_PERFORMERS_LIMIT,
+  LANDING_ANALYTICS_UNATTRIBUTED_SLUG,
+  LANDING_ANALYTICS_UNATTRIBUTED_TITLE,
 } from "@/lib/adminLandings/analyticsConstants";
 import { createAdminLandingsRepository } from "@/lib/adminLandings/repository";
 import { mapRecordToAdminLandingListItem } from "@/lib/adminLandings/mappers";
@@ -222,14 +224,15 @@ function buildTrendSeries(
 
 function computeTopPerformers(items: LandingAnalyticsItem[]): LandingAnalyticsTopPerformers {
   const limit = LANDING_ANALYTICS_TOP_PERFORMERS_LIMIT;
+  const ranked = items.filter((i) => i.landingSlug !== LANDING_ANALYTICS_UNATTRIBUTED_SLUG);
 
-  const bySubmits = [...items].sort((a, b) => {
+  const bySubmits = [...ranked].sort((a, b) => {
     if (b.submits !== a.submits) return b.submits - a.submits;
     if (b.clicks !== a.clicks) return b.clicks - a.clicks;
     return b.views - a.views;
   }).slice(0, limit);
 
-  const byCTR = [...items]
+  const byCTR = [...ranked]
     .filter(
       (i) =>
         i.views >= LANDING_ANALYTICS_MIN_VIEWS_FOR_CTR_TOP ||
@@ -242,7 +245,7 @@ function computeTopPerformers(items: LandingAnalyticsItem[]): LandingAnalyticsTo
     })
     .slice(0, limit);
 
-  const byCVR = [...items]
+  const byCVR = [...ranked]
     .filter((i) => i.clicks >= LANDING_ANALYTICS_MIN_CLICKS_FOR_CVR_TOP)
     .sort((a, b) => {
       if (b.cvr !== a.cvr) return b.cvr - a.cvr;
@@ -271,8 +274,7 @@ export async function fetchLandingAnalytics(input: {
   const counts = new Map<string, { views: number; clicks: number; submits: number }>();
 
   for (const row of rows) {
-    const slug = rowLandingSlug(row);
-    if (!slug) continue;
+    const slug = rowLandingSlug(row) ?? LANDING_ANALYTICS_UNATTRIBUTED_SLUG;
     if (!counts.has(slug)) {
       counts.set(slug, { views: 0, clicks: 0, submits: 0 });
     }
@@ -293,7 +295,10 @@ export async function fetchLandingAnalytics(input: {
     items.push({
       landingSlug,
       landingId: meta?.id ?? null,
-      title: meta?.title ?? landingSlug,
+      title:
+        landingSlug === LANDING_ANALYTICS_UNATTRIBUTED_SLUG
+          ? LANDING_ANALYTICS_UNATTRIBUTED_TITLE
+          : (meta?.title ?? landingSlug),
       templateType: meta?.templateType ?? "—",
       taxonomyType: meta?.taxonomyType ?? null,
       views: c.views,

@@ -1,4 +1,8 @@
 import type { AdminLandingSectionType, AdminLandingTemplateType } from "@/types/adminLanding";
+import {
+  buildConsultingSectionCopyForLabel,
+  type LandingSectionDraftCopy,
+} from "@/lib/adminLandings/draftCopyBuilder";
 
 export type DefaultLandingSectionSeed = {
   sectionType: AdminLandingSectionType;
@@ -9,76 +13,123 @@ export type DefaultLandingSectionSeed = {
   sortOrder: number;
 };
 
-const destinationConsultingSections: DefaultLandingSectionSeed[] = [
-  {
-    sectionType: "hero",
-    title: "목적지 상담 랜딩",
-    description: "원하시는 지역과 일정에 맞춰 여행 상담을 도와드립니다.",
-    body: "여행 목적, 예산, 희망 일정을 남겨주시면 맞춤 플랜을 제안합니다.",
-    isEnabled: true,
-    sortOrder: 0,
-  },
-  {
-    sectionType: "intro",
-    title: "상담 안내",
-    description: "초기 상담에서 확인하는 핵심 항목입니다.",
-    body: "인원, 일정, 예산, 선호 숙소/이동 수단을 우선 확인합니다.",
-    isEnabled: true,
-    sortOrder: 1,
-  },
-  {
-    sectionType: "consulting_points",
-    title: "추천 포인트",
-    description: "상담 후 제공되는 핵심 추천 항목입니다.",
-    body: "항공/숙소/이동 동선/체류 일정까지 일괄 제안합니다.",
-    isEnabled: true,
-    sortOrder: 2,
-  },
-  {
-    sectionType: "faq",
-    title: "자주 묻는 질문",
-    description: "상담 전 많이 질문하시는 내용을 모았습니다.",
-    body: "예약 가능 시점, 변경/취소 규정, 결제 방식 등을 확인해 보세요.",
-    isEnabled: true,
-    sortOrder: 3,
-  },
-  {
-    sectionType: "cta",
-    title: "상담 신청",
-    description: "지금 상담을 시작해 보세요.",
-    body: "상담 신청 후 담당자가 순차적으로 연락드립니다.",
-    isEnabled: true,
-    sortOrder: 4,
-  },
-];
+export type BuildDefaultSectionsInput = {
+  templateType: string;
+  taxonomyName?: string | null;
+  taxonomyType?: "destination" | "theme" | "product_line" | null;
+  /** taxonomy 자동 생성 시 builder와 동일 문구 주입. 없으면 라벨·타입으로 규칙 생성 */
+  sectionCopy?: LandingSectionDraftCopy | null;
+};
 
-const themeConsultingSections: DefaultLandingSectionSeed[] = [
-  { ...destinationConsultingSections[0], title: "테마 상담 랜딩", description: "테마 중심 상담을 진행합니다." },
-  { ...destinationConsultingSections[1], sortOrder: 1 },
-  {
-    sectionType: "recommended_targets",
-    title: "추천 대상",
-    description: "이런 분께 특히 적합합니다.",
-    body: "동행 형태/여행 스타일/예산에 따라 추천 시나리오를 제공합니다.",
-    isEnabled: true,
-    sortOrder: 2,
-  },
-  { ...destinationConsultingSections[3], sortOrder: 3 },
-  { ...destinationConsultingSections[4], sortOrder: 4 },
-];
+function displayLabel(taxonomyDisplayName: string | null | undefined, fallback: string): string {
+  const t = taxonomyDisplayName?.trim();
+  return t && t.length > 0 ? t : fallback;
+}
 
-const productLineConsultingSections: DefaultLandingSectionSeed[] = [
-  {
-    ...destinationConsultingSections[0],
-    title: "상품군 상담 랜딩",
-    description: "상품군(라인) 중심으로 여행 상담을 진행합니다.",
-    body: "골프·파크골프 등 상품군별 니즈에 맞춰 일정과 상품 구성을 제안합니다.",
-  },
-  { ...themeConsultingSections[1], sortOrder: 1 },
-  { ...themeConsultingSections[2], sortOrder: 2 },
-  { ...destinationConsultingSections[3], sortOrder: 3 },
-  { ...destinationConsultingSections[4], sortOrder: 4 },
-];
+function inferTaxonomyTypeFromTemplate(
+  templateType: string,
+): "destination" | "theme" | "product_line" | null {
+  if (templateType === "destination_consulting") return "destination";
+  if (templateType === "theme_consulting") return "theme";
+  if (templateType === "product_line_consulting") return "product_line";
+  return null;
+}
+
+function fallbackLabelForTaxonomyType(
+  taxonomyType: "destination" | "theme" | "product_line" | null,
+): string {
+  if (taxonomyType === "destination") return "목적지";
+  if (taxonomyType === "theme") return "테마";
+  if (taxonomyType === "product_line") return "상품군";
+  return "목적지";
+}
+
+function resolveTemplateArgs(
+  templateTypeOrInput: string | BuildDefaultSectionsInput,
+  taxonomyDisplayName?: string | null,
+  taxonomyTypeArg?: "destination" | "theme" | "product_line" | null,
+): {
+  templateType: string;
+  label: string;
+  sectionCopy?: LandingSectionDraftCopy | null;
+} {
+  if (typeof templateTypeOrInput === "object" && templateTypeOrInput !== null) {
+    const { templateType, taxonomyName, taxonomyType: tt, sectionCopy } = templateTypeOrInput;
+    const effectiveType = tt ?? inferTaxonomyTypeFromTemplate(templateType);
+    const fallback = fallbackLabelForTaxonomyType(effectiveType);
+    return {
+      templateType,
+      label: displayLabel(taxonomyName, fallback),
+      sectionCopy: sectionCopy ?? null,
+    };
+  }
+  const effectiveType = taxonomyTypeArg ?? inferTaxonomyTypeFromTemplate(templateTypeOrInput);
+  const fallback = fallbackLabelForTaxonomyType(effectiveType);
+  return {
+    templateType: templateTypeOrInput,
+    label: displayLabel(taxonomyDisplayName, fallback),
+    sectionCopy: null,
+  };
+}
+
+function buildConsultingSeeds(
+  label: string,
+  taxonomyType: "destination" | "theme" | "product_line",
+  sectionCopy?: LandingSectionDraftCopy | null,
+): DefaultLandingSectionSeed[] {
+  const copy = sectionCopy ?? buildConsultingSectionCopyForLabel(label, taxonomyType);
+  const { hero, intro, cta, consultingPoints } = copy;
+
+  const faqTitle =
+    taxonomyType === "product_line" ? `${label} 자주 묻는 질문` : `${label} 여행 자주 묻는 질문`;
+  const faqDescription =
+    taxonomyType === "product_line"
+      ? "예약·변경·결제를 한눈에 정리했습니다."
+      : `${label} 여행 예약·변경·결제를 한눈에 정리했습니다.`;
+
+  return [
+    {
+      sectionType: "hero",
+      title: hero.title,
+      description: hero.description,
+      body: hero.body,
+      isEnabled: true,
+      sortOrder: 0,
+    },
+    {
+      sectionType: "intro",
+      title: intro.title,
+      description: intro.description,
+      body: intro.body,
+      isEnabled: true,
+      sortOrder: 1,
+    },
+    {
+      sectionType: "cta",
+      title: cta.title,
+      description: cta.description,
+      body: cta.body,
+      isEnabled: true,
+      sortOrder: 2,
+    },
+    {
+      sectionType: "consulting_points",
+      title: consultingPoints.title,
+      description: consultingPoints.description,
+      body: consultingPoints.body,
+      isEnabled: true,
+      sortOrder: 3,
+    },
+    {
+      sectionType: "faq",
+      title: faqTitle,
+      description: faqDescription,
+      body: "예약 가능 시점, 변경/취소 규정, 결제 방식을 먼저 확인해 보세요.",
+      isEnabled: true,
+      sortOrder: 4,
+    },
+  ];
+}
 
 const recommendedCollectionSections: DefaultLandingSectionSeed[] = [
   {
@@ -142,17 +193,34 @@ const customSections: DefaultLandingSectionSeed[] = [
   },
 ];
 
-const TEMPLATE_DEFAULTS: Record<AdminLandingTemplateType, DefaultLandingSectionSeed[]> = {
-  destination_consulting: destinationConsultingSections,
-  theme_consulting: themeConsultingSections,
-  product_line_consulting: productLineConsultingSections,
-  recommended_collection: recommendedCollectionSections,
-  custom: customSections,
-};
-
-export function getDefaultSectionsForTemplate(templateType: string): DefaultLandingSectionSeed[] {
+export function getDefaultSectionsForTemplate(input: BuildDefaultSectionsInput): DefaultLandingSectionSeed[];
+export function getDefaultSectionsForTemplate(
+  templateType: string,
+  taxonomyDisplayName?: string | null,
+  taxonomyType?: "destination" | "theme" | "product_line" | null,
+): DefaultLandingSectionSeed[];
+export function getDefaultSectionsForTemplate(
+  templateTypeOrInput: string | BuildDefaultSectionsInput,
+  taxonomyDisplayName?: string | null,
+  taxonomyType?: "destination" | "theme" | "product_line" | null,
+): DefaultLandingSectionSeed[] {
+  const { templateType, label, sectionCopy } = resolveTemplateArgs(
+    templateTypeOrInput,
+    taxonomyDisplayName,
+    taxonomyType,
+  );
   const t = templateType as AdminLandingTemplateType;
-  const found = TEMPLATE_DEFAULTS[t];
-  if (!found) return customSections;
-  return found.map((s) => ({ ...s }));
+  if (t === "destination_consulting") {
+    return buildConsultingSeeds(label, "destination", sectionCopy).map((s) => ({ ...s }));
+  }
+  if (t === "theme_consulting") {
+    return buildConsultingSeeds(label, "theme", sectionCopy).map((s) => ({ ...s }));
+  }
+  if (t === "product_line_consulting") {
+    return buildConsultingSeeds(label, "product_line", sectionCopy).map((s) => ({ ...s }));
+  }
+  if (t === "recommended_collection") {
+    return recommendedCollectionSections.map((s) => ({ ...s }));
+  }
+  return customSections.map((s) => ({ ...s }));
 }

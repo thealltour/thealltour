@@ -27,6 +27,10 @@ export type CuratedBlockProps = {
    * `/recommended`·허브 인덱스 등에서는 false.
    */
   featuredLanding?: boolean;
+  /**
+   * true: `/recommended` 랜딩 등 — 그리드 카드 호버를 토큰 기반으로 더 또렷하게.
+   */
+  landingHubProductHoverEmphasis?: boolean;
 };
 
 const SURFACE_CLASS: Record<CuratedBlockSurface, string> = {
@@ -42,6 +46,7 @@ export default function CuratedBlock({
   surface = "none",
   hubLandingLayout = false,
   featuredLanding = false,
+  landingHubProductHoverEmphasis = false,
 }: CuratedBlockProps) {
   if (!products || products.length === 0) return null;
 
@@ -82,6 +87,7 @@ export default function CuratedBlock({
                     layout: "grid",
                     analyticsSource: "home_curated",
                     analyticsSection: title,
+                    ...(landingHubProductHoverEmphasis ? { emphasizeLandingHubHover: true } : {}),
                   },
             )}
           />

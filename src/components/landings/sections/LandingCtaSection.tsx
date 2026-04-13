@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { SectionBlock } from "@/components/layout/SectionBlock";
+import SectionRichBody from "@/components/landings/sections/SectionRichBody";
 import { trackLandingCtaClick } from "@/lib/analytics/trackLandingQuoteFunnel";
+import { buildLandingQuoteHref } from "@/lib/landings/buildLandingQuoteHref";
 import type { AdminLandingDetail, AdminLandingSection } from "@/types/adminLanding";
 
 type LandingCtaSectionProps = {
@@ -11,29 +13,20 @@ type LandingCtaSectionProps = {
   sourcePath: string;
 };
 
-function buildQuoteHref(landing: AdminLandingDetail, sourcePath: string): string {
-  const params = new URLSearchParams();
-  params.set("source_path", sourcePath);
-  params.set("product_title", landing.title);
-  params.set("landing_slug", landing.slug);
-  if (landing.quoteCategory) {
-    params.set("quote_category", landing.quoteCategory);
-  }
-  return `/quote?${params.toString()}`;
-}
-
 export default function LandingCtaSection({ landing, section, sourcePath }: LandingCtaSectionProps) {
-  const href = buildQuoteHref(landing, sourcePath);
+  const href = buildLandingQuoteHref(landing, sourcePath);
   return (
-    <SectionBlock surface="card" padding="md">
+    <SectionBlock surface="card" padding="md" className="max-w-3xl">
       <h2 className="text-xl font-bold text-[var(--text-primary)]">{section.title}</h2>
       {section.description ? (
-        <p className="mt-2 text-sm text-[var(--text-muted)]">{section.description}</p>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)]">{section.description}</p>
       ) : null}
       {section.body ? (
-        <p className="mt-3 text-sm text-[var(--text-secondary)]">{section.body}</p>
+        <div className="mt-3 max-w-2xl text-[var(--text-secondary)]">
+          <SectionRichBody body={section.body} />
+        </div>
       ) : null}
-      <div className="mt-4">
+      <div className="mt-5">
         <Link
           href={href}
           onClick={() => {
@@ -41,7 +34,7 @@ export default function LandingCtaSection({ landing, section, sourcePath }: Land
           }}
           className="inline-flex items-center rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] hover:opacity-90"
         >
-          상담 문의하기
+          맞춤 상담 요청하기
         </Link>
       </div>
     </SectionBlock>

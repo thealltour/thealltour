@@ -3,12 +3,16 @@ import { getDefaultSectionsForTemplate } from "@/lib/adminLandings/templates";
 import type {
   AdminLandingSectionRecord,
   AdminLandingSectionsRepository,
+  CreateDefaultLandingSectionsInput,
   UpdateLandingSectionInput,
 } from "@/lib/adminLandings/sectionTypes";
 
 const PARENT_KIND = "recommended";
 
 function toParentKey(landingId: string): string {
+  if (!String(landingId ?? "").trim()) {
+    throw new Error("invalid landingId");
+  }
   return `landing:${landingId}`;
 }
 
@@ -16,6 +20,11 @@ function parseSectionType(payload: Record<string, unknown>): string {
   const raw = payload.sectionType;
   if (typeof raw === "string" && raw.trim()) return raw;
   return "custom";
+}
+
+/** 레거시 filter_payload 내 확장 필드는 무시하고, API에는 노출하지 않음(호환·단순화). */
+function buildSectionDataView(_payload: Record<string, unknown>): Record<string, unknown> | null {
+  return null;
 }
 
 function normalizeSectionRow(row: Record<string, unknown>): AdminLandingSectionRecord {
@@ -32,10 +41,7 @@ function normalizeSectionRow(row: Record<string, unknown>): AdminLandingSectionR
     body: typeof payload.body === "string" ? payload.body : null,
     is_enabled: row.is_active === true,
     sort_order: typeof row.sort_order === "number" ? row.sort_order : 0,
-    section_data:
-      payload.sectionData && typeof payload.sectionData === "object" && !Array.isArray(payload.sectionData)
-        ? (payload.sectionData as Record<string, unknown>)
-        : null,
+    section_data: buildSectionDataView(payload),
     created_at: typeof row.created_at === "string" ? row.created_at : null,
     updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
   };
@@ -59,13 +65,21 @@ class SupabaseLandingSectionsRepository implements AdminLandingSectionsRepositor
     return rows.map(normalizeSectionRow);
   }
 
-  async createDefaults(landingId: string, templateType: string): Promise<AdminLandingSectionRecord[]> {
-    const existing = await listRawByLandingId(landingId);
+  async createDefaults(input: CreateDefaultLandingSectionsInput): Promise<AdminLandingSectionRecord[]> {
+    if (!String(input.landingId ?? "").trim()) {
+      throw new Error("landingId 없이 section 생성 시도");
+    }
+    const existing = await listRawByLandingId(input.landingId);
     if (existing.length > 0) {
       return existing.map(normalizeSectionRow);
     }
-    const defaults = getDefaultSectionsForTemplate(templateType);
-    const parentSlug = toParentKey(landingId);
+    const defaults = getDefaultSectionsForTemplate({
+      templateType: input.templateType,
+      taxonomyName: input.taxonomyDisplayName ?? null,
+      taxonomyType: input.taxonomyType ?? null,
+      sectionCopy: input.defaultSectionCopy ?? null,
+    });
+    const parentSlug = toParentKey(input.landingId);
     const payload = defaults.map((sec, idx) => ({
       parent_kind: PARENT_KIND,
       parent_slug: parentSlug,

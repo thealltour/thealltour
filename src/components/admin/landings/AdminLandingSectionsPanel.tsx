@@ -29,10 +29,11 @@ export default function AdminLandingSectionsPanel({
   const { showToast } = useAdminToast();
   const [items, setItems] = useState<AdminLandingSection[]>(() => normalizeSort(initialSections));
   const [saving, setSaving] = useState(false);
+  const [reloading, setReloading] = useState(false);
 
   useEffect(() => {
     setItems(normalizeSort(initialSections));
-  }, [initialSections]);
+  }, [landingId, initialSections]);
 
   const ordered = useMemo(() => normalizeSort(items), [items]);
 
@@ -56,11 +57,18 @@ export default function AdminLandingSectionsPanel({
   }
 
   async function handleReload() {
+    setReloading(true);
     try {
       const list = await listLandingSectionsClient(landingId);
       setItems(normalizeSort(list));
+      showToast("success", list.length > 0 ? `섹션 ${list.length}개를 불러왔습니다.` : "저장된 섹션이 없습니다.");
+      if (reloadDetail) {
+        await reloadDetail();
+      }
     } catch (e) {
       showToast("error", e instanceof Error ? e.message : "섹션을 다시 불러오지 못했습니다.");
+    } finally {
+      setReloading(false);
     }
   }
 
@@ -106,11 +114,13 @@ export default function AdminLandingSectionsPanel({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleReload}
-            disabled={saving}
+            onClick={() => {
+              void handleReload();
+            }}
+            disabled={saving || reloading}
             className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-primary)] disabled:opacity-50"
           >
-            다시 불러오기
+            {reloading ? "불러오는 중…" : "다시 불러오기"}
           </button>
           <button
             type="button"

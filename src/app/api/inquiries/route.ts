@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
+import { LANDING_ANALYTICS_UNATTRIBUTED_SLUG } from "@/lib/adminLandings/analyticsConstants";
 import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
 import { inferAttribution } from "@/lib/analytics/attribution";
-import { ensureLandingSourcePath, landingSlugFromSourcePath } from "@/lib/analytics/createAnalyticsPayload";
+import { ensureLandingSourcePath } from "@/lib/analytics/createAnalyticsPayload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
-import type { Inquiry, InquiryInput } from "@/types/inquiry";
+import { resolveQuoteSubmitLandingSlug } from "@/lib/analytics/resolveQuoteSubmitLandingSlug";
+import type { FirstTouch, Inquiry, InquiryInput } from "@/types/inquiry";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
 import { normalizeReceiverPhone, sendAligoRelay } from "@/lib/notifications/sendAligoRelay";
 import {
@@ -585,7 +587,23 @@ export async function POST(request: Request) {
   }
 
   if (inquiryId) {
-    const resolvedLandingSlug = landingSlugBody || landingSlugFromSourcePath(sourcePath) || null;
+    const ft = firstTouch != null && typeof firstTouch === "object" ? (firstTouch as FirstTouch) : null;
+    const resolvedLandingSlug = resolveQuoteSubmitLandingSlug({
+      landingSlug: landingSlugBody,
+      sourcePath,
+      firstTouch: ft,
+      inquiryPageUrl,
+    });
+
+    if (!resolvedLandingSlug) {
+      console.warn("[analytics] missing landing_slug for quote_submit (no /recommended slug derivable)", {
+        has_source_path: Boolean(sourcePath),
+        has_landing_slug_body: Boolean(landingSlugBody),
+        has_first_touch: ft != null,
+        inquiry_page_url: inquiryPageUrl ?? null,
+      });
+    }
+
     const resolvedSourcePath =
       sourcePath ||
       (resolvedLandingSlug ? ensureLandingSourcePath(null, resolvedLandingSlug) : "/quote");
@@ -595,7 +613,7 @@ export async function POST(request: Request) {
       source: ANALYTICS_SOURCES.quote_page,
       pagePath: inquiryPageUrl || "/quote",
       sourcePath: resolvedSourcePath,
-      landingSlug: resolvedLandingSlug,
+      landingSlug: resolvedLandingSlug ?? LANDING_ANALYTICS_UNATTRIBUTED_SLUG,
       quoteCategory: quoteCategoryBody || null,
       productId: productId || null,
       metadata: {

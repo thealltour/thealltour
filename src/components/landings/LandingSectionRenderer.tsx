@@ -12,6 +12,8 @@ type LandingSectionRendererProps = {
   section: AdminLandingSection;
   mode: "preview" | "public";
   sourcePath: string;
+  /** Hero 직하단 추천 상품 블록이 렌더될 때만 true */
+  showHeroProductScrollCta?: boolean;
 };
 
 export function LandingSectionRenderer({
@@ -19,10 +21,18 @@ export function LandingSectionRenderer({
   section,
   mode,
   sourcePath,
+  showHeroProductScrollCta = false,
 }: LandingSectionRendererProps) {
   switch (section.sectionType) {
     case "hero":
-      return <LandingHeroSection landing={landing} section={section} />;
+      return (
+        <LandingHeroSection
+          landing={landing}
+          section={section}
+          sourcePath={sourcePath}
+          showHeroProductScrollCta={showHeroProductScrollCta}
+        />
+      );
     case "intro":
       return <LandingIntroSection section={section} />;
     case "consulting_points":

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, Fragment } from "react";
+import { useRouter } from "next/navigation";
+import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import type { ProductTaxonomyWithUsage, TaxonomyType } from "@/types/productTaxonomy";
+import type { LandingGenerationCandidate, LandingGenerationResult } from "@/types/adminLanding";
 import type { UpdateAdminTaxonomyPayload } from "@/components/admin/products/api/adminProductTaxonomy.client";
 import { cn } from "@/lib/cn";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -212,30 +215,6 @@ function buildParentSelectOptions(
     });
 }
 
-// --- taxonomy row 빠른 액션: 랜딩/상품 보기 href (읽기 전용, fallback 안전) ---
-function normalizeSlugForPath(slug: string | null | undefined): string {
-  const s = (slug ?? "").trim().toLowerCase().replace(/\s+/g, "-");
-  return s;
-}
-
-/** region(category) / theme / product_line / campaign 구분해 랜딩 또는 필터 fallback URL 반환.
- * destination·theme만 상세 랜딩 경로 있음. product_line·campaign은 상품 보기만.
- */
-function buildLandingHref(item: ProductTaxonomyWithUsage): string | null {
-  const tt = item.taxonomy_type;
-  const name = (item.name ?? "").trim() || "all";
-  const normalizedSlug = normalizeSlugForPath(item.slug);
-  if (tt === "theme") {
-    if (normalizedSlug) return `/themes/${encodeURIComponent(normalizedSlug)}`;
-    return `/products?theme=${encodeURIComponent(name)}`;
-  }
-  if (tt === "destination") {
-    if (normalizedSlug) return `/destinations/${encodeURIComponent(normalizedSlug)}`;
-    return `/products?region=${encodeURIComponent(name)}`;
-  }
-  return null;
-}
-
 /** 해당 taxonomy로 필터된 상품 목록 URL. */
 function buildFilteredProductsHref(item: ProductTaxonomyWithUsage): string {
   const name = (item.name ?? "").trim() || "all";
@@ -432,6 +411,8 @@ export default function AdminProductTaxonomyView({
   onDeleteTaxonomy,
   onUpdateTaxonomy,
 }: AdminProductTaxonomyViewProps) {
+  const router = useRouter();
+  const { showToast } = useAdminToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSlug, setEditSlug] = useState("");
   const [editSortOrder, setEditSortOrder] = useState<string>("");
@@ -471,10 +452,52 @@ export default function AdminProductTaxonomyView({
   const [performanceFilter, setPerformanceFilter] = useState<PerformanceFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("default");
   const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null);
+  const [candidateMap, setCandidateMap] = useState<Map<string, LandingGenerationCandidate>>(() => new Map());
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidatesError, setCandidatesError] = useState<string | null>(null);
+  const [generatingLandingId, setGeneratingLandingId] = useState<string | null>(null);
 
   useEffect(() => {
     setEditingId(null);
     setExpandedItemKey(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "destination" && activeTab !== "theme" && activeTab !== "product_line") {
+      setCandidateMap(new Map());
+      setCandidatesError(null);
+      setCandidatesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCandidatesLoading(true);
+    setCandidatesError(null);
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/landings/generation-candidates?taxonomyType=${encodeURIComponent(activeTab)}`,
+        );
+        const data = (await res.json()) as { items?: LandingGenerationCandidate[]; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "후보를 불러오지 못했습니다.");
+        const items = data.items ?? [];
+        if (cancelled) return;
+        const m = new Map<string, LandingGenerationCandidate>();
+        for (const c of items) {
+          m.set(`${c.taxonomyType}:${c.taxonomyId}`, c);
+        }
+        setCandidateMap(m);
+      } catch (e) {
+        if (!cancelled) {
+          setCandidateMap(new Map());
+          setCandidatesError(e instanceof Error ? e.message : "후보 로드 오류");
+        }
+      } finally {
+        if (!cancelled) setCandidatesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [activeTab]);
 
   const visibleItems = useMemo(
@@ -645,6 +668,67 @@ export default function AdminProductTaxonomyView({
   function formatLandingCtr(value: number | null | undefined): string {
     if (value == null || typeof value !== "number" || !Number.isFinite(value)) return "—";
     return `${(value * 100).toFixed(1)}%`;
+  }
+
+  async function handleGenerateAdminLanding(item: ProductTaxonomyWithUsage) {
+    if (
+      item.taxonomy_type !== "destination" &&
+      item.taxonomy_type !== "theme" &&
+      item.taxonomy_type !== "product_line"
+    ) {
+      return;
+    }
+    const key = `${item.taxonomy_type}:${item.id}`;
+    const cand = candidateMap.get(key);
+    if (!cand || cand.isAlreadyGenerated) return;
+    setGeneratingLandingId(item.id);
+    try {
+      const res = await fetch("/api/admin/landings/generate-from-taxonomy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ taxonomyId: item.id, taxonomyType: item.taxonomy_type }],
+        }),
+      });
+      const data = (await res.json()) as LandingGenerationResult & { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "랜딩 생성에 실패했습니다.");
+      }
+      const created = data.created?.[0];
+      const skipped = data.skipped?.[0];
+      const landingId = created?.landingId ?? skipped?.landingId;
+      if (landingId?.trim()) {
+        setCandidateMap((prev) => {
+          const next = new Map(prev);
+          const cur = next.get(key);
+          if (cur) {
+            next.set(key, {
+              ...cur,
+              isAlreadyGenerated: true,
+              existingLandingId: landingId.trim(),
+              existingLandingSlug:
+                created?.landingSlug ?? skipped?.landingSlug ?? cur.existingLandingSlug ?? null,
+            });
+          }
+          return next;
+        });
+        showToast("success", "랜딩 초안이 생성되었습니다.");
+        router.push(`/theall_manager_only/landings/${encodeURIComponent(landingId.trim())}`);
+        return;
+      }
+      if (data.skipped?.[0]?.reason === "SLUG_CONFLICT") {
+        throw new Error("이미 동일한 slug가 사용 중입니다.");
+      }
+      if (data.failed?.[0]?.reason) {
+        throw new Error(data.failed[0].reason);
+      }
+      throw new Error("랜딩 생성 결과를 확인할 수 없습니다.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "랜딩 생성에 실패했습니다.";
+      showToast("error", msg);
+    } finally {
+      setGeneratingLandingId(null);
+    }
   }
 
   return (
@@ -820,7 +904,22 @@ export default function AdminProductTaxonomyView({
                     ) : (
                       displayItems.map((item) => {
                         const priorityTag = getTaxonomyPriorityTag(item);
-                        const landingHref = buildLandingHref(item);
+                        const genKey = `${item.taxonomy_type}:${item.id}`;
+                        const generationCandidate =
+                          item.taxonomy_type === "destination" ||
+                          item.taxonomy_type === "theme" ||
+                          item.taxonomy_type === "product_line"
+                            ? candidateMap.get(genKey)
+                            : undefined;
+                        const adminLandingHref =
+                          generationCandidate?.existingLandingId?.trim()
+                            ? `/theall_manager_only/landings/${encodeURIComponent(generationCandidate.existingLandingId.trim())}`
+                            : null;
+                        const canUseGenerationApi = Boolean(generationCandidate);
+                        const canCreateAdminLanding = Boolean(
+                          generationCandidate && !generationCandidate.isAlreadyGenerated,
+                        );
+                        const isFallbackRow = item.id.startsWith("fallback-") || !item.id?.trim();
                         return (
                           <Fragment key={item.id}>
                             <tr className="border-b border-[var(--border)]">
@@ -1032,16 +1131,73 @@ export default function AdminProductTaxonomyView({
                                         삭제
                                       </button>
                                     </span>
-                                    <span className="flex flex-wrap gap-2 text-xs">
-                                      {landingHref != null ? (
-                                        <a
-                                          href={landingHref}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="text-[var(--primary)] underline hover:no-underline"
-                                        >
-                                          랜딩 보기
-                                        </a>
+                                    <span className="flex flex-wrap items-center gap-2 text-xs">
+                                      {item.taxonomy_type === "destination" ||
+                                      item.taxonomy_type === "theme" ||
+                                      item.taxonomy_type === "product_line" ? (
+                                        candidatesLoading ? (
+                                          <span className="text-[var(--text-muted)]">랜딩 연결 로드…</span>
+                                        ) : candidatesError ? (
+                                          <span className="text-[var(--danger)]" title={candidatesError}>
+                                            랜딩 연결 오류
+                                          </span>
+                                        ) : (
+                                          <>
+                                            <button
+                                              type="button"
+                                              disabled={
+                                                isFallbackRow ||
+                                                !canCreateAdminLanding ||
+                                                generatingLandingId === item.id
+                                              }
+                                              title={
+                                                isFallbackRow
+                                                  ? "이 행에서는 사용할 수 없습니다."
+                                                  : !canUseGenerationApi
+                                                    ? "생성 후보에 없습니다. 활성 분류이며, 지역·테마는 연결 상품이 있어야 합니다."
+                                                    : generationCandidate?.isAlreadyGenerated
+                                                      ? "이미 관리자 랜딩이 연결되어 있습니다."
+                                                      : "검색/유입 랜딩 초안 생성"
+                                              }
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                void handleGenerateAdminLanding(item);
+                                              }}
+                                              className={cn(
+                                                btnSmall,
+                                                "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]",
+                                                (isFallbackRow ||
+                                                  !canCreateAdminLanding ||
+                                                  generatingLandingId === item.id) &&
+                                                  "cursor-not-allowed opacity-50",
+                                              )}
+                                            >
+                                              {generatingLandingId === item.id ? "생성 중…" : "랜딩 생성"}
+                                            </button>
+                                            {adminLandingHref ? (
+                                              <a
+                                                href={adminLandingHref}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-[var(--primary)] underline hover:no-underline"
+                                              >
+                                                랜딩 보기
+                                              </a>
+                                            ) : (
+                                              <span
+                                                className="text-[var(--text-muted)]"
+                                                title={
+                                                  canUseGenerationApi
+                                                    ? "관리자 랜딩이 아직 없습니다. 랜딩 생성을 눌러 초안을 만듭니다."
+                                                    : "생성 후보에 없거나 연결된 랜딩 정보를 불러오지 못했습니다."
+                                                }
+                                              >
+                                                생성 필요
+                                              </span>
+                                            )}
+                                          </>
+                                        )
                                       ) : null}
                                       <a
                                         href={buildFilteredProductsHref(item)}

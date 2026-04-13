@@ -51,7 +51,8 @@ function matchReferrer(hostname: string | null): {
   return { source_label: hostname, channel: "referral", medium: "referral" };
 }
 
-function extractPathFromLandingUrl(firstLandingUrl?: string | null): string | null {
+/** firstLandingUrl(상대/절대 URL)에서 pathname(또는 상대 경로)만 추출 */
+export function extractPathFromLandingUrl(firstLandingUrl?: string | null): string | null {
   if (firstLandingUrl == null || typeof firstLandingUrl !== "string") return null;
   const trimmed = firstLandingUrl.trim();
   if (!trimmed) return null;

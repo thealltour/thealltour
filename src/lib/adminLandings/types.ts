@@ -1,3 +1,5 @@
+import type { LandingSectionDraftCopy } from "@/lib/adminLandings/draftCopyBuilder";
+
 export type AdminLandingRecord = {
   id: string;
   title: string;
@@ -30,6 +32,10 @@ export type CreateLandingInput = {
   sourceTaxonomyId?: string | null;
   sourceTaxonomyType?: "destination" | "theme" | "product_line" | null;
   sourceTaxonomySlug?: string | null;
+  /** DB 미저장. 섹션 자동 문구용 표시 이름(taxonomy name 등) */
+  taxonomyDisplayName?: string | null;
+  /** DB 미저장. 생성 직후 기본 섹션 시드에 builder 문구 그대로 적용 */
+  defaultSectionCopy?: LandingSectionDraftCopy | null;
 };
 
 export type UpdateLandingInput = Partial<CreateLandingInput> & {

@@ -5,17 +5,45 @@
 
 export { createAnalyticsPayload, inferDeviceType, normalizeAnalyticsHref, normalizeAnalyticsLabel } from "./payload";
 
-/** /recommended/[slug] 에서 slug 추출 */
+function decodeRecommendedSlugSegment(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+/** pathname에서 /recommended/[slug] 만 인식 */
+function matchRecommendedSlugFromPathname(pathname: string): string | null {
+  const m = pathname.trim().match(/^\/recommended\/([^/?#]+)/i);
+  if (!m?.[1]) return null;
+  return decodeRecommendedSlugSegment(m[1]);
+}
+
+/**
+ * source_path(상대 경로 또는 전체 URL)에서 /recommended/[slug]의 slug 추출.
+ * 절대 URL은 pathname만 파싱한다.
+ */
 export function landingSlugFromSourcePath(sourcePath: string | null | undefined): string | null {
   const s = typeof sourcePath === "string" ? sourcePath.trim() : "";
   if (!s) return null;
-  const m = s.match(/^\/recommended\/([^/?#]+)/i);
-  if (!m?.[1]) return null;
-  try {
-    return decodeURIComponent(m[1]);
-  } catch {
-    return m[1];
+
+  if (s.startsWith("/")) {
+    const hit = matchRecommendedSlugFromPathname(s);
+    if (hit) return hit;
   }
+
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      const hit = matchRecommendedSlugFromPathname(new URL(s).pathname);
+      if (hit) return hit;
+    } catch {
+      /* noop */
+    }
+    return null;
+  }
+
+  return null;
 }
 
 /**

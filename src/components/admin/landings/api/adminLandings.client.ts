@@ -95,6 +95,20 @@ export async function createAdminLandingClient(payload: AdminLandingUpsertPayloa
   return data.item;
 }
 
+export async function deleteAdminLandingClient(id: string): Promise<void> {
+  const response = await fetch(`${BASE}/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (response.status === 204) return;
+  const data = await parseJsonResponse<{ error?: string; message?: string }>(response).catch(
+    () => ({} as { error?: string; message?: string }),
+  );
+  if (response.status === 404) {
+    throw new Error(extractErrorMessage(data, "이미 삭제되었거나 찾을 수 없는 랜딩입니다."));
+  }
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(data, "랜딩 삭제에 실패했습니다."));
+  }
+}
+
 export async function updateAdminLandingClient(
   id: string,
   payload: AdminLandingUpsertPayload,
@@ -156,7 +170,10 @@ export async function listLandingSectionsClient(landingId: string): Promise<Admi
   if (!response.ok) {
     throw new Error(extractErrorMessage(data, "섹션 목록을 불러오지 못했습니다."));
   }
-  return data.items ?? [];
+  if (!Array.isArray(data.items)) {
+    throw new Error("섹션 목록 응답 형식이 올바르지 않습니다.");
+  }
+  return data.items;
 }
 
 export async function updateLandingSectionClient(

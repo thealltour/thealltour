@@ -21,7 +21,8 @@ export type SectionBlockProps = {
 
 const SURFACE_CLASS: Record<SectionBlockSurface, string> = {
   none: "bg-transparent",
-  muted: "bg-[var(--surface-muted)] ring-1 ring-[var(--border)]",
+  /** 카드 대비 보조 톤: 배경만 살짝, 테두리·그림자 없음(읽기용 블록) */
+  muted: "bg-[var(--surface-muted)]",
   card: "bg-[var(--surface)] ring-1 ring-[var(--border)] shadow-[var(--shadow-soft)]",
 };
 

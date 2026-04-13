@@ -21,9 +21,12 @@ import {
   ADMIN_LANDINGS_ROUTE,
   buildAdminLandingPreviewHref,
 } from "@/components/admin/landings/adminLandings.constants";
-import type { AdminLandingDetail, LandingPublishValidationIssue } from "@/types/adminLanding";
+import type { AdminLandingDetail, AdminLandingSection, LandingPublishValidationIssue } from "@/types/adminLanding";
 
 const ADMIN_LANDING_FORM_ID = "admin-landing-form";
+
+/** `?? []`를 인라인으로 쓰면 매 렌더마다 새 배열이 되어 섹션 패널 useEffect가 상태를 계속 초기화함 */
+const EMPTY_LANDING_SECTIONS: AdminLandingSection[] = [];
 
 type AdminLandingFormPageProps = {
   mode: "create" | "edit";
@@ -66,11 +69,14 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
     [mode],
   );
 
-  const loadItem = useCallback(async () => {
+  const loadItem = useCallback(async (opts?: { background?: boolean }) => {
     if (mode !== "edit" || !landingId) return;
-    setLoading(true);
-    setErrorMessage("");
-    setLoadFailed(false);
+    const background = opts?.background === true;
+    if (!background) {
+      setLoading(true);
+      setErrorMessage("");
+      setLoadFailed(false);
+    }
     try {
       const item = await getAdminLandingClient(landingId);
       setDetail(item);
@@ -86,13 +92,18 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
         quoteCategory: item.quoteCategory ?? "",
       });
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : ADMIN_LANDINGS_ERROR_DESCRIPTION);
-      setLoadFailed(true);
-      setDetail(null);
+      const message = e instanceof Error ? e.message : ADMIN_LANDINGS_ERROR_DESCRIPTION;
+      if (!background) {
+        setErrorMessage(message);
+        setLoadFailed(true);
+        setDetail(null);
+      } else {
+        showToast("error", message);
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
-  }, [mode, landingId]);
+  }, [mode, landingId, showToast]);
 
   useEffect(() => {
     void loadItem();
@@ -105,6 +116,9 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
     try {
       if (mode === "create") {
         const created = await createAdminLandingClient(value);
+        if (!created.id?.trim()) {
+          throw new Error("생성된 랜딩 ID가 없습니다.");
+        }
         showToast("success", "랜딩 초안이 저장되었습니다.");
         router.push(`/theall_manager_only/landings/${encodeURIComponent(created.id)}`);
         return;
@@ -113,9 +127,20 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
         throw new Error("랜딩 ID가 없습니다.");
       }
       const lockedStatus = detail?.status ?? value.status;
-      await updateAdminLandingClient(landingId, { ...value, status: lockedStatus });
+      const item = await updateAdminLandingClient(landingId, { ...value, status: lockedStatus });
+      setDetail(item);
+      setInitialValue({
+        title: item.title ?? "",
+        slug: item.slug ?? "",
+        templateType: (item.templateType as AdminLandingFormValue["templateType"]) ?? "destination_consulting",
+        status: item.status ?? "draft",
+        summary: item.summary ?? "",
+        seoTitle: item.seoTitle ?? "",
+        seoDescription: item.seoDescription ?? "",
+        sourcePath: item.sourcePath ?? "",
+        quoteCategory: item.quoteCategory ?? "",
+      });
       showToast("success", "랜딩이 저장되었습니다.");
-      void loadItem();
     } catch (e) {
       const message = e instanceof Error ? e.message : "저장 중 오류가 발생했습니다.";
       setErrorMessage(message);
@@ -141,6 +166,8 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
     [publishIssues],
   );
 
+  const reloadLandingDetailInBackground = useCallback(() => loadItem({ background: true }), [loadItem]);
+
   async function handlePublishClick() {
     if (!landingId) return;
     setPublishBusy(true);
@@ -161,7 +188,6 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
         quoteCategory: item.quoteCategory ?? "",
       });
       showToast("success", "랜딩이 공개되었습니다. /recommended 경로에서 접근할 수 있습니다.");
-      void loadItem();
     } catch (e) {
       if (e instanceof AdminLandingPublishClientError) {
         setPublishIssues(e.issues);
@@ -197,7 +223,6 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
         quoteCategory: item.quoteCategory ?? "",
       });
       showToast("success", "비공개로 전환했습니다. 공개 URL에서는 더 이상 보이지 않습니다.");
-      void loadItem();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unpublish에 실패했습니다.";
       setErrorMessage(message);
@@ -311,9 +336,10 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
       />
       {mode === "edit" && landingId ? (
         <AdminLandingSectionsPanel
+          key={landingId}
           landingId={landingId}
-          initialSections={detail?.sections ?? []}
-          reloadDetail={loadItem}
+          initialSections={detail?.sections ?? EMPTY_LANDING_SECTIONS}
+          reloadDetail={reloadLandingDetailInBackground}
           highlightIssue={sectionPublishIssue}
         />
       ) : null}

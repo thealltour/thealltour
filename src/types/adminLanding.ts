@@ -86,6 +86,10 @@ export type LandingGenerationCandidate = {
   taxonomyType: LandingTaxonomyType;
   taxonomyName: string;
   taxonomySlug: string;
+  /** slug 정규화 루트(quoteCategory 등과 동일 계열, -travel 제외 전 단계) */
+  normalizedRootSlug?: string | null;
+  /** 공개 랜딩 canonical 경로 스냅샷 (/recommended/{slug}) */
+  suggestedSourcePath?: string | null;
   productCount: number;
   eligibilityReason: LandingGenerationEligibilityReason;
   isPreseedCandidate: boolean;

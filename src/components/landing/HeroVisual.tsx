@@ -67,13 +67,13 @@ export function HeroVisual({
 
       {/* Bottom overlay */}
       <div
-        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/75 via-black/30 to-transparent"
+        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/82 via-black/38 to-transparent"
         aria-hidden
       />
 
       {/* Side overlay */}
       <div
-        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-black/50 via-black/22 to-transparent"
+        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-black/55 via-black/26 to-transparent"
         aria-hidden
       />
 

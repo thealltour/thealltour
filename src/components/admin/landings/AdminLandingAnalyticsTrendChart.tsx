@@ -40,7 +40,9 @@ export default function AdminLandingAnalyticsTrendChart({ trend }: Props) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <h2 className="mb-1 text-sm font-semibold text-[var(--text-primary)]">기간별 추이</h2>
-      <p className="mb-4 text-xs text-[var(--text-muted)]">일별 조회 · CTA 클릭 · 문의 전환</p>
+      <p className="mb-4 text-xs text-[var(--text-muted)]">
+        일별 조회 · CTA 클릭 · 문의 전환 (랜딩·미분류 합산, 상단 KPI와 동일 범위)
+      </p>
       <div className="h-[280px] w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

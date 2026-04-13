@@ -37,6 +37,16 @@ export const LANDING_TEMPLATE_LABELS: Partial<Record<AdminLandingTemplateType, s
   custom: "커스텀",
 };
 
+/** 랜딩 섹션 타입 배지용 (알 수 없는 문자열은 원문 표시) */
+export const LANDING_SECTION_TYPE_LABELS: Record<string, string> = {
+  hero: "히어로",
+  intro: "소개",
+  consulting_points: "상담 포인트",
+  recommended_targets: "추천 대상",
+  faq: "FAQ",
+  cta: "CTA",
+};
+
 export const LANDING_TEMPLATE_OPTIONS: { value: AdminLandingTemplateType; label: string }[] = [
   { value: "destination_consulting", label: "목적지 상담형" },
   { value: "theme_consulting", label: "테마 상담형" },

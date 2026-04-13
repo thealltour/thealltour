@@ -63,6 +63,7 @@ export function sanitizeLandingInput(input: {
   sourceTaxonomyId?: string | null;
   sourceTaxonomyType?: "destination" | "theme" | "product_line" | null;
   sourceTaxonomySlug?: string | null;
+  taxonomyDisplayName?: string | null;
 }) {
   const title = String(input.title ?? "").trim();
   const slug = normalizeSlug(String(input.slug ?? ""));
@@ -95,6 +96,7 @@ export function sanitizeLandingInput(input: {
     sourceTaxonomyId: input.sourceTaxonomyId?.trim() || null,
     sourceTaxonomyType: input.sourceTaxonomyType ?? null,
     sourceTaxonomySlug: input.sourceTaxonomySlug?.trim() || null,
+    taxonomyDisplayName: input.taxonomyDisplayName?.trim() || null,
   };
 }
 
@@ -128,8 +130,20 @@ export async function getPublicLandingBySlug(slug: string): Promise<AdminLanding
 export async function createAdminLanding(input: CreateLandingInput): Promise<AdminLandingDetail> {
   try {
     const row = await repository.create(input);
+    if (!row.id?.trim()) {
+      throw new AdminLandingServiceError(500, "MISSING_LANDING_ID", "랜딩 ID 생성 실패");
+    }
     const detail = mapRecordToAdminLandingDetail(row);
-    detail.sections = await createDefaultLandingSections(row.id, input.templateType);
+    detail.sections = await createDefaultLandingSections(
+      row.id,
+      input.templateType,
+      input.taxonomyDisplayName,
+      input.sourceTaxonomyType ?? null,
+      input.defaultSectionCopy ?? null,
+    );
+    if (process.env.NODE_ENV !== "production" && (!detail.sections || detail.sections.length === 0)) {
+      console.warn("[createAdminLanding] no sections after createDefaultLandingSections", { landingId: row.id });
+    }
     return detail;
   } catch (error) {
     if (error instanceof AdminLandingServiceError) throw error;

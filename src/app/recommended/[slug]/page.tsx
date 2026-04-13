@@ -44,7 +44,7 @@ export default async function RecommendedLandingDetailPage({ params }: Recommend
   if (!landing) notFound();
 
   return (
-    <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--foreground)]">
       <SiteHeader />
       <LandingPageRenderer
         landing={landing}

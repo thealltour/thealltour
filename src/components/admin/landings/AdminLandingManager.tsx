@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import AdminLandingEmptyState from "@/components/admin/landings/AdminLandingEmptyState";
 import AdminLandingListTable from "@/components/admin/landings/AdminLandingListTable";
 import {
   AdminLandingPublishClientError,
+  deleteAdminLandingClient,
   listAdminLandingsClient,
   publishAdminLandingClient,
   unpublishAdminLandingClient,
@@ -24,13 +25,25 @@ import {
 } from "@/components/admin/landings/adminLandings.constants";
 import type { AdminLandingListItem } from "@/types/adminLanding";
 
+const emptySubscribe = () => () => {};
+function useIsClient(): boolean {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+}
+
 export default function AdminLandingManager() {
   const router = useRouter();
   const { showToast } = useAdminToast();
+  const isClient = useIsClient();
   const [items, setItems] = useState<AdminLandingListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -50,6 +63,35 @@ export default function AdminLandingManager() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    const valid = new Set(items.map((i) => i.id));
+    setSelectedIds((prev) => {
+      const next = new Set([...prev].filter((id) => valid.has(id)));
+      if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
+      return next;
+    });
+  }, [items]);
+
+  const toggleSelect = useCallback((id: string, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(
+    (selected: boolean) => {
+      if (!selected) {
+        setSelectedIds(new Set());
+        return;
+      }
+      setSelectedIds(new Set(items.map((i) => i.id)));
+    },
+    [items],
+  );
 
   const summary = useMemo(() => {
     if (items.length === 0) return ADMIN_LANDINGS_SUMMARY_DEFAULT;
@@ -102,6 +144,35 @@ export default function AdminLandingManager() {
     }
   }
 
+  async function handleBulkDelete() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (
+      !confirm(
+        `선택한 ${ids.length}개 랜딩을 삭제할까요? 연결된 섹션도 함께 삭제되며 되돌릴 수 없습니다.`,
+      )
+    ) {
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      const results = await Promise.allSettled(ids.map((id) => deleteAdminLandingClient(id)));
+      const failed = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+      const ok = results.length - failed.length;
+      if (failed.length === 0) {
+        showToast("success", `${ok}개 랜딩을 삭제했습니다.`);
+      } else {
+        const firstMsg =
+          failed[0]?.reason instanceof Error ? failed[0].reason.message : String(failed[0]?.reason ?? "");
+        showToast("error", `${ok}개 삭제됨, ${failed.length}개 실패. ${firstMsg}`);
+      }
+      setSelectedIds(new Set());
+      await loadItems();
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   return (
     <section className="space-y-6 rounded-2xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -112,20 +183,49 @@ export default function AdminLandingManager() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleGenerateClick}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]/70"
-          >
-            taxonomy에서 draft 생성
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateClick}
-            className="rounded-lg border border-[var(--primary)] bg-[var(--primary-soft)] px-3 py-2 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)]/80"
-          >
-            랜딩 생성
-          </button>
+          {isClient ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleBulkDelete();
+                }}
+                disabled={deleteBusy || selectedIds.size === 0}
+                className="rounded-lg border border-[var(--danger)]/40 bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--danger)] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteBusy ? "삭제 중…" : `선택 삭제${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerateClick}
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]/70"
+              >
+                taxonomy에서 draft 생성
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateClick}
+                className="rounded-lg border border-[var(--primary)] bg-[var(--primary-soft)] px-3 py-2 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)]/80"
+              >
+                랜딩 생성
+              </button>
+            </>
+          ) : (
+            <>
+              <div
+                className="h-[38px] min-w-[7.5rem] rounded-lg border border-[var(--danger)]/40 bg-[var(--surface-muted)]"
+                aria-hidden
+              />
+              <div
+                className="h-[38px] min-w-[11.5rem] rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]"
+                aria-hidden
+              />
+              <div
+                className="h-[38px] min-w-[5.5rem] rounded-lg border border-[var(--primary)] bg-[var(--primary-soft)]"
+                aria-hidden
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -169,6 +269,10 @@ export default function AdminLandingManager() {
       ) : (
         <AdminLandingListTable
           items={items}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAll={toggleSelectAll}
+          selectionDisabled={deleteBusy}
           busyId={rowBusyId}
           onEdit={(item) => {
             router.push(buildAdminLandingEditHref(item.id));

@@ -1,3 +1,4 @@
+import { LANDING_SECTION_TYPE_LABELS } from "@/components/admin/landings/adminLandings.constants";
 import type { AdminLandingSection } from "@/types/adminLanding";
 
 type AdminLandingSectionRowProps = {
@@ -22,7 +23,7 @@ export default function AdminLandingSectionRow({
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
-            {section.sectionType}
+            {LANDING_SECTION_TYPE_LABELS[section.sectionType] ?? section.sectionType}
           </span>
           <span className="text-xs text-[var(--text-muted)]">순서 {section.sortOrder + 1}</span>
         </div>

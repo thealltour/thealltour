@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { LANDING_HERO_FALLBACK_IMAGE } from "@/lib/landingMetadata";
 
@@ -6,6 +7,8 @@ export type LandingDetailHeroProps = {
   description?: string;
   imageUrl: string | null;
   className?: string;
+  /** 히어로 하단 액션(버튼 등). 선택 */
+  actions?: ReactNode;
 };
 
 /**
@@ -16,6 +19,7 @@ export function LandingDetailHero({
   description,
   imageUrl,
   className,
+  actions,
 }: LandingDetailHeroProps) {
   const src = imageUrl || LANDING_HERO_FALLBACK_IMAGE;
 
@@ -30,10 +34,11 @@ export function LandingDetailHero({
         {title}
       </h1>
       {description ? (
-        <p className="hero-text-shadow-body mt-2 max-w-2xl type-small text-white/95 sm:type-body">
+        <p className="hero-text-shadow-body mt-2 max-w-2xl whitespace-pre-line type-small text-white/95 sm:type-body">
           {description}
         </p>
       ) : null}
+      {actions ? <div className="mt-5 sm:mt-6">{actions}</div> : null}
     </HeroVisual>
   );
 }

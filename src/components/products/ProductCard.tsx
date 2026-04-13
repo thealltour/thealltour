@@ -106,6 +106,8 @@ export type ProductCardProps = {
   seasonal_price_bands?: SeasonalPriceBands | null;
   /** PR-F: 전환 신호 1개 — 있으면 캠페인 오버레이 배지 대신 이것만 표시 */
   highlightTag?: ProductCardHighlightTag;
+  /** true면 grid 카드 호버를 primary/30 대신 --shadow-soft-strong·--border-strong 사용 */
+  emphasizeLandingHubHover?: boolean;
 };
 
 function formatReviewCount(n: number): string {
@@ -182,6 +184,7 @@ export default function ProductCard({
   campaignPresentationKind,
   seasonal_price_bands,
   highlightTag,
+  emphasizeLandingHubHover = false,
 }: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -674,7 +677,9 @@ export default function ProductCard({
   const wrapperClass = cn(
     "group flex h-full w-full overflow-hidden",
     CARD_TRANSITION,
-    "hover:shadow-md hover:border-[var(--primary)]/30",
+    emphasizeLandingHubHover
+      ? "hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft-strong)] hover:border-[var(--border-strong)]"
+      : "hover:shadow-md hover:border-[var(--primary)]/30",
     isListLayout && "max-w-[1344px]",
     isRelatedLayout && "flex-col",
     emphasizeFirstOnMobile &&

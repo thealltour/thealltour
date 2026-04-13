@@ -17,8 +17,12 @@ function asBooleanOrNull(v: unknown): boolean | null {
 }
 
 function normalizeRow(row: Record<string, unknown>): AdminLandingRecord {
+  const rawId = row.id;
+  if (rawId == null || rawId === "" || (typeof rawId === "string" && !rawId.trim())) {
+    throw new Error("landing id is missing");
+  }
   return {
-    id: String(row.id ?? ""),
+    id: String(rawId),
     title: typeof row.title === "string" ? row.title : "",
     description: asStringOrNull(row.description),
     slug: asStringOrNull(row.slug),
@@ -65,7 +69,14 @@ async function insertWithUnknownColumnFallback(payload: Record<string, unknown>)
       .insert(attempt)
       .select("*")
       .maybeSingle();
-    if (!error && data) return data as SectionRow;
+    if (!error && data) {
+      const row = data as SectionRow;
+      const id = row.id;
+      if (id == null || id === "" || (typeof id === "string" && !id.trim())) {
+        throw new Error("랜딩 생성 후 id를 반환받지 못했습니다.");
+      }
+      return row;
+    }
     if (!error && !data) throw new Error("랜딩 생성 결과를 확인할 수 없습니다.");
     if (!error) throw new Error("랜딩 생성 중 알 수 없는 오류가 발생했습니다.");
     lastErrorMessage = error.message ?? "";
@@ -253,7 +264,25 @@ class HomeCuratedLandingsRepository implements AdminLandingsRepository {
   }
 
   async remove(_id: string): Promise<boolean> {
-    throw new Error("NOT_IMPLEMENTED");
+    const id = _id.trim();
+    if (!id) return false;
+
+    const parentSlug = `landing:${id}`;
+    const { error: subErr } = await supabase
+      .from("landing_subnodes")
+      .delete()
+      .eq("parent_kind", "recommended")
+      .eq("parent_slug", parentSlug);
+    if (subErr) throw new Error(subErr.message);
+
+    const { data, error } = await supabase
+      .from("home_curated_sections")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return Boolean(data);
   }
 }
 

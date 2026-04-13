@@ -194,6 +194,7 @@ export type ProductToProductCardOverrides = Partial<
     | "campaignPitchLine"
     | "campaignPresentationKind"
     | "highlightTag"
+    | "emphasizeLandingHubHover"
   >
 > & {
   /** 기본: list/mobile presentation이면 1, 그 외 2 */

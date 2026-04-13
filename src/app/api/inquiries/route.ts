@@ -6,6 +6,7 @@ import { createNewInquiryNotification } from "@/lib/adminNotifications";
 import { inferAttribution } from "@/lib/analytics/attribution";
 import type { Inquiry, InquiryInput } from "@/types/inquiry";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
+import { normalizeReceiverPhone, sendAligoRelay } from "@/lib/notifications/sendAligoRelay";
 import {
   INQUIRY_API_ASSIGNEE_NO_SELF,
   INQUIRY_API_ASSIGNEE_UNASSIGNED,
@@ -579,7 +580,7 @@ export async function POST(request: Request) {
   }
 
   // 문의 저장 성공 이후: 가비아 알리고 중계 서버 호출 (부수효과, 실패해도 응답 유지)
-  const normalizedPhone = phone.replace(/[^0-9]/g, "");
+  const normalizedPhone = normalizeReceiverPhone(phone);
   const message = [
     "[더올투어 문의접수]",
     `이름: ${name}`,
@@ -591,9 +592,6 @@ export async function POST(request: Request) {
     .filter(Boolean)
     .join("\n");
 
-  const aligoController = new AbortController();
-  const aligoTimeout = setTimeout(() => aligoController.abort(), 5000);
-
   try {
     console.log("[inquiries] calling aligo relay server", {
       inquiryId,
@@ -603,43 +601,27 @@ export async function POST(request: Request) {
       sourcePath: sourcePath || null,
     });
 
-    const relayResponse = await fetch("http://121.78.183.144:3000/send-aligo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        receiver: normalizedPhone,
-        msg: message,
+    const { data } = await sendAligoRelay({
+      receiver: normalizedPhone,
+      msg: message,
+      relayExtras: {
         name,
         phone,
         product_title: productTitle || null,
         source_path: sourcePath || null,
         content: contentValue || "",
-      }),
-      signal: aligoController.signal,
+      },
     });
 
-    const relayBody = await relayResponse.text();
-
-    if (!relayResponse.ok) {
-      console.error("[inquiries] aligo relay responded with non-2xx", {
-        inquiryId,
-        status: relayResponse.status,
-        body: relayBody,
-      });
-    } else {
-      console.log("[inquiries] aligo relay success", {
-        inquiryId,
-        status: relayResponse.status,
-        body: relayBody,
-      });
-    }
+    console.log("[inquiries] aligo relay success", {
+      inquiryId,
+      data,
+    });
   } catch (error) {
     console.error("[inquiries] failed to call aligo relay server", {
       inquiryId,
       error,
     });
-  } finally {
-    clearTimeout(aligoTimeout);
   }
 
   await Promise.allSettled([

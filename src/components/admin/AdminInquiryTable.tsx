@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/hooks/useAdminInquiryTable";
 import { parseHostname } from "@/lib/analytics/attribution";
 import { InquiryResponseGuide } from "@/components/admin/inquiries/InquiryResponseGuide";
+import { MessageSendPanel } from "@/components/admin/inquiries/MessageSendPanel";
 import { InquiryAssigneeFilters } from "@/components/admin/inquiries/InquiryAssigneeFilters";
 import { InquiryQuickFilters } from "@/components/admin/inquiries/InquiryQuickFilters";
 import { InquirySummaryCards } from "@/components/admin/inquiries/InquirySummaryCards";
@@ -21,6 +22,22 @@ import {
   isFollowUpOverdue,
   isHotLead,
 } from "@/components/admin/inquiries/inquiryQueue.utils";
+import {
+  applyTemplateToMessage,
+  type TemplateInsertMode,
+} from "@/components/admin/inquiries/messageSend.utils";
+
+const ADMIN_SMS_INSERT_MODE_KEY = "admin:message-insert-mode";
+
+function readStoredSmsInsertMode(): TemplateInsertMode {
+  if (typeof window === "undefined") return "append";
+  try {
+    const raw = sessionStorage.getItem(ADMIN_SMS_INSERT_MODE_KEY);
+    return raw === "replace" || raw === "append" ? raw : "append";
+  } catch {
+    return "append";
+  }
+}
 
 function formatDate(dateText: string) {
   const date = new Date(dateText);
@@ -262,8 +279,28 @@ function InquiryActionButtons({
 export default function AdminInquiryTable() {
   const api = useAdminInquiryTable();
   const [detailInquiry, setDetailInquiry] = useState<Inquiry | null>(null);
+  const [messageDraft, setMessageDraft] = useState("");
+  const [smsTimelineBump, setSmsTimelineBump] = useState(0);
+  const [templateInsertMode, setTemplateInsertMode] = useState<TemplateInsertMode>("append");
 
   const closeDetailModal = useCallback(() => setDetailInquiry(null), []);
+
+  useEffect(() => {
+    setTemplateInsertMode(readStoredSmsInsertMode());
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(ADMIN_SMS_INSERT_MODE_KEY, templateInsertMode);
+    } catch {
+      /* ignore */
+    }
+  }, [templateInsertMode]);
+
+  useEffect(() => {
+    setMessageDraft("");
+    setSmsTimelineBump(0);
+  }, [detailInquiry?.id]);
 
   useEffect(() => {
     if (!detailInquiry) return;
@@ -677,7 +714,7 @@ export default function AdminInquiryTable() {
           onClick={closeDetailModal}
         >
           <div
-            className="flex max-h-[min(92dvh,920px)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+            className="flex max-h-[94vh] w-[94vw] max-w-[1600px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
@@ -702,7 +739,7 @@ export default function AdminInquiryTable() {
                       닫기
                     </button>
                   </div>
-                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
                     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4">
                       <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
@@ -817,13 +854,33 @@ export default function AdminInquiryTable() {
                         ) : null}
                       </div>
                     </div>
-                    <aside className="min-h-0 w-full max-h-[min(50vh,480px)] shrink-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/30 px-4 py-4 xl:max-h-none xl:w-[360px] xl:border-l xl:border-t-0">
+                    <aside className="min-h-0 w-full max-h-[min(46vh,520px)] shrink-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/30 px-4 py-4 lg:max-h-none lg:w-[420px] lg:border-l lg:border-t-0">
                       <InquiryResponseGuide
                         key={inv.id}
                         inquiry={inv}
                         onSaved={(updated) => {
                           api.applyInquiryMerge(updated.id, updated);
                         }}
+                        onUseAsMessageDraft={(text) =>
+                          setMessageDraft((prev) =>
+                            applyTemplateToMessage({
+                              currentText: prev,
+                              templateText: text,
+                              mode: templateInsertMode,
+                            }),
+                          )
+                        }
+                        externalTimelineBump={smsTimelineBump}
+                      />
+                    </aside>
+                    <aside className="min-h-0 w-full max-h-[min(46vh,520px)] shrink-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/20 px-4 py-4 lg:max-h-none lg:w-[420px] lg:border-l lg:border-t-0">
+                      <MessageSendPanel
+                        inquiry={inv}
+                        message={messageDraft}
+                        onMessageChange={setMessageDraft}
+                        templateInsertMode={templateInsertMode}
+                        onTemplateInsertModeChange={setTemplateInsertMode}
+                        onSent={() => setSmsTimelineBump((b) => b + 1)}
                       />
                     </aside>
                   </div>

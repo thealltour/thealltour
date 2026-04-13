@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import type { Inquiry, InquiryLeadPriority, InquiryResponseStage } from "@/types/inquiry";
 import { INQUIRY_LEAD_PRIORITIES, INQUIRY_RESPONSE_STAGES } from "@/types/inquiry";
@@ -120,9 +120,13 @@ type CopyFlash = null | "first" | "template" | "phone";
 type Props = {
   inquiry: Inquiry;
   onSaved?: (inquiry: Inquiry) => void;
+  /** 가운데 매뉴얼에서 우측 문자 편집기로 본문을 보냅니다. */
+  onUseAsMessageDraft?: (text: string) => void;
+  /** 문자 발송 등 외부 이벤트 시 활동 타임라인을 갱신합니다(문의별로 증가하는 값). */
+  externalTimelineBump?: number;
 };
 
-export function InquiryResponseGuide({ inquiry, onSaved }: Props) {
+export function InquiryResponseGuide({ inquiry, onSaved, onUseAsMessageDraft, externalTimelineBump }: Props) {
   const analysis = useMemo(() => analyzeInquiryGuide(inquiry), [inquiry]);
 
   const templates = useMemo(() => getTemplatesByType(analysis.type), [analysis.type]);
@@ -165,6 +169,15 @@ export function InquiryResponseGuide({ inquiry, onSaved }: Props) {
   const [lastContactedLocal, setLastContactedLocal] = useState(() => formatDateTimeLocalInput(inquiry.last_contacted_at));
   const [isSavingOpsMeta, setIsSavingOpsMeta] = useState(false);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const prevExternalBumpRef = useRef(0);
+
+  useEffect(() => {
+    const b = externalTimelineBump ?? 0;
+    if (b === 0) return;
+    if (b === prevExternalBumpRef.current) return;
+    prevExternalBumpRef.current = b;
+    setActivityRefreshKey((k) => k + 1);
+  }, [externalTimelineBump]);
 
   const triggerCopyFlash = useCallback((key: Exclude<CopyFlash, null>) => {
     setCopyFlash(key);
@@ -200,6 +213,10 @@ export function InquiryResponseGuide({ inquiry, onSaved }: Props) {
     setSavedAtDisplay(inquiry.response_updated_at ?? null);
     setIsDirty(false);
   }, [inquiry.id, inquiry.response_updated_at]);
+
+  useEffect(() => {
+    prevExternalBumpRef.current = 0;
+  }, [inquiry.id]);
 
   useEffect(() => {
     setAssigneeName(inquiry.assignee_name ?? "");
@@ -409,14 +426,25 @@ export function InquiryResponseGuide({ inquiry, onSaved }: Props) {
       </SectionCard>
 
       <SectionCard title="1차 응대">
-        <button
-          type="button"
-          onClick={() => void handleCopyFirst()}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition hover:bg-[var(--border)]/40"
-        >
-          {copyFlash === "first" ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5" />}
-          {copyFlash === "first" ? "복사됨" : "1차 응대 메시지 복사"}
-        </button>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => void handleCopyFirst()}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition hover:bg-[var(--border)]/40"
+          >
+            {copyFlash === "first" ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5" />}
+            {copyFlash === "first" ? "복사됨" : "1차 응대 메시지 복사"}
+          </button>
+          {onUseAsMessageDraft ? (
+            <button
+              type="button"
+              onClick={() => onUseAsMessageDraft(analysis.generatedMessage)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-medium text-[var(--primary)] transition hover:bg-[var(--primary-soft)]/80"
+            >
+              문자 편집기로 넣기
+            </button>
+          ) : null}
+        </div>
         {copyError ? <p className="mt-1.5 text-xs text-[var(--danger)]">{copyError}</p> : null}
         <p className="mt-2 line-clamp-6 whitespace-pre-wrap text-xs leading-relaxed text-[var(--text-secondary)]">
           {analysis.generatedMessage}
@@ -449,14 +477,25 @@ export function InquiryResponseGuide({ inquiry, onSaved }: Props) {
               <p className="mt-2 line-clamp-6 whitespace-pre-wrap text-xs leading-relaxed text-[var(--text-secondary)]">
                 {selectedTemplate.build(inquiry)}
               </p>
-              <button
-                type="button"
-                onClick={() => void handleCopyTemplate()}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition hover:bg-[var(--border)]/40"
-              >
-                {copyFlash === "template" ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5" />}
-                {copyFlash === "template" ? "복사됨" : "템플릿 복사"}
-              </button>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => void handleCopyTemplate()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition hover:bg-[var(--border)]/40"
+                >
+                  {copyFlash === "template" ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copyFlash === "template" ? "복사됨" : "템플릿 복사"}
+                </button>
+                {onUseAsMessageDraft ? (
+                  <button
+                    type="button"
+                    onClick={() => onUseAsMessageDraft(selectedTemplate.build(inquiry))}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-medium text-[var(--primary)] transition hover:bg-[var(--primary-soft)]/80"
+                  >
+                    문자 편집기로 넣기
+                  </button>
+                ) : null}
+              </div>
             </>
           ) : null}
         </SectionCard>
@@ -490,14 +529,25 @@ export function InquiryResponseGuide({ inquiry, onSaved }: Props) {
               </ul>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void handleCopyPhone()}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition hover:bg-[var(--border)]/40"
-          >
-            {copyFlash === "phone" ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5" />}
-            {copyFlash === "phone" ? "복사됨" : "전체 복사"}
-          </button>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => void handleCopyPhone()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition hover:bg-[var(--border)]/40"
+            >
+              {copyFlash === "phone" ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5" />}
+              {copyFlash === "phone" ? "복사됨" : "전체 복사"}
+            </button>
+            {onUseAsMessageDraft && phoneScript ? (
+              <button
+                type="button"
+                onClick={() => onUseAsMessageDraft(formatPhoneScriptFull(phoneScript))}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-medium text-[var(--primary)] transition hover:bg-[var(--primary-soft)]/80"
+              >
+                문자 편집기로 넣기
+              </button>
+            ) : null}
+          </div>
         </SectionCard>
       ) : null}
 

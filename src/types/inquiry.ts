@@ -45,6 +45,21 @@ export type InquiryActivityLog = {
   created_at: string;
 };
 
+/** SMS(알리고 relay) 발송 로그 */
+export type InquiryMessageLog = {
+  id: string;
+  inquiry_id: string;
+  channel: string;
+  recipient_phone: string;
+  message: string;
+  provider: string;
+  send_status: "success" | "failed";
+  provider_response?: Record<string, unknown> | null;
+  failure_reason?: string | null;
+  actor_name?: string | null;
+  created_at: string;
+};
+
 /** 상담 진행 상태 — on_hold: DB 유지·당장 응답 큐에서 제외(보류) */
 export type ConsultationStatus = "new" | "contacted" | "closed" | "on_hold";
 

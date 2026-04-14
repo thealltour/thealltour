@@ -3,18 +3,12 @@
 /**
  * PR14: 관리자 리뷰 요약 목록 + 재생성.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
-
-type SummaryRow = {
-  id: string;
-  product_id: string;
-  product_title: string | null;
-  review_count: number;
-  average_rating: number | null;
-  status: string;
-  updated_at: string;
-};
+import {
+  useAdminReviewSummariesQuery,
+  useRegenerateReviewSummaryMutation,
+} from "@/components/admin/reviews/useAdminReviewSummariesAndReminders";
 
 function formatDate(s: string) {
   const d = new Date(s);
@@ -23,50 +17,22 @@ function formatDate(s: string) {
 
 export default function AdminReviewSummariesPage() {
   const { showToast } = useAdminToast();
-  const [rows, setRows] = useState<SummaryRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const { data, isPending, isError, error, refetch } = useAdminReviewSummariesQuery();
+  const regenerate = useRegenerateReviewSummaryMutation();
   const [productIdInput, setProductIdInput] = useState("");
-  const [creating, setCreating] = useState(false);
 
-  const fetchList = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/review-summaries?limit=100");
-      const data = (await res.json()) as { rows: SummaryRow[]; total: number };
-      if (res.ok) {
-        setRows(data.rows ?? []);
-        setTotal(data.total ?? 0);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchList();
-  }, []);
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
 
   const handleRegenerate = async (productId: string) => {
-    setRegeneratingId(productId);
     try {
-      const res = await fetch(`/api/admin/products/${productId}/review-summary`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "regenerate" }),
-      });
-      const data = (await res.json()) as { message?: string; success?: boolean };
-      if (res.ok && data.success) {
-        showToast("success", `요약이 재생성되었습니다. (리뷰 ${(data as { reviewCount?: number }).reviewCount ?? 0}건)`);
-        fetchList();
-      } else {
-        showToast("error", data.message ?? "재생성에 실패했습니다.");
-      }
-    } catch {
-      showToast("error", "요청 중 오류가 발생했습니다.");
-    } finally {
-      setRegeneratingId(null);
+      const data = await regenerate.mutateAsync(productId);
+      showToast(
+        "success",
+        `요약이 재생성되었습니다. (리뷰 ${data.reviewCount ?? 0}건)`,
+      );
+    } catch (e) {
+      showToast("error", e instanceof Error ? e.message : "재생성에 실패했습니다.");
     }
   };
 
@@ -76,25 +42,12 @@ export default function AdminReviewSummariesPage() {
       showToast("error", "상품 ID를 입력하세요.");
       return;
     }
-    setCreating(true);
     try {
-      const res = await fetch(`/api/admin/products/${id}/review-summary`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "regenerate" }),
-      });
-      const data = (await res.json()) as { message?: string; success?: boolean };
-      if (res.ok && data.success) {
-        showToast("success", "요약이 생성되었습니다.");
-        setProductIdInput("");
-        fetchList();
-      } else {
-        showToast("error", data.message ?? "생성에 실패했습니다.");
-      }
-    } catch {
-      showToast("error", "요청 중 오류가 발생했습니다.");
-    } finally {
-      setCreating(false);
+      await regenerate.mutateAsync(id);
+      showToast("success", "요약이 생성되었습니다.");
+      setProductIdInput("");
+    } catch (e) {
+      showToast("error", e instanceof Error ? e.message : "생성에 실패했습니다.");
     }
   };
 
@@ -103,6 +56,15 @@ export default function AdminReviewSummariesPage() {
       <div className="flex flex-wrap items-center gap-4">
         <span className="text-sm font-medium text-[var(--text-muted)]">리뷰 요약</span>
         <span className="text-sm text-[var(--text-muted)]">총 {total}건</span>
+        {isError ? (
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="text-xs font-medium text-[var(--brand)] hover:underline"
+          >
+            다시 시도
+          </button>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="text"
@@ -113,20 +75,26 @@ export default function AdminReviewSummariesPage() {
           />
           <button
             type="button"
-            disabled={creating}
-            onClick={handleCreateForProduct}
+            disabled={regenerate.isPending}
+            onClick={() => void handleCreateForProduct()}
             className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
           >
-            {creating ? "생성 중..." : "요약 생성"}
+            {regenerate.isPending ? "생성 중..." : "요약 생성"}
           </button>
         </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-        {loading ? (
+        {isPending ? (
           <div className="p-8 text-center text-sm text-[var(--text-muted)]">로딩 중...</div>
+        ) : isError ? (
+          <div className="p-8 text-center text-sm text-red-600">
+            {error instanceof Error ? error.message : "불러오기에 실패했습니다."}
+          </div>
         ) : rows.length === 0 ? (
-          <div className="p-8 text-center text-sm text-[var(--text-muted)]">등록된 요약이 없습니다. 상품 ID를 입력해 요약을 생성하세요.</div>
+          <div className="p-8 text-center text-sm text-[var(--text-muted)]">
+            등록된 요약이 없습니다. 상품 ID를 입력해 요약을 생성하세요.
+          </div>
         ) : (
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
@@ -168,11 +136,13 @@ export default function AdminReviewSummariesPage() {
                   <td className="px-4 py-2">
                     <button
                       type="button"
-                      disabled={regeneratingId === r.product_id}
-                      onClick={() => handleRegenerate(r.product_id)}
+                      disabled={regenerate.isPending && regenerate.variables === r.product_id}
+                      onClick={() => void handleRegenerate(r.product_id)}
                       className="text-xs font-medium text-[var(--brand)] hover:underline disabled:opacity-50"
                     >
-                      {regeneratingId === r.product_id ? "재생성 중..." : "재생성"}
+                      {regenerate.isPending && regenerate.variables === r.product_id
+                        ? "재생성 중..."
+                        : "재생성"}
                     </button>
                   </td>
                 </tr>

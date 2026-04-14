@@ -14,8 +14,14 @@ export default function AdminQueryProvider({ children }: AdminQueryProviderProps
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000,
+            staleTime: 2 * 60 * 1000,
+            gcTime: 30 * 60 * 1000,
             refetchOnWindowFocus: false,
+            refetchOnReconnect: true,
+            retry: 1,
+          },
+          mutations: {
+            retry: 0,
           },
         },
       }),

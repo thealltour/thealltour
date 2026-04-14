@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const contentSecurityPolicy = `
   default-src 'self';
@@ -9,12 +10,16 @@ const contentSecurityPolicy = `
   img-src 'self' data: blob: https:;
   font-src 'self' data: https:;
   style-src 'self' 'unsafe-inline';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live;
   connect-src 'self' https: ws: wss:;
   frame-src 'self' https://www.youtube.com https://player.vimeo.com;
 `
   .replace(/\s{2,}/g, " ")
   .trim();
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -136,4 +141,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

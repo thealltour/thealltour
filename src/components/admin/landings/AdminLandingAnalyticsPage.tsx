@@ -1,13 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import AdminLandingAnalyticsConversionCards from "@/components/admin/landings/AdminLandingAnalyticsConversionCards";
 import AdminLandingAnalyticsFilters from "@/components/admin/landings/AdminLandingAnalyticsFilters";
 import AdminLandingAnalyticsSummary from "@/components/admin/landings/AdminLandingAnalyticsSummary";
 import AdminLandingAnalyticsTable from "@/components/admin/landings/AdminLandingAnalyticsTable";
 import AdminLandingAnalyticsTopPerformers from "@/components/admin/landings/AdminLandingAnalyticsTopPerformers";
-import AdminLandingAnalyticsTrendChart from "@/components/admin/landings/AdminLandingAnalyticsTrendChart";
 import type {
   LandingAnalyticsRange,
   LandingAnalyticsResponse,
@@ -17,6 +16,27 @@ import {
   parseLandingAnalyticsRangeParam,
   parseLandingAnalyticsSortParam,
 } from "@/lib/adminLandings/landingAnalyticsModels";
+
+const AdminLandingAnalyticsTrendChart = dynamic(
+  () => import("@/components/admin/landings/AdminLandingAnalyticsTrendChart"),
+  {
+    loading: () => (
+      <div className="h-[280px] animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]" />
+    ),
+  },
+);
+
+const AdminLandingAnalyticsConversionCards = dynamic(
+  () => import("@/components/admin/landings/AdminLandingAnalyticsConversionCards"),
+  {
+    loading: () => (
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="h-36 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]" />
+        <div className="h-36 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]" />
+      </div>
+    ),
+  },
+);
 
 function emptySummary(): LandingAnalyticsResponse["summary"] {
   return {
@@ -158,7 +178,6 @@ export default function AdminLandingAnalyticsPage() {
   const trend = data?.trend ?? [];
   const topPerformers = data?.topPerformers ?? emptyTopPerformers();
 
-  const tableEmpty = items.length === 0;
   const hasNoFunnelActivity =
     summary.totalViews === 0 && summary.totalClicks === 0 && summary.totalSubmits === 0;
   const showGlobalEmptyCopy = !loading && hasNoFunnelActivity;

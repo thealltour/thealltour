@@ -1,7 +1,4 @@
-"use client";
-
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -10,6 +7,7 @@ import { HomeHeroSearch } from "@/components/home/HomeHeroSearch";
 import { HomeQuickKeywords } from "@/components/home/HomeQuickKeywords";
 import type { HomeBanner } from "@/types/homeBanner";
 import { cn } from "@/lib/cn";
+import { HeroPanoramaSlideshowClient } from "@/components/home/HeroPanoramaSlideshowClient";
 
 /** 태블릿(md~lg 미만): mobile_image_url 우선, 없으면 PC 이미지 */
 function bannerSrcForMidViewport(banner: HomeBanner): string {
@@ -17,100 +15,11 @@ function bannerSrcForMidViewport(banner: HomeBanner): string {
   return m && m.length > 0 ? m : banner.image_url;
 }
 
-const SLIDE_INTERVAL_MS = 5000;
-
 /** PageContainer `wide`와 동일 — 파노라마·srcset이 뷰포트 전체로 불필요 확대되지 않도록 */
 const HERO_PANORAMA_MAX_WIDTH_PX = 1600;
 
 /** md+ 파노라마 박스 높이(명시 필수: 자식이 absolute fill이라 max-h만으로는 높이 0) — 과도한 세로 확대 완화 */
 const HERO_PANORAMA_HEIGHT_CLASS = "min-h-[260px] h-[min(52vh,560px)]";
-
-type HeroPanoramaSlideshowProps = {
-  banners: HomeBanner[];
-};
-
-/**
- * 활성 배너 다중 장을 fade 전환. md~lg-1 / lg+ 각각 다른 소스(모바일 URL vs PC URL).
- * prefers-reduced-motion: 자동 전환 없음, 첫 장만 표시.
- */
-function HeroPanoramaSlideshow({ banners }: HeroPanoramaSlideshowProps) {
-  const [active, setActive] = useState(0);
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReducedMotion(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-
-  useEffect(() => {
-    if (banners.length <= 1 || reducedMotion) return;
-    const id = window.setInterval(() => {
-      setActive((i) => (i + 1) % banners.length);
-    }, SLIDE_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [banners.length, reducedMotion]);
-
-  useEffect(() => {
-    if (active >= banners.length) setActive(0);
-  }, [banners.length, active]);
-
-  const fadeClass = reducedMotion ? "transition-none" : "transition-opacity duration-700 ease-in-out";
-
-  function renderStack(
-    keyPrefix: string,
-    getSrc: (b: HomeBanner) => string,
-    wrapperClass: string,
-    objectPositionClass: string,
-  ) {
-    return (
-      <div className={cn("absolute inset-0", wrapperClass)}>
-        {banners.map((banner, i) => (
-          <div
-            key={`${keyPrefix}-${banner.id}`}
-            className={cn("absolute inset-0", fadeClass)}
-            style={{
-              opacity: i === active ? 1 : 0,
-              zIndex: i === active ? 1 : 0,
-            }}
-            aria-hidden={i !== active}
-          >
-            <Image
-              src={getSrc(banner)}
-              alt={banner.title}
-              fill
-              sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
-              priority={i === 0}
-              fetchPriority={i === 0 ? "high" : "auto"}
-              quality={82}
-              className={cn("object-cover", objectPositionClass)}
-              loading={i === 0 ? undefined : "lazy"}
-            />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {renderStack(
-        "mid",
-        bannerSrcForMidViewport,
-        "md:block lg:hidden",
-        "object-center",
-      )}
-      {renderStack(
-        "lg",
-        (b) => b.image_url,
-        "hidden lg:block",
-        "object-[right_center]",
-      )}
-    </>
-  );
-}
 
 /** @deprecated Hero 모바일 칩용. 다른 화면에서 재사용 시에만 유지 */
 export type HeroChipItem = { id: string; name: string; href: string };
@@ -164,6 +73,7 @@ export type HeroSectionProps = {
  */
 export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps) {
   const hasBanners = heroBanners.length > 0;
+  const firstBanner = heroBanners[0] ?? null;
 
   return (
     <section
@@ -194,7 +104,36 @@ export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps
               "overflow-hidden",
             )}
           >
-            <HeroPanoramaSlideshow banners={heroBanners} />
+            {heroBanners.length > 1 ? (
+              <HeroPanoramaSlideshowClient banners={heroBanners} />
+            ) : firstBanner ? (
+              <>
+                <div className="absolute inset-0 md:block lg:hidden">
+                  <Image
+                    src={bannerSrcForMidViewport(firstBanner)}
+                    alt={firstBanner.title}
+                    fill
+                    sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
+                    priority
+                    fetchPriority="high"
+                    quality={82}
+                    className="object-cover object-center"
+                  />
+                </div>
+                <div className="absolute inset-0 hidden lg:block">
+                  <Image
+                    src={firstBanner.image_url}
+                    alt={firstBanner.title}
+                    fill
+                    sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
+                    priority
+                    fetchPriority="high"
+                    quality={82}
+                    className="object-cover object-[right_center]"
+                  />
+                </div>
+              </>
+            ) : null}
             <div className="absolute inset-0 z-[2] hero-scrim" />
             <div className="absolute inset-y-0 right-0 z-[2] w-3/5 hero-overlay-warm mix-blend-soft-light" />
             <div className="absolute inset-y-0 left-1/2 z-[2] w-[18%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--hero-scrim-veil-mid)] to-transparent backdrop-blur-[2px]" />

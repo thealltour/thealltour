@@ -344,6 +344,7 @@ export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSea
           <input
             ref={inputRef}
             type="search"
+            role="combobox"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -357,10 +358,11 @@ export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSea
             autoComplete="off"
             aria-label="검색어"
             aria-autocomplete="list"
-            aria-controls="hero-autosuggest-list"
+            aria-haspopup="listbox"
+            aria-controls={showAutosuggest ? "hero-autosuggest-list" : undefined}
             aria-expanded={showAutosuggest}
             aria-activedescendant={
-              highlightedIndex >= 0 && autoSuggestions[highlightedIndex]
+              showAutosuggest && highlightedIndex >= 0 && autoSuggestions[highlightedIndex]
                 ? `hero-suggestion-${highlightedIndex}`
                 : undefined
             }

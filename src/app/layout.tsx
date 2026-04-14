@@ -15,6 +15,7 @@ import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 
 const siteUrl = getSiteBaseUrl();
+const gaId = process.env.NEXT_PUBLIC_GA_ID?.trim();
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
@@ -102,19 +103,23 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href={THEALL_FAVICON_32_SRC} />
         <link rel="icon" type="image/png" sizes="16x16" href={THEALL_FAVICON_16_SRC} />
         <link rel="apple-touch-icon" href={THEALL_APPLE_TOUCH_ICON_SRC} />
-        {/* GA4 */}
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID ?? ""}`}
-          strategy="afterInteractive"
-        />
-        <Script id="ga-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${process.env.NEXT_PUBLIC_GA_ID ?? ""}');
-          `}
-        </Script>
+        {/* GA4: ID가 설정된 경우에만 로드 */}
+        {gaId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${gaId}');
+              `}
+            </Script>
+          </>
+        ) : null}
         {/* LCP: Supabase Storage preconnect */}
         <link
           rel="preconnect"
@@ -136,7 +141,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-[color:color-mix(in_oklab,var(--primary)_18%,white)] selection:text-foreground">
         <FirstTouchInit />
-        <WebVitalsReporter />
+        {process.env.NODE_ENV === "development" ? <WebVitalsReporter /> : null}
         <ConsultModalProvider>
           <div className="flex-1">{children}</div>
           <KakaoFloatingButton />

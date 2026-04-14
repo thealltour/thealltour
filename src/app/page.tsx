@@ -14,11 +14,7 @@ import { getHomeGuidesWithTaxonomyNames } from "@/lib/guides";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/inquiry/HeroQuickConsultButton";
 import HeroSection from "@/components/home/HeroSection";
-import DestinationSection from "@/components/home/DestinationSection";
-import ThemeSection from "@/components/home/ThemeSection";
-import CuratedProductsSection from "@/components/home/CuratedProductsSection";
-import { HomeGuideSection } from "@/components/home/HomeGuideSection";
-import { HomeReviewSection } from "@/components/home/HomeReviewSection";
+import { HomeDeferredSections } from "@/components/home/HomeDeferredSections";
 
 const TRUST_H3 =
   "\uc548\uc2ec\ud558\uace0\u0020\ub9e1\uae38\u0020\uc218\u0020\uc788\ub294\u0020\uc5ec\ud589\u0020\ud30c\ud2b8\ub108";
@@ -104,22 +100,24 @@ export default async function Home() {
             size="wide"
             className="flex flex-col max-md:gap-10 max-md:pt-8 md:gap-20 md:pt-0"
           >
-            <DestinationSection
-              items={destinationsForHome}
-              eyebrow={settings.home_region_section_eyebrow}
-              title={settings.home_region_section_title}
-              description={settings.home_region_section_description}
+            <HomeDeferredSections
+              destinationRail={{
+                items: destinationsForHome,
+                eyebrow: settings.home_region_section_eyebrow,
+                title: settings.home_region_section_title,
+                description: settings.home_region_section_description,
+              }}
+              themeRail={{
+                items: themesForHome,
+                eyebrow: settings.home_theme_section_eyebrow,
+                title: settings.home_theme_section_title,
+                description: settings.home_theme_section_description,
+              }}
+              curatedSettings={curatedSettings}
+              curatedSections={curatedSections}
+              homeGuides={homeGuides}
+              homeReviews={homeReviews}
             />
-            <ThemeSection
-              items={themesForHome}
-              eyebrow={settings.home_theme_section_eyebrow}
-              title={settings.home_theme_section_title}
-              description={settings.home_theme_section_description}
-            />
-            <CuratedProductsSection settings={curatedSettings} sections={curatedSections} />
-
-            <HomeGuideSection guides={homeGuides} />
-            <HomeReviewSection reviews={homeReviews} />
 
             <SectionBlock
               surface="none"

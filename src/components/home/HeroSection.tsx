@@ -114,8 +114,8 @@ export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps
                     alt={firstBanner.title}
                     fill
                     sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
-                    priority
-                    fetchPriority="high"
+                    loading="lazy"
+                    fetchPriority="low"
                     quality={82}
                     className="object-cover object-center"
                   />

@@ -6,7 +6,7 @@
 :root {
   /* THEALL TOUR brand tokens v2.0 — 로고/아이콘 기준 UI 컬러 시스템 */
   --theall-brand-blue: #1e5b8f;
-  --theall-brand-orange: #e0612a;
+  --theall-brand-orange: #ff7a2f;
   --theall-primary-navy: #0f172a;
   /** @deprecated 레거시 명칭 — 브랜드 블루는 --theall-brand-blue */
   --theall-accent-blue: var(--theall-brand-blue);
@@ -39,12 +39,7 @@
   --text-primary: var(--theall-text-primary);
   --text-secondary: var(--theall-text-secondary);
   --text-muted: var(--theall-text-muted);
-  /* 보조 라벨·캡션 — surface-muted 위 작은 글자 대비 우선 */
-  --text-subtle: #6b7280;
-
-  /* 푸터(surface-muted) — 법정·회사 정보: 읽힘 우선 */
-  --footer-text: #4b5563;
-  --footer-text-muted: #6b7280;
+  --text-subtle: #9aa3b2;
 
   --border: var(--theall-card-border);
   --border-strong: #d1d6e0;
@@ -58,10 +53,10 @@
   --primary-soft: color-mix(in srgb, var(--theall-brand-blue) 9%, transparent);
   --on-primary: #ffffff;
 
-  /* Accent: 강조 CTA·dot (브랜드 오렌지 — primary와 역할 분리, 남용 금지) */
+  /* Accent: 주요 CTA·선택·뱃지·dot (오렌지 — 남용 금지) */
   --accent: var(--theall-brand-orange);
-  --accent-hover: #c95524;
-  --accent-active: #b94d20;
+  --accent-hover: color-mix(in srgb, var(--theall-brand-orange) 88%, black);
+  --accent-active: color-mix(in srgb, var(--theall-brand-orange) 78%, black);
   --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 12%, transparent);
   --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
   --on-accent: #ffffff;
@@ -276,6 +271,7 @@
   flex-shrink: 0;
   object-fit: contain;
   object-position: center;
+  overflow: visible;
 }
 .header-brand-logo-img--touch {
   height: var(--header-logo-height-mobile) !important;
@@ -322,23 +318,19 @@
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
-  letter-spacing: var(--type-letter-tight);
   background: var(--accent);
   color: var(--on-accent);
   border: none;
   white-space: nowrap;
-  box-shadow: var(--shadow-soft);
-  transition: background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 .mobile-header-top-bar__cta:hover {
   background: var(--accent-hover);
-  box-shadow: var(--shadow-soft-strong);
 }
 .mobile-header-top-bar__cta:active {
   background: var(--accent-active);
-  box-shadow: var(--shadow-soft);
 }
 .mobile-header-search-row {
   display: flex;
@@ -528,12 +520,7 @@
   --text-primary: #ffffff;
   --text-secondary: #e5e7eb;
   --text-muted: #9ca3af;
-  /* 다크 배경 위 보조 텍스트 */
   --text-subtle: #9ca3af;
-
-  /* 푸터(다크 surface-muted) — 읽힘 우선 */
-  --footer-text: #e2e8f0;
-  --footer-text-muted: #cbd5e1;
 
   --mobile-header-search-bg: #111827;
 
@@ -549,10 +536,10 @@
   --primary-soft: color-mix(in srgb, var(--primary) 14%, transparent);
   --on-primary: #0f172a;
 
-  /* Accent: 라이트와 동일 브랜드 톤·hover/active(흰 글자 대비 유지) */
+  /* Accent: CTA·dot (라이트와 동일 오렌지) */
   --accent: var(--theall-brand-orange);
-  --accent-hover: #c95524;
-  --accent-active: #b94d20;
+  --accent-hover: color-mix(in srgb, var(--theall-brand-orange) 88%, white);
+  --accent-active: color-mix(in srgb, var(--theall-brand-orange) 78%, black);
   --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
   --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 22%, transparent);
   --on-accent: #ffffff;
@@ -660,8 +647,6 @@
   --color-danger: var(--danger);
   --color-text-muted: var(--text-muted);
   --color-text-subtle: var(--text-subtle);
-  --color-footer-text: var(--footer-text);
-  --color-footer-text-muted: var(--footer-text-muted);
   --color-focus-ring: var(--focus-ring);
   --color-site-primary: var(--site-text-primary);
   --color-site-secondary: var(--site-text-secondary);
@@ -1045,7 +1030,7 @@ body {
   box-shadow: 0 0 0 3px color-mix(in_oklab, var(--primary) 15%, transparent);
 }
 
-/* Footer: GlobalSiteFooter — `--footer-text*` 토큰(라이트/다크 공통 정의) */
+/* Footer: 라이트 기준 토큰만 (GlobalSiteFooter). 다크 전용 분기 없음. */
 .footer-pill {
   display: inline-flex;
   align-items: center;
@@ -1087,24 +1072,23 @@ body {
 .footer-pill-secondary:hover {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface));
-  /* primary 링크 대비 유지(밝은 soft 배경 위에서도 읽힘) */
-  color: var(--primary-hover);
+  color: var(--primary);
 }
 .footer-pill-secondary:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
-/* 인스타·약관 등 3차 — surface-muted 위 분리·대비, hover 시 더 옅어지지 않음 */
+/* 인스타·약관 등 3차 */
 .footer-pill-tertiary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
   border-radius: 0.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.65);
-  color: var(--footer-text);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-subtle);
   padding: 0.25rem 0.5rem;
   font-size: var(--type-caption-size);
   font-weight: 500;
@@ -1114,16 +1098,8 @@ body {
 }
 .footer-pill-tertiary:hover {
   color: var(--foreground);
-  background: rgba(0, 0, 0, 0.04);
-  border-color: var(--border-strong);
-}
-.dark .footer-pill-tertiary {
-  border-color: color-mix(in srgb, var(--foreground) 14%, transparent);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-}
-.dark .footer-pill-tertiary:hover {
-  background: color-mix(in srgb, var(--foreground) 8%, var(--surface-muted));
-  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border-color: var(--divider);
 }
 .footer-pill-tertiary:focus-visible {
   outline: none;

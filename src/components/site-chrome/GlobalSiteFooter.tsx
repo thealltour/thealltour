@@ -71,16 +71,16 @@ export default function GlobalSiteFooter() {
         <div className="border-b border-[var(--divider)] py-5 sm:py-7 md:py-8">
           <div className="grid gap-4 sm:gap-9 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:items-start md:gap-10 lg:gap-14">
             <div className="min-w-0">
-              <p className="type-caption font-semibold uppercase tracking-[0.14em] text-[var(--text-subtle)]">
+              <p className="type-caption font-semibold uppercase tracking-[0.14em] text-[var(--footer-text-muted)]">
                 THE ALL TOUR
               </p>
               <p className="font-card-title mt-1 text-xl font-bold tracking-tight text-[var(--foreground)] sm:text-2xl">
                 {companyName}
               </p>
-              <p className="mt-1.5 max-w-md text-sm leading-snug text-[var(--text-subtle)] sm:mt-2">
+              <p className="mt-1.5 max-w-md text-sm leading-snug text-[var(--footer-text-muted)] sm:mt-2">
                 맞춤형 해외·국내 골프·패키지 여행을 전문 상담으로 설계합니다.
               </p>
-              <ul className="mt-3 space-y-0.5 text-[13px] leading-snug text-[var(--text-subtle)] sm:mt-4 sm:space-y-1 sm:text-sm sm:leading-snug">
+              <ul className="mt-3 space-y-0.5 text-[13px] leading-snug text-[var(--footer-text-muted)] sm:mt-4 sm:space-y-1 sm:text-sm sm:leading-snug">
                 <li>
                   <span className="font-semibold text-[var(--foreground)]">대표</span>{" "}
                   <span>{ceoName}</span>
@@ -107,7 +107,7 @@ export default function GlobalSiteFooter() {
             <div className="flex min-w-0 flex-col gap-3 sm:gap-3.5">
               {/* 1순위: 카카오 */}
               <div>
-                <p className="mb-1.5 type-caption font-medium text-[var(--text-subtle)]">
+                <p className="mb-1.5 type-caption font-medium text-[var(--footer-text)]">
                   상담 · 채널
                 </p>
                 <a
@@ -130,7 +130,7 @@ export default function GlobalSiteFooter() {
 
               {/* 2순위: 전화 · 이메일 */}
               <div>
-                <p className="mb-1 type-caption font-medium text-[var(--text-subtle)] sm:mb-1.5">
+                <p className="mb-1 type-caption font-medium text-[var(--footer-text)] sm:mb-1.5">
                   연락처
                 </p>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -138,14 +138,14 @@ export default function GlobalSiteFooter() {
                     href={`tel:${mainPhone}`}
                     className={cn("footer-pill-secondary", focusRing)}
                   >
-                    <Phone className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                    <Phone className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
                     <span className="tabular-nums">대표 {mainPhone}</span>
                   </a>
                   <a
                     href={`mailto:${mainEmail}`}
                     className={cn("footer-pill-secondary", focusRing)}
                   >
-                    <Mail className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                    <Mail className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
                     <span className="max-w-[200px] truncate sm:max-w-none">{mainEmail}</span>
                   </a>
                 </div>
@@ -153,7 +153,7 @@ export default function GlobalSiteFooter() {
 
               {/* 3순위: 인스타 */}
               <div>
-                <p className="mb-1 type-caption font-medium text-[var(--text-subtle)] sm:mb-1.5">
+                <p className="mb-1 type-caption font-medium text-[var(--footer-text)] sm:mb-1.5">
                   SNS
                 </p>
                 <a
@@ -162,7 +162,7 @@ export default function GlobalSiteFooter() {
                   rel="noreferrer"
                   className={cn("footer-pill-tertiary inline-flex items-center gap-1.5", focusRing)}
                 >
-                  <Instagram className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                  <Instagram className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
                   인스타그램
                 </a>
               </div>
@@ -189,7 +189,7 @@ export default function GlobalSiteFooter() {
               개인정보처리방침
             </Link>
           </nav>
-          <p className="text-center type-caption leading-snug text-[var(--text-subtle)] sm:text-right">
+          <p className="text-center type-caption leading-snug text-[var(--footer-text-muted)] sm:text-right">
             © {new Date().getFullYear()} 더올투어. All rights reserved
             <Link
               href="/theall_manager_only"

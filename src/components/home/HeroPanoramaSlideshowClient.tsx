@@ -40,11 +40,16 @@ export function HeroPanoramaSlideshowClient({ banners }: HeroPanoramaSlideshowCl
   const fadeClass = reducedMotion ? "transition-none" : "transition-opacity duration-700 ease-in-out";
   const activeIndex = banners.length > 0 ? active % banners.length : 0;
 
+  /**
+   * lg 스택만 첫 슬라이드에 priority·high fetch.
+   * md~lg 스택은 `lg:hidden`이라 데스크톱에서도 priority가 있으면 숨은 이미지까지 선요청되어 SI·대역만 악화될 수 있음.
+   */
   function renderStack(
     keyPrefix: string,
     getSrc: (banner: HomeBanner) => string,
     wrapperClass: string,
     objectPositionClass: string,
+    isLgStack: boolean,
   ) {
     return (
       <div className={cn("absolute inset-0", wrapperClass)}>
@@ -63,11 +68,11 @@ export function HeroPanoramaSlideshowClient({ banners }: HeroPanoramaSlideshowCl
               alt={banner.title}
               fill
               sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
-              priority={i === 0}
-              fetchPriority={i === 0 ? "high" : "auto"}
+              priority={isLgStack && i === 0}
+              fetchPriority={isLgStack && i === 0 ? "high" : "low"}
               quality={82}
               className={cn("object-cover", objectPositionClass)}
-              loading={i === 0 ? undefined : "lazy"}
+              loading={isLgStack ? (i === 0 ? undefined : "lazy") : i === 0 ? "eager" : "lazy"}
             />
           </div>
         ))}
@@ -77,8 +82,8 @@ export function HeroPanoramaSlideshowClient({ banners }: HeroPanoramaSlideshowCl
 
   return (
     <>
-      {renderStack("mid", bannerSrcForMidViewport, "md:block lg:hidden", "object-center")}
-      {renderStack("lg", (banner) => banner.image_url, "hidden lg:block", "object-[right_center]")}
+      {renderStack("mid", bannerSrcForMidViewport, "md:block lg:hidden", "object-center", false)}
+      {renderStack("lg", (banner) => banner.image_url, "hidden lg:block", "object-[right_center]", true)}
     </>
   );
 }

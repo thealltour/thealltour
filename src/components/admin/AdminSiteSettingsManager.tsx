@@ -7,7 +7,7 @@ import AdminRecommendedSearchManager from "@/components/admin/AdminRecommendedSe
 type SettingsSectionId = "channel" | "company" | "products-hero" | "about" | "golf-hero" | "recommended-search";
 
 const SETTINGS_TABS: { id: SettingsSectionId; label: string }[] = [
-  { id: "channel", label: "연락·채널" },
+  { id: "channel", label: "연락 채널" },
   { id: "company", label: "회사 정보" },
   { id: "products-hero", label: "패키지상품 히어로" },
   { id: "about", label: "About 페이지" },
@@ -37,6 +37,8 @@ const DEFAULT_GOLF_HERO_REGIONS: HeroRegionConfig[] = [
 const EMPTY_SETTINGS: SiteSettings = {
   kakao_channel_url: "",
   instagram_url: "",
+  naver_band_url: "",
+  naver_blog_url: "",
   kakao_chat_url: "",
   company_name: "",
   ceo_name: "",
@@ -95,6 +97,8 @@ export default function AdminSiteSettingsManager() {
       const nextSettings: SiteSettings = {
         kakao_channel_url: data.kakao_channel_url ?? "",
         instagram_url: data.instagram_url ?? "",
+        naver_band_url: data.naver_band_url ?? "",
+        naver_blog_url: data.naver_blog_url ?? "",
         kakao_chat_url: data.kakao_chat_url ?? "",
         company_name: data.company_name ?? "",
         ceo_name: data.ceo_name ?? "",
@@ -272,6 +276,42 @@ export default function AdminSiteSettingsManager() {
           </span>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+          네이버 밴드 URL
+          <input
+            type="url"
+            value={settings.naver_band_url}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                naver_band_url: event.target.value,
+              }))
+            }
+            placeholder="예: https://band.us/..."
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
+          />
+          <span className="text-xs font-normal text-[var(--text-muted)]">
+            푸터 상담·채널의 네이버 밴드 버튼에 사용됩니다. 비워 두면 버튼이 표시되지 않습니다.
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+          네이버 블로그 URL
+          <input
+            type="url"
+            value={settings.naver_blog_url}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                naver_blog_url: event.target.value,
+              }))
+            }
+            placeholder="예: https://blog.naver.com/..."
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
+          />
+          <span className="text-xs font-normal text-[var(--text-muted)]">
+            푸터 상담·채널의 네이버 블로그 버튼에 사용됩니다. 비워 두면 버튼이 표시되지 않습니다.
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
           인스타그램 URL
           <input
             type="url"
@@ -285,7 +325,9 @@ export default function AdminSiteSettingsManager() {
             placeholder="예: https://www.instagram.com/..."
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
-          <span className="text-xs font-normal text-[var(--text-muted)]">푸터의 인스타그램 버튼에 사용됩니다.</span>
+          <span className="text-xs font-normal text-[var(--text-muted)]">
+            푸터 상담·채널의 인스타그램 버튼에 사용됩니다.
+          </span>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)] md:col-span-2">
           카카오톡 상담 URL (플로팅 버튼)

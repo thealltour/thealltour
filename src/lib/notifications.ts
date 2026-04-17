@@ -90,6 +90,23 @@ async function sendKakaoNotification(payload: InquiryInput): Promise<Notificatio
   return { channel: "kakao", ok: true };
 }
 
+/** 운영 알림용 — 문의 외 배치·장애 등 짧은 텍스트 */
+export async function sendSlackPlainText(text: string): Promise<{ ok: boolean; reason?: string }> {
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+  if (!webhookUrl) {
+    return { ok: false, reason: "SLACK_WEBHOOK_URL 미설정" };
+  }
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) {
+    return { ok: false, reason: `HTTP ${response.status}` };
+  }
+  return { ok: true };
+}
+
 export async function notifyInquiryCreated(payload: InquiryInput) {
   const settled = await Promise.allSettled([
     sendSlackNotification(payload),

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Instagram, Mail, MessageCircle, Phone } from "lucide-react";
+import { BookOpen, Instagram, Mail, MessageCircle, Phone, UsersRound } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/cn";
 type SiteSettingsClient = {
   kakao_channel_url?: string;
   instagram_url?: string;
+  naver_band_url?: string;
+  naver_blog_url?: string;
   company_name?: string;
   ceo_name?: string;
   address?: string;
@@ -63,6 +65,21 @@ export default function GlobalSiteFooter() {
   const mainEmail = settings?.main_email ?? "thealltour@gmail.com";
   const kakaoChannelUrl = settings?.kakao_channel_url ?? "https://pf.kakao.com";
   const instagramUrl = settings?.instagram_url ?? "https://www.instagram.com/thealltour";
+  const naverBandUrl = (settings?.naver_band_url ?? "").trim();
+  const naverBlogUrl = (settings?.naver_blog_url ?? "").trim();
+
+  /** 상담·채널: 카카오, 인스타, (선택)밴드·블로그 — 그리드에서 동일 셀 크기 */
+  const channelCount =
+    1 + 1 + (naverBandUrl ? 1 : 0) + (naverBlogUrl ? 1 : 0);
+  const channelGridClass = cn(
+    "grid w-full items-stretch gap-2",
+    channelCount === 2 && "grid-cols-2",
+    channelCount === 3 && "grid-cols-3",
+    channelCount >= 4 && "grid-cols-2 sm:grid-cols-4",
+  );
+  /** 그리드 행 높이에 맞춤. 글자는 카카오와 동일하게 `type-btn`(globals) 기준 */
+  const channelBtnEqual =
+    "flex min-h-[44px] h-full w-full min-w-0 shrink-0 items-center justify-center gap-1.5 px-1.5 py-1 text-center";
 
   return (
     <footer className="border-t border-[var(--divider)] bg-[var(--surface-muted)] text-[var(--foreground)]">
@@ -105,27 +122,75 @@ export default function GlobalSiteFooter() {
             </div>
 
             <div className="flex min-w-0 flex-col gap-3 sm:gap-3.5">
-              {/* 1순위: 카카오 */}
+              {/* 상담·채널: 카카오 + 네이버·인스타 등 */}
               <div>
                 <p className="mb-1.5 type-caption font-medium text-[var(--footer-text)]">
                   상담 · 채널
                 </p>
-                <a
-                  href={kakaoChannelUrl ?? "https://pf.kakao.com"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={cn(
-                    buttonVariants({
-                      variant: "kakao",
-                      size: "md",
-                      className: "h-11 w-full justify-center gap-2 px-4 sm:w-auto sm:min-w-[220px]",
-                    }),
-                    focusRing,
-                  )}
-                >
-                  <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-                  카카오 채널
-                </a>
+                <div className={cn(channelGridClass)}>
+                  <a
+                    href={kakaoChannelUrl ?? "https://pf.kakao.com"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      buttonVariants({
+                        variant: "kakao",
+                        size: "md",
+                        className: cn(
+                          channelBtnEqual,
+                          "!min-h-[44px] h-full !px-1.5 py-1 [&_svg]:h-3.5 [&_svg]:w-3.5 sm:[&_svg]:h-4 sm:[&_svg]:w-4",
+                        ),
+                      }),
+                      focusRing,
+                    )}
+                  >
+                    <MessageCircle className="shrink-0" aria-hidden />
+                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">카카오 채널</span>
+                  </a>
+                  <a
+                    href={instagramUrl ?? "https://www.instagram.com/thealltour"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      "footer-pill-instagram footer-pill-channel-equal inline-flex",
+                      channelBtnEqual,
+                      focusRing,
+                    )}
+                  >
+                    <Instagram className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">인스타그램</span>
+                  </a>
+                  {naverBandUrl ? (
+                    <a
+                      href={naverBandUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(
+                        "footer-pill-naver footer-pill-channel-equal inline-flex",
+                        channelBtnEqual,
+                        focusRing,
+                      )}
+                    >
+                      <UsersRound className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">네이버 밴드</span>
+                    </a>
+                  ) : null}
+                  {naverBlogUrl ? (
+                    <a
+                      href={naverBlogUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(
+                        "footer-pill-naver footer-pill-channel-equal inline-flex",
+                        channelBtnEqual,
+                        focusRing,
+                      )}
+                    >
+                      <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">네이버 블로그</span>
+                    </a>
+                  ) : null}
+                </div>
               </div>
 
               {/* 2순위: 전화 · 이메일 */}
@@ -151,21 +216,6 @@ export default function GlobalSiteFooter() {
                 </div>
               </div>
 
-              {/* 3순위: 인스타 */}
-              <div>
-                <p className="mb-1 type-caption font-medium text-[var(--footer-text)] sm:mb-1.5">
-                  SNS
-                </p>
-                <a
-                  href={instagramUrl ?? "https://www.instagram.com/thealltour"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={cn("footer-pill-tertiary inline-flex items-center gap-1.5", focusRing)}
-                >
-                  <Instagram className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
-                  인스타그램
-                </a>
-              </div>
             </div>
           </div>
         </div>
@@ -187,6 +237,15 @@ export default function GlobalSiteFooter() {
               className={cn("footer-pill-tertiary", focusRing)}
             >
               개인정보처리방침
+            </Link>
+            <Link href="/support/data-request" className={cn("footer-pill-tertiary", focusRing)}>
+              개인정보 요청
+            </Link>
+            <Link href="/status" className={cn("footer-pill-tertiary", focusRing)}>
+              서비스 상태
+            </Link>
+            <Link href="/changelog" className={cn("footer-pill-tertiary", focusRing)}>
+              변경 이력
             </Link>
           </nav>
           <p className="text-center type-caption leading-snug text-[var(--footer-text-muted)] sm:text-right">

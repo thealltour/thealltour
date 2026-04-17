@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ADMIN_AUTH_COOKIE } from "@/lib/adminAuth";
+import { verifyAdminSessionToken } from "@/lib/adminSession";
 
 const LEGACY_ADMIN_PREFIX = "/admin";
 const MANAGER_PREFIX = "/theall_manager_only";
 const MANAGER_LOGIN_PATH = `${MANAGER_PREFIX}/login`;
 const MANAGER_INQUIRIES_PATH = `${MANAGER_PREFIX}/inquiries`;
 
-function isAuthenticated(request: NextRequest) {
-  return request.cookies.get(ADMIN_AUTH_COOKIE)?.value === "1";
+async function isAdminAuthenticated(request: NextRequest) {
+  const token = request.cookies.get(ADMIN_AUTH_COOKIE)?.value;
+  return (await verifyAdminSessionToken(token)) !== null;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const authenticated = isAuthenticated(request);
+  const authenticated = await isAdminAuthenticated(request);
 
   if (pathname === LEGACY_ADMIN_PREFIX || pathname.startsWith(`${LEGACY_ADMIN_PREFIX}/`)) {
     const redirectedUrl = request.nextUrl.clone();

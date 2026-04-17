@@ -28,6 +28,8 @@ export async function PATCH(request: Request) {
   const ALL_KEYS: { key: SiteSettingsKey; defaultValue: string }[] = [
     { key: "kakao_channel_url", defaultValue: "" },
     { key: "instagram_url", defaultValue: "" },
+    { key: "naver_band_url", defaultValue: "" },
+    { key: "naver_blog_url", defaultValue: "" },
     { key: "kakao_chat_url", defaultValue: "" },
     { key: "products_hero_headline", defaultValue: "" },
     { key: "products_hero_subcopy", defaultValue: "" },

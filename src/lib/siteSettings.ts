@@ -4,6 +4,10 @@ import { unstable_cache } from "next/cache";
 export type SiteSettings = {
   kakao_channel_url: string;
   instagram_url: string;
+  /** 푸터 상담·채널 — 네이버 밴드. 비어 있으면 버튼 미노출 */
+  naver_band_url: string;
+  /** 푸터 상담·채널 — 네이버 블로그. 비어 있으면 버튼 미노출 */
+  naver_blog_url: string;
   kakao_chat_url: string;
   company_name: string;
   ceo_name: string;
@@ -53,6 +57,8 @@ export type SiteSettings = {
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
   kakao_channel_url: process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL ?? "https://pf.kakao.com",
   instagram_url: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? "https://www.instagram.com/thealltour",
+  naver_band_url: "",
+  naver_blog_url: "",
   kakao_chat_url: process.env.NEXT_PUBLIC_KAKAO_CHAT_URL ?? "https://pf.kakao.com",
   company_name: "(주)더올투어",
   ceo_name: "김지호",
@@ -116,6 +122,8 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
   return {
     kakao_channel_url: map.get("kakao_channel_url") || DEFAULT_SITE_SETTINGS.kakao_channel_url,
     instagram_url: map.get("instagram_url") || DEFAULT_SITE_SETTINGS.instagram_url,
+    naver_band_url: (map.get("naver_band_url") ?? "").trim(),
+    naver_blog_url: (map.get("naver_blog_url") ?? "").trim(),
     kakao_chat_url: map.get("kakao_chat_url") || DEFAULT_SITE_SETTINGS.kakao_chat_url,
     company_name: map.get("company_name") || DEFAULT_SITE_SETTINGS.company_name,
     ceo_name: map.get("ceo_name") || DEFAULT_SITE_SETTINGS.ceo_name,
@@ -169,6 +177,14 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
       map.get("about_cta_label") || DEFAULT_SITE_SETTINGS.about_cta_label,
     about_cta_href: map.get("about_cta_href") || DEFAULT_SITE_SETTINGS.about_cta_href,
   };
+}
+
+/**
+ * DB에서 site_settings를 바로 읽습니다. 관리자 저장 직후 푸터 등에 즉시 반영하려면 이 함수를 쓰세요.
+ * (getSiteSettings는 unstable_cache를 사용하므로, revalidateTag 타이밍에 따라 짧은 지연·불일치가 날 수 있습니다.)
+ */
+export async function getSiteSettingsLive(): Promise<SiteSettings> {
+  return fetchSiteSettingsRaw();
 }
 
 /** 5분 캐시 — 관리자에서 site_settings 수정 시 revalidateTag("site-settings") 호출 필요 */

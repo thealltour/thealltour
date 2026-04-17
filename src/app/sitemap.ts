@@ -23,5 +23,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${base}/themes`,
       lastModified: now,
     },
+    {
+      url: `${base}/status`,
+      lastModified: now,
+    },
+    {
+      url: `${base}/changelog`,
+      lastModified: now,
+    },
+    {
+      url: `${base}/support/data-request`,
+      lastModified: now,
+    },
   ];
 }

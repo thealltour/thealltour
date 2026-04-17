@@ -1,3 +1,4 @@
+import Link from "next/link";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { getLegalDocuments } from "@/lib/legalDocuments";
 
@@ -10,6 +11,16 @@ export default async function PrivacyPage() {
         <section className="rounded-3xl bg-[var(--primary)] p-8 text-[var(--on-primary)] shadow-xl">
           <h1 className="text-3xl font-bold md:text-4xl">개인정보 수집 및 이용 동의</h1>
           <p className="mt-2 text-sm text-blue-100">회원가입 전 내용을 반드시 확인해 주세요.</p>
+        </section>
+        <section className="rounded-2xl border border-[var(--primary-soft)] bg-blue-50/80 p-5 text-sm text-slate-800">
+          <p className="font-semibold text-[var(--primary)]">개인정보 주체 권리</p>
+          <p className="mt-1 leading-relaxed">
+            열람·정정·삭제 등 요청은{" "}
+            <Link href="/support/data-request" className="font-semibold underline underline-offset-2">
+              개인정보 요청 안내
+            </Link>
+            페이지를 참고해 주세요.
+          </p>
         </section>
         <section className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-[var(--primary-soft)]">
           <div className="whitespace-pre-line text-sm leading-7 text-slate-700">{documents.privacy}</div>

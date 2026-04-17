@@ -16,7 +16,7 @@
  *
  * curl 예시:
  *   curl -X POST .../api/admin/uploads/image \
- *     -H "Cookie: theall_admin_auth=1" \
+ *     -H "Cookie: theall_admin_auth=<JWT>" \
  *     -F "hero=@hero.webp" -F "card=@card.webp"
  */
 import { NextRequest, NextResponse } from "next/server";

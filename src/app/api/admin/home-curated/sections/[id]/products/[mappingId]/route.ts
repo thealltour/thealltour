@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type PatchBody = {
   sort_order?: number;
@@ -14,7 +14,7 @@ export async function PATCH(
 ) {
   const { id: sectionId, mappingId } = await context.params;
 
-  const existing = await supabase
+  const existing = await supabaseAdmin
     .from("home_curated_section_products")
     .select("id, section_id")
     .eq("id", mappingId)
@@ -39,7 +39,7 @@ export async function PATCH(
     return NextResponse.json({ message: "변경할 항목이 없습니다." }, { status: 400 });
   }
 
-  const result = await supabase
+  const result = await supabaseAdmin
     .from("home_curated_section_products")
     .update(updates)
     .eq("id", mappingId)
@@ -61,7 +61,7 @@ export async function DELETE(
 ) {
   const { id: sectionId, mappingId } = await context.params;
 
-  const deleteResult = await supabase
+  const deleteResult = await supabaseAdmin
     .from("home_curated_section_products")
     .delete()
     .eq("id", mappingId)

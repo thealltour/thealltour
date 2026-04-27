@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { HomeCuratedSectionWithCount } from "@/types/homeCurated";
 
 type SectionBody = {
@@ -27,7 +27,7 @@ function normalizeSection(row: Record<string, unknown>, productCount: number): H
 }
 
 async function getProductCount(sectionId: string): Promise<number> {
-  const { count } = await supabase
+  const { count } = await supabaseAdmin
     .from("home_curated_section_products")
     .select("id", { count: "exact", head: true })
     .eq("section_id", sectionId)
@@ -41,7 +41,7 @@ export async function PATCH(
 ) {
   const { id } = await context.params;
 
-  const existing = await supabase
+  const existing = await supabaseAdmin
     .from("home_curated_sections")
     .select("id")
     .eq("id", id)
@@ -72,7 +72,7 @@ export async function PATCH(
 
   if (Object.keys(updates).length === 0) {
     const count = await getProductCount(id);
-    const { data: row } = await supabase
+    const { data: row } = await supabaseAdmin
       .from("home_curated_sections")
       .select("*")
       .eq("id", id)
@@ -83,7 +83,7 @@ export async function PATCH(
     return NextResponse.json({ message: "변경할 항목이 없습니다." }, { status: 400 });
   }
 
-  const result = await supabase
+  const result = await supabaseAdmin
     .from("home_curated_sections")
     .update(updates)
     .eq("id", id)
@@ -106,7 +106,7 @@ export async function DELETE(
 ) {
   const { id } = await context.params;
 
-  const deleteResult = await supabase
+  const deleteResult = await supabaseAdmin
     .from("home_curated_sections")
     .delete()
     .eq("id", id)

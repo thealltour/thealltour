@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { HomeCuratedSectionWithCount } from "@/types/homeCurated";
 
 type SectionBody = {
@@ -11,6 +11,43 @@ type SectionBody = {
   sort_order?: number;
   is_active?: boolean;
 };
+
+async function getOrCreateHomeCuratedSettingId(): Promise<string | null> {
+  const existing = await supabaseAdmin
+    .from("home_curated_settings")
+    .select("id")
+    .eq("setting_key", "home_curated")
+    .maybeSingle();
+
+  if (existing.data?.id) {
+    return String(existing.data.id);
+  }
+  if (existing.error) {
+    return null;
+  }
+
+  const created = await supabaseAdmin
+    .from("home_curated_settings")
+    .upsert(
+      {
+        setting_key: "home_curated",
+        section_label: "THEALL CURATED PICKS",
+        section_title: "이번 달 신설 추천 여행",
+        section_description: "추천 섹션 설명",
+        catalog_button_label: "전체 상품 카탈로그 보기",
+        catalog_button_href: "/products",
+        is_active: true,
+      },
+      { onConflict: "setting_key" },
+    )
+    .select("id")
+    .maybeSingle();
+
+  if (created.error || !created.data?.id) {
+    return null;
+  }
+  return String(created.data.id);
+}
 
 function normalizeSection(row: Record<string, unknown>, productCount: number): HomeCuratedSectionWithCount {
   return {
@@ -27,17 +64,10 @@ function normalizeSection(row: Record<string, unknown>, productCount: number): H
 }
 
 export async function POST(request: Request) {
-  const { data: settingRow, error: settingError } = await supabase
-    .from("home_curated_settings")
-    .select("id")
-    .eq("setting_key", "home_curated")
-    .maybeSingle();
-
-  if (settingError || !settingRow) {
+  const settingId = await getOrCreateHomeCuratedSettingId();
+  if (!settingId) {
     return NextResponse.json({ message: "추천 설정을 찾을 수 없습니다." }, { status: 400 });
   }
-
-  const settingId = settingRow.id;
   const body = (await request.json()) as SectionBody;
 
   const title = String(body.title ?? "").trim();
@@ -46,7 +76,7 @@ export async function POST(request: Request) {
   const sortOrder = typeof body.sort_order === "number" ? body.sort_order : 0;
   const isActive = body.is_active ?? true;
 
-  const insertResult = await supabase
+  const insertResult = await supabaseAdmin
     .from("home_curated_sections")
     .insert({
       setting_id: settingId,

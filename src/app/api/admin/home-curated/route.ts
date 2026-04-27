@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { HomeCuratedSettings, HomeCuratedSectionWithCount } from "@/types/homeCurated";
 
 function normalizeSettings(row: Record<string, unknown>): HomeCuratedSettings {
@@ -32,7 +32,7 @@ function normalizeSection(row: Record<string, unknown>, productCount: number): H
 }
 
 export async function GET() {
-  const { data: settingRow, error: settingError } = await supabase
+  const { data: settingRow, error: settingError } = await supabaseAdmin
     .from("home_curated_settings")
     .select("*")
     .eq("setting_key", "home_curated")
@@ -52,7 +52,7 @@ export async function GET() {
 
   const settingId = String(settingRow.id);
 
-  const { data: sectionRows, error: sectionsError } = await supabase
+  const { data: sectionRows, error: sectionsError } = await supabaseAdmin
     .from("home_curated_sections")
     .select("*")
     .eq("setting_id", settingId)
@@ -68,7 +68,7 @@ export async function GET() {
 
   let counts: Record<string, number> = {};
   if (sectionIds.length > 0) {
-    const { data: countRows } = await supabase
+    const { data: countRows } = await supabaseAdmin
       .from("home_curated_section_products")
       .select("section_id")
       .in("section_id", sectionIds)

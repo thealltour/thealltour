@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { Product } from "@/types/product";
 import type { SectionProductMappingRow } from "@/types/homeCurated";
 
@@ -24,7 +24,7 @@ export async function GET(
 ) {
   const { id: sectionId } = await context.params;
 
-  const sectionCheck = await supabase
+  const sectionCheck = await supabaseAdmin
     .from("home_curated_sections")
     .select("id")
     .eq("id", sectionId)
@@ -34,7 +34,7 @@ export async function GET(
     return NextResponse.json({ message: "섹션을 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const { data: mappings, error: mapError } = await supabase
+  const { data: mappings, error: mapError } = await supabaseAdmin
     .from("home_curated_section_products")
     .select("*")
     .eq("section_id", sectionId)
@@ -51,7 +51,7 @@ export async function GET(
   }
 
   const productIds = [...new Set(rows.map((r: { product_id: string }) => r.product_id))];
-  const { data: products, error: prodError } = await supabase
+  const { data: products, error: prodError } = await supabaseAdmin
     .from("products")
     .select("*")
     .in("id", productIds);
@@ -85,7 +85,7 @@ export async function POST(
 ) {
   const { id: sectionId } = await context.params;
 
-  const sectionCheck = await supabase
+  const sectionCheck = await supabaseAdmin
     .from("home_curated_sections")
     .select("id")
     .eq("id", sectionId)
@@ -101,7 +101,7 @@ export async function POST(
     return NextResponse.json({ message: "productId가 필요합니다." }, { status: 400 });
   }
 
-  const existing = await supabase
+  const existing = await supabaseAdmin
     .from("home_curated_section_products")
     .select("id")
     .eq("section_id", sectionId)
@@ -112,7 +112,7 @@ export async function POST(
     return NextResponse.json({ message: "이미 이 섹션에 등록된 상품입니다." }, { status: 409 });
   }
 
-  const { data: maxRow } = await supabase
+  const { data: maxRow } = await supabaseAdmin
     .from("home_curated_section_products")
     .select("sort_order")
     .eq("section_id", sectionId)
@@ -122,7 +122,7 @@ export async function POST(
 
   const nextOrder = typeof maxRow?.sort_order === "number" ? maxRow.sort_order + 1 : 0;
 
-  const insertResult = await supabase
+  const insertResult = await supabaseAdmin
     .from("home_curated_section_products")
     .insert({
       section_id: sectionId,

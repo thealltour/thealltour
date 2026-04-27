@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type SettingsBody = {
   section_label?: string;
@@ -41,7 +41,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "변경할 항목이 없습니다." }, { status: 400 });
   }
 
-  const result = await supabase
+  const result = await supabaseAdmin
     .from("home_curated_settings")
     .update(updates)
     .eq("setting_key", "home_curated")
@@ -62,7 +62,7 @@ export async function PATCH(request: Request) {
       catalog_button_href: (body.catalog_button_href ?? "/products").trim() || "/products",
       is_active: body.is_active !== undefined ? Boolean(body.is_active) : true,
     };
-    const insertResult = await supabase
+    const insertResult = await supabaseAdmin
       .from("home_curated_settings")
       .upsert(insertPayload, { onConflict: "setting_key" })
       .select("id")

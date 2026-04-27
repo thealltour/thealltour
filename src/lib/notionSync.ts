@@ -1,6 +1,26 @@
 import { supabase } from "@/lib/supabase";
 import type { Guide } from "@/types/guide";
 import { extractNotionPageId, fetchNotionPageMeta } from "@/lib/notion";
+import { uploadImageFromUrl } from "@/lib/images/uploadImageFromUrl";
+import { isLikelySignedNotionImageUrl } from "@/lib/guides/imageUrl";
+
+function extractNotionCoverUrl(pageMeta: any): string | null {
+  const cover = pageMeta?.cover;
+  if (!cover) return null;
+  if (cover.type === "external" && typeof cover.external?.url === "string") {
+    return cover.external.url.trim() || null;
+  }
+  if (cover.type === "file" && typeof cover.file?.url === "string") {
+    return cover.file.url.trim() || null;
+  }
+  return null;
+}
+
+function isStableUrl(value?: string | null): boolean {
+  const raw = value?.trim();
+  if (!raw) return false;
+  return !isLikelySignedNotionImageUrl(raw);
+}
 
 export async function syncGuideFromNotion(guideId: string): Promise<Guide | null> {
   const { data: guideRow, error } = await supabase
@@ -45,6 +65,23 @@ export async function syncGuideFromNotion(guideId: string): Promise<Guide | null
 
   if (!guideRow.title_override && notionTitle) {
     updates.title_override = notionTitle;
+  }
+
+  const notionCoverUrl = extractNotionCoverUrl(page);
+  const currentCoverUrl =
+    typeof guideRow.cover_image_url === "string" ? guideRow.cover_image_url.trim() : "";
+  const shouldMirrorNotionCover = Boolean(notionCoverUrl && !isStableUrl(currentCoverUrl));
+
+  if (shouldMirrorNotionCover && notionCoverUrl) {
+    const mirrored = await uploadImageFromUrl(notionCoverUrl);
+    if (mirrored.success) {
+      updates.cover_image_url = mirrored.url;
+    } else if (!currentCoverUrl) {
+      // 업로드 실패 시에도 노션 커버를 마지막 폴백으로 보존
+      updates.cover_image_url = notionCoverUrl;
+    }
+  } else if (!currentCoverUrl && notionCoverUrl) {
+    updates.cover_image_url = notionCoverUrl;
   }
 
   const { data: updated, error: updateError } = await supabase

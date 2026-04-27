@@ -1,5 +1,9 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/cn";
+import { GUIDE_HERO_FALLBACK_IMAGE } from "@/lib/guides/imageUrl";
 
 export type HeroVisualProps = {
   /** 히어로 배경/메인 이미지 URL (backdrop과 main에 동일 사용) */
@@ -34,6 +38,19 @@ export function HeroVisual({
   children,
 }: HeroVisualProps) {
   const minH = minHeightClassName ?? HERO_MIN_HEIGHT;
+  const normalizedInitialUrl = useMemo(() => imageUrl?.trim() || GUIDE_HERO_FALLBACK_IMAGE, [imageUrl]);
+  const [resolvedImageUrl, setResolvedImageUrl] = useState(normalizedInitialUrl);
+
+  useEffect(() => {
+    // prop이 바뀌면 이전 fallback 상태를 유지하지 않도록 동기화
+    setResolvedImageUrl(normalizedInitialUrl);
+  }, [normalizedInitialUrl]);
+
+  const handleImageError = () => {
+    if (resolvedImageUrl === GUIDE_HERO_FALLBACK_IMAGE) return;
+    setResolvedImageUrl(GUIDE_HERO_FALLBACK_IMAGE);
+  };
+
   return (
     <section
       className={cn(
@@ -45,23 +62,25 @@ export function HeroVisual({
       {/* Backdrop: decorative, priority 없음 */}
       <div className="absolute inset-0 z-0">
         <Image
-          src={imageUrl}
+          src={resolvedImageUrl}
           alt={imageAlt}
           fill
           sizes="100vw"
           className="scale-[1.12] object-cover object-center blur-[28px] brightness-[0.68] opacity-55"
+          onError={handleImageError}
         />
       </div>
 
       {/* Main image */}
       <div className="absolute inset-0 z-0">
         <Image
-          src={imageUrl}
+          src={resolvedImageUrl}
           alt={imageAlt}
           fill
           priority={priority}
           sizes="100vw"
           className="scale-[1.04] object-cover object-center saturate-[1.06] contrast-[1.03]"
+          onError={handleImageError}
         />
       </div>
 

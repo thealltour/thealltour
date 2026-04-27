@@ -5,8 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Guide } from "@/types/guide";
 import { GuidePdfModal } from "@/components/guides/GuidePdfModal";
-
-const GUIDE_IMAGE_FALLBACK_SRC = "/thealltour-logo.png";
+import { GUIDE_CARD_FALLBACK_IMAGE, pickGuidePreferredImageUrl } from "@/lib/guides/imageUrl";
 
 type GuideCardListProps = {
   guides: Guide[];
@@ -17,42 +16,6 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("ko-KR");
-}
-
-function isLikelySignedNotionImageUrl(value?: string | null) {
-  const raw = value?.trim();
-  if (!raw) return false;
-  try {
-    const url = new URL(raw);
-    const host = url.hostname.toLowerCase();
-    const isNotionHost =
-      host === "file.notion.so" ||
-      host === "prod-files-secure.s3.us-west-2.amazonaws.com" ||
-      host.endsWith(".notion.site");
-    if (!isNotionHost) return false;
-    return (
-      url.searchParams.has("X-Amz-Algorithm") ||
-      url.searchParams.has("X-Amz-Signature") ||
-      url.searchParams.has("x-amz-signature")
-    );
-  } catch {
-    return false;
-  }
-}
-
-function pickGuideCardImage(guide: Guide) {
-  const stableCandidates = [guide.thumbnail_url, guide.guide_thumbnail_url, guide.cover_image_url];
-  const signedCandidates: Array<string | null | undefined> = [];
-  for (const candidate of stableCandidates) {
-    const url = candidate?.trim();
-    if (!url) continue;
-    if (isLikelySignedNotionImageUrl(url)) {
-      signedCandidates.push(url);
-      continue;
-    }
-    return url;
-  }
-  return signedCandidates[0]?.trim() ?? "";
 }
 
 export function GuideCardList({ guides }: GuideCardListProps) {
@@ -88,7 +51,7 @@ export function GuideCardList({ guides }: GuideCardListProps) {
     <>
       <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {guides.map((guide) => {
-          const thumbUrl = pickGuideCardImage(guide);
+          const thumbUrl = pickGuidePreferredImageUrl(guide);
           const pdfUrl = guide.guide_pdf_url ?? "";
           const hasPdf = Boolean(pdfUrl?.trim());
           const hasNotionDetail = Boolean(
@@ -109,9 +72,9 @@ export function GuideCardList({ guides }: GuideCardListProps) {
                     className="object-cover"
                     onError={(event) => {
                       const img = event.currentTarget;
-                      if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
+                      if (img.src.endsWith(GUIDE_CARD_FALLBACK_IMAGE)) return;
                       img.srcset = "";
-                      img.src = GUIDE_IMAGE_FALLBACK_SRC;
+                      img.src = GUIDE_CARD_FALLBACK_IMAGE;
                       img.style.objectFit = "contain";
                       img.style.objectPosition = "center";
                       img.style.backgroundColor = "#ffffff";

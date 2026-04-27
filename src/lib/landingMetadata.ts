@@ -55,7 +55,7 @@ export function getRecommendedSectionMetadataFallback(
 
 /** 상세 랜딩 공통 히어로 이미지 fallback (taxonomy/section에 이미지 없을 때) */
 export const LANDING_HERO_FALLBACK_IMAGE =
-  "https://picsum.photos/seed/thealltour-landing/1600/900";
+  "/images/hub/hub-hero-destinations.png";
 
 /** `/destinations`·`/themes` 허브 히어로 배경 (정적 자산 `public/images/hub/*`) */
 export const HUB_HERO_DESTINATIONS_IMAGE = "/images/hub/hub-hero-destinations.png";

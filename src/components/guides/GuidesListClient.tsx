@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import type { Guide } from "@/types/guide";
-
-const GUIDE_IMAGE_FALLBACK_SRC = "/thealltour-logo.png";
+import { GUIDE_CARD_FALLBACK_IMAGE, pickGuidePreferredImageUrl } from "@/lib/guides/imageUrl";
 
 export type GuideWithBadges = Guide & { badgeLabels: string[] };
 
@@ -11,44 +10,8 @@ type GuidesListClientProps = {
   guides: GuideWithBadges[];
 };
 
-function isLikelySignedNotionImageUrl(value?: string | null) {
-  const raw = value?.trim();
-  if (!raw) return false;
-  try {
-    const url = new URL(raw);
-    const host = url.hostname.toLowerCase();
-    const isNotionHost =
-      host === "file.notion.so" ||
-      host === "prod-files-secure.s3.us-west-2.amazonaws.com" ||
-      host.endsWith(".notion.site");
-    if (!isNotionHost) return false;
-    return (
-      url.searchParams.has("X-Amz-Algorithm") ||
-      url.searchParams.has("X-Amz-Signature") ||
-      url.searchParams.has("x-amz-signature")
-    );
-  } catch {
-    return false;
-  }
-}
-
-function pickGuideCardImage(guide: GuideWithBadges) {
-  const stableCandidates = [guide.thumbnail_url, guide.guide_thumbnail_url, guide.cover_image_url];
-  const signedCandidates: Array<string | null | undefined> = [];
-  for (const candidate of stableCandidates) {
-    const url = candidate?.trim();
-    if (!url) continue;
-    if (isLikelySignedNotionImageUrl(url)) {
-      signedCandidates.push(url);
-      continue;
-    }
-    return url;
-  }
-  return signedCandidates[0]?.trim() ?? "";
-}
-
 function cardInner(guide: GuideWithBadges) {
-  const thumbUrl = pickGuideCardImage(guide);
+  const thumbUrl = pickGuidePreferredImageUrl(guide);
 
   return (
     <>
@@ -62,8 +25,8 @@ function cardInner(guide: GuideWithBadges) {
             loading="lazy"
             onError={(event) => {
               const img = event.currentTarget;
-              if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
-              img.src = GUIDE_IMAGE_FALLBACK_SRC;
+              if (img.src.endsWith(GUIDE_CARD_FALLBACK_IMAGE)) return;
+              img.src = GUIDE_CARD_FALLBACK_IMAGE;
               img.style.objectFit = "contain";
               img.style.objectPosition = "center";
               img.style.backgroundColor = "#ffffff";

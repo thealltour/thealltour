@@ -5,8 +5,7 @@ import Image from "next/image";
 import type { Guide } from "@/types/guide";
 import { getGuideHref } from "@/lib/guides";
 import { cn } from "@/lib/cn";
-
-const GUIDE_IMAGE_FALLBACK_SRC = "/thealltour-logo.png";
+import { GUIDE_CARD_FALLBACK_IMAGE, pickGuidePreferredImageUrl } from "@/lib/guides/imageUrl";
 
 export type GuideCardProps = {
   guide: Guide;
@@ -19,42 +18,6 @@ export type GuideCardProps = {
 const CARD_LINK_CLASS =
   "group grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] transition hover:shadow-[var(--shadow-soft-strong)] hover:ring-1 hover:ring-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 sm:rounded-3xl";
 
-function isLikelySignedNotionImageUrl(value?: string | null) {
-  const raw = value?.trim();
-  if (!raw) return false;
-  try {
-    const url = new URL(raw);
-    const host = url.hostname.toLowerCase();
-    const isNotionHost =
-      host === "file.notion.so" ||
-      host === "prod-files-secure.s3.us-west-2.amazonaws.com" ||
-      host.endsWith(".notion.site");
-    if (!isNotionHost) return false;
-    return (
-      url.searchParams.has("X-Amz-Algorithm") ||
-      url.searchParams.has("X-Amz-Signature") ||
-      url.searchParams.has("x-amz-signature")
-    );
-  } catch {
-    return false;
-  }
-}
-
-function pickGuideCardImage(guide: Guide) {
-  const stableCandidates = [guide.thumbnail_url, guide.guide_thumbnail_url, guide.cover_image_url];
-  const signedCandidates: Array<string | null | undefined> = [];
-  for (const candidate of stableCandidates) {
-    const url = candidate?.trim();
-    if (!url) continue;
-    if (isLikelySignedNotionImageUrl(url)) {
-      signedCandidates.push(url);
-      continue;
-    }
-    return url;
-  }
-  return signedCandidates[0]?.trim() ?? "";
-}
-
 /**
  * 단일 가이드 카드. 썸네일, 제목, 요약, 카테고리/태그 일부.
  * 클릭 시 /guides/[slug] 브리지(또는 slug 없으면 landing /blog)로 이동. 노션은 브리지에서 연다.
@@ -65,7 +28,7 @@ export function GuideCard({
   variant = "default",
 }: GuideCardProps) {
   const href = getGuideHref(guide);
-  const thumbUrl = pickGuideCardImage(guide);
+  const thumbUrl = pickGuidePreferredImageUrl(guide);
   const title = guide.title_override?.trim() || guide.title;
   const hasCategoryOrTags = guide.category || (guide.tags?.length ?? 0) > 0;
   const hasTaxonomyNames = guide.destination_name || guide.theme_name;
@@ -90,9 +53,9 @@ export function GuideCard({
             className="object-cover transition duration-200 group-hover:scale-[1.02]"
             onError={(event) => {
               const img = event.currentTarget;
-              if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
+              if (img.src.endsWith(GUIDE_CARD_FALLBACK_IMAGE)) return;
               img.srcset = "";
-              img.src = GUIDE_IMAGE_FALLBACK_SRC;
+              img.src = GUIDE_CARD_FALLBACK_IMAGE;
               img.style.objectFit = "contain";
               img.style.objectPosition = "center";
               img.style.backgroundColor = "#ffffff";

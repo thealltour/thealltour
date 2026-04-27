@@ -17,7 +17,6 @@ import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { GuideBridgeHeroCtas } from "@/components/guides/GuideBridgeHeroCtas";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { BreadcrumbWrapper } from "@/components/navigation/BreadcrumbWrapper";
-import { LANDING_HERO_FALLBACK_IMAGE } from "@/lib/landingMetadata";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import {
@@ -33,6 +32,7 @@ import {
   buildOgBrandFallbackMetadata,
   buildOgMetadataFromSeoData,
 } from "@/lib/seo/buildOgPageMetadata";
+import { GUIDE_HERO_FALLBACK_IMAGE, pickGuidePreferredImageUrl } from "@/lib/guides/imageUrl";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -77,11 +77,7 @@ export default async function GuideDetailPage({ params }: Props) {
   ]);
 
   const displayTitle = guide.title_override?.trim() || guide.title;
-  const coverUrl =
-    guide.cover_image_url?.trim() ||
-    guide.guide_thumbnail_url?.trim() ||
-    guide.thumbnail_url?.trim() ||
-    "";
+  const coverUrl = pickGuidePreferredImageUrl(guide);
 
   const notionFullUrl = getGuideNotionViewUrl(guide).trim();
 
@@ -155,7 +151,7 @@ export default async function GuideDetailPage({ params }: Props) {
 
   /** `/destinations`·`/themes` LandingHero와 동일 min-height */
   const guideHeroMinHeight = "min-h-[240px] sm:min-h-[300px] md:min-h-[340px]";
-  const heroImageUrl = coverUrl.trim() ? coverUrl : LANDING_HERO_FALLBACK_IMAGE;
+  const heroImageUrl = coverUrl.trim() ? coverUrl : GUIDE_HERO_FALLBACK_IMAGE;
   const heroEyebrow =
     guide.category?.trim() || destinationTax?.name?.trim() || "여행 가이드";
   const publishedLine = guide.published_at

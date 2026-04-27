@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function PATCH(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ message: "알림 ID가 올바르지 않습니다." }, { status: 400 });
   }
 
-  const result = await supabase
+  const result = await supabaseAdmin
     .from("admin_notifications")
     .update({ is_read: true })
     .eq("id", id)

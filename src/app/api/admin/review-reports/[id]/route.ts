@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
   const status = body.status === "resolved" || body.status === "dismissed" ? body.status : "dismissed";
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("review_reports")
     .update({ status })
     .eq("id", reportId);

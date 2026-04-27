@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type Body = { ledgerId: string };
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "ledgerId는 필수입니다." }, { status: 400 });
   }
 
-  const { data: ledger, error: fetchErr } = await supabase
+  const { data: ledger, error: fetchErr } = await supabaseAdmin
     .from("point_ledger")
     .select("id, user_id, type, status, amount")
     .eq("id", ledgerId)
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const userId = row.user_id;
   const amount = Number(row.amount);
 
-  const { error: ledgerUpdateErr } = await supabase
+  const { error: ledgerUpdateErr } = await supabaseAdmin
     .from("point_ledger")
     .update({ status: "CONFIRMED" })
     .eq("id", ledgerId);
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "원장 상태 변경에 실패했습니다." }, { status: 500 });
   }
 
-  const { data: memberRow } = await supabase
+  const { data: memberRow } = await supabaseAdmin
     .from("members")
     .select("point_balance, point_pending")
     .eq("id", userId)
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "대기 포인트가 부족합니다. 데이터를 확인해 주세요." }, { status: 400 });
   }
 
-  const { error: memberUpdateErr } = await supabase
+  const { error: memberUpdateErr } = await supabaseAdmin
     .from("members")
     .update({
       point_balance: balance + amount,
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "포인트 확정 반영에 실패했습니다." }, { status: 500 });
   }
 
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "POINT_EARNED",
     title: "포인트 확정",

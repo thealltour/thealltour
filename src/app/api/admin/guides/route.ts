@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import type { Guide } from "@/types/guide";
 import { extractNotionPageId, validateNotionPageAccess } from "@/lib/notion";
 import { syncGuideFromNotion } from "@/lib/notionSync";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type GuideBody = Partial<
   Pick<
@@ -47,7 +48,7 @@ async function ensureUniqueSlug(base: string): Promise<string> {
   let index = 1;
   // 간단한 unique 보장 루프
   while (true) {
-    const { data } = await supabase.from("guides").select("id").eq("slug", slug).maybeSingle();
+    const { data } = await supabaseAdmin.from("guides").select("id").eq("slug", slug).maybeSingle();
     if (!data) return slug;
     index += 1;
     slug = `${seed}-${index}`;
@@ -60,7 +61,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 export async function GET() {
-  const { data, error } = await supabase
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { data, error } = await supabaseAdmin
     .from("guides")
     .select("*")
     .order("sort_order", { ascending: true, nullsFirst: false })
@@ -74,6 +78,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as GuideBody;
   const title = body.title?.trim() ?? "";
   const summary = body.summary?.trim() ?? "";
@@ -114,7 +121,7 @@ export async function POST(request: Request) {
   }
   const titleForInsert = title || "노션 여행가이드";
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("guides")
     .insert({
       title: titleForInsert,

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
 import { getTaxonomyAnalyticsMetrics } from "@/lib/adminAnalytics";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { Product } from "@/types/product";
 import type { ProductTaxonomyType, ProductCategoryType, TaxonomyType } from "@/types/productTaxonomy";
 
@@ -82,6 +83,9 @@ function isUrlSafeSlug(s: string): boolean {
 }
 
 export async function GET(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { searchParams } = new URL(request.url);
   const taxonomyTypeParam = searchParams.get("taxonomy_type")?.trim() ?? "";
   const filterByType =
@@ -89,12 +93,12 @@ export async function GET(request: Request) {
       ? (taxonomyTypeParam as TaxonomyType)
       : null;
 
-  const productsResult = await supabase.from("products").select("category,theme");
+  const productsResult = await supabaseAdmin.from("products").select("category,theme");
   if (productsResult.error) {
     return NextResponse.json({ message: "상품 목록 조회에 실패했습니다." }, { status: 500 });
   }
 
-  const taxonomyResult = await supabase
+  const taxonomyResult = await supabaseAdmin
     .from("product_taxonomies")
     .select("*")
     .order("type", { ascending: true })
@@ -108,7 +112,10 @@ export async function GET(request: Request) {
   }
 
   const products = (productsResult.data ?? []) as Product[];
-  let metricsByKey: Map<string, { headerClickCount: number; searchInboundCount: number; landingViewCount: number; landingCtr: number | null }> = new Map();
+  const metricsByKey: Map<
+    string,
+    { headerClickCount: number; searchInboundCount: number; landingViewCount: number; landingCtr: number | null }
+  > = new Map();
   try {
     const metrics = await getTaxonomyAnalyticsMetrics({ range: "7d" });
     for (const m of metrics) {
@@ -185,6 +192,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as TaxonomyBody;
   const name = body.name?.trim() ?? "";
   let slug = body.slug?.trim() || null;
@@ -237,7 +247,7 @@ export async function POST(request: Request) {
         : null;
 
   if (parent_id != null) {
-    const parentRow = await supabase
+    const parentRow = await supabaseAdmin
       .from("product_taxonomies")
       .select("id, taxonomy_type")
       .eq("id", parent_id)
@@ -254,7 +264,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const duplicateName = await supabase
+  const duplicateName = await supabaseAdmin
     .from("product_taxonomies")
     .select("id")
     .eq("taxonomy_type", taxonomy_type)
@@ -268,7 +278,7 @@ export async function POST(request: Request) {
   }
 
   if (slug != null) {
-    const duplicateSlug = await supabase
+    const duplicateSlug = await supabaseAdmin
       .from("product_taxonomies")
       .select("id")
       .eq("taxonomy_type", taxonomy_type)
@@ -316,7 +326,7 @@ export async function POST(request: Request) {
     insertPayload.badge_description = body.badge_description?.trim() || null;
   }
 
-  const insertResult = await supabase
+  const insertResult = await supabaseAdmin
     .from("product_taxonomies")
     .insert(insertPayload)
     .select("id, taxonomy_type, type, name, slug")

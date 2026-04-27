@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type MemberBody = {
   name?: string;
@@ -21,7 +21,7 @@ export async function GET(
 
   const { id } = await context.params;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("members")
     .select(
       "id,username,name,phone,email,birth_date,gender,agree_email,points,point_balance,point_pending,created_at",
@@ -68,7 +68,7 @@ export async function PATCH(
     return NextResponse.json({ message: "수정할 항목이 없습니다." }, { status: 400 });
   }
 
-  const result = await supabase.from("members").update(updates).eq("id", id).select("id").maybeSingle();
+  const result = await supabaseAdmin.from("members").update(updates).eq("id", id).select("id").maybeSingle();
   if (result.error) {
     return NextResponse.json({ message: "회원 정보 수정에 실패했습니다." }, { status: 500 });
   }

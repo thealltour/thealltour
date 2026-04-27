@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { TERMS_TEMPLATE_TYPES, type TermsTemplateType } from "@/lib/termsTemplates";
 
 type TermsTemplateBody = Partial<Record<TermsTemplateType, string>>;
 
 export async function GET() {
-  const { data, error } = await supabase
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { data, error } = await supabaseAdmin
     .from("product_terms_templates")
     .select("type,content")
     .order("type", { ascending: true });
@@ -26,13 +30,16 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as TermsTemplateBody;
   const rows = TERMS_TEMPLATE_TYPES.map((type) => ({
     type,
     content: (body[type] ?? "").trim(),
   }));
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("product_terms_templates")
     .upsert(rows, { onConflict: "type", ignoreDuplicates: false });
 

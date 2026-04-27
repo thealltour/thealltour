@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 승인 — 재고 감소(stock not null 시), status=APPROVED, 알림 */
 export async function POST(
@@ -18,7 +18,7 @@ export async function POST(
     body = {};
   }
 
-  const { data: row, error: fetchErr } = await supabase
+  const { data: row, error: fetchErr } = await supabaseAdmin
     .from("reward_redemptions")
     .select("id, user_id, catalog_id, point_amount, status")
     .eq("id", id)
@@ -34,7 +34,7 @@ export async function POST(
   }
 
   const catalogId = r.catalog_id;
-  const { data: catalog } = await supabase
+  const { data: catalog } = await supabaseAdmin
     .from("reward_catalog")
     .select("stock")
     .eq("id", catalogId)
@@ -46,14 +46,14 @@ export async function POST(
       if (current <= 0) {
         return NextResponse.json({ message: "재고가 없습니다." }, { status: 400 });
       }
-      await supabase
+      await supabaseAdmin
         .from("reward_catalog")
         .update({ stock: current - 1, updated_at: new Date().toISOString() })
         .eq("id", catalogId);
     }
   }
 
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await supabaseAdmin
     .from("reward_redemptions")
     .update({
       status: "APPROVED",
@@ -68,7 +68,7 @@ export async function POST(
   }
 
   const userId = (row as { user_id: string }).user_id;
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "REWARD_STATUS",
     title: "교환 승인",

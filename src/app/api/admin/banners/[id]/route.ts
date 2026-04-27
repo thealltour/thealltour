@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type BannerBody = {
   title?: string;
@@ -15,6 +16,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
   const body = (await request.json()) as BannerBody;
   const updates: Record<string, unknown> = {};
@@ -50,7 +54,7 @@ export async function PATCH(
     return NextResponse.json({ message: "변경할 항목이 없습니다." }, { status: 400 });
   }
 
-  const result = await supabase
+  const result = await supabaseAdmin
     .from("home_banners")
     .update(updates)
     .eq("id", id)
@@ -70,9 +74,12 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
 
-  const deleteResult = await supabase
+  const deleteResult = await supabaseAdmin
     .from("home_banners")
     .delete()
     .eq("id", id)

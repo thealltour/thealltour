@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type NoticeBody = {
   title?: string;
@@ -12,6 +13,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
   const body = (await request.json()) as NoticeBody;
 
@@ -35,7 +39,7 @@ export async function PATCH(
     return NextResponse.json({ message: "변경할 항목이 없습니다." }, { status: 400 });
   }
 
-  const updateResult = await supabase
+  const updateResult = await supabaseAdmin
     .from("notices")
     .update(updates)
     .eq("id", id)
@@ -52,8 +56,11 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
-  const deleteResult = await supabase.from("notices").delete().eq("id", id).select("id").maybeSingle();
+  const deleteResult = await supabaseAdmin.from("notices").delete().eq("id", id).select("id").maybeSingle();
   if (deleteResult.error || !deleteResult.data) {
     return NextResponse.json({ message: "공지 삭제에 실패했습니다." }, { status: 500 });
   }

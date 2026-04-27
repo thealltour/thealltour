@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import type { SiteSettings } from "@/lib/siteSettings";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type SiteSettingsBody = Partial<SiteSettings>;
 
 export async function GET() {
-  const { data, error } = await supabase.from("site_settings").select("key, value");
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { data, error } = await supabaseAdmin.from("site_settings").select("key, value");
 
   if (error) {
     return NextResponse.json({ message: "환경설정 조회에 실패했습니다." }, { status: 500 });
@@ -22,6 +26,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as SiteSettingsBody;
   type SiteSettingsKey = keyof SiteSettings;
 
@@ -77,7 +84,7 @@ export async function PATCH(request: Request) {
   }
 
   for (const entry of entries) {
-    const upsertResult = await supabase
+    const upsertResult = await supabaseAdmin
       .from("site_settings")
       .upsert(
         { key: entry.key, value: entry.value },

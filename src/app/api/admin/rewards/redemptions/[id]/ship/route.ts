@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 발송 처리 — tracking 저장, status=SHIPPED, 알림(운송장 포함) */
 export async function POST(
@@ -18,7 +18,7 @@ export async function POST(
     body = {};
   }
 
-  const { data: row, error: fetchErr } = await supabase
+  const { data: row, error: fetchErr } = await supabaseAdmin
     .from("reward_redemptions")
     .select("id, user_id, status")
     .eq("id", id)
@@ -34,7 +34,7 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await supabaseAdmin
     .from("reward_redemptions")
     .update({
       status: "SHIPPED",
@@ -53,7 +53,7 @@ export async function POST(
   const carrier = body.tracking_carrier?.trim() || "";
   const number = body.tracking_number?.trim() || "";
   const trackingText = carrier && number ? ` (${carrier}: ${number})` : number ? ` (${number})` : "";
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: r.user_id,
     type: "REWARD_STATUS",
     title: "발송 완료",

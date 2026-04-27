@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 교환 신청 목록 (query status=REQUESTED 등) */
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status")?.trim() || undefined;
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("reward_redemptions")
     .select(`
       *,

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import type { ItineraryV2 } from "@/types/product";
 import {
   parseSeasonalPriceBandsFromUnknown,
   seasonalPriceBandsToJsonColumn,
 } from "@/lib/products/seasonalPriceBands";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
@@ -107,6 +108,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   let body: ProductBody;
   try {
     body = (await request.json()) as ProductBody;
@@ -288,7 +292,7 @@ export async function PATCH(
   }
 
   let imagesJsonPersisted = true;
-  let updateResult = await supabase
+  let updateResult = await supabaseAdmin
     .from("products")
     .update(updates)
     .eq("id", id)
@@ -298,8 +302,8 @@ export async function PATCH(
   // DB에 images_json 컬럼이 아직 없는 환경 호환
   if (updateResult.error && "images_json" in updates && isMissingImagesJsonColumn(updateResult.error.message)) {
     imagesJsonPersisted = false;
-    const { images_json: _omit, ...fallbackUpdates } = updates;
-    updateResult = await supabase
+    const fallbackUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => key !== "images_json"));
+    updateResult = await supabaseAdmin
       .from("products")
       .update(fallbackUpdates)
       .eq("id", id)
@@ -336,8 +340,11 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
-  const deleteResult = await supabase.from("products").delete().eq("id", id).select("id").maybeSingle();
+  const deleteResult = await supabaseAdmin.from("products").delete().eq("id", id).select("id").maybeSingle();
 
   if (deleteResult.error) {
     return NextResponse.json({ message: "상품 삭제에 실패했습니다." }, { status: 500 });
@@ -359,8 +366,11 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("products")
     .select("*")
     .eq("id", id)

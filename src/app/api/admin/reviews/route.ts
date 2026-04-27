@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET() {
-  const { data, error } = await supabase
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { data, error } = await supabaseAdmin
     .from("reviews")
     .select("id,member_id,author_name,title,content,image_url,image_urls,rating,created_at,members(username)")
     .order("created_at", { ascending: false, nullsFirst: false });

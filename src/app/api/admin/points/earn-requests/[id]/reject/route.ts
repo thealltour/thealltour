@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { EARN_REQUEST_MESSAGE_TEMPLATES } from "@/server/services/points/earnRequests";
 
 type Body = {
@@ -28,7 +28,7 @@ export async function POST(
     return NextResponse.json({ message: "reject_reason은 필수입니다." }, { status: 400 });
   }
 
-  const { data: earnReq, error: reqErr } = await supabase
+  const { data: earnReq, error: reqErr } = await supabaseAdmin
     .from("point_earn_requests")
     .select("id, user_id, status")
     .eq("id", id)
@@ -42,7 +42,7 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await supabaseAdmin
     .from("point_earn_requests")
     .update({
       status: "REJECTED",
@@ -59,7 +59,7 @@ export async function POST(
   }
 
   const userId = (earnReq as { user_id: string }).user_id;
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "ADMIN_MESSAGE",
     title: "예약 적립 요청 반려",

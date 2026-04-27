@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function PATCH() {
-  const result = await supabase
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const result = await supabaseAdmin
     .from("admin_notifications")
     .update({ is_read: true })
     .eq("is_read", false)

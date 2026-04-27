@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { appendInquiryActivityLog } from "@/lib/inquiries/inquiryActivityLog";
 import {
@@ -81,7 +80,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     );
   }
 
-  const { data: inquiryRow, error: inquiryErr } = await supabase
+  const { data: inquiryRow, error: inquiryErr } = await supabaseAdmin
     .from("inquiries")
     .select("id, phone")
     .eq("id", inquiryId)
@@ -172,10 +171,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     typeof inserted?.created_at === "string" ? inserted.created_at : new Date().toISOString();
 
   const nowIso = new Date().toISOString();
-  await supabase.from("inquiries").update({ last_activity_at: nowIso }).eq("id", inquiryId);
+  await supabaseAdmin.from("inquiries").update({ last_activity_at: nowIso }).eq("id", inquiryId);
 
   const activitySummary = sendStatus === "success" ? "문자 발송 성공" : "문자 발송 실패";
-  const { error: actErr } = await appendInquiryActivityLog(supabase, {
+  const { error: actErr } = await appendInquiryActivityLog(supabaseAdmin, {
     inquiry_id: inquiryId,
     activity_type: "manual_log",
     actor_name: actorName,

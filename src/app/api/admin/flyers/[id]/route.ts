@@ -113,7 +113,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       existingRow.template_key,
       existingRow.layout_options_json,
     );
-    let next: FlyerDraftState = { ...base };
+    const next: FlyerDraftState = { ...base };
 
     if (body.templateKey !== undefined) {
       if (typeof body.templateKey !== "string" || !body.templateKey.trim()) {

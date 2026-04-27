@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
 import {
   appendInquiryActivityLog,
@@ -75,7 +75,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ message: "JSON 본문이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const { data: prevRow, error: fetchErr } = await supabase.from("inquiries").select("*").eq("id", inquiryId).maybeSingle();
+  const { data: prevRow, error: fetchErr } = await supabaseAdmin.from("inquiries").select("*").eq("id", inquiryId).maybeSingle();
   if (fetchErr) {
     return NextResponse.json({ message: "문의를 불러오지 못했습니다." }, { status: 500 });
   }
@@ -192,7 +192,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     });
   }
 
-  const { data: updated, error: upErr } = await supabase
+  const { data: updated, error: upErr } = await supabaseAdmin
     .from("inquiries")
     .update(updates)
     .eq("id", inquiryId)
@@ -207,7 +207,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   for (const log of logs) {
-    const { error: logErr } = await appendInquiryActivityLog(supabase, {
+    const { error: logErr } = await appendInquiryActivityLog(supabaseAdmin, {
       inquiry_id: inquiryId,
       activity_type: log.activity_type,
       actor_name: DEFAULT_ACTOR,

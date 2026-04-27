@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { Notice } from "@/types/notice";
 
 type NoticeBody = {
@@ -22,7 +23,10 @@ function mapNotice(row: Record<string, unknown>): Notice {
 }
 
 export async function GET() {
-  const result = await supabase
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const result = await supabaseAdmin
     .from("notices")
     .select("*")
     .order("sort_order", { ascending: true, nullsFirst: false })
@@ -35,6 +39,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as NoticeBody;
   const title = body.title?.trim() ?? "";
   const content = body.content?.trim() ?? "";
@@ -42,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "제목과 내용은 필수입니다." }, { status: 400 });
   }
 
-  const insertResult = await supabase
+  const insertResult = await supabaseAdmin
     .from("notices")
     .insert({
       title,

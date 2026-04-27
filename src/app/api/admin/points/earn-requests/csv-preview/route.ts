@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { parseSimpleCsvRows } from "@/server/services/points/earnRequests";
 
 type Body = { csvText?: string };
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   try {
     const rows = parseSimpleCsvRows(csvText);
     const bookingRefs = rows.map((r) => r.booking_ref).filter(Boolean);
-    const { data: reqs } = await supabase
+    const { data: reqs } = await supabaseAdmin
       .from("point_earn_requests")
       .select("id, booking_ref, status")
       .in("booking_ref", bookingRefs);

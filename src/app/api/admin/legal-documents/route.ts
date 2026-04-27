@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
+import { requireAdminSession } from "@/lib/apiAuth";
 import { LEGAL_NOTICE_TITLES, getLegalDocuments, type LegalDocuments } from "@/lib/legalDocuments";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type LegalDocumentsBody = Partial<LegalDocuments>;
 
 export async function GET() {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const documents = await getLegalDocuments();
   return NextResponse.json(documents);
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as LegalDocumentsBody;
   const entries = [
     { type: "terms" as const, content: (body.terms ?? "").trim() },
@@ -18,7 +25,7 @@ export async function PATCH(request: Request) {
 
   for (const entry of entries) {
     const title = LEGAL_NOTICE_TITLES[entry.type];
-    const existing = await supabase
+    const existing = await supabaseAdmin
       .from("notices")
       .select("id")
       .eq("title", title)
@@ -27,7 +34,7 @@ export async function PATCH(request: Request) {
       .maybeSingle();
 
     if (!existing.error && existing.data?.id) {
-      const updateResult = await supabase
+      const updateResult = await supabaseAdmin
         .from("notices")
         .update({ content: entry.content, is_published: false, sort_order: 9999 })
         .eq("id", existing.data.id)
@@ -39,7 +46,7 @@ export async function PATCH(request: Request) {
       continue;
     }
 
-    const insertResult = await supabase
+    const insertResult = await supabaseAdmin
       .from("notices")
       .insert({
         title,

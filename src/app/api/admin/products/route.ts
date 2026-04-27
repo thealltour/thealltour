@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import type { ItineraryV2 } from "@/types/product";
 import {
   parseSeasonalPriceBandsFromUnknown,
   seasonalPriceBandsToJsonColumn,
 } from "@/lib/products/seasonalPriceBands";
 import { normalizeAdminProductsPageSize } from "@/components/admin/products/adminProducts.constants";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
@@ -118,6 +119,9 @@ type ProductBody = {
 };
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { searchParams } = request.nextUrl;
   const page = Number(searchParams.get("page") ?? "1");
   const pageSize = normalizeAdminProductsPageSize(searchParams.get("pageSize"));
@@ -142,7 +146,7 @@ export async function GET(request: NextRequest) {
 
     /** products 테이블에 updated_at 이 없을 수 있어 정렬은 created_at 에 매핑 */
     const orderColumn = sortField === "updated_at" ? "created_at" : sortField;
-    let query = supabase
+    let query = supabaseAdmin
       .from("products")
       .select("*", { count: "exact" })
       .order(orderColumn, { ascending: sortDirection === "asc", nullsFirst: false })
@@ -200,6 +204,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as ProductBody;
   const title = body.title?.trim();
   const description = body.description?.trim();
@@ -211,7 +218,7 @@ export async function POST(request: Request) {
 
   const sourceUrl = body.product_source_url?.trim();
   if (sourceUrl) {
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseAdmin
       .from("products")
       .select("id")
       .eq("product_source_url", sourceUrl)
@@ -442,7 +449,7 @@ export async function POST(request: Request) {
   // overview_json: 저장 제거. 상세 화면은 mapProductToOverview(product)로 자동 생성
 
   let imagesJsonPersisted = true;
-  let insertResult = await supabase
+  let insertResult = await supabaseAdmin
     .from("products")
     .insert(insertPayload)
     .select("id")
@@ -451,8 +458,8 @@ export async function POST(request: Request) {
   // DB에 images_json 컬럼이 아직 없는 환경 호환
   if (insertResult.error && "images_json" in insertPayload && isMissingImagesJsonColumn(insertResult.error.message)) {
     imagesJsonPersisted = false;
-    const { images_json: _omit, ...fallbackPayload } = insertPayload;
-    insertResult = await supabase
+    const fallbackPayload = Object.fromEntries(Object.entries(insertPayload).filter(([key]) => key !== "images_json"));
+    insertResult = await supabaseAdmin
       .from("products")
       .insert(fallbackPayload)
       .select("id")

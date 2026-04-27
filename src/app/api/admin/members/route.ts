@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminSession();
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search")?.trim();
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("members")
     .select("id,username,name,phone,email,birth_date,gender,agree_email,point_balance,point_pending,points,created_at")
     .order("created_at", { ascending: false, nullsFirst: false });

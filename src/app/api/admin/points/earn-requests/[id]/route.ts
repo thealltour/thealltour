@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(
   _request: Request,
@@ -10,7 +10,7 @@ export async function GET(
   if (!auth.ok) return auth.res;
   const { id } = await context.params;
 
-  const { data: row, error } = await supabase
+  const { data: row, error } = await supabaseAdmin
     .from("point_earn_requests")
     .select(`
       id,
@@ -34,7 +34,7 @@ export async function GET(
     return NextResponse.json({ message: "요청을 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const { data: attachments } = await supabase
+  const { data: attachments } = await supabaseAdmin
     .from("earn_request_attachments")
     .select("id, file_url, file_name, mime_type, file_size, created_at")
     .eq("request_id", id)

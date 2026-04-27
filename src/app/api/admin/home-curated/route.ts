@@ -66,7 +66,7 @@ export async function GET() {
   const sections = sectionRows ?? [];
   const sectionIds = sections.map((s: { id: string }) => s.id);
 
-  let counts: Record<string, number> = {};
+  const counts: Record<string, number> = {};
   if (sectionIds.length > 0) {
     const { data: countRows } = await supabaseAdmin
       .from("home_curated_section_products")

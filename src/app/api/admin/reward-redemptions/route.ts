@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 경품 교환 신청 목록 (status 필터 가능) — reward_redemptions 기준 */
 export async function GET(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("reward_redemptions")
     .select(`
       id,

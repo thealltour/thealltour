@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 포인트 수동 지급 (원장 기록 포함) */
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id: memberId } = await context.params;
   const body = (await request.json()).catch(() => ({})) as { amount?: number; reason?: string };
   const amount = Number(body.amount);
@@ -15,7 +19,7 @@ export async function POST(
     return NextResponse.json({ message: "지급 포인트는 1 이상의 숫자로 입력해 주세요." }, { status: 400 });
   }
 
-  const { data: memberRow } = await supabase.from("members").select("points").eq("id", memberId).maybeSingle();
+  const { data: memberRow } = await supabaseAdmin.from("members").select("points").eq("id", memberId).maybeSingle();
   if (!memberRow) {
     return NextResponse.json({ message: "회원을 찾을 수 없습니다." }, { status: 404 });
   }
@@ -23,7 +27,7 @@ export async function POST(
   const currentPoints = Number((memberRow as { points?: number }).points ?? 0);
   const newBalance = currentPoints + amount;
 
-  const { data: ledgerRow, error: ledgerErr } = await supabase
+  const { data: ledgerRow, error: ledgerErr } = await supabaseAdmin
     .from("point_ledger")
     .insert({
       user_id: memberId,
@@ -41,7 +45,7 @@ export async function POST(
     return NextResponse.json({ message: "포인트 원장 기록에 실패했습니다." }, { status: 500 });
   }
 
-  const { error: updateErr } = await supabase.from("members").update({ points: newBalance }).eq("id", memberId);
+  const { error: updateErr } = await supabaseAdmin.from("members").update({ points: newBalance }).eq("id", memberId);
   if (updateErr) {
     return NextResponse.json({ message: "회원 포인트 반영에 실패했습니다." }, { status: 500 });
   }

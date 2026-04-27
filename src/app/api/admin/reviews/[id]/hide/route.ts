@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { getReviewById } from "@/lib/reviews";
 import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getProductIdByBookingId } from "@/lib/travelBookings";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -33,7 +33,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const newStatus = action === "hide" ? "hidden" : "submitted";
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("reviews")
     .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq("id", reviewId);

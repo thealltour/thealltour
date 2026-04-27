@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 반려 — RELEASE ledger + balance 복구, status=REJECTED, 알림 */
 export async function POST(
@@ -18,7 +18,7 @@ export async function POST(
     body = {};
   }
 
-  const { data: row, error: fetchErr } = await supabase
+  const { data: row, error: fetchErr } = await supabaseAdmin
     .from("reward_redemptions")
     .select("id, user_id, point_amount, status")
     .eq("id", id)
@@ -36,7 +36,7 @@ export async function POST(
   const userId = r.user_id;
   const amount = Number(r.point_amount);
 
-  const { error: ledgerErr } = await supabase.from("point_ledger").insert({
+  const { error: ledgerErr } = await supabaseAdmin.from("point_ledger").insert({
     user_id: userId,
     type: "RELEASE",
     status: "CONFIRMED",
@@ -50,13 +50,13 @@ export async function POST(
     return NextResponse.json({ message: "포인트 복구 기록에 실패했습니다." }, { status: 500 });
   }
 
-  const { data: memberRow } = await supabase
+  const { data: memberRow } = await supabaseAdmin
     .from("members")
     .select("point_balance")
     .eq("id", userId)
     .maybeSingle();
   const currentBalance = Number((memberRow as { point_balance?: number } | null)?.point_balance ?? 0);
-  const { error: updateMemberErr } = await supabase
+  const { error: updateMemberErr } = await supabaseAdmin
     .from("members")
     .update({ point_balance: currentBalance + amount })
     .eq("id", userId);
@@ -65,7 +65,7 @@ export async function POST(
     return NextResponse.json({ message: "포인트 복구에 실패했습니다." }, { status: 500 });
   }
 
-  const { error: updateRedemptionErr } = await supabase
+  const { error: updateRedemptionErr } = await supabaseAdmin
     .from("reward_redemptions")
     .update({
       status: "REJECTED",
@@ -80,7 +80,7 @@ export async function POST(
   }
 
   const reasonText = body.reason?.trim() || body.admin_memo?.trim() || "";
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "REWARD_STATUS",
     title: "교환 반려",

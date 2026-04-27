@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { appendInquiryActivityLog, normalizeActivityLogRow } from "@/lib/inquiries/inquiryActivityLog";
 import type { InquiryActivityType } from "@/types/inquiry";
 
@@ -15,7 +15,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { id: inquiryId } = await context.params;
   const limit = 50;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("inquiry_activity_logs")
     .select("*")
     .eq("inquiry_id", inquiryId)
@@ -61,7 +61,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const actorName =
     typeof body.actor_name === "string" && body.actor_name.trim() ? body.actor_name.trim() : DEFAULT_ACTOR;
 
-  const { error: logErr } = await appendInquiryActivityLog(supabase, {
+  const { error: logErr } = await appendInquiryActivityLog(supabaseAdmin, {
     inquiry_id: inquiryId,
     activity_type: type,
     actor_name: actorName,
@@ -72,7 +72,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ message: "활동 로그 저장에 실패했습니다." }, { status: 500 });
   }
 
-  await supabase.from("inquiries").update({ last_activity_at: new Date().toISOString() }).eq("id", inquiryId);
+  await supabaseAdmin.from("inquiries").update({ last_activity_at: new Date().toISOString() }).eq("id", inquiryId);
 
   return NextResponse.json({ ok: true });
 }

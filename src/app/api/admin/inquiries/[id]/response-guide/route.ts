@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
 import { appendInquiryActivityLog } from "@/lib/inquiries/inquiryActivityLog";
 import { INQUIRY_RESPONSE_STAGES, type InquiryResponseStage } from "@/types/inquiry";
@@ -75,7 +75,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   updates.response_updated_at = now;
   updates.last_activity_at = now;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("inquiries")
     .update(updates)
     .eq("id", inquiryId)
@@ -91,7 +91,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const inquiry = normalizeInquiryRow(data as Record<string, unknown>);
 
-  const { error: logErr } = await appendInquiryActivityLog(supabase, {
+  const { error: logErr } = await appendInquiryActivityLog(supabaseAdmin, {
     inquiry_id: inquiryId,
     activity_type: "response_saved",
     actor_name: "관리자",

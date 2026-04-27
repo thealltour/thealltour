@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import type { Guide } from "@/types/guide";
 import { extractNotionPageId, validateNotionPageAccess } from "@/lib/notion";
 import { syncGuideFromNotion } from "@/lib/notionSync";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type GuideBody = Partial<
   Pick<
@@ -41,6 +42,9 @@ function getErrorMessage(error: unknown): string {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ message: "가이드 ID가 올바르지 않습니다." }, { status: 400 });
@@ -106,7 +110,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ message: "수정할 항목이 없습니다." }, { status: 400 });
   }
 
-  const { data, error } = await supabase.from("guides").update(updates).eq("id", id).select("*").maybeSingle();
+  const { data, error } = await supabaseAdmin
+    .from("guides")
+    .update(updates)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
   if (error) {
     console.error("[PATCH /api/admin/guides/[id]] Supabase update error:", error);
     const message =
@@ -132,12 +141,15 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_: Request, context: RouteContext) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ message: "가이드 ID가 올바르지 않습니다." }, { status: 400 });
   }
 
-  const { error } = await supabase.from("guides").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("guides").delete().eq("id", id);
   if (error) {
     return NextResponse.json({ message: "여행가이드 삭제에 실패했습니다." }, { status: 500 });
   }

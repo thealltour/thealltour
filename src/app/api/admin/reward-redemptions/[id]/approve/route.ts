@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 교환 승인 — reward_redemptions 기준, point_ledger USE(양수) + 잔액 차감 */
 export async function POST(
@@ -14,7 +14,7 @@ export async function POST(
   const body = (await request.json()).catch(() => ({})) as { admin_memo?: string; admin_note?: string };
   const adminMemo = body.admin_memo?.trim() ?? body.admin_note?.trim() ?? null;
 
-  const { data: row, error: fetchErr } = await supabase
+  const { data: row, error: fetchErr } = await supabaseAdmin
     .from("reward_redemptions")
     .select("id, user_id, catalog_id, point_amount, status")
     .eq("id", redemptionId)
@@ -33,7 +33,7 @@ export async function POST(
   const pointAmount = Number(r.point_amount);
   const catalogId = r.catalog_id;
 
-  const { data: memberRow } = await supabase
+  const { data: memberRow } = await supabaseAdmin
     .from("members")
     .select("point_balance, points")
     .eq("id", userId)
@@ -50,7 +50,7 @@ export async function POST(
 
   const newBalance = currentPoints - pointAmount;
 
-  const { data: ledgerRow, error: ledgerErr } = await supabase
+  const { data: ledgerRow, error: ledgerErr } = await supabaseAdmin
     .from("point_ledger")
     .insert({
       user_id: userId,
@@ -75,7 +75,7 @@ export async function POST(
     updateMemberPayload.points = newBalance;
   }
 
-  const { error: updateMemberErr } = await supabase
+  const { error: updateMemberErr } = await supabaseAdmin
     .from("members")
     .update(updateMemberPayload)
     .eq("id", userId);
@@ -84,7 +84,7 @@ export async function POST(
     return NextResponse.json({ message: "회원 포인트 차감에 실패했습니다." }, { status: 500 });
   }
 
-  const { error: updateRedemptionErr } = await supabase
+  const { error: updateRedemptionErr } = await supabaseAdmin
     .from("reward_redemptions")
     .update({
       status: "APPROVED",
@@ -98,7 +98,7 @@ export async function POST(
     return NextResponse.json({ message: "교환 상태 업데이트에 실패했습니다." }, { status: 500 });
   }
 
-  const { data: catalog } = await supabase
+  const { data: catalog } = await supabaseAdmin
     .from("reward_catalog")
     .select("stock, stock_count")
     .eq("id", catalogId)
@@ -112,11 +112,11 @@ export async function POST(
       const payload: Record<string, string | number> = { updated_at: new Date().toISOString() };
       if (c.stock != null) payload.stock = nextStock;
       if (c.stock_count != null) payload.stock_count = nextStock;
-      await supabase.from("reward_catalog").update(payload).eq("id", catalogId);
+      await supabaseAdmin.from("reward_catalog").update(payload).eq("id", catalogId);
     }
   }
 
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "REWARD_STATUS",
     title: "교환 승인",

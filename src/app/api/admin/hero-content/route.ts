@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { HomeHeroContent } from "@/types/homeHeroContent";
 
 function normalize(row: Record<string, unknown>): HomeHeroContent {
@@ -33,7 +34,10 @@ type HeroContentBody = {
 };
 
 export async function GET() {
-  const { data, error } = await supabase
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { data, error } = await supabaseAdmin
     .from("home_hero_content")
     .select("*")
     .limit(1)
@@ -56,9 +60,12 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as HeroContentBody;
 
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing, error: fetchError } = await supabaseAdmin
     .from("home_hero_content")
     .select("id")
     .limit(1)
@@ -90,7 +97,7 @@ export async function PATCH(request: Request) {
   ) as Record<string, unknown>;
 
   if (existing?.id) {
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await supabaseAdmin
       .from("home_hero_content")
       .update(cleanPayload)
       .eq("id", existing.id)
@@ -110,7 +117,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json(normalize(updated as Record<string, unknown>));
   }
 
-  const { data: inserted, error } = await supabase
+  const { data: inserted, error } = await supabaseAdmin
     .from("home_hero_content")
     .insert({
       badge: null,

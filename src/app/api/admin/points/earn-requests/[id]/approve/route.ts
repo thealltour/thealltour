@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { grantPointsToUser } from "@/server/services/points/grantPoints";
 import { EARN_REQUEST_MESSAGE_TEMPLATES } from "@/server/services/points/earnRequests";
 
@@ -31,7 +31,7 @@ export async function POST(
     return NextResponse.json({ message: "amount는 1 이상의 숫자여야 합니다." }, { status: 400 });
   }
 
-  const { data: earnReq, error: reqErr } = await supabase
+  const { data: earnReq, error: reqErr } = await supabaseAdmin
     .from("point_earn_requests")
     .select("id, user_id, booking_ref, status")
     .eq("id", id)
@@ -47,7 +47,7 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await supabaseAdmin
     .from("point_earn_requests")
     .update({
       status: "APPROVED",
@@ -77,7 +77,7 @@ export async function POST(
       grantStatus === "CONFIRMED"
         ? EARN_REQUEST_MESSAGE_TEMPLATES.approved(amount)
         : EARN_REQUEST_MESSAGE_TEMPLATES.pending(amount);
-    await supabase.from("notifications").insert({
+    await supabaseAdmin.from("notifications").insert({
       user_id: row.user_id,
       type: "ADMIN_MESSAGE",
       title: "예약 적립 요청 승인",
@@ -86,7 +86,7 @@ export async function POST(
 
     return NextResponse.json({ message: "요청을 승인하고 포인트를 지급했습니다." });
   } catch (error) {
-    await supabase
+    await supabaseAdmin
       .from("point_earn_requests")
       .update({
         status: "REQUESTED",

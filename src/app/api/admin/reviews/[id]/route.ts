@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { getReviewById } from "@/lib/reviews";
@@ -40,7 +39,7 @@ export async function PATCH(
     return NextResponse.json({ message: "수정할 항목이 없습니다." }, { status: 400 });
   }
 
-  const result = await supabase.from("reviews").update(updates).eq("id", id).select("id").maybeSingle();
+  const result = await supabaseAdmin.from("reviews").update(updates).eq("id", id).select("id").maybeSingle();
   if (result.error) {
     return NextResponse.json({ message: "후기 수정에 실패했습니다." }, { status: 500 });
   }

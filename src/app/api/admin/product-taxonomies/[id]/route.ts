@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
 import type { ProductCategoryType, TaxonomyType } from "@/types/productTaxonomy";
@@ -58,10 +58,13 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
 
   // 목록 API와 동일하게 anon 클라이언트로 조회(RLS 일치). 수정/삭제는 supabaseAdmin 사용.
-  const taxonomyResult = await supabase
+  const taxonomyResult = await supabaseAdmin
     .from("product_taxonomies")
     .select("id, type, taxonomy_type, name, slug")
     .eq("id", id)
@@ -132,7 +135,7 @@ export async function PATCH(
       return NextResponse.json({ message: "자기 자신을 대분류로 지정할 수 없습니다." }, { status: 400 });
     }
     if (nextParent != null) {
-      const parentRow = await supabase
+      const parentRow = await supabaseAdmin
         .from("product_taxonomies")
         .select("id, taxonomy_type")
         .eq("id", nextParent)
@@ -184,7 +187,7 @@ export async function PATCH(
   const slugToCheck = updates.slug !== undefined ? updates.slug : current.slug;
   const taxonomyTypeForSlug = (updates.taxonomy_type as TaxonomyType | undefined) ?? currentTaxonomyType;
   if (slugToCheck != null && String(slugToCheck).trim() !== "") {
-    const duplicateSlug = await supabase
+    const duplicateSlug = await supabaseAdmin
       .from("product_taxonomies")
       .select("id")
       .eq("taxonomy_type", taxonomyTypeForSlug)
@@ -228,10 +231,13 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const { id } = await context.params;
 
   // 목록 API와 동일하게 anon 클라이언트로 조회. 삭제는 supabaseAdmin 사용.
-  const taxonomyResult = await supabase
+  const taxonomyResult = await supabaseAdmin
     .from("product_taxonomies")
     .select("id, type, taxonomy_type, name")
     .eq("id", id)
@@ -256,7 +262,7 @@ export async function DELETE(
         ? "theme"
         : "destination";
   const name = String(taxonomyResult.data.name ?? "");
-  const productsResult = await supabase.from("products").select("category,theme");
+  const productsResult = await supabaseAdmin.from("products").select("category,theme");
   if (productsResult.error) {
     return NextResponse.json({ message: "상품 목록 조회에 실패했습니다." }, { status: 500 });
   }

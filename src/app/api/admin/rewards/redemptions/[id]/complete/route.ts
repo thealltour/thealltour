@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 관리자: 완료 처리 — status=COMPLETED */
 export async function POST(
@@ -18,7 +18,7 @@ export async function POST(
     body = {};
   }
 
-  const { data: row, error: fetchErr } = await supabase
+  const { data: row, error: fetchErr } = await supabaseAdmin
     .from("reward_redemptions")
     .select("id, status, user_id")
     .eq("id", id)
@@ -34,7 +34,7 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await supabaseAdmin
     .from("reward_redemptions")
     .update({
       status: "COMPLETED",
@@ -49,7 +49,7 @@ export async function POST(
   }
 
   const userId = (row as { user_id: string }).user_id;
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "REWARD_STATUS",
     title: "수령 완료",

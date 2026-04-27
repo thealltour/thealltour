@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { RewardCatalogRow } from "@/types/pointsRewardsV2";
 
 /** 관리자: 경품 목록 (비활성 포함) */
 export async function GET() {
-  const { data, error } = await supabase
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  const { data, error } = await supabaseAdmin
     .from("reward_catalog")
     .select("*")
     .order("sort_order", { ascending: true })
@@ -29,6 +33,9 @@ type CatalogBody = {
 
 /** 관리자: 경품 추가 */
 export async function POST(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as CatalogBody;
   const title = body.title?.trim();
   if (!title) {
@@ -50,7 +57,11 @@ export async function POST(request: Request) {
     updated_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase.from("reward_catalog").insert(row).select("id,title,point_price").maybeSingle();
+  const { data, error } = await supabaseAdmin
+    .from("reward_catalog")
+    .insert(row)
+    .select("id,title,point_price")
+    .maybeSingle();
   if (error) {
     return NextResponse.json({ message: "경품 등록에 실패했습니다." }, { status: 500 });
   }

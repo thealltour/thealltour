@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { supabase } from "@/lib/supabase";
+import { requireAdminSession } from "@/lib/apiAuth";
 import { TERMS_TEMPLATE_TYPES, type TermsTemplateType } from "@/lib/termsTemplates";
 import {
   createEmptyNoticeTemplatesByGroup,
   type NoticeTemplateGroup,
   type NoticeTemplatesByGroup,
 } from "@/lib/noticeTemplates";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type LegacyTermsBody = Partial<Record<TermsTemplateType, string>>;
 
@@ -40,7 +41,7 @@ async function loadNoticeMaps(): Promise<
   { ok: true; maps: NoticeTemplatesByGroup } | { ok: false; message: string }
 > {
   const maps = createEmptyNoticeTemplatesByGroup();
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("product_notice_templates")
     .select("template_group,type,content,sort_order")
     .order("sort_order", { ascending: true })
@@ -66,9 +67,12 @@ async function loadNoticeMaps(): Promise<
 }
 
 export async function GET() {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const [noticeResult, legacyResult] = await Promise.all([
     loadNoticeMaps(),
-    supabase.from("product_terms_templates").select("type,content").order("type", { ascending: true }),
+    supabaseAdmin.from("product_terms_templates").select("type,content").order("type", { ascending: true }),
   ]);
 
   if (!noticeResult.ok) {
@@ -86,6 +90,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
   const body = (await request.json()) as NoticeTemplatesPatchBody;
   const upsertRows: {
     template_group: NoticeTemplateGroup;
@@ -113,7 +120,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "저장할 템플릿이 없습니다." }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("product_notice_templates")
     .upsert(upsertRows, { onConflict: "template_group,type", ignoreDuplicates: false });
 

@@ -6,6 +6,8 @@ import type { Guide } from "@/types/guide";
 import { getGuideHref } from "@/lib/guides";
 import { cn } from "@/lib/cn";
 
+const GUIDE_IMAGE_FALLBACK_SRC = "/thealltour-logo.png";
+
 export type GuideCardProps = {
   guide: Guide;
   className?: string;
@@ -86,6 +88,12 @@ export function GuideCard({
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="object-cover transition duration-200 group-hover:scale-[1.02]"
+            onError={(event) => {
+              const img = event.currentTarget;
+              if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
+              img.srcset = "";
+              img.src = GUIDE_IMAGE_FALLBACK_SRC;
+            }}
           />
         ) : (
           <div className="flex h-full min-h-[5.5rem] items-center justify-center type-caption text-[var(--text-muted)]">

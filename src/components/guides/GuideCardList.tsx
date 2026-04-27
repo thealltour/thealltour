@@ -6,6 +6,8 @@ import Link from "next/link";
 import type { Guide } from "@/types/guide";
 import { GuidePdfModal } from "@/components/guides/GuidePdfModal";
 
+const GUIDE_IMAGE_FALLBACK_SRC = "/thealltour-logo.png";
+
 type GuideCardListProps = {
   guides: Guide[];
 };
@@ -105,6 +107,12 @@ export function GuideCardList({ guides }: GuideCardListProps) {
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 30vw"
                     className="object-cover"
+                    onError={(event) => {
+                      const img = event.currentTarget;
+                      if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
+                      img.srcset = "";
+                      img.src = GUIDE_IMAGE_FALLBACK_SRC;
+                    }}
                   />
                 </div>
               ) : (

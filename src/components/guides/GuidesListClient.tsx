@@ -3,6 +3,8 @@
 import Link from "next/link";
 import type { Guide } from "@/types/guide";
 
+const GUIDE_IMAGE_FALLBACK_SRC = "/thealltour-logo.png";
+
 export type GuideWithBadges = Guide & { badgeLabels: string[] };
 
 type GuidesListClientProps = {
@@ -58,6 +60,11 @@ function cardInner(guide: GuideWithBadges) {
             alt={guide.title_override || guide.title}
             className="h-full w-full object-cover transition group-hover:scale-[1.02]"
             loading="lazy"
+            onError={(event) => {
+              const img = event.currentTarget;
+              if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
+              img.src = GUIDE_IMAGE_FALLBACK_SRC;
+            }}
           />
         ) : null}
       </div>

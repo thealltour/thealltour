@@ -17,6 +17,42 @@ function formatDate(value?: string) {
   return date.toLocaleDateString("ko-KR");
 }
 
+function isLikelySignedNotionImageUrl(value?: string | null) {
+  const raw = value?.trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    const isNotionHost =
+      host === "file.notion.so" ||
+      host === "prod-files-secure.s3.us-west-2.amazonaws.com" ||
+      host.endsWith(".notion.site");
+    if (!isNotionHost) return false;
+    return (
+      url.searchParams.has("X-Amz-Algorithm") ||
+      url.searchParams.has("X-Amz-Signature") ||
+      url.searchParams.has("x-amz-signature")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function pickGuideCardImage(guide: Guide) {
+  const stableCandidates = [guide.thumbnail_url, guide.guide_thumbnail_url, guide.cover_image_url];
+  const signedCandidates: Array<string | null | undefined> = [];
+  for (const candidate of stableCandidates) {
+    const url = candidate?.trim();
+    if (!url) continue;
+    if (isLikelySignedNotionImageUrl(url)) {
+      signedCandidates.push(url);
+      continue;
+    }
+    return url;
+  }
+  return signedCandidates[0]?.trim() ?? "";
+}
+
 export function GuideCardList({ guides }: GuideCardListProps) {
   const [modalPdfUrl, setModalPdfUrl] = useState<string | null>(null);
   const [modalTitle, setModalTitle] = useState<string>("");
@@ -50,11 +86,7 @@ export function GuideCardList({ guides }: GuideCardListProps) {
     <>
       <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {guides.map((guide) => {
-          const thumbUrl =
-            guide.cover_image_url ??
-            guide.thumbnail_url ??
-            guide.guide_thumbnail_url ??
-            "";
+          const thumbUrl = pickGuideCardImage(guide);
           const pdfUrl = guide.guide_pdf_url ?? "";
           const hasPdf = Boolean(pdfUrl?.trim());
           const hasNotionDetail = Boolean(

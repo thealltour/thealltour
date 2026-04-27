@@ -9,14 +9,52 @@ type GuidesListClientProps = {
   guides: GuideWithBadges[];
 };
 
+function isLikelySignedNotionImageUrl(value?: string | null) {
+  const raw = value?.trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    const isNotionHost =
+      host === "file.notion.so" ||
+      host === "prod-files-secure.s3.us-west-2.amazonaws.com" ||
+      host.endsWith(".notion.site");
+    if (!isNotionHost) return false;
+    return (
+      url.searchParams.has("X-Amz-Algorithm") ||
+      url.searchParams.has("X-Amz-Signature") ||
+      url.searchParams.has("x-amz-signature")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function pickGuideCardImage(guide: GuideWithBadges) {
+  const stableCandidates = [guide.thumbnail_url, guide.guide_thumbnail_url, guide.cover_image_url];
+  const signedCandidates: Array<string | null | undefined> = [];
+  for (const candidate of stableCandidates) {
+    const url = candidate?.trim();
+    if (!url) continue;
+    if (isLikelySignedNotionImageUrl(url)) {
+      signedCandidates.push(url);
+      continue;
+    }
+    return url;
+  }
+  return signedCandidates[0]?.trim() ?? "";
+}
+
 function cardInner(guide: GuideWithBadges) {
+  const thumbUrl = pickGuideCardImage(guide);
+
   return (
     <>
       <div className="relative h-40 w-full overflow-hidden bg-slate-200">
-        {guide.cover_image_url || guide.thumbnail_url ? (
+        {thumbUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={guide.cover_image_url || guide.thumbnail_url || ""}
+            src={thumbUrl}
             alt={guide.title_override || guide.title}
             className="h-full w-full object-cover transition group-hover:scale-[1.02]"
             loading="lazy"

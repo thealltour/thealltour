@@ -64,6 +64,10 @@ function cardInner(guide: GuideWithBadges) {
               const img = event.currentTarget;
               if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
               img.src = GUIDE_IMAGE_FALLBACK_SRC;
+              img.style.objectFit = "contain";
+              img.style.objectPosition = "center";
+              img.style.backgroundColor = "#ffffff";
+              img.style.padding = "8px";
             }}
           />
         ) : null}

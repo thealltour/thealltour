@@ -93,6 +93,10 @@ export function GuideCard({
               if (img.src.endsWith(GUIDE_IMAGE_FALLBACK_SRC)) return;
               img.srcset = "";
               img.src = GUIDE_IMAGE_FALLBACK_SRC;
+              img.style.objectFit = "contain";
+              img.style.objectPosition = "center";
+              img.style.backgroundColor = "#ffffff";
+              img.style.padding = "8px";
             }}
           />
         ) : (

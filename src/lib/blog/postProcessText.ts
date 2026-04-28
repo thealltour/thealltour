@@ -50,6 +50,12 @@ function collapseHorizontalSpaceByLine(s: string): string {
 }
 
 const URL_LINE = /^https?:\/\//i;
+const SINGLE_POST_REPLACEMENTS: [RegExp, string][] = [
+  [/확인해보시는 것을 추천드립니다\./g, "확인해보시는 것이 좋습니다."],
+  [/한 번 더 확인해보시는 것이 좋습니다\./g, "한 번 더 확인하는 것이 좋습니다."],
+  [/조건을 확인해보세요\.\n\n조건을 확인해보세요\./g, "조건을 확인해보세요."],
+  [/현재 조건 기준으로 실제 예약 가능한 일정과 가격을 확인해보세요\./g, "현재 조건 기준으로 실제 예약 가능한 일정과 가격을 확인해보세요."],
+];
 
 function dedupeNonUrlLines(s: string): string {
   const lines = s.split("\n");
@@ -117,15 +123,37 @@ export function toManPriceBandFromPriceText(priceText: string): string | null {
 }
 
 export function postProcessText(text: string, type: BlogPostType): string {
+  return postProcessTextWithOptions(text, type);
+}
+
+export function postProcessTextWithOptions(
+  text: string,
+  type: BlogPostType,
+  options?: { insertCtaHelper?: boolean },
+): string {
   if (!text) return "";
 
   let result = applyBaseReplacements(text);
   result = formatWonPricesToManWon(result);
   result = softenManWonFollowup(result);
   result = applyTypeSpecific(result, type);
-  result = insertBeforeCtaHeadLines(result);
+  if (options?.insertCtaHelper !== false) {
+    result = insertBeforeCtaHeadLines(result);
+  }
   result = collapseHorizontalSpaceByLine(result);
   result = dedupeNonUrlLines(result);
+
+  return result.trim();
+}
+
+export function postProcessSingleBlogText(text: string): string {
+  let result = postProcessTextWithOptions(text, "info", { insertCtaHelper: false });
+
+  for (const [re, to] of SINGLE_POST_REPLACEMENTS) {
+    result = result.replace(re, to);
+  }
+
+  result = result.replace(/\n{3,}/g, "\n\n");
 
   return result.trim();
 }

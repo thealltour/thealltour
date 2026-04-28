@@ -44,7 +44,7 @@ function collectMeta(
     "예약 시 유의사항",
     "여행 시 유의사항",
     "환불·취소 규정",
-    "상담 안내",
+    "문의 CTA",
   );
 
   const hasStructuredTimeline = Boolean(vm.timeline && vm.timeline.days.length > 0);

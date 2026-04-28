@@ -3,23 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { BookOpen, Copy, RefreshCw, X } from "lucide-react";
 import type { BlogPostGenerateModalProps, BlogPostModalFetchState } from "./blogPostModal.types";
-import type { BlogPostApiResponse, BlogPostType, BlogPostsThreePack } from "@/lib/blog/blogPost.types";
+import type { BlogPostApiResponse } from "@/lib/blog/blogPost.types";
 import { applyBlogCtaCandidate, applyBlogTitleCandidate } from "@/lib/blog/blogPost.draftEdit";
 
 const ADMIN_EDIT_TIPS: string[] = [
-  "첫 문장(제목 후보)을 브랜드 톤에 맞게 다듬으면 읽기 흐름이 좋아질 수 있습니다.",
-  "가격·기간·포함 조건은 실제 상세페이지와 대조해 숫자·표현을 보정해 주세요.",
-  "CTA 문장은 운영 방침에 맞게 한 번 손봐도 좋습니다.",
+  "본문의 [사진 n: ...] 위치에 네이버 블로그 에디터에서 직접 이미지를 추가해 주세요.",
+  "제목은 지역·기간·가격·포함 조건이 자연스럽게 드러나도록 다듬어 주세요.",
+  "예약 유의사항과 환불 규정은 실제 상세페이지와 대조해 표현을 보정해 주세요.",
+  "CTA 문장은 현재 운영 중인 문의 방식에 맞게 마지막에 한 번 더 확인해 주세요.",
 ];
 
 const candidateBtnClass =
   "rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-sm leading-snug text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30";
-
-const BLOG_POST_TABS: { id: BlogPostType; label: string }[] = [
-  { id: "info", label: "정보형" },
-  { id: "deal", label: "특가형" },
-  { id: "compare", label: "비교형" },
-];
 
 export default function BlogPostGenerateModal({
   open,
@@ -29,8 +24,7 @@ export default function BlogPostGenerateModal({
   onCopied,
 }: BlogPostGenerateModalProps) {
   const [state, setState] = useState<BlogPostModalFetchState>({ status: "idle" });
-  const [activeType, setActiveType] = useState<BlogPostType>("info");
-  const [draftByType, setDraftByType] = useState<BlogPostsThreePack | null>(null);
+  const [draft, setDraft] = useState("");
   const [copyHint, setCopyHint] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -52,13 +46,12 @@ export default function BlogPostGenerateModal({
       }
       setState({
         status: "ok",
-        posts: data.posts,
-        metaByType: data.metaByType,
-        titleCandidatesByType: data.titleCandidatesByType,
+        post: data.post,
+        meta: data.meta,
+        titleCandidates: data.titleCandidates,
         ctaCandidates: data.ctaCandidates,
       });
-      setDraftByType(data.posts);
-      setActiveType("info");
+      setDraft(data.post);
     } catch {
       setState({ status: "error", message: "네트워크 오류로 불러오지 못했습니다." });
     }
@@ -68,8 +61,7 @@ export default function BlogPostGenerateModal({
     if (!open) {
       queueMicrotask(() => {
         setState({ status: "idle" });
-        setDraftByType(null);
-        setActiveType("info");
+        setDraft("");
         setCopyHint(null);
       });
       return;
@@ -79,14 +71,11 @@ export default function BlogPostGenerateModal({
     });
   }, [open, load]);
 
-  const currentDraft = draftByType?.[activeType] ?? "";
-
   const handleCopyBody = async () => {
-    if (state.status !== "ok" || !draftByType) return;
+    if (state.status !== "ok") return;
     try {
-      await navigator.clipboard.writeText(currentDraft);
-      const label = BLOG_POST_TABS.find((t) => t.id === activeType)?.label ?? "";
-      setCopyHint(`${label} 본문이 클립보드에 복사되었습니다.`);
+      await navigator.clipboard.writeText(draft);
+      setCopyHint("블로그 본문이 클립보드에 복사되었습니다.");
       onCopied?.();
       setTimeout(() => setCopyHint(null), 4000);
     } catch {
@@ -96,7 +85,7 @@ export default function BlogPostGenerateModal({
 
   if (!open) return null;
 
-  const meta = state.status === "ok" ? state.metaByType[activeType] : null;
+  const meta = state.status === "ok" ? state.meta : null;
 
   return (
     <div
@@ -120,7 +109,7 @@ export default function BlogPostGenerateModal({
               블로그 텍스트 생성
             </h2>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              동일 상품 기준 정보형·특가형·비교형 3종이 생성됩니다. 미리보기·HTML·Markdown은 포함되지 않습니다.
+              상품 1개 기준으로 검색 유입과 문의 전환을 함께 고려한 블로그 글 1개가 생성됩니다.
             </p>
             <p className="mt-1 truncate text-sm text-[var(--text-secondary)]" title={productTitle}>
               {productTitle || "(제목 없음)"}
@@ -170,7 +159,7 @@ export default function BlogPostGenerateModal({
                 <li>
                   현재 탭 편집 글자 수:{" "}
                   <span className="font-semibold text-[var(--text-primary)]">
-                    {currentDraft.length.toLocaleString("ko-KR")}
+                    {draft.length.toLocaleString("ko-KR")}
                   </span>
                 </li>
                 <li>
@@ -179,12 +168,12 @@ export default function BlogPostGenerateModal({
                 </li>
                 <li>일정 요약 반영: {meta.hasTimelineSummary ? "예" : "아니오(안내 위주)"}</li>
                 <li>포함·불포함 블록: {meta.hasIncludedSection ? "있음" : "생략 또는 요약만"}</li>
-                <li>유의사항 블록: 생성 본문에 포함하지 않음</li>
+                <li>유의사항 블록: {meta.hasNoticeSection ? "요약 반영" : "미반영"}</li>
               </ul>
               <p className="border-t border-[var(--border)] pt-2 text-[11px] leading-snug text-[var(--text-muted)]">
-                탭마다 톤이 다릅니다. 네이버 블로그에 붙여넣은 뒤{" "}
+                네이버 블로그에 붙여넣은 뒤{" "}
                 <span className="font-medium text-[var(--text-primary)]">1차 수정</span>을 권장합니다. 제목·CTA 후보는{" "}
-                <span className="font-medium text-[var(--text-primary)]">현재 탭</span> 본문에만 반영됩니다.
+                <span className="font-medium text-[var(--text-primary)]">현재 본문</span>에만 반영됩니다.
               </p>
               <p className="text-[11px] leading-snug text-[var(--text-secondary)]">
                 ※ 본 글은 유입용 요약입니다. 상세 조건은 반드시 링크에서 확인하세요.
@@ -193,49 +182,32 @@ export default function BlogPostGenerateModal({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                {BLOG_POST_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveType(tab.id)}
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 ${
-                      activeType === tab.id
-                        ? "border-[var(--primary)] bg-[var(--primary)]/15 text-[var(--text-primary)]"
-                        : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)]">
+                  단일 롱폼
+                </span>
                 <button
                   type="button"
                   onClick={() => void handleCopyBody()}
                   className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
                 >
                   <Copy className="h-3.5 w-3.5" aria-hidden />
-                  현재 탭 복사
+                  본문 복사
                 </button>
               </div>
 
               <div className="mb-4 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/40 p-3">
                 <div>
-                  <h4 className="text-xs font-semibold text-[var(--text-primary)]">제목 후보 (현재 탭)</h4>
+                  <h4 className="text-xs font-semibold text-[var(--text-primary)]">제목 후보</h4>
                   <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
-                    클릭 시 현재 탭 본문의 첫 줄(제목)만 바뀝니다.
+                    클릭 시 본문의 첫 줄(제목)만 바뀝니다.
                   </p>
                   <div className="mt-2 flex flex-col gap-1.5">
-                    {state.titleCandidatesByType[activeType].map((t, i) => (
+                    {state.titleCandidates.map((t, i) => (
                       <button
-                        key={`title-${activeType}-${i}-${t.slice(0, 24)}`}
+                        key={`title-${i}-${t.slice(0, 24)}`}
                         type="button"
                         className={candidateBtnClass}
-                        onClick={() =>
-                          setDraftByType((prev) =>
-                            prev
-                              ? { ...prev, [activeType]: applyBlogTitleCandidate(prev[activeType], t) }
-                              : prev,
-                          )
-                        }
+                        onClick={() => setDraft((prev) => applyBlogTitleCandidate(prev, t))}
                       >
                         {t}
                       </button>
@@ -243,9 +215,9 @@ export default function BlogPostGenerateModal({
                   </div>
                 </div>
                 <div className="border-t border-[var(--border)] pt-3">
-                  <h4 className="text-xs font-semibold text-[var(--text-primary)]">CTA 후보 (현재 탭)</h4>
+                  <h4 className="text-xs font-semibold text-[var(--text-primary)]">CTA 후보</h4>
                   <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
-                    클릭 시 본문에서 <span className="font-medium text-[var(--text-primary)]">가장 아래에 있는 👉 줄</span>이 시작하는 블록만 후보 문단(링크 포함)으로 바뀝니다. (특가형은 최종 CTA, 비교형은 비교 기준 확인 등)
+                    클릭 시 본문에서 <span className="font-medium text-[var(--text-primary)]">가장 아래에 있는 👉 줄</span>이 시작하는 블록만 후보 문단(링크 포함)으로 바뀝니다.
                   </p>
                   <div className="mt-2 flex flex-col gap-1.5">
                     {state.ctaCandidates.map((c, i) => (
@@ -253,13 +225,7 @@ export default function BlogPostGenerateModal({
                         key={`cta-${i}-${c.slice(0, 24)}`}
                         type="button"
                         className={candidateBtnClass}
-                        onClick={() =>
-                          setDraftByType((prev) =>
-                            prev
-                              ? { ...prev, [activeType]: applyBlogCtaCandidate(prev[activeType], c) }
-                              : prev,
-                          )
-                        }
+                        onClick={() => setDraft((prev) => applyBlogCtaCandidate(prev, c))}
                       >
                         {c}
                       </button>
@@ -269,15 +235,15 @@ export default function BlogPostGenerateModal({
               </div>
 
               <label className="mb-1 block text-xs font-semibold text-[var(--text-primary)]">
-                본문 — {BLOG_POST_TABS.find((t) => t.id === activeType)?.label} (직접 수정 가능)
+                본문 — 단일 롱폼 (직접 수정 가능)
               </label>
+              <p className="mb-2 text-[11px] leading-snug text-[var(--text-muted)]">
+                ※ [사진 n: ...] 줄은 네이버 블로그 작성 시 사진을 직접 넣기 위한 위치 가이드입니다.
+                게시 전 해당 줄을 삭제하거나 사진으로 대체해 주세요.
+              </p>
               <textarea
-                value={currentDraft}
-                onChange={(e) =>
-                  setDraftByType((prev) =>
-                    prev ? { ...prev, [activeType]: e.target.value } : prev,
-                  )
-                }
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
                 className="h-[min(52vh,480px)] w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3 font-sans text-sm leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap"
                 spellCheck={false}
                 aria-label="생성된 블로그 본문"
@@ -325,7 +291,7 @@ export default function BlogPostGenerateModal({
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-[var(--on-primary)] hover:opacity-90"
               >
                 <Copy className="h-4 w-4" aria-hidden />
-                현재 탭 본문 복사
+                본문 복사
               </button>
             </>
           ) : null}

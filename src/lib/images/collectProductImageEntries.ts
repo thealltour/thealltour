@@ -1,6 +1,7 @@
 import type { Product } from "@/types/product";
 import { getEventImageUrl } from "./getEventImageUrl";
 import type { ProductImageEntry } from "./imageDownload.types";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 
 function allocateEntryId(
   usedIds: Set<string>,
@@ -21,7 +22,7 @@ function allocateEntryId(
 }
 
 function addIfNew(map: Map<string, ProductImageEntry>, partial: Omit<ProductImageEntry, "id">): void {
-  const url = partial.url.trim();
+  const url = normalizeProductImageUrl(partial.url);
   if (!url || map.has(url)) return;
   const usedIds = new Set(Array.from(map.values(), (e) => e.id));
   const id = allocateEntryId(usedIds, partial);

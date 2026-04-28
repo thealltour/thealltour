@@ -5,13 +5,18 @@ import type {
   BlogPostType,
   BlogPostsThreePack,
 } from "@/lib/blog/blogPost.types";
-import { postProcessText } from "@/lib/blog/postProcessText";
+import {
+  postProcessSingleBlogText,
+  postProcessText,
+  toManPriceBandFromPriceText,
+} from "@/lib/blog/postProcessText";
 import { BLOG_SECTION_EMOJI, BLOG_BANNED_AD_PHRASES } from "@/lib/blog/blogPost.constants";
 import {
   cleanCategory,
   cleanScheduleText,
   sanitizeInlineNoise,
   stripBlogRetailNoise,
+  trimText,
 } from "@/lib/blog/blogPost.sanitize";
 
 const MAX_INCLUDED = 4;
@@ -174,15 +179,426 @@ export function buildTitleForType(vm: BlogPostViewModel, type: BlogPostType): st
 export function buildCtaCandidates(vm: BlogPostViewModel): string[] {
   const url = buildProductUrl(vm);
   return [
-    scrubAdTone(`아래 링크에서 실제 조건을 확인해보시는 것을 추천드립니다.\n\n${url}`),
-    scrubAdTone(`포함 사항과 일정은 아래 링크에서 확인 가능합니다.\n\n${url}`),
-    scrubAdTone(`상품 상세와 문의는 아래 링크에서 확인 가능합니다.\n\n${url}`),
+    scrubAdTone(`지금 출발 가능한 일정과 가격을 아래 링크에서 확인해보세요.\n\n${url}`),
+    scrubAdTone(`포함 사항과 실제 예약 가능 조건을 아래 링크에서 확인해보세요.\n\n${url}`),
+    scrubAdTone(`상품 상세와 문의 전 확인할 조건을 아래 링크에서 먼저 살펴보세요.\n\n${url}`),
   ];
 }
 
 /** 첫 줄: 정보형 제목 후보 1번 (SEO 패턴) */
 export function buildBlogTitleLine(vm: BlogPostViewModel): string {
   return buildTitleForType(vm, "info");
+}
+
+function buildBlogMeta(
+  vm: BlogPostViewModel,
+  text: string,
+  sectionCount: number,
+  options?: {
+    hasTimelineSummary?: boolean;
+    hasIncludedSection?: boolean;
+    hasNoticeSection?: boolean;
+  },
+): BlogPostBuildMeta {
+  const firstBodyLine = text.split(/\n/).find((l) => l.trim().length > 0) ?? "";
+  return {
+    title: sanitizeInlineNoise(firstBodyLine),
+    characterCount: text.length,
+    sectionCount,
+    hasTimelineSummary: options?.hasTimelineSummary ?? false,
+    hasIncludedSection: options?.hasIncludedSection ?? false,
+    hasNoticeSection: options?.hasNoticeSection ?? false,
+  };
+}
+
+function buildSingleTitleBlock(vm: BlogPostViewModel): string {
+  const [first] = buildSingleTitleCandidates(vm);
+  return first ?? buildTitleForType(vm, "info");
+}
+
+function buildPhotoGuideLine(index: number, label: string): string {
+  return `[사진 ${index}: ${label}]`;
+}
+
+function suggestPhotoLabelFromText(text: string): string {
+  if (/바나힐|banahill|bana hill/i.test(text)) {
+    return "바나힐 테마파크 또는 골든브릿지 이미지";
+  }
+
+  if (/마블|오행산|마블\s*마운틴/i.test(text)) {
+    return "마블 마운틴(오행산) 또는 다낭 시내 관광 이미지";
+  }
+
+  if (/골프|라운딩|tee|티오프/i.test(text)) {
+    return "골프 라운딩 또는 골프장 전경 이미지";
+  }
+
+  if (/해변|비치|바다|리조트/i.test(text)) {
+    return "미케비치 또는 리조트/해변 이미지";
+  }
+
+  return "여행지 대표 이미지";
+}
+
+function buildDynamicPhotoGuideLine(
+  index: number,
+  vm: BlogPostViewModel,
+  context: "hero" | "schedule" | "highlight" | "cta",
+): string {
+  if (context === "hero") {
+    const region = vm.regionText?.trim() || seoDisplayRegion(vm) || "여행지";
+    return buildPhotoGuideLine(index, `${region} 대표 이미지 또는 호텔/전경 이미지`);
+  }
+
+  if (context === "schedule") {
+    const dayText =
+      vm.timeline?.days
+        ?.map((d) => [d.title, d.events?.[0]?.heading, d.events?.[0]?.description].filter(Boolean).join(" "))
+        .join(" ") ?? "";
+    return buildPhotoGuideLine(index, suggestPhotoLabelFromText(dayText));
+  }
+
+  if (context === "highlight") {
+    const highlightText = [
+      vm.title,
+      vm.oneLiner,
+      ...vm.recommendedTargetLines,
+      ...vm.includedLines.slice(0, 3),
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return buildPhotoGuideLine(index, suggestPhotoLabelFromText(highlightText));
+  }
+
+  const region = vm.regionText?.trim() || seoDisplayRegion(vm) || "여행지";
+  return buildPhotoGuideLine(index, `${region} 여행 분위기 또는 상담 유도 이미지`);
+}
+
+export function buildSingleTitleCandidates(vm: BlogPostViewModel): string[] {
+  const region = seoDisplayRegion(vm);
+  const duration = durationForTitle(vm);
+  const priceBand = toManPriceBandFromPriceText(vm.priceText);
+  const base = duration ? `${region} 여행 ${duration}` : `${region} 여행`;
+
+  const raw = [
+    priceBand ? `${base} ${priceBand}, 포함 조건까지 보면 괜찮을까요?` : "",
+    `${base} 패키지, 가격보다 먼저 봐야 할 포함 조건`,
+    `${base} 상품 비교 전 확인할 일정·포함 조건`,
+    ...buildTitleCandidates(vm),
+  ]
+    .filter((part) => part.length > 0)
+    .map((title) => scrubAdTone(title.replace(/\s{2,}/g, " ").trim()))
+    .filter(Boolean);
+
+  return [...new Set(raw)].slice(0, 4);
+}
+
+function buildSingleSearchLeadBlock(vm: BlogPostViewModel): string {
+  const region = seoDisplayRegion(vm);
+
+  return `${region} 상품을 찾다 보면 가격만 보고 판단하기 어려운 경우가 많습니다.
+
+특히 저렴해 보이는 상품일수록
+포함 조건, 일정 흐름, 현지 추가 비용을 함께 확인해야 실제 조건을 판단하기 좋습니다.
+
+이번 글에서는 주요 조건을 기준으로 한 번에 정리해보겠습니다.`;
+}
+
+function buildSingleSummaryBlock(vm: BlogPostViewModel): string {
+  const lines: string[] = [];
+  const region = seoDisplayRegion(vm);
+  if (region && region !== "여행") lines.push(`✔ 지역: ${region}`);
+  if (vm.durationText?.trim()) lines.push(`✔ 기간: ${vm.durationText.trim()}`);
+  if (vm.priceText?.trim()) lines.push(`✔ 가격대: ${vm.priceText.trim()}`);
+  if (vm.minDeparturePeopleText?.trim()) {
+    lines.push(`✔ 출발 인원: ${vm.minDeparturePeopleText.trim()}`);
+  }
+
+  const includedPreview = vm.includedLines
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(" · ");
+
+  if (includedPreview) {
+    lines.push(`✔ 포함 요약: ${includedPreview}`);
+  }
+
+  if (vm.optionalLines.length > 0 || vm.excludedLines.length > 0) {
+    lines.push("✔ 확인 포인트: 불포함 항목·선택 관광 여부");
+  }
+
+  if (lines.length === 0) return "";
+
+  return `핵심 조건 요약
+
+${lines.join("\n")}`;
+}
+
+function buildSinglePriceJudgmentBlock(vm: BlogPostViewModel): string {
+  const priceLead = vm.priceText?.trim()
+    ? `${vm.priceText.trim()} 기준으로 보더라도 포함 조건을 함께 살펴보는 것이 중요합니다.`
+    : "패키지 여행은 가격보다 포함 범위를 함께 보는 것이 중요합니다.";
+  return `이 가격대라면 무엇을 봐야 할까요?
+
+${priceLead}
+
+같은 일정이라도 항공, 숙박, 관광 포함 여부에 따라
+실제 체감 비용은 크게 달라질 수 있습니다.
+
+이 가격대에서는 포함 조건에 따라 실제 비용 차이가 크게 날 수 있는 구간입니다.`;
+}
+
+function summarizeScheduleDay(text: string): string {
+  const t = cleanScheduleText(text);
+
+  if (!t) return "세부 일정은 상세페이지에서 확인하는 것이 좋습니다.";
+  if (/공항|도착|출국|입국|항공|체크인/.test(t)) {
+    return "이동, 도착, 체크인 중심의 일정으로 볼 수 있습니다.";
+  }
+  if (/바나힐|바나\s*힐|banahill|bana hill/i.test(t)) {
+    return "바나힐 테마파크 일정이 포함되어 다낭 여행에서 많이 찾는 관광 포인트를 경험할 수 있습니다.";
+  }
+  if (/마블|오행산|마블\s*마운틴/i.test(t)) {
+    return "마블 마운틴(오행산) 등 다낭 주요 관광 일정이 포함될 수 있습니다.";
+  }
+  if (/골프|라운드|라운딩|tee|티오프|cc/i.test(t)) {
+    return "골프 라운딩 중심 일정이 포함될 수 있습니다.";
+  }
+  if (/관광|투어|시내|방문|탐방/.test(t)) {
+    return "주요 관광지 방문 또는 현지 투어 일정이 포함될 수 있습니다.";
+  }
+  if (/자유|휴식|리조트|스파|마사지|해변|비치/.test(t)) {
+    return "자유시간 또는 휴양 중심 일정으로 구성될 수 있습니다.";
+  }
+
+  const trimmed = trimText(t, 80);
+  return trimmed.endsWith("입니다.") || trimmed.endsWith("습니다.")
+    ? trimmed
+    : `${trimmed} 일정이 포함될 수 있습니다.`;
+}
+
+function buildScheduleSectionV2(vm: BlogPostViewModel): string {
+  const days = vm.timeline?.days ?? [];
+  if (days.length === 0) {
+    return `일정은 어떻게 구성되나요?
+
+구조화된 일정 정보가 부족해 상세 일정은 상품 페이지에서 확인하는 것이 좋습니다.`;
+  }
+
+  const lines = days.slice(0, 5).map((day) => {
+    const title = day.title?.trim();
+    const firstEvent = day.events?.[0];
+    const eventText = [firstEvent?.heading, firstEvent?.description]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    const summary = summarizeScheduleDay(eventText);
+
+    return title
+      ? `${day.day}일차 - ${title}\n${summary}`
+      : `${day.day}일차\n${summary}`;
+  });
+
+  const more =
+    days.length > 5
+      ? `\n\n전체 ${days.length}일 일정 중 주요 흐름만 요약했습니다.`
+      : "";
+
+  return `일정은 어떻게 구성되나요?
+
+${lines.join("\n\n")}${more}
+
+정확한 일정 순서와 세부 내용은 출발일, 항공, 현지 상황에 따라 달라질 수 있습니다.`;
+}
+
+function buildIncludedExcludedJudgmentSection(vm: BlogPostViewModel): string {
+  const chunks: string[] = [];
+
+  if (vm.includedLines.length > 0) {
+    chunks.push(`포함 항목 일부:\n${vm.includedLines.slice(0, 4).map((l) => `• ${l}`).join("\n")}`);
+  }
+
+  if (vm.excludedLines.length > 0) {
+    chunks.push(`불포함 항목 일부:\n${vm.excludedLines.slice(0, 4).map((l) => `• ${l}`).join("\n")}`);
+  }
+
+  if (vm.optionalLines.length > 0) {
+    chunks.push("선택 관광이나 옵션은 별도 비용이 발생할 수 있으니, 실제 예약 전 함께 확인하는 것이 좋습니다.");
+  }
+
+  if (chunks.length === 0) return "";
+
+  return `포함·불포함 조건은 어떤가요?
+
+패키지 여행은 표시 가격만으로 판단하기보다 포함 범위를 함께 보는 것이 중요합니다.
+
+${chunks.join("\n\n")}
+
+같은 기간의 상품이라도 포함 항목과 현지 추가 비용에 따라 실제 체감 가격은 달라질 수 있습니다.`;
+}
+
+function groupNoticeMarkerLines(lines: string[]): string[] {
+  const result: string[] = [];
+  let pendingMarker = "";
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    if (/^[①②③④⑤⑥⑦⑧⑨⑩]$/.test(line)) {
+      pendingMarker = line;
+      continue;
+    }
+
+    if (pendingMarker) {
+      result.push(`${pendingMarker} ${line}`);
+      pendingMarker = "";
+      continue;
+    }
+
+    result.push(line);
+  }
+
+  if (pendingMarker) result.push(pendingMarker);
+
+  return result;
+}
+
+function buildConceptTargetSection(vm: BlogPostViewModel): string {
+  const concept = vm.concept ?? "일반";
+
+  const map = {
+    효도여행: `이 상품은 부모님과 함께하는 여행을 고려하는 분들이라면 조건을 확인해볼 만합니다.
+
+부모님 여행은 가격보다 이동 동선, 식사, 숙소, 일정 강도가 중요합니다.
+예약 전에는 출발일과 인원뿐 아니라 부모님 연령대와 이동 부담까지 함께 상담받아보시는 것이 좋습니다.`,
+
+    가족여행: `가족여행은 인원 구성에 따라 조건 확인이 달라집니다.
+
+아이 동반 여부, 객실 구성, 자유시간, 선택 관광 여부를 함께 보는 것이 좋습니다.
+가족 단위라면 출발일과 객실 가능 여부를 먼저 확인해보시는 것을 추천드립니다.`,
+
+    골프: `골프여행은 일반 패키지보다 확인할 항목이 더 많습니다.
+
+라운딩 횟수, 골프장 위치, 이동 시간, 티오프 조건에 따라 만족도가 달라질 수 있습니다.
+동반 인원과 희망 일정이 있다면 먼저 상담으로 가능 여부를 확인하는 것이 좋습니다.`,
+
+    휴양: `휴양 목적이라면 일정이 너무 빡빡하지 않은지 확인하는 것이 중요합니다.
+
+리조트 이용 시간, 자유시간, 이동 거리, 선택 관광 여부를 함께 보면
+실제 여행 만족도를 더 정확히 판단할 수 있습니다.`,
+
+    일반: `이 상품은 일정과 포함 조건을 기준으로 비교해볼 만한 여행 상품입니다.
+
+출발일, 인원, 포함 범위에 따라 최종 조건은 달라질 수 있으니
+상세페이지에서 조건을 확인한 뒤 문의로 이어가는 것이 좋습니다.`,
+  } as const;
+
+  return `이 상품은 어떤 분께 맞을까요?
+
+${map[concept]}`;
+}
+
+function buildConversionConclusionBlock(): string {
+  return "조건을 기준으로 보면 가성비를 확인해볼 만한 상품으로 볼 수 있습니다.";
+}
+
+function buildMidCtaSection(vm: BlogPostViewModel): string {
+  const url = buildProductUrl(vm);
+
+  return `👉 지금 출발 가능한 일정 확인하기
+
+현재 조건 기준으로 실제 예약 가능한 일정과 가격을 확인해보세요.
+
+${url}`;
+}
+
+function buildBookingNoticeSummarySection(vm: BlogPostViewModel): string {
+  const bookingConditions = groupNoticeMarkerLines(vm.bookingConditionLines);
+  const bookingNotes = groupNoticeMarkerLines(vm.bookingNotesLines);
+  const hasRefund = vm.refundPolicyLines.length > 0;
+  const chunks: string[] = [];
+
+  const hasEarlyTicketNotice = bookingNotes.some((line) =>
+    /선발권|발권|특가/i.test(line),
+  );
+
+  if (bookingConditions.length > 0) {
+    chunks.push(
+      `예약 조건은 출발일과 좌석 상황에 따라 달라질 수 있습니다.\n${bookingConditions
+        .slice(0, 2)
+        .map((l) => `• ${l}`)
+        .join("\n")}`,
+    );
+  }
+
+  if (hasEarlyTicketNotice) {
+    chunks.push(
+      "이 상품은 선발권 특가 조건이 포함될 수 있어 예약 가능 여부와 발권 조건을 먼저 확인하는 것이 좋습니다.",
+    );
+    chunks.push(
+      "특히 선발권 조건이 포함된 경우 일정 변경이나 환불 조건을 꼭 확인하셔야 합니다.",
+    );
+  } else if (bookingNotes.length > 0) {
+    chunks.push(
+      `예약 시 유의사항은 상품 조건에 따라 달라질 수 있습니다.\n${bookingNotes
+        .slice(0, 2)
+        .map((l) => `• ${l}`)
+        .join("\n")}`,
+    );
+  }
+
+  if (hasRefund) {
+    chunks.push("환불·취소 규정은 출발일 기준으로 달라질 수 있으니 상세 안내를 확인하는 것이 좋습니다.");
+  }
+
+  if (chunks.length === 0) {
+    return `예약 전 체크할 점
+
+출발일, 좌석, 객실, 현지 일정은 시점에 따라 달라질 수 있습니다.
+예약 전에는 상세페이지와 상담을 통해 최종 조건을 확인해 주세요.`;
+  }
+
+  return `예약 전 체크할 점
+
+${chunks.join("\n\n")}
+
+최종 예약 전에는 출발 가능 여부와 세부 조건을 한 번 더 확인하는 것이 좋습니다.`;
+}
+
+function buildFinalCtaSection(vm: BlogPostViewModel): string {
+  const url = buildProductUrl(vm);
+
+  return `👉 현재 출발 가능 여부 / 가격 확인하기
+
+출발일, 좌석, 객실 상황에 따라 최종 조건은 달라질 수 있습니다.
+
+아래 링크에서 상품 상세를 확인하신 뒤
+궁금한 점은 홈페이지 문의로 남겨주시면 안내받으실 수 있습니다.
+
+${url}`;
+}
+
+function buildSingleBlogPostBlocks(vm: BlogPostViewModel): string[] {
+  return [
+    buildSingleTitleBlock(vm),
+    buildSingleSearchLeadBlock(vm),
+    buildDynamicPhotoGuideLine(1, vm, "hero"),
+    buildSingleSummaryBlock(vm),
+    buildSinglePriceJudgmentBlock(vm),
+    buildDynamicPhotoGuideLine(2, vm, "schedule"),
+    buildScheduleSectionV2(vm),
+    buildIncludedExcludedJudgmentSection(vm),
+    buildDynamicPhotoGuideLine(3, vm, "highlight"),
+    buildConceptTargetSection(vm),
+    buildConversionConclusionBlock(),
+    buildMidCtaSection(vm),
+    buildBookingNoticeSummarySection(vm),
+    buildDynamicPhotoGuideLine(4, vm, "cta"),
+    buildFinalCtaSection(vm),
+  ].filter((block): block is string => typeof block === "string" && block.trim().length > 0);
 }
 
 /** PR-BLOG-8: 도입 후킹 (상단 훅과 이어지는 톤) */
@@ -414,7 +830,6 @@ export function buildBlogPostBuildResultForType(
   const blocks = buildRawBlocksForType(vm, type);
   const rawText = blocks.map(polishSectionBlock).join("\n\n");
   const text = postProcessText(rawText, type);
-  const firstBodyLine = text.split(/\n/).find((l) => l.trim().length > 0) ?? "";
   const hasTimelineDays = vm.timeline.days.length > 0;
   const scheduleText = buildScheduleSection(vm);
   const hasTimelineSummary =
@@ -425,20 +840,38 @@ export function buildBlogPostBuildResultForType(
     (type === "info" || type === "compare") &&
     (vm.includedLines.length > 0 || vm.excludedLines.length > 0 || vm.optionalLines.length > 0);
 
-  const meta: BlogPostBuildMeta = {
-    title: sanitizeInlineNoise(firstBodyLine),
-    characterCount: text.length,
-    sectionCount: blocks.filter((b) => b.trim()).length,
+  const meta = buildBlogMeta(vm, text, blocks.filter((b) => b.trim()).length, {
     hasTimelineSummary,
     hasIncludedSection,
     hasNoticeSection: false,
-  };
+  });
 
   return {
     text,
     meta,
     titleCandidates: buildTitleCandidatesForType(vm, type).map((c) => postProcessText(c, type)),
     ctaCandidates: buildCtaCandidates(vm).map((c) => postProcessText(c, type)),
+  };
+}
+
+export function buildSingleBlogPostWithMeta(vm: BlogPostViewModel): BlogPostBuildResult {
+  const blocks = buildSingleBlogPostBlocks(vm);
+  const rawText = blocks.map(polishSectionBlock).join("\n\n");
+  const text = postProcessSingleBlogText(rawText);
+  const bookingNoticeText = buildBookingNoticeSummarySection(vm);
+  const meta = buildBlogMeta(vm, text, blocks.length, {
+    hasTimelineSummary: (vm.timeline?.days?.length ?? 0) > 0,
+    hasIncludedSection:
+      vm.includedLines.length > 0 || vm.excludedLines.length > 0 || vm.optionalLines.length > 0,
+    hasNoticeSection: bookingNoticeText.trim().length > 0,
+  });
+  meta.hasPhotoGuide = text.includes("[사진 ");
+
+  return {
+    text,
+    meta,
+    titleCandidates: buildSingleTitleCandidates(vm).map((c) => postProcessText(c, "info")),
+    ctaCandidates: buildCtaCandidates(vm).map((c) => postProcessText(c, "info")),
   };
 }
 
@@ -492,4 +925,8 @@ export function buildBlogPostWithMeta(vm: BlogPostViewModel): BlogPostBuildResul
 
 export function buildBlogPostText(vm: BlogPostViewModel, type: BlogPostType = "info"): string {
   return buildBlogPostBuildResultForType(vm, type).text;
+}
+
+export function buildSingleBlogPostText(vm: BlogPostViewModel): string {
+  return buildSingleBlogPostWithMeta(vm).text;
 }

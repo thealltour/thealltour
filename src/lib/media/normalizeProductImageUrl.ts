@@ -33,6 +33,17 @@ function toModetourHighResUrl(url: string): string {
   }
 }
 
+/** Supabase render/image URL이면 원본 object/public URL로 되돌림 (다운로드/원본 노출용). */
+function toSupabaseOriginalObjectUrl(url: string): string {
+  const trimmed = url.trim();
+  const match = trimmed.match(
+    /^(https?:\/\/[^/]+)\/storage\/v1\/render\/image\/public\/([^/]+)\/([^?]+)(?:\?.*)?$/,
+  );
+  if (!match) return url;
+  const [, host, bucket, objectPath] = match;
+  return `${host}/storage/v1/object/public/${bucket}/${objectPath}`;
+}
+
 function toSupabaseRenderUrl(url: string, options?: ImageTransformOptions): string {
   const enableRender = process.env.NEXT_PUBLIC_ENABLE_SUPABASE_RENDER === "true";
   if (!enableRender) return url;
@@ -61,6 +72,7 @@ export function normalizeProductImageUrl(
 ): string {
   if (!url?.trim()) return "";
   let normalized = url.trim();
+  normalized = toSupabaseOriginalObjectUrl(normalized);
   normalized = toModetourHighResUrl(normalized);
   return toSupabaseRenderUrl(normalized, options);
 }

@@ -1,4 +1,4 @@
-import type { BlogPostBuildMeta, BlogPostType, BlogPostsThreePack } from "@/lib/blog/blogPost.types";
+import type { BlogPostBuildMeta } from "@/lib/blog/blogPost.types";
 
 export type BlogPostGenerateModalProps = {
   open: boolean;
@@ -14,8 +14,8 @@ export type BlogPostModalFetchState =
   | { status: "error"; message: string }
   | {
       status: "ok";
-      posts: BlogPostsThreePack;
-      metaByType: Record<BlogPostType, BlogPostBuildMeta>;
-      titleCandidatesByType: Record<BlogPostType, string[]>;
+      post: string;
+      meta: BlogPostBuildMeta;
+      titleCandidates: string[];
       ctaCandidates: string[];
     };

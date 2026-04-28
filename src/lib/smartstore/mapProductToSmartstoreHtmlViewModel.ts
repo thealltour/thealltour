@@ -34,6 +34,8 @@ function refineTimelineForSmartstore(model: TimelineModel): TimelineModel {
         const description = ev.description?.trim()
           ? sanitizeSmartstoreUserText(ev.description.trim())
           : ev.description;
+        const thumbnailRaw = ev.thumbnailUrl?.trim();
+        const thumbnailUrl = thumbnailRaw ? toSmartstoreImageUrl(thumbnailRaw) : "";
         const images = (ev.images ?? [])
           .map((im) => {
             const url = typeof im?.url === "string" ? im.url.trim() : "";
@@ -47,6 +49,7 @@ function refineTimelineForSmartstore(model: TimelineModel): TimelineModel {
           ...ev,
           heading,
           description,
+          thumbnailUrl: thumbnailUrl || undefined,
           images: images.length > 0 ? images : undefined,
         };
       });
@@ -59,6 +62,46 @@ function refineTimelineForSmartstore(model: TimelineModel): TimelineModel {
       };
     }),
   };
+}
+
+function detectConcept(product: Product): SmartstoreHtmlViewModel["concept"] {
+  const text = [
+    product.title,
+    ...(product.tags ?? []),
+    ...(product.highlights ?? []),
+    product.category,
+    product.theme,
+    product.description,
+    product.one_liner,
+    product.meta_title,
+    product.meta_description,
+    product.overview_region,
+    product.travelStyle,
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .toLowerCase();
+
+  const includesAny = (keywords: string[]) => keywords.some((keyword) => text.includes(keyword));
+
+  if (
+    includesAny(["골프", "라운딩", "라운드", "cc", "컨트리클럽", "티오프", "tee", "fairway"])
+  ) {
+    return "골프";
+  }
+  if (
+    includesAny(["효도", "부모님", "어르신", "시니어", "50대", "60대", "70대", "가정의 달"])
+  ) {
+    return "효도여행";
+  }
+  if (includesAny(["가족", "아이", "아동", "어린이", "키즈", "3대", "동반"])) {
+    return "가족여행";
+  }
+  if (includesAny(["휴양", "리조트", "풀빌라", "호캉스", "해변", "비치", "스파", "마사지"])) {
+    return "휴양";
+  }
+
+  return "일반";
 }
 
 /**
@@ -84,30 +127,7 @@ export function mapProductToSmartstoreHtmlViewModel(
 
   const timelineBase = mapProductToTimelineModel(product);
   const timelineSanitized = refineTimelineForSmartstore(timelineBase);
-  const seenGallery = new Set<string>([...galleryImageUrls, heroImageUrl].filter(Boolean));
-  const itineraryExtras: string[] = [];
-  for (const day of timelineSanitized.days.slice(0, 2)) {
-    if (itineraryExtras.length >= 2) break;
-    const dayUrl = day.imageUrl?.trim();
-    if (dayUrl && !seenGallery.has(dayUrl)) {
-      seenGallery.add(dayUrl);
-      itineraryExtras.push(dayUrl);
-    }
-    for (const ev of day.events ?? []) {
-      if (itineraryExtras.length >= 2) break;
-      const imgs = ev.images ?? [];
-      for (const im of imgs) {
-        const u = typeof im.url === "string" ? im.url.trim() : "";
-        if (u && !seenGallery.has(u)) {
-          seenGallery.add(u);
-          itineraryExtras.push(u);
-          break;
-        }
-      }
-    }
-  }
-
-  const allGallery = [...galleryImageUrls, ...itineraryExtras].slice(0, 6);
+  const allGallery = [...galleryImageUrls].slice(0, 4);
 
   const oneLinerRaw =
     product.one_liner?.trim() ||
@@ -125,6 +145,7 @@ export function mapProductToSmartstoreHtmlViewModel(
     productId: product.id,
     title: title || "상품",
     oneLiner,
+    concept: detectConcept(product),
     heroImageUrl,
     galleryImageUrls: allGallery,
     priceText: formatPriceKR(product.price),

@@ -50,6 +50,46 @@ function cleanBulletLine(line: string): string {
   return stripBlogRetailNoise(sanitizeInlineNoise(cleanScheduleText(line.trim()))).trim();
 }
 
+function detectConcept(product: Product): BlogPostViewModel["concept"] {
+  const text = [
+    product.title,
+    ...(product.tags ?? []),
+    ...(product.highlights ?? []),
+    product.category,
+    product.theme,
+    product.description,
+    product.one_liner,
+    product.meta_title,
+    product.meta_description,
+    product.overview_region,
+    product.travelStyle,
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .toLowerCase();
+
+  const includesAny = (keywords: string[]) => keywords.some((keyword) => text.includes(keyword));
+
+  if (
+    includesAny(["골프", "라운딩", "라운드", "cc", "컨트리클럽", "티오프", "tee", "fairway"])
+  ) {
+    return "골프";
+  }
+  if (
+    includesAny(["효도", "부모님", "어르신", "시니어", "50대", "60대", "70대", "가정의 달"])
+  ) {
+    return "효도여행";
+  }
+  if (includesAny(["가족", "아이", "아동", "어린이", "키즈", "3대", "동반"])) {
+    return "가족여행";
+  }
+  if (includesAny(["휴양", "리조트", "풀빌라", "호캉스", "해변", "비치", "스파", "마사지"])) {
+    return "휴양";
+  }
+
+  return "일반";
+}
+
 /** 최대 3개, 근거가 약하면 생략 */
 function deriveRecommendedTargets(vm: {
   durationText: string;
@@ -135,6 +175,7 @@ export function mapProductToBlogPostViewModel(
     productId: product.id,
     title: cleanProductTitle(product.title),
     oneLiner,
+    concept: detectConcept(product),
     priceText: formatPriceKR(product.price),
     durationText,
     regionText,

@@ -6,6 +6,7 @@ export type SmartstoreHtmlViewModel = {
   productId: string;
   title: string;
   oneLiner: string;
+  concept?: "효도여행" | "가족여행" | "골프" | "휴양" | "일반";
   heroImageUrl: string;
   /** 대표 외 갤러리(정규화 URL, 중복 제거) */
   galleryImageUrls: string[];

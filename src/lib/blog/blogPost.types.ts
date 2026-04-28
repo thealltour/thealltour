@@ -2,6 +2,7 @@ import type { TimelineModel } from "@/lib/products/mapProductToTimelineModel";
 
 /** PR-BLOG-9: 동일 상품 기준 3종 톤(정보형 / 특가형 / 비교형) */
 export type BlogPostType = "info" | "deal" | "compare";
+export type BlogPostVariant = "single" | BlogPostType;
 
 export type BlogPostsThreePack = Record<BlogPostType, string>;
 
@@ -13,6 +14,7 @@ export type BlogPostViewModel = {
   productId: string;
   title: string;
   oneLiner: string;
+  concept?: "효도여행" | "가족여행" | "골프" | "휴양" | "일반";
   priceText: string;
   durationText: string;
   regionText?: string;
@@ -49,6 +51,7 @@ export type BlogPostBuildMeta = {
   hasTimelineSummary: boolean;
   hasIncludedSection: boolean;
   hasNoticeSection: boolean;
+  hasPhotoGuide?: boolean;
 };
 
 export type BlogPostBuildResult = {
@@ -58,12 +61,23 @@ export type BlogPostBuildResult = {
   ctaCandidates: string[];
 };
 
+export type BlogPostSingleResponse = {
+  post: string;
+  meta: BlogPostBuildMeta;
+  titleCandidates: string[];
+  ctaCandidates: string[];
+};
+
 export type BlogPostApiResponse =
   | {
       ok: true;
-      posts: BlogPostsThreePack;
-      metaByType: Record<BlogPostType, BlogPostBuildMeta>;
-      titleCandidatesByType: Record<BlogPostType, string[]>;
+      post: string;
+      meta: BlogPostBuildMeta;
+      titleCandidates: string[];
       ctaCandidates: string[];
+      /** 하위호환용 legacy fields */
+      posts?: BlogPostsThreePack;
+      metaByType?: Record<BlogPostType, BlogPostBuildMeta>;
+      titleCandidatesByType?: Record<BlogPostType, string[]>;
     }
   | { ok: false; message: string };

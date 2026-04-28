@@ -3,7 +3,7 @@ import { requireAdminSession } from "@/lib/apiAuth";
 import { getProductByIdFresh } from "@/lib/products";
 import { resolveProductNoticesForDetailPage } from "@/lib/noticeTemplates";
 import { mapProductToBlogPostViewModel } from "@/lib/blog/mapProductToBlogPostViewModel";
-import { buildBlogPostBundle } from "@/lib/blog/buildBlogPostText";
+import { buildBlogPostBundle, buildSingleBlogPostWithMeta } from "@/lib/blog/buildBlogPostText";
 import type { BlogPostApiResponse } from "@/lib/blog/blogPost.types";
 
 export async function GET(
@@ -29,9 +29,19 @@ export async function GET(
 
     const notices = await resolveProductNoticesForDetailPage(product);
     const vm = mapProductToBlogPostViewModel(product, notices);
+    const single = buildSingleBlogPostWithMeta(vm);
     const bundle = buildBlogPostBundle(vm);
 
-    return NextResponse.json({ ok: true, ...bundle });
+    return NextResponse.json({
+      ok: true,
+      post: single.text,
+      meta: single.meta,
+      titleCandidates: single.titleCandidates,
+      ctaCandidates: single.ctaCandidates,
+      posts: bundle.posts,
+      metaByType: bundle.metaByType,
+      titleCandidatesByType: bundle.titleCandidatesByType,
+    });
   } catch (e) {
     console.error("[api/admin/products/[id]/blog-post]", e);
     return NextResponse.json(

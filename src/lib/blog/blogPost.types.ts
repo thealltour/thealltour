@@ -81,3 +81,56 @@ export type BlogPostApiResponse =
       titleCandidatesByType?: Record<BlogPostType, string[]>;
     }
   | { ok: false; message: string };
+
+export type BandHookBuildMeta = {
+  title: string;
+  characterCount: number;
+  lineCount: number;
+  hasPrice: boolean;
+  hasScheduleKeyword: boolean;
+  hasTargetKeyword: boolean;
+  hasProductLink?: boolean;
+};
+
+export type BandHookBuildResult = {
+  text: string;
+  meta: BandHookBuildMeta;
+  hookCandidates: string[];
+};
+
+export type BandHookApiResponse =
+  | {
+      ok: true;
+      text: string;
+      meta: BandHookBuildMeta;
+      hookCandidates: string[];
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+export type KakaoPostBuildMeta = {
+  characterCount: number;
+  lineCount: number;
+  hasPrice: boolean;
+  hasTarget: boolean;
+};
+
+export type KakaoPostBuildResult = {
+  text: string;
+  hookCandidates: string[];
+  meta: KakaoPostBuildMeta;
+};
+
+export type KakaoPostApiResponse =
+  | {
+      ok: true;
+      text: string;
+      hookCandidates: string[];
+      meta: KakaoPostBuildMeta;
+    }
+  | {
+      ok: false;
+      message: string;
+    };

@@ -9,6 +9,8 @@ export type DownloadProductImagesOptions = {
   format?: ImageOutputFormat;
   /** JPG 전용. 미지정 시 0.92, 적용 시 0.1~1.0 clamp */
   quality?: number;
+  /** 이미지 1장당 최대 바이트 수. 초과 시 자동 압축/리사이즈 시도 */
+  maxBytesPerImage?: number;
   zipName?: string;
   /** 기본 `detailed` */
   namingMode?: ImageFileNamingMode;
@@ -17,6 +19,8 @@ export type DownloadProductImagesOptions = {
 export type ConvertImageToBlobOptions = {
   format?: ImageOutputFormat;
   quality?: number;
+  /** 이미지 1장당 최대 바이트 수. 초과 시 자동 압축/리사이즈 시도 */
+  maxBytesPerImage?: number;
   /** JPG 합성 시 알파 제거용 배경 (기본 흰색) */
   backgroundColor?: string;
 };

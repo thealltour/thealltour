@@ -75,6 +75,8 @@ import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTa
 import AdminProductListSection from "@/components/admin/products/AdminProductListSection";
 import SmartstoreHtmlGenerateModal from "@/components/admin/products/modals/SmartstoreHtmlGenerateModal";
 import BlogPostGenerateModal from "@/components/admin/products/modals/BlogPostGenerateModal";
+import BandHookGenerateModal from "@/components/admin/products/modals/BandHookGenerateModal";
+import KakaoPostGenerateModal from "@/components/admin/products/modals/KakaoPostGenerateModal";
 import { FlyerGenerateModal } from "@/components/admin/products/modals/FlyerGenerateModal";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
@@ -349,6 +351,10 @@ export default function AdminProductManager() {
   const [smartstoreHtmlProduct, setSmartstoreHtmlProduct] = useState<Product | null>(null);
   const [blogPostModalOpen, setBlogPostModalOpen] = useState(false);
   const [blogPostProduct, setBlogPostProduct] = useState<Product | null>(null);
+  const [bandHookModalOpen, setBandHookModalOpen] = useState(false);
+  const [bandHookProduct, setBandHookProduct] = useState<Product | null>(null);
+  const [kakaoModalOpen, setKakaoModalOpen] = useState(false);
+  const [kakaoProduct, setKakaoProduct] = useState<Product | null>(null);
   const [flyerModalOpen, setFlyerModalOpen] = useState(false);
   const [flyerProduct, setFlyerProduct] = useState<Product | null>(null);
   const [pendingDownloadId, setPendingDownloadId] = useState<string | null>(null);
@@ -496,14 +502,17 @@ export default function AdminProductManager() {
     setZipDownloadModalOpen(true);
 
     const fmtLabel =
-      (options.format ?? "png") === "jpg"
-        ? `JPG, 품질 ${(options.quality ?? 0.92).toFixed(1)}`
-        : "PNG";
+      (options.format ?? IMAGE_DOWNLOAD_OPTION_FALLBACK.format) === "jpg"
+        ? `JPG, 품질 ${(options.quality ?? IMAGE_DOWNLOAD_OPTION_FALLBACK.quality).toFixed(2)}${
+            options.maxBytesPerImage ? `, ${Math.round(options.maxBytesPerImage / (1024 * 1024))}MB 자동 보정` : ""
+          }`
+        : `PNG${options.maxBytesPerImage ? `, ${Math.round(options.maxBytesPerImage / (1024 * 1024))}MB 자동 보정` : ""}`;
 
     try {
       const result = await downloadProductImagesAsZip(product, {
-        format: options.format ?? "png",
+        format: options.format ?? IMAGE_DOWNLOAD_OPTION_FALLBACK.format,
         quality: options.quality,
+        maxBytesPerImage: options.maxBytesPerImage,
         namingMode: options.namingMode ?? "detailed",
         onProgress: setDownloadProgress,
         entries: options.entries,
@@ -588,6 +597,8 @@ export default function AdminProductManager() {
       ? storedPresetToDownloadOptions(defaultDownloadPreset)
       : {
           format: IMAGE_DOWNLOAD_OPTION_FALLBACK.format,
+          quality: IMAGE_DOWNLOAD_OPTION_FALLBACK.quality,
+          maxBytesPerImage: IMAGE_DOWNLOAD_OPTION_FALLBACK.maxBytesPerImage,
           namingMode: IMAGE_DOWNLOAD_OPTION_FALLBACK.namingMode,
         };
     void runProductImageDownload(p, { ...baseOpts, entries: selectedEntries });
@@ -2200,6 +2211,14 @@ export default function AdminProductManager() {
             setBlogPostProduct(product);
             setBlogPostModalOpen(true);
           }}
+          onOpenBandHook={(product) => {
+            setBandHookProduct(product);
+            setBandHookModalOpen(true);
+          }}
+          onOpenKakaoPost={(product) => {
+            setKakaoProduct(product);
+            setKakaoModalOpen(true);
+          }}
           pendingDownloadId={pendingDownloadId}
           onOpenDownloadOptions={(product) => {
             if (zipDownloadBusyRef.current || pendingDownloadId) {
@@ -2251,6 +2270,28 @@ export default function AdminProductManager() {
           setBlogPostProduct(null);
         }}
         onCopied={() => showToast("success", "블로그 텍스트가 복사되었습니다.")}
+      />
+
+      <BandHookGenerateModal
+        open={bandHookModalOpen}
+        productId={bandHookProduct?.id ?? null}
+        productTitle={bandHookProduct?.title?.trim() ?? ""}
+        onClose={() => {
+          setBandHookModalOpen(false);
+          setBandHookProduct(null);
+        }}
+        onCopied={() => showToast("success", "밴드 훅 문구가 복사되었습니다.")}
+      />
+
+      <KakaoPostGenerateModal
+        open={kakaoModalOpen}
+        productId={kakaoProduct?.id ?? null}
+        productTitle={kakaoProduct?.title?.trim() ?? ""}
+        onClose={() => {
+          setKakaoModalOpen(false);
+          setKakaoProduct(null);
+        }}
+        onCopied={() => showToast("success", "카카오채널 게시글이 복사되었습니다.")}
       />
 
       <FlyerGenerateModal

@@ -21,6 +21,10 @@ export type AdminProductListSectionProps = {
   onOpenSmartstoreHtml?: (product: Product) => void;
   /** 블로그 텍스트 생성 (목록 작업 열) */
   onOpenBlogPost?: (product: Product) => void;
+  /** 네이버 밴드 공유용 훅 생성 (목록 작업 열) */
+  onOpenBandHook?: (product: Product) => void;
+  /** 카카오채널 게시글 생성 (목록 작업 열) */
+  onOpenKakaoPost?: (product: Product) => void;
   /** 이미지 ZIP 옵션 모달 (목록 작업 열) */
   onOpenDownloadOptions?: (product: Product) => void;
   /** preset 즉시 다운로드 */
@@ -49,6 +53,8 @@ export default function AdminProductListSection({
   onEditProduct,
   onOpenSmartstoreHtml,
   onOpenBlogPost,
+  onOpenBandHook,
+  onOpenKakaoPost,
   onOpenDownloadOptions,
   onRunProductImageDownloadWithPreset,
   downloadPresets,
@@ -105,6 +111,8 @@ export default function AdminProductListSection({
       onEditProduct={onEditProduct}
       onOpenSmartstoreHtml={onOpenSmartstoreHtml}
       onOpenBlogPost={onOpenBlogPost}
+      onOpenBandHook={onOpenBandHook}
+      onOpenKakaoPost={onOpenKakaoPost}
       onOpenDownloadOptions={onOpenDownloadOptions}
       onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
       downloadPresets={downloadPresets}

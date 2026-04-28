@@ -9,8 +9,12 @@ function namingLabel(mode: "simple" | "detailed"): string {
  */
 export function getImageDownloadPresetSummary(preset: StoredImageDownloadPreset): string {
   const name = namingLabel(preset.namingMode);
+  const limit =
+    typeof preset.maxBytesPerImage === "number" && preset.maxBytesPerImage > 0
+      ? ` · ${Math.round(preset.maxBytesPerImage / (1024 * 1024))}MB 자동 보정`
+      : "";
   if (preset.format === "jpg") {
-    return `JPG · ${preset.quality.toFixed(2)} · ${name}`;
+    return `JPG · ${preset.quality.toFixed(2)}${limit} · ${name}`;
   }
-  return `PNG · ${name}`;
+  return `PNG${limit} · ${name}`;
 }

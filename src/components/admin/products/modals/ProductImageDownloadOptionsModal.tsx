@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { DownloadProductImagesOptions, ImageFileNamingMode, ImageOutputFormat } from "@/lib/images/imageDownload.types";
+import {
+  BLOG_FRIENDLY_DEFAULT_QUALITY,
+  NAVER_BLOG_IMAGE_MAX_BYTES,
+} from "@/lib/images/imageDownloadPreset.storage";
 
 const QUALITY_MIN = 0.6;
 const QUALITY_MAX = 1;
@@ -27,15 +31,17 @@ export default function ProductImageDownloadOptionsModal({
   onClose,
   onConfirm,
 }: ProductImageDownloadOptionsModalProps) {
-  const [format, setFormat] = useState<ImageOutputFormat>("png");
-  const [quality, setQuality] = useState(0.92);
+  const [format, setFormat] = useState<ImageOutputFormat>("jpg");
+  const [quality, setQuality] = useState(BLOG_FRIENDLY_DEFAULT_QUALITY);
   const [namingMode, setNamingMode] = useState<ImageFileNamingMode>("detailed");
 
   useEffect(() => {
     if (!open) return;
-    setFormat(initialFormat);
-    setQuality(initialQuality);
-    setNamingMode(initialNamingMode);
+    queueMicrotask(() => {
+      setFormat(initialFormat);
+      setQuality(initialQuality);
+      setNamingMode(initialNamingMode);
+    });
   }, [open, initialFormat, initialQuality, initialNamingMode]);
 
   if (!open) return null;
@@ -44,6 +50,7 @@ export default function ProductImageDownloadOptionsModal({
     onConfirm({
       format,
       namingMode,
+      maxBytesPerImage: NAVER_BLOG_IMAGE_MAX_BYTES,
       ...(format === "jpg" ? { quality } : {}),
     });
   };
@@ -93,7 +100,7 @@ export default function ProductImageDownloadOptionsModal({
                 onChange={() => setFormat("png")}
                 className="accent-[var(--primary)]"
               />
-              PNG (기본)
+              PNG
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-primary)]">
               <input
@@ -103,9 +110,13 @@ export default function ProductImageDownloadOptionsModal({
                 onChange={() => setFormat("jpg")}
                 className="accent-[var(--primary)]"
               />
-              JPG
+              JPG (블로그 추천)
             </label>
           </fieldset>
+
+          <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/30 px-3 py-2 text-[11px] leading-snug text-[var(--text-muted)]">
+            네이버 블로그 업로드를 고려해 이미지 1장당 20MB를 넘기면 자동으로 압축 또는 리사이즈를 시도합니다.
+          </p>
 
           {format === "jpg" ? (
             <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/40 px-3 py-3">

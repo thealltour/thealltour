@@ -86,6 +86,8 @@ export default function AdminProductsListView({
   onEditProduct,
   onOpenSmartstoreHtml,
   onOpenBlogPost,
+  onOpenBandHook,
+  onOpenKakaoPost,
   onOpenDownloadOptions,
   onRunProductImageDownloadWithPreset,
   downloadPresets,
@@ -256,6 +258,8 @@ export default function AdminProductsListView({
             onEdit={onEditProduct}
             onSmartstoreHtml={onOpenSmartstoreHtml}
             onBlogPost={onOpenBlogPost}
+            onBandHook={onOpenBandHook}
+            onKakaoPost={onOpenKakaoPost}
             onOpenDownloadOptions={onOpenDownloadOptions}
             onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
             downloadPresets={downloadPresets}
@@ -381,6 +385,8 @@ export default function AdminProductsListView({
           onEdit={onEditProduct}
           onSmartstoreHtml={onOpenSmartstoreHtml}
           onBlogPost={onOpenBlogPost}
+          onBandHook={onOpenBandHook}
+          onKakaoPost={onOpenKakaoPost}
           onOpenDownloadOptions={onOpenDownloadOptions}
           onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
           downloadPresets={downloadPresets}

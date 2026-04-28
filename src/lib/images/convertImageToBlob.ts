@@ -41,6 +41,10 @@ export async function convertImageToBlob(
 ): Promise<Blob> {
   const format: ImageOutputFormat = options?.format ?? "png";
   const quality = format === "jpg" ? clampJpegExportQuality(options?.quality) : undefined;
+  const maxBytesPerImage =
+    typeof options?.maxBytesPerImage === "number" && Number.isFinite(options.maxBytesPerImage)
+      ? Math.max(1, Math.floor(options.maxBytesPerImage))
+      : undefined;
   const backgroundColor = options?.backgroundColor ?? "#ffffff";
 
   const fetchUrl = resolveImageFetchUrl(url);
@@ -58,7 +62,7 @@ export async function convertImageToBlob(
   let blob: Blob;
   try {
     blob = await res.blob();
-  } catch (e) {
+  } catch {
     throw new Error(`blob 읽기 실패: ${url.slice(0, 96)}`);
   }
 
@@ -72,33 +76,79 @@ export async function convertImageToBlob(
   }
 
   try {
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("canvas ctx 없음");
-
-    if (format === "jpg") {
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    ctx.drawImage(bitmap, 0, 0);
-
     const mime = format === "jpg" ? "image/jpeg" : "image/png";
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (b) => {
-          if (!b) {
-            reject(new Error(`toBlob 결과 없음 (${mime}): ${url.slice(0, 96)}`));
-            return;
-          }
-          resolve(b);
-        },
-        mime,
-        quality,
-      );
-    });
+
+    const renderBlob = async (targetWidth: number, targetHeight: number, targetQuality?: number) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas ctx 없음");
+
+      if (format === "jpg") {
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+
+      return await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => {
+            if (!b) {
+              reject(new Error(`toBlob 결과 없음 (${mime}): ${url.slice(0, 96)}`));
+              return;
+            }
+            resolve(b);
+          },
+          mime,
+          targetQuality,
+        );
+      });
+    };
+
+    let currentWidth = bitmap.width;
+    let currentHeight = bitmap.height;
+    let currentQuality = quality;
+    let rendered = await renderBlob(currentWidth, currentHeight, currentQuality);
+
+    if (!maxBytesPerImage || rendered.size <= maxBytesPerImage) {
+      return rendered;
+    }
+
+    for (let attempt = 0; attempt < 8 && rendered.size > maxBytesPerImage; attempt++) {
+      let changed = false;
+
+      if (format === "jpg" && typeof currentQuality === "number" && currentQuality > 0.62) {
+        const nextQuality = Math.max(0.62, Number((currentQuality - 0.07).toFixed(2)));
+        if (nextQuality < currentQuality) {
+          currentQuality = nextQuality;
+          changed = true;
+        }
+      }
+
+      if (rendered.size > maxBytesPerImage && (currentWidth > 1 || currentHeight > 1)) {
+        const ratio = Math.min(0.92, Math.max(0.6, Math.sqrt(maxBytesPerImage / rendered.size) * 0.98));
+        const nextWidth = Math.max(1, Math.floor(currentWidth * ratio));
+        const nextHeight = Math.max(1, Math.floor(currentHeight * ratio));
+        if (nextWidth < currentWidth || nextHeight < currentHeight) {
+          currentWidth = nextWidth;
+          currentHeight = nextHeight;
+          changed = true;
+        }
+      }
+
+      if (!changed) break;
+
+      const nextRendered = await renderBlob(currentWidth, currentHeight, currentQuality);
+      if (nextRendered.size >= rendered.size && currentWidth <= 1 && currentHeight <= 1) {
+        rendered = nextRendered;
+        break;
+      }
+      rendered = nextRendered;
+    }
+
+    return rendered;
   } finally {
     bitmap.close();
   }

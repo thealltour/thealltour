@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { ImageFileNamingMode, ImageOutputFormat } from "@/lib/images/imageDownload.types";
 import type { CreateImageDownloadPresetInput } from "@/lib/images/imageDownloadPreset.helpers";
-import type { StoredImageDownloadPreset } from "@/lib/images/imageDownloadPreset.storage";
+import {
+  BLOG_FRIENDLY_DEFAULT_QUALITY,
+  NAVER_BLOG_IMAGE_MAX_BYTES,
+  type StoredImageDownloadPreset,
+} from "@/lib/images/imageDownloadPreset.storage";
 import { getImageDownloadPresetSummary } from "@/lib/images/getImageDownloadPresetSummary";
 
 const QUALITY_MIN = 0.6;
@@ -48,20 +52,22 @@ export default function ProductImageDownloadPresetManagerModal({
   requestConfirm,
 }: ProductImageDownloadPresetManagerModalProps) {
   const [newName, setNewName] = useState("");
-  const [newFormat, setNewFormat] = useState<ImageOutputFormat>("png");
-  const [newQuality, setNewQuality] = useState(0.92);
+  const [newFormat, setNewFormat] = useState<ImageOutputFormat>("jpg");
+  const [newQuality, setNewQuality] = useState(BLOG_FRIENDLY_DEFAULT_QUALITY);
   const [newNamingMode, setNewNamingMode] = useState<ImageFileNamingMode>("detailed");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    setNewName("");
-    setNewFormat("png");
-    setNewQuality(0.92);
-    setNewNamingMode("detailed");
-    setEditingId(null);
-    setEditingName("");
+    queueMicrotask(() => {
+      setNewName("");
+      setNewFormat("jpg");
+      setNewQuality(BLOG_FRIENDLY_DEFAULT_QUALITY);
+      setNewNamingMode("detailed");
+      setEditingId(null);
+      setEditingName("");
+    });
   }, [open]);
 
   if (!open) return null;
@@ -74,6 +80,7 @@ export default function ProductImageDownloadPresetManagerModal({
       format: newFormat,
       namingMode: newNamingMode,
       quality: newQuality,
+      maxBytesPerImage: NAVER_BLOG_IMAGE_MAX_BYTES,
     });
     setNewName("");
   };
@@ -269,13 +276,16 @@ export default function ProductImageDownloadPresetManagerModal({
 
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-3">
             <p className="text-xs font-semibold text-[var(--text-primary)]">새 preset 추가</p>
+            <p className="text-[11px] leading-snug text-[var(--text-muted)]">
+              새 preset은 기본적으로 네이버 블로그 업로드를 고려해 JPG와 20MB 자동 보정 기준으로 저장됩니다.
+            </p>
             <label className="block text-xs text-[var(--text-muted)]">
               이름
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="예: 블로그용 JPG"
+                placeholder="예: 네이버 블로그용"
                 className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text-primary)]"
                 maxLength={200}
               />
@@ -300,7 +310,7 @@ export default function ProductImageDownloadPresetManagerModal({
                   onChange={() => setNewFormat("jpg")}
                   className="accent-[var(--primary)]"
                 />
-                JPG
+                JPG (블로그 추천)
               </label>
             </fieldset>
             {newFormat === "jpg" ? (

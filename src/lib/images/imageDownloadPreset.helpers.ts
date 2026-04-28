@@ -11,6 +11,7 @@ export type CreateImageDownloadPresetInput = {
   name: string;
   format: ImageOutputFormat;
   quality: number;
+  maxBytesPerImage?: number;
   namingMode: ImageFileNamingMode;
 };
 
@@ -34,6 +35,7 @@ export function createImageDownloadPreset(
       name: input.name.trim() || undefined,
       format: input.format,
       quality: input.quality,
+      maxBytesPerImage: input.maxBytesPerImage,
       namingMode: input.namingMode,
       createdAt: now,
       updatedAt: now,
@@ -120,6 +122,7 @@ export function duplicateImageDownloadPreset(
       name: copyName,
       format: source.format,
       quality: source.quality,
+      maxBytesPerImage: source.maxBytesPerImage,
       namingMode: source.namingMode,
       createdAt: now,
       updatedAt: now,

@@ -17,6 +17,7 @@ export type StoredImageDownloadPreset = {
   name: string;
   format: "png" | "jpg";
   quality: number;
+  maxBytesPerImage?: number;
   namingMode: "simple" | "detailed";
   createdAt: number;
   updatedAt: number;
@@ -32,8 +33,31 @@ export type StoredImageDownloadPresetCollection = {
 
 export const IMAGE_DOWNLOAD_PRESET_STORAGE_KEY_V1 = "admin.productImageDownloadPreset.v1";
 export const IMAGE_DOWNLOAD_PRESET_STORAGE_KEY_V2 = "admin.productImageDownloadPresets.v2";
+export const NAVER_BLOG_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+export const BLOG_FRIENDLY_DEFAULT_QUALITY = 0.82;
+export const NAVER_BLOG_DEFAULT_PRESET_ID = "preset_naver_blog_default";
 
 const EMPTY_NAME = "이름 없는 preset";
+
+function clampMaxBytesPerImage(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const rounded = Math.floor(value);
+  if (rounded <= 0) return undefined;
+  return rounded;
+}
+
+export function createNaverBlogDefaultPreset(now = Date.now()): StoredImageDownloadPreset {
+  return {
+    id: NAVER_BLOG_DEFAULT_PRESET_ID,
+    name: "네이버 블로그용",
+    format: "jpg",
+    quality: BLOG_FRIENDLY_DEFAULT_QUALITY,
+    maxBytesPerImage: NAVER_BLOG_IMAGE_MAX_BYTES,
+    namingMode: "detailed",
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 export function newImageDownloadPresetId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -55,14 +79,15 @@ export function normalizeStoredImageDownloadPreset(
   fallbackName?: string,
 ): StoredImageDownloadPreset {
   const now = Date.now();
-  const defQuality = 0.92;
+  const defQuality = BLOG_FRIENDLY_DEFAULT_QUALITY;
 
   if (!input || typeof input !== "object") {
     return {
       id: newImageDownloadPresetId(),
       name: (fallbackName?.trim() || EMPTY_NAME).slice(0, 200),
-      format: "png",
+      format: "jpg",
       quality: defQuality,
+      maxBytesPerImage: NAVER_BLOG_IMAGE_MAX_BYTES,
       namingMode: "detailed",
       createdAt: now,
       updatedAt: now,
@@ -79,12 +104,13 @@ export function normalizeStoredImageDownloadPreset(
   name = name.slice(0, 200);
 
   const format: ImageOutputFormat =
-    o.format === "jpg" ? "jpg" : o.format === "png" ? "png" : "png";
+    o.format === "jpg" ? "jpg" : o.format === "png" ? "png" : "jpg";
 
   const quality = clampQuality(
     typeof o.quality === "number" ? o.quality : defQuality,
     defQuality,
   );
+  const maxBytesPerImage = clampMaxBytesPerImage(o.maxBytesPerImage);
 
   const namingMode: ImageFileNamingMode =
     o.namingMode === "simple" ? "simple" : "detailed";
@@ -94,7 +120,7 @@ export function normalizeStoredImageDownloadPreset(
   const updatedAt =
     typeof o.updatedAt === "number" && Number.isFinite(o.updatedAt) ? o.updatedAt : now;
 
-  return { id, name, format, quality, namingMode, createdAt, updatedAt };
+  return { id, name, format, quality, maxBytesPerImage, namingMode, createdAt, updatedAt };
 }
 
 /**
@@ -153,9 +179,10 @@ export function normalizeStoredImageDownloadPresetCollection(
 }
 
 export function getDefaultImageDownloadPresetCollection(): StoredImageDownloadPresetCollection {
+  const preset = createNaverBlogDefaultPreset();
   return {
-    presets: [],
-    defaultPresetId: null,
+    presets: [preset],
+    defaultPresetId: preset.id,
     quickRunEnabled: false,
     recentPresetIds: [],
   };
@@ -166,7 +193,10 @@ function normalizeLegacyV1(input: unknown): LegacyImageDownloadPresetV1 | null {
   const o = input as Record<string, unknown>;
   const format: ImageOutputFormat =
     o.format === "jpg" ? "jpg" : o.format === "png" ? "png" : "png";
-  let quality = typeof o.quality === "number" && Number.isFinite(o.quality) ? o.quality : 0.92;
+  let quality =
+    typeof o.quality === "number" && Number.isFinite(o.quality)
+      ? o.quality
+      : BLOG_FRIENDLY_DEFAULT_QUALITY;
   quality = Math.min(1, Math.max(0.6, quality));
   const namingMode: ImageFileNamingMode =
     o.namingMode === "simple" ? "simple" : "detailed";
@@ -192,6 +222,7 @@ export function migrateLegacyPresetToCollection(
       name: "기본 설정",
       format: v1.format,
       quality: v1.quality,
+      maxBytesPerImage: v1.format === "jpg" ? NAVER_BLOG_IMAGE_MAX_BYTES : undefined,
       namingMode: v1.namingMode,
       createdAt: now,
       updatedAt: now,
@@ -239,7 +270,8 @@ export function loadImageDownloadPresetCollection(): StoredImageDownloadPresetCo
           "quickRunEnabled" in (parsed as object) ||
           "recentPresetIds" in (parsed as object));
       if (looksV2) {
-        return normalizeStoredImageDownloadPresetCollection(parsed);
+        const normalized = normalizeStoredImageDownloadPresetCollection(parsed);
+        return normalized.presets.length > 0 ? normalized : getDefaultImageDownloadPresetCollection();
       }
     }
   } catch {
@@ -276,13 +308,15 @@ export function storedPresetToDownloadOptions(
   return {
     format: preset.format,
     namingMode: preset.namingMode,
+    maxBytesPerImage: preset.maxBytesPerImage,
     ...(preset.format === "jpg" ? { quality: preset.quality } : {}),
   };
 }
 
 /** 옵션 모달 초기값 (기본 preset 없을 때) */
 export const IMAGE_DOWNLOAD_OPTION_FALLBACK = {
-  format: "png" as const,
-  quality: 0.92,
+  format: "jpg" as const,
+  quality: BLOG_FRIENDLY_DEFAULT_QUALITY,
+  maxBytesPerImage: NAVER_BLOG_IMAGE_MAX_BYTES,
   namingMode: "detailed" as const,
 };

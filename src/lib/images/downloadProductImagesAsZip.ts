@@ -11,6 +11,7 @@ import { collectProductImageEntries } from "./collectProductImageEntries";
 import { clampJpegExportQuality, convertImageToBlob } from "./convertImageToBlob";
 import type { DownloadProductImagesAsZipOptions, ImageOutputFormat } from "./imageDownload.types";
 import type { ProductImageZipDownloadResult } from "./imageDownloadProgress.types";
+import { NAVER_BLOG_IMAGE_MAX_BYTES } from "./imageDownloadPreset.storage";
 
 function triggerBlobDownload(blob: Blob, filename: string): void {
   const objectUrl = URL.createObjectURL(blob);
@@ -31,9 +32,11 @@ export async function downloadProductImagesAsZip(
   product: Product,
   options?: DownloadProductImagesAsZipOptions,
 ): Promise<ProductImageZipDownloadResult> {
-  const format: ImageOutputFormat = options?.format ?? "png";
+  const format: ImageOutputFormat = options?.format ?? "jpg";
   const quality =
     format === "jpg" ? clampJpegExportQuality(options?.quality) : undefined;
+  const maxBytesPerImage =
+    options?.maxBytesPerImage ?? (format === "jpg" ? NAVER_BLOG_IMAGE_MAX_BYTES : undefined);
   const namingMode = options?.namingMode ?? "detailed";
   const onProgress = options?.onProgress;
   const productId = product.id;
@@ -115,6 +118,7 @@ export async function downloadProductImagesAsZip(
     try {
       const blob = await convertImageToBlob(entry.url, {
         format,
+        maxBytesPerImage,
         ...(format === "jpg" ? { quality } : {}),
       });
       const filename = uniquifyZipEntryName(usedNames, baseName);

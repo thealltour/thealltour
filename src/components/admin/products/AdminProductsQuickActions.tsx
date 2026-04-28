@@ -9,7 +9,9 @@ import {
   ExternalLink,
   FileCode2,
   FileImage,
+  MessageCircle,
   Pencil,
+  Share2,
   Trash2,
   Power,
 } from "lucide-react";
@@ -29,6 +31,10 @@ type AdminProductsQuickActionsProps = {
   onSmartstoreHtml?: (product: Product) => void;
   /** 네이버 블로그용 텍스트 생성 모달 */
   onBlogPost?: (product: Product) => void;
+  /** 네이버 밴드 공유용 훅 생성 모달 */
+  onBandHook?: (product: Product) => void;
+  /** 카카오채널 게시글 생성 모달 */
+  onKakaoPost?: (product: Product) => void;
   /** 옵션 모달만 열기 (레거시 단일 버튼용) */
   onOpenDownloadOptions?: (product: Product) => void;
   /** preset 선택 메뉴 + 즉시 실행 */
@@ -58,6 +64,8 @@ export default function AdminProductsQuickActions({
   onToggleActive,
   onSmartstoreHtml,
   onBlogPost,
+  onBandHook,
+  onKakaoPost,
   onOpenDownloadOptions,
   downloadPresets,
   downloadDefaultPresetId,
@@ -163,6 +171,30 @@ export default function AdminProductsQuickActions({
           {!compact && !dense ? (
             <span className="max-w-[7.5rem] truncate">블로그 텍스트</span>
           ) : null}
+        </button>
+      ) : null}
+      {onBandHook ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onBandHook(product)}
+          className={`${btnBase} ${iconBtn} border-violet-200/80 bg-violet-50 text-violet-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40 focus-visible:ring-offset-1 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100`}
+          title="밴드 공유용 훅 생성"
+        >
+          <Share2 className={icoCls} aria-hidden />
+          {!compact && !dense ? <span className="max-w-[4.5rem] truncate">밴드 훅</span> : null}
+        </button>
+      ) : null}
+      {onKakaoPost ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onKakaoPost(product)}
+          className={`${btnBase} ${iconBtn} border-yellow-200/80 bg-yellow-50 text-yellow-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/40 focus-visible:ring-offset-1 dark:border-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-100`}
+          title="카카오채널 게시글 생성"
+        >
+          <MessageCircle className={icoCls} aria-hidden />
+          {!compact && !dense ? <span className="max-w-[4.5rem] truncate">카카오 글</span> : null}
         </button>
       ) : null}
       {showDownloadMenu ? (

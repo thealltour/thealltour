@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
 import { LANDING_ANALYTICS_UNATTRIBUTED_SLUG } from "@/lib/adminLandings/analyticsConstants";
 import { notifyInquiryCreated } from "@/lib/notifications";
@@ -8,6 +9,7 @@ import { inferAttribution } from "@/lib/analytics/attribution";
 import { ensureLandingSourcePath } from "@/lib/analytics/createAnalyticsPayload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
+import { dualWriteGolfLeadFromInquiry } from "@/lib/leads/dualWriteGolfLeadFromInquiry";
 import { resolveQuoteSubmitLandingSlug } from "@/lib/analytics/resolveQuoteSubmitLandingSlug";
 import type { FirstTouch, Inquiry, InquiryInput } from "@/types/inquiry";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
@@ -145,17 +147,17 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     hotSummary,
     unassignedSummary,
   ] = await Promise.all([
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).in("consultation_status", ["new", "contacted"]),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "completed"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "reserved"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "new"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "contacted"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "closed"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "on_hold"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).not("follow_up_at", "is", null).lt("follow_up_at", nowIso),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).gte("follow_up_at", kstStart).lte("follow_up_at", kstEnd),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("lead_priority", "high"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).is("assignee_name", null),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).in("consultation_status", ["new", "contacted"]),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "completed"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "reserved"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "new"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "contacted"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "closed"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("consultation_status", "on_hold"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).not("follow_up_at", "is", null).lt("follow_up_at", nowIso),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).gte("follow_up_at", kstStart).lte("follow_up_at", kstEnd),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("lead_priority", "high"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).is("assignee_name", null),
   ]);
 
   if (
@@ -168,8 +170,8 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     onHoldSummary.error
   ) {
     const [legacyPending, legacyCompleted] = await Promise.all([
-      supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
-      supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", true),
+      supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", false),
+      supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("is_completed", true),
     ]);
     return {
       pendingCount: legacyPending.error ? 0 : (legacyPending.count ?? 0),
@@ -283,12 +285,12 @@ export async function GET(request: Request) {
 
   const workloadLimit = 5000;
   let listQuery = applyAssigneeToListQuery(
-    applyInquiryListFilters(supabase.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
+    applyInquiryListFilters(supabaseAdmin.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
   );
   listQuery = applyListOrdering(listQuery);
 
   const workloadQuery = applyInquiryListFilters(
-    supabase.from("inquiries").select("assignee_name"),
+    supabaseAdmin.from("inquiries").select("assignee_name"),
     search,
     status,
     quick,
@@ -301,7 +303,7 @@ export async function GET(request: Request) {
 
   if (error) {
     let fallback = applyAssigneeToListQuery(
-      applyInquiryListFilters(supabase.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
+      applyInquiryListFilters(supabaseAdmin.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
     );
     fallback = fallback.order("created_at", { ascending: false, nullsFirst: false });
     const fallbackResult = await fallback.range(from, to);
@@ -391,7 +393,7 @@ export async function PATCH(request: Request) {
   }
 
   const updateResults = await Promise.all(
-    ids.map((id) => supabase.from("inquiries").update(updatePayload).eq("id", id)),
+    ids.map((id) => supabaseAdmin.from("inquiries").update(updatePayload).eq("id", id)),
   );
 
   const failed = updateResults.find((result) => result.error);
@@ -622,6 +624,18 @@ export async function POST(request: Request) {
         has_message_body: Boolean(contentValue?.trim()),
         inquiry_id: String(inquiryId),
       },
+    });
+
+    void dualWriteGolfLeadFromInquiry({
+      name,
+      phone,
+      content: contentValue,
+      productTitle,
+      sourcePath,
+      landingSlug: landingSlugBody,
+      quoteCategory: quoteCategoryBody,
+      inquiryPageUrl,
+      firstTouch: ft,
     });
   }
 

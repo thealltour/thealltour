@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageCircle, Send, X } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/Button";
+import { getFirstTouch } from "@/lib/analytics/firstTouch";
 
 type HeaderQuickConsultCtasProps = {
   quickConsultHref?: string;
@@ -87,12 +88,17 @@ export default function HeaderQuickConsultCtas({
 
     setIsSubmitting(true);
     try {
+      const firstTouch = getFirstTouch();
       const response = await fetch("/api/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          content: form.content.trim(),
           source_path: `${pathname || "/"}#header-quick-consult`,
+          first_touch: firstTouch ?? undefined,
+          inquiry_page_url: pathname || "/",
         }),
       });
 

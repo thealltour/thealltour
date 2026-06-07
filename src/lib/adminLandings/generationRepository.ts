@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   resolveDestinationProductCounts,
   resolveProductLineProductCounts,
@@ -92,7 +94,7 @@ export async function listLandingGenerationCandidates(
 ): Promise<LandingGenerationCandidate[]> {
   const targetType = filter.taxonomyType ?? "all";
 
-  const { data: taxRows, error: taxErr } = await supabase
+  const { data: taxRows, error: taxErr } = await supabaseAdmin
     .from("product_taxonomies")
     .select("id, taxonomy_type, name, slug, is_active")
     .in("taxonomy_type", ["destination", "theme", "product_line"])
@@ -115,7 +117,7 @@ export async function listLandingGenerationCandidates(
     resolveProductLineProductCounts(productLineTax),
   ]);
 
-  const { data: existingRows, error: existingErr } = await supabase
+  const { data: existingRows, error: existingErr } = await supabaseAdmin
     .from("home_curated_sections")
     .select("*");
   if (existingErr) throw new Error(existingErr.message);

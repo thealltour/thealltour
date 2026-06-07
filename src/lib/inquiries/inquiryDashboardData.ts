@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type {
   InquiryAssigneeStatRow,
   InquiryDashboardKpis,
@@ -80,83 +82,83 @@ export async function buildInquiryDashboardPayload(period: InquiryDashboardPerio
     sbHold,
     sbClosed,
   ] = await Promise.all([
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).gte("created_at", kstToday),
-    supabase
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).gte("created_at", kstToday),
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .in("consultation_status", ["new", "contacted", "on_hold"]),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "reserved"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("lead_priority", "high"),
-    supabase
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("booking_status", "reserved"),
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).eq("lead_priority", "high"),
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .not("follow_up_at", "is", null)
       .lt("follow_up_at", nowIso)
       .or("response_stage.is.null,response_stage.neq.closed"),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).is("assignee_name", null),
-    supabase.from("inquiries").select("created_at").gte("created_at", periodStart).limit(TREND_ROW_LIMIT),
-    supabase
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).is("assignee_name", null),
+    supabaseAdmin.from("inquiries").select("created_at").gte("created_at", periodStart).limit(TREND_ROW_LIMIT),
+    supabaseAdmin
       .from("inquiries")
       .select("acquisition_source_label, acquisition_channel")
       .gte("created_at", periodStart)
       .limit(SOURCE_ROW_LIMIT),
-    supabase.from("inquiries").select("*", { count: "exact", head: true }).gte("created_at", periodStart),
-    supabase
+    supabaseAdmin.from("inquiries").select("*", { count: "exact", head: true }).gte("created_at", periodStart),
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .gte("created_at", periodStart)
       .in("consultation_status", ["contacted", "on_hold", "closed"]),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .gte("created_at", periodStart)
       .in("response_stage", ["proposal_sent", "follow_up", "closed"]),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .gte("created_at", periodStart)
       .eq("booking_status", "reserved"),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("assignee_name, consultation_status, follow_up_at")
       .not("assignee_name", "is", null)
       .limit(ASSIGNEE_ROW_LIMIT),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id, name, created_at, consultation_status, assignee_name, follow_up_at")
       .not("follow_up_at", "is", null)
       .lt("follow_up_at", nowIso)
       .order("follow_up_at", { ascending: false })
       .limit(RISK_LIMIT),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id, name, created_at, consultation_status, assignee_name, follow_up_at")
       .is("assignee_name", null)
       .order("created_at", { ascending: false })
       .limit(RISK_LIMIT),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id, name, created_at, consultation_status, assignee_name, follow_up_at")
       .eq("consultation_status", "new")
       .lt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order("created_at", { ascending: true })
       .limit(RISK_LIMIT),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .gte("created_at", periodStart)
       .eq("consultation_status", "new"),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .gte("created_at", periodStart)
       .eq("consultation_status", "contacted"),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .gte("created_at", periodStart)
       .eq("consultation_status", "on_hold"),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("*", { count: "exact", head: true })
       .gte("created_at", periodStart)

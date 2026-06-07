@@ -1,5 +1,7 @@
+import "server-only";
+
 import { PRIVACY_POLICY_TEXT, SERVICE_TERMS_TEXT } from "@/content/legal";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export type LegalDocumentType = "terms" | "privacy";
 
@@ -19,7 +21,7 @@ const FALLBACK_LEGAL_DOCUMENTS: LegalDocuments = {
 };
 
 export async function getLegalDocuments(): Promise<LegalDocuments> {
-  const termsResult = await supabase
+  const termsResult = await supabaseAdmin
     .from("notices")
     .select("content")
     .eq("title", LEGAL_NOTICE_TITLES.terms)
@@ -27,7 +29,7 @@ export async function getLegalDocuments(): Promise<LegalDocuments> {
     .limit(1)
     .maybeSingle();
 
-  const privacyResult = await supabase
+  const privacyResult = await supabaseAdmin
     .from("notices")
     .select("content")
     .eq("title", LEGAL_NOTICE_TITLES.privacy)

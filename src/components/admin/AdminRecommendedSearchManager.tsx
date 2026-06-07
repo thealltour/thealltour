@@ -23,7 +23,7 @@ export default function AdminRecommendedSearchManager() {
       try {
         setIsLoading(true);
         setErrorMessage("");
-        const response = await fetch("/api/search/recommended?includeInactive=true", {
+        const response = await fetch("/api/admin/search/recommended", {
           cache: "no-store",
         });
         const result = (await response.json()) as { items?: RecommendedKeyword[]; message?: string };
@@ -62,7 +62,7 @@ export default function AdminRecommendedSearchManager() {
     setErrorMessage("");
     try {
       if (row.isNew) {
-        const response = await fetch("/api/search/recommended", {
+        const response = await fetch("/api/admin/search/recommended", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -82,7 +82,7 @@ export default function AdminRecommendedSearchManager() {
         );
         setMessage("추천 검색어를 추가했습니다.");
       } else {
-        const response = await fetch(`/api/search/recommended/${row.id}`, {
+        const response = await fetch(`/api/admin/search/recommended/${row.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -118,7 +118,7 @@ export default function AdminRecommendedSearchManager() {
     setMessage("");
     setErrorMessage("");
     try {
-      const response = await fetch(`/api/search/recommended/${row.id}`, {
+      const response = await fetch(`/api/admin/search/recommended/${row.id}`, {
         method: "DELETE",
       });
       const result = (await response.json()) as { message?: string };

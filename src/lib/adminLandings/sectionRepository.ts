@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getDefaultSectionsForTemplate } from "@/lib/adminLandings/templates";
 import type {
   AdminLandingSectionRecord,
@@ -48,7 +50,7 @@ function normalizeSectionRow(row: Record<string, unknown>): AdminLandingSectionR
 }
 
 async function listRawByLandingId(landingId: string): Promise<Record<string, unknown>[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("landing_subnodes")
     .select("*")
     .eq("parent_kind", PARENT_KIND)
@@ -94,7 +96,7 @@ class SupabaseLandingSectionsRepository implements AdminLandingSectionsRepositor
         body: sec.body,
       },
     }));
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("landing_subnodes")
       .insert(payload)
       .select("*");
@@ -107,7 +109,7 @@ class SupabaseLandingSectionsRepository implements AdminLandingSectionsRepositor
     sectionId: string,
     input: UpdateLandingSectionInput,
   ): Promise<AdminLandingSectionRecord | null> {
-    const { data: existing, error: exErr } = await supabase
+    const { data: existing, error: exErr } = await supabaseAdmin
       .from("landing_subnodes")
       .select("*")
       .eq("id", sectionId)
@@ -132,7 +134,7 @@ class SupabaseLandingSectionsRepository implements AdminLandingSectionsRepositor
         body: input.body,
       };
     }
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("landing_subnodes")
       .update(updates)
       .eq("id", sectionId)

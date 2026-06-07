@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { Guide } from "@/types/guide";
 import { extractNotionPageId, fetchNotionPageMeta } from "@/lib/notion";
 import { uploadImageFromUrl } from "@/lib/images/uploadImageFromUrl";
@@ -23,7 +25,7 @@ function isStableUrl(value?: string | null): boolean {
 }
 
 export async function syncGuideFromNotion(guideId: string): Promise<Guide | null> {
-  const { data: guideRow, error } = await supabase
+  const { data: guideRow, error } = await supabaseAdmin
     .from("guides")
     .select("*")
     .eq("id", guideId)
@@ -84,7 +86,7 @@ export async function syncGuideFromNotion(guideId: string): Promise<Guide | null
     updates.cover_image_url = notionCoverUrl;
   }
 
-  const { data: updated, error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabaseAdmin
     .from("guides")
     .update(updates)
     .eq("id", guideId)
@@ -99,7 +101,7 @@ export async function syncGuideFromNotion(guideId: string): Promise<Guide | null
 }
 
 export async function getGuideBySlug(slug: string): Promise<Guide | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("guides")
     .select("*")
     .eq("slug", slug)

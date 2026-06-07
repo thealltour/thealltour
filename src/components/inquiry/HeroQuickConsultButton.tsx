@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Send, X } from "lucide-react";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { getFirstTouch } from "@/lib/analytics/firstTouch";
 
 type QuickFormState = {
   name: string;
@@ -48,12 +49,17 @@ export default function HeroQuickConsultButton() {
 
     setIsSubmitting(true);
     try {
+      const firstTouch = getFirstTouch();
       const response = await fetch("/api/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          content: form.content.trim(),
           source_path: `${pathname || "/"}#hero-quick-consult`,
+          first_touch: firstTouch ?? undefined,
+          inquiry_page_url: pathname || "/",
         }),
       });
 

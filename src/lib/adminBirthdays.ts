@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const DEFAULT_WINDOW_DAYS = 28;
@@ -55,7 +57,7 @@ function parseBirthDate(dateText: string) {
 }
 
 export async function getUpcomingBirthdays(windowDays = DEFAULT_WINDOW_DAYS) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("members")
     .select("id,username,name,phone,birth_date");
 

@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUpcomingBirthdays } from "@/lib/adminBirthdays";
 
 const BIRTHDAY_WINDOW_DAYS = 28;
@@ -62,14 +64,14 @@ export async function ensureBirthdayNotifications() {
     },
   }));
 
-  await supabase.from("admin_notifications").upsert(payload, {
+  await supabaseAdmin.from("admin_notifications").upsert(payload, {
     onConflict: "unique_key",
     ignoreDuplicates: true,
   });
 }
 
 export async function createNewMemberNotification(input: NewMemberNotificationInput) {
-  await supabase.from("admin_notifications").upsert(
+  await supabaseAdmin.from("admin_notifications").upsert(
     {
       type: "new_member",
       title: "신규 회원 가입",
@@ -88,7 +90,7 @@ export async function createNewMemberNotification(input: NewMemberNotificationIn
 }
 
 export async function createNewReviewNotification(input: NewReviewNotificationInput) {
-  await supabase.from("admin_notifications").upsert(
+  await supabaseAdmin.from("admin_notifications").upsert(
     {
       type: "new_review",
       title: "신규 후기 등록",
@@ -108,7 +110,7 @@ export async function createNewReviewNotification(input: NewReviewNotificationIn
 
 export async function createNewInquiryNotification(input: NewInquiryNotificationInput) {
   const shortContent = input.content.length > 36 ? `${input.content.slice(0, 36)}...` : input.content;
-  await supabase.from("admin_notifications").upsert(
+  await supabaseAdmin.from("admin_notifications").upsert(
     {
       type: "new_inquiry",
       title: "신규 상담 신청",
@@ -128,7 +130,7 @@ export async function createNewInquiryNotification(input: NewInquiryNotification
 }
 
 export async function getUnreadNotificationCount() {
-  const result = await supabase
+  const result = await supabaseAdmin
     .from("admin_notifications")
     .select("*", { count: "exact", head: true })
     .eq("is_read", false);
@@ -144,7 +146,7 @@ export async function prepareAdminNotificationsAndGetUnreadCount() {
 
 export async function getAdminNotifications() {
   await ensureBirthdayNotifications();
-  const result = await supabase
+  const result = await supabaseAdmin
     .from("admin_notifications")
     .select("id,type,title,message,target_url,is_read,created_at")
     .order("is_read", { ascending: true })

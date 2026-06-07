@@ -54,6 +54,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
   }
 
+  if (pathname.startsWith("/api/inquiries/") && request.method === "DELETE" && !authenticated) {
+    return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
+  }
+
   return NextResponse.next();
 }
 

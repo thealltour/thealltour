@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getTravelBookingByInquiryId, createTravelBooking, updateTravelBookingStatus } from "@/lib/travelBookings";
 import { createEligibilityIfNotExists } from "@/lib/reviewEligibilities";
 import { createReviewReminders } from "@/lib/reviewReminders";
@@ -34,7 +34,7 @@ async function logConsultationAndBookingChanges(
   const nc = nextC ?? "";
   const nb = nextB ?? "";
   if (pc !== nc) {
-    const { error } = await appendInquiryActivityLog(supabase, {
+    const { error } = await appendInquiryActivityLog(supabaseAdmin, {
       inquiry_id: inquiryId,
       activity_type: "consultation_status_changed",
       actor_name: STATUS_LOG_ACTOR,
@@ -44,7 +44,7 @@ async function logConsultationAndBookingChanges(
     if (error) console.error("[inquiries PATCH] consultation log failed", error);
   }
   if (pb !== nb) {
-    const { error } = await appendInquiryActivityLog(supabase, {
+    const { error } = await appendInquiryActivityLog(supabaseAdmin, {
       inquiry_id: inquiryId,
       activity_type: "booking_status_changed",
       actor_name: STATUS_LOG_ACTOR,
@@ -85,7 +85,7 @@ export async function PATCH(
 
   if (isActionBody(body)) {
     if (body.action === "update_status") {
-      const { data: prevSnap, error: prevErr } = await supabase
+      const { data: prevSnap, error: prevErr } = await supabaseAdmin
         .from("inquiries")
         .select("consultation_status, booking_status")
         .eq("id", inquiryId)
@@ -120,7 +120,7 @@ export async function PATCH(
       if (updatePayload.consultation_status !== undefined) nextC = String(updatePayload.consultation_status);
       if (updatePayload.booking_status !== undefined) nextB = String(updatePayload.booking_status);
 
-      const { error } = await supabase.from("inquiries").update(updatePayload).eq("id", inquiryId);
+      const { error } = await supabaseAdmin.from("inquiries").update(updatePayload).eq("id", inquiryId);
       if (error) {
         return handleInquiryUpdateError(error);
       }
@@ -146,7 +146,7 @@ export async function PATCH(
         return NextResponse.json({ message: "귀국일은 출발일 이후여야 합니다." }, { status: 400 });
       }
 
-      const { data: inquiry, error: fetchError } = await supabase
+      const { data: inquiry, error: fetchError } = await supabaseAdmin
         .from("inquiries")
         .select("id, customer_profile_id, product_id, product_title, source_path, consultation_status, booking_status")
         .eq("id", inquiryId)
@@ -206,7 +206,7 @@ export async function PATCH(
       const rowBooking = (inquiry as { booking_status?: string | null }).booking_status ?? "none";
       const rowConsultation = consultationRow ?? "new";
 
-      const { error: updateErr } = await supabase
+      const { error: updateErr } = await supabaseAdmin
         .from("inquiries")
         .update({
           consultation_status: "closed",
@@ -225,7 +225,7 @@ export async function PATCH(
     }
 
     if (body.action === "complete_trip") {
-      const { data: inquiry, error: fetchError } = await supabase
+      const { data: inquiry, error: fetchError } = await supabaseAdmin
         .from("inquiries")
         .select("id, customer_profile_id, booking_status")
         .eq("id", inquiryId)
@@ -268,7 +268,7 @@ export async function PATCH(
 
       const prevBook = bookingStatus ?? "none";
 
-      const { error: inquiryUpdateErr } = await supabase
+      const { error: inquiryUpdateErr } = await supabaseAdmin
         .from("inquiries")
         .update({
           booking_status: "completed",
@@ -301,7 +301,7 @@ export async function PATCH(
   }
 
   // Legacy: no action, direct field update
-  const { data: prevLegacy, error: prevLegErr } = await supabase
+  const { data: prevLegacy, error: prevLegErr } = await supabaseAdmin
     .from("inquiries")
     .select("consultation_status, booking_status")
     .eq("id", inquiryId)
@@ -340,7 +340,7 @@ export async function PATCH(
   if (updatePayload.consultation_status !== undefined) nextLC = String(updatePayload.consultation_status);
   if (updatePayload.booking_status !== undefined) nextLB = String(updatePayload.booking_status);
 
-  const { error } = await supabase.from("inquiries").update(updatePayload).eq("id", inquiryId);
+  const { error } = await supabaseAdmin.from("inquiries").update(updatePayload).eq("id", inquiryId);
   if (error) {
     return handleInquiryUpdateError(error);
   }
@@ -354,7 +354,7 @@ function handleInquiryUpdateError(error: { code?: string; message?: string }) {
     return NextResponse.json(
       {
         message:
-          "DB 제약 조건 위반입니다. consultation_status에 on_hold 등을 허용하는 마이그레이션을 Supabase에 적용했는지 확인해 주세요. (예: supabase/migrations/20260407120100_inquiries_consultation_status_on_hold.sql)",
+          "DB 제약 조건 위반입니다. consultation_status에 on_hold 등을 허용하는 마이그레이션을 Supabase에 적용했는지 확인해 주세요. (예: supabaseAdmin/migrations/20260407120100_inquiries_consultation_status_on_hold.sql)",
       },
       { status: 400 },
     );
@@ -395,7 +395,7 @@ export async function DELETE(
     return NextResponse.json({ message: "문의 ID가 필요합니다." }, { status: 400 });
   }
 
-  const { data, error } = await supabase.from("inquiries").delete().eq("id", id).select("id");
+  const { data, error } = await supabaseAdmin.from("inquiries").delete().eq("id", id).select("id");
 
   if (error) {
     return handleInquiryDeleteError(error);

@@ -1,5 +1,5 @@
 import "server-only";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export type AdminReviewReportRow = {
   id: string;
@@ -14,7 +14,7 @@ export type AdminReviewReportRow = {
 
 /** 관리자용: 신고 목록 (최신순) */
 export async function getAdminReviewReports(limit = 200): Promise<AdminReviewReportRow[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("review_reports")
     .select("id, review_id, member_id, reason, created_at, status, reviews(title, status)")
     .order("created_at", { ascending: false })

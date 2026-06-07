@@ -10,6 +10,7 @@ import {
 const LABEL_ADMIN = "\uAD00\uB9AC\uC790"; // 관리자
 const LABEL_DASHBOARD = "\uB300\uC2DC\uBCF4\uB4DC"; // 대시보드
 const LABEL_DASHBOARD_OVERVIEW = "\uC6B4\uC601 \uD604\uD669"; // 운영 현황
+const LABEL_GOLF_LEADS = "\uACE8\uD504 \uB9AC\uB4DC (UTM)"; // 골프 리드 (UTM)
 const LABEL_PRODUCTS = "\uC0C1\uD488 \uAD00\uB9AC"; // 상품 관리
 const LABEL_INQUIRIES = "\uBB38\uC758 \uAD00\uB9AC"; // 문의 관리
 const LABEL_MEMBERS = "\uD68C\uC6D0 \uAD00\uB9AC"; // 회원 관리
@@ -98,6 +99,8 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
     }
     case "notifications":
       return [...base, LABEL_NOTIFICATIONS];
+    case "golf-leads":
+      return [...base, LABEL_DASHBOARD, LABEL_GOLF_LEADS];
     default:
       return [...base, LABEL_DASHBOARD];
   }

@@ -23,10 +23,16 @@ type AdminLayoutProps = {
   children: ReactNode;
 };
 
+const DASHBOARD_SECTION_PREFIXES = ["/golf-leads"] as const;
+
+function isDashboardSectionRelativePath(rel: string): boolean {
+  return DASHBOARD_SECTION_PREFIXES.some((prefix) => rel === prefix || rel.startsWith(`${prefix}/`));
+}
+
 function inferMainMenuKey(pathname: string): MainMenuKey | null {
   const rel = getAdminConsoleRelativePath(pathname);
   if (rel == null) return null;
-  if (rel === "/" || rel === "") return "dashboard";
+  if (rel === "/" || rel === "" || isDashboardSectionRelativePath(rel)) return "dashboard";
   if (rel.startsWith("/products")) return "product";
   if (rel.startsWith("/landings")) return "landings";
   if (rel.startsWith("/inquiries/dashboard")) return "inquiry_dashboard";
@@ -59,6 +65,9 @@ function canAccessPath(
     if (item.mainKey === "reviews") {
       if (isAdminReviewSectionRelativePath(pathStem)) return true;
       continue;
+    }
+    if (item.mainKey === "dashboard" && isDashboardSectionRelativePath(pathStem)) {
+      return true;
     }
     const itemStem = getAdminConsoleRelativePath(item.href);
     if (itemStem == null) continue;

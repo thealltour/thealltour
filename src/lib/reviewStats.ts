@@ -6,6 +6,7 @@
 import "server-only";
 
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sortReviewsByRecommendation } from "@/lib/reviewRanking";
 import type {
   PublicReviewItem,
@@ -97,7 +98,7 @@ export async function getPublicReviews(
   const isRecommended = sort === "recommended";
   const fetchLimit = isRecommended ? Math.min(offset + limit, 500) : offset + limit;
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("reviews")
     .select("*, travel_bookings(product_id, product_title)")
     .eq("status", PUBLIC_STATUS);
@@ -108,7 +109,7 @@ export async function getPublicReviews(
   }
 
   if (productId) {
-    const { data: bookings } = await supabase
+    const { data: bookings } = await supabaseAdmin
       .from("travel_bookings")
       .select("id")
       .eq("product_id", productId);
@@ -178,7 +179,7 @@ export async function getPublicReviews(
           .eq("member_id", viewerMemberId)
           .eq("vote_type", "helpful")
           .in("review_id", reviewIds),
-        supabase
+        supabaseAdmin
           .from("review_reports")
           .select("review_id")
           .eq("member_id", viewerMemberId)
@@ -244,7 +245,7 @@ export async function getPublicReviews(
  * 해당 상품의 booking_id로 연결된 submitted 리뷰만 집계.
  */
 export async function getProductReviewStats(productId: string): Promise<ProductReviewStats> {
-  const { data: bookings } = await supabase
+  const { data: bookings } = await supabaseAdmin
     .from("travel_bookings")
     .select("id")
     .eq("product_id", productId);
@@ -327,7 +328,7 @@ export async function getPublicReviewById(
   reviewId: string,
   options?: { viewerMemberId?: string },
 ): Promise<PublicReviewItem | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reviews")
     .select("*, travel_bookings(product_id, product_title)")
     .eq("id", reviewId)
@@ -355,7 +356,7 @@ export async function getPublicReviewById(
         .eq("vote_type", "helpful")
         .limit(1)
         .maybeSingle(),
-      supabase
+      supabaseAdmin
         .from("review_reports")
         .select("id")
         .eq("review_id", reviewId)

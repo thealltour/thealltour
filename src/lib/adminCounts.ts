@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { unstable_cache } from "next/cache";
 
 /**
@@ -32,7 +34,7 @@ async function fetchAdminCountsRaw() {
   const delayedThresholdIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
   const activeConsultation = () =>
-    supabase.from("inquiries").select("id", { count: "exact", head: true }).in("consultation_status", ["new", "contacted"]);
+    supabaseAdmin.from("inquiries").select("id", { count: "exact", head: true }).in("consultation_status", ["new", "contacted"]);
 
   const [
     productsResult,
@@ -51,48 +53,48 @@ async function fetchAdminCountsRaw() {
     todayDelayedResult,
     yesterdayDelayedResult,
   ] = await Promise.all([
-    supabase.from("products").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("products").select("id", { count: "exact", head: true }),
     activeConsultation(),
-    supabase.from("members").select("id", { count: "exact", head: true }),
-    supabase.from("reviews").select("id", { count: "exact", head: true }),
-    supabase.from("inquiries").select("id", { count: "exact", head: true }),
-    supabase.from("inquiries").select("id", { count: "exact", head: true }).eq("booking_status", "completed"),
-    supabase.from("inquiries").select("id", { count: "exact", head: true }).eq("booking_status", "reserved"),
-    supabase.from("inquiries").select("id", { count: "exact", head: true }).eq("consultation_status", "on_hold"),
-    supabase
+    supabaseAdmin.from("members").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("reviews").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("inquiries").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("inquiries").select("id", { count: "exact", head: true }).eq("booking_status", "completed"),
+    supabaseAdmin.from("inquiries").select("id", { count: "exact", head: true }).eq("booking_status", "reserved"),
+    supabaseAdmin.from("inquiries").select("id", { count: "exact", head: true }).eq("consultation_status", "on_hold"),
+    supabaseAdmin
       .from("inquiries")
       .select("id", { count: "exact", head: true })
       .in("consultation_status", ["new", "contacted"])
       .lt("created_at", delayedThresholdIso),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id", { count: "exact", head: true })
       .gte("created_at", startOfToday.toISOString())
       .lt("created_at", startOfTomorrow.toISOString()),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id", { count: "exact", head: true })
       .gte("created_at", startOfYesterday.toISOString())
       .lt("created_at", startOfToday.toISOString()),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id", { count: "exact", head: true })
       .in("consultation_status", ["new", "contacted"])
       .gte("created_at", startOfToday.toISOString())
       .lt("created_at", startOfTomorrow.toISOString()),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id", { count: "exact", head: true })
       .in("consultation_status", ["new", "contacted"])
       .gte("created_at", startOfYesterday.toISOString())
       .lt("created_at", startOfToday.toISOString()),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id", { count: "exact", head: true })
       .in("consultation_status", ["new", "contacted"])
       .lt("created_at", delayedThresholdIso)
       .gte("created_at", startOfToday.toISOString()),
-    supabase
+    supabaseAdmin
       .from("inquiries")
       .select("id", { count: "exact", head: true })
       .in("consultation_status", ["new", "contacted"])

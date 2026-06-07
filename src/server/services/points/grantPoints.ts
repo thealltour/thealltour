@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getPointExpiresAt } from "@/config/rewardPolicy";
 
 export type GrantPointStatus = "CONFIRMED" | "PENDING";
@@ -20,7 +22,7 @@ export async function grantPointsToUser(params: GrantPointsParams) {
   if (!userId) throw new Error("userId는 필수입니다.");
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount는 1 이상의 숫자여야 합니다.");
 
-  const { data: memberRow, error: memberErr } = await supabase
+  const { data: memberRow, error: memberErr } = await supabaseAdmin
     .from("members")
     .select("id, point_balance, point_pending")
     .eq("id", userId)
@@ -35,7 +37,7 @@ export async function grantPointsToUser(params: GrantPointsParams) {
   const status = params.status === "PENDING" ? "PENDING" : "CONFIRMED";
   const now = new Date().toISOString();
 
-  const { data: ledgerRow, error: ledgerErr } = await supabase
+  const { data: ledgerRow, error: ledgerErr } = await supabaseAdmin
     .from("point_ledger")
     .insert({
       user_id: userId,
@@ -56,20 +58,20 @@ export async function grantPointsToUser(params: GrantPointsParams) {
   }
 
   if (status === "CONFIRMED") {
-    const { error: updateErr } = await supabase
+    const { error: updateErr } = await supabaseAdmin
       .from("members")
       .update({ point_balance: currentBalance + amount })
       .eq("id", userId);
     if (updateErr) throw new Error("포인트 반영에 실패했습니다.");
   } else {
-    const { error: updateErr } = await supabase
+    const { error: updateErr } = await supabaseAdmin
       .from("members")
       .update({ point_pending: currentPending + amount })
       .eq("id", userId);
     if (updateErr) throw new Error("대기 포인트 반영에 실패했습니다.");
   }
 
-  await supabase.from("notifications").insert({
+  await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "POINT_EARNED",
     title: "포인트 적립",

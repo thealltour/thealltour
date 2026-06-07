@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
 
 type RawTaxonomy = {
@@ -26,7 +28,7 @@ function isMissingColumnError(message: string): boolean {
 export async function resolveDestinationProductCounts(
   taxonomies: RawTaxonomy[],
 ): Promise<Map<string, number>> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("products")
     .select("destination_id")
     .eq("is_active", true)
@@ -44,7 +46,7 @@ export async function resolveDestinationProductCounts(
 }
 
 async function resolveThemeCountsByFk(taxonomies: RawTaxonomy[]): Promise<Map<string, number> | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("products")
     .select("theme_id")
     .eq("is_active", true)
@@ -66,7 +68,7 @@ async function resolveThemeCountsByFk(taxonomies: RawTaxonomy[]): Promise<Map<st
 }
 
 async function resolveThemeCountsByLegacyText(taxonomies: RawTaxonomy[]): Promise<Map<string, number>> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("products")
     .select("theme")
     .eq("is_active", true);
@@ -104,7 +106,7 @@ export async function resolveThemeProductCounts(taxonomies: RawTaxonomy[]): Prom
 }
 
 export async function resolveProductLineProductCounts(taxonomies: RawTaxonomy[]): Promise<Map<string, number>> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("products")
     .select("product_line_id")
     .eq("is_active", true)

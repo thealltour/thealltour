@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type {
   AdminLandingsRepository,
   AdminLandingRecord,
@@ -64,7 +66,7 @@ async function insertWithUnknownColumnFallback(payload: Record<string, unknown>)
   let lastErrorMessage = "";
   // PostgREST 에러 메시지에서 존재하지 않는 컬럼을 제거하며 재시도
   for (let i = 0; i < INSERT_COLUMN_FALLBACK_MAX; i += 1) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("home_curated_sections")
       .insert(attempt)
       .select("*")
@@ -98,7 +100,7 @@ async function updateWithUnknownColumnFallback(
   const attempt: Record<string, unknown> = { ...payload };
   let lastErrorMessage = "";
   for (let i = 0; i < INSERT_COLUMN_FALLBACK_MAX; i += 1) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("home_curated_sections")
       .update(attempt)
       .eq("id", id)
@@ -118,7 +120,7 @@ async function updateWithUnknownColumnFallback(
 }
 
 async function ensureHomeCuratedSettingId(): Promise<string> {
-  const { data: row, error } = await supabase
+  const { data: row, error } = await supabaseAdmin
     .from("home_curated_settings")
     .select("id")
     .eq("setting_key", "home_curated")
@@ -126,7 +128,7 @@ async function ensureHomeCuratedSettingId(): Promise<string> {
   if (error) throw new Error(error.message);
   if (row?.id) return String(row.id);
 
-  const insert = await supabase
+  const insert = await supabaseAdmin
     .from("home_curated_settings")
     .upsert(
       {
@@ -149,7 +151,7 @@ async function ensureHomeCuratedSettingId(): Promise<string> {
 }
 
 async function ensureSlugUnique(slug: string, selfId?: string): Promise<void> {
-  const query = supabase.from("home_curated_sections").select("id").eq("slug", slug);
+  const query = supabaseAdmin.from("home_curated_sections").select("id").eq("slug", slug);
   const { data, error } = selfId ? await query.neq("id", selfId).limit(1) : await query.limit(1);
   if (error) {
     const missing = pickMissingColumn(error.message ?? "");
@@ -164,7 +166,7 @@ async function ensureSlugUnique(slug: string, selfId?: string): Promise<void> {
 
 class HomeCuratedLandingsRepository implements AdminLandingsRepository {
   async list(): Promise<AdminLandingRecord[]> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("home_curated_sections")
       .select("*")
       .order("sort_order", { ascending: true })
@@ -175,7 +177,7 @@ class HomeCuratedLandingsRepository implements AdminLandingsRepository {
   }
 
   async getById(id: string): Promise<AdminLandingRecord | null> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("home_curated_sections")
       .select("*")
       .eq("id", id)
@@ -187,7 +189,7 @@ class HomeCuratedLandingsRepository implements AdminLandingsRepository {
   }
 
   async getBySlug(slug: string): Promise<AdminLandingRecord | null> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("home_curated_sections")
       .select("*")
       .eq("slug", slug)
@@ -203,7 +205,7 @@ class HomeCuratedLandingsRepository implements AdminLandingsRepository {
     const settingId = await ensureHomeCuratedSettingId();
     const { is_active, landing_enabled } = statusToFlags(input.status);
 
-    const { data: maxRow } = await supabase
+    const { data: maxRow } = await supabaseAdmin
       .from("home_curated_sections")
       .select("sort_order")
       .eq("setting_id", settingId)
@@ -268,14 +270,14 @@ class HomeCuratedLandingsRepository implements AdminLandingsRepository {
     if (!id) return false;
 
     const parentSlug = `landing:${id}`;
-    const { error: subErr } = await supabase
+    const { error: subErr } = await supabaseAdmin
       .from("landing_subnodes")
       .delete()
       .eq("parent_kind", "recommended")
       .eq("parent_slug", parentSlug);
     if (subErr) throw new Error(subErr.message);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("home_curated_sections")
       .delete()
       .eq("id", id)

@@ -8,6 +8,8 @@ import { buttonVariants } from "@/components/ui/Button";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { getMemberPointsData } from "@/lib/member/meServerData";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
 
 const TYPE_LABEL: Record<string, string> = {
   EARN: "적립",
@@ -18,19 +20,14 @@ const TYPE_LABEL: Record<string, string> = {
   RELEASE: "예약해제",
 };
 
-async function fetchPoints(baseUrl: string, cookieHeader: string) {
-  const res = await fetch(`${baseUrl}/api/me/points`, {
-    headers: { Cookie: cookieHeader },
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  return res.json();
-}
-
 export default async function MyPagePointsPage() {
   const cookieStore = await cookies();
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const data = await fetchPoints(baseUrl, cookieStore.toString());
+  const session = getMemberSessionFromCookies(cookieStore);
+  if (!session) {
+    return null;
+  }
+
+  const data = await getMemberPointsData(session.memberId);
   const ledger = Array.isArray(data?.ledger) ? data.ledger : [];
 
   return (
@@ -61,33 +58,24 @@ export default async function MyPagePointsPage() {
                 <MyPageEmptyState message="포인트 내역이 없습니다." dashed className="py-4" />
               </li>
             ) : (
-              ledger.map(
-                (item: {
-                  id: string;
-                  type: string;
-                  status: string;
-                  amount: number;
-                  reason: string | null;
-                  created_at: string;
-                }) => (
-                  <MyPageListItem key={item.id}>
-                    <div>
-                      <p className="text-sm font-medium text-[var(--text-primary)]">
-                        {TYPE_LABEL[item.type] ?? item.type} · {item.reason ?? "-"}
-                      </p>
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        {new Date(item.created_at).toLocaleString("ko-KR")}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">
-                        {Number(item.amount).toLocaleString()}P
-                      </p>
-                      <MyPageStatusBadge status={item.status} label={item.status} />
-                    </div>
-                  </MyPageListItem>
-                ),
-              )
+              ledger.map((item) => (
+                <MyPageListItem key={item.id}>
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                      {TYPE_LABEL[item.type] ?? item.type} · {item.reason ?? "-"}
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      {new Date(item.created_at).toLocaleString("ko-KR")}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">
+                      {Number(item.amount).toLocaleString()}P
+                    </p>
+                    <MyPageStatusBadge status={item.status} label={item.status} />
+                  </div>
+                </MyPageListItem>
+              ))
             )}
           </MyPageList>
         </MyPageCard>

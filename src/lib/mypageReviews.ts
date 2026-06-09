@@ -36,50 +36,54 @@ export async function getMyPageReviewSections(
     return { writable: [], drafts: [], submitted: [] };
   }
 
-  const [eligibilities, draftReviews, submittedReviews] = await Promise.all([
-    getWritableEligibilitiesByMemberId(memberId),
-    getDraftReviewsByMemberId(memberId),
-    getSubmittedReviewsByMemberId(memberId),
-  ]);
+  try {
+    const [eligibilities, draftReviews, submittedReviews] = await Promise.all([
+      getWritableEligibilitiesByMemberId(memberId),
+      getDraftReviewsByMemberId(memberId),
+      getSubmittedReviewsByMemberId(memberId),
+    ]);
 
-  const writableItems: MyPageWritableReviewItem[] = [];
-  for (const elig of eligibilities) {
-    const existingReview = await getReviewByEligibilityId(elig.id);
-    if (!existingReview) {
-      writableItems.push({
-        eligibility_id: elig.id,
-        booking_id: elig.booking_id,
-        customer_profile_id: elig.customer_profile_id,
-        product_id: elig.product_id,
-        product_title: elig.product_title,
-        departure_date: elig.departure_date,
-        return_date: elig.return_date,
-        review_open_at: elig.review_open_at,
-        has_submitted_review: false,
-      });
+    const writableItems: MyPageWritableReviewItem[] = [];
+    for (const elig of eligibilities) {
+      const existingReview = await getReviewByEligibilityId(elig.id);
+      if (!existingReview) {
+        writableItems.push({
+          eligibility_id: elig.id,
+          booking_id: elig.booking_id,
+          customer_profile_id: elig.customer_profile_id,
+          product_id: elig.product_id,
+          product_title: elig.product_title,
+          departure_date: elig.departure_date,
+          return_date: elig.return_date,
+          review_open_at: elig.review_open_at,
+          has_submitted_review: false,
+        });
+      }
     }
+
+    const draftItems: MyPageDraftReviewItem[] = draftReviews.map((r) => ({
+      review_id: r.id,
+      eligibility_id: r.eligibility_id,
+      title: r.title || null,
+      updated_at: r.updated_at ?? r.created_at,
+      created_at: r.created_at,
+    }));
+
+    const submittedItems: MyPageSubmittedReviewItem[] = submittedReviews.map((r) => ({
+      id: r.id,
+      title: r.title,
+      content: r.content,
+      created_at: r.created_at,
+      rating: r.rating,
+      image_urls: r.image_urls,
+    }));
+
+    return {
+      writable: writableItems,
+      drafts: draftItems,
+      submitted: submittedItems,
+    };
+  } catch {
+    return { writable: [], drafts: [], submitted: [] };
   }
-
-  const draftItems: MyPageDraftReviewItem[] = draftReviews.map((r) => ({
-    review_id: r.id,
-    eligibility_id: r.eligibility_id,
-    title: r.title || null,
-    updated_at: r.updated_at ?? r.created_at,
-    created_at: r.created_at,
-  }));
-
-  const submittedItems: MyPageSubmittedReviewItem[] = submittedReviews.map((r) => ({
-    id: r.id,
-    title: r.title,
-    content: r.content,
-    created_at: r.created_at,
-    rating: r.rating,
-    image_urls: r.image_urls,
-  }));
-
-  return {
-    writable: writableItems,
-    drafts: draftItems,
-    submitted: submittedItems,
-  };
 }

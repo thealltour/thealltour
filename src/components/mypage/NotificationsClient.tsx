@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
+import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type NotificationItem = {
   id: string;
@@ -42,42 +46,38 @@ export default function NotificationsClient() {
   }
 
   if (items.length === 0) {
-    return <p className="text-sm text-[var(--text-secondary)]">알림이 없습니다.</p>;
+    return <MyPageEmptyState message="알림이 없습니다." dashed={false} />;
   }
 
   return (
-    <section className="space-y-2">
+    <div className="space-y-3">
       {items.map((notification) => (
-        <article
+        <MyPageCard
           key={notification.id}
-          className={`rounded-xl border p-4 ${
-            notification.is_read
-              ? "border-[var(--border)] bg-[var(--surface)]"
-              : "border-[var(--primary)] bg-[var(--primary-soft)]"
-          }`}
+          className={cn(
+            !notification.is_read && "border-[var(--primary)]/30 bg-[var(--primary-soft)]/40",
+          )}
         >
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-h-[44px] items-start justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-[var(--text-primary)]">{notification.title}</p>
-              {notification.body ? <p className="mt-1 text-xs text-[var(--text-secondary)]">{notification.body}</p> : null}
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              {notification.body ? (
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">{notification.body}</p>
+              ) : null}
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
                 {new Date(notification.created_at).toLocaleString("ko-KR")}
               </p>
             </div>
             {!notification.is_read ? (
-              <button
-                type="button"
-                onClick={() => markRead(notification.id)}
-                className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-primary)]"
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => markRead(notification.id)}>
                 읽음 처리
-              </button>
+              </Button>
             ) : (
-              <span className="text-xs text-[var(--text-secondary)]">읽음</span>
+              <span className="type-caption text-[var(--text-muted)]">읽음</span>
             )}
           </div>
-        </article>
+        </MyPageCard>
       ))}
-    </section>
+    </div>
   );
 }

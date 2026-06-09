@@ -93,7 +93,7 @@ export function buildBandHookText(vm: BlogPostViewModel): BandHookBuildResult {
   const summaryLines = compactIncludedSummary(vm);
   const price = toManPriceBandFromPriceText(vm.priceText) ?? vm.priceText;
   const targetLine = buildTargetLine(vm);
-  const productUrl = buildProductUrl(vm);
+  const productUrl = buildProductUrl(vm, "naver_band");
 
   const body: string[] = [];
 

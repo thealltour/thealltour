@@ -39,16 +39,18 @@ export default function KakaoFloatingButton() {
   const isProductDetailPage =
     /^\/products\/[^/]+\/?$/.test(pathname) || /^\/dev\/product-detail\/[^/]+\/?$/.test(pathname);
 
-  if (
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/theall_manager_only") ||
-    isProductDetailPage
-  ) {
+  if (pathname.startsWith("/admin") || pathname.startsWith("/theall_manager_only")) {
     return null;
   }
 
+  const bottomClass = isProductDetailPage
+    ? "bottom-[max(76px,env(safe-area-inset-bottom))]"
+    : "bottom-[max(16px,env(safe-area-inset-bottom))]";
+
   return (
-    <div className="fixed right-[max(16px,env(safe-area-inset-right))] bottom-[max(16px,env(safe-area-inset-bottom))] z-50 flex items-center gap-3 sm:hidden">
+    <div
+      className={`fixed right-[max(16px,env(safe-area-inset-right))] ${bottomClass} z-50 flex items-center gap-3 sm:hidden`}
+    >
       {/* 캡슐 형태 카톡 상담 버튼 - 웹 카톡 버튼과 동일한 톤 */}
       <a
         href={

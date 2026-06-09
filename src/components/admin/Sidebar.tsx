@@ -1,30 +1,58 @@
 "use client";
 
-/** 데스크톱 관리자 사이드바. 모바일 관리자(MobileAdminShell)에서는 사용하지 않습니다. */
-
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import type { MainMenuKey } from "@/components/admin/SubHeader";
-import { useAdminRole } from "@/components/admin/AdminRoleContext";
-import { SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
+import { useAdminSession } from "@/components/admin/AdminRoleContext";
+import { SIDEBAR_GROUPS, SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
 import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
 import { ThemedWordmarkImage } from "@/components/header/ThemedWordmarkImage";
+import { isReviewRelatedPath } from "@/components/admin/sidebarUtils";
+import { canAccessSidebarMainKey } from "@/lib/adminRolePolicy";
+import { hasAdminPermission } from "@/lib/adminPermissions";
 
 type SidebarProps = {
   activeMenu: MainMenuKey | null;
   setActiveMenu: (key: MainMenuKey) => void;
 };
 
+function memberRewardsHref(session: ReturnType<typeof useAdminSession>) {
+  if (hasAdminPermission(session, "members.manage")) {
+    return "/theall_manager_only/members";
+  }
+  if (hasAdminPermission(session, "points.manage")) {
+    return "/theall_manager_only/points";
+  }
+  return "/theall_manager_only/rewards";
+}
+
 export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role } = useAdminRole();
+  const session = useAdminSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    ops: true,
+    catalog: true,
+    content: true,
+  });
+
+  function toggleGroup(groupId: string) {
+    setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  }
+
+  function isItemActive(href: string, mainKey?: MainMenuKey): boolean {
+    if (mainKey && activeMenu === mainKey) return true;
+    if (mainKey === "reviews" && isReviewRelatedPath(pathname)) return true;
+    if (href === "/theall_manager_only") return pathname === "/theall_manager_only";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300`}
+      className="fixed inset-y-0 left-0 z-40 border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300"
       style={{ width: isCollapsed ? "72px" : "256px" }}
     >
       <div className="flex h-full flex-col">
@@ -50,77 +78,75 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
           </p>
         )}
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-2 pb-4">
-          {SIDEBAR_ITEMS.filter((item) => item.section === "main" && item.roles.includes(role)).map(
-            (item) => {
-              const isActive = activeMenu === item.mainKey;
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.href}
-                  type="button"
-                  title={item.label}
-                  onClick={() => {
-                    if (!confirmAdminProductUnsavedIfNeeded()) return;
-                    if (item.mainKey) setActiveMenu(item.mainKey);
-                    router.push(item.href);
-                  }}
-                  className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
-                    isActive
-                      ? "bg-[var(--surface-muted)] text-[var(--primary)] font-semibold"
-                      : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
-                  } ${isCollapsed ? "justify-center" : "justify-between"}`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon
-                      size={18}
-                      strokeWidth={1.5}
-                      className={isActive ? "text-[var(--primary)]" : "text-[var(--text-muted)]"}
-                      aria-hidden="true"
-                    />
-                    {!isCollapsed && <span>{item.label}</span>}
-                  </span>
-                </button>
-              );
-            },
-          )}
+        <nav className="flex-1 space-y-2 overflow-y-auto px-2 pb-4">
+          {SIDEBAR_GROUPS.map((group) => {
+            const groupItems = SIDEBAR_ITEMS.filter(
+              (item) =>
+                item.group === group.id &&
+                item.mainKey &&
+                canAccessSidebarMainKey(session, item.mainKey),
+            );
+            if (groupItems.length === 0) return null;
 
-          <div className="mt-4 space-y-1 border-t border-[var(--divider)] pt-3 text-xs text-[var(--text-muted)]">
-            {!isCollapsed && (
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.16em]">기타</p>
-            )}
-            {SIDEBAR_ITEMS.filter(
-              (item) => item.section === "extra" && item.roles.includes(role),
-            ).map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                item.href === "/theall_manager_only"
-                  ? pathname === "/theall_manager_only"
-                  : pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={item.label}
-                  className={`flex items-center rounded-lg px-3 py-2 text-xs font-medium transition-colors duration-150 ${
-                    isActive
-                      ? "bg-[var(--surface-muted)] text-[var(--primary)] font-semibold"
-                      : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
-                  } ${isCollapsed ? "justify-center" : "justify-between"}`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon
-                      size={18}
-                      strokeWidth={1.5}
-                      className={isActive ? "text-[var(--primary)]" : "text-[var(--text-muted)]"}
-                      aria-hidden="true"
+            const isExpanded = expandedGroups[group.id] !== false;
+
+            return (
+              <div key={group.id} className="space-y-1">
+                {!isCollapsed ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "" : "-rotate-90"}`}
                     />
-                    {!isCollapsed && <span>{item.label}</span>}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
+                  </button>
+                ) : null}
+
+                {(isCollapsed || isExpanded) &&
+                  groupItems.map((item) => {
+                    const effectiveHref =
+                      item.mainKey === "member_rewards"
+                        ? memberRewardsHref(session)
+                        : item.href.split("?")[0] ?? item.href;
+                    const isActive = isItemActive(effectiveHref, item.mainKey);
+                    const Icon = item.icon;
+
+                    return (
+                      <button
+                        key={item.href}
+                        type="button"
+                        title={item.label}
+                        onClick={() => {
+                          if (!confirmAdminProductUnsavedIfNeeded()) return;
+                          setActiveMenu(item.mainKey!);
+                          router.push(
+                            item.mainKey === "member_rewards" ? memberRewardsHref(session) : item.href,
+                          );
+                        }}
+                        className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
+                          isActive
+                            ? "bg-[var(--surface-muted)] font-semibold text-[var(--primary)]"
+                            : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                        } ${isCollapsed ? "justify-center" : "justify-between"}`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <Icon
+                            size={18}
+                            strokeWidth={1.5}
+                            className={isActive ? "text-[var(--primary)]" : "text-[var(--text-muted)]"}
+                            aria-hidden="true"
+                          />
+                          {!isCollapsed && <span>{item.label}</span>}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+            );
+          })}
         </nav>
       </div>
     </aside>

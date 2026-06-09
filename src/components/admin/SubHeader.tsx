@@ -5,11 +5,14 @@
  * 모바일 리뷰 서브내비는 하단 탭·앱 내 링크로만 연결합니다(SubHeader 축소판 없음).
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bell, Moon, Search, Sun } from "lucide-react";
+import { Bell, ChevronDown, Moon, Sun } from "lucide-react";
+import AdminGlobalSearch from "@/components/admin/AdminGlobalSearch";
 import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
+import { useAdminSession, useAdminPermission } from "@/components/admin/AdminRoleContext";
+import { hasAdminPermission } from "@/lib/adminPermissions";
 import {
   ADMIN_PRODUCTS_VIEW,
   ADMIN_PRODUCTS_QUERY_KEYS,
@@ -20,42 +23,47 @@ import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/
 
 export type SubHeaderTab = { label: string; href: string };
 
-/** 후기 관리 상단 가로 탭 (본문 상단 탭 UI용) */
-export const REVIEWS_TABS: SubHeaderTab[] = [
-  { label: "리뷰 목록 (검색)", href: "/admin/reviews" },
-  { label: "리뷰 검토", href: "/admin/reviews/moderation" },
-  { label: "리뷰 운영 알림", href: "/admin/reviews/notifications" },
-  { label: "후기 신고", href: "/theall_manager_only/review-reports" },
-  { label: "후기 리마인더", href: "/theall_manager_only/review-reminders" },
-  { label: "리뷰 요약", href: "/theall_manager_only/review-summaries" },
-  { label: "리뷰 분석", href: "/admin/reviews/analytics" },
-  { label: "리뷰 이상 감지", href: "/admin/reviews/anomalies" },
-  { label: "리뷰 요약 (관리자)", href: "/admin/reviews/summaries" },
-  { label: "리뷰 작성자 분석", href: "/admin/reviews/authors" },
-  { label: "리뷰 A/B 실험", href: "/admin/reviews/experiments" },
-  { label: "리뷰 전환 기여도", href: "/admin/reviews/conversions" },
-  { label: "리뷰 인사이트", href: "/admin/reviews/insights" },
+const MANAGER_PREFIX = "/theall_manager_only";
+
+/** 후기 운영 탭 (일상 업무) */
+export const REVIEWS_OPS_TABS: SubHeaderTab[] = [
+  { label: "리뷰 목록", href: `${MANAGER_PREFIX}/reviews` },
+  { label: "리뷰 검토", href: `${MANAGER_PREFIX}/reviews/moderation` },
+  { label: "후기 신고", href: `${MANAGER_PREFIX}/review-reports` },
+  { label: "후기 리마인더", href: `${MANAGER_PREFIX}/review-reminders` },
+];
+
+/** 후기 분석·고급 (드롭다운) */
+export const REVIEWS_ANALYTICS_TABS: SubHeaderTab[] = [
+  { label: "리뷰 요약", href: `${MANAGER_PREFIX}/review-summaries` },
+  { label: "리뷰 분석", href: `${MANAGER_PREFIX}/reviews/analytics` },
+  { label: "리뷰 이상 감지", href: `${MANAGER_PREFIX}/reviews/anomalies` },
+  { label: "리뷰 운영 알림", href: `${MANAGER_PREFIX}/reviews/notifications` },
+  { label: "리뷰 작성자 분석", href: `${MANAGER_PREFIX}/reviews/authors` },
+  { label: "리뷰 A/B 실험", href: `${MANAGER_PREFIX}/reviews/experiments` },
+  { label: "리뷰 전환 기여도", href: `${MANAGER_PREFIX}/reviews/conversions` },
+  { label: "리뷰 인사이트", href: `${MANAGER_PREFIX}/reviews/insights` },
 ];
 
 function isReviewTabActive(href: string, pathname: string): boolean {
-  if (href === "/admin/reviews") return pathname === "/admin/reviews";
-  if (href === "/theall_manager_only/reviews") return pathname === "/theall_manager_only/reviews";
-  return pathname === href || pathname.startsWith(href + "/");
+  const normalized = pathname.replace(/^\/admin/, MANAGER_PREFIX);
+  const target = href.replace(/^\/admin/, MANAGER_PREFIX);
+  if (target === `${MANAGER_PREFIX}/reviews`) {
+    return normalized === target;
+  }
+  return normalized === target || normalized.startsWith(`${target}/`);
 }
 
 export const menuMap = {
-  dashboard: ["운영 현황", "통계", "골프 리드 (UTM)"],
-  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리", "메인 지역카드", "메인 테마카드", "메인 추천상품 관리"],
-  landings: ["랜딩 목록", "taxonomy 기반 생성", "성과 분석"],
+  dashboard: ["오늘 할 일", "지표·리드"],
+  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리"],
+  home: ["메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
+  landings: ["랜딩 목록", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
-  inquiry_dashboard: ["전체 문의", "미처리 문의", "운영 대시보드"],
-  member: ["회원 목록"],
-  rewards: ["신청", "승인", "발송", "완료", "반려"],
-  points: ["포인트 지급"],
-  settings: [],
+  member_rewards: ["회원 목록", "포인트 지급", "적립 요청", "교환 신청"],
+  settings: [] as string[],
   reviews: [] as string[],
   guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
-  banners: ["배너 목록"],
   notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
   notifications: ["알림 목록"],
 } as const;
@@ -64,19 +72,16 @@ export type MainMenuKey = keyof typeof menuMap;
 
 const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   dashboard: "대시보드",
-  product: "상품 관리",
-  landings: "검색/유입 랜딩 관리",
-  inquiry: "문의 관리",
-  inquiry_dashboard: "문의 운영",
-  member: "회원 관리",
-  rewards: "리워드 교환 관리",
-  points: "포인트 지급 관리",
+  product: "상품",
+  home: "홈·배너 구성",
+  landings: "랜딩·유입",
+  inquiry: "문의·상담",
+  member_rewards: "회원·리워드",
   settings: "환경설정",
-  reviews: "후기 관리",
+  reviews: "후기",
   guides: "여행가이드",
-  banners: "메인배너",
   notices: "공지사항",
-  notifications: "알림",
+  notifications: "알림 센터",
 };
 
 type SubHeaderProps = {
@@ -85,19 +90,25 @@ type SubHeaderProps = {
 };
 
 export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
-  const items = useMemo(
-    () => (activeMenu && activeMenu !== "reviews" ? menuMap[activeMenu] ?? [] : []) as string[],
-    [activeMenu],
-  );
+  const session = useAdminSession();
+  const canManageProducts = useAdminPermission("products.manage");
+  const canManageMembers = useAdminPermission("members.manage");
+  const items = useMemo(() => {
+    if (!activeMenu || activeMenu === "reviews") return [] as string[];
+    const raw = [...(menuMap[activeMenu] ?? [])] as string[];
+    if (activeMenu === "member_rewards" && !canManageMembers) {
+      return raw.filter((label) => label !== "회원 목록");
+    }
+    return raw;
+  }, [activeMenu, canManageMembers]);
   const hasReviewTabs = activeMenu === "reviews";
   const hasSubTabs = hasReviewTabs || items.length > 0;
   const [activeLabel, setActiveLabel] = useState<string | null>(items[0] ?? null);
-  const [globalSearch, setGlobalSearch] = useState("");
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -109,18 +120,28 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         initial = "상품 등록(모두)";
       } else if (view === ADMIN_PRODUCTS_VIEW.TAXONOMY) {
         initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
-      } else if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
-        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.FEATURED];
-      } else if (view === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS) {
-        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS];
-      } else if (view === ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS) {
-        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS];
       } else if (view === ADMIN_PRODUCTS_VIEW.CREATE) {
         initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.CREATE];
       } else if (view === ADMIN_PRODUCTS_VIEW.LIST) {
         initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
       } else {
         initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
+      }
+    }
+    if (activeMenu === "home") {
+      if (pathname.includes("/banners")) {
+        initial = "메인배너";
+      } else {
+        const view = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
+        if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
+          initial = "메인 추천상품";
+        } else if (view === ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS) {
+          initial = "메인 테마카드";
+        } else if (view === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS) {
+          initial = "메인 지역카드";
+        } else {
+          initial = "메인 지역카드";
+        }
       }
     }
     if (activeMenu === "notices") {
@@ -145,18 +166,18 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         initial = "가이드 목록";
       }
     }
-    if (activeMenu === "rewards") {
-      const status = searchParams.get("status");
-      const tabByStatus: Record<string, string> = {
-        REQUESTED: "신청",
-        APPROVED: "승인",
-        SHIPPED: "발송",
-        COMPLETED: "완료",
-        REJECTED: "반려",
-      };
-      initial = (status && tabByStatus[status]) || "신청";
+    if (activeMenu === "member_rewards") {
+      if (pathname.includes("/points/requests")) {
+        initial = "적립 요청";
+      } else if (pathname.startsWith("/theall_manager_only/points")) {
+        initial = "포인트 지급";
+      } else if (pathname.startsWith("/theall_manager_only/rewards")) {
+        initial = "교환 신청";
+      } else {
+        initial = "회원 목록";
+      }
     }
-    if (activeMenu === "inquiry" || activeMenu === "inquiry_dashboard") {
+    if (activeMenu === "inquiry") {
       if (pathname.includes("/inquiries/dashboard")) {
         initial = "운영 대시보드";
       } else if (searchParams.get("status") === "pending") {
@@ -166,8 +187,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       }
     }
     if (activeMenu === "landings") {
-      if (pathname.includes("/landings/analytics")) {
-        initial = "성과 분석";
+      if (pathname.includes("/golf-leads")) {
+        initial = "골프 리드 (UTM)";
+      } else if (pathname.includes("/landings/analytics")) {
+        initial = "성과·UTM";
       } else if (pathname.includes("/landings/generate-from-taxonomy")) {
         initial = "taxonomy 기반 생성";
       } else {
@@ -175,11 +198,8 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       }
     }
     if (activeMenu === "dashboard") {
-      if (pathname.includes("/golf-leads")) {
-        initial = "골프 리드 (UTM)";
-      } else {
-        initial = "운영 현황";
-      }
+      const tab = searchParams.get("tab");
+      initial = tab === "metrics" ? "지표·리드" : "오늘 할 일";
     }
 
     setActiveLabel(initial);
@@ -214,23 +234,6 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       root.classList.remove("dark");
       setIsDarkMode(false);
     }
-  }, []);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "/") return;
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-      const tagName = target.tagName;
-      if (tagName === "INPUT" || tagName === "TEXTAREA" || target.isContentEditable) return;
-      event.preventDefault();
-      searchInputRef.current?.focus();
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
   }, []);
 
   function toggleTheme() {
@@ -268,12 +271,11 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     return null;
   }
 
-  const REWARDS_LABEL_TO_STATUS: Record<string, string> = {
-    신청: "REQUESTED",
-    승인: "APPROVED",
-    발송: "SHIPPED",
-    완료: "COMPLETED",
-    반려: "REJECTED",
+  const HOME_LABEL_TO_PATH: Record<string, string> = {
+    "메인 지역카드": `/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS}`,
+    "메인 테마카드": `/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS}`,
+    "메인 추천상품": `/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.FEATURED}`,
+    "메인배너": "/theall_manager_only/banners",
   };
 
   function handleTabClick(label: string) {
@@ -328,21 +330,34 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       router.push(target);
       return;
     }
-    if (activeMenu === "rewards") {
-      const status = searchParams.get("status");
-      const params = new URLSearchParams(searchParams.toString());
-      if (status) {
-        params.set("status", status);
-      } else {
-        params.delete("status");
+    if (activeMenu === "member_rewards") {
+      if (label === "회원 목록") {
+        router.push(
+          hasAdminPermission(session, "members.manage")
+            ? "/theall_manager_only/members"
+            : "/theall_manager_only/points",
+        );
+        return;
       }
-      params.delete("id");
-      const query = params.toString();
-      const target = query ? `${pathname}?${query}` : pathname;
-      router.push(target);
+      if (label === "포인트 지급") {
+        router.push("/theall_manager_only/points");
+        return;
+      }
+      if (label === "적립 요청") {
+        router.push("/theall_manager_only/points/requests");
+        return;
+      }
+      if (label === "교환 신청") {
+        router.push("/theall_manager_only/rewards");
+        return;
+      }
+    }
+    if (activeMenu === "home") {
+      const target = HOME_LABEL_TO_PATH[label];
+      if (target) router.push(target);
       return;
     }
-    if (activeMenu === "inquiry" || activeMenu === "inquiry_dashboard") {
+    if (activeMenu === "inquiry") {
       if (label === "운영 대시보드") {
         router.push("/theall_manager_only/inquiries/dashboard");
         return;
@@ -359,19 +374,26 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         router.push("/theall_manager_only/landings/generate-from-taxonomy");
         return;
       }
-      if (label === "성과 분석") {
+      if (label === "성과·UTM") {
         router.push("/theall_manager_only/landings/analytics");
+        return;
+      }
+      if (label === "골프 리드 (UTM)") {
+        router.push("/theall_manager_only/golf-leads");
         return;
       }
       router.push("/theall_manager_only/landings");
       return;
     }
     if (activeMenu === "dashboard") {
-      if (label === "골프 리드 (UTM)") {
-        router.push("/theall_manager_only/golf-leads");
-        return;
+      const params = new URLSearchParams(searchParams.toString());
+      if (label === "지표·리드") {
+        params.set("tab", "metrics");
+      } else {
+        params.delete("tab");
       }
-      router.push("/theall_manager_only");
+      const query = params.toString();
+      router.push(query ? `/theall_manager_only?${query}` : "/theall_manager_only");
     }
   }
 
@@ -417,6 +439,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
 
         {/* 오른쪽: 다크 토글 + 검색 + 글로벌 액션 + 알림/로그아웃 */}
         <div className="flex items-center gap-3">
+          <AdminGlobalSearch className="hidden lg:block" />
           <button
             type="button"
             onClick={toggleTheme}
@@ -431,31 +454,18 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
             <span>{isDarkMode ? "Dark" : "Light"}</span>
           </button>
 
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-subtle)]" />
-            <input
-              type="text"
-              value={globalSearch}
-              onChange={(event) => {
-                const value = event.target.value;
-                setGlobalSearch(value);
-                // TODO: wire up admin global search API
+          {canManageProducts ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirmAdminProductUnsavedIfNeeded()) return;
+                router.push(`/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.CREATE}`);
               }}
-              ref={searchInputRef}
-              placeholder="Admin search..."
-              className="w-[240px] rounded-md border border-[var(--border)] bg-[var(--card)] pl-8 pr-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (!confirmAdminProductUnsavedIfNeeded()) return;
-              router.push(`/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.CREATE}`);
-            }}
-            className="btn-admin-primary"
-          >
-            + 상품 추가
-          </button>
+              className="btn-admin-primary"
+            >
+              + 상품 추가
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -476,7 +486,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         <div className="border-t border-[var(--divider)] bg-[var(--card)] px-6 py-3 md:px-10">
           <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2">
             <div className="inline-flex min-w-max items-center gap-1">
-              {REVIEWS_TABS.map((tab) => {
+              {REVIEWS_OPS_TABS.map((tab) => {
                 const active = isReviewTabActive(tab.href, pathname);
                 return (
                   <Link
@@ -492,6 +502,38 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
                   </Link>
                 );
               })}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAnalyticsOpen((o) => !o)}
+                  className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+                    REVIEWS_ANALYTICS_TABS.some((t) => isReviewTabActive(t.href, pathname))
+                      ? "bg-[var(--primary)] text-white"
+                      : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  분석·고급
+                  <ChevronDown className={`h-4 w-4 ${analyticsOpen ? "rotate-180" : ""}`} />
+                </button>
+                {analyticsOpen ? (
+                  <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+                    {REVIEWS_ANALYTICS_TABS.map((tab) => (
+                      <Link
+                        key={tab.href}
+                        href={tab.href}
+                        onClick={() => setAnalyticsOpen(false)}
+                        className={`block px-4 py-2 text-sm hover:bg-[var(--surface-muted)] ${
+                          isReviewTabActive(tab.href, pathname)
+                            ? "font-semibold text-[var(--primary)]"
+                            : "text-[var(--text-primary)]"
+                        }`}
+                      >
+                        {tab.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

@@ -88,7 +88,7 @@ export default function AdminDashboardAlertStrip({
   if (hasReviewRisk) {
     badges.push({
       key: "review",
-      href: "/admin/reviews/moderation?filter=flagged",
+      href: "/theall_manager_only/reviews/moderation?filter=flagged",
       label: "리뷰 위험",
       count: reviewRiskCount,
       variant: "review",

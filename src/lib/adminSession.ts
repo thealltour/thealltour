@@ -1,12 +1,17 @@
 import { SignJWT, jwtVerify } from "jose";
+import type { AdminRole } from "@/types/adminRole";
+import {
+  deriveLegacyRoleFromPermissions,
+  type AdminSessionPermissions,
+} from "@/lib/adminPermissions";
 
 /** 관리자 쿠키 max-age(초) — 기존 admin login과 동일 12h */
 export const ADMIN_SESSION_MAX_AGE_SEC = 60 * 60 * 12;
 
-/**
- * 로컬 `next dev` 전용 — 프로덕션 빌드에서는 사용되지 않습니다.
- * (UTF-8 기준 32바이트 이상)
- */
+export type AdminSessionPayload = AdminSessionPermissions;
+
+const VALID_ROLES: readonly AdminRole[] = ["admin", "manager", "viewer"];
+
 const DEV_ADMIN_SESSION_SECRET_FALLBACK =
   "__THEALL_LOCAL_DEV_ONLY_ADMIN_SESSION_SECRET_32BYTES_MIN__";
 
@@ -36,36 +41,63 @@ function getAdminJwtSecretBytes(): Uint8Array {
   return new TextEncoder().encode(resolveAdminSessionSecretRaw());
 }
 
-/**
- * HS256 관리자 세션 JWT 발급.
- * 프로덕션: `ADMIN_SESSION_SECRET` UTF-8 기준 32바이트 이상 필수.
- * `next dev`에서만 미설정 시 개발용 기본 시크릿 사용(콘솔 경고).
- */
-export async function createAdminSessionToken(): Promise<string> {
+function parseAdminRole(value: unknown): AdminRole | null {
+  if (typeof value !== "string") return null;
+  return VALID_ROLES.includes(value as AdminRole) ? (value as AdminRole) : null;
+}
+
+function parsePermissions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((p): p is string => typeof p === "string");
+}
+
+function parseSessionPayload(payload: Record<string, unknown>): AdminSessionPayload | null {
+  const isBootstrapAdmin = payload.isBootstrapAdmin === true;
+  const permissions = parsePermissions(payload.permissions);
+  const roleFromJwt = parseAdminRole(payload.role);
+  const role =
+    roleFromJwt ??
+    deriveLegacyRoleFromPermissions(permissions, isBootstrapAdmin);
+
+  return {
+    role,
+    permissions: isBootstrapAdmin ? ["*"] : permissions,
+    isBootstrapAdmin,
+    adminUserId: typeof payload.adminUserId === "string" ? payload.adminUserId : undefined,
+    username: typeof payload.username === "string" ? payload.username : undefined,
+  };
+}
+
+export async function createAdminSessionToken(session: AdminSessionPayload): Promise<string> {
   const secret = getAdminJwtSecretBytes();
   if (secret.length < 32) {
     throw new Error(
-      "ADMIN_SESSION_SECRET이 없거나 너무 짧습니다. UTF-8 기준 32바이트 이상의 무작위 문자열을 .env에 설정하세요. (예: openssl rand -base64 32)",
+      "ADMIN_SESSION_SECRET이 없거나 너무 짧습니다. UTF-8 기준 32바이트 이상의 무작위 문자열을 .env에 설정하세요.",
     );
   }
-  return new SignJWT({ role: "admin" })
+
+  return new SignJWT({
+    role: session.role,
+    permissions: session.permissions,
+    isBootstrapAdmin: session.isBootstrapAdmin,
+    adminUserId: session.adminUserId,
+    username: session.username,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${ADMIN_SESSION_MAX_AGE_SEC}s`)
     .sign(secret);
 }
 
-/** Edge/Node 공통 — 미들웨어·API에서 동일 검증 */
 export async function verifyAdminSessionToken(
   token: string | undefined | null,
-): Promise<{ role: "admin" } | null> {
+): Promise<AdminSessionPayload | null> {
   if (!token?.trim()) return null;
   const secret = getAdminJwtSecretBytes();
   if (secret.length < 32) return null;
   try {
     const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
-    if (payload.role !== "admin") return null;
-    return { role: "admin" };
+    return parseSessionPayload(payload as Record<string, unknown>);
   } catch {
     return null;
   }

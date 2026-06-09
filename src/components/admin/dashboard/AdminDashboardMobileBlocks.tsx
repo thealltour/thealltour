@@ -26,7 +26,7 @@ const QUICK_ACTIONS = [
   {
     key: "reviews",
     icon: Star,
-    href: "/admin/reviews",
+    href: "/theall_manager_only/reviews",
     label: "Reviews",
     description: "Search and moderate reviews.",
     mobile: true,

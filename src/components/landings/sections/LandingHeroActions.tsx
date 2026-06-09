@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { trackLandingCtaClick } from "@/lib/analytics/trackLandingQuoteFunnel";
+import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
 import type { AdminLandingDetail } from "@/types/adminLanding";
 import { LANDING_RECOMMENDED_PRODUCTS_ANCHOR_ID } from "@/components/landings/sections/LandingRecommendedProductsSection";
 
@@ -18,6 +19,7 @@ export default function LandingHeroActions({
   quoteHref,
   showScrollToProducts,
 }: LandingHeroActionsProps) {
+  const href = useQuoteHrefWithUtm(quoteHref);
   return (
     <div className="flex flex-wrap gap-2.5 sm:gap-3">
       {showScrollToProducts ? (
@@ -29,7 +31,7 @@ export default function LandingHeroActions({
         </a>
       ) : null}
       <Link
-        href={quoteHref}
+        href={href}
         onClick={() => {
           trackLandingCtaClick(landing, sourcePath);
         }}

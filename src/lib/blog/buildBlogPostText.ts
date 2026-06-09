@@ -18,6 +18,10 @@ import {
   stripBlogRetailNoise,
   trimText,
 } from "@/lib/blog/blogPost.sanitize";
+import {
+  appendChannelUtm,
+  type CHANNEL_UTM_PRESETS,
+} from "@/lib/analytics/utmPropagation";
 
 const MAX_INCLUDED = 4;
 const MAX_EXCLUDED = 3;
@@ -28,9 +32,14 @@ function siteOrigin(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://thealltour.com").replace(/\/$/, "");
 }
 
-/** 블로그·SNS 복붙용 절대 URL (단독 줄로 노출) */
-export function buildProductUrl(vm: BlogPostViewModel): string {
-  return `${siteOrigin()}/products/${vm.productId}`;
+/** 블로그·SNS 복붙용 절대 URL (단독 줄로 노출). channel 지정 시 UTM 자동 주입 */
+export function buildProductUrl(
+  vm: BlogPostViewModel,
+  channel?: keyof typeof CHANNEL_UTM_PRESETS,
+): string {
+  const base = `${siteOrigin()}/products/${vm.productId}`;
+  if (!channel) return base;
+  return appendChannelUtm(base, channel);
 }
 
 function scrubAdTone(s: string): string {
@@ -177,7 +186,7 @@ export function buildTitleForType(vm: BlogPostViewModel, type: BlogPostType): st
 
 /** CTA 본문 후보 3개 (👉 블록 안에 들어갈 문단, URL 단독 줄 포함) */
 export function buildCtaCandidates(vm: BlogPostViewModel): string[] {
-  const url = buildProductUrl(vm);
+  const url = buildProductUrl(vm, "naver_blog");
   return [
     scrubAdTone(`지금 출발 가능한 일정과 가격을 아래 링크에서 확인해보세요.\n\n${url}`),
     scrubAdTone(`포함 사항과 실제 예약 가능 조건을 아래 링크에서 확인해보세요.\n\n${url}`),
@@ -506,7 +515,7 @@ function buildConversionConclusionBlock(): string {
 }
 
 function buildMidCtaSection(vm: BlogPostViewModel): string {
-  const url = buildProductUrl(vm);
+  const url = buildProductUrl(vm, "naver_blog");
 
   return `👉 지금 출발 가능한 일정 확인하기
 
@@ -569,7 +578,7 @@ ${chunks.join("\n\n")}
 }
 
 function buildFinalCtaSection(vm: BlogPostViewModel): string {
-  const url = buildProductUrl(vm);
+  const url = buildProductUrl(vm, "naver_blog");
 
   return `👉 현재 출발 가능 여부 / 가격 확인하기
 
@@ -644,7 +653,7 @@ function buildDealLeadBlock(vm: BlogPostViewModel): string {
 
 /** PR-BLOG-9.1: 특가형 중간 CTA (문구·헤더 정보형과 분리) */
 function buildDealMidCtaCompact(vm: BlogPostViewModel): string {
-  const url = buildProductUrl(vm);
+  const url = buildProductUrl(vm, "naver_blog");
   return scrubAdTone(
     `👉 중간 확인
 
@@ -672,7 +681,7 @@ function buildCompareJudgmentLine(): string {
 
 /** PR-BLOG-9.1: 비교형 하단 링크 (최종 CTA 블록과 문구 분리) */
 function buildCompareFooterCta(vm: BlogPostViewModel): string {
-  const url = buildProductUrl(vm);
+  const url = buildProductUrl(vm, "naver_blog");
   return scrubAdTone(
     `👉 비교 기준 확인
 
@@ -775,7 +784,7 @@ export function buildCtaSection(vm: BlogPostViewModel): string {
   const region = seoDisplayRegion(vm);
   const ctaLabel = region === "여행" ? "최종 조건 확인" : `${region} 여행 최종 조건 확인`;
   const head = `${BLOG_SECTION_EMOJI.cta} ${ctaLabel}`;
-  const url = buildProductUrl(vm);
+  const url = buildProductUrl(vm, "naver_blog");
   return scrubAdTone(
     `${head}
 

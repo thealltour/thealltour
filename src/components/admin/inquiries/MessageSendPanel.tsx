@@ -21,6 +21,7 @@ import {
 import { InquiryMessageLogList } from "./InquiryMessageLogList";
 import { MessagePreviewCard } from "./MessagePreviewCard";
 import { useInquiryMessageLogs } from "./useInquiryMessageLogs";
+import { useAdminToast } from "@/components/admin/AdminToastProvider";
 
 type SendResponseJson = {
   ok?: boolean;
@@ -39,10 +40,12 @@ export function MessageSendPanel({
   onTemplateInsertModeChange,
   onSent,
 }: MessageSendPanelProps) {
+  const { showToast } = useAdminToast();
   const [receiver, setReceiver] = useState(() => normalizePhone(inquiry.phone ?? ""));
   const [sending, setSending] = useState(false);
   const inFlightRef = useRef(false);
 
+  const [sendingDeposit, setSendingDeposit] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [sendError, setSendError] = useState<ReturnType<typeof toMessageSendErrorText> | null>(null);
   const [duplicateBlockReason, setDuplicateBlockReason] = useState<string | null>(null);
@@ -99,6 +102,38 @@ export function MessageSendPanel({
     },
     [message, onMessageChange, templateInsertMode],
   );
+
+  const handleSendDepositLink = async () => {
+    if (sendingDeposit || sending) return;
+    setSendError(null);
+    setSendingDeposit(true);
+    try {
+      const res = await fetch(
+        `/api/admin/inquiries/${encodeURIComponent(inquiry.id)}/send-deposit-link`,
+        { method: "POST" },
+      );
+      const data = (await res.json()) as { message?: string; depositUrl?: string };
+      if (!res.ok) {
+        const errorText = toMessageSendErrorText({
+          httpStatus: res.status,
+          message: data.message ?? "예약금 링크 발송에 실패했습니다.",
+        });
+        setSendError(errorText);
+        showToast("error", errorText.description || errorText.title);
+        return;
+      }
+      const successMessage = data.message ?? "예약금 안내 링크를 발송했습니다.";
+      showToast("success", successMessage);
+      await refetchLogs();
+      onSent?.();
+    } catch {
+      const errorText = toMessageSendErrorText({ isNetworkError: true });
+      setSendError(errorText);
+      showToast("error", errorText.description || errorText.title);
+    } finally {
+      setSendingDeposit(false);
+    }
+  };
 
   const handleSend = async () => {
     if (inFlightRef.current || sending) return;
@@ -313,6 +348,14 @@ export function MessageSendPanel({
               전화 스크립트 넣기
             </button>
           ) : null}
+          <button
+            type="button"
+            disabled={sendingDeposit || !normalizePhone(receiver)}
+            onClick={() => void handleSendDepositLink()}
+            className="rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {sendingDeposit ? "예약금 링크 발송 중…" : "예약금 링크 SMS 발송"}
+          </button>
           <button
             type="button"
             onClick={() => onMessageChange("")}

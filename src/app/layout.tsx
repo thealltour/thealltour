@@ -5,9 +5,9 @@ import {
   THEALL_APPLE_TOUCH_ICON_SRC,
   THEALL_FAVICON_16_SRC,
   THEALL_FAVICON_32_SRC,
-  THEALL_WORDMARK_LIGHT_SRC,
 } from "@/lib/brandAssets";
 import { getSiteBaseUrl } from "@/lib/seo/getSiteSeoDefaults";
+import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 import GlobalSiteFooter from "@/components/site-chrome/GlobalSiteFooter";
 import KakaoFloatingButton from "@/components/site-chrome/KakaoFloatingButton";
 import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
@@ -16,18 +16,6 @@ import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 
 const siteUrl = getSiteBaseUrl();
 const gaId = process.env.NEXT_PUBLIC_GA_ID?.trim();
-
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "더올투어",
-  url: siteUrl,
-  logo: `${siteUrl}${THEALL_WORDMARK_LIGHT_SRC}`,
-  sameAs: [
-    "https://www.instagram.com/",
-    "https://blog.naver.com/",
-  ],
-} as const;
 
 const websiteJsonLd = {
   "@context": "https://schema.org",
@@ -128,11 +116,7 @@ export default function RootLayout({
         />
         {/* Product images: dns-prefetch */}
         <link rel="dns-prefetch" href="https://img.modetour.com" />
-        <Script
-          id="organization-jsonld"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
+        <OrganizationJsonLd />
         <Script
           id="website-jsonld"
           type="application/ld+json"

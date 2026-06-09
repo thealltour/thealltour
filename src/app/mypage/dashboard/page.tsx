@@ -1,14 +1,13 @@
 import MyPageLayout from "@/components/mypage/MyPageLayout";
+import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
+import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
+import { MyPageList, MyPageListItem } from "@/components/mypage/ui/MyPageListItem";
+import { MyPageStatCard, MyPageStatGrid } from "@/components/mypage/ui/MyPageStatGrid";
+import { MyPageStatusBadge } from "@/components/mypage/ui/MyPageStatusBadge";
 import { cookies } from "next/headers";
-
-const STATUS_LABEL: Record<string, string> = {
-  REQUESTED: "승인 대기",
-  APPROVED: "승인됨",
-  REJECTED: "반려",
-  SHIPPED: "발송 완료",
-  COMPLETED: "수령 완료",
-  CANCELED: "취소",
-};
+import Link from "next/link";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
+import { getMyPageReviewSections } from "@/lib/mypageReviews";
 
 async function fetchPoints(baseUrl: string, cookieHeader: string) {
   const res = await fetch(`${baseUrl}/api/me/points`, {
@@ -28,78 +27,100 @@ async function fetchRedemptions(baseUrl: string, cookieHeader: string) {
   return res.json();
 }
 
-const RECENT_REVIEWS = [
-  { id: "rv-1", product: "일본 오사카 3박4일", rating: 5, createdAt: "2026-03-02" },
-  { id: "rv-2", product: "베트남 다낭 패키지", rating: 4, createdAt: "2026-02-26" },
-  { id: "rv-3", product: "홋카이도 온천 투어", rating: 5, createdAt: "2026-02-12" },
-];
+function formatReviewDate(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("ko-KR");
+}
 
 export default async function MyPageDashboardPage() {
   const cookieStore = await cookies();
+  const session = getMemberSessionFromCookies(cookieStore);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const cookieHeader = cookieStore.toString();
-  const [pointsData, redemptions] = await Promise.all([
+  const [pointsData, redemptions, reviewSections] = await Promise.all([
     fetchPoints(baseUrl, cookieHeader),
     fetchRedemptions(baseUrl, cookieHeader),
+    session ? getMyPageReviewSections(session.memberId) : Promise.resolve({ writable: [], drafts: [], submitted: [] }),
   ]);
   const recentRedemptions = (redemptions ?? []).slice(0, 3);
+  const recentReviews = reviewSections.submitted.slice(0, 3);
 
   return (
     <MyPageLayout title="마이페이지 대시보드" description="회원 활동 요약을 확인할 수 있습니다.">
       <div className="space-y-6">
-        <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
-          <article className="rounded-none border-0 bg-transparent p-0 sm:rounded-xl sm:border sm:border-[var(--border)] sm:bg-[var(--surface)] sm:p-4">
-            <p className="text-xs font-medium text-[var(--text-secondary)]">포인트 잔액</p>
-            <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">
-              {Number(pointsData?.balance ?? 0).toLocaleString()}P
-            </p>
-          </article>
-          <article className="rounded-none border-0 bg-transparent p-0 sm:rounded-xl sm:border sm:border-[var(--border)] sm:bg-[var(--surface)] sm:p-4">
-            <p className="text-xs font-medium text-[var(--text-secondary)]">적립 예정 포인트</p>
-            <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">
-              {Number(pointsData?.pending ?? 0).toLocaleString()}P
-            </p>
-          </article>
-        </div>
+        <MyPageStatGrid>
+          <MyPageStatCard
+            label="포인트 잔액"
+            value={`${Number(pointsData?.balance ?? 0).toLocaleString()}P`}
+          />
+          <MyPageStatCard
+            label="적립 예정 포인트"
+            value={`${Number(pointsData?.pending ?? 0).toLocaleString()}P`}
+          />
+        </MyPageStatGrid>
 
-        <section className="rounded-none border-0 bg-transparent p-0 sm:rounded-xl sm:border sm:border-[var(--border)] sm:bg-[var(--surface)] sm:p-4">
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">최근 리워드 상태</h2>
-          <ul className="mt-3 space-y-2">
+        <MyPageCard title="최근 리워드 상태">
+          <MyPageList>
             {recentRedemptions.length === 0 ? (
-              <li className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)]">
-                최근 리워드 신청 내역이 없습니다.
+              <li>
+                <MyPageEmptyState message="최근 리워드 신청 내역이 없습니다." dashed className="py-4" />
               </li>
             ) : (
               recentRedemptions.map(
                 (item: { id: string; catalog_title: string | null; status: string; requested_at: string }) => (
-                  <li key={item.id} className="flex items-center justify-between rounded-lg border border-[var(--border)] px-3 py-2">
+                  <MyPageListItem key={item.id}>
                     <div>
                       <p className="text-sm font-medium text-[var(--text-primary)]">{item.catalog_title ?? "리워드"}</p>
-                      <p className="text-xs text-[var(--text-secondary)]">{new Date(item.requested_at).toLocaleDateString("ko-KR")}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        {new Date(item.requested_at).toLocaleDateString("ko-KR")}
+                      </p>
                     </div>
-                    <span className="rounded-md bg-[var(--primary-soft)] px-2 py-1 text-xs text-[var(--primary)]">
-                      {STATUS_LABEL[item.status] ?? item.status}
-                    </span>
-                  </li>
+                    <MyPageStatusBadge status={item.status} />
+                  </MyPageListItem>
                 ),
               )
             )}
-          </ul>
-        </section>
+          </MyPageList>
+        </MyPageCard>
 
-        <section className="rounded-none border-0 bg-transparent p-0 sm:rounded-xl sm:border sm:border-[var(--border)] sm:bg-[var(--surface)] sm:p-4">
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">최근 리뷰</h2>
-          <ul className="mt-3 space-y-2">
-            {RECENT_REVIEWS.map((item) => (
-              <li key={item.id} className="rounded-lg border border-[var(--border)] px-3 py-2">
-                <p className="text-sm font-medium text-[var(--text-primary)]">{item.product}</p>
-                <p className="text-xs text-[var(--text-secondary)]">
-                  평점 {item.rating}/5 · {item.createdAt}
-                </p>
+        <MyPageCard
+          title="최근 리뷰"
+          action={
+            <Link href="/mypage/reviews" className="link-primary text-xs font-medium">
+              전체 보기
+            </Link>
+          }
+        >
+          <MyPageList>
+            {recentReviews.length === 0 ? (
+              <li>
+                <MyPageEmptyState
+                  message="리뷰를 남기고 5,000포인트를 적립해 보세요."
+                  ctaHref="/mypage/reviews"
+                  ctaLabel="리뷰 관리"
+                  dashed
+                  className="py-4"
+                />
               </li>
-            ))}
-          </ul>
-        </section>
+            ) : (
+              recentReviews.map((item) => (
+                <MyPageListItem key={item.id} href={`/mypage/reviews/${item.id}`}>
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                      {item.title?.trim() || "제목 없음"}
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      {typeof item.rating === "number" ? `평점 ${item.rating}/5 · ` : ""}
+                      {formatReviewDate(item.created_at)}
+                    </p>
+                  </div>
+                </MyPageListItem>
+              ))
+            )}
+          </MyPageList>
+        </MyPageCard>
       </div>
     </MyPageLayout>
   );

@@ -66,7 +66,7 @@ export function ReviewNotificationCard({
           {item.productId && item.reviewId && " · "}
           {item.reviewId && (
             <a
-              href={`/admin/reviews?reviewId=${item.reviewId}`}
+              href={`/theall_manager_only/reviews?reviewId=${item.reviewId}`}
               className="text-[var(--link)] hover:underline"
             >
               리뷰: {item.reviewId.slice(0, 8)}…

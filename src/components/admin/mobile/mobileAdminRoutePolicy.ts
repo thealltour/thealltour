@@ -1,21 +1,37 @@
 import { MOBILE_ADMIN_ALLOWED_PATH_PREFIXES } from "@/components/admin/mobile/mobileAdmin.constants";
 import { isMobileReviewRelativePathAllowed } from "@/components/admin/mobile/reviews/mobileReview.constants";
+import { hasAdminPermission } from "@/lib/adminPermissions";
+import { isSessionAllowedForConsolePath } from "@/lib/adminRolePolicy";
+import type { AdminSessionPermissions } from "@/lib/adminPermissions";
 
 /**
  * 관리자 콘솔 상대 경로(rel)가 모바일 MVP에서 허용되는지.
- * @param relativePath getAdminConsoleRelativePath(pathname) 결과 (null이면 false)
  */
-export function isMobileAdminRouteAllowed(relativePath: string | null): boolean {
+export function isMobileAdminRouteAllowed(
+  relativePath: string | null,
+  session: AdminSessionPermissions,
+): boolean {
   if (relativePath == null) return false;
   const path = relativePath === "" ? "/" : relativePath;
 
+  if (!isSessionAllowedForConsolePath(session, path)) return false;
+
   if (path === "/") return true;
 
-  if (path === "/inquiries") return true;
+  if (path === "/inquiries") return hasAdminPermission(session, "inquiries.manage");
   if (path.startsWith("/inquiries/")) return false;
 
+  if (path.startsWith("/members")) return hasAdminPermission(session, "members.manage");
+  if (path.startsWith("/points")) return hasAdminPermission(session, "points.manage");
+  if (path.startsWith("/rewards")) return hasAdminPermission(session, "rewards.manage");
+
   for (const prefix of MOBILE_ADMIN_ALLOWED_PATH_PREFIXES) {
-    if (path === prefix || path.startsWith(`${prefix}/`)) return true;
+    if (path === prefix || path.startsWith(`${prefix}/`)) {
+      if (prefix === "/members" && !hasAdminPermission(session, "members.manage")) continue;
+      if (prefix === "/points" && !hasAdminPermission(session, "points.manage")) continue;
+      if (prefix === "/rewards" && !hasAdminPermission(session, "rewards.manage")) continue;
+      return true;
+    }
   }
 
   if (path.startsWith("/reviews")) {
@@ -38,7 +54,10 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   const path = relativePath === "" ? "/" : relativePath;
   if (path === "/") return "대시보드";
   if (path === "/landings" || path.startsWith("/landings/")) return "검색/유입 랜딩 관리";
-  if (path === "/inquiries" || path.startsWith("/inquiries/")) return "문의 관리";
+  if (path === "/inquiries" || path.startsWith("/inquiries/")) return "문의·상담";
+  if (path.startsWith("/members") || path.startsWith("/points") || path.startsWith("/rewards")) {
+    return "회원·리워드";
+  }
   if (path.startsWith("/notifications")) return "알림";
   if (path === "/reviews/moderation") return "리뷰 검토";
   if (path === "/reviews/notifications") return "리뷰 운영 알림";

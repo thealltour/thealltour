@@ -90,6 +90,8 @@ export type Inquiry = {
   is_completed?: boolean;
   /** 연결된 비로그인 고객 프로필 */
   customer_profile_id?: string | null;
+  /** 배정된 회원 id */
+  member_id?: string | null;
   /** 상담 진행 상태 */
   consultation_status?: ConsultationStatus;
   /** 예약/완료 상태 */

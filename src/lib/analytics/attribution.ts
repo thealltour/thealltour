@@ -27,6 +27,106 @@ export function parseHostname(value?: string | null): string | null {
 const PAID_MEDIUMS = new Set(["cpc", "paid", "ppc", "ads"]);
 const SOCIAL_MEDIUMS = new Set(["social", "sns"]);
 
+const REFERRER_CHANNEL_MAP: Array<{
+  test: (hostname: string) => boolean;
+  source_label: string;
+  channel: string;
+  medium: string;
+}> = [
+  {
+    test: (h) => h.includes("google"),
+    source_label: "google",
+    channel: "organic",
+    medium: "organic",
+  },
+  {
+    test: (h) => h === "naver.com" || h === "search.naver.com" || h === "m.search.naver.com",
+    source_label: "naver",
+    channel: "organic",
+    medium: "organic",
+  },
+  {
+    test: (h) => h.includes("bing"),
+    source_label: "bing",
+    channel: "organic",
+    medium: "organic",
+  },
+  {
+    test: (h) =>
+      h === "band.us" ||
+      h.endsWith(".band.us") ||
+      h === "band.naver.com" ||
+      h.endsWith(".band.naver.com"),
+    source_label: "naver_band",
+    channel: "social",
+    medium: "social",
+  },
+  {
+    test: (h) =>
+      h === "blog.naver.com" ||
+      h === "m.blog.naver.com" ||
+      h.endsWith(".blog.naver.com"),
+    source_label: "naver_blog",
+    channel: "social",
+    medium: "social",
+  },
+  {
+    test: (h) =>
+      h === "smartstore.naver.com" ||
+      h.endsWith(".smartstore.naver.com") ||
+      h.includes("shopping.naver.com"),
+    source_label: "smartstore",
+    channel: "referral",
+    medium: "referral",
+  },
+  {
+    test: (h) =>
+      h === "instagram.com" ||
+      h === "l.instagram.com" ||
+      h.endsWith(".instagram.com"),
+    source_label: "instagram",
+    channel: "social",
+    medium: "social",
+  },
+  {
+    test: (h) =>
+      h === "facebook.com" ||
+      h === "m.facebook.com" ||
+      h === "lm.facebook.com" ||
+      h.endsWith(".facebook.com"),
+    source_label: "facebook",
+    channel: "social",
+    medium: "social",
+  },
+  {
+    test: (h) => h === "x.com" || h === "twitter.com" || h === "t.co",
+    source_label: "x",
+    channel: "social",
+    medium: "social",
+  },
+  {
+    test: (h) =>
+      h.includes("kakao") ||
+      h.includes("pf.kakao") ||
+      h.includes("channel.kakao") ||
+      h.includes("story.kakao"),
+    source_label: "kakao",
+    channel: "social",
+    medium: "social",
+  },
+  {
+    test: (h) =>
+      h === "youtube.com" ||
+      h === "www.youtube.com" ||
+      h === "m.youtube.com" ||
+      h === "youtu.be" ||
+      h.endsWith(".youtube.com"),
+    source_label: "youtube",
+    channel: "social",
+    medium: "social",
+  },
+];
+
 function matchReferrer(hostname: string | null): {
   source_label: string;
   channel: string;
@@ -34,20 +134,15 @@ function matchReferrer(hostname: string | null): {
 } | null {
   if (!hostname) return null;
   const h = hostname.toLowerCase();
-
-  if (h.includes("google")) return { source_label: "google", channel: "organic", medium: "organic" };
-  if (h === "naver.com" || h === "search.naver.com" || h === "m.search.naver.com")
-    return { source_label: "naver", channel: "organic", medium: "organic" };
-  if (h.includes("bing")) return { source_label: "bing", channel: "organic", medium: "organic" };
-  if (h === "instagram.com" || h === "l.instagram.com")
-    return { source_label: "instagram", channel: "social", medium: "social" };
-  if (h === "facebook.com" || h === "m.facebook.com" || h === "lm.facebook.com")
-    return { source_label: "facebook", channel: "social", medium: "social" };
-  if (h === "x.com" || h === "twitter.com" || h === "t.co")
-    return { source_label: "x", channel: "social", medium: "social" };
-  if (h.includes("kakao") || h.includes("pf.kakao") || h.includes("channel.kakao") || h.includes("story.kakao"))
-    return { source_label: "kakao", channel: "social", medium: "social" };
-
+  for (const rule of REFERRER_CHANNEL_MAP) {
+    if (rule.test(h)) {
+      return {
+        source_label: rule.source_label,
+        channel: rule.channel,
+        medium: rule.medium,
+      };
+    }
+  }
   return { source_label: hostname, channel: "referral", medium: "referral" };
 }
 
@@ -56,7 +151,10 @@ export function extractPathFromLandingUrl(firstLandingUrl?: string | null): stri
   if (firstLandingUrl == null || typeof firstLandingUrl !== "string") return null;
   const trimmed = firstLandingUrl.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("/")) return trimmed || "/";
+  if (trimmed.startsWith("/")) {
+    const qIndex = trimmed.indexOf("?");
+    return qIndex >= 0 ? trimmed.slice(0, qIndex) || "/" : trimmed;
+  }
   try {
     const url = new URL(trimmed);
     return url.pathname || "/";
@@ -89,6 +187,7 @@ export function inferAttribution(firstTouch?: FirstTouch | null): AttributionRes
     if (PAID_MEDIUMS.has(utmMedium)) acquisition_channel = "paid";
     else if (SOCIAL_MEDIUMS.has(utmMedium)) acquisition_channel = "social";
     else if (utmMedium === "organic") acquisition_channel = "organic";
+    else if (utmMedium === "referral") acquisition_channel = "referral";
     else acquisition_channel = utmMedium || "unknown";
 
     return {

@@ -13,8 +13,15 @@ import { Send, X } from "lucide-react";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { trackReviewConversionInquiry } from "@/lib/reviewExperimentTracking";
 import { trackConsultOpen, trackConsultSubmit } from "@/lib/analytics/trackConsultModal";
-import { getFirstTouch } from "@/lib/analytics/firstTouch";
+import { getAttributionTouch } from "@/lib/analytics/firstTouch";
 import { inferAttribution } from "@/lib/analytics/attribution";
+import { GolfBriefFields } from "@/components/inquiry/GolfBriefFields";
+import { InquirySuccessPanel } from "@/components/inquiry/InquirySuccessPanel";
+import {
+  isGolfBriefContext,
+  mergeGolfBriefIntoContent,
+  type GolfBriefSnapshot,
+} from "@/lib/inquiry/golfBriefFields";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -22,6 +29,9 @@ export type ConsultModalParams = {
   productId?: string;
   productTitle?: string;
   sourcePath?: string;
+  landingSlug?: string;
+  quoteCategory?: string;
+  prefillContent?: string;
 };
 
 type ConsultModalContextValue = {
@@ -56,7 +66,7 @@ const initialFormState: QuickFormState = {
   content: "",
 };
 
-type FieldErrors = { name?: string; phone?: string; content?: string };
+type FieldErrors = { name?: string; phone?: string };
 
 function formatPhoneInput(raw: string) {
   const digits = raw.replace(/\D/g, "").slice(0, 11);
@@ -69,7 +79,6 @@ function validateForm(form: QuickFormState): FieldErrors {
   const errors: FieldErrors = {};
   if (!form.name.trim()) errors.name = "이름을 입력해 주세요.";
   if (!form.phone.trim()) errors.phone = "연락처를 입력해 주세요.";
-  if (!form.content.trim()) errors.content = "문의 내용을 입력해 주세요.";
   return errors;
 }
 
@@ -80,8 +89,33 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [golfBrief, setGolfBrief] = useState<GolfBriefSnapshot>({});
+  const [kakaoHref, setKakaoHref] = useState<string | undefined>();
+  const [slaMinutes, setSlaMinutes] = useState(30);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const quoteCtx = useProductQuote();
+
+  const showGolfBrief = isGolfBriefContext({
+    quoteCategory: params.quoteCategory,
+    productTitle: params.productTitle,
+    landingSlug: params.landingSlug,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/site-settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { kakao_chat_url?: string; consult_sla_minutes?: string }) => {
+        if (!mounted) return;
+        if (data.kakao_chat_url) setKakaoHref(data.kakao_chat_url);
+        const mins = Number(data.consult_sla_minutes);
+        if (Number.isFinite(mins) && mins > 0) setSlaMinutes(mins);
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -94,7 +128,11 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
 
   const openModal = useCallback((nextParams?: ConsultModalParams) => {
     setParams(nextParams ?? {});
-    setForm(initialFormState);
+    setForm({
+      ...initialFormState,
+      content: nextParams?.prefillContent?.trim() ?? "",
+    });
+    setGolfBrief({});
     setFieldErrors({});
     setIsSuccess(false);
     setIsOpen(true);
@@ -127,17 +165,27 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
         (selectedOptions && Object.keys(selectedOptions).length > 0) ||
         (quoteSummary && (quoteSummary.total != null || (quoteSummary.breakdown?.length ?? 0) > 0));
 
-      const firstTouch = getFirstTouch();
+      const firstTouch = getAttributionTouch();
+      const contentBase = form.content.trim();
+      const content = showGolfBrief
+        ? mergeGolfBriefIntoContent(contentBase, golfBrief)
+        : contentBase;
+
       const body: Record<string, unknown> = {
         name: form.name.trim(),
         phone: form.phone.trim(),
-        content: form.content.trim(),
+        content,
         product_id: params.productId?.trim() || undefined,
         product_title: params.productTitle?.trim() || undefined,
         source_path: params.sourcePath?.trim() || undefined,
+        landing_slug: params.landingSlug?.trim() || undefined,
+        quote_category: params.quoteCategory?.trim() || undefined,
         first_touch: firstTouch ?? undefined,
         inquiry_page_url: typeof window !== "undefined" ? window.location.pathname : undefined,
       };
+      if (showGolfBrief) {
+        body.quote_snapshot = { golf_brief: golfBrief };
+      }
       if (hasOptionData) {
         if (selectedOptions && Object.keys(selectedOptions).length > 0) {
           body.selected_options = selectedOptions;
@@ -222,9 +270,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                       상담 요청이 접수되었습니다
                     </h2>
                     <p className="mt-2 text-sm text-[var(--text-muted)]">
-                      입력하신 연락처로 안내드립니다.
+                      영업시간 기준 약 {slaMinutes}분 내 순차 연락드립니다.
                     </p>
                   </div>
+                  <InquirySuccessPanel slaMinutes={slaMinutes} kakaoHref={kakaoHref} />
                   <button
                     type="button"
                     onClick={closeModal}
@@ -267,8 +316,9 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
 
                   <form onSubmit={handleSubmit} className="space-y-3.5">
                     <p className="text-xs text-[var(--text-muted)]">
-                      필수 항목만 입력하셔도 상담이 가능합니다.
+                      이름과 연락처만 입력하셔도 상담이 가능합니다.
                     </p>
+                    {showGolfBrief ? <GolfBriefFields value={golfBrief} onChange={setGolfBrief} /> : null}
                     <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
                         <span>이름 *</span>
@@ -315,24 +365,16 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                     </div>
                     <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
-                        <span>문의 내용 *</span>
+                        <span>문의 내용 <span className="text-[var(--text-muted)]">(선택)</span></span>
                         <textarea
                           rows={4}
                           value={form.content}
                           onChange={(e) => {
                             setForm((prev) => ({ ...prev, content: e.target.value }));
-                            if (fieldErrors.content) setFieldErrors((prev) => ({ ...prev, content: undefined }));
                           }}
                           placeholder="예: 출발일, 인원, 원하는 일정 등을 간단히 남겨주세요"
                           className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
-                          aria-invalid={!!fieldErrors.content}
-                          aria-describedby={fieldErrors.content ? "consult-content-error" : undefined}
                         />
-                        {fieldErrors.content ? (
-                          <p id="consult-content-error" className="text-red-600" role="alert">
-                            {fieldErrors.content}
-                          </p>
-                        ) : null}
                       </label>
                     </div>
                     <div className="mt-2 flex flex-col gap-3">

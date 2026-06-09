@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { createPasswordHash } from "@/lib/password";
 import { createNewMemberNotification } from "@/lib/adminNotifications";
+import { syncMemberCustomerProfiles } from "@/lib/customerAccountLinks";
 import type { MemberSignupInput } from "@/types/member";
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{4,20}$/;
@@ -93,10 +94,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "회원가입에 실패했습니다." }, { status: 500 });
   }
 
+  const memberId = String(insertResult.data.id);
+
   await createNewMemberNotification({
-    memberId: String(insertResult.data.id),
+    memberId,
     username: String(insertResult.data.username),
     name: String(insertResult.data.name),
+  });
+
+  await syncMemberCustomerProfiles({
+    memberId,
+    phone,
+    email,
+    linked_by: "self",
+  }).catch((err) => {
+    console.error("[members/register] syncMemberCustomerProfiles failed", err);
   });
 
   return NextResponse.json({ message: "회원가입이 완료되었습니다." }, { status: 201 });

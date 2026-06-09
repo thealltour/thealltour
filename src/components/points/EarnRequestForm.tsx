@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { solidButtonShadowClasses } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
 
 type Props = {
   onSubmitted: () => Promise<void> | void;
@@ -86,11 +85,11 @@ export default function EarnRequestForm({ onSubmitted }: Props) {
   };
 
   return (
-    <section className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div className="space-y-4">
       <p className="text-sm text-[var(--text-secondary)]">
         예약 확인 후 포인트가 지급됩니다. (영업일 기준 검수 후 반영)
       </p>
-      <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <input
           value={bookingRef}
           onChange={(e) => setBookingRef(e.target.value)}
@@ -147,17 +146,9 @@ export default function EarnRequestForm({ onSubmitted }: Props) {
         </p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={submit}
-        disabled={loading}
-        className={cn(
-          "rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50",
-          solidButtonShadowClasses,
-        )}
-      >
+      <Button type="button" variant="primary" size="md" onClick={submit} disabled={loading} loading={loading}>
         {loading ? "제출 중..." : "적립 요청 제출"}
-      </button>
-    </section>
+      </Button>
+    </div>
   );
 }

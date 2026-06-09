@@ -232,6 +232,27 @@
   --products-mobile-toolbar-top: calc(
     var(--products-mobile-stack-top) + var(--mobile-back-header-height)
   );
+  /** 마이페이지: SiteHeader(탑바+검색) 아래 sticky 네비 앵커 */
+  --mypage-mobile-stack-top: var(--products-mobile-stack-top);
+  --mypage-mobile-nav-top: calc(
+    var(--mypage-mobile-stack-top) + var(--mobile-back-header-height)
+  );
+}
+
+/** 마이페이지 모바일 가로 탭 — 스크롤 가능함을 fade로 암시 */
+.mypage-mobile-nav-mask-right:not(.mypage-mobile-nav-mask-left) {
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 2.5rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 2.5rem), transparent 100%);
+}
+
+.mypage-mobile-nav-mask-left:not(.mypage-mobile-nav-mask-right) {
+  mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 100%);
+}
+
+.mypage-mobile-nav-mask-right.mypage-mobile-nav-mask-left {
+  mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 calc(100% - 2.5rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 calc(100% - 2.5rem), transparent 100%);
 }
 
 /* 헤더 메인 바 (유틸 바 h-10 제외, 데스크톱) */

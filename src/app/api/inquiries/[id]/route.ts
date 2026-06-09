@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getTravelBookingByInquiryId, createTravelBooking, updateTravelBookingStatus } from "@/lib/travelBookings";
-import { createEligibilityIfNotExists } from "@/lib/reviewEligibilities";
+import { createEligibilityIfNotExists, adminClaimEligibilityById } from "@/lib/reviewEligibilities";
+import { findLinkedMemberIdByCustomerProfileId } from "@/lib/customerAccountLinks";
 import { createReviewReminders } from "@/lib/reviewReminders";
 import {
   appendInquiryActivityLog,
@@ -288,6 +289,11 @@ export async function PATCH(
       });
 
       if (eligibility) {
+        const linkedMemberId = await findLinkedMemberIdByCustomerProfileId(customerProfileId);
+        if (linkedMemberId && !eligibility.claimed_by_member_id) {
+          await adminClaimEligibilityById(eligibility.id, linkedMemberId);
+        }
+
         await createReviewReminders(eligibility);
         return NextResponse.json({
           message: "여행 완료 및 후기 자격이 생성되었습니다.",

@@ -24,13 +24,13 @@ export default function AdminLoginForm() {
         body: JSON.stringify({ id, password }),
       });
 
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json()) as { message?: string; redirectTo?: string };
       if (!response.ok) {
         setErrorMessage(result.message ?? "로그인에 실패했습니다.");
         return;
       }
 
-      router.push("/theall_manager_only/inquiries");
+      router.push(result.redirectTo ?? "/theall_manager_only");
       router.refresh();
     } catch {
       setErrorMessage("로그인 중 네트워크 오류가 발생했습니다.");

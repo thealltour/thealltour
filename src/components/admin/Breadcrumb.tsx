@@ -6,14 +6,17 @@ import {
   ADMIN_PRODUCTS_QUERY_KEYS,
   PRODUCT_VIEW_TO_LABEL,
 } from "@/components/admin/products/adminProducts.constants";
+import { getAdminConsoleRelativePath } from "@/lib/adminConsolePaths";
 
 const LABEL_ADMIN = "\uAD00\uB9AC\uC790"; // 관리자
 const LABEL_DASHBOARD = "\uB300\uC2DC\uBCF4\uB4DC"; // 대시보드
 const LABEL_DASHBOARD_OVERVIEW = "\uC6B4\uC601 \uD604\uD669"; // 운영 현황
 const LABEL_GOLF_LEADS = "\uACE8\uD504 \uB9AC\uB4DC (UTM)"; // 골프 리드 (UTM)
 const LABEL_PRODUCTS = "\uC0C1\uD488 \uAD00\uB9AC"; // 상품 관리
-const LABEL_INQUIRIES = "\uBB38\uC758 \uAD00\uB9AC"; // 문의 관리
-const LABEL_MEMBERS = "\uD68C\uC6D0 \uAD00\uB9AC"; // 회원 관리
+const LABEL_INQUIRIES = "문의·상담";
+const LABEL_MEMBERS = "회원·리워드";
+const LABEL_LANDINGS = "랜딩·유입";
+const LABEL_HOME = "홈·배너 구성";
 const LABEL_SETTINGS = "\uD658\uACBD\uC124\uC815"; // 환경설정
 const LABEL_REVIEWS = "\uD6C4\uAE30 \uAD00\uB9AC"; // 후기 관리
 const LABEL_GUIDES = "\uC5EC\uD589\uAC00\uC774\uB4DC"; // 여행가이드
@@ -26,28 +29,21 @@ const LABEL_NOTICES_LEGAL = "\uD68C\uC6D0\uAC00\uC785 \uBC95\uB959 \uBB38\uC11C 
 const LABEL_NOTICES_CREATE = "\uACF5\uC9C0 \uB4F1\uB85D"; // 공지 등록
 const LABEL_NOTICES_LIST = "\uB4F1\uB85D\uB41C \uACF5\uC9C0 \uBAA9\uB85D"; // 등록된 공지 목록
 const LABEL_NOTIFICATIONS = "\uC54C\uB9BC"; // 알림
-const LABEL_REWARDS = "\uB9AC\uC6CC\uB4DC \uAD50\uD658 \uAD00\uB9AC"; // 리워드 교환 관리
-const LABEL_POINTS = "\uD3EC\uC778\uD2B8 \uC9C1\uAE09 \uAD00\uB9AC"; // 포인트 지급 관리
+const LABEL_REWARDS = "회원·리워드";
+const LABEL_POINTS = "회원·리워드";
 
 function buildBreadcrumbLabels(pathname: string, view: string | null): string[] {
   const base = [LABEL_ADMIN];
+  const rel = getAdminConsoleRelativePath(pathname.split("?")[0] ?? pathname);
+  if (rel == null) return base;
 
-  const cleanPath = pathname.split("?")[0];
-  const segments = cleanPath.split("/").filter(Boolean);
+  const segments = rel.split("/").filter(Boolean);
 
   if (segments.length === 0) {
-    return base;
-  }
-
-  if (segments[0] !== "theall_manager_only") {
-    return base;
-  }
-
-  const section = segments[1] ?? "";
-
-  if (!section) {
     return [...base, LABEL_DASHBOARD, LABEL_DASHBOARD_OVERVIEW];
   }
+
+  const section = segments[0] ?? "";
 
   switch (section) {
     case "products": {
@@ -59,22 +55,34 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
       } else if (view === ADMIN_PRODUCTS_VIEW.LIST) {
         detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
       } else if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
-        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.FEATURED];
+        return [...base, LABEL_HOME, "메인 추천상품"];
       } else if (view === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS) {
-        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS];
+        return [...base, LABEL_HOME, "메인 지역카드"];
       } else if (view === ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS) {
-        detail = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS];
+        return [...base, LABEL_HOME, "메인 테마카드"];
       }
-      return detail ? [...base, LABEL_PRODUCTS, detail] : [...base, LABEL_PRODUCTS];
+      return detail ? [...base, "상품", detail] : [...base, "상품"];
     }
     case "inquiries":
+      if (segments[1] === "dashboard") {
+        return [...base, LABEL_INQUIRIES, "운영 대시보드"];
+      }
       return [...base, LABEL_INQUIRIES];
     case "members":
-      return [...base, LABEL_MEMBERS];
+      return [...base, LABEL_MEMBERS, "회원 목록"];
     case "rewards":
-      return [...base, LABEL_REWARDS];
+      return [...base, LABEL_MEMBERS, "교환 신청"];
     case "points":
-      return [...base, LABEL_POINTS];
+      if (segments[1] === "requests") {
+        return [...base, LABEL_MEMBERS, "적립 요청"];
+      }
+      return [...base, LABEL_MEMBERS, "포인트 지급"];
+    case "landings":
+      return [...base, LABEL_LANDINGS];
+    case "golf-leads":
+      return [...base, LABEL_LANDINGS, "골프 리드 (UTM)"];
+    case "banners":
+      return [...base, LABEL_HOME, "메인배너"];
     case "settings":
       return [...base, LABEL_SETTINGS];
     case "reviews":
@@ -88,8 +96,6 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
       else guideDetail = LABEL_GUIDES_LIST;
       return [...base, LABEL_GUIDES, guideDetail];
     }
-    case "banners":
-      return [...base, LABEL_BANNERS];
     case "notices": {
       let noticeDetail: string;
       if (view === "legal") noticeDetail = LABEL_NOTICES_LEGAL;
@@ -99,8 +105,6 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
     }
     case "notifications":
       return [...base, LABEL_NOTIFICATIONS];
-    case "golf-leads":
-      return [...base, LABEL_DASHBOARD, LABEL_GOLF_LEADS];
     default:
       return [...base, LABEL_DASHBOARD];
   }

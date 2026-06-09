@@ -18,9 +18,14 @@ type QuotePageContentProps = {
     Pick<InquiryInput, "product_id" | "product_title" | "source_path" | "landing_slug" | "quote_category">
   >;
   productSummary?: QuoteSummary | null;
+  initialDesiredDeparture?: string;
 };
 
-export function QuotePageContent({ source, productSummary }: QuotePageContentProps) {
+export function QuotePageContent({
+  source,
+  productSummary,
+  initialDesiredDeparture,
+}: QuotePageContentProps) {
   const productId = source?.product_id?.trim() ?? "";
   const sourcePath = source?.source_path?.trim() ?? "";
   const landingSlug = source?.landing_slug?.trim() ?? "";
@@ -47,7 +52,11 @@ export function QuotePageContent({ source, productSummary }: QuotePageContentPro
           />
         </div>
       )}
-      <InquiryForm source={source} productIdForTracking={productId || undefined} />
+      <InquiryForm
+        source={source}
+        productIdForTracking={productId || undefined}
+        initialDesiredDeparture={initialDesiredDeparture}
+      />
     </>
   );
 }

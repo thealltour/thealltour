@@ -68,6 +68,12 @@ export async function PATCH(request: Request) {
     { key: "about_paragraph2", defaultValue: "" },
     { key: "about_cta_label", defaultValue: "" },
     { key: "about_cta_href", defaultValue: "" },
+    { key: "deposit_amount_default", defaultValue: "" },
+    { key: "deposit_bank_name", defaultValue: "" },
+    { key: "deposit_bank_account", defaultValue: "" },
+    { key: "deposit_account_holder", defaultValue: "" },
+    { key: "deposit_payment_links", defaultValue: "[]" },
+    { key: "consult_sla_minutes", defaultValue: "30" },
   ];
 
   const entries: { key: SiteSettingsKey; value: string }[] = [];

@@ -1,21 +1,26 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ADMIN_AUTH_COOKIE } from "@/lib/adminAuth";
+import {
+  getDefaultLandingPathForSession,
+  isInquiriesApiPath,
+  isSessionAllowedForApiPath,
+} from "@/lib/adminRolePolicy";
 import { verifyAdminSessionToken } from "@/lib/adminSession";
 
 const LEGACY_ADMIN_PREFIX = "/admin";
 const MANAGER_PREFIX = "/theall_manager_only";
 const MANAGER_LOGIN_PATH = `${MANAGER_PREFIX}/login`;
-const MANAGER_INQUIRIES_PATH = `${MANAGER_PREFIX}/inquiries`;
 
-async function isAdminAuthenticated(request: NextRequest) {
+async function getAdminSession(request: NextRequest) {
   const token = request.cookies.get(ADMIN_AUTH_COOKIE)?.value;
-  return (await verifyAdminSessionToken(token)) !== null;
+  return verifyAdminSessionToken(token);
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const authenticated = await isAdminAuthenticated(request);
+  const session = await getAdminSession(request);
+  const authenticated = session !== null;
 
   if (pathname === LEGACY_ADMIN_PREFIX || pathname.startsWith(`${LEGACY_ADMIN_PREFIX}/`)) {
     const redirectedUrl = request.nextUrl.clone();
@@ -27,8 +32,8 @@ export async function middleware(request: NextRequest) {
 
   if (isManagerPath) {
     if (pathname === MANAGER_LOGIN_PATH) {
-      if (authenticated) {
-        return NextResponse.redirect(new URL(MANAGER_INQUIRIES_PATH, request.url));
+      if (authenticated && session) {
+        return NextResponse.redirect(new URL(getDefaultLandingPathForSession(session), request.url));
       }
     } else if (!authenticated) {
       return NextResponse.redirect(new URL(MANAGER_LOGIN_PATH, request.url));
@@ -37,25 +42,22 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/api/admin")) {
     const isAuthPath = pathname === "/api/admin/login" || pathname === "/api/admin/logout";
-    if (!isAuthPath && !authenticated) {
-      return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
+    if (!isAuthPath) {
+      if (!authenticated || !session) {
+        return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
+      }
+      if (!isSessionAllowedForApiPath(session, pathname)) {
+        return NextResponse.json({ message: "이 작업에 대한 권한이 없습니다." }, { status: 403 });
+      }
     }
   }
 
-  if (pathname === "/api/inquiries" && request.method === "GET" && !authenticated) {
+  if (isInquiriesApiPath(pathname) && !authenticated) {
     return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
   }
 
-  if (pathname === "/api/inquiries" && request.method === "PATCH" && !authenticated) {
-    return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
-  }
-
-  if (pathname.startsWith("/api/inquiries/") && request.method === "PATCH" && !authenticated) {
-    return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
-  }
-
-  if (pathname.startsWith("/api/inquiries/") && request.method === "DELETE" && !authenticated) {
-    return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
+  if (isInquiriesApiPath(pathname) && session && !isSessionAllowedForApiPath(session, pathname)) {
+    return NextResponse.json({ message: "이 작업에 대한 권한이 없습니다." }, { status: 403 });
   }
 
   return NextResponse.next();
@@ -69,8 +71,5 @@ export const config = {
     "/api/admin/:path*",
     "/api/inquiries",
     "/api/inquiries/:path*",
-    "/reviews/write",
-    "/api/reviews",
-    "/api/reviews/:path*",
   ],
 };

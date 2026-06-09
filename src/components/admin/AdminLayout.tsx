@@ -6,44 +6,50 @@
  */
 
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/admin/Sidebar";
 import Breadcrumb from "@/components/admin/Breadcrumb";
 import SubHeader, { type MainMenuKey } from "@/components/admin/SubHeader";
-import { useAdminRole } from "@/components/admin/AdminRoleContext";
+import { useAdminSession } from "@/components/admin/AdminRoleContext";
 import { SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
 import {
   getAdminConsoleRelativePath,
   isAdminConsolePublicPath,
   isAdminReviewSectionRelativePath,
 } from "@/lib/adminConsolePaths";
+import { canAccessSidebarMainKey, isSessionAllowedForConsolePath } from "@/lib/adminRolePolicy";
+import { hasAdminPermission } from "@/lib/adminPermissions";
+import { ADMIN_PRODUCTS_VIEW, ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
 
 type AdminLayoutProps = {
   children: ReactNode;
 };
 
-const DASHBOARD_SECTION_PREFIXES = ["/golf-leads"] as const;
+const HOME_PRODUCT_VIEWS = new Set<string>([
+  ADMIN_PRODUCTS_VIEW.FEATURED,
+  ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS,
+  ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS,
+]);
 
-function isDashboardSectionRelativePath(rel: string): boolean {
-  return DASHBOARD_SECTION_PREFIXES.some((prefix) => rel === prefix || rel.startsWith(`${prefix}/`));
-}
-
-function inferMainMenuKey(pathname: string): MainMenuKey | null {
+function inferMainMenuKey(pathname: string, searchParamsView: string | null): MainMenuKey | null {
   const rel = getAdminConsoleRelativePath(pathname);
   if (rel == null) return null;
-  if (rel === "/" || rel === "" || isDashboardSectionRelativePath(rel)) return "dashboard";
-  if (rel.startsWith("/products")) return "product";
-  if (rel.startsWith("/landings")) return "landings";
-  if (rel.startsWith("/inquiries/dashboard")) return "inquiry_dashboard";
+  if (rel === "/" || rel === "") return "dashboard";
+  if (rel.startsWith("/banners")) return "home";
+  if (rel.startsWith("/products")) {
+    if (rel.includes("/new-modetour")) return "product";
+    if (searchParamsView && HOME_PRODUCT_VIEWS.has(searchParamsView)) return "home";
+    return "product";
+  }
+  if (rel.startsWith("/landings") || rel.startsWith("/golf-leads")) return "landings";
   if (rel.startsWith("/inquiries")) return "inquiry";
-  if (rel.startsWith("/members")) return "member";
-  if (rel.startsWith("/rewards")) return "rewards";
-  if (rel.startsWith("/points")) return "points";
+  if (rel.startsWith("/members") || rel.startsWith("/points") || rel.startsWith("/rewards")) {
+    return "member_rewards";
+  }
   if (rel.startsWith("/settings")) return "settings";
   if (isAdminReviewSectionRelativePath(rel)) return "reviews";
   if (rel.startsWith("/guides")) return "guides";
-  if (rel.startsWith("/banners")) return "banners";
   if (rel.startsWith("/notices")) return "notices";
   if (rel.startsWith("/notifications")) return "notifications";
   return null;
@@ -51,25 +57,54 @@ function inferMainMenuKey(pathname: string): MainMenuKey | null {
 
 function canAccessPath(
   pathname: string,
-  role: string,
-  items: typeof SIDEBAR_ITEMS,
+  session: ReturnType<typeof useAdminSession>,
 ): boolean {
   if (isAdminConsolePublicPath(pathname)) return true;
 
-  const roleOk = role as "admin" | "manager" | "viewer";
   const pathStem = getAdminConsoleRelativePath(pathname);
   if (pathStem == null) return false;
 
-  for (const item of items) {
-    if (!item.roles.includes(roleOk)) continue;
+  if (!isSessionAllowedForConsolePath(session, pathStem)) return false;
+
+  if (pathStem.startsWith("/members") && !hasAdminPermission(session, "members.manage")) {
+    return false;
+  }
+
+  for (const item of SIDEBAR_ITEMS) {
+    if (!item.mainKey || !canAccessSidebarMainKey(session, item.mainKey)) continue;
     if (item.mainKey === "reviews") {
       if (isAdminReviewSectionRelativePath(pathStem)) return true;
       continue;
     }
-    if (item.mainKey === "dashboard" && isDashboardSectionRelativePath(pathStem)) {
-      return true;
+    if (item.mainKey === "member_rewards") {
+      if (
+        pathStem.startsWith("/members") ||
+        pathStem.startsWith("/points") ||
+        pathStem.startsWith("/rewards")
+      ) {
+        if (pathStem.startsWith("/members") && !hasAdminPermission(session, "members.manage")) {
+          continue;
+        }
+        if (pathStem.startsWith("/points") && !hasAdminPermission(session, "points.manage")) {
+          continue;
+        }
+        if (pathStem.startsWith("/rewards") && !hasAdminPermission(session, "rewards.manage")) {
+          continue;
+        }
+        return true;
+      }
+      continue;
     }
-    const itemStem = getAdminConsoleRelativePath(item.href);
+    if (item.mainKey === "home") {
+      if (pathStem.startsWith("/banners")) return true;
+      if (pathStem.startsWith("/products")) return true;
+      continue;
+    }
+    if (item.mainKey === "landings") {
+      if (pathStem.startsWith("/landings") || pathStem.startsWith("/golf-leads")) return true;
+      continue;
+    }
+    const itemStem = getAdminConsoleRelativePath(item.href.split("?")[0] ?? item.href);
     if (itemStem == null) continue;
     if (pathStem === itemStem || pathStem.startsWith(`${itemStem}/`)) return true;
   }
@@ -78,20 +113,22 @@ function canAccessPath(
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
   const [activeMenu, setActiveMenu] = useState<MainMenuKey | null>(() =>
-    inferMainMenuKey(pathname),
+    inferMainMenuKey(pathname, viewParam),
   );
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
-  const { role } = useAdminRole();
+  const session = useAdminSession();
   const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
-    setActiveMenu(inferMainMenuKey(pathname));
+    setActiveMenu(inferMainMenuKey(pathname, viewParam));
     setActiveSubTab(null);
     setIsNavigating(true);
     const timer = setTimeout(() => setIsNavigating(false), 400);
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, viewParam]);
 
   function AnimatedSection({ children }: { children: ReactNode }) {
     const [visible, setVisible] = useState(false);
@@ -112,7 +149,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
-  const canAccessCurrentPath = canAccessPath(pathname, role, SIDEBAR_ITEMS);
+  const canAccessCurrentPath = canAccessPath(pathname, session);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] transition-colors">
@@ -154,4 +191,3 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     </div>
   );
 }
-

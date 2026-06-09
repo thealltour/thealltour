@@ -7,22 +7,20 @@ import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
 import { AdminRoleProvider } from "@/components/admin/AdminRoleContext";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
 import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
-import type { AdminRole } from "@/types/adminRole";
+import type { AdminSessionPermissions } from "@/lib/adminPermissions";
 
 export type AdminRouteProvidersProps = {
   children: ReactNode;
-  /** 추후 세션 기반 역할로 교체 */
-  role?: AdminRole;
+  session: AdminSessionPermissions;
 };
 
 /**
  * /admin·/theall_manager_only 공통: Query/Role/Toast/Confirm + AdminResponsiveFrame.
- * 뷰포트에 따라 AdminLayout(데스크톱) 또는 MobileAdminShell(모바일)을 선택합니다.
  */
-export function AdminRouteProviders({ children, role = "admin" }: AdminRouteProvidersProps) {
+export function AdminRouteProviders({ children, session }: AdminRouteProvidersProps) {
   return (
     <AdminQueryProvider>
-      <AdminRoleProvider role={role}>
+      <AdminRoleProvider session={session}>
         <AdminToastProvider>
           <AdminConfirmProvider>
             <Suspense

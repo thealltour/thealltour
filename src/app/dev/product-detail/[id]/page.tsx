@@ -97,7 +97,7 @@ export default async function DevProductDetailPage({ params }: DevProductDetailP
               travelNotes={resolvedTravelNotes}
               bookingConditions={resolvedBookingConditions}
               refundPolicy={resolvedRefundPolicy}
-              consultHref={`/quote?productId=${encodeURIComponent(product.id)}`}
+              consultHref={`/quote?product_id=${encodeURIComponent(product.id)}`}
               kakaoHref={kakaoHref}
               options={product.options}
               basePrice={product.price}

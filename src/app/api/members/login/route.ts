@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { verifyPassword } from "@/lib/password";
+import { syncMemberCustomerProfiles } from "@/lib/customerAccountLinks";
 import { createMemberSessionToken, MEMBER_AUTH_COOKIE } from "@/lib/memberSession";
 
 type LoginBody = {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("members")
-    .select("id,username,name,password_hash,password_salt,points")
+    .select("id,username,name,phone,email,password_hash,password_salt,points")
     .eq("username", username)
     .maybeSingle();
 
@@ -32,8 +33,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "아이디 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
   }
 
+  const memberId = String(data.id);
+
+  await syncMemberCustomerProfiles({
+    memberId,
+    phone: String(data.phone ?? ""),
+    email: String(data.email ?? ""),
+    linked_by: "self",
+  }).catch((err) => {
+    console.error("[members/login] syncMemberCustomerProfiles failed", err);
+  });
+
   const token = createMemberSessionToken({
-    memberId: String(data.id),
+    memberId,
     username: String(data.username),
     name: String(data.name),
   });

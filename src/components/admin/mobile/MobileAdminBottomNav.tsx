@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Home, MessageSquare, Search, Star } from "lucide-react";
-import { MOBILE_ADMIN_PRIMARY_NAV } from "@/components/admin/mobile/mobileAdmin.constants";
+import { Bell, Home, MessageSquare, Star, Users } from "lucide-react";
+import { getMobileAdminNavForSession } from "@/components/admin/mobile/mobileAdmin.constants";
+import { useAdminSession } from "@/components/admin/AdminRoleContext";
 import { getAdminConsoleRelativePath } from "@/lib/adminConsolePaths";
 
 const ICONS = {
   home: Home,
-  landing: Search,
   inquiry: MessageSquare,
+  users: Users,
   bell: Bell,
   star: Star,
 } as const;
@@ -22,7 +23,6 @@ function isNavItemActive(pathname: string, href: string): boolean {
     if (targetRel !== "/" && currentRel.startsWith(`${targetRel}/`)) return true;
   }
   if (pathname === href) return true;
-  if (href === "/admin/reviews" && pathname.startsWith("/admin/reviews")) return true;
   if (href === "/theall_manager_only" && (pathname === "/theall_manager_only" || pathname === "/admin")) {
     return true;
   }
@@ -35,6 +35,8 @@ function isNavItemActive(pathname: string, href: string): boolean {
  */
 export function MobileAdminBottomNav() {
   const pathname = usePathname();
+  const session = useAdminSession();
+  const navItems = getMobileAdminNavForSession(session);
 
   return (
     <nav
@@ -42,7 +44,7 @@ export function MobileAdminBottomNav() {
       aria-label="모바일 관리자 주요 메뉴"
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1">
-        {MOBILE_ADMIN_PRIMARY_NAV.map((item) => {
+        {navItems.map((item) => {
           const Icon = ICONS[item.icon];
           const active = isNavItemActive(pathname, item.href);
 

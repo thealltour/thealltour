@@ -16,7 +16,7 @@ export type DashboardPriorityItem = {
   order: number;
 };
 
-const MODERATION_FLAGGED_HREF = "/admin/reviews/moderation?filter=flagged";
+const MODERATION_FLAGGED_HREF = "/theall_manager_only/reviews/moderation?filter=flagged";
 
 type BuildInput = {
   delayedInquiries: number;

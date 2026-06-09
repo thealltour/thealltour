@@ -1,15 +1,21 @@
 "use client";
 
-import { FormEvent, useState, useCallback } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState, useCallback } from "react";
 import type { InquiryInput } from "@/types/inquiry";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Label } from "@/components/ui/Label";
-import { trackQuoteSubmitClick } from "@/lib/analytics/trackQuoteEvent";
-import { getFirstTouch } from "@/lib/analytics/firstTouch";
+import { trackQuoteSubmitClick, trackQuoteSubmitSuccess } from "@/lib/analytics/trackQuoteEvent";
+import { getAttributionTouch } from "@/lib/analytics/firstTouch";
 import { inferAttribution } from "@/lib/analytics/attribution";
+import { GolfBriefFields } from "@/components/inquiry/GolfBriefFields";
+import { InquirySuccessPanel } from "@/components/inquiry/InquirySuccessPanel";
+import {
+  isGolfBriefContext,
+  mergeGolfBriefIntoContent,
+  type GolfBriefSnapshot,
+} from "@/lib/inquiry/golfBriefFields";
 
 type FormState = {
   name: string;
@@ -41,22 +47,59 @@ type InquiryFormProps = {
   source?: Partial<
     Pick<InquiryInput, "product_id" | "product_title" | "source_path" | "landing_slug" | "quote_category">
   >;
-  /** quote 페이지에서 전달 시 submit_click 트래킹에 사용 */
   productIdForTracking?: string;
+  initialDesiredDeparture?: string;
 };
 
-export default function InquiryForm({ source, productIdForTracking }: InquiryFormProps) {
+export default function InquiryForm({
+  source,
+  productIdForTracking,
+  initialDesiredDeparture,
+}: InquiryFormProps) {
   const sourceProductId = source?.product_id?.trim() ?? "";
   const sourceProductTitle = source?.product_title?.trim() ?? "";
   const sourcePath = source?.source_path?.trim() ?? "";
   const landingSlug = source?.landing_slug?.trim() ?? "";
   const quoteCategory = source?.quote_category?.trim() ?? "";
-  const [form, setForm] = useState<FormState>(initialFormState);
+
+  const showGolfBrief = useMemo(
+    () =>
+      isGolfBriefContext({
+        quoteCategory,
+        productTitle: sourceProductTitle,
+        landingSlug,
+      }),
+    [quoteCategory, sourceProductTitle, landingSlug],
+  );
+
+  const [form, setForm] = useState<FormState>({
+    ...initialFormState,
+    desiredDeparture: initialDesiredDeparture ?? "",
+  });
+  const [golfBrief, setGolfBrief] = useState<GolfBriefSnapshot>({});
   const [touched, setTouched] = useState<Touched>({});
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [kakaoHref, setKakaoHref] = useState<string | undefined>();
+  const [slaMinutes, setSlaMinutes] = useState(30);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/site-settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { kakao_chat_url?: string; consult_sla_minutes?: string }) => {
+        if (!mounted) return;
+        if (data.kakao_chat_url) setKakaoHref(data.kakao_chat_url);
+        const mins = Number(data.consult_sla_minutes);
+        if (Number.isFinite(mins) && mins > 0) setSlaMinutes(mins);
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const formatPhoneInput = useCallback((raw: string) => {
     const digits = raw.replace(/\D/g, "").slice(0, 11);
@@ -65,13 +108,18 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
     return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
   }, []);
 
-  const buildContent = useCallback((state: FormState) => {
-    const parts: string[] = [];
-    if (state.desiredDeparture?.trim()) parts.push(`출발 희망일: ${state.desiredDeparture.trim()}`);
-    if (state.peopleCount?.trim()) parts.push(`인원: ${state.peopleCount.trim()}`);
-    if (state.content?.trim()) parts.push(state.content.trim());
-    return parts.join("\n");
-  }, []);
+  const buildContent = useCallback(
+    (state: FormState) => {
+      const parts: string[] = [];
+      if (state.desiredDeparture?.trim()) parts.push(`출발 희망일: ${state.desiredDeparture.trim()}`);
+      if (state.peopleCount?.trim()) parts.push(`인원: ${state.peopleCount.trim()}`);
+      const base = state.content?.trim() ?? "";
+      const merged = showGolfBrief ? mergeGolfBriefIntoContent(base, golfBrief) : base;
+      if (merged) parts.push(merged);
+      return parts.join("\n");
+    },
+    [golfBrief, showGolfBrief],
+  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -80,13 +128,18 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    if (productIdForTracking) trackQuoteSubmitClick(productIdForTracking);
+    const trackingId = productIdForTracking || sourceProductId;
+    if (trackingId) trackQuoteSubmitClick(trackingId);
     setIsSubmitting(true);
     setMessage("");
 
     try {
       const content = buildContent(form);
-      const firstTouch = getFirstTouch();
+      const firstTouch = getAttributionTouch();
+      const quoteSnapshot = showGolfBrief
+        ? { golf_brief: golfBrief, desired_departure: form.desiredDeparture || null }
+        : undefined;
+
       const response = await fetch("/api/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,6 +154,7 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
           quote_category: quoteCategory || undefined,
           first_touch: firstTouch ?? undefined,
           inquiry_page_url: typeof window !== "undefined" ? window.location.pathname : undefined,
+          quote_snapshot: quoteSnapshot,
         }),
       });
 
@@ -111,6 +165,8 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
         setMessage(result.message ?? "문의 저장 중 오류가 발생했습니다.");
         return;
       }
+
+      if (trackingId) trackQuoteSubmitSuccess(trackingId);
 
       try {
         if (typeof window !== "undefined" && typeof window.gtag === "function") {
@@ -130,7 +186,8 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
       }
       setIsSuccess(true);
       setMessage("문의가 접수되었습니다. 확인 후 순차적으로 연락드리겠습니다.");
-      setForm(initialFormState);
+      setForm({ ...initialFormState, desiredDeparture: initialDesiredDeparture ?? "" });
+      setGolfBrief({});
       setErrors({});
       setTouched({});
     } catch {
@@ -169,6 +226,8 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
           문의 상품: <span className="font-semibold">{sourceProductTitle}</span>
         </div>
       ) : null}
+
+      {showGolfBrief ? <GolfBriefFields value={golfBrief} onChange={setGolfBrief} /> : null}
 
       <div className="flex flex-col gap-1 md:col-span-1">
         <Label className="flex flex-col gap-2">
@@ -271,20 +330,11 @@ export default function InquiryForm({ source, productIdForTracking }: InquiryFor
         >
           <p>{message}</p>
           {isSuccess ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 type-caption">
-              <Link
-                href="/products"
-                className="inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
-              >
-                다른 상품 더 보기
-              </Link>
-              <Link
-                href="/support"
-                className="inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"
-              >
-                고객센터 바로가기
-              </Link>
-            </div>
+            <InquirySuccessPanel
+              className="mt-3"
+              slaMinutes={slaMinutes}
+              kakaoHref={kakaoHref}
+            />
           ) : null}
         </div>
       ) : null}

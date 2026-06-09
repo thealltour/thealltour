@@ -3,6 +3,8 @@
  * 전체 콘솔 정책은 `mobileAdminRoutePolicy`에서 `/reviews` 접두 시 이 모듈을 호출합니다.
  */
 
+const MANAGER_PREFIX = "/theall_manager_only";
+
 /** 모바일에서 열 수 있는 리뷰 경로 (getAdminConsoleRelativePath 기준, 정확 일치) */
 export const MOBILE_ALLOWED_REVIEW_EXACT_PATHS = [
   "/reviews",
@@ -24,11 +26,11 @@ export const MOBILE_BLOCKED_REVIEW_PATH_PREFIXES = [
   "/reviews/summaries",
 ] as const;
 
-/** 후속 PR: 모바일 리뷰 서브 네비(검토·알림 등) — 현재는 참고용 */
+/** 모바일 리뷰 서브 네비(검토·알림 등) */
 export const MOBILE_REVIEW_NAV_ITEMS = [
-  { label: "목록", href: "/admin/reviews" },
-  { label: "검토", href: "/admin/reviews/moderation" },
-  { label: "운영 알림", href: "/admin/reviews/notifications" },
+  { label: "목록", href: `${MANAGER_PREFIX}/reviews` },
+  { label: "검토", href: `${MANAGER_PREFIX}/reviews/moderation` },
+  { label: "운영 알림", href: `${MANAGER_PREFIX}/reviews/notifications` },
 ] as const;
 
 const ALLOWED_EXACT = new Set<string>(MOBILE_ALLOWED_REVIEW_EXACT_PATHS);

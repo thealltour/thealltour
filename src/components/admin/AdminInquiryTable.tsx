@@ -13,6 +13,7 @@ import {
 import { parseHostname } from "@/lib/analytics/attribution";
 import { InquiryResponseGuide } from "@/components/admin/inquiries/InquiryResponseGuide";
 import { MessageSendPanel } from "@/components/admin/inquiries/MessageSendPanel";
+import { InquiryMemberLinkPanel } from "@/components/admin/inquiries/InquiryMemberLinkPanel";
 import { InquiryAssigneeFilters } from "@/components/admin/inquiries/InquiryAssigneeFilters";
 import { InquiryQuickFilters } from "@/components/admin/inquiries/InquiryQuickFilters";
 import { InquirySummaryCards } from "@/components/admin/inquiries/InquirySummaryCards";
@@ -714,7 +715,7 @@ export default function AdminInquiryTable() {
           onClick={closeDetailModal}
         >
           <div
-            className="flex max-h-[94vh] w-[94vw] max-w-[1600px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+            className="flex max-h-[94vh] w-[98vw] max-w-[1920px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
@@ -739,8 +740,8 @@ export default function AdminInquiryTable() {
                       닫기
                     </button>
                   </div>
-                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-                    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4">
+                  <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.92fr)_minmax(0,0.92fr)_minmax(0,1.05fr)]">
+                    <div className="min-h-0 overflow-y-auto border-b border-[var(--border)] px-4 py-4 xl:border-b-0 xl:border-r xl:max-h-none max-h-[min(44vh,520px)]">
                       <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
@@ -849,15 +850,24 @@ export default function AdminInquiryTable() {
                         {(inv.content ?? "").trim() || "(내용 없음)"}
                       </p>
                     </div>
+                    <InquiryMemberLinkPanel
+                      inquiry={inv}
+                      onLinked={(memberId) => {
+                        api.applyInquiryMerge(inv.id, { ...inv, member_id: memberId });
+                      }}
+                      onUnlinked={() => {
+                        api.applyInquiryMerge(inv.id, { ...inv, member_id: null });
+                      }}
+                    />
                         {inv.quote_snapshot ? (
                           <QuoteSnapshotSection snapshot={inv.quote_snapshot} />
                         ) : null}
                       </div>
                     </div>
-                    <aside className="min-h-0 w-full max-h-[min(46vh,520px)] shrink-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/30 px-4 py-4 lg:max-h-none lg:w-[420px] lg:border-l lg:border-t-0">
-                      <InquiryResponseGuide
+                    <InquiryResponseGuide
                         key={inv.id}
                         inquiry={inv}
+                        layout="split"
                         onSaved={(updated) => {
                           api.applyInquiryMerge(updated.id, updated);
                         }}
@@ -872,8 +882,7 @@ export default function AdminInquiryTable() {
                         }
                         externalTimelineBump={smsTimelineBump}
                       />
-                    </aside>
-                    <aside className="min-h-0 w-full max-h-[min(46vh,520px)] shrink-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/20 px-4 py-4 lg:max-h-none lg:w-[420px] lg:border-l lg:border-t-0">
+                    <aside className="min-h-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/15 px-3 py-4 xl:border-t-0 xl:border-l xl:max-h-none max-h-[min(42vh,480px)]">
                       <MessageSendPanel
                         inquiry={inv}
                         message={messageDraft}

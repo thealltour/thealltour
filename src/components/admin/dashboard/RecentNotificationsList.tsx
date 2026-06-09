@@ -16,19 +16,13 @@ function rawTypeKey(type: string) {
   return t || "notification";
 }
 
-/** 레거시 알림 target을 /admin 경로로 정규화 */
+/** 알림 target URL 정규화 (/theall_manager_only 기준) */
 function normalizeTargetUrl(url: string | null): string {
-  const fallback = "/admin/notifications";
+  const fallback = "/theall_manager_only/notifications";
   const u = url?.trim();
   if (!u) return fallback;
-  if (u.startsWith("/theall_manager_only/inquiries")) {
-    return u.replace("/theall_manager_only/inquiries", "/admin/inquiries");
-  }
-  if (u.startsWith("/theall_manager_only/notifications")) {
-    return u.replace("/theall_manager_only/notifications", "/admin/notifications");
-  }
-  if (u.startsWith("/theall_manager_only/reviews")) {
-    return u.replace("/theall_manager_only/reviews", "/admin/reviews");
+  if (u.startsWith("/admin/")) {
+    return u.replace("/admin", "/theall_manager_only");
   }
   return u;
 }

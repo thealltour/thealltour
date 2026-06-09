@@ -1,6 +1,7 @@
 "use client";
 
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
+import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
 import { InfoItem } from "@/components/products/detail/InfoItem";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -43,6 +44,7 @@ export default function ProductSummaryInfo({
   usePriceHeroGuide = false,
 }: ProductSummaryInfoProps) {
   const { openModal } = useConsultModal();
+  const consultHrefWithUtm = useQuoteHrefWithUtm(consultHref ?? "");
   const hasAny =
     duration ||
     departure ||
@@ -125,7 +127,7 @@ export default function ProductSummaryInfo({
             </button>
           ) : consultHref ? (
             <a
-              href={consultHref}
+              href={consultHrefWithUtm || consultHref}
               className={cn(
                 buttonVariants({ variant: "primary", size: "md" }),
                 "flex-1 text-sm font-semibold",

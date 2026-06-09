@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import SectionRichBody from "@/components/landings/sections/SectionRichBody";
 import { trackLandingCtaClick } from "@/lib/analytics/trackLandingQuoteFunnel";
 import { buildLandingQuoteHref } from "@/lib/landings/buildLandingQuoteHref";
+import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
 import type { AdminLandingDetail, AdminLandingSection } from "@/types/adminLanding";
 
 type LandingCtaSectionProps = {
@@ -14,7 +16,8 @@ type LandingCtaSectionProps = {
 };
 
 export default function LandingCtaSection({ landing, section, sourcePath }: LandingCtaSectionProps) {
-  const href = buildLandingQuoteHref(landing, sourcePath);
+  const baseHref = useMemo(() => buildLandingQuoteHref(landing, sourcePath), [landing, sourcePath]);
+  const href = useQuoteHrefWithUtm(baseHref);
   return (
     <SectionBlock surface="card" padding="md" className="max-w-3xl">
       <h2 className="text-xl font-bold text-[var(--text-primary)]">{section.title}</h2>

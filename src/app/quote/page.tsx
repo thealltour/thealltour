@@ -8,16 +8,18 @@ import { getProductById } from "@/lib/products";
 type QuotePageProps = {
   searchParams?: Promise<{
     product_id?: string;
+    productId?: string;
     product_title?: string;
     source_path?: string;
     landing_slug?: string;
     quote_category?: string;
+    desired_departure?: string;
   }>;
 };
 
 export default async function QuotePage({ searchParams }: QuotePageProps) {
   const query = (await searchParams) ?? {};
-  const productId = query.product_id?.trim();
+  const productId = (query.product_id ?? query.productId)?.trim();
   const productTitleFromQuery = query.product_title?.trim();
 
   let productSummary: QuoteSummary | null = null;
@@ -62,13 +64,14 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
           </div>
           <QuotePageContent
             source={{
-              product_id: query.product_id,
+              product_id: productId,
               product_title: productSummary?.productTitle ?? query.product_title,
               source_path: query.source_path,
               landing_slug: query.landing_slug,
               quote_category: query.quote_category,
             }}
             productSummary={productSummary}
+            initialDesiredDeparture={query.desired_departure?.trim()}
           />
         </ContentCard>
       </SectionBody>

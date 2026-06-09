@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
+import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { getProductCtaLabel, type ProductCtaStatus } from "@/lib/products/getProductCtaLabel";
@@ -38,6 +39,7 @@ export function ProductReviewSection({
   status = "AVAILABLE",
 }: ProductReviewSectionProps) {
   const { openModal } = useConsultModal();
+  const consultHrefWithUtm = useQuoteHrefWithUtm(consultHref ?? "");
   const reviewCtaLabel = getProductCtaLabel(status);
   const hasReviews = typeof reviewCount === "number" && reviewCount > 0;
   const displayRating = typeof rating === "number" && rating >= 0 && rating <= 5 ? rating : null;
@@ -87,7 +89,7 @@ export function ProductReviewSection({
                 </button>
               ) : (
                 <Link
-                  href={consultHref}
+                  href={consultHrefWithUtm || consultHref}
                   className={cn(
                     "inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]",
                     solidButtonShadowClasses,

@@ -124,9 +124,20 @@ type Props = {
   onUseAsMessageDraft?: (text: string) => void;
   /** 문자 발송 등 외부 이벤트 시 활동 타임라인을 갱신합니다(문의별로 증가하는 값). */
   externalTimelineBump?: number;
+  /** split: 응대·운영을 각각 독립 스크롤 열로 렌더 (문의 상세 4열 레이아웃) */
+  layout?: "stacked" | "split";
 };
 
-export function InquiryResponseGuide({ inquiry, onSaved, onUseAsMessageDraft, externalTimelineBump }: Props) {
+const SPLIT_COLUMN_CLASS =
+  "min-h-0 overflow-y-auto border-t border-[var(--border)] bg-[var(--surface-muted)]/30 px-3 py-4 xl:border-t-0 xl:border-l xl:max-h-none max-h-[min(42vh,480px)]";
+
+export function InquiryResponseGuide({
+  inquiry,
+  onSaved,
+  onUseAsMessageDraft,
+  externalTimelineBump,
+  layout = "stacked",
+}: Props) {
   const analysis = useMemo(() => analyzeInquiryGuide(inquiry), [inquiry]);
 
   const templates = useMemo(() => getTemplatesByType(analysis.type), [analysis.type]);
@@ -381,27 +392,31 @@ export function InquiryResponseGuide({ inquiry, onSaved, onUseAsMessageDraft, ex
   const showProposal = proposalGuide && proposalGuide.bullets.length > 0;
   const showAlternative = alternativeStrategy && alternativeStrategy.bullets.length > 0;
 
-  return (
+  const assigneeBadges = (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {assigneeName.trim() ? (
+        <span className="inline-flex rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
+          담당: {assigneeName.trim()}
+        </span>
+      ) : null}
+      {leadPriority ? (
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${leadPriorityBadgeClass(
+            getLeadPriorityTone(leadPriority),
+          )}`}
+        >
+          우선순위 {getLeadPriorityLabel(leadPriority)}
+        </span>
+      ) : null}
+    </div>
+  );
+
+  const messagingColumn = (
     <div className="space-y-3">
       <header className="px-0.5">
         <h2 className="text-base font-semibold text-[var(--text-primary)]">응대 매뉴얼</h2>
-        <p className="mt-0.5 text-xs text-[var(--text-muted)]">문의 유형별 기본 가이드</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {assigneeName.trim() ? (
-            <span className="inline-flex rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
-              담당: {assigneeName.trim()}
-            </span>
-          ) : null}
-          {leadPriority ? (
-            <span
-              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${leadPriorityBadgeClass(
-                getLeadPriorityTone(leadPriority),
-              )}`}
-            >
-              우선순위 {getLeadPriorityLabel(leadPriority)}
-            </span>
-          ) : null}
-        </div>
+        <p className="mt-0.5 text-xs text-[var(--text-muted)]">문의 유형별 기본 가이드 · 메시지·스크립트</p>
+        {assigneeBadges}
       </header>
 
       <SectionCard title="응대 분석">
@@ -571,6 +586,24 @@ export function InquiryResponseGuide({ inquiry, onSaved, onUseAsMessageDraft, ex
         </SectionCard>
       ) : null}
 
+      <SectionCard title="주의사항">
+        <ul className="space-y-1.5 text-xs text-[var(--text-secondary)]">
+          {analysis.cautionItems.map((item) => (
+            <li
+              key={item}
+              className="flex gap-2 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger-bg)]/40 px-2 py-1.5 text-[var(--danger)] dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
+            >
+              <span className="mt-0.5 shrink-0 font-bold">!</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </SectionCard>
+    </div>
+  );
+
+  const opsSections = (
+    <>
       <SectionCard title="필수 확인 항목">
         <ul className="space-y-2 text-xs text-[var(--text-primary)]">
           {checklistKeys.map((key) => (
@@ -723,20 +756,32 @@ export function InquiryResponseGuide({ inquiry, onSaved, onUseAsMessageDraft, ex
       <SectionCard title="활동 히스토리">
         <InquiryActivityTimeline inquiryId={inquiry.id} refreshKey={activityRefreshKey} />
       </SectionCard>
+    </>
+  );
 
-      <SectionCard title="주의사항">
-        <ul className="space-y-1.5 text-xs text-[var(--text-secondary)]">
-          {analysis.cautionItems.map((item) => (
-            <li
-              key={item}
-              className="flex gap-2 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger-bg)]/40 px-2 py-1.5 text-[var(--danger)] dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
-            >
-              <span className="mt-0.5 shrink-0 font-bold">!</span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </SectionCard>
+  const opsColumn = (
+    <div className="space-y-3">
+      <header className="px-0.5">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">운영 · 진행</h2>
+        <p className="mt-0.5 text-xs text-[var(--text-muted)]">체크리스트·단계·담당·활동 이력</p>
+      </header>
+      {opsSections}
+    </div>
+  );
+
+  if (layout === "split") {
+    return (
+      <>
+        <aside className={SPLIT_COLUMN_CLASS}>{messagingColumn}</aside>
+        <aside className={`${SPLIT_COLUMN_CLASS} bg-[var(--surface-muted)]/20`}>{opsColumn}</aside>
+      </>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {messagingColumn}
+      {opsSections}
     </div>
   );
 }

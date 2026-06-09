@@ -95,7 +95,7 @@ export async function createNewReviewNotification(input: NewReviewNotificationIn
       type: "new_review",
       title: "신규 후기 등록",
       message: `${input.authorName}님이 후기 "${input.title}"를 등록했습니다.`,
-      target_url: "/admin/reviews/moderation?filter=flagged",
+      target_url: "/theall_manager_only/reviews/moderation?filter=flagged",
       unique_key: `new_review:${input.reviewId}`,
       is_read: false,
       payload: {

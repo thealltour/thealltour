@@ -28,6 +28,7 @@ import type { ProductGalleryImage } from "@/components/products/ProductImageGall
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
+import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
 import { ProductQuickSummaryCard } from "@/components/products/ProductQuickSummaryCard";
@@ -38,6 +39,7 @@ import { ProductHeroBadges } from "@/components/products/ProductHeroBadges";
 import ProductSummaryInfo from "@/components/products/ProductSummaryInfo";
 import ProductDepartureSelector from "@/components/products/ProductDepartureSelector";
 import ProductItineraryTimeline from "@/components/products/ProductItineraryTimeline";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { buildHeroBadges } from "@/lib/products/buildHeroBadges";
 import {
   getLegacyDayPreviewLabel,
@@ -180,6 +182,27 @@ export default function ProductDetailV2({
   overviewFallbackUrl = "",
   reviewSummary,
 }: ProductDetailV2Props) {
+  const { openModal } = useConsultModal();
+  const consultHrefWithUtm = useQuoteHrefWithUtm(consultHref);
+
+  const handleDepartureInquiry = useCallback(
+    (selectedDeparture: string | null) => {
+      if (onConsultClick) {
+        onConsultClick();
+        return;
+      }
+      if (!productId) return;
+      const prefill = selectedDeparture ? `희망 출발일: ${selectedDeparture}` : undefined;
+      openModal({
+        productId,
+        productTitle: productTitle ?? title,
+        sourcePath: sourcePath ?? "",
+        prefillContent: prefill,
+      });
+    },
+    [onConsultClick, openModal, productId, productTitle, sourcePath, title],
+  );
+
   const resolvedOverview = useMemo(() => {
     if (product != null) return mapProductToOverview(product);
     return overviewModel ?? null;
@@ -628,7 +651,7 @@ export default function ProductDetailV2({
           <div className="mt-6">
             <ProductDepartureSelector
               departures={product.departures}
-              onInquiryClick={onConsultClick}
+              onInquiryClick={handleDepartureInquiry}
             />
           </div>
         ) : null}
@@ -720,7 +743,7 @@ export default function ProductDetailV2({
               )}
               <div className="flex flex-wrap gap-3">
                 {consultHref ? (
-                  <a href={consultHref}>
+                  <a href={consultHrefWithUtm || consultHref}>
                     <Button variant="accent" size="md">{getProductCtaLabel(statusTag)}</Button>
                   </a>
                 ) : null}

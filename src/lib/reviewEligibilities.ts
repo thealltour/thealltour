@@ -352,3 +352,57 @@ export async function claimEligibility(
 
   return { success: true, eligibility_id: eligibility.id };
 }
+
+export type AdminClaimResult =
+  | { success: true; eligibility_id: string }
+  | {
+      success: false;
+      error: "not_found" | "already_submitted" | "already_claimed_by_other" | "blocked" | "expired" | "unknown";
+    };
+
+/**
+ * 관리자/auto-claim: eligibility_id로 회원에게 후기 권한 부여.
+ * claim_token 없이 claimed_by_member_id 직접 설정.
+ */
+export async function adminClaimEligibilityById(
+  eligibilityId: string,
+  memberId: string,
+): Promise<AdminClaimResult> {
+  const eligibility = await getEligibilityById(eligibilityId);
+  if (!eligibility) {
+    return { success: false, error: "not_found" };
+  }
+
+  if (eligibility.status === "submitted") {
+    return { success: false, error: "already_submitted" };
+  }
+  if (eligibility.status === "blocked") {
+    return { success: false, error: "blocked" };
+  }
+  if (eligibility.status === "expired") {
+    return { success: false, error: "expired" };
+  }
+
+  if (eligibility.claimed_by_member_id) {
+    if (eligibility.claimed_by_member_id === memberId) {
+      return { success: true, eligibility_id: eligibility.id };
+    }
+    return { success: false, error: "already_claimed_by_other" };
+  }
+
+  const { error } = await supabaseAdmin
+    .from("review_eligibilities")
+    .update({
+      claimed_by_member_id: memberId,
+      status: "claimed",
+      claimed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", eligibility.id);
+
+  if (error) {
+    return { success: false, error: "unknown" };
+  }
+
+  return { success: true, eligibility_id: eligibility.id };
+}

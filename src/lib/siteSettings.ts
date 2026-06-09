@@ -52,6 +52,17 @@ export type SiteSettings = {
   about_paragraph2: string;
   about_cta_label: string;
   about_cta_href: string;
+  /** 예약금 안내 기본 금액 (표시용) */
+  deposit_amount_default: string;
+  deposit_bank_name: string;
+  deposit_bank_account: string;
+  deposit_account_holder: string;
+  /** 외부 결제링크 목록 JSON: [{ id, label, url }] */
+  deposit_payment_links: string;
+  /** @deprecated deposit_payment_links로 이전. DB에만 남을 수 있음 */
+  deposit_payment_link?: string;
+  /** 상담 SLA 안내 (분) */
+  consult_sla_minutes: string;
 };
 
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -64,9 +75,9 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   ceo_name: "김지호",
   address: "경기도 고양시 덕양구 용현로 27, 407호(행신동, 행신프라자)",
   business_reg_no: "645-88-03583",
-  tourism_reg_no: "미정",
-  mail_order_reg_no: "미정",
-  main_phone: "02-0000-0000",
+  tourism_reg_no: "",
+  mail_order_reg_no: "",
+  main_phone: "",
   main_email: "thealltour@gmail.com",
   products_hero_headline:
     "패키지상품으로 원하시는 지역·예산에 맞춰 바로 상담까지 연결해 드려요.",
@@ -104,6 +115,12 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
     "수년간 쌓아온 노하우와 탄탄한 현지 네트워크를 바탕으로, 남들은 모르는 숨은 명소부터 프라이빗한 숙소까지 세밀하게 설계해 드립니다. 전문가의 시선으로 고른 고품격 여행, 이제 더올투어와 함께 시작하세요.",
   about_cta_label: "맞춤 여행 상담 받기",
   about_cta_href: "/#contact",
+  deposit_amount_default: "",
+  deposit_bank_name: "",
+  deposit_bank_account: "",
+  deposit_account_holder: "(주)더올투어",
+  deposit_payment_links: "[]",
+  consult_sla_minutes: "30",
 };
 
 async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
@@ -176,6 +193,18 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
     about_cta_label:
       map.get("about_cta_label") || DEFAULT_SITE_SETTINGS.about_cta_label,
     about_cta_href: map.get("about_cta_href") || DEFAULT_SITE_SETTINGS.about_cta_href,
+    deposit_amount_default:
+      map.get("deposit_amount_default") ?? DEFAULT_SITE_SETTINGS.deposit_amount_default,
+    deposit_bank_name: map.get("deposit_bank_name") ?? DEFAULT_SITE_SETTINGS.deposit_bank_name,
+    deposit_bank_account:
+      map.get("deposit_bank_account") ?? DEFAULT_SITE_SETTINGS.deposit_bank_account,
+    deposit_account_holder:
+      map.get("deposit_account_holder") ?? DEFAULT_SITE_SETTINGS.deposit_account_holder,
+    deposit_payment_links:
+      map.get("deposit_payment_links") ?? DEFAULT_SITE_SETTINGS.deposit_payment_links,
+    deposit_payment_link: map.get("deposit_payment_link") ?? "",
+    consult_sla_minutes:
+      map.get("consult_sla_minutes") ?? DEFAULT_SITE_SETTINGS.consult_sla_minutes,
   };
 }
 

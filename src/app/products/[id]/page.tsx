@@ -255,7 +255,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                     travelNotes={resolvedTravelNotes}
                     bookingConditions={resolvedBookingConditions}
                     refundPolicy={resolvedRefundPolicy}
-                    consultHref={`/quote?productId=${encodeURIComponent(product.id)}`}
+                    consultHref={`/quote?product_id=${encodeURIComponent(product.id)}`}
                     productId={product.id}
                     productTitle={product.title}
                     sourcePath={sourcePath}
@@ -275,7 +275,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 rating={productReviewStats.averageRating}
                 reviewCount={productReviewStats.reviewCount}
                 bookingCount={product.trust?.recentConsultCount}
-                consultHref={`/quote?productId=${encodeURIComponent(product.id)}`}
+                consultHref={`/quote?product_id=${encodeURIComponent(product.id)}`}
                 productId={product.id}
                 productTitle={product.title}
                 sourcePath={`${sourcePath}#reviews`}

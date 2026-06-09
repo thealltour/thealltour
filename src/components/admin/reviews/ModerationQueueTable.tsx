@@ -129,7 +129,7 @@ export function ModerationQueueTable({
               <td className="px-3 py-2">{formatDate(row.createdAt)}</td>
               <td className="px-3 py-2">
                 <Link
-                  href={`/admin/reviews/moderation`}
+                  href={`/theall_manager_only/reviews/moderation`}
                   className="text-[var(--primary)] hover:underline"
                 >
                   처리

@@ -45,7 +45,9 @@ export type AnalyticsEventName =
   | "quote_submit_success"
   | "landing_cta_click"
   | "consult_open"
-  | "consult_submit";
+  | "consult_submit"
+  | "deposit_link_click"
+  | "deposit_payment_click";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =
@@ -63,7 +65,8 @@ export type AnalyticsSource =
   | "consult_cta"
   | "hero_search"
   | "quote_page"
-  | "recommended_landing";
+  | "recommended_landing"
+  | "deposit_page";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {

@@ -5,15 +5,13 @@
  * - 그룹 내 활성 자식 존재 여부
  */
 
+import { getAdminConsoleRelativePath, isAdminReviewSectionRelativePath } from "@/lib/adminConsolePaths";
+
 /** 후기 관리 하위 경로인지 (상위 메뉴 open/active 판별용) */
 export function isReviewRelatedPath(pathname: string): boolean {
-  return (
-    pathname.startsWith("/admin/reviews") ||
-    pathname === "/theall_manager_only/reviews" ||
-    pathname.startsWith("/theall_manager_only/review-reports") ||
-    pathname.startsWith("/theall_manager_only/review-reminders") ||
-    pathname.startsWith("/theall_manager_only/review-summaries")
-  );
+  const rel = getAdminConsoleRelativePath(pathname);
+  if (rel == null) return false;
+  return isAdminReviewSectionRelativePath(rel);
 }
 
 /** 단일 링크가 현재 pathname과 일치하는지 (자식 메뉴 active용) */
@@ -23,8 +21,13 @@ export function isChildPathActive(
   exact?: boolean,
 ): boolean {
   if (exact) return pathname === href;
-  if (href === "/admin/reviews") return pathname === "/admin/reviews";
-  if (href === "/theall_manager_only/reviews") return pathname === "/theall_manager_only/reviews";
+  const hrefRel = getAdminConsoleRelativePath(href.split("?")[0] ?? href);
+  const pathRel = getAdminConsoleRelativePath(pathname);
+  if (hrefRel != null && pathRel != null) {
+    if (exact) return pathRel === hrefRel;
+    if (hrefRel === "/reviews") return pathRel === "/reviews";
+    return pathRel === hrefRel || pathRel.startsWith(`${hrefRel}/`);
+  }
   return pathname.startsWith(href);
 }
 

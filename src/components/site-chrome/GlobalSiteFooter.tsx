@@ -25,6 +25,16 @@ type SiteSettingsClient = {
 
 const focusRing = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
 
+function isPlaceholderRegNo(value: string | undefined): boolean {
+  const v = (value ?? "").trim();
+  return !v || v === "미정";
+}
+
+function isPlaceholderPhone(value: string | undefined): boolean {
+  const v = (value ?? "").trim();
+  return !v || v === "02-0000-0000";
+}
+
 export default function GlobalSiteFooter() {
   const pathname = usePathname();
   const [settings, setSettings] = useState<SiteSettingsClient | null>(null);
@@ -59,9 +69,12 @@ export default function GlobalSiteFooter() {
   const ceoName = settings?.ceo_name ?? "김지호";
   const address = settings?.address ?? "경기도 고양시 덕양구 용현로 27, 407호(행신동, 행신프라자)";
   const businessRegNo = settings?.business_reg_no ?? "645-88-03583";
-  const tourismRegNo = settings?.tourism_reg_no ?? "미정";
-  const mailOrderRegNo = settings?.mail_order_reg_no ?? "미정";
-  const mainPhone = settings?.main_phone ?? "02-0000-0000";
+  const tourismRegNo = settings?.tourism_reg_no?.trim() ?? "";
+  const mailOrderRegNo = settings?.mail_order_reg_no?.trim() ?? "";
+  const mainPhone = settings?.main_phone?.trim() ?? "";
+  const showTourismReg = !isPlaceholderRegNo(tourismRegNo);
+  const showMailOrderReg = !isPlaceholderRegNo(mailOrderRegNo);
+  const showMainPhone = !isPlaceholderPhone(mainPhone);
   const mainEmail = settings?.main_email ?? "thealltour@gmail.com";
   const kakaoChannelUrl = settings?.kakao_channel_url ?? "https://pf.kakao.com";
   const instagramUrl = settings?.instagram_url ?? "https://www.instagram.com/thealltour";
@@ -110,14 +123,18 @@ export default function GlobalSiteFooter() {
                   <span className="font-semibold text-[var(--foreground)]">사업자등록번호</span>{" "}
                   <span>{businessRegNo}</span>
                 </li>
-                <li>
-                  <span className="font-semibold text-[var(--foreground)]">관광사업등록번호</span>{" "}
-                  <span>{tourismRegNo}</span>
-                </li>
-                <li>
-                  <span className="font-semibold text-[var(--foreground)]">통신판매업신고번호</span>{" "}
-                  <span>{mailOrderRegNo}</span>
-                </li>
+                {showTourismReg ? (
+                  <li>
+                    <span className="font-semibold text-[var(--foreground)]">관광사업등록번호</span>{" "}
+                    <span>{tourismRegNo}</span>
+                  </li>
+                ) : null}
+                {showMailOrderReg ? (
+                  <li>
+                    <span className="font-semibold text-[var(--foreground)]">통신판매업신고번호</span>{" "}
+                    <span>{mailOrderRegNo}</span>
+                  </li>
+                ) : null}
               </ul>
             </div>
 
@@ -199,13 +216,15 @@ export default function GlobalSiteFooter() {
                   연락처
                 </p>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  <a
-                    href={`tel:${mainPhone}`}
-                    className={cn("footer-pill-secondary", focusRing)}
-                  >
-                    <Phone className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
-                    <span className="tabular-nums">대표 {mainPhone}</span>
-                  </a>
+                  {showMainPhone ? (
+                    <a
+                      href={`tel:${mainPhone}`}
+                      className={cn("footer-pill-secondary", focusRing)}
+                    >
+                      <Phone className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                      <span className="tabular-nums">대표 {mainPhone}</span>
+                    </a>
+                  ) : null}
                   <a
                     href={`mailto:${mainEmail}`}
                     className={cn("footer-pill-secondary", focusRing)}

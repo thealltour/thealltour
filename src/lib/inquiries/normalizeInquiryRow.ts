@@ -74,6 +74,7 @@ export function normalizeInquiryRow(row: Record<string, unknown>): Inquiry {
     source_path: typeof row.source_path === "string" ? row.source_path : undefined,
     is_completed: typeof row.is_completed === "boolean" ? row.is_completed : undefined,
     customer_profile_id: typeof row.customer_profile_id === "string" ? row.customer_profile_id : undefined,
+    member_id: typeof row.member_id === "string" ? row.member_id : row.member_id != null ? String(row.member_id) : undefined,
     consultation_status:
       typeof row.consultation_status === "string" ? (row.consultation_status as ConsultationStatus) : undefined,
     booking_status: typeof row.booking_status === "string" ? (row.booking_status as BookingStatus) : undefined,

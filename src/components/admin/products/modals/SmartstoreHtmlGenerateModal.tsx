@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { FileCode2, Copy, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FileCode2, Copy, RefreshCw, X, Link2 } from "lucide-react";
 import type { SmartstoreHtmlGenerateModalProps, SmartstoreHtmlModalFetchState } from "./smartstoreHtmlModal.types";
 import type { SmartstoreHtmlApiResponse } from "@/lib/smartstore/smartstoreHtml.types";
+import { buildChannelProductUrl } from "@/lib/analytics/utmPropagation";
 
 type TabKey = "preview" | "source";
 
@@ -66,6 +67,20 @@ export default function SmartstoreHtmlGenerateModal({
   if (!open) return null;
 
   const meta = state.status === "ok" ? state.meta : null;
+  const smartstoreShareUrl = productId?.trim()
+    ? buildChannelProductUrl(productId.trim(), "smartstore")
+    : "";
+
+  const handleCopyShareUrl = async () => {
+    if (!smartstoreShareUrl) return;
+    try {
+      await navigator.clipboard.writeText(smartstoreShareUrl);
+      setCopyHint("스마트스토어용 UTM 상품 URL을 복사했습니다.");
+      setTimeout(() => setCopyHint(null), 4000);
+    } catch {
+      setCopyHint("URL 복사에 실패했습니다.");
+    }
+  };
 
   return (
     <div
@@ -125,6 +140,22 @@ export default function SmartstoreHtmlGenerateModal({
         {state.status === "ok" && meta ? (
           <>
             <div className="shrink-0 space-y-3 border-b border-[var(--border)] bg-[var(--surface-muted)]/50 px-4 py-3 text-xs text-[var(--text-secondary)]">
+              {smartstoreShareUrl ? (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                  <p className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
+                    <Link2 className="h-3.5 w-3.5" aria-hidden />
+                    스마트스토어 유입용 상품 URL (UTM 포함)
+                  </p>
+                  <p className="mt-1 break-all text-[11px] text-[var(--text-muted)]">{smartstoreShareUrl}</p>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyShareUrl()}
+                    className="mt-2 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+                  >
+                    URL 복사
+                  </button>
+                </div>
+              ) : null}
               <div>
                 <p className="font-semibold text-[var(--text-primary)]">네이버 업로드 안전성</p>
                 <ul className="mt-1 grid gap-1 sm:grid-cols-2">

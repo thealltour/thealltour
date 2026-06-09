@@ -1,14 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SiteSettings } from "@/lib/siteSettings";
 import AdminRecommendedSearchManager from "@/components/admin/AdminRecommendedSearchManager";
+import AdminUsersManager from "@/components/admin/settings/AdminUsersManager";
+import { useAdminPermission } from "@/components/admin/AdminRoleContext";
+import AdminUtmLinkBuilder from "@/components/admin/AdminUtmLinkBuilder";
+import {
+  createEmptyDepositPaymentLink,
+  parseDepositPaymentLinks,
+  type DepositPaymentLink,
+} from "@/lib/deposit/depositPaymentLinks";
 
-type SettingsSectionId = "channel" | "company" | "products-hero" | "about" | "golf-hero" | "recommended-search";
+type SettingsSectionId =
+  | "channel"
+  | "company"
+  | "deposit"
+  | "utm"
+  | "products-hero"
+  | "about"
+  | "golf-hero"
+  | "recommended-search"
+  | "admin-users";
 
 const SETTINGS_TABS: { id: SettingsSectionId; label: string }[] = [
   { id: "channel", label: "연락 채널" },
   { id: "company", label: "회사 정보" },
+  { id: "deposit", label: "예약금·SLA" },
+  { id: "utm", label: "UTM 빌더" },
   { id: "products-hero", label: "패키지상품 히어로" },
   { id: "about", label: "About 페이지" },
   { id: "golf-hero", label: "골프 히어로" },
@@ -70,9 +89,23 @@ const EMPTY_SETTINGS: SiteSettings = {
   about_cta_href: "",
   products_collection_recommend_campaign_ids: "[]",
   products_collection_popular_campaign_ids: "[]",
+  deposit_amount_default: "",
+  deposit_bank_name: "",
+  deposit_bank_account: "",
+  deposit_account_holder: "",
+  deposit_payment_links: "[]",
+  consult_sla_minutes: "30",
 };
 
 export default function AdminSiteSettingsManager() {
+  const canManageAdminUsers = useAdminPermission("admin_users.manage");
+  const settingsTabs = useMemo(() => {
+    const tabs = [...SETTINGS_TABS];
+    if (canManageAdminUsers) {
+      tabs.push({ id: "admin-users" as const, label: "관리자 계정" });
+    }
+    return tabs;
+  }, [canManageAdminUsers]);
   const [settings, setSettings] = useState<SiteSettings>(EMPTY_SETTINGS);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>("channel");
   const [isLoading, setIsLoading] = useState(true);
@@ -81,6 +114,7 @@ export default function AdminSiteSettingsManager() {
   const [errorMessage, setErrorMessage] = useState("");
   const [heroRegions, setHeroRegions] = useState<HeroRegionConfig[]>(DEFAULT_HERO_REGIONS);
   const [golfHeroRegions, setGolfHeroRegions] = useState<HeroRegionConfig[]>(DEFAULT_GOLF_HERO_REGIONS);
+  const [depositPaymentLinks, setDepositPaymentLinks] = useState<DepositPaymentLink[]>([]);
 
   async function loadSettings(skipLoadingIndicator = false) {
     try {
@@ -132,9 +166,21 @@ export default function AdminSiteSettingsManager() {
           data.products_collection_recommend_campaign_ids ?? "[]",
         products_collection_popular_campaign_ids:
           data.products_collection_popular_campaign_ids ?? "[]",
+        deposit_amount_default: data.deposit_amount_default ?? "",
+        deposit_bank_name: data.deposit_bank_name ?? "",
+        deposit_bank_account: data.deposit_bank_account ?? "",
+        deposit_account_holder: data.deposit_account_holder ?? "",
+        deposit_payment_links: data.deposit_payment_links ?? "[]",
+        consult_sla_minutes: data.consult_sla_minutes ?? "30",
       };
 
       setSettings(nextSettings);
+      setDepositPaymentLinks(
+        parseDepositPaymentLinks(
+          nextSettings.deposit_payment_links,
+          data.deposit_payment_link,
+        ),
+      );
 
       const rawRegions = nextSettings.products_hero_regions;
       if (typeof rawRegions === "string" && rawRegions.trim()) {
@@ -197,6 +243,15 @@ export default function AdminSiteSettingsManager() {
         ...settings,
         products_hero_regions: JSON.stringify(heroRegions),
         golf_hero_regions: JSON.stringify(golfHeroRegions),
+        deposit_payment_links: JSON.stringify(
+          depositPaymentLinks
+            .map((link) => ({
+              id: link.id,
+              label: link.label.trim(),
+              url: link.url.trim(),
+            }))
+            .filter((link) => link.label && link.url.startsWith("http")),
+        ),
       };
 
       const response = await fetch("/api/admin/site-settings", {
@@ -234,7 +289,7 @@ export default function AdminSiteSettingsManager() {
 
       {/* 서브헤더: 섹션 탭 */}
       <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1">
-        {SETTINGS_TABS.map((tab) => (
+        {settingsTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -474,6 +529,153 @@ export default function AdminSiteSettingsManager() {
         </label>
           </div>
         )}
+
+        {activeSection === "deposit" && (
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+              기본 예약금 안내 (표시용)
+              <input
+                type="text"
+                value={settings.deposit_amount_default}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    deposit_amount_default: event.target.value,
+                  }))
+                }
+                placeholder="예: 100,000원"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+              상담 SLA (분)
+              <input
+                type="text"
+                inputMode="numeric"
+                value={settings.consult_sla_minutes}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    consult_sla_minutes: event.target.value,
+                  }))
+                }
+                placeholder="예: 30"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
+              />
+              <span className="text-xs font-normal text-[var(--text-muted)]">
+                상담 제출 성공 화면에 &quot;○○분 내 연락&quot; 안내로 사용됩니다.
+              </span>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+              입금 은행명
+              <input
+                type="text"
+                value={settings.deposit_bank_name}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    deposit_bank_name: event.target.value,
+                  }))
+                }
+                placeholder="예: 국민은행"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+              입금 계좌번호
+              <input
+                type="text"
+                value={settings.deposit_bank_account}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    deposit_bank_account: event.target.value,
+                  }))
+                }
+                placeholder="예: 123-456-789012"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">
+              예금주
+              <input
+                type="text"
+                value={settings.deposit_account_holder}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    deposit_account_holder: event.target.value,
+                  }))
+                }
+                placeholder="예: (주)더올투어"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
+              />
+            </label>
+            <div className="md:col-span-2 space-y-3">
+              <div>
+                <p className="text-sm font-medium text-[var(--text-primary)]">외부 결제링크</p>
+                <p className="mt-0.5 text-xs font-normal text-[var(--text-muted)]">
+                  /deposit 페이지에 표시됩니다. 이름(예: 토스페이, 카카오페이)과 URL을 추가하세요.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {depositPaymentLinks.map((link, index) => (
+                  <div
+                    key={link.id}
+                    className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
+                  >
+                    <input
+                      type="text"
+                      value={link.label}
+                      onChange={(event) =>
+                        setDepositPaymentLinks((prev) =>
+                          prev.map((item, i) =>
+                            i === index ? { ...item, label: event.target.value } : item,
+                          ),
+                        )
+                      }
+                      placeholder="링크 이름 (예: 토스페이)"
+                      className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+                    />
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={(event) =>
+                        setDepositPaymentLinks((prev) =>
+                          prev.map((item, i) =>
+                            i === index ? { ...item, url: event.target.value } : item,
+                          ),
+                        )
+                      }
+                      placeholder="https://..."
+                      className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDepositPaymentLinks((prev) => prev.filter((_, i) => i !== index))
+                      }
+                      className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setDepositPaymentLinks((prev) => [...prev, createEmptyDepositPaymentLink()])
+                }
+                className="rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--surface-muted)]"
+              >
+                + 결제링크 추가
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeSection === "utm" && <AdminUtmLinkBuilder />}
 
         {activeSection === "products-hero" && (
           <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
@@ -849,6 +1051,10 @@ export default function AdminSiteSettingsManager() {
         {activeSection === "recommended-search" && (
           <AdminRecommendedSearchManager />
         )}
+
+        {activeSection === "admin-users" && canManageAdminUsers ? (
+          <AdminUsersManager />
+        ) : null}
       </div>
     </section>
   );

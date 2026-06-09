@@ -1,4 +1,6 @@
 import MyPageLayout from "@/components/mypage/MyPageLayout";
+import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
+import { Button } from "@/components/ui/Button";
 import { cookies } from "next/headers";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabase } from "@/lib/supabase";
@@ -14,34 +16,33 @@ export default async function MyPageProfilePage() {
 
   return (
     <MyPageLayout title="회원정보" description="기본 회원 정보를 확인할 수 있습니다.">
-      <section className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <div className="flex flex-col space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
+      <MyPageCard>
+        <dl className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-xs text-[var(--text-secondary)]">이름</p>
-            <p className="text-sm font-medium text-[var(--text-primary)]">{member?.name ?? "-"}</p>
+            <dt className="type-caption text-[var(--text-muted)]">이름</dt>
+            <dd className="mt-1 text-sm font-medium text-[var(--text-primary)]">{member?.name ?? "-"}</dd>
           </div>
           <div>
-            <p className="text-xs text-[var(--text-secondary)]">이메일</p>
-            <p className="text-sm font-medium text-[var(--text-primary)]">{member?.email ?? "-"}</p>
+            <dt className="type-caption text-[var(--text-muted)]">이메일</dt>
+            <dd className="mt-1 text-sm font-medium text-[var(--text-primary)]">{member?.email ?? "-"}</dd>
           </div>
           <div>
-            <p className="text-xs text-[var(--text-secondary)]">전화번호</p>
-            <p className="text-sm font-medium text-[var(--text-primary)]">{member?.phone ?? "미등록 (리워드 신청 전 입력 권장)"}</p>
+            <dt className="type-caption text-[var(--text-muted)]">전화번호</dt>
+            <dd className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+              {member?.phone ?? "미등록 (리워드 신청 전 입력 권장)"}
+            </dd>
           </div>
           <div>
-            <p className="text-xs text-[var(--text-secondary)]">가입일</p>
-            <p className="text-sm font-medium text-[var(--text-primary)]">
+            <dt className="type-caption text-[var(--text-muted)]">가입일</dt>
+            <dd className="mt-1 text-sm font-medium text-[var(--text-primary)]">
               {member?.created_at ? new Date(member.created_at).toLocaleDateString("ko-KR") : "-"}
-            </p>
+            </dd>
           </div>
-        </div>
-        <button
-          type="button"
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)]"
-        >
+        </dl>
+        <Button type="button" variant="outline" size="md" className="mt-6">
           비밀번호 변경
-        </button>
-      </section>
+        </Button>
+      </MyPageCard>
     </MyPageLayout>
   );
 }

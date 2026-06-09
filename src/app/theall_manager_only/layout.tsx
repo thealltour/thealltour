@@ -1,9 +1,20 @@
 import type { ReactNode } from "react";
 import { AdminRouteProviders } from "@/components/admin/AdminRouteProviders";
-import type { AdminRole } from "@/types/adminRole";
+import { getAdminSession } from "@/lib/adminServerSession";
 
-export default function AdminRootLayout({ children }: { children: ReactNode }) {
-  // TODO: Replace with real auth-based role resolution.
-  const role: AdminRole = "admin";
-  return <AdminRouteProviders role={role}>{children}</AdminRouteProviders>;
+export default async function AdminRootLayout({ children }: { children: ReactNode }) {
+  const session = await getAdminSession();
+  return (
+    <AdminRouteProviders
+      session={
+        session ?? {
+          role: "admin",
+          permissions: [],
+          isBootstrapAdmin: false,
+        }
+      }
+    >
+      {children}
+    </AdminRouteProviders>
+  );
 }

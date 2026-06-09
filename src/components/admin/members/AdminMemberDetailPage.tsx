@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { MemberInquiryLinkPanel } from "@/components/admin/members/MemberInquiryLinkPanel";
 
 type Props = {
   memberId: string;
@@ -47,6 +48,23 @@ type PointLedgerRow = {
   created_at: string;
 };
 
+type ReviewEligibilityRow = {
+  eligibility_id: string | null;
+  eligibility_status: string | null;
+  claimed_by_member_id: string | null;
+  inquiry_id: string | null;
+  inquiry_created_at: string | null;
+  product_title: string | null;
+  product_id: string | null;
+  booking_status: string | null;
+  booking_id: string | null;
+  departure_date: string | null;
+  return_date: string | null;
+  customer_profile_id: string;
+  can_claim: boolean;
+  claim_reason: string | null;
+};
+
 const TYPE_LABEL: Record<string, string> = {
   EARN: "적립",
   USE: "사용",
@@ -60,6 +78,21 @@ const STATUS_LABEL: Record<string, string> = {
   CONFIRMED: "확정",
   PENDING: "대기",
   CANCELED: "취소",
+};
+
+const BOOKING_STATUS_LABEL: Record<string, string> = {
+  none: "미예약",
+  reserved: "예약 확정",
+  completed: "여행 완료",
+  canceled: "취소",
+};
+
+const ELIGIBILITY_STATUS_LABEL: Record<string, string> = {
+  eligible: "작성 가능",
+  claimed: "회원 연결됨",
+  submitted: "작성 완료",
+  expired: "만료",
+  blocked: "차단",
 };
 
 const REASON_PRESETS = [
@@ -120,6 +153,11 @@ export default function AdminMemberDetailPage({
     null,
   );
   const [highlightLedgerId, setHighlightLedgerId] = useState<string | null>(null);
+  const [reviewRows, setReviewRows] = useState<ReviewEligibilityRow[]>([]);
+  const [linkedProfiles, setLinkedProfiles] = useState<Array<{ id: string; name: string; phone: string }>>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true);
+  const [reviewError, setReviewError] = useState("");
+  const [claimingId, setClaimingId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -184,6 +222,57 @@ export default function AdminMemberDetailPage({
       mounted = false;
     };
   }, [memberId]);
+
+  async function loadReviewEligibilities() {
+    setIsLoadingReviews(true);
+    setReviewError("");
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/review-eligibilities`, { cache: "no-store" });
+      const data = (await res.json()) as
+        | {
+            rows?: ReviewEligibilityRow[];
+            linkedProfiles?: Array<{ id: string; name: string; phone: string }>;
+          }
+        | { message?: string };
+      if (!res.ok) {
+        setReviewError("message" in data ? (data.message ?? "리뷰 권한을 불러오지 못했습니다.") : "리뷰 권한을 불러오지 못했습니다.");
+        return;
+      }
+      const summary = data as {
+        rows?: ReviewEligibilityRow[];
+        linkedProfiles?: Array<{ id: string; name: string; phone: string }>;
+      };
+      setReviewRows(Array.isArray(summary.rows) ? summary.rows : []);
+      setLinkedProfiles(Array.isArray(summary.linkedProfiles) ? summary.linkedProfiles : []);
+    } catch {
+      setReviewError("리뷰 권한을 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoadingReviews(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadReviewEligibilities();
+  }, [memberId]);
+
+  async function handleClaimEligibility(eligibilityId: string) {
+    if (claimingId) return;
+    setClaimingId(eligibilityId);
+    try {
+      const res = await fetch(
+        `/api/admin/members/${memberId}/review-eligibilities/${eligibilityId}/claim`,
+        { method: "POST" },
+      );
+      const data = (await res.json()) as { message?: string };
+      if (!res.ok) {
+        setReviewError(data.message ?? "권한 부여에 실패했습니다.");
+        return;
+      }
+      await loadReviewEligibilities();
+    } finally {
+      setClaimingId(null);
+    }
+  }
 
   useEffect(() => {
     if (!highlightLedgerId) return;
@@ -551,6 +640,91 @@ export default function AdminMemberDetailPage({
             {grantSubmitting ? "처리 중…" : "포인트 지급"}
           </Button>
         </div>
+      </section>
+
+      {member ? (
+        <MemberInquiryLinkPanel
+          memberId={memberId}
+          memberPhone={member.phone}
+          onChanged={() => void loadReviewEligibilities()}
+        />
+      ) : null}
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <h3 className="text-base font-semibold text-[var(--text-primary)]">리뷰 권한</h3>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
+          연결된 문의·예약 건에 대한 후기 작성 권한을 확인하고 수동 부여할 수 있습니다.
+        </p>
+
+        {linkedProfiles.length > 0 ? (
+          <p className="mt-2 text-xs text-[var(--text-muted)]">
+            연결된 고객 프로필: {linkedProfiles.map((p) => `${p.name}(${p.phone})`).join(", ")}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-[var(--text-subtle)]">
+            아직 연결된 고객 프로필이 없습니다. 아래 문의를 연결하거나 문의 상세에서 회원 연결을 사용하세요.
+          </p>
+        )}
+
+        {reviewError ? <p className="mt-2 text-sm text-[var(--danger)]">{reviewError}</p> : null}
+
+        {isLoadingReviews ? (
+          <p className="mt-3 text-sm text-[var(--text-muted)]">리뷰 권한을 불러오는 중입니다...</p>
+        ) : reviewRows.length === 0 ? (
+          <p className="mt-3 text-sm text-[var(--text-muted)]">연결된 문의·예약 건이 없습니다.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead className="bg-[var(--surface-muted)] text-[var(--text-secondary)]">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold">상품/문의</th>
+                  <th className="px-3 py-2 text-left font-semibold">예약 상태</th>
+                  <th className="px-3 py-2 text-left font-semibold">자격 상태</th>
+                  <th className="px-3 py-2 text-left font-semibold">안내</th>
+                  <th className="px-3 py-2 text-right font-semibold">액션</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewRows.map((row) => (
+                  <tr key={`${row.inquiry_id ?? row.booking_id ?? row.customer_profile_id}`} className="border-t border-[var(--divider)]">
+                    <td className="px-3 py-2">
+                      <p className="font-medium text-[var(--text-primary)]">{row.product_title || "일반 문의"}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{formatDate(row.inquiry_created_at)}</p>
+                    </td>
+                    <td className="px-3 py-2 text-[var(--text-secondary)]">
+                      {BOOKING_STATUS_LABEL[row.booking_status ?? "none"] ?? row.booking_status ?? "-"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.eligibility_status ? (
+                        <Badge variant="neutral" className="px-2 py-0.5 text-[11px]">
+                          {ELIGIBILITY_STATUS_LABEL[row.eligibility_status] ?? row.eligibility_status}
+                        </Badge>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[var(--text-muted)]">{row.claim_reason ?? "-"}</td>
+                    <td className="px-3 py-2 text-right">
+                      {row.can_claim && row.eligibility_id ? (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleClaimEligibility(row.eligibility_id!)}
+                          disabled={claimingId === row.eligibility_id}
+                          loading={claimingId === row.eligibility_id}
+                        >
+                          권한 부여
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">

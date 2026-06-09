@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
+import { MyPageList, MyPageListItem } from "@/components/mypage/ui/MyPageListItem";
+import { MyPageStatusBadge } from "@/components/mypage/ui/MyPageStatusBadge";
+import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
+import { Button } from "@/components/ui/Button";
 
 type EarnRequestRow = {
   id: string;
@@ -29,13 +34,11 @@ type EarnRequestDetail = {
   }>;
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  REQUESTED: "요청중",
-  APPROVED: "승인",
-  REJECTED: "반려",
+type Props = {
+  embedded?: boolean;
 };
 
-export default function EarnRequestList() {
+export default function EarnRequestList({ embedded = false }: Props) {
   const [rows, setRows] = useState<EarnRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<EarnRequestDetail | null>(null);
@@ -67,69 +70,109 @@ export default function EarnRequestList() {
     }
   };
 
-  return (
-    <section className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[var(--text-primary)]">내 적립 요청 목록</h2>
-        <button
-          type="button"
-          onClick={loadRows}
-          className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)]"
-        >
-          새로고침
-        </button>
-      </div>
+  const content = (
+    <>
+      {!embedded ? (
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">내 적립 요청 목록</h2>
+          <Button type="button" variant="outline" size="sm" onClick={loadRows}>
+            새로고침
+          </Button>
+        </div>
+      ) : (
+        <div className="mb-4 flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={loadRows}>
+            새로고침
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-[var(--text-secondary)]">불러오는 중...</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-[var(--text-secondary)]">요청 내역이 없습니다.</p>
+        <MyPageEmptyState message="요청 내역이 없습니다." dashed className="py-4" />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-[var(--text-secondary)]">
-                <th className="px-2 py-2">예약번호</th>
-                <th className="px-2 py-2">출발일</th>
-                <th className="px-2 py-2">요청일</th>
-                <th className="px-2 py-2">상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="cursor-pointer border-b border-[var(--border)] hover:bg-[var(--surface-muted)]"
+        <>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] text-[var(--text-secondary)]">
+                  <th className="px-2 py-2">예약번호</th>
+                  <th className="px-2 py-2">출발일</th>
+                  <th className="px-2 py-2">요청일</th>
+                  <th className="px-2 py-2">상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="cursor-pointer border-b border-[var(--border)] hover:bg-[var(--surface-muted)]"
+                    onClick={() => loadDetail(row.id)}
+                  >
+                    <td className="min-h-[44px] px-2 py-2 text-[var(--text-primary)]">{row.booking_ref}</td>
+                    <td className="px-2 py-2 text-[var(--text-secondary)]">{row.departure_date}</td>
+                    <td className="px-2 py-2 text-[var(--text-secondary)]">
+                      {new Date(row.requested_at).toLocaleDateString("ko-KR")}
+                    </td>
+                    <td className="px-2 py-2">
+                      <MyPageStatusBadge status={row.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <MyPageList className="md:hidden">
+            {rows.map((row) => (
+              <MyPageListItem key={row.id}>
+                <button
+                  type="button"
+                  className="flex w-full min-h-[44px] flex-col items-start gap-1 text-left"
                   onClick={() => loadDetail(row.id)}
                 >
-                  <td className="px-2 py-2 text-[var(--text-primary)]">{row.booking_ref}</td>
-                  <td className="px-2 py-2 text-[var(--text-secondary)]">{row.departure_date}</td>
-                  <td className="px-2 py-2 text-[var(--text-secondary)]">{new Date(row.requested_at).toLocaleDateString("ko-KR")}</td>
-                  <td className="px-2 py-2">
-                    <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--text-primary)]">
-                      {STATUS_LABEL[row.status] ?? row.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{row.booking_ref}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    출발 {row.departure_date} · {new Date(row.requested_at).toLocaleDateString("ko-KR")}
+                  </p>
+                </button>
+                <MyPageStatusBadge status={row.status} />
+              </MyPageListItem>
+            ))}
+          </MyPageList>
+        </>
       )}
 
-      {detailLoading ? <p className="text-sm text-[var(--text-secondary)]">상세 불러오는 중...</p> : null}
+      {detailLoading ? <p className="mt-3 text-sm text-[var(--text-secondary)]">상세 불러오는 중...</p> : null}
       {selected ? (
-        <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">요청 상세</h3>
-          <p className="text-xs text-[var(--text-secondary)]">예약번호: {selected.booking_ref}</p>
-          <p className="text-xs text-[var(--text-secondary)]">결제자명: {selected.payer_name}</p>
-          <p className="text-xs text-[var(--text-secondary)]">메모: {selected.memo ?? "-"}</p>
-          <p className="text-xs text-[var(--text-secondary)]">관리자 메모: {selected.admin_memo ?? "-"}</p>
-          <p className="text-xs text-[var(--text-secondary)]">반려 사유: {selected.reject_reason ?? "-"}</p>
-          <div className="space-y-1">
+        <MyPageCard className="mt-4" title="요청 상세">
+          <dl className="space-y-2 text-xs text-[var(--text-secondary)]">
+            <div>
+              <dt className="font-medium">예약번호</dt>
+              <dd>{selected.booking_ref}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">결제자명</dt>
+              <dd>{selected.payer_name}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">메모</dt>
+              <dd>{selected.memo ?? "-"}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">관리자 메모</dt>
+              <dd>{selected.admin_memo ?? "-"}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">반려 사유</dt>
+              <dd>{selected.reject_reason ?? "-"}</dd>
+            </div>
+          </dl>
+          <div className="mt-3 space-y-1">
             <p className="text-xs font-medium text-[var(--text-secondary)]">증빙 파일</p>
             {selected.attachments.length === 0 ? (
-              <p className="text-xs text-[var(--text-secondary)]">첨부 없음</p>
+              <p className="text-xs text-[var(--text-muted)]">첨부 없음</p>
             ) : (
               selected.attachments.map((att) => (
                 <a
@@ -137,15 +180,25 @@ export default function EarnRequestList() {
                   href={att.file_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block text-xs text-[var(--primary)] underline"
+                  className="link-primary block text-xs"
                 >
                   {att.file_name}
                 </a>
               ))
             )}
           </div>
-        </div>
+        </MyPageCard>
       ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-3">{content}</div>;
+  }
+
+  return (
+    <section className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] sm:p-5">
+      {content}
     </section>
   );
 }

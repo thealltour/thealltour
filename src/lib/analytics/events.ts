@@ -48,6 +48,8 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   landing_cta_click: "landing_cta_click",
   consult_open: "consult_open",
   consult_submit: "consult_submit",
+  deposit_link_click: "deposit_link_click",
+  deposit_payment_click: "deposit_payment_click",
 } as const;
 
 /** 소스 상수 (enum 성격) */
@@ -67,4 +69,5 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   hero_search: "hero_search",
   quote_page: "quote_page",
   recommended_landing: "recommended_landing",
+  deposit_page: "deposit_page",
 } as const;

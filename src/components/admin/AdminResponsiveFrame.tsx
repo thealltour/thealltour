@@ -11,6 +11,7 @@ import {
   getMobileAdminShellTitle,
   isMobileAdminRouteAllowed,
 } from "@/components/admin/mobile/mobileAdminRoutePolicy";
+import { useAdminSession } from "@/components/admin/AdminRoleContext";
 import { getAdminConsoleRelativePath, isAdminConsolePublicPath } from "@/lib/adminConsolePaths";
 
 type AdminResponsiveFrameProps = {
@@ -28,6 +29,7 @@ type AdminResponsiveFrameProps = {
  */
 export function AdminResponsiveFrame({ children }: AdminResponsiveFrameProps) {
   const pathname = usePathname();
+  const session = useAdminSession();
   const { isMobileAdmin, isReady } = useIsMobileAdmin();
   const rel = getAdminConsoleRelativePath(pathname);
 
@@ -40,7 +42,7 @@ export function AdminResponsiveFrame({ children }: AdminResponsiveFrameProps) {
   }
 
   if (isMobileAdmin) {
-    const allowed = isMobileAdminRouteAllowed(rel);
+    const allowed = isMobileAdminRouteAllowed(rel, session);
     const title = allowed ? getMobileAdminShellTitle(rel) : "PC 전용 화면";
     const isReviewPath = rel != null && rel.startsWith("/reviews");
     return (

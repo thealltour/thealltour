@@ -79,7 +79,7 @@ export function buildKakaoChannelPostText(vm: BlogPostViewModel): KakaoPostBuild
   const highlights = extractHighlights(vm);
   const price = toManPriceBandFromPriceText(vm.priceText) ?? vm.priceText;
   const target = buildTargetLine(vm);
-  const productUrl = buildProductUrl(vm);
+  const productUrl = buildProductUrl(vm, "kakao_channel");
 
   const lines: string[] = [];
 

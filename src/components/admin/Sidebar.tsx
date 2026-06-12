@@ -1,17 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
+import {
+  SIDEBAR_WIDTH_COLLAPSED_PX,
+  SIDEBAR_WIDTH_EXPANDED_PX,
+  useSidebarCollapse,
+} from "@/components/admin/SidebarCollapseContext";
 import { SIDEBAR_GROUPS, SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
 import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
 import { ThemedWordmarkImage } from "@/components/header/ThemedWordmarkImage";
 import { isReviewRelatedPath } from "@/components/admin/sidebarUtils";
 import { canAccessSidebarMainKey } from "@/lib/adminRolePolicy";
 import { hasAdminPermission } from "@/lib/adminPermissions";
+import { THEALL_FAVICON_32_SRC } from "@/lib/brandAssets";
 
 type SidebarProps = {
   activeMenu: MainMenuKey | null;
@@ -32,7 +39,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const session = useAdminSession();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, setIsCollapsed } = useSidebarCollapse();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     ops: true,
     catalog: true,
@@ -53,25 +60,47 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
   return (
     <aside
       className="fixed inset-y-0 left-0 z-40 border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300"
-      style={{ width: isCollapsed ? "72px" : "256px" }}
+      style={{ width: isCollapsed ? `${SIDEBAR_WIDTH_COLLAPSED_PX}px` : `${SIDEBAR_WIDTH_EXPANDED_PX}px` }}
     >
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between px-4 pt-6 pb-4">
-          <Link href="/" className="inline-flex items-center">
-            <ThemedWordmarkImage
-              sizes="120px"
-              imgClassName="h-auto w-[120px] max-w-full object-contain object-left"
-            />
-          </Link>
-          <button
-            type="button"
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setIsCollapsed((prev) => !prev)}
-            className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold text-[var(--text-muted)] shadow-sm transition-colors duration-150 hover:bg-[var(--surface-muted)]"
-          >
-            {isCollapsed ? ">>" : "<<"}
-          </button>
-        </div>
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-2 px-2 pt-6 pb-4">
+            <Link href="/" className="inline-flex items-center justify-center" title="thealltour">
+              <Image
+                src={THEALL_FAVICON_32_SRC}
+                alt="thealltour"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-md object-contain"
+              />
+            </Link>
+            <button
+              type="button"
+              aria-label="Expand sidebar"
+              onClick={() => setIsCollapsed(false)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] shadow-sm transition-colors duration-150 hover:bg-[var(--surface-muted)]"
+            >
+              <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-4 pt-6 pb-4">
+            <Link href="/" className="inline-flex min-w-0 items-center">
+              <ThemedWordmarkImage
+                sizes="120px"
+                imgClassName="h-auto w-[120px] max-w-full object-contain object-left"
+              />
+            </Link>
+            <button
+              type="button"
+              aria-label="Collapse sidebar"
+              onClick={() => setIsCollapsed(true)}
+              className="ml-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] shadow-sm transition-colors duration-150 hover:bg-[var(--surface-muted)]"
+            >
+              <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
         {!isCollapsed && (
           <p className="px-4 pb-4 text-xs font-semibold tracking-[0.18em] text-[var(--brand)]">
             THEALL TOUR ADMIN

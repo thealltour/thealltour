@@ -20,6 +20,7 @@ import {
   PRODUCT_VIEW_TO_LABEL,
 } from "@/components/admin/products/adminProducts.constants";
 import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
+import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
 
 export type SubHeaderTab = { label: string; href: string };
 
@@ -60,6 +61,7 @@ export const menuMap = {
   home: ["메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
   landings: ["랜딩 목록", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
+  sms: [] as string[],
   member_rewards: ["회원 목록", "포인트 지급", "적립 요청", "교환 신청"],
   settings: [] as string[],
   reviews: [] as string[],
@@ -76,6 +78,7 @@ const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   home: "홈·배너 구성",
   landings: "랜딩·유입",
   inquiry: "문의·상담",
+  sms: "SMS 센터",
   member_rewards: "회원·리워드",
   settings: "환경설정",
   reviews: "후기",
@@ -110,6 +113,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const { unreadCount: notificationUnreadCount } = useAdminNotificationsRealtime();
 
   useEffect(() => {
     let initial: string | null = items[0] ?? null;
@@ -472,10 +476,19 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
               if (!confirmAdminProductUnsavedIfNeeded()) return;
               router.push("/theall_manager_only/notifications");
             }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--primary)] transition-colors duration-150 hover:bg-[var(--surface-muted)]"
-            aria-label="알림 보기"
+            className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--primary)] transition-colors duration-150 hover:bg-[var(--surface-muted)]"
+            aria-label={
+              notificationUnreadCount > 0
+                ? `알림 ${notificationUnreadCount}건 미읽음`
+                : "알림 보기"
+            }
           >
             <Bell className="h-4 w-4" />
+            {notificationUnreadCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ef4444] px-1 text-[9px] font-bold text-white">
+                {notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}
+              </span>
+            ) : null}
           </button>
           <AdminLogoutButton />
         </div>

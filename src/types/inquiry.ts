@@ -45,6 +45,60 @@ export type InquiryActivityLog = {
   created_at: string;
 };
 
+/** 수신 SMS 매칭 상태 */
+export type InboundSmsMatchStatus = "matched" | "unmatched" | "manual_linked";
+
+/** textbee 등 수신 SMS */
+export type InquiryInboundSms = {
+  id: string;
+  provider: string;
+  provider_message_id: string;
+  sender_phone: string;
+  message: string;
+  received_at: string;
+  inquiry_id?: string | null;
+  match_status: InboundSmsMatchStatus;
+  match_reason?: string | null;
+  read_at?: string | null;
+  created_at: string;
+};
+
+/** SMS 센터 대화 목록 요약 */
+export type SmsConversationSummary = {
+  phone: string;
+  lastMessageAt: string;
+  lastPreview: string;
+  unreadCount: number;
+  matchStatus: InboundSmsMatchStatus | "unmatched";
+  inquiryId: string | null;
+  inquiryName: string | null;
+  hasOutbound: boolean;
+};
+
+/** SMS 대화 스레드 항목 (발송 + 수신) */
+export type InquirySmsThreadItem =
+  | {
+      id: string;
+      direction: "outbound";
+      phone: string;
+      message: string;
+      at: string;
+      send_status: "success" | "failed";
+      provider: string;
+      actor_name?: string | null;
+      failure_reason?: string | null;
+    }
+  | {
+      id: string;
+      direction: "inbound";
+      phone: string;
+      message: string;
+      at: string;
+      provider: string;
+      match_status: InboundSmsMatchStatus;
+      read_at?: string | null;
+    };
+
 /** SMS(알리고 relay) 발송 로그 */
 export type InquiryMessageLog = {
   id: string;
@@ -139,6 +193,14 @@ export type Inquiry = {
   last_activity_at?: string | null;
   /** 상세 조회 시에만 포함 가능 */
   activity_logs?: InquiryActivityLog[] | null;
+  /** 미확인 수신 SMS 건수 (목록 API에서 주입) */
+  unread_inbound_sms_count?: number;
+};
+
+/** 출발 희망일 스냅샷 (quote_snapshot.desiredDeparture) */
+export type DesiredDepartureSnapshot = {
+  date?: string | null;
+  flexible?: boolean;
 };
 
 /** 문의 시 함께 저장한 옵션/견적 스냅샷 (관리자 표시용, 서버 재계산용) */
@@ -150,6 +212,8 @@ export type QuoteSnapshot = {
     breakdown: Array<{ groupLabel: string; optionLabel: string; priceDelta: number }>;
   };
   inquiredAt?: string;
+  desiredDeparture?: DesiredDepartureSnapshot;
+  golf_brief?: Record<string, string>;
 };
 
 export type InquiryInput = {
@@ -175,4 +239,6 @@ export type InquiryInput = {
   first_touch?: FirstTouch | null;
   /** 문의 폼 제출 시 페이지 경로 */
   inquiry_page_url?: string | null;
+  /** 견적/골프 브리프 등 구조화 스냅샷 */
+  quote_snapshot?: QuoteSnapshot | null;
 };

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, X } from "lucide-react";
+import { DatePicker } from "@/components/ui/DatePicker";
 import type { Product } from "@/types/product";
 import {
   type FlyerDraftState,
@@ -904,20 +905,24 @@ function FlyerModalShell({ product, onClose, showToast, persistedBootstrap }: Fl
                     </div>
                     <div>
                       <FieldLabel>출발일</FieldLabel>
-                      <input
-                        type="date"
+                      <DatePicker
                         value={draft.weather.startDate}
-                        onChange={(e) => patchWeather({ startDate: e.target.value, isLoaded: false })}
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                        onChange={(value) => patchWeather({ startDate: value, isLoaded: false })}
+                        placeholder="출발일 선택"
+                        aria-label="출발일"
+                        size="compact"
+                        triggerClassName="rounded-lg bg-[var(--surface-elevated)] text-sm text-[var(--text-primary)]"
                       />
                     </div>
                     <div>
                       <FieldLabel>도착일</FieldLabel>
-                      <input
-                        type="date"
+                      <DatePicker
                         value={draft.weather.endDate}
-                        onChange={(e) => patchWeather({ endDate: e.target.value, isLoaded: false })}
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                        onChange={(value) => patchWeather({ endDate: value, isLoaded: false })}
+                        placeholder="도착일 선택"
+                        aria-label="도착일"
+                        size="compact"
+                        triggerClassName="rounded-lg bg-[var(--surface-elevated)] text-sm text-[var(--text-primary)]"
                       />
                     </div>
                   </div>

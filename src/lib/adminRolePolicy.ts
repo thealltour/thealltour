@@ -12,6 +12,8 @@ const API_PATH_PERMISSIONS: Array<{ prefix: string; permission: AdminPermissionK
   { prefix: "/api/admin/terms-templates", permission: "settings.manage" },
   { prefix: "/api/admin/notice-templates", permission: "settings.manage" },
   { prefix: "/api/admin/inquiries", permission: "inquiries.manage" },
+  { prefix: "/api/admin/sms", permission: "inquiries.manage" },
+  { prefix: "/api/admin/inbound-sms", permission: "inquiries.manage" },
   { prefix: "/api/admin/points", permission: "points.manage" },
   { prefix: "/api/admin/reward", permission: "rewards.manage" },
   { prefix: "/api/admin/rewards", permission: "rewards.manage" },
@@ -51,6 +53,7 @@ const CONSOLE_PATH_RULES: Array<{
 }> = [
   { test: (r) => r === "/" || r === "", anyOf: ["dashboard.view"] },
   { test: (r) => r.startsWith("/inquiries"), anyOf: ["inquiries.manage"] },
+  { test: (r) => r.startsWith("/sms") || r.startsWith("/inbound-sms"), anyOf: ["inquiries.manage"] },
   { test: (r) => r.startsWith("/members"), anyOf: ["members.manage"] },
   { test: (r) => r.startsWith("/points"), anyOf: ["points.manage", "members.manage"] },
   { test: (r) => r.startsWith("/rewards"), anyOf: ["rewards.manage", "points.manage"] },
@@ -189,6 +192,7 @@ export function getMobileNavKeysForRole(role: AdminRole): MobileNavKey[] {
 export const SIDEBAR_PERMISSION_MAP: Record<string, AdminPermissionKey[]> = {
   dashboard: ["dashboard.view"],
   inquiry: ["inquiries.manage"],
+  sms: ["inquiries.manage"],
   member_rewards: ["members.manage", "points.manage", "rewards.manage"],
   reviews: ["reviews.ops", "reviews.analytics"],
   product: ["products.manage"],

@@ -9,6 +9,7 @@ const ITEMS: { id: QuickFilter; label: string }[] = [
   { id: "today", label: "오늘 팔로업" },
   { id: "hot", label: "HOT" },
   { id: "unassigned", label: "미배정" },
+  { id: "customer_reply", label: "고객 회신 대기" },
 ];
 
 type Props = {

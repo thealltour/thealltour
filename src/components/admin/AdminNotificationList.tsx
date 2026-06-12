@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { isSmsNotificationType, notificationTypeIcon } from "@/lib/adminNotificationTypes";
 
 type NotificationItem = {
   id: string;
@@ -16,6 +17,7 @@ type NotificationItem = {
 const NOTIFICATION_FILTER_TABS = [
   { id: "all", label: "전체" },
   { id: "unread", label: "미읽음" },
+  { id: "sms", label: "SMS" },
   { id: "birthday_upcoming", label: "생일" },
   { id: "new_member", label: "신규회원" },
   { id: "new_review", label: "신규후기" },
@@ -125,7 +127,9 @@ export default function AdminNotificationList() {
       ? notifications
       : activeTab === "unread"
         ? notifications.filter((item) => !item.is_read)
-        : notifications.filter((item) => item.type === activeTab);
+        : activeTab === "sms"
+          ? notifications.filter((item) => isSmsNotificationType(item.type))
+          : notifications.filter((item) => item.type === activeTab);
 
   return (
     <div className="space-y-4">
@@ -178,15 +182,7 @@ export default function AdminNotificationList() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-[var(--text-primary)]">
-                    {item.type === "birthday_upcoming"
-                      ? "🎂 "
-                      : item.type === "new_member"
-                        ? "👤 "
-                        : item.type === "new_review"
-                          ? "📝 "
-                          : item.type === "new_inquiry"
-                            ? "📞 "
-                            : "🔔 "}
+                    {notificationTypeIcon(item.type)}
                     {item.title}
                   </p>
                   <p className="text-sm text-[var(--text-secondary)]">{item.message}</p>

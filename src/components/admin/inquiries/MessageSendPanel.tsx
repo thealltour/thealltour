@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildMessagePreview } from "@/lib/messages/messagePreview";
 import { toMessageSendErrorText } from "@/lib/messages/messageErrorText";
-import {
-  createMessageFingerprint,
-  DEFAULT_SEND_COOLDOWN_MS,
-  isDuplicateSendCandidate,
-} from "@/lib/messages/messageSendGuard";
+import { DEFAULT_SEND_COOLDOWN_MS } from "@/lib/messages/messageSendGuard";
 import { getSmsLengthInfo } from "@/lib/messages/smsLength";
 import type { MessageSendPanelProps } from "./messageSend.types";
 import {
@@ -18,19 +14,12 @@ import {
   buildPhoneScriptSms,
   normalizePhone,
 } from "./messageSend.utils";
-import { InquiryMessageLogList } from "./InquiryMessageLogList";
+import { SmsTemplateSelect } from "@/components/admin/sms/SmsTemplateSelect";
+import { InquirySmsThread } from "./InquirySmsThread";
 import { MessagePreviewCard } from "./MessagePreviewCard";
-import { useInquiryMessageLogs } from "./useInquiryMessageLogs";
+import { useInquirySmsThread } from "./useInquirySmsThread";
+import { useInquiryMessageSend } from "./useInquiryMessageSend";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
-
-type SendResponseJson = {
-  ok?: boolean;
-  code?: string;
-  message?: string;
-  failureReason?: string;
-  retryable?: boolean;
-  sentAt?: string;
-};
 
 export function MessageSendPanel({
   inquiry,
@@ -42,44 +31,47 @@ export function MessageSendPanel({
 }: MessageSendPanelProps) {
   const { showToast } = useAdminToast();
   const [receiver, setReceiver] = useState(() => normalizePhone(inquiry.phone ?? ""));
-  const [sending, setSending] = useState(false);
-  const inFlightRef = useRef(false);
-
   const [sendingDeposit, setSendingDeposit] = useState(false);
-  const [sendSuccess, setSendSuccess] = useState(false);
-  const [sendError, setSendError] = useState<ReturnType<typeof toMessageSendErrorText> | null>(null);
-  const [duplicateBlockReason, setDuplicateBlockReason] = useState<string | null>(null);
-
-  const [lastSentFingerprint, setLastSentFingerprint] = useState<string | null>(null);
-  const [lastSentAt, setLastSentAt] = useState<string | null>(null);
+  const [depositError, setDepositError] = useState<ReturnType<typeof toMessageSendErrorText> | null>(
+    null,
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { logs, isLoading: logsLoading, refetch: refetchLogs } = useInquiryMessageLogs(inquiry.id);
+  const {
+    thread,
+    unreadInboundCount,
+    isLoading: threadLoading,
+    refetch: refetchThread,
+    markAllRead,
+  } = useInquirySmsThread(inquiry.id);
+
+  const {
+    sending,
+    sendSuccess,
+    sendError,
+    duplicateBlockReason,
+    clearDuplicateBlock,
+    sendMessage,
+  } = useInquiryMessageSend({
+    inquiryId: inquiry.id,
+    onSent,
+    onThreadRefetch: refetchThread,
+  });
 
   useEffect(() => {
     setReceiver(normalizePhone(inquiry.phone ?? ""));
   }, [inquiry.id, inquiry.phone]);
 
   useEffect(() => {
-    setSendError(null);
-    setDuplicateBlockReason(null);
-    setSendSuccess(false);
-    setLastSentFingerprint(null);
-    setLastSentAt(null);
-    inFlightRef.current = false;
-    setSending(false);
-  }, [inquiry.id]);
+    if (unreadInboundCount > 0) {
+      void markAllRead();
+    }
+  }, [inquiry.id, unreadInboundCount, markAllRead]);
 
   useEffect(() => {
-    setDuplicateBlockReason(null);
-  }, [message, receiver]);
-
-  useEffect(() => {
-    if (!sendSuccess) return;
-    const t = window.setTimeout(() => setSendSuccess(false), 4500);
-    return () => window.clearTimeout(t);
-  }, [sendSuccess]);
+    clearDuplicateBlock();
+  }, [message, receiver, clearDuplicateBlock]);
 
   const lengthInfo = useMemo(() => getSmsLengthInfo(message), [message]);
   const previewData = useMemo(() => buildMessagePreview(message), [message]);
@@ -105,7 +97,7 @@ export function MessageSendPanel({
 
   const handleSendDepositLink = async () => {
     if (sendingDeposit || sending) return;
-    setSendError(null);
+    setDepositError(null);
     setSendingDeposit(true);
     try {
       const res = await fetch(
@@ -118,17 +110,17 @@ export function MessageSendPanel({
           httpStatus: res.status,
           message: data.message ?? "예약금 링크 발송에 실패했습니다.",
         });
-        setSendError(errorText);
+        setDepositError(errorText);
         showToast("error", errorText.description || errorText.title);
         return;
       }
       const successMessage = data.message ?? "예약금 안내 링크를 발송했습니다.";
       showToast("success", successMessage);
-      await refetchLogs();
+      await refetchThread();
       onSent?.();
     } catch {
       const errorText = toMessageSendErrorText({ isNetworkError: true });
-      setSendError(errorText);
+      setDepositError(errorText);
       showToast("error", errorText.description || errorText.title);
     } finally {
       setSendingDeposit(false);
@@ -136,88 +128,11 @@ export function MessageSendPanel({
   };
 
   const handleSend = async () => {
-    if (inFlightRef.current || sending) return;
-
-    setSendError(null);
-    setDuplicateBlockReason(null);
-    setSendSuccess(false);
-
-    const to = normalizePhone(receiver);
-    const body = message.trim();
-
-    if (!to) {
-      setSendError(
-        toMessageSendErrorText({ code: "INVALID_PHONE", message: "수신번호를 입력해 주세요." }),
-      );
-      return;
-    }
-    if (!body) {
-      setSendError(toMessageSendErrorText({ code: "EMPTY_MESSAGE" }));
-      return;
-    }
-
-    const fp = createMessageFingerprint({ inquiryId: inquiry.id, phone: to, text: body });
-    if (
-      isDuplicateSendCandidate({
-        nextFingerprint: fp,
-        lastSentFingerprint,
-        lastSentAt,
-        cooldownMs: DEFAULT_SEND_COOLDOWN_MS,
-      })
-    ) {
-      setDuplicateBlockReason("같은 내용의 문자가 방금 발송되어 중복 발송을 막았습니다.");
-      return;
-    }
-
-    inFlightRef.current = true;
-    setSending(true);
-
-    try {
-      const res = await fetch(`/api/admin/inquiries/${encodeURIComponent(inquiry.id)}/send-message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: body,
-          receiver: to,
-          actor_name: "관리자",
-        }),
-      });
-
-      let data: SendResponseJson = {};
-      try {
-        data = (await res.json()) as SendResponseJson;
-      } catch {
-        data = {};
-      }
-
-      if (res.ok && data.ok) {
-        const sentAt = typeof data.sentAt === "string" ? data.sentAt : new Date().toISOString();
-        setLastSentFingerprint(fp);
-        setLastSentAt(sentAt);
-        setSendSuccess(true);
-        onMessageChange("");
-        await refetchLogs();
-        onSent?.();
-        return;
-      }
-
-      setSendError(
-        toMessageSendErrorText({
-          httpStatus: res.status,
-          code: data.code,
-          message: data.message,
-          failureReason: data.failureReason,
-        }),
-      );
-      await refetchLogs();
-      onSent?.();
-    } catch (e) {
-      console.debug("[MessageSendPanel] send failed", e);
-      setSendError(toMessageSendErrorText({ isNetworkError: true }));
-    } finally {
-      setSending(false);
-      inFlightRef.current = false;
-    }
+    await sendMessage({
+      receiver,
+      message,
+      onMessageClear: () => onMessageChange(""),
+    });
   };
 
   const firstTpl = buildFirstTemplateSms(inquiry);
@@ -280,6 +195,16 @@ export function MessageSendPanel({
             <span className="text-[var(--text-subtle)]">· UTF-8 {lengthInfo.utf8Bytes}B</span>
           </div>
         </div>
+
+        <SmsTemplateSelect
+          className="mt-2"
+          context={{
+            name: inquiry.name ?? undefined,
+            phone: receiver,
+            product_title: inquiry.product_title ?? undefined,
+          }}
+          onApply={(text) => applyToComposer(text)}
+        />
 
         <div className="mt-2">
           <span className="text-xs font-medium text-[var(--text-muted)]">템플릿 삽입 방식</span>
@@ -384,14 +309,14 @@ export function MessageSendPanel({
         </div>
       ) : null}
 
-      {sendError ? (
+      {(sendError ?? depositError) ? (
         <div
           role="alert"
           className="rounded-lg border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-sm"
         >
-          <p className="font-semibold text-[var(--danger)]">{sendError.title}</p>
-          <p className="mt-1 text-[var(--text-secondary)]">{sendError.description}</p>
-          {sendError.retryable ? (
+          <p className="font-semibold text-[var(--danger)]">{(sendError ?? depositError)!.title}</p>
+          <p className="mt-1 text-[var(--text-secondary)]">{(sendError ?? depositError)!.description}</p>
+          {(sendError ?? depositError)!.retryable ? (
             <p className="mt-1 text-xs text-[var(--text-muted)]">잠시 후 다시 시도할 수 있습니다.</p>
           ) : null}
         </div>
@@ -421,8 +346,23 @@ export function MessageSendPanel({
       </div>
 
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)]">최근 발송 이력</h3>
-        <InquiryMessageLogList logs={logs} isLoading={logsLoading} />
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">SMS 대화</h3>
+          {unreadInboundCount > 0 ? (
+            <span className="rounded-full bg-[var(--primary)] px-2 py-0.5 text-[10px] font-bold text-white">
+              미확인 {unreadInboundCount}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1 text-[11px] text-[var(--text-subtle)]">
+          발송(알리고) · 수신(textbee) 메시지를 시간순으로 표시합니다.
+        </p>
+        <InquirySmsThread
+          thread={thread}
+          isLoading={threadLoading}
+          onRetryFailed={(input) => void sendMessage({ receiver: input.phone, message: input.message })}
+          retrying={sending}
+        />
       </section>
     </div>
   );

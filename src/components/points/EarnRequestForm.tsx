@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type Props = {
   onSubmitted: () => Promise<void> | void;
@@ -96,11 +97,12 @@ export default function EarnRequestForm({ onSubmitted }: Props) {
           placeholder="예약번호 *"
           className="input-base bg-[var(--surface-muted)]"
         />
-        <input
-          type="date"
+        <DatePicker
           value={departureDate}
-          onChange={(e) => setDepartureDate(e.target.value)}
-          className="input-base bg-[var(--surface-muted)]"
+          onChange={setDepartureDate}
+          placeholder="출발일 *"
+          aria-label="출발일"
+          triggerClassName="input-base bg-[var(--surface-muted)]"
         />
         <input
           value={payerName}

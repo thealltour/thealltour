@@ -1,3 +1,4 @@
+import { normalizeDesiredDepartureSnapshot } from "@/lib/inquiry/desiredDeparture";
 import {
   INQUIRY_LEAD_PRIORITIES,
   INQUIRY_RESPONSE_STAGES,
@@ -6,6 +7,7 @@ import {
   type Inquiry,
   type InquiryLeadPriority,
   type InquiryResponseStage,
+  type QuoteSnapshot,
 } from "@/types/inquiry";
 
 function normalizeResponseChecklist(raw: unknown): Record<string, boolean> | null | undefined {
@@ -40,6 +42,20 @@ export function normalizeInquiryRow(row: Record<string, unknown>): Inquiry {
   if (quoteSnapshotRaw && typeof quoteSnapshotRaw === "object") {
     const o = quoteSnapshotRaw as Record<string, unknown>;
     const qs = o.quoteSummary as Record<string, unknown> | undefined;
+    const desiredDeparture =
+      normalizeDesiredDepartureSnapshot(o.desiredDeparture) ??
+      normalizeDesiredDepartureSnapshot(
+        typeof o.desired_departure === "string" ? { date: o.desired_departure } : undefined,
+      );
+    const golfBriefRaw = o.golf_brief;
+    let golf_brief: QuoteSnapshot["golf_brief"];
+    if (golfBriefRaw && typeof golfBriefRaw === "object" && !Array.isArray(golfBriefRaw)) {
+      golf_brief = Object.fromEntries(
+        Object.entries(golfBriefRaw as Record<string, unknown>).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string",
+        ),
+      );
+    }
     quote_snapshot = {
       selectedOptions:
         o.selectedOptions && typeof o.selectedOptions === "object"
@@ -55,8 +71,16 @@ export function normalizeInquiryRow(row: Record<string, unknown>): Inquiry {
           }
         : undefined,
       inquiredAt: typeof o.inquiredAt === "string" ? o.inquiredAt : undefined,
+      desiredDeparture,
+      golf_brief: golf_brief && Object.keys(golf_brief).length > 0 ? golf_brief : undefined,
     };
-    if (!quote_snapshot.selectedOptions && !quote_snapshot.quoteSummary && !quote_snapshot.inquiredAt) {
+    const hasData =
+      quote_snapshot.selectedOptions ||
+      quote_snapshot.quoteSummary ||
+      quote_snapshot.inquiredAt ||
+      quote_snapshot.desiredDeparture ||
+      quote_snapshot.golf_brief;
+    if (!hasData) {
       quote_snapshot = undefined;
     }
   }

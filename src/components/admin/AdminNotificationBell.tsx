@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
+import { notificationTypeIcon } from "@/lib/adminNotificationTypes";
 
 type NotificationItem = {
   id: string;
@@ -31,11 +33,16 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const { unreadCount: liveUnreadCount, refresh: refreshUnread } = useAdminNotificationsRealtime();
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
 
   const latestNotifications = useMemo(() => notifications.slice(0, 5), [notifications]);
+
+  useEffect(() => {
+    setUnreadCount((prev) => Math.max(prev, liveUnreadCount));
+  }, [liveUnreadCount]);
 
   async function loadNotifications() {
     try {
@@ -120,7 +127,8 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
           const nextOpen = !isOpen;
           setIsOpen(nextOpen);
           if (nextOpen) {
-            loadNotifications();
+            void refreshUnread();
+            void loadNotifications();
           }
         }}
         className="relative inline-flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--primary)] transition hover:bg-[var(--surface-muted)]"
@@ -169,15 +177,7 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
                   }`}
                 >
                   <p className="text-xs font-semibold text-[var(--text-primary)]">
-                    {item.type === "birthday_upcoming"
-                      ? "🎂 "
-                      : item.type === "new_member"
-                        ? "👤 "
-                        : item.type === "new_review"
-                          ? "📝 "
-                          : item.type === "new_inquiry"
-                            ? "📞 "
-                            : "🔔 "}
+                    {notificationTypeIcon(item.type)}
                     {item.title}
                   </p>
                   <p className="mt-1 line-clamp-2 text-xs text-[var(--text-secondary)]">{item.message}</p>

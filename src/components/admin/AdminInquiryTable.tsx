@@ -27,6 +27,9 @@ import {
   applyTemplateToMessage,
   type TemplateInsertMode,
 } from "@/components/admin/inquiries/messageSend.utils";
+import { DesiredDepartureBadge } from "@/components/admin/inquiries/DesiredDepartureBadge";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { stripDesiredDepartureLineFromContent } from "@/lib/inquiry/desiredDeparture";
 
 const ADMIN_SMS_INSERT_MODE_KEY = "admin:message-insert-mode";
 
@@ -75,11 +78,25 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
       snapshot.quoteSummary.basePrice != null ||
       (snapshot.quoteSummary.breakdown?.length ?? 0) > 0);
 
-  if (!hasOptions && !hasSummary && !snapshot.inquiredAt) return null;
+  const hasDesiredDeparture = Boolean(
+    snapshot.desiredDeparture?.flexible || snapshot.desiredDeparture?.date?.trim(),
+  );
+
+  if (!hasOptions && !hasSummary && !snapshot.inquiredAt && !hasDesiredDeparture) return null;
 
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm">
       <h4 className="mb-3 font-semibold text-[var(--text-primary)]">고객 선택 구성</h4>
+      {hasDesiredDeparture ? (
+        <div className="mb-3">
+          <DesiredDepartureBadge
+            inquiry={{
+              content: "",
+              quote_snapshot: { desiredDeparture: snapshot.desiredDeparture },
+            }}
+          />
+        </div>
+      ) : null}
       {hasOptions ? (
         <ul className="mb-3 list-inside list-disc space-y-1 text-[var(--text-muted)]">
           {(snapshot.quoteSummary?.breakdown?.length ?? 0) > 0
@@ -340,6 +357,7 @@ export default function AdminInquiryTable() {
           today={api.queueFollowUpTodayCount}
           hot={api.queueHotLeadCount}
           unassigned={api.queueUnassignedCount}
+          customerReply={api.queueCustomerReplyCount}
           activeQuick={api.quickFilter}
           onSelectQuick={api.setQuickFilter}
         />
@@ -557,7 +575,14 @@ export default function AdminInquiryTable() {
                         </span>
                       </td>
                       <td className="px-3 py-3 align-top text-left">
-                        <div className="font-medium text-[var(--primary)]">{inquiry.name}</div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-[var(--primary)]">{inquiry.name}</span>
+                          {(inquiry.unread_inbound_sms_count ?? 0) > 0 ? (
+                            <span className="rounded-full bg-[var(--primary)] px-2 py-0.5 text-[10px] font-bold text-white">
+                              회신 {inquiry.unread_inbound_sms_count}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-3 py-3 align-top text-left tabular-nums">{inquiry.phone}</td>
                       <td className="min-w-0 max-w-[120px] px-2 py-3 align-top text-left">
@@ -625,13 +650,14 @@ export default function AdminInquiryTable() {
                         )}
                       </td>
                       <td className="min-w-0 px-3 py-3 align-top text-left">
+                        <DesiredDepartureBadge inquiry={inquiry} className="mb-2" />
                         <p className={isExpanded ? "whitespace-pre-wrap text-sm leading-6" : "line-clamp-2 text-sm leading-6"}>
-                          {inquiry.content}
+                          {stripDesiredDepartureLineFromContent(inquiry.content ?? "") || "(내용 없음)"}
                         </p>
                         <p className="mt-1 text-[11px] leading-snug text-[var(--text-subtle)]">
                           {formatInquiryOpsDetailLine(inquiry)}
                         </p>
-                        {inquiry.content.length > 70 ? (
+                        {(stripDesiredDepartureLineFromContent(inquiry.content ?? "") || inquiry.content).length > 70 ? (
                           <button
                             type="button"
                             onClick={() => api.toggleExpand(inquiry.id)}
@@ -846,8 +872,9 @@ export default function AdminInquiryTable() {
                     </div>
                     <div>
                       <h3 className="text-xs font-semibold text-[var(--text-muted)]">문의 내용</h3>
+                      <DesiredDepartureBadge inquiry={inv} className="mt-2" />
                       <p className="mt-2 whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/30 p-3 text-sm leading-relaxed text-[var(--text-primary)]">
-                        {(inv.content ?? "").trim() || "(내용 없음)"}
+                        {stripDesiredDepartureLineFromContent(inv.content ?? "") || "(내용 없음)"}
                       </p>
                     </div>
                     <InquiryMemberLinkPanel
@@ -926,20 +953,26 @@ export default function AdminInquiryTable() {
             <div className="mt-4 space-y-3">
               <label className="block">
                 <span className="text-xs font-semibold text-[var(--text-muted)]">출발일</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={api.reserveDeparture}
-                  onChange={(e) => api.setReserveDeparture(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                  onChange={api.setReserveDeparture}
+                  placeholder="출발일 선택"
+                  aria-label="출발일"
+                  size="compact"
+                  className="mt-1"
+                  triggerClassName="rounded-lg text-sm"
                 />
               </label>
               <label className="block">
                 <span className="text-xs font-semibold text-[var(--text-muted)]">귀국일</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={api.reserveReturn}
-                  onChange={(e) => api.setReserveReturn(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                  onChange={api.setReserveReturn}
+                  placeholder="귀국일 선택"
+                  aria-label="귀국일"
+                  size="compact"
+                  className="mt-1"
+                  triggerClassName="rounded-lg text-sm"
                 />
               </label>
             </div>

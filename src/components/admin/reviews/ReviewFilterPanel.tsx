@@ -1,5 +1,6 @@
 "use client";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import type { ReviewSearchFiltersState } from "@/types/reviewSearch";
 import { DEFAULT_REVIEW_FILTERS } from "@/lib/reviewSearchConstants";
 
@@ -84,20 +85,24 @@ export function ReviewFilterPanel({ filters, onChange }: ReviewFilterPanelProps)
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-[var(--text-muted)]">기간 From</label>
-        <input
-          type="date"
+        <DatePicker
           value={filters.dateFrom ?? ""}
-          onChange={(e) => update({ dateFrom: e.target.value || null })}
-          className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-sm"
+          onChange={(value) => update({ dateFrom: value || null })}
+          placeholder="시작일"
+          aria-label="기간 From"
+          size="compact"
+          triggerClassName="rounded-lg text-sm"
         />
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-[var(--text-muted)]">기간 To</label>
-        <input
-          type="date"
+        <DatePicker
           value={filters.dateTo ?? ""}
-          onChange={(e) => update({ dateTo: e.target.value || null })}
-          className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-sm"
+          onChange={(value) => update({ dateTo: value || null })}
+          placeholder="종료일"
+          aria-label="기간 To"
+          size="compact"
+          triggerClassName="rounded-lg text-sm"
         />
       </div>
       <div>

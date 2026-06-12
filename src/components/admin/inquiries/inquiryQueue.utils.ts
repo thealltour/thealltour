@@ -1,6 +1,13 @@
 import type { Inquiry } from "@/types/inquiry";
 
-export type QuickFilter = "all" | "unresponded" | "overdue" | "today" | "hot" | "unassigned";
+export type QuickFilter =
+  | "all"
+  | "unresponded"
+  | "overdue"
+  | "today"
+  | "hot"
+  | "unassigned"
+  | "customer_reply";
 
 const LEAD_LABEL: Record<string, string> = {
   high: "높음",
@@ -36,6 +43,10 @@ export function isHotLead(inquiry: Inquiry): boolean {
   return inquiry.lead_priority === "high";
 }
 
+export function hasUnreadInboundSms(inquiry: Inquiry): boolean {
+  return (inquiry.unread_inbound_sms_count ?? 0) > 0;
+}
+
 export function getInquiryPriorityScore(inquiry: Inquiry): number {
   let score = 0;
 
@@ -60,6 +71,8 @@ export function applyQuickFilter(inquiries: Inquiry[], filter: QuickFilter): Inq
       return inquiries.filter(isHotLead);
     case "unassigned":
       return inquiries.filter(isUnassigned);
+    case "customer_reply":
+      return inquiries.filter(hasUnreadInboundSms);
     default:
       return inquiries;
   }

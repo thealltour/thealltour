@@ -11,7 +11,9 @@ import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
 import { dualWriteGolfLeadFromInquiry } from "@/lib/leads/dualWriteGolfLeadFromInquiry";
 import { resolveQuoteSubmitLandingSlug } from "@/lib/analytics/resolveQuoteSubmitLandingSlug";
+import { normalizeDesiredDepartureSnapshot } from "@/lib/inquiry/desiredDeparture";
 import type { FirstTouch, Inquiry, InquiryInput } from "@/types/inquiry";
+import { getInquiryIdsWithUnreadInbound, getUnreadInboundCountsByInquiryIds } from "@/lib/sms/inboundSmsCounts";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
 import { normalizeReceiverPhone, sendAligoRelay } from "@/lib/notifications/sendAligoRelay";
 import {
@@ -32,7 +34,14 @@ type ListStatus =
   | "completed_legacy"
   | "in_progress";
 type SortOption = "pending_first" | "recent" | "oldest" | "name" | "priority_queue";
-type ListQuickFilter = "all" | "unresponded" | "overdue" | "today" | "hot" | "unassigned";
+type ListQuickFilter =
+  | "all"
+  | "unresponded"
+  | "overdue"
+  | "today"
+  | "hot"
+  | "unassigned"
+  | "customer_reply";
 
 type SafeSummary = {
   /** 응답 필요 상담: new + contacted (보류·종료 제외) */
@@ -48,6 +57,7 @@ type SafeSummary = {
   queueFollowUpTodayCount: number;
   queueHotLeadCount: number;
   queueUnassignedCount: number;
+  queueCustomerReplyCount: number;
 };
 
 function kstYmd(): string {
@@ -73,6 +83,7 @@ function applyInquiryListFilters(
   status: ListStatus,
   quick: ListQuickFilter,
   createdAfterIso: string | null,
+  customerReplyInquiryIds?: string[],
 ) {
   if (createdAfterIso) {
     query = query.gte("created_at", createdAfterIso);
@@ -114,6 +125,8 @@ function applyInquiryListFilters(
     query = query.eq("lead_priority", "high");
   } else if (quick === "unassigned") {
     query = query.is("assignee_name", null);
+  } else if (quick === "customer_reply" && customerReplyInquiryIds?.length) {
+    query = query.in("id", customerReplyInquiryIds);
   }
 
   return query;
@@ -185,8 +198,11 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
       queueFollowUpTodayCount: 0,
       queueHotLeadCount: 0,
       queueUnassignedCount: 0,
+      queueCustomerReplyCount: 0,
     };
   }
+
+  const customerReplyIds = await getInquiryIdsWithUnreadInbound();
 
   return {
     pendingCount: pendingSummary.count ?? 0,
@@ -200,6 +216,7 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
     queueFollowUpTodayCount: todaySummary.error ? 0 : (todaySummary.count ?? 0),
     queueHotLeadCount: hotSummary.error ? 0 : (hotSummary.count ?? 0),
     queueUnassignedCount: unassignedSummary.error ? 0 : (unassignedSummary.count ?? 0),
+    queueCustomerReplyCount: customerReplyIds.length,
   };
 }
 
@@ -243,13 +260,42 @@ export async function GET(request: Request) {
     quickParam === "overdue" ||
     quickParam === "today" ||
     quickParam === "hot" ||
-    quickParam === "unassigned"
+    quickParam === "unassigned" ||
+    quickParam === "customer_reply"
       ? quickParam
       : "all";
+
   const pageRaw = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
   const pageSizeRaw = Number.parseInt(url.searchParams.get("pageSize") ?? "10", 10);
   const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
   const pageSize = Number.isFinite(pageSizeRaw) ? Math.min(Math.max(pageSizeRaw, 5), 50) : 10;
+
+  const customerReplyInquiryIds =
+    quick === "customer_reply" ? await getInquiryIdsWithUnreadInbound() : undefined;
+
+  if (quick === "customer_reply" && (customerReplyInquiryIds?.length ?? 0) === 0) {
+    const summary = await getInquirySummarySafe();
+    return NextResponse.json({
+      items: [],
+      total: 0,
+      page,
+      pageSize,
+      pendingCount: summary.pendingCount,
+      completedCount: summary.completedCount,
+      reservedCount: summary.reservedCount,
+      newCount: summary.newCount,
+      contactedCount: summary.contactedCount,
+      closedCount: summary.closedCount,
+      onHoldCount: summary.onHoldCount,
+      queueOverdueCount: summary.queueOverdueCount,
+      queueFollowUpTodayCount: summary.queueFollowUpTodayCount,
+      queueHotLeadCount: summary.queueHotLeadCount,
+      queueUnassignedCount: summary.queueUnassignedCount,
+      queueCustomerReplyCount: summary.queueCustomerReplyCount,
+      assigneeWorkload: { byName: {}, unassigned: 0 },
+      assigneeWorkloadCapped: false,
+    });
+  }
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
@@ -285,7 +331,14 @@ export async function GET(request: Request) {
 
   const workloadLimit = 5000;
   let listQuery = applyAssigneeToListQuery(
-    applyInquiryListFilters(supabaseAdmin.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
+    applyInquiryListFilters(
+      supabaseAdmin.from("inquiries").select("*", { count: "exact" }),
+      search,
+      status,
+      quick,
+      createdAfterIso,
+      customerReplyInquiryIds,
+    ),
   );
   listQuery = applyListOrdering(listQuery);
 
@@ -295,6 +348,7 @@ export async function GET(request: Request) {
     status,
     quick,
     createdAfterIso,
+    customerReplyInquiryIds,
   ).limit(workloadLimit);
 
   const [listResult, workloadResult] = await Promise.all([listQuery.range(from, to), workloadQuery]);
@@ -303,7 +357,14 @@ export async function GET(request: Request) {
 
   if (error) {
     let fallback = applyAssigneeToListQuery(
-      applyInquiryListFilters(supabaseAdmin.from("inquiries").select("*", { count: "exact" }), search, status, quick, createdAfterIso),
+      applyInquiryListFilters(
+        supabaseAdmin.from("inquiries").select("*", { count: "exact" }),
+        search,
+        status,
+        quick,
+        createdAfterIso,
+        customerReplyInquiryIds,
+      ),
     );
     fallback = fallback.order("created_at", { ascending: false, nullsFirst: false });
     const fallbackResult = await fallback.range(from, to);
@@ -324,9 +385,15 @@ export async function GET(request: Request) {
     !workloadResult.error && (workloadResult.data?.length ?? 0) >= workloadLimit;
 
   const summary = await getInquirySummarySafe();
+  const normalizedItems = ((data ?? []) as Record<string, unknown>[]).map((row) => normalizeInquiryRow(row));
+  const unreadCounts = await getUnreadInboundCountsByInquiryIds(normalizedItems.map((item) => item.id));
+  const items = normalizedItems.map((item) => ({
+    ...item,
+    unread_inbound_sms_count: unreadCounts[item.id] ?? 0,
+  }));
 
   return NextResponse.json({
-    items: ((data ?? []) as Record<string, unknown>[]).map((row) => normalizeInquiryRow(row)),
+    items,
     total: count ?? 0,
     page,
     pageSize,
@@ -341,6 +408,7 @@ export async function GET(request: Request) {
     queueFollowUpTodayCount: summary.queueFollowUpTodayCount,
     queueHotLeadCount: summary.queueHotLeadCount,
     queueUnassignedCount: summary.queueUnassignedCount,
+    queueCustomerReplyCount: summary.queueCustomerReplyCount,
     assigneeWorkload,
     assigneeWorkloadCapped,
   });
@@ -433,6 +501,7 @@ export async function POST(request: Request) {
   const selectedOptions = body.selected_options;
   const quoteSummaryRaw = body.quote_summary;
   const inquiredAt = body.inquired_at?.trim();
+  const quoteSnapshotBody = body.quote_snapshot;
   const firstTouch = body.first_touch;
   const inquiryPageUrl = body.inquiry_page_url?.trim();
 
@@ -464,6 +533,28 @@ export async function POST(request: Request) {
           priceDelta: b.price_delta,
         })),
       };
+    }
+  }
+
+  if (quoteSnapshotBody && typeof quoteSnapshotBody === "object") {
+    const clientSnapshot = quoteSnapshotBody as Record<string, unknown>;
+    if (!quoteSnapshot) quoteSnapshot = {};
+    const desiredDeparture =
+      normalizeDesiredDepartureSnapshot(clientSnapshot.desiredDeparture) ??
+      normalizeDesiredDepartureSnapshot(
+        typeof clientSnapshot.desired_departure === "string"
+          ? { date: clientSnapshot.desired_departure }
+          : undefined,
+      );
+    if (desiredDeparture) {
+      quoteSnapshot.desiredDeparture = desiredDeparture;
+    }
+    if (
+      clientSnapshot.golf_brief &&
+      typeof clientSnapshot.golf_brief === "object" &&
+      !Array.isArray(clientSnapshot.golf_brief)
+    ) {
+      quoteSnapshot.golf_brief = clientSnapshot.golf_brief;
     }
   }
 

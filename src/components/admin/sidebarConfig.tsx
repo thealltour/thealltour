@@ -8,6 +8,7 @@ import {
   Package,
   Search,
   MessageSquare,
+  Inbox,
   Users,
   Settings,
   Star,
@@ -49,6 +50,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: MessageSquare,
     group: "ops",
     mainKey: "inquiry",
+    roles: ["admin", "manager"],
+  },
+  {
+    href: "/theall_manager_only/sms",
+    label: "SMS 센터",
+    icon: Inbox,
+    group: "ops",
+    mainKey: "sms",
     roles: ["admin", "manager"],
   },
   {

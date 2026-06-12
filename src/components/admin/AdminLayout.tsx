@@ -9,6 +9,10 @@ import type { ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/admin/Sidebar";
+import {
+  SidebarCollapseProvider,
+  useSidebarCollapse,
+} from "@/components/admin/SidebarCollapseContext";
 import Breadcrumb from "@/components/admin/Breadcrumb";
 import SubHeader, { type MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
@@ -43,6 +47,7 @@ function inferMainMenuKey(pathname: string, searchParamsView: string | null): Ma
     return "product";
   }
   if (rel.startsWith("/landings") || rel.startsWith("/golf-leads")) return "landings";
+  if (rel.startsWith("/sms") || rel.startsWith("/inbound-sms")) return "sms";
   if (rel.startsWith("/inquiries")) return "inquiry";
   if (rel.startsWith("/members") || rel.startsWith("/points") || rel.startsWith("/rewards")) {
     return "member_rewards";
@@ -111,7 +116,7 @@ function canAccessPath(
   return false;
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+function AdminLayoutContent({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const viewParam = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
@@ -121,6 +126,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
   const session = useAdminSession();
   const [isNavigating, setIsNavigating] = useState(false);
+  const { sidebarWidthPx } = useSidebarCollapse();
 
   useEffect(() => {
     setActiveMenu(inferMainMenuKey(pathname, viewParam));
@@ -154,9 +160,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] transition-colors">
       <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
-      <main className="ml-64 transition-colors">
+      <main
+        className="transition-all duration-300"
+        style={{ marginLeft: `${sidebarWidthPx}px` }}
+      >
         {isNavigating ? (
-          <div className="fixed left-64 right-0 top-0 z-40 h-0.5 overflow-hidden bg-transparent">
+          <div
+            className="fixed right-0 top-0 z-40 h-0.5 overflow-hidden bg-transparent transition-all duration-300"
+            style={{ left: `${sidebarWidthPx}px` }}
+          >
             <div className="h-full w-full origin-left animate-[adminProgress_0.4s_ease-out_forwards] bg-[var(--brand)]" />
           </div>
         ) : null}
@@ -189,5 +201,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
+  return (
+    <SidebarCollapseProvider>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </SidebarCollapseProvider>
   );
 }

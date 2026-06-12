@@ -8,6 +8,7 @@ import {
 import type { ConsultationStatus, BookingStatus } from "@/types/inquiry";
 import { MobileAdminInquiryCard } from "@/components/admin/mobile/inquiries/MobileAdminInquiryCard";
 import { MobileAdminInquiryFilters } from "@/components/admin/mobile/inquiries/MobileAdminInquiryFilters";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 /**
  * 모바일 전용 문의 목록. 비즈니스 로직은 useAdminInquiryTable 단일 훅 재사용.
@@ -151,20 +152,26 @@ export function MobileAdminInquiryList() {
             <div className="mt-4 space-y-3">
               <label className="block">
                 <span className="text-xs font-semibold text-[var(--text-muted)]">출발일</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={api.reserveDeparture}
-                  onChange={(e) => api.setReserveDeparture(e.target.value)}
-                  className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                  onChange={api.setReserveDeparture}
+                  placeholder="출발일 선택"
+                  aria-label="출발일"
+                  size="compact"
+                  className="mt-1"
+                  triggerClassName="min-h-10 rounded-lg text-sm"
                 />
               </label>
               <label className="block">
                 <span className="text-xs font-semibold text-[var(--text-muted)]">귀국일</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={api.reserveReturn}
-                  onChange={(e) => api.setReserveReturn(e.target.value)}
-                  className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                  onChange={api.setReserveReturn}
+                  placeholder="귀국일 선택"
+                  aria-label="귀국일"
+                  size="compact"
+                  className="mt-1"
+                  triggerClassName="min-h-10 rounded-lg text-sm"
                 />
               </label>
             </div>

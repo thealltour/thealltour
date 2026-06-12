@@ -34,6 +34,28 @@ type NewInquiryNotificationInput = {
   content: string;
 };
 
+type InboundSmsNotificationInput = {
+  inboundSmsId: string;
+  inquiryId: string | null;
+  senderPhone: string;
+  messagePreview: string;
+  matchStatus: string;
+};
+
+type OutboundSmsFailedNotificationInput = {
+  logId: string;
+  inquiryId: string | null;
+  recipientPhone: string;
+  failureReason: string;
+};
+
+type SmsBulkCompletedNotificationInput = {
+  jobId: string;
+  total: number;
+  success: number;
+  failed: number;
+};
+
 function getKstYear() {
   const now = new Date();
   const kst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
@@ -102,6 +124,70 @@ export async function createNewReviewNotification(input: NewReviewNotificationIn
         review_id: input.reviewId,
         author_name: input.authorName,
         title: input.title,
+      },
+    },
+    { onConflict: "unique_key", ignoreDuplicates: true },
+  );
+}
+
+export async function createInboundSmsReplyNotification(input: InboundSmsNotificationInput) {
+  const isUnmatched = input.matchStatus === "unmatched" || !input.inquiryId;
+  const smsCenterUrl = `/theall_manager_only/sms?phone=${encodeURIComponent(input.senderPhone)}`;
+  await supabaseAdmin.from("admin_notifications").upsert(
+    {
+      type: isUnmatched ? "inbound_sms_unmatched" : "inbound_sms_reply",
+      title: isUnmatched ? "미연결 SMS 수신" : "고객 회신 SMS",
+      message: `${input.senderPhone}: ${input.messagePreview}`,
+      target_url: smsCenterUrl,
+      unique_key: `inbound_sms:${input.inboundSmsId}`,
+      is_read: false,
+      payload: {
+        inbound_sms_id: input.inboundSmsId,
+        inquiry_id: input.inquiryId,
+        sender_phone: input.senderPhone,
+        match_status: input.matchStatus,
+      },
+    },
+    { onConflict: "unique_key", ignoreDuplicates: true },
+  );
+}
+
+export async function createOutboundSmsFailedNotification(input: OutboundSmsFailedNotificationInput) {
+  const preview =
+    input.failureReason.length > 60 ? `${input.failureReason.slice(0, 60)}…` : input.failureReason;
+  await supabaseAdmin.from("admin_notifications").upsert(
+    {
+      type: "outbound_sms_failed",
+      title: "SMS 발송 실패",
+      message: `${input.recipientPhone}: ${preview}`,
+      target_url: `/theall_manager_only/sms?phone=${encodeURIComponent(input.recipientPhone)}`,
+      unique_key: `outbound_sms_failed:${input.logId}`,
+      is_read: false,
+      payload: {
+        log_id: input.logId,
+        inquiry_id: input.inquiryId,
+        recipient_phone: input.recipientPhone,
+        failure_reason: input.failureReason,
+      },
+    },
+    { onConflict: "unique_key", ignoreDuplicates: true },
+  );
+}
+
+export async function createSmsBulkCompletedNotification(input: SmsBulkCompletedNotificationInput) {
+  await supabaseAdmin.from("admin_notifications").upsert(
+    {
+      type: "sms_bulk_completed",
+      title: "대량 SMS 발송 완료",
+      message: `총 ${input.total}건 · 성공 ${input.success} · 실패 ${input.failed}`,
+      target_url: `/theall_manager_only/sms?tab=bulk&job=${input.jobId}`,
+      unique_key: `sms_bulk_completed:${input.jobId}`,
+      is_read: false,
+      payload: {
+        job_id: input.jobId,
+        total: input.total,
+        success: input.success,
+        failed: input.failed,
       },
     },
     { onConflict: "unique_key", ignoreDuplicates: true },

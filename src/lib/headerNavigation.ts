@@ -97,6 +97,7 @@ function regionGroupsFromTaxonomy(categories: ProductTaxonomy[]): HeaderNavGroup
 const RECOMMEND_COLLECTION_GROUP: HeaderNavGroup = {
   key: "recommended-collection",
   label: "여행추천",
+  labelHref: "/recommended",
   items: [
     { key: "recommended-all", label: "전체 여행 보기", href: "/products" },
     { key: "recommended-recommend", label: "추천 여행", href: "/products?collection=recommend" },

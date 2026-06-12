@@ -1,0 +1,82 @@
+.theall-day-picker {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: var(--primary-soft);
+  --rdp-day-height: 2.25rem;
+  --rdp-day-width: 2.25rem;
+  --rdp-day_button-border-radius: 0.5rem;
+  --rdp-selected-border: none;
+  --rdp-today-color: var(--primary);
+  --rdp-outside-opacity: 0.35;
+  --rdp-disabled-opacity: 0.35;
+  --rdp-nav_button-height: 2rem;
+  --rdp-nav_button-width: 2rem;
+  --rdp-nav-height: 2.5rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.theall-day-picker .rdp-month_caption {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.theall-day-picker .rdp-weekday {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.theall-day-picker .rdp-day_button {
+  border: 1px solid transparent;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.theall-day-picker .rdp-day_button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.theall-day-picker .rdp-selected .rdp-day_button {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.theall-day-picker .rdp-selected .rdp-day_button:hover:not(:disabled) {
+  background: var(--primary);
+  color: #fff;
+}
+
+.theall-day-picker .rdp-today:not(.rdp-selected) .rdp-day_button {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.theall-day-picker .rdp-range_start .rdp-day_button,
+.theall-day-picker .rdp-range_end .rdp-day_button {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.theall-day-picker .rdp-range_middle .rdp-day_button {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-radius: 0;
+}
+
+.theall-day-picker .rdp-nav_button {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.theall-day-picker .rdp-nav_button:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.theall-day-picker .rdp-chevron {
+  fill: currentColor;
+}

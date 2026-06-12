@@ -1,4 +1,10 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/sms-bulk",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

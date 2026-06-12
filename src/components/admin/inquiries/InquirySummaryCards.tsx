@@ -22,6 +22,7 @@ type Props = {
   today: number;
   hot: number;
   unassigned: number;
+  customerReply: number;
   activeQuick: QuickFilter;
   onSelectQuick: (f: QuickFilter) => void;
 };
@@ -32,6 +33,7 @@ export function InquirySummaryCards({
   today,
   hot,
   unassigned,
+  customerReply,
   activeQuick,
   onSelectQuick,
 }: Props) {
@@ -41,10 +43,11 @@ export function InquirySummaryCards({
     { id: "today", label: "오늘 팔로업", value: today, tone: "rose" },
     { id: "hot", label: "HOT 리드", value: hot, tone: "amber" },
     { id: "unassigned", label: "미배정", value: unassigned, tone: "slate" },
+    { id: "customer_reply", label: "고객 회신", value: customerReply, tone: "rose" },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
       {cards.map((c) => {
         const selected = activeQuick === c.id;
         return (

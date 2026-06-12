@@ -1,5 +1,7 @@
 "use client";
 
+import { DatePicker } from "@/components/ui/DatePicker";
+
 type AdminDashboardDateRangeBarProps = {
   currentRange: string;
   currentFrom: string;
@@ -79,17 +81,21 @@ export default function AdminDashboardDateRangeBar({
             <label className="col-span-2 text-[10px] font-medium text-[var(--text-muted)] md:sr-only">
               시작·종료일
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={currentFrom}
-              onChange={(event) => updateRange("custom", event.target.value, currentTo || undefined)}
-              className="min-h-10 w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-2 text-xs text-[var(--text)] outline-none focus:border-[var(--brand)]/50 md:h-9 md:min-h-0 md:w-auto"
+              onChange={(value) => updateRange("custom", value, currentTo || undefined)}
+              placeholder="시작일"
+              aria-label="시작일"
+              size="compact"
+              triggerClassName="min-h-10 w-full rounded-md border-[var(--border)] bg-[var(--card)] text-xs text-[var(--text)] md:h-9 md:min-h-0 md:w-auto md:min-w-[9.5rem]"
             />
-            <input
-              type="date"
+            <DatePicker
               value={currentTo}
-              onChange={(event) => updateRange("custom", currentFrom || undefined, event.target.value)}
-              className="min-h-10 w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-2 text-xs text-[var(--text)] outline-none focus:border-[var(--brand)]/50 md:h-9 md:min-h-0 md:w-auto"
+              onChange={(value) => updateRange("custom", currentFrom || undefined, value)}
+              placeholder="종료일"
+              aria-label="종료일"
+              size="compact"
+              triggerClassName="min-h-10 w-full rounded-md border-[var(--border)] bg-[var(--card)] text-xs text-[var(--text)] md:h-9 md:min-h-0 md:w-auto md:min-w-[9.5rem]"
             />
           </div>
         ) : null}

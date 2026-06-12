@@ -33,6 +33,40 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | 공개 URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon 키 — RLS와 함께 사용. |
 
+## SMS 수신 (textbee.dev)
+
+| 변수 | 설명 |
+|------|------|
+| `TEXTBEE_WEBHOOK_SECRET` | textbee 웹훅 서명 검증용 (대시보드 Webhook 설정과 동일). **프로덕션 필수.** |
+| `TEXTBEE_API_KEY` | (선택) 수신 메시지 API 백필·폴링용. 웹훅만 사용 시 불필요. |
+| `TEXTBEE_DEVICE_ID` | (선택) 백필 cron용 Android 기기 ID. |
+
+설정 절차:
+
+1. textbee Android 앱에서 **Receive SMS** 활성화
+2. Dashboard → Webhooks → `https://{도메인}/api/webhooks/textbee` 등록, 이벤트 `MESSAGE_RECEIVED`
+3. Signing secret을 `TEXTBEE_WEBHOOK_SECRET`에 저장 (Vercel·로컬 `.env.local`)
+
+**보안:** API 키·웹훅 시크릿을 소스코드에 하드코딩하지 마세요. 노출된 키는 textbee 대시보드에서 재발급하세요.
+
+발송(SMS outbound)은 기존과 같이 **알리고 relay**([`sendAligoRelay`](../src/lib/notifications/sendAligoRelay.ts))를 사용합니다.
+
+### textbee 수신 알림 검증 체크리스트
+
+1. Supabase에 `inquiry_inbound_sms`, `admin_notifications` 테이블 존재 (`20260612100000`, `admin_notifications.sql`)
+2. Vercel `TEXTBEE_WEBHOOK_SECRET` = textbee 대시보드 Signing secret
+3. 웹훅 URL: `https://{도메인}/api/webhooks/textbee`, 이벤트 `MESSAGE_RECEIVED`
+4. 테스트 수신 후 `admin_notifications`에 `inbound_sms_reply` 또는 `inbound_sms_unmatched` row 생성 확인
+5. 알림 센터 SMS 탭·SubHeader 알림 배지·SMS 센터 Realtime 갱신 확인
+
+### SMS 센터 후속 (선택)
+
+| 변수 | 설명 |
+|------|------|
+| `SMS_BULK_BATCH_SIZE` | 대량 발송 cron 배치 크기 (기본 15) |
+
+대량 발송 cron: `GET /api/cron/sms-bulk` (Vercel Cron + `CRON_SECRET`)
+
 ## 기타
 
 - `MEMBER_SESSION_SECRET` — 회원 세션 JWT([`src/lib/memberSession.ts`](../src/lib/memberSession.ts)).

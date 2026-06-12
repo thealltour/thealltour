@@ -44,6 +44,7 @@ type InquiryListResponse = {
   queueFollowUpTodayCount?: number;
   queueHotLeadCount?: number;
   queueUnassignedCount?: number;
+  queueCustomerReplyCount?: number;
   assigneeWorkload?: { byName: Record<string, number>; unassigned: number };
   assigneeWorkloadCapped?: boolean;
 };
@@ -141,6 +142,7 @@ export function useAdminInquiryTable() {
   const [queueFollowUpTodayCount, setQueueFollowUpTodayCount] = useState(0);
   const [queueHotLeadCount, setQueueHotLeadCount] = useState(0);
   const [queueUnassignedCount, setQueueUnassignedCount] = useState(0);
+  const [queueCustomerReplyCount, setQueueCustomerReplyCount] = useState(0);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
   const [reserveModalInquiryId, setReserveModalInquiryId] = useState<string | null>(null);
@@ -165,7 +167,8 @@ export function useAdminInquiryTable() {
       qfRaw === "overdue" ||
       qfRaw === "today" ||
       qfRaw === "hot" ||
-      qfRaw === "unassigned"
+      qfRaw === "unassigned" ||
+      qfRaw === "customer_reply"
     ) {
       nextQuick = qfRaw;
     } else if (pr === "high") {
@@ -244,6 +247,7 @@ export function useAdminInquiryTable() {
           setQueueFollowUpTodayCount(0);
           setQueueHotLeadCount(0);
           setQueueUnassignedCount(0);
+          setQueueCustomerReplyCount(0);
           setAssigneeWorkload({ byName: {}, unassigned: 0 });
           setAssigneeWorkloadCapped(false);
         } else {
@@ -258,6 +262,7 @@ export function useAdminInquiryTable() {
           setQueueFollowUpTodayCount(data.queueFollowUpTodayCount ?? 0);
           setQueueHotLeadCount(data.queueHotLeadCount ?? 0);
           setQueueUnassignedCount(data.queueUnassignedCount ?? 0);
+          setQueueCustomerReplyCount(data.queueCustomerReplyCount ?? 0);
           setAssigneeWorkload(
             data.assigneeWorkload ?? {
               byName: {},
@@ -573,6 +578,7 @@ export function useAdminInquiryTable() {
     queueFollowUpTodayCount,
     queueHotLeadCount,
     queueUnassignedCount,
+    queueCustomerReplyCount,
     expandedRows,
     expandedQuoteId,
     reserveModalInquiryId,

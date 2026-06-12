@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { DesiredDepartureBadge } from "@/components/admin/inquiries/DesiredDepartureBadge";
+import { stripDesiredDepartureLineFromContent } from "@/lib/inquiry/desiredDeparture";
 import type { Inquiry, ConsultationStatus, BookingStatus } from "@/types/inquiry";
 
 const CONSULTATION_LABELS: Record<ConsultationStatus, string> = {
@@ -60,7 +62,7 @@ export function MobileAdminInquiryCard({
   const [contentExpanded, setContentExpanded] = useState(false);
   const [metaExpanded, setMetaExpanded] = useState(false);
   const hasQuote = Boolean(inquiry.quote_snapshot);
-  const rawContent = (inquiry.content ?? "").trim();
+  const rawContent = stripDesiredDepartureLineFromContent(inquiry.content ?? "");
   const metaLine = (inquiry.acquisition_summary ?? inquiry.source_path ?? "").trim();
 
   return (
@@ -76,7 +78,14 @@ export function MobileAdminInquiryCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-base font-semibold text-[var(--primary)]">{inquiry.name}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-semibold text-[var(--primary)]">{inquiry.name}</p>
+            {(inquiry.unread_inbound_sms_count ?? 0) > 0 ? (
+              <span className="rounded-full bg-[var(--primary)] px-2 py-0.5 text-[10px] font-bold text-white">
+                회신 {inquiry.unread_inbound_sms_count}
+              </span>
+            ) : null}
+          </div>
           <p className="mt-0.5 text-sm tabular-nums text-[var(--text-secondary)]">{inquiry.phone}</p>
         </div>
         <div className="flex flex-wrap justify-end gap-1">
@@ -114,6 +123,8 @@ export function MobileAdminInquiryCard({
       ) : (
         <p className="mt-2 text-xs text-[var(--text-subtle)]">일반 문의</p>
       )}
+
+      <DesiredDepartureBadge inquiry={inquiry} className="mt-2" />
 
       <p className="mt-1 text-xs tabular-nums text-[var(--text-muted)]">
         {formatInquiryDate(inquiry.created_at ?? "")}

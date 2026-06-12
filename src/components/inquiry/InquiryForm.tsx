@@ -11,24 +11,33 @@ import { getAttributionTouch } from "@/lib/analytics/firstTouch";
 import { inferAttribution } from "@/lib/analytics/attribution";
 import { GolfBriefFields } from "@/components/inquiry/GolfBriefFields";
 import { InquirySuccessPanel } from "@/components/inquiry/InquirySuccessPanel";
+import { DesiredDepartureField } from "@/components/inquiry/DesiredDepartureField";
 import {
   isGolfBriefContext,
   mergeGolfBriefIntoContent,
   type GolfBriefSnapshot,
 } from "@/lib/inquiry/golfBriefFields";
+import {
+  buildDesiredDepartureContentLine,
+  parseInitialDesiredDeparture,
+  toQuoteSnapshotPayload,
+  type DesiredDepartureState,
+} from "@/lib/inquiry/desiredDeparture";
 
 type FormState = {
   name: string;
   phone: string;
-  desiredDeparture: string;
+  desiredDeparture: DesiredDepartureState;
   peopleCount: string;
   content: string;
 };
 
+const initialDesiredDepartureState: DesiredDepartureState = { date: "", flexible: false };
+
 const initialFormState: FormState = {
   name: "",
   phone: "",
-  desiredDeparture: "",
+  desiredDeparture: initialDesiredDepartureState,
   peopleCount: "",
   content: "",
 };
@@ -74,7 +83,7 @@ export default function InquiryForm({
 
   const [form, setForm] = useState<FormState>({
     ...initialFormState,
-    desiredDeparture: initialDesiredDeparture ?? "",
+    desiredDeparture: parseInitialDesiredDeparture(initialDesiredDeparture),
   });
   const [golfBrief, setGolfBrief] = useState<GolfBriefSnapshot>({});
   const [touched, setTouched] = useState<Touched>({});
@@ -111,7 +120,8 @@ export default function InquiryForm({
   const buildContent = useCallback(
     (state: FormState) => {
       const parts: string[] = [];
-      if (state.desiredDeparture?.trim()) parts.push(`출발 희망일: ${state.desiredDeparture.trim()}`);
+      const departureLine = buildDesiredDepartureContentLine(state.desiredDeparture);
+      if (departureLine) parts.push(departureLine);
       if (state.peopleCount?.trim()) parts.push(`인원: ${state.peopleCount.trim()}`);
       const base = state.content?.trim() ?? "";
       const merged = showGolfBrief ? mergeGolfBriefIntoContent(base, golfBrief) : base;
@@ -136,9 +146,14 @@ export default function InquiryForm({
     try {
       const content = buildContent(form);
       const firstTouch = getAttributionTouch();
-      const quoteSnapshot = showGolfBrief
-        ? { golf_brief: golfBrief, desired_departure: form.desiredDeparture || null }
-        : undefined;
+      const desiredDeparturePayload = toQuoteSnapshotPayload(form.desiredDeparture);
+      const quoteSnapshot: Record<string, unknown> = {};
+      if (desiredDeparturePayload) {
+        quoteSnapshot.desiredDeparture = desiredDeparturePayload;
+      }
+      if (showGolfBrief) {
+        quoteSnapshot.golf_brief = golfBrief;
+      }
 
       const response = await fetch("/api/inquiries", {
         method: "POST",
@@ -154,7 +169,7 @@ export default function InquiryForm({
           quote_category: quoteCategory || undefined,
           first_touch: firstTouch ?? undefined,
           inquiry_page_url: typeof window !== "undefined" ? window.location.pathname : undefined,
-          quote_snapshot: quoteSnapshot,
+          quote_snapshot: Object.keys(quoteSnapshot).length > 0 ? quoteSnapshot : undefined,
         }),
       });
 
@@ -186,7 +201,10 @@ export default function InquiryForm({
       }
       setIsSuccess(true);
       setMessage("문의가 접수되었습니다. 확인 후 순차적으로 연락드리겠습니다.");
-      setForm({ ...initialFormState, desiredDeparture: initialDesiredDeparture ?? "" });
+      setForm({
+        ...initialFormState,
+        desiredDeparture: parseInitialDesiredDeparture(initialDesiredDeparture),
+      });
       setGolfBrief({});
       setErrors({});
       setTouched({});
@@ -278,17 +296,11 @@ export default function InquiryForm({
         ) : null}
       </div>
 
-      <Label className="flex flex-col gap-2 md:col-span-2">
-        출발 희망일 <span className="text-slate-400 text-sm font-normal">(선택)</span>
-        <Input
-          type="text"
-          name="desiredDeparture"
-          value={form.desiredDeparture}
-          onChange={(e) => setForm((prev) => ({ ...prev, desiredDeparture: e.target.value }))}
-          placeholder="예: 20xx년 10월"
-          className="py-3"
-        />
-      </Label>
+      <DesiredDepartureField
+        className="md:col-span-2"
+        value={form.desiredDeparture}
+        onChange={(desiredDeparture) => setForm((prev) => ({ ...prev, desiredDeparture }))}
+      />
 
       <Label className="flex flex-col gap-2 md:col-span-2">
         인원 <span className="text-slate-400 text-sm font-normal">(선택)</span>

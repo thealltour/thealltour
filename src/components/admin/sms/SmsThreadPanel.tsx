@@ -12,11 +12,19 @@ type LinkedInquiry = {
   phone: string;
 };
 
+type LinkedMember = {
+  id: string;
+  name: string;
+  phone: string;
+  username: string;
+};
+
 type SmsThreadPanelProps = {
   phone: string | null;
   thread: InquirySmsThreadItem[];
   unreadInboundCount: number;
   inquiry: LinkedInquiry | null;
+  member: LinkedMember | null;
   isLoading: boolean;
   onRequestLink: () => void;
   onRetryFailed?: (input: { phone: string; message: string }) => void;
@@ -29,6 +37,7 @@ export function SmsThreadPanel({
   thread,
   unreadInboundCount,
   inquiry,
+  member,
   isLoading,
   onRequestLink,
   onRetryFailed,
@@ -42,6 +51,8 @@ export function SmsThreadPanel({
       </div>
     );
   }
+
+  const hasLink = Boolean(inquiry || member);
 
   return (
     <div className="space-y-4">
@@ -75,18 +86,40 @@ export function SmsThreadPanel({
               문의 상세
             </Link>
           </div>
-        ) : (
+        ) : null}
+
+        {member ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-[var(--text-muted)]">연결된 회원</p>
+              <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{member.name}</p>
+              {member.username ? (
+                <p className="truncate text-xs text-[var(--text-muted)]">@{member.username}</p>
+              ) : null}
+            </div>
+            <Link
+              href={`/theall_manager_only/members/${encodeURIComponent(member.id)}`}
+              className="rounded-lg border border-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+            >
+              회원 상세
+            </Link>
+          </div>
+        ) : null}
+
+        {!hasLink ? (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-50 px-3 py-2 dark:bg-amber-950/20">
-            <p className="text-sm text-amber-950 dark:text-amber-100">연결된 문의가 없습니다.</p>
+            <p className="text-sm text-amber-950 dark:text-amber-100">
+              연결된 문의 또는 회원이 없습니다.
+            </p>
             <button
               type="button"
               onClick={onRequestLink}
               className="rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--on-primary)]"
             >
-              문의 연결
+              연결
             </button>
           </div>
-        )}
+        ) : null}
       </header>
 
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">

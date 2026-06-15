@@ -49,9 +49,19 @@ export function SmsConversationList({
                   </p>
                   {item.inquiryName ? (
                     <p className="truncate text-xs text-[var(--text-muted)]">{item.inquiryName}</p>
+                  ) : item.memberName ? (
+                    <p className="truncate text-xs text-[var(--text-muted)]">
+                      <span className="mr-1 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        회원
+                      </span>
+                      {item.memberName}
+                    </p>
                   ) : (
                     <p className="text-xs text-amber-700 dark:text-amber-300">미연결</p>
                   )}
+                  {item.inquiryName && item.memberName ? (
+                    <p className="truncate text-[10px] text-[var(--text-subtle)]">회원: {item.memberName}</p>
+                  ) : null}
                   <p className="mt-1 line-clamp-2 text-xs text-[var(--text-secondary)]">
                     {item.lastPreview}
                   </p>
@@ -65,7 +75,7 @@ export function SmsConversationList({
                       {item.unreadCount}
                     </span>
                   ) : null}
-                  {item.matchStatus === "unmatched" ? (
+                  {item.matchStatus === "unmatched" && item.linkType === "none" ? (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                       미연결
                     </span>

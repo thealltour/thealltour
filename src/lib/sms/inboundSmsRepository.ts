@@ -12,6 +12,8 @@ export function mapInboundSmsRow(row: Record<string, unknown>): InquiryInboundSm
     received_at: typeof row.received_at === "string" ? row.received_at : "",
     inquiry_id:
       row.inquiry_id === null || row.inquiry_id === undefined ? null : String(row.inquiry_id),
+    member_id:
+      row.member_id === null || row.member_id === undefined ? null : String(row.member_id),
     match_status: (row.match_status as InboundSmsMatchStatus) ?? "unmatched",
     match_reason: typeof row.match_reason === "string" ? row.match_reason : null,
     read_at: typeof row.read_at === "string" ? row.read_at : row.read_at === null ? null : undefined,

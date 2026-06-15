@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useAuthModal } from "@/components/auth/AuthModalProvider";
 
 type Props = {
   reviewId: string;
@@ -13,6 +15,8 @@ export default function ReviewHelpfulButton({
   helpfulCount: initialCount = 0,
   viewerVotedHelpful: initialVoted = false,
 }: Props) {
+  const pathname = usePathname();
+  const { openAuth } = useAuthModal();
   const [count, setCount] = useState(initialCount);
   const [voted, setVoted] = useState(initialVoted);
   const [loading, setLoading] = useState(false);
@@ -33,7 +37,7 @@ export default function ReviewHelpfulButton({
         const data = await res.json().catch(() => ({}));
         const msg = data?.message ?? "투표에 실패했습니다.";
         if (res.status === 401) {
-          window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+          openAuth({ mode: "login", next: pathname });
           return;
         }
         alert(msg);

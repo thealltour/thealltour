@@ -1,0 +1,358 @@
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { syncMemberCustomerProfiles } from "@/lib/customerAccountLinks";
+import { createNewMemberNotification } from "@/lib/adminNotifications";
+import { generateUniqueUsername } from "@/lib/auth/username";
+import type {
+  AuthMode,
+  AuthProviderId,
+  MemberRowForAuth,
+  OAuthCallbackResult,
+  OAuthProfile,
+} from "@/lib/auth/types";
+
+const MEMBER_SELECT =
+  "id,username,name,email,phone,password_hash,password_salt,agree_terms,agree_privacy,signup_method,profile_completed_at";
+
+const PENDING_LINK_TTL_MS = 30 * 60 * 1000;
+
+export function memberNeedsProfileCompletion(member: MemberRowForAuth): boolean {
+  if (member.profile_completed_at) return false;
+  const hasTerms = member.agree_terms && member.agree_privacy;
+  const hasPhone = Boolean(member.phone?.trim());
+  return !hasTerms || !hasPhone;
+}
+
+async function isUsernameTaken(username: string): Promise<boolean> {
+  const { data } = await supabaseAdmin.from("members").select("id").eq("username", username).maybeSingle();
+  return Boolean(data);
+}
+
+async function findMemberByEmail(email: string | null): Promise<MemberRowForAuth | null> {
+  if (!email?.trim()) return null;
+  const { data } = await supabaseAdmin
+    .from("members")
+    .select(MEMBER_SELECT)
+    .ilike("email", email.trim())
+    .maybeSingle();
+  return (data as MemberRowForAuth | null) ?? null;
+}
+
+async function findProviderLink(provider: AuthProviderId, providerUserId: string) {
+  const { data } = await supabaseAdmin
+    .from("member_auth_providers")
+    .select("id,member_id,provider,provider_user_id")
+    .eq("provider", provider)
+    .eq("provider_user_id", providerUserId)
+    .maybeSingle();
+  return data;
+}
+
+async function getMemberById(memberId: string): Promise<MemberRowForAuth | null> {
+  const { data } = await supabaseAdmin.from("members").select(MEMBER_SELECT).eq("id", memberId).maybeSingle();
+  return (data as MemberRowForAuth | null) ?? null;
+}
+
+async function upsertProviderLink(
+  memberId: string,
+  provider: AuthProviderId,
+  profile: OAuthProfile,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("member_auth_providers").upsert(
+    {
+      member_id: memberId,
+      provider,
+      provider_user_id: profile.providerUserId,
+      email: profile.email,
+      display_name: profile.name,
+      avatar_url: profile.avatarUrl,
+      raw_profile: profile.raw,
+      last_login_at: now,
+    },
+    { onConflict: "provider,provider_user_id" },
+  );
+  if (error) throw new Error(error.message);
+}
+
+async function createSocialMember(provider: AuthProviderId, profile: OAuthProfile): Promise<MemberRowForAuth> {
+  const username = await generateUniqueUsername(provider, profile.providerUserId, isUsernameTaken);
+  const { data, error } = await supabaseAdmin
+    .from("members")
+    .insert({
+      username,
+      name: profile.name,
+      email: profile.email,
+      phone: null,
+      birth_date: null,
+      gender: null,
+      password_hash: null,
+      password_salt: null,
+      agree_terms: false,
+      agree_privacy: false,
+      agree_email: false,
+      signup_method: "social",
+      profile_completed_at: null,
+    })
+    .select(MEMBER_SELECT)
+    .single();
+
+  if (error || !data) throw new Error(error?.message ?? "회원 생성 실패");
+
+  await createNewMemberNotification({
+    memberId: String(data.id),
+    username: String(data.username),
+    name: String(data.name),
+  }).catch((err) => console.error("[memberAuthService] createNewMemberNotification failed", err));
+
+  return data as MemberRowForAuth;
+}
+
+async function createPendingLink(
+  provider: AuthProviderId,
+  profile: OAuthProfile,
+  existingMemberId: string,
+): Promise<string> {
+  const expiresAt = new Date(Date.now() + PENDING_LINK_TTL_MS).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("member_auth_pending_links")
+    .insert({
+      provider,
+      provider_user_id: profile.providerUserId,
+      provider_email: profile.email,
+      provider_profile: profile,
+      existing_member_id: existingMemberId,
+      expires_at: expiresAt,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "pending link 생성 실패");
+  return String(data.id);
+}
+
+export async function syncMemberAfterAuth(member: MemberRowForAuth): Promise<void> {
+  await syncMemberCustomerProfiles({
+    memberId: String(member.id),
+    phone: String(member.phone ?? ""),
+    email: String(member.email ?? ""),
+    linked_by: "self",
+  }).catch((err) => console.error("[memberAuthService] syncMemberCustomerProfiles failed", err));
+}
+
+export async function handleOAuthCallback(params: {
+  provider: AuthProviderId;
+  profile: OAuthProfile;
+  mode: AuthMode;
+  linkMemberId?: string;
+  next: string;
+}): Promise<OAuthCallbackResult> {
+  const { provider, profile, mode, linkMemberId, next } = params;
+
+  const existingLink = await findProviderLink(provider, profile.providerUserId);
+  if (existingLink) {
+    const member = await getMemberById(String(existingLink.member_id));
+    if (!member) throw new Error("연결된 회원을 찾을 수 없습니다.");
+    await upsertProviderLink(String(member.id), provider, profile);
+    await syncMemberAfterAuth(member);
+    return {
+      type: "session",
+      member,
+      next,
+      needsProfile: memberNeedsProfileCompletion(member),
+    };
+  }
+
+  if (mode === "link") {
+    if (!linkMemberId) throw new Error("연결할 회원 세션이 필요합니다.");
+    const targetMember = await getMemberById(linkMemberId);
+    if (!targetMember) throw new Error("회원을 찾을 수 없습니다.");
+
+    const otherLink = await supabaseAdmin
+      .from("member_auth_providers")
+      .select("id")
+      .eq("member_id", linkMemberId)
+      .eq("provider", provider)
+      .maybeSingle();
+    if (otherLink.data) throw new Error("이미 연결된 소셜 계정입니다.");
+
+    await upsertProviderLink(linkMemberId, provider, profile);
+    const signupMethod =
+      targetMember.password_hash && targetMember.signup_method === "social"
+        ? "mixed"
+        : targetMember.password_hash
+          ? "mixed"
+          : targetMember.signup_method === "local"
+            ? "mixed"
+            : "social";
+    await supabaseAdmin.from("members").update({ signup_method: signupMethod }).eq("id", linkMemberId);
+
+    const member = (await getMemberById(linkMemberId))!;
+    await syncMemberAfterAuth(member);
+    return {
+      type: "session",
+      member,
+      next,
+      needsProfile: memberNeedsProfileCompletion(member),
+    };
+  }
+
+  const emailMember = await findMemberByEmail(profile.email);
+  if (emailMember?.password_hash) {
+    const pendingId = await createPendingLink(provider, profile, String(emailMember.id));
+    return {
+      type: "link_account",
+      pendingId,
+      email: profile.email ?? "",
+      provider,
+    };
+  }
+
+  if (emailMember) {
+    await upsertProviderLink(String(emailMember.id), provider, profile);
+    await supabaseAdmin
+      .from("members")
+      .update({ signup_method: emailMember.signup_method === "local" ? "mixed" : "social" })
+      .eq("id", emailMember.id);
+    const member = (await getMemberById(String(emailMember.id)))!;
+    await syncMemberAfterAuth(member);
+    return {
+      type: "session",
+      member,
+      next,
+      needsProfile: memberNeedsProfileCompletion(member),
+    };
+  }
+
+  const member = await createSocialMember(provider, profile);
+  await upsertProviderLink(String(member.id), provider, profile);
+  await syncMemberAfterAuth(member);
+  return {
+    type: "session",
+    member,
+    next,
+    needsProfile: true,
+  };
+}
+
+export async function confirmPendingLink(pendingId: string, password: string): Promise<MemberRowForAuth> {
+  const { data: pending } = await supabaseAdmin
+    .from("member_auth_pending_links")
+    .select("*")
+    .eq("id", pendingId)
+    .maybeSingle();
+
+  if (!pending) throw new Error("연결 요청을 찾을 수 없습니다.");
+  if (new Date(String(pending.expires_at)).getTime() < Date.now()) {
+    throw new Error("연결 요청이 만료되었습니다.");
+  }
+
+  const member = await getMemberById(String(pending.existing_member_id));
+  if (!member?.password_hash || !member.password_salt) {
+    throw new Error("비밀번호 로그인 계정이 아닙니다.");
+  }
+
+  const { verifyPassword } = await import("@/lib/password");
+  const ok = verifyPassword(password, member.password_salt, member.password_hash);
+  if (!ok) throw new Error("비밀번호가 올바르지 않습니다.");
+
+  const profile = pending.provider_profile as OAuthProfile;
+  const provider = pending.provider as AuthProviderId;
+
+  const duplicate = await findProviderLink(provider, profile.providerUserId);
+  if (duplicate && String(duplicate.member_id) !== String(member.id)) {
+    throw new Error("이 소셜 계정은 이미 다른 회원에 연결되어 있습니다.");
+  }
+
+  await upsertProviderLink(String(member.id), provider, profile);
+  await supabaseAdmin.from("members").update({ signup_method: "mixed" }).eq("id", member.id);
+  await supabaseAdmin.from("member_auth_pending_links").delete().eq("id", pendingId);
+
+  const updated = (await getMemberById(String(member.id)))!;
+  await syncMemberAfterAuth(updated);
+  return updated;
+}
+
+export async function completeMemberProfile(
+  memberId: string,
+  input: { phone?: string; agreeTerms: boolean; agreePrivacy: boolean },
+): Promise<MemberRowForAuth> {
+  const existing = await getMemberById(memberId);
+  if (!existing) throw new Error("회원을 찾을 수 없습니다.");
+
+  const phone = input.phone?.replace(/[^\d]/g, "") ?? "";
+  const needsPhone = !existing.phone?.trim();
+  if (needsPhone && phone.length < 10) {
+    throw new Error("전화번호를 정확히 입력해 주세요.");
+  }
+
+  const updates: Record<string, unknown> = {
+    agree_terms: input.agreeTerms,
+    agree_privacy: input.agreePrivacy,
+    profile_completed_at: new Date().toISOString(),
+  };
+  if (phone.length >= 10) updates.phone = phone;
+
+  const { error } = await supabaseAdmin.from("members").update(updates).eq("id", memberId);
+  if (error) throw new Error(error.message);
+
+  const member = (await getMemberById(memberId))!;
+  await syncMemberAfterAuth(member);
+  return member;
+}
+
+export async function getMemberAuthProviders(memberId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("member_auth_providers")
+    .select("id,provider,display_name,email,linked_at,last_login_at")
+    .eq("member_id", memberId)
+    .order("linked_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function getMemberAuthSummary(memberId: string) {
+  const member = await getMemberById(memberId);
+  if (!member) return null;
+  const providers = await getMemberAuthProviders(memberId);
+  const configured = (await import("@/lib/auth/providerRegistry")).getConfiguredOAuthProviders().map((p) => p.id);
+  return {
+    hasPassword: Boolean(member.password_hash),
+    signupMethod: member.signup_method,
+    providers,
+    availableProviders: configured.filter(
+      (id) => !providers.some((p) => p.provider === id),
+    ),
+    needsProfileCompletion: memberNeedsProfileCompletion(member),
+  };
+}
+
+export async function unlinkAuthProvider(memberId: string, provider: AuthProviderId): Promise<void> {
+  const member = await getMemberById(memberId);
+  if (!member) throw new Error("회원을 찾을 수 없습니다.");
+
+  const { data: providers } = await supabaseAdmin
+    .from("member_auth_providers")
+    .select("provider")
+    .eq("member_id", memberId);
+
+  const count = providers?.length ?? 0;
+  const hasPassword = Boolean(member.password_hash);
+  if (!hasPassword && count <= 1) {
+    throw new Error("다른 로그인 방법을 먼저 등록해 주세요.");
+  }
+
+  const { error } = await supabaseAdmin
+    .from("member_auth_providers")
+    .delete()
+    .eq("member_id", memberId)
+    .eq("provider", provider);
+  if (error) throw new Error(error.message);
+}
+
+export async function cleanupExpiredPendingLinks(): Promise<void> {
+  await supabaseAdmin
+    .from("member_auth_pending_links")
+    .delete()
+    .lt("expires_at", new Date().toISOString());
+}

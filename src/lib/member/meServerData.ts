@@ -158,3 +158,5 @@ export async function getActiveRewardCatalog(): Promise<RewardCatalogItem[]> {
   if (error) return [];
   return (data ?? []) as RewardCatalogItem[];
 }
+
+export { getMemberAuthSummary, getMemberAuthProviders } from "@/lib/auth/memberAuthService";

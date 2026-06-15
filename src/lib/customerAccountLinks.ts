@@ -5,6 +5,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { linkUnmatchedInboundSmsToMember } from "@/lib/sms/linkInboundSmsToMemberByPhone";
 import { findCustomerProfileByEmail, findCustomerProfileByPhone, normalizePhone } from "@/lib/customerProfiles";
 import { adminClaimEligibilityById } from "@/lib/reviewEligibilities";
 import type { CustomerAccountLink } from "@/types/customerAccountLink";
@@ -336,6 +337,14 @@ export async function syncMemberCustomerProfiles(
         await syncInquiryMemberIdsForCustomerProfile(emailProfile.id, memberId);
       }
     }
+  }
+
+  if (input.phone?.trim()) {
+    await linkUnmatchedInboundSmsToMember({
+      memberId,
+      phone: input.phone,
+      matchReason: "phone_exact_member_on_signup",
+    }).catch((err) => console.error("[syncMemberCustomerProfiles] SMS backfill failed", err));
   }
 
   return { linkedProfileIds, claimedCount };

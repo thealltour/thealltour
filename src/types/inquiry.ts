@@ -57,6 +57,7 @@ export type InquiryInboundSms = {
   message: string;
   received_at: string;
   inquiry_id?: string | null;
+  member_id?: string | null;
   match_status: InboundSmsMatchStatus;
   match_reason?: string | null;
   read_at?: string | null;
@@ -64,6 +65,8 @@ export type InquiryInboundSms = {
 };
 
 /** SMS 센터 대화 목록 요약 */
+export type SmsConversationLinkType = "inquiry" | "member" | "both" | "none";
+
 export type SmsConversationSummary = {
   phone: string;
   lastMessageAt: string;
@@ -72,6 +75,9 @@ export type SmsConversationSummary = {
   matchStatus: InboundSmsMatchStatus | "unmatched";
   inquiryId: string | null;
   inquiryName: string | null;
+  memberId: string | null;
+  memberName: string | null;
+  linkType: SmsConversationLinkType;
   hasOutbound: boolean;
 };
 

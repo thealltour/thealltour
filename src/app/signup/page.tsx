@@ -1,23 +1,18 @@
-import SignupForm from "@/components/auth/SignupForm";
+import { Suspense } from "react";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
+import AuthPageAutoOpen from "@/components/auth/AuthPageAutoOpen";
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--bg)] text-[var(--text-primary)]">
       <SiteHeader activeTab="signup" />
-
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-12 md:px-10">
-        <section className="rounded-3xl bg-[var(--primary)] p-10 text-[var(--on-primary)] shadow-xl">
-          <p className="mb-3 text-sm font-semibold tracking-wide text-blue-100">THEALL TOUR MEMBERSHIP</p>
-          <h1 className="text-3xl font-bold md:text-4xl">회원가입</h1>
-          <p className="mt-3 text-sm text-blue-100 md:text-base">
-            여행후기 작성과 맞춤형 혜택 안내를 위해 회원가입을 진행해 주세요.
-          </p>
-        </section>
-
-        <section className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-[var(--primary-soft)] md:p-10">
-          <SignupForm />
-        </section>
+      <Suspense fallback={null}>
+        <AuthPageAutoOpen mode="signup" />
+      </Suspense>
+      <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-6 py-12 md:px-10">
+        <p className="text-center text-sm text-[var(--text-secondary)]">
+          회원가입 창이 열리지 않으면 상단 메뉴의 회원가입을 눌러 주세요.
+        </p>
       </main>
     </div>
   );

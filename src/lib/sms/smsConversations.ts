@@ -16,6 +16,7 @@ export type SmsThreadByPhoneResult = {
   thread: InquirySmsThreadItem[];
   unreadInboundCount: number;
   inquiry: { id: string; name: string; phone: string } | null;
+  member: { id: string; name: string; phone: string; username: string } | null;
   unmatchedInboundIds: string[];
 };
 
@@ -26,6 +27,7 @@ type ConversationAccumulator = {
   unreadCount: number;
   hasUnmatched: boolean;
   inquiryId: string | null;
+  memberId: string | null;
   hasOutbound: boolean;
 };
 
@@ -47,6 +49,7 @@ function upsertConversation(
     preview: string;
     unreadDelta?: number;
     inquiryId?: string | null;
+    memberId?: string | null;
     hasOutbound?: boolean;
     isUnmatched?: boolean;
   },
@@ -63,6 +66,7 @@ function upsertConversation(
       unreadCount: input.unreadDelta ?? 0,
       hasUnmatched: input.isUnmatched ?? false,
       inquiryId: input.inquiryId ?? null,
+      memberId: input.memberId ?? null,
       hasOutbound: input.hasOutbound ?? false,
     });
     return;
@@ -72,8 +76,10 @@ function upsertConversation(
     existing.lastMessageAt = input.at;
     existing.lastPreview = input.preview;
     if (input.inquiryId) existing.inquiryId = input.inquiryId;
-  } else if (input.inquiryId && !existing.inquiryId) {
-    existing.inquiryId = input.inquiryId;
+    if (input.memberId) existing.memberId = input.memberId;
+  } else {
+    if (input.inquiryId && !existing.inquiryId) existing.inquiryId = input.inquiryId;
+    if (input.memberId && !existing.memberId) existing.memberId = input.memberId;
   }
 
   existing.unreadCount += input.unreadDelta ?? 0;
@@ -81,11 +87,35 @@ function upsertConversation(
   if (input.hasOutbound) existing.hasOutbound = true;
 }
 
+function resolveLinkType(inquiryId: string | null, memberId: string | null): SmsConversationSummary["linkType"] {
+  if (inquiryId && memberId) return "both";
+  if (inquiryId) return "inquiry";
+  if (memberId) return "member";
+  return "none";
+}
+
 async function loadInquiryNames(ids: string[]): Promise<Record<string, string>> {
   if (ids.length === 0) return {};
 
   const { data, error } = await supabaseAdmin
     .from("inquiries")
+    .select("id, name")
+    .in("id", ids);
+
+  if (error || !data) return {};
+
+  const names: Record<string, string> = {};
+  for (const row of data) {
+    names[String(row.id)] = typeof row.name === "string" ? row.name : "이름 없음";
+  }
+  return names;
+}
+
+async function loadMemberNames(ids: string[]): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+
+  const { data, error } = await supabaseAdmin
+    .from("members")
     .select("id, name")
     .in("id", ids);
 
@@ -108,7 +138,7 @@ export async function listSmsConversations(input: {
     supabaseAdmin
       .from("inquiry_inbound_sms")
       .select(
-        "id, sender_phone, message, received_at, inquiry_id, match_status, read_at, created_at",
+        "id, sender_phone, message, received_at, inquiry_id, member_id, match_status, read_at, created_at",
       )
       .order("received_at", { ascending: false })
       .limit(FETCH_LIMIT),
@@ -130,6 +160,7 @@ export async function listSmsConversations(input: {
     const at = typeof row.received_at === "string" ? row.received_at : "";
     const message = typeof row.message === "string" ? row.message : "";
     const inquiryId = row.inquiry_id != null ? String(row.inquiry_id) : null;
+    const memberId = row.member_id != null ? String(row.member_id) : null;
     const matchStatus = row.match_status as InboundSmsMatchStatus;
     const isUnread = row.read_at == null;
 
@@ -138,7 +169,8 @@ export async function listSmsConversations(input: {
       preview: truncateSmsPreview(message),
       unreadDelta: isUnread ? 1 : 0,
       inquiryId,
-      isUnmatched: matchStatus === "unmatched" && !inquiryId,
+      memberId,
+      isUnmatched: matchStatus === "unmatched" && !inquiryId && !memberId,
     });
   }
 
@@ -166,7 +198,7 @@ export async function listSmsConversations(input: {
   if (input.filter === "unread") {
     conversations = conversations.filter((c) => c.unreadCount > 0);
   } else if (input.filter === "unmatched") {
-    conversations = conversations.filter((c) => c.hasUnmatched || !c.inquiryId);
+    conversations = conversations.filter((c) => c.hasUnmatched || (!c.inquiryId && !c.memberId));
   }
 
   conversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
@@ -176,18 +208,29 @@ export async function listSmsConversations(input: {
   const pageSlice = conversations.slice(from, from + input.pageSize);
 
   const inquiryIds = [...new Set(pageSlice.map((c) => c.inquiryId).filter(Boolean) as string[])];
-  const inquiryNames = await loadInquiryNames(inquiryIds);
+  const memberIds = [...new Set(pageSlice.map((c) => c.memberId).filter(Boolean) as string[])];
+  const [inquiryNames, memberNames] = await Promise.all([
+    loadInquiryNames(inquiryIds),
+    loadMemberNames(memberIds),
+  ]);
 
-  const items: SmsConversationSummary[] = pageSlice.map((c) => ({
-    phone: c.phone,
-    lastMessageAt: c.lastMessageAt,
-    lastPreview: c.lastPreview,
-    unreadCount: c.unreadCount,
-    matchStatus: c.hasUnmatched || !c.inquiryId ? "unmatched" : "matched",
-    inquiryId: c.inquiryId,
-    inquiryName: c.inquiryId ? (inquiryNames[c.inquiryId] ?? null) : null,
-    hasOutbound: c.hasOutbound,
-  }));
+  const items: SmsConversationSummary[] = pageSlice.map((c) => {
+    const linkType = resolveLinkType(c.inquiryId, c.memberId);
+    const isConnected = linkType !== "none";
+    return {
+      phone: c.phone,
+      lastMessageAt: c.lastMessageAt,
+      lastPreview: c.lastPreview,
+      unreadCount: c.unreadCount,
+      matchStatus: c.hasUnmatched || !isConnected ? "unmatched" : "matched",
+      inquiryId: c.inquiryId,
+      inquiryName: c.inquiryId ? (inquiryNames[c.inquiryId] ?? null) : null,
+      memberId: c.memberId,
+      memberName: c.memberId ? (memberNames[c.memberId] ?? null) : null,
+      linkType,
+      hasOutbound: c.hasOutbound,
+    };
+  });
 
   return { items, total, page: input.page, pageSize: input.pageSize };
 }
@@ -216,23 +259,56 @@ async function findInquiriesByPhone(normalizedPhone: string): Promise<
     }));
 }
 
+async function findMembersByPhone(normalizedPhone: string): Promise<
+  Array<{ id: string; name: string; phone: string; username: string; created_at: string }>
+> {
+  const { data, error } = await supabaseAdmin
+    .from("members")
+    .select("id, name, phone, username, created_at")
+    .not("phone", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  if (error || !data) return [];
+
+  return data
+    .filter((row) => {
+      const phone = typeof row.phone === "string" ? row.phone : "";
+      return phonesMatchForInquiry(phone, normalizedPhone);
+    })
+    .map((row) => ({
+      id: String(row.id),
+      name: typeof row.name === "string" ? row.name : "이름 없음",
+      phone: typeof row.phone === "string" ? row.phone : "",
+      username: typeof row.username === "string" ? row.username : "",
+      created_at: typeof row.created_at === "string" ? row.created_at : "",
+    }));
+}
+
 export async function getSmsThreadByPhone(phone: string): Promise<SmsThreadByPhoneResult | null> {
   const normalized = phoneKey(phone);
   if (!normalized) return null;
 
-  const [inboundRes, matchedInquiries] = await Promise.all([
+  const [inboundRes, matchedInquiries, matchedMembers] = await Promise.all([
     supabaseAdmin
       .from("inquiry_inbound_sms")
       .select(
-        "id, provider, provider_message_id, sender_phone, message, received_at, inquiry_id, match_status, match_reason, read_at, created_at",
+        "id, provider, provider_message_id, sender_phone, message, received_at, inquiry_id, member_id, match_status, match_reason, read_at, created_at",
       )
       .order("received_at", { ascending: false })
       .limit(200),
     findInquiriesByPhone(normalized),
+    findMembersByPhone(normalized),
   ]);
 
   if (inboundRes.error?.code === "42P01") {
-    return { thread: [], unreadInboundCount: 0, inquiry: matchedInquiries[0] ?? null, unmatchedInboundIds: [] };
+    return {
+      thread: [],
+      unreadInboundCount: 0,
+      inquiry: matchedInquiries[0] ?? null,
+      member: matchedMembers[0] ?? null,
+      unmatchedInboundIds: [],
+    };
   }
 
   const inboundRows = (inboundRes.data ?? []).filter((row) => {
@@ -251,6 +327,7 @@ export async function getSmsThreadByPhone(phone: string): Promise<SmsThreadByPho
   }
 
   const primaryInquiry = matchedInquiries[0] ?? null;
+  const primaryMember = matchedMembers[0] ?? null;
 
   let outbound: Array<{
     id: string;
@@ -310,7 +387,7 @@ export async function getSmsThreadByPhone(phone: string): Promise<SmsThreadByPho
   const thread = mergeSmsThreadItems({ outbound, inbound });
   const unreadInboundCount = inbound.filter((row) => !row.read_at).length;
   const unmatchedInboundIds = inbound
-    .filter((row) => row.match_status === "unmatched" && !row.inquiry_id)
+    .filter((row) => row.match_status === "unmatched" && !row.inquiry_id && !row.member_id)
     .map((row) => row.id);
 
   const linkedInquiryId = inbound.find((row) => row.inquiry_id)?.inquiry_id ?? primaryInquiry?.id ?? null;
@@ -331,7 +408,26 @@ export async function getSmsThreadByPhone(phone: string): Promise<SmsThreadByPho
     }
   }
 
-  return { thread, unreadInboundCount, inquiry, unmatchedInboundIds };
+  const linkedMemberId = inbound.find((row) => row.member_id)?.member_id ?? primaryMember?.id ?? null;
+  let member: { id: string; name: string; phone: string; username: string } | null = primaryMember;
+
+  if (linkedMemberId && (!member || member.id !== linkedMemberId)) {
+    const { data: memberRow } = await supabaseAdmin
+      .from("members")
+      .select("id, name, phone, username")
+      .eq("id", linkedMemberId)
+      .maybeSingle();
+    if (memberRow) {
+      member = {
+        id: String(memberRow.id),
+        name: typeof memberRow.name === "string" ? memberRow.name : "이름 없음",
+        phone: typeof memberRow.phone === "string" ? memberRow.phone : "",
+        username: typeof memberRow.username === "string" ? memberRow.username : "",
+      };
+    }
+  }
+
+  return { thread, unreadInboundCount, inquiry, member, unmatchedInboundIds };
 }
 
 export async function markSmsThreadReadByPhone(phone: string): Promise<{ ok: boolean; read_at?: string }> {

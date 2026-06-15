@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useAuthModal } from "@/components/auth/AuthModalProvider";
 
 const REPORT_REASONS = [
   { value: "ad_spam", label: "광고/홍보" },
@@ -16,6 +18,8 @@ type Props = {
 };
 
 export default function ReviewReportModal({ reviewId, onClose, onSuccess }: Props) {
+  const pathname = usePathname();
+  const { openAuth } = useAuthModal();
   const [selected, setSelected] = useState<string>("");
   const [otherText, setOtherText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,7 +43,8 @@ export default function ReviewReportModal({ reviewId, onClose, onSuccess }: Prop
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 401) {
-          window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+          onClose();
+          openAuth({ mode: "login", next: pathname });
           return;
         }
         alert(data?.message ?? "신고 접수에 실패했습니다.");

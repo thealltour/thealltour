@@ -73,14 +73,14 @@ export function SmsComposePanel({
 
       {!inquiryId ? (
         <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
-          <p>문의 없이 번호만으로도 발송할 수 있습니다. CS 이력은 전화번호 기준으로 저장됩니다.</p>
+          <p>문의·회원 없이 번호만으로도 발송할 수 있습니다. 연결 시 CS 이력을 문의/회원과 함께 관리할 수 있습니다.</p>
           {onRequestLink ? (
             <button
               type="button"
               onClick={onRequestLink}
               className="mt-2 rounded-lg border border-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)]"
             >
-              문의 연결 (선택)
+              연결 (선택)
             </button>
           ) : null}
         </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import HeaderQuickConsultCtas from "@/components/header/HeaderQuickConsultCtas";
 import UserMenuDropdown from "@/components/header/UserMenuDropdown";
+import GuestAuthHoverMenu from "@/components/header/GuestAuthHoverMenu";
 import { HeaderExpandSearch } from "@/components/header/HeaderExpandSearch";
 import { DesktopMegaMenu } from "@/components/header/DesktopMegaMenu";
 import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
@@ -134,26 +135,7 @@ export default function SiteHeaderUI({
                   points={memberPoints}
                 />
               ) : (
-                <>
-                  <Link
-                    className="type-small text-[var(--text-muted)] transition hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:rounded"
-                    href="/login"
-                  >
-                    로그인
-                  </Link>
-                  <span className="text-[var(--divider)]" aria-hidden>|</span>
-                  <Link
-                    className={cn(
-                      "type-small transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:rounded",
-                      activeTab === "signup"
-                        ? "font-semibold text-[var(--primary)]"
-                        : "text-[var(--text-muted)] hover:text-[var(--foreground)]",
-                    )}
-                    href="/signup"
-                  >
-                    회원가입
-                  </Link>
-                </>
+                <GuestAuthHoverMenu />
               )}
             </div>
 

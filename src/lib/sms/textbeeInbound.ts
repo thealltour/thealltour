@@ -2,7 +2,7 @@ import "server-only";
 
 import { createInboundSmsReplyNotification } from "@/lib/adminNotifications";
 import { appendInquiryActivityLog } from "@/lib/inquiries/inquiryActivityLog";
-import { matchInboundSmsToInquiry } from "@/lib/sms/matchInboundSmsToInquiry";
+import { matchInboundSms } from "@/lib/sms/matchInboundSmsToInquiry";
 import { normalizeInboundSenderPhone } from "@/lib/sms/normalizeInboundPhone";
 import { mapInboundSmsRow, truncateSmsPreview } from "@/lib/sms/inboundSmsRepository";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -38,7 +38,7 @@ export async function processTextbeeInboundWebhook(
     return { ok: true, duplicate: true };
   }
 
-  const match = await matchInboundSmsToInquiry(senderPhone);
+  const match = await matchInboundSms(senderPhone);
 
   const { data: inserted, error: insertErr } = await supabaseAdmin
     .from("inquiry_inbound_sms")
@@ -49,6 +49,7 @@ export async function processTextbeeInboundWebhook(
       message: message || "(내용 없음)",
       received_at: receivedAt,
       inquiry_id: match.inquiryId,
+      member_id: match.memberId,
       match_status: match.matchStatus,
       match_reason: match.matchReason,
       raw_payload: payload as Record<string, unknown>,

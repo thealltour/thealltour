@@ -67,7 +67,51 @@
 
 대량 발송 cron: `GET /api/cron/sms-bulk` (Vercel Cron + `CRON_SECRET`)
 
+**회원 연결:** `supabase/migrations/20260615100000_inbound_sms_member_link.sql` 적용 후, SMS 센터에서 미연결 수신 SMS를 문의 또는 `members` 회원에 연결할 수 있습니다. 동일 전화번호로 회원 가입·전화 등록 시 미연결 SMS가 자동 backfill됩니다.
+
+## 회원 세션·소셜 로그인
+
+| 변수 | 설명 |
+|------|------|
+| `MEMBER_SESSION_SECRET` | 회원 HMAC 세션 서명([`src/lib/memberSession.ts`](../src/lib/memberSession.ts)). OAuth state 서명에도 동일 키 사용. |
+| `NEXT_PUBLIC_APP_URL` | OAuth redirect base (예: `https://thealltour.com`). 미설정 시 Vercel URL 또는 `http://localhost:3000`. |
+
+### 소셜 로그인 (OAuth)
+
+| 변수 | 필수 | 설명 |
+|------|------|------|
+| `NEXT_PUBLIC_APP_URL` | 예 | OAuth Redirect URI base. 로컬 `http://localhost:3000`, 운영 `https://thealltour.com` — 콘솔 등록 URI와 **일치**해야 함 |
+| `MEMBER_SESSION_SECRET` | 예 | 회원·OAuth state HMAC 서명 |
+| `KAKAO_REST_API_KEY` | 예 (카카오) | [Kakao Developers](https://developers.kakao.com) 앱 **REST API 키** (Native 키 아님) |
+| `KAKAO_CLIENT_SECRET` | 조건부 | 콘솔 **보안 > Client Secret** 사용 ON이면 필수 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google용 | Google Cloud Console OAuth 클라이언트 |
+| `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | Naver용 | Naver Developers 애플리케이션 |
+
+**Redirect URI (각 콘솔에 등록):**
+
+- Google: `{APP_URL}/api/auth/google/callback`
+- **Kakao / 카카오싱크:** `{APP_URL}/api/auth/kakao/callback`
+- Naver: `{APP_URL}/api/auth/naver/callback`
+
+예시:
+
+- 로컬: `http://localhost:3000/api/auth/kakao/callback`
+- 운영: `https://thealltour.com/api/auth/kakao/callback`
+
+> 카카오싱크 플러그인 Redirect URI에도 **동일 경로**를 입력하세요. Supabase Auth URL이 아닌 **자체 OAuth 콜백**입니다.
+
+### 카카오 로그인 · 카카오싱크 콘솔 설정
+
+[Kakao Developers](https://developers.kakao.com) → 내 애플리케이션:
+
+1. **카카오 로그인** 활성화 ON
+2. **Redirect URI** 등록 (위 Kakao callback 2개)
+3. **플랫폼 > Web** 사이트 도메인: `http://localhost:3000`, `https://thealltour.com`
+4. **동의항목**: 닉네임(필수), 카카오계정(이메일)(권장 — 계정 병합용)
+5. Client Secret 사용 시 **보안**에서 Secret 생성 → `KAKAO_CLIENT_SECRET`에 설정
+
+**DB:** `supabase/migrations/20260614100000_member_social_auth.sql` 적용 필요.
+
 ## 기타
 
-- `MEMBER_SESSION_SECRET` — 회원 세션 JWT([`src/lib/memberSession.ts`](../src/lib/memberSession.ts)).
 - `REVALIDATE_SECRET` — on-demand revalidate API.

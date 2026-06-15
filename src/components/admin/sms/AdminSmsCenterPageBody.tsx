@@ -10,7 +10,7 @@ import type { SmsConversationSummary, InquirySmsThreadItem } from "@/types/inqui
 import { SmsConversationList } from "./SmsConversationList";
 import { SmsThreadPanel } from "./SmsThreadPanel";
 import { SmsComposePanel } from "./SmsComposePanel";
-import { LinkInquiryModal } from "./LinkInquiryModal";
+import { LinkConversationModal } from "./LinkConversationModal";
 import { SmsBulkPanel } from "./SmsBulkPanel";
 import { SmsTemplatesPanel } from "./SmsTemplatesPanel";
 
@@ -29,6 +29,7 @@ type ThreadPayload = {
   thread?: InquirySmsThreadItem[];
   unreadInboundCount?: number;
   inquiry?: { id: string; name: string; phone: string } | null;
+  member?: { id: string; name: string; phone: string; username: string } | null;
   unmatchedInboundIds?: string[];
 };
 
@@ -63,6 +64,12 @@ export function AdminSmsCenterPageBody({
   const [linkedInquiry, setLinkedInquiry] = useState<{ id: string; name: string; phone: string } | null>(
     null,
   );
+  const [linkedMember, setLinkedMember] = useState<{
+    id: string;
+    name: string;
+    phone: string;
+    username: string;
+  } | null>(null);
   const [unmatchedInboundIds, setUnmatchedInboundIds] = useState<string[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -113,6 +120,7 @@ export function AdminSmsCenterPageBody({
       setThread(data.thread ?? []);
       setUnreadInboundCount(data.unreadInboundCount ?? 0);
       setLinkedInquiry(data.inquiry ?? null);
+      setLinkedMember(data.member ?? null);
       setUnmatchedInboundIds(data.unmatchedInboundIds ?? []);
 
       if (markRead && (data.unreadInboundCount ?? 0) > 0) {
@@ -155,6 +163,7 @@ export function AdminSmsCenterPageBody({
         setThread([]);
         setUnreadInboundCount(0);
         setLinkedInquiry(null);
+        setLinkedMember(null);
         setUnmatchedInboundIds([]);
       }
       return;
@@ -286,6 +295,7 @@ export function AdminSmsCenterPageBody({
                   thread={thread}
                   unreadInboundCount={unreadInboundCount}
                   inquiry={linkedInquiry}
+                  member={linkedMember}
                   isLoading={threadLoading}
                   onRequestLink={() => setLinkModalOpen(true)}
                   onRetryFailed={(input) => void handleRetryFailed(input)}
@@ -314,10 +324,11 @@ export function AdminSmsCenterPageBody({
         {pageTab === "templates" ? <SmsTemplatesPanel /> : null}
       </main>
 
-      <LinkInquiryModal
+      <LinkConversationModal
         isOpen={linkModalOpen}
         defaultQuery={selectedPhone ?? ""}
         inboundSmsIds={unmatchedInboundIds}
+        defaultTab="member"
         onClose={() => setLinkModalOpen(false)}
         onLinked={() => void refreshAll()}
       />

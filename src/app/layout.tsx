@@ -11,6 +11,7 @@ import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 import GlobalSiteFooter from "@/components/site-chrome/GlobalSiteFooter";
 import KakaoFloatingButton from "@/components/site-chrome/KakaoFloatingButton";
 import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
+import AuthProvidersShell from "@/components/auth/AuthProvidersShell";
 import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 
@@ -127,9 +128,11 @@ export default function RootLayout({
         <FirstTouchInit />
         {process.env.NODE_ENV === "development" ? <WebVitalsReporter /> : null}
         <ConsultModalProvider>
-          <div className="flex-1">{children}</div>
-          <KakaoFloatingButton />
-          <GlobalSiteFooter />
+          <AuthProvidersShell>
+            <div className="flex-1">{children}</div>
+            <KakaoFloatingButton />
+            <GlobalSiteFooter />
+          </AuthProvidersShell>
         </ConsultModalProvider>
       </body>
     </html>

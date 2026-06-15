@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { X, LogIn, LogOut } from "lucide-react";
+import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import HeaderProductSearch from "@/components/header/HeaderProductSearch";
 import { MobileHeaderAccordion } from "./MobileHeaderAccordion";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
@@ -30,6 +31,7 @@ export function MobileHeaderDrawer({
   searchQuery,
 }: MobileHeaderDrawerProps) {
   const pathname = usePathname();
+  const { openAuth } = useAuthModal();
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -149,17 +151,32 @@ export function MobileHeaderDrawer({
                 </button>
               </div>
             ) : (
-              <Link
-                href="/login"
-                onClick={onClose}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-4 py-3 type-small font-semibold text-[var(--on-primary)] active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
-                  solidButtonShadowClasses,
-                )}
-              >
-                <LogIn className="h-4 w-4" aria-hidden />
-                로그인
-              </Link>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    openAuth({ mode: "login", next: pathname });
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-[var(--primary)] px-4 py-3 type-small font-semibold text-[var(--on-primary)] active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+                    solidButtonShadowClasses,
+                  )}
+                >
+                  <LogIn className="h-4 w-4" aria-hidden />
+                  로그인
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    openAuth({ mode: "signup", next: pathname });
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-transparent px-4 py-3 type-small font-semibold text-[var(--foreground)] active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                >
+                  회원가입
+                </button>
+              </div>
             )}
           </div>
         </div>

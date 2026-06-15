@@ -10,6 +10,7 @@ export const ADMIN_PRODUCTS_VIEW = {
   FEATURED: "featured",
   HOME_REGION_CARDS: "home-region-cards",
   HOME_THEME_CARDS: "home-theme-cards",
+  HOME_GOLF_TOUR_CARDS: "home-golf-tour-cards",
 } as const;
 
 export type AdminProductsViewKey =
@@ -61,6 +62,7 @@ export const PRODUCT_LABEL_TO_VIEW: Record<string, AdminProductsViewKey> = {
   "메인 추천상품 관리": ADMIN_PRODUCTS_VIEW.FEATURED,
   "메인 지역카드": ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS,
   "메인 테마카드": ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS,
+  "메인 골프투어 상품": ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS,
   "상품 등록": ADMIN_PRODUCTS_VIEW.CREATE,
   "상품 목록": ADMIN_PRODUCTS_VIEW.LIST,
 };
@@ -71,6 +73,7 @@ export const PRODUCT_VIEW_TO_LABEL: Record<string, string> = {
   [ADMIN_PRODUCTS_VIEW.FEATURED]: "메인 추천상품 관리",
   [ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS]: "메인 지역카드",
   [ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS]: "메인 테마카드",
+  [ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS]: "메인 골프투어 상품",
   [ADMIN_PRODUCTS_VIEW.CREATE]: "상품 등록",
   [ADMIN_PRODUCTS_VIEW.LIST]: "상품 목록",
 };

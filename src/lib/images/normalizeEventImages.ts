@@ -7,6 +7,8 @@
 
 import { getEventImageUrl, type EventImageLike } from "./getEventImageUrl";
 
+export const MAX_ITINERARY_EVENT_IMAGES = 10;
+
 export type EventImageInput = {
   url: string;
   alt?: string;
@@ -76,5 +78,5 @@ export function normalizeEventImages(
     if (typeof item.isLogoCandidate === "boolean") out.isLogoCandidate = item.isLogoCandidate;
     if (typeof item.isLowResolution === "boolean") out.isLowResolution = item.isLowResolution;
     return out;
-  });
+  }).slice(0, MAX_ITINERARY_EVENT_IMAGES);
 }

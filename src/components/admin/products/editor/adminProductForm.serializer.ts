@@ -204,13 +204,21 @@ export function serializeAdminProductForm(
       }
     })(),
     itinerary_media_json: (() => {
-      const media = form.itinerary_media_json;
+      const media = { ...form.itinerary_media_json };
+      serialized.v2Days.forEach((day) => {
+        const coverUrl = day.coverImageUrl?.trim();
+        if (coverUrl) {
+          media[String(day.day)] = coverUrl;
+        }
+      });
       const dayCount =
-        serialized.structuredDays.length > 0
-          ? serialized.structuredDays.length
-          : form.itinerary_days_json.length > 0
-            ? form.itinerary_days_json.length
-            : parseDetailedSchedule(form.detailed_schedule).length;
+        serialized.v2Days.length > 0
+          ? serialized.v2Days.length
+          : serialized.structuredDays.length > 0
+            ? serialized.structuredDays.length
+            : form.itinerary_days_json.length > 0
+              ? form.itinerary_days_json.length
+              : parseDetailedSchedule(form.detailed_schedule).length;
       const cleaned = Object.fromEntries(
         Object.entries(media).filter(([key, v]) => {
           if (typeof v !== "string" || !v.trim()) return false;

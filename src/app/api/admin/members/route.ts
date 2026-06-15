@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { mapMemberListRow } from "@/lib/admin/mapMemberListRow";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(request: NextRequest) {
@@ -11,7 +12,9 @@ export async function GET(request: NextRequest) {
 
   let query = supabaseAdmin
     .from("members")
-    .select("id,username,name,phone,email,birth_date,gender,agree_email,point_balance,point_pending,points,created_at")
+    .select(
+      `id,username,name,phone,email,birth_date,gender,agree_email,point_balance,point_pending,points,created_at,signup_method,password_hash,member_auth_providers(provider)`,
+    )
     .order("created_at", { ascending: false, nullsFirst: false });
 
   if (search) {
@@ -24,5 +27,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: "회원 목록 조회에 실패했습니다." }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? []);
+  const items = (data ?? []).map((row) => mapMemberListRow(row));
+  return NextResponse.json(items);
 }

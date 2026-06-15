@@ -15,6 +15,19 @@ export function isGolfTourType(tourType: string | null | undefined): boolean {
   return tourType?.trim() === GOLF_TOUR_TYPE;
 }
 
+const GOLF_PRODUCT_LINE_PATTERN = /골프|golf|park.?golf|파크골프/i;
+
+/** 골프 상품군(product_line) taxonomy 여부 — 관리자 골프투어 상품 검색 필터용 */
+export function isGolfProductLineTaxonomy(item: {
+  name?: string | null;
+  slug?: string | null;
+}): boolean {
+  const name = (item.name ?? "").trim();
+  const slug = (item.slug ?? "").trim();
+  if (GOLF_PRESET_CATEGORIES.some((c) => c === name)) return true;
+  return GOLF_PRODUCT_LINE_PATTERN.test(name) || GOLF_PRODUCT_LINE_PATTERN.test(slug);
+}
+
 export function buildGolfProductsHref(opts?: { q?: string; region?: string }): string {
   return buildProductsFilterHref({
     tourType: GOLF_TOUR_TYPE,

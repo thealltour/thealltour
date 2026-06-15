@@ -106,14 +106,29 @@ export function collectProductImageEntries(product: Product): ProductImageEntry[
   if (product.itinerary_v2_json?.days) {
     product.itinerary_v2_json.days.forEach((day) => {
       const dayNum = day.day;
-      const cover = t(day.coverImageUrl);
-      if (cover) {
-        addIfNew(map, {
-          url: cover,
-          source: "v2-day-cover",
-          index: seq++,
-          dayNumber: dayNum,
+      const coverImages = day.coverImages ?? [];
+      if (coverImages.length > 0) {
+        coverImages.forEach((img, imgIdx) => {
+          const url = getEventImageUrl(img);
+          if (!url) return;
+          addIfNew(map, {
+            url,
+            source: "v2-day-cover",
+            index: seq++,
+            dayNumber: dayNum,
+            imageIndexInEvent: imgIdx + 1,
+          });
         });
+      } else {
+        const cover = t(day.coverImageUrl);
+        if (cover) {
+          addIfNew(map, {
+            url: cover,
+            source: "v2-day-cover",
+            index: seq++,
+            dayNumber: dayNum,
+          });
+        }
       }
       day.events?.forEach((ev, eventIndex) => {
         const imgs = ev.images ?? [];

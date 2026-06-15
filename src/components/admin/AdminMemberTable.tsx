@@ -5,19 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import AdminMemberDetailDrawer from "@/components/admin/members/AdminMemberDetailDrawer";
+import { MemberAuthProviderBadges } from "@/components/admin/members/MemberAuthProviderBadges";
+import type { AdminMemberListItem } from "@/lib/admin/mapMemberListRow";
+import { formatMemberAuthProvidersLabel } from "@/lib/admin/mapMemberListRow";
 
-type MemberItem = {
-  id: string;
-  username: string;
-  name: string;
-  phone: string;
-  email: string;
-  birth_date: string;
-  gender: "male" | "female" | "other";
-  agree_email: boolean;
-  points: number;
-  created_at: string | null;
-};
+type MemberItem = AdminMemberListItem;
 
 type SortKey =
   | "username"
@@ -49,6 +41,7 @@ function buildMembersCsv(rows: MemberItem[]) {
     "이름",
     "연락처",
     "이메일",
+    "연결된 계정",
     "생년월일",
     "포인트",
     "성별",
@@ -61,6 +54,7 @@ function buildMembersCsv(rows: MemberItem[]) {
       item.name,
       item.phone,
       item.email,
+      formatMemberAuthProvidersLabel(item),
       item.birth_date,
       item.points,
       item.gender,
@@ -308,18 +302,43 @@ export default function AdminMemberTable() {
       {errorMessage ? <p className="px-4 text-sm text-[var(--danger)]">{errorMessage}</p> : null}
 
       <div className="overflow-x-auto">
-        <table className="min-w-full table-fixed border-collapse text-sm">
+        <table className="min-w-[960px] w-full border-collapse text-sm">
           <thead className="bg-[var(--primary-soft)] text-[var(--primary)]">
             <tr>
-              <th className="w-[40%] px-4 py-3 text-left font-semibold">
+              <th className="min-w-[88px] px-3 py-3 text-left font-semibold">
                 <SortButton
-                  label="회원"
+                  label="이름"
                   isActive={sortKey === "name"}
                   direction={sortDirection}
                   onClick={() => handleSort("name")}
                 />
               </th>
-              <th className="w-[15%] px-4 py-3 text-left font-semibold">
+              <th className="min-w-[120px] px-3 py-3 text-left font-semibold">
+                <SortButton
+                  label="아이디"
+                  isActive={sortKey === "username"}
+                  direction={sortDirection}
+                  onClick={() => handleSort("username")}
+                />
+              </th>
+              <th className="min-w-[160px] px-3 py-3 text-left font-semibold">
+                <SortButton
+                  label="이메일"
+                  isActive={sortKey === "email"}
+                  direction={sortDirection}
+                  onClick={() => handleSort("email")}
+                />
+              </th>
+              <th className="min-w-[112px] px-3 py-3 text-left font-semibold">
+                <SortButton
+                  label="전화번호"
+                  isActive={sortKey === "phone"}
+                  direction={sortDirection}
+                  onClick={() => handleSort("phone")}
+                />
+              </th>
+              <th className="min-w-[108px] px-3 py-3 text-left font-semibold">연결된 계정</th>
+              <th className="min-w-[88px] px-3 py-3 text-left font-semibold">
                 <SortButton
                   label="수신동의"
                   isActive={sortKey === "agree_email"}
@@ -327,7 +346,7 @@ export default function AdminMemberTable() {
                   onClick={() => handleSort("agree_email")}
                 />
               </th>
-              <th className="w-[15%] px-4 py-3 text-right font-semibold">
+              <th className="min-w-[72px] px-3 py-3 text-right font-semibold">
                 <SortButton
                   label="포인트"
                   isActive={sortKey === "points"}
@@ -335,7 +354,7 @@ export default function AdminMemberTable() {
                   onClick={() => handleSort("points")}
                 />
               </th>
-              <th className="w-[20%] px-4 py-3 text-left font-semibold">
+              <th className="min-w-[96px] px-3 py-3 text-left font-semibold">
                 <SortButton
                   label="가입일"
                   isActive={sortKey === "created_at"}
@@ -343,13 +362,13 @@ export default function AdminMemberTable() {
                   onClick={() => handleSort("created_at")}
                 />
               </th>
-              <th className="w-[10%] px-4 py-3 text-left font-semibold">작업</th>
+              <th className="min-w-[56px] px-3 py-3 text-left font-semibold">작업</th>
             </tr>
           </thead>
           <tbody>
             {pagedMembers.length === 0 ? (
               <tr className="border-t border-[var(--divider)]">
-                <td colSpan={5} className="px-4 py-6 text-center text-[var(--text-muted)]">
+                <td colSpan={9} className="px-4 py-6 text-center text-[var(--text-muted)]">
                   회원 데이터가 없습니다.
                 </td>
               </tr>
@@ -360,15 +379,25 @@ export default function AdminMemberTable() {
                   className="cursor-pointer border-t border-[var(--divider)] transition-colors hover:bg-[var(--surface-muted)]"
                   onClick={() => openMemberDrawer(item.id)}
                 >
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-[var(--text-primary)]">{item.name || "-"}</span>
-                      <span className="text-xs text-[var(--text-secondary)]">{item.username}</span>
-                      <span className="text-xs text-[var(--text-muted)]">{item.email || "-"}</span>
-                      <span className="text-xs text-[var(--text-muted)]">{item.phone || "-"}</span>
-                    </div>
+                  <td className="max-w-[120px] truncate px-3 py-3 font-medium text-[var(--text-primary)]">
+                    {item.name || "-"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="max-w-[160px] truncate px-3 py-3 text-[var(--text-secondary)]">
+                    {item.username || "-"}
+                  </td>
+                  <td className="max-w-[200px] truncate px-3 py-3 text-[var(--text-secondary)]">
+                    {item.email || "-"}
+                  </td>
+                  <td className="max-w-[120px] truncate px-3 py-3 text-[var(--text-secondary)]">
+                    {item.phone || "-"}
+                  </td>
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <MemberAuthProviderBadges
+                      hasLocalLogin={item.has_local_login}
+                      authProviders={item.auth_providers}
+                    />
+                  </td>
+                  <td className="px-3 py-3">
                     <Badge
                       variant={item.agree_email ? "success" : "neutral"}
                       className="px-2 py-0.5 text-xs font-semibold"
@@ -376,14 +405,14 @@ export default function AdminMemberTable() {
                       {item.agree_email ? "이메일 동의" : "미동의"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right font-medium tabular-nums text-[var(--text-primary)]">
+                  <td className="px-3 py-3 text-right font-medium tabular-nums text-[var(--text-primary)]">
                     {item.points?.toLocaleString?.() ?? 0}
                   </td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  <td className="px-3 py-3 text-[var(--text-secondary)]">
                     {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
                   </td>
                   <td
-                    className="px-4 py-3"
+                    className="px-3 py-3"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Button

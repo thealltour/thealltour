@@ -17,6 +17,7 @@ import {
 import type { ProductDetailStatusTag } from "@/lib/products/productDetailCta";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { TimelineEventCard } from "@/components/products/timeline/TimelineEventCard";
+import { EventMediaSection } from "@/components/products/timeline/EventMediaSection";
 type TimelineEventRowDesktopProps = {
   ev: TimelineEvent;
   i: number;
@@ -161,6 +162,10 @@ export type InteractiveTimelineV2Props = {
   selectedDayIndex?: number;
   selectedEventIndex?: number;
   onEventSelect?: (dayIndex: number, eventIndex: number) => void;
+  /** 관리자 편집기 등 임베드 시 선택 연동만 하고 페이지 스크롤은 하지 않음 */
+  disableAutoScroll?: boolean;
+  /** 고정 출발일 상품 CTA 문구 분기 */
+  ctaLabelOptions?: import("@/lib/products/getProductCtaLabel").ProductCtaLabelOptions;
   /** PR20: 일정 하단 CTA 및 analytics */
   productId?: string;
   status?: ProductDetailStatusTag;
@@ -176,7 +181,24 @@ function CoverImage({
   day: TimelineDay;
   fallbackImageUrl: string | null;
 }) {
-  const raw = day.imageUrl?.trim() || fallbackImageUrl?.trim() || "";
+  const galleryImages =
+    Array.isArray(day.coverImages) && day.coverImages.length > 0
+      ? day.coverImages.filter((i) => i?.url?.trim())
+      : [];
+  if (galleryImages.length >= 2) {
+    return (
+      <div className="w-full overflow-hidden rounded-2xl bg-[var(--surface-muted)] shadow-lg">
+        <EventMediaSection
+          images={galleryImages}
+          normalizeUrl={normalizeProductImageUrl}
+          eventTitle={day.dateText ? `Day ${day.day} - ${day.dateText}` : `Day ${day.day}`}
+        />
+      </div>
+    );
+  }
+
+  const singleFromGallery = galleryImages[0]?.url?.trim();
+  const raw = singleFromGallery || day.imageUrl?.trim() || fallbackImageUrl?.trim() || "";
   const src = raw ? normalizeProductImageUrl(raw) : "";
 
   if (src) {
@@ -212,6 +234,8 @@ export function InteractiveTimelineV2({
   selectedDayIndex,
   selectedEventIndex,
   onEventSelect,
+  disableAutoScroll = false,
+  ctaLabelOptions,
   productId,
   status,
   productTitle,
@@ -266,8 +290,9 @@ export function InteractiveTimelineV2({
     };
   }, [activeIndex, days.length]);
 
-  // PR15-1 Step2: 미리보기 Day 클릭 시 activeIndex 동기화 + 상세 일정 상단으로 스크롤
+  // PR15-1 Step2: 미리보기 Day 클릭 시 activeIndex 동기화 (+ 상세 페이지에서만 상단 스크롤)
   useEffect(() => {
+    if (disableAutoScroll) return;
     if (selectedDayIndex == null) return;
     if (selectedDayIndex < 0 || selectedDayIndex >= days.length) return;
     setActiveIndex(selectedDayIndex);
@@ -275,10 +300,11 @@ export function InteractiveTimelineV2({
     requestAnimationFrame(() => {
       topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }, [selectedDayIndex, days.length]);
+  }, [selectedDayIndex, days.length, disableAutoScroll]);
 
-  // 선택된 이벤트 카드로 스크롤 (이벤트 선택 시)
+  // 선택된 이벤트 카드로 스크롤 (상세 페이지 전용; 관리자 편집기에서는 비활성)
   useEffect(() => {
+    if (disableAutoScroll) return;
     if (
       selectedDayIndex == null ||
       selectedEventIndex == null ||
@@ -289,7 +315,18 @@ export function InteractiveTimelineV2({
       selectedCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 100);
     return () => clearTimeout(t);
-  }, [selectedDayIndex, selectedEventIndex, activeIndex]);
+  }, [selectedDayIndex, selectedEventIndex, activeIndex, disableAutoScroll]);
+
+  // 관리자 편집기: Day/이벤트 선택 시 activeIndex만 동기화 (스크롤 없음)
+  useEffect(() => {
+    if (!disableAutoScroll) return;
+    if (selectedDayIndex == null) return;
+    if (selectedDayIndex < 0 || selectedDayIndex >= days.length) return;
+    if (selectedDayIndex !== activeIndex) {
+      setActiveIndex(selectedDayIndex);
+      setDayRenderKey((k) => k + 1);
+    }
+  }, [selectedDayIndex, selectedEventIndex, days.length, activeIndex, disableAutoScroll]);
 
   const handleDayTab = (index: number, scrollToSection = false, source: "sticky_nav" | "tabs" = "tabs") => {
     if (index === activeIndex) return;
@@ -564,6 +601,7 @@ export function InteractiveTimelineV2({
                 status={status}
                 kakaoHref={kakaoHref}
                 section="itinerary"
+                ctaLabelOptions={ctaLabelOptions}
                 copy="이 일정이 마음에 드시나요?"
                 subCopy="출발 가능 여부·맞춤 견적은 상담 후 안내해 드립니다."
               />

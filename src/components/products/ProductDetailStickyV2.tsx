@@ -17,6 +17,10 @@ import {
 } from "@/lib/products/productCardSeasonalPriceDisplay";
 import { STICKY_SEASONAL_VOLATILITY_HINT } from "@/lib/products/detailSeasonalPriceDisplay";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
+import {
+  buildProductStickyMetaLine,
+  hasProductFixedDeparture,
+} from "@/lib/products/productFixedDeparture";
 
 export type ProductDetailStickyV2Status =
   | "AVAILABLE"
@@ -128,6 +132,19 @@ export function ProductDetailStickyV2Desktop({
     () => getStickyPriceParts(priceFormatted, quoteSummary?.total, product),
     [priceFormatted, quoteSummary?.total, product],
   );
+  const fixedDeparture = hasProductFixedDeparture(product);
+  const ctaLabelOptions = useMemo(
+    () => (fixedDeparture ? { fixedDeparture: true as const } : undefined),
+    [fixedDeparture],
+  );
+  const stickyMetaLine = useMemo(
+    () =>
+      buildProductStickyMetaLine(product, {
+        seasonalMode: stickyPrice.mode === "seasonal",
+        includePriceMeta: stickyPrice.mode !== "seasonal",
+      }),
+    [product, stickyPrice.mode],
+  );
 
   /** PR23: 데스크톱 sticky 헤더 충돌 방지 — SiteHeader(유틸바 40px + 메인 바 64px) + 여백 */
   const desktopStickyTop = 120;
@@ -164,15 +181,9 @@ export function ProductDetailStickyV2Desktop({
             )}
             {product && (
               <div className="mt-2 space-y-0.5">
-                {(() => {
-                  const metaLine =
-                    stickyPrice.mode === "seasonal"
-                      ? [product.duration].filter(Boolean).join(" · ")
-                      : [product.duration, product.price_meta || "1인 기준"].filter(Boolean).join(" · ");
-                  return metaLine ? (
-                    <p className="text-xs text-slate-500">{metaLine}</p>
-                  ) : null;
-                })()}
+                {stickyMetaLine ? (
+                  <p className="text-xs text-slate-500">{stickyMetaLine}</p>
+                ) : null}
                 {typeof product.fuel_included === "boolean" && (
                   <p className="text-xs text-slate-500">
                     {product.fuel_included ? "유류할증료 포함" : "유류할증료 별도"}
@@ -203,7 +214,8 @@ export function ProductDetailStickyV2Desktop({
               scrollToOptions={scrollToOptions}
               isSoldOut={isSoldOut}
               onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
-              primaryLabel={getProductCtaLabel(status)}
+              primaryLabel={getProductCtaLabel(status, ctaLabelOptions)}
+              ctaLabelOptions={ctaLabelOptions}
               helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
             />
           </div>
@@ -268,6 +280,19 @@ export function ProductDetailStickyV2Mobile({
   const stickyPrice = useMemo(
     () => getStickyPriceParts(priceFormatted, quoteSummary?.total, product),
     [priceFormatted, quoteSummary?.total, product],
+  );
+  const fixedDeparture = hasProductFixedDeparture(product);
+  const ctaLabelOptions = useMemo(
+    () => (fixedDeparture ? { fixedDeparture: true as const } : undefined),
+    [fixedDeparture],
+  );
+  const stickyMetaLine = useMemo(
+    () =>
+      buildProductStickyMetaLine(product, {
+        seasonalMode: stickyPrice.mode === "seasonal",
+        includePriceMeta: stickyPrice.mode !== "seasonal",
+      }),
+    [product, stickyPrice.mode],
   );
 
   useEffect(() => {
@@ -354,8 +379,13 @@ export function ProductDetailStickyV2Mobile({
           section="sticky"
           priceFormatted={stickyPrice.digits}
           stickyPricePrefix={stickyPrice.prefix}
-          stickyPriceSubLabel={stickyPrice.subLabel}
+          stickyPriceSubLabel={
+            stickyMetaLine ||
+            (stickyPrice.mode === "seasonal" ? product?.duration?.trim() : undefined) ||
+            stickyPrice.subLabel
+          }
           stickyPriceSecondLine={stickyPrice.seasonalSecondLine}
+          ctaLabelOptions={ctaLabelOptions}
           requiredGroupsMissing={requiredGroupsMissing}
           scrollToOptions={scrollToOptions}
           isSoldOut={isSoldOut}

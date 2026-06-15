@@ -9,6 +9,7 @@ import {
   MIN_RELATED_SCORE,
 } from "@/lib/products/relatedProductScoring";
 import { normalizeEventImages as normalizeEventImagesLib } from "@/lib/images/normalizeEventImages";
+import { normalizeDayCoverImages } from "@/lib/images/normalizeDayCoverImages";
 import { dedupeEventImages } from "@/lib/images/dedupeEventImages";
 import type {
   Product,
@@ -423,11 +424,16 @@ function normalizeItineraryV2(raw: unknown): ItineraryV2 | undefined {
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
+    const cover = normalizeDayCoverImages({
+      coverImageUrl: typeof d.coverImageUrl === "string" ? d.coverImageUrl : undefined,
+      coverImages: Array.isArray(d.coverImages) ? (d.coverImages as ItineraryV2Event["images"]) : undefined,
+    });
     days.push({
       day,
       dateText: typeof d.dateText === "string" && d.dateText.trim() ? d.dateText.trim() : undefined,
       title: typeof d.title === "string" && d.title.trim() ? d.title.trim() : undefined,
-      coverImageUrl: typeof d.coverImageUrl === "string" && d.coverImageUrl.trim() ? d.coverImageUrl.trim() : undefined,
+      coverImageUrl: cover.coverImageUrl,
+      coverImages: cover.coverImages.length > 0 ? cover.coverImages : undefined,
       events,
     });
   }

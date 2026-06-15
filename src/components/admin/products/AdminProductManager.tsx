@@ -70,6 +70,7 @@ import { getProductDiffSummary } from "@/lib/adminProductDiff";
 import AdminHomeCuratedManager from "@/components/admin/products/AdminHomeCuratedManager";
 import AdminHomeRegionCardsManager from "@/components/admin/products/AdminHomeRegionCardsManager";
 import AdminHomeThemeCardsManager from "@/components/admin/products/AdminHomeThemeCardsManager";
+import AdminHomeGolfTourCardsManager from "@/components/admin/products/AdminHomeGolfTourCardsManager";
 import AdminProductsCollectionCampaignsManager from "@/components/admin/products/AdminProductsCollectionCampaignsManager";
 import AdminProductTaxonomyView from "@/components/admin/products/AdminProductTaxonomyView";
 import AdminProductListSection from "@/components/admin/products/AdminProductListSection";
@@ -285,6 +286,7 @@ export default function AdminProductManager() {
   const isFeaturedView = viewParam === ADMIN_PRODUCTS_VIEW.FEATURED;
   const isHomeRegionCardsView = viewParam === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS;
   const isHomeThemeCardsView = viewParam === ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS;
+  const isHomeGolfTourCardsView = viewParam === ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS;
   const isListView = !viewParam || viewParam === ADMIN_PRODUCTS_VIEW.LIST;
   const [form, setForm] = useState<ProductFormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1309,7 +1311,8 @@ export default function AdminProductManager() {
     (isCreateView || Boolean(editingId)) &&
     !isFeaturedView &&
     !isHomeRegionCardsView &&
-    !isHomeThemeCardsView;
+    !isHomeThemeCardsView &&
+    !isHomeGolfTourCardsView;
 
   useEditorKeyboardShortcuts({
     enabled: editorShortcutsEnabled,
@@ -1640,7 +1643,9 @@ export default function AdminProductManager() {
 
       {isHomeThemeCardsView && <AdminHomeThemeCardsManager />}
 
-      {(isCreateView || editingId) && !isFeaturedView && !isHomeRegionCardsView && !isHomeThemeCardsView ? (
+      {isHomeGolfTourCardsView && <AdminHomeGolfTourCardsManager />}
+
+      {(isCreateView || editingId) && !isFeaturedView && !isHomeRegionCardsView && !isHomeThemeCardsView && !isHomeGolfTourCardsView ? (
         <AdminProductEditorView>
         <>
         {showShortcutTip ? (
@@ -2152,7 +2157,7 @@ export default function AdminProductManager() {
         </AdminProductEditorView>
       ) : null}
 
-      {isListView && !editingId && !isFeaturedView && !isHomeRegionCardsView && !isHomeThemeCardsView ? (
+      {isListView && !editingId && !isFeaturedView && !isHomeRegionCardsView && !isHomeThemeCardsView && !isHomeGolfTourCardsView ? (
         <AdminProductListSection
           showToast={showToast}
           confirm={confirm}

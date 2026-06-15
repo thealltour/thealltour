@@ -134,7 +134,10 @@ export type ItineraryV2Day = {
   day: number;
   dateText?: string;
   title?: string;
+  /** 하위 호환: 대표 1장 (= coverImages 대표) */
   coverImageUrl?: string;
+  /** Day 커버 갤러리 (최대 10장) */
+  coverImages?: ItineraryEventImage[];
   events: ItineraryV2Event[];
 };
 

@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { uploadProductImageFiles } from "@/lib/admin/uploadProductImages";
+import { deleteStorageUrlsClient } from "@/lib/admin/deleteStorageUrlsClient";
+import { MAX_ITINERARY_EVENT_IMAGES } from "@/lib/images/normalizeEventImages";
 import { parseUrls, dedupeUrls, isAllowedUrl, normalizeUrl } from "./urlParser";
 import { normalizeImageUrl } from "@/lib/images/normalizeImageUrl";
 import { getEventImageUrl } from "@/lib/images/getEventImageUrl";
@@ -50,6 +54,11 @@ export type EventImagesEditorProps = {
   showWarnings?: boolean;
   /** 모두투어 1차 검수: 삭제 예정·미할당·복구·휴리스틱 배지·필터 */
   modetourImageReviewMode?: boolean;
+  maxCount?: number;
+  /** false면 로컬 파일 업로드 영역 숨김 */
+  enableFileUpload?: boolean;
+  /** false면 삭제 시 스토리지 purge API 호출 안 함 */
+  purgeStorageOnRemove?: boolean;
 };
 
 type PasteMode = "url" | "html";
@@ -73,7 +82,14 @@ export function EventImagesEditor({
   issuesByUrl,
   showWarnings = true,
   modetourImageReviewMode = false,
+  maxCount = MAX_ITINERARY_EVENT_IMAGES,
+  enableFileUpload = true,
+  purgeStorageOnRemove = true,
 }: EventImagesEditorProps) {
+  const { showToast } = useAdminToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [reviewFilter, setReviewFilter] = useState<"all" | "deleted" | "thumbnail">("all");
   const [pasteInput, setPasteInput] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
@@ -90,6 +106,69 @@ export function EventImagesEditor({
   const [hoverPosition, setHoverPosition] = useState<"before" | "after" | null>(null);
 
   const sortedItems = useMemo(() => sortByOrder(value), [value]);
+  const activeCount = useMemo(
+    () => sortedItems.filter((i) => i.status !== "deleted").length,
+    [sortedItems],
+  );
+
+  const appendUrls = (urls: string[]) => {
+    if (urls.length === 0) return;
+    const existingSet = new Set(value.map((i) => getEventImageUrl(i)));
+    const toAdd = urls.filter((u) => !existingSet.has(normalizeImageUrl(u)));
+    if (toAdd.length === 0) return;
+    const remain = maxCount - activeCount;
+    if (remain <= 0) {
+      showToast("warning", `이미지는 최대 ${maxCount}장까지 등록할 수 있습니다.`);
+      return;
+    }
+    const limited = toAdd.slice(0, remain);
+    if (limited.length < toAdd.length) {
+      showToast("warning", `최대 ${maxCount}장까지만 추가됩니다.`);
+    }
+    const maxOrder = value.length === 0 ? -1 : Math.max(...value.map((i) => i.sortOrder ?? 0));
+    const hasCover = value.some((i) => i.isCover && i.status !== "deleted");
+    const nextItems: EventImageItem[] = [
+      ...value,
+      ...limited.map((url, idx) => ({
+        url,
+        sortOrder: maxOrder + 1 + idx,
+        isCover: !hasCover && idx === 0,
+      })),
+    ];
+    onChange(normalizeEventImages(nextItems));
+  };
+
+  async function uploadFiles(files: FileList | File[]) {
+    if (activeCount >= maxCount) {
+      showToast("warning", `이미지는 최대 ${maxCount}장까지 등록할 수 있습니다.`);
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const { urls, skippedInvalidType, skippedOverLimit } = await uploadProductImageFiles(files, {
+        maxCount,
+        existingCount: activeCount,
+      });
+      if (skippedInvalidType > 0) {
+        showToast("warning", "JPG/PNG/WebP 파일만 업로드할 수 있습니다.");
+      }
+      if (skippedOverLimit > 0) {
+        showToast("warning", `최대 ${maxCount}장까지만 업로드됩니다.`);
+      }
+      if (urls.length === 0) {
+        if (skippedInvalidType === 0 && skippedOverLimit === 0) {
+          showToast("warning", "업로드된 이미지가 없습니다.");
+        }
+        return;
+      }
+      appendUrls(urls);
+      showToast("success", `${urls.length}장 업로드 완료`);
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   const markImageDeleted = (originalIndex: number) => {
     const next = sortedItems.map((it, i) =>
@@ -142,17 +221,7 @@ export function EventImagesEditor({
       if (invalid.length === 0) setPasteInput("");
       return;
     }
-    const maxOrder = value.length === 0 ? -1 : Math.max(...value.map((i) => i.sortOrder ?? 0));
-    const hasCover = value.some((i) => i.isCover);
-    const nextItems: EventImageItem[] = [
-      ...value,
-      ...toAdd.map((url, idx) => ({
-        url,
-        sortOrder: maxOrder + 1 + idx,
-        isCover: !hasCover && idx === 0,
-      })),
-    ];
-    onChange(normalizeEventImages(nextItems));
+    appendUrls(toAdd);
     setPasteInput("");
     setParseError(null);
   };
@@ -185,17 +254,7 @@ export function EventImagesEditor({
     const existingSet = new Set(value.map((i) => getEventImageUrl(i)));
     const toAdd = [...selectedExtracted].filter((u) => !existingSet.has(normalizeImageUrl(u)));
     if (toAdd.length === 0) return;
-    const maxOrder = value.length === 0 ? -1 : Math.max(...value.map((i) => i.sortOrder ?? 0));
-    const hasCover = value.some((i) => i.isCover);
-    const nextItems: EventImageItem[] = [
-      ...value,
-      ...toAdd.map((url, idx) => ({
-        url,
-        sortOrder: maxOrder + 1 + idx,
-        isCover: !hasCover && idx === 0,
-      })),
-    ];
-    onChange(normalizeEventImages(nextItems));
+    appendUrls(toAdd);
     setExtractedUrls([]);
     setSelectedExtracted(new Set());
   };
@@ -203,11 +262,24 @@ export function EventImagesEditor({
   const removeAt = (index: number) => {
     const item = sortedItems[index];
     if (!item) return;
-    if (dndContext?.enabled && dndContext?.onReturnImageToPool) {
-      dndContext.onReturnImageToPool(item.url);
-    }
-    const next = value.filter((i) => getEventImageUrl(i) !== getEventImageUrl(item));
-    onChange(normalizeEventImages(next));
+    void (async () => {
+      if (purgeStorageOnRemove && item.url?.trim()) {
+        try {
+          const r = await deleteStorageUrlsClient([item.url]);
+          if (r.errors.length > 0) {
+            showToast("warning", r.errors.join(" "));
+          }
+        } catch (e) {
+          showToast("error", e instanceof Error ? e.message : "스토리지에서 이미지 삭제에 실패했습니다.");
+          return;
+        }
+      }
+      if (dndContext?.enabled && dndContext?.onReturnImageToPool) {
+        dndContext.onReturnImageToPool(item.url);
+      }
+      const next = value.filter((i) => getEventImageUrl(i) !== getEventImageUrl(item));
+      onChange(normalizeEventImages(next));
+    })();
   };
 
   /** Cover 지정: index번째(sorted 기준)만 isCover true, 나머지 false → 정규화 */
@@ -379,6 +451,53 @@ export function EventImagesEditor({
       onDragLeave={handleDragLeaveContainer}
       onDrop={handleContainerDrop}
     >
+      {!isCompact && enableFileUpload && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDraggingFiles(true);
+          }}
+          onDragLeave={() => setIsDraggingFiles(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDraggingFiles(false);
+            void uploadFiles(e.dataTransfer.files);
+          }}
+          className={`rounded-lg border-2 border-dashed p-3 transition ${
+            isDraggingFiles
+              ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+              : "border-[var(--border)] bg-[var(--surface-muted)]/50"
+          }`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition ${
+                isUploading
+                  ? "cursor-not-allowed border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+              }`}
+            >
+              {isUploading ? "업로드 중…" : "이미지 여러 장 선택"}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                disabled={isUploading}
+                onChange={(e) => {
+                  if (e.target.files) void uploadFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <span className="text-[10px] text-[var(--text-muted)]">
+              드래그 앤 드롭 · 최대 {maxCount}장 ({activeCount}/{maxCount})
+            </span>
+          </div>
+        </div>
+      )}
+
       {!isCompact && (
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">

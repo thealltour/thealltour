@@ -30,6 +30,7 @@ import { getPrimaryImageUrl } from "@/lib/products/images";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
+import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
 import { ProductQuickSummaryCard } from "@/components/products/ProductQuickSummaryCard";
 import { ProductHighlightsCard } from "@/components/products/ProductHighlightsCard";
@@ -240,7 +241,15 @@ export default function ProductDetailV2({
 
     if (Array.isArray(product?.itinerary_v2_json?.days)) {
       product?.itinerary_v2_json.days.forEach((day) => {
-        pushImage(day.coverImageUrl, `Day ${day.day}`);
+        const coverImages = day.coverImages ?? [];
+        if (coverImages.length > 0) {
+          coverImages.forEach((img, idx) => {
+            const url = typeof img === "string" ? img : img?.url;
+            pushImage(url, `Day ${day.day} 커버 ${idx + 1}`);
+          });
+        } else {
+          pushImage(day.coverImageUrl, `Day ${day.day}`);
+        }
       });
     }
 
@@ -279,6 +288,10 @@ export default function ProductDetailV2({
   const [openAccordionIndex, setOpenAccordionIndex] = useState<number | null>(0);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({});
   const isSoldOut = statusTag === "SOLD_OUT";
+  const ctaLabelOptions = useMemo(
+    () => (hasProductFixedDeparture(product) ? { fixedDeparture: true as const } : undefined),
+    [product],
+  );
   const optionsPanelRef = useRef<HTMLDivElement>(null);
   const { setQuoteSummary, setRequiredGroupsMissing, setSelectedOptions: syncSelectedOptionsToQuote, registerScrollToOptions } = useProductQuote();
 
@@ -731,6 +744,7 @@ export default function ProductDetailV2({
               status={statusTag}
               kakaoHref={kakaoHref || undefined}
               section="top"
+              ctaLabelOptions={ctaLabelOptions}
               requiredGroupsMissing={requiredGroupsMissing}
               scrollToOptions={() => optionsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
               isSoldOut={isSoldOut}
@@ -744,7 +758,7 @@ export default function ProductDetailV2({
               <div className="flex flex-wrap gap-3">
                 {consultHref ? (
                   <a href={consultHrefWithUtm || consultHref}>
-                    <Button variant="accent" size="md">{getProductCtaLabel(statusTag)}</Button>
+                    <Button variant="accent" size="md">{getProductCtaLabel(statusTag, ctaLabelOptions)}</Button>
                   </a>
                 ) : null}
                 {kakaoHref ? (
@@ -811,6 +825,7 @@ export default function ProductDetailV2({
                 productTitle={productTitle}
                 sourcePath={sourcePath}
                 kakaoHref={kakaoHref}
+                ctaLabelOptions={ctaLabelOptions}
                 selectedDayIndex={pendingPreviewDayIndex ?? undefined}
               />
             ) : hasSchedule ? (

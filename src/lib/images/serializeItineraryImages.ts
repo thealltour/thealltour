@@ -8,6 +8,7 @@
 import type { ItineraryV2Day, ItineraryStructuredDay } from "@/types/product";
 import { normalizeImageUrl } from "./normalizeImageUrl";
 import { normalizeEventImages } from "./normalizeEventImages";
+import { normalizeDayCoverImages } from "./normalizeDayCoverImages";
 import { dedupeEventImages } from "./dedupeEventImages";
 import { getEventImageUrl } from "./getEventImageUrl";
 
@@ -75,9 +76,22 @@ export function serializeItineraryImages(
   const placedSet = collectPlacedImageUrlSet(params);
 
   const processV2Days = (days: ItineraryV2Day[]): ItineraryV2Day[] =>
-    days.map((day) => ({
-      ...day,
-      events: (day.events ?? []).map((ev) => {
+    days.map((day) => {
+      const cover = normalizeDayCoverImages(day);
+      const strippedCover = cover.coverImages.map(
+        ({
+          status: _st,
+          isThumbnailCandidate: _tc,
+          isLogoCandidate: _lc,
+          isLowResolution: _lr,
+          ...rest
+        }) => rest,
+      );
+      return {
+        ...day,
+        coverImageUrl: cover.coverImageUrl,
+        coverImages: strippedCover.length > 0 ? strippedCover : undefined,
+        events: (day.events ?? []).map((ev) => {
         const images = (ev.images ?? []).filter((img) => !isEventImageDeleted(img));
         const normalized = normalizeEventImages(images);
         const deduped = dedupeEventImages(normalized);
@@ -92,7 +106,8 @@ export function serializeItineraryImages(
         );
         return { ...ev, images: stripped.length > 0 ? stripped : undefined };
       }),
-    }));
+      };
+    });
 
   const processStructuredDays = (days: ItineraryStructuredDay[]): ItineraryStructuredDay[] =>
     days.map((day) => ({

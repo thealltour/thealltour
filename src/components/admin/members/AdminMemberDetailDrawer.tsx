@@ -46,24 +46,26 @@ export default function AdminMemberDetailDrawer({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      wrapperClassName="items-stretch justify-end p-4"
-      className="h-full w-full max-w-[720px] overflow-y-auto rounded-2xl p-0"
-      aria-label="회원 상세 패널"
+      wrapperClassName="p-2 sm:p-4 md:p-6"
+      className="flex h-[min(94vh,960px)] w-full max-w-[min(96vw,1400px)] flex-col overflow-hidden p-0"
+      aria-label="회원 상세"
     >
       {memberId ? (
-        <AdminMemberDetailPage
-          memberId={memberId}
-          mode="drawer"
-          onClose={onClose}
-          navigation={{
-            currentIndex,
-            total: members.length,
-            onPrev: goPrev,
-            onNext: goNext,
-            hasPrev,
-            hasNext,
-          }}
-        />
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <AdminMemberDetailPage
+            memberId={memberId}
+            mode="modal"
+            onClose={onClose}
+            navigation={{
+              currentIndex,
+              total: members.length,
+              onPrev: goPrev,
+              onNext: goNext,
+              hasPrev,
+              hasNext,
+            }}
+          />
+        </div>
       ) : null}
     </Modal>
   );

@@ -28,5 +28,8 @@ export const AIRLINE_LOGO_BY_CODE: Record<string, string> = {
   JL: `${BASE}/JL.svg`,   // 일본항공
   NH: `${BASE}/NH.svg`,   // ANA
   CX: `${BASE}/CX.svg`,   // 캐세이퍼시픽
+  HU: `${BASE}/HU.svg`,   // 하이난항공
+  MU: `${BASE}/MU.svg`,   // 중국동방항공
+  CZ: `${BASE}/CZ.svg`,   // 중국남방항공
   QF: `${BASE}/QF.svg`,   // 콴타스
 };

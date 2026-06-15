@@ -408,6 +408,7 @@ export function ScheduleVisualEditorV2({
               model={timelineModel}
               fallbackImageUrl={fallbackUrl}
               onDayChange={setActiveDayIndex}
+              disableAutoScroll
               selectedDayIndex={selectedEvent?.editorType === "v2" ? selectedEvent.dayIndex : undefined}
               selectedEventIndex={
                 selectedEvent?.editorType === "v2" ? selectedEvent.eventIndex : undefined

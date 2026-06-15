@@ -104,14 +104,15 @@ export function StructuredEventRow({
         placeholder="제목 (예: 이동, 식사)"
         className="min-w-[100px] rounded border border-[var(--border)] px-2 py-1 text-xs outline-none focus:border-[var(--primary)] dark:bg-[var(--surface)] dark:text-[var(--text-primary)]"
       />
-      <input
+      <textarea
         value={event.description ?? ""}
         onChange={(e) =>
           onEventChange({
-            description: e.target.value.trim() || undefined,
+            description: e.target.value || undefined,
           })
         }
         placeholder="설명"
+        rows={2}
         className="min-w-0 flex-1 rounded border border-[var(--border)] px-2 py-1 text-xs outline-none focus:border-[var(--primary)] dark:bg-[var(--surface)] dark:text-[var(--text-primary)]"
       />
       <select

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import {
   getProductCtaLabel,
   getProductCtaStickyPrimaryLabel,
+  type ProductCtaLabelOptions,
   type ProductCtaStatus,
 } from "@/lib/products/getProductCtaLabel";
 import { trackProductCtaClick } from "@/lib/analytics/trackProductClick";
@@ -42,6 +43,8 @@ export type ProductConsultCTAProps = {
   stickyPriceSubLabel?: string;
   /** section "sticky": 두 번째 보조 줄 (예: 구간가 변동 힌트) */
   stickyPriceSecondLine?: string;
+  /** 고정 출발일 상품 등 CTA 문구 분기 */
+  ctaLabelOptions?: ProductCtaLabelOptions;
 };
 
 export function ProductConsultCTA({
@@ -65,10 +68,12 @@ export function ProductConsultCTA({
   stickyPricePrefix,
   stickyPriceSubLabel,
   stickyPriceSecondLine,
+  ctaLabelOptions,
 }: ProductConsultCTAProps) {
   const { openModal } = useConsultModal();
-  const primaryLabel = primaryLabelOverride ?? getProductCtaLabel(status);
-  const stickyPrimaryLabel = primaryLabelOverride ?? getProductCtaStickyPrimaryLabel(status);
+  const primaryLabel = primaryLabelOverride ?? getProductCtaLabel(status, ctaLabelOptions);
+  const stickyPrimaryLabel =
+    primaryLabelOverride ?? getProductCtaStickyPrimaryLabel(status, ctaLabelOptions);
 
   const handlePrimary = () => {
     if (requiredGroupsMissing && scrollToOptions) {
@@ -91,13 +96,13 @@ export function ProductConsultCTA({
   if (section === "sticky") {
     return (
       <div className={`flex h-11 w-full min-w-0 items-center gap-3 sm:gap-4 ${className}`}>
-        <div className="flex shrink-0 flex-col justify-center" style={{ minWidth: "6rem" }}>
+        <div className="flex shrink-0 flex-col justify-center" style={{ minWidth: "6.5rem", maxWidth: "10rem" }}>
           {priceFormatted != null && priceFormatted !== "" ? (
             <>
               <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[var(--primary)]">
                 {stickyPricePrefix ?? ""}₩{priceFormatted}~
               </span>
-              <span className="mt-0.5 block text-[0.6875rem] leading-snug text-slate-600">
+              <span className="mt-0.5 block text-[0.6875rem] leading-snug text-slate-600 break-words">
                 {stickyPriceSubLabel ?? "1인 기준"}
               </span>
               {stickyPriceSecondLine ? (

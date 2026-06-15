@@ -85,7 +85,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     roles: ["admin", "manager"],
   },
   {
-    href: "/theall_manager_only/products?view=home-region-cards",
+    href: "/theall_manager_only/products?view=home-golf-tour-cards",
     label: "홈·배너 구성",
     icon: Home,
     group: "catalog",

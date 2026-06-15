@@ -58,7 +58,7 @@ function isReviewTabActive(href: string, pathname: string): boolean {
 export const menuMap = {
   dashboard: ["오늘 할 일", "지표·리드"],
   product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리"],
-  home: ["메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
+  home: ["메인 골프투어 상품", "메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
   landings: ["랜딩 목록", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
   sms: [] as string[],
@@ -143,8 +143,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
           initial = "메인 테마카드";
         } else if (view === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS) {
           initial = "메인 지역카드";
+        } else if (view === ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS) {
+          initial = "메인 골프투어 상품";
         } else {
-          initial = "메인 지역카드";
+          initial = "메인 골프투어 상품";
         }
       }
     }
@@ -276,6 +278,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   }
 
   const HOME_LABEL_TO_PATH: Record<string, string> = {
+    "메인 골프투어 상품": `/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS}`,
     "메인 지역카드": `/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS}`,
     "메인 테마카드": `/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS}`,
     "메인 추천상품": `/theall_manager_only/products?${ADMIN_PRODUCTS_QUERY_KEYS.VIEW}=${ADMIN_PRODUCTS_VIEW.FEATURED}`,

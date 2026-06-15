@@ -10,6 +10,7 @@ import { getHomeBanners } from "@/lib/homeBanners";
 import { getHeroContent, resolveHeroContent } from "@/lib/heroContent";
 import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
 import { getSiteSettings, parseHomeRegionCardIds, parseHomeThemeCardIds } from "@/lib/siteSettings";
+import { getHomeGolfTourProducts } from "@/lib/homeGolfTourProducts";
 import { getHomeGuidesWithTaxonomyNames } from "@/lib/guides";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/inquiry/HeroQuickConsultButton";
@@ -54,7 +55,7 @@ const C_P3 =
 export const metadata: Metadata = buildOgMetadataFromSeoData(getHomeOgPageSeo());
 
 export default async function Home() {
-  const [homeCurated, topBanners, heroContent, settings, destinations, themes, homeGuides, homeReviews] =
+  const [homeCurated, topBanners, heroContent, settings, destinations, themes, golfTourProducts, homeGuides, homeReviews] =
     await Promise.all([
       getHomeCuratedData(),
       getHomeBanners(),
@@ -62,6 +63,7 @@ export default async function Home() {
       getSiteSettings(),
       getHubDestinations(),
       getHubThemes(),
+      getHomeGolfTourProducts(),
       getHomeGuidesWithTaxonomyNames(4),
       getTopRatedPublishedReviews(4),
     ]);
@@ -101,6 +103,12 @@ export default async function Home() {
             className="flex flex-col max-md:gap-10 max-md:pt-8 md:gap-20 md:pt-0"
           >
             <HomeDeferredSections
+              golfTour={{
+                products: golfTourProducts,
+                eyebrow: settings.home_golf_tour_section_eyebrow,
+                title: settings.home_golf_tour_section_title,
+                description: settings.home_golf_tour_section_description,
+              }}
               destinationRail={{
                 items: destinationsForHome,
                 eyebrow: settings.home_region_section_eyebrow,

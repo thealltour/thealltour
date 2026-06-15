@@ -8,8 +8,19 @@ export type ProductCtaStatus =
   | "SOLD_OUT"
   | "CONSULT_REQUIRED";
 
+export type ProductCtaLabelOptions = {
+  /** 출발일이 특정 날짜로 고정된 상품이면 AVAILABLE 시 「빠른 문의」 */
+  fixedDeparture?: boolean;
+};
+
 /** 본문·데스크톱 등 여유 있는 영역 */
-export function getProductCtaLabel(status: ProductCtaStatus | undefined): string {
+export function getProductCtaLabel(
+  status: ProductCtaStatus | undefined,
+  options?: ProductCtaLabelOptions,
+): string {
+  if (options?.fixedDeparture && (!status || status === "AVAILABLE")) {
+    return "빠른 문의";
+  }
   if (!status) return "일정·요금 문의하기";
   switch (status) {
     case "AVAILABLE":
@@ -26,7 +37,13 @@ export function getProductCtaLabel(status: ProductCtaStatus | undefined): string
 }
 
 /** 하단 고정(sticky) 등 좁은 폭 — 의미는 동일, 표기만 축약 */
-export function getProductCtaStickyPrimaryLabel(status: ProductCtaStatus | undefined): string {
+export function getProductCtaStickyPrimaryLabel(
+  status: ProductCtaStatus | undefined,
+  options?: ProductCtaLabelOptions,
+): string {
+  if (options?.fixedDeparture && (!status || status === "AVAILABLE")) {
+    return "빠른 문의";
+  }
   if (!status) return "일정·요금 문의";
   switch (status) {
     case "AVAILABLE":

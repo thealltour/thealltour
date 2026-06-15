@@ -6,6 +6,7 @@
 
 import type { Product, ItineraryStructuredDay, ItineraryV2 } from "@/types/product";
 import { parseTimelineDays } from "@/lib/products/mapProductToOverview";
+import { normalizeDayCoverImages } from "@/lib/images/normalizeDayCoverImages";
 
 // ---------------------------------------------------------------------------
 // STEP 2: 요약 타임라인용 모델 (events, timeOfDay, side)
@@ -32,6 +33,8 @@ export type TimelineDay = {
   dateText?: string;
   title?: string;
   imageUrl?: string | null;
+  /** Day 커버 갤러리 (2장 이상이면 상세에서 EventMediaSection 사용) */
+  coverImages?: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }>;
   events: TimelineEvent[];
 };
 
@@ -161,8 +164,9 @@ export function mapProductToTimelineModel(product: Product | null): TimelineMode
     return {
       days: v2.days.map((d) => {
         const dayKey = String(d.day);
+        const cover = normalizeDayCoverImages(d);
         const imageUrl =
-          d.coverImageUrl?.trim() ||
+          cover.coverImageUrl?.trim() ||
           (media && typeof media[dayKey] === "string" && media[dayKey].trim() ? media[dayKey].trim() : null) ||
           fallbackUrl;
         return {
@@ -170,6 +174,7 @@ export function mapProductToTimelineModel(product: Product | null): TimelineMode
           dateText: d.dateText,
           title: d.title,
           imageUrl: imageUrl || null,
+          coverImages: cover.coverImages.length > 0 ? cover.coverImages : undefined,
           events: d.events.map((e, i) => ({
             timeOfDay: e.timeOfDay,
             timeText: e.timeText,
@@ -286,21 +291,25 @@ export function serializeStructuredDaysToSchedule(days: ItineraryStructuredDay[]
 export function itineraryV2ToTimelineModel(v2: ItineraryV2 | null | undefined): TimelineModel {
   if (!v2?.days?.length) return { days: [] };
   return {
-    days: v2.days.map((d) => ({
-      day: d.day,
-      dateText: d.dateText,
-      title: d.title,
-      imageUrl: d.coverImageUrl?.trim() || null,
-      events: d.events.map((e, i) => ({
-        timeOfDay: e.timeOfDay,
-        timeText: e.timeText,
-        iconKey: e.iconKey,
-        heading: e.heading,
-        description: e.description,
-        side: (i % 2 === 0 ? "left" : "right") as "left" | "right",
-        images: Array.isArray(e.images) ? e.images : undefined,
-        thumbnailUrl: getThumbnailUrl(Array.isArray(e.images) ? e.images : undefined),
-      })),
-    })),
+    days: v2.days.map((d) => {
+      const cover = normalizeDayCoverImages(d);
+      return {
+        day: d.day,
+        dateText: d.dateText,
+        title: d.title,
+        imageUrl: cover.coverImageUrl?.trim() || null,
+        coverImages: cover.coverImages.length > 0 ? cover.coverImages : undefined,
+        events: d.events.map((e, i) => ({
+          timeOfDay: e.timeOfDay,
+          timeText: e.timeText,
+          iconKey: e.iconKey,
+          heading: e.heading,
+          description: e.description,
+          side: (i % 2 === 0 ? "left" : "right") as "left" | "right",
+          images: Array.isArray(e.images) ? e.images : undefined,
+          thumbnailUrl: getThumbnailUrl(Array.isArray(e.images) ? e.images : undefined),
+        })),
+      };
+    }),
   };
 }

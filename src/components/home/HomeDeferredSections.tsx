@@ -3,6 +3,7 @@ import { cn } from "@/lib/cn";
 import type { HomeCuratedSettings, HomeCuratedSectionWithProducts } from "@/types/homeCurated";
 import type { Guide } from "@/types/guide";
 import type { Review } from "@/types/review";
+import type { Product } from "@/types/product";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 
 function SectionSkeleton({ className }: { className?: string }) {
@@ -23,6 +24,10 @@ function ExploreRailSkeleton() {
     <SectionSkeleton className="min-h-[17.5rem] sm:min-h-[18.5rem]" />
   );
 }
+
+const GolfTourProductsSection = dynamic(() => import("@/components/home/GolfTourProductsSection"), {
+  loading: () => <SectionSkeleton className="min-h-[18rem]" />,
+});
 
 const DestinationSection = dynamic(() => import("@/components/home/DestinationSection"), {
   loading: () => <ExploreRailSkeleton />,
@@ -53,7 +58,15 @@ export type HomeDeferredRailProps = {
   description?: string | null;
 };
 
+export type HomeDeferredGolfTourProps = {
+  products: Product[];
+  eyebrow?: string | null;
+  title?: string | null;
+  description?: string | null;
+};
+
 export type HomeDeferredSectionsProps = {
+  golfTour: HomeDeferredGolfTourProps;
   destinationRail: HomeDeferredRailProps;
   themeRail: HomeDeferredRailProps;
   curatedSettings: HomeCuratedSettings | null;
@@ -63,10 +76,11 @@ export type HomeDeferredSectionsProps = {
 };
 
 /**
- * 홈 히어로 아래 본문 블록 — 지역·테마 레일 + 추천·가이드·리뷰.
+ * 홈 히어로 아래 본문 블록 — 골프투어·지역·테마 레일 + 추천·가이드·리뷰.
  * 초기 JS 파싱·실행 분산(Speed Index·TBT 완화). SSR 유지, 청크만 지연 로드.
  */
 export function HomeDeferredSections({
+  golfTour,
   destinationRail,
   themeRail,
   curatedSettings,
@@ -76,6 +90,12 @@ export function HomeDeferredSections({
 }: HomeDeferredSectionsProps) {
   return (
     <>
+      <GolfTourProductsSection
+        products={golfTour.products}
+        eyebrow={golfTour.eyebrow}
+        title={golfTour.title}
+        description={golfTour.description}
+      />
       <DestinationSection
         items={destinationRail.items}
         eyebrow={destinationRail.eyebrow}

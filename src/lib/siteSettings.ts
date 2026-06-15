@@ -39,6 +39,14 @@ export type SiteSettings = {
   home_theme_section_title: string;
   /** 메인 홈 테마 섹션 부제목. 비어 있으면 "테마별로 여행 상품을 둘러보세요." 사용 */
   home_theme_section_description: string;
+  /** 메인 홈 골프투어 섹션에 노출할 상품 id 목록. JSON 배열 문자열. 최대 20개. */
+  home_golf_tour_product_ids: string;
+  /** 메인 홈 골프투어 섹션 상단 라벨. 비어 있으면 "GOLF TOURS" 사용 */
+  home_golf_tour_section_eyebrow: string;
+  /** 메인 홈 골프투어 섹션 제목. 비어 있으면 "추천 골프투어" 사용 */
+  home_golf_tour_section_title: string;
+  /** 메인 홈 골프투어 섹션 부제목. 비어 있으면 "인기 골프·파크골프 여행을 만나보세요." 사용 */
+  home_golf_tour_section_description: string;
   /**
    * /products?collection=recommend 에 노출할 기획(taxonomy_type=campaign) id 목록. JSON 배열 문자열.
    * 상품에 동일 이름이 `campaigns`로 붙어 있으면 추천 컬렉션에 포함. `is_recommend`와 OR.
@@ -105,6 +113,10 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   home_theme_section_eyebrow: "TRAVEL THEMES",
   home_theme_section_title: "이런 여행은 어떠세요?",
   home_theme_section_description: "테마별로 여행 상품을 둘러보세요.",
+  home_golf_tour_product_ids: "[]",
+  home_golf_tour_section_eyebrow: "GOLF TOURS",
+  home_golf_tour_section_title: "추천 골프투어",
+  home_golf_tour_section_description: "인기 골프·파크골프 여행을 만나보세요.",
   products_collection_recommend_campaign_ids: "[]",
   products_collection_popular_campaign_ids: "[]",
   about_kicker: "ABOUT THEALL TOUR",
@@ -178,6 +190,15 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
       map.get("home_theme_section_title") ?? DEFAULT_SITE_SETTINGS.home_theme_section_title,
     home_theme_section_description:
       map.get("home_theme_section_description") ?? DEFAULT_SITE_SETTINGS.home_theme_section_description,
+    home_golf_tour_product_ids:
+      map.get("home_golf_tour_product_ids") ?? DEFAULT_SITE_SETTINGS.home_golf_tour_product_ids,
+    home_golf_tour_section_eyebrow:
+      map.get("home_golf_tour_section_eyebrow") ?? DEFAULT_SITE_SETTINGS.home_golf_tour_section_eyebrow,
+    home_golf_tour_section_title:
+      map.get("home_golf_tour_section_title") ?? DEFAULT_SITE_SETTINGS.home_golf_tour_section_title,
+    home_golf_tour_section_description:
+      map.get("home_golf_tour_section_description") ??
+      DEFAULT_SITE_SETTINGS.home_golf_tour_section_description,
     products_collection_recommend_campaign_ids:
       map.get("products_collection_recommend_campaign_ids") ??
       DEFAULT_SITE_SETTINGS.products_collection_recommend_campaign_ids,
@@ -251,6 +272,24 @@ export function parseHomeThemeCardIds(settings: Pick<SiteSettings, "home_theme_c
       .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
       .map((v) => v.trim())
       .slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
+/** 메인 홈 골프투어 섹션에 노출할 상품 id 목록 (순서 유지). 비어 있으면 설정 미사용. 최대 20개. */
+export function parseHomeGolfTourProductIds(
+  settings: Pick<SiteSettings, "home_golf_tour_product_ids">,
+): string[] {
+  const raw = settings.home_golf_tour_product_ids?.trim() ?? "";
+  if (!raw || raw === "[]") return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+      .map((v) => v.trim())
+      .slice(0, 20);
   } catch {
     return [];
   }

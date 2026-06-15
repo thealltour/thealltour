@@ -192,7 +192,7 @@ export function EventEditor({
           value={event.description ?? ""}
           onChange={(e) =>
             onChange({
-              description: e.target.value.trim() || undefined,
+              description: e.target.value || undefined,
             })
           }
           placeholder="설명"

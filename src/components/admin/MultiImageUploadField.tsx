@@ -3,8 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { deleteStorageUrlsClient } from "@/lib/admin/deleteStorageUrlsClient";
+import { uploadProductImageFiles } from "@/lib/admin/uploadProductImages";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
-import { deriveCardAndHeroWebp } from "@/lib/images/deriveCardAndHeroWebp";
 import type { SelectedEventRef } from "@/types/product";
 
 type MultiImageUploadFieldProps = {
@@ -63,43 +63,26 @@ export function MultiImageUploadField({
   }
 
   async function uploadFiles(files: FileList | File[]) {
-    const selected = Array.from(files).filter((f) => /^image\/(jpeg|png|webp)$/i.test(f.type));
-    if (selected.length === 0) {
-      showToast("warning", "JPG/PNG/WebP 파일만 업로드할 수 있습니다.");
-      return;
-    }
-    const remain = maxCount - urls.length;
-    if (remain <= 0) {
+    if (urls.length >= maxCount) {
       showToast("warning", `이미지는 최대 ${maxCount}장까지 등록할 수 있습니다.`);
       return;
     }
-    const targets = selected.slice(0, remain);
-    if (targets.length < selected.length) {
-      showToast("warning", `최대 ${maxCount}장까지만 업로드됩니다.`);
-    }
-
     setIsUploading(true);
     try {
-      const uploaded: string[] = [];
-      for (const file of targets) {
-        const { hero } = await deriveCardAndHeroWebp(file);
-        const formData = new FormData();
-        formData.append("hero", hero, hero.name);
-        const res = await fetch("/api/admin/uploads/image", { method: "POST", body: formData });
-        let data: { heroUrl?: string; url?: string; error?: string } = {};
-        try {
-          data = (await res.json()) as { heroUrl?: string; url?: string; error?: string };
-        } catch {
-          data = {};
-        }
-        if (!res.ok) throw new Error(data.error ?? "업로드 실패");
-        const url = data.heroUrl ?? data.url;
-        if (typeof url === "string" && url.trim()) {
-          uploaded.push(url.trim());
-        }
+      const { urls: uploaded, skippedInvalidType, skippedOverLimit } = await uploadProductImageFiles(
+        files,
+        { maxCount, existingCount: urls.length },
+      );
+      if (skippedInvalidType > 0) {
+        showToast("warning", "JPG/PNG/WebP 파일만 업로드할 수 있습니다.");
+      }
+      if (skippedOverLimit > 0) {
+        showToast("warning", `최대 ${maxCount}장까지만 업로드됩니다.`);
       }
       if (uploaded.length === 0) {
-        showToast("warning", "업로드된 이미지가 없습니다.");
+        if (skippedInvalidType === 0 && skippedOverLimit === 0) {
+          showToast("warning", "업로드된 이미지가 없습니다.");
+        }
         return;
       }
       update([...urls, ...uploaded]);

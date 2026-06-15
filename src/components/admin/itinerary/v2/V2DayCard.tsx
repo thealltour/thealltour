@@ -3,7 +3,10 @@
 import type { ItineraryV2Day, ItineraryV2Event, SelectedEventRef } from "@/types/product";
 import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
 import type { ImagePlacementIssue } from "@/components/admin/modetour/modetourImageValidation";
-import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { EventImagesEditor, type EventImageItem } from "@/components/admin/itinerary/shared/EventImagesEditor";
+import { normalizeDayCoverImages } from "@/lib/images/normalizeDayCoverImages";
+import { getEventImageUrl } from "@/lib/images/getEventImageUrl";
+import { normalizeImageUrl } from "@/lib/images/normalizeImageUrl";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { HintDisclosure } from "@/components/admin/common/HintDisclosure";
 import { ScheduleEditor } from "@/components/admin/product/schedule/ScheduleEditor";
@@ -64,6 +67,36 @@ export function V2DayCard({
   modetourImageReviewMode = false,
 }: V2DayCardProps) {
   const events = day.events ?? [];
+  const coverState = normalizeDayCoverImages(day);
+  const coverImages = coverState.coverImages;
+
+  const applyCoverImages = (next: EventImageItem[]) => {
+    const normalized = normalizeDayCoverImages({ coverImages: next });
+    onDayChange({
+      coverImages: normalized.coverImages.length > 0 ? normalized.coverImages : undefined,
+      coverImageUrl: normalized.coverImageUrl,
+    });
+  };
+
+  const addProductImageToCover = (url: string) => {
+    const key = normalizeImageUrl(url);
+    const existing = coverImages.find((img) => normalizeImageUrl(getEventImageUrl(img)) === key);
+    if (existing) {
+      applyCoverImages(
+        coverImages.map((img) => ({
+          ...img,
+          isCover: normalizeImageUrl(getEventImageUrl(img)) === key,
+        })),
+      );
+      return;
+    }
+    const maxOrder =
+      coverImages.length === 0 ? -1 : Math.max(...coverImages.map((i) => i.sortOrder ?? 0));
+    applyCoverImages([
+      ...coverImages,
+      { url, sortOrder: maxOrder + 1, isCover: coverImages.length === 0 },
+    ]);
+  };
 
   return (
     <article
@@ -146,23 +179,13 @@ export function V2DayCard({
         <div className="mt-2 flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/40 p-2">
             <p className="mb-2 text-[11px] font-semibold text-[var(--text-secondary)]">
-              파일 업로드 / 드래그앤드롭
+              파일 업로드 / URL 추가
             </p>
-            <ImageUploadField
-              value={day.coverImageUrl ?? ""}
-              onChange={(v) =>
-                onDayChange({
-                  coverImageUrl: v?.trim() || undefined,
-                })
-              }
-              onUploaded={(v) =>
-                onDayChange({
-                  coverImageUrl: v?.trim() || undefined,
-                })
-              }
-              uploadedUrlKey="card"
-              optional
-              placeholder="URL 또는 업로드"
+            <EventImagesEditor
+              value={coverImages}
+              onChange={applyCoverImages}
+              enableFileUpload
+              purgeStorageOnRemove
             />
           </div>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/40 p-2">
@@ -170,10 +193,10 @@ export function V2DayCard({
               <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
                 상품 이미지에서 선택
               </p>
-              {day.coverImageUrl ? (
+              {coverImages.length > 0 ? (
                 <button
                   type="button"
-                  onClick={() => onDayChange({ coverImageUrl: undefined })}
+                  onClick={() => onDayChange({ coverImages: undefined, coverImageUrl: undefined })}
                   className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
                 >
                   선택 해제
@@ -187,24 +210,39 @@ export function V2DayCard({
             ) : (
               <div className="grid max-h-[240px] grid-cols-3 gap-2 overflow-y-auto pr-1">
                 {productImageCandidates.map((url, imageIndex) => {
-                  const selected = (day.coverImageUrl ?? "").trim() === url;
+                  const selected = coverImages.some(
+                    (img) => normalizeImageUrl(getEventImageUrl(img)) === normalizeImageUrl(url),
+                  );
+                  const isCover =
+                    selected &&
+                    coverImages.some(
+                      (img) =>
+                        img.isCover && normalizeImageUrl(getEventImageUrl(img)) === normalizeImageUrl(url),
+                    );
                   return (
                     <button
                       key={`${url}-${imageIndex}`}
                       type="button"
-                      onClick={() => onDayChange({ coverImageUrl: url })}
+                      onClick={() => addProductImageToCover(url)}
                       className={`group relative aspect-[4/3] overflow-hidden rounded-md border transition ${
                         selected
-                          ? "border-[var(--primary)] ring-2 ring-[var(--primary-soft)]"
+                          ? isCover
+                            ? "border-amber-500 ring-2 ring-amber-500/40"
+                            : "border-[var(--primary)] ring-2 ring-[var(--primary-soft)]"
                           : "border-[var(--border)] hover:border-[var(--border-strong)]"
                       }`}
-                      title={`이미지 ${imageIndex + 1} 선택`}
+                      title={`이미지 ${imageIndex + 1} ${selected ? (isCover ? "(대표)" : "추가됨 · 클릭 시 대표 지정") : "추가"}`}
                     >
                       <img
                         src={normalizeProductImageUrl(url)}
                         alt={`상품 이미지 ${imageIndex + 1}`}
                         className="h-full w-full object-cover"
                       />
+                      {isCover ? (
+                        <span className="absolute left-0 top-0 rounded-br bg-amber-600 px-1 py-0.5 text-[8px] font-bold text-white">
+                          대표
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}

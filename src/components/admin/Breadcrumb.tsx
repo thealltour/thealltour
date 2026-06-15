@@ -60,6 +60,8 @@ function buildBreadcrumbLabels(pathname: string, view: string | null): string[] 
         return [...base, LABEL_HOME, "메인 지역카드"];
       } else if (view === ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS) {
         return [...base, LABEL_HOME, "메인 테마카드"];
+      } else if (view === ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS) {
+        return [...base, LABEL_HOME, "메인 골프투어 상품"];
       }
       return detail ? [...base, "상품", detail] : [...base, "상품"];
     }

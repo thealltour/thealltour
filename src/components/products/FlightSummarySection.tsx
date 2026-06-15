@@ -3,7 +3,7 @@
 import type { Product } from "@/types/product";
 import { AirlineLogo } from "@/components/airlines/AirlineLogo";
 import { Icon } from "@/components/ui/Icon";
-import { InfoItem } from "@/components/products/detail/InfoItem";
+import type { IconName } from "@/icons";
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -45,6 +45,16 @@ function formatBaggageLimit(raw: string | undefined): string {
     return `${value}KG`;
   }
   return value;
+}
+
+function FlightMetaRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 text-sm">
+      <Icon name={icon} size={18} decorative className="shrink-0 text-slate-500" />
+      <span className="shrink-0 text-slate-500">{label}</span>
+      <span className="font-semibold text-slate-900">{value}</span>
+    </div>
+  );
 }
 
 type FlightCardProps = {
@@ -129,9 +139,9 @@ function MobileFlightBlock({
         </div>
       </div>
       <div className="mt-3 space-y-2 border-t border-slate-200/80 pt-3">
-        <InfoItem icon="flight" label="항공" value={flightName.trim() || "—"} />
+        <FlightMetaRow icon="flight" label="항공" value={flightName.trim() || "—"} />
         {baggageLimit?.trim() ? (
-          <InfoItem icon="baggage" label="수하물" value={formatBaggageLimit(baggageLimit)} />
+          <FlightMetaRow icon="baggage" label="수하물" value={formatBaggageLimit(baggageLimit)} />
         ) : null}
       </div>
     </div>
@@ -160,8 +170,8 @@ function FlightCard({
           {fromDate && <p className="text-xs text-slate-500">{fromDate}</p>}
           <p className={`mt-1 font-bold text-slate-900 ${compact ? "text-lg" : "text-xl"}`}>{fromTime}</p>
         </div>
-        <div className={`flex shrink-0 flex-col items-center border-y border-slate-200 ${compact ? "gap-1 py-1.5 px-2.5" : "gap-1.5 py-2 px-3"}`}>
-          <AirlineLogo airlineText={flightName} size={compact ? 32 : 40} />
+        <div className={`flex shrink-0 flex-col items-center border-y border-slate-200 ${compact ? "gap-1 py-2 px-3" : "gap-1.5 py-2.5 px-4"}`}>
+          <AirlineLogo airlineText={flightName} size={compact ? 64 : 80} />
         </div>
         <div className="min-w-0 flex-1 text-right">
           <p className={`font-semibold text-slate-800 ${compact ? "text-xs" : "text-sm"}`}>{toAirport}</p>
@@ -175,9 +185,9 @@ function FlightCard({
         </div>
       </div>
       <div className={`mt-3 space-y-2 border-t border-slate-200/80 ${compact ? "pt-2" : "pt-3"}`}>
-        <InfoItem icon="flight" label="항공" value={flightName.trim() || "—"} />
+        <FlightMetaRow icon="flight" label="항공" value={flightName.trim() || "—"} />
         {baggageLimit?.trim() ? (
-          <InfoItem icon="baggage" label="수하물" value={formatBaggageLimit(baggageLimit)} />
+          <FlightMetaRow icon="baggage" label="수하물" value={formatBaggageLimit(baggageLimit)} />
         ) : null}
       </div>
     </div>

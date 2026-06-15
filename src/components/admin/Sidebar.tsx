@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
@@ -15,7 +15,7 @@ import {
 import { SIDEBAR_GROUPS, SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
 import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
 import { ThemedWordmarkImage } from "@/components/header/ThemedWordmarkImage";
-import { isReviewRelatedPath } from "@/components/admin/sidebarUtils";
+import { isSidebarMainKeyActive } from "@/components/admin/sidebarUtils";
 import { canAccessSidebarMainKey } from "@/lib/adminRolePolicy";
 import { hasAdminPermission } from "@/lib/adminPermissions";
 import { THEALL_FAVICON_32_SRC } from "@/lib/brandAssets";
@@ -36,7 +36,6 @@ function memberRewardsHref(session: ReturnType<typeof useAdminSession>) {
 }
 
 export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
-  const pathname = usePathname();
   const router = useRouter();
   const session = useAdminSession();
   const { isCollapsed, setIsCollapsed } = useSidebarCollapse();
@@ -48,13 +47,6 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
 
   function toggleGroup(groupId: string) {
     setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
-  }
-
-  function isItemActive(href: string, mainKey?: MainMenuKey): boolean {
-    if (mainKey && activeMenu === mainKey) return true;
-    if (mainKey === "reviews" && isReviewRelatedPath(pathname)) return true;
-    if (href === "/theall_manager_only") return pathname === "/theall_manager_only";
-    return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return (
@@ -136,11 +128,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
 
                 {(isCollapsed || isExpanded) &&
                   groupItems.map((item) => {
-                    const effectiveHref =
-                      item.mainKey === "member_rewards"
-                        ? memberRewardsHref(session)
-                        : item.href.split("?")[0] ?? item.href;
-                    const isActive = isItemActive(effectiveHref, item.mainKey);
+                    const isActive = isSidebarMainKeyActive(item.mainKey!, activeMenu);
                     const Icon = item.icon;
 
                     return (

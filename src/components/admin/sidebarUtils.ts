@@ -1,11 +1,21 @@
 /**
  * 사이드바 active/open 판별용 helper.
+ * - 메인 메뉴 active 여부 (activeMenu 단일 기준)
  * - 후기 관련 경로 여부
  * - 자식 경로 active 여부 (exact / startsWith)
  * - 그룹 내 활성 자식 존재 여부
  */
 
+import type { MainMenuKey } from "@/components/admin/SubHeader";
 import { getAdminConsoleRelativePath, isAdminReviewSectionRelativePath } from "@/lib/adminConsolePaths";
+
+/** 사이드바 메인 메뉴 항목이 현재 선택 상태인지 (pathname fallback 없음 — 동일 path 공유 메뉴 중복 방지) */
+export function isSidebarMainKeyActive(
+  mainKey: MainMenuKey,
+  activeMenu: MainMenuKey | null,
+): boolean {
+  return activeMenu === mainKey;
+}
 
 /** 후기 관리 하위 경로인지 (상위 메뉴 open/active 판별용) */
 export function isReviewRelatedPath(pathname: string): boolean {

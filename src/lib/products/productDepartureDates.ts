@@ -30,6 +30,16 @@ function addDaysYmd(ymd: string, days: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
+/** 두 YMD 사이 일수 차이(절대값). 항공 출발·도착(0~1일) vs 출발 가능 기간 구분용 */
+export function ymdDayDiff(a: string, b: string): number {
+  if (!isIsoDateYmd(a) || !isIsoDateYmd(b)) return Number.POSITIVE_INFINITY;
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  const aMs = Date.UTC(ay, am - 1, ad, 12, 0, 0, 0);
+  const bMs = Date.UTC(by, bm - 1, bd, 12, 0, 0, 0);
+  return Math.abs(Math.round((bMs - aMs) / 86_400_000));
+}
+
 /** inclusive YMD 범위를 일자 배열로 펼칩니다. maxDays 초과 시 시작일 기준으로 잘립니다. */
 export function expandYmdRange(
   start: string,
@@ -103,8 +113,12 @@ export function collectProductDepartureDates(product: Product): string[] {
     const fromYmd = normalizeProductDepartureDateToYmd(fromRaw);
     const toYmd = normalizeProductDepartureDateToYmd(toRaw);
     if (fromYmd && toYmd) {
-      if (fromYmd === toYmd) dates.add(fromYmd);
-      else {
+      if (fromYmd === toYmd) {
+        dates.add(fromYmd);
+      } else if (ymdDayDiff(fromYmd, toYmd) <= 1) {
+        // 항공 출발일·현지 도착일(0~1일 차) — 출발일만 달력에 표시
+        dates.add(fromYmd);
+      } else {
         for (const ymd of expandYmdRange(fromYmd, toYmd)) dates.add(ymd);
       }
     } else if (fromYmd) {

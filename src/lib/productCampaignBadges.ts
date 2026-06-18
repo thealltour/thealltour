@@ -4,6 +4,7 @@
 
 import type { Product } from "@/types/product";
 import type { ProductCardBadge } from "@/components/products/ProductCard";
+import { sortVisibleCampaignCardMeta } from "@/lib/productCampaignSort";
 
 /** 레거시: 라벨만 있을 때 우선순위 (taxonomy 없을 때) */
 const PRIORITY_RECOMMEND = 1;
@@ -95,17 +96,14 @@ function appendRecommendPopularFallback(product: Product, labels: string[]): str
 function buildBadgesFromCampaignCardMeta(product: Product, max: number): ProductCardBadge[] {
   const meta = product.campaign_card_meta;
   if (!meta?.length) return [];
-  const visible = meta.filter((m) => m.badge_visible === true);
-  visible.sort((a, b) => {
-    if (a.badge_priority !== b.badge_priority) return a.badge_priority - b.badge_priority;
-    return a.displayLabel.localeCompare(b.displayLabel, "ko");
-  });
+  const visible = sortVisibleCampaignCardMeta(meta);
   return visible.slice(0, max).map((m) => ({
     type: m.badge_tone,
     label: m.displayLabel,
-    priority: 1_000_000 - m.badge_priority,
+    priority: 1_000_000 - (m.badge_priority ?? 100),
     isActive: true,
     campaignTone: m.badge_tone,
+    isPromotion: m.isPromotionCampaign === true,
   }));
 }
 

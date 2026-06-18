@@ -4,6 +4,7 @@ import {
   expandYmdRange,
   normalizeProductDepartureDateToYmd,
   parseDepartureRangeText,
+  ymdDayDiff,
 } from "@/lib/products/productDepartureDates";
 import type { Product } from "@/types/product";
 
@@ -45,7 +46,35 @@ describe("expandYmdRange", () => {
   });
 });
 
+describe("ymdDayDiff", () => {
+  it("returns 1 for consecutive flight departure and arrival", () => {
+    expect(ymdDayDiff("2026-08-13", "2026-08-14")).toBe(1);
+  });
+});
+
 describe("collectProductDepartureDates", () => {
+  it("returns only departure date for overnight flight (from + to within 1 day)", () => {
+    const product = {
+      id: "p-flight",
+      title: "야간 항공 골프",
+      departure_from_date: "2026-08-13",
+      departure_to_date: "2026-08-14",
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-08-13"]);
+  });
+
+  it("returns only departure date for Korean admin flight date formats", () => {
+    const product = {
+      id: "p-flight-ko",
+      title: "한국어 형식 항공",
+      departure_from_date: "2026.08.13(수)",
+      departure_to_date: "2026.08.14(목)",
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-08-13"]);
+  });
+
   it("expands departure_from_date and departure_to_date", () => {
     const product = {
       id: "p-range",

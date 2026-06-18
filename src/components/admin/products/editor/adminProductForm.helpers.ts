@@ -50,6 +50,19 @@ export function parseDetailedSchedule(value: string): DayScheduleDraft[] {
   }));
 }
 
+/** 기획/추천 폼 문자열 → 이름 배열 (쉼표·줄바꿈·파이프만 구분, 공백·슬래시 보존) */
+export function parseCampaignsFormString(value: string): string[] {
+  return value
+    .split(/[,\n|]+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+/** 기획/추천 이름 배열 → 폼 문자열 */
+export function stringifyCampaignsFormList(list: string[]): string {
+  return list.join(",");
+}
+
 export function normalizeOXValue(value?: string | null): "O" | "X" {
   const normalized = (value ?? "").trim().toLowerCase();
   if (!normalized) return "X";

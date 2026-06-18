@@ -101,9 +101,24 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   golf_hero_subcopy:
     "선호하는 골프장, 라운딩 횟수, 동행 인원과 예산을 알려주시면, 시즌에 맞는 최적의 골프투어 코스를 추천해 드립니다.",
   golf_hero_regions: JSON.stringify([
-    { id: "golf-japan", label: "일본 골프투어", searchKeyword: "일본 골프" },
-    { id: "golf-se-asia", label: "동남아 골프투어", searchKeyword: "동남아 골프" },
-    { id: "golf-domestic", label: "국내 골프/파크골프", searchKeyword: "국내 골프" },
+    {
+      id: "golf-japan-china",
+      label: "일본/중국 골프투어",
+      searchKeyword: "일본 골프",
+      golfRegion: "japan-china",
+    },
+    {
+      id: "golf-se-asia",
+      label: "동남아 골프투어",
+      searchKeyword: "동남아 골프",
+      golfRegion: "se-asia",
+    },
+    {
+      id: "golf-overseas",
+      label: "해외 골프투어",
+      searchKeyword: "해외 골프",
+      golfRegion: "overseas",
+    },
   ]),
   home_region_card_ids: "[]",
   home_region_section_eyebrow: "DESTINATIONS",

@@ -81,8 +81,10 @@ export default function GolfDepartureCalendarSection({
       const holidayName = ymd ? getKrPublicHolidayName(ymd) : null;
       return (
         <DayButton {...props} title={holidayName ?? props.title}>
-          {props.children}
-          {showStar ? <Star className="rdp-promotion-star" aria-hidden /> : null}
+          <span className="rdp-promotion-day">
+            {showStar ? <Star className="rdp-promotion-star" aria-hidden /> : null}
+            <span className="rdp-promotion-day-label">{props.children}</span>
+          </span>
         </DayButton>
       );
     },
@@ -140,7 +142,7 @@ export default function GolfDepartureCalendarSection({
             {showPromotionLegend ? (
               <p className="flex items-center gap-2">
                 <Star
-                  className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400"
+                  className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400"
                   aria-hidden
                 />
                 {promotionLegend}
@@ -176,10 +178,25 @@ export default function GolfDepartureCalendarSection({
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      {event.regionLabel ? (
-                        <span className="mb-1.5 inline-flex max-w-full truncate rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)] sm:text-[11px]">
-                          {event.regionLabel}
-                        </span>
+                      {event.isPromotionDeparture || event.regionLabel ? (
+                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                          {event.isPromotionDeparture ? (
+                            <>
+                              <Star
+                                className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400"
+                                aria-hidden
+                              />
+                              <span className="inline-flex max-w-full truncate rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 sm:text-[11px]">
+                                {promotionLegend}
+                              </span>
+                            </>
+                          ) : null}
+                          {event.regionLabel ? (
+                            <span className="inline-flex max-w-full truncate rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)] sm:text-[11px]">
+                              {event.regionLabel}
+                            </span>
+                          ) : null}
+                        </div>
                       ) : null}
                       <p className="line-clamp-2 font-semibold text-[var(--text-primary)]">
                         {event.title}

@@ -25,6 +25,7 @@ type PerformanceFilter =
   | "priority-review";
 type SortKey =
   | "default"
+  | "badge-priority-asc"
   | "header-click-desc"
   | "search-inbound-desc"
   | "landing-ctr-desc"
@@ -89,6 +90,21 @@ function sortTaxonomyItems(
 ): ProductTaxonomyWithUsage[] {
   const arr = [...items];
   if (sortKey === "default") return arr;
+  if (sortKey === "badge-priority-asc") {
+    arr.sort((a, b) => {
+      const pa =
+        typeof a.badge_priority === "number" && Number.isFinite(a.badge_priority)
+          ? a.badge_priority
+          : 100;
+      const pb =
+        typeof b.badge_priority === "number" && Number.isFinite(b.badge_priority)
+          ? b.badge_priority
+          : 100;
+      if (pa !== pb) return pa - pb;
+      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+    });
+    return arr;
+  }
   if (sortKey === "name-asc") {
     arr.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "ko"));
     return arr;
@@ -460,6 +476,9 @@ export default function AdminProductTaxonomyView({
   useEffect(() => {
     setEditingId(null);
     setExpandedItemKey(null);
+    if (activeTab === "campaign") {
+      setSortKey("badge-priority-asc");
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -848,6 +867,9 @@ export default function AdminProductTaxonomyView({
               aria-label="정렬"
             >
               <option value="default">기본순</option>
+              {activeTab === "campaign" ? (
+                <option value="badge-priority-asc">카드 배치 순위순</option>
+              ) : null}
               <option value="header-click-desc">헤더 클릭 높은 순</option>
               <option value="search-inbound-desc">검색 유입 높은 순</option>
               <option value="landing-ctr-desc">랜딩 CTR 높은 순</option>
@@ -874,7 +896,7 @@ export default function AdminProductTaxonomyView({
                             배지
                           </th>
                           <th className="pb-2 pr-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">
-                            순위
+                            카드 배치 순위
                           </th>
                         </>
                       ) : null}
@@ -1257,6 +1279,9 @@ export default function AdminProductTaxonomyView({
                                           className={cn(inputBase, "w-full max-w-[120px]")}
                                           aria-label="배지 우선순위"
                                         />
+                                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                                          상품 카드 이미지 위 배지가 왼쪽부터 이 순서로 표시됩니다.
+                                        </p>
                                       </div>
                                       <div>
                                         <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">

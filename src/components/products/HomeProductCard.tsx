@@ -12,7 +12,7 @@ import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_HOVER, CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
-import { buildProductCardInfoBadges, CAMPAIGN_BADGE_MAX } from "@/lib/productCardProps";
+import { buildProductCardInfoBadges, CAMPAIGN_BADGE_MAX, resolveProductCardOverlayBadges, shouldOmitCampaignPitchForCard } from "@/lib/productCardProps";
 import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
 import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresentation";
 import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
@@ -76,12 +76,21 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
       ),
     [product],
   );
-  const overlayCampaignBadges = highlightLabel ? [] : visibleCampaignBadges;
+  const overlayCampaignBadges = useMemo(
+    () => resolveProductCardOverlayBadges(visibleCampaignBadges, highlightTag),
+    [visibleCampaignBadges, highlightTag],
+  );
   const infoDisplayChips = useMemo(() => {
     const st = (product.status ?? "AVAILABLE") as ProductCardStatus;
     return pickInfoDisplayChips(st, buildProductCardInfoBadges(product));
   }, [product]);
-  const campaignPitch = useMemo(() => buildCampaignPitchLineFromProduct(product, "home"), [product]);
+  const campaignPitch = useMemo(
+    () =>
+      shouldOmitCampaignPitchForCard(highlightTag, visibleCampaignBadges, false)
+        ? undefined
+        : buildCampaignPitchLineFromProduct(product, "home"),
+    [product, highlightTag, visibleCampaignBadges],
+  );
 
   const ratingAvg = product.trust?.ratingAvg;
   const reviewCount = product.trust?.reviewCount;
@@ -133,25 +142,26 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
     >
       {/* 모바일 2열: 이미지 높이 축소(16:9), sm+ 기존 4:3 */}
       <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-[var(--surface-muted)] sm:aspect-[4/3]">
-        {highlightLabel ? (
-          <div className="absolute left-1.5 top-1.5 z-10 max-w-[calc(100%-0.75rem)] sm:left-2 sm:top-2">
-            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[10px]">
-              {highlightLabel}
-            </span>
-          </div>
-        ) : overlayCampaignBadges.length > 0 ? (
+        {overlayCampaignBadges.length > 0 ? (
           <div className="absolute left-1.5 top-1.5 z-10 flex max-w-[calc(100%-0.75rem)] flex-wrap items-start gap-1 sm:left-2 sm:top-2">
             {overlayCampaignBadges.map((b, i) => (
               <ProductCampaignBadge
                 key={`camp-${b.label}-${i}`}
                 label={b.label}
-                isPrimary={i === 0}
+                isPrimary={true}
                 kind="home"
                 badgeTone={b.campaignTone}
                 size="md"
                 surface="overlay"
+                isPromotion={b.isPromotion}
               />
             ))}
+          </div>
+        ) : highlightLabel ? (
+          <div className="absolute left-1.5 top-1.5 z-10 max-w-[calc(100%-0.75rem)] sm:left-2 sm:top-2">
+            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[10px]">
+              {highlightLabel}
+            </span>
           </div>
         ) : null}
         <Image
@@ -202,7 +212,7 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
           {titleText}
         </h3>
 
-        {!highlightLabel && campaignPitch ? (
+        {campaignPitch ? (
           <p className="line-clamp-2 text-[10px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-[11px]">
             {campaignPitch}
           </p>

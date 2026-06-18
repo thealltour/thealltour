@@ -38,6 +38,7 @@ type HeroRegionConfig = {
   id: string;
   label: string;
   searchKeyword: string;
+  golfRegion?: string;
 };
 
 const DEFAULT_HERO_REGIONS: HeroRegionConfig[] = [
@@ -48,9 +49,24 @@ const DEFAULT_HERO_REGIONS: HeroRegionConfig[] = [
 ];
 
 const DEFAULT_GOLF_HERO_REGIONS: HeroRegionConfig[] = [
-  { id: "golf-japan", label: "일본 골프투어", searchKeyword: "일본 골프" },
-  { id: "golf-se-asia", label: "동남아 골프투어", searchKeyword: "동남아 골프" },
-  { id: "golf-domestic", label: "국내 골프/파크골프", searchKeyword: "국내 골프" },
+  {
+    id: "golf-japan-china",
+    label: "일본/중국 골프투어",
+    searchKeyword: "일본 골프",
+    golfRegion: "japan-china",
+  },
+  {
+    id: "golf-se-asia",
+    label: "동남아 골프투어",
+    searchKeyword: "동남아 골프",
+    golfRegion: "se-asia",
+  },
+  {
+    id: "golf-overseas",
+    label: "해외 골프투어",
+    searchKeyword: "해외 골프",
+    golfRegion: "overseas",
+  },
 ];
 
 const EMPTY_SETTINGS: SiteSettings = {
@@ -221,6 +237,8 @@ export default function AdminSiteSettingsManager() {
                 id: String(item.id ?? "").trim(),
                 label: String(item.label ?? "").trim(),
                 searchKeyword: String(item.searchKeyword ?? "").trim(),
+                golfRegion:
+                  typeof item.golfRegion === "string" ? item.golfRegion.trim() : undefined,
               }))
               .filter((item) => item.id && item.label);
             if (normalized.length > 0) {
@@ -978,8 +996,8 @@ export default function AdminSiteSettingsManager() {
             </button>
           </div>
           <p className="text-[11px] text-[var(--text-muted)]">
-            골프/파크골프 전용 뷰에서 노출될 옵션입니다. 표시 이름은 유입 상품명에도 사용되고, 검색
-            키워드는 골프 상품 목록 필터에 사용됩니다.
+            골프/파크골프 전용 뷰에서 노출될 옵션입니다. 표시 이름은 메가메뉴·유입 상품명에 사용되고,
+            지역 프리셋은 골프 상품군 중 해당 지역 taxonomy(대·중·소분류)에 맞는 상품을 필터합니다.
           </p>
           <div className="space-y-2">
             {golfHeroRegions.map((region, index) => (
@@ -1005,21 +1023,26 @@ export default function AdminSiteSettingsManager() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-[var(--text-primary)]">검색 키워드</span>
-                  <input
-                    type="text"
-                    value={region.searchKeyword}
+                  <span className="font-semibold text-[var(--text-primary)]">지역 프리셋</span>
+                  <select
+                    value={region.golfRegion ?? ""}
                     onChange={(event) => {
                       const value = event.target.value;
                       setGolfHeroRegions((prev) =>
                         prev.map((item, idx) =>
-                          idx === index ? { ...item, searchKeyword: value } : item,
+                          idx === index
+                            ? { ...item, golfRegion: value || undefined }
+                            : item,
                         ),
                       );
                     }}
-                    placeholder="예: 일본 골프"
                     className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
-                  />
+                  >
+                    <option value="">키워드 검색(레거시)</option>
+                    <option value="japan-china">일본/중국 (japan-china)</option>
+                    <option value="se-asia">동남아 (se-asia)</option>
+                    <option value="overseas">해외 (overseas)</option>
+                  </select>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="font-semibold text-[var(--text-primary)]">URL 파라미터(id)</span>

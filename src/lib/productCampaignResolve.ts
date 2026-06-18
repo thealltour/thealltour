@@ -5,6 +5,7 @@
 import type { Product } from "@/types/product";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { CampaignBadgeTone, ProductCampaignCardMeta } from "@/types/productCampaignCard";
+import { GOLF_CALENDAR_PROMOTION_CAMPAIGN_SLUG } from "@/lib/products/golfCalendarPromotion";
 
 export type CampaignTaxonomyIndex = {
   byId: Map<string, ProductTaxonomy>;
@@ -57,6 +58,7 @@ function taxonomyToCardMeta(t: ProductTaxonomy): ProductCampaignCardMeta {
     typeof t.badge_description === "string" && t.badge_description.trim() !== ""
       ? t.badge_description.trim()
       : undefined;
+  const slugNorm = (t.slug ?? "").trim().toLowerCase();
   return {
     taxonomyId: t.id,
     name,
@@ -65,6 +67,7 @@ function taxonomyToCardMeta(t: ProductTaxonomy): ProductCampaignCardMeta {
     badge_visible: visible,
     badge_tone: tone,
     description: desc,
+    isPromotionCampaign: slugNorm === GOLF_CALENDAR_PROMOTION_CAMPAIGN_SLUG,
   };
 }
 

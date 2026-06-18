@@ -314,35 +314,48 @@
 
 
 
-.theall-golf-calendar .rdp-promotion-star {
-
-  position: absolute;
-
-  top: 2px;
-
-  right: 2px;
-
-  z-index: 1;
-
-  width: 0.625rem;
-
-  height: 0.625rem;
-
-  fill: #fbbf24;
-
-  color: #fbbf24;
-
-  pointer-events: none;
-
+.theall-golf-calendar .rdp-promotion-day {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25em;
+  min-height: 1.25em;
 }
 
+.theall-golf-calendar .rdp-promotion-day-label {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
 
+.theall-golf-calendar .rdp-has-promotion:not(.rdp-selected) .rdp-promotion-day-label {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.theall-golf-calendar .rdp-promotion-star {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: 1.85em;
+  height: 1.85em;
+  transform: translate(-50%, -50%);
+  fill: #fbbf24;
+  color: #fbbf24;
+  opacity: 0.55;
+  pointer-events: none;
+}
 
 .theall-golf-calendar .rdp-selected .rdp-promotion-star {
-
   fill: #fde68a;
-
   color: #fde68a;
+  opacity: 0.75;
+}
 
+.theall-golf-calendar .rdp-selected .rdp-promotion-day-label {
+  font-weight: 700;
+  color: #fff;
 }
 

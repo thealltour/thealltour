@@ -1,5 +1,6 @@
 import type { Product } from "@/types/product";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
+import { productHasPromotionFromMeta } from "@/lib/products/productPromotionSort";
 
 /** PR35: 관련도 점수 가중치. 관련도 우선 정렬용 */
 const SCORE = {
@@ -94,6 +95,9 @@ export function sortRelatedProducts(
   const date = refDate ?? new Date();
 
   return [...filtered].sort((a, b) => {
+    const promoA = productHasPromotionFromMeta(a) ? 0 : 1;
+    const promoB = productHasPromotionFromMeta(b) ? 0 : 1;
+    if (promoA !== promoB) return promoA - promoB;
     const scoreA = scoreRelatedProduct(current, a, date);
     const scoreB = scoreRelatedProduct(current, b, date);
     if (scoreB !== scoreA) return scoreB - scoreA;

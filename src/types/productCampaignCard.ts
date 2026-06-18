@@ -16,4 +16,6 @@ export type ProductCampaignCardMeta = {
   badge_tone: CampaignBadgeTone;
   /** 카드 피치 1줄. 없으면 레거시 라벨 fallback 가능 */
   description?: string;
+  /** campaign taxonomy slug=promotion (시즌/특가) */
+  isPromotionCampaign?: boolean;
 };

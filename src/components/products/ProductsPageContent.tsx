@@ -12,13 +12,21 @@ import {
   mergeFiltersIntoSearchParams,
   applyProductFilters,
   getCollectionLabel,
+  PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE,
   SORT_OPTIONS,
   type ProductCollectionId,
   type ProductFiltersState,
   type ProductSortId,
 } from "@/lib/productFilters";
 import { resolveProductsPageInitialFilters } from "@/lib/products/productsListingPolicy";
-import { filterGolfChannelProducts, isGolfProductLineTaxonomy } from "@/lib/products/golfChannel";
+import { sortProductsPromotionFirst } from "@/lib/products/productPromotionSort";
+import {
+  filterGolfChannelProducts,
+  filterGolfProductsByRegionPreset,
+  GOLF_REGION_PRESET_LABELS,
+  isGolfProductLineTaxonomy,
+  parseGolfRegionPresetId,
+} from "@/lib/products/golfChannel";
 import type { Product } from "@/types/product";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import { getSelfAndDescendantIdsAndNames } from "@/lib/productTaxonomies";
@@ -76,14 +84,34 @@ export function ProductsPageContent({
     [searchParams, initialFiltersFromServer],
   );
 
+  const golfRegionPreset = useMemo(() => {
+    if (!golfChannelPreset) return null;
+    return parseGolfRegionPresetId(searchParams.get("golfRegion"));
+  }, [golfChannelPreset, searchParams]);
+
   const baseProducts = useMemo(() => {
     if (!golfChannelPreset) return products;
-    return filterGolfChannelProducts(products, taxonomyNameMap ?? {});
-  }, [products, golfChannelPreset, taxonomyNameMap]);
+    let list = filterGolfChannelProducts(products, taxonomyNameMap ?? {});
+    if (golfRegionPreset && regionTaxonomies?.length) {
+      list = filterGolfProductsByRegionPreset(
+        list,
+        golfRegionPreset,
+        regionTaxonomies,
+        taxonomyNameMap ?? {},
+      );
+    }
+    return list;
+  }, [products, golfChannelPreset, golfRegionPreset, regionTaxonomies, taxonomyNameMap]);
 
   const effectiveProductLineOptions = useMemo(() => {
-    if (!golfChannelPreset) return productLineOptions;
-    return productLineOptions.filter((name) => isGolfProductLineTaxonomy({ name }));
+    if (golfChannelPreset) {
+      return productLineOptions.filter((name) => isGolfProductLineTaxonomy({ name }));
+    }
+    const options = [...productLineOptions];
+    if (!options.includes(PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE)) {
+      options.push(PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE);
+    }
+    return options;
   }, [productLineOptions, golfChannelPreset]);
 
   const filterApplyOptions = useMemo(() => {
@@ -156,7 +184,10 @@ export function ProductsPageContent({
   ]);
 
   const filteredProducts = useMemo(
-    () => applyProductFilters(baseProducts, filters, taxonomyNameMap, filterApplyOptions),
+    () =>
+      sortProductsPromotionFirst(
+        applyProductFilters(baseProducts, filters, taxonomyNameMap, filterApplyOptions),
+      ),
     [baseProducts, filters, taxonomyNameMap, filterApplyOptions],
   );
 
@@ -191,6 +222,7 @@ export function ProductsPageContent({
   };
 
   const collectionLabel = getCollectionLabel(filters.collection);
+  const golfRegionLabel = golfRegionPreset ? GOLF_REGION_PRESET_LABELS[golfRegionPreset] : null;
 
   return (
     <div className="flex w-full max-w-full gap-8 items-start">
@@ -219,6 +251,17 @@ export function ProductsPageContent({
         />
 
         <div className="space-y-2">
+          {golfRegionLabel && (
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2"
+              role="status"
+            >
+              <p className="type-small text-amber-900">
+                현재 <span className="font-semibold">{golfRegionLabel}</span> 지역 골프 상품만
+                보여주고 있습니다.
+              </p>
+            </div>
+          )}
           {collectionLabel && (
             <div
               className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2"

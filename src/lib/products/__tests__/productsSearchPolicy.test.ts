@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Product } from "@/types/product";
-import { applyProductFilters } from "@/lib/productFilters";
+import { applyProductFilters, PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE } from "@/lib/productFilters";
 import { productCatalogMatchesKeyword } from "@/lib/products/productCatalogKeyword";
 import {
   buildProductsKeywordHaystack,
@@ -54,5 +54,27 @@ describe("productsSearchPolicy", () => {
     const product = p({ title: "제주", description: "골프장" });
     expect(productCatalogMatchesKeyword(product, "없음, 제주")).toBe(true);
     expect(productCatalogMatchesKeyword(product, "없음,오사카")).toBe(false);
+  });
+
+  it("product_line 패키지여행: product_line_id 미지정 상품만", () => {
+    const lineMap = { "line-golf": "골프투어" };
+    const products = [
+      p({ id: "unassigned", product_line_id: undefined }),
+      p({ id: "golf", product_line_id: "line-golf" }),
+      p({ id: "empty", product_line_id: "" }),
+    ];
+    const matched = applyProductFilters(
+      products,
+      {
+        region: null,
+        theme: null,
+        product_line: PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE,
+        sort: "",
+        q: null,
+        collection: null,
+      },
+      lineMap,
+    );
+    expect(matched.map((x) => x.id).sort()).toEqual(["empty", "unassigned"]);
   });
 });

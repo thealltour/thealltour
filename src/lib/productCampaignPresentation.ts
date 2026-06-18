@@ -7,6 +7,7 @@ import type { Product } from "@/types/product";
 import type { CampaignBadgeTone } from "@/types/productCampaignCard";
 import { cn } from "@/lib/cn";
 import { getPrimaryRepresentativeCampaignLabel, normalizeCampaignLabel } from "@/lib/productCampaignBadges";
+import { sortVisibleCampaignCardMeta } from "@/lib/productCampaignSort";
 
 /** 카드 표면 종류 — 데이터는 동일, 표현 강도만 조절 */
 export type CampaignCardKind = "related" | "list" | "grid" | "mobile" | "home";
@@ -90,12 +91,7 @@ function getPrimaryCampaignPitchFromMeta(product: Product, kind: CampaignCardKin
   if (!shouldShowCampaignPitch(kind)) return undefined;
   const meta = product.campaign_card_meta;
   if (!meta?.length) return undefined;
-  const sorted = [...meta]
-    .filter((m) => m.badge_visible === true)
-    .sort((a, b) => {
-      if (a.badge_priority !== b.badge_priority) return a.badge_priority - b.badge_priority;
-      return a.displayLabel.localeCompare(b.displayLabel, "ko");
-    });
+  const sorted = sortVisibleCampaignCardMeta(meta);
   const raw = sorted[0]?.description?.trim();
   if (!raw) return undefined;
   const clipped = clipCampaignPitch(raw, pitchMaxLengthForKind(kind));
@@ -135,92 +131,73 @@ export function resolveCampaignCardKind(args: {
 /** 이미지 오버레이 vs 본문 인라인(리스트 카드 제목 주변) */
 export type CampaignBadgeSurface = "overlay" | "inline";
 
+const CAMPAIGN_BADGE_TONE_PALETTE: Record<CampaignVisualTone, string> = {
+  recommend: "bg-violet-600/95 text-white ring-violet-700/30",
+  popular: "bg-sky-600/95 text-white ring-sky-700/30",
+  new: "bg-emerald-600/95 text-white ring-emerald-700/30",
+  secondary: "bg-slate-700/90 text-white ring-slate-800/25",
+};
+
+const CAMPAIGN_BADGE_PROMOTION_PALETTE = "bg-amber-500/95 text-white ring-amber-600/30";
+
+function campaignBadgeShellClasses(surface: CampaignBadgeSurface): string {
+  const maxW =
+    surface === "inline"
+      ? "max-w-[min(100%,7rem)] sm:max-w-[8.5rem]"
+      : "max-w-[min(100%,11rem)]";
+  return cn(
+    maxW,
+    "shrink-0 truncate rounded-md font-bold ring-1 leading-tight",
+    surface === "overlay" && "shadow-sm",
+  );
+}
+
+function campaignBadgePrimarySizeClasses(kind: CampaignCardKind, size: "sm" | "md"): string {
+  if (size === "sm") {
+    return "px-1.5 py-0.5 text-[9px] leading-tight sm:px-2 sm:py-0.5 sm:text-[10px]";
+  }
+  if (kind === "related") return "px-2.5 py-1 text-[11px] sm:text-xs";
+  if (kind === "list") return "px-2 py-0.5 text-[10px] md:px-2.5 md:py-1 md:text-[11px]";
+  if (kind === "home") return "px-2 py-0.5 text-[10px] sm:px-2 sm:py-1 sm:text-[11px]";
+  if (kind === "mobile") return "px-1.5 py-0.5 text-[9px] leading-tight";
+  return "px-2 py-1 text-[10px] sm:text-[11px]";
+}
+
 /**
- * Tailwind 클래스 — 핵심 3종은 캐릭터, 기타는 절제된 pill.
+ * Tailwind 클래스 — 모든 캠페인 배지 동등 크기·풀 컬러 (rounded-md 솔리드).
  * - `size`: md = related·그리드 오버레이, sm = 리스트/모바일 인라인
- * - `surface`: overlay = 어두운 보조 배지 허용, inline = 표면 위 보조 칩은 절제
+ * - `surface`: overlay = 이미지 위, inline = 제목 인접(본문 배경)
  */
 export function getCampaignBadgeClassName(
   label: string,
   opts: {
-    isPrimary: boolean;
+    /** @deprecated 스타일에 미사용. 하위 호환용 */
+    isPrimary?: boolean;
     kind: CampaignCardKind;
     badgeTone?: CampaignBadgeTone;
     size?: "sm" | "md";
     surface?: CampaignBadgeSurface;
+    isPromotion?: boolean;
   },
 ): string {
   const tone: CampaignVisualTone =
     opts.badgeTone != null ? visualToneFromBadgeTone(opts.badgeTone) : getCampaignBadgeTone(label);
-  const { isPrimary, kind } = opts;
+  const { kind } = opts;
   const size = opts.size ?? "md";
   const surface = opts.surface ?? "overlay";
 
-  const sizePrimaryMd =
-    kind === "related"
-      ? "px-2.5 py-1 text-[11px] sm:text-xs"
-      : kind === "list"
-        ? "px-2 py-0.5 text-[10px] md:px-2.5 md:py-1 md:text-[11px]"
-        : kind === "home"
-          ? "px-2 py-0.5 text-[10px] sm:px-2 sm:py-1 sm:text-[11px]"
-          : kind === "mobile"
-            ? "px-1.5 py-0.5 text-[9px] leading-tight"
-            : "px-2 py-0.5 text-[10px] sm:text-[11px]";
-
-  const sizePrimarySm =
-    "px-1.5 py-0.5 text-[9px] leading-tight sm:px-2 sm:py-0.5 sm:text-[10px]";
-
-  const sizeSecondaryMd =
-    kind === "related"
-      ? "px-2 py-0.5 text-[10px] sm:text-[11px]"
-      : kind === "list"
-        ? "px-1.5 py-0.5 text-[9px] md:px-2 md:py-0.5 md:text-[10px]"
-        : kind === "home"
-          ? "px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
-          : kind === "mobile"
-            ? "px-1.5 py-0.5 text-[8px] leading-tight"
-            : "px-1.5 py-0.5 text-[9px] sm:text-[10px]";
-
-  const sizeSecondarySm =
-    "px-1.5 py-0.5 text-[8px] leading-tight sm:text-[9px]";
-
-  const sizePrimary = size === "sm" ? sizePrimarySm : sizePrimaryMd;
-  const sizeSecondary = size === "sm" ? sizeSecondarySm : sizeSecondaryMd;
-
-  const baseOverlay = "max-w-[min(100%,10.5rem)] shrink-0 truncate rounded-full font-semibold leading-none ring-1";
-  const baseInline =
-    "max-w-[min(100%,7rem)] sm:max-w-[8.5rem] shrink-0 truncate rounded-full font-semibold leading-none ring-1";
-
-  const base = surface === "inline" ? baseInline : baseOverlay;
-
-  if (!isPrimary) {
-    if (surface === "inline") {
-      return cn(
-        base,
-        sizeSecondary,
-        "border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] ring-0 shadow-none",
-      );
-    }
+  if (opts.isPromotion) {
     return cn(
-      base,
-      sizeSecondary,
-      "bg-black/38 text-white/92 ring-white/18 backdrop-blur-sm",
-      kind === "grid" && "opacity-90",
-      kind === "related" && "ring-white/25",
+      campaignBadgeShellClasses(surface),
+      campaignBadgePrimarySizeClasses(kind, size),
+      CAMPAIGN_BADGE_PROMOTION_PALETTE,
     );
   }
 
-  const tonePrimary: Record<CampaignVisualTone, string> = {
-    recommend:
-      "bg-[var(--primary)] text-[var(--on-primary)] ring-black/15",
-    popular: "bg-blue-800 text-white ring-blue-950/20",
-    new: "bg-emerald-700 text-white ring-emerald-950/15",
-    secondary: "bg-slate-900/88 text-white ring-white/15",
-  };
-
-  if (surface === "inline") {
-    return cn(base, sizePrimary, tonePrimary[tone], "shadow-sm");
-  }
-
-  return cn(base, sizePrimary, tonePrimary[tone]);
+  const palette = CAMPAIGN_BADGE_TONE_PALETTE[tone];
+  return cn(
+    campaignBadgeShellClasses(surface),
+    campaignBadgePrimarySizeClasses(kind, size),
+    palette,
+  );
 }

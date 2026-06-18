@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { CampaignBadgeTone } from "@/types/productCampaignCard";
 import type { CampaignBadgeSurface, CampaignCardKind } from "@/lib/productCampaignPresentation";
@@ -17,6 +18,8 @@ export type ProductCampaignBadgeProps = {
   size?: "sm" | "md";
   /** overlay: 이미지 위, inline: 제목 인접(본문 배경) */
   surface?: CampaignBadgeSurface;
+  /** 시즌/특가(promotion) — amber 별+배지 */
+  isPromotion?: boolean;
   className?: string;
 };
 
@@ -30,6 +33,7 @@ export function ProductCampaignBadge({
   badgeTone,
   size = "md",
   surface = "overlay",
+  isPromotion = false,
   className,
 }: ProductCampaignBadgeProps) {
   const text = label.trim();
@@ -45,10 +49,19 @@ export function ProductCampaignBadge({
           badgeTone: badgeTone ?? undefined,
           size,
           surface,
+          isPromotion,
         }),
+        isPromotion && "inline-flex items-center gap-0.5",
         className,
       )}
     >
+      {isPromotion ? (
+        <Star
+          className="h-2.5 w-2.5 shrink-0 fill-white text-white sm:h-3 sm:w-3"
+          strokeWidth={0}
+          aria-hidden
+        />
+      ) : null}
       {text}
     </span>
   );

@@ -91,4 +91,50 @@ describe("productCampaignBadges read policy", () => {
     expect(mobile.badges).toHaveLength(1);
     expect(grid.badges).toHaveLength(2);
   });
+
+  it("G: badge_priority ASC 순으로 배지 정렬 (promotion 코드 오버라이드 없음)", () => {
+    const product = baseProduct({
+      campaign_card_meta: [
+        meta({ displayLabel: "인기", badge_priority: 2, badge_tone: "highlight" }),
+        meta({
+          displayLabel: "시즌 / 특가",
+          badge_priority: 50,
+          badge_tone: "neutral",
+          isPromotionCampaign: true,
+        }),
+        meta({ displayLabel: "추천", badge_priority: 1, badge_tone: "primary" }),
+      ],
+    });
+    const badges = buildCampaignRepresentativeBadges(product, { max: 2 });
+    expect(badges[0]?.label).toBe("추천");
+    expect(badges[1]?.label).toBe("인기");
+  });
+
+  it("H: highlight가 있어도 promotion 배지는 productToProductCardProps badges에 포함", () => {
+    const product = baseProduct({
+      status: "LIMITED",
+      campaign_card_meta: [
+        meta({
+          displayLabel: "시즌 / 특가",
+          badge_priority: 1,
+          isPromotionCampaign: true,
+          description: "한정 특가 일정",
+        }),
+      ],
+    });
+    const props = productToProductCardProps(product, {
+      layout: "list",
+      campaignPresentationKind: "list",
+    });
+    expect(props.highlightTag).toBe("closing_soon");
+    expect(props.badges).toHaveLength(1);
+    expect(props.badges?.[0]?.isPromotion).toBe(true);
+    expect(props.campaignPitchLine).toContain("한정 특가");
+  });
+
+  it("I: 고정 출발일 상품은 ctaLabelOptions.fixedDeparture 전달", () => {
+    const product = baseProduct({ departure_from_date: "2026-08-13" });
+    const props = productToProductCardProps(product);
+    expect(props.ctaLabelOptions).toEqual({ fixedDeparture: true });
+  });
 });

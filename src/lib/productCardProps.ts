@@ -5,7 +5,9 @@ import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtag
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
 import { buildCampaignPitchLineFromProduct, resolveCampaignCardKind } from "@/lib/productCampaignPresentation";
-import { pickProductCardHighlightTag } from "@/lib/products/productCardHighlightTag";
+import { pickProductCardHighlightTag, type ProductCardHighlightTag } from "@/lib/products/productCardHighlightTag";
+import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
+import type { ProductCtaLabelOptions } from "@/lib/products/getProductCtaLabel";
 
 const PRIORITY_BADGES = ["제철", "인기", "마감임박"];
 
@@ -195,6 +197,7 @@ export type ProductToProductCardOverrides = Partial<
     | "campaignPresentationKind"
     | "highlightTag"
     | "emphasizeLandingHubHover"
+    | "ctaLabelOptions"
   >
 > & {
   /** 기본: list/mobile presentation이면 1, 그 외 2 */
@@ -227,6 +230,35 @@ function defaultOmitCampaignPitch(overrides: ProductToProductCardOverrides | und
   return pk === "list" || pk === "mobile";
 }
 
+/** promotion(시즌/특가) 배지가 있는지 */
+export function productHasPromotionCampaignBadge(campaignBadges: ProductCardBadge[]): boolean {
+  return campaignBadges.some((b) => b.isPromotion && b.isActive !== false);
+}
+
+/**
+ * 이미지 오버레이용 대표 배지 — promotion이 있으면 highlight가 있어도 노출.
+ */
+export function resolveProductCardOverlayBadges(
+  campaignBadges: ProductCardBadge[],
+  highlightTag?: ProductCardHighlightTag,
+): ProductCardBadge[] {
+  const active = campaignBadges.filter((b) => b.isActive !== false);
+  if (productHasPromotionCampaignBadge(active)) return active;
+  if (highlightTag) return [];
+  return active;
+}
+
+/** highlight가 있어도 promotion이면 피치 문구 유지 */
+export function shouldOmitCampaignPitchForCard(
+  highlightTag: ProductCardHighlightTag | undefined,
+  campaignBadges: ProductCardBadge[],
+  omitByLayout: boolean,
+): boolean {
+  if (productHasPromotionCampaignBadge(campaignBadges)) return false;
+  if (omitByLayout) return true;
+  return Boolean(highlightTag);
+}
+
 /**
  * Product → ProductCard에 넘길 공통 props.
  * CuratedBlock, SearchResults, RelatedProductsSection, ProductCatalogSection, ProductListCard* , guides 등에서 재사용.
@@ -254,12 +286,18 @@ export function productToProductCardProps(
   const maxBadges = defaultCampaignBadgeMax(overrides);
   const campaignBadges = buildCampaignRepresentativeBadges(product, { max: maxBadges });
   const highlightTag = pickProductCardHighlightTag(product);
-  const overlayBadges = highlightTag ? [] : campaignBadges;
+  const overlayBadges = resolveProductCardOverlayBadges(campaignBadges, highlightTag);
   const infoBadges = buildProductCardInfoBadges(product);
-  const campaignPitchLine =
-    highlightTag || defaultOmitCampaignPitch(overrides)
-      ? undefined
-      : buildCampaignPitchLineFromProduct(product, campaignKind);
+  const campaignPitchLine = shouldOmitCampaignPitchForCard(
+    highlightTag,
+    campaignBadges,
+    defaultOmitCampaignPitch(overrides),
+  )
+    ? undefined
+    : buildCampaignPitchLineFromProduct(product, campaignKind);
+  const ctaLabelOptions: ProductCtaLabelOptions | undefined = hasProductFixedDeparture(product)
+    ? { fixedDeparture: true }
+    : undefined;
   return {
     title: product.title,
     price: product.price,
@@ -285,6 +323,7 @@ export function productToProductCardProps(
     ratingAvg: product.trust?.ratingAvg,
     reviewCount: product.trust?.reviewCount,
     highlightTag,
+    ctaLabelOptions,
     ...restOverrides,
     ...(isRelatedSection ? { layout: "related" as const } : {}),
   };

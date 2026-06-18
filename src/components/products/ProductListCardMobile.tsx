@@ -76,6 +76,7 @@ export default function ProductListCardMobile({
   analyticsSection,
   productId,
   highlightTag,
+  ctaLabelOptions,
 }: ProductListCardMobileProps) {
   const [consultPressed, setConsultPressed] = useState(false);
 
@@ -93,7 +94,9 @@ export default function ProductListCardMobile({
     .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
     .slice(0, 2);
   const highlightLabel = highlightTag ? PRODUCT_CARD_HIGHLIGHT_LABELS[highlightTag] : null;
-  const overlayCampaignBadges = highlightLabel ? [] : visibleCampaignBadges;
+  const hasPromotionOverlay = visibleCampaignBadges.some((b) => b.isPromotion);
+  const overlayCampaignBadges =
+    hasPromotionOverlay || !highlightLabel ? visibleCampaignBadges : [];
   const infoDisplayChips = pickInfoDisplayChips(status, infoBadges);
 
   const handleCardClick = () => {
@@ -141,13 +144,7 @@ export default function ProductListCardMobile({
     <div className="flex min-h-[148px] w-full">
       {/* 좌측: 이미지 + 캠페인 배지 오버레이(데스크 목록과 동일 소스) */}
       <div className="relative w-[34%] min-w-[112px] max-w-[136px] shrink-0 self-stretch overflow-hidden bg-[var(--surface-muted)]">
-        {highlightLabel ? (
-          <div className="pointer-events-none absolute left-1 top-1 z-10 max-w-[calc(100%-0.5rem)] sm:left-1.5 sm:top-1.5">
-            <span className="inline-flex max-w-full truncate rounded-md bg-amber-500/95 px-1.5 py-0.5 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:px-2 sm:py-1 sm:text-[10px]">
-              {highlightLabel}
-            </span>
-          </div>
-        ) : overlayCampaignBadges.length > 0 ? (
+        {overlayCampaignBadges.length > 0 ? (
           <div
             className="pointer-events-none absolute left-1 top-1 z-10 flex max-w-[calc(100%-0.5rem)] flex-col items-start gap-0.5 sm:left-1.5 sm:top-1.5 sm:flex-row sm:flex-wrap sm:gap-1"
             aria-label="기획 배지"
@@ -156,14 +153,21 @@ export default function ProductListCardMobile({
               <ProductCampaignBadge
                 key={`m-ov-${b.label}-${i}`}
                 label={b.label}
-                isPrimary={i === 0}
+                isPrimary={true}
                 kind="mobile"
                 badgeTone={b.campaignTone}
                 size="sm"
                 surface="overlay"
+                isPromotion={b.isPromotion}
                 className="max-w-full"
               />
             ))}
+          </div>
+        ) : highlightLabel ? (
+          <div className="pointer-events-none absolute left-1 top-1 z-10 max-w-[calc(100%-0.5rem)] sm:left-1.5 sm:top-1.5">
+            <span className="inline-flex max-w-full truncate rounded-md bg-amber-500/95 px-1.5 py-0.5 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:px-2 sm:py-1 sm:text-[10px]">
+              {highlightLabel}
+            </span>
           </div>
         ) : null}
         {thumbnailUrl ? (
@@ -264,7 +268,7 @@ export default function ProductListCardMobile({
               if (e.key === "Enter" || e.key === " ") handleConsultKey(e);
             }}
           >
-            {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status)}
+            {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status, ctaLabelOptions)}
           </button>
         ) : null}
       </div>

@@ -77,6 +77,16 @@ export function buildGolfDepartureEvents(
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title, "ko"));
 }
 
+/** 일자별 목록: promotion 상품 우선, 이후 제목 가나다순 */
+export function sortGolfDepartureEventsForList(events: GolfDepartureEvent[]): GolfDepartureEvent[] {
+  return [...events].sort((a, b) => {
+    const promoA = a.isPromotionDeparture ? 0 : 1;
+    const promoB = b.isPromotionDeparture ? 0 : 1;
+    if (promoA !== promoB) return promoA - promoB;
+    return a.title.localeCompare(b.title, "ko");
+  });
+}
+
 export function groupGolfDepartureEventsByDate(
   events: GolfDepartureEvent[],
 ): Map<string, GolfDepartureEvent[]> {
@@ -85,6 +95,9 @@ export function groupGolfDepartureEventsByDate(
     const list = map.get(event.date);
     if (list) list.push(event);
     else map.set(event.date, [event]);
+  }
+  for (const [date, list] of map) {
+    map.set(date, sortGolfDepartureEventsForList(list));
   }
   return map;
 }

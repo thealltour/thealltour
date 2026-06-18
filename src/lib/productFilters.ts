@@ -10,6 +10,8 @@ import {
   tokenizeListingQueryKeyword,
 } from "@/lib/products/productsSearchPolicy";
 
+export const PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE = "패키지여행";
+
 export const PRODUCT_FILTER_KEYS = {
   REGION: "region",
   THEME: "theme",
@@ -19,6 +21,8 @@ export const PRODUCT_FILTER_KEYS = {
   /** 여행추천 메가메뉴용: recommend | popular | new */
   COLLECTION: "collection",
   TOUR_TYPE: "tourType",
+  /** 골프 채널 지역 프리셋: japan-china | se-asia | overseas */
+  GOLF_REGION: "golfRegion",
   /** 랜딩에서 진입 시 상위 맥락용 (slug) */
   DESTINATION: "destination",
   CITY: "city",
@@ -129,6 +133,7 @@ export function buildProductsFilterHref(payload: {
   sort?: string | null;
   collection?: string | null;
   tourType?: string | null;
+  golfRegion?: string | null;
 }): string {
   const p = new URLSearchParams();
   if (payload.destination?.trim()) p.set(PRODUCT_FILTER_KEYS.DESTINATION, payload.destination.trim());
@@ -140,6 +145,7 @@ export function buildProductsFilterHref(payload: {
   if (payload.sort?.trim()) p.set(PRODUCT_FILTER_KEYS.SORT, payload.sort.trim());
   if (payload.collection?.trim()) p.set(PRODUCT_FILTER_KEYS.COLLECTION, payload.collection.trim());
   if (payload.tourType?.trim()) p.set(PRODUCT_FILTER_KEYS.TOUR_TYPE, payload.tourType.trim());
+  if (payload.golfRegion?.trim()) p.set(PRODUCT_FILTER_KEYS.GOLF_REGION, payload.golfRegion.trim());
   const qs = p.toString();
   return qs ? `/products?${qs}` : "/products";
 }
@@ -249,16 +255,20 @@ export function applyProductFilters(
   }
   if (filters.product_line) {
     const pl = filters.product_line.trim();
-    list = list.filter((p) => {
-      const lineName =
-        p.product_line_id && map[p.product_line_id]
-          ? map[p.product_line_id].trim()
-          : null;
-      if (lineName !== null) {
-        return lineName === pl;
-      }
-      return (p.category ?? "").trim() === pl;
-    });
+    if (pl === PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE) {
+      list = list.filter((p) => !p.product_line_id?.trim());
+    } else {
+      list = list.filter((p) => {
+        const lineName =
+          p.product_line_id && map[p.product_line_id]
+            ? map[p.product_line_id].trim()
+            : null;
+        if (lineName !== null) {
+          return lineName === pl;
+        }
+        return (p.category ?? "").trim() === pl;
+      });
+    }
   }
   if (filters.q) {
     const q = filters.q.trim().toLowerCase();

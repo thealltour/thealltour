@@ -5,7 +5,7 @@ import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
 import { getDestinationLandingHref, getThemeLandingHref } from "@/lib/hubLandingLinks";
 import { getSiteSettings, type SiteSettings } from "@/lib/siteSettings";
-import { buildGolfProductsHref, parseGolfHeroRegions } from "@/lib/products/golfChannel";
+import { buildGolfProductsHref, parseGolfHeroRegions, resolveGolfHeroRegionPreset } from "@/lib/products/golfChannel";
 
 /** hover 메뉴: 지역별 = destination만, 테마별 = theme만. 대분류(parent_id null) 있으면 그룹별로 묶어 표시. */
 const HUB_MENU_ITEM_LIMIT = 8;
@@ -109,11 +109,16 @@ const RECOMMEND_COLLECTION_GROUP: HeaderNavGroup = {
 function buildGolfRecommendMenuGroup(settings: SiteSettings): HeaderNavGroup {
   const golfAllHref = buildGolfProductsHref();
   const regionItems: HeaderNavLeafItem[] = parseGolfHeroRegions(settings.golf_hero_regions).map(
-    (region) => ({
-      key: `golf-region-${region.id}`,
-      label: region.label,
-      href: buildGolfProductsHref({ q: region.searchKeyword }),
-    }),
+    (region) => {
+      const preset = resolveGolfHeroRegionPreset(region);
+      return {
+        key: `golf-region-${region.id}`,
+        label: region.label,
+        href: preset
+          ? buildGolfProductsHref({ golfRegion: preset })
+          : buildGolfProductsHref({ q: region.searchKeyword }),
+      };
+    },
   );
 
   return {

@@ -8,7 +8,7 @@ import type { ProductFormState } from "@/types/adminProductForm";
 import { normalizeImageList } from "@/lib/products/images";
 import { serializeStructuredDaysToSchedule } from "@/lib/products/mapProductToTimelineModel";
 import { serializeItineraryImages } from "@/lib/images/serializeItineraryImages";
-import { parseDetailedSchedule } from "./adminProductForm.helpers";
+import { parseCampaignsFormString, parseDetailedSchedule } from "./adminProductForm.helpers";
 import type { AdminProductSavePayload } from "./adminProductForm.types";
 import {
   sanitizeSeasonalPriceBandsFromFormStrings,
@@ -158,9 +158,7 @@ export function serializeAdminProductForm(
     theme: (form.theme ?? "").trim() === "" ? null : String(form.theme).trim(),
     product_line_id: form.product_line_id.trim() === "" ? null : form.product_line_id.trim(),
     campaigns: ((): string[] | null => {
-      const s = form.campaigns.trim();
-      if (!s) return null;
-      const arr = s.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+      const arr = parseCampaignsFormString(form.campaigns);
       return arr.length > 0 ? arr : null;
     })(),
     price: priceForPayload,

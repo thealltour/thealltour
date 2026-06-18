@@ -26,7 +26,7 @@ import {
   PRODUCT_CARD_HIGHLIGHT_LABELS,
   type ProductCardHighlightTag,
 } from "@/lib/products/productCardHighlightTag";
-import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
+import { getProductCtaLabel, type ProductCtaLabelOptions } from "@/lib/products/getProductCtaLabel";
 
 export type ProductCardStatus =
   | "AVAILABLE"
@@ -41,6 +41,8 @@ export type ProductCardBadge = {
   isActive?: boolean;
   /** PR3: taxonomy badge_tone — 있으면 라벨 기반 톤 추론 생략 */
   campaignTone?: "primary" | "highlight" | "neutral";
+  /** campaign slug=promotion (시즌/특가) */
+  isPromotion?: boolean;
 };
 
 export type ProductCardLayout = "grid" | "list" | "related" | "stack";
@@ -108,6 +110,8 @@ export type ProductCardProps = {
   highlightTag?: ProductCardHighlightTag;
   /** true면 grid 카드 호버를 primary/30 대신 --shadow-soft-strong·--border-strong 사용 */
   emphasizeLandingHubHover?: boolean;
+  /** 고정 출발일 상품 CTA 옵션 (AVAILABLE 시 「빠른 문의」) */
+  ctaLabelOptions?: ProductCtaLabelOptions;
 };
 
 function formatReviewCount(n: number): string {
@@ -185,6 +189,7 @@ export default function ProductCard({
   seasonal_price_bands,
   highlightTag,
   emphasizeLandingHubHover = false,
+  ctaLabelOptions,
 }: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [consultPressed, setConsultPressed] = useState(false);
@@ -242,7 +247,9 @@ export default function ProductCard({
   const isStackLayout = layout === "stack";
 
   const highlightLabel = highlightTag ? PRODUCT_CARD_HIGHLIGHT_LABELS[highlightTag] : null;
-  const overlayCampaignBadges = highlightLabel ? [] : visibleCampaignBadges;
+  const hasPromotionOverlay = visibleCampaignBadges.some((b) => b.isPromotion);
+  const overlayCampaignBadges =
+    hasPromotionOverlay || !highlightLabel ? visibleCampaignBadges : [];
   const showHighlightPriceLine =
     Boolean(highlightLabel) && (isListLayout || isRelatedLayout);
   const useCompactSeasonalPrice = isRelatedLayout || isStackLayout;
@@ -336,9 +343,22 @@ export default function ProductCard({
   const relatedCardContent = (
     <div className="flex h-full flex-col">
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]">
-        {(highlightLabel || topPick || overlayCampaignBadges.length > 0) && (
+        {(overlayCampaignBadges.length > 0 || highlightLabel || topPick) && (
           <div className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1">
-            {highlightLabel ? (
+            {overlayCampaignBadges.length > 0 ? (
+              overlayCampaignBadges.map((b, i) => (
+                <ProductCampaignBadge
+                  key={`${b.label}-${i}`}
+                  label={b.label}
+                  isPrimary={true}
+                  kind={campaignKind}
+                  badgeTone={b.campaignTone}
+                  size="md"
+                  surface="overlay"
+                  isPromotion={b.isPromotion}
+                />
+              ))
+            ) : highlightLabel ? (
               <span
                 className="inline-flex max-w-[min(100%,11rem)] shrink-0 truncate rounded-md bg-amber-500/95 px-2 py-1 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30"
                 title={highlightLabel}
@@ -355,17 +375,6 @@ export default function ProductCard({
                     {topPick}
                   </span>
                 ) : null}
-                {overlayCampaignBadges.map((b, i) => (
-                  <ProductCampaignBadge
-                    key={`${b.label}-${i}`}
-                    label={b.label}
-                    isPrimary={i === 0}
-                    kind={campaignKind}
-                    badgeTone={b.campaignTone}
-                    size="md"
-                    surface="overlay"
-                  />
-                ))}
               </>
             )}
           </div>
@@ -526,25 +535,26 @@ export default function ProductCard({
             : "w-[42%] min-w-[140px] max-w-[220px]",
         )}
       >
-        {highlightLabel && !isListLayout ? (
-          <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
-            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[11px]">
-              {highlightLabel}
-            </span>
-          </div>
-        ) : !isListLayout && overlayCampaignBadges.length > 0 ? (
+        {overlayCampaignBadges.length > 0 ? (
           <div className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1">
             {overlayCampaignBadges.map((b, i) => (
               <ProductCampaignBadge
                 key={`grid-camp-${b.label}-${i}`}
                 label={b.label}
-                isPrimary={i === 0}
+                isPrimary={true}
                 kind={isListLayout ? "list" : "grid"}
                 badgeTone={b.campaignTone}
                 size="md"
                 surface="overlay"
+                isPromotion={b.isPromotion}
               />
             ))}
+          </div>
+        ) : highlightLabel && !isListLayout ? (
+          <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
+            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[11px]">
+              {highlightLabel}
+            </span>
           </div>
         ) : null}
         {isListLayout && highlightLabel ? (
@@ -592,11 +602,12 @@ export default function ProductCard({
               <ProductCampaignBadge
                 key={`list-inline-${b.label}-${i}`}
                 label={b.label}
-                isPrimary={i === 0}
+                isPrimary={true}
                 kind="list"
                 badgeTone={b.campaignTone}
                 size="sm"
                 surface="inline"
+                isPromotion={b.isPromotion}
               />
             ))}
           </div>
@@ -664,7 +675,7 @@ export default function ProductCard({
                 if (e.key === "Enter" || e.key === " ") handleConsultKey(e);
               }}
             >
-              {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status)}
+              {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status, ctaLabelOptions)}
             </span>
           ) : null}
         </div>

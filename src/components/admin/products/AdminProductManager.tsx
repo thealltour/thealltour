@@ -23,7 +23,12 @@ import {
   useEditorSectionPersistence,
 } from "@/components/admin/products/editor/hooks/useEditorSectionPersistence";
 import { useEditorKeyboardShortcuts } from "@/components/admin/products/editor/hooks/useEditorKeyboardShortcuts";
-import { parseDetailedSchedule, type DayScheduleDraft } from "@/components/admin/products/editor/adminProductForm.helpers";
+import {
+  parseCampaignsFormString,
+  parseDetailedSchedule,
+  stringifyCampaignsFormList,
+  type DayScheduleDraft,
+} from "@/components/admin/products/editor/adminProductForm.helpers";
 
 import type { SectionId, FormIssue, SectionIssue } from "@/components/admin/products/editor/adminProductForm.types";
 /** AdminProductManager에서 사용하는 섹션/이슈 타입 re-export */
@@ -420,16 +425,6 @@ export default function AdminProductManager() {
   const [selectedThemeLevel1Id, setSelectedThemeLevel1Id] = useState("");
   /** 테마 중분류만 선택한 상태(소분류 표시용). */
   const [selectedThemeLevel2Id, setSelectedThemeLevel2Id] = useState("");
-
-  function parseCampaignsList(value: string) {
-    return value
-      .split(/[,\n|]+/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-  }
-  function stringifyCampaignsList(list: string[]) {
-    return list.join(",");
-  }
 
   function showLocalToast(type: "success" | "error", text: string) {
     setToast({ type, text });
@@ -1097,7 +1092,7 @@ export default function AdminProductManager() {
     [taxonomyController.campaignOptions],
   );
   const selectedCampaigns = useMemo(
-    () => parseCampaignsList(form.campaigns),
+    () => parseCampaignsFormString(form.campaigns),
     [form.campaigns],
   );
   const scheduleDrafts = useMemo(
@@ -1503,12 +1498,12 @@ export default function AdminProductManager() {
   useEffect(() => {
     if (campaignsSyncRef.current) return;
     const allowedCampaigns = new Set(activeCampaignOptions.map((i) => i.name));
-    const cleaned = parseCampaignsList(form.campaigns).filter((c) => allowedCampaigns.has(c));
+    const cleaned = parseCampaignsFormString(form.campaigns).filter((c) => allowedCampaigns.has(c));
     const cleanedSet = new Set(cleaned);
-    const currentSet = new Set(parseCampaignsList(form.campaigns));
+    const currentSet = new Set(parseCampaignsFormString(form.campaigns));
     if (cleanedSet.size !== currentSet.size || [...currentSet].some((c) => !cleanedSet.has(c))) {
       campaignsSyncRef.current = true;
-      const cleanedText = stringifyCampaignsList(cleaned);
+      const cleanedText = stringifyCampaignsFormList(cleaned);
       setForm((prev) => ({ ...prev, campaigns: cleanedText }));
       queueMicrotask(() => { campaignsSyncRef.current = false; });
     }
@@ -1596,11 +1591,11 @@ export default function AdminProductManager() {
 
   function toggleCampaign(name: string) {
     setForm((prev) => {
-      const current = parseCampaignsList(prev.campaigns);
+      const current = parseCampaignsFormString(prev.campaigns);
       const next = current.includes(name)
         ? current.filter((item) => item !== name)
         : [...current, name];
-      return { ...prev, campaigns: stringifyCampaignsList(next) };
+      return { ...prev, campaigns: stringifyCampaignsFormList(next) };
     });
   }
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildGolfDepartureEvents } from "@/lib/products/golfDepartureCalendar";
+import {
+  buildGolfDepartureEvents,
+  groupGolfDepartureEventsByDate,
+  sortGolfDepartureEventsForList,
+} from "@/lib/products/golfDepartureCalendar";
 import type { Product } from "@/types/product";
 
 describe("buildGolfDepartureEvents", () => {
@@ -87,6 +91,25 @@ describe("buildGolfDepartureEvents", () => {
     expect(events[61]?.date).toBe("2026-08-31");
   });
 
+  it("uses only departure date for overnight flight (not arrival day)", () => {
+    const products = [
+      {
+        id: "p-flight",
+        title: "야간 항공 골프",
+        departure_from_date: "2026-08-13",
+        departure_to_date: "2026-08-14",
+        price: 890000,
+      } as Product,
+    ];
+
+    const events = buildGolfDepartureEvents(products);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      date: "2026-08-13",
+      productId: "p-flight",
+    });
+  });
+
   it("includes regionLabel and imageUrl metadata", () => {
     const products = [
       {
@@ -152,5 +175,69 @@ describe("buildGolfDepartureEvents", () => {
       date: "2026-10-11",
       isPromotionDeparture: undefined,
     });
+  });
+});
+
+describe("sortGolfDepartureEventsForList", () => {
+  it("sorts promotion events before regular events on the same date", () => {
+    const events = sortGolfDepartureEventsForList([
+      {
+        date: "2026-08-13",
+        productId: "normal",
+        title: "일반 골프",
+        href: "/products/normal",
+        isPromotionDeparture: undefined,
+      },
+      {
+        date: "2026-08-13",
+        productId: "promo",
+        title: "특가 골프",
+        href: "/products/promo",
+        isPromotionDeparture: true,
+      },
+    ]);
+
+    expect(events.map((e) => e.productId)).toEqual(["promo", "normal"]);
+  });
+
+  it("sorts by title within the same promotion tier", () => {
+    const events = sortGolfDepartureEventsForList([
+      {
+        date: "2026-08-13",
+        productId: "b",
+        title: "베트남 골프",
+        href: "/products/b",
+      },
+      {
+        date: "2026-08-13",
+        productId: "a",
+        title: "가나다 골프",
+        href: "/products/a",
+      },
+    ]);
+
+    expect(events.map((e) => e.productId)).toEqual(["a", "b"]);
+  });
+});
+
+describe("groupGolfDepartureEventsByDate", () => {
+  it("places promotion events first within each date bucket", () => {
+    const map = groupGolfDepartureEventsByDate([
+      {
+        date: "2026-08-13",
+        productId: "normal",
+        title: "일반 골프",
+        href: "/products/normal",
+      },
+      {
+        date: "2026-08-13",
+        productId: "promo",
+        title: "특가 골프",
+        href: "/products/promo",
+        isPromotionDeparture: true,
+      },
+    ]);
+
+    expect(map.get("2026-08-13")?.map((e) => e.productId)).toEqual(["promo", "normal"]);
   });
 });

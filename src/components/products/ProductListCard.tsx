@@ -99,6 +99,7 @@ export default function ProductListCard({
   analyticsSection,
   productId,
   highlightTag,
+  ctaLabelOptions,
 }: ProductListCardProps) {
   const [consultPressed, setConsultPressed] = useState(false);
 
@@ -117,7 +118,9 @@ export default function ProductListCard({
     .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
     .slice(0, 2);
   const highlightLabel = highlightTag ? PRODUCT_CARD_HIGHLIGHT_LABELS[highlightTag] : null;
-  const overlayCampaignBadges = highlightLabel ? [] : visibleCampaignBadges;
+  const hasPromotionOverlay = visibleCampaignBadges.some((b) => b.isPromotion);
+  const overlayCampaignBadges =
+    hasPromotionOverlay || !highlightLabel ? visibleCampaignBadges : [];
   const infoDisplayChips = pickInfoDisplayChips(status, infoBadges);
 
   const handleCardClick = () => {
@@ -181,13 +184,7 @@ export default function ProductListCard({
     <div className="grid w-full grid-cols-[280px_minmax(0,1fr)_300px]">
       {/* 좌측: 이미지 + 캠페인 배지 오버레이(/destinations·랜딩 ProductCard와 동일 계열) */}
       <div className="relative h-full min-h-[220px] overflow-hidden rounded-l-2xl bg-[var(--surface-muted)]">
-        {highlightLabel ? (
-          <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
-            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30">
-              {highlightLabel}
-            </span>
-          </div>
-        ) : overlayCampaignBadges.length > 0 ? (
+        {overlayCampaignBadges.length > 0 ? (
           <div
             className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-start gap-1"
             aria-label="기획 배지"
@@ -196,13 +193,20 @@ export default function ProductListCard({
               <ProductCampaignBadge
                 key={`list-ov-${b.label}-${i}`}
                 label={b.label}
-                isPrimary={i === 0}
+                isPrimary={true}
                 kind="list"
                 badgeTone={b.campaignTone}
                 size="md"
                 surface="overlay"
+                isPromotion={b.isPromotion}
               />
             ))}
+          </div>
+        ) : highlightLabel ? (
+          <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
+            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30">
+              {highlightLabel}
+            </span>
           </div>
         ) : null}
         {thumbnailUrl ? (
@@ -319,7 +323,7 @@ export default function ProductListCard({
                     handleConsultKey(e);
                 }}
               >
-                {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status)}
+                {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status, ctaLabelOptions)}
               </button>
             ) : null}
           </div>

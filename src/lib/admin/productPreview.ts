@@ -23,6 +23,7 @@ import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { buildProductCardInfoBadges } from "@/lib/productCardProps";
 import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
 import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresentation";
+import { parseCampaignsFormString } from "@/components/admin/products/editor/adminProductForm.helpers";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { getPrimaryImageUrl, normalizeImageList } from "@/lib/products/images";
@@ -178,15 +179,11 @@ export function formToPreviewProduct(
     theme: form.theme?.trim() || undefined,
     product_line_id: form.product_line_id?.trim() || null,
     campaigns: (() => {
-      const s = form.campaigns?.trim();
-      if (!s) return undefined;
-      const arr = s.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+      const arr = parseCampaignsFormString(form.campaigns ?? "");
       return arr.length > 0 ? arr : undefined;
     })(),
     campaigns_json: (() => {
-      const s = form.campaigns?.trim();
-      if (!s) return undefined;
-      const arr = s.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+      const arr = parseCampaignsFormString(form.campaigns ?? "");
       return arr.length > 0 ? arr : undefined;
     })(),
     price,

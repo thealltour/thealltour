@@ -1,82 +1,348 @@
 .theall-day-picker {
+
   --rdp-accent-color: var(--primary);
+
   --rdp-accent-background-color: var(--primary-soft);
+
   --rdp-day-height: 2.25rem;
+
   --rdp-day-width: 2.25rem;
+
   --rdp-day_button-border-radius: 0.5rem;
+
   --rdp-selected-border: none;
+
   --rdp-today-color: var(--primary);
+
   --rdp-outside-opacity: 0.35;
+
   --rdp-disabled-opacity: 0.35;
+
   --rdp-nav_button-height: 2rem;
+
   --rdp-nav_button-width: 2rem;
+
   --rdp-nav-height: 2.5rem;
+
   font-size: 0.875rem;
+
   color: var(--text-primary);
+
 }
+
+
 
 .theall-day-picker .rdp-month_caption {
+
   font-weight: 600;
+
   color: var(--text-primary);
+
 }
+
+
 
 .theall-day-picker .rdp-weekday {
+
   font-size: 0.75rem;
+
   font-weight: 600;
+
   color: var(--text-muted);
+
 }
+
+
 
 .theall-day-picker .rdp-day_button {
+
   border: 1px solid transparent;
+
   transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+
 }
+
+
 
 .theall-day-picker .rdp-day_button:hover:not(:disabled) {
+
   background: var(--surface-muted);
+
 }
+
+
 
 .theall-day-picker .rdp-selected .rdp-day_button {
+
   background: var(--primary);
+
   color: #fff;
+
   font-weight: 600;
+
 }
+
+
 
 .theall-day-picker .rdp-selected .rdp-day_button:hover:not(:disabled) {
+
   background: var(--primary);
+
   color: #fff;
+
 }
+
+
 
 .theall-day-picker .rdp-today:not(.rdp-selected) .rdp-day_button {
+
   border-color: var(--primary);
+
   color: var(--primary);
+
   font-weight: 600;
+
 }
+
+
 
 .theall-day-picker .rdp-range_start .rdp-day_button,
+
 .theall-day-picker .rdp-range_end .rdp-day_button {
+
   background: var(--primary);
+
   color: #fff;
+
   font-weight: 600;
+
 }
+
+
 
 .theall-day-picker .rdp-range_middle .rdp-day_button {
+
   background: var(--primary-soft);
+
   color: var(--primary);
+
   border-radius: 0;
+
 }
+
+
 
 .theall-day-picker .rdp-nav_button {
+
   border: 1px solid var(--border);
+
   border-radius: 0.5rem;
+
   background: var(--surface);
+
   color: var(--text-muted);
+
 }
+
+
 
 .theall-day-picker .rdp-nav_button:hover:not(:disabled) {
+
   background: var(--surface-muted);
+
   color: var(--text-primary);
+
 }
 
+
+
 .theall-day-picker .rdp-chevron {
+
   fill: currentColor;
+
 }
+
+
+
+/* 주말·공휴일 색상 — 모든 달력 폼 공통 */
+
+.theall-calendar-themed .rdp-weekday:first-child {
+
+  color: #dc2626;
+
+}
+
+
+
+.theall-calendar-themed .rdp-weekday:last-child {
+
+  color: #2563eb;
+
+}
+
+
+
+.theall-calendar-themed .rdp-sunday:not(.rdp-selected):not(.rdp-outside) .rdp-day_button {
+
+  color: #dc2626;
+
+}
+
+
+
+.theall-calendar-themed .rdp-saturday:not(.rdp-selected):not(.rdp-outside) .rdp-day_button {
+
+  color: #2563eb;
+
+}
+
+
+
+.theall-calendar-themed .rdp-holiday:not(.rdp-selected):not(.rdp-outside) .rdp-day_button {
+
+  color: #dc2626;
+
+  font-weight: 600;
+
+}
+
+
+
+.theall-calendar-themed .rdp-selected .rdp-day_button,
+
+.theall-calendar-themed .rdp-selected.rdp-sunday .rdp-day_button,
+
+.theall-calendar-themed .rdp-selected.rdp-saturday .rdp-day_button,
+
+.theall-calendar-themed .rdp-selected.rdp-holiday .rdp-day_button {
+
+  color: #fff;
+
+}
+
+
+
+/* 골프 홈 달력 — 대형 셀 + 출발 가능일 dot */
+
+.theall-golf-calendar .rdp-day_button {
+
+  position: relative;
+
+}
+
+
+
+.theall-golf-calendar .rdp-has-departure:not(.rdp-selected) .rdp-day_button {
+
+  font-weight: 600;
+
+  color: var(--primary);
+
+}
+
+
+
+.theall-golf-calendar .rdp-has-departure:not(.rdp-selected) .rdp-day_button::after {
+
+  content: "";
+
+  position: absolute;
+
+  bottom: 3px;
+
+  left: 50%;
+
+  width: 5px;
+
+  height: 5px;
+
+  transform: translateX(-50%);
+
+  border-radius: 9999px;
+
+  background: var(--success);
+
+}
+
+
+
+.theall-golf-calendar {
+
+  width: 100%;
+
+  max-width: none;
+
+  --rdp-day-height: 2.5rem;
+
+  --rdp-day-width: 2.5rem;
+
+  font-size: 0.9375rem;
+
+}
+
+
+
+@media (min-width: 640px) {
+
+  .theall-golf-calendar {
+
+    --rdp-day-height: 2.75rem;
+
+    --rdp-day-width: 2.75rem;
+
+    font-size: 1rem;
+
+  }
+
+}
+
+
+
+@media (min-width: 1024px) {
+
+  .theall-golf-calendar {
+
+    --rdp-day-height: 3.25rem;
+
+    --rdp-day-width: 3.25rem;
+
+    font-size: 1.0625rem;
+
+  }
+
+}
+
+
+
+.theall-golf-calendar .rdp-promotion-star {
+
+  position: absolute;
+
+  top: 2px;
+
+  right: 2px;
+
+  z-index: 1;
+
+  width: 0.625rem;
+
+  height: 0.625rem;
+
+  fill: #fbbf24;
+
+  color: #fbbf24;
+
+  pointer-events: none;
+
+}
+
+
+
+.theall-golf-calendar .rdp-selected .rdp-promotion-star {
+
+  fill: #fde68a;
+
+  color: #fde68a;
+
+}
+

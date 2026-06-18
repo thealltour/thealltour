@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { DayPicker, type DateRange } from "react-day-picker";
-import { ko } from "date-fns/locale";
+import type { DateRange } from "react-day-picker";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatIsoDateKorean } from "@/lib/inquiry/desiredDeparture";
 import { buildDisabledMatcher, dateToYmd, ymdToDate } from "@/lib/datePickerUtils";
+import { TheallDayPicker } from "@/components/ui/TheallDayPicker";
 import "react-day-picker/style.css";
 import "./datePicker.css";
 
@@ -115,15 +115,12 @@ export function DateRangePicker({
           aria-label={ariaLabel ?? "기간 달력"}
           className="absolute left-0 top-full z-50 mt-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-3 shadow-[var(--shadow-modal)]"
         >
-          <DayPicker
+          <TheallDayPicker
             mode="range"
-            locale={ko}
             numberOfMonths={2}
             selected={selected}
             onSelect={handleSelect}
             disabled={disabledMatcher}
-            className="theall-day-picker"
-            showOutsideDays
           />
         </div>
       ) : null}

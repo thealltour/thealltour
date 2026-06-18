@@ -125,16 +125,20 @@ export async function getProductTaxonomyOptions(productsFallback: Product[] = []
     };
   }
 
+  const mapped = taxonomies?.map((row) => mapTaxonomy(row)) ?? [];
+  const productLinesFromDb = mapped
+    .filter((item) => item.taxonomy_type === "product_line")
+    .map((item) => item.name);
+
   if (productsFallback.length > 0) {
     const fallback = toFallbackTaxonomies(productsFallback);
     return {
       categories: fallback.categories,
       themes: fallback.themes,
-      productLines: [],
+      productLines: productLinesFromDb,
     };
   }
 
-  const mapped = taxonomies.map((row) => mapTaxonomy(row));
   const categories = mapped
     .filter((item) => item.taxonomy_type === "destination")
     .map((item) => item.name);

@@ -18,6 +18,7 @@ import {
   type ProductSortId,
 } from "@/lib/productFilters";
 import { resolveProductsPageInitialFilters } from "@/lib/products/productsListingPolicy";
+import { filterGolfChannelProducts, isGolfProductLineTaxonomy } from "@/lib/products/golfChannel";
 import type { Product } from "@/types/product";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import { getSelfAndDescendantIdsAndNames } from "@/lib/productTaxonomies";
@@ -37,7 +38,7 @@ export type ProductsPageContentProps = {
   themeTree?: RegionTreeNode[];
   productLineOptions: string[];
   initialKeyword?: string;
-  presetCategories?: string[];
+  golfChannelPreset?: boolean;
   presetLabel?: string;
   /** 목록 퍼널 옵션(랜딩·basePath·카드 레이아웃 등). 미전달 시 각 필드 기본값 */
   listing?: ProductsPageContentListingConfig;
@@ -52,7 +53,7 @@ export function ProductsPageContent({
   themeTree,
   productLineOptions,
   initialKeyword = "",
-  presetCategories,
+  golfChannelPreset = false,
   presetLabel,
   listing,
 }: ProductsPageContentProps) {
@@ -76,10 +77,14 @@ export function ProductsPageContent({
   );
 
   const baseProducts = useMemo(() => {
-    if (!presetCategories?.length) return products;
-    const set = new Set(presetCategories.map((c) => c.trim()).filter(Boolean));
-    return products.filter((p) => set.has(p.category ?? ""));
-  }, [products, presetCategories]);
+    if (!golfChannelPreset) return products;
+    return filterGolfChannelProducts(products, taxonomyNameMap ?? {});
+  }, [products, golfChannelPreset, taxonomyNameMap]);
+
+  const effectiveProductLineOptions = useMemo(() => {
+    if (!golfChannelPreset) return productLineOptions;
+    return productLineOptions.filter((name) => isGolfProductLineTaxonomy({ name }));
+  }, [productLineOptions, golfChannelPreset]);
 
   const filterApplyOptions = useMemo(() => {
     const regionName = filters.region?.trim();
@@ -194,7 +199,7 @@ export function ProductsPageContent({
         regionTree={regionTree}
         themeOptions={themeOptions}
         themeTree={themeTree}
-        productLineOptions={productLineOptions}
+        productLineOptions={effectiveProductLineOptions}
         filters={filters}
         onFilterChange={handleFilterChange}
       />
@@ -252,7 +257,7 @@ export function ProductsPageContent({
           products={filteredProducts}
           categories={regionOptions}
           initialKeyword={initialKeyword}
-          presetCategories={presetCategories}
+          golfChannelPreset={golfChannelPreset}
           presetLabel={presetLabel}
           initialRegion={filters.region}
           initialTheme={filters.theme}
@@ -272,7 +277,7 @@ export function ProductsPageContent({
         regionTree={regionTree}
         themeOptions={themeOptions}
         themeTree={themeTree}
-        productLineOptions={productLineOptions}
+        productLineOptions={effectiveProductLineOptions}
         filters={filters}
         onApply={(next) => handleFilterChange(next)}
         onReset={handleResetFilters}

@@ -37,7 +37,12 @@ function finalizeListingContext(
   productLineTaxonomies: ProductTaxonomy[],
   taxonomyOptions: ProductTaxonomyOptionsResult,
 ): ProductsListingContext {
-  const { categories, themes, productLines } = taxonomyOptions;
+  const { categories, themes } = taxonomyOptions;
+  const productLinesFromTaxonomies = productLineTaxonomies
+    .map((item) => item.name.trim())
+    .filter(Boolean);
+  const productLines =
+    productLinesFromTaxonomies.length > 0 ? productLinesFromTaxonomies : taxonomyOptions.productLines;
   return {
     products,
     hubDestinations,

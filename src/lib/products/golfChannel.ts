@@ -1,4 +1,5 @@
 import { buildProductsFilterHref } from "@/lib/productFilters";
+import type { Product } from "@/types/product";
 
 /** /products 골프 채널 query param — 헤더·히어로·리드 UTM과 동일 규약 */
 export const GOLF_TOUR_TYPE = "golf-park";
@@ -26,6 +27,29 @@ export function isGolfProductLineTaxonomy(item: {
   const slug = (item.slug ?? "").trim();
   if (GOLF_PRESET_CATEGORIES.some((c) => c === name)) return true;
   return GOLF_PRODUCT_LINE_PATTERN.test(name) || GOLF_PRODUCT_LINE_PATTERN.test(slug);
+}
+
+/** 골프 채널(/products?tourType=golf-park) 대상 상품 여부 — product_line_id 우선 */
+export function isGolfChannelProduct(
+  product: Product,
+  taxonomyNameMap: Record<string, string> = {},
+): boolean {
+  const lineName = product.product_line_id
+    ? taxonomyNameMap[product.product_line_id]?.trim() ?? ""
+    : "";
+  if (lineName) {
+    if ((GOLF_PRESET_CATEGORIES as readonly string[]).includes(lineName)) return true;
+    if (isGolfProductLineTaxonomy({ name: lineName })) return true;
+  }
+  const legacyCategory = (product.category ?? "").trim();
+  return (GOLF_PRESET_CATEGORIES as readonly string[]).some((c) => c === legacyCategory);
+}
+
+export function filterGolfChannelProducts(
+  products: Product[],
+  taxonomyNameMap: Record<string, string> = {},
+): Product[] {
+  return products.filter((product) => isGolfChannelProduct(product, taxonomyNameMap));
 }
 
 export function buildGolfProductsHref(opts?: { q?: string; region?: string }): string {

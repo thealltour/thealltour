@@ -17,7 +17,6 @@ import {
 } from "@/lib/productFiltersLanding";
 import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
 import {
-  GOLF_PRESET_CATEGORIES,
   isGolfTourType,
 } from "@/lib/products/golfChannel";
 
@@ -44,7 +43,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const searchKeyword = typeof query.q === "string" ? query.q.trim() : "";
   const tourType = typeof query.tourType === "string" ? query.tourType.trim() : "";
   const golfPresetActive = isGolfTourType(tourType);
-  const presetCategories = golfPresetActive ? [...GOLF_PRESET_CATEGORIES] : undefined;
   const listingCtx = await loadProductsListingContext("products_index");
   const {
     products,
@@ -93,7 +91,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               themeTree={themeTree}
               productLineOptions={productLines}
               initialKeyword={initialKeywordFromLanding || searchKeyword}
-              presetCategories={presetCategories}
+              golfChannelPreset={golfPresetActive}
               presetLabel={golfPresetActive ? "골프/파크골프" : undefined}
               listing={{
                 initialFiltersFromServer,

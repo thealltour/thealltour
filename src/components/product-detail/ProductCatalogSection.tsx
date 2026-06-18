@@ -34,7 +34,7 @@ type ProductCatalogSectionProps = {
   products: Product[];
   categories: string[];
   initialKeyword?: string;
-  presetCategories?: string[];
+  golfChannelPreset?: boolean;
   presetLabel?: string;
   /** URL 연동 시 초기 지역(상품 category 문자열) */
   initialRegion?: string | null;
@@ -58,7 +58,7 @@ export default function ProductCatalogSection({
   products,
   categories,
   initialKeyword = "",
-  presetCategories,
+  golfChannelPreset = false,
   presetLabel,
   initialRegion,
   initialTheme,
@@ -88,22 +88,8 @@ export default function ProductCatalogSection({
     () => normalizeProductCatalogSearchKeyword(initialKeyword),
     [initialKeyword],
   );
-  const presetCategorySet = useMemo(
-    () => new Set((presetCategories ?? []).map((item) => item.trim()).filter(Boolean)),
-    [presetCategories],
-  );
-  const baseProducts = useMemo(
-    () =>
-      presetCategorySet.size > 0
-        ? products.filter((product) => presetCategorySet.has(product.category))
-        : products,
-    [products, presetCategorySet],
-  );
-  const visibleCategories = useMemo(
-    () => (presetCategorySet.size > 0 ? categories.filter((category) => presetCategorySet.has(category)) : categories),
-    [categories, presetCategorySet],
-  );
-  const categoryTabs = useMemo(() => [REGION_ALL_LABEL, ...visibleCategories], [visibleCategories]);
+  const baseProducts = useMemo(() => products, [products]);
+  const categoryTabs = useMemo(() => [REGION_ALL_LABEL, ...categories], [categories]);
 
   const filteredProducts = useMemo(() => {
     if (isUrlControlled) return baseProducts;

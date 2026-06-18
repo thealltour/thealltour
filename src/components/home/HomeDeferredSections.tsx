@@ -1,9 +1,12 @@
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/cn";
+import "react-day-picker/style.css";
+import "@/components/ui/datePicker.css";
 import type { HomeCuratedSettings, HomeCuratedSectionWithProducts } from "@/types/homeCurated";
 import type { Guide } from "@/types/guide";
 import type { Review } from "@/types/review";
 import type { Product } from "@/types/product";
+import type { GolfDepartureEvent } from "@/lib/products/golfDepartureCalendar";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 
 function SectionSkeleton({ className }: { className?: string }) {
@@ -28,6 +31,11 @@ function ExploreRailSkeleton() {
 const GolfTourProductsSection = dynamic(() => import("@/components/home/GolfTourProductsSection"), {
   loading: () => <SectionSkeleton className="min-h-[18rem]" />,
 });
+
+const GolfDepartureCalendarSection = dynamic(
+  () => import("@/components/home/GolfDepartureCalendarSection"),
+  { loading: () => <SectionSkeleton className="min-h-[22rem]" /> },
+);
 
 const DestinationSection = dynamic(() => import("@/components/home/DestinationSection"), {
   loading: () => <ExploreRailSkeleton />,
@@ -65,8 +73,14 @@ export type HomeDeferredGolfTourProps = {
   description?: string | null;
 };
 
+export type HomeDeferredGolfCalendarProps = {
+  events: GolfDepartureEvent[];
+  promotionLegendLabel?: string | null;
+};
+
 export type HomeDeferredSectionsProps = {
   golfTour: HomeDeferredGolfTourProps;
+  golfCalendar: HomeDeferredGolfCalendarProps;
   destinationRail: HomeDeferredRailProps;
   themeRail: HomeDeferredRailProps;
   curatedSettings: HomeCuratedSettings | null;
@@ -81,6 +95,7 @@ export type HomeDeferredSectionsProps = {
  */
 export function HomeDeferredSections({
   golfTour,
+  golfCalendar,
   destinationRail,
   themeRail,
   curatedSettings,
@@ -95,6 +110,10 @@ export function HomeDeferredSections({
         eyebrow={golfTour.eyebrow}
         title={golfTour.title}
         description={golfTour.description}
+      />
+      <GolfDepartureCalendarSection
+        events={golfCalendar.events}
+        promotionLegendLabel={golfCalendar.promotionLegendLabel}
       />
       <DestinationSection
         items={destinationRail.items}

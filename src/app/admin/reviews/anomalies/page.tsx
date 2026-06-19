@@ -18,13 +18,8 @@ export default async function AdminReviewAnomaliesPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="reviews"
           title="리뷰 이상 감지"
           description="평점 급락, 리뷰 급증, 스팸 의심 리뷰 등 이상 징후를 확인합니다."
-          inquiryCount={counts.inquiryCount}
-          productCount={counts.productCount}
-          memberCount={counts.memberCount}
-          reviewCount={counts.reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { getPointExpiresAt } from "@/config/rewardPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { grantPointsToUser } from "@/server/services/points/grantPoints";
 import { EARN_REQUEST_MESSAGE_TEMPLATES, parseSimpleCsvRows } from "@/server/services/points/earnRequests";
 
 type Body = { csvText?: string };
+
+type ApproveRpcResult = {
+  ledger_id: string;
+  amount: number;
+  user_id: string;
+  booking_ref: string;
+  traveler_count: number;
+};
 
 export async function POST(request: Request) {
   const auth = await requireAdminSession();
@@ -34,18 +42,14 @@ export async function POST(request: Request) {
 
   for (const row of rows) {
     try {
-      if (!(row.grant_status === "CONFIRMED" || row.grant_status === "PENDING")) {
-        results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: "grant_status 오류" });
-        continue;
-      }
-      if (!Number.isFinite(row.amount) || row.amount <= 0) {
-        results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: "amount 오류" });
+      if (!row.booking_ref.trim()) {
+        results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: "booking_ref 없음" });
         continue;
       }
 
       const { data: earnReq, error: reqErr } = await supabaseAdmin
         .from("point_earn_requests")
-        .select("id, user_id, status, booking_ref")
+        .select("id, user_id, status, booking_ref, traveler_count")
         .eq("booking_ref", row.booking_ref)
         .maybeSingle();
 
@@ -53,65 +57,46 @@ export async function POST(request: Request) {
         results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: "요청 없음" });
         continue;
       }
-      const req = earnReq as { id: string; user_id: string; status: string; booking_ref: string };
+
+      const req = earnReq as { id: string; user_id: string; status: string; booking_ref: string; traveler_count: number };
       if (req.status !== "REQUESTED") {
         results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: `요청 상태 ${req.status}` });
         continue;
       }
 
-      const now = new Date().toISOString();
-      const { error: updateErr } = await supabaseAdmin
-        .from("point_earn_requests")
-        .update({
-          status: "APPROVED",
-          admin_memo: row.admin_memo || null,
-          decided_at: now,
-          decided_by_admin_id: "ADMIN",
-        })
-        .eq("id", req.id)
-        .eq("status", "REQUESTED");
+      const { data, error } = await supabaseAdmin.rpc("approve_point_earn_request", {
+        p_request_id: req.id,
+        p_admin_memo: row.admin_memo || null,
+        p_expires_at: getPointExpiresAt(),
+        p_decided_by: "ADMIN",
+      });
 
-      if (updateErr) {
-        results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: "상태 변경 실패" });
+      if (error) {
+        results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: error.message });
         continue;
       }
 
-      try {
-        await grantPointsToUser({
-          userId: req.user_id,
-          amount: row.amount,
-          status: row.grant_status as "CONFIRMED" | "PENDING",
-          reason: `CSV 적립 요청 승인 (${req.booking_ref})`,
-          refType: "EARN_REQUEST",
-          refId: req.id,
-          actorAdminId: "ADMIN",
-        });
+      const result = data as ApproveRpcResult;
+      const amount = Number(result.amount);
+      const travelerCount = Number(result.traveler_count);
 
+      try {
         await supabaseAdmin.from("notifications").insert({
           user_id: req.user_id,
           type: "ADMIN_MESSAGE",
           title: "예약 적립 요청 승인",
-          body:
-            row.grant_status === "CONFIRMED"
-              ? EARN_REQUEST_MESSAGE_TEMPLATES.approved(row.amount)
-              : EARN_REQUEST_MESSAGE_TEMPLATES.pending(row.amount),
+          body: EARN_REQUEST_MESSAGE_TEMPLATES.approved(amount, travelerCount),
         });
-
-        results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: true, message: "적용 완료" });
-      } catch (error) {
-        await supabaseAdmin
-          .from("point_earn_requests")
-          .update({
-            status: "REQUESTED",
-            admin_memo: null,
-            decided_at: null,
-            decided_by_admin_id: null,
-          })
-          .eq("id", req.id);
-
-        const msg = error instanceof Error ? error.message : "포인트 지급 실패";
-        results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: msg });
+      } catch {
+        // best-effort
       }
+
+      results.push({
+        rowNo: row.rowNo,
+        booking_ref: row.booking_ref,
+        success: true,
+        message: `적용 완료 (${travelerCount}명, ${amount.toLocaleString()}P)`,
+      });
     } catch {
       results.push({ rowNo: row.rowNo, booking_ref: row.booking_ref, success: false, message: "처리 중 오류" });
     }

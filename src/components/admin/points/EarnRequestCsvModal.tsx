@@ -8,7 +8,7 @@ type Props = {
 
 export default function EarnRequestCsvModal({ onApplied }: Props) {
   const [open, setOpen] = useState(false);
-  const [csvText, setCsvText] = useState("booking_ref,amount,grant_status,admin_memo\n");
+  const [csvText, setCsvText] = useState("booking_ref,admin_memo\n");
   const [previewRows, setPreviewRows] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>("");
@@ -67,7 +67,9 @@ export default function EarnRequestCsvModal({ onApplied }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
             <h3 className="text-base font-semibold text-[var(--text-primary)]">CSV 반자동 지급</h3>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">헤더: booking_ref,amount,grant_status,admin_memo</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              헤더: booking_ref,admin_memo — 포인트는 요청의 traveler_count × 20,000P로 자동 계산
+            </p>
             <textarea
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}

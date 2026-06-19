@@ -22,13 +22,8 @@ export default async function AdminNoticesPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="w-full space-y-6">
         <AdminHeader
-          activeTab="notices"
           title="공지사항 관리"
           description="회원가입 법률 문서, 공지 등록, 등록된 공지 목록을 관리합니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
         <section className="overflow-hidden rounded-2xl bg-[var(--card)] p-4 shadow-[var(--shadow-soft-strong)] ring-1 ring-[var(--border)] md:p-5">

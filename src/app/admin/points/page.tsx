@@ -11,13 +11,8 @@ export default async function AdminPointsPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="w-full space-y-6">
         <AdminHeader
-          activeTab="points"
           title="포인트 지급 관리"
           description="회원 검색 후 포인트를 지급하고, 지급 내역을 확인할 수 있습니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

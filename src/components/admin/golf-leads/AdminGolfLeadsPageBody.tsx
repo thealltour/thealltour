@@ -144,15 +144,10 @@ export function AdminGolfLeadsPageBody({
   return (
     <div className="w-full space-y-6">
       <AdminHeader
-        activeTab="inquiries"
-        title="골프투어 리드 (UTM)"
-        description="문의·랜딩·상품상세·외부 랜딩에서 적재된 골프 리드와 UTM·채널·유입 경로 통계입니다."
-        inquiryCount={inquiryCount}
-        productCount={productCount}
-        memberCount={memberCount}
-        reviewCount={reviewCount}
-        unreadNotificationCount={unreadNotificationCount}
-      />
+          title="골프투어 리드 (UTM)"
+          description="문의·랜딩·상품상세·외부 랜딩에서 적재된 골프 리드와 UTM·채널·유입 경로 통계입니다."
+          unreadNotificationCount={unreadNotificationCount}
+        />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1">

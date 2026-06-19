@@ -11,13 +11,8 @@ export default async function AdminMembersPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="w-full space-y-6">
         <AdminHeader
-          activeTab="members"
           title="회원 관리"
           description="회원 정보를 검색하고 연락처/이메일/동의 여부 등을 수정할 수 있습니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

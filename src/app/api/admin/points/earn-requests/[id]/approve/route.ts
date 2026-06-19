@@ -1,15 +1,31 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { getPointExpiresAt } from "@/config/rewardPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { grantPointsToUser } from "@/server/services/points/grantPoints";
 import { EARN_REQUEST_MESSAGE_TEMPLATES } from "@/server/services/points/earnRequests";
 
 type Body = {
-  amount: number;
-  grant_status: "CONFIRMED" | "PENDING";
   admin_memo?: string;
 };
 
+type ApproveRpcResult = {
+  ledger_id: string;
+  amount: number;
+  user_id: string;
+  booking_ref: string;
+  traveler_count: number;
+  gift_status: string;
+};
+
+function mapApproveRpcError(message: string): string {
+  if (message.includes("REQUEST_NOT_FOUND")) return "요청을 찾을 수 없습니다.";
+  if (message.includes("INVALID_STATUS")) return "요청 상태가 REQUESTED가 아닙니다.";
+  if (message.includes("INVALID_TRAVELER_COUNT")) return "여행 인원수가 올바르지 않습니다.";
+  if (message.includes("MEMBER_NOT_FOUND")) return "회원을 찾을 수 없습니다.";
+  return "승인 처리 중 오류가 발생했습니다.";
+}
+
+/** 관리자: 승인 — traveler_count*20000P 자동 계산, RPC 원자적 처리 */
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -18,85 +34,46 @@ export async function POST(
   if (!auth.ok) return auth.res;
   const { id } = await context.params;
 
-  let body: Body;
+  let body: Body = {};
   try {
     body = (await request.json()) as Body;
   } catch {
-    return NextResponse.json({ message: "요청 형식이 올바르지 않습니다." }, { status: 400 });
+    body = {};
   }
 
-  const amount = Number(body.amount);
-  const grantStatus = body.grant_status === "PENDING" ? "PENDING" : "CONFIRMED";
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ message: "amount는 1 이상의 숫자여야 합니다." }, { status: 400 });
+  const { data, error } = await supabaseAdmin.rpc("approve_point_earn_request", {
+    p_request_id: id,
+    p_admin_memo: body.admin_memo?.trim() || null,
+    p_expires_at: getPointExpiresAt(),
+    p_decided_by: "ADMIN",
+  });
+
+  if (error) {
+    const message = mapApproveRpcError(error.message);
+    const status = error.message.includes("REQUEST_NOT_FOUND") ? 404 : 400;
+    return NextResponse.json({ message }, { status });
   }
 
-  const { data: earnReq, error: reqErr } = await supabaseAdmin
-    .from("point_earn_requests")
-    .select("id, user_id, booking_ref, status")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (reqErr || !earnReq) {
-    return NextResponse.json({ message: "요청을 찾을 수 없습니다." }, { status: 404 });
-  }
-
-  const row = earnReq as { id: string; user_id: string; booking_ref: string; status: string };
-  if (row.status !== "REQUESTED") {
-    return NextResponse.json({ message: "요청 상태가 REQUESTED가 아닙니다." }, { status: 400 });
-  }
-
-  const now = new Date().toISOString();
-  const { error: updateErr } = await supabaseAdmin
-    .from("point_earn_requests")
-    .update({
-      status: "APPROVED",
-      admin_memo: body.admin_memo?.trim() || null,
-      decided_at: now,
-      decided_by_admin_id: "ADMIN",
-    })
-    .eq("id", id)
-    .eq("status", "REQUESTED");
-
-  if (updateErr) {
-    return NextResponse.json({ message: "요청 승인 상태 반영에 실패했습니다." }, { status: 500 });
-  }
+  const result = data as ApproveRpcResult;
+  const amount = Number(result.amount);
+  const travelerCount = Number(result.traveler_count);
 
   try {
-    await grantPointsToUser({
-      userId: row.user_id,
-      amount,
-      status: grantStatus,
-      reason: `예약 적립 요청 승인 (${row.booking_ref})`,
-      refType: "EARN_REQUEST",
-      refId: row.id,
-      actorAdminId: "ADMIN",
-    });
-
-    const bodyText =
-      grantStatus === "CONFIRMED"
-        ? EARN_REQUEST_MESSAGE_TEMPLATES.approved(amount)
-        : EARN_REQUEST_MESSAGE_TEMPLATES.pending(amount);
     await supabaseAdmin.from("notifications").insert({
-      user_id: row.user_id,
+      user_id: result.user_id,
       type: "ADMIN_MESSAGE",
       title: "예약 적립 요청 승인",
-      body: bodyText,
+      body: EARN_REQUEST_MESSAGE_TEMPLATES.approved(amount, travelerCount),
     });
-
-    return NextResponse.json({ message: "요청을 승인하고 포인트를 지급했습니다." });
-  } catch (error) {
-    await supabaseAdmin
-      .from("point_earn_requests")
-      .update({
-        status: "REQUESTED",
-        admin_memo: null,
-        decided_at: null,
-        decided_by_admin_id: null,
-      })
-      .eq("id", id);
-
-    const message = error instanceof Error ? error.message : "승인 처리 중 오류가 발생했습니다.";
-    return NextResponse.json({ message }, { status: 500 });
+  } catch {
+    // RPC commit 후 알림 실패는 best-effort
   }
+
+  return NextResponse.json({
+    message: "요청을 승인하고 포인트를 지급했습니다.",
+    amount,
+    traveler_count: travelerCount,
+    gift_status: result.gift_status ?? "PENDING",
+    ledger_id: result.ledger_id,
+  });
 }

@@ -30,13 +30,8 @@ export default async function AdminReviewNotificationsPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="reviews"
           title="리뷰 운영 알림"
           description="이상 감지·검토·신고·전환·인사이트 등 리뷰 시스템 이벤트를 한곳에서 확인하고 읽음/보관 처리할 수 있습니다."
-          inquiryCount={counts.inquiryCount}
-          productCount={counts.productCount}
-          memberCount={counts.memberCount}
-          reviewCount={counts.reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

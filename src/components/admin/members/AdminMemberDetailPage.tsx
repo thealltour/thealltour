@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { buildAdminBookingNewUrl } from "@/lib/bookings/bookingNewUrl";
 import { MemberInquiryLinkPanel } from "@/components/admin/members/MemberInquiryLinkPanel";
 
 type Props = {
@@ -659,10 +661,28 @@ export default function AdminMemberDetailPage({
 
   const reviewSection = (
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-      <h3 className="text-base font-semibold text-[var(--text-primary)]">리뷰 권한</h3>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        연결된 문의·예약 건에 대한 후기 작성 권한을 확인하고 수동 부여할 수 있습니다.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">리뷰 권한</h3>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            연결된 문의·예약 건에 대한 후기 작성 권한을 확인하고 수동 부여할 수 있습니다.
+          </p>
+        </div>
+        {linkedProfiles[0] ? (
+          <Link
+            href={buildAdminBookingNewUrl({
+              customer_profile_id: linkedProfiles[0].id,
+              member_id: memberId,
+              product_id: reviewRows.find((r) => r.product_id)?.product_id ?? reviewRows[0]?.product_id,
+              product_title: reviewRows.find((r) => r.product_title)?.product_title ?? undefined,
+              inquiry_id: reviewRows.find((r) => r.inquiry_id)?.inquiry_id ?? undefined,
+            })}
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface)]"
+          >
+            예약 생성
+          </Link>
+        ) : null}
+      </div>
 
       {linkedProfiles.length > 0 ? (
         <p className="mt-2 text-xs text-[var(--text-muted)]">

@@ -3,7 +3,9 @@
 /** 데스크톱 전용 문의 테이블 UI. 모바일은 MobileAdminInquiryList를 사용합니다. */
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
+import { buildAdminBookingNewUrl } from "@/lib/bookings/bookingNewUrl";
 import {
   useAdminInquiryTable,
   type AdminInquiryTableController,
@@ -28,6 +30,7 @@ import {
   type TemplateInsertMode,
 } from "@/components/admin/inquiries/messageSend.utils";
 import { DesiredDepartureBadge } from "@/components/admin/inquiries/DesiredDepartureBadge";
+import { ReserveBookingWizardModal } from "@/components/admin/inquiries/ReserveBookingWizardModal";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { stripDesiredDepartureLineFromContent } from "@/lib/inquiry/desiredDeparture";
 
@@ -263,14 +266,30 @@ function InquiryActionButtons({
         </>
       ) : null}
       {canReserve && (
-        <button
-          type="button"
-          disabled={api.pendingId === inquiry.id}
-          onClick={openReserve}
-          className={b("blue")}
-        >
-          예약 확정
-        </button>
+        <>
+          <button
+            type="button"
+            disabled={api.pendingId === inquiry.id}
+            onClick={openReserve}
+            className={b("blue")}
+          >
+            예약 확정
+          </button>
+          {inquiry.customer_profile_id ? (
+            <Link
+              href={buildAdminBookingNewUrl({
+                customer_profile_id: inquiry.customer_profile_id,
+                member_id: inquiry.member_id,
+                product_id: inquiry.product_id,
+                product_title: inquiry.product_title,
+                inquiry_id: inquiry.id,
+              })}
+              className={b("slate")}
+            >
+              예약 허브
+            </Link>
+          ) : null}
+        </>
       )}
       {canCompleteTrip && (
         <button
@@ -937,64 +956,11 @@ export default function AdminInquiryTable() {
       ) : null}
 
       {api.reserveModalInquiryId ? (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="reserve-modal-title"
-        >
-          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-lg">
-            <h2 id="reserve-modal-title" className="text-lg font-semibold text-[var(--text-primary)]">
-              예약 확정
-            </h2>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">
-              출발일·귀국일을 입력한 뒤 저장하세요. 문의에 있는 상품 정보가 예약에 반영됩니다.
-            </p>
-            <div className="mt-4 space-y-3">
-              <label className="block">
-                <span className="text-xs font-semibold text-[var(--text-muted)]">출발일</span>
-                <DatePicker
-                  value={api.reserveDeparture}
-                  onChange={api.setReserveDeparture}
-                  placeholder="출발일 선택"
-                  aria-label="출발일"
-                  size="compact"
-                  className="mt-1"
-                  triggerClassName="rounded-lg text-sm"
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-semibold text-[var(--text-muted)]">귀국일</span>
-                <DatePicker
-                  value={api.reserveReturn}
-                  onChange={api.setReserveReturn}
-                  placeholder="귀국일 선택"
-                  aria-label="귀국일"
-                  size="compact"
-                  className="mt-1"
-                  triggerClassName="rounded-lg text-sm"
-                />
-              </label>
-            </div>
-            <div className="mt-6 flex gap-2">
-              <button
-                type="button"
-                onClick={api.closeReserveModal}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={() => api.submitReserveBooking()}
-                disabled={api.isSubmittingReserve}
-                className="rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--on-primary)] disabled:opacity-50"
-              >
-                {api.isSubmittingReserve ? "저장 중..." : "저장"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReserveBookingWizardModal
+          inquiry={api.inquiries.find((i) => i.id === api.reserveModalInquiryId) ?? null}
+          api={api}
+          variant="desktop"
+        />
       ) : null}
     </div>
   );

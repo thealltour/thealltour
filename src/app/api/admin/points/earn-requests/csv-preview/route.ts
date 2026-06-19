@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { parseSimpleCsvRows } from "@/server/services/points/earnRequests";
+import { calcEarnPointsAmount, parseSimpleCsvRows } from "@/server/services/points/earnRequests";
 
 type Body = { csvText?: string };
 
@@ -26,29 +26,35 @@ export async function POST(request: Request) {
     const bookingRefs = rows.map((r) => r.booking_ref).filter(Boolean);
     const { data: reqs } = await supabaseAdmin
       .from("point_earn_requests")
-      .select("id, booking_ref, status")
+      .select("id, booking_ref, status, traveler_count")
       .in("booking_ref", bookingRefs);
 
-    const map = new Map((reqs ?? []).map((r: { id: string; booking_ref: string; status: string }) => [r.booking_ref, r]));
+    const map = new Map(
+      (reqs ?? []).map((r: { id: string; booking_ref: string; status: string; traveler_count: number }) => [
+        r.booking_ref,
+        r,
+      ]),
+    );
+
     const preview = rows.map((row) => {
       const matched = map.get(row.booking_ref);
-      const validStatus = row.grant_status === "CONFIRMED" || row.grant_status === "PENDING";
-      const validAmount = Number.isFinite(row.amount) && row.amount > 0;
-      const canApply = Boolean(matched && matched.status === "REQUESTED" && validStatus && validAmount);
+      const travelerCount = matched ? Number(matched.traveler_count) : 0;
+      const computedAmount = matched ? calcEarnPointsAmount(travelerCount) : 0;
+      const canApply = Boolean(matched && matched.status === "REQUESTED" && travelerCount >= 1);
       return {
         ...row,
         requestId: matched?.id ?? null,
         requestStatus: matched?.status ?? null,
+        traveler_count: travelerCount,
+        computed_amount: computedAmount,
         canApply,
         reason: !matched
           ? "요청 없음"
           : matched.status !== "REQUESTED"
             ? `요청 상태 ${matched.status}`
-            : !validStatus
-              ? "grant_status 값 오류"
-              : !validAmount
-                ? "amount 값 오류"
-                : "OK",
+            : travelerCount < 1
+              ? "traveler_count 오류"
+              : "OK",
       };
     });
 

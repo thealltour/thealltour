@@ -81,13 +81,8 @@ export default async function AdminReviewInsightsPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="reviews"
           title="리뷰 기반 상품 인사이트"
           description="리뷰·요약·이상감지·전환 데이터를 종합한 상품별 인사이트 리포트입니다."
-          inquiryCount={counts.inquiryCount}
-          productCount={counts.productCount}
-          memberCount={counts.memberCount}
-          reviewCount={counts.reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

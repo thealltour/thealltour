@@ -33,15 +33,10 @@ export function AdminInquiryDashboardPageBody({
       <main className="w-full space-y-6">
         {showDesktopHeader ? (
           <AdminHeader
-            activeTab="inquiries"
-            title="문의 운영 대시보드"
-            description="KPI·추이·담당 부하·위험 문의를 한 화면에서 확인하고 목록으로 바로 이동할 수 있습니다."
-            inquiryCount={inquiryCount}
-            productCount={productCount}
-            memberCount={memberCount}
-            reviewCount={reviewCount}
-            unreadNotificationCount={unreadNotificationCount}
-          />
+          title="문의 운영 대시보드"
+          description="KPI·추이·담당 부하·위험 문의를 한 화면에서 확인하고 목록으로 바로 이동할 수 있습니다."
+          unreadNotificationCount={unreadNotificationCount}
+        />
         ) : null}
 
         <section

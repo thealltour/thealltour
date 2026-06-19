@@ -30,6 +30,7 @@ export type InquiryActivityType =
   | "response_saved"
   | "consultation_status_changed"
   | "booking_status_changed"
+  | "booking_confirmed"
   | "note_updated"
   | "template_copied"
   | "manual_log";

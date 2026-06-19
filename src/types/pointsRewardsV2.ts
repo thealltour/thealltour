@@ -120,3 +120,46 @@ export type RewardRedemptionRequestInput = {
   shipping_address2?: string;
   shipping_zip?: string;
 };
+
+// -----------------------------------------------------------------------------
+// point_earn_requests (인당 정비례 통합 리워드)
+// -----------------------------------------------------------------------------
+export const POINTS_PER_TRAVELER = 20_000;
+export const GIFT_WON_VALUE_PER_TRAVELER = 10_000;
+export const MAX_TRAVELER_COUNT = 99;
+export const MIN_TRAVELER_COUNT = 1;
+
+export type PointEarnRequestStatus = "REQUESTED" | "APPROVED" | "REJECTED";
+
+export type PointEarnRequestGiftStatus = "PENDING" | "SHIPPED" | "COMPLETED" | "CANCELED";
+
+export type PointEarnRequestRow = {
+  id: string;
+  user_id: string;
+  status: PointEarnRequestStatus;
+  booking_ref: string;
+  departure_date: string;
+  payer_name: string;
+  traveler_count: number;
+  gift_status: PointEarnRequestGiftStatus;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  shipping_zip: string | null;
+  shipping_address1: string | null;
+  shipping_address2: string | null;
+  memo: string | null;
+  contact_phone: string | null;
+  admin_memo: string | null;
+  reject_reason: string | null;
+  requested_at: string;
+  decided_at: string | null;
+  decided_by_admin_id: string | null;
+};
+
+export type PointEarnRequestShippingInput = {
+  shipping_name: string;
+  shipping_phone: string;
+  shipping_zip: string;
+  shipping_address1: string;
+  shipping_address2?: string;
+};

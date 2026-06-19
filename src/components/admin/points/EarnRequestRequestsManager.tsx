@@ -5,6 +5,8 @@ import EarnRequestTabs from "@/components/admin/points/EarnRequestTabs";
 import EarnRequestDetail from "@/components/admin/points/EarnRequestDetail";
 import EarnRequestCsvModal from "@/components/admin/points/EarnRequestCsvModal";
 
+import type { PointEarnRequestGiftStatus } from "@/types/pointsRewardsV2";
+
 type Status = "REQUESTED" | "APPROVED" | "REJECTED";
 
 type ListRow = {
@@ -12,6 +14,8 @@ type ListRow = {
   status: Status;
   booking_ref: string;
   departure_date: string;
+  traveler_count: number;
+  gift_status: PointEarnRequestGiftStatus;
   requested_at: string;
   members: { id: string; name: string; email: string | null; phone: string | null } | null;
 };
@@ -22,6 +26,13 @@ type Detail = {
   booking_ref: string;
   departure_date: string;
   payer_name: string;
+  traveler_count: number;
+  gift_status: PointEarnRequestGiftStatus;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  shipping_zip: string | null;
+  shipping_address1: string | null;
+  shipping_address2: string | null;
   memo: string | null;
   contact_phone: string | null;
   admin_memo: string | null;
@@ -86,8 +97,10 @@ export default function EarnRequestRequestsManager() {
                   <tr className="border-b border-[var(--border)] bg-[var(--surface-muted)]">
                     <th className="px-3 py-2">예약번호</th>
                     <th className="px-3 py-2">회원</th>
+                    <th className="px-3 py-2">인원</th>
                     <th className="px-3 py-2">출발일</th>
                     <th className="px-3 py-2">요청일</th>
+                    {status === "APPROVED" ? <th className="px-3 py-2">선물</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -101,8 +114,12 @@ export default function EarnRequestRequestsManager() {
                     >
                       <td className="px-3 py-2">{row.booking_ref}</td>
                       <td className="px-3 py-2">{row.members?.name ?? "-"}</td>
+                      <td className="px-3 py-2">{row.traveler_count ?? 1}명</td>
                       <td className="px-3 py-2">{row.departure_date}</td>
                       <td className="px-3 py-2">{new Date(row.requested_at).toLocaleDateString("ko-KR")}</td>
+                      {status === "APPROVED" ? (
+                        <td className="px-3 py-2 text-xs">{row.gift_status ?? "PENDING"}</td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

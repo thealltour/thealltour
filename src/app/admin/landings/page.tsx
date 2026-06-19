@@ -18,13 +18,8 @@ export default async function AdminLandingsPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="landings"
           title={ADMIN_LANDINGS_TITLE}
           description={ADMIN_LANDINGS_DESCRIPTION}
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

@@ -21,13 +21,8 @@ export default async function AdminPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] transition-colors max-md:px-3 max-md:py-3 md:px-10">
       <main className="w-full space-y-6 max-md:space-y-4">
         <AdminHeader
-          activeTab="dashboard"
           title="Admin dashboard"
           description="Check today&apos;s operations and inquiry metrics in one place."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

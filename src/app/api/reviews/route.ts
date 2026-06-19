@@ -8,7 +8,7 @@ import { getEligibilityById, updateEligibilityStatus } from "@/lib/reviewEligibi
 import { createReviewReward } from "@/lib/reviewRewards";
 import { cancelReviewReminders } from "@/lib/reviewReminders";
 import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
-import { getProductIdByBookingId } from "@/lib/travelBookings";
+import { getProductIdByBookingId } from "@/lib/bookings/bookingRepository";
 import { MAX_REVIEW_IMAGES } from "@/lib/constants/review";
 
 type ReviewBody = {

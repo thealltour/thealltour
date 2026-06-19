@@ -6,8 +6,13 @@ import {
   MAX_ACTIVE_EARN_REQUESTS,
   MAX_EARN_ATTACHMENTS,
   MIN_EARN_ATTACHMENTS,
+  parseEarnRequestShipping,
+  parseTravelerCount,
   validateEarnRequestAttachment,
 } from "@/server/services/points/earnRequests";
+
+const EARN_REQUEST_LIST_FIELDS =
+  "id, status, booking_ref, departure_date, payer_name, traveler_count, gift_status, shipping_name, shipping_phone, shipping_zip, shipping_address1, shipping_address2, memo, contact_phone, admin_memo, reject_reason, requested_at, decided_at";
 
 function buildAttachmentPath(userId: string, fileName: string) {
   const now = new Date();
@@ -24,7 +29,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("point_earn_requests")
-    .select("id, status, booking_ref, departure_date, payer_name, memo, contact_phone, admin_memo, reject_reason, requested_at, decided_at")
+    .select(EARN_REQUEST_LIST_FIELDS)
     .eq("user_id", userId)
     .order("requested_at", { ascending: false });
 
@@ -46,15 +51,59 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const bookingRef = String(formData.get("booking_ref") ?? "").trim();
+  const bookingRefRaw = String(formData.get("booking_ref") ?? "").trim();
+  const bookingIdRaw = String(formData.get("booking_id") ?? "").trim();
   const departureDate = String(formData.get("departure_date") ?? "").trim();
   const payerName = String(formData.get("payer_name") ?? "").trim();
   const memo = String(formData.get("memo") ?? "").trim();
   const contactPhone = String(formData.get("contact_phone") ?? "").trim();
+  const travelerCount = parseTravelerCount(formData.get("traveler_count"));
+  const shippingParsed = parseEarnRequestShipping(formData);
   const files = formData.getAll("attachments").filter((v): v is File => v instanceof File);
 
-  if (!bookingRef || !departureDate || !payerName) {
+  if (!bookingRefRaw || !departureDate || !payerName) {
     return NextResponse.json({ message: "booking_ref, departure_date, payer_name은 필수입니다." }, { status: 400 });
+  }
+
+  let bookingRef = bookingRefRaw;
+  let bookingId: string | null = bookingIdRaw || null;
+
+  if (bookingId) {
+    const { data: booking, error: bookErr } = await supabase
+      .from("travel_bookings")
+      .select("id, booking_number, booking_status, member_id, customer_profile_id, traveler_count, departure_date")
+      .eq("id", bookingId)
+      .maybeSingle();
+
+    if (bookErr || !booking) {
+      return NextResponse.json({ message: "선택한 예약을 찾을 수 없습니다." }, { status: 400 });
+    }
+
+    const b = booking as Record<string, unknown>;
+    if (b.booking_status !== "completed") {
+      return NextResponse.json({ message: "여행 완료된 예약만 리워드 신청할 수 있습니다." }, { status: 400 });
+    }
+
+    bookingRef = String(b.booking_number);
+    if (bookingRef !== bookingRefRaw) {
+      return NextResponse.json({ message: "예약번호가 선택한 예약과 일치하지 않습니다." }, { status: 400 });
+    }
+
+    const { data: dupByBooking } = await supabase
+      .from("point_earn_requests")
+      .select("id")
+      .eq("booking_id", bookingId)
+      .in("status", ["REQUESTED", "APPROVED"])
+      .maybeSingle();
+    if (dupByBooking) {
+      return NextResponse.json({ message: "이 예약에 대한 적립 요청이 이미 있습니다." }, { status: 400 });
+    }
+  }
+  if (travelerCount == null) {
+    return NextResponse.json({ message: "여행 인원수는 1~99 사이 정수로 입력해 주세요." }, { status: 400 });
+  }
+  if (!shippingParsed.ok) {
+    return NextResponse.json({ message: shippingParsed.message }, { status: 400 });
   }
   if (files.length < MIN_EARN_ATTACHMENTS || files.length > MAX_EARN_ATTACHMENTS) {
     return NextResponse.json({ message: "증빙 파일은 1~3개까지 업로드할 수 있습니다." }, { status: 400 });
@@ -94,10 +143,17 @@ export async function POST(request: Request) {
     .from("point_earn_requests")
     .insert({
       user_id: userId,
+      booking_id: bookingId,
       status: "REQUESTED",
       booking_ref: bookingRef,
       departure_date: departureDate,
       payer_name: payerName,
+      traveler_count: travelerCount,
+      shipping_name: shippingParsed.shipping_name,
+      shipping_phone: shippingParsed.shipping_phone,
+      shipping_zip: shippingParsed.shipping_zip,
+      shipping_address1: shippingParsed.shipping_address1,
+      shipping_address2: shippingParsed.shipping_address2,
       memo: memo || null,
       contact_phone: contactPhone || null,
     })
@@ -140,7 +196,7 @@ export async function POST(request: Request) {
       user_id: userId,
       type: "ADMIN_MESSAGE",
       title: "포인트 적립 요청 접수",
-      body: "예약 증빙 요청이 접수되었습니다. 관리자 검수 후 처리됩니다.",
+      body: `예약 증빙 요청이 접수되었습니다. (${travelerCount}명, 인당 20,000P + 골프공 세트) 관리자 검수 후 처리됩니다.`,
     });
 
     return NextResponse.json({ id: requestId, message: "적립 요청이 접수되었습니다." }, { status: 201 });

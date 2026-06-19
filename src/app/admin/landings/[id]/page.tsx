@@ -17,13 +17,8 @@ export default async function AdminLandingsEditPage({ params }: AdminLandingEdit
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="landings"
           title={`${ADMIN_LANDINGS_TITLE} · 수정`}
           description="랜딩 기본 메타 정보를 수정합니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
         <AdminLandingFormPage mode="edit" landingId={id} />

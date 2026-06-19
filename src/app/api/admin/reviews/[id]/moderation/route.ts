@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { hideReview, restoreReview, markReviewUnderReview, resolveReviewReport } from "@/lib/reviewModerationActions";
-import { getProductIdByBookingId } from "@/lib/travelBookings";
+import { getProductIdByBookingId } from "@/lib/bookings/bookingRepository";
 import { getReviewById } from "@/lib/reviews";
 import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
 

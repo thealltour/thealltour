@@ -12,6 +12,8 @@ type EarnRequestRow = {
   status: "REQUESTED" | "APPROVED" | "REJECTED";
   booking_ref: string;
   departure_date: string;
+  traveler_count: number;
+  gift_status: string;
   requested_at: string;
 };
 
@@ -21,6 +23,13 @@ type EarnRequestDetail = {
   booking_ref: string;
   departure_date: string;
   payer_name: string;
+  traveler_count: number;
+  gift_status: string;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  shipping_zip: string | null;
+  shipping_address1: string | null;
+  shipping_address2: string | null;
   memo: string | null;
   contact_phone: string | null;
   admin_memo: string | null;
@@ -97,10 +106,12 @@ export default function EarnRequestList({ embedded = false }: Props) {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[var(--text-secondary)]">
+                  <th className="px-2 py-2">인원</th>
                   <th className="px-2 py-2">예약번호</th>
                   <th className="px-2 py-2">출발일</th>
                   <th className="px-2 py-2">요청일</th>
                   <th className="px-2 py-2">상태</th>
+                  <th className="px-2 py-2">선물</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,6 +121,7 @@ export default function EarnRequestList({ embedded = false }: Props) {
                     className="cursor-pointer border-b border-[var(--border)] hover:bg-[var(--surface-muted)]"
                     onClick={() => loadDetail(row.id)}
                   >
+                    <td className="px-2 py-2 text-[var(--text-secondary)]">{row.traveler_count ?? 1}명</td>
                     <td className="min-h-[44px] px-2 py-2 text-[var(--text-primary)]">{row.booking_ref}</td>
                     <td className="px-2 py-2 text-[var(--text-secondary)]">{row.departure_date}</td>
                     <td className="px-2 py-2 text-[var(--text-secondary)]">
@@ -117,6 +129,13 @@ export default function EarnRequestList({ embedded = false }: Props) {
                     </td>
                     <td className="px-2 py-2">
                       <MyPageStatusBadge status={row.status} />
+                    </td>
+                    <td className="px-2 py-2">
+                      {row.status === "APPROVED" ? (
+                        <MyPageStatusBadge status={row.gift_status ?? "PENDING"} label={row.gift_status ?? "PENDING"} />
+                      ) : (
+                        <span className="text-xs text-[var(--text-muted)]">-</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -134,7 +153,7 @@ export default function EarnRequestList({ embedded = false }: Props) {
                 >
                   <p className="text-sm font-medium text-[var(--text-primary)]">{row.booking_ref}</p>
                   <p className="text-xs text-[var(--text-secondary)]">
-                    출발 {row.departure_date} · {new Date(row.requested_at).toLocaleDateString("ko-KR")}
+                    {row.traveler_count ?? 1}명 · 출발 {row.departure_date} · {new Date(row.requested_at).toLocaleDateString("ko-KR")}
                   </p>
                 </button>
                 <MyPageStatusBadge status={row.status} />
@@ -149,12 +168,30 @@ export default function EarnRequestList({ embedded = false }: Props) {
         <MyPageCard className="mt-4" title="요청 상세">
           <dl className="space-y-2 text-xs text-[var(--text-secondary)]">
             <div>
+              <dt className="font-medium">여행 인원</dt>
+              <dd>{selected.traveler_count ?? 1}명</dd>
+            </div>
+            <div>
               <dt className="font-medium">예약번호</dt>
               <dd>{selected.booking_ref}</dd>
             </div>
             <div>
               <dt className="font-medium">결제자명</dt>
               <dd>{selected.payer_name}</dd>
+            </div>
+            {selected.status === "APPROVED" ? (
+              <div>
+                <dt className="font-medium">골프공 배송</dt>
+                <dd>{selected.gift_status ?? "PENDING"}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt className="font-medium">배송지</dt>
+              <dd>
+                {[selected.shipping_name, selected.shipping_phone, selected.shipping_zip, selected.shipping_address1, selected.shipping_address2]
+                  .filter(Boolean)
+                  .join(" / ") || "-"}
+              </dd>
             </div>
             <div>
               <dt className="font-medium">메모</dt>

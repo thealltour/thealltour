@@ -65,6 +65,19 @@ export async function listSmsTemplates(activeOnly = true): Promise<SmsTemplate[]
   return (data ?? []).map((r) => mapRow(r as Record<string, unknown>));
 }
 
+export async function getSmsTemplateByCategory(category: string): Promise<SmsTemplate | null> {
+  const { data, error } = await supabaseAdmin
+    .from("sms_templates")
+    .select("id, title, body, category, variables, is_active, sort_order, created_at, updated_at")
+    .eq("category", category)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapRow(data as Record<string, unknown>);
+}
+
 export async function getSmsTemplateById(id: string): Promise<SmsTemplate | null> {
   const { data, error } = await supabaseAdmin
     .from("sms_templates")

@@ -33,15 +33,10 @@ export function AdminInquiriesPageBody({
       <main className="w-full space-y-6">
         {showDesktopHeader ? (
           <AdminHeader
-            activeTab="inquiries"
-            title="문의 관리"
-            description="접수된 문의를 검색하고 상담 완료 상태를 업데이트할 수 있습니다."
-            inquiryCount={inquiryCount}
-            productCount={productCount}
-            memberCount={memberCount}
-            reviewCount={reviewCount}
-            unreadNotificationCount={unreadNotificationCount}
-          />
+          title="문의 관리"
+          description="접수된 문의를 검색하고 상담 완료 상태를 업데이트할 수 있습니다."
+          unreadNotificationCount={unreadNotificationCount}
+        />
         ) : null}
 
         <section

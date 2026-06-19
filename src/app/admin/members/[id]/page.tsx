@@ -16,13 +16,8 @@ export default async function AdminMemberDetailRoute({
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="w-full space-y-6">
         <AdminHeader
-          activeTab="members"
           title="회원 상세"
           description="회원 기본 정보와 포인트 현황을 확인합니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

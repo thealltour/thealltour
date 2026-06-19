@@ -23,6 +23,7 @@ const MENU_GROUPS = [
   {
     label: "활동",
     items: [
+      { href: "/mypage/bookings", label: "내 예약" },
       { href: "/mypage/reviews", label: "리뷰 관리" },
       { href: "/mypage/notifications", label: "알림" },
     ],

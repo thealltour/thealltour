@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
+import { useReserveBookingWizard } from "@/components/admin/hooks/useReserveBookingWizard";
 import {
   extractAssignees,
   readInquirySelfDisplayName,
@@ -145,10 +146,7 @@ export function useAdminInquiryTable() {
   const [queueCustomerReplyCount, setQueueCustomerReplyCount] = useState(0);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
-  const [reserveModalInquiryId, setReserveModalInquiryId] = useState<string | null>(null);
-  const [reserveDeparture, setReserveDeparture] = useState("");
-  const [reserveReturn, setReserveReturn] = useState("");
-  const [isSubmittingReserve, setIsSubmittingReserve] = useState(false);
+  const resetReserveRef = useRef<() => void>(() => {});
   const lastFocusScrollKey = useRef<string | null>(null);
   const urlBootstrapRef = useRef(false);
 
@@ -272,7 +270,7 @@ export function useAdminInquiryTable() {
           setAssigneeWorkloadCapped(Boolean(data.assigneeWorkloadCapped));
         }
         if (resetSelection) {
-          setReserveModalInquiryId(null);
+          resetReserveRef.current();
         }
       } catch {
         setErrorMessage("문의 목록 조회 중 오류가 발생했습니다.");
@@ -286,6 +284,12 @@ export function useAdminInquiryTable() {
     },
     [page, pageSize, statusFilter, sortBy, quickFilter, assigneeFilter, selfDisplayName, debouncedSearch, searchParams],
   );
+
+  const reserveWizard = useReserveBookingWizard({
+    setErrorMessage,
+    onReserved: () => loadInquiries({ silent: true }),
+  });
+  resetReserveRef.current = reserveWizard.resetReserveWizard;
 
   /** 응대 저장 등으로 목록이 바뀐 뒤에도 처리 우선순위 정렬 유지 */
   const resortIfPriority = useCallback(
@@ -377,65 +381,6 @@ export function useAdminInquiryTable() {
       setPendingId(null);
     }
   }, [inquiries, resortIfPriority]);
-
-  const openReserveModal = useCallback((inquiry: Inquiry) => {
-    setReserveModalInquiryId(inquiry.id);
-    setReserveDeparture("");
-    setReserveReturn("");
-    setErrorMessage("");
-  }, []);
-
-  const closeReserveModal = useCallback(() => {
-    setReserveModalInquiryId(null);
-    setReserveDeparture("");
-    setReserveReturn("");
-  }, []);
-
-  const submitReserveBooking = useCallback(async () => {
-    if (!reserveModalInquiryId) return;
-    const dep = reserveDeparture.trim();
-    const ret = reserveReturn.trim();
-    if (!dep || !ret) {
-      setErrorMessage("출발일과 귀국일을 입력해 주세요.");
-      return;
-    }
-    const depDate = new Date(dep);
-    const retDate = new Date(ret);
-    if (Number.isNaN(depDate.getTime()) || Number.isNaN(retDate.getTime())) {
-      setErrorMessage("날짜 형식이 올바르지 않습니다.");
-      return;
-    }
-    if (retDate < depDate) {
-      setErrorMessage("귀국일은 출발일 이후여야 합니다.");
-      return;
-    }
-    setIsSubmittingReserve(true);
-    setErrorMessage("");
-    try {
-      const response = await fetch(`/api/inquiries/${reserveModalInquiryId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "reserve_booking",
-          departure_date: dep,
-          return_date: ret,
-        }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) {
-        setErrorMessage(payload.message ?? "예약 확정에 실패했습니다.");
-        return;
-      }
-      setReserveModalInquiryId(null);
-      setReserveDeparture("");
-      setReserveReturn("");
-      await loadInquiries({ silent: true });
-    } catch {
-      setErrorMessage("예약 확정 요청 중 오류가 발생했습니다.");
-    } finally {
-      setIsSubmittingReserve(false);
-    }
-  }, [reserveModalInquiryId, reserveDeparture, reserveReturn, loadInquiries]);
 
   const deleteInquiry = useCallback(
     async (id: string) => {
@@ -581,10 +526,7 @@ export function useAdminInquiryTable() {
     queueCustomerReplyCount,
     expandedRows,
     expandedQuoteId,
-    reserveModalInquiryId,
-    reserveDeparture,
-    reserveReturn,
-    isSubmittingReserve,
+    ...reserveWizard,
     totalPages,
     safePage,
     focusInquiryId,
@@ -595,16 +537,11 @@ export function useAdminInquiryTable() {
     setPageSize: setPageSizeAndReset,
     loadInquiries,
     updateConsultationStatus,
-    openReserveModal,
-    closeReserveModal,
-    submitReserveBooking,
     completeTrip,
     deleteInquiry,
     toggleExpand,
     setExpandedQuoteId: setExpandedQuoteIdHandler,
     movePage,
-    setReserveDeparture,
-    setReserveReturn,
     applyInquiryMerge,
   };
 }

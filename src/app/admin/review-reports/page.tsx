@@ -17,13 +17,8 @@ export default async function AdminReviewReportsPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="reviews"
           title="리뷰 신고 관리"
           description="접수된 리뷰 신고 목록입니다. 리뷰 숨김 또는 신고 무시를 할 수 있습니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

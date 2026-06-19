@@ -13,7 +13,9 @@ export async function GET(
 
   const { data: row, error } = await supabase
     .from("point_earn_requests")
-    .select("id, user_id, status, booking_ref, departure_date, payer_name, memo, contact_phone, admin_memo, reject_reason, requested_at, decided_at")
+    .select(
+      "id, user_id, status, booking_ref, departure_date, payer_name, traveler_count, gift_status, shipping_name, shipping_phone, shipping_zip, shipping_address1, shipping_address2, memo, contact_phone, admin_memo, reject_reason, requested_at, decided_at",
+    )
     .eq("id", id)
     .maybeSingle();
 

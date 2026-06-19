@@ -36,15 +36,10 @@ export function ReviewModerationPageBody({
       <main className="mx-auto w-full max-w-6xl space-y-6">
         {showDesktopHeader ? (
           <AdminHeader
-            activeTab="reviews"
-            title="리뷰 검토"
-            description="검토 대기·신고된 리뷰·숨김 리뷰를 관리하고, 숨김/복원/검토/해결 처리할 수 있습니다."
-            inquiryCount={inquiryCount}
-            productCount={productCount}
-            memberCount={memberCount}
-            reviewCount={reviewCount}
-            unreadNotificationCount={unreadNotificationCount}
-          />
+          title="리뷰 검토"
+          description="검토 대기·신고된 리뷰·숨김 리뷰를 관리하고, 숨김/복원/검토/해결 처리할 수 있습니다."
+          unreadNotificationCount={unreadNotificationCount}
+        />
         ) : null}
 
         <section

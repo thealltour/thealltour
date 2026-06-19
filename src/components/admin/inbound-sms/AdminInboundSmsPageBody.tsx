@@ -77,13 +77,8 @@ export function AdminInboundSmsPageBody({
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-5xl space-y-4">
         <AdminHeader
-          activeTab="inquiries"
           title="미연결 SMS 수신"
           description="textbee로 수신했으나 기존 문의와 자동 매칭되지 않은 메시지입니다. 문의 ID로 수동 연결할 수 있습니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

@@ -14,6 +14,7 @@ import {
   useSidebarCollapse,
 } from "@/components/admin/SidebarCollapseContext";
 import Breadcrumb from "@/components/admin/Breadcrumb";
+import AdminAnimatedSection from "@/components/admin/AdminAnimatedSection";
 import SubHeader, { type MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
 import { SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig";
@@ -22,44 +23,14 @@ import {
   isAdminConsolePublicPath,
   isAdminReviewSectionRelativePath,
 } from "@/lib/adminConsolePaths";
+import { inferMainMenuKey } from "@/lib/adminNav/adminNav.config";
 import { canAccessSidebarMainKey, isSessionAllowedForConsolePath } from "@/lib/adminRolePolicy";
 import { hasAdminPermission } from "@/lib/adminPermissions";
-import { ADMIN_PRODUCTS_VIEW, ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
+import { ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
 
 type AdminLayoutProps = {
   children: ReactNode;
 };
-
-const HOME_PRODUCT_VIEWS = new Set<string>([
-  ADMIN_PRODUCTS_VIEW.FEATURED,
-  ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS,
-  ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS,
-  ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS,
-]);
-
-function inferMainMenuKey(pathname: string, searchParamsView: string | null): MainMenuKey | null {
-  const rel = getAdminConsoleRelativePath(pathname);
-  if (rel == null) return null;
-  if (rel === "/" || rel === "") return "dashboard";
-  if (rel.startsWith("/banners")) return "home";
-  if (rel.startsWith("/products")) {
-    if (rel.includes("/new-modetour")) return "product";
-    if (searchParamsView && HOME_PRODUCT_VIEWS.has(searchParamsView)) return "home";
-    return "product";
-  }
-  if (rel.startsWith("/landings") || rel.startsWith("/golf-leads")) return "landings";
-  if (rel.startsWith("/sms") || rel.startsWith("/inbound-sms")) return "sms";
-  if (rel.startsWith("/inquiries")) return "inquiry";
-  if (rel.startsWith("/members") || rel.startsWith("/points") || rel.startsWith("/rewards")) {
-    return "member_rewards";
-  }
-  if (rel.startsWith("/settings")) return "settings";
-  if (isAdminReviewSectionRelativePath(rel)) return "reviews";
-  if (rel.startsWith("/guides")) return "guides";
-  if (rel.startsWith("/notices")) return "notices";
-  if (rel.startsWith("/notifications")) return "notifications";
-  return null;
-}
 
 function canAccessPath(
   pathname: string,
@@ -137,26 +108,8 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
     return () => clearTimeout(timer);
   }, [pathname, viewParam]);
 
-  function AnimatedSection({ children }: { children: ReactNode }) {
-    const [visible, setVisible] = useState(false);
-
-    useEffect(() => {
-      const id = requestAnimationFrame(() => setVisible(true));
-      return () => cancelAnimationFrame(id);
-    }, []);
-
-    return (
-      <div
-        className={`mt-4 transform transition-all duration-[180ms] ease-in-out ${
-          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
-        }`}
-      >
-        {children}
-      </div>
-    );
-  }
-
   const canAccessCurrentPath = canAccessPath(pathname, session);
+  const sectionKey = `${activeMenu ?? "none"}-${activeSubTab ?? "none"}`;
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] transition-colors">
@@ -182,9 +135,7 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
 
         <div className="w-full px-6 py-10 md:px-10">
           <div className="max-w-full">
-            <AnimatedSection
-              key={`${activeMenu ?? "none"}-${activeSubTab ?? "none"}`}
-            >
+            <AdminAnimatedSection sectionKey={sectionKey}>
               {canAccessCurrentPath ? (
                 children
               ) : (
@@ -197,7 +148,7 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
                   </p>
                 </div>
               )}
-            </AnimatedSection>
+            </AdminAnimatedSection>
           </div>
         </div>
       </main>

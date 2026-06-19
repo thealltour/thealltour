@@ -236,3 +236,89 @@ Array<RewardRedemptionRow & { catalog?: RewardCatalogRow; member?: { id: string;
 - (선택) notifications "포인트가 확정되었습니다."
 
 **Response 200:** `{ message: string; }`
+
+---
+
+## (5) 통합 리워드 — 예약 증빙 적립 (인당 정비례)
+
+**비즈니스 규칙:**
+- 포인트: `traveler_count × 20,000P` (승인 시 자동 계산, CONFIRMED 즉시 적립)
+- 골프공: `traveler_count × 10,000원` 상당 — `point_earn_requests.gift_status`로 배송 관리
+
+### POST /api/points/earn-requests
+
+**Auth:** 회원 세션 필수.
+
+**Request:** `multipart/form-data`
+
+| 필드 | 필수 | 설명 |
+|------|------|------|
+| booking_ref | Y | 예약번호 |
+| departure_date | Y | 출발일 |
+| payer_name | Y | 결제자명 |
+| traveler_count | Y | 여행 인원수 (1~99) |
+| shipping_name | Y | 선물 수령인 |
+| shipping_phone | Y | 배송 연락처 |
+| shipping_zip | Y | 우편번호 |
+| shipping_address1 | Y | 주소 |
+| shipping_address2 | N | 상세주소 |
+| contact_phone | N | 연락처 |
+| memo | N | 메모 |
+| attachments | Y | 증빙 1~3개 |
+
+**Response 201:** `{ id: string; message: string; }`
+
+---
+
+### POST /api/admin/points/earn-requests/:id/approve
+
+**Auth:** 관리자 세션 필수.
+
+**Request body:**
+```ts
+{ admin_memo?: string; }
+```
+
+**처리 (Postgres RPC `approve_point_earn_request` — 원자적):**
+1. `amount = traveler_count × 20000`
+2. `point_earn_requests` → APPROVED, `gift_status` = PENDING
+3. `point_ledger` EARN CONFIRMED + `members.point_balance` += amount
+4. `notifications` POINT_EARNED
+
+**Response 200:**
+```ts
+{
+  message: string;
+  amount: number;
+  traveler_count: number;
+  gift_status: "PENDING";
+  ledger_id: string;
+}
+```
+
+---
+
+### POST /api/admin/points/earn-requests/:id/gift
+
+**Auth:** 관리자 세션 필수.
+
+**Request body:**
+```ts
+{ gift_status: "SHIPPED" | "COMPLETED"; admin_memo?: string; }
+```
+
+**처리:** RPC `update_point_earn_request_gift_status` + REWARD_STATUS 알림
+
+**Response 200:** `{ message: string; gift_status: string; traveler_count: number; }`
+
+---
+
+### POST /api/admin/points/earn-requests/:id/reject
+
+**처리 추가:** `gift_status` = CANCELED
+
+---
+
+### CSV 일괄 승인
+
+**헤더:** `booking_ref,admin_memo` (amount/grant_status 불필요 — traveler_count 기반 자동 계산)

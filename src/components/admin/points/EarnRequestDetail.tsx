@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Copy } from "lucide-react";
+import {
+  calcEarnPointsAmount,
+  calcGiftPackageWonValue,
+} from "@/lib/points/unifiedReward";
+import type { PointEarnRequestGiftStatus } from "@/types/pointsRewardsV2";
 
 const TEMPLATE_CONFIRM = `안녕하세요.
 더올투어 포인트 적립 요청 관련 안내드립니다.
@@ -14,6 +19,7 @@ const TEMPLATE_CONFIRM = `안녕하세요.
 * 예약번호
 * 출발일
 * 결제자명
+* 여행 인원수
 
 증빙 자료가 추가로 필요할 수 있습니다.
 
@@ -29,6 +35,13 @@ type Detail = {
   booking_ref: string;
   departure_date: string;
   payer_name: string;
+  traveler_count: number;
+  gift_status: PointEarnRequestGiftStatus;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  shipping_zip: string | null;
+  shipping_address1: string | null;
+  shipping_address2: string | null;
   memo: string | null;
   contact_phone: string | null;
   admin_memo: string | null;
@@ -43,48 +56,32 @@ type Props = {
 };
 
 export default function EarnRequestDetail({ detail, onReload }: Props) {
-  const [amount, setAmount] = useState("10000");
-  const [grantStatus, setGrantStatus] = useState<"CONFIRMED" | "PENDING">("CONFIRMED");
   const [adminMemo, setAdminMemo] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const [giftLoading, setGiftLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  const travelerCount = detail?.traveler_count ?? 1;
+  const computedPoints = calcEarnPointsAmount(travelerCount);
+  const computedGiftWon = calcGiftPackageWonValue(travelerCount);
+
   const messageTemplates = useMemo(() => {
-    const amountNum = Number(amount) || 0;
     return [
       { label: "확인 요청 메시지", text: TEMPLATE_CONFIRM },
       {
         label: "승인 안내 메시지",
-        text:
-          grantStatus === "CONFIRMED"
-            ? `안녕하세요.
+        text: `안녕하세요.
 더올투어입니다.
 
 회원님께서 요청하신 여행 예약 건이 확인되어
 포인트가 정상 지급되었습니다.
 
-지급 포인트
-+${amountNum}P
+여행 인원: ${travelerCount}명
+지급 포인트: +${computedPoints.toLocaleString()}P
 
-마이페이지에서 확인하실 수 있습니다.
-
-앞으로도 더올투어 이용 부탁드립니다.
-
-감사합니다.`
-            : `안녕하세요.
-더올투어입니다.
-
-회원님께서 요청하신 예약 건이 확인되어
-포인트 지급이 등록되었습니다.
-
-현재 포인트는 검수 단계로
-확정 후 사용 가능 상태로 전환됩니다.
-
-지급 예정 포인트
-+${amountNum}P
-
-확정 시 다시 안내드리겠습니다.
+한정판 네임드 골프공 세트(${travelerCount}인분)는
+등록해 주신 주소로 순차 발송됩니다.
 
 감사합니다.`,
       },
@@ -99,14 +96,12 @@ export default function EarnRequestDetail({ detail, onReload }: Props) {
 반려 사유
 ${rejectReason || "{reject_reason}"}
 
-추가 문의가 있으시면 언제든지 문의 부탁드립니다.
-
 감사합니다.
 
 더올투어 드림`,
       },
     ];
-  }, [amount, grantStatus, rejectReason]);
+  }, [travelerCount, computedPoints, rejectReason]);
 
   if (!detail) {
     return <p className="text-sm text-[var(--text-muted)]">요청을 선택하면 상세 정보가 표시됩니다.</p>;
@@ -123,6 +118,19 @@ ${rejectReason || "{reject_reason}"}
     setMessage({ type: "ok", text: "연락처를 복사했습니다." });
   };
 
+  const copyShipping = async () => {
+    const text = [
+      detail.shipping_name,
+      detail.shipping_phone,
+      detail.shipping_zip,
+      [detail.shipping_address1, detail.shipping_address2].filter(Boolean).join(" "),
+    ]
+      .filter(Boolean)
+      .join("\n");
+    await navigator.clipboard.writeText(text);
+    setMessage({ type: "ok", text: "배송지를 복사했습니다." });
+  };
+
   const approve = async () => {
     setLoading(true);
     setMessage(null);
@@ -130,18 +138,17 @@ ${rejectReason || "{reject_reason}"}
       const res = await fetch(`/api/admin/points/earn-requests/${detail.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Number(amount),
-          grant_status: grantStatus,
-          admin_memo: adminMemo || undefined,
-        }),
+        body: JSON.stringify({ admin_memo: adminMemo || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setMessage({ type: "err", text: data.message || "승인 처리 실패" });
         return;
       }
-      setMessage({ type: "ok", text: data.message || "승인 완료" });
+      setMessage({
+        type: "ok",
+        text: data.message || `승인 완료 (${Number(data.amount).toLocaleString()}P 지급)`,
+      });
       await onReload();
     } finally {
       setLoading(false);
@@ -172,12 +179,43 @@ ${rejectReason || "{reject_reason}"}
     }
   };
 
+  const updateGiftStatus = async (giftStatus: "SHIPPED" | "COMPLETED") => {
+    setGiftLoading(giftStatus);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/points/earn-requests/${detail.id}/gift`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gift_status: giftStatus, admin_memo: adminMemo || undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ type: "err", text: data.message || "배송 처리 실패" });
+        return;
+      }
+      setMessage({ type: "ok", text: data.message || "처리 완료" });
+      await onReload();
+    } finally {
+      setGiftLoading(null);
+    }
+  };
+
+  const canShipGift = detail.status === "APPROVED" && detail.gift_status === "PENDING";
+  const canCompleteGift =
+    detail.status === "APPROVED" && (detail.gift_status === "PENDING" || detail.gift_status === "SHIPPED");
+
   return (
     <aside className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <h3 className="text-base font-semibold text-[var(--text-primary)]">요청 상세</h3>
       <p className="text-sm text-[var(--text-secondary)]">예약번호: {detail.booking_ref}</p>
       <p className="text-sm text-[var(--text-secondary)]">출발일: {detail.departure_date}</p>
       <p className="text-sm text-[var(--text-secondary)]">결제자명: {detail.payer_name}</p>
+      <p className="text-sm text-[var(--text-secondary)]">여행 인원: {travelerCount}명</p>
+      <div className="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary-bg)] px-3 py-2 text-sm">
+        <p className="font-medium text-[var(--text-primary)]">자동 계산 리워드</p>
+        <p className="text-[var(--text-secondary)]">포인트: {computedPoints.toLocaleString()}P (20,000P × {travelerCount}명)</p>
+        <p className="text-[var(--text-secondary)]">골프공: {travelerCount}인분 ({computedGiftWon.toLocaleString()}원 상당)</p>
+      </div>
       <p className="text-sm text-[var(--text-secondary)]">연락처: {detail.contact_phone ?? detail.members?.phone ?? "-"}</p>
       <p className="text-sm text-[var(--text-secondary)]">요청 메모: {detail.memo ?? "-"}</p>
       <button
@@ -188,6 +226,23 @@ ${rejectReason || "{reject_reason}"}
         <Copy className="h-3.5 w-3.5" />
         연락처 복사
       </button>
+
+      <div className="space-y-1 rounded-lg border border-[var(--border)] p-3">
+        <p className="text-xs font-medium text-[var(--text-muted)]">선물 배송지</p>
+        <p className="text-sm text-[var(--text-primary)]">{detail.shipping_name ?? "-"}</p>
+        <p className="text-xs text-[var(--text-secondary)]">{detail.shipping_phone ?? "-"}</p>
+        <p className="text-xs text-[var(--text-secondary)]">
+          ({detail.shipping_zip ?? "-"}) {[detail.shipping_address1, detail.shipping_address2].filter(Boolean).join(" ") || "-"}
+        </p>
+        <button
+          type="button"
+          onClick={copyShipping}
+          className="mt-1 inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-primary)]"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          배송지 복사
+        </button>
+      </div>
 
       <div className="space-y-1">
         <p className="text-xs font-medium text-[var(--text-muted)]">증빙 파일</p>
@@ -204,22 +259,7 @@ ${rejectReason || "{reject_reason}"}
 
       <div className="space-y-2 rounded-lg border border-[var(--border)] p-3">
         <p className="text-sm font-semibold text-[var(--text-primary)]">승인</p>
-        <input
-          type="number"
-          min={1}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="amount"
-          className="input-base w-full bg-[var(--surface-muted)]"
-        />
-        <select
-          value={grantStatus}
-          onChange={(e) => setGrantStatus(e.target.value as "CONFIRMED" | "PENDING")}
-          className="input-base w-full bg-[var(--surface-muted)]"
-        >
-          <option value="CONFIRMED">CONFIRMED</option>
-          <option value="PENDING">PENDING</option>
-        </select>
+        <p className="text-xs text-[var(--text-muted)]">승인 시 {computedPoints.toLocaleString()}P가 자동 지급됩니다.</p>
         <textarea
           value={adminMemo}
           onChange={(e) => setAdminMemo(e.target.value)}
@@ -233,9 +273,36 @@ ${rejectReason || "{reject_reason}"}
           onClick={approve}
           className="rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50"
         >
-          승인
+          승인 (자동 {computedPoints.toLocaleString()}P)
         </button>
       </div>
+
+      {detail.status === "APPROVED" ? (
+        <div className="space-y-2 rounded-lg border border-[var(--border)] p-3">
+          <p className="text-sm font-semibold text-[var(--text-primary)]">골프공 배송</p>
+          <p className="text-xs text-[var(--text-secondary)]">
+            상태: <strong>{detail.gift_status}</strong> · {travelerCount}인분
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!canShipGift || giftLoading !== null}
+              onClick={() => updateGiftStatus("SHIPPED")}
+              className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm disabled:opacity-50"
+            >
+              {giftLoading === "SHIPPED" ? "처리 중..." : "발송 처리"}
+            </button>
+            <button
+              type="button"
+              disabled={!canCompleteGift || giftLoading !== null}
+              onClick={() => updateGiftStatus("COMPLETED")}
+              className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm disabled:opacity-50"
+            >
+              {giftLoading === "COMPLETED" ? "처리 중..." : "배송 완료"}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="space-y-2 rounded-lg border border-[var(--border)] p-3">
         <p className="text-sm font-semibold text-[var(--text-primary)]">반려</p>

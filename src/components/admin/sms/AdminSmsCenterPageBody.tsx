@@ -33,13 +33,8 @@ export function AdminSmsCenterPageBody({
     <div className="min-h-screen bg-[var(--bg)] px-4 py-8 text-[var(--text-primary)] md:px-8">
       <main className="mx-auto w-full max-w-7xl space-y-4">
         <AdminHeader
-          activeTab="inquiries"
           title="SMS 센터"
           description="textbee 수신과 알리고 발송을 전화번호별로 확인·응대합니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={displayUnreadCount}
         />
 

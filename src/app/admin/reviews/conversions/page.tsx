@@ -22,13 +22,8 @@ export default async function AdminReviewConversionsPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="reviews"
           title="리뷰 전환 기여도 분석"
           description="리뷰 노출·상호작용·요약/개인화가 상품 전환(CTA 클릭, 문의 등)에 기여한 정도를 확인할 수 있습니다."
-          inquiryCount={counts.inquiryCount}
-          productCount={counts.productCount}
-          memberCount={counts.memberCount}
-          reviewCount={counts.reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

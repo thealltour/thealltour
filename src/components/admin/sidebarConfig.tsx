@@ -16,6 +16,7 @@ import {
   Megaphone,
   Bell,
   Home,
+  CalendarDays,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
@@ -58,6 +59,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: Inbox,
     group: "ops",
     mainKey: "sms",
+    roles: ["admin", "manager"],
+  },
+  {
+    href: "/theall_manager_only/bookings",
+    label: "예약 관리",
+    icon: CalendarDays,
+    group: "ops",
+    mainKey: "bookings",
     roles: ["admin", "manager"],
   },
   {

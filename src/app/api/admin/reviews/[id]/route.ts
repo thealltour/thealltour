@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { getReviewById } from "@/lib/reviews";
 import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
-import { getProductIdByBookingId } from "@/lib/travelBookings";
+import { getProductIdByBookingId } from "@/lib/bookings/bookingRepository";
 
 type ReviewBody = {
   author_name?: string;

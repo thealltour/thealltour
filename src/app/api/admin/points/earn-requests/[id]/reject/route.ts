@@ -46,6 +46,7 @@ export async function POST(
     .from("point_earn_requests")
     .update({
       status: "REJECTED",
+      gift_status: "CANCELED",
       reject_reason: rejectReason,
       admin_memo: body.admin_memo?.trim() || null,
       decided_at: now,

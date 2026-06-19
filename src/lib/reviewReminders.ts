@@ -5,7 +5,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getTravelBookingById } from "@/lib/travelBookings";
+import { getTravelBookingById } from "@/lib/bookings/bookingRepository";
 import type { ReviewEligibility } from "@/types/reviewEligibility";
 
 const REMINDER_3D = "reminder_3d";

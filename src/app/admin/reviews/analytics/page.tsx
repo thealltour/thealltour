@@ -17,13 +17,8 @@ export default async function AdminReviewAnalyticsPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="reviews"
           title="리뷰 분석"
           description="상품별 리뷰 품질·상태·추천 점수를 한눈에 확인합니다."
-          inquiryCount={counts.inquiryCount}
-          productCount={counts.productCount}
-          memberCount={counts.memberCount}
-          reviewCount={counts.reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

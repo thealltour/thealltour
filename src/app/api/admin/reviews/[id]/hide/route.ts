@@ -3,7 +3,7 @@ import { requireAdminSession } from "@/lib/apiAuth";
 import { getReviewById } from "@/lib/reviews";
 import { markProductReviewSummaryStale } from "@/lib/reviewSummaries";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getProductIdByBookingId } from "@/lib/travelBookings";
+import { getProductIdByBookingId } from "@/lib/bookings/bookingRepository";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

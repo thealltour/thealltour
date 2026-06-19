@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getTravelBookingByInquiryId, createTravelBooking, updateTravelBookingStatus } from "@/lib/travelBookings";
-import { createEligibilityIfNotExists, adminClaimEligibilityById } from "@/lib/reviewEligibilities";
+import { getTravelBookingByInquiryId } from "@/lib/bookings/completeTravelBooking";
+import { confirmTravelBooking } from "@/lib/bookings/confirmTravelBooking";
+import { completeTravelBooking } from "@/lib/bookings/completeTravelBooking";
+import { sendBookingConfirmedSms, sendTripCompletedSms } from "@/lib/bookings/bookingSms";
 import { findLinkedMemberIdByCustomerProfileId } from "@/lib/customerAccountLinks";
-import { createReviewReminders } from "@/lib/reviewReminders";
+import type { BookingPaymentStatus, BookingTravelerInput } from "@/types/travelBooking";
 import {
   appendInquiryActivityLog,
   BOOKING_STATUS_KO,
@@ -65,7 +67,30 @@ type PatchBodyLegacy = {
 
 type PatchBodyAction =
   | { action: "update_status"; consultation_status?: ConsultationStatus; booking_status?: BookingStatus; completed_at?: string | null }
-  | { action: "reserve_booking"; departure_date: string; return_date: string; product_id?: string; product_title?: string; source_path?: string }
+  | {
+      action: "reserve_booking";
+      departure_date: string;
+      return_date: string;
+      product_id?: string;
+      product_title?: string;
+      source_path?: string;
+      traveler_count?: number;
+      payer_name?: string;
+      primary_traveler_phone?: string;
+      travelers?: BookingTravelerInput[];
+      payment?: {
+        status?: BookingPaymentStatus;
+        method?: string;
+        total_amount?: number;
+        paid_amount?: number;
+      };
+      shipping_name?: string;
+      shipping_phone?: string;
+      shipping_zip?: string;
+      shipping_address1?: string;
+      shipping_address2?: string;
+      send_confirmation_sms?: boolean;
+    }
   | { action: "complete_trip" };
 
 type PatchBody = PatchBodyLegacy | PatchBodyAction;
@@ -149,7 +174,7 @@ export async function PATCH(
 
       const { data: inquiry, error: fetchError } = await supabaseAdmin
         .from("inquiries")
-        .select("id, customer_profile_id, product_id, product_title, source_path, consultation_status, booking_status")
+        .select("id, customer_profile_id, product_id, product_title, source_path, consultation_status, booking_status, name, phone")
         .eq("id", inquiryId)
         .single();
 
@@ -184,51 +209,84 @@ export async function PATCH(
         );
       }
 
-      const row = inquiry as { product_id?: string | null; product_title?: string | null; source_path?: string | null };
+      const row = inquiry as {
+        product_id?: string | null;
+        product_title?: string | null;
+        source_path?: string | null;
+        name?: string | null;
+        phone?: string | null;
+      };
       const productId = (body.product_id ?? row.product_id ?? "").trim() || null;
       const productTitle = (body.product_title ?? row.product_title ?? "").trim() || null;
       const sourcePath = (body.source_path ?? row.source_path ?? "").trim() || null;
+      const travelerCount = Math.max(1, Number(body.traveler_count) || 1);
+      const payerName = body.payer_name?.trim() || row.name?.trim() || "예약자";
+      const primaryPhone = body.primary_traveler_phone?.trim() || row.phone?.trim() || "";
 
-      const booking = await createTravelBooking({
-        customer_profile_id: customerProfileId,
-        inquiry_id: inquiryId,
-        product_id: productId,
-        product_title: productTitle,
-        source_path: sourcePath,
-        booking_status: "reserved",
-        departure_date: departure,
-        return_date: returnDate,
-      });
+      const linkedMemberId = await findLinkedMemberIdByCustomerProfileId(customerProfileId);
 
-      if (!booking) {
-        return NextResponse.json({ message: "예약 생성에 실패했습니다." }, { status: 500 });
+      try {
+        const result = await confirmTravelBooking({
+          customer_profile_id: customerProfileId,
+          inquiry_id: inquiryId,
+          product_id: productId,
+          product_title: productTitle,
+          source_path: sourcePath,
+          departure_date: departure,
+          return_date: returnDate,
+          traveler_count: travelerCount,
+          payer_name: payerName,
+          primary_traveler_phone: primaryPhone,
+          member_id: linkedMemberId,
+          travelers: body.travelers,
+          payment: body.payment,
+          shipping_name: body.shipping_name,
+          shipping_phone: body.shipping_phone,
+          shipping_zip: body.shipping_zip,
+          shipping_address1: body.shipping_address1,
+          shipping_address2: body.shipping_address2,
+        });
+
+        const rowConsultation = consultationRow ?? "new";
+        const rowBooking = (inquiry as { booking_status?: string | null }).booking_status ?? "none";
+        await logConsultationAndBookingChanges(inquiryId, rowConsultation, rowBooking, "closed", "reserved");
+
+        await appendInquiryActivityLog(supabaseAdmin, {
+          inquiry_id: inquiryId,
+          activity_type: "booking_confirmed",
+          actor_name: STATUS_LOG_ACTOR,
+          summary: `예약 확정: ${result.booking_number} (${travelerCount}명)`,
+          metadata: { booking_id: result.booking_id, booking_number: result.booking_number },
+        });
+
+        if (body.send_confirmation_sms !== false && primaryPhone) {
+          await sendBookingConfirmedSms({
+            bookingId: result.booking_id,
+            inquiryId: inquiryId,
+            receiver: primaryPhone,
+            name: payerName,
+            booking_number: result.booking_number,
+            product_title: productTitle ?? undefined,
+            departure_date: departure,
+            traveler_count: travelerCount,
+          });
+        }
+
+        return NextResponse.json({
+          message: "예약이 확정되었습니다.",
+          booking_id: result.booking_id,
+          booking_number: result.booking_number,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "예약 확정에 실패했습니다.";
+        return NextResponse.json({ message }, { status: 400 });
       }
-
-      const rowBooking = (inquiry as { booking_status?: string | null }).booking_status ?? "none";
-      const rowConsultation = consultationRow ?? "new";
-
-      const { error: updateErr } = await supabaseAdmin
-        .from("inquiries")
-        .update({
-          consultation_status: "closed",
-          booking_status: "reserved",
-          last_activity_at: new Date().toISOString(),
-        })
-        .eq("id", inquiryId);
-
-      if (updateErr) {
-        return NextResponse.json({ message: "문의 상태 업데이트에 실패했습니다." }, { status: 500 });
-      }
-
-      await logConsultationAndBookingChanges(inquiryId, rowConsultation, rowBooking, "closed", "reserved");
-
-      return NextResponse.json({ message: "예약이 확정되었습니다." });
     }
 
     if (body.action === "complete_trip") {
       const { data: inquiry, error: fetchError } = await supabaseAdmin
         .from("inquiries")
-        .select("id, customer_profile_id, booking_status")
+        .select("id, customer_profile_id, booking_status, name, phone")
         .eq("id", inquiryId)
         .single();
 
@@ -253,56 +311,36 @@ export async function PATCH(
         );
       }
 
-      const customerProfileId = row.customer_profile_id as string | null | undefined;
-      if (!customerProfileId) {
-        return NextResponse.json(
-          { message: "이 문의에 연결된 고객 프로필이 없습니다. 여행 완료 처리가 불가합니다." },
-          { status: 400 },
-        );
-      }
-
-      const now = new Date().toISOString();
-      const updated = await updateTravelBookingStatus(booking.id, "completed", { travel_completed_at: now });
-      if (!updated) {
-        return NextResponse.json({ message: "예약 상태 업데이트에 실패했습니다." }, { status: 500 });
-      }
-
+      const bookingId = String((booking as { id: string }).id);
       const prevBook = bookingStatus ?? "none";
 
-      const { error: inquiryUpdateErr } = await supabaseAdmin
-        .from("inquiries")
-        .update({
-          booking_status: "completed",
-          completed_at: now,
-          last_activity_at: now,
-        })
-        .eq("id", inquiryId);
+      try {
+        const result = await completeTravelBooking(bookingId);
+        await logConsultationAndBookingChanges(inquiryId, undefined, prevBook, undefined, "completed");
 
-      if (inquiryUpdateErr) {
-        return NextResponse.json({ message: "문의 상태 업데이트에 실패했습니다." }, { status: 500 });
-      }
-
-      await logConsultationAndBookingChanges(inquiryId, undefined, prevBook, undefined, "completed");
-
-      const eligibility = await createEligibilityIfNotExists(booking.id, customerProfileId, {
-        withClaimToken: true,
-      });
-
-      if (eligibility) {
-        const linkedMemberId = await findLinkedMemberIdByCustomerProfileId(customerProfileId);
-        if (linkedMemberId && !eligibility.claimed_by_member_id) {
-          await adminClaimEligibilityById(eligibility.id, linkedMemberId);
+        const phone = String(row.phone ?? (booking as { primary_traveler_phone?: string }).primary_traveler_phone ?? "");
+        if (phone) {
+          await sendTripCompletedSms({
+            bookingId,
+            inquiryId: inquiryId,
+            receiver: phone,
+            name: String(row.name ?? ""),
+            booking_number: result.booking_number,
+            review_link: result.claim_link ?? "",
+            reward_hint: "마이페이지에서 리워드(포인트·골프공) 신청이 가능합니다.",
+          });
         }
 
-        await createReviewReminders(eligibility);
         return NextResponse.json({
           message: "여행 완료 및 후기 자격이 생성되었습니다.",
-          claim_token: eligibility.claim_token,
-          claim_link: eligibility.claim_token ? `/reviews/claim/${eligibility.claim_token}` : null,
+          booking_number: result.booking_number,
+          claim_token: result.claim_token,
+          claim_link: result.claim_link,
         });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "여행 완료 처리에 실패했습니다.";
+        return NextResponse.json({ message }, { status: 400 });
       }
-
-      return NextResponse.json({ message: "여행 완료 처리되었습니다. (후기 자격 생성 건너뜀)" });
     }
   }
 

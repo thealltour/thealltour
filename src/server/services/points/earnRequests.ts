@@ -1,7 +1,43 @@
+import {
+  calcEarnPointsAmount,
+  calcGiftPackageWonValue,
+  parseTravelerCount,
+} from "@/lib/points/unifiedReward";
+import { MAX_TRAVELER_COUNT, MIN_TRAVELER_COUNT, POINTS_PER_TRAVELER } from "@/types/pointsRewardsV2";
+
 export const MAX_ACTIVE_EARN_REQUESTS = 1;
 export const MAX_EARN_ATTACHMENTS = 3;
 export const MIN_EARN_ATTACHMENTS = 1;
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+
+export { calcEarnPointsAmount, calcGiftPackageWonValue, parseTravelerCount };
+
+export type EarnRequestShippingFields = {
+  shipping_name: string;
+  shipping_phone: string;
+  shipping_zip: string;
+  shipping_address1: string;
+  shipping_address2: string | null;
+};
+
+export function parseEarnRequestShipping(
+  formData: FormData,
+):
+  | ({ ok: true } & EarnRequestShippingFields)
+  | { ok: false; message: string } {
+  const shipping_name = String(formData.get("shipping_name") ?? "").trim();
+  const shipping_phone = String(formData.get("shipping_phone") ?? "").trim();
+  const shipping_zip = String(formData.get("shipping_zip") ?? "").trim();
+  const shipping_address1 = String(formData.get("shipping_address1") ?? "").trim();
+  const shipping_address2 = String(formData.get("shipping_address2") ?? "").trim() || null;
+
+  if (!shipping_name) return { ok: false, message: "선물 수령인 이름은 필수입니다." };
+  if (!shipping_phone) return { ok: false, message: "선물 배송 연락처는 필수입니다." };
+  if (!shipping_zip) return { ok: false, message: "우편번호는 필수입니다." };
+  if (!shipping_address1) return { ok: false, message: "배송 주소는 필수입니다." };
+
+  return { ok: true, shipping_name, shipping_phone, shipping_zip, shipping_address1, shipping_address2 };
+}
 
 export function validateEarnRequestAttachment(file: File) {
   if (!file) return { ok: false as const, message: "첨부 파일이 필요합니다." };
@@ -24,11 +60,9 @@ export function parseSimpleCsvRows(csvText: string) {
   const headers = headerLine.split(",").map((h) => h.trim());
   const indexOf = (name: string) => headers.findIndex((h) => h === name);
   const bookingRefIdx = indexOf("booking_ref");
-  const amountIdx = indexOf("amount");
-  const grantStatusIdx = indexOf("grant_status");
   const adminMemoIdx = indexOf("admin_memo");
-  if (bookingRefIdx < 0 || amountIdx < 0 || grantStatusIdx < 0) {
-    throw new Error("CSV 헤더는 booking_ref,amount,grant_status를 포함해야 합니다.");
+  if (bookingRefIdx < 0) {
+    throw new Error("CSV 헤더는 booking_ref를 포함해야 합니다.");
   }
 
   return rows.map((line, i) => {
@@ -36,8 +70,6 @@ export function parseSimpleCsvRows(csvText: string) {
     return {
       rowNo: i + 2,
       booking_ref: cols[bookingRefIdx] ?? "",
-      amount: Number(cols[amountIdx] ?? 0),
-      grant_status: (cols[grantStatusIdx] ?? "CONFIRMED").toUpperCase(),
       admin_memo: adminMemoIdx >= 0 ? cols[adminMemoIdx] ?? "" : "",
     };
   });
@@ -63,18 +95,34 @@ export const EARN_REQUEST_MESSAGE_TEMPLATES = {
 감사합니다.
 
 더올투어 드림`,
-  approved: (amount: number) => `안녕하세요.
+  approved: (amount: number, travelerCount: number) => `안녕하세요.
 더올투어입니다.
 
 회원님께서 요청하신 여행 예약 건이 확인되어
 포인트가 정상 지급되었습니다.
 
-지급 포인트
-+${amount}P
+여행 인원: ${travelerCount}명
+지급 포인트: +${amount.toLocaleString()}P (인당 ${POINTS_PER_TRAVELER.toLocaleString()}P)
 
-마이페이지에서 확인하실 수 있습니다.
+한정판 네임드 골프공 세트(${travelerCount}인분, ${calcGiftPackageWonValue(travelerCount).toLocaleString()}원 상당)는
+등록해 주신 주소로 순차 발송됩니다.
+
+마이페이지에서 포인트를 확인하실 수 있습니다.
 
 앞으로도 더올투어 이용 부탁드립니다.
+
+감사합니다.`,
+  giftShipped: (travelerCount: number) => `안녕하세요.
+더올투어입니다.
+
+요청하신 한정판 네임드 골프공 세트(${travelerCount}인분)가 발송되었습니다.
+곧 수령하실 수 있습니다.
+
+감사합니다.`,
+  giftCompleted: (travelerCount: number) => `안녕하세요.
+더올투어입니다.
+
+한정판 네임드 골프공 세트(${travelerCount}인분) 배송이 완료 처리되었습니다.
 
 감사합니다.`,
   pending: (amount: number) => `안녕하세요.

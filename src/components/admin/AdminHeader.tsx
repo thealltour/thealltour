@@ -4,24 +4,6 @@ import { Bell } from "lucide-react";
 type AdminHeaderProps = {
   title: string;
   description: string;
-  activeTab:
-    | "dashboard"
-    | "settings"
-    | "products"
-    | "landings"
-    | "inquiries"
-    | "members"
-    | "rewards"
-    | "points"
-    | "reviews"
-    | "guides"
-    | "notifications"
-    | "banners"
-    | "notices";
-  productCount: number;
-  inquiryCount: number;
-  memberCount: number;
-  reviewCount: number;
   unreadNotificationCount: number;
 };
 

@@ -21,12 +21,20 @@ import {
 } from "@/components/admin/products/adminProducts.constants";
 import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
 import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
+import {
+  ADMIN_MANAGER_PREFIX,
+  ADMIN_MENU_MAP,
+  MAIN_MENU_TITLE,
+  resolveActiveSubTab,
+  type MainMenuKey,
+} from "@/lib/adminNav/adminNav.config";
+
+export type { MainMenuKey };
+export const menuMap = ADMIN_MENU_MAP;
 
 export type SubHeaderTab = { label: string; href: string };
 
-const MANAGER_PREFIX = "/theall_manager_only";
-
-/** 후기 운영 탭 (일상 업무) */
+const MANAGER_PREFIX = ADMIN_MANAGER_PREFIX;
 export const REVIEWS_OPS_TABS: SubHeaderTab[] = [
   { label: "리뷰 목록", href: `${MANAGER_PREFIX}/reviews` },
   { label: "리뷰 검토", href: `${MANAGER_PREFIX}/reviews/moderation` },
@@ -54,38 +62,6 @@ function isReviewTabActive(href: string, pathname: string): boolean {
   }
   return normalized === target || normalized.startsWith(`${target}/`);
 }
-
-export const menuMap = {
-  dashboard: ["오늘 할 일", "지표·리드"],
-  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리"],
-  home: ["메인 골프투어 상품", "메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
-  landings: ["랜딩 목록", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
-  inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
-  sms: [] as string[],
-  member_rewards: ["회원 목록", "포인트 지급", "적립 요청", "교환 신청"],
-  settings: [] as string[],
-  reviews: [] as string[],
-  guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
-  notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
-  notifications: ["알림 목록"],
-} as const;
-
-export type MainMenuKey = keyof typeof menuMap;
-
-const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
-  dashboard: "대시보드",
-  product: "상품",
-  home: "홈·배너 구성",
-  landings: "랜딩·유입",
-  inquiry: "문의·상담",
-  sms: "SMS 센터",
-  member_rewards: "회원·리워드",
-  settings: "환경설정",
-  reviews: "후기",
-  guides: "여행가이드",
-  notices: "공지사항",
-  notifications: "알림 센터",
-};
 
 type SubHeaderProps = {
   activeMenu: MainMenuKey | null;
@@ -116,98 +92,11 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
   const { unreadCount: notificationUnreadCount } = useAdminNotificationsRealtime();
 
   useEffect(() => {
-    let initial: string | null = items[0] ?? null;
-
-    if (activeMenu === "product") {
-      const view = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
-      if (pathname.includes("/products/new-modetour")) {
-        initial = "상품 등록(모두)";
-      } else if (view === ADMIN_PRODUCTS_VIEW.TAXONOMY) {
-        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
-      } else if (view === ADMIN_PRODUCTS_VIEW.CREATE) {
-        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.CREATE];
-      } else if (view === ADMIN_PRODUCTS_VIEW.LIST) {
-        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
-      } else {
-        initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.LIST];
-      }
-    }
-    if (activeMenu === "home") {
-      if (pathname.includes("/banners")) {
-        initial = "메인배너";
-      } else {
-        const view = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
-        if (view === ADMIN_PRODUCTS_VIEW.FEATURED) {
-          initial = "메인 추천상품";
-        } else if (view === ADMIN_PRODUCTS_VIEW.HOME_THEME_CARDS) {
-          initial = "메인 테마카드";
-        } else if (view === ADMIN_PRODUCTS_VIEW.HOME_REGION_CARDS) {
-          initial = "메인 지역카드";
-        } else if (view === ADMIN_PRODUCTS_VIEW.HOME_GOLF_TOUR_CARDS) {
-          initial = "메인 골프투어 상품";
-        } else {
-          initial = "메인 골프투어 상품";
-        }
-      }
-    }
-    if (activeMenu === "notices") {
-      const view = searchParams.get("view");
-      if (view === "legal") {
-        initial = "회원가입 법률 문서";
-      } else if (view === "create") {
-        initial = "공지 등록";
-      } else if (view === "list") {
-        initial = "등록된 공지 목록";
-      } else {
-        initial = "등록된 공지 목록";
-      }
-    }
-    if (activeMenu === "guides") {
-      const view = searchParams.get("view");
-      if (view === "notion") {
-        initial = "가이드등록(노션)";
-      } else if (view === "general") {
-        initial = "가이드등록(일반)";
-      } else {
-        initial = "가이드 목록";
-      }
-    }
-    if (activeMenu === "member_rewards") {
-      if (pathname.includes("/points/requests")) {
-        initial = "적립 요청";
-      } else if (pathname.startsWith("/theall_manager_only/points")) {
-        initial = "포인트 지급";
-      } else if (pathname.startsWith("/theall_manager_only/rewards")) {
-        initial = "교환 신청";
-      } else {
-        initial = "회원 목록";
-      }
-    }
-    if (activeMenu === "inquiry") {
-      if (pathname.includes("/inquiries/dashboard")) {
-        initial = "운영 대시보드";
-      } else if (searchParams.get("status") === "pending") {
-        initial = "미처리 문의";
-      } else {
-        initial = "전체 문의";
-      }
-    }
-    if (activeMenu === "landings") {
-      if (pathname.includes("/golf-leads")) {
-        initial = "골프 리드 (UTM)";
-      } else if (pathname.includes("/landings/analytics")) {
-        initial = "성과·UTM";
-      } else if (pathname.includes("/landings/generate-from-taxonomy")) {
-        initial = "taxonomy 기반 생성";
-      } else {
-        initial = "랜딩 목록";
-      }
-    }
-    if (activeMenu === "dashboard") {
-      const tab = searchParams.get("tab");
-      initial = tab === "metrics" ? "지표·리드" : "오늘 할 일";
-    }
-
+    const initial = resolveActiveSubTab(activeMenu, pathname, {
+      view: searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW),
+      status: searchParams.get("status"),
+      tab: searchParams.get("tab"),
+    });
     setActiveLabel(initial);
     if (initial && onTabChange) {
       onTabChange(initial);
@@ -374,6 +263,14 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         return;
       }
       router.push("/theall_manager_only/inquiries");
+      return;
+    }
+    if (activeMenu === "bookings") {
+      if (label === "예약 생성") {
+        router.push("/theall_manager_only/bookings/new");
+        return;
+      }
+      router.push("/theall_manager_only/bookings");
       return;
     }
     if (activeMenu === "landings") {

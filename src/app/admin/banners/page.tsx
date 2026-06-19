@@ -14,13 +14,8 @@ export default async function AdminBannersPage() {
     <div className="min-h-screen bg-[var(--bg)] px-6 py-10 text-[var(--text-primary)] md:px-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <AdminHeader
-          activeTab="banners"
           title="메인 배너 관리"
           description="메인페이지 최상단 배너를 추가/삭제하고 노출 상태를 관리합니다."
-          inquiryCount={inquiryCount}
-          productCount={productCount}
-          memberCount={memberCount}
-          reviewCount={reviewCount}
           unreadNotificationCount={unreadNotificationCount}
         />
 

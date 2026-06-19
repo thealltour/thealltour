@@ -1,18 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { useAdminSmsRealtime } from "@/hooks/useAdminSmsRealtime";
 import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
-import { useSmsSend } from "@/components/admin/inquiries/useSmsSend";
-import type { SmsConversationSummary, InquirySmsThreadItem } from "@/types/inquiry";
 import { SmsConversationList } from "./SmsConversationList";
 import { SmsThreadPanel } from "./SmsThreadPanel";
 import { SmsComposePanel } from "./SmsComposePanel";
 import { LinkConversationModal } from "./LinkConversationModal";
 import { SmsBulkPanel } from "./SmsBulkPanel";
 import { SmsTemplatesPanel } from "./SmsTemplatesPanel";
+import { useAdminSmsCenter } from "./useAdminSmsCenter";
 
 type AdminSmsCenterPageBodyProps = {
   inquiryCount: number;
@@ -22,17 +18,6 @@ type AdminSmsCenterPageBodyProps = {
   unreadNotificationCount: number;
 };
 
-type SmsFilter = "all" | "unread" | "unmatched";
-type PageTab = "inbox" | "bulk" | "templates";
-
-type ThreadPayload = {
-  thread?: InquirySmsThreadItem[];
-  unreadInboundCount?: number;
-  inquiry?: { id: string; name: string; phone: string } | null;
-  member?: { id: string; name: string; phone: string; username: string } | null;
-  unmatchedInboundIds?: string[];
-};
-
 export function AdminSmsCenterPageBody({
   inquiryCount,
   productCount,
@@ -40,167 +25,9 @@ export function AdminSmsCenterPageBody({
   reviewCount,
   unreadNotificationCount: initialUnread,
 }: AdminSmsCenterPageBodyProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const initialFilter = (searchParams.get("filter") as SmsFilter) ?? "all";
-  const initialPhone = searchParams.get("phone")?.trim() ?? null;
-  const initialQuery = searchParams.get("q")?.trim() ?? "";
-  const initialTab = searchParams.get("tab") === "bulk" || searchParams.get("tab") === "templates"
-    ? (searchParams.get("tab") as PageTab)
-    : "inbox";
-
-  const [pageTab, setPageTab] = useState<PageTab>(initialTab);
-  const [filter, setFilter] = useState<SmsFilter>(
-    initialFilter === "unread" || initialFilter === "unmatched" ? initialFilter : "all",
-  );
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [conversations, setConversations] = useState<SmsConversationSummary[]>([]);
-  const [conversationsLoading, setConversationsLoading] = useState(true);
-  const [selectedPhone, setSelectedPhone] = useState<string | null>(initialPhone);
-
-  const [thread, setThread] = useState<InquirySmsThreadItem[]>([]);
-  const [unreadInboundCount, setUnreadInboundCount] = useState(0);
-  const [linkedInquiry, setLinkedInquiry] = useState<{ id: string; name: string; phone: string } | null>(
-    null,
-  );
-  const [linkedMember, setLinkedMember] = useState<{
-    id: string;
-    name: string;
-    phone: string;
-    username: string;
-  } | null>(null);
-  const [unmatchedInboundIds, setUnmatchedInboundIds] = useState<string[]>([]);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [linkModalOpen, setLinkModalOpen] = useState(false);
-
+  const sms = useAdminSmsCenter();
   const { unreadCount: liveUnreadCount } = useAdminNotificationsRealtime();
   const displayUnreadCount = Math.max(initialUnread, liveUnreadCount);
-
-  const syncUrl = useCallback(
-    (next: { filter?: SmsFilter; phone?: string | null; q?: string; tab?: PageTab }) => {
-      const params = new URLSearchParams();
-      const tab = next.tab ?? pageTab;
-      if (tab !== "inbox") params.set("tab", tab);
-      const f = next.filter ?? filter;
-      if (f !== "all") params.set("filter", f);
-      const phone = next.phone !== undefined ? next.phone : selectedPhone;
-      if (phone) params.set("phone", phone);
-      const q = next.q !== undefined ? next.q : searchQuery;
-      if (q.trim()) params.set("q", q.trim());
-      const qs = params.toString();
-      router.replace(`/theall_manager_only/sms${qs ? `?${qs}` : ""}`, { scroll: false });
-    },
-    [filter, pageTab, router, searchQuery, selectedPhone],
-  );
-
-  const loadConversations = useCallback(async () => {
-    setConversationsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filter !== "all") params.set("filter", filter);
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      const res = await fetch(`/api/admin/sms/conversations?${params.toString()}`, { cache: "no-store" });
-      const data = (await res.json()) as { items?: SmsConversationSummary[] };
-      if (res.ok) setConversations(data.items ?? []);
-    } finally {
-      setConversationsLoading(false);
-    }
-  }, [filter, searchQuery]);
-
-  const loadThread = useCallback(async (phone: string, markRead = true) => {
-    setThreadLoading(true);
-    try {
-      const res = await fetch(`/api/admin/sms/threads?phone=${encodeURIComponent(phone)}`, {
-        cache: "no-store",
-      });
-      const data = (await res.json()) as ThreadPayload;
-      if (!res.ok) return;
-
-      setThread(data.thread ?? []);
-      setUnreadInboundCount(data.unreadInboundCount ?? 0);
-      setLinkedInquiry(data.inquiry ?? null);
-      setLinkedMember(data.member ?? null);
-      setUnmatchedInboundIds(data.unmatchedInboundIds ?? []);
-
-      if (markRead && (data.unreadInboundCount ?? 0) > 0) {
-        await fetch(`/api/admin/sms/threads?phone=${encodeURIComponent(phone)}`, { method: "PATCH" });
-        await loadConversations();
-        setUnreadInboundCount(0);
-      }
-    } finally {
-      setThreadLoading(false);
-    }
-  }, [loadConversations]);
-
-  const refreshAll = useCallback(async () => {
-    await loadConversations();
-    if (selectedPhone) await loadThread(selectedPhone, false);
-  }, [loadConversations, loadThread, selectedPhone]);
-
-  useAdminSmsRealtime({
-    enabled: pageTab === "inbox",
-    onChange: () => {
-      void refreshAll();
-    },
-  });
-
-  const { sendMessage, sending: retrying } = useSmsSend({
-    inquiryId: linkedInquiry?.id ?? null,
-    onThreadRefetch: async () => {
-      if (selectedPhone) await loadThread(selectedPhone, false);
-    },
-    onSent: () => void refreshAll(),
-  });
-
-  useEffect(() => {
-    if (pageTab === "inbox") void loadConversations();
-  }, [loadConversations, pageTab]);
-
-  useEffect(() => {
-    if (pageTab !== "inbox" || !selectedPhone) {
-      if (!selectedPhone) {
-        setThread([]);
-        setUnreadInboundCount(0);
-        setLinkedInquiry(null);
-        setLinkedMember(null);
-        setUnmatchedInboundIds([]);
-      }
-      return;
-    }
-    void loadThread(selectedPhone);
-  }, [selectedPhone, loadThread, pageTab]);
-
-  useEffect(() => {
-    const phone = searchParams.get("phone")?.trim();
-    if (phone && phone !== selectedPhone) setSelectedPhone(phone);
-    const tab = searchParams.get("tab");
-    if (tab === "bulk" || tab === "templates") setPageTab(tab);
-  }, [searchParams, selectedPhone]);
-
-  const handleSelectPhone = (phone: string) => {
-    setSelectedPhone(phone);
-    syncUrl({ phone, tab: "inbox" });
-  };
-
-  const handleFilterChange = (next: SmsFilter) => {
-    setFilter(next);
-    syncUrl({ filter: next });
-  };
-
-  const handlePageTab = (tab: PageTab) => {
-    setPageTab(tab);
-    syncUrl({ tab });
-  };
-
-  const handleSearch = () => {
-    syncUrl({ q: searchQuery });
-    void loadConversations();
-  };
-
-  const handleRetryFailed = async (input: { phone: string; message: string }) => {
-    await sendMessage({ receiver: input.phone, message: input.message });
-  };
 
   return (
     <div className="min-h-screen bg-[var(--bg)] px-4 py-8 text-[var(--text-primary)] md:px-8">
@@ -225,9 +52,9 @@ export function AdminSmsCenterPageBody({
             <button
               key={tab}
               type="button"
-              onClick={() => handlePageTab(tab)}
+              onClick={() => sms.handlePageTab(tab)}
               className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                pageTab === tab
+                sms.pageTab === tab
                   ? "bg-[var(--primary)] text-white"
                   : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
               }`}
@@ -237,16 +64,16 @@ export function AdminSmsCenterPageBody({
           ))}
         </div>
 
-        {pageTab === "inbox" ? (
+        {sms.pageTab === "inbox" ? (
           <>
             <div className="flex flex-wrap items-center gap-2">
               {(["all", "unread", "unmatched"] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
-                  onClick={() => handleFilterChange(tab)}
+                  onClick={() => sms.handleFilterChange(tab)}
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    filter === tab
+                    sms.filter === tab
                       ? "bg-[var(--primary)] text-white"
                       : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]"
                   }`}
@@ -256,17 +83,17 @@ export function AdminSmsCenterPageBody({
               ))}
               <div className="ml-auto flex min-w-[200px] flex-1 gap-2 sm:max-w-xs">
                 <input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={sms.searchQuery}
+                  onChange={(e) => sms.setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSearch();
+                    if (e.key === "Enter") sms.handleSearch();
                   }}
                   placeholder="전화번호 검색"
                   className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                 />
                 <button
                   type="button"
-                  onClick={handleSearch}
+                  onClick={sms.handleSearch}
                   className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium"
                 >
                   검색
@@ -281,37 +108,37 @@ export function AdminSmsCenterPageBody({
                 </div>
                 <div className="max-h-[min(72vh,640px)] overflow-y-auto">
                   <SmsConversationList
-                    items={conversations}
-                    selectedPhone={selectedPhone}
-                    isLoading={conversationsLoading}
-                    onSelect={handleSelectPhone}
+                    items={sms.conversations}
+                    selectedPhone={sms.selectedPhone}
+                    isLoading={sms.conversationsLoading}
+                    onSelect={sms.handleSelectPhone}
                   />
                 </div>
               </aside>
 
               <div>
                 <SmsThreadPanel
-                  phone={selectedPhone}
-                  thread={thread}
-                  unreadInboundCount={unreadInboundCount}
-                  inquiry={linkedInquiry}
-                  member={linkedMember}
-                  isLoading={threadLoading}
-                  onRequestLink={() => setLinkModalOpen(true)}
-                  onRetryFailed={(input) => void handleRetryFailed(input)}
-                  retrying={retrying}
+                  phone={sms.selectedPhone}
+                  thread={sms.thread}
+                  unreadInboundCount={sms.unreadInboundCount}
+                  inquiry={sms.linkedInquiry}
+                  member={sms.linkedMember}
+                  isLoading={sms.threadLoading}
+                  onRequestLink={() => sms.setLinkModalOpen(true)}
+                  onRetryFailed={(input) => void sms.handleRetryFailed(input)}
+                  retrying={sms.retrying}
                 >
-                  {selectedPhone ? (
+                  {sms.selectedPhone ? (
                     <SmsComposePanel
-                      key={`${selectedPhone}-${linkedInquiry?.id ?? "none"}`}
-                      inquiryId={linkedInquiry?.id ?? null}
-                      receiverPhone={selectedPhone}
-                      inquiryName={linkedInquiry?.name}
-                      onSent={() => void refreshAll()}
+                      key={`${sms.selectedPhone}-${sms.linkedInquiry?.id ?? "none"}`}
+                      inquiryId={sms.linkedInquiry?.id ?? null}
+                      receiverPhone={sms.selectedPhone}
+                      inquiryName={sms.linkedInquiry?.name}
+                      onSent={() => void sms.refreshAll()}
                       onThreadRefetch={async () => {
-                        await loadThread(selectedPhone, false);
+                        await sms.loadThread(sms.selectedPhone!, false);
                       }}
-                      onRequestLink={() => setLinkModalOpen(true)}
+                      onRequestLink={() => sms.setLinkModalOpen(true)}
                     />
                   ) : null}
                 </SmsThreadPanel>
@@ -320,17 +147,17 @@ export function AdminSmsCenterPageBody({
           </>
         ) : null}
 
-        {pageTab === "bulk" ? <SmsBulkPanel /> : null}
-        {pageTab === "templates" ? <SmsTemplatesPanel /> : null}
+        {sms.pageTab === "bulk" ? <SmsBulkPanel /> : null}
+        {sms.pageTab === "templates" ? <SmsTemplatesPanel /> : null}
       </main>
 
       <LinkConversationModal
-        isOpen={linkModalOpen}
-        defaultQuery={selectedPhone ?? ""}
-        inboundSmsIds={unmatchedInboundIds}
+        isOpen={sms.linkModalOpen}
+        defaultQuery={sms.selectedPhone ?? ""}
+        inboundSmsIds={sms.unmatchedInboundIds}
         defaultTab="member"
-        onClose={() => setLinkModalOpen(false)}
-        onLinked={() => void refreshAll()}
+        onClose={() => sms.setLinkModalOpen(false)}
+        onLinked={() => void sms.refreshAll()}
       />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
+import { AdminPwaInstallBanner } from "@/components/admin/pwa/AdminPwaProvider";
 import { MobileAdminBottomNav } from "@/components/admin/mobile/MobileAdminBottomNav";
 
 type MobileAdminShellProps = {
@@ -29,6 +30,7 @@ export function MobileAdminShell({ title, children }: MobileAdminShellProps) {
         className="flex-1 overflow-y-auto px-4 py-3"
         style={{ paddingBottom: MAIN_BOTTOM_PAD }}
       >
+        <AdminPwaInstallBanner />
         {children}
       </main>
 

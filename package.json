@@ -19,7 +19,8 @@
     "taxonomy:migrate": "npx tsx scripts/migrate-taxonomies.ts",
     "taxonomy:migrate:apply": "npx tsx scripts/migrate-taxonomies.ts --apply",
     "fix:imports": "node scripts/fix-component-imports.mjs",
-    "favicon:build": "node scripts/build-favicon-ico.mjs"
+    "favicon:build": "node scripts/build-favicon-ico.mjs",
+    "vapid:generate": "npx tsx scripts/generate-vapid-keys.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -43,7 +44,8 @@
     "react-photo-view": "^1.2.7",
     "recharts": "^3.8.1",
     "server-only": "^0.0.1",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.4",
@@ -54,6 +56,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^6.0.1",
     "cross-env": "^10.1.0",
     "eslint": "^9",

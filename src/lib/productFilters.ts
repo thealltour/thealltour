@@ -222,6 +222,11 @@ export function applyProductFilters(
       const namesSet = new Set(options.regionDescendants.names);
       list = list.filter((p) => {
         if (p.destination_id && idsSet.has(p.destination_id)) return true;
+        const destinationName =
+          p.destination_id && map[p.destination_id]
+            ? map[p.destination_id].trim()
+            : "";
+        if (destinationName && namesSet.has(destinationName)) return true;
         const cat = (p.category ?? "").trim();
         return cat && namesSet.has(cat);
       });

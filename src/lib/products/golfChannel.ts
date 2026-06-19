@@ -15,11 +15,12 @@ export const GOLF_REGION_PRESET_IDS = ["japan-china", "se-asia", "overseas"] as 
 
 export type GolfRegionPresetId = (typeof GOLF_REGION_PRESET_IDS)[number];
 
+/** CMS destination taxonomy 대분류·중분류 name — 「중국 / 대만」 등 병합 노드 포함 */
 export const GOLF_REGION_PRESET_DESTINATION_ROOTS: Record<
   GolfRegionPresetId,
   readonly string[]
 > = {
-  "japan-china": ["일본", "중국"],
+  "japan-china": ["일본", "중국", "중국 / 대만", "대만", "홍콩", "마카오"],
   "se-asia": ["동남아"],
   overseas: ["해외"],
 };

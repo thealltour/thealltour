@@ -1,8 +1,6 @@
 /**
  * 모바일 관리자(MVP) 전용 상수.
  * 데스크톱 sidebarConfig와 분리 유지 — 추후 경로 prefix(/m-admin) 분리 시 이 모듈만 이전하기 쉽게 둠.
- *
- * 리뷰 하위 경로 허용/차단 세부 정책은 `mobile/reviews/mobileReview.constants.ts` 를 참고하세요.
  */
 
 import { getMobileNavKeysForSession } from "@/lib/adminRolePolicy";
@@ -16,7 +14,7 @@ export const MOBILE_ADMIN_MENU_KEYS = {
   DASHBOARD: "dashboard",
   INQUIRIES: "inquiries",
   MEMBERS: "members",
-  REVIEWS: "reviews",
+  SMS: "sms",
   NOTIFICATIONS: "notifications",
 } as const;
 
@@ -27,7 +25,7 @@ export const MOBILE_ADMIN_ALLOWED_MENU_KEYS: readonly MobileAdminMenuKey[] = [
   MOBILE_ADMIN_MENU_KEYS.DASHBOARD,
   MOBILE_ADMIN_MENU_KEYS.INQUIRIES,
   MOBILE_ADMIN_MENU_KEYS.MEMBERS,
-  MOBILE_ADMIN_MENU_KEYS.REVIEWS,
+  MOBILE_ADMIN_MENU_KEYS.SMS,
   MOBILE_ADMIN_MENU_KEYS.NOTIFICATIONS,
 ] as const;
 
@@ -44,12 +42,12 @@ export type MobileAdminNavItem = {
   label: string;
   href: string;
   /** lucide icon name 대신 컴포넌트는 BottomNav에서 매핑 */
-  icon: "home" | "inquiry" | "users" | "bell" | "star";
+  icon: "home" | "inquiry" | "users" | "bell" | "sms";
 };
 
 const MANAGER_PREFIX = "/theall_manager_only";
 
-/** 하단 탭 — 홈·문의·회원·리뷰·알림 (admin 기본) */
+/** 하단 탭 — 홈·문의·회원·SMS·알림 (admin 기본) */
 export const MOBILE_ADMIN_PRIMARY_NAV: readonly MobileAdminNavItem[] = [
   {
     key: MOBILE_ADMIN_MENU_KEYS.DASHBOARD,
@@ -70,10 +68,10 @@ export const MOBILE_ADMIN_PRIMARY_NAV: readonly MobileAdminNavItem[] = [
     icon: "users",
   },
   {
-    key: MOBILE_ADMIN_MENU_KEYS.REVIEWS,
-    label: "리뷰",
-    href: `${MANAGER_PREFIX}/reviews`,
-    icon: "star",
+    key: MOBILE_ADMIN_MENU_KEYS.SMS,
+    label: "SMS",
+    href: `${MANAGER_PREFIX}/sms`,
+    icon: "sms",
   },
   {
     key: MOBILE_ADMIN_MENU_KEYS.NOTIFICATIONS,

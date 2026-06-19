@@ -148,6 +148,47 @@ describe("filterGolfProductsByRegionPreset", () => {
     expect(filtered.map((p) => p.id).sort()).toEqual(["cn", "jp"]);
   });
 
+  it("filters japan-china preset when CMS uses 중국 / 대만 merged destination node", () => {
+    const mergedTaxonomies = [
+      destinationTaxonomy({ id: "overseas", name: "해외" }),
+      destinationTaxonomy({ id: "japan", name: "일본", parent_id: "overseas" }),
+      destinationTaxonomy({
+        id: "china-tw",
+        name: "중국 / 대만",
+        parent_id: "overseas",
+      }),
+      destinationTaxonomy({ id: "shanghai", name: "상하이", parent_id: "china-tw" }),
+      destinationTaxonomy({ id: "tokyo", name: "도쿄", parent_id: "japan" }),
+    ];
+    const mergedProducts = [
+      product({
+        id: "cn-sh",
+        title: "상하이 골프",
+        product_line_id: "pl1",
+        destination_id: "shanghai",
+      }),
+      product({
+        id: "jp-tk",
+        title: "도쿄 골프",
+        product_line_id: "pl1",
+        destination_id: "tokyo",
+      }),
+    ];
+    const mergedNameMap = {
+      pl1: "골프투어",
+      shanghai: "상하이",
+      tokyo: "도쿄",
+    };
+
+    const filtered = filterGolfProductsByRegionPreset(
+      mergedProducts,
+      "japan-china",
+      mergedTaxonomies,
+      mergedNameMap,
+    );
+    expect(filtered.map((p) => p.id).sort()).toEqual(["cn-sh", "jp-tk"]);
+  });
+
   it("filters overseas preset excluding domestic-only destinations", () => {
     const filtered = filterGolfProductsByRegionPreset(
       golfProducts,

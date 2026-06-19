@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AdminPushNotificationSettings } from "@/components/admin/pwa/AdminPushNotificationSettings";
 import { isSmsNotificationType, notificationTypeIcon } from "@/lib/adminNotificationTypes";
+import { syncAdminAppBadge } from "@/lib/adminPwaClient";
 
 type NotificationItem = {
   id: string;
@@ -90,6 +92,7 @@ export default function AdminNotificationList() {
       }
       setNotifications((current) => current.map((item) => ({ ...item, is_read: true })));
       setUnreadCount(0);
+      await syncAdminAppBadge(0);
       router.refresh();
     } catch {
       setErrorMessage("전체 읽음 처리 중 오류가 발생했습니다.");
@@ -133,7 +136,10 @@ export default function AdminNotificationList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4">
+      <div className="px-4 pt-4">
+        <AdminPushNotificationSettings />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4">
         <p className="text-sm text-[var(--text-secondary)]">
           읽지 않은 알림 <span className="font-semibold text-[var(--primary)]">{unreadCount}</span>건
         </p>

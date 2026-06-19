@@ -7,6 +7,7 @@ import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
 import { AdminRoleProvider } from "@/components/admin/AdminRoleContext";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
 import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
+import { AdminPwaProvider } from "@/components/admin/pwa/AdminPwaProvider";
 import type { AdminSessionPermissions } from "@/lib/adminPermissions";
 
 export type AdminRouteProvidersProps = {
@@ -23,7 +24,8 @@ export function AdminRouteProviders({ children, session }: AdminRouteProvidersPr
       <AdminRoleProvider session={session}>
         <AdminToastProvider>
           <AdminConfirmProvider>
-            <Suspense
+            <AdminPwaProvider>
+              <Suspense
               fallback={
                 <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)]">
                   <div className="mx-auto flex min-h-screen max-w-[1280px] flex-col gap-4 px-6 py-10 md:px-10">
@@ -40,6 +42,7 @@ export function AdminRouteProviders({ children, session }: AdminRouteProvidersPr
             >
               <AdminResponsiveFrame>{children}</AdminResponsiveFrame>
             </Suspense>
+            </AdminPwaProvider>
           </AdminConfirmProvider>
         </AdminToastProvider>
       </AdminRoleProvider>

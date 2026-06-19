@@ -7,6 +7,7 @@ const contentSecurityPolicy = `
   form-action 'self';
   object-src 'none';
   frame-ancestors 'self';
+  worker-src 'self';
   img-src 'self' data: blob: https:;
   font-src 'self' data: https:;
   style-src 'self' 'unsafe-inline';

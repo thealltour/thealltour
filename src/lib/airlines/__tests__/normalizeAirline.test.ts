@@ -21,8 +21,10 @@ describe("normalizeAirline", () => {
 });
 
 describe("resolveAirlineLogoUrls with Jeju Air flight", () => {
-  it("resolves 7C from 7C3211 for Kiwi/local logo candidates", () => {
+  it("resolves 7C from 7C3211 with self-hosted and data-uri fallback", () => {
     const urls = resolveAirlineLogoUrls("7C3211");
-    expect(urls.some((u) => u.includes("/7C."))).toBe(true);
+    expect(urls.some((u) => u.includes("/7C.svg"))).toBe(true);
+    expect(urls.some((u) => u.startsWith("data:image/svg+xml,") && u.includes("7C"))).toBe(true);
+    expect(urls.some((u) => u.includes("kiwi.com"))).toBe(false);
   });
 });

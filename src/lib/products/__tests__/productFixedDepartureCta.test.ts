@@ -28,8 +28,10 @@ describe("productFixedDeparture", () => {
 });
 
 describe("resolveAirlineLogoUrls", () => {
-  it("resolves HU from flight number HU450", () => {
+  it("resolves self-hosted and data-uri fallback for HU450", () => {
     const urls = resolveAirlineLogoUrls("HU450");
-    expect(urls.some((u) => u.includes("/HU."))).toBe(true);
+    expect(urls.some((u) => u.includes("/HU.svg"))).toBe(true);
+    expect(urls.some((u) => u.startsWith("data:image/svg+xml,"))).toBe(true);
+    expect(urls.some((u) => u.includes("kiwi.com"))).toBe(false);
   });
 });

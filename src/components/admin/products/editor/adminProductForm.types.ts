@@ -14,12 +14,34 @@ export type {
 export type SectionId =
   | "basic"
   | "taxonomy"
-  | "price"
-  | "description"
-  | "included"
+  | "travel"
   | "schedule"
-  | "flight"
-  | "terms";
+  | "ops"
+  | "advanced";
+
+/** sessionStorage 등 레거시 섹션 id → 신규 id */
+export const LEGACY_SECTION_ID_MAP: Record<string, SectionId> = {
+  price: "travel",
+  description: "advanced",
+  included: "travel",
+  flight: "travel",
+  terms: "ops",
+};
+
+export function normalizeSectionId(raw: string | null | undefined): SectionId | null {
+  if (!raw) return null;
+  if (
+    raw === "basic" ||
+    raw === "taxonomy" ||
+    raw === "travel" ||
+    raw === "schedule" ||
+    raw === "ops" ||
+    raw === "advanced"
+  ) {
+    return raw;
+  }
+  return LEGACY_SECTION_ID_MAP[raw] ?? null;
+}
 
 export type IssueSeverity = "required" | "recommended";
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { LEGACY_SECTION_ID_MAP, normalizeSectionId } from "@/components/admin/products/editor/adminProductForm.types";
 
 export const EDITOR_UI_STATE_KEY = (editingId?: string | null) =>
   `admin-product-editor-ui:${editingId ?? "new"}`;
@@ -41,11 +42,21 @@ export function useEditorSectionPersistence({
       };
 
       if (parsed.openSections && typeof parsed.openSections === "object") {
-        setOpenSections(parsed.openSections);
+        const migrated: Record<string, boolean> = {};
+        for (const [key, open] of Object.entries(parsed.openSections)) {
+          const normalized = normalizeSectionId(key) ?? LEGACY_SECTION_ID_MAP[key];
+          if (normalized) {
+            migrated[normalized] = migrated[normalized] ?? Boolean(open);
+          }
+        }
+        if (Object.keys(migrated).length > 0) {
+          setOpenSections((prev) => ({ ...prev, ...migrated }));
+        }
       }
 
       if (parsed.activeSectionId && typeof parsed.activeSectionId === "string") {
-        setActiveSectionId(parsed.activeSectionId);
+        const normalized = normalizeSectionId(parsed.activeSectionId);
+        if (normalized) setActiveSectionId(normalized);
       }
     } catch {
       // ignore

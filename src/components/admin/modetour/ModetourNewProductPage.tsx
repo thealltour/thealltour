@@ -10,6 +10,7 @@ import type { SelectedEventRef } from "@/types/product";
 import { createEmptyProductFormState } from "@/types/adminProductForm";
 import type { ProductFormState } from "@/types/adminProductForm";
 import { serializeAdminProductForm } from "@/components/admin/products/editor/adminProductForm.serializer";
+import { ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
 import {
   isModetourImportV1,
   validateModetourImportV1,
@@ -981,8 +982,10 @@ export default function ModetourNewProductPage() {
 
       if (result.id) {
         setCreatedProductId(result.id);
-        pushToast("상품이 생성되었습니다. 상품 편집 화면으로 이동합니다.");
-        router.push(`${PRODUCTS_LIST_PATH}?editingId=${result.id}`);
+        pushToast("상품이 생성되었습니다. 상품 목록으로 이동합니다.");
+        router.push(
+          `${PRODUCTS_LIST_PATH}?view=list&${ADMIN_PRODUCTS_QUERY_KEYS.CREATED}=${encodeURIComponent(result.id)}`,
+        );
       }
     } catch {
       setSaveError("상품 생성 중 오류가 발생했습니다.");
@@ -1371,8 +1374,14 @@ export default function ModetourNewProductPage() {
                       미리보기
                     </Link>
                     <Link
-                      href={`${PRODUCTS_LIST_PATH}?editingId=${createdProductId}`}
+                      href={`${PRODUCTS_LIST_PATH}?view=list&${ADMIN_PRODUCTS_QUERY_KEYS.CREATED}=${encodeURIComponent(createdProductId)}`}
                       className="rounded border border-emerald-600 bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600"
+                    >
+                      상품 목록에서 보기
+                    </Link>
+                    <Link
+                      href={`${PRODUCTS_LIST_PATH}?${ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID}=${encodeURIComponent(createdProductId)}`}
+                      className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-600"
                     >
                       상품 편집으로 이동
                     </Link>

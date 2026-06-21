@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import type { Product, ItineraryStructuredDay, ItineraryV2, SelectedEventRef } from "@/types/product";
 import type { ProductTaxonomyWithUsage } from "@/types/productTaxonomy";
 import type { ProductFormState, ProductFormDraft, TermsTemplateType } from "@/types/adminProductForm";
@@ -286,6 +286,7 @@ function createNextDayLabel(drafts: DayScheduleDraft[]) {
 export default function AdminProductManager() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const router = useRouter();
   const viewParam = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
   const isTaxonomyView = viewParam === ADMIN_PRODUCTS_VIEW.TAXONOMY;
   const isCreateView = viewParam === ADMIN_PRODUCTS_VIEW.CREATE;
@@ -323,12 +324,10 @@ export default function AdminProductManager() {
   const [productFormOpenSections, setProductFormOpenSections] = useState<Record<string, boolean>>({
     basic: true,
     taxonomy: true,
-    price: false,
-    description: false,
-    included: false,
+    travel: false,
     schedule: false,
-    flight: false,
-    terms: false,
+    ops: false,
+    advanced: false,
   });
   /** 목차 네비에서 현재 스크롤 기준 활성 섹션 (IntersectionObserver로 갱신) */
   const [activeSectionId, setActiveSectionId] = useState<SectionId | null>("basic");
@@ -403,6 +402,8 @@ export default function AdminProductManager() {
   const [coverCandidates, setCoverCandidates] = useState<CoverCandidate[]>([]);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshListRef = useRef<(() => Promise<void>) | null>(null);
+  /** serialize 시 destination taxonomy 이름 derive용 */
+  const destinationNameForSaveRef = useRef<string | null>(null);
   const { showToast } = useAdminToast();
   const { confirm } = useAdminConfirm();
 
@@ -974,8 +975,11 @@ export default function AdminProductManager() {
     const requestId = ++submitRequestIdRef.current;
     const currentDraftKey = getDraftKey(editingId);
     try {
-      const payload = serializeAdminProductForm(form, { editingId });
-      let result: { message?: string; warningCode?: string };
+      const payload = serializeAdminProductForm(form, {
+        editingId,
+        destinationName: destinationNameForSaveRef.current,
+      });
+      let result: { message?: string; warningCode?: string; id?: string };
       if (editingId) {
         result = await updateAdminProduct(editingId, payload);
       } else {
@@ -984,13 +988,21 @@ export default function AdminProductManager() {
 
       if (requestId !== submitRequestIdRef.current) return;
 
+      const wasEdit = Boolean(editingId);
+      const savedId = editingId ?? result.id ?? null;
+
       if (result.warningCode === "IMAGES_JSON_NOT_PERSISTED") {
         showLocalToast(
           "error",
           "DB에 images_json 컬럼이 없어 대표 이미지 외 나머지는 저장되지 않았습니다. supabase/products_images_json_upgrade.sql 실행이 필요합니다.",
         );
       } else {
-        showToast("success", editingId ? "상품이 수정되었습니다." : "상품이 등록되었습니다.");
+        showToast(
+          "success",
+          wasEdit
+            ? "상품이 수정되었습니다. 목록에서 확인하세요."
+            : "상품이 등록되었습니다. 목록에서 확인하세요.",
+        );
       }
       markSafeNavigation();
       setEditingId(null);
@@ -1002,7 +1014,15 @@ export default function AdminProductManager() {
       localStorage.removeItem(currentDraftKey);
       setShowDraftBanner(false);
       setDraftData(null);
-      await refreshListRef.current?.();
+
+      if (savedId && pathname) {
+        const paramKey = wasEdit
+          ? ADMIN_PRODUCTS_QUERY_KEYS.UPDATED
+          : ADMIN_PRODUCTS_QUERY_KEYS.CREATED;
+        router.replace(`${pathname}?view=list&${paramKey}=${encodeURIComponent(savedId)}`);
+      } else {
+        await refreshListRef.current?.();
+      }
     } catch (error) {
       if (requestId !== submitRequestIdRef.current) return;
       const message = error instanceof Error ? error.message : "상품 저장 중 오류가 발생했습니다.";
@@ -1057,6 +1077,7 @@ export default function AdminProductManager() {
     () => (form.destination_id ? getPathToNodeById(destinationTree, form.destination_id) : []),
     [destinationTree, form.destination_id],
   );
+  destinationNameForSaveRef.current = destinationPath.at(-1)?.name ?? null;
   const themeTree = useMemo(
     () =>
       buildRegionTree(

@@ -182,119 +182,6 @@ export function BasicInfoSection({
             </div>
           </div>
 
-            <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-              <p className="text-xs font-semibold text-[var(--text-primary)]">여행 오버뷰 카드 (숙소·지역·기간)</p>
-              <p className="text-xs text-[var(--text-muted)]">
-                상세 페이지 첫 화면에 표시되는 카드 값입니다. 비우면 기존 자동 추출(meta_info, theme, duration)을 사용합니다.
-              </p>
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <label className="block text-xs font-medium text-[var(--text-secondary)]">숙소</label>
-                  <input
-                    value={form.overview_accommodation}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, overview_accommodation: e.target.value }))
-                    }
-                    placeholder="예: 상담 시 안내, 전일정4성"
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                  />
-                </div>
-                <div className="space-y-1 min-w-0 flex-1">
-                  <label className="block text-xs font-medium text-[var(--text-secondary)]">지역</label>
-                  <input
-                    value={form.overview_region}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, overview_region: e.target.value }))
-                    }
-                    placeholder="예: 호주, 동남아"
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                  />
-                </div>
-                <div className="space-y-1 min-w-0 flex-1">
-                  <label className="block text-xs font-medium text-[var(--text-secondary)]">기간</label>
-                  <input
-                    value={form.overview_duration}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, overview_duration: e.target.value }))
-                    }
-                    placeholder="예: 6일, 3박4일"
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                  />
-                </div>
-              </div>
-            </div>
-          <div className="space-y-2 md:col-span-2">
-            <p className="text-xs font-semibold text-[var(--text-secondary)]">일정 테마 구성비 (상세 오버뷰 차트)</p>
-            <p className="text-xs text-[var(--text-muted)]">
-              2개 이상 입력 시 상세 페이지에 도넛 차트로 표시됩니다. 미입력 시 카테고리·테마 기반으로 자동 생성됩니다.
-            </p>
-            <div className="space-y-2">
-              {form.theme_chart_json.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-2"
-                >
-                  <input
-                    type="text"
-                    value={item.label}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        theme_chart_json: prev.theme_chart_json.map((x, i) =>
-                          i === idx ? { ...x, label: e.target.value } : x,
-                        ),
-                      }))
-                    }
-                    placeholder="항목명 (예: 자연)"
-                    className="flex-1 min-w-[80px] rounded border border-[var(--border)] px-2 py-1.5 text-sm outline-none focus:border-[var(--primary)]"
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={item.percent}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!Number.isNaN(v))
-                        setForm((prev) => ({
-                          ...prev,
-                          theme_chart_json: prev.theme_chart_json.map((x, i) =>
-                            i === idx ? { ...x, percent: Math.max(0, Math.min(100, v)) } : x,
-                          ),
-                        }));
-                    }}
-                    placeholder="%"
-                    className="w-16 rounded border border-[var(--border)] px-2 py-1.5 text-sm outline-none focus:border-[var(--primary)]"
-                  />
-                  <span className="text-xs text-[var(--text-muted)]">%</span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        theme_chart_json: prev.theme_chart_json.filter((_, i) => i !== idx),
-                      }))
-                    }
-                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-                  >
-                    삭제
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  setForm((prev) => ({
-                    ...prev,
-                    theme_chart_json: [...prev.theme_chart_json, { label: "", percent: 0 }],
-                  }))
-                }
-                className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-              >
-                + 항목 추가
-              </button>
-            </div>
-          </div>
           <div className="space-y-2">
             <p className="text-xs font-semibold text-[var(--text-secondary)]">상품 상태 (카드/상세 태그)</p>
             <div className="flex flex-wrap gap-2">
@@ -363,6 +250,7 @@ export function BasicInfoSection({
             <MultiImageUploadField
               value={form.images_json}
               primaryImageUrl={form.image_url?.trim() || form.images_json[0] || undefined}
+              onSetPrimary={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
               onChange={(urls) =>
                 setForm((prev) => ({
                   ...prev,

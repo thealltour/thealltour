@@ -1,12 +1,13 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import type { ProductFormState } from "@/types/adminProductForm";
 import type { SelectedEventRef } from "@/types/product";
 import type { DayScheduleDraft } from "@/components/admin/products/editor/adminProductForm.helpers";
 import { HintDisclosure } from "@/components/admin/common/HintDisclosure";
 import { ScheduleVisualEditorV2 } from "@/components/admin/ScheduleVisualEditorV2";
 import { StructuredDaysEditor } from "@/components/admin/itinerary/structured/StructuredDaysEditor";
+import { hasLegacyScheduleOnly } from "@/components/admin/products/editor/adminProductForm.derive";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 
 export type ScheduleSectionProps = {
@@ -56,8 +57,32 @@ export function ScheduleSection({
   addScheduleDay,
   appendScheduleTemplate,
 }: ScheduleSectionProps) {
+  const showLegacyBanner = hasLegacyScheduleOnly(form);
+  const [showLegacyEditor, setShowLegacyEditor] = useState(false);
+
   return (
 ﻿        <div className="space-y-3" id="field-schedule-root" tabIndex={-1}>
+          {showLegacyBanner ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                레거시 텍스트 일정이 있습니다
+              </p>
+              <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+                시각화 일정(v2)으로 옮기면 상세 페이지 표시 품질이 좋아집니다. 아래에서 시각화 편집을 사용하거나, 고급
+                레거시 편집기로 내용을 확인할 수 있습니다.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setScheduleEditorMode("visual");
+                  setShowLegacyEditor(false);
+                }}
+                className="mt-2 rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
+              >
+                시각화 일정 편집으로 전환
+              </button>
+            </div>
+          ) : null}
           {selectedEvent && getSelectedEventLabel() && (
             <div className="rounded-lg border border-[var(--primary)] bg-[var(--primary-soft)]/40 px-3 py-2">
               <p className="text-sm font-semibold text-[var(--primary)]">
@@ -108,11 +133,14 @@ export function ScheduleSection({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 border-b border-[var(--divider)] pb-2">
-            <span className="text-xs font-semibold text-[var(--text-muted)]">일정 입력 방식</span>
+            <span className="text-xs font-semibold text-[var(--text-muted)]">일정 입력</span>
             <div className="flex rounded-lg border border-[var(--border)] bg-slate-50 p-0.5">
               <button
                 type="button"
-                onClick={() => setScheduleEditorMode("visual")}
+                onClick={() => {
+                  setScheduleEditorMode("visual");
+                  setShowLegacyEditor(false);
+                }}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                   scheduleEditorMode === "visual"
                     ? "bg-[var(--surface)] text-[var(--primary)] shadow-sm"
@@ -121,18 +149,19 @@ export function ScheduleSection({
               >
                 시각화 일정(권장)
               </button>
+            </div>
+            {showLegacyBanner || showLegacyEditor ? (
               <button
                 type="button"
-                onClick={() => setScheduleEditorMode("legacy")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  scheduleEditorMode === "legacy"
-                    ? "bg-[var(--surface)] text-[var(--primary)] shadow-sm"
-                    : "text-[var(--text-secondary)] hover:text-slate-900"
-                }`}
+                onClick={() => {
+                  setScheduleEditorMode("legacy");
+                  setShowLegacyEditor(true);
+                }}
+                className="text-xs font-medium text-[var(--text-muted)] underline hover:text-[var(--text-primary)]"
               >
-                레거시 텍스트(기존)
+                레거시 텍스트 편집기 열기
               </button>
-            </div>
+            ) : null}
           </div>
 
           {scheduleEditorMode === "visual" ? (

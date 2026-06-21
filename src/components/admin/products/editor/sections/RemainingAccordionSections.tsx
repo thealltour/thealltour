@@ -14,9 +14,10 @@ import {
 } from "@/components/admin/products/editor/adminProductTemplates";
 import { useTemplateInsert } from "@/components/admin/products/editor/hooks/useTemplateInsert";
 import type { NoticeTemplateGroup, NoticeTemplatesByGroup } from "@/lib/noticeTemplates";
+import { LEGACY_SECTION_ID_MAP } from "@/components/admin/products/editor/adminProductForm.types";
 
 export type RemainingAccordionSectionsProps = {
-  sectionId: "taxonomy" | "price" | "description" | "included" | "flight" | "terms";
+  sectionId: "taxonomy" | "travel" | "ops" | "advanced";
   form: ProductFormState;
   setForm: Dispatch<SetStateAction<ProductFormState>>;
   destinationTree: RegionTreeNode[];
@@ -88,7 +89,16 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
   const termsPreview = (group: NoticeTemplateGroup, type: "" | TermsTemplateType) =>
     type ? (noticeTemplatesByGroup[group][type]?.trim() ?? "") : "";
 
-  switch (sectionId) {
+  const effectiveSectionId: RemainingAccordionSectionsProps["sectionId"] =
+    sectionId === "taxonomy" ||
+    sectionId === "travel" ||
+    sectionId === "ops" ||
+    sectionId === "advanced"
+      ? sectionId
+      : ((LEGACY_SECTION_ID_MAP[sectionId as string] as RemainingAccordionSectionsProps["sectionId"]) ??
+        "travel");
+
+  switch (effectiveSectionId) {
     case "taxonomy":
       return (
 ﻿        <div className="flex flex-col gap-6" id="form-field-taxonomy-category">
@@ -456,160 +466,35 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
           </div>
         </div>
       );
-    case "price":
+    case "travel":
       return (
-﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-          <p className="text-xs text-[var(--text-muted)] md:col-span-2">
-            기본 가격·가격 구간(비수기·주말·성수기)은 <strong className="text-[var(--text-secondary)]">기본 정보</strong> 섹션에서
-            입력합니다.
-          </p>
-          <input
-            value={form.duration}
-            onChange={(event) => setForm((prev) => ({ ...prev, duration: event.target.value }))}
-            placeholder="일정(예: 5일)"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-          />
-          <p className="text-xs text-[var(--text-muted)] md:col-span-2">일정 값은 여행 오버뷰 &quot;기간&quot; 카드에 반영됩니다.</p>
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-[var(--text-secondary)]">가격 기준 문구</label>
-            <input
-              value={form.price_meta}
-              onChange={(event) => setForm((prev) => ({ ...prev, price_meta: event.target.value }))}
-              placeholder="예: 1인 기준 (비우면 기본값 1인 기준)"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-[var(--text-secondary)]">유류할증료 문구</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: "", label: "표시 안 함" },
-                { value: "true", label: "유류할증료 포함" },
-                { value: "false", label: "유류할증료 별도" },
-              ].map((opt) => (
-                <button
-                  key={opt.value || "none"}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, fuel_included: opt.value as "" | "true" | "false" }))
-                  }
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    form.fuel_included === opt.value
-                      ? "bg-[var(--primary)] text-[var(--on-primary)]"
-                      : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+﻿        <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-3 md:grid md:grid-cols-2 md:gap-3">
+            <div className="space-y-1 md:col-span-2">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">여행 기간</label>
+              <input
+                value={form.duration}
+                onChange={(event) => setForm((prev) => ({ ...prev, duration: event.target.value }))}
+                placeholder="예: 5일, 3박4일"
+                id="field-travel-duration"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              />
+              <p className="text-xs text-[var(--text-muted)]">분류·항공 정보와 함께 상세 페이지 기간 카드에 반영됩니다.</p>
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">숙소 / 호텔</label>
+              <input
+                value={form.overview_accommodation}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, overview_accommodation: e.target.value }))
+                }
+                placeholder="예: 전일정4성, 상담 시 안내"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              />
             </div>
           </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">카드 메타 문구 (일정·지역 옆 표시)</label>
-            <input
-              value={form.meta_info}
-              onChange={(event) => setForm((prev) => ({ ...prev, meta_info: event.target.value }))}
-              placeholder="예: 항공 포함"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-            />
-            <p className="mt-1 text-xs text-[var(--text-muted)]">
-              이 값은 상세 첫 화면 여행 오버뷰의 &quot;숙소&quot;·&quot;기타&quot; 카드에 반영될 수 있습니다. (예: 전일정4성, 호텔 등)
-            </p>
-          </div>
-          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
-            <p className="text-sm font-semibold text-[var(--primary)]">상품 옵션 (기간·룸 등 선택 시 견적)</p>
-            <HintDisclosure
-              id="price.optionsJsonGuide"
-              summary="가격 옵션 JSON 형식 보기"
-            >
-              {`JSON 형식. 비우면 옵션 미사용.
-필수 필드: basePrice, currency, groups 배열.
-선택: requiredGroups (필수 선택 그룹 키 배열).
-
-예시:
-{"basePrice": 1000000, "currency": "KRW", "requiredGroups": ["period"], "groups": [{"key": "period", "title": "기간", "type": "radio", "items": [{"value": "3n4d", "label": "3박4일", "priceDelta": 0, "isDefault": true}, {"value": "4n5d", "label": "4박5일", "priceDelta": 200000}]}]}`}
-            </HintDisclosure>
-            <textarea
-              value={form.options_json}
-              onChange={(event) => setForm((prev) => ({ ...prev, options_json: event.target.value }))}
-              rows={8}
-              placeholder='{"basePrice": 1000000, "currency": "KRW", "requiredGroups": ["period"], "groups": [{"key": "period", "title": "기간", "type": "radio", "items": [{"value": "3n4d", "label": "3박4일", "priceDelta": 0, "isDefault": true}, {"value": "4n5d", "label": "4박5일", "priceDelta": 200000}]}]}'
-              className="w-full rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-            />
-          </div>
-                  </div>
-      );
-    case "description":
-      return (
-﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-          <textarea
-            value={form.description}
-            onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-            required
-            rows={4}
-            placeholder="상품 설명 (필요 시 직접 작성. 모두투어 import는 자동 반영하지 않습니다.)"
-            id="field-product-description"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
-          />
-          <textarea
-            value={form.point_benefits}
-            onChange={(event) => setForm((prev) => ({ ...prev, point_benefits: event.target.value }))}
-            rows={3}
-            placeholder="상품 포인트 - 혜택 (줄바꿈 가능)"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-          />
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:col-span-2">
-            <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">상품 포인트 O/X 선택</p>
-            <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-              {[
-                { key: "travel_insurance", label: "상품 포인트 - 여행자보험" },
-                { key: "meeting_info", label: "상품 포인트 - 미팅 정보" },
-                { key: "point_tourism", label: "상품 포인트 - 관광" },
-                { key: "point_guide", label: "상품 포인트 - 인솔자" },
-              ].map((field) => {
-                const fieldKey = field.key as
-                  | "travel_insurance"
-                  | "meeting_info"
-                  | "point_tourism"
-                  | "point_guide";
-                const value = form[fieldKey];
-                return (
-                  <div key={field.key} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-                    <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">{field.label}</p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "O" }))}
-                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                          value === "O"
-                            ? "bg-emerald-600 text-white"
-                            : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-                        }`}
-                      >
-                        O
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "X" }))}
-                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                          value === "X"
-                            ? "bg-rose-600 text-white"
-                            : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-                        }`}
-                      >
-                        X
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-                  </div>
-      );
-    case "included":
-      return (
-﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+          {/* 포함·불포함 — 기존 included 섹션 */}
+          <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 border-t border-[var(--divider)] pt-4">
           <div className="md:col-span-2 space-y-2">
             <p className="text-[11px] text-[var(--text-muted)]">템플릿으로 빠르게 입력할 수 있습니다</p>
             <div className="flex flex-wrap items-center gap-2">
@@ -680,12 +565,8 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
               />
             </div>
           </div>
-                  </div>
-      );
-    case "flight":
-      return (
-﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
+          </div>
+          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3">
             <p className="text-sm font-semibold text-[var(--primary)]">항공편 정보</p>
             <p className="text-xs text-[var(--text-secondary)]">
               출발/도착 공항·편명은 상세 첫 화면 여행 오버뷰의 &quot;항공&quot; 카드에 자동 반영됩니다.
@@ -850,9 +731,131 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
               </div>
             </div>
           </div>
-                  </div>
+        </div>
       );
-    case "terms":
+    case "advanced":
+      return (
+        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+          <textarea
+            value={form.description}
+            onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+            rows={4}
+            placeholder="상품 설명 (필요 시 직접 작성)"
+            id="field-product-description"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
+          />
+          <textarea
+            value={form.point_benefits}
+            onChange={(event) => setForm((prev) => ({ ...prev, point_benefits: event.target.value }))}
+            rows={3}
+            placeholder="상품 포인트 - 혜택 (줄바꿈 가능)"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
+          />
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:col-span-2">
+            <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">상품 포인트 O/X</p>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {[
+                { key: "travel_insurance", label: "여행자보험" },
+                { key: "meeting_info", label: "미팅 정보" },
+                { key: "point_tourism", label: "관광" },
+                { key: "point_guide", label: "인솔자" },
+              ].map((field) => {
+                const fieldKey = field.key as
+                  | "travel_insurance"
+                  | "meeting_info"
+                  | "point_tourism"
+                  | "point_guide";
+                const value = form[fieldKey];
+                return (
+                  <div key={field.key} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                    <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">{field.label}</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "O" }))}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                          value === "O"
+                            ? "bg-emerald-600 text-white"
+                            : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]"
+                        }`}
+                      >
+                        O
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "X" }))}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                          value === "X"
+                            ? "bg-rose-600 text-white"
+                            : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]"
+                        }`}
+                      >
+                        X
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)]">가격 기준 문구</label>
+            <input
+              value={form.price_meta}
+              onChange={(event) => setForm((prev) => ({ ...prev, price_meta: event.target.value }))}
+              placeholder="예: 1인 기준"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+            />
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-[var(--text-secondary)]">유류할증료</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "", label: "표시 안 함" },
+                { value: "true", label: "포함" },
+                { value: "false", label: "별도" },
+              ].map((opt) => (
+                <button
+                  key={opt.value || "none"}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, fuel_included: opt.value as "" | "true" | "false" }))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    form.fuel_included === opt.value
+                      ? "bg-[var(--primary)] text-[var(--on-primary)]"
+                      : "border border-[var(--border)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">카드 메타 문구 (legacy)</label>
+            <input
+              value={form.meta_info}
+              onChange={(event) => setForm((prev) => ({ ...prev, meta_info: event.target.value }))}
+              placeholder="예: 항공 포함"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+            />
+          </div>
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
+            <p className="text-sm font-semibold text-[var(--primary)]">상품 옵션 JSON</p>
+            <HintDisclosure id="advanced.optionsJsonGuide" summary="JSON 형식 보기">
+              {`{"basePrice": 1000000, "currency": "KRW", "groups": [...]}`}
+            </HintDisclosure>
+            <textarea
+              value={form.options_json}
+              onChange={(event) => setForm((prev) => ({ ...prev, options_json: event.target.value }))}
+              rows={6}
+              className="w-full rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"
+            />
+          </div>
+        </div>
+      );
+    case "ops":
       return (
 ﻿        <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
           <p className="text-[11px] text-[var(--text-muted)] md:col-span-2">

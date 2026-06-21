@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { Product } from "@/types/product";
 import type { StoredImageDownloadPreset } from "@/lib/images/imageDownloadPreset.storage";
 import AdminProductsListView from "@/components/admin/products/AdminProductsListView";
 import { useAdminProductsListController } from "@/components/admin/products/hooks/useAdminProductsListController";
+import { useAdminProductListHighlight } from "@/components/admin/products/hooks/useAdminProductListHighlight";
 export type AdminProductListSectionProps = {
   showToast: (type: "success" | "error", message: string) => void;
   confirm: (options: {
@@ -77,6 +78,20 @@ export default function AdminProductListSection({
     registerRefresh?.(ctrl.loadProducts);
   }, [registerRefresh, ctrl.loadProducts]);
 
+  const ensureFirstPage = useCallback(() => {
+    if (ctrl.currentPage !== 1) {
+      ctrl.movePage(1);
+    } else {
+      void ctrl.loadProducts({ page: 1, sortField: "updated_at", sortDirection: "desc" });
+    }
+  }, [ctrl]);
+
+  const { highlightedProductId } = useAdminProductListHighlight({
+    productIds: ctrl.products.map((p) => p.id),
+    isLoading: ctrl.isLoading,
+    onEnsureFirstPage: ensureFirstPage,
+  });
+
   return (
     <AdminProductsListView
       products={ctrl.displayProducts}
@@ -141,6 +156,7 @@ export default function AdminProductListSection({
       onFilterIssuesOnlyChange={ctrl.setFilterIssuesOnly}
       newProductHref={newProductHref}
       onRetryLoad={ctrl.loadProducts}
+      highlightedProductId={highlightedProductId}
     />
   );
 }

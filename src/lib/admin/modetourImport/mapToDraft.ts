@@ -26,11 +26,12 @@ export function modetourImportToDraft(input: ModetourImportV1): {
     const n = input.product.nights ?? 0;
     const d = input.product.days ?? 0;
     form.duration = n > 0 || d > 0 ? `${n}박${d}일` : "";
-    form.overview_duration = form.duration;
   }
   if (input.product?.regionText?.trim()) {
-    form.overview_region = input.product.regionText.trim();
-    form.theme = input.product.regionText.trim();
+    const region = input.product.regionText.trim();
+    form.theme = region;
+    /** taxonomy 미선택 시 목록/derive fallback용 (저장 시 overview_region은 derive) */
+    form.category = region;
   }
   if (input.product?.priceText?.trim()) {
     const numMatch = input.product.priceText.replace(/\D/g, "");

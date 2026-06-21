@@ -1,6 +1,5 @@
 /**
  * Admin product form - 섹션별 검증 및 저장 전 필수 이슈 수집
- * 기존 에러 메시지/필드 기준 그대로 유지
  */
 
 import type { ProductFormState } from "@/types/adminProductForm";
@@ -22,7 +21,7 @@ function hasValidPriceOption(form: ProductFormState): boolean {
 export const SECTIONS: SectionConfig[] = [
   {
     id: "basic",
-    title: "기본 정보",
+    title: "핵심",
     getIssues(form) {
       const issues: SectionIssue[] = [];
       if (!hasRealText(form.title)) {
@@ -90,14 +89,14 @@ export const SECTIONS: SectionConfig[] = [
   },
   {
     id: "taxonomy",
-    title: "카테고리 설정",
+    title: "분류",
     getIssues(form) {
       const issues: SectionIssue[] = [];
-      if (!hasRealText(form.category)) {
+      if (!hasRealText(form.destination_id) && !hasRealText(form.category)) {
         issues.push({
           sectionId: "taxonomy",
-          fieldKey: "category",
-          message: "카테고리(지역)를 선택해 주세요.",
+          fieldKey: "destination_id",
+          message: "지역(분류)을 선택해 주세요.",
           anchorId: "form-field-taxonomy-category",
           severity: "recommended",
         });
@@ -115,33 +114,8 @@ export const SECTIONS: SectionConfig[] = [
     },
   },
   {
-    id: "price",
-    title: "가격·노출",
-    getIssues(_form) {
-      /* 기본 가격·구간 검증은 기본 정보 섹션(field-price-main 등)으로 이동 */
-      return [];
-    },
-  },
-  {
-    id: "description",
-    title: "설명·포인트",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      if (!hasRealText(form.description)) {
-        issues.push({
-          sectionId: "description",
-          fieldKey: "description",
-          message: "상품 설명을 입력하면 상세 페이지 노출에 유리합니다.",
-          anchorId: "field-product-description",
-          severity: "recommended",
-        });
-      }
-      return issues;
-    },
-  },
-  {
-    id: "included",
-    title: "포함·불포함·선택관광",
+    id: "travel",
+    title: "여행 정보",
     getIssues(form) {
       const issues: SectionIssue[] = [];
       const hasIncluded = hasRealText(form.included_items);
@@ -149,10 +123,30 @@ export const SECTIONS: SectionConfig[] = [
       const hasOptional = hasRealText(form.optional_tours);
       if (!hasIncluded && !hasExcluded && !hasOptional) {
         issues.push({
-          sectionId: "included",
+          sectionId: "travel",
           fieldKey: "included",
           message: "포함·불포함·선택관광 중 최소 1개 이상 입력을 권장합니다.",
           anchorId: "field-included",
+          severity: "recommended",
+        });
+      }
+      const dep = hasRealText(form.departure_flight_name) ? form.departure_flight_name!.trim() : "";
+      const arr = hasRealText(form.arrival_flight_name) ? form.arrival_flight_name!.trim() : "";
+      if (dep && !/^[A-Z0-9]{2}\s*\d+/i.test(dep.replace(/\s/g, ""))) {
+        issues.push({
+          sectionId: "travel",
+          fieldKey: "departure_flight_name",
+          message: "출발 편명 형식(예: OZ 123)을 권장합니다.",
+          anchorId: "form-field-flight-departure_flight_name",
+          severity: "recommended",
+        });
+      }
+      if (arr && !/^[A-Z0-9]{2}\s*\d+/i.test(arr.replace(/\s/g, ""))) {
+        issues.push({
+          sectionId: "travel",
+          fieldKey: "arrival_flight_name",
+          message: "도착 편명 형식(예: OZ 456)을 권장합니다.",
+          anchorId: "form-field-flight-arrival_flight_name",
           severity: "recommended",
         });
       }
@@ -161,7 +155,7 @@ export const SECTIONS: SectionConfig[] = [
   },
   {
     id: "schedule",
-    title: "상세 일정",
+    title: "일정",
     getIssues(form) {
       const issues: SectionIssue[] = [];
       const v2Days = form.itinerary_v2_json?.days ?? [];
@@ -181,70 +175,36 @@ export const SECTIONS: SectionConfig[] = [
           anchorId: "field-schedule-root",
           severity: "required",
         });
-      } else {
-        if (hasV2) {
-          const emptyDays = v2Days.filter((d) => {
-            const hasTitle = hasRealText(d.title) || hasRealText(d.dateText);
-            const events = d.events ?? [];
-            const hasEvent = events.some(
-              (e) => hasRealText(e.heading) || hasRealText(e.description),
-            );
-            return !hasTitle && !hasEvent;
+      } else if (hasV2) {
+        const emptyDays = v2Days.filter((d) => {
+          const hasTitle = hasRealText(d.title) || hasRealText(d.dateText);
+          const events = d.events ?? [];
+          const hasEvent = events.some(
+            (e) => hasRealText(e.heading) || hasRealText(e.description),
+          );
+          return !hasTitle && !hasEvent;
+        });
+        if (emptyDays.length > 0) {
+          issues.push({
+            sectionId: "schedule",
+            fieldKey: "schedule_day",
+            message: "일부 일차에 제목·날짜 또는 이벤트를 입력해 주세요.",
+            anchorId: "field-schedule-root",
+            severity: "recommended",
           });
-          if (emptyDays.length > 0) {
-            issues.push({
-              sectionId: "schedule",
-              fieldKey: "schedule_day",
-              message: "일부 일차에 제목·날짜 또는 이벤트를 입력해 주세요.",
-              anchorId: "field-schedule-root",
-              severity: "recommended",
-            });
-          }
         }
       }
       return issues;
     },
   },
   {
-    id: "flight",
-    title: "항공편",
-    getIssues(form) {
-      const issues: SectionIssue[] = [];
-      const dep = hasRealText(form.departure_flight_name)
-        ? form.departure_flight_name!.trim()
-        : "";
-      const arr = hasRealText(form.arrival_flight_name)
-        ? form.arrival_flight_name!.trim()
-        : "";
-      if (dep && !/^[A-Z0-9]{2}\s*\d+/i.test(dep.replace(/\s/g, ""))) {
-        issues.push({
-          sectionId: "flight",
-          fieldKey: "departure_flight_name",
-          message: "출발 편명 형식(예: OZ 123)을 권장합니다.",
-          anchorId: "form-field-flight-departure_flight_name",
-          severity: "recommended",
-        });
-      }
-      if (arr && !/^[A-Z0-9]{2}\s*\d+/i.test(arr.replace(/\s/g, ""))) {
-        issues.push({
-          sectionId: "flight",
-          fieldKey: "arrival_flight_name",
-          message: "도착 편명 형식(예: OZ 456)을 권장합니다.",
-          anchorId: "form-field-flight-arrival_flight_name",
-          severity: "recommended",
-        });
-      }
-      return issues;
-    },
-  },
-  {
-    id: "terms",
-    title: "약관·SEO",
+    id: "ops",
+    title: "운영·SEO",
     getIssues(form) {
       const issues: SectionIssue[] = [];
       if (!hasRealText(form.meta_title)) {
         issues.push({
-          sectionId: "terms",
+          sectionId: "ops",
           fieldKey: "meta_title",
           message: "SEO 메타 제목을 입력하면 검색 노출에 유리합니다.",
           anchorId: "field-seo-title",
@@ -253,10 +213,27 @@ export const SECTIONS: SectionConfig[] = [
       }
       if (!hasRealText(form.meta_description)) {
         issues.push({
-          sectionId: "terms",
+          sectionId: "ops",
           fieldKey: "meta_description",
           message: "SEO 메타 설명을 입력하면 검색 노출에 유리합니다.",
           anchorId: "field-seo-desc",
+          severity: "recommended",
+        });
+      }
+      return issues;
+    },
+  },
+  {
+    id: "advanced",
+    title: "고급 설정",
+    getIssues(form) {
+      const issues: SectionIssue[] = [];
+      if (!hasRealText(form.description)) {
+        issues.push({
+          sectionId: "advanced",
+          fieldKey: "description",
+          message: "상품 설명을 입력하면 상세 페이지 노출에 유리합니다.",
+          anchorId: "field-product-description",
           severity: "recommended",
         });
       }

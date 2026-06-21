@@ -16,6 +16,8 @@ type MultiImageUploadFieldProps = {
   /** 상품 이미지 → 선택된 이벤트에 추가 시 사용. 있으면 썸네일마다 "이 이벤트에 추가" 버튼 표시 */
   selectedEvent?: SelectedEventRef | null;
   onAddToEvent?: (url: string) => void;
+  /** 갤러리 항목을 대표 이미지로 지정 */
+  onSetPrimary?: (url: string) => void;
   /** false면 목록에서 삭제 시 스토리지 삭제 API 호출 안 함 */
   purgeStorageOnRemove?: boolean;
 };
@@ -39,6 +41,7 @@ export function MultiImageUploadField({
   maxCount = 10,
   selectedEvent = null,
   onAddToEvent,
+  onSetPrimary,
   purgeStorageOnRemove = true,
 }: MultiImageUploadFieldProps) {
   const { showToast } = useAdminToast();
@@ -218,6 +221,15 @@ export function MultiImageUploadField({
                       className="rounded border border-[var(--primary)]/50 bg-[var(--primary-soft)] px-2 py-1 text-xs font-medium text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--primary-soft)]/80"
                     >
                       이 이벤트에 추가
+                    </button>
+                  ) : null}
+                  {onSetPrimary != null && !isPrimary ? (
+                    <button
+                      type="button"
+                      onClick={() => onSetPrimary(url)}
+                      className="rounded border border-[var(--primary)]/50 bg-[var(--surface)] px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+                    >
+                      대표로
                     </button>
                   ) : null}
                   <button

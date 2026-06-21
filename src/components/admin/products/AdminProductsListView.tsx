@@ -108,6 +108,7 @@ export default function AdminProductsListView({
   newProductHref,
   onRetryLoad,
   taxonomyNameMap = {},
+  highlightedProductId = null,
 }: AdminProductsListViewProps) {
   const isDisplayEmpty = products.length === 0;
   const hadSourceRows = pageSourceCount > 0;
@@ -135,10 +136,15 @@ export default function AdminProductsListView({
     const imgOk = hasProductPrimaryImage(product);
     const itOk = hasProductItinerary(product);
 
+    const isHighlighted = highlightedProductId === product.id;
+
     return (
       <tr
         key={product.id}
-        className="border-t border-[var(--divider)] leading-tight hover:bg-[var(--surface-muted)]"
+        id={`admin-product-row-${product.id}`}
+        className={`border-t border-[var(--divider)] leading-tight hover:bg-[var(--surface-muted)] ${
+          isHighlighted ? "ring-2 ring-inset ring-[var(--primary)] bg-[var(--primary-soft)]/30" : ""
+        }`}
       >
         <td className="w-8 px-1 py-2 align-middle text-center">
           <input
@@ -288,10 +294,15 @@ export default function AdminProductsListView({
     const imgOk = hasProductPrimaryImage(product);
     const itOk = hasProductItinerary(product);
 
+    const isHighlighted = highlightedProductId === product.id;
+
     return (
       <div
         key={product.id}
-        className="flex min-w-0 items-center gap-2 overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1.5 pl-2 pr-1"
+        id={`admin-product-row-${product.id}`}
+        className={`flex min-w-0 items-center gap-2 overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1.5 pl-2 pr-1 ${
+          isHighlighted ? "ring-2 ring-[var(--primary)] bg-[var(--primary-soft)]/30" : ""
+        }`}
       >
         <input
           type="checkbox"

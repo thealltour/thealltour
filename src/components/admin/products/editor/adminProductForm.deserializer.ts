@@ -13,6 +13,7 @@ import {
 } from "@/lib/products/mapProductToTimelineModel";
 import { hydrateItineraryImages } from "@/lib/images/hydrateItineraryImages";
 import { normalizeOXValue } from "./adminProductForm.helpers";
+import { normalizeFormFromProduct } from "./adminProductForm.derive";
 
 /**
  * 상품 API 응답을 폼 상태로 변환.
@@ -36,7 +37,7 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     : rawBookingNotes || termsAndNotes;
   const legacyTermsTemplate = (product.terms_template_type as "" | TermsTemplateType | undefined) ?? "";
 
-  return {
+  const baseForm: ProductFormState = {
     title: product.title ?? "",
     description: product.description ?? "",
     product_source_url: product.product_source_url ?? "",
@@ -158,4 +159,5 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     overview_region: product.overview_region ?? "",
     overview_duration: product.overview_duration ?? "",
   };
+  return normalizeFormFromProduct(baseForm);
 }

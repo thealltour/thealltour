@@ -14,6 +14,7 @@ import {
   sanitizeSeasonalPriceBandsFromFormStrings,
   seasonalPriceBandsToJsonColumn,
 } from "@/lib/products/seasonalPriceBands";
+import { deriveDerivedFieldsForSave } from "./adminProductForm.derive";
 
 /** PostgreSQL integer 호환: 유한 정수만, 범위 초과 시 null */
 function toSafeInteger(value: unknown): number | null {
@@ -30,6 +31,8 @@ export type SerializeAdminProductFormOptions = {
   editingId?: string | null;
   /** 미할당 이미지 URL (Modetour 등). serialize 시 event와 중복 제거에 사용 */
   unassignedImageUrls?: string[];
+  /** destination_id → taxonomy 이름 (derive용) */
+  destinationName?: string | null;
 };
 
 /**
@@ -37,9 +40,13 @@ export type SerializeAdminProductFormOptions = {
  * 저장 결과가 기존과 동일하도록 필드/타입 규칙 유지.
  */
 export function serializeAdminProductForm(
-  form: ProductFormState,
+  inputForm: ProductFormState,
   options?: SerializeAdminProductFormOptions,
 ): AdminProductSavePayload {
+  const form = deriveDerivedFieldsForSave(inputForm, {
+    destinationName: options?.destinationName,
+  });
+
   const normalizedIncludedItems = form.included_items.trim();
   const normalizedExcludedItems = form.excluded_items.trim();
   const normalizedOptionalTours = form.optional_tours.trim();

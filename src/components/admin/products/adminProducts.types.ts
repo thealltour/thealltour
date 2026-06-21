@@ -96,4 +96,6 @@ export type AdminProductsListViewProps = {
   onRetryLoad?: () => void;
   /** id → taxonomy name (destination_id, product_line_id용). 있으면 목록 "지역·상품군" 셀에서 이름 표시 */
   taxonomyNameMap?: Record<string, string>;
+  /** 저장 직후 하이라이트할 상품 id */
+  highlightedProductId?: string | null;
 };

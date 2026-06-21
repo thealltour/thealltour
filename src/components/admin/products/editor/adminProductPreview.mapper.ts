@@ -30,7 +30,7 @@ export function mapAdminProductFormToPreviewProduct(
 export type PreviewWarning = {
   id: string;
   message: string;
-  sectionId: "basic" | "price" | "schedule";
+  sectionId: "basic" | "taxonomy" | "schedule";
 };
 
 /** 미리보기 품질 경고: 원인 + 화면 영향. sectionId는 클릭 시 해당 아코디언 열기/스크롤용 */
@@ -44,7 +44,7 @@ export function getPreviewWarnings(
     warnings.push({
       id: "category",
       message: "카테고리 미입력 → 카드/상세에 카테고리 칩이 비어 보입니다.",
-      sectionId: "basic",
+      sectionId: "taxonomy",
     });
   }
 
@@ -56,7 +56,7 @@ export function getPreviewWarnings(
     warnings.push({
       id: "price",
       message: "가격 미입력 또는 0원 → 카드/상세에 '상담 후 견적'으로만 표시됩니다.",
-      sectionId: "price",
+      sectionId: "basic",
     });
   }
 

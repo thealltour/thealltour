@@ -23,6 +23,10 @@ export const ADMIN_PRODUCTS_QUERY_KEYS = {
   Q: "q",
   SORT_FIELD: "sortField",
   SORT_DIRECTION: "sortDirection",
+  /** 저장 후 목록에서 하이라이트할 신규 상품 id */
+  CREATED: "created",
+  /** 저장 후 목록에서 하이라이트할 수정 상품 id */
+  UPDATED: "updated",
 } as const;
 
 /** 상품 목록 기본 페이지 크기 */

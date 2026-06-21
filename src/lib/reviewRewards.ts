@@ -5,9 +5,12 @@
  */
 import "server-only";
 import { supabase } from "@/lib/supabase";
+import {
+  DEFAULT_REVIEW_WRITE_POINTS,
+  REWARD_TYPE_REVIEW_WRITE,
+} from "@/lib/reviewRewardConstants";
 
-export const REWARD_TYPE_REVIEW_WRITE = "review_write";
-export const DEFAULT_REVIEW_WRITE_POINTS = 1000;
+export { DEFAULT_REVIEW_WRITE_POINTS, REWARD_TYPE_REVIEW_WRITE };
 
 export type ReviewForReward = {
   id: string;

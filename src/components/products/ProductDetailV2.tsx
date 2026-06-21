@@ -3,7 +3,6 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
-import { Button } from "@/components/ui/Button";
 import Tag from "@/components/ui/Tag";
 import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
 import AlertCard from "@/components/ui/AlertCard";
@@ -27,9 +26,6 @@ import { ProductImageCarousel } from "@/components/products/ProductImageCarousel
 import type { ProductGalleryImage } from "@/components/products/ProductImageGalleryModal";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getPrimaryImageUrl } from "@/lib/products/images";
-import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
-import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
-import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
 import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
 import { ProductQuickSummaryCard } from "@/components/products/ProductQuickSummaryCard";
@@ -52,6 +48,7 @@ import {
   DETAIL_UNIFIED_PRICE_NOTICE_LINES,
   getSeasonalPriceDisplayModel,
 } from "@/lib/products/detailSeasonalPriceDisplay";
+import { buildRecommendedAudienceBullets } from "@/lib/products/buildRecommendedAudienceBullets";
 import {
   ProductDetailRecommendedAudience,
   SeasonalPriceComparison,
@@ -184,7 +181,6 @@ export default function ProductDetailV2({
   reviewSummary,
 }: ProductDetailV2Props) {
   const { openModal } = useConsultModal();
-  const consultHrefWithUtm = useQuoteHrefWithUtm(consultHref);
 
   const handleDepartureInquiry = useCallback(
     (selectedDeparture: string | null) => {
@@ -512,6 +508,14 @@ export default function ProductDetailV2({
     [product],
   );
 
+  const recommendedAudienceBullets = useMemo(
+    () =>
+      buildRecommendedAudienceBullets(product, {
+        skipHighlightDerived: Boolean(product?.highlights?.length),
+      }),
+    [product],
+  );
+
   /** PR29: 핵심 정보 요약 바용 (모바일, 사실 정보만) */
   const quickInfoBarProps = useMemo(() => {
     const duration = durationLabel?.trim() || "";
@@ -591,7 +595,7 @@ export default function ProductDetailV2({
               {product?.seasonal_price_bands ? (
                 <SeasonalPriceComparison bands={product.seasonal_price_bands} />
               ) : null}
-              <ProductDetailRecommendedAudience />
+              <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
             </>
           ) : displayPrice ? (
             <>
@@ -609,7 +613,7 @@ export default function ProductDetailV2({
               <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
                 {DETAIL_UNIFIED_PRICE_NOTICE_LINES[1]}
               </p>
-              <ProductDetailRecommendedAudience />
+              <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
             </>
           ) : (
             <p className="font-price-strong text-xl font-semibold text-slate-600 md:text-2xl">
@@ -629,7 +633,9 @@ export default function ProductDetailV2({
           {!(showSeasonalBandCard || displayPrice) ? (
             <p className="mt-0.5 text-xs text-slate-500">유류할증료는 상담 시 안내</p>
           ) : null}
-          {!(showSeasonalBandCard || displayPrice) ? <ProductDetailRecommendedAudience /> : null}
+          {!(showSeasonalBandCard || displayPrice) ? (
+            <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
+          ) : null}
         </Card>
 
         <div className="mt-5">
@@ -732,44 +738,6 @@ export default function ProductDetailV2({
 
           {/* Trust Signals: 데이터 있을 때만 */}
           <TrustSignals trust={trust} />
-        </div>
-
-        {/* CTA: 모바일에서만 표시. 통합 ProductConsultCTA 사용 */}
-        <div className="mb-0 md:hidden">
-          {productId ? (
-            <ProductConsultCTA
-              productId={productId}
-              productTitle={productTitle ?? ""}
-              sourcePath={sourcePath ?? ""}
-              status={statusTag}
-              kakaoHref={kakaoHref || undefined}
-              section="top"
-              ctaLabelOptions={ctaLabelOptions}
-              requiredGroupsMissing={requiredGroupsMissing}
-              scrollToOptions={() => optionsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              isSoldOut={isSoldOut}
-              helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
-            />
-          ) : (
-            <>
-              {requiredGroupsMissing && (
-                <p className="mb-2 text-sm text-amber-600">필수 옵션을 선택해 주세요.</p>
-              )}
-              <div className="flex flex-wrap gap-3">
-                {consultHref ? (
-                  <a href={consultHrefWithUtm || consultHref}>
-                    <Button variant="accent" size="md">{getProductCtaLabel(statusTag, ctaLabelOptions)}</Button>
-                  </a>
-                ) : null}
-                {kakaoHref ? (
-                  <a href={kakaoHref} target="_blank" rel="noopener noreferrer">
-                    <Button variant="kakao" size="md">카톡 상담</Button>
-                  </a>
-                ) : null}
-              </div>
-              <p className="mt-2 text-[11px] text-slate-500">일정과 요금은 상담을 통해 개별 안내됩니다.</p>
-            </>
-          )}
         </div>
       </section>
 

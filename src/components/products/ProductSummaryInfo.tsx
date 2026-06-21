@@ -112,7 +112,7 @@ export default function ProductSummaryInfo({
       ) : null}
 
       {(consultHref || kakaoHref || productId) && (
-        <div className="flex flex-col gap-2 border-t border-slate-200 pt-3 sm:flex-row">
+        <div className="hidden flex-col gap-2 border-t border-slate-200 pt-3 md:flex md:flex-row">
           {productId ? (
             <button
               type="button"

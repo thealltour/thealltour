@@ -1,11 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import { useConsultModal } from "@/components/inquiry/ConsultModal";
-import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
-import { solidButtonShadowClasses } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
-import { getProductCtaLabel, type ProductCtaStatus } from "@/lib/products/getProductCtaLabel";
+import { DEFAULT_REVIEW_WRITE_POINTS } from "@/lib/reviewRewardConstants";
 
 export type ProductReviewSectionProps = {
   /** 평균 평점 (1~5). 있으면 리뷰 있음 UI */
@@ -14,37 +8,26 @@ export type ProductReviewSectionProps = {
   reviewCount?: number;
   /** 최근 예약/상담 건수. 리뷰 없을 때 신뢰도 보완용 */
   bookingCount?: number;
-  /** 예약 상담하기 CTA 링크 (예: /quote?productId=...) */
-  consultHref?: string;
-  /** 모달 파라미터 (있으면 예약 상담하기 클릭 시 모달 오픈) */
+  /** 후기 작성 링크용 상품 ID */
   productId?: string;
-  productTitle?: string;
-  sourcePath?: string;
-  /** 상품 상태(CTA 문구). 미전달 시 AVAILABLE */
-  status?: ProductCtaStatus;
 };
 
 /**
  * PR27: 리뷰 영역 신뢰도 카드.
- * 리뷰가 있으면 평점+후기 수, 없으면 최근 예약 수 + 상담 CTA를 표시합니다.
+ * 리뷰가 있으면 평점+후기 수, 없으면 후기 작성 독려 UI를 표시합니다.
  */
 export function ProductReviewSection({
   rating,
   reviewCount = 0,
   bookingCount,
-  consultHref,
   productId,
-  productTitle,
-  sourcePath,
-  status = "AVAILABLE",
 }: ProductReviewSectionProps) {
-  const { openModal } = useConsultModal();
-  const consultHrefWithUtm = useQuoteHrefWithUtm(consultHref ?? "");
-  const reviewCtaLabel = getProductCtaLabel(status);
   const hasReviews = typeof reviewCount === "number" && reviewCount > 0;
   const displayRating = typeof rating === "number" && rating >= 0 && rating <= 5 ? rating : null;
   const displayBooking = typeof bookingCount === "number" && bookingCount >= 0 ? bookingCount : null;
-  const canOpenModal = Boolean(productId);
+  const writeReviewHref = productId
+    ? `/reviews/write?productId=${encodeURIComponent(productId)}`
+    : null;
 
   return (
     <section
@@ -68,38 +51,20 @@ export function ProductReviewSection({
             <p className="text-base font-semibold text-slate-900">최근 예약 {displayBooking}건</p>
           )}
           <p className="mt-1 text-sm text-gray-600">아직 등록된 후기가 없습니다</p>
-          {consultHref && (
+          <p className="mt-2 text-sm text-slate-600">첫 후기를 남겨보세요.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            후기 작성 시 최대 {DEFAULT_REVIEW_WRITE_POINTS.toLocaleString()} 포인트가 적립됩니다.
+          </p>
+          {writeReviewHref ? (
             <div className="mt-4">
-              {canOpenModal ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    openModal({
-                      productId,
-                      productTitle,
-                      sourcePath: sourcePath || `${consultHref}#product-review-section`,
-                    })
-                  }
-                  className={cn(
-                    "inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]",
-                    solidButtonShadowClasses,
-                  )}
-                >
-                  {reviewCtaLabel}
-                </button>
-              ) : (
-                <Link
-                  href={consultHrefWithUtm || consultHref}
-                  className={cn(
-                    "inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]",
-                    solidButtonShadowClasses,
-                  )}
-                >
-                  {reviewCtaLabel}
-                </Link>
-              )}
+              <Link
+                href={writeReviewHref}
+                className="inline-flex rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              >
+                후기 작성하기
+              </Link>
             </div>
-          )}
+          ) : null}
         </>
       )}
     </section>

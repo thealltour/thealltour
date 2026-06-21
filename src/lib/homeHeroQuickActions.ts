@@ -1,10 +1,11 @@
 import type { IconName } from "@/icons";
 import { buildProductsFilterHref } from "@/lib/productFilters";
+import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 
 /**
  * 홈 히어로 모바일 "빠른 선택 허브" 고정 액션.
- * URL은 /products 쿼리 키(region/theme/product_line/q)와 동일하게 유지.
- * 아이콘은 `@/icons` 레지스트리 키(`iconName`)로 연결합니다.
+ * URL은 /products 쿼리 키(region/theme/tourType/q)와 동일하게 유지.
+ * 골프는 tourType=golf-park 채널(헤더·골프 섹션과 동일).
  */
 export type HomeHeroQuickAction = {
   id: string;
@@ -19,7 +20,7 @@ export const HOME_HERO_QUICK_ACTIONS: readonly HomeHeroQuickAction[] = [
   {
     id: "golf",
     label: "골프 여행",
-    href: buildProductsFilterHref({ product_line: "golf" }),
+    href: buildGolfProductsHref(),
     iconName: "golf",
     ariaLabel: "골프 여행 상품 보기",
   },

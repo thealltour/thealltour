@@ -275,11 +275,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 rating={productReviewStats.averageRating}
                 reviewCount={productReviewStats.reviewCount}
                 bookingCount={product.trust?.recentConsultCount}
-                consultHref={`/quote?product_id=${encodeURIComponent(product.id)}`}
                 productId={product.id}
-                productTitle={product.title}
-                sourcePath={`${sourcePath}#reviews`}
-                status={statusV2}
               />
               <ProductReviewsSection
                 productId={product.id}

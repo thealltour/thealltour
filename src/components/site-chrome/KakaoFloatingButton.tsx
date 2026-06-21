@@ -43,9 +43,11 @@ export default function KakaoFloatingButton() {
     return null;
   }
 
-  const bottomClass = isProductDetailPage
-    ? "bottom-[max(76px,env(safe-area-inset-bottom))]"
-    : "bottom-[max(16px,env(safe-area-inset-bottom))]";
+  if (isProductDetailPage) {
+    return null;
+  }
+
+  const bottomClass = "bottom-[max(16px,env(safe-area-inset-bottom))]";
 
   return (
     <div

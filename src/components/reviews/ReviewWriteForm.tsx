@@ -40,6 +40,7 @@ import { Label } from "@/components/ui/Label";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import type { Review } from "@/types/review";
 import type { ReviewImageItem } from "@/types/review";
+import { DEFAULT_REVIEW_WRITE_POINTS } from "@/lib/reviewRewardConstants";
 
 const AUTO_SAVE_DEBOUNCE_MS = 5000;
 const CLIENT_IMAGE_MAX_WIDTH = 1600;
@@ -495,7 +496,8 @@ export default function ReviewWriteForm({
         return;
       }
       const rid = result.review_id;
-      const pointsAwarded = result.pointsAwarded ?? (result.rewardCreated ? 1000 : undefined);
+      const pointsAwarded =
+        result.pointsAwarded ?? (result.rewardCreated ? DEFAULT_REVIEW_WRITE_POINTS : undefined);
       if (rid) {
         setSubmitSuccessModal({ reviewId: rid, pointsAwarded });
         return;

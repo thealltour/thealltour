@@ -69,15 +69,21 @@ export function SeasonalPriceComparison({ bands }: SeasonalPriceComparisonProps)
   );
 }
 
-/** PR-F: 추천 대상 고정 3줄 (운영 단순화) */
-export function ProductDetailRecommendedAudience() {
+export type ProductDetailRecommendedAudienceProps = {
+  bullets: string[];
+};
+
+/** PR-F: 상품 데이터 기반 추천 대상 (2개 미만이면 미노출) */
+export function ProductDetailRecommendedAudience({ bullets }: ProductDetailRecommendedAudienceProps) {
+  if (bullets.length < 2) return null;
+
   return (
     <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50 p-4 ring-1 ring-slate-100/80">
       <p className="mb-2 text-sm font-semibold text-slate-800">이런 분께 잘 맞아요</p>
       <ul className="space-y-1 text-sm leading-relaxed text-slate-600">
-        <li>• 주말 중심 여행을 계획 중인 분</li>
-        <li>• 비수기 가성비를 중요하게 보는 분</li>
-        <li>• 상담으로 정확한 일정 안내를 받고 싶은 분</li>
+        {bullets.map((bullet) => (
+          <li key={bullet}>• {bullet}</li>
+        ))}
       </ul>
     </div>
   );

@@ -71,11 +71,6 @@ type FlightCardProps = {
   compact?: boolean;
 };
 
-type AirportLabel = {
-  code: string;
-  city: string;
-};
-
 type MobileFlightBlockProps = {
   label: string;
   fromAirport: string;
@@ -89,16 +84,6 @@ type MobileFlightBlockProps = {
   baggageLimit?: string;
 };
 
-function parseAirportLabel(raw: string): AirportLabel {
-  const value = raw.trim();
-  if (!value) return { code: "", city: "" };
-  const match = value.match(/^(.*)\(([^)]+)\)\s*(출발|도착)?$/);
-  if (!match) return { code: "", city: value.replace(/\s*(출발|도착)\s*$/, "").trim() };
-  const city = match[1].trim();
-  const code = match[2].trim().toUpperCase();
-  return { code, city };
-}
-
 function MobileFlightBlock({
   label,
   fromAirport,
@@ -111,25 +96,23 @@ function MobileFlightBlock({
   flightName,
   baggageLimit,
 }: MobileFlightBlockProps) {
-  const from = parseAirportLabel(fromAirport);
-  const to = parseAirportLabel(toAirport);
-  const route =
-    from.code && to.code
-      ? `${from.code} → ${to.code}`
-      : `${from.city || fromAirport || "출발"} → ${to.city || toAirport || "도착"}`;
-  const airportLine = [from.city || fromAirport, to.city || toAirport].filter(Boolean).join(" → ");
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <p className="text-[11px] font-semibold text-[var(--primary)]">{label}</p>
-      <p className="text-sm font-semibold text-slate-800">{route}</p>
-      {airportLine ? <p className="text-xs text-slate-500">{airportLine}</p> : null}
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 flex-1 text-left text-sm font-semibold text-slate-800">{fromAirport || "출발"}</p>
+        <div className="flex shrink-0 px-1">
+          <AirlineLogo airlineText={flightName} size={56} />
+        </div>
+        <p className="min-w-0 flex-1 text-right text-sm font-semibold text-slate-800">{toAirport || "도착"}</p>
+      </div>
+      <div className="flex items-end justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-[11px] text-slate-500">출발</p>
           <p className="text-xl font-bold leading-tight text-slate-900">{fromTime || "—"}</p>
           {fromDate ? <p className="text-[11px] text-slate-500">{fromDate}</p> : null}
         </div>
-        <div className="min-w-0 text-right">
+        <div className="min-w-0 flex-1 text-right">
           <p className="text-[11px] text-slate-500">도착</p>
           <p className="text-xl font-bold leading-tight text-slate-900">
             {toTime || "—"}

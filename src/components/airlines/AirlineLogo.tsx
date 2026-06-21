@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Plane } from "lucide-react";
 import { normalizeAirline } from "@/lib/airlines/normalizeAirline";
 import { buildAirlinePlaceholderDataUri } from "@/lib/airlines/airlinePlaceholderDataUri";
@@ -10,6 +10,16 @@ type AirlineLogoProps = {
   airlineText: string;
   size?: number;
 };
+
+function LogoSkeleton({ size }: { size: number }) {
+  return (
+    <div
+      className="shrink-0 animate-pulse rounded-md border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+      style={{ width: size, height: size, minWidth: size }}
+      aria-hidden
+    />
+  );
+}
 
 function PlaneFallback({ size, title }: { size: number; title?: string }) {
   return (
@@ -39,15 +49,23 @@ function CodeBadgeFallback({ code, size, title }: { code: string; size: number; 
   );
 }
 
+function isImageReady(img: HTMLImageElement | null): boolean {
+  return Boolean(img?.complete && img.naturalWidth > 0);
+}
+
 /**
  * 항공편명·항공사 문자열에서 IATA 코드를 추출해 로고를 순차 시도.
  * 로드 실패 시 깨진 이미지 대신 다음 후보 또는 코드 배지 fallback.
  */
 export function AirlineLogo({ airlineText, size = 24 }: AirlineLogoProps) {
-  const candidates = useMemo(() => resolveAirlineLogoUrls(airlineText), [airlineText]);
+  const candidates = useMemo(
+    () => resolveAirlineLogoUrls(airlineText).filter((url) => !url.startsWith("data:")),
+    [airlineText],
+  );
   const code = useMemo(() => normalizeAirline(airlineText), [airlineText]);
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setCandidateIndex(0);
@@ -58,12 +76,17 @@ export function AirlineLogo({ airlineText, size = 24 }: AirlineLogoProps) {
   const src = candidates[candidateIndex];
   const exhausted = !src || candidateIndex >= candidates.length;
 
+  useLayoutEffect(() => {
+    if (exhausted) return;
+    if (isImageReady(imgRef.current)) {
+      setImgLoaded(true);
+    }
+  }, [src, candidateIndex, exhausted]);
+
   if (exhausted) {
     if (code) return <CodeBadgeFallback code={code} size={size} title={displayText !== "—" ? displayText : undefined} />;
     return <PlaneFallback size={size} title={displayText !== "—" ? displayText : undefined} />;
   }
-
-  const showPlaceholder = !imgLoaded && code;
 
   return (
     <div
@@ -71,15 +94,14 @@ export function AirlineLogo({ airlineText, size = 24 }: AirlineLogoProps) {
       style={{ width: size, height: size, minWidth: size }}
       title={displayText}
     >
-      {showPlaceholder ? (
-        <CodeBadgeFallback code={code} size={size} title={displayText} />
-      ) : null}
+      {!imgLoaded ? <LogoSkeleton size={size} /> : null}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imgRef}
         key={src}
         src={src}
         alt=""
-        className={`h-full w-full object-contain p-0.5 ${imgLoaded ? "relative z-10" : "absolute opacity-0 pointer-events-none"}`}
+        className={`h-full w-full object-contain p-0.5 ${imgLoaded ? "block" : "hidden"}`}
         onLoad={() => setImgLoaded(true)}
         onError={() => {
           setImgLoaded(false);

@@ -176,18 +176,23 @@ function extractFromParens(s: string): string | null {
   return VALID_CODES.has(code) ? code : null;
 }
 
-/** 연속 영문 2~3자 + 숫자: TW501, KE123, JQ12 → TW, KE, JQ */
-const FLIGHT_NUMBER_PATTERN = /^([A-Z]{2,3})\d{1,4}$/i;
+/** IATA 코드 길이 내림차순 (3자 코드 우선 시도) */
+const VALID_CODES_BY_LENGTH = [...VALID_CODES].sort((a, b) => b.length - a.length);
 
 /**
- * 2) 결합 토큰에서 항공사 코드 추출: "TW501" → "TW", "KE123" → "KE"
- * 공백 기준 split 후 각 토큰에서 패턴 매칭
+ * 2) 결합 토큰에서 항공사 코드 추출: "TW501" → "TW", "7C3211" → "7C"
+ * 알려진 IATA 코드를 접두사로 매칭해 그리디 정규식 오매칭(TW5+01) 방지
  */
 function extractFromFlightNumber(s: string): string | null {
   const tokens = s.split(/\s+/);
   for (const t of tokens) {
-    const match = t.trim().match(FLIGHT_NUMBER_PATTERN);
-    if (match) return match[1].toUpperCase();
+    const token = t.trim().toUpperCase();
+    if (!token) continue;
+    for (const code of VALID_CODES_BY_LENGTH) {
+      if (!token.startsWith(code)) continue;
+      const rest = token.slice(code.length);
+      if (/^\d{1,4}[A-Z]?$/.test(rest)) return code;
+    }
   }
   return null;
 }

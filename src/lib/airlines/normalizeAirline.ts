@@ -4,12 +4,15 @@
  * - 출력: "TW", "KE", "OZ", "LJ", "7C", "ZE", "BX" 등 또는 null
  */
 
-/** 유효한 IATA 코드 집합 (2~3자) */
+import { IMPORTED_AIRLINE_IATA_CODES } from "@/lib/airlines/airlineLogos";
+
+/** 유효한 IATA 코드 집합 (2~3자) + import manifest 확장 */
 const VALID_CODES = new Set([
   "KE", "OZ", "TW", "LJ", "7C", "ZE", "BX", "RS", "IC", "YP",
   "AC", "CX", "CI", "BR", "SQ", "QF", "EK", "EY",
   "LH", "BA", "AF", "KL", "DL", "UA", "AA", "NH", "JL",
   "MU", "CZ", "HU", "TG", "VN", "MH", "GA", "PR",
+  ...IMPORTED_AIRLINE_IATA_CODES,
 ]);
 
 /**
@@ -210,8 +213,11 @@ function extractCodeToken(s: string): string | null {
       if (VALID_CODES.has(code)) return code;
     }
   }
-  const wholeMatch = s.match(/\b(KE|OZ|TW|LJ|7C|ZE|BX|RS|IC|YP)\b/i);
-  return wholeMatch ? wholeMatch[1].toUpperCase() : null;
+  for (const code of VALID_CODES) {
+    const re = new RegExp(`\\b${code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    if (re.test(s)) return code;
+  }
+  return null;
 }
 
 function lookupByName(s: string): string | null {

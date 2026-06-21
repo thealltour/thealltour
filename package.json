@@ -20,7 +20,8 @@
     "taxonomy:migrate:apply": "npx tsx scripts/migrate-taxonomies.ts --apply",
     "fix:imports": "node scripts/fix-component-imports.mjs",
     "favicon:build": "node scripts/build-favicon-ico.mjs",
-    "vapid:generate": "npx tsx scripts/generate-vapid-keys.ts"
+    "vapid:generate": "npx tsx scripts/generate-vapid-keys.ts",
+    "airlines:import-logos": "npx tsx scripts/import-flightaware-logos.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

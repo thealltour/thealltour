@@ -1,35 +1,49 @@
 /**
- * 항공사 IATA 코드 → 로고 경로 매핑
+ * 항공사 IATA 코드 → self-hosted 로고 경로
  *
- * 경로: public/assets/airlines/{CODE}.svg → /assets/airlines/{CODE}.svg
- * 확인: http://localhost:3000/assets/airlines/KE.svg 접속 시 이미지 표시
- *
- * 실제 로고 SVG로 교체 권장 (placeholder → 실제 로고)
+ * 로고 파일: public/assets/airlines/{IATA}.png
+ * manifest: src/lib/airlines/data/imported-airline-logos.json (import 스크립트 생성)
  */
+
+import importedLogos from "@/lib/airlines/data/imported-airline-logos.json";
 
 const BASE = "/assets/airlines";
 
-export const AIRLINE_LOGO_BY_CODE: Record<string, string> = {
-  // 국내 항공사 (우선순위 높음)
-  KE: `${BASE}/KE.svg`,   // 대한항공
-  OZ: `${BASE}/OZ.svg`,   // 아시아나항공
-  TW: `${BASE}/TW.svg`,   // 티웨이항공
-  LJ: `${BASE}/LJ.svg`,  // 진에어
-  "7C": `${BASE}/7C.svg`, // 제주항공
-  ZE: `${BASE}/ZE.svg`,   // 이스타항공
-  BX: `${BASE}/BX.svg`,   // 에어부산
-  RS: `${BASE}/RS.svg`,   // 에어서울
-
-  // 자주 쓰이는 국제선 (확장 대비)
-  SQ: `${BASE}/SQ.svg`,   // 싱가포르항공
-  TG: `${BASE}/TG.svg`,   // 타이항공
-  VN: `${BASE}/VN.svg`,   // 베트남항공
-  PR: `${BASE}/PR.svg`,   // 필리핀항공
-  JL: `${BASE}/JL.svg`,   // 일본항공
-  NH: `${BASE}/NH.svg`,   // ANA
-  CX: `${BASE}/CX.svg`,   // 캐세이퍼시픽
-  HU: `${BASE}/HU.svg`,   // 하이난항공
-  MU: `${BASE}/MU.svg`,   // 중국동방항공
-  CZ: `${BASE}/CZ.svg`,   // 중국남방항공
-  QF: `${BASE}/QF.svg`,   // 콴타스
+export type ImportedAirlineLogoEntry = {
+  icao: string;
+  name: string;
+  source: string;
+  active: boolean;
 };
+
+export type ImportedAirlineLogosManifest = Record<string, ImportedAirlineLogoEntry>;
+
+const MANIFEST = importedLogos as ImportedAirlineLogosManifest;
+
+/** import된 IATA 코드 집합 (normalizeAirline VALID_CODES 확장용) */
+export const IMPORTED_AIRLINE_IATA_CODES = Object.keys(MANIFEST);
+
+/**
+ * IATA 코드 → 로고 public URL (/assets/airlines/{IATA}.png)
+ * manifest에 있는 경우만 반환
+ */
+export function getAirlineLogoPath(iata: string | null | undefined): string | null {
+  const code = iata?.trim().toUpperCase();
+  if (!code || !MANIFEST[code]) return null;
+  return `${BASE}/${code}.png`;
+}
+
+/** @deprecated manifest 기반 — 하위 호환용 */
+export const AIRLINE_LOGO_BY_CODE: Record<string, string> = Object.fromEntries(
+  IMPORTED_AIRLINE_IATA_CODES.map((code) => [code, getAirlineLogoPath(code)!]),
+);
+
+export function getImportedAirlineLogoEntry(
+  iata: string | null | undefined,
+): ImportedAirlineLogoEntry | null {
+  const code = iata?.trim().toUpperCase();
+  if (!code) return null;
+  return MANIFEST[code] ?? null;
+}
+
+export { MANIFEST as IMPORTED_AIRLINE_LOGOS_MANIFEST };

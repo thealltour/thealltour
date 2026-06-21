@@ -1,0 +1,6 @@
+{
+  "_comment": "OpenFlights airlines.dat와 다른 IATA→ICAO 매핑만 수동 보정. 키: IATA, 값: ICAO",
+  "overrides": {
+    "RS": "ASH"
+  }
+}

@@ -1,5 +1,5 @@
 import { normalizeAirline } from "@/lib/airlines/normalizeAirline";
-import { AIRLINE_LOGO_BY_CODE } from "@/lib/airlines/airlineLogos";
+import { getAirlineLogoPath } from "@/lib/airlines/airlineLogos";
 import { getAirlineLogoCandidates } from "@/lib/airlines/getAirlineLogoCandidates";
 import { buildAirlinePlaceholderDataUri } from "@/lib/airlines/airlinePlaceholderDataUri";
 
@@ -20,7 +20,7 @@ export function resolveAirlineLogoUrls(airlineText: string): string[] {
   };
 
   if (code) {
-    push(AIRLINE_LOGO_BY_CODE[code]);
+    push(getAirlineLogoPath(code));
     for (const candidate of getAirlineLogoCandidates(code)) {
       push(candidate);
     }

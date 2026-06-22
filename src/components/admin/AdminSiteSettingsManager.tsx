@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { SiteSettings } from "@/lib/siteSettings";
 import AdminRecommendedSearchManager from "@/components/admin/AdminRecommendedSearchManager";
 import AdminUsersManager from "@/components/admin/settings/AdminUsersManager";
+import { AdminLoggedDevicesSettings } from "@/components/admin/pwa/AdminLoggedDevicesSettings";
 import { useAdminPermission } from "@/components/admin/AdminRoleContext";
 import AdminUtmLinkBuilder from "@/components/admin/AdminUtmLinkBuilder";
 import {
@@ -21,6 +22,7 @@ type SettingsSectionId =
   | "about"
   | "golf-hero"
   | "recommended-search"
+  | "logged-devices"
   | "admin-users";
 
 const SETTINGS_TABS: { id: SettingsSectionId; label: string }[] = [
@@ -32,6 +34,7 @@ const SETTINGS_TABS: { id: SettingsSectionId; label: string }[] = [
   { id: "about", label: "About 페이지" },
   { id: "golf-hero", label: "골프 히어로" },
   { id: "recommended-search", label: "추천 검색어" },
+  { id: "logged-devices", label: "로그인 기기" },
 ];
 
 type HeroRegionConfig = {
@@ -1082,6 +1085,8 @@ export default function AdminSiteSettingsManager() {
         {activeSection === "recommended-search" && (
           <AdminRecommendedSearchManager />
         )}
+
+        {activeSection === "logged-devices" && <AdminLoggedDevicesSettings />}
 
         {activeSection === "admin-users" && canManageAdminUsers ? (
           <AdminUsersManager />

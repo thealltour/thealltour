@@ -8,6 +8,9 @@ import { AdminRoleProvider } from "@/components/admin/AdminRoleContext";
 import AdminToastProvider from "@/components/admin/AdminToastProvider";
 import AdminConfirmProvider from "@/components/admin/AdminConfirmProvider";
 import { AdminPwaProvider } from "@/components/admin/pwa/AdminPwaProvider";
+import { AdminChatProvider } from "@/components/admin/chat/AdminChatProvider";
+import AdminChatInboxSync from "@/components/admin/chat/AdminChatInboxSync";
+import AdminChatWidget from "@/components/admin/chat/AdminChatWidget";
 import type { AdminSessionPermissions } from "@/lib/adminPermissions";
 
 export type AdminRouteProvidersProps = {
@@ -25,6 +28,8 @@ export function AdminRouteProviders({ children, session }: AdminRouteProvidersPr
         <AdminToastProvider>
           <AdminConfirmProvider>
             <AdminPwaProvider>
+              <AdminChatProvider>
+              <AdminChatInboxSync />
               <Suspense
               fallback={
                 <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)]">
@@ -42,6 +47,8 @@ export function AdminRouteProviders({ children, session }: AdminRouteProvidersPr
             >
               <AdminResponsiveFrame>{children}</AdminResponsiveFrame>
             </Suspense>
+              <AdminChatWidget />
+              </AdminChatProvider>
             </AdminPwaProvider>
           </AdminConfirmProvider>
         </AdminToastProvider>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 type AdminSessionListItem = {
   id: string;
@@ -93,62 +94,63 @@ export function AdminLoggedDevicesSettings() {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">로그인된 기기</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600">
-            7일 이상 접속하지 않은 기기는 자동으로 로그아웃됩니다. 다른 기기에서 로그아웃할 수
-            있습니다.
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">로그인된 기기</h3>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+            7일 이상 접속하지 않은 기기는 자동으로 로그아웃됩니다. 다른 기기에서 원격으로 로그아웃할
+            수 있습니다.
           </p>
         </div>
-        <button
-          type="button"
+        <AdminButton
+          variant="secondary"
+          size="sm"
           disabled={revokingOthers || loading || sessions.length <= 1}
           onClick={() => void revokeOtherDevices()}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {revokingOthers ? "처리 중..." : "다른 기기 모두 로그아웃"}
-        </button>
+          {revokingOthers ? "처리 중…" : "다른 기기 모두 로그아웃"}
+        </AdminButton>
       </div>
 
-      {errorMessage ? <p className="mt-3 text-xs text-red-600">{errorMessage}</p> : null}
-      {statusMessage ? <p className="mt-3 text-xs text-emerald-700">{statusMessage}</p> : null}
+      {errorMessage ? <p className="mt-3 text-xs text-[var(--danger)]">{errorMessage}</p> : null}
+      {statusMessage ? <p className="mt-3 text-xs text-[var(--success)]">{statusMessage}</p> : null}
 
       {loading ? (
-        <p className="mt-4 text-xs text-slate-500">기기 목록을 불러오는 중입니다...</p>
+        <p className="mt-4 text-xs text-[var(--text-muted)]">기기 목록을 불러오는 중입니다…</p>
       ) : sessions.length === 0 ? (
-        <p className="mt-4 text-xs text-slate-500">활성 로그인 기기가 없습니다.</p>
+        <p className="mt-4 text-xs text-[var(--text-muted)]">활성 로그인 기기가 없습니다.</p>
       ) : (
         <ul className="mt-4 space-y-2">
           {sessions.map((session) => (
             <li
               key={session.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium text-slate-900">{session.deviceLabel}</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{session.deviceLabel}</p>
                   {session.isCurrent ? (
-                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">
+                    <span className="rounded-full bg-[color-mix(in_oklab,var(--primary)_12%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)]">
                       현재 기기
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-[var(--text-muted)]">
                   마지막 접속 {formatDateTime(session.lastSeenAt)} · 등록{" "}
                   {formatDateTime(session.createdAt)}
                 </p>
               </div>
               {!session.isCurrent ? (
-                <button
-                  type="button"
+                <AdminButton
+                  variant="ghost"
+                  size="sm"
                   disabled={busyId === session.id}
                   onClick={() => void revokeSession(session.id)}
-                  className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="!text-[var(--danger)] hover:!bg-[color-mix(in_oklab,var(--danger)_8%,transparent)]"
                 >
-                  {busyId === session.id ? "처리 중..." : "이 기기에서 로그아웃"}
-                </button>
+                  {busyId === session.id ? "처리 중…" : "이 기기에서 로그아웃"}
+                </AdminButton>
               ) : null}
             </li>
           ))}

@@ -31,6 +31,40 @@ export function isAdminConsolePublicPath(pathname: string): boolean {
   return rel === "/login";
 }
 
+const ADMIN_RETURN_TO_PREFIXES = ["/theall_manager_only/", "/theall_manager_only"] as const;
+
+/**
+ * 로그인 후 복귀 URL 검증. 관리자 콘솔 경로만 허용하고 /login 은 제외.
+ */
+export function sanitizeAdminReturnTo(value: string | null | undefined): string | null {
+  const raw = value?.trim();
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
+
+  let pathname = raw;
+  let search = "";
+  try {
+    const parsed = new URL(raw, "https://admin.local");
+    pathname = parsed.pathname;
+    search = parsed.search;
+  } catch {
+    const q = raw.indexOf("?");
+    if (q >= 0) {
+      pathname = raw.slice(0, q);
+      search = raw.slice(q);
+    }
+  }
+
+  const allowed = ADMIN_RETURN_TO_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  if (!allowed) return null;
+
+  const rel = getAdminConsoleRelativePath(pathname);
+  if (rel === "/login" || rel?.startsWith("/login/")) return null;
+
+  return `${pathname}${search}`;
+}
+
 /** 후기·신고·알림 등 "후기 관리" 메뉴에 묶이는 상대 경로 */
 export function isAdminReviewSectionRelativePath(rel: string): boolean {
   return (

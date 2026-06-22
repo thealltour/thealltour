@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getReviews, getReviewByEligibilityId } from "@/lib/reviews";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { createNewReviewNotification } from "@/lib/adminNotifications";
@@ -170,7 +170,7 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         };
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from("reviews")
           .update(updatePayload)
           .eq("id", existingReview.id);
@@ -245,7 +245,7 @@ export async function POST(request: Request) {
     payload.customer_profile_id = customerProfileId;
   }
 
-  const insertResult = await supabase
+  const insertResult = await supabaseAdmin
     .from("reviews")
     .insert(payload)
     .select("id,title,author_name")
@@ -256,7 +256,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "이미 후기를 작성한 여행건입니다." }, { status: 409 });
     }
 
-    const insertLegacy = await supabase
+    const insertLegacy = await supabaseAdmin
       .from("reviews")
       .insert({
         member_id: session?.memberId ?? null,

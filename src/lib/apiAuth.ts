@@ -4,8 +4,9 @@ import { getMemberSessionFromCookies, type MemberSessionPayload } from "@/lib/me
 import { ADMIN_AUTH_COOKIE } from "@/lib/adminAuth";
 import { hasAdminPermission } from "@/lib/adminPermissions";
 import { isInquiriesApiPath, isSessionAllowedForApiPath } from "@/lib/adminRolePolicy";
-import { verifyAdminSessionToken, type AdminSessionPayload } from "@/lib/adminSession";
+import type { AdminSessionPayload } from "@/lib/adminSession";
 import type { AdminPermissionKey } from "@/lib/adminPermissions";
+import { resolveAdminSessionFromToken } from "@/lib/adminSessionStore";
 
 /** 회원 인증 필수. 실패 시 401 반환. */
 export async function requireMemberSession(): Promise<
@@ -32,7 +33,7 @@ export async function requireAdminSessionWithRole(): Promise<
 > {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_AUTH_COOKIE)?.value;
-  const session = await verifyAdminSessionToken(token);
+  const session = await resolveAdminSessionFromToken(token);
   if (!session) {
     return { ok: false, res: NextResponse.json({ message: "관리자 로그인이 필요합니다." }, { status: 401 }) };
   }

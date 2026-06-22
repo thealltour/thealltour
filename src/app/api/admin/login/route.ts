@@ -4,20 +4,24 @@ import {
   hasBootstrapAdminConfigured,
   isBootstrapAdminCredentials,
 } from "@/lib/adminAuth";
+import { sanitizeAdminReturnTo } from "@/lib/adminConsolePaths";
 import { getDefaultLandingPathForSession } from "@/lib/adminRolePolicy";
-import { ADMIN_SESSION_MAX_AGE_SEC, createAdminSessionToken } from "@/lib/adminSession";
 import { deriveLegacyRoleFromPermissions } from "@/lib/adminPermissions";
+import { ADMIN_SESSION_COOKIE_MAX_AGE_SEC } from "@/lib/adminSessionPolicy";
+import { createAdminSessionWithToken } from "@/lib/adminSessionStore";
 import { deriveLegacyRoleFromPreset, verifyAdminUserCredentials } from "@/lib/adminUsers";
 
 type LoginBody = {
   id?: string;
   password?: string;
+  next?: string;
 };
 
 export async function POST(request: Request) {
   const body = (await request.json()) as LoginBody;
   const id = body.id?.trim();
   const password = body.password?.trim();
+  const safeNext = sanitizeAdminReturnTo(body.next);
 
   if (!hasBootstrapAdminConfigured()) {
     return NextResponse.json(
@@ -57,7 +61,10 @@ export async function POST(request: Request) {
 
   let token: string;
   try {
-    token = await createAdminSessionToken(sessionPayload);
+    const created = await createAdminSessionWithToken(sessionPayload, {
+      userAgent: request.headers.get("user-agent"),
+    });
+    token = created.token;
   } catch (e) {
     const message = e instanceof Error ? e.message : "관리자 세션을 발급할 수 없습니다.";
     return NextResponse.json({ message }, { status: 500 });
@@ -66,14 +73,14 @@ export async function POST(request: Request) {
   const response = NextResponse.json({
     message: "로그인되었습니다.",
     role: sessionPayload.role,
-    redirectTo: getDefaultLandingPathForSession(sessionPayload),
+    redirectTo: safeNext ?? getDefaultLandingPathForSession(sessionPayload),
   });
   response.cookies.set(ADMIN_AUTH_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: ADMIN_SESSION_MAX_AGE_SEC,
+    maxAge: ADMIN_SESSION_COOKIE_MAX_AGE_SEC,
   });
 
   return response;

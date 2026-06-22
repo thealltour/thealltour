@@ -75,5 +75,31 @@ export function AdminPwaProvider({ children }: { children: React.ReactNode }) {
     return () => navigator.serviceWorker?.removeEventListener("message", handleMessage);
   }, [pathname]);
 
+  useEffect(() => {
+    if (isAdminConsolePublicPath(pathname)) return;
+    if (typeof document === "undefined") return;
+
+    let lastTouchAt = 0;
+    const TOUCH_MIN_INTERVAL_MS = 5 * 60 * 1000;
+
+    function sendSessionTouch() {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastTouchAt < TOUCH_MIN_INTERVAL_MS) return;
+      lastTouchAt = now;
+      void fetch("/api/admin/session/touch", { method: "POST" }).catch(() => {
+        // heartbeat 실패는 무시
+      });
+    }
+
+    sendSessionTouch();
+    window.addEventListener("focus", sendSessionTouch);
+    document.addEventListener("visibilitychange", sendSessionTouch);
+    return () => {
+      window.removeEventListener("focus", sendSessionTouch);
+      document.removeEventListener("visibilitychange", sendSessionTouch);
+    };
+  }, [pathname]);
+
   return <>{children}</>;
 }

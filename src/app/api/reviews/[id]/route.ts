@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getReviewById } from "@/lib/reviews";
 import { updateEligibilityStatus } from "@/lib/reviewEligibilities";
@@ -159,7 +159,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("reviews").update(payload).eq("id", id);
+  const { error } = await supabaseAdmin.from("reviews").update(payload).eq("id", id);
 
   if (error) {
     return NextResponse.json({ message: "후기 수정에 실패했습니다." }, { status: 500 });

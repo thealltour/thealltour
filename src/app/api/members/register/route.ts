@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createPasswordHash } from "@/lib/password";
 import { createNewMemberNotification } from "@/lib/adminNotifications";
 import { syncMemberCustomerProfiles } from "@/lib/customerAccountLinks";
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
 
   const { hash, salt } = createPasswordHash(password);
 
-  const insertResult = await supabase
+  const insertResult = await supabaseAdmin
     .from("members")
     .insert({
       username,

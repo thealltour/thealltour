@@ -3,10 +3,13 @@
 import { FormEvent, useState } from "react";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { useRouter } from "next/navigation";
+import { sanitizeAdminReturnTo } from "@/lib/adminConsolePaths";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function AdminLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = sanitizeAdminReturnTo(searchParams.get("next"));
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,7 +24,11 @@ export default function AdminLoginForm() {
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, password }),
+        body: JSON.stringify({
+          id,
+          password,
+          next: returnTo ?? undefined,
+        }),
       });
 
       const result = (await response.json()) as { message?: string; redirectTo?: string };
@@ -30,7 +37,7 @@ export default function AdminLoginForm() {
         return;
       }
 
-      router.push(result.redirectTo ?? "/theall_manager_only");
+      router.push(result.redirectTo ?? returnTo ?? "/theall_manager_only");
       router.refresh();
     } catch {
       setErrorMessage("로그인 중 네트워크 오류가 발생했습니다.");

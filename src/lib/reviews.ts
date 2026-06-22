@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { Review, ReviewStatus } from "@/types/review";
 
 /**
@@ -290,7 +291,7 @@ export async function saveDraftReview(
       if (existing.status === "submitted") {
         return { success: false, error: "already_submitted" };
       }
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from("reviews")
         .update(payload)
         .eq("id", existing.id);
@@ -302,7 +303,7 @@ export async function saveDraftReview(
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reviews")
     .insert(payload)
     .select("id")
@@ -358,7 +359,7 @@ export async function submitReview(
     }
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("reviews")
     .update(payload)
     .eq("id", reviewId);
@@ -413,7 +414,7 @@ export async function updateDraftReview(
     payload.image_url = updateData.imageUrls[0] ?? null;
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("reviews")
     .update(payload)
     .eq("id", reviewId);

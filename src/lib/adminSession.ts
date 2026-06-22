@@ -4,11 +4,11 @@ import {
   deriveLegacyRoleFromPermissions,
   type AdminSessionPermissions,
 } from "@/lib/adminPermissions";
+import { ADMIN_SESSION_JWT_MAX_AGE_SEC } from "@/lib/adminSessionPolicy";
 
-/** 관리자 쿠키 max-age(초) — 기존 admin login과 동일 12h */
-export const ADMIN_SESSION_MAX_AGE_SEC = 60 * 60 * 12;
-
-export type AdminSessionPayload = AdminSessionPermissions;
+export type AdminSessionPayload = AdminSessionPermissions & {
+  sessionId?: string;
+};
 
 const VALID_ROLES: readonly AdminRole[] = ["admin", "manager", "viewer"];
 
@@ -51,7 +51,9 @@ function parsePermissions(value: unknown): string[] {
   return value.filter((p): p is string => typeof p === "string");
 }
 
-function parseSessionPayload(payload: Record<string, unknown>): AdminSessionPayload | null {
+export function parseSessionPayloadFromJwt(
+  payload: Record<string, unknown>,
+): AdminSessionPayload | null {
   const isBootstrapAdmin = payload.isBootstrapAdmin === true;
   const permissions = parsePermissions(payload.permissions);
   const roleFromJwt = parseAdminRole(payload.role);
@@ -59,16 +61,25 @@ function parseSessionPayload(payload: Record<string, unknown>): AdminSessionPayl
     roleFromJwt ??
     deriveLegacyRoleFromPermissions(permissions, isBootstrapAdmin);
 
+  const sessionId =
+    typeof payload.sid === "string" && payload.sid.trim()
+      ? payload.sid.trim()
+      : undefined;
+
   return {
     role,
     permissions: isBootstrapAdmin ? ["*"] : permissions,
     isBootstrapAdmin,
     adminUserId: typeof payload.adminUserId === "string" ? payload.adminUserId : undefined,
     username: typeof payload.username === "string" ? payload.username : undefined,
+    sessionId,
   };
 }
 
-export async function createAdminSessionToken(session: AdminSessionPayload): Promise<string> {
+export async function createAdminSessionToken(
+  session: AdminSessionPayload,
+  sessionId: string,
+): Promise<string> {
   const secret = getAdminJwtSecretBytes();
   if (secret.length < 32) {
     throw new Error(
@@ -82,14 +93,16 @@ export async function createAdminSessionToken(session: AdminSessionPayload): Pro
     isBootstrapAdmin: session.isBootstrapAdmin,
     adminUserId: session.adminUserId,
     username: session.username,
+    sid: sessionId,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(`${ADMIN_SESSION_MAX_AGE_SEC}s`)
+    .setExpirationTime(`${ADMIN_SESSION_JWT_MAX_AGE_SEC}s`)
     .sign(secret);
 }
 
-export async function verifyAdminSessionToken(
+/** JWT 서명·만료만 검증 (DB 세션 검증 전 단계, Edge 호환) */
+export async function verifyAdminSessionJwt(
   token: string | undefined | null,
 ): Promise<AdminSessionPayload | null> {
   if (!token?.trim()) return null;
@@ -97,8 +110,20 @@ export async function verifyAdminSessionToken(
   if (secret.length < 32) return null;
   try {
     const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
-    return parseSessionPayload(payload as Record<string, unknown>);
+    return parseSessionPayloadFromJwt(payload as Record<string, unknown>);
   } catch {
     return null;
   }
+}
+
+/**
+ * JWT만 검증 — sid 없는 레거시 토큰은 null.
+ * DB 검증이 필요하면 resolveAdminSessionFromToken(adminSessionStore) 사용.
+ */
+export async function verifyAdminSessionToken(
+  token: string | undefined | null,
+): Promise<AdminSessionPayload | null> {
+  const jwtPayload = await verifyAdminSessionJwt(token);
+  if (!jwtPayload?.sessionId) return null;
+  return jwtPayload;
 }

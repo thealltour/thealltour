@@ -4,7 +4,7 @@
  * - review_id당 1회만 지급 (DB UNIQUE + 코드 확인).
  */
 import "server-only";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   DEFAULT_REVIEW_WRITE_POINTS,
   REWARD_TYPE_REVIEW_WRITE,
@@ -42,7 +42,7 @@ export async function createReviewReward(
     return { rewardCreated: false, points: 0 };
   }
 
-  const { data: existing } = await supabase
+  const { data: existing } = await supabaseAdmin
     .from("review_rewards")
     .select("id, points")
     .eq("review_id", review.id)
@@ -57,7 +57,7 @@ export async function createReviewReward(
   }
 
   const points = options?.points ?? DEFAULT_REVIEW_WRITE_POINTS;
-  const { error } = await supabase.from("review_rewards").insert({
+  const { error } = await supabaseAdmin.from("review_rewards").insert({
     review_id: review.id,
     member_id: memberId,
     reward_type: REWARD_TYPE_REVIEW_WRITE,

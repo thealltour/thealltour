@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 import { getReviewById } from "@/lib/reviews";
 
@@ -41,7 +41,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ message: "공개된 후기에만 투표할 수 있습니다." }, { status: 400 });
   }
 
-  const { data: existing } = await supabase
+  const { data: existing } = await supabaseAdmin
     .from("review_votes")
     .select("id")
     .eq("review_id", reviewId)
@@ -51,7 +51,7 @@ export async function POST(request: Request, context: RouteContext) {
     .maybeSingle();
 
   if (existing) {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("review_votes")
       .delete()
       .eq("review_id", reviewId)
@@ -60,7 +60,7 @@ export async function POST(request: Request, context: RouteContext) {
     if (error) {
       return NextResponse.json({ message: "투표 취소에 실패했습니다." }, { status: 500 });
     }
-    const { count } = await supabase
+    const { count } = await supabaseAdmin
       .from("review_votes")
       .select("id", { count: "exact", head: true })
       .eq("review_id", reviewId)
@@ -71,7 +71,7 @@ export async function POST(request: Request, context: RouteContext) {
     });
   }
 
-  const { error: insertError } = await supabase.from("review_votes").insert({
+  const { error: insertError } = await supabaseAdmin.from("review_votes").insert({
     review_id: reviewId,
     member_id: memberId,
     vote_type: VOTE_TYPE_HELPFUL,
@@ -80,7 +80,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ message: "투표에 실패했습니다." }, { status: 500 });
   }
 
-  const { count } = await supabase
+  const { count } = await supabaseAdmin
     .from("review_votes")
     .select("id", { count: "exact", head: true })
     .eq("review_id", reviewId)

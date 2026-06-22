@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
 import { LANDING_ANALYTICS_UNATTRIBUTED_SLUG } from "@/lib/adminLandings/analyticsConstants";
@@ -594,7 +593,7 @@ export async function POST(request: Request) {
   }
 
   // 1차: 전체 payload(quote_snapshot, customer_profile_id, product_*, source_path 포함)로 insert
-  const insertResultWithProduct = await supabase
+  const insertResultWithProduct = await supabaseAdmin
     .from("inquiries")
     .insert(insertPayload)
     .select("id")
@@ -618,7 +617,7 @@ export async function POST(request: Request) {
       if (insertPayload.customer_profile_id) {
         withoutQuote.customer_profile_id = insertPayload.customer_profile_id;
       }
-      const retryWithoutQuote = await supabase
+      const retryWithoutQuote = await supabaseAdmin
         .from("inquiries")
         .insert(withoutQuote)
         .select("id")
@@ -642,7 +641,7 @@ export async function POST(request: Request) {
         product_title: productTitle || null,
         source_path: sourcePath || null,
       };
-      const retryWithoutProfile = await supabase
+      const retryWithoutProfile = await supabaseAdmin
         .from("inquiries")
         .insert(withoutProfile)
         .select("id")
@@ -658,7 +657,7 @@ export async function POST(request: Request) {
 
     // 최종: 정말 불가할 때만 최소 필드 insert
     if (!inquiryId) {
-      const insertLegacy = await supabase
+      const insertLegacy = await supabaseAdmin
         .from("inquiries")
         .insert({
           name,

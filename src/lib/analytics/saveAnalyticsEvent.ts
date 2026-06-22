@@ -3,7 +3,7 @@
  * 실패 시 throw 하지 않고 로깅 후 결과만 반환하여 기존 UX에 영향을 주지 않는다.
  */
 
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { AnalyticsPayload } from "./types";
 
 export type SaveAnalyticsEventResult =
@@ -45,7 +45,7 @@ export async function saveAnalyticsEvent(
 ): Promise<SaveAnalyticsEventResult> {
   try {
     const row = toRow(payload);
-    const { error } = await supabase.from("analytics_events").insert(row).select("id").limit(1);
+    const { error } = await supabaseAdmin.from("analytics_events").insert(row).select("id").limit(1);
 
     if (error) {
       console.error("[analytics] saveAnalyticsEvent failed:", error.message, {

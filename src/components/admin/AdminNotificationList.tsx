@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AdminPushNotificationSettings } from "@/components/admin/pwa/AdminPushNotificationSettings";
+import { AdminLoggedDevicesSettings } from "@/components/admin/pwa/AdminLoggedDevicesSettings";
 import { isSmsNotificationType, notificationTypeIcon } from "@/lib/adminNotificationTypes";
 import { syncAdminAppBadge } from "@/lib/adminPwaClient";
 
@@ -136,8 +137,9 @@ export default function AdminNotificationList() {
 
   return (
     <div className="space-y-4">
-      <div className="px-4 pt-4">
+      <div className="space-y-4 px-4 pt-4">
         <AdminPushNotificationSettings />
+        <AdminLoggedDevicesSettings />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 px-4">
         <p className="text-sm text-[var(--text-secondary)]">

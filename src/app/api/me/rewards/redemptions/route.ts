@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 import {
   createRewardRedemption,
@@ -13,7 +13,7 @@ export async function GET() {
   if (auth.res) return auth.res;
   const userId = auth.session.memberId;
 
-  const { data: rows, error } = await supabase
+  const { data: rows, error } = await supabaseAdmin
     .from("reward_redemptions")
     .select(`
       id,
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         contactTime: body.contactTime?.trim(),
         userMessage: body.userMessage?.trim(),
       },
-      supabase,
+      supabaseAdmin,
     );
     return NextResponse.json(
       { id: result.id, message: "리워드 교환 신청이 접수되었습니다." },

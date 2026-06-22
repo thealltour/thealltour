@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 import { getStorageProvider } from "@/lib/storage";
 import {
@@ -27,7 +27,7 @@ export async function GET() {
   if (auth.res) return auth.res;
   const userId = auth.session.memberId;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("point_earn_requests")
     .select(EARN_REQUEST_LIST_FIELDS)
     .eq("user_id", userId)
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   let bookingId: string | null = bookingIdRaw || null;
 
   if (bookingId) {
-    const { data: booking, error: bookErr } = await supabase
+    const { data: booking, error: bookErr } = await supabaseAdmin
       .from("travel_bookings")
       .select("id, booking_number, booking_status, member_id, customer_profile_id, traveler_count, departure_date")
       .eq("id", bookingId)
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "예약번호가 선택한 예약과 일치하지 않습니다." }, { status: 400 });
     }
 
-    const { data: dupByBooking } = await supabase
+    const { data: dupByBooking } = await supabaseAdmin
       .from("point_earn_requests")
       .select("id")
       .eq("booking_id", bookingId)
@@ -117,12 +117,12 @@ export async function POST(request: Request) {
   }
 
   const [activeRes, dupRes] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from("point_earn_requests")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("status", "REQUESTED"),
-    supabase
+    supabaseAdmin
       .from("point_earn_requests")
       .select("id")
       .eq("booking_ref", bookingRef)
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "이미 등록된 예약번호입니다." }, { status: 400 });
   }
 
-  const { data: reqRow, error: reqErr } = await supabase
+  const { data: reqRow, error: reqErr } = await supabaseAdmin
     .from("point_earn_requests")
     .insert({
       user_id: userId,
@@ -186,13 +186,13 @@ export async function POST(request: Request) {
       });
     }
 
-    const { error: attachErr } = await supabase.from("earn_request_attachments").insert(uploaded);
+    const { error: attachErr } = await supabaseAdmin.from("earn_request_attachments").insert(uploaded);
     if (attachErr) {
-      await supabase.from("point_earn_requests").delete().eq("id", requestId);
+      await supabaseAdmin.from("point_earn_requests").delete().eq("id", requestId);
       return NextResponse.json({ message: "증빙 파일 저장에 실패했습니다." }, { status: 500 });
     }
 
-    await supabase.from("notifications").insert({
+    await supabaseAdmin.from("notifications").insert({
       user_id: userId,
       type: "ADMIN_MESSAGE",
       title: "포인트 적립 요청 접수",
@@ -201,7 +201,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id: requestId, message: "적립 요청이 접수되었습니다." }, { status: 201 });
   } catch (error) {
-    await supabase.from("point_earn_requests").delete().eq("id", requestId);
+    await supabaseAdmin.from("point_earn_requests").delete().eq("id", requestId);
     const message = error instanceof Error ? error.message : "파일 업로드에 실패했습니다.";
     return NextResponse.json({ message }, { status: 500 });
   }

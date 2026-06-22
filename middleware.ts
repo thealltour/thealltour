@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ADMIN_AUTH_COOKIE } from "@/lib/adminAuth";
+import { sanitizeAdminReturnTo } from "@/lib/adminConsolePaths";
 import {
   getDefaultLandingPathForSession,
   isInquiriesApiPath,
   isSessionAllowedForApiPath,
 } from "@/lib/adminRolePolicy";
-import { verifyAdminSessionToken } from "@/lib/adminSession";
+import { resolveAdminSessionFromRequestToken } from "@/lib/adminSessionEdge";
 
 const LEGACY_ADMIN_PREFIX = "/admin";
 const MANAGER_PREFIX = "/theall_manager_only";
@@ -14,7 +15,7 @@ const MANAGER_LOGIN_PATH = `${MANAGER_PREFIX}/login`;
 
 async function getAdminSession(request: NextRequest) {
   const token = request.cookies.get(ADMIN_AUTH_COOKIE)?.value;
-  return verifyAdminSessionToken(token);
+  return resolveAdminSessionFromRequestToken(token);
 }
 
 export async function middleware(request: NextRequest) {
@@ -33,10 +34,15 @@ export async function middleware(request: NextRequest) {
   if (isManagerPath) {
     if (pathname === MANAGER_LOGIN_PATH) {
       if (authenticated && session) {
-        return NextResponse.redirect(new URL(getDefaultLandingPathForSession(session), request.url));
+        const next = sanitizeAdminReturnTo(request.nextUrl.searchParams.get("next"));
+        const destination = next ?? getDefaultLandingPathForSession(session);
+        return NextResponse.redirect(new URL(destination, request.url));
       }
     } else if (!authenticated) {
-      return NextResponse.redirect(new URL(MANAGER_LOGIN_PATH, request.url));
+      const loginUrl = new URL(MANAGER_LOGIN_PATH, request.url);
+      const returnTo = `${pathname}${request.nextUrl.search}`;
+      loginUrl.searchParams.set("next", returnTo);
+      return NextResponse.redirect(loginUrl);
     }
   }
 

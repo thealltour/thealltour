@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 
 export async function GET(
@@ -11,7 +11,7 @@ export async function GET(
   const userId = auth.session.memberId;
   const { id } = await context.params;
 
-  const { data: row, error } = await supabase
+  const { data: row, error } = await supabaseAdmin
     .from("point_earn_requests")
     .select(
       "id, user_id, status, booking_ref, departure_date, payer_name, traveler_count, gift_status, shipping_name, shipping_phone, shipping_zip, shipping_address1, shipping_address2, memo, contact_phone, admin_memo, reject_reason, requested_at, decided_at",
@@ -26,7 +26,7 @@ export async function GET(
     return NextResponse.json({ message: "권한이 없습니다." }, { status: 403 });
   }
 
-  const { data: attachments } = await supabase
+  const { data: attachments } = await supabaseAdmin
     .from("earn_request_attachments")
     .select("id, file_url, file_name, mime_type, file_size, created_at")
     .eq("request_id", id)

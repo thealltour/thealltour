@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 
 /** 회원: 알림 읽음 처리 */
@@ -16,7 +16,7 @@ export async function POST(
     return NextResponse.json({ message: "알림 ID가 필요합니다." }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("notifications")
     .update({ is_read: true })
     .eq("id", id)

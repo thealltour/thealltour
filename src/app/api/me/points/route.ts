@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 import type { PointLedgerRow } from "@/types/pointsRewardsV2";
 
@@ -12,14 +12,14 @@ export async function GET() {
   const userId = auth.session.memberId;
 
   const [memberRes, ledgerRes, expiringRes] = await Promise.all([
-    supabase.from("members").select("point_balance, point_pending").eq("id", userId).maybeSingle(),
-    supabase
+    supabaseAdmin.from("members").select("point_balance, point_pending").eq("id", userId).maybeSingle(),
+    supabaseAdmin
       .from("point_ledger")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(LEDGER_PAGE_SIZE),
-    supabase
+    supabaseAdmin
       .from("point_ledger")
       .select("amount")
       .eq("user_id", userId)

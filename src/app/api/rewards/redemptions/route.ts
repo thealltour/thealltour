@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireMemberSession } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   createRewardRedemption,
   mapRedemptionServiceError,
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         shippingZip: shipping?.shipping_zip?.trim() || null,
         userMessage: body.userMessage?.trim(),
       },
-      supabase,
+      supabaseAdmin,
     );
     return NextResponse.json(
       { id: result.id, message: "리워드 교환 신청이 접수되었습니다." },

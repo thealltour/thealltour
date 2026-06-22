@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 
 const PAGE_SIZE = 50;
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || PAGE_SIZE));
   const unreadOnly = searchParams.get("unreadOnly") === "true";
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("notifications")
     .select("id, type, title, body, is_read, created_at")
     .eq("user_id", userId)

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** 활성 경품 목록, sort_order 순. 공개 API. */
 export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reward_catalog")
     .select("id, title, description, point_cost, stock, image_url, is_active, sort_order, created_at")
     .eq("is_active", true)

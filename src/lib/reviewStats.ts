@@ -159,7 +159,7 @@ export async function getPublicReviews(
 
   const reviewIds = items.map((r) => r.id);
   if (reviewIds.length > 0) {
-    const { data: votesRows } = await supabase
+    const { data: votesRows } = await supabaseAdmin
       .from("review_votes")
       .select("review_id")
       .eq("vote_type", "helpful")
@@ -173,7 +173,7 @@ export async function getPublicReviews(
     let viewerReportedIds = new Set<string>();
     if (viewerMemberId) {
       const [votesRes, reportsRes] = await Promise.all([
-        supabase
+        supabaseAdmin
           .from("review_votes")
           .select("review_id")
           .eq("member_id", viewerMemberId)
@@ -339,7 +339,7 @@ export async function getPublicReviewById(
   if (error || !data) return null;
   const item = toPublicReviewItem(data as Record<string, unknown>);
 
-  const { count } = await supabase
+  const { count } = await supabaseAdmin
     .from("review_votes")
     .select("id", { count: "exact", head: true })
     .eq("review_id", reviewId)

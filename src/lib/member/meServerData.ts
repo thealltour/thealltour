@@ -4,7 +4,6 @@
  */
 import "server-only";
 
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { PointLedgerRow } from "@/types/pointsRewardsV2";
 
@@ -149,7 +148,7 @@ export async function getMemberRedemptionList(memberId: string): Promise<MemberR
 }
 
 export async function getActiveRewardCatalog(): Promise<RewardCatalogItem[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reward_catalog")
     .select("id, title, description, point_cost, stock, image_url, is_active, sort_order, created_at")
     .eq("is_active", true)

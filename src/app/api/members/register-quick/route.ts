@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { MEMBER_AUTH_COOKIE } from "@/lib/memberSession";
+import {
+  getMemberSessionCookieOptions,
+  MEMBER_SESSION_REMEMBER_MAX_AGE_SEC,
+} from "@/lib/memberSessionPolicy";
 import { registerMemberQuick } from "@/lib/members/registerQuick";
 import type { QuickRegisterInput } from "@/lib/members/registerQuick";
 
@@ -24,12 +28,10 @@ export async function POST(request: Request) {
   }
 
   const response = NextResponse.json({ message: "회원가입이 완료되었습니다." }, { status: 201 });
-  response.cookies.set(MEMBER_AUTH_COOKIE, result.token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  response.cookies.set(
+    MEMBER_AUTH_COOKIE,
+    result.token,
+    getMemberSessionCookieOptions(MEMBER_SESSION_REMEMBER_MAX_AGE_SEC),
+  );
   return response;
 }

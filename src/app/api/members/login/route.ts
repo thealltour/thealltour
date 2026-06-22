@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { MEMBER_AUTH_COOKIE } from "@/lib/memberSession";
+import {
+  getMemberSessionCookieOptions,
+  resolveMemberSessionMaxAgeSec,
+} from "@/lib/memberSessionPolicy";
 import { loginMemberWithCredentials } from "@/lib/members/loginMember";
 
 type LoginBody = {
   username?: string;
   identifier?: string;
   password?: string;
+  rememberMe?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -20,13 +25,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: result.message }, { status: result.status });
   }
 
+  const maxAge = resolveMemberSessionMaxAgeSec(body.rememberMe);
   const response = NextResponse.json({ message: "로그인되었습니다." });
-  response.cookies.set(MEMBER_AUTH_COOKIE, result.token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  response.cookies.set(
+    MEMBER_AUTH_COOKIE,
+    result.token,
+    getMemberSessionCookieOptions(maxAge),
+  );
   return response;
 }

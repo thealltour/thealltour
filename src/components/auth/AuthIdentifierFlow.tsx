@@ -35,6 +35,7 @@ export default function AuthIdentifierFlow({ nextPath = "/", onSuccess }: AuthId
   const [identifierKind, setIdentifierKind] = useState<IdentifierKind>("email");
   const [maskedIdentifier, setMaskedIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [name, setName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [supplementEmail, setSupplementEmail] = useState("");
@@ -95,7 +96,7 @@ export default function AuthIdentifierFlow({ nextPath = "/", onSuccess }: AuthId
       const response = await fetch("/api/members/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier, password, rememberMe }),
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
@@ -191,6 +192,15 @@ export default function AuthIdentifierFlow({ nextPath = "/", onSuccess }: AuthId
             onChange={(event) => setPassword(event.target.value)}
             className="rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
           />
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(event) => setRememberMe(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-[var(--accent)] focus:ring-[var(--focus-ring)]"
+          />
+          로그인 상태 유지
         </label>
         <button
           type="submit"

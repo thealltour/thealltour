@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { RewardCatalogRow } from "@/types/pointsRewardsV2";
 
 /** 교환 가능 경품 목록 (비로그인도 조회 가능) */
 export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reward_catalog")
     .select("*")
     .eq("is_active", true)

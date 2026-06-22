@@ -8,6 +8,7 @@ export type LandingPublishValidationIssue = {
 
 export type AdminLandingTemplateType =
   | "destination_consulting"
+  | "destination_golf_consulting"
   | "theme_consulting"
   | "product_line_consulting"
   | "recommended_collection"
@@ -15,7 +16,16 @@ export type AdminLandingTemplateType =
 
 export type LandingTaxonomyType = "destination" | "theme" | "product_line";
 
-export type LandingGenerationEligibilityReason = "HAS_PRODUCTS" | "PRODUCT_LINE_PRESEED";
+/** taxonomy 기반 랜딩 생성 후보 종류 (destination_golf는 taxonomy_type은 destination 유지) */
+export type LandingGenerationCandidateKind = "standard" | "destination_golf";
+
+/** API 필터용 — destination_golf는 가상 유형 */
+export type LandingGenerationFilterType = LandingTaxonomyType | "destination_golf" | "all";
+
+export type LandingGenerationEligibilityReason =
+  | "HAS_PRODUCTS"
+  | "HAS_GOLF_PRODUCTS"
+  | "PRODUCT_LINE_PRESEED";
 
 export type AdminLandingSectionType =
   | "hero"
@@ -82,6 +92,7 @@ export type AdminLandingListResponse = {
 };
 
 export type LandingGenerationCandidate = {
+  candidateKind: LandingGenerationCandidateKind;
   taxonomyId: string;
   taxonomyType: LandingTaxonomyType;
   taxonomyName: string;
@@ -97,6 +108,7 @@ export type LandingGenerationCandidate = {
   suggestedSlug: string;
   suggestedTemplateType:
     | "destination_consulting"
+    | "destination_golf_consulting"
     | "theme_consulting"
     | "product_line_consulting";
   suggestedQuoteCategory: string | null;
@@ -113,6 +125,7 @@ export type LandingGenerationCandidatesResponse = {
 export type LandingGenerationRequestItem = {
   taxonomyId: string;
   taxonomyType: LandingTaxonomyType;
+  candidateKind?: LandingGenerationCandidateKind;
 };
 
 export type LandingGenerationResultEntry = {

@@ -13,6 +13,7 @@ import type { Product } from "@/types/product";
 
 export type GolfTourProductsSectionProps = {
   products: Product[];
+  moreHref?: string;
   eyebrow?: string | null;
   title?: string | null;
   description?: string | null;
@@ -24,12 +25,15 @@ export type GolfTourProductsSectionProps = {
  */
 export default function GolfTourProductsSection({
   products,
+  moreHref,
   eyebrow,
   title,
   description,
   className,
 }: GolfTourProductsSectionProps) {
   if (products.length === 0) return null;
+
+  const href = moreHref?.trim() || buildGolfProductsHref();
 
   return (
     <SectionBlock
@@ -43,7 +47,7 @@ export default function GolfTourProductsSection({
         description={description?.trim() || undefined}
         action={
           <Link
-            href={buildGolfProductsHref()}
+            href={href}
             className={SECTION_HEADER_MOBILE_CTA_CLASS}
             aria-label="골프투어 상품 더보기"
           >

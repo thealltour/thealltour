@@ -21,15 +21,18 @@ import {
   buildThemeTree,
 } from "@/lib/productTaxonomies";
 import { getProducts } from "@/lib/products";
+import { getPublishedGolfDestinationLandings } from "@/lib/golfLandingLinks";
+import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 
 export const metadata: Metadata = buildOgMetadataFromSeoData(getRecommendedOgPageSeo());
 
 export default async function RecommendedHubPage() {
-  const [{ settings, sections }, products, destinations, hubThemes] = await Promise.all([
+  const [{ settings, sections }, products, destinations, hubThemes, golfLandings] = await Promise.all([
     getHomeCuratedData(),
     getProducts(),
     getHubDestinations(),
     getHubThemes(),
+    getPublishedGolfDestinationLandings(),
   ]);
   const taxonomyOptions = await getProductTaxonomyOptions(products);
   const { categories, themes, productLines } = taxonomyOptions;
@@ -113,6 +116,43 @@ export default async function RecommendedHubPage() {
               </div>
             </SectionBlock>
           )}
+
+          <SectionBlock surface="none" padding="md">
+            <SectionHeader
+              eyebrow="골프여행"
+              title="골프 지역별 상담 랜딩"
+              description="지역별 골프 상품과 맞춤 상담을 한곳에서 확인할 수 있습니다."
+              align="left"
+            />
+            {golfLandings.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-3">
+                {golfLandings.map((landing) => (
+                  <Link
+                    key={landing.id}
+                    href={landing.href}
+                    className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-2.5 font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+                  >
+                    {landing.title}
+                  </Link>
+                ))}
+                <Link
+                  href={buildGolfProductsHref()}
+                  className="type-btn inline-flex rounded-xl border border-dashed border-[var(--border-strong)] bg-transparent px-4 py-2.5 font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)]"
+                >
+                  골프 전체 보기
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <Link
+                  href={buildGolfProductsHref()}
+                  className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-2.5 font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+                >
+                  골프 상품 전체 보기
+                </Link>
+              </div>
+            )}
+          </SectionBlock>
 
           <SectionBlock surface="none" padding="md">
             <SectionHeader

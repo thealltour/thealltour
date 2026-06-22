@@ -3,6 +3,7 @@ import { createAdminLanding } from "@/lib/adminLandings/service";
 import { listLandingGenerationCandidates, toCandidateKey } from "@/lib/adminLandings/generationRepository";
 import type {
   LandingGenerationCandidatesResponse,
+  LandingGenerationFilterType,
   LandingGenerationRequestItem,
   LandingGenerationResult,
   LandingGenerationResultEntry,
@@ -28,7 +29,7 @@ function toSummary(item: {
 }
 
 export async function getLandingGenerationCandidates(input: {
-  taxonomyType?: "all" | LandingTaxonomyType;
+  taxonomyType?: LandingGenerationFilterType;
   alreadyGenerated?: boolean | null;
 }): Promise<LandingGenerationCandidatesResponse> {
   const items = await listLandingGenerationCandidates({
@@ -45,7 +46,16 @@ export async function generateLandingsFromTaxonomy(
     taxonomyType: "all",
     alreadyGenerated: null,
   });
-  const byKey = new Map(candidates.map((candidate) => [toCandidateKey(candidate), candidate]));
+  const byKey = new Map(
+    candidates.map((candidate) => [
+      toCandidateKey({
+        taxonomyId: candidate.taxonomyId,
+        taxonomyType: candidate.taxonomyType,
+        candidateKind: candidate.candidateKind,
+      }),
+      candidate,
+    ]),
+  );
 
   const created: LandingGenerationResultEntry[] = [];
   const skipped: LandingGenerationResultEntry[] = [];
@@ -87,6 +97,7 @@ export async function generateLandingsFromTaxonomy(
         suggestedSlug: candidate.suggestedSlug,
         suggestedSourcePath: candidate.suggestedSourcePath,
         suggestedQuoteCategory: candidate.suggestedQuoteCategory,
+        candidateKind: candidate.candidateKind,
       });
       const item = await createAdminLanding({
         title: copy.title,

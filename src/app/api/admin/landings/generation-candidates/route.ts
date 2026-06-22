@@ -9,18 +9,26 @@ function parseAlreadyGenerated(value: string | null): boolean | null {
   return null;
 }
 
+import type { LandingGenerationFilterType } from "@/types/adminLanding";
+
+function parseTaxonomyType(value: string | null): LandingGenerationFilterType {
+  if (
+    value === "destination" ||
+    value === "theme" ||
+    value === "product_line" ||
+    value === "destination_golf"
+  ) {
+    return value;
+  }
+  return "all";
+}
+
 export async function GET(request: Request) {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.res;
 
   const { searchParams } = new URL(request.url);
-  const taxonomyTypeRaw = searchParams.get("taxonomyType");
-  const taxonomyType =
-    taxonomyTypeRaw === "destination" ||
-    taxonomyTypeRaw === "theme" ||
-    taxonomyTypeRaw === "product_line"
-      ? taxonomyTypeRaw
-      : "all";
+  const taxonomyType = parseTaxonomyType(searchParams.get("taxonomyType"));
   const alreadyGenerated = parseAlreadyGenerated(searchParams.get("alreadyGenerated"));
 
   try {

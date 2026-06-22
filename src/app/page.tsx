@@ -10,7 +10,7 @@ import { getHomeBanners } from "@/lib/homeBanners";
 import { getHeroContent, resolveHeroContent } from "@/lib/heroContent";
 import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
 import { getSiteSettings, parseHomeRegionCardIds, parseHomeThemeCardIds } from "@/lib/siteSettings";
-import { getHomeGolfTourProducts } from "@/lib/homeGolfTourProducts";
+import { getHomeGolfTourProducts, resolveHomeGolfTourMoreHref } from "@/lib/homeGolfTourProducts";
 import { getGolfDepartureCalendarData } from "@/lib/products/getGolfDepartureCalendarProducts";
 import { getHomeGuidesWithTaxonomyNames } from "@/lib/guides";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
@@ -70,6 +70,8 @@ export default async function Home() {
       getTopRatedPublishedReviews(4),
     ]);
 
+  const golfTourMoreHref = await resolveHomeGolfTourMoreHref(golfTourProducts);
+
   const curatedSettings = homeCurated.settings;
   const curatedSections = homeCurated.sections;
   const hero = resolveHeroContent(heroContent);
@@ -107,6 +109,7 @@ export default async function Home() {
             <HomeDeferredSections
               golfTour={{
                 products: golfTourProducts,
+                moreHref: golfTourMoreHref,
                 eyebrow: settings.home_golf_tour_section_eyebrow,
                 title: settings.home_golf_tour_section_title,
                 description: settings.home_golf_tour_section_description,

@@ -2,19 +2,22 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
+  resolveDestinationGolfProductCounts,
   resolveDestinationProductCounts,
   resolveProductLineProductCounts,
   resolveThemeProductCounts,
 } from "@/lib/adminLandings/taxonomyCandidateResolver";
 import type {
   LandingGenerationCandidate,
+  LandingGenerationCandidateKind,
   LandingGenerationEligibilityReason,
+  LandingGenerationFilterType,
   LandingGenerationRequestItem,
   LandingTaxonomyType,
 } from "@/types/adminLanding";
 
 type CandidateFilter = {
-  taxonomyType?: "all" | LandingTaxonomyType;
+  taxonomyType?: LandingGenerationFilterType;
   alreadyGenerated?: boolean | null;
 };
 
@@ -70,23 +73,139 @@ function buildSuggested(baseSlug: string, taxonomyName: string, taxonomyType: La
   };
 }
 
+function buildGolfDestinationSuggested(baseSlug: string, taxonomyName: string) {
+  const name = taxonomyName.trim();
+  const root = baseSlug.trim() ? normalizeSlug(baseSlug) : normalizeSlug(name);
+  const slug = root.endsWith("-golf-travel") ? root : `${root}-golf-travel`;
+  const title = `${name} 골프투어`;
+  const suggestedSourcePath = slug ? `/recommended/${encodeURIComponent(slug)}` : null;
+  return {
+    title,
+    slug,
+    templateType: "destination_golf_consulting" as const,
+    quoteCategory: root ? `${root}-golf` : null,
+    normalizedRootSlug: root || null,
+    suggestedSourcePath,
+  };
+}
+
 function matchExistingLanding(
   existing: ExistingLanding[],
   taxonomy: RawTaxonomy,
   suggestedSlug: string,
+  candidateKind: LandingGenerationCandidateKind,
 ): ExistingLanding | null {
   const taxonomyId = taxonomy.id;
   const taxonomyType = taxonomy.taxonomy_type;
   const taxonomySlug = normalizeSlug(taxonomy.slug ?? taxonomy.name);
+  const golfTemplate = candidateKind === "destination_golf" ? "destination_golf_consulting" : null;
+
   for (const row of existing) {
     const sourceId = row.source_taxonomy_id?.trim();
     const sourceType = row.source_taxonomy_type?.trim();
     const sourceSlug = row.source_taxonomy_slug?.trim();
+    if (golfTemplate) {
+      if (row.template_type === golfTemplate && sourceId === taxonomyId && sourceType === taxonomyType) {
+        return row;
+      }
+      if (row.slug && normalizeSlug(row.slug) === suggestedSlug) return row;
+      continue;
+    }
+    if (row.template_type === "destination_golf_consulting" && sourceId === taxonomyId) continue;
     if (sourceId && sourceType && sourceId === taxonomyId && sourceType === taxonomyType) return row;
-    if (sourceSlug && sourceType && normalizeSlug(sourceSlug) === taxonomySlug && sourceType === taxonomyType) return row;
+    if (sourceSlug && sourceType && normalizeSlug(sourceSlug) === taxonomySlug && sourceType === taxonomyType) {
+      return row;
+    }
     if (row.slug && normalizeSlug(row.slug) === suggestedSlug) return row;
   }
   return null;
+}
+
+function isLandingRowRelevant(row: ExistingLanding): boolean {
+  if (!row.slug) return false;
+  if (
+    row.template_type === "destination_consulting" ||
+    row.template_type === "destination_golf_consulting" ||
+    row.template_type === "theme_consulting" ||
+    row.template_type === "product_line_consulting" ||
+    row.template_type === "recommended_collection" ||
+    row.template_type === "custom"
+  ) {
+    return true;
+  }
+  return row.source_taxonomy_id != null || row.source_taxonomy_slug != null;
+}
+
+function buildStandardCandidate(
+  tax: RawTaxonomy,
+  productCount: number,
+  existing: ExistingLanding[],
+): LandingGenerationCandidate | null {
+  if (tax.taxonomy_type !== "product_line" && productCount <= 0) return null;
+
+  const eligibilityReason: LandingGenerationEligibilityReason =
+    tax.taxonomy_type === "product_line" && productCount === 0
+      ? "PRODUCT_LINE_PRESEED"
+      : "HAS_PRODUCTS";
+  const isPreseedCandidate = eligibilityReason === "PRODUCT_LINE_PRESEED";
+  const taxonomySlug = normalizeSlug(tax.slug ?? tax.name);
+  if (!taxonomySlug) return null;
+
+  const suggested = buildSuggested(tax.slug ?? "", tax.name, tax.taxonomy_type);
+  const matched = matchExistingLanding(existing, tax, suggested.slug, "standard");
+
+  return {
+    candidateKind: "standard",
+    taxonomyId: tax.id,
+    taxonomyType: tax.taxonomy_type,
+    taxonomyName: tax.name,
+    taxonomySlug,
+    normalizedRootSlug: suggested.normalizedRootSlug ?? null,
+    suggestedSourcePath: suggested.suggestedSourcePath ?? null,
+    productCount,
+    eligibilityReason,
+    isPreseedCandidate,
+    suggestedTitle: suggested.title,
+    suggestedSlug: suggested.slug,
+    suggestedTemplateType: suggested.templateType,
+    suggestedQuoteCategory: suggested.quoteCategory,
+    existingLandingId: matched?.id ?? null,
+    existingLandingSlug: matched?.slug ?? null,
+    isAlreadyGenerated: Boolean(matched),
+  };
+}
+
+function buildGolfDestinationCandidate(
+  tax: RawTaxonomy,
+  golfProductCount: number,
+  existing: ExistingLanding[],
+): LandingGenerationCandidate | null {
+  if (golfProductCount <= 0) return null;
+  const taxonomySlug = normalizeSlug(tax.slug ?? tax.name);
+  if (!taxonomySlug) return null;
+
+  const suggested = buildGolfDestinationSuggested(tax.slug ?? "", tax.name);
+  const matched = matchExistingLanding(existing, tax, suggested.slug, "destination_golf");
+
+  return {
+    candidateKind: "destination_golf",
+    taxonomyId: tax.id,
+    taxonomyType: "destination",
+    taxonomyName: tax.name,
+    taxonomySlug,
+    normalizedRootSlug: suggested.normalizedRootSlug ?? null,
+    suggestedSourcePath: suggested.suggestedSourcePath ?? null,
+    productCount: golfProductCount,
+    eligibilityReason: "HAS_GOLF_PRODUCTS",
+    isPreseedCandidate: false,
+    suggestedTitle: suggested.title,
+    suggestedSlug: suggested.slug,
+    suggestedTemplateType: suggested.templateType,
+    suggestedQuoteCategory: suggested.quoteCategory,
+    existingLandingId: matched?.id ?? null,
+    existingLandingSlug: matched?.slug ?? null,
+    isAlreadyGenerated: Boolean(matched),
+  };
 }
 
 export async function listLandingGenerationCandidates(
@@ -111,8 +230,9 @@ export async function listLandingGenerationCandidates(
   const themeActiveTax = themeTax.filter((t) => t.name.trim().length > 0);
   const productLineTax = taxonomies.filter((t) => t.taxonomy_type === "product_line");
 
-  const [destinationCount, themeCount, productLineCount] = await Promise.all([
+  const [destinationCount, destinationGolfCount, themeCount, productLineCount] = await Promise.all([
     resolveDestinationProductCounts(destinationTax),
+    resolveDestinationGolfProductCounts(destinationTax),
     resolveThemeProductCounts(themeActiveTax),
     resolveProductLineProductCounts(productLineTax),
   ]);
@@ -121,75 +241,57 @@ export async function listLandingGenerationCandidates(
     .from("home_curated_sections")
     .select("*");
   if (existingErr) throw new Error(existingErr.message);
-  const existing = (existingRows ?? []).map((row) => {
-    const r = row as Record<string, unknown>;
-    return {
-      id: String(r.id ?? ""),
-      slug: typeof r.slug === "string" ? r.slug : null,
-      template_type: typeof r.template_type === "string" ? r.template_type : null,
-      quote_category: typeof r.quote_category === "string" ? r.quote_category : null,
-      source_path: typeof r.source_path === "string" ? r.source_path : null,
-      source_taxonomy_id: typeof r.source_taxonomy_id === "string" ? r.source_taxonomy_id : null,
-      source_taxonomy_type: typeof r.source_taxonomy_type === "string" ? r.source_taxonomy_type : null,
-      source_taxonomy_slug: typeof r.source_taxonomy_slug === "string" ? r.source_taxonomy_slug : null,
-    } as ExistingLanding;
-  }).filter((row) => {
-    if (!row.slug) return false;
-    if (
-      row.template_type === "destination_consulting" ||
-      row.template_type === "theme_consulting" ||
-      row.template_type === "product_line_consulting" ||
-      row.template_type === "recommended_collection" ||
-      row.template_type === "custom"
-    ) {
-      return true;
-    }
-    return row.source_taxonomy_id != null || row.source_taxonomy_slug != null;
-  });
+  const existing = (existingRows ?? [])
+    .map((row) => {
+      const r = row as Record<string, unknown>;
+      return {
+        id: String(r.id ?? ""),
+        slug: typeof r.slug === "string" ? r.slug : null,
+        template_type: typeof r.template_type === "string" ? r.template_type : null,
+        quote_category: typeof r.quote_category === "string" ? r.quote_category : null,
+        source_path: typeof r.source_path === "string" ? r.source_path : null,
+        source_taxonomy_id: typeof r.source_taxonomy_id === "string" ? r.source_taxonomy_id : null,
+        source_taxonomy_type: typeof r.source_taxonomy_type === "string" ? r.source_taxonomy_type : null,
+        source_taxonomy_slug: typeof r.source_taxonomy_slug === "string" ? r.source_taxonomy_slug : null,
+      } as ExistingLanding;
+    })
+    .filter(isLandingRowRelevant);
 
   const candidates: LandingGenerationCandidate[] = [];
-  for (const tax of taxonomies) {
-    if (targetType !== "all" && tax.taxonomy_type !== targetType) continue;
-    if (!tax.name?.trim()) continue;
-    const taxonomySlug = normalizeSlug(tax.slug ?? tax.name);
-    if (!taxonomySlug) continue;
 
-    const productCount =
-      tax.taxonomy_type === "destination"
-        ? (destinationCount.get(tax.id) ?? 0)
-        : tax.taxonomy_type === "theme"
-          ? (themeCount.get(tax.id) ?? 0)
-          : (productLineCount.get(tax.id) ?? 0);
+  if (targetType === "destination_golf") {
+    for (const tax of destinationTax) {
+      const item = buildGolfDestinationCandidate(
+        tax,
+        destinationGolfCount.get(tax.id) ?? 0,
+        existing,
+      );
+      if (item) candidates.push(item);
+    }
+  } else {
+    for (const tax of taxonomies) {
+      if (targetType !== "all" && tax.taxonomy_type !== targetType) continue;
+      if (!tax.name?.trim()) continue;
 
-    if (tax.taxonomy_type !== "product_line" && productCount <= 0) continue;
+      const productCount =
+        tax.taxonomy_type === "destination"
+          ? (destinationCount.get(tax.id) ?? 0)
+          : tax.taxonomy_type === "theme"
+            ? (themeCount.get(tax.id) ?? 0)
+            : (productLineCount.get(tax.id) ?? 0);
 
-    const eligibilityReason: LandingGenerationEligibilityReason =
-      tax.taxonomy_type === "product_line" && productCount === 0
-        ? "PRODUCT_LINE_PRESEED"
-        : "HAS_PRODUCTS";
-    const isPreseedCandidate = eligibilityReason === "PRODUCT_LINE_PRESEED";
+      const item = buildStandardCandidate(tax, productCount, existing);
+      if (item) candidates.push(item);
 
-    const suggested = buildSuggested(tax.slug ?? "", tax.name, tax.taxonomy_type);
-    const matched = matchExistingLanding(existing, tax, suggested.slug);
-    const item: LandingGenerationCandidate = {
-      taxonomyId: tax.id,
-      taxonomyType: tax.taxonomy_type,
-      taxonomyName: tax.name,
-      taxonomySlug,
-      normalizedRootSlug: suggested.normalizedRootSlug ?? null,
-      suggestedSourcePath: suggested.suggestedSourcePath ?? null,
-      productCount,
-      eligibilityReason,
-      isPreseedCandidate,
-      suggestedTitle: suggested.title,
-      suggestedSlug: suggested.slug,
-      suggestedTemplateType: suggested.templateType,
-      suggestedQuoteCategory: suggested.quoteCategory,
-      existingLandingId: matched?.id ?? null,
-      existingLandingSlug: matched?.slug ?? null,
-      isAlreadyGenerated: Boolean(matched),
-    };
-    candidates.push(item);
+      if (targetType === "all" && tax.taxonomy_type === "destination") {
+        const golfItem = buildGolfDestinationCandidate(
+          tax,
+          destinationGolfCount.get(tax.id) ?? 0,
+          existing,
+        );
+        if (golfItem) candidates.push(golfItem);
+      }
+    }
   }
 
   const alreadyGeneratedFilter = filter.alreadyGenerated;
@@ -200,6 +302,9 @@ export async function listLandingGenerationCandidates(
 
   return filtered.sort((a, b) => {
     if (a.isAlreadyGenerated !== b.isAlreadyGenerated) return a.isAlreadyGenerated ? 1 : -1;
+    if (a.candidateKind !== b.candidateKind) {
+      return a.candidateKind === "destination_golf" ? -1 : 1;
+    }
     if (a.taxonomyType !== b.taxonomyType) return a.taxonomyType.localeCompare(b.taxonomyType);
     if (b.productCount !== a.productCount) return b.productCount - a.productCount;
     return a.taxonomyName.localeCompare(b.taxonomyName, "ko");
@@ -207,5 +312,6 @@ export async function listLandingGenerationCandidates(
 }
 
 export function toCandidateKey(item: LandingGenerationRequestItem): string {
-  return `${item.taxonomyType}:${item.taxonomyId}`;
+  const kind = item.candidateKind ?? "standard";
+  return `${kind}:${item.taxonomyType}:${item.taxonomyId}`;
 }

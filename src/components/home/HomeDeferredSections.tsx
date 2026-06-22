@@ -68,6 +68,7 @@ export type HomeDeferredRailProps = {
 
 export type HomeDeferredGolfTourProps = {
   products: Product[];
+  moreHref?: string;
   eyebrow?: string | null;
   title?: string | null;
   description?: string | null;
@@ -107,6 +108,7 @@ export function HomeDeferredSections({
     <>
       <GolfTourProductsSection
         products={golfTour.products}
+        moreHref={golfTour.moreHref}
         eyebrow={golfTour.eyebrow}
         title={golfTour.title}
         description={golfTour.description}

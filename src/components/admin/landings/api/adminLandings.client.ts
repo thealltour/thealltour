@@ -4,6 +4,7 @@ import type {
   AdminLandingDetail,
   AdminLandingListResponse,
   LandingGenerationCandidatesResponse,
+  LandingGenerationFilterType,
   LandingGenerationRequestItem,
   LandingGenerationResult,
   LandingPublishValidationIssue,
@@ -206,7 +207,7 @@ export async function updateLandingSectionClient(
 }
 
 export async function listLandingGenerationCandidatesClient(params?: {
-  taxonomyType?: "all" | "destination" | "theme" | "product_line";
+  taxonomyType?: LandingGenerationFilterType;
   alreadyGenerated?: boolean;
 }): Promise<LandingGenerationCandidatesResponse> {
   const sp = new URLSearchParams();

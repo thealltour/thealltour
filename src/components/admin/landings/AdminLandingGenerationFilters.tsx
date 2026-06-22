@@ -1,9 +1,11 @@
 "use client";
 
+import type { LandingGenerationFilterType } from "@/types/adminLanding";
+
 type Props = {
-  taxonomyType: "all" | "destination" | "theme" | "product_line";
+  taxonomyType: LandingGenerationFilterType;
   onlyNotGenerated: boolean;
-  onTaxonomyTypeChange: (value: "all" | "destination" | "theme" | "product_line") => void;
+  onTaxonomyTypeChange: (value: LandingGenerationFilterType) => void;
   onOnlyNotGeneratedChange: (value: boolean) => void;
   disabled?: boolean;
 };
@@ -22,13 +24,14 @@ export default function AdminLandingGenerationFilters({
         <select
           value={taxonomyType}
           onChange={(e) =>
-            onTaxonomyTypeChange(e.target.value as "all" | "destination" | "theme" | "product_line")
+            onTaxonomyTypeChange(e.target.value as LandingGenerationFilterType)
           }
           disabled={disabled}
           className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-sm text-[var(--text-primary)]"
         >
           <option value="all">전체</option>
           <option value="destination">지역</option>
+          <option value="destination_golf">골프 지역 랜딩</option>
           <option value="theme">테마</option>
           <option value="product_line">상품군</option>
         </select>

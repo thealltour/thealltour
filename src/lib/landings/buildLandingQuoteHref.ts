@@ -1,4 +1,5 @@
 import type { AdminLandingDetail } from "@/types/adminLanding";
+import { appendGolfLandingAttributionToHref } from "@/lib/analytics/golfLandingAttribution";
 
 export function buildLandingQuoteHref(landing: AdminLandingDetail, sourcePath: string): string {
   const params = new URLSearchParams();
@@ -8,5 +9,9 @@ export function buildLandingQuoteHref(landing: AdminLandingDetail, sourcePath: s
   if (landing.quoteCategory) {
     params.set("quote_category", landing.quoteCategory);
   }
-  return `/quote?${params.toString()}`;
+  const base = `/quote?${params.toString()}`;
+  if (landing.templateType === "destination_golf_consulting") {
+    return appendGolfLandingAttributionToHref(base, landing.slug);
+  }
+  return base;
 }

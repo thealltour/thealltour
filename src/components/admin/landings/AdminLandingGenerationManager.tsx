@@ -13,15 +13,15 @@ import {
   ADMIN_LANDINGS_ROUTE,
   buildAdminLandingEditHref,
 } from "@/components/admin/landings/adminLandings.constants";
-import type { LandingGenerationCandidate, LandingGenerationResult } from "@/types/adminLanding";
+import type { LandingGenerationCandidate, LandingGenerationFilterType, LandingGenerationResult } from "@/types/adminLanding";
 
 function candidateKey(item: LandingGenerationCandidate): string {
-  return `${item.taxonomyType}:${item.taxonomyId}`;
+  return `${item.candidateKind}:${item.taxonomyType}:${item.taxonomyId}`;
 }
 
 export default function AdminLandingGenerationManager() {
   const router = useRouter();
-  const [taxonomyType, setTaxonomyType] = useState<"all" | "destination" | "theme" | "product_line">("all");
+  const [taxonomyType, setTaxonomyType] = useState<LandingGenerationFilterType>("all");
   const [onlyNotGenerated, setOnlyNotGenerated] = useState(true);
   const [items, setItems] = useState<LandingGenerationCandidate[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -79,6 +79,7 @@ export default function AdminLandingGenerationManager() {
         selectedItems.map((item) => ({
           taxonomyId: item.taxonomyId,
           taxonomyType: item.taxonomyType,
+          candidateKind: item.candidateKind,
         })),
       );
       setResult(generationResult);
@@ -90,12 +91,39 @@ export default function AdminLandingGenerationManager() {
     }
   }
 
+  async function handleGenerateAllGolf() {
+    const golfItems = items.filter((item) => item.candidateKind === "destination_golf" && !item.isAlreadyGenerated);
+    if (golfItems.length === 0) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const generationResult = await generateLandingsFromTaxonomyClient(
+        golfItems.map((item) => ({
+          taxonomyId: item.taxonomyId,
+          taxonomyType: item.taxonomyType,
+          candidateKind: item.candidateKind,
+        })),
+      );
+      setResult(generationResult);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "골프 지역 랜딩 일괄 생성에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const pendingGolfCount = useMemo(
+    () => items.filter((item) => item.candidateKind === "destination_golf" && !item.isAlreadyGenerated).length,
+    [items],
+  );
+
   return (
     <section className="space-y-5 rounded-2xl bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] md:p-5">
       <div className="space-y-1">
         <p className="text-sm font-semibold text-[var(--text-primary)]">taxonomy 기반 랜딩 초안 생성</p>
         <p className="text-xs text-[var(--text-muted)]">
-          지역·테마는 활성 상품이 연결된 taxonomy만, 상품군은 상품 수와 관계없이 사전 초안 후보로 포함됩니다. 생성 시 항상 draft만 만들어집니다.
+          지역·테마는 활성 상품이 연결된 taxonomy만, 상품군은 상품 수와 관계없이 사전 초안 후보로 포함됩니다. 골프 지역 랜딩은 활성 골프 상품이 있는 지역만 후보에 나타납니다. 생성 시 항상 draft만 만들어집니다.
         </p>
       </div>
 
@@ -149,6 +177,18 @@ export default function AdminLandingGenerationManager() {
           선택 {selectedItems.length}건 / 전체 {items.length}건
         </p>
         <div className="flex items-center gap-2">
+          {pendingGolfCount > 0 ? (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                void handleGenerateAllGolf();
+              }}
+              className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? "생성 중..." : `골프 지역 일괄 생성 (${pendingGolfCount})`}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => router.push(ADMIN_LANDINGS_ROUTE)}

@@ -6,6 +6,7 @@ import type { AdminLandingDetail } from "@/types/adminLanding";
 import type { AnalyticsPayload } from "./types";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "./events";
 import { ensureLandingSourcePath, landingSlugFromSourcePath } from "./createAnalyticsPayload";
+import { buildGolfLandingAnalyticsMetadata } from "./golfLandingAttribution";
 import { trackClientAnalytics } from "./trackEvent";
 
 function mapTaxonomyType(raw: string | null | undefined): AnalyticsPayload["taxonomyType"] {
@@ -29,9 +30,7 @@ export function trackLandingView(landing: AdminLandingDetail, sourcePath: string
     taxonomyType: mapTaxonomyType(landing.sourceTaxonomyType ?? undefined),
     taxonomySlug: landing.sourceTaxonomySlug?.trim() || null,
     taxonomyId: landing.sourceTaxonomyId?.trim() || null,
-    metadata: {
-      funnel: "landing_to_quote",
-    },
+    metadata: buildGolfLandingAnalyticsMetadata(landing.slug, landing.templateType),
   });
 }
 
@@ -50,7 +49,7 @@ export function trackLandingCtaClick(landing: AdminLandingDetail, sourcePath: st
     taxonomySlug: landing.sourceTaxonomySlug?.trim() || null,
     section: "cta_section",
     metadata: {
-      funnel: "landing_to_quote",
+      ...buildGolfLandingAnalyticsMetadata(landing.slug, landing.templateType),
       position: "cta_section",
     },
   });
@@ -70,6 +69,8 @@ export function trackQuoteView(input: QuoteAttributionInput): void {
     input.landingSlug?.trim() || landingSlugFromSourcePath(rawPath) || null;
   const sourcePath =
     rawPath || (landingSlug ? ensureLandingSourcePath(null, landingSlug) : "/quote");
+  const isGolfLanding =
+    landingSlug?.endsWith("-golf-travel") || input.quoteCategory?.trim().endsWith("-golf");
 
   trackClientAnalytics({
     eventName: ANALYTICS_EVENTS.quote_view,
@@ -79,8 +80,8 @@ export function trackQuoteView(input: QuoteAttributionInput): void {
     landingSlug,
     quoteCategory: input.quoteCategory?.trim() || null,
     productId: input.productId?.trim() || null,
-    metadata: {
-      funnel: "landing_to_quote",
-    },
+    metadata: isGolfLanding
+      ? buildGolfLandingAnalyticsMetadata(landingSlug ?? "", "destination_golf_consulting")
+      : { funnel: "landing_to_quote" },
   });
 }

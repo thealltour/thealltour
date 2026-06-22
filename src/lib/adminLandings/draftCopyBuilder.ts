@@ -1,4 +1,5 @@
-import type { LandingTaxonomyType } from "@/types/adminLanding";
+import type { LandingGenerationCandidateKind, LandingTaxonomyType } from "@/types/adminLanding";
+import { regionSeoCopy } from "@/lib/seo/landingSeoCopy";
 
 export type BuildLandingDraftCopyInput = {
   taxonomyName: string;
@@ -6,6 +7,7 @@ export type BuildLandingDraftCopyInput = {
   suggestedSlug: string;
   suggestedSourcePath?: string | null;
   suggestedQuoteCategory?: string | null;
+  candidateKind?: LandingGenerationCandidateKind;
 };
 
 export type LandingSectionBlockCopy = {
@@ -70,11 +72,38 @@ const CONSULTING_BODY =
 export function buildConsultingSectionCopyForLabel(
   label: string,
   taxonomyType: "destination" | "theme" | "product_line",
+  candidateKind: LandingGenerationCandidateKind = "standard",
 ): LandingSectionDraftCopy {
   const name = label.trim() || "여행";
 
-  const ctaTitle = `${name} 여행 상담 신청`;
+  const ctaTitle =
+    candidateKind === "destination_golf" ? `${name} 골프투어 상담 신청` : `${name} 여행 상담 신청`;
   const ctaDescription = "상품을 먼저 살펴보신 뒤 맞춤 상담을 요청해 보세요.";
+
+  if (candidateKind === "destination_golf") {
+    return {
+      hero: {
+        title: `${name} 골프투어 상품을 먼저 확인해보세요`,
+        description: `${name} 골프여행은 일정, 예산, 코스에 따라 추천 구성이 달라집니다.`,
+        body: "마음에 드는 골프 상품이 없다면 맞춤 상담으로 라운딩 일정을 함께 설계해드립니다.",
+      },
+      intro: {
+        title: `${name} 골프투어 안내`,
+        description: "",
+        body: `${name} 골프여행은 시즌과 코스에 따라 추천이 달라집니다.\n추천 골프 상품을 먼저 살펴보신 뒤, 원하시는 조건이 없다면 상담으로 이어가세요.`,
+      },
+      cta: {
+        title: ctaTitle,
+        description: ctaDescription,
+        body: CTA_BODY,
+      },
+      consultingPoints: {
+        title: `${name} 골프투어 체크 포인트`,
+        description: "코스·동선·일정을 기준으로 구체적으로 짚어드립니다.",
+        body: CONSULTING_BODY,
+      },
+    };
+  }
 
   if (taxonomyType === "destination") {
     return {
@@ -153,7 +182,27 @@ export function buildConsultingSectionCopyForLabel(
 function metaForType(
   name: string,
   taxonomyType: LandingTaxonomyType,
+  candidateKind: LandingGenerationCandidateKind,
+  rootSlug: string,
 ): { summary: string; seoTitle: string; seoDescription: string } {
+  if (candidateKind === "destination_golf") {
+    const seo = regionSeoCopy[rootSlug];
+    if (seo?.title && seo.description) {
+      return {
+        summary:
+          seo.description.trim() ||
+          `${name} 골프투어 추천 상품을 먼저 확인해 보세요. 일정·예산에 맞는 라운딩은 맞춤 상담으로 이어가실 수 있습니다.`,
+        seoTitle: seo.title.trim(),
+        seoDescription: seo.description.trim(),
+      };
+    }
+    return {
+      summary: `${name} 골프투어 추천 상품을 먼저 확인해 보세요. 일정·예산에 맞는 라운딩은 맞춤 상담으로 이어가실 수 있습니다.`,
+      seoTitle: `${name} 골프투어 | 더올투어`,
+      seoDescription: `${name} 골프여행 상품을 살펴보고, 일정과 예산에 맞는 라운딩 구성은 맞춤 상담으로 확인해 보세요.`,
+    };
+  }
+
   switch (taxonomyType) {
     case "destination":
       return {
@@ -179,6 +228,8 @@ function metaForType(
 export function buildLandingDraftCopy(input: BuildLandingDraftCopyInput): LandingDraftCopy {
   const slug = normalizeSlug(input.suggestedSlug);
   const name = nonEmptyDisplayName(input.taxonomyName, slug);
+  const candidateKind = input.candidateKind ?? "standard";
+  const rootSlug = rootSlugFromLandingSlug(slug).replace(/-golf$/, "");
 
   const quoteFromSuggested = String(input.suggestedQuoteCategory ?? "").trim();
   const quoteCategory = quoteFromSuggested || rootSlugFromLandingSlug(slug) || slug || "landing";
@@ -187,11 +238,17 @@ export function buildLandingDraftCopy(input: BuildLandingDraftCopyInput): Landin
   const sourcePath =
     pathFromSuggested || (slug ? `/recommended/${encodeURIComponent(slug)}` : "/recommended");
 
-  const sections = buildConsultingSectionCopyForLabel(name, input.taxonomyType);
+  const sections = buildConsultingSectionCopyForLabel(name, input.taxonomyType, candidateKind);
 
-  const title = `${name} 여행 상품`;
+  const title =
+    candidateKind === "destination_golf" ? `${name} 골프투어` : `${name} 여행 상품`;
 
-  const { summary, seoTitle, seoDescription } = metaForType(name, input.taxonomyType);
+  const { summary, seoTitle, seoDescription } = metaForType(
+    name,
+    input.taxonomyType,
+    candidateKind,
+    rootSlug,
+  );
 
   return {
     title,

@@ -12,16 +12,23 @@ type Props = {
 };
 
 function candidateKey(item: LandingGenerationCandidate): string {
-  return `${item.taxonomyType}:${item.taxonomyId}`;
+  return `${item.candidateKind}:${item.taxonomyType}:${item.taxonomyId}`;
 }
 
-function taxonomyTypeLabel(type: LandingGenerationCandidate["taxonomyType"]): string {
-  if (type === "destination") return "지역";
-  if (type === "theme") return "테마";
+function taxonomyTypeLabel(item: LandingGenerationCandidate): string {
+  if (item.candidateKind === "destination_golf") return "골프 지역";
+  if (item.taxonomyType === "destination") return "지역";
+  if (item.taxonomyType === "theme") return "테마";
   return "상품군";
 }
 
 function eligibilityLabel(item: LandingGenerationCandidate): { text: string; className: string } {
+  if (item.eligibilityReason === "HAS_GOLF_PRODUCTS") {
+    return {
+      text: "골프 상품 연결됨",
+      className: "rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-900 ring-1 ring-sky-200",
+    };
+  }
   if (item.isPreseedCandidate) {
     return {
       text: "상품 없음(사전 생성 가능)",
@@ -77,7 +84,7 @@ export default function AdminLandingGenerationTable({ items, selectedKeys, onTog
                     aria-label={`${item.taxonomyName} 선택`}
                   />
                 </td>
-                <td className="px-3 py-2">{taxonomyTypeLabel(item.taxonomyType)}</td>
+                <td className="px-3 py-2">{taxonomyTypeLabel(item)}</td>
                 <td className="px-3 py-2">{item.taxonomyName}</td>
                 <td className="px-3 py-2 font-mono text-xs">{item.taxonomySlug}</td>
                 <td className="px-3 py-2">

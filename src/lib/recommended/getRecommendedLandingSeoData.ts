@@ -2,6 +2,7 @@ import { getPublicLandingBySlug } from "@/lib/adminLandings/service";
 import { getTaxonomyById } from "@/lib/productTaxonomies";
 import type { OgPageSeoData } from "@/lib/seo/ogPageSeoTypes";
 import { getSiteBaseUrl, toAbsoluteUrl } from "@/lib/seo/getSiteSeoDefaults";
+import { regionSeoCopy } from "@/lib/seo/landingSeoCopy";
 import type { AdminLandingDetail } from "@/types/adminLanding";
 
 const PLACEHOLDER_SUBSTR = "picsum.photos";
@@ -55,6 +56,12 @@ function pushCandidate(
   list.push(abs);
 }
 
+function rootSlugFromGolfLandingSlug(slug: string): string {
+  const s = slug.trim().toLowerCase();
+  if (s.endsWith("-golf-travel")) return s.slice(0, -"-golf-travel".length);
+  return s;
+}
+
 /**
  * `/recommended/[slug]` — `getPublicLandingBySlug`와 동일 조건(공개·landing_enabled)의 OG/메타 스냅샷.
  */
@@ -70,11 +77,26 @@ export async function getRecommendedLandingSeoData(slug: string): Promise<OgPage
   const urlPath = `/recommended/${pathSlug}`;
 
   const displayTitle = landing.title?.trim() || pathSlug;
-  const contentTitle = landing.seoTitle?.trim() || displayTitle;
-  const metaDescription =
+  let contentTitle = landing.seoTitle?.trim() || displayTitle;
+  let metaDescription =
     landing.seoDescription?.trim() ||
     landing.summary?.trim() ||
     `${contentTitle} 맞춤 여행 안내와 추천 정보를 더올투어에서 확인해 보세요.`;
+  let eyebrow = "추천 여행";
+
+  if (landing.templateType === "destination_golf_consulting") {
+    eyebrow = "골프여행";
+    const rootSlug = rootSlugFromGolfLandingSlug(pathSlug);
+    const seo = regionSeoCopy[rootSlug];
+    if (seo?.title?.trim()) {
+      contentTitle = seo.title.replace(/\s*\|\s*더올투어\s*$/i, "").trim() || contentTitle;
+    }
+    if (seo?.description?.trim()) {
+      metaDescription = seo.description.trim();
+    } else if (!landing.seoDescription?.trim() && !landing.summary?.trim()) {
+      metaDescription = `${displayTitle} 골프 상품을 살펴보고, 일정과 예산에 맞는 라운딩 구성은 맞춤 상담으로 확인해 보세요.`;
+    }
+  }
 
   const seen = new Set<string>();
   const imageCandidates: string[] = [];
@@ -100,7 +122,7 @@ export async function getRecommendedLandingSeoData(slug: string): Promise<OgPage
     metaDescription,
     imageCandidates,
     primaryImageUrl: imageCandidates[0] ?? null,
-    eyebrow: "추천 여행",
+    eyebrow,
     subtitle: landing.summary?.trim() || null,
     regionLine: null,
     themeLine: null,

@@ -7,7 +7,8 @@ import LandingRecommendedProductsSection from "@/components/landings/sections/La
 import { LandingViewTracker } from "@/components/landings/LandingViewTracker";
 import { sortLandingSectionsForLayout } from "@/lib/landings/landingSectionLayoutOrder";
 import { getProducts } from "@/lib/products";
-import { getTaxonomyById } from "@/lib/productTaxonomies";
+import { filterGolfChannelProducts, buildGolfProductsHref } from "@/lib/products/golfChannel";
+import { getTaxonomyById, getActiveProductLineTaxonomies, buildTaxonomyNameMap } from "@/lib/productTaxonomies";
 import type { AdminLandingDetail, AdminLandingSection } from "@/types/adminLanding";
 import type { Product } from "@/types/product";
 
@@ -32,6 +33,7 @@ export default async function LandingPageRenderer({
 }: LandingPageRendererProps) {
   const sections = sortLandingSectionsForLayout(getRenderableSections(landing));
 
+  const isGolfDestinationLanding = landing.templateType === "destination_golf_consulting";
   const destinationTaxonomyId =
     landing.sourceTaxonomyType === "destination" && landing.sourceTaxonomyId?.trim()
       ? landing.sourceTaxonomyId.trim()
@@ -41,24 +43,33 @@ export default async function LandingPageRenderer({
   let destinationLabel = landing.title?.trim() || "이 지역";
 
   if (destinationTaxonomyId) {
-    const [products, taxonomy] = await Promise.all([
+    const [products, taxonomy, productLines] = await Promise.all([
       getProducts(),
       getTaxonomyById(destinationTaxonomyId),
+      getActiveProductLineTaxonomies(),
     ]);
+    const productLineNameMap = buildTaxonomyNameMap(productLines);
     if (taxonomy?.name?.trim()) {
-      destinationLabel = taxonomy.name.trim();
+      destinationLabel = isGolfDestinationLanding
+        ? `${taxonomy.name.trim()} 골프투어`
+        : taxonomy.name.trim();
     }
-    destinationProducts = products
-      .filter(
-        (p) =>
-          p.is_active !== false &&
-          p.destination_id?.trim() &&
-          p.destination_id.trim() === destinationTaxonomyId,
-      )
-      .slice(0, LANDING_DESTINATION_PRODUCTS_LIMIT);
+
+    const scoped = products.filter(
+      (p) =>
+        p.is_active !== false &&
+        p.destination_id?.trim() &&
+        p.destination_id.trim() === destinationTaxonomyId,
+    );
+
+    destinationProducts = (isGolfDestinationLanding
+      ? filterGolfChannelProducts(scoped, productLineNameMap)
+      : scoped
+    ).slice(0, LANDING_DESTINATION_PRODUCTS_LIMIT);
   }
 
   const showRecommendedProducts = destinationProducts.length > 0;
+  const golfChannelFallbackHref = buildGolfProductsHref();
 
   if (process.env.NODE_ENV !== "production" && mode === "preview" && sections.length === 0) {
     console.warn("[landing-preview] 활성 섹션이 없습니다.", {
@@ -91,7 +102,19 @@ export default async function LandingPageRenderer({
         key="landing-recommended-products"
         label={destinationLabel}
         products={destinationProducts}
+        fallbackHref={isGolfDestinationLanding ? golfChannelFallbackHref : undefined}
+        fallbackLabel={isGolfDestinationLanding ? "골프투어 전체 보기" : undefined}
       />
+    ) : isGolfDestinationLanding ? (
+      <div
+        key="landing-golf-fallback"
+        className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4 text-sm text-[var(--text-secondary)]"
+      >
+        현재 이 지역의 골프 상품을 준비 중입니다.{" "}
+        <a href={golfChannelFallbackHref} className="font-semibold text-[var(--primary)] underline">
+          골프투어 전체 보기
+        </a>
+      </div>
     ) : null;
 
   while (i < sections.length) {

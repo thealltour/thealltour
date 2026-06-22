@@ -11,6 +11,7 @@ import {
   parseGolfHeroRegions,
   resolveGolfHeroRegionPreset,
 } from "@/lib/products/golfChannel";
+import { getPublishedGolfDestinationLandings } from "@/lib/golfLandingLinks";
 
 /** hover 메뉴: 지역별 = destination만, 테마별 = theme만. 대분류(parent_id null) 있으면 그룹별로 묶어 표시. */
 const HUB_MENU_ITEM_LIMIT = 8;
@@ -111,20 +112,27 @@ const RECOMMEND_COLLECTION_GROUP: HeaderNavGroup = {
   ],
 };
 
-function buildGolfRecommendMenuGroup(settings: SiteSettings): HeaderNavGroup {
+async function buildGolfRecommendMenuGroup(settings: SiteSettings): Promise<HeaderNavGroup> {
   const golfAllHref = buildGolfProductsHref();
-  const regionItems: HeaderNavLeafItem[] = parseGolfHeroRegions(settings.golf_hero_regions).map(
-    (region) => {
-      const preset = resolveGolfHeroRegionPreset(region);
-      return {
-        key: `golf-region-${region.id}`,
-        label: preset ? (GOLF_REGION_PRESET_LABELS[preset] ?? region.label) : region.label,
-        href: preset
-          ? buildGolfProductsHref({ golfRegion: preset })
-          : buildGolfProductsHref({ q: region.searchKeyword }),
-      };
-    },
-  );
+  const publishedGolfLandings = await getPublishedGolfDestinationLandings();
+
+  const regionItems: HeaderNavLeafItem[] =
+    publishedGolfLandings.length > 0
+      ? publishedGolfLandings.map((landing) => ({
+          key: `golf-landing-${landing.slug}`,
+          label: landing.title.trim() || landing.slug,
+          href: landing.href,
+        }))
+      : parseGolfHeroRegions(settings.golf_hero_regions).map((region) => {
+          const preset = resolveGolfHeroRegionPreset(region);
+          return {
+            key: `golf-region-${region.id}`,
+            label: preset ? (GOLF_REGION_PRESET_LABELS[preset] ?? region.label) : region.label,
+            href: preset
+              ? buildGolfProductsHref({ golfRegion: preset })
+              : buildGolfProductsHref({ q: region.searchKeyword }),
+          };
+        });
 
   return {
     key: "golf-recommend",
@@ -137,8 +145,8 @@ function buildGolfRecommendMenuGroup(settings: SiteSettings): HeaderNavGroup {
   };
 }
 
-function buildRecommendedMenuGroups(settings: SiteSettings): HeaderNavGroup[] {
-  return [RECOMMEND_COLLECTION_GROUP, buildGolfRecommendMenuGroup(settings)];
+async function buildRecommendedMenuGroups(settings: SiteSettings): Promise<HeaderNavGroup[]> {
+  return [RECOMMEND_COLLECTION_GROUP, await buildGolfRecommendMenuGroup(settings)];
 }
 
 /** parent_id 기준으로 대분류 → 세부 테마 트리 구성 후, 헤더용 그룹 배열로 변환. 다단계 하위 항목 평면 포함 */
@@ -225,7 +233,7 @@ async function getHeaderNavigationDataUncached(): Promise<HeaderNavigationData> 
     getSiteSettings(),
   ]);
 
-  const recommendedGroups = buildRecommendedMenuGroups(siteSettings);
+  const recommendedGroups = await buildRecommendedMenuGroups(siteSettings);
   const regionGroups = regionGroupsFromTaxonomy(destinations);
   const themeGroups = themeGroupsFromTaxonomy(themes);
 

@@ -4,6 +4,11 @@ import { normalizeProduct } from "@/lib/products";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 import { getSiteSettings, parseHomeGolfTourProductIds } from "@/lib/siteSettings";
+import { buildGolfProductsHref } from "@/lib/products/golfChannel";
+import {
+  getGolfDestinationLandingHrefByDestinationId,
+  getPublishedGolfDestinationLandings,
+} from "@/lib/golfLandingLinks";
 import type { Product } from "@/types/product";
 
 const MAX_HOME_GOLF_PRODUCTS = 20;
@@ -48,4 +53,17 @@ export async function getHomeGolfTourProducts(): Promise<Product[]> {
     revalidate: 300,
     tags: ["site-settings"],
   })();
+}
+
+/** 홈 골프 섹션 더보기 — published 지역 골프 랜딩 우선, 없으면 채널 URL */
+export async function resolveHomeGolfTourMoreHref(products: Product[]): Promise<string> {
+  for (const product of products) {
+    const href = await getGolfDestinationLandingHrefByDestinationId(product.destination_id);
+    if (href) return href;
+  }
+
+  const landings = await getPublishedGolfDestinationLandings();
+  if (landings.length > 0) return landings[0].href;
+
+  return buildGolfProductsHref();
 }

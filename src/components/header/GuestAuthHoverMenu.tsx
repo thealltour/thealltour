@@ -75,10 +75,11 @@ export default function GuestAuthHoverMenu() {
       </button>
 
       {isOpen ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft-strong)]"
-        >
+        <div className="absolute right-0 top-full z-50 pt-2">
+          <div
+            role="menu"
+            className="w-72 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft-strong)]"
+          >
           <button
             type="button"
             role="menuitem"
@@ -132,6 +133,7 @@ export default function GuestAuthHoverMenu() {
               </li>
             ))}
           </ul>
+          </div>
         </div>
       ) : null}
     </div>

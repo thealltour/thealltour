@@ -99,7 +99,7 @@ export default function ProductSummaryInfo({
             icon="price"
             label="가격"
             value={
-              <span className="text-sm leading-relaxed text-slate-600">
+              <span className="text-base leading-relaxed text-slate-600">
                 상단 &quot;대표 출발가 안내&quot;와 동일한 기준입니다. 정확한 요금은 상담을 통해 안내드립니다.
               </span>
             }
@@ -119,7 +119,7 @@ export default function ProductSummaryInfo({
               onClick={() => openModal({ productId, productTitle, sourcePath })}
               className={cn(
                 buttonVariants({ variant: "primary", size: "md" }),
-                "flex-1 text-sm font-semibold",
+                "flex-1 text-base font-semibold",
               )}
               aria-label="일정·견적 문의하기"
             >
@@ -130,7 +130,7 @@ export default function ProductSummaryInfo({
               href={consultHrefWithUtm || consultHref}
               className={cn(
                 buttonVariants({ variant: "primary", size: "md" }),
-                "flex-1 text-sm font-semibold",
+                "flex-1 text-base font-semibold",
               )}
               aria-label="일정·견적 문의하기"
             >
@@ -146,7 +146,7 @@ export default function ProductSummaryInfo({
                 buttonVariants({
                   variant: "kakao",
                   size: "md",
-                  className: "min-h-11 flex-1 text-sm font-semibold sm:flex-none",
+                  className: "min-h-11 flex-1 text-base font-semibold sm:flex-none",
                 }),
               )}
               aria-label="카톡으로 견적 문의하기"

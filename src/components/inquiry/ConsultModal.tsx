@@ -263,13 +263,13 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
               {isSuccess ? (
                 <div className="space-y-4">
                   <div>
-                    <p className="text-xs font-semibold tracking-[0.18em] text-[var(--text-muted)]">
+                    <p className="text-sm font-semibold tracking-[0.18em] text-[var(--text-muted)]">
                       THEALL QUICK CONSULT
                     </p>
                     <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl">
                       상담 요청이 접수되었습니다
                     </h2>
-                    <p className="mt-2 text-sm text-[var(--text-muted)]">
+                    <p className="mt-2 text-base text-[var(--text-muted)]">
                       영업시간 기준 약 {slaMinutes}분 내 순차 연락드립니다.
                     </p>
                   </div>
@@ -277,7 +277,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)]"
+                    className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-base font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)]"
                   >
                     확인
                   </button>
@@ -286,17 +286,17 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                 <>
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold tracking-[0.18em] text-[var(--text-muted)]">
+                      <p className="text-sm font-semibold tracking-[0.18em] text-[var(--text-muted)]">
                         THEALL QUICK CONSULT
                       </p>
                       <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl">
                         상담 요청
                       </h2>
-                      <p className="mt-1 text-xs text-[var(--text-muted)] md:text-sm">
+                      <p className="mt-1 text-sm text-[var(--text-muted)] md:text-base">
                         남겨주신 내용을 확인한 뒤 안내드립니다.
                       </p>
                       {params.productTitle ? (
-                        <div className="mt-2 max-w-full text-xs text-[var(--text-muted)]">
+                        <div className="mt-2 max-w-full text-sm text-[var(--text-muted)]">
                           문의 상품:{" "}
                           <span className="truncate font-medium text-[var(--text-primary)]">
                             {params.productTitle}
@@ -315,11 +315,11 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-3.5">
-                    <p className="text-xs text-[var(--text-muted)]">
+                    <p className="text-sm text-[var(--text-muted)]">
                       이름과 연락처만 입력하셔도 상담이 가능합니다.
                     </p>
                     {showGolfBrief ? <GolfBriefFields value={golfBrief} onChange={setGolfBrief} /> : null}
-                    <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
+                    <div className="flex flex-col gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
                         <span>이름 *</span>
                         <input
@@ -330,7 +330,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                             if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
                           }}
                           placeholder="성함을 입력해 주세요"
-                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-base text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                           aria-invalid={!!fieldErrors.name}
                           aria-describedby={fieldErrors.name ? "consult-name-error" : undefined}
                         />
@@ -341,7 +341,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         ) : null}
                       </label>
                     </div>
-                    <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
+                    <div className="flex flex-col gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
                         <span>연락처 *</span>
                         <input
@@ -352,7 +352,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                             if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: undefined }));
                           }}
                           placeholder="010-0000-0000"
-                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-base text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                           aria-invalid={!!fieldErrors.phone}
                           aria-describedby={fieldErrors.phone ? "consult-phone-error" : undefined}
                         />
@@ -363,7 +363,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         ) : null}
                       </label>
                     </div>
-                    <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
+                    <div className="flex flex-col gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
                         <span>문의 내용 <span className="text-[var(--text-muted)]">(선택)</span></span>
                         <textarea
@@ -373,7 +373,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                             setForm((prev) => ({ ...prev, content: e.target.value }));
                           }}
                           placeholder="예: 출발일, 인원, 원하는 일정 등을 간단히 남겨주세요"
-                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-base text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-subtle)] focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                         />
                       </label>
                     </div>
@@ -383,7 +383,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                           type="submit"
                           disabled={isSubmitting}
                           className={cn(
-                            "inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-transparent bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--on-accent)] transition-colors duration-150 hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-70 sm:min-w-[180px] sm:w-auto",
+                            "inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-transparent bg-[var(--accent)] px-5 py-2.5 text-base font-semibold text-[var(--on-accent)] transition-colors duration-150 hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)] disabled:cursor-not-allowed disabled:opacity-70 sm:min-w-[180px] sm:w-auto",
                             solidButtonShadowClasses,
                           )}
                         >
@@ -395,7 +395,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         입력하신 내용을 확인한 뒤 안내드립니다.
                       </p>
                     </div>
-                    <p className="text-[10px] text-[var(--text-muted)] md:text-xs">
+                    <p className="text-xs text-[var(--text-muted)] md:text-sm">
                       남겨주신 연락처로만 상담 연락을 드리며, 다른 용도로는 사용하지 않습니다.
                     </p>
                   </form>

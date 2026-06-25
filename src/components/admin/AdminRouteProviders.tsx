@@ -23,7 +23,8 @@ export type AdminRouteProvidersProps = {
  */
 export function AdminRouteProviders({ children, session }: AdminRouteProvidersProps) {
   return (
-    <AdminQueryProvider>
+    <div className="site-admin min-h-screen">
+      <AdminQueryProvider>
       <AdminRoleProvider session={session}>
         <AdminToastProvider>
           <AdminConfirmProvider>
@@ -54,5 +55,6 @@ export function AdminRouteProviders({ children, session }: AdminRouteProvidersPr
         </AdminToastProvider>
       </AdminRoleProvider>
     </AdminQueryProvider>
+    </div>
   );
 }

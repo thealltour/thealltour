@@ -190,7 +190,7 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
             ))}
           </div>
           {showRating ? (
-            <p className="hidden shrink-0 items-center gap-0.5 tabular-nums text-[11px] text-[var(--text-muted)] sm:inline-flex sm:gap-1 sm:text-xs">
+            <p className="hidden shrink-0 items-center gap-0.5 tabular-nums text-xs text-[var(--text-muted)] sm:inline-flex sm:gap-1 sm:text-sm">
               <Star
                 className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400 sm:h-3.5 sm:w-3.5"
                 strokeWidth={0}
@@ -203,52 +203,52 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
         </div>
 
         {regionLabel ? (
-          <p className="line-clamp-1 text-[10px] font-medium text-[var(--text-muted)] sm:text-[11px]">
+          <p className="line-clamp-1 text-xs font-medium text-[var(--text-muted)] sm:text-sm">
             {regionLabel}
           </p>
         ) : null}
 
-        <h3 className="line-clamp-2 text-[13px] font-semibold leading-tight text-[var(--foreground)] sm:text-sm sm:leading-snug">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-tight text-[var(--foreground)] sm:text-base sm:leading-snug">
           {titleText}
         </h3>
 
         {campaignPitch ? (
-          <p className="line-clamp-2 text-[10px] font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-[11px]">
+          <p className="line-clamp-2 text-xs font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-sm">
             {campaignPitch}
           </p>
         ) : null}
 
         {oneLine ? (
-          <p className="hidden line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)] sm:block sm:text-xs">
+          <p className="hidden line-clamp-1 text-xs leading-snug text-[var(--text-muted)] sm:block sm:text-sm">
             {oneLine}
           </p>
         ) : subMeta ? (
-          <p className="hidden line-clamp-1 text-[11px] text-[var(--text-muted)] sm:block sm:text-xs">{subMeta}</p>
+          <p className="hidden line-clamp-1 text-xs text-[var(--text-muted)] sm:block sm:text-sm">{subMeta}</p>
         ) : null}
 
         <div className="mt-auto border-t border-[var(--border)]/60 pt-1.5 sm:border-0 sm:pt-1">
           {seasonalBandInfo && product.seasonal_price_bands ? (
             <>
-              <p className="line-clamp-2 text-[13px] font-bold leading-tight text-[var(--primary)] tabular-nums sm:text-[15px] sm:leading-snug md:text-base">
+              <p className="line-clamp-2 text-sm font-bold leading-tight text-[var(--primary)] tabular-nums sm:text-base sm:leading-snug md:text-lg">
                 {getSeasonalCardMainLineFull(product.seasonal_price_bands, seasonalBandInfo)}
               </p>
-              <p className="mt-0.5 text-[10px] leading-tight text-[var(--text-muted)] sm:text-[11px]">
+              <p className="mt-0.5 text-xs leading-tight text-[var(--text-muted)] sm:text-sm">
                 {SEASONAL_CARD_SUBLINE}
               </p>
             </>
           ) : priceFormatted ? (
             <>
-              <p className="text-[15px] font-bold leading-tight text-[var(--primary)] tabular-nums sm:text-lg">
+              <p className="text-base font-bold leading-tight text-[var(--primary)] tabular-nums sm:text-lg">
                 ₩{priceFormatted}~
               </p>
               {priceMetaLine ? (
-                <p className="mt-0.5 text-[10px] leading-tight text-[var(--text-muted)] sm:text-[11px]">
+                <p className="mt-0.5 text-xs leading-tight text-[var(--text-muted)] sm:text-sm">
                   {priceMetaLine}
                 </p>
               ) : null}
             </>
           ) : (
-            <p className="text-sm font-bold leading-tight text-[var(--text-muted)] sm:text-base md:text-lg">
+            <p className="text-base font-bold leading-tight text-[var(--text-muted)] sm:text-lg">
               상담 후 견적
             </p>
           )}

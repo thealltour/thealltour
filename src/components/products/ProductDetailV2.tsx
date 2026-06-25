@@ -377,7 +377,7 @@ export default function ProductDetailV2({
   }, [bookingNotes, travelNotes, bookingConditions, refundPolicy]);
 
   const hasSchedule = scheduleDays.length > 0;
-  const listClass = "space-y-2 text-sm leading-7 text-slate-700";
+  const listClass = "space-y-2 text-base leading-7 text-slate-700";
 
   /** PR8-1: 메타 정보 바용 날짜 범위. startDate~endDate 단일 표현, 동일일이면 한 번만 */
   const metaDateRange = useMemo(() => {
@@ -576,7 +576,7 @@ export default function ProductDetailV2({
         )}
 
         {oneLiner ? (
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 md:text-[15px]">{oneLiner}</p>
+          <p className="mt-2 whitespace-pre-wrap text-base leading-6 text-slate-600">{oneLiner}</p>
         ) : null}
 
         {/* Price Summary Card: 캐러셀 위 대표가·구간 비교·추천 대상(PR-F) */}
@@ -586,9 +586,9 @@ export default function ProductDetailV2({
         >
           {showSeasonalBandCard ? (
             <>
-              <p className="text-sm font-semibold text-[#0f172a]">대표 출발가 안내</p>
+              <p className="text-base font-semibold text-[#0f172a]">대표 출발가 안내</p>
               {(displayDuration || priceMeta) && (
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-sm text-slate-500">
                   {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
                 </p>
               )}
@@ -607,10 +607,10 @@ export default function ProductDetailV2({
                   {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
                 </p>
               )}
-              <p className="mt-3 text-xs leading-relaxed text-slate-500">
+              <p className="mt-3 text-sm leading-relaxed text-slate-500">
                 {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
               </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+              <p className="mt-0.5 text-sm leading-relaxed text-slate-500">
                 {DETAIL_UNIFIED_PRICE_NOTICE_LINES[1]}
               </p>
               <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
@@ -626,12 +626,12 @@ export default function ProductDetailV2({
             </p>
           )}
           {typeof fuelIncluded === "boolean" && (
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="mt-0.5 text-sm text-slate-500">
               {fuelIncluded ? "유류할증료 포함" : "유류할증료 별도"}
             </p>
           )}
           {!(showSeasonalBandCard || displayPrice) ? (
-            <p className="mt-0.5 text-xs text-slate-500">유류할증료는 상담 시 안내</p>
+            <p className="mt-0.5 text-sm text-slate-500">유류할증료는 상담 시 안내</p>
           ) : null}
           {!(showSeasonalBandCard || displayPrice) ? (
             <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
@@ -813,7 +813,7 @@ export default function ProductDetailV2({
                 })}
               </>
             ) : (
-              <p className="text-sm text-slate-500">일정 정보 준비 중입니다.</p>
+              <p className="text-base text-slate-500">일정 정보 준비 중입니다.</p>
             )}
           </div>
         )}
@@ -823,11 +823,11 @@ export default function ProductDetailV2({
             {/* PR25: 포함/불포함 카드 UI */}
             <ProductIncludeExclude included={includedLines} excluded={excludedLines} />
             {(includedLines.length === 0 && excludedLines.length === 0) && (
-              <p className="text-sm text-slate-500">등록된 포함/불포함 사항이 없습니다.</p>
+              <p className="text-base text-slate-500">등록된 포함/불포함 사항이 없습니다.</p>
             )}
             {optionalLines.length > 0 && (
               <div>
-                <h3 className="mb-3 text-sm font-bold text-[var(--primary)]">선택 관광</h3>
+                <h3 className="mb-3 text-base font-bold text-[var(--primary)]">선택 관광</h3>
                 <ul className={listClass}>
                   {optionalLines.map((line, i) => (
                     <li key={i} className="flex items-start gap-2">
@@ -851,7 +851,7 @@ export default function ProductDetailV2({
             {minDeparturePeople?.trim() ? (
               <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3">
                 <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-                <span className="text-sm leading-7 text-slate-700 whitespace-normal">
+                <span className="text-base leading-7 text-slate-700 whitespace-normal">
                   출발 인원: {minDeparturePeople.trim()}명 이상 확정 시 출발
                 </span>
               </div>
@@ -859,13 +859,13 @@ export default function ProductDetailV2({
             <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-                <span className="text-sm leading-7 text-slate-700 whitespace-normal">
+                <span className="text-base leading-7 text-slate-700 whitespace-normal">
                   최종 일정·가격은 상담 후 확정됩니다.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-                <span className="text-sm leading-7 text-slate-700 whitespace-normal">
+                <span className="text-base leading-7 text-slate-700 whitespace-normal">
                   문의 주시면 맞춤 견적과 예약 절차를 안내해 드립니다.
                 </span>
               </li>
@@ -876,7 +876,7 @@ export default function ProductDetailV2({
                   {bookingConditionLines.map((line, i) => (
                     <li key={`cond-${i}`} className="flex items-start gap-3">
                       <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-                      <span className="text-sm leading-7 text-slate-700 whitespace-normal">{line}</span>
+                      <span className="text-base leading-7 text-slate-700 whitespace-normal">{line}</span>
                     </li>
                   ))}
                 </ul>
@@ -906,7 +906,7 @@ export default function ProductDetailV2({
               </AlertCard>
             ) : (
               <AlertCard variant="neutral" title="여행 시 유의사항">
-                <p className="text-sm leading-7 text-slate-700">
+                <p className="text-base leading-7 text-slate-700">
                   여행 준비물·현지 진행 유의사항은 상담 시 안내해 드립니다.
                 </p>
               </AlertCard>
@@ -918,7 +918,7 @@ export default function ProductDetailV2({
           <div>
             {refundLines.length > 0 ? (
               <AlertCard variant="neutral" title="환불/취소 규정">
-                <ul className="mt-2 space-y-2 text-sm leading-[1.7] text-slate-700">
+                <ul className="mt-2 space-y-2 text-base leading-[1.7] text-slate-700">
                   {refundLines.map((line, i) => (
                     <li key={i}>{line}</li>
                   ))}
@@ -926,7 +926,7 @@ export default function ProductDetailV2({
               </AlertCard>
             ) : (
               <AlertCard variant="info" title="환불 규정">
-                <p className="text-sm leading-7 text-slate-700">
+                <p className="text-base leading-7 text-slate-700">
                   상품별 상세 환불·취소 규정은 상담 시 안내해 드립니다.
                 </p>
               </AlertCard>

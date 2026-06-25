@@ -303,7 +303,7 @@ export default function InquiryForm({
       />
 
       <Label className="flex flex-col gap-2 md:col-span-2">
-        인원 <span className="text-slate-400 text-sm font-normal">(선택)</span>
+        인원 <span className="text-slate-400 type-small font-normal">(선택)</span>
         <Input
           type="text"
           name="peopleCount"
@@ -315,7 +315,7 @@ export default function InquiryForm({
       </Label>
 
       <Label className="flex flex-col gap-2 md:col-span-2">
-        문의 내용 <span className="text-slate-400 text-sm font-normal">(선택)</span>
+        문의 내용 <span className="text-slate-400 type-small font-normal">(선택)</span>
         <Textarea
           name="content"
           rows={4}
@@ -330,12 +330,12 @@ export default function InquiryForm({
         <Button type="submit" disabled={isSubmitting} className="w-full py-3">
           {isSubmitting ? "전송 중..." : "상담 요청 보내기"}
         </Button>
-        <p className="text-center text-sm text-slate-500">입력해주신 내용을 확인 후 안내드립니다.</p>
+        <p className="text-center type-small text-slate-500">입력해주신 내용을 확인 후 안내드립니다.</p>
       </div>
 
       {message ? (
         <div
-          className={`md:col-span-2 rounded-lg px-3 py-2 text-sm ${
+          className={`md:col-span-2 rounded-lg px-3 py-2 type-small ${
             isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
           }`}
           role="alert"

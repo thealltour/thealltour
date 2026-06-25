@@ -49,7 +49,7 @@ function formatBaggageLimit(raw: string | undefined): string {
 
 function FlightMetaRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 text-sm">
+    <div className="flex min-w-0 items-center gap-2 text-base">
       <Icon name={icon} size={18} decorative className="shrink-0 text-slate-500" />
       <span className="shrink-0 text-slate-500">{label}</span>
       <span className="font-semibold text-slate-900">{value}</span>
@@ -100,11 +100,11 @@ function MobileFlightBlock({
     <div className="space-y-3">
       <p className="text-[11px] font-semibold text-[var(--primary)]">{label}</p>
       <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 flex-1 text-left text-sm font-semibold text-slate-800">{fromAirport || "출발"}</p>
+        <p className="min-w-0 flex-1 text-left text-base font-semibold text-slate-800">{fromAirport || "출발"}</p>
         <div className="flex shrink-0 px-1">
           <AirlineLogo airlineText={flightName} size={56} />
         </div>
-        <p className="min-w-0 flex-1 text-right text-sm font-semibold text-slate-800">{toAirport || "도착"}</p>
+        <p className="min-w-0 flex-1 text-right text-base font-semibold text-slate-800">{toAirport || "도착"}</p>
       </div>
       <div className="flex items-end justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -116,7 +116,7 @@ function MobileFlightBlock({
           <p className="text-[11px] text-slate-500">도착</p>
           <p className="text-xl font-bold leading-tight text-slate-900">
             {toTime || "—"}
-            {toTimeExtra ? <span className="ml-1 text-xs font-semibold text-[#1e3a8a]">{toTimeExtra}</span> : null}
+            {toTimeExtra ? <span className="ml-1 text-sm font-semibold text-[#1e3a8a]">{toTimeExtra}</span> : null}
           </p>
           {toDate ? <p className="text-[11px] text-slate-500">{toDate}</p> : null}
         </div>
@@ -146,22 +146,22 @@ function FlightCard({
 }: FlightCardProps) {
   return (
     <div className={`rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm ${compact ? "p-3" : "p-4"}`}>
-      <p className={`font-semibold text-[var(--primary)] ${compact ? "mb-2 text-[11px]" : "mb-3 text-xs"}`}>{title}</p>
+      <p className={`font-semibold text-[var(--primary)] ${compact ? "mb-2 text-sm" : "mb-3 text-sm"}`}>{title}</p>
       <div className={`flex flex-wrap items-center justify-between ${compact ? "gap-3" : "gap-4"}`}>
         <div className="min-w-0 flex-1 text-left">
-          <p className={`font-semibold text-slate-800 ${compact ? "text-xs" : "text-sm"}`}>{fromAirport}</p>
-          {fromDate && <p className="text-xs text-slate-500">{fromDate}</p>}
+          <p className={`font-semibold text-slate-800 ${compact ? "text-sm" : "text-base"}`}>{fromAirport}</p>
+          {fromDate && <p className="text-sm text-slate-500">{fromDate}</p>}
           <p className={`mt-1 font-bold text-slate-900 ${compact ? "text-lg" : "text-xl"}`}>{fromTime}</p>
         </div>
         <div className={`flex shrink-0 flex-col items-center border-y border-slate-200 ${compact ? "gap-1 py-2 px-3" : "gap-1.5 py-2.5 px-4"}`}>
           <AirlineLogo airlineText={flightName} size={compact ? 64 : 80} />
         </div>
         <div className="min-w-0 flex-1 text-right">
-          <p className={`font-semibold text-slate-800 ${compact ? "text-xs" : "text-sm"}`}>{toAirport}</p>
-          {toDate && <p className="text-xs text-slate-500">{toDate}</p>}
+          <p className={`font-semibold text-slate-800 ${compact ? "text-sm" : "text-base"}`}>{toAirport}</p>
+          {toDate && <p className="text-sm text-slate-500">{toDate}</p>}
           <div className="mt-1">
             {toTimeExtra && (
-              <span className="block text-xs font-medium text-slate-500">{toTimeExtra}</span>
+              <span className="block text-sm font-medium text-slate-500">{toTimeExtra}</span>
             )}
             <p className={`font-bold text-slate-900 ${compact ? "text-lg" : "text-xl"}`}>{toTime}</p>
           </div>
@@ -242,7 +242,7 @@ export function FlightSummarySection({
           <Icon name="flight" decorative size={compact ? 20 : 22} className="shrink-0 text-slate-700" />
           항공
         </h2>
-        {!compact && <p className="mt-1 text-sm text-slate-500">출발·도착 항공편 정보입니다.</p>}
+        {!compact && <p className="mt-1 text-base text-slate-500">출발·도착 항공편 정보입니다.</p>}
         <div className={compact ? "mt-3 space-y-3" : "mt-6 space-y-4"}>
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 md:hidden">
             {hasDepart ? (

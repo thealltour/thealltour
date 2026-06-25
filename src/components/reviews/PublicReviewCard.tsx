@@ -20,7 +20,7 @@ function formatDate(value?: string) {
 
 function Stars({ rating, size = "md" }: { rating?: number; size?: "sm" | "md" }) {
   if (rating == null || rating < 1 || rating > 5) {
-    return <span className="text-sm text-slate-400">별점 없음</span>;
+    return <span className="text-base text-slate-400">별점 없음</span>;
   }
   const r = Math.round(rating);
   const starClass = size === "md" ? "text-lg" : "text-base";
@@ -28,7 +28,7 @@ function Stars({ rating, size = "md" }: { rating?: number; size?: "sm" | "md" })
     <span className={`inline-flex items-center gap-0.5 ${starClass} text-amber-500`} aria-label={`${r}점`}>
       {"★".repeat(r)}
       <span className="text-slate-200">{"☆".repeat(5 - r)}</span>
-      <span className="ml-1 text-sm font-semibold text-slate-700">{rating.toFixed(1)}</span>
+      <span className="ml-1 text-base font-semibold text-slate-700">{rating.toFixed(1)}</span>
     </span>
   );
 }
@@ -77,7 +77,7 @@ export default function PublicReviewCard({ review }: { review: PublicReviewItem 
                   실제 여행 후기
                 </span>
               )}
-              {!hasPhotos && <span className="text-xs text-slate-400">이미지 없음</span>}
+              {!hasPhotos && <span className="text-sm text-slate-400">이미지 없음</span>}
             </div>
           </div>
         )}
@@ -87,7 +87,7 @@ export default function PublicReviewCard({ review }: { review: PublicReviewItem 
               <h2 className="line-clamp-2 font-semibold text-slate-900">{review.title || "여행 후기"}</h2>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <Stars rating={review.rating} />
-                <span className="text-xs text-slate-500">{formatDate(review.created_at)}</span>
+                <span className="text-sm text-slate-500">{formatDate(review.created_at)}</span>
               </div>
             </div>
             <div className="shrink-0">
@@ -95,14 +95,14 @@ export default function PublicReviewCard({ review }: { review: PublicReviewItem 
             </div>
           </div>
           {review.summary && (
-            <p className="line-clamp-2 text-sm font-medium text-slate-700">{review.summary}</p>
+            <p className="line-clamp-2 text-base font-medium text-slate-700">{review.summary}</p>
           )}
-          <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">
+          <p className="line-clamp-3 text-base leading-relaxed text-slate-600">
             {bodyPreview}
             {hasMore ? "…" : ""}
           </p>
           {hasStructured && (
-            <div className="space-y-1 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
+            <div className="space-y-1 rounded-lg bg-slate-50 p-2 text-sm text-slate-600">
               {review.content_good?.trim() && (
                 <p className="line-clamp-1"><span className="font-medium text-green-700">좋았던 점</span> {review.content_good}</p>
               )}
@@ -115,7 +115,7 @@ export default function PublicReviewCard({ review }: { review: PublicReviewItem 
             </div>
           )}
           {review.product_title && (
-            <p className="text-xs text-slate-500">상품: {review.product_title}</p>
+            <p className="text-sm text-slate-500">상품: {review.product_title}</p>
           )}
           {thumbnails.length > 1 && (
             <div className="flex gap-1">
@@ -127,8 +127,8 @@ export default function PublicReviewCard({ review }: { review: PublicReviewItem 
             </div>
           )}
           <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-            <span className="text-xs text-slate-500">작성자: {review.author_name || "익명"}</span>
-            <span className="text-xs font-medium text-blue-600">자세히 보기 →</span>
+            <span className="text-sm text-slate-500">작성자: {review.author_name || "익명"}</span>
+            <span className="text-sm font-medium text-blue-600">자세히 보기 →</span>
             <ReviewHelpfulButton
               reviewId={review.id}
               helpfulCount={review.helpfulCount}

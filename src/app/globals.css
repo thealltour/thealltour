@@ -133,27 +133,34 @@
   --font-display-sans: "Wanted Sans Variable", system-ui, -apple-system, BlinkMacSystemFont, "Pretendard",
     "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
 
-  /* Typography scale v1.0 (middle-aged readability, premium tone) */
-  --type-h1-size: 2.5rem;      /* 40px */
+  /* Typography scale v1.1 (middle-aged readability, premium tone) */
+  --type-h1-size: 2.625rem;     /* 42px */
   --type-h1-weight: 700;
   --type-h1-leading: 1.15;
-  --type-h2-size: 1.75rem;     /* 28px */
+  --type-h2-size: 1.875rem;     /* 30px */
   --type-h2-weight: 700;
   --type-h2-leading: 1.2;
-  --type-h3-size: 1.375rem;    /* 22px */
+  --type-h3-size: 1.5rem;       /* 24px */
   --type-h3-weight: 600;
   --type-h3-leading: 1.25;
-  --type-body-size: 1rem;      /* 16px */
+  --type-body-size: 1.0625rem;  /* 17px */
   --type-body-weight: 400;
   --type-body-leading: 1.65;
-  --type-small-size: 0.875rem; /* 14px */
+  --type-small-size: 0.9375rem; /* 15px */
   --type-small-weight: 400;
   --type-small-leading: 1.6;
-  --type-caption-size: 0.75rem; /* 12px */
+  --type-caption-size: 0.8125rem; /* 13px */
   --type-caption-weight: 400;
   --type-caption-leading: 1.4;
   --type-letter-tight: -0.01em;
   --type-letter-tighter: -0.02em;
+
+  /* Tailwind text-* scale (public site — synced with type tokens) */
+  --tw-text-xs: 0.8125rem;   /* 13px — badges, legal fine print */
+  --tw-text-sm: 0.9375rem;   /* 15px — secondary labels */
+  --tw-text-base: 1.0625rem; /* 17px — body */
+  --tw-text-lg: 1.1875rem;   /* 19px */
+  --tw-text-xl: 1.3125rem;   /* 21px */
 
   /* Spacing scale */
   --space-1: 4px;
@@ -342,7 +349,7 @@
 .mobile-header-top-bar__cta {
   border-radius: 999px;
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: var(--type-letter-tight);
@@ -697,6 +704,11 @@
   --font-size-type-body: var(--type-body-size);
   --font-size-type-small: var(--type-small-size);
   --font-size-type-caption: var(--type-caption-size);
+  --font-size-xs: var(--tw-text-xs);
+  --font-size-sm: var(--tw-text-sm);
+  --font-size-base: var(--tw-text-base);
+  --font-size-lg: var(--tw-text-lg);
+  --font-size-xl: var(--tw-text-xl);
 }
 
 @keyframes adminProgress {
@@ -720,6 +732,23 @@ body {
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-leading);
   letter-spacing: var(--type-letter-tight);
+}
+
+/**
+ * Admin console: 정보 밀도 유지 — 공개 사이트보다 한 단계 작은 타이포 스케일
+ */
+.site-admin {
+  --type-h1-size: 2.5rem;
+  --type-h2-size: 1.75rem;
+  --type-h3-size: 1.375rem;
+  --type-body-size: 1rem;
+  --type-small-size: 0.875rem;
+  --type-caption-size: 0.75rem;
+  --tw-text-xs: 0.75rem;
+  --tw-text-sm: 0.875rem;
+  --tw-text-base: 1rem;
+  --tw-text-lg: 1.125rem;
+  --tw-text-xl: 1.25rem;
 }
 
 /* 공통 모달/다이얼로그 스타일 — 백드롭·컨테이너 토큰 통일 */

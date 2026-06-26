@@ -54,6 +54,11 @@ build/
 .next/
 
 # Plasmo / extension
+tools/hanatour-extractor-extension/.plasmo
+tools/modetour-extractor-extension/.plasmo
+tools/hanatour-extractor-extension/node_modules
+tools/hanatour-extractor-extension/build
+tools/hanatour-extractor-extension/dist
 tools/modetour-extractor-extension/node_modules
 tools/modetour-extractor-extension/build
 tools/modetour-extractor-extension/dist

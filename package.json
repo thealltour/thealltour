@@ -25,7 +25,9 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
-    "supabase:reset": "supabase db reset"
+    "supabase:reset": "supabase db reset",
+    "extensions:package": "node scripts/upload-extension-builds.mjs",
+    "extensions:package:local": "node scripts/upload-extension-builds.mjs --skip-upload"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

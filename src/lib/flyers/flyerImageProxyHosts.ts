@@ -19,12 +19,13 @@ const EXACT_HOSTS = new Set(
     "img.notionusercontent.com",
     "quick-hen-cc9.notion.site",
     "image-tc.galaxy.tf",
+    "static.hanatour.net",
   ].map((h) => h.toLowerCase()),
 );
 
 function hostSuffixes(): string[] {
   const extra = process.env.FLYER_IMAGE_PROXY_EXTRA_HOSTS?.trim();
-  if (!extra) return [".googleusercontent.com", ".supabase.co"];
+  if (!extra) return [".googleusercontent.com", ".supabase.co", ".hanatour.com"];
   const parts = extra
     .split(",")
     .map((s) => s.trim().toLowerCase())

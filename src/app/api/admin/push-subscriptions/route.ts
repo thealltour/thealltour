@@ -1,11 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
 import {
+  adminUserKeyMatchesSession,
   deleteAdminPushSubscriptionByEndpoint,
+  getAdminPushSubscriptionByEndpoint,
   getWebPushVapidPublicKey,
   hasAdminPushSubscriptionForEndpoint,
   isWebPushConfigured,
   resolveAdminUserKey,
+  updateAdminPushSubscriptionChatEnabled,
   upsertAdminPushSubscription,
 } from "@/lib/adminPushSubscriptions";
 
@@ -17,13 +20,26 @@ type PushSubscriptionBody = {
   };
 };
 
-export async function GET() {
+type PatchBody = {
+  endpoint?: string;
+  chatEnabled?: boolean;
+};
+
+export async function GET(request: NextRequest) {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.res;
+
+  const endpoint = request.nextUrl.searchParams.get("endpoint")?.trim();
+  let chatEnabled: boolean | undefined;
+  if (endpoint) {
+    const row = await getAdminPushSubscriptionByEndpoint(endpoint);
+    chatEnabled = row?.chat_enabled !== false;
+  }
 
   return NextResponse.json({
     configured: isWebPushConfigured(),
     vapidPublicKey: getWebPushVapidPublicKey(),
+    ...(chatEnabled !== undefined ? { chatEnabled } : {}),
   });
 }
 
@@ -63,6 +79,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "알림 구독이 등록되었습니다.", subscribed: true });
   } catch {
     return NextResponse.json({ message: "알림 구독 등록에 실패했습니다." }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  let body: PatchBody;
+  try {
+    body = (await request.json()) as PatchBody;
+  } catch {
+    return NextResponse.json({ message: "잘못된 요청입니다." }, { status: 400 });
+  }
+
+  const endpoint = body.endpoint?.trim();
+  if (!endpoint) {
+    return NextResponse.json({ message: "구독 endpoint가 필요합니다." }, { status: 400 });
+  }
+  if (typeof body.chatEnabled !== "boolean") {
+    return NextResponse.json({ message: "chatEnabled 값이 필요합니다." }, { status: 400 });
+  }
+
+  try {
+    const row = await getAdminPushSubscriptionByEndpoint(endpoint);
+    if (!row) {
+      return NextResponse.json({ message: "등록된 구독을 찾을 수 없습니다." }, { status: 404 });
+    }
+    const selfKey = resolveAdminUserKey(auth.session);
+    if (!adminUserKeyMatchesSession(row.admin_user_key, selfKey)) {
+      return NextResponse.json({ message: "권한이 없습니다." }, { status: 403 });
+    }
+    await updateAdminPushSubscriptionChatEnabled(endpoint, body.chatEnabled);
+    return NextResponse.json({ chatEnabled: body.chatEnabled });
+  } catch {
+    return NextResponse.json({ message: "채팅 알림 설정 저장에 실패했습니다." }, { status: 500 });
   }
 }
 

@@ -54,6 +54,18 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "*.hanatour.com",
+      },
+      {
+        protocol: "http",
+        hostname: "*.hanatour.com",
+      },
+      {
+        protocol: "https",
+        hostname: "static.hanatour.net",
+      },
+      {
+        protocol: "https",
         hostname: "qmswixmwquuazrhfyils.supabase.co",
       },
       {

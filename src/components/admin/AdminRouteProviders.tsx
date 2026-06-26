@@ -48,7 +48,9 @@ export function AdminRouteProviders({ children, session }: AdminRouteProvidersPr
             >
               <AdminResponsiveFrame>{children}</AdminResponsiveFrame>
             </Suspense>
-              <AdminChatWidget />
+              <Suspense fallback={null}>
+                <AdminChatWidget />
+              </Suspense>
               </AdminChatProvider>
             </AdminPwaProvider>
           </AdminConfirmProvider>

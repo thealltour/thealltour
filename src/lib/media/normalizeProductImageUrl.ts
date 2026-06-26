@@ -10,6 +10,8 @@ type ImageTransformOptions = {
   mode?: "cover" | "contain" | "fill";
 };
 
+import { upgradeHanatourImageUrl } from "@/lib/images/upgradeHanatourImageUrl";
+
 /** 모두투어 CDN 썸네일 URL을 고해상도 URL로 변환 (resize_w/resize_h 등 제거). */
 function toModetourHighResUrl(url: string): string {
   try {
@@ -71,7 +73,7 @@ export function normalizeProductImageUrl(
   options?: ImageTransformOptions,
 ): string {
   if (!url?.trim()) return "";
-  let normalized = url.trim();
+  let normalized = upgradeHanatourImageUrl(url.trim());
   normalized = toSupabaseOriginalObjectUrl(normalized);
   normalized = toModetourHighResUrl(normalized);
   return toSupabaseRenderUrl(normalized, options);

@@ -28,6 +28,8 @@ const API_PATH_PERMISSIONS: Array<{ prefix: string; permission: AdminPermissionK
   { prefix: "/api/admin/guides", permission: "guides.manage" },
   { prefix: "/api/admin/notices", permission: "notices.manage" },
   { prefix: "/api/admin/notifications", permission: "notifications.view" },
+  { prefix: "/api/admin/push-subscriptions", permission: "notifications.view" },
+  { prefix: "/api/admin/sessions", permission: "notifications.view" },
   { prefix: "/api/admin/review-summaries", permission: "reviews.analytics" },
   { prefix: "/api/admin/review-reports", permission: "reviews.ops" },
   { prefix: "/api/admin/review-reminders", permission: "reviews.ops" },
@@ -43,8 +45,11 @@ const API_PATH_PERMISSIONS: Array<{ prefix: string; permission: AdminPermissionK
   { prefix: "/api/admin/search/recommended", permission: "settings.manage" },
   { prefix: "/api/admin/search", permission: "dashboard.view" },
   { prefix: "/api/admin/modetour", permission: "products.manage" },
+  { prefix: "/api/admin/hanatour", permission: "products.manage" },
   { prefix: "/api/admin/uploads", permission: "products.manage" },
   { prefix: "/api/admin/storage", permission: "settings.manage" },
+  { prefix: "/api/admin/tools", permission: "tools.view" },
+  { prefix: "/api/admin/chat", permission: "dashboard.view" },
 ];
 
 /** UI 상대 경로(rel) → 필요 권한 (하나라도 있으면 허용하는 그룹은 anyOf) */
@@ -83,6 +88,7 @@ const CONSOLE_PATH_RULES: Array<{
   { test: (r) => r.startsWith("/guides"), anyOf: ["guides.manage"] },
   { test: (r) => r.startsWith("/notices"), anyOf: ["notices.manage"] },
   { test: (r) => r.startsWith("/notifications"), anyOf: ["notifications.view"] },
+  { test: (r) => r.startsWith("/tools"), anyOf: ["tools.view"] },
   { test: (r) => r.startsWith("/settings"), anyOf: ["settings.manage", "admin_users.manage"] },
   { test: (r) => r === "/login", anyOf: ["dashboard.view"] },
 ];
@@ -201,6 +207,8 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, AdminPermissionKey[]> = {
   guides: ["guides.manage"],
   notices: ["notices.manage"],
   notifications: ["notifications.view"],
+  tools_hanatour: ["tools.view"],
+  tools_modetour: ["tools.view"],
   settings: ["settings.manage", "admin_users.manage"],
 };
 

@@ -37,6 +37,7 @@ export async function GET(request: Request, context: RouteContext) {
 
 type PostBody = {
   body?: string;
+  attachmentUrls?: string[];
 };
 
 export async function POST(request: Request, context: RouteContext) {
@@ -47,7 +48,10 @@ export async function POST(request: Request, context: RouteContext) {
   const body = (await request.json()) as PostBody;
 
   try {
-    const message = await sendRoomMessage(auth.session, id, body.body ?? "");
+    const message = await sendRoomMessage(auth.session, id, {
+      body: body.body ?? "",
+      attachmentUrls: body.attachmentUrls,
+    });
     return NextResponse.json({ message });
   } catch (e) {
     if (e instanceof AdminChatError) {

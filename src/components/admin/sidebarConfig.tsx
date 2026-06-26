@@ -17,12 +17,14 @@ import {
   Bell,
   Home,
   CalendarDays,
+  Puzzle,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
   { id: "ops", label: "업무" },
   { id: "catalog", label: "상품·마케팅" },
   { id: "content", label: "콘텐츠·설정" },
+  { id: "tools", label: "도구" },
 ] as const;
 
 export type SidebarGroupId = (typeof SIDEBAR_GROUPS)[number]["id"];
@@ -140,5 +142,21 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     group: "content",
     mainKey: "settings",
     roles: ["admin"],
+  },
+  {
+    href: "/theall_manager_only/tools/hanatour",
+    label: "하나투어 익스텐션",
+    icon: Puzzle,
+    group: "tools",
+    mainKey: "tools_hanatour",
+    roles: ["admin", "manager"],
+  },
+  {
+    href: "/theall_manager_only/tools/modetour",
+    label: "모두투어 익스텐션",
+    icon: Puzzle,
+    group: "tools",
+    mainKey: "tools_modetour",
+    roles: ["admin", "manager"],
   },
 ];

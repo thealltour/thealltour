@@ -1,10 +1,11 @@
 import "server-only";
 
 import { createHmac } from "crypto";
-import { ADMIN_CHAT_BROADCAST_EVENT } from "@/lib/adminChat/constants";
+import {
+  ADMIN_CHAT_BROADCAST_EVENT,
+  ADMIN_CHAT_TYPING_EVENT,
+} from "@/lib/adminChat/constants";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-const CHAT_EVENT = ADMIN_CHAT_BROADCAST_EVENT;
 
 function resolveRealtimeSecret(): string {
   const dedicated = process.env.ADMIN_CHAT_REALTIME_SECRET?.trim();
@@ -32,12 +33,22 @@ export type ChatBroadcastPayload = {
   senderDisplayName: string;
   senderRoleLabel: string;
   body: string;
+  messageType?: "text" | "image" | "mixed";
+  attachmentUrls?: string[];
   createdAt: string;
 };
 
-export async function broadcastChatMessage(
+export type ChatTypingBroadcastPayload = {
+  roomId: string;
+  senderKey: string;
+  senderDisplayName: string;
+  typing: boolean;
+};
+
+async function broadcastOnRoomChannel(
   roomId: string,
-  payload: ChatBroadcastPayload,
+  event: string,
+  payload: Record<string, unknown>,
 ): Promise<void> {
   const channelName = buildChatChannelName(roomId);
   const channel = supabaseAdmin.channel(channelName);
@@ -53,14 +64,14 @@ export async function broadcastChatMessage(
         void channel
           .send({
             type: "broadcast",
-            event: CHAT_EVENT,
+            event,
             payload,
           })
-          .then((status) => {
+          .then((sendStatus) => {
             clearTimeout(timeout);
             void supabaseAdmin.removeChannel(channel);
-            if (status === "ok") resolve();
-            else reject(new Error(`Realtime broadcast send: ${status}`));
+            if (sendStatus === "ok") resolve();
+            else reject(new Error(`Realtime broadcast send: ${sendStatus}`));
           })
           .catch((err) => {
             clearTimeout(timeout);
@@ -76,4 +87,18 @@ export async function broadcastChatMessage(
   });
 }
 
-export { ADMIN_CHAT_BROADCAST_EVENT } from "@/lib/adminChat/constants";
+export async function broadcastChatMessage(
+  roomId: string,
+  payload: ChatBroadcastPayload,
+): Promise<void> {
+  await broadcastOnRoomChannel(roomId, ADMIN_CHAT_BROADCAST_EVENT, payload);
+}
+
+export async function broadcastChatTyping(
+  roomId: string,
+  payload: ChatTypingBroadcastPayload,
+): Promise<void> {
+  await broadcastOnRoomChannel(roomId, ADMIN_CHAT_TYPING_EVENT, payload);
+}
+
+export { ADMIN_CHAT_BROADCAST_EVENT, ADMIN_CHAT_TYPING_EVENT } from "@/lib/adminChat/constants";

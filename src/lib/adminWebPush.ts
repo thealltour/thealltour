@@ -3,6 +3,7 @@ import "server-only";
 import webpush from "web-push";
 import {
   deleteAdminPushSubscriptionById,
+  getAdminPushSubscriptionsForUserKeys,
   getAllAdminPushSubscriptions,
   isWebPushConfigured,
 } from "@/lib/adminPushSubscriptions";
@@ -39,6 +40,29 @@ export async function dispatchAdminWebPush(input: DispatchAdminWebPushInput): Pr
   ensureVapidConfigured();
 
   const subscriptions = await getAllAdminPushSubscriptions();
+  await sendPushToSubscriptions(subscriptions, input);
+}
+
+export async function dispatchAdminWebPushToUserKeys(
+  userKeys: string[],
+  input: DispatchAdminWebPushInput,
+  options?: { chatOnly?: boolean },
+): Promise<void> {
+  if (!isWebPushConfigured()) return;
+  if (userKeys.length === 0) return;
+
+  ensureVapidConfigured();
+
+  const subscriptions = await getAdminPushSubscriptionsForUserKeys(userKeys, {
+    chatOnly: options?.chatOnly,
+  });
+  await sendPushToSubscriptions(subscriptions, input);
+}
+
+async function sendPushToSubscriptions(
+  subscriptions: Awaited<ReturnType<typeof getAllAdminPushSubscriptions>>,
+  input: DispatchAdminWebPushInput,
+): Promise<void> {
   if (subscriptions.length === 0) return;
 
   const unreadCount = await getUnreadNotificationCount();

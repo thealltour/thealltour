@@ -26,6 +26,8 @@ export type AdminChatMessageRow = {
   sender_display_name: string;
   sender_role_label: string;
   body: string;
+  message_type?: string;
+  attachment_urls?: string[] | null;
   created_at: string;
 };
 
@@ -36,6 +38,8 @@ export type AdminChatMessageDto = {
   senderDisplayName: string;
   senderRoleLabel: string;
   body: string;
+  messageType: "text" | "image" | "mixed";
+  attachmentUrls?: string[];
   createdAt: string;
 };
 
@@ -63,6 +67,17 @@ export type AdminChatAdminOption = {
 };
 
 export function mapMessageRow(row: AdminChatMessageRow): AdminChatMessageDto {
+  const rawUrls = row.attachment_urls;
+  const attachmentUrls = Array.isArray(rawUrls)
+    ? rawUrls.filter((u): u is string => typeof u === "string" && u.length > 0)
+    : undefined;
+  const messageType =
+    row.message_type === "image" || row.message_type === "mixed"
+      ? row.message_type
+      : attachmentUrls?.length
+        ? "image"
+        : "text";
+
   return {
     id: row.id,
     roomId: row.room_id,
@@ -70,6 +85,8 @@ export function mapMessageRow(row: AdminChatMessageRow): AdminChatMessageDto {
     senderDisplayName: row.sender_display_name,
     senderRoleLabel: row.sender_role_label,
     body: row.body,
+    messageType,
+    attachmentUrls: attachmentUrls?.length ? attachmentUrls : undefined,
     createdAt: row.created_at,
   };
 }

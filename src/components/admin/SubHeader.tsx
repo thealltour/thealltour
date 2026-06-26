@@ -185,6 +185,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         router.push("/theall_manager_only/products/new-modetour");
         return;
       }
+      if (label === "상품 등록(하나)") {
+        router.push("/theall_manager_only/products/new-hanatour");
+        return;
+      }
       const view = mapProductLabelToView(label);
       const params = new URLSearchParams(searchParams.toString());
       if (view) {
@@ -193,7 +197,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         params.delete(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
       }
       const query = params.toString();
-      const basePath = pathname.includes("/products/new-modetour")
+      const basePath = pathname.includes("/products/new-modetour") || pathname.includes("/products/new-hanatour")
         ? "/theall_manager_only/products"
         : pathname;
       const target = query ? `${basePath}?${query}` : basePath;
@@ -298,6 +302,18 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       }
       const query = params.toString();
       router.push(query ? `/theall_manager_only?${query}` : "/theall_manager_only");
+      return;
+    }
+    if (activeMenu === "notifications") {
+      if (label === "OS 푸시 알림") {
+        router.push("/theall_manager_only/notifications/push");
+        return;
+      }
+      if (label === "로그인된 기기") {
+        router.push("/theall_manager_only/notifications/devices");
+        return;
+      }
+      router.push("/theall_manager_only/notifications");
     }
   }
 

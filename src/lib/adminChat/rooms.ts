@@ -11,7 +11,7 @@ import {
   resolveSenderProfile,
   rolePresetLabel,
 } from "@/lib/adminChat/labels";
-import { broadcastChatMessage } from "@/lib/adminChat/realtime";
+import { broadcastChatMessage, broadcastChatTyping } from "@/lib/adminChat/realtime";
 import {
   mapMessageRow,
   type AdminChatAdminOption,
@@ -21,6 +21,7 @@ import {
   type AdminChatRoomSummary,
 } from "@/lib/adminChat/types";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { dispatchAdminWebPushToUserKeys } from "@/lib/adminWebPush";
 
 const DEFAULT_MESSAGE_LIMIT = 50;
 const MAX_MESSAGE_LIMIT = 100;
@@ -401,10 +402,11 @@ export async function listRoomMessages(
   session: AdminSessionPayload,
   roomId: string,
   options?: { before?: string; limit?: number },
-): Promise<{ messages: AdminChatMessageDto[] }> {
+): Promise<{ messages: AdminChatMessageDto[]; peerLastReadAt?: string | null }> {
   const selfKey = toAdminUserKey(session);
   await assertRoomMember(roomId, selfKey);
 
+  const room = await getRoom(roomId);
   const limit = Math.min(Math.max(options?.limit ?? DEFAULT_MESSAGE_LIMIT, 1), MAX_MESSAGE_LIMIT);
 
   let query = supabaseAdmin
@@ -425,22 +427,88 @@ export async function listRoomMessages(
     .map((row) => mapMessageRow(row as AdminChatMessageRow))
     .reverse();
 
-  return { messages };
+  let peerLastReadAt: string | null | undefined;
+  if (room.type === "direct") {
+    const memberKeys = await getMemberKeys(roomId);
+    const peerKey = memberKeys.find((k) => k !== selfKey);
+    if (peerKey) {
+      const { data: peerMember } = await supabaseAdmin
+        .from("admin_chat_room_members")
+        .select("last_read_at")
+        .eq("room_id", roomId)
+        .eq("admin_user_key", peerKey)
+        .maybeSingle();
+      peerLastReadAt = (peerMember as { last_read_at: string | null } | null)?.last_read_at ?? null;
+    }
+  }
+
+  return { messages, peerLastReadAt };
+}
+
+export type SendRoomMessageInput = {
+  body?: string;
+  attachmentUrls?: string[];
+};
+
+function resolveMessageType(body: string, attachmentUrls: string[]): "text" | "image" | "mixed" {
+  if (attachmentUrls.length > 0 && body) return "mixed";
+  if (attachmentUrls.length > 0) return "image";
+  return "text";
+}
+
+async function notifyChatMessagePush(
+  roomId: string,
+  room: AdminChatRoomRow,
+  senderKey: string,
+  senderDisplayName: string,
+  preview: string,
+): Promise<void> {
+  const memberKeys = await getMemberKeys(roomId);
+  const recipientKeys = memberKeys.filter((k) => k !== senderKey);
+  if (recipientKeys.length === 0) return;
+
+  const roomLabel = room.type === "group" && room.name ? room.name : senderDisplayName;
+  void dispatchAdminWebPushToUserKeys(
+    recipientKeys,
+    {
+      title: `팀 채팅 · ${roomLabel}`,
+      body: preview,
+      targetUrl: `/theall_manager_only?chatRoom=${roomId}`,
+      type: "admin_chat_message",
+    },
+    { chatOnly: true },
+  ).catch(() => {
+    // 푸시 실패해도 메시지 전송은 유지
+  });
 }
 
 export async function sendRoomMessage(
   session: AdminSessionPayload,
   roomId: string,
-  body: string,
+  input: string | SendRoomMessageInput,
 ): Promise<AdminChatMessageDto> {
-  const trimmed = body.trim();
-  if (!trimmed) throw new AdminChatError("메시지를 입력하세요.");
+  const normalized =
+    typeof input === "string"
+      ? { body: input, attachmentUrls: [] as string[] }
+      : { body: input.body ?? "", attachmentUrls: input.attachmentUrls ?? [] };
+
+  const trimmed = normalized.body.trim();
+  const attachmentUrls = normalized.attachmentUrls
+    .map((u) => u.trim())
+    .filter((u) => u.length > 0)
+    .slice(0, 8);
+
+  if (!trimmed && attachmentUrls.length === 0) {
+    throw new AdminChatError("메시지 또는 이미지를 입력하세요.");
+  }
 
   const selfKey = toAdminUserKey(session);
   await assertRoomMember(roomId, selfKey);
 
+  const room = await getRoom(roomId);
   const sender = await resolveSenderProfile(session);
   const now = new Date().toISOString();
+  const messageType = resolveMessageType(trimmed, attachmentUrls);
 
   const { data, error } = await supabaseAdmin
     .from("admin_chat_messages")
@@ -450,6 +518,8 @@ export async function sendRoomMessage(
       sender_display_name: sender.displayName,
       sender_role_label: sender.roleLabel,
       body: trimmed,
+      message_type: messageType,
+      attachment_urls: attachmentUrls,
       created_at: now,
     })
     .select("*")
@@ -475,13 +545,39 @@ export async function sendRoomMessage(
       senderDisplayName: message.senderDisplayName,
       senderRoleLabel: message.senderRoleLabel,
       body: message.body,
+      messageType: message.messageType,
+      attachmentUrls: message.attachmentUrls,
       createdAt: message.createdAt,
     });
   } catch {
     // Broadcast 실패해도 메시지는 저장됨 — 폴링으로 수신 가능
   }
 
+  const preview = trimmed || (attachmentUrls.length > 0 ? "사진을 보냈습니다." : "");
+  void notifyChatMessagePush(roomId, room, selfKey, sender.displayName, preview);
+
   return message;
+}
+
+export async function sendRoomTyping(
+  session: AdminSessionPayload,
+  roomId: string,
+  typing: boolean,
+): Promise<void> {
+  const selfKey = toAdminUserKey(session);
+  await assertRoomMember(roomId, selfKey);
+  const sender = await resolveSenderProfile(session);
+
+  try {
+    await broadcastChatTyping(roomId, {
+      roomId,
+      senderKey: selfKey,
+      senderDisplayName: sender.displayName,
+      typing,
+    });
+  } catch {
+    // typing 신호 실패는 무시
+  }
 }
 
 export async function markRoomRead(session: AdminSessionPayload, roomId: string): Promise<void> {

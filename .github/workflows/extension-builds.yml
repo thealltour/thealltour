@@ -1,0 +1,43 @@
+name: Extension builds upload
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/hanatour-extractor-extension/**"
+      - "tools/modetour-extractor-extension/**"
+      - "scripts/upload-extension-builds.mjs"
+      - ".github/workflows/extension-builds.yml"
+  workflow_dispatch:
+
+jobs:
+  package-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install root dependencies (upload script)
+        run: npm ci
+
+      - name: Package hanatour extension
+        working-directory: tools/hanatour-extractor-extension
+        run: |
+          npm ci
+          npm run package
+
+      - name: Package modetour extension
+        working-directory: tools/modetour-extractor-extension
+        run: |
+          npm ci
+          npm run package
+
+      - name: Upload to Supabase Storage
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/upload-extension-builds.mjs --skip-package

@@ -9,7 +9,7 @@ export const ADMIN_MANAGER_PREFIX = "/theall_manager_only";
 
 export const ADMIN_MENU_MAP = {
   dashboard: ["오늘 할 일", "지표·리드"],
-  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "카테고리/테마 관리"],
+  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "상품 등록(하나)", "카테고리/테마 관리"],
   home: ["메인 골프투어 상품", "메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
   landings: ["랜딩 목록", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
@@ -20,7 +20,9 @@ export const ADMIN_MENU_MAP = {
   reviews: [] as string[],
   guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
   notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
-  notifications: ["알림 목록"],
+  notifications: ["알림 목록", "OS 푸시 알림", "로그인된 기기"],
+  tools_hanatour: [] as string[],
+  tools_modetour: [] as string[],
 } as const;
 
 export type MainMenuKey = keyof typeof ADMIN_MENU_MAP;
@@ -39,6 +41,8 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   guides: "여행가이드",
   notices: "공지사항",
   notifications: "알림 센터",
+  tools_hanatour: "하나투어 익스텐션",
+  tools_modetour: "모두투어 익스텐션",
 };
 
 const HOME_PRODUCT_VIEWS = new Set<string>([
@@ -54,7 +58,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel === "/" || rel === "") return "dashboard";
   if (rel.startsWith("/banners")) return "home";
   if (rel.startsWith("/products")) {
-    if (rel.includes("/new-modetour")) return "product";
+    if (rel.includes("/new-modetour") || rel.includes("/new-hanatour")) return "product";
     if (searchParamsView && HOME_PRODUCT_VIEWS.has(searchParamsView)) return "home";
     return "product";
   }
@@ -70,6 +74,8 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel.startsWith("/guides")) return "guides";
   if (rel.startsWith("/notices")) return "notices";
   if (rel.startsWith("/notifications")) return "notifications";
+  if (rel.startsWith("/tools/hanatour")) return "tools_hanatour";
+  if (rel.startsWith("/tools/modetour")) return "tools_modetour";
   return null;
 }
 
@@ -90,7 +96,9 @@ export function resolveActiveSubTab(
 
   if (activeMenu === "product") {
     const view = searchParams.view;
-    if (pathname.includes("/products/new-modetour")) {
+    if (pathname.includes("/products/new-hanatour")) {
+      initial = "상품 등록(하나)";
+    } else if (pathname.includes("/products/new-modetour")) {
       initial = "상품 등록(모두)";
     } else if (view === ADMIN_PRODUCTS_VIEW.TAXONOMY) {
       initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
@@ -150,6 +158,11 @@ export function resolveActiveSubTab(
   }
   if (activeMenu === "dashboard") {
     initial = searchParams.tab === "metrics" ? "지표·리드" : "오늘 할 일";
+  }
+  if (activeMenu === "notifications") {
+    if (pathname.includes("/notifications/push")) initial = "OS 푸시 알림";
+    else if (pathname.includes("/notifications/devices")) initial = "로그인된 기기";
+    else initial = "알림 목록";
   }
 
   return initial;
@@ -221,7 +234,13 @@ export function buildAdminBreadcrumbLabels(pathname: string, view: string | null
       return [...base, "공지사항", noticeDetail];
     }
     case "notifications":
+      if (rel.includes("/notifications/push")) return [...base, "알림", "OS 푸시 알림"];
+      if (rel.includes("/notifications/devices")) return [...base, "알림", "로그인된 기기"];
       return [...base, "알림"];
+    case "tools":
+      if (rel.includes("/tools/hanatour")) return [...base, "도구", "하나투어 익스텐션"];
+      if (rel.includes("/tools/modetour")) return [...base, "도구", "모두투어 익스텐션"];
+      return [...base, "도구"];
     default:
       return [...base, "대시보드"];
   }

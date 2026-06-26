@@ -55,5 +55,15 @@ export default function AdminChatInboxSync() {
     onActivity: scheduleRefresh,
   });
 
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        scheduleRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [scheduleRefresh]);
+
   return null;
 }

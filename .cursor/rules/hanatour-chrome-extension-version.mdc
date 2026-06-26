@@ -1,0 +1,34 @@
+---
+description: 하나투어 Chrome 익스텐션(Plasmo) 버전 번호 규칙 및 스토어 제약
+globs: tools/hanatour-extractor-extension/**/*
+alwaysApply: false
+---
+
+# Chrome 익스텐션 버전 규칙 (hanatour-extractor-extension)
+
+## 단일 진실 공급원
+
+- **버전은 `tools/hanatour-extractor-extension/package.json`의 `version` 필드만 수정한다.**
+- Plasmo가 빌드 시 `manifest.json`의 `version`으로 복사한다. `.plasmo/**` 산출물이나 매니페스트를 수동 편집하지 않는다.
+
+## 형식 (Chrome MV3)
+
+- **Semantic Versioning**: `MAJOR.MINOR.PATCH` (예: `0.2.3`).
+- 각 세그먼트는 **0 이상의 정수**. 선행 `v` 접두어 없음.
+
+## 언제 무엇을 올릴지
+
+| 변경 종류 | 올리는 자리 |
+|-----------|-------------|
+| 버그 수정, 추출/UX 소규모 수정 | **PATCH** |
+| 새 기능, DOM/셀렉터 범위 확대, JSON 스키마 호환 추가 | **MINOR** |
+| 권한(`permissions` / `host_permissions`) 추가·제거, 콘텐츠 스크립트 매칭 패턴 변경 | **MAJOR** |
+
+## 에이전트·수정 시 필수
+
+- **`tools/hanatour-extractor-extension/` 아래 파일을 수정했다면** 같은 변경에서 **`package.json` `version`을 한 단계 올린다.**
+- 기본은 **PATCH**. 기능·스키마·수집 범위 확대는 **MINOR**, 권한·매칭 패턴 변경은 **MAJOR**.
+
+## 금지
+
+- `package.json`과 다른 곳에 버전 문자열을 하드코딩하지 않는다.

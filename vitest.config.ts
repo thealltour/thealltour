@@ -8,11 +8,17 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "tools/hanatour-extractor-extension/src/**/*.test.ts",
+    ],
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "~lib": path.resolve(__dirname, "./tools/hanatour-extractor-extension/src/lib"),
+      "~types": path.resolve(__dirname, "./tools/hanatour-extractor-extension/src/types"),
     },
   },
 });

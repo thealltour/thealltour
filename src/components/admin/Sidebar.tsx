@@ -43,6 +43,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
     ops: true,
     catalog: true,
     content: true,
+    tools: true,
   });
 
   function toggleGroup(groupId: string) {

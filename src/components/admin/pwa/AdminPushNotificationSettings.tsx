@@ -11,6 +11,7 @@ import {
 type PushConfigResponse = {
   configured?: boolean;
   vapidPublicKey?: string | null;
+  chatEnabled?: boolean;
   message?: string;
 };
 
@@ -18,8 +19,10 @@ export function AdminPushNotificationSettings() {
   const [supported, setSupported] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  const [chatEnabled, setChatEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [chatBusy, setChatBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [vapidPublicKey, setVapidPublicKey] = useState<string | null>(null);
 
@@ -27,6 +30,19 @@ export function AdminPushNotificationSettings() {
     const registration = await getAdminServiceWorkerRegistration();
     const subscription = await registration?.pushManager.getSubscription();
     setSubscribed(Boolean(subscription));
+    if (subscription) {
+      const endpoint = subscription.endpoint;
+      const res = await fetch(
+        `/api/admin/push-subscriptions?endpoint=${encodeURIComponent(endpoint)}`,
+        { cache: "no-store" },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as PushConfigResponse;
+        if (typeof data.chatEnabled === "boolean") {
+          setChatEnabled(data.chatEnabled);
+        }
+      }
+    }
   }, []);
 
   const subscribePush = useCallback(async () => {
@@ -97,12 +113,42 @@ export function AdminPushNotificationSettings() {
         });
       }
       setSubscribed(false);
+      setChatEnabled(true);
     } catch {
       setErrorMessage("알림 구독 해제 중 오류가 발생했습니다.");
     } finally {
       setBusy(false);
     }
   }, []);
+
+  const toggleChatNotifications = useCallback(async () => {
+    setChatBusy(true);
+    setErrorMessage("");
+    try {
+      const registration = await getAdminServiceWorkerRegistration();
+      const subscription = await registration?.pushManager.getSubscription();
+      if (!subscription) {
+        setErrorMessage("OS 알림을 먼저 켜 주세요.");
+        return;
+      }
+      const next = !chatEnabled;
+      const res = await fetch("/api/admin/push-subscriptions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: subscription.endpoint, chatEnabled: next }),
+      });
+      const data = (await res.json()) as { chatEnabled?: boolean; message?: string };
+      if (!res.ok) {
+        setErrorMessage(data.message ?? "채팅 알림 설정 저장에 실패했습니다.");
+        return;
+      }
+      setChatEnabled(data.chatEnabled ?? next);
+    } catch {
+      setErrorMessage("채팅 알림 설정 저장 중 오류가 발생했습니다.");
+    } finally {
+      setChatBusy(false);
+    }
+  }, [chatEnabled]);
 
   useEffect(() => {
     setSupported(isPushNotificationSupported());
@@ -174,6 +220,24 @@ export function AdminPushNotificationSettings() {
         </button>
       </div>
       {errorMessage ? <p className="mt-3 text-xs text-red-600">{errorMessage}</p> : null}
+      {subscribed ? (
+        <div className="mt-4 flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5">
+          <div>
+            <p className="text-sm font-medium text-[var(--text-primary)]">팀 채팅 알림</p>
+            <p className="text-xs text-[var(--text-muted)]">
+              새 채팅 메시지가 올 때 이 기기로 OS 알림을 받습니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={chatBusy}
+            onClick={() => void toggleChatNotifications()}
+            className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] disabled:opacity-50"
+          >
+            {chatBusy ? "저장 중…" : chatEnabled ? "켜짐" : "꺼짐"}
+          </button>
+        </div>
+      ) : null}
       <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-[var(--text-muted)]">
         <li>Android: Chrome에서 홈 화면에 추가 후 「OS 알림 켜기」</li>
         <li>iOS 16.4+: Safari → 공유 → 홈 화면에 추가 → 앱 실행 후 알림 허용</li>

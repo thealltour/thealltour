@@ -15,6 +15,7 @@ export const ADMIN_PERMISSION_KEYS = [
   "guides.manage",
   "notices.manage",
   "notifications.view",
+  "tools.view",
   "settings.manage",
   "admin_users.manage",
 ] as const;
@@ -35,6 +36,7 @@ export const ADMIN_PERMISSION_LABELS: Record<AdminPermissionKey, string> = {
   "guides.manage": "여행가이드",
   "notices.manage": "공지사항",
   "notifications.view": "알림 센터",
+  "tools.view": "도구·익스텐션",
   "settings.manage": "환경설정",
   "admin_users.manage": "관리자 계정 (총괄 전용)",
 };
@@ -63,6 +65,7 @@ export const ADMIN_ROLE_PRESETS: Array<{
       "guides.manage",
       "notices.manage",
       "notifications.view",
+      "tools.view",
     ],
   },
   {

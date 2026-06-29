@@ -9,7 +9,7 @@ export const ADMIN_MANAGER_PREFIX = "/theall_manager_only";
 
 export const ADMIN_MENU_MAP = {
   dashboard: ["오늘 할 일", "지표·리드"],
-  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "상품 등록(하나)", "카테고리/테마 관리"],
+  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "상품 등록(하나)", "상품 등록(밴드)", "카테고리/테마 관리"],
   home: ["메인 골프투어 상품", "메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
   landings: ["랜딩 목록", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
@@ -58,7 +58,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel === "/" || rel === "") return "dashboard";
   if (rel.startsWith("/banners")) return "home";
   if (rel.startsWith("/products")) {
-    if (rel.includes("/new-modetour") || rel.includes("/new-hanatour")) return "product";
+    if (rel.includes("/new-modetour") || rel.includes("/new-hanatour") || rel.includes("/new-band")) return "product";
     if (searchParamsView && HOME_PRODUCT_VIEWS.has(searchParamsView)) return "home";
     return "product";
   }
@@ -100,6 +100,8 @@ export function resolveActiveSubTab(
       initial = "상품 등록(하나)";
     } else if (pathname.includes("/products/new-modetour")) {
       initial = "상품 등록(모두)";
+    } else if (pathname.includes("/products/new-band")) {
+      initial = "상품 등록(밴드)";
     } else if (view === ADMIN_PRODUCTS_VIEW.TAXONOMY) {
       initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
     } else if (view === ADMIN_PRODUCTS_VIEW.CREATE) {

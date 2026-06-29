@@ -26,6 +26,12 @@
 | `SENTRY_DSN` | 설정 시 서버에서 Sentry 초기화([`src/instrumentation.ts`](../src/instrumentation.ts)). |
 | `SLACK_WEBHOOK_URL` | 배치 일부 실패 등 [`sendSlackPlainText`](../src/lib/notifications.ts) 알림. |
 
+## AI (밴드 상품 import)
+
+| 변수 | 설명 |
+|------|------|
+| `OPENAI_API_KEY` | [`POST /api/admin/products/import-band`](../src/app/api/admin/products/import-band/route.ts)에서 GPT-4o 구조화 파싱에 사용. **프로덕션 필수** — 미설정 시 API 500. |
+
 ## Supabase
 
 | 변수 | 설명 |

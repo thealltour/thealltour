@@ -30,6 +30,7 @@
     "extensions:package:local": "node scripts/upload-extension-builds.mjs --skip-upload"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -37,6 +38,7 @@
     "@sentry/nextjs": "^10.49.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-query": "^5.90.21",
+    "ai": "^7.0.4",
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.4.0",
     "html-to-image": "^1.11.13",
@@ -52,7 +54,8 @@
     "recharts": "^3.8.1",
     "server-only": "^0.0.1",
     "sharp": "^0.34.5",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.4",

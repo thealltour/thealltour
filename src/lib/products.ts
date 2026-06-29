@@ -27,6 +27,7 @@ import type {
 import type { Guide } from "@/types/guide";
 import { extractGuideBridgeSearchTokens } from "@/lib/guides";
 import { normalizeImageList } from "@/lib/products/images";
+import { normalizeSellingPoints } from "@/lib/products/normalizeSellingPoints";
 import { parseSeasonalPriceBandsFromUnknown } from "@/lib/products/seasonalPriceBands";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
@@ -129,6 +130,8 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     excluded_items: typeof row.excluded_items === "string" ? row.excluded_items : undefined,
     detailed_schedule: typeof row.detailed_schedule === "string" ? row.detailed_schedule : undefined,
     optional_tours: typeof row.optional_tours === "string" ? row.optional_tours : undefined,
+    optional_expenses: typeof row.optional_expenses === "string" ? row.optional_expenses : undefined,
+    selling_points_json: normalizeSellingPoints(row.selling_points_json),
     min_departure_people: typeof row.min_departure_people === "string" ? row.min_departure_people : undefined,
     terms_and_notes: typeof row.terms_and_notes === "string" ? row.terms_and_notes : undefined,
     booking_notes: typeof row.booking_notes === "string" ? row.booking_notes : undefined,

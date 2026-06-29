@@ -243,6 +243,19 @@ export function getProductDiffSummary(
   if (!strEq(initial.optional_tours, current.optional_tours)) {
     metadata.push("선택 관광이 수정되었습니다.");
   }
+  if (!strEq(initial.optional_expenses, current.optional_expenses)) {
+    metadata.push("선택경비가 수정되었습니다.");
+  }
+  const sellingKeys = [
+    "selling_core_points",
+    "selling_tourism",
+    "selling_meals",
+    "selling_transport",
+    "selling_insurance",
+  ] as const;
+  if (sellingKeys.some((k) => !strEq(initial[k], current[k]))) {
+    metadata.push("상품 핵심안내가 수정되었습니다.");
+  }
   if (trim(initial.category) !== trim(current.category)) {
     metadata.push("카테고리가 변경되었습니다.");
   }

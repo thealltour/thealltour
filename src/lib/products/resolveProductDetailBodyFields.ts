@@ -8,10 +8,12 @@ export function resolveProductDetailBodyFields(product: Product): {
   resolvedIncludedItems: string;
   resolvedExcludedItems: string;
   resolvedOptionalTours: string | undefined;
+  resolvedOptionalExpenses: string | undefined;
 } {
   const normalizedIncluded = product.included_items?.trim() ?? "";
   const normalizedExcluded = product.excluded_items?.trim() ?? "";
   const normalizedOptional = product.optional_tours?.trim() ?? "";
+  const normalizedOptionalExpenses = product.optional_expenses?.trim() ?? "";
   const normalizedTerms = product.terms_and_notes?.trim() ?? "";
   const shouldFallbackFromLegacyDetailFields =
     !normalizedIncluded && !normalizedExcluded && (normalizedOptional || normalizedTerms);
@@ -22,5 +24,11 @@ export function resolveProductDetailBodyFields(product: Product): {
     ? product.terms_and_notes ?? ""
     : product.excluded_items ?? "";
   const resolvedOptionalTours = shouldFallbackFromLegacyDetailFields ? undefined : product.optional_tours;
-  return { resolvedIncludedItems, resolvedExcludedItems, resolvedOptionalTours };
+  const resolvedOptionalExpenses = normalizedOptionalExpenses || undefined;
+  return {
+    resolvedIncludedItems,
+    resolvedExcludedItems,
+    resolvedOptionalTours,
+    resolvedOptionalExpenses,
+  };
 }

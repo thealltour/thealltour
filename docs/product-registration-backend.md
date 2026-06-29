@@ -132,6 +132,7 @@ sequenceDiagram
 | `POST` | `/api/admin/modetour/normalize-import-images` | 모두투어 import 이미지 정규화 |
 | `POST` | `/api/admin/hanatour/normalize-import-images` | 하나투어 import 이미지 정규화 |
 | `POST` | `/api/admin/products/import-band` | 밴드/HWP 텍스트 AI 파싱 후 상품 insert |
+| `POST` | `/api/admin/products/import-external` | 하나/모두 WEB dumb-pipe AI import (익스텐션·상품 등록 WEB) |
 
 Import UI는 `buildProductCreateBody()`로 payload를 만든 뒤 `createAdminProduct()` → `POST /api/admin/products`를 호출합니다.
 

@@ -126,6 +126,8 @@ export type ItineraryV2Event = {
   description?: string;
   location?: string;
   order?: number;
+  /** 요약 블록(호텔/식사) vs 일반 활동 이벤트 */
+  displayRole?: "summary" | "activity";
   /** 이벤트별 이미지 URL 목록 (대표·정렬 포함) */
   images?: ItineraryEventImage[];
 };
@@ -158,6 +160,15 @@ export type ProductItineraryDay = {
   description?: string;
   meals?: string[];
   hotel?: string;
+};
+
+/** 하나투어식 상품 핵심안내 (핵심포인트·관광·식사·교통·보험) */
+export type ProductSellingPoints = {
+  corePoints?: string | null;
+  tourism?: string | null;
+  meals?: string | null;
+  transport?: string | null;
+  insurance?: string | null;
 };
 
 /** 여행 오버뷰 (jsonb 1컬럼 스키마) */
@@ -235,6 +246,10 @@ export type Product = {
   excluded_items?: string;
   detailed_schedule?: string;
   optional_tours?: string;
+  /** 선택경비 (포함/불포함·선택관광과 별도) */
+  optional_expenses?: string;
+  /** 핵심포인트·관광·식사·교통·보험 본문 */
+  selling_points_json?: ProductSellingPoints | null;
   min_departure_people?: string;
   /** 레거시 단일 약관/유의. 상세 노출은 예약 유의사항 폴백에만 사용(PR-H). */
   terms_and_notes?: string | null;

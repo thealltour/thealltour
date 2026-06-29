@@ -19,6 +19,8 @@ import { mapProductToTimelineModel, getTimelineModelFromSchedule } from "@/lib/p
 import { ProductFeatureCard } from "@/components/products/ProductFeatureCard";
 import { FlightSummarySection } from "@/components/products/FlightSummarySection";
 import { ProductIncludeExclude } from "@/components/products/ProductIncludeExclude";
+import { ProductSellingPointsSection } from "@/components/products/ProductSellingPointsSection";
+import { formatAirlineLabel } from "@/lib/products/formatAirlineLabel";
 import { ProductHotelCard } from "@/components/products/ProductHotelCard";
 import { getHotelValue } from "@/lib/products/mapProductToOverview";
 import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
@@ -74,6 +76,7 @@ export type ProductDetailV2Props = {
   excludedItems?: string;
   detailedSchedule?: string;
   optionalTours?: string;
+  optionalExpenses?: string;
   minDeparturePeople?: string;
   bookingNotes?: string;
   travelNotes?: string;
@@ -161,6 +164,7 @@ export default function ProductDetailV2({
   excludedItems = "",
   detailedSchedule = "",
   optionalTours = "",
+  optionalExpenses = "",
   minDeparturePeople = "",
   bookingNotes = "",
   travelNotes = "",
@@ -352,6 +356,10 @@ export default function ProductDetailV2({
   const includedLines = useMemo(() => parseBulletLines(includedItems), [includedItems]);
   const excludedLines = useMemo(() => parseBulletLines(excludedItems), [excludedItems]);
   const optionalLines = useMemo(() => parseBulletLines(optionalTours), [optionalTours]);
+  const optionalExpenseLines = useMemo(
+    () => parseBulletLines(product?.optional_expenses ?? optionalExpenses),
+    [product?.optional_expenses, optionalExpenses],
+  );
   const bookingLines = useMemo(() => parseBulletLines(bookingNotes), [bookingNotes]);
   const travelLines = useMemo(() => parseBulletLines(travelNotes), [travelNotes]);
   const bookingConditionLines = useMemo(
@@ -472,8 +480,8 @@ export default function ProductDetailV2({
   /** PR40: 상품 요약 블록 표시 여부 (값이 하나라도 있을 때만) */
   const hasSummaryData = useMemo(() => {
     const d = product?.duration ?? duration;
-    const dep = product?.departure ?? product?.overview_region ?? product?.theme;
-    const air = product?.airline ?? product?.departure_flight_name;
+    const dep = product?.departure ?? product?.overview_region;
+    const air = formatAirlineLabel(product ?? undefined);
     const hot = product?.hotel ?? product?.overview_accommodation;
     const style = product?.travelStyle ?? product?.theme;
     const minPeople = product?.min_departure_people ?? minDeparturePeople;
@@ -647,8 +655,8 @@ export default function ProductDetailV2({
           <div className="mt-6">
             <ProductSummaryInfo
               duration={product?.duration ?? duration}
-              departure={product?.departure ?? product?.overview_region ?? product?.theme}
-              airline={product?.airline ?? product?.departure_flight_name}
+              departure={product?.departure ?? product?.overview_region}
+              airline={formatAirlineLabel(product ?? undefined)}
               hotel={product?.hotel ?? product?.overview_accommodation}
               travelStyle={product?.travelStyle ?? product?.theme}
               price={product?.price}
@@ -664,6 +672,12 @@ export default function ProductDetailV2({
             />
           </div>
         )}
+
+        {product?.selling_points_json ? (
+          <div className="mt-6">
+            <ProductSellingPointsSection sellingPoints={product.selling_points_json} />
+          </div>
+        ) : null}
 
         {/* PR41: 출발일 선택 영역 (Summary 다음) */}
         {product?.departures?.length ? (
@@ -821,8 +835,14 @@ export default function ProductDetailV2({
         {activeTab === "included" && (
           <div className="space-y-4">
             {/* PR25: 포함/불포함 카드 UI */}
-            <ProductIncludeExclude included={includedLines} excluded={excludedLines} />
-            {(includedLines.length === 0 && excludedLines.length === 0) && (
+            <ProductIncludeExclude
+              included={includedLines}
+              excluded={excludedLines}
+              optionalExpenses={optionalExpenseLines}
+            />
+            {(includedLines.length === 0 &&
+              excludedLines.length === 0 &&
+              optionalExpenseLines.length === 0) && (
               <p className="text-base text-slate-500">등록된 포함/불포함 사항이 없습니다.</p>
             )}
             {optionalLines.length > 0 && (

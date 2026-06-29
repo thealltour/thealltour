@@ -30,6 +30,10 @@ const EXTENSIONS = [
     slug: "modetour",
     dir: "tools/modetour-extractor-extension",
   },
+  {
+    slug: "thealltour-extension",
+    dir: "tools/thealltour_extension",
+  },
 ];
 
 function loadEnvLocal() {

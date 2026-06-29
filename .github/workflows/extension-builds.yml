@@ -6,6 +6,7 @@ on:
     paths:
       - "tools/hanatour-extractor-extension/**"
       - "tools/modetour-extractor-extension/**"
+      - "tools/thealltour_extension/**"
       - "scripts/upload-extension-builds.mjs"
       - ".github/workflows/extension-builds.yml"
   workflow_dispatch:
@@ -34,6 +35,11 @@ jobs:
         working-directory: tools/modetour-extractor-extension
         run: |
           npm ci
+          npm run package
+
+      - name: Package thealltour extension
+        working-directory: tools/thealltour_extension
+        run: |
           npm run package
 
       - name: Upload to Supabase Storage

@@ -193,6 +193,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         router.push("/theall_manager_only/products/new-band");
         return;
       }
+      if (label === "상품 등록(WEB)") {
+        router.push("/theall_manager_only/products/new-web");
+        return;
+      }
       const view = mapProductLabelToView(label);
       const params = new URLSearchParams(searchParams.toString());
       if (view) {
@@ -204,7 +208,8 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       const basePath =
         pathname.includes("/products/new-modetour") ||
         pathname.includes("/products/new-hanatour") ||
-        pathname.includes("/products/new-band")
+        pathname.includes("/products/new-band") ||
+        pathname.includes("/products/new-web")
           ? "/theall_manager_only/products"
           : pathname;
       const target = query ? `${basePath}?${query}` : basePath;

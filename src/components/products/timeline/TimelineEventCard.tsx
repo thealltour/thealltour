@@ -73,7 +73,7 @@ export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProp
             </h4>
           </div>
           {event.description && (
-            <p className="line-clamp-3 text-sm leading-7 text-[var(--text-muted)] whitespace-pre-wrap">
+            <p className="text-sm leading-7 text-[var(--text-muted)] whitespace-pre-wrap">
               {event.description}
             </p>
           )}

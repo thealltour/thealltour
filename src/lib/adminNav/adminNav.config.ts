@@ -9,7 +9,7 @@ export const ADMIN_MANAGER_PREFIX = "/theall_manager_only";
 
 export const ADMIN_MENU_MAP = {
   dashboard: ["오늘 할 일", "지표·리드"],
-  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "상품 등록(하나)", "상품 등록(밴드)", "카테고리/테마 관리"],
+  product: ["상품 목록", "상품 등록", "상품 등록(모두)", "상품 등록(하나)", "상품 등록(밴드)", "상품 등록(WEB)", "카테고리/테마 관리"],
   home: ["메인 골프투어 상품", "메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
   landings: ["랜딩 목록", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
   inquiry: ["전체 문의", "미처리 문의", "운영 대시보드"],
@@ -23,6 +23,7 @@ export const ADMIN_MENU_MAP = {
   notifications: ["알림 목록", "OS 푸시 알림", "로그인된 기기"],
   tools_hanatour: [] as string[],
   tools_modetour: [] as string[],
+  tools_thealltour_extension: [] as string[],
 } as const;
 
 export type MainMenuKey = keyof typeof ADMIN_MENU_MAP;
@@ -43,6 +44,7 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   notifications: "알림 센터",
   tools_hanatour: "하나투어 익스텐션",
   tools_modetour: "모두투어 익스텐션",
+  tools_thealltour_extension: "통합 익스텐션",
 };
 
 const HOME_PRODUCT_VIEWS = new Set<string>([
@@ -58,7 +60,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel === "/" || rel === "") return "dashboard";
   if (rel.startsWith("/banners")) return "home";
   if (rel.startsWith("/products")) {
-    if (rel.includes("/new-modetour") || rel.includes("/new-hanatour") || rel.includes("/new-band")) return "product";
+    if (rel.includes("/new-modetour") || rel.includes("/new-hanatour") || rel.includes("/new-band") || rel.includes("/new-web")) return "product";
     if (searchParamsView && HOME_PRODUCT_VIEWS.has(searchParamsView)) return "home";
     return "product";
   }
@@ -76,6 +78,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel.startsWith("/notifications")) return "notifications";
   if (rel.startsWith("/tools/hanatour")) return "tools_hanatour";
   if (rel.startsWith("/tools/modetour")) return "tools_modetour";
+  if (rel.startsWith("/tools/thealltour-extension")) return "tools_thealltour_extension";
   return null;
 }
 
@@ -102,6 +105,8 @@ export function resolveActiveSubTab(
       initial = "상품 등록(모두)";
     } else if (pathname.includes("/products/new-band")) {
       initial = "상품 등록(밴드)";
+    } else if (pathname.includes("/products/new-web")) {
+      initial = "상품 등록(WEB)";
     } else if (view === ADMIN_PRODUCTS_VIEW.TAXONOMY) {
       initial = PRODUCT_VIEW_TO_LABEL[ADMIN_PRODUCTS_VIEW.TAXONOMY];
     } else if (view === ADMIN_PRODUCTS_VIEW.CREATE) {

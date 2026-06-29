@@ -159,4 +159,12 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     mainKey: "tools_modetour",
     roles: ["admin", "manager"],
   },
+  {
+    href: "/theall_manager_only/tools/thealltour-extension",
+    label: "통합 익스텐션",
+    icon: Puzzle,
+    group: "tools",
+    mainKey: "tools_thealltour_extension",
+    roles: ["admin", "manager"],
+  },
 ];

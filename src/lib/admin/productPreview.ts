@@ -27,6 +27,7 @@ import { parseCampaignsFormString } from "@/components/admin/products/editor/adm
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { getPrimaryImageUrl, normalizeImageList } from "@/lib/products/images";
+import { formStringsToSellingPoints } from "@/lib/products/normalizeSellingPoints";
 import type { TermsTemplateMap } from "@/lib/termsTemplates";
 import type {
   NoticeTemplatesByGroup,
@@ -83,6 +84,12 @@ export type ProductFormPayload = {
   excluded_items?: string;
   detailed_schedule?: string;
   optional_tours?: string;
+  optional_expenses?: string;
+  selling_core_points?: string;
+  selling_tourism?: string;
+  selling_meals?: string;
+  selling_transport?: string;
+  selling_insurance?: string;
   min_departure_people?: string;
   terms_and_notes?: string;
   terms_template_type?: string;
@@ -200,6 +207,15 @@ export function formToPreviewProduct(
     excluded_items: form.excluded_items?.trim() || undefined,
     detailed_schedule: form.detailed_schedule?.trim() || undefined,
     optional_tours: form.optional_tours?.trim() || undefined,
+    optional_expenses: form.optional_expenses?.trim() || undefined,
+    selling_points_json:
+      formStringsToSellingPoints({
+        selling_core_points: form.selling_core_points ?? "",
+        selling_tourism: form.selling_tourism ?? "",
+        selling_meals: form.selling_meals ?? "",
+        selling_transport: form.selling_transport ?? "",
+        selling_insurance: form.selling_insurance ?? "",
+      }) ?? undefined,
     min_departure_people: form.min_departure_people?.trim() || undefined,
     terms_and_notes: form.terms_and_notes?.trim() || undefined,
     terms_template_type: form.terms_template_type?.trim() || undefined,

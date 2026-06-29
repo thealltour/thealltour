@@ -21,6 +21,7 @@ export type TimelineEvent = {
   iconKey?: string;
   heading: string;
   description?: string;
+  displayRole?: "summary" | "activity";
   side?: "left" | "right";
   /** 이벤트별 이미지 목록 (url/alt/sortOrder/isCover). 없으면 undefined, 표시 시 (event.images ?? []) 사용 */
   images?: Array<{ url: string; alt?: string; sortOrder?: number; isCover?: boolean }>;
@@ -181,6 +182,7 @@ export function mapProductToTimelineModel(product: Product | null): TimelineMode
             iconKey: e.iconKey,
             heading: e.heading,
             description: e.description,
+            displayRole: e.displayRole,
             side: (i % 2 === 0 ? "left" : "right") as "left" | "right",
             images: Array.isArray(e.images) ? e.images : undefined,
             thumbnailUrl: getThumbnailUrl(Array.isArray(e.images) ? e.images : undefined),
@@ -305,6 +307,7 @@ export function itineraryV2ToTimelineModel(v2: ItineraryV2 | null | undefined): 
           iconKey: e.iconKey,
           heading: e.heading,
           description: e.description,
+          displayRole: e.displayRole,
           side: (i % 2 === 0 ? "left" : "right") as "left" | "right",
           images: Array.isArray(e.images) ? e.images : undefined,
           thumbnailUrl: getThumbnailUrl(Array.isArray(e.images) ? e.images : undefined),

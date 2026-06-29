@@ -28,6 +28,8 @@ type ProductBody = {
   excluded_items?: string | null;
   detailed_schedule?: string | null;
   optional_tours?: string | null;
+  optional_expenses?: string | null;
+  selling_points_json?: Record<string, unknown> | null;
   min_departure_people?: string | null;
   terms_and_notes?: string | null;
   booking_notes?: string | null;
@@ -138,6 +140,12 @@ export async function PATCH(
   if (body.excluded_items !== undefined) updates.excluded_items = body.excluded_items?.trim() || null;
   if (body.detailed_schedule !== undefined) updates.detailed_schedule = body.detailed_schedule?.trim() || null;
   if (body.optional_tours !== undefined) updates.optional_tours = body.optional_tours?.trim() || null;
+  if (body.optional_expenses !== undefined) {
+    updates.optional_expenses = body.optional_expenses?.trim() || null;
+  }
+  if (body.selling_points_json !== undefined) {
+    updates.selling_points_json = body.selling_points_json ?? null;
+  }
   if (body.min_departure_people !== undefined) updates.min_departure_people = body.min_departure_people?.trim() || null;
   if (body.terms_and_notes !== undefined) updates.terms_and_notes = body.terms_and_notes?.trim() || null;
   if (body.booking_notes !== undefined) updates.booking_notes = body.booking_notes?.trim() || null;

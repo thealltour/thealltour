@@ -531,7 +531,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
             value={form.included_items}
             onChange={(event) => setForm((prev) => ({ ...prev, included_items: event.target.value }))}
             rows={3}
-            placeholder="포함 사항 (자동 추출하지 않습니다. 필요 시 직접 입력해 주세요.)"
+            placeholder="포함 사항 (외부 임포트 시 [교통] 등 카테고리 포함 원문 그대로)"
             id="field-included"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
@@ -539,9 +539,17 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
             value={form.excluded_items}
             onChange={(event) => setForm((prev) => ({ ...prev, excluded_items: event.target.value }))}
             rows={3}
-            placeholder="불포함 사항 (자동 추출하지 않습니다. 필요 시 직접 입력해 주세요.)"
+            placeholder="불포함 사항 (외부 임포트 시 원문 그대로 채워집니다)"
             id="field-excluded"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+          />
+          <textarea
+            value={form.optional_expenses}
+            onChange={(event) => setForm((prev) => ({ ...prev, optional_expenses: event.target.value }))}
+            rows={3}
+            placeholder="선택경비 (외부 임포트 시 [교통] 등 카테고리 포함 원문 그대로)"
+            id="field-optional-expenses"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start md:col-span-2">
             <div className="flex-1">
@@ -751,6 +759,44 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
             placeholder="상품 포인트 - 혜택 (줄바꿈 가능)"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:col-span-2">
+            <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">상품 핵심안내</p>
+            <p className="mb-3 text-xs text-[var(--text-secondary)]">
+              하나투어 상품안내 탭의 핵심포인트·관광·식사·교통·보험 본문 (외부 임포트 시 자동 채움)
+            </p>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {[
+                { key: "selling_core_points", label: "핵심포인트", rows: 4 },
+                { key: "selling_tourism", label: "관광", rows: 3 },
+                { key: "selling_meals", label: "식사", rows: 3 },
+                { key: "selling_transport", label: "교통", rows: 3 },
+                { key: "selling_insurance", label: "보험", rows: 3 },
+              ].map((field) => {
+                const fieldKey = field.key as
+                  | "selling_core_points"
+                  | "selling_tourism"
+                  | "selling_meals"
+                  | "selling_transport"
+                  | "selling_insurance";
+                return (
+                  <div key={field.key} className={field.key === "selling_core_points" ? "md:col-span-2" : ""}>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">
+                      {field.label}
+                    </label>
+                    <textarea
+                      value={form[fieldKey]}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, [fieldKey]: event.target.value }))
+                      }
+                      rows={field.rows}
+                      placeholder={`${field.label} 본문`}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:col-span-2">
             <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">상품 포인트 O/X</p>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1179,7 +1225,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
           <input
             value={form.meta_title}
             onChange={(event) => setForm((prev) => ({ ...prev, meta_title: event.target.value }))}
-            placeholder="SEO 메타 타이틀 (선택). 스페이스로 구분한 키워드는 상품 상세페이지에 해시태그(#키워드)로 노출됩니다. 예: 태국 파크골프 치앙마이"
+            placeholder="SEO 메타 타이틀 (선택). 스페이스 또는 #으로 구분한 키워드가 상품 상세·카드 해시태그로 노출됩니다. 외부 임포트 시 AI 해시태그가 자동 입력됩니다."
             id="field-seo-title"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)] md:col-span-2"
           />

@@ -12,6 +12,7 @@ import {
   timelineModelToStructuredDays,
 } from "@/lib/products/mapProductToTimelineModel";
 import { hydrateItineraryImages } from "@/lib/images/hydrateItineraryImages";
+import { sellingPointsToFormStrings } from "@/lib/products/normalizeSellingPoints";
 import { normalizeOXValue } from "./adminProductForm.helpers";
 import { normalizeFormFromProduct } from "./adminProductForm.derive";
 
@@ -66,6 +67,8 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     arrival_baggage_limit: product.arrival_baggage_limit ?? "",
     detailed_schedule: product.detailed_schedule ?? "",
     optional_tours: shouldRepairLegacyDetailMix ? "" : product.optional_tours ?? "",
+    optional_expenses: product.optional_expenses ?? "",
+    ...sellingPointsToFormStrings(product.selling_points_json),
     min_departure_people: product.min_departure_people ?? "",
     terms_template_type: "",
     terms_and_notes: shouldRepairLegacyDetailMix

@@ -14,6 +14,9 @@ import {
   sanitizeSeasonalPriceBandsFromFormStrings,
   seasonalPriceBandsToJsonColumn,
 } from "@/lib/products/seasonalPriceBands";
+import {
+  formStringsToSellingPoints,
+} from "@/lib/products/normalizeSellingPoints";
 import { deriveDerivedFieldsForSave } from "./adminProductForm.derive";
 
 /** PostgreSQL integer 호환: 유한 정수만, 범위 초과 시 null */
@@ -139,6 +142,8 @@ export function serializeAdminProductForm(
         ? serializeStructuredDaysToSchedule(form.itinerary_days_json)
         : (form.detailed_schedule.trim() === "" ? null : form.detailed_schedule.trim()),
     optional_tours: resolvedOptionalTours === "" ? null : resolvedOptionalTours,
+    optional_expenses: form.optional_expenses.trim() === "" ? null : form.optional_expenses.trim(),
+    selling_points_json: formStringsToSellingPoints(form),
     min_departure_people: form.min_departure_people.trim() === "" ? null : form.min_departure_people.trim(),
     terms_template_type: form.terms_template_type === "" ? null : form.terms_template_type,
     terms_and_notes: termsAndNotesForPayload,

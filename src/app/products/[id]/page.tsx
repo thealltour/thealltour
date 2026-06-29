@@ -112,7 +112,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   }
 
   const formattedPrice = formatPrice(product.price);
-  const { resolvedIncludedItems, resolvedExcludedItems, resolvedOptionalTours } =
+  const { resolvedIncludedItems, resolvedExcludedItems, resolvedOptionalTours, resolvedOptionalExpenses } =
     resolveProductDetailBodyFields(product);
   const {
     bookingNotes: resolvedBookingNotes,
@@ -250,6 +250,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                     excludedItems={resolvedExcludedItems ?? ""}
                     detailedSchedule={product.detailed_schedule ?? product.itinerary ?? ""}
                     optionalTours={resolvedOptionalTours ?? ""}
+                    optionalExpenses={resolvedOptionalExpenses ?? ""}
                     minDeparturePeople={product.min_departure_people ?? ""}
                     bookingNotes={resolvedBookingNotes}
                     travelNotes={resolvedTravelNotes}

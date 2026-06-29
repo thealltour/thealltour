@@ -39,6 +39,12 @@ export type ProductFormState = {
   arrival_baggage_limit: string;
   detailed_schedule: string;
   optional_tours: string;
+  optional_expenses: string;
+  selling_core_points: string;
+  selling_tourism: string;
+  selling_meals: string;
+  selling_transport: string;
+  selling_insurance: string;
   min_departure_people: string;
   /** 레거시·fallback 전용 (UI 비노출). 마이그레이션 완료 후 제거 예정(PR-H). */
   terms_template_type: "" | TermsTemplateType;
@@ -156,6 +162,12 @@ export function createEmptyProductFormState(): ProductFormState {
     arrival_baggage_limit: "",
     detailed_schedule: "",
     optional_tours: "",
+    optional_expenses: "",
+    selling_core_points: "",
+    selling_tourism: "",
+    selling_meals: "",
+    selling_transport: "",
+    selling_insurance: "",
     min_departure_people: "",
     terms_template_type: "",
     terms_and_notes: "",

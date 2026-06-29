@@ -277,8 +277,8 @@ export async function POST(request: NextRequest) {
 
 
   const insertResult = await insertProductWithSchemaFallback(
-    (payload) =>
-      supabaseAdmin.from("products").insert(payload).select("id").maybeSingle(),
+    async (payload) =>
+      await supabaseAdmin.from("products").insert(payload).select("id").maybeSingle(),
     insertPayload as Record<string, unknown>,
   );
 

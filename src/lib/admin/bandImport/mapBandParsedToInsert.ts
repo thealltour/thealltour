@@ -13,6 +13,16 @@ import type {
   BandParsedProduct,
   BandSeasonalPriceBandNotes,
 } from "@/lib/admin/bandImport/productParserSchema";
+import { sellingPointsToJsonColumn } from "@/lib/products/normalizeSellingPoints";
+import {
+  departureSchedulesToJsonColumn,
+  getDepartureSchedulesMinPrice,
+} from "@/lib/products/normalizeDepartureSchedules";
+import {
+  normalizeProductDepartureDateToYmd,
+} from "@/lib/products/productDepartureDates";
+import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
+import type { ProductDepartureSchedule } from "@/types/product";
 
 export type MapBandParsedInput = {
   parsed: BandParsedProduct;
@@ -36,6 +46,88 @@ function trimOrNull(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+function extractYearFromDateString(raw: string): number | null {
+  const ymd = normalizeProductDepartureDateToYmd(raw);
+  if (ymd) return Number(ymd.slice(0, 4));
+  const match = raw.match(/(\d{4})/);
+  return match ? Number(match[1]) : null;
+}
+
+function extractMostFrequentYearFromText(text: string): number | null {
+  const years = [...text.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
+  if (!years.length) return null;
+  const counts = new Map<number, number>();
+  for (const year of years) counts.set(year, (counts.get(year) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/** 밴드/HWP 문맥에서 연도 없는 M/D 출발일에 쓸 기본 연도 추론 */
+export function inferBandScheduleDefaultYear(
+  parsed: BandParsedProduct,
+  bandText: string,
+  hwpText: string,
+): number {
+  const fromFlight = trimOrNull(parsed.departure_from_date);
+  if (fromFlight) {
+    const year = extractYearFromDateString(fromFlight);
+    if (year) return year;
+  }
+
+  for (const row of parsed.departure_schedules ?? []) {
+    for (const field of [row.departure_date, row.return_date]) {
+      const raw = trimOrNull(field);
+      if (!raw) continue;
+      const year = extractYearFromDateString(raw);
+      if (year) return year;
+    }
+  }
+
+  const textYear = extractMostFrequentYearFromText(`${bandText}\n${hwpText}`);
+  if (textYear) return textYear;
+
+  return Number(kstTodayYmd().slice(0, 4));
+}
+
+function normalizeBandDateField(
+  raw: string | null | undefined,
+  defaultYear: number,
+): string | null {
+  const trimmed = trimOrNull(raw);
+  if (!trimmed) return null;
+  return normalizeProductDepartureDateToYmd(trimmed, { defaultYear });
+}
+
+function mapBandDepartureSchedules(
+  parsed: BandParsedProduct,
+  defaultYear: number,
+): ProductDepartureSchedule[] | null {
+  const rows = parsed.departure_schedules;
+  if (!rows?.length) return null;
+
+  const schedules: ProductDepartureSchedule[] = [];
+  for (const row of rows) {
+    const departureRaw = trimOrNull(row.departure_date);
+    if (!departureRaw) continue;
+
+    const departureDate =
+      normalizeProductDepartureDateToYmd(departureRaw, { defaultYear }) ?? departureRaw;
+    const returnRaw = trimOrNull(row.return_date);
+    const returnDate = returnRaw
+      ? normalizeProductDepartureDateToYmd(returnRaw, { defaultYear }) ?? returnRaw
+      : null;
+
+    schedules.push({
+      departureDate,
+      returnDate,
+      price: toSafeInteger(row.price),
+      label: trimOrNull(row.label),
+      status: row.status ?? null,
+    });
+  }
+
+  return departureSchedulesToJsonColumn(schedules);
+}
+
 function joinNonEmpty(parts: Array<string | null | undefined>, separator = "\n\n"): string | null {
   const joined = parts.map((p) => trimOrNull(p)).filter((p): p is string => Boolean(p));
   return joined.length > 0 ? joined.join(separator) : null;
@@ -54,10 +146,25 @@ function normalizeImageUrls(urls: string[] | undefined): string[] {
   return out;
 }
 
+function pickTime(
+  primary: string | null | undefined,
+  legacy: string | null | undefined,
+): string | null {
+  return trimOrNull(primary) ?? trimOrNull(legacy);
+}
+
+function formatAirlineMetaInfo(
+  airlineName: string | null,
+  flightNumber: string | null,
+): string | null {
+  const parts = [airlineName, flightNumber].filter(Boolean) as string[];
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
 function buildDescriptionFallback(bandText: string, hwpText: string): string {
-  const source = (hwpText.trim() || bandText.trim()).replace(/\s+/g, " ").trim();
-  if (!source) return "상품 설명을 확인해 주세요.";
-  return source.length > 500 ? `${source.slice(0, 500)}…` : source;
+  const joined = joinNonEmpty([hwpText, bandText], "\n\n");
+  if (joined) return joined.replace(/\r\n/g, "\n");
+  return "상품 설명을 확인해 주세요.";
 }
 
 export function buildBandDescription(parsed: BandParsedProduct, bandText: string, hwpText: string): string {
@@ -151,8 +258,16 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     parseSeasonalPriceBandsFromUnknown(parsed.seasonal_price_bands),
   );
 
+  const defaultYear = inferBandScheduleDefaultYear(parsed, bandText, hwpText);
+  const departureSchedulesJson = mapBandDepartureSchedules(parsed, defaultYear);
+
   let price = toSafeInteger(parsed.price);
-  if (price == null && seasonalBands) {
+  const scheduleMinPrice = getDepartureSchedulesMinPrice(
+    departureSchedulesJson ?? undefined,
+  );
+  if (scheduleMinPrice != null) {
+    price = scheduleMinPrice;
+  } else if (price == null && seasonalBands) {
     const vals = [seasonalBands.offSeason, seasonalBands.weekend, seasonalBands.peakSeason].filter(
       (v): v is number => typeof v === "number" && v > 0,
     );
@@ -162,6 +277,15 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
   const itineraryV2 = mapItineraryDaysToV2(parsed.itinerary_v2_json);
   const bookingNotes = buildBandBookingNotes(parsed.booking_notes, parsed.seasonal_price_band_notes);
   const productOptions = mapBandOptionsToProductOptions(parsed.options, price);
+  const sellingPoints = sellingPointsToJsonColumn(parsed.selling_points_json ?? undefined);
+
+  const departureFlight = trimOrNull(parsed.departure_flight_number);
+  const arrivalFlight = trimOrNull(parsed.arrival_flight_number);
+
+  const firstScheduleDate =
+    departureSchedulesJson?.[0]?.departureDate ?? null;
+  const resolvedDepartureFromDate =
+    normalizeBandDateField(parsed.departure_from_date, defaultYear) ?? firstScheduleDate;
 
   const payload: Record<string, unknown> = {
     title,
@@ -179,16 +303,45 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     overview_accommodation: trimOrNull(parsed.overview_accommodation),
     included_items: trimOrNull(parsed.included_items),
     excluded_items: trimOrNull(parsed.excluded_items),
+    optional_expenses: trimOrNull(parsed.optional_expenses),
+    optional_tours: trimOrNull(parsed.optional_tours),
+    selling_points_json: sellingPoints,
+    detailed_schedule: trimOrNull(parsed.detailed_schedule),
+    travel_notes: trimOrNull(parsed.travel_notes),
+    booking_conditions: trimOrNull(parsed.booking_conditions),
+    terms_and_notes: trimOrNull(parsed.terms_and_notes),
+    refund_policy: trimOrNull(parsed.refund_policy),
+    min_departure_people: trimOrNull(parsed.min_departure_people),
+    meta_title: trimOrNull(parsed.meta_title),
+    meta_description: trimOrNull(parsed.meta_description),
+    point_benefits: trimOrNull(parsed.point_benefits),
+    point_tourism: parsed.point_tourism ?? null,
+    point_guide: parsed.point_guide ?? null,
+    meeting_info: parsed.meeting_info ?? null,
+    travel_insurance: parsed.travel_insurance ?? null,
     booking_notes: bookingNotes,
     options: productOptions,
     is_active: true,
     status: parsed.status ?? "AVAILABLE",
-    departure_flight_name: trimOrNull(parsed.departure_flight_number),
+    meta_info: formatAirlineMetaInfo(trimOrNull(parsed.airline_name), departureFlight),
+    departure_flight_name: departureFlight,
     departure_from_airport: trimOrNull(parsed.departure_from_airport),
     departure_to_airport: trimOrNull(parsed.departure_to_airport),
-    departure_from_time: trimOrNull(parsed.departure_time),
-    arrival_to_time: trimOrNull(parsed.arrival_time),
+    departure_from_date: resolvedDepartureFromDate,
+    departure_from_time: pickTime(parsed.departure_from_time, parsed.departure_time),
+    departure_to_date: normalizeBandDateField(parsed.departure_to_date, defaultYear),
+    departure_to_time: pickTime(parsed.departure_to_time, parsed.arrival_time),
+    departure_baggage_limit: trimOrNull(parsed.departure_baggage_limit),
+    arrival_flight_name: arrivalFlight,
+    arrival_from_airport: trimOrNull(parsed.arrival_from_airport),
+    arrival_to_airport: trimOrNull(parsed.arrival_to_airport),
+    arrival_from_date: normalizeBandDateField(parsed.arrival_from_date, defaultYear),
+    arrival_from_time: trimOrNull(parsed.arrival_from_time),
+    arrival_to_date: normalizeBandDateField(parsed.arrival_to_date, defaultYear),
+    arrival_to_time: trimOrNull(parsed.arrival_to_time),
+    arrival_baggage_limit: trimOrNull(parsed.arrival_baggage_limit),
     itinerary_v2_json: itineraryV2,
+    departure_schedules_json: departureSchedulesJson,
     product_source_url: trimOrNull(productSourceUrl ?? undefined),
   };
 

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminButton from "@/components/admin/ui/AdminButton";
+import AdminImportProgressOverlay from "@/components/admin/ui/AdminImportProgressOverlay";
+import { useSimulatedImportProgress } from "@/components/admin/hooks/useSimulatedImportProgress";
 import {
   ADMIN_PRODUCTS_QUERY_KEYS,
   ADMIN_PRODUCTS_VIEW,
@@ -43,6 +45,7 @@ export default function WebNewProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [successSummary, setSuccessSummary] = useState<ImportResponse | null>(null);
+  const progress = useSimulatedImportProgress();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,9 +53,11 @@ export default function WebNewProductPage() {
     setExistingId(null);
     setSuccessSummary(null);
     setIsSubmitting(true);
+    progress.start();
 
     try {
       if (!cleanHtmlStructure.trim() && !rawHtmlText.trim()) {
+        progress.stop();
         setError("정제 HTML 또는 페이지 텍스트 중 하나는 필수입니다.");
         return;
       }
@@ -63,11 +68,13 @@ export default function WebNewProductPage() {
         try {
           const parsed = JSON.parse(blocksRaw) as unknown;
           if (!Array.isArray(parsed)) {
+            progress.stop();
             setError("itineraryBlocks는 JSON 배열이어야 합니다.");
             return;
           }
           itineraryBlocks = parsed;
         } catch {
+          progress.stop();
           setError("itineraryBlocks JSON 형식이 올바르지 않습니다.");
           return;
         }
@@ -90,17 +97,20 @@ export default function WebNewProductPage() {
       const data = (await res.json()) as ImportResponse;
 
       if (res.status === 409 && data.existingId) {
+        progress.stop();
         setExistingId(data.existingId);
         setError(data.message ?? "이미 등록된 상품입니다.");
         return;
       }
 
       if (!res.ok) {
+        progress.stop();
         setError(data.message ?? "상품 등록에 실패했습니다.");
         return;
       }
 
       if (data.id) {
+        progress.complete();
         setSuccessSummary(data);
         const params = new URLSearchParams({
           [ADMIN_PRODUCTS_QUERY_KEYS.VIEW]: ADMIN_PRODUCTS_VIEW.CREATE,
@@ -109,6 +119,7 @@ export default function WebNewProductPage() {
         router.push(`/theall_manager_only/products?${params.toString()}`);
       }
     } catch {
+      progress.stop();
       setError("네트워크 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
@@ -254,6 +265,12 @@ export default function WebNewProductPage() {
           </AdminButton>
         </div>
       </form>
+
+      <AdminImportProgressOverlay
+        open={progress.open}
+        percent={progress.percent}
+        label={progress.label}
+      />
     </div>
   );
 }

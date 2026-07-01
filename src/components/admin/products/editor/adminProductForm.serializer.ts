@@ -17,6 +17,9 @@ import {
 import {
   formStringsToSellingPoints,
 } from "@/lib/products/normalizeSellingPoints";
+import {
+  formRowsToDepartureSchedules,
+} from "@/lib/admin/departureScheduleForm";
 import { deriveDerivedFieldsForSave } from "./adminProductForm.derive";
 
 /** PostgreSQL integer 호환: 유한 정수만, 범위 초과 시 null */
@@ -36,6 +39,8 @@ export type SerializeAdminProductFormOptions = {
   unassignedImageUrls?: string[];
   /** destination_id → taxonomy 이름 (derive용) */
   destinationName?: string | null;
+  /** 편집 로드 시점 출발일 스케줄 행 수 — 폼이 비어 있을 때 DB null 덮어쓰기 방지 */
+  loadedDepartureScheduleCount?: number;
 };
 
 /**
@@ -253,6 +258,16 @@ export function serializeAdminProductForm(
     overview_region: form.overview_region.trim() === "" ? null : form.overview_region.trim(),
     overview_duration: form.overview_duration.trim() === "" ? null : form.overview_duration.trim(),
   };
+
+  const departureScheduleRows = formRowsToDepartureSchedules(form.departure_schedules);
+  const shouldPreserveDepartureSchedules =
+    Boolean(options?.editingId) &&
+    (options?.loadedDepartureScheduleCount ?? 0) > 0 &&
+    departureScheduleRows == null;
+
+  if (!shouldPreserveDepartureSchedules) {
+    payload.departure_schedules_json = departureScheduleRows;
+  }
 
   return payload;
 }

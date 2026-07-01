@@ -10,6 +10,25 @@ export type TermsTemplateType =
 /** PR-E: 그룹별 공통 템플릿 키 (DB product_notice_templates.type 과 동일 스키마) */
 export type NoticeTemplateType = TermsTemplateType;
 
+/** 출발일 스케줄 편집 행 */
+export type DepartureScheduleFormRow = {
+  departureDate: string;
+  returnDate: string;
+  price: string;
+  label: string;
+  status: "" | "AVAILABLE" | "LIMITED" | "SOLD_OUT";
+};
+
+export function createEmptyDepartureScheduleRow(): DepartureScheduleFormRow {
+  return {
+    departureDate: "",
+    returnDate: "",
+    price: "",
+    label: "",
+    status: "",
+  };
+}
+
 export type ProductFormState = {
   title: string;
   description: string;
@@ -105,6 +124,8 @@ export type ProductFormState = {
   overview_accommodation: string;
   overview_region: string;
   overview_duration: string;
+  /** 출발일별 스케줄 (가격·상태 포함) */
+  departure_schedules: DepartureScheduleFormRow[];
 };
 
 /** 임시저장 payload (로컬 저장/복원용) */
@@ -128,6 +149,7 @@ export function mergeProductFormWithSchemaDefaults(
       ...base.seasonal_price_bands,
       ...(form.seasonal_price_bands ?? {}),
     },
+    departure_schedules: form.departure_schedules ?? base.departure_schedules,
   };
 }
 
@@ -213,5 +235,6 @@ export function createEmptyProductFormState(): ProductFormState {
     overview_accommodation: "",
     overview_region: "",
     overview_duration: "",
+    departure_schedules: [],
   };
 }

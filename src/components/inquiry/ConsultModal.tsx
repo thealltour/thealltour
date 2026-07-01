@@ -22,6 +22,7 @@ import {
   mergeGolfBriefIntoContent,
   type GolfBriefSnapshot,
 } from "@/lib/inquiry/golfBriefFields";
+import { buildProductInquiryPrefill } from "@/lib/products/buildProductInquiryPrefill";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -128,15 +129,28 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
 
   const openModal = useCallback((nextParams?: ConsultModalParams) => {
     setParams(nextParams ?? {});
+    const prefillFromParams = nextParams?.prefillContent?.trim();
+    const prefill =
+      prefillFromParams ||
+      buildProductInquiryPrefill({
+        productTitle: nextParams?.productTitle,
+        selectedDeparture: quoteCtx.selectedDeparture,
+        quoteSummary: quoteCtx.quoteSummary,
+        selectedOptions: quoteCtx.selectedOptions,
+      });
     setForm({
       ...initialFormState,
-      content: nextParams?.prefillContent?.trim() ?? "",
+      content: prefill,
     });
     setGolfBrief({});
     setFieldErrors({});
     setIsSuccess(false);
     setIsOpen(true);
-  }, []);
+  }, [
+    quoteCtx.selectedDeparture,
+    quoteCtx.quoteSummary,
+    quoteCtx.selectedOptions,
+  ]);
 
   const closeModal = useCallback(() => {
     setIsOpen(false);
@@ -161,12 +175,25 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
 
       const selectedOptions = quoteCtx.selectedOptions ?? null;
       const quoteSummary = quoteCtx.quoteSummary ?? null;
+      const selectedDeparture = quoteCtx.selectedDeparture ?? null;
       const hasOptionData =
         (selectedOptions && Object.keys(selectedOptions).length > 0) ||
         (quoteSummary && (quoteSummary.total != null || (quoteSummary.breakdown?.length ?? 0) > 0));
+      const hasDepartureData = Boolean(selectedDeparture?.inquiryValue);
 
       const firstTouch = getAttributionTouch();
-      const contentBase = form.content.trim();
+      let contentBase = form.content.trim();
+      if (hasDepartureData && !contentBase.includes("희망 출발일")) {
+        const departureLines = buildProductInquiryPrefill({
+          productTitle: params.productTitle,
+          selectedDeparture,
+        });
+        contentBase = departureLines
+          ? contentBase
+            ? `${departureLines}\n\n${contentBase}`
+            : departureLines
+          : contentBase;
+      }
       const content = showGolfBrief
         ? mergeGolfBriefIntoContent(contentBase, golfBrief)
         : contentBase;
@@ -186,7 +213,14 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
       if (showGolfBrief) {
         body.quote_snapshot = { golf_brief: golfBrief };
       }
-      if (hasOptionData) {
+      if (hasDepartureData && selectedDeparture) {
+        body.selected_departure = {
+          label: selectedDeparture.label,
+          inquiry_value: selectedDeparture.inquiryValue,
+          price: selectedDeparture.price ?? null,
+        };
+      }
+      if (hasOptionData || hasDepartureData) {
         if (selectedOptions && Object.keys(selectedOptions).length > 0) {
           body.selected_options = selectedOptions;
         }

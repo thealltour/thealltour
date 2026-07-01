@@ -22,6 +22,11 @@ describe("normalizeProductDepartureDateToYmd", () => {
     expect(normalizeProductDepartureDateToYmd("2026/10/01")).toBe("2026-10-01");
   });
 
+  it("parses month/day-only dates with defaultYear", () => {
+    expect(normalizeProductDepartureDateToYmd("7/23(수)", { defaultYear: 2026 })).toBe("2026-07-23");
+    expect(normalizeProductDepartureDateToYmd("07.23", { defaultYear: 2026 })).toBe("2026-07-23");
+  });
+
   it("returns null for empty or unparseable input", () => {
     expect(normalizeProductDepartureDateToYmd("")).toBeNull();
     expect(normalizeProductDepartureDateToYmd(null)).toBeNull();
@@ -109,5 +114,17 @@ describe("collectProductDepartureDates", () => {
     } as Product;
 
     expect(collectProductDepartureDates(product)).toEqual(["2026-09-23"]);
+  });
+
+  it("ignores returnDate on departure schedules (calendar shows departure only)", () => {
+    const product = {
+      id: "p-schedule",
+      title: "스케줄 골프",
+      departureSchedules: [
+        { departureDate: "2026-07-23", returnDate: "2026-07-26", price: 899000 },
+      ],
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-07-23"]);
   });
 });

@@ -9,26 +9,23 @@ export function stripProductsColumn<T extends Record<string, unknown>>(payload: 
   return Object.fromEntries(Object.entries(payload).filter(([key]) => key !== column)) as T;
 }
 
-type SupabaseInsertResult = {
+type SupabaseMutationResult = {
   data: { id: string } | null;
   error: { message?: string } | null;
 };
 
-type ProductsInserter = (payload: Record<string, unknown>) => Promise<SupabaseInsertResult>;
+type ProductsMutator = (payload: Record<string, unknown>) => Promise<SupabaseMutationResult>;
 
-/**
- * Inserts into products, stripping columns missing from the remote schema (migration not applied yet).
- */
-export async function insertProductWithSchemaFallback(
-  insert: ProductsInserter,
+async function mutateProductWithSchemaFallback(
+  mutate: ProductsMutator,
   payload: Record<string, unknown>,
   maxRetries = 6,
-): Promise<SupabaseInsertResult & { strippedColumns: string[] }> {
+): Promise<SupabaseMutationResult & { strippedColumns: string[] }> {
   let current = { ...payload };
   const strippedColumns: string[] = [];
 
   for (let attempt = 0; attempt < maxRetries; attempt += 1) {
-    const result = await insert(current);
+    const result = await mutate(current);
     if (!result.error) {
       return { ...result, strippedColumns };
     }
@@ -44,7 +41,43 @@ export async function insertProductWithSchemaFallback(
 
   return {
     data: null,
-    error: { message: "상품 등록 재시도 한도를 초과했습니다." },
+    error: { message: "상품 저장 재시도 한도를 초과했습니다." },
     strippedColumns,
   };
+}
+
+/**
+ * Inserts into products, stripping columns missing from the remote schema (migration not applied yet).
+ */
+export async function insertProductWithSchemaFallback(
+  insert: ProductsMutator,
+  payload: Record<string, unknown>,
+  maxRetries = 6,
+): Promise<SupabaseMutationResult & { strippedColumns: string[] }> {
+  return mutateProductWithSchemaFallback(insert, payload, maxRetries);
+}
+
+/**
+ * Updates products row, stripping columns missing from the remote schema (migration not applied yet).
+ */
+export async function updateProductWithSchemaFallback(
+  update: ProductsMutator,
+  payload: Record<string, unknown>,
+  maxRetries = 6,
+): Promise<SupabaseMutationResult & { strippedColumns: string[] }> {
+  return mutateProductWithSchemaFallback(update, payload, maxRetries);
+}
+
+/** PATCH/insert 응답 warningCode 매핑 */
+export function productSaveWarningCodeFromStrippedColumns(
+  strippedColumns: string[],
+): string | undefined {
+  if (strippedColumns.length === 0) return undefined;
+  if (strippedColumns.includes("departure_schedules_json")) {
+    return "DEPARTURE_SCHEDULES_JSON_NOT_PERSISTED";
+  }
+  if (strippedColumns.includes("images_json")) {
+    return "IMAGES_JSON_NOT_PERSISTED";
+  }
+  return "PRODUCT_COLUMNS_NOT_PERSISTED";
 }

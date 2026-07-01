@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
+import { ProductBookingSelectionSummary } from "@/components/products/ProductBookingSelectionSummary";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
@@ -56,6 +57,7 @@ function getStickyPriceParts(
   priceFormatted: string | null,
   quoteTotal: number | null | undefined,
   product: Product | null | undefined,
+  departurePrice?: number | null,
 ): StickyPriceParts {
   const quoteDigits = quoteTotal != null ? formatPriceKR(quoteTotal) : null;
   if (quoteDigits) {
@@ -66,6 +68,18 @@ function getStickyPriceParts(
       seasonalSecondLine: undefined,
       mode: "quote",
     };
+  }
+  if (departurePrice != null && departurePrice > 0) {
+    const digits = formatPriceKR(departurePrice);
+    if (digits) {
+      return {
+        digits,
+        prefix: undefined,
+        subLabel: "선택 출발일 기준",
+        seasonalSecondLine: undefined,
+        mode: "single",
+      };
+    }
   }
   const seasonalInfo = getProductCardSeasonalBandInfo(product?.seasonal_price_bands ?? null);
   if (seasonalInfo && product?.seasonal_price_bands) {
@@ -112,7 +126,13 @@ export function ProductDetailStickyV2Desktop({
   experimentKey,
   variant,
 }: ProductDetailStickyV2Props) {
-  const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
+  const {
+    quoteSummary,
+    requiredGroupsMissing,
+    scrollToBooking,
+    selectedDeparture,
+    departureSelectionMissing,
+  } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
 
   const chart = useMemo(() => {
@@ -129,8 +149,14 @@ export function ProductDetailStickyV2Desktop({
   const keywordOverflowCount = Math.max(0, seoHashtags.length - MAX_KEYWORDS_STICKY);
 
   const stickyPrice = useMemo(
-    () => getStickyPriceParts(priceFormatted, quoteSummary?.total, product),
-    [priceFormatted, quoteSummary?.total, product],
+    () =>
+      getStickyPriceParts(
+        priceFormatted,
+        quoteSummary?.total,
+        product,
+        selectedDeparture?.price,
+      ),
+    [priceFormatted, quoteSummary?.total, product, selectedDeparture?.price],
   );
   const fixedDeparture = hasProductFixedDeparture(product);
   const ctaLabelOptions = useMemo(
@@ -201,6 +227,7 @@ export function ProductDetailStickyV2Desktop({
             <li>포함사항과 옵션 내용은 상세 정보에서 확인 가능합니다.</li>
             <li>상담 후 예약 가능 여부와 예상 비용을 안내해드립니다.</li>
           </ul>
+          <ProductBookingSelectionSummary className="mt-1" />
           <TrustSignals trust={trust} />
           <div className="flex flex-col gap-2 pt-0.5 rounded-xl">
             <ProductConsultCTA
@@ -211,7 +238,8 @@ export function ProductDetailStickyV2Desktop({
               kakaoHref={kakaoHref}
               section="top"
               requiredGroupsMissing={requiredGroupsMissing}
-              scrollToOptions={scrollToOptions}
+              departureSelectionMissing={departureSelectionMissing}
+              scrollToBooking={scrollToBooking}
               isSoldOut={isSoldOut}
               onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
               primaryLabel={getProductCtaLabel(status, ctaLabelOptions)}
@@ -271,15 +299,27 @@ export function ProductDetailStickyV2Mobile({
   variant,
   product,
 }: ProductDetailStickyV2Props) {
-  const { quoteSummary, requiredGroupsMissing, scrollToOptions } = useProductQuote();
+  const {
+    quoteSummary,
+    requiredGroupsMissing,
+    scrollToBooking,
+    selectedDeparture,
+    departureSelectionMissing,
+  } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
   const [compact, setCompact] = useState(false);
   const lastScrollYRef = useRef(0);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stickyPrice = useMemo(
-    () => getStickyPriceParts(priceFormatted, quoteSummary?.total, product),
-    [priceFormatted, quoteSummary?.total, product],
+    () =>
+      getStickyPriceParts(
+        priceFormatted,
+        quoteSummary?.total,
+        product,
+        selectedDeparture?.price,
+      ),
+    [priceFormatted, quoteSummary?.total, product, selectedDeparture?.price],
   );
   const fixedDeparture = hasProductFixedDeparture(product);
   const ctaLabelOptions = useMemo(
@@ -387,7 +427,8 @@ export function ProductDetailStickyV2Mobile({
           stickyPriceSecondLine={stickyPrice.seasonalSecondLine}
           ctaLabelOptions={ctaLabelOptions}
           requiredGroupsMissing={requiredGroupsMissing}
-          scrollToOptions={scrollToOptions}
+          departureSelectionMissing={departureSelectionMissing}
+          scrollToBooking={scrollToBooking}
           isSoldOut={isSoldOut}
           compact={compact}
           onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}

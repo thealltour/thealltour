@@ -4,17 +4,12 @@ import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { findExistingProductIdBySourceUrl } from "@/lib/admin/bandImport/checkProductSourceUrl";
-import { parseBandProductText } from "@/lib/admin/bandImport/parseBandProductText";
+import { parseBandProductText, formatBandParseError } from "@/lib/admin/bandImport/parseBandProductText";
 import {
   mapBandParsedToInsert,
   summarizeBandParsedForResponse,
 } from "@/lib/admin/bandImport/mapBandParsedToInsert";
-
-function isMissingImagesJsonColumn(message?: string): boolean {
-  if (!message) return false;
-  const normalized = message.toLowerCase();
-  return normalized.includes("images_json") && normalized.includes("column");
-}
+import { insertProductWithSchemaFallback } from "@/lib/supabaseProductsColumnFallback";
 
 type ImportBandBody = {
   bandText?: string;
@@ -69,11 +64,7 @@ export async function POST(request: NextRequest) {
     parsed = await parseBandProductText({ bandText, hwpText });
   } catch (error) {
     console.error("[import-band] AI parse failed:", error);
-    const message =
-      error instanceof Error && error.message.includes("OPENAI_API_KEY")
-        ? error.message
-        : "밴드/HWP 텍스트 파싱에 실패했습니다.";
-    return NextResponse.json({ message }, { status: 500 });
+    return NextResponse.json({ message: formatBandParseError(error) }, { status: 500 });
   }
 
   const imageUrls = Array.isArray(body.imageUrls)
@@ -88,21 +79,14 @@ export async function POST(request: NextRequest) {
     imageUrls,
   });
 
-  let insertResult = await supabaseAdmin
-    .from("products")
-    .insert(insertPayload)
-    .select("id")
-    .maybeSingle();
+  const insertResult = await insertProductWithSchemaFallback(
+    async (payload) =>
+      await supabaseAdmin.from("products").insert(payload).select("id").maybeSingle(),
+    insertPayload as Record<string, unknown>,
+  );
 
-  if (insertResult.error && "images_json" in insertPayload && isMissingImagesJsonColumn(insertResult.error.message)) {
-    const fallbackPayload = Object.fromEntries(
-      Object.entries(insertPayload).filter(([key]) => key !== "images_json"),
-    );
-    insertResult = await supabaseAdmin
-      .from("products")
-      .insert(fallbackPayload)
-      .select("id")
-      .maybeSingle();
+  if (insertResult.strippedColumns.length > 0) {
+    console.warn("[import-band] stripped missing columns:", insertResult.strippedColumns.join(", "));
   }
 
   if (insertResult.error) {

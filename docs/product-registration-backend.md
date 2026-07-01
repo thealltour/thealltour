@@ -131,10 +131,12 @@ sequenceDiagram
 |--------|------|------|
 | `POST` | `/api/admin/modetour/normalize-import-images` | 모두투어 import 이미지 정규화 |
 | `POST` | `/api/admin/hanatour/normalize-import-images` | 하나투어 import 이미지 정규화 |
-| `POST` | `/api/admin/products/import-band` | 밴드/HWP 텍스트 AI 파싱 후 상품 insert |
+| `POST` | `/api/admin/products/import-band` | 밴드/HWP 텍스트 **gpt-4o-mini 2패스** AI 파싱(메타+일정) 후 상품 insert |
 | `POST` | `/api/admin/products/import-external` | 하나/모두 WEB dumb-pipe AI import (익스텐션·상품 등록 WEB) |
 
 Import UI는 `buildProductCreateBody()`로 payload를 만든 뒤 `createAdminProduct()` → `POST /api/admin/products`를 호출합니다.
+
+**밴드 import (`import-band`):** [`parseBandProductText`](../src/lib/admin/bandImport/parseBandProductText.ts)가 Pass1(메타·포함/불포함·항공·약관) + Pass2(일정표)로 `gpt-4o-mini`를 호출하고, [`mapBandParsedToInsert`](../src/lib/admin/bandImport/mapBandParsedToInsert.ts)가 관리자 폼 컬럼에 매핑합니다. 원문 보존을 위해 description fallback은 절단하지 않습니다.
 
 ---
 
@@ -361,3 +363,38 @@ UI 폼 전용. API와 차이:
 | 변경 diff (저장 전) | [`src/lib/adminProductDiff.ts`](../src/lib/adminProductDiff.ts) |
 | 캐시 태그 | [`src/lib/cacheTags.ts`](../src/lib/cacheTags.ts) |
 | Supabase Admin 클라이언트 | [`src/lib/supabaseAdmin.ts`](../src/lib/supabaseAdmin.ts) |
+
+---
+
+## 8. 대표 이미지·출발일 스케줄 수동 검증 (로컬 dev)
+
+배포 없이 로컬 `npm run dev` + 연결된 Supabase dev DB에서 확인합니다. 코드 변경 후 **dev 서버 재시작**이 필요할 수 있습니다.
+
+### 8.1 마이그레이션 (`departure_schedules_json`)
+
+컬럼이 없으면 GET 응답에 `departure_schedules_json` / `departureSchedules` 키가 없고, PATCH·밴드 import 시 컬럼이 strip됩니다.
+
+1. Supabase SQL Editor 또는 `supabase db push`로 적용:
+   - [`supabase/migrations/20260628100000_departure_schedules_json.sql`](../supabase/migrations/20260628100000_departure_schedules_json.sql)
+2. 확인 쿼리:
+   ```sql
+   select departure_schedules_json from public.products limit 1;
+   ```
+
+### 8.2 대표 이미지 (목록 썸네일)
+
+1. 편집 → 갤러리 2번째 이미지 「대표로」 → 저장
+2. Network `PATCH /api/admin/products/{id}` body에 `image_url`이 선택 URL인지 확인
+3. 목록으로 돌아가 썸네일이 선택 이미지인지 확인 (목록은 `mapAdminListProductRow` / `getPrimaryImageUrl` 사용)
+
+### 8.3 출발일 스케줄 GET·저장
+
+1. `GET /api/admin/products/{id}` → `departureSchedules` 배열 또는 `departure_schedules_json` 존재 여부
+2. 편집 → 여행 정보 → 출발일 스케줄 테이블에 행 표시
+3. 저장 `PATCH` body: 의도적 삭제가 아니면 빈 폼일 때 `departure_schedules_json` 필드가 **omit**되는지 확인 (로드 시 스케줄이 있었던 경우)
+4. PATCH 응답 `warningCode`: `DEPARTURE_SCHEDULES_JSON_NOT_PERSISTED` → 마이그레이션 미적용
+
+### 8.4 기타
+
+- 상단 **임시 저장본** 배너가 있으면 복원하지 말고 삭제 후 재시도
+- `images_json` 컬럼 없음: 응답 `IMAGES_JSON_NOT_PERSISTED`

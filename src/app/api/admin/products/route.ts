@@ -7,6 +7,10 @@ import {
   parseSeasonalPriceBandsFromUnknown,
   seasonalPriceBandsToJsonColumn,
 } from "@/lib/products/seasonalPriceBands";
+import {
+  departureSchedulesToJsonColumn,
+  normalizeDepartureSchedulesFromUnknown,
+} from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeAdminProductsPageSize } from "@/components/admin/products/adminProducts.constants";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -118,6 +122,7 @@ type ProductBody = {
   overview_region?: string | null;
   overview_duration?: string | null;
   seasonal_price_bands?: Record<string, unknown> | null;
+  departure_schedules_json?: Array<Record<string, unknown>> | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -453,6 +458,11 @@ export async function POST(request: Request) {
   }
   if (body.overview_duration !== undefined) {
     insertPayload.overview_duration = body.overview_duration?.trim() || null;
+  }
+  if (body.departure_schedules_json !== undefined) {
+    insertPayload.departure_schedules_json = departureSchedulesToJsonColumn(
+      normalizeDepartureSchedulesFromUnknown(body.departure_schedules_json),
+    );
   }
   // overview_json: 저장 제거. 상세 화면은 mapProductToOverview(product)로 자동 생성
 

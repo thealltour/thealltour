@@ -29,6 +29,10 @@ import { extractGuideBridgeSearchTokens } from "@/lib/guides";
 import { normalizeImageList } from "@/lib/products/images";
 import { normalizeSellingPoints } from "@/lib/products/normalizeSellingPoints";
 import { parseSeasonalPriceBandsFromUnknown } from "@/lib/products/seasonalPriceBands";
+import {
+  deriveDeparturesFromSchedules,
+  normalizeDepartureSchedulesFromUnknown,
+} from "@/lib/products/normalizeDepartureSchedules";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
 
@@ -63,7 +67,35 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     }
   }
   const images = normalizeImageList(imagesInput);
-  const primaryImage = images[0] ?? String(row.image_url ?? row.image ?? FALLBACK_IMAGE);
+  const storedCover = (() => {
+    if (typeof row.image_url === "string" && row.image_url.trim()) return row.image_url.trim();
+    if (typeof row.image === "string" && row.image.trim()) return row.image.trim();
+    return "";
+  })();
+  const primaryImage =
+    storedCover && (images.length === 0 || images.includes(storedCover))
+      ? storedCover
+      : images[0] ?? (storedCover || FALLBACK_IMAGE);
+
+  const departureSchedules =
+    normalizeDepartureSchedulesFromUnknown(row.departure_schedules_json) ?? undefined;
+
+  const departures = (() => {
+    const fromSchedules = deriveDeparturesFromSchedules(departureSchedules);
+    if (fromSchedules?.length) return fromSchedules;
+
+    const raw = row.departures ?? row.departures_json;
+    if (Array.isArray(raw)) return normalizeStringArray(raw) ?? undefined;
+    if (typeof raw === "string" && raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        return Array.isArray(parsed) ? normalizeStringArray(parsed) ?? undefined : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  })();
 
   return {
     id: String(row.id ?? ""),
@@ -106,19 +138,8 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
         : typeof row.travelStyle === "string" && (row.travelStyle as string).trim() !== ""
           ? (row.travelStyle as string).trim()
           : undefined,
-    departures: (() => {
-      const raw = row.departures ?? row.departures_json;
-      if (Array.isArray(raw)) return normalizeStringArray(raw) ?? undefined;
-      if (typeof raw === "string" && raw.trim()) {
-        try {
-          const parsed = JSON.parse(raw) as unknown;
-          return Array.isArray(parsed) ? normalizeStringArray(parsed) ?? undefined : undefined;
-        } catch {
-          return undefined;
-        }
-      }
-      return undefined;
-    })(),
+    departures,
+    departureSchedules,
     itinerary: typeof row.itinerary === "string" ? row.itinerary : undefined,
     inclusions: typeof row.inclusions === "string" ? row.inclusions : undefined,
     point_benefits: typeof row.point_benefits === "string" ? row.point_benefits : undefined,

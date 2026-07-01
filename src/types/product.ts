@@ -171,6 +171,17 @@ export type ProductSellingPoints = {
   insurance?: string | null;
 };
 
+/** 출발일별 스케줄 (departure_schedules_json) */
+export type ProductDepartureSchedule = {
+  /** YYYY-MM-DD 또는 표시용 "2025.07.23(수)" */
+  departureDate: string;
+  returnDate?: string | null;
+  price?: number | null;
+  /** UI 표시용 (없으면 departureDate) */
+  label?: string | null;
+  status?: "AVAILABLE" | "LIMITED" | "SOLD_OUT" | null;
+};
+
 /** 여행 오버뷰 (jsonb 1컬럼 스키마) */
 export type ProductOverview = {
   enabled: boolean;
@@ -233,6 +244,8 @@ export type Product = {
   travelStyle?: string;
   /** 출발일 목록 (ProductDepartureSelector용). 예: ["2025-06-12", "2025-07-03"] */
   departures?: string[];
+  /** 출발일별 스케줄 (가격·상태 포함). DB departure_schedules_json */
+  departureSchedules?: ProductDepartureSchedule[];
   /** PR42: 일차별 타임라인용 일정 (ProductItineraryTimeline). 없으면 기존 itinerary / detailed_schedule 사용 */
   itinerary_days?: ProductItineraryDay[];
   itinerary?: string;

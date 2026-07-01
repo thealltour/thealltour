@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Product } from "@/types/product";
-import { normalizeImageList } from "@/lib/products/images";
+import { mapAdminListProductRow } from "@/lib/products/images";
 import type { ProductSortKey } from "@/components/admin/products/api/adminProducts.types";
 import {
   fetchAdminProducts,
@@ -156,16 +156,7 @@ export function useAdminProductsListController({
           theme_q: effectiveThemeQ,
         });
         if (requestId !== loadRequestIdRef.current) return;
-        setProducts(
-          result.items.map((item) => {
-            const images = normalizeImageList(item.images_json);
-            return {
-              ...item,
-              images_json: images,
-              image_url: images[0] ?? item.image_url ?? "",
-            };
-          }),
-        );
+        setProducts(result.items.map((item) => mapAdminListProductRow(item) as Product));
         setTotalCount(result.total);
       } catch (err) {
         if (requestId !== loadRequestIdRef.current) return;

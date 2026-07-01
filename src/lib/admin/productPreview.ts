@@ -26,7 +26,7 @@ import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresenta
 import { parseCampaignsFormString } from "@/components/admin/products/editor/adminProductForm.helpers";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
-import { getPrimaryImageUrl, normalizeImageList } from "@/lib/products/images";
+import { getPrimaryImageUrl, getPrimaryImageUrlFromFormFields, normalizeImageList } from "@/lib/products/images";
 import { formStringsToSellingPoints } from "@/lib/products/normalizeSellingPoints";
 import type { TermsTemplateMap } from "@/lib/termsTemplates";
 import type {
@@ -173,7 +173,9 @@ export function formToPreviewProduct(
   })();
 
   const imagesJson = normalizeImageList(form.images_json);
-  const primaryImageUrl = imageUrlForPreview?.trim() || imagesJson[0] || form.image_url?.trim() || "";
+  const primaryImageUrl =
+    imageUrlForPreview?.trim() ||
+    getPrimaryImageUrlFromFormFields(form.image_url, imagesJson);
 
   return {
     id: "_preview",

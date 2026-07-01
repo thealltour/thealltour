@@ -15,11 +15,13 @@ import {
 import { useTemplateInsert } from "@/components/admin/products/editor/hooks/useTemplateInsert";
 import type { NoticeTemplateGroup, NoticeTemplatesByGroup } from "@/lib/noticeTemplates";
 import { LEGACY_SECTION_ID_MAP } from "@/components/admin/products/editor/adminProductForm.types";
+import { DepartureSchedulesEditor } from "@/components/admin/products/editor/sections/DepartureSchedulesEditor";
 
 export type RemainingAccordionSectionsProps = {
   sectionId: "taxonomy" | "travel" | "ops" | "advanced";
   form: ProductFormState;
   setForm: Dispatch<SetStateAction<ProductFormState>>;
+  formatPriceWithCommas: (raw: string) => string;
   destinationTree: RegionTreeNode[];
   destinationPath: RegionTreeNode[];
   selectedLevel1Id: string;
@@ -52,6 +54,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
     sectionId,
     form,
     setForm,
+    formatPriceWithCommas,
     destinationTree,
     destinationPath,
     selectedLevel1Id,
@@ -574,6 +577,11 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
             </div>
           </div>
           </div>
+          <DepartureSchedulesEditor
+            form={form}
+            setForm={setForm}
+            formatPriceWithCommas={formatPriceWithCommas}
+          />
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3">
             <p className="text-sm font-semibold text-[var(--primary)]">항공편 정보</p>
             <p className="text-xs text-[var(--text-secondary)]">

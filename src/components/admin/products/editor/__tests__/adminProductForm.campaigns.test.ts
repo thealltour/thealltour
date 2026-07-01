@@ -35,3 +35,26 @@ describe("serializeAdminProductForm campaigns", () => {
     expect(payload.campaigns).toEqual(["신규", "인기", "추천", "시즌 / 특가"]);
   });
 });
+
+describe("serializeAdminProductForm departure schedules", () => {
+  it("omits departure_schedules_json when edit load had rows but form is empty", () => {
+    const form = {
+      ...createEmptyProductFormState(),
+      departure_schedules: [],
+    };
+    const payload = serializeAdminProductForm(form, {
+      editingId: "prod-1",
+      loadedDepartureScheduleCount: 3,
+    });
+    expect(payload).not.toHaveProperty("departure_schedules_json");
+  });
+
+  it("sends null when creating with empty schedules", () => {
+    const form = {
+      ...createEmptyProductFormState(),
+      departure_schedules: [],
+    };
+    const payload = serializeAdminProductForm(form);
+    expect(payload.departure_schedules_json).toBeNull();
+  });
+});

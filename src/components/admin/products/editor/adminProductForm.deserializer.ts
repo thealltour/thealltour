@@ -13,6 +13,8 @@ import {
 } from "@/lib/products/mapProductToTimelineModel";
 import { hydrateItineraryImages } from "@/lib/images/hydrateItineraryImages";
 import { sellingPointsToFormStrings } from "@/lib/products/normalizeSellingPoints";
+import { departureSchedulesToFormRows } from "@/lib/admin/departureScheduleForm";
+import { normalizeDepartureSchedulesFromUnknown } from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeOXValue } from "./adminProductForm.helpers";
 import { normalizeFormFromProduct } from "./adminProductForm.derive";
 
@@ -161,6 +163,24 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     overview_accommodation: product.overview_accommodation ?? "",
     overview_region: product.overview_region ?? "",
     overview_duration: product.overview_duration ?? "",
+    departure_schedules: (() => {
+      const rows = departureSchedulesToFormRows(
+        product.departureSchedules ??
+          normalizeDepartureSchedulesFromUnknown(
+            (product as Record<string, unknown>).departure_schedules_json,
+          ),
+      );
+      if (rows.length > 0) return rows;
+      const legacyDepartures = product.departures ?? [];
+      if (legacyDepartures.length === 0) return [];
+      return legacyDepartures.map((label) => ({
+        departureDate: label,
+        returnDate: "",
+        price: "",
+        label,
+        status: "" as const,
+      }));
+    })(),
   };
   return normalizeFormFromProduct(baseForm);
 }

@@ -7,9 +7,8 @@ import Tag from "@/components/ui/Tag";
 import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
 import AlertCard from "@/components/ui/AlertCard";
 import TrustSignals from "@/components/products/TrustSignals";
-import { OptionPanel } from "@/components/products/OptionPanel";
-import { QuoteSummary } from "@/components/products/QuoteSummary";
-import { useProductQuote } from "@/components/products/ProductQuoteContext";
+import { ProductBookingSelectionPanel } from "@/components/products/ProductBookingSelectionPanel";
+import { useProductQuote, type SelectedDeparture } from "@/components/products/ProductQuoteContext";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
 import { calcQuote, formatPriceKR } from "@/lib/pricing/calcQuote";
 import type { Product, ProductTrust, ProductOptions, SelectedOptions } from "@/types/product";
@@ -36,9 +35,7 @@ import { ProductQuickInfoBar } from "@/components/products/ProductQuickInfoBar";
 import { ProductTrustSummary } from "@/components/products/ProductTrustSummary";
 import { ProductHeroBadges } from "@/components/products/ProductHeroBadges";
 import ProductSummaryInfo from "@/components/products/ProductSummaryInfo";
-import ProductDepartureSelector from "@/components/products/ProductDepartureSelector";
 import ProductItineraryTimeline from "@/components/products/ProductItineraryTimeline";
-import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { buildHeroBadges } from "@/lib/products/buildHeroBadges";
 import {
   getLegacyDayPreviewLabel,
@@ -49,7 +46,9 @@ import { parseThemeTokens } from "@/lib/productTaxonomies";
 import {
   DETAIL_UNIFIED_PRICE_NOTICE_LINES,
   getSeasonalPriceDisplayModel,
+  STICKY_SEASONAL_VOLATILITY_HINT,
 } from "@/lib/products/detailSeasonalPriceDisplay";
+import { getDepartureSchedulesMinPrice } from "@/lib/products/normalizeDepartureSchedules";
 import { buildRecommendedAudienceBullets } from "@/lib/products/buildRecommendedAudienceBullets";
 import {
   ProductDetailRecommendedAudience,
@@ -184,26 +183,6 @@ export default function ProductDetailV2({
   overviewFallbackUrl = "",
   reviewSummary,
 }: ProductDetailV2Props) {
-  const { openModal } = useConsultModal();
-
-  const handleDepartureInquiry = useCallback(
-    (selectedDeparture: string | null) => {
-      if (onConsultClick) {
-        onConsultClick();
-        return;
-      }
-      if (!productId) return;
-      const prefill = selectedDeparture ? `희망 출발일: ${selectedDeparture}` : undefined;
-      openModal({
-        productId,
-        productTitle: productTitle ?? title,
-        sourcePath: sourcePath ?? "",
-        prefillContent: prefill,
-      });
-    },
-    [onConsultClick, openModal, productId, productTitle, sourcePath, title],
-  );
-
   const resolvedOverview = useMemo(() => {
     if (product != null) return mapProductToOverview(product);
     return overviewModel ?? null;
@@ -287,15 +266,26 @@ export default function ProductDetailV2({
   const [pendingPreviewDayIndex, setPendingPreviewDayIndex] = useState<number | null>(null);
   const [openAccordionIndex, setOpenAccordionIndex] = useState<number | null>(0);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({});
+  const [selectedDepartureKey, setSelectedDepartureKey] = useState<string | null>(null);
   const isSoldOut = statusTag === "SOLD_OUT";
   const ctaLabelOptions = useMemo(
     () => (hasProductFixedDeparture(product) ? { fixedDeparture: true as const } : undefined),
     [product],
   );
-  const optionsPanelRef = useRef<HTMLDivElement>(null);
-  const { setQuoteSummary, setRequiredGroupsMissing, setSelectedOptions: syncSelectedOptionsToQuote, registerScrollToOptions } = useProductQuote();
+  const bookingPanelRef = useRef<HTMLDivElement>(null);
+  const {
+    setQuoteSummary,
+    setRequiredGroupsMissing,
+    setSelectedOptions: syncSelectedOptionsToQuote,
+    setSelectedDeparture: syncSelectedDeparture,
+    setDepartureRequired,
+    setDepartureSelectionMissing,
+    registerScrollToBooking,
+  } = useProductQuote();
 
+  const hasDepartures = Boolean(product?.departureSchedules?.length || product?.departures?.length);
   const hasOptions = ENABLE_PRODUCT_OPTIONS && options?.groups != null && options.groups.length > 0;
+  const hasBookingPanel = hasDepartures || hasOptions;
   const quote = useMemo(
     () => calcQuote(options, selectedOptions),
     [options, selectedOptions],
@@ -309,8 +299,19 @@ export default function ProductDetailV2({
     () => getSeasonalPriceDisplayModel(product?.seasonal_price_bands),
     [product?.seasonal_price_bands],
   );
+  const departureScheduleMinPrice = useMemo(
+    () => getDepartureSchedulesMinPrice(product?.departureSchedules),
+    [product?.departureSchedules],
+  );
   const showingOptionQuotePrice = Boolean(hasOptions && quote.total != null);
-  const showSeasonalBandCard = seasonalModel.hasAny && !showingOptionQuotePrice;
+  const showDepartureSchedulePrice =
+    departureScheduleMinPrice != null && !showingOptionQuotePrice;
+  const showSeasonalBandCard =
+    seasonalModel.hasAny && !showingOptionQuotePrice && !showDepartureSchedulePrice;
+  const departureSchedulePriceFormatted =
+    departureScheduleMinPrice != null
+      ? departureScheduleMinPrice.toLocaleString("ko-KR")
+      : null;
 
   const requiredGroupsMissing = useMemo(() => {
     if (!hasOptions || !options?.requiredGroups?.length) return false;
@@ -323,11 +324,26 @@ export default function ProductDetailV2({
     syncSelectedOptionsToQuote(hasOptions && Object.keys(selectedOptions).length > 0 ? selectedOptions : null);
   }, [hasOptions, quote, requiredGroupsMissing, selectedOptions, setQuoteSummary, setRequiredGroupsMissing, syncSelectedOptionsToQuote]);
 
+  const departureSelectionMissing = hasDepartures && !selectedDepartureKey;
+
   useEffect(() => {
-    registerScrollToOptions(() => {
-      optionsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setDepartureRequired(hasDepartures);
+    setDepartureSelectionMissing(departureSelectionMissing);
+  }, [hasDepartures, departureSelectionMissing, setDepartureRequired, setDepartureSelectionMissing]);
+
+  const handleDepartureChange = useCallback(
+    (departure: SelectedDeparture | null, key: string | null) => {
+      setSelectedDepartureKey(key);
+      syncSelectedDeparture(departure);
+    },
+    [syncSelectedDeparture],
+  );
+
+  useEffect(() => {
+    registerScrollToBooking(() => {
+      bookingPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }, [registerScrollToOptions]);
+  }, [registerScrollToBooking]);
 
   const handleOptionChange = useCallback((groupId: string, optionId: string) => {
     setSelectedOptions((prev) => ({ ...prev, [groupId]: optionId }));
@@ -496,9 +512,10 @@ export default function ProductDetailV2({
         includedSummary ||
         excludedSummary ||
         pr ||
-        showSeasonalBandCard,
+        showSeasonalBandCard ||
+        showDepartureSchedulePrice,
     );
-  }, [product, duration, minDeparturePeople, includedSummary, excludedSummary, showSeasonalBandCard]);
+  }, [product, duration, minDeparturePeople, includedSummary, excludedSummary, showSeasonalBandCard, showDepartureSchedulePrice]);
 
   /** PR22: 핵심 여행 요약 카드용. highlights → tags → themes 순, 최대 5개 */
   const highlightsForCard = useMemo(() => {
@@ -592,7 +609,23 @@ export default function ProductDetailV2({
           variant="default"
           className="mt-4 border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe]"
         >
-          {showSeasonalBandCard ? (
+          {showDepartureSchedulePrice ? (
+            <>
+              <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
+                ₩{departureSchedulePriceFormatted}~
+              </p>
+              {(displayDuration || priceMeta) && (
+                <p className="mt-1 text-sm text-slate-500">
+                  {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              <p className="mt-1 text-sm text-slate-500">{STICKY_SEASONAL_VOLATILITY_HINT}</p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-500">
+                {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
+              </p>
+              <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
+            </>
+          ) : showSeasonalBandCard ? (
             <>
               <p className="text-base font-semibold text-[#0f172a]">대표 출발가 안내</p>
               {(displayDuration || priceMeta) && (
@@ -628,7 +661,7 @@ export default function ProductDetailV2({
               상담 후 견적 안내
             </p>
           )}
-          {!showSeasonalBandCard && !displayPrice && (displayDuration || priceMeta) && (
+          {!showSeasonalBandCard && !showDepartureSchedulePrice && !displayPrice && (displayDuration || priceMeta) && (
             <p className="mt-1 text-sm text-slate-500">
               {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
             </p>
@@ -638,10 +671,10 @@ export default function ProductDetailV2({
               {fuelIncluded ? "유류할증료 포함" : "유류할증료 별도"}
             </p>
           )}
-          {!(showSeasonalBandCard || displayPrice) ? (
+          {!(showSeasonalBandCard || showDepartureSchedulePrice || displayPrice) ? (
             <p className="mt-0.5 text-sm text-slate-500">유류할증료는 상담 시 안내</p>
           ) : null}
-          {!(showSeasonalBandCard || displayPrice) ? (
+          {!(showSeasonalBandCard || showDepartureSchedulePrice || displayPrice) ? (
             <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
           ) : null}
         </Card>
@@ -679,12 +712,17 @@ export default function ProductDetailV2({
           </div>
         ) : null}
 
-        {/* PR41: 출발일 선택 영역 (Summary 다음) */}
-        {product?.departures?.length ? (
-          <div className="mt-6">
-            <ProductDepartureSelector
-              departures={product.departures}
-              onInquiryClick={handleDepartureInquiry}
+        {/* 출발일·옵션 통합 선택 (Summary 다음) */}
+        {hasBookingPanel ? (
+          <div className="mt-6" ref={bookingPanelRef}>
+            <ProductBookingSelectionPanel
+              schedules={product?.departureSchedules}
+              departures={product?.departures}
+              options={hasOptions ? options : null}
+              selectedDepartureKey={selectedDepartureKey}
+              selectedOptions={selectedOptions}
+              onDepartureChange={handleDepartureChange}
+              onOptionChange={handleOptionChange}
             />
           </div>
         ) : null}
@@ -736,20 +774,6 @@ export default function ProductDetailV2({
         </div>
 
         <div className="mt-8 space-y-4">
-          {hasOptions && (
-            <div id="product-options-panel" ref={optionsPanelRef}>
-              <OptionPanel
-                options={options}
-                selected={selectedOptions}
-                onSelectionChange={handleOptionChange}
-              />
-            </div>
-          )}
-
-          {hasOptions && (quote.total != null || quote.basePrice != null || quote.breakdown.length > 0) && (
-            <QuoteSummary quote={quote} />
-          )}
-
           {/* Trust Signals: 데이터 있을 때만 */}
           <TrustSignals trust={trust} />
         </div>

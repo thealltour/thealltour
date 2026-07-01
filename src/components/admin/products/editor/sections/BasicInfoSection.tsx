@@ -252,11 +252,16 @@ export function BasicInfoSection({
               primaryImageUrl={form.image_url?.trim() || form.images_json[0] || undefined}
               onSetPrimary={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
               onChange={(urls) =>
-                setForm((prev) => ({
-                  ...prev,
-                  images_json: urls,
-                  image_url: prev.image_url?.trim() || (urls[0] ?? ""),
-                }))
+                setForm((prev) => {
+                  const prevCover = prev.image_url?.trim();
+                  const nextCover =
+                    prevCover && urls.includes(prevCover) ? prevCover : (urls[0] ?? "");
+                  return {
+                    ...prev,
+                    images_json: urls,
+                    image_url: nextCover,
+                  };
+                })
               }
               selectedEvent={selectedEvent}
               onAddToEvent={(url) => {

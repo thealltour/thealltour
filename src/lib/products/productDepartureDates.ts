@@ -1,26 +1,67 @@
 import type { Product } from "@/types/product";
-import { isIsoDateYmd } from "@/lib/inquiry/desiredDeparture";
+import { isIsoDateYmd, kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
 
 const DATE_PARTS_RE = /(\d{4})[-./](\d{1,2})[-./](\d{1,2})/g;
+const WEEKDAY_SUFFIX_RE = /\([월화수목금토일]\)\s*$/;
+const STALE_DEPARTURE_DAYS = 60;
 
 export const DEFAULT_DEPARTURE_RANGE_MAX_DAYS = 120;
 
+export type NormalizeDepartureDateOptions = {
+  /** 연도 없는 M/D·M.D 파싱 시 사용 (미지정 시 KST 현재 연도) */
+  defaultYear?: number;
+};
+
+function stripWeekdaySuffix(value: string): string {
+  return value.replace(WEEKDAY_SUFFIX_RE, "").trim();
+}
+
+function buildYmd(year: number, month: number, day: number): string | null {
+  const ymd = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return isIsoDateYmd(ymd) ? ymd : null;
+}
+
+/** M/D만 있는 출발일이 60일 이상 과거면 내년 회차로 보정 */
+export function bumpYearIfStaleDepartureYmd(ymd: string): string {
+  if (!isIsoDateYmd(ymd)) return ymd;
+  const cutoff = addDaysYmd(kstTodayYmd(), -STALE_DEPARTURE_DAYS);
+  if (ymd >= cutoff) return ymd;
+  const [y, m, d] = ymd.split("-").map(Number);
+  return buildYmd(y + 1, m, d) ?? ymd;
+}
+
 /**
  * 상품 출발일 문자열을 달력·집계용 YYYY-MM-DD로 정규화합니다.
- * 관리자 항공 섹션 자유 텍스트(예: 2026.02.20(금)) 및 ISO 형식을 지원합니다.
+ * ISO, YYYY.MM.DD(요일), 연도 없는 M/D·M.D(요일) 형식을 지원합니다.
  */
 export function normalizeProductDepartureDateToYmd(
   raw: string | null | undefined,
+  options?: NormalizeDepartureDateOptions,
 ): string | null {
   const trimmed = raw?.trim() ?? "";
   if (!trimmed) return null;
   if (isIsoDateYmd(trimmed)) return trimmed;
 
-  const match = trimmed.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
-  if (!match) return null;
+  const withoutWeekday = stripWeekdaySuffix(trimmed);
 
-  const ymd = `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
-  return isIsoDateYmd(ymd) ? ymd : null;
+  const fullMatch = withoutWeekday.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if (fullMatch) {
+    const ymd = buildYmd(Number(fullMatch[1]), Number(fullMatch[2]), Number(fullMatch[3]));
+    if (ymd) return ymd;
+  }
+
+  if (!/\d{4}/.test(withoutWeekday)) {
+    const slashMatch = withoutWeekday.match(/^(\d{1,2})\/(\d{1,2})$/);
+    const dotMatch = withoutWeekday.match(/^(\d{1,2})\.(\d{1,2})$/);
+    const md = slashMatch ?? dotMatch;
+    if (md) {
+      const year = options?.defaultYear ?? Number(kstTodayYmd().slice(0, 4));
+      const ymd = buildYmd(year, Number(md[1]), Number(md[2]));
+      if (ymd) return bumpYearIfStaleDepartureYmd(ymd);
+    }
+  }
+
+  return null;
 }
 
 function addDaysYmd(ymd: string, days: number): string {
@@ -98,6 +139,10 @@ function addDatesFromText(dates: Set<string>, raw: string | null | undefined): v
 /** 상품 1건의 모든 출발 가능 YMD를 수집합니다. */
 export function collectProductDepartureDates(product: Product): string[] {
   const dates = new Set<string>();
+
+  for (const schedule of product.departureSchedules ?? []) {
+    addDatesFromText(dates, schedule.departureDate);
+  }
 
   for (const raw of product.departures ?? []) {
     addDatesFromText(dates, raw);

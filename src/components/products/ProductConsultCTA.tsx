@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
+import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { Button } from "@/components/ui/Button";
 import {
   getProductCtaLabel,
@@ -8,6 +10,7 @@ import {
   type ProductCtaLabelOptions,
   type ProductCtaStatus,
 } from "@/lib/products/getProductCtaLabel";
+import { buildProductInquiryPrefill } from "@/lib/products/buildProductInquiryPrefill";
 import { trackProductCtaClick } from "@/lib/analytics/trackProductClick";
 
 export type ProductConsultCTASection = "top" | "sticky" | "itinerary";
@@ -23,6 +26,9 @@ export type ProductConsultCTAProps = {
   priceFormatted?: string | null;
   /** true면 주 CTA 클릭 시 옵션 영역으로 스크롤만 함 */
   requiredGroupsMissing?: boolean;
+  departureSelectionMissing?: boolean;
+  scrollToBooking?: () => void;
+  /** @deprecated use scrollToBooking */
   scrollToOptions?: () => void;
   isSoldOut?: boolean;
   /** itinerary: 보조 문구 */
@@ -55,7 +61,9 @@ export function ProductConsultCTA({
   kakaoHref,
   section,
   priceFormatted,
-  requiredGroupsMissing,
+  requiredGroupsMissing: requiredGroupsMissingProp,
+  departureSelectionMissing: departureSelectionMissingProp,
+  scrollToBooking: scrollToBookingProp,
   scrollToOptions,
   isSoldOut,
   copy,
@@ -71,61 +79,132 @@ export function ProductConsultCTA({
   ctaLabelOptions,
 }: ProductConsultCTAProps) {
   const { openModal } = useConsultModal();
+  const quoteCtx = useProductQuote();
+  const [kakaoToast, setKakaoToast] = useState<string | null>(null);
+
+  const requiredGroupsMissing = requiredGroupsMissingProp ?? quoteCtx.requiredGroupsMissing;
+  const departureSelectionMissing =
+    departureSelectionMissingProp ?? quoteCtx.departureSelectionMissing;
+  const scrollToBooking = scrollToBookingProp ?? scrollToOptions ?? quoteCtx.scrollToBooking;
+
   const primaryLabel = primaryLabelOverride ?? getProductCtaLabel(status, ctaLabelOptions);
   const stickyPrimaryLabel =
     primaryLabelOverride ?? getProductCtaStickyPrimaryLabel(status, ctaLabelOptions);
 
-  const handlePrimary = () => {
-    if (requiredGroupsMissing && scrollToOptions) {
-      scrollToOptions();
-      return;
+  const buildPrefill = () =>
+    buildProductInquiryPrefill({
+      productTitle,
+      selectedDeparture: quoteCtx.selectedDeparture,
+      quoteSummary: quoteCtx.quoteSummary,
+      selectedOptions: quoteCtx.selectedOptions,
+    });
+
+  const scrollToSelectionIfNeeded = () => {
+    if ((departureSelectionMissing || requiredGroupsMissing) && scrollToBooking) {
+      scrollToBooking();
+      return true;
     }
+    return false;
+  };
+
+  const handlePrimary = () => {
+    if (scrollToSelectionIfNeeded()) return;
     if (isSoldOut && typeof window !== "undefined") {
       window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
       return;
     }
     trackProductCtaClick({ productId, ctaType: "primary", section });
     onPrimaryClick?.();
-    openModal({ productId, productTitle, sourcePath });
+    const prefill = buildPrefill();
+    openModal({
+      productId,
+      productTitle,
+      sourcePath,
+      prefillContent: prefill || undefined,
+    });
   };
 
-  const handleKakao = () => {
+  const handleKakao = async (event: React.MouseEvent) => {
+    event.preventDefault();
+    if (scrollToSelectionIfNeeded()) return;
     trackProductCtaClick({ productId, ctaType: "kakao", section });
+    const summary = buildPrefill();
+    if (summary && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(summary);
+        setKakaoToast("문의 내용이 복사되었습니다. 카톡 채팅에 붙여넣어 주세요.");
+        setTimeout(() => setKakaoToast(null), 2800);
+      } catch {
+        setKakaoToast("복사에 실패했습니다. 상품명과 선택 내용을 직접 입력해 주세요.");
+        setTimeout(() => setKakaoToast(null), 2800);
+      }
+    }
+    if (kakaoHref && typeof window !== "undefined") {
+      window.open(kakaoHref, "_blank", "noopener,noreferrer");
+    }
   };
+
+  const kakaoButton = kakaoHref ? (
+    <Button
+      type="button"
+      variant="kakao"
+      size="md"
+      className={section === "sticky" ? "h-11 min-h-11 w-full whitespace-nowrap" : "w-full"}
+      onClick={handleKakao}
+    >
+      카톡 견적 문의
+    </Button>
+  ) : null;
+
+  const selectionHint =
+    departureSelectionMissing || requiredGroupsMissing ? (
+      <p className="mb-2 text-sm text-amber-600">
+        {departureSelectionMissing ? "출발일을 선택해 주세요." : "필수 옵션을 선택해 주세요."}
+      </p>
+    ) : null;
 
   if (section === "sticky") {
     return (
-      <div className={`flex h-11 w-full min-w-0 items-center gap-3 sm:gap-4 ${className}`}>
-        <div className="flex shrink-0 flex-col justify-center" style={{ minWidth: "6.5rem", maxWidth: "10rem" }}>
-          {priceFormatted != null && priceFormatted !== "" ? (
-            <>
-              <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[var(--primary)]">
-                {stickyPricePrefix ?? ""}₩{priceFormatted}~
-              </span>
-              <span className="mt-0.5 block text-[0.6875rem] leading-snug text-slate-600 break-words">
-                {stickyPriceSubLabel ?? "1인 기준"}
-              </span>
-              {stickyPriceSecondLine ? (
-                <span className="mt-0.5 block text-[0.625rem] leading-snug text-slate-500">
-                  {stickyPriceSecondLine}
+      <div className={`w-full min-w-0 ${className}`}>
+        {kakaoToast ? (
+          <p className="mb-2 rounded-lg bg-slate-800 px-2 py-1.5 text-center text-[11px] text-white">
+            {kakaoToast}
+          </p>
+        ) : null}
+        <div className="flex h-11 w-full min-w-0 items-center gap-3 sm:gap-4">
+          <div
+            className="flex shrink-0 flex-col justify-center"
+            style={{ minWidth: "6.5rem", maxWidth: "10rem" }}
+          >
+            {priceFormatted != null && priceFormatted !== "" ? (
+              <>
+                <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[var(--primary)]">
+                  {stickyPricePrefix ?? ""}₩{priceFormatted}~
                 </span>
-              ) : null}
-            </>
-          ) : (
-            <span className="text-sm font-semibold text-slate-600">상담 후 안내</span>
-          )}
-        </div>
-        <div className="flex h-11 min-w-0 shrink flex-1 items-center gap-2">
-          <Button variant="accent" size="md" onClick={handlePrimary} className="h-11 min-h-11 flex-1 min-w-0 shrink-0 whitespace-nowrap">
-            {isSoldOut ? "대기" : stickyPrimaryLabel}
-          </Button>
-          {kakaoHref && (
-            <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="min-w-0 shrink">
-              <Button variant="kakao" size="md" className="h-11 min-h-11 w-full whitespace-nowrap">
-                카톡 견적 문의
-              </Button>
-            </a>
-          )}
+                <span className="mt-0.5 block text-[0.6875rem] leading-snug text-slate-600 break-words">
+                  {stickyPriceSubLabel ?? "1인 기준"}
+                </span>
+                {stickyPriceSecondLine ? (
+                  <span className="mt-0.5 block text-[0.625rem] leading-snug text-slate-500">
+                    {stickyPriceSecondLine}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <span className="text-sm font-semibold text-slate-600">상담 후 안내</span>
+            )}
+          </div>
+          <div className="flex h-11 min-w-0 shrink flex-1 items-center gap-2">
+            <Button
+              variant="accent"
+              size="md"
+              onClick={handlePrimary}
+              className="h-11 min-h-11 flex-1 min-w-0 shrink-0 whitespace-nowrap"
+            >
+              {isSoldOut ? "대기" : stickyPrimaryLabel}
+            </Button>
+            {kakaoButton ? <div className="min-w-0 shrink">{kakaoButton}</div> : null}
+          </div>
         </div>
       </div>
     );
@@ -136,16 +215,16 @@ export function ProductConsultCTA({
       <div className={className}>
         {copy && <p className="mb-3 text-sm font-medium text-[var(--text-secondary)]">{copy}</p>}
         {subCopy && <p className="mb-4 text-xs text-[var(--text-muted)]">{subCopy}</p>}
+        {selectionHint}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button variant="accent" size="md" onClick={handlePrimary}>
             {primaryLabel}
           </Button>
-          {kakaoHref && (
-            <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao}>
-              <Button variant="kakao" size="md">카톡 견적 문의</Button>
-            </a>
-          )}
+          {kakaoButton}
         </div>
+        {kakaoToast ? (
+          <p className="mt-2 text-center text-xs text-slate-600">{kakaoToast}</p>
+        ) : null}
       </div>
     );
   }
@@ -156,19 +235,14 @@ export function ProductConsultCTA({
 
   return (
     <div className={className}>
-      {requiredGroupsMissing && (
-        <p className="mb-2 text-sm text-amber-600">필수 옵션을 선택해 주세요.</p>
-      )}
+      {selectionHint}
       <div className="flex flex-col gap-2">
         <Button variant="accent" size="md" onClick={handlePrimary} className="w-full">
           {primaryLabel}
         </Button>
-        {kakaoHref && (
-          <a href={kakaoHref} target="_blank" rel="noopener noreferrer" onClick={handleKakao} className="block">
-            <Button variant="kakao" size="md" className="w-full">카톡 견적 문의</Button>
-          </a>
-        )}
+        {kakaoButton}
       </div>
+      {kakaoToast ? <p className="mt-2 text-xs text-slate-600">{kakaoToast}</p> : null}
       <p className="mt-2 text-xs leading-relaxed text-slate-500">{helperText}</p>
     </div>
   );

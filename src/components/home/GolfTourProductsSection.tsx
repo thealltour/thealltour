@@ -6,8 +6,7 @@ import {
   SECTION_HEADER_MOBILE_CTA_CLASS,
   HOME_MAIN_SECTION_BLOCK_CLASS,
 } from "@/components/layout/SectionHeader";
-import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
-import { HomeProductCard } from "@/components/products/HomeProductCard";
+import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 import type { Product } from "@/types/product";
 
@@ -21,7 +20,7 @@ export type GolfTourProductsSectionProps = {
 };
 
 /**
- * 홈 골프투어 추천 섹션 — 메인 추천상품과 동일한 HomeProductCard UI.
+ * 홈 골프투어 추천 섹션 — HomeProductCard 1행 가로 레일.
  */
 export default function GolfTourProductsSection({
   products,
@@ -56,15 +55,11 @@ export default function GolfTourProductsSection({
           </Link>
         }
       />
-      <ProductCardGridSection homeCuratedMobileCompact desktopGridCols={4}>
-        {products.map((product) => (
-          <HomeProductCard
-            key={product.id}
-            product={product}
-            analyticsSection="추천 골프투어"
-          />
-        ))}
-      </ProductCardGridSection>
+      <HomeProductCardRail
+        products={products}
+        analyticsSection="추천 골프투어"
+        listAriaLabel="추천 골프투어 상품"
+      />
     </SectionBlock>
   );
 }

@@ -34,6 +34,8 @@ export type HomeProductCardProps = {
   className?: string;
   /** 홈 큐레이션 카드 클릭 계측 section */
   analyticsSection?: string;
+  /** grid: 기존(모바일 16:9). rail: 레일 전용 4:3 고정 */
+  variant?: "grid" | "rail";
 };
 
 const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/thealltour-home-card/800/600";
@@ -58,7 +60,13 @@ function buildSubMetaLine(product: Product): string {
  * 시선 순서: 배지 → 평점(sm+) → 지역 → 제목 → one_liner(sm+) → 가격.
  * 모바일 2열: 이미지·지역·제목·가격 우선, 칩 1개·평점·원라이너는 sm 이상에서 복원.
  */
-export function HomeProductCard({ product, href, className, analyticsSection }: HomeProductCardProps) {
+export function HomeProductCard({
+  product,
+  href,
+  className,
+  analyticsSection,
+  variant = "grid",
+}: HomeProductCardProps) {
   const resolvedHref = (href?.trim() || `/products/${product.id}`).trim();
   const titleText = product.title?.trim() || "상품";
 
@@ -133,15 +141,21 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
       onClick={onNavigate}
       aria-label={`${titleText}, 상세 보기`}
       className={cn(
-        "group flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] sm:rounded-2xl",
+        "group flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] sm:rounded-2xl",
+        variant === "rail" ? "h-full w-full flex-1" : "h-full",
         CARD_HOVER,
         CARD_TRANSITION,
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2",
         className,
       )}
     >
-      {/* 모바일 2열: 이미지 높이 축소(16:9), sm+ 기존 4:3 */}
-      <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-[var(--surface-muted)] sm:aspect-[4/3]">
+      {/* 모바일 2열: 이미지 높이 축소(16:9), sm+ 기존 4:3 / rail: 항상 4:3 */}
+      <div
+        className={cn(
+          "relative w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]",
+          variant === "rail" ? "aspect-[4/3]" : "aspect-video sm:aspect-[4/3]",
+        )}
+      >
         {overlayCampaignBadges.length > 0 ? (
           <div className="absolute left-1.5 top-1.5 z-10 flex max-w-[calc(100%-0.75rem)] flex-wrap items-start gap-1 sm:left-2 sm:top-2">
             {overlayCampaignBadges.map((b, i) => (
@@ -173,7 +187,12 @@ export function HomeProductCard({ product, href, className, analyticsSection }: 
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1 px-2.5 py-2 sm:gap-1.5 sm:px-4 sm:py-4">
+      <div
+        className={cn(
+          "flex min-h-0 flex-col gap-1 px-2.5 py-2 sm:gap-1.5 sm:px-4 sm:py-4",
+          variant === "rail" ? "min-h-0 flex-1" : "flex-1",
+        )}
+      >
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1">
             {infoDisplayChips.map((chip, i) => (

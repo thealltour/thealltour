@@ -1,26 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { ProductDepartureSchedule } from "@/types/product";
+import {
+  formatDepartureScheduleChipLabel,
+  formatDepartureScheduleInquiryValue,
+} from "@/lib/products/normalizeDepartureSchedules";
 
 type Props = {
   departures?: string[];
-  /** 예약 문의 클릭 시 선택된 출발일 전달 */
-  onInquiryClick?: (selectedDeparture: string | null) => void;
+  schedules?: ProductDepartureSchedule[];
+  /** 예약 문의 클릭 시 선택된 출발일·가격 전달 */
+  onInquiryClick?: (selectedDeparture: string | null, selectedPrice?: number | null) => void;
 };
 
-export default function ProductDepartureSelector({ departures = [], onInquiryClick }: Props) {
-  const [selected, setSelected] = useState<string | null>(null);
+type DepartureOption = {
+  key: string;
+  label: string;
+  inquiryValue: string;
+  price?: number | null;
+  disabled?: boolean;
+};
+
+function buildDepartureOptions(
+  schedules: ProductDepartureSchedule[] | undefined,
+  departures: string[],
+): DepartureOption[] {
+  if (schedules?.length) {
+    return schedules.map((schedule, index) => ({
+      key: `schedule-${index}-${schedule.departureDate}`,
+      label: formatDepartureScheduleChipLabel(schedule),
+      inquiryValue: formatDepartureScheduleInquiryValue(schedule),
+      price: schedule.price ?? null,
+      disabled: schedule.status === "SOLD_OUT",
+    }));
+  }
+
+  return departures.map((date, index) => ({
+    key: `departure-${index}-${date}`,
+    label: date,
+    inquiryValue: date,
+    price: null,
+  }));
+}
+
+export default function ProductDepartureSelector({
+  departures = [],
+  schedules,
+  onInquiryClick,
+}: Props) {
+  const options = useMemo(
+    () => buildDepartureOptions(schedules, departures),
+    [schedules, departures],
+  );
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hint, setHint] = useState("");
 
-  if (!departures.length) return null;
+  if (!options.length) return null;
+
+  const selectedOption = options.find((option) => option.key === selectedKey) ?? null;
 
   const handleInquiry = () => {
-    if (!selected) {
+    if (!selectedOption) {
       setHint("출발일을 먼저 선택해 주세요.");
       return;
     }
     setHint("");
-    onInquiryClick?.(selected);
+    onInquiryClick?.(selectedOption.inquiryValue, selectedOption.price);
   };
 
   return (
@@ -28,31 +74,33 @@ export default function ProductDepartureSelector({ departures = [], onInquiryCli
       className="rounded-xl border border-slate-200 bg-white p-4 space-y-4"
       aria-label="출발일 선택"
     >
-      <h3 className="text-sm font-semibold text-slate-900">
-        출발일 선택
-      </h3>
+      <h3 className="text-sm font-semibold text-slate-900">출발일 선택</h3>
 
       <div className="flex flex-wrap gap-2">
-        {departures.map((date) => {
-          const active = selected === date;
+        {options.map((option) => {
+          const active = selectedKey === option.key;
 
           return (
             <button
-              key={date}
+              key={option.key}
               type="button"
+              disabled={option.disabled}
               onClick={() => {
-                setSelected(date);
+                setSelectedKey(option.key);
                 setHint("");
               }}
               className={`px-3 py-2 rounded-lg text-sm border transition
-                ${active
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
+                ${option.disabled
+                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                  : active
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
                 }`}
               aria-pressed={active}
-              aria-label={`출발일 ${date}${active ? " 선택됨" : ""}`}
+              aria-label={`출발일 ${option.label}${active ? " 선택됨" : ""}${option.disabled ? " 마감" : ""}`}
             >
-              {date}
+              {option.label}
+              {option.disabled ? " (마감)" : null}
             </button>
           );
         })}

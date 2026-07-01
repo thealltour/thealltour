@@ -30,7 +30,8 @@
 
 | 변수 | 설명 |
 |------|------|
-| `OPENAI_API_KEY` | [`POST /api/admin/products/import-band`](../src/app/api/admin/products/import-band/route.ts)에서 GPT-4o 구조화 파싱에 사용. **프로덕션 필수** — 미설정 시 API 500. |
+| `OPENAI_API_KEY` | [`POST /api/admin/products/import-band`](../src/app/api/admin/products/import-band/route.ts)에서 **gpt-4o-mini** 2패스 구조화 파싱에 사용. **프로덕션 필수** — 미설정 시 API 500. |
+| `BAND_IMPORT_MODEL` | (선택) 밴드 import 모델 오버라이드. 기본값 `gpt-4o-mini`. |
 
 ## Supabase
 

@@ -7,13 +7,16 @@ import {
   parseSeasonalPriceBandsFromUnknown,
   seasonalPriceBandsToJsonColumn,
 } from "@/lib/products/seasonalPriceBands";
+import {
+  departureSchedulesToJsonColumn,
+  normalizeDepartureSchedulesFromUnknown,
+} from "@/lib/products/normalizeDepartureSchedules";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function isMissingImagesJsonColumn(message?: string): boolean {
-  if (!message) return false;
-  const normalized = message.toLowerCase();
-  return normalized.includes("images_json") && normalized.includes("column");
-}
+import { normalizeProduct } from "@/lib/products";
+import {
+  productSaveWarningCodeFromStrippedColumns,
+  updateProductWithSchemaFallback,
+} from "@/lib/supabaseProductsColumnFallback";
 
 type ProductBody = {
   title?: string;
@@ -104,6 +107,7 @@ type ProductBody = {
   overview_region?: string | null;
   overview_duration?: string | null;
   seasonal_price_bands?: Record<string, unknown> | null;
+  departure_schedules_json?: Array<Record<string, unknown>> | null;
 };
 
 export async function PATCH(
@@ -290,6 +294,11 @@ export async function PATCH(
       updates.seasonal_price_bands = seasonalPriceBandsToJsonColumn(parsed);
     }
   }
+  if (body.departure_schedules_json !== undefined) {
+    updates.departure_schedules_json = departureSchedulesToJsonColumn(
+      normalizeDepartureSchedulesFromUnknown(body.departure_schedules_json),
+    );
+  }
   // overview_json: 저장 제거. 상세 화면은 mapProductToOverview(product)로 자동 생성
 
   if (Object.keys(updates).length === 0) {
@@ -299,25 +308,11 @@ export async function PATCH(
     );
   }
 
-  let imagesJsonPersisted = true;
-  let updateResult = await supabaseAdmin
-    .from("products")
-    .update(updates)
-    .eq("id", id)
-    .select("id")
-    .maybeSingle();
-
-  // DB에 images_json 컬럼이 아직 없는 환경 호환
-  if (updateResult.error && "images_json" in updates && isMissingImagesJsonColumn(updateResult.error.message)) {
-    imagesJsonPersisted = false;
-    const fallbackUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => key !== "images_json"));
-    updateResult = await supabaseAdmin
-      .from("products")
-      .update(fallbackUpdates)
-      .eq("id", id)
-      .select("id")
-      .maybeSingle();
-  }
+  const updateResult = await updateProductWithSchemaFallback(
+    async (payload) =>
+      await supabaseAdmin.from("products").update(payload).eq("id", id).select("id").maybeSingle(),
+    updates,
+  );
 
   if (updateResult.error) {
     return NextResponse.json(
@@ -335,10 +330,20 @@ export async function PATCH(
   revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
   revalidatePath(`/products/${id}`);
   revalidatePath("/products");
-  if (!imagesJsonPersisted) {
+
+  const warningCode = productSaveWarningCodeFromStrippedColumns(updateResult.strippedColumns);
+  if (warningCode) {
+    const stripped = updateResult.strippedColumns.join(", ");
+    const message =
+      warningCode === "DEPARTURE_SCHEDULES_JSON_NOT_PERSISTED"
+        ? "상품이 수정되었습니다. (출발일 스케줄 컬럼이 DB에 없어 저장되지 않았습니다. supabase/migrations/20260628100000_departure_schedules_json.sql 적용 필요)"
+        : warningCode === "IMAGES_JSON_NOT_PERSISTED"
+          ? "상품이 수정되었습니다. (대표 이미지만 저장됨)"
+          : `상품이 수정되었습니다. (미적용 DB 컬럼 제외: ${stripped})`;
     return NextResponse.json({
-      message: "상품이 수정되었습니다. (대표 이미지만 저장됨)",
-      warningCode: "IMAGES_JSON_NOT_PERSISTED",
+      message,
+      warningCode,
+      strippedColumns: updateResult.strippedColumns,
     });
   }
   return NextResponse.json({ message: "상품이 수정되었습니다." });
@@ -393,5 +398,5 @@ export async function GET(
   if (!data) {
     return NextResponse.json({ message: "상품을 찾을 수 없습니다." }, { status: 404 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(normalizeProduct(data as Record<string, unknown>));
 }

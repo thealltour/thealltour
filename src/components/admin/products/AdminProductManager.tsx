@@ -55,7 +55,7 @@ import {
 import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimelineV2";
 import { normalizeAirline } from "@/lib/airlines/normalizeAirline";
 import { AIRLINE_LOGO_BY_CODE } from "@/lib/airlines/airlineLogos";
-import { normalizeImageList } from "@/lib/products/images";
+import { normalizeImageList, getPrimaryImageUrlFromFormFields } from "@/lib/products/images";
 import {
   fetchAdminProduct,
   createAdminProduct,
@@ -848,6 +848,7 @@ export default function AdminProductManager() {
 
   const urlEditingId = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID);
   const initialFormSnapshotRef = useRef<ProductFormState | null>(null);
+  const loadedDepartureScheduleCountRef = useRef(0);
 
   const writeDraftToStorage = useCallback((nextForm: ProductFormState) => {
     const key = getDraftKey(editingId);
@@ -893,7 +894,10 @@ export default function AdminProductManager() {
   });
 
   useEffect(() => {
-    if (!urlEditingId) return;
+    if (!urlEditingId) {
+      loadedDepartureScheduleCountRef.current = 0;
+      return;
+    }
     initialFormSnapshotRef.current = null;
     let cancelled = false;
     (async () => {
@@ -904,9 +908,9 @@ export default function AdminProductManager() {
         const productWithImages = {
           ...product,
           images_json: images,
-          image_url: images[0] ?? product.image_url ?? "",
         };
         const nextForm = deserializeAdminProductToForm(productWithImages);
+        loadedDepartureScheduleCountRef.current = nextForm.departure_schedules.length;
         setForm(nextForm);
         initialFormSnapshotRef.current = structuredClone(nextForm);
         setEditingId(urlEditingId);
@@ -978,6 +982,7 @@ export default function AdminProductManager() {
       const payload = serializeAdminProductForm(form, {
         editingId,
         destinationName: destinationNameForSaveRef.current,
+        loadedDepartureScheduleCount: loadedDepartureScheduleCountRef.current,
       });
       let result: { message?: string; warningCode?: string; id?: string };
       if (editingId) {
@@ -995,6 +1000,11 @@ export default function AdminProductManager() {
         showLocalToast(
           "error",
           "DB에 images_json 컬럼이 없어 대표 이미지 외 나머지는 저장되지 않았습니다. supabase/products_images_json_upgrade.sql 실행이 필요합니다.",
+        );
+      } else if (result.warningCode === "DEPARTURE_SCHEDULES_JSON_NOT_PERSISTED") {
+        showLocalToast(
+          "error",
+          "출발일 스케줄 컬럼이 DB에 없어 스케줄이 저장되지 않았습니다. supabase/migrations/20260628100000_departure_schedules_json.sql을 적용해 주세요.",
         );
       } else {
         showToast(
@@ -1128,7 +1138,9 @@ export default function AdminProductManager() {
   const previewProduct = useMemo(() => {
     const base = mapAdminProductFormToPreviewProduct(
       form,
-      previewImageObjectUrl ?? form.images_json[0] ?? form.image_url?.trim() ?? "",
+      previewImageObjectUrl ??
+        getPrimaryImageUrlFromFormFields(form.image_url, form.images_json) ??
+        "",
     );
     return hydrateProductWithCampaignCardMeta(base, activeCampaignOptions);
   }, [form, previewImageObjectUrl, activeCampaignOptions]);
@@ -1450,7 +1462,10 @@ export default function AdminProductManager() {
     const requestId = ++previewRequestIdRef.current;
     previewDebounceRef.current = setTimeout(() => {
       previewDebounceRef.current = null;
-      const imageUrl = previewImageObjectUrl ?? form.images_json[0] ?? form.image_url?.trim() ?? "";
+      const imageUrl =
+        previewImageObjectUrl ??
+        getPrimaryImageUrlFromFormFields(form.image_url, form.images_json) ??
+        "";
       fetch("/api/admin/products/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1829,6 +1844,7 @@ export default function AdminProductManager() {
           remainingAccordionProps={{
             form,
             setForm,
+            formatPriceWithCommas,
             destinationTree,
             destinationPath,
             selectedLevel1Id,

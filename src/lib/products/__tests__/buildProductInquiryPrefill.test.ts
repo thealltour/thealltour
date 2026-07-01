@@ -32,4 +32,15 @@ describe("buildProductInquiryPrefill", () => {
     expect(text).toContain("싱글룸: 싱글룸 이용");
     expect(text).toContain("예상 견적: 939,000원");
   });
+
+  it("formats raw multi selected_options fallback", () => {
+    const text = buildProductInquiryPrefill({
+      selectedOptions: {
+        surcharges: ["surcharge-0", "surcharge-1"],
+      },
+    });
+
+    expect(text).toContain("- surcharges: surcharge-0");
+    expect(text).toContain("- surcharges: surcharge-1");
+  });
 });

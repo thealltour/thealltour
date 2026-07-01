@@ -55,8 +55,8 @@ export type ProductOptions = {
   groups: ProductOptionGroup[];
 };
 
-/** 선택된 옵션: groupKey -> itemValue (UI/계산용) */
-export type SelectedOptions = Record<string, string>;
+/** 선택된 옵션: groupKey -> itemValue (radio/select) 또는 itemValue[] (multi) */
+export type SelectedOptions = Record<string, string | string[]>;
 
 /** 여행 오버뷰 요약 카드 kind */
 export type OverviewSummaryCardKind =

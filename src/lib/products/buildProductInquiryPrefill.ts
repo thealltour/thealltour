@@ -46,7 +46,13 @@ export function buildProductInquiryPrefill(params: BuildProductInquiryPrefillPar
   } else if (params.selectedOptions && Object.keys(params.selectedOptions).length > 0) {
     lines.push("선택 옵션:");
     for (const [groupKey, value] of Object.entries(params.selectedOptions)) {
-      if (value) lines.push(`- ${groupKey}: ${value}`);
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item) lines.push(`- ${groupKey}: ${item}`);
+        }
+      } else if (value) {
+        lines.push(`- ${groupKey}: ${value}`);
+      }
     }
   }
 

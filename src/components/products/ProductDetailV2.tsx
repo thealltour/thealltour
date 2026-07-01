@@ -11,6 +11,12 @@ import { ProductBookingSelectionPanel } from "@/components/products/ProductBooki
 import { useProductQuote, type SelectedDeparture } from "@/components/products/ProductQuoteContext";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
 import { calcQuote, formatPriceKR } from "@/lib/pricing/calcQuote";
+import {
+  hasAnyOptionSelection,
+  isGroupSelectionMissing,
+  setSingleOptionSelection,
+  toggleMultiOption,
+} from "@/lib/pricing/selectedOptions";
 import type { Product, ProductTrust, ProductOptions, SelectedOptions } from "@/types/product";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
@@ -314,14 +320,19 @@ export default function ProductDetailV2({
       : null;
 
   const requiredGroupsMissing = useMemo(() => {
-    if (!hasOptions || !options?.requiredGroups?.length) return false;
-    return options.requiredGroups.some((key) => !selectedOptions[key]);
+    if (!hasOptions || !options?.groups?.length) return false;
+    const requiredSet = new Set(options.requiredGroups ?? []);
+    return options.groups.some((group) =>
+      isGroupSelectionMissing(group, selectedOptions, requiredSet.has(group.key)),
+    );
   }, [hasOptions, options, selectedOptions]);
 
   useEffect(() => {
     setQuoteSummary(hasOptions ? quote : null);
     setRequiredGroupsMissing(hasOptions ? requiredGroupsMissing : false);
-    syncSelectedOptionsToQuote(hasOptions && Object.keys(selectedOptions).length > 0 ? selectedOptions : null);
+    syncSelectedOptionsToQuote(
+      hasOptions && hasAnyOptionSelection(selectedOptions) ? selectedOptions : null,
+    );
   }, [hasOptions, quote, requiredGroupsMissing, selectedOptions, setQuoteSummary, setRequiredGroupsMissing, syncSelectedOptionsToQuote]);
 
   const departureSelectionMissing = hasDepartures && !selectedDepartureKey;
@@ -345,8 +356,12 @@ export default function ProductDetailV2({
     });
   }, [registerScrollToBooking]);
 
-  const handleOptionChange = useCallback((groupId: string, optionId: string) => {
-    setSelectedOptions((prev) => ({ ...prev, [groupId]: optionId }));
+  const handleOptionSingleChange = useCallback((groupId: string, optionId: string) => {
+    setSelectedOptions((prev) => setSingleOptionSelection(groupId, optionId, prev));
+  }, []);
+
+  const handleOptionMultiToggle = useCallback((groupId: string, optionId: string) => {
+    setSelectedOptions((prev) => toggleMultiOption(groupId, optionId, prev));
   }, []);
 
   /** PR15-1 Step3: 일정 미리보기 Day 카드 클릭 → schedule 탭 + 해당 Day 전달 + 상세 일정 섹션으로 스크롤 (단일 Day 구조) */
@@ -722,7 +737,8 @@ export default function ProductDetailV2({
               selectedDepartureKey={selectedDepartureKey}
               selectedOptions={selectedOptions}
               onDepartureChange={handleDepartureChange}
-              onOptionChange={handleOptionChange}
+              onOptionSingleChange={handleOptionSingleChange}
+              onOptionMultiToggle={handleOptionMultiToggle}
             />
           </div>
         ) : null}

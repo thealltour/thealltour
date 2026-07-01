@@ -1,4 +1,5 @@
 import type { ProductOptions, ProductOptionGroup, ProductOptionItem, SelectedOptions } from "@/types/product";
+import { getGroupSelectedValues } from "@/lib/pricing/selectedOptions";
 
 export type QuoteBreakdownItem = {
   groupId: string;
@@ -32,15 +33,38 @@ export function sortOptionGroups(options: ProductOptions): ProductOptionGroup[] 
   return options.groups ?? [];
 }
 
+function appendBreakdownForValues(
+  group: ProductOptionGroup,
+  values: string[],
+  breakdown: QuoteBreakdownItem[],
+): number {
+  let deltaSum = 0;
+  for (const itemValue of values) {
+    const item = findItemByValue(group, itemValue);
+    if (!item) continue;
+
+    const delta = typeof item.priceDelta === "number" ? item.priceDelta : 0;
+    breakdown.push({
+      groupId: group.key,
+      groupLabel: group.title,
+      optionId: item.value,
+      optionLabel: item.label,
+      priceDelta: delta,
+    });
+    deltaSum += delta;
+  }
+  return deltaSum;
+}
+
 /**
  * 기준가 + 선택된 옵션으로 견적 계산.
  * - total = basePrice + sum(선택된 items의 priceDelta)
  * - breakdown에는 선택된 항목만 포함
- * - options가 없거나 groups가 비어 있으면 total = basePrice, breakdown = []
+ * - multi 그룹은 선택된 항목마다 breakdown에 별도 행 추가
  */
 export function calcQuote(
   options: ProductOptions | undefined,
-  selected: SelectedOptions
+  selected: SelectedOptions,
 ): QuoteResult {
   if (!options?.groups?.length) {
     const base = options?.basePrice ?? null;
@@ -56,21 +80,9 @@ export function calcQuote(
   let total = options.basePrice;
 
   for (const group of options.groups) {
-    const itemValue = selected[group.key];
-    if (!itemValue) continue;
-
-    const item = findItemByValue(group, itemValue);
-    if (!item) continue;
-
-    const delta = typeof item.priceDelta === "number" ? item.priceDelta : 0;
-    breakdown.push({
-      groupId: group.key,
-      groupLabel: group.title,
-      optionId: item.value,
-      optionLabel: item.label,
-      priceDelta: delta,
-    });
-    total += delta;
+    const values = getGroupSelectedValues(group, selected);
+    if (values.length === 0) continue;
+    total += appendBreakdownForValues(group, values, breakdown);
   }
 
   return {

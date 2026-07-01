@@ -73,7 +73,7 @@
     "eslint-config-next": "16.1.6",
     "jsdom": "^29.0.1",
     "png-to-ico": "^3.0.1",
-    "supabase": "^2.107.0",
+    "supabase": "^2.109.0",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
     "typescript": "^5",

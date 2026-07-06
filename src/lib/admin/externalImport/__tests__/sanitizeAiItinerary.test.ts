@@ -3,6 +3,7 @@ import {
   filterItineraryImageUrls,
   isJunkItineraryImageUrl,
   isMoveOrFlightEvent,
+  isNoticeEventHeading,
   isSightseeingEventHeading,
   sanitizeAiItinerary,
   inferIconKeyFromHeading,
@@ -21,6 +22,17 @@ describe("sanitizeAiItinerary", () => {
     expect(isMoveOrFlightEvent("항공편")).toBe(true);
     expect(isMoveOrFlightEvent("인천국제공항 출발")).toBe(true);
     expect(isMoveOrFlightEvent("상비산")).toBe(false);
+    expect(isMoveOrFlightEvent("출입국 정보")).toBe(false);
+    expect(isNoticeEventHeading("출입국 정보")).toBe(true);
+  });
+
+  it("keeps QR images on notice events", () => {
+    const urls = filterItineraryImageUrls(
+      ["https://cdn.example.com/qr-code.png"],
+      "출입국 정보",
+    );
+    expect(urls).toHaveLength(1);
+    expect(inferIconKeyFromHeading("출입국 정보")).toBe("info");
   });
 
   it("strips images from flight events", () => {

@@ -1,10 +1,9 @@
 import type { ExternalParsedProduct } from "@/lib/admin/externalImport/externalProductSchema";
 import type { ExternalParsedMeta } from "@/lib/admin/externalImport/externalProductMetaSchema";
 import type { ItineraryBlock } from "@/lib/admin/externalImport/itineraryBlockTypes";
-import {
-  hasRichItineraryBlocks,
-  mapItineraryBlocksToV2,
-} from "@/lib/admin/externalImport/mapExternalItineraryToV2";
+import { enrichAiItineraryWithBlocks } from "@/lib/admin/externalImport/enrichItineraryWithBlocks";
+import { mapExternalItineraryToV2 } from "@/lib/admin/externalImport/mapExternalItineraryToV2";
+import { hasRichItineraryBlocks } from "@/lib/admin/externalImport/mapExternalItineraryToV2";
 import type { ExternalParsedItineraryV2 } from "@/lib/admin/externalImport/externalProductSchema";
 import type { ItineraryV2 } from "@/types/product";
 import { formatSeoHashtagsForMetaTitle } from "@/lib/products/formatSeoHashtagsForMetaTitle";
@@ -63,11 +62,12 @@ export function mergeExternalImport(input: MergeExternalImportInput): ExternalPa
 
   const gallery = normalizeGalleryUrls(productGalleryUrls, heroImageUrl);
 
-  let itineraryV2: ItineraryV2 | ExternalParsedItineraryV2 = null;
+  let itineraryV2: ItineraryV2 | null = null;
+  const aiMapped = mapExternalItineraryToV2(aiItineraryFallback);
   if (itineraryBlocks?.length && hasRichItineraryBlocks(itineraryBlocks)) {
-    itineraryV2 = mapItineraryBlocksToV2(itineraryBlocks);
-  } else if (aiItineraryFallback?.days?.length) {
-    itineraryV2 = aiItineraryFallback;
+    itineraryV2 = enrichAiItineraryWithBlocks(aiItineraryFallback, itineraryBlocks) ?? aiMapped;
+  } else if (aiMapped) {
+    itineraryV2 = aiMapped;
   }
 
   const domMetaTitle = formatSeoHashtagsForMetaTitle(seoHashtags);

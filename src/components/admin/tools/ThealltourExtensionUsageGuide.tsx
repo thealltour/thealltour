@@ -32,6 +32,7 @@ const USAGE_STEPS = [
   {
     title: "4. 문제 해결",
     body: [
+      "네트워크 오류: Chrome에서 https://thealltour.com/theall_manager_only 로그인 후 익스텐션을 새로고침하세요. 로컬 주소(localhost)가 남아 있으면 익스텐션을 제거 후 관리자에서 ZIP을 다시 설치하세요.",
       "401 오류: 관리자 로그인 후 다시 시도하세요.",
       "이미 등록된 URL: 기존 상품 ID가 alert로 안내됩니다.",
     ].join("\n"),

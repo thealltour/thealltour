@@ -8,7 +8,11 @@ const JUNK_ITINERARY_IMAGE_RE =
   /logo|icon|banner|spinner|arrow|badge|favicon|sprite|avatar|blank\.|1x1|pixel|placeholder|thumb(nail)?|_s\.|w=50|h=50|airline|carrier|jejuair|jeju-air|koreanair|asiana|tway|jinair|airbusan|\/common\/|\/assets\/ui\//i;
 
 const MOVE_FLIGHT_HEADING_RE =
-  /^(항공|항공편|기내|기내식|출발|도착|이동|탑승|공항|입국|출국|환승|비행|국제공항)|출발|도착|이동|탑승|공항|항공편|입국|출국/i;
+  /^(항공|항공편|기내|기내식|출발|도착|이동|탑승|공항|입국|출국|환승|비행|국제공항)/;
+
+const MOVE_FLIGHT_INLINE_RE = /출발|도착|이동|탑승|공항|항공편/;
+
+const NOTICE_HEADING_RE = /^(출입국\s*정보|예약\s*전\s*유의사항|유의사항|안내사항)/;
 
 const SUMMARY_HEADING_RE = /^(예정호텔|호텔|식사)$/;
 
@@ -20,10 +24,16 @@ export function isJunkItineraryImageUrl(url: string): boolean {
   return JUNK_ITINERARY_IMAGE_RE.test(trimmed);
 }
 
+export function isNoticeEventHeading(heading: string): boolean {
+  return NOTICE_HEADING_RE.test(heading.trim());
+}
+
 export function isMoveOrFlightEvent(heading: string): boolean {
   const h = heading.trim();
   if (!h) return false;
+  if (isNoticeEventHeading(h)) return false;
   if (MOVE_FLIGHT_HEADING_RE.test(h)) return true;
+  if (MOVE_FLIGHT_INLINE_RE.test(h) && !/출입국/.test(h)) return true;
   if (/제주항공|대한항공|아시아나|티웨이|진에어|에어부산|이스타|항공\s*\d/i.test(h)) return true;
   return false;
 }
@@ -39,6 +49,7 @@ export function isMealEventHeading(heading: string): boolean {
 export function isSightseeingEventHeading(heading: string): boolean {
   const h = heading.trim();
   if (!h || h.length < 2) return false;
+  if (isNoticeEventHeading(h)) return false;
   if (isMoveOrFlightEvent(h)) return false;
   if (isSummaryEventHeading(h)) return false;
   if (isMealEventHeading(h)) return false;
@@ -68,6 +79,7 @@ export function filterItineraryImageUrls(
 
 export function inferIconKeyFromHeading(heading: string): string | undefined {
   const h = heading.trim();
+  if (isNoticeEventHeading(h)) return "info";
   if (h === "식사" || isMealEventHeading(h)) return "utensils";
   if (/^(예정호텔|호텔)$/.test(h)) return "hotel";
   if (isMoveOrFlightEvent(h)) return "plane";

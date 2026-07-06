@@ -1,31 +1,70 @@
 const PRODUCTION_API_BASE = "https://thealltour.com";
 const LOCAL_API_BASE = "http://localhost:3000";
 
-async function resolveDefaultApiBaseUrl() {
+function normalizeApiBaseUrl(url) {
+  return url.trim().replace(/\/$/, "");
+}
+
+function isLocalApiBase(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+async function isDevelopmentInstall() {
   try {
     const self = await chrome.management.getSelf();
-    if (self.installType === "development") {
-      return LOCAL_API_BASE;
-    }
+    return self.installType === "development";
   } catch {
-    /* ignore */
+    return false;
+  }
+}
+
+async function resolveDefaultApiBaseUrl() {
+  if (await isDevelopmentInstall()) {
+    return LOCAL_API_BASE;
   }
   return PRODUCTION_API_BASE;
 }
 
-async function getApiBaseUrl() {
+/** 운영 ZIP 설치 시 chrome.storage에 남은 localhost 등 잘못된 apiBaseUrl 자동 교정 */
+async function migrateApiBaseUrlIfNeeded() {
   const stored = await chrome.storage.sync.get(["apiBaseUrl"]);
   const value = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl.trim() : "";
-  if (value) return value;
-  return resolveDefaultApiBaseUrl();
+  const defaultUrl = await resolveDefaultApiBaseUrl();
+  const dev = await isDevelopmentInstall();
+
+  if (!value) {
+    await chrome.storage.sync.set({ apiBaseUrl: defaultUrl });
+    return defaultUrl;
+  }
+
+  const normalized = normalizeApiBaseUrl(value);
+  if (!dev && isLocalApiBase(normalized)) {
+    await chrome.storage.sync.set({ apiBaseUrl: defaultUrl });
+    return defaultUrl;
+  }
+
+  return normalized;
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
-  const stored = await chrome.storage.sync.get(["apiBaseUrl"]);
-  const value = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl.trim() : "";
-  if (value) return;
-  const apiBaseUrl = await resolveDefaultApiBaseUrl();
-  await chrome.storage.sync.set({ apiBaseUrl });
+async function getApiBaseUrl() {
+  return migrateApiBaseUrlIfNeeded();
+}
+
+async function onExtensionReady() {
+  await migrateApiBaseUrlIfNeeded();
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  void onExtensionReady();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void onExtensionReady();
 });
 
 async function notifyTab(tabId, message) {
@@ -75,7 +114,7 @@ function startAiProgressTimer(tabId) {
 
 async function importExternal(payload, tabId) {
   const apiBase = await getApiBaseUrl();
-  const url = `${apiBase.replace(/\/$/, "")}/api/admin/products/import-external`;
+  const url = `${apiBase}/api/admin/products/import-external`;
 
   await showProgress(tabId, 45, "서버로 전송 중…");
   const stopTimer = startAiProgressTimer(tabId);
@@ -102,7 +141,7 @@ async function importExternal(payload, tabId) {
       type: "SHOW_ALERT",
       text: aborted
         ? "요청 시간이 초과되었습니다.\nAI 분석에 1~2분 걸릴 수 있습니다. 잠시 후 다시 시도해 주세요."
-        : "네트워크 오류: API에 연결할 수 없습니다. apiBaseUrl과 서버 실행을 확인하세요.",
+        : `네트워크 오류: API에 연결할 수 없습니다.\n\n요청 URL:\n${url}\n\n1) Chrome에서 https://thealltour.com/theall_manager_only 에 관리자 로그인\n2) 익스텐션 새로고침(chrome://extensions)\n3) 그래도 실패 시 관리자 > 도구 > 통합 익스텐션에서 ZIP 재설치`,
     });
     return;
   }
@@ -123,7 +162,7 @@ async function importExternal(payload, tabId) {
     await hideProgress(tabId, 3000);
     await notifyTab(tabId, {
       type: "SHOW_ALERT",
-      text: "관리자 로그인이 필요합니다.\n동일 브라우저에서 관리자 사이트에 먼저 로그인한 뒤 다시 시도하세요.",
+      text: `관리자 로그인이 필요합니다.\n동일 Chrome 브라우저에서 아래 주소에 먼저 로그인한 뒤 다시 시도하세요.\n\n${apiBase}/theall_manager_only/login`,
     });
     return;
   }

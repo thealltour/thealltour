@@ -19,7 +19,7 @@
 
 ## API Base URL
 
-- **ZIP 설치(운영)**: 기본값 `https://thealltour.com` — 별도 설정 불필요
+- **ZIP 설치(운영)**: 기본값 `https://thealltour.com` — 별도 설정 불필요 (v0.2.2+에서 localhost 잔존 값 자동 교정)
 - **압축 해제 로드(로컬 개발)**: 기본값 `http://localhost:3000`
 - 다른 URL이 필요할 때만 Extension storage의 `apiBaseUrl`을 수동 변경
 

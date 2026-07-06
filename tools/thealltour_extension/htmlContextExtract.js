@@ -288,7 +288,7 @@
 
     for (const btn of toggles) {
 
-      if (clicks >= (maxClicks ?? 40)) break;
+      if (clicks >= (maxClicks ?? 60)) break;
 
       if (btn.getAttribute("aria-expanded") === "true") continue;
 
@@ -318,7 +318,7 @@
 
     const root = findHtmlCaptureRoot(doc) ?? doc.body;
 
-    if (root) await expandAccordionsIn(root, 40);
+    if (root) await expandAccordionsIn(root, 60);
 
     await sleep(300);
 
@@ -954,7 +954,10 @@
 
     const cleanHtmlStructure = buildCleanHtmlStructure(doc);
 
+    onProgress?.(36, "일정 블록 추출 중…");
 
+    const itineraryBlocks =
+      global.ItineraryDomExtract?.extractItineraryBlocks?.(doc) ?? [];
 
     onProgress?.(38, "수집 완료");
 
@@ -965,6 +968,7 @@
       heroImageUrl,
       sourceProductTitle,
       seoHashtags,
+      itineraryBlocks,
     };
 
   }

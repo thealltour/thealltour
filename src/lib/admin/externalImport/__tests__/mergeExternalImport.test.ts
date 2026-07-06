@@ -65,7 +65,7 @@ describe("mergeExternalImport", () => {
     expect(firstImages).toHaveLength(3);
   });
 
-  it("ignores AI itinerary when rich blocks exist", () => {
+  it("enriches matching AI events with richer DOM blocks", () => {
     const merged = mergeExternalImport({
       meta: minimalMeta(),
       itineraryBlocks: [SANG_BI_SHAN_BLOCK],
@@ -78,11 +78,18 @@ describe("mergeExternalImport", () => {
             coverImageUrl: null,
             events: [
               {
-                heading: "AI 요약 이벤트",
+                heading: "상비산",
                 description: "짧은 요약",
+                timeOfDay: "오전",
+                timeText: "09:00",
+                imageUrls: ["https://cdn.example.com/wrong.jpg"],
+              },
+              {
+                heading: "항공편",
+                description: "제주항공",
                 timeOfDay: null,
                 timeText: null,
-                imageUrls: ["https://cdn.example.com/wrong.jpg"],
+                imageUrls: [],
               },
             ],
           },
@@ -90,8 +97,12 @@ describe("mergeExternalImport", () => {
       },
     });
 
-    expect(merged.itinerary_v2_json?.days[0].events[0].heading).toBe("상비산");
-    expect(merged.itinerary_v2_json?.days[0].events[0].description).toContain("석회암");
+    const events = merged.itinerary_v2_json?.days[0].events ?? [];
+    expect(events).toHaveLength(2);
+    const sangbishan = events.find((e) => e.heading === "상비산");
+    expect(sangbishan?.description).toContain("석회암");
+    expect(sangbishan?.images).toHaveLength(3);
+    expect(events.find((e) => e.heading === "항공편")).toBeTruthy();
   });
 
   it("falls back to AI itinerary when blocks are empty", () => {
@@ -193,6 +204,47 @@ describe("mergeExternalImport", () => {
       expect.arrayContaining(["상비산", "조식", "석식"]),
     );
     expect(day2Events).toHaveLength(3);
+  });
+
+  it("appends notice blocks (출입국 정보) when missing from AI", () => {
+    const merged = mergeExternalImport({
+      meta: minimalMeta(),
+      itineraryBlocks: [
+        {
+          day: 5,
+          heading: "출입국 정보",
+          description: "중국 무비자 입국 시 준비사항\n\n온라인 입국신고서 작성 가이드",
+          imageUrls: ["https://cdn.example.com/qr-code.png"],
+          kind: "notice",
+        },
+      ],
+      aiItineraryFallback: {
+        days: [
+          {
+            day: 5,
+            dateText: "11/30(월)",
+            title: "5일차",
+            coverImageUrl: null,
+            events: [
+              {
+                heading: "귀국",
+                description: "인천 도착",
+                timeOfDay: "오후",
+                timeText: null,
+                imageUrls: [],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const events = merged.itinerary_v2_json?.days[0].events ?? [];
+    expect(events.map((e) => e.heading)).toContain("출입국 정보");
+    const notice = events.find((e) => e.heading === "출입국 정보");
+    expect(notice?.description).toContain("무비자");
+    expect(notice?.images).toHaveLength(1);
+    expect(notice?.iconKey).toBe("info");
   });
 
   it("overrides title and meta_title from DOM sources", () => {

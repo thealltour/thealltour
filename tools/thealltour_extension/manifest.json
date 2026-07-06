@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "thealltour_extension",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "하나투어·모두투어 상세 페이지를 수집해 더올투어 관리자에 등록합니다.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
@@ -10,7 +10,8 @@
     "https://*.modetour.com/*",
     "https://modetour.com/*",
     "http://localhost:3000/*",
-    "https://thealltour.com/*"
+    "https://thealltour.com/*",
+    "https://www.thealltour.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -23,7 +24,7 @@
         "https://*.modetour.com/*",
         "https://modetour.com/*"
       ],
-      "js": ["htmlContextExtract.js", "content.js"],
+      "js": ["htmlContextExtract.js", "itineraryDomExtract.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

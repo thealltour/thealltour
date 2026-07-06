@@ -87,7 +87,9 @@ Rules:
 - Analyze DOM sequence top-to-bottom. Tag placement encodes context.
 - Split days using 'N일차' or '제 N일' markers in the HTML text.
 - For sightseeing/POI events only: <img src="..."> tags immediately before, after, or inside the event block may be that event's photos.
-- Flight, airline, departure, arrival, transfer, immigration, and hotel check-in events MUST have imageUrls: [] (empty array). Never attach images to these.
+- Flight, airline, departure, arrival, transfer, and hotel check-in events MUST have imageUrls: [] (empty array). Never attach images to these.
+- "출입국 정보", "예약 전 유의사항" notice sections are NOT flight events — extract as separate events with full text and QR/guide images when present in HTML.
+- Airport immigration checkpoint moves (입국/출국 as timeline steps) have imageUrls: [].
 - Images are only for tourist attractions, scenic spots, hotel exterior, and restaurant photos — not airline logos, map icons, or UI icons.
 - Exclude logo, icon, banner, spinner, arrow, badge, airline carrier image URLs from imageUrls.
 - Create separate events per attraction, meal, flight, hotel check-in, and major move.

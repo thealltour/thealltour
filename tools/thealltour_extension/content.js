@@ -85,6 +85,7 @@ if (globalThis.__theallTourImportContentLoaded) {
       heroImageUrl,
       sourceProductTitle,
       seoHashtags,
+      itineraryBlocks,
     } = await hx.capturePageContext(
       document,
       report,
@@ -105,6 +106,7 @@ if (globalThis.__theallTourImportContentLoaded) {
       heroImageUrl,
       sourceProductTitle: sourceProductTitle ?? undefined,
       seoHashtags: seoHashtags?.length ? seoHashtags : undefined,
+      itineraryBlocks: itineraryBlocks?.length ? itineraryBlocks : undefined,
       product_source_url: window.location.href,
     };
   }

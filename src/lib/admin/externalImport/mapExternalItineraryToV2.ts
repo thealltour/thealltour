@@ -5,6 +5,7 @@ import type {
   ExternalParsedItineraryDay,
   ExternalParsedItineraryV2,
 } from "@/lib/admin/externalImport/externalProductSchema";
+import { SIGHTSEEING_EVENT_IMAGE_MAX } from "@/lib/admin/externalImport/enrichItineraryWithBlocks";
 import {
   filterItineraryImageUrls,
   inferDisplayRoleFromHeading,
@@ -22,7 +23,10 @@ function mapEvent(ev: ExternalParsedItineraryDay["events"][number]): ItineraryV2
   const heading = trimOrNull(ev.heading);
   if (!heading) return null;
 
-  const imageUrls = filterItineraryImageUrls(ev.imageUrls, heading);
+  const maxImages = isSightseeingEventHeading(heading)
+    ? SIGHTSEEING_EVENT_IMAGE_MAX
+    : 8;
+  const imageUrls = filterItineraryImageUrls(ev.imageUrls, heading, maxImages);
   const images =
     imageUrls.length > 0
       ? imageUrls.map((url, index) => ({
@@ -102,7 +106,8 @@ export function isRichItineraryBlock(block: ItineraryBlock): boolean {
   const hasImages = block.imageUrls.length > 0;
   if (hasDescription || hasImages) return true;
 
-  if (block.kind === "meal" || block.kind === "move" || block.kind === "sightseeing") return true;
+  if (block.kind === "meal" || block.kind === "move" || block.kind === "sightseeing" || block.kind === "notice")
+    return true;
 
   if (/^(조식|중식|석식|기내|기내식)/.test(heading)) return true;
   if (/^(예정호텔|호텔|항공|식사)$/.test(heading)) return true;
@@ -153,7 +158,11 @@ export function mapItineraryBlocksToV2(blocks: ItineraryBlock[]): ItineraryV2 | 
     .map(([dayNum, dayBlocks]) => {
       const events: ItineraryV2Event[] = dayBlocks.map((block) => {
         const heading = block.heading.trim();
-        const imageUrls = filterItineraryImageUrls(block.imageUrls, heading);
+        const maxImages =
+          block.kind === "sightseeing" || isSightseeingEventHeading(heading)
+            ? SIGHTSEEING_EVENT_IMAGE_MAX
+            : 8;
+        const imageUrls = filterItineraryImageUrls(block.imageUrls, heading, maxImages);
         const images =
           imageUrls.length > 0
             ? imageUrls.map((url, index) => ({

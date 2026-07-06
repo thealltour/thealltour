@@ -1,4 +1,4 @@
-export type ItineraryBlockKind = "meal" | "sightseeing" | "move" | "other";
+export type ItineraryBlockKind = "meal" | "sightseeing" | "move" | "notice" | "other";
 
 export type ItineraryBlockDisplayRole = "summary" | "activity";
 

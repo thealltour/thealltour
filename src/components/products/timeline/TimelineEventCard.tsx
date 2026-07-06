@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { IconName } from "@/icons";
 import { Icon } from "@/components/ui/Icon";
+import { isNoticeEventHeading } from "@/lib/admin/externalImport/sanitizeAiItinerary";
 import type { TimelineEvent, TimeOfDayLabel } from "@/lib/products/mapProductToTimelineModel";
 import { EventMediaSection, type EventMediaImage } from "./EventMediaSection";
 
@@ -17,6 +18,7 @@ const EVENT_ICON_KEYS: Record<string, IconName> = {
   map: "region",
   golf: "golf",
   sun: "healing",
+  info: "flag",
 };
 
 const TIMEOFDAY_LABELS: Record<TimeOfDayLabel, string> = {
@@ -43,13 +45,13 @@ export type TimelineEventCardProps = {
 };
 
 export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProps) {
+  const isNotice = isNoticeEventHeading(event.heading);
   const brandIcon = event.iconKey ? EVENT_ICON_KEYS[event.iconKey] : undefined;
   const mediaImages = useMemo(() => eventToMediaImages(event), [event.images]);
   const hasImages = mediaImages.length > 0;
 
   return (
     <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-      {/* PR13: 1) 시간 2) 이벤트명 3) 설명 위계 강화 */}
       <div className="flex items-start gap-3 space-y-0">
         {(event.timeOfDay != null || event.timeText?.trim()) ? (
           <div className="shrink-0 text-right">
@@ -72,24 +74,29 @@ export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProp
               {event.heading}
             </h4>
           </div>
+
+          {hasImages && (
+            <EventMediaSection
+              images={mediaImages}
+              normalizeUrl={normalizeUrl}
+              eventTitle={event.heading}
+              variant="compact"
+            />
+          )}
+
           {event.description && (
-            <p className="text-sm leading-7 text-[var(--text-muted)] whitespace-pre-wrap">
+            <p
+              className={
+                isNotice
+                  ? "text-sm leading-loose text-[var(--text-muted)] whitespace-pre-wrap [word-break:keep-all]"
+                  : "text-sm leading-7 text-[var(--text-muted)] whitespace-pre-wrap"
+              }
+            >
               {event.description}
             </p>
           )}
         </div>
       </div>
-
-      {/* 미디어: 시간/제목/설명 아래 */}
-      {hasImages && (
-        <div className="mt-4">
-          <EventMediaSection
-            images={mediaImages}
-            normalizeUrl={normalizeUrl}
-            eventTitle={event.heading}
-          />
-        </div>
-      )}
     </article>
   );
 }

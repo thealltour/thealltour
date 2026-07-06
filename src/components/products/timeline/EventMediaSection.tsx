@@ -72,20 +72,66 @@ export type EventMediaSectionProps = {
   /** 미전달 시 대표 이미지는 클릭 불가, 「크게 보기」도 숨김 */
   onOpenLightbox?: (index: number, triggerButton: HTMLButtonElement) => void;
   eventTitle?: string;
+  /** compact: 하나투어형 소형 가로 갤러리 (타임라인 기본) */
+  variant?: "hero" | "compact";
 };
+
+const COMPACT_MAX = 5;
 
 export function EventMediaSection({
   images,
   normalizeUrl,
   onOpenLightbox,
   eventTitle = "이벤트",
+  variant = "compact",
 }: EventMediaSectionProps) {
   const inOrder = inDisplayOrder(images);
   const cover = getCoverImage(inOrder);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
   if (!cover) return null;
 
-  /** 썸네일 클릭 시 대표 이미지 변경; 이미지 클릭 시 lightbox */
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  if (variant === "compact") {
+    const thumbnails = inOrder.slice(0, COMPACT_MAX);
+    const canOpenLightbox = typeof onOpenLightbox === "function";
+
+    return (
+      <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+        {thumbnails.map((img, idx) => {
+          const thumb = (
+            <ImageWithFallback
+              src={normalizeUrl(img.url)}
+              alt={img.alt ?? `${eventTitle} 이미지 ${idx + 1}`}
+              fill
+              className="object-cover"
+              sizes="112px"
+              unoptimized
+            />
+          );
+          return canOpenLightbox ? (
+            <button
+              key={`${img.url}-${idx}`}
+              type="button"
+              onClick={(e) => onOpenLightbox(idx, e.currentTarget)}
+              className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] shadow-sm transition hover:border-[var(--primary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+              aria-label={`${eventTitle} 이미지 ${idx + 1} 크게 보기`}
+            >
+              {thumb}
+            </button>
+          ) : (
+            <div
+              key={`${img.url}-${idx}`}
+              className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] shadow-sm"
+            >
+              {thumb}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /** hero: 대표 16:9 + 썸네일 스트립 */
   const displayImage = inOrder[selectedIndex] ?? inOrder[0];
   const hasMultiple = inOrder.length > 1;
   const thumbnails = inOrder.slice(0, MAX_THUMBNAILS);

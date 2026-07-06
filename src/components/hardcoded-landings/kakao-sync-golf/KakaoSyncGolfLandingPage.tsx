@@ -23,9 +23,9 @@ export function KakaoSyncGolfLandingPage({
 
   return (
     <>
-      <div className="pb-24">
+      <div className="hardcoded-landing-page pb-14">
         {/* 히어로 — 전폭 이미지, 셸 밖 */}
-        <section aria-label="Hero" className="relative mx-auto w-full max-w-md">
+        <section aria-label="Hero" className="relative w-full">
           {/* eslint-disable-next-line @next/next/no-img-element -- 외부 히어로 URL */}
           <img
             src={hero.imageUrl}
@@ -35,7 +35,7 @@ export function KakaoSyncGolfLandingPage({
             decoding="async"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 px-6 pb-8 text-white">
+          <div className="absolute inset-x-0 bottom-0 px-4 pb-2.5 text-white">
             <p className="text-base font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
               {hero.title}
             </p>
@@ -45,12 +45,12 @@ export function KakaoSyncGolfLandingPage({
           </div>
         </section>
 
-        <HardcodedLandingShell className="space-y-10 py-8">
+        <HardcodedLandingShell className="space-y-3 py-2.5">
           {/* 혜택 */}
           <section aria-label="Benefit">
-            <div className="rounded-2xl bg-[#f8f9fa] px-4 py-5">
+            <div className="rounded-2xl bg-[#f8f9fa] px-2 py-2">
               <h2 className="text-base font-bold text-slate-900">{benefit.title}</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-700">
+              <p className="mt-1 text-sm leading-relaxed text-slate-700">
                 {benefit.segments.map((segment, index) =>
                   segment.type === "highlight" ? (
                     <span key={index} className="font-bold text-orange-500">
@@ -64,7 +64,7 @@ export function KakaoSyncGolfLandingPage({
                 )}
               </p>
               {benefit.footnote ? (
-                <p className="mt-3 text-xs text-slate-500">{benefit.footnote}</p>
+                <p className="mt-1 text-xs text-slate-500">{benefit.footnote}</p>
               ) : null}
             </div>
           </section>
@@ -79,24 +79,25 @@ export function KakaoSyncGolfLandingPage({
           {/* 추천 상품 — 홈과 동일 레일 */}
           {products.length > 0 ? (
             <section aria-label="추천 골프투어">
-              <div className="-mx-2">
+              <div>
                 {(productsEyebrow ?? productsCopy.eyebrowFallback) ? (
-                  <p className="px-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
+                  <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
                     {productsEyebrow ?? productsCopy.eyebrowFallback}
                   </p>
                 ) : null}
-                <h2 className="mt-0.5 px-2 text-lg font-bold text-slate-900">
+                <h2 className="mt-0.5 text-lg font-bold text-slate-900">
                   {productsTitle ?? productsCopy.titleFallback}
                 </h2>
                 {(productsDescription ?? productsCopy.descriptionFallback) ? (
-                  <p className="mt-1 px-2 text-sm text-slate-600">
+                  <p className="mt-0.5 text-sm text-slate-600">
                     {productsDescription ?? productsCopy.descriptionFallback}
                   </p>
                 ) : null}
-                <div className="mt-4">
+                <div className="mt-1.5">
                   <HomeProductCardRail
                     products={products}
                     priceDisplay="coinBenefit"
+                    edgeInset="compact"
                     analyticsSection="kakao_sync_golf_landing"
                     listAriaLabel="추천 골프투어"
                   />

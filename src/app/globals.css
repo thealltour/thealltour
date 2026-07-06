@@ -770,6 +770,14 @@ body {
     padding-right: 1rem !important;
   }
 
+  /* 하드코딩 랜딩: 쿠팡형 px-4 inset (전역 px-6·PageContainer와 별도) */
+  .hardcoded-landing-page .hardcoded-landing-shell,
+  .hardcoded-landing-page [data-landing-shell],
+  .hardcoded-landing-x {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
   .section-body {
     padding-inline: 1rem;
   }

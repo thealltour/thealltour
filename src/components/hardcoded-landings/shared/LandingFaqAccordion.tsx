@@ -22,7 +22,7 @@ export function LandingFaqAccordion({ items, sectionTitle }: LandingFaqAccordion
       {sectionTitle ? (
         <h2 className="text-lg font-bold text-slate-900">{sectionTitle}</h2>
       ) : null}
-      <ul className={`space-y-2 ${sectionTitle ? "mt-4" : ""}`}>
+      <ul className={`space-y-1 ${sectionTitle ? "mt-1.5" : ""}`}>
         {items.map((item, index) => {
           const isOpen = openIndex === index;
           return (
@@ -30,7 +30,7 @@ export function LandingFaqAccordion({ items, sectionTitle }: LandingFaqAccordion
               <button
                 type="button"
                 onClick={() => setOpenIndex(isOpen ? null : index)}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-sm font-semibold text-slate-900"
+                className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-sm font-semibold text-slate-900"
                 aria-expanded={isOpen}
               >
                 <span>{item.question}</span>
@@ -40,7 +40,7 @@ export function LandingFaqAccordion({ items, sectionTitle }: LandingFaqAccordion
                 />
               </button>
               {isOpen ? (
-                <div className="border-t border-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-600">
+                <div className="border-t border-slate-100 px-2 py-1 text-sm leading-relaxed text-slate-600">
                   {item.answer}
                 </div>
               ) : null}

@@ -4,8 +4,8 @@ import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/confi
 
 export function KakaoSyncGolfFixedCta() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center border-t border-black/10 bg-white/95 pb-[env(safe-area-inset-bottom,0px)] pt-3 backdrop-blur-sm">
-      <div className="pointer-events-auto w-full max-w-md px-6">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center border-t border-black/10 bg-white/95 pb-[env(safe-area-inset-bottom,0px)] pt-1 backdrop-blur-sm">
+      <div className="pointer-events-auto w-full px-3">
         <a
           href={MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL}
           className={buttonVariants({

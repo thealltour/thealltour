@@ -104,7 +104,10 @@ export default function GlobalSiteFooter() {
         isGolfAdLanding && "pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))]",
       )}
     >
-      <PageContainer size="wide">
+      <PageContainer
+        size="wide"
+        className={cn(isGolfAdLanding && "hardcoded-landing-x w-full px-4")}
+      >
         {/* 본문: 브랜드·회사정보 | 연락·액션 */}
         <div className="border-b border-[var(--divider)] py-5 sm:py-7 md:py-8">
           <div className="grid gap-4 sm:gap-9 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:items-start md:gap-10 lg:gap-14">
@@ -264,15 +267,6 @@ export default function GlobalSiteFooter() {
               className={cn("footer-pill-tertiary", focusRing)}
             >
               개인정보처리방침
-            </Link>
-            <Link href="/support/data-request" className={cn("footer-pill-tertiary", focusRing)}>
-              개인정보 요청
-            </Link>
-            <Link href="/status" className={cn("footer-pill-tertiary", focusRing)}>
-              서비스 상태
-            </Link>
-            <Link href="/changelog" className={cn("footer-pill-tertiary", focusRing)}>
-              변경 이력
             </Link>
           </nav>
           <p className="text-center type-caption leading-snug text-[var(--footer-text-muted)] sm:text-right">

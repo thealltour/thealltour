@@ -6,12 +6,13 @@ export type HardcodedLandingShellProps = {
   className?: string;
 };
 
-/** max-w-md 모바일 랜딩 공통 셸 */
+/** max-w-md 모바일 랜딩 공통 셸 — 쿠팡형 전폭 + px-4 inset */
 export function HardcodedLandingShell({ children, className }: HardcodedLandingShellProps) {
   return (
     <div
+      data-landing-shell
       className={cn(
-        "mx-auto w-full max-w-md px-6 text-left [word-break:keep-all]",
+        "hardcoded-landing-shell mx-auto w-full px-4 text-left [word-break:keep-all]",
         className,
       )}
     >

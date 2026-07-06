@@ -10,8 +10,11 @@ const SCROLL_AMOUNT = 320;
 
 const RAIL_ITEM_CLASS = "h-full min-h-0 snap-start";
 
-const RAIL_UL_CLASS =
+const RAIL_UL_CLASS_DEFAULT =
   "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 sm:auto-cols-[280px] lg:auto-cols-[calc((min(100%,1344px)-3*1rem)/4)] [touch-action:pan-x]";
+
+const RAIL_UL_CLASS_COMPACT =
+  "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 [touch-action:pan-x]";
 
 export type HomeProductCardRailProps = {
   products: Product[];
@@ -20,6 +23,8 @@ export type HomeProductCardRailProps = {
   listAriaLabel?: string;
   className?: string;
   priceDisplay?: "default" | "coinBenefit";
+  /** compact: 하드코딩 랜딩 등 좁은 좌우 inset */
+  edgeInset?: "default" | "compact";
 };
 
 /**
@@ -31,6 +36,7 @@ export function HomeProductCardRail({
   listAriaLabel = "추천 상품",
   className,
   priceDisplay = "default",
+  edgeInset = "default",
 }: HomeProductCardRailProps) {
   const scrollRef = useRef<HTMLUListElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -67,6 +73,8 @@ export function HomeProductCardRail({
 
   if (products.length === 0) return null;
 
+  const railUlClass = edgeInset === "compact" ? RAIL_UL_CLASS_COMPACT : RAIL_UL_CLASS_DEFAULT;
+
   return (
     <div className={cn("relative mx-auto w-full max-w-[1344px] group/scroll", className)}>
       {canScrollLeft ? (
@@ -89,7 +97,7 @@ export function HomeProductCardRail({
           <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
         </button>
       ) : null}
-      <ul ref={scrollRef} className={RAIL_UL_CLASS} aria-label={listAriaLabel}>
+      <ul ref={scrollRef} className={railUlClass} aria-label={listAriaLabel}>
         {products.map((product) => (
           <li key={product.id} className={RAIL_ITEM_CLASS}>
             <HomeProductCard

@@ -65,6 +65,141 @@ if (globalThis.__theallTourImportContentLoaded) {
     window.alert(message);
   }
 
+  function countCalendarDayTotal(payload) {
+    const api = globalThis.HanatourCalendarApi;
+    if (!payload) return 0;
+    const fromSearch = api?.countCalendarDays?.(payload.searchCalendar) ?? 0;
+    const fromData = Array.isArray(payload.calendarData) ? payload.calendarData.length : 0;
+    return Math.max(fromSearch, fromData);
+  }
+
+  /** 0 = 화면 월만, 12 = 부모 탭 < > 월 순회 */
+  const PARENT_BROWSE_MONTHS = 12;
+
+  async function fetchHanatourCalendarPayload(productCodes, report) {
+    const meta = {
+      saleProdCd: productCodes?.saleProdCd ?? null,
+      rprsProdCd: productCodes?.rprsProdCd ?? null,
+      depDay: productCodes?.depDay ?? null,
+    };
+    const calendarMeta = {
+      codesFound: Boolean(meta.saleProdCd || meta.rprsProdCd),
+      apiAttempted: false,
+      dayCount: 0,
+      source: null,
+    };
+
+    if (!calendarMeta.codesFound) {
+      return { hanatourCalendarPayload: undefined, hanatourCalendarMeta: calendarMeta };
+    }
+
+    const isSufficient = (payload) =>
+      globalThis.HanatourCalendarFetch?.isCalendarSufficient?.(payload) ?? false;
+
+    let calendarPayload = null;
+    const crossTab = globalThis.HanatourCrossTabCalendar;
+
+    if (crossTab?.isHanatourDetailPage?.(window.location.href)) {
+      const browseLabel =
+        PARENT_BROWSE_MONTHS > 0
+          ? "부모 탭 달력 월 순회 중…"
+          : "인접 탭에서 출발일 수집…";
+      report?.(18, browseLabel);
+      try {
+        const parentResult = await crossTab.fetchParentTabCalendar(productCodes, {
+          browseMonths: PARENT_BROWSE_MONTHS,
+        });
+        if (parentResult?.payload) {
+          calendarPayload = parentResult.payload;
+          calendarMeta.source = parentResult.payload.fetchMeta?.[0]?.source ?? "parent_tab";
+          calendarMeta.dayCount = countCalendarDayTotal(calendarPayload);
+          calendarMeta.parentAuthoritative = calendarMeta.dayCount > 0;
+          if (calendarMeta.dayCount > 0) {
+            return { hanatourCalendarPayload: calendarPayload, hanatourCalendarMeta: calendarMeta };
+          }
+        } else if (parentResult?.error) {
+          calendarMeta.parentError = {
+            error: parentResult.error,
+            triedTabIds: parentResult.triedTabIds ?? null,
+            parentTabId: parentResult.parentTabId ?? null,
+          };
+        }
+      } catch (err) {
+        console.warn("[thealltour-import] parent tab calendar failed:", err);
+        calendarMeta.parentError = {
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+
+    report?.(20, "출발일·가격 API 수집…");
+
+    try {
+      const bgResponse = await chrome.runtime.sendMessage({
+        type: "FETCH_HANATOUR_CALENDAR",
+        meta,
+      });
+      calendarMeta.apiAttempted = true;
+      if (bgResponse?.ok && bgResponse.payload) {
+        const apiPayload = bgResponse.payload;
+        if (calendarPayload) {
+          calendarPayload = globalThis.HanatourCalendarFetch?.mergeCalendarPayloads?.(
+            calendarPayload,
+            apiPayload,
+          ) ?? apiPayload;
+        } else {
+          calendarPayload = apiPayload;
+        }
+        calendarMeta.source = calendarMeta.source
+          ? `${calendarMeta.source}+background_api`
+          : "background_api";
+        calendarMeta.dayCount = countCalendarDayTotal(calendarPayload);
+        if (isSufficient(calendarPayload)) {
+          calendarPayload.fetchMeta = [
+            { source: calendarMeta.source, ok: true },
+            ...(calendarPayload.fetchMeta || []),
+          ];
+          return { hanatourCalendarPayload: calendarPayload, hanatourCalendarMeta: calendarMeta };
+        }
+      }
+    } catch (err) {
+      console.warn("[thealltour-import] background calendar API failed:", err);
+      calendarMeta.apiAttempted = true;
+    }
+
+    if (globalThis.HanatourCalendarFetch?.fetchHanatourCalendar) {
+      try {
+        const fallback = await globalThis.HanatourCalendarFetch.fetchHanatourCalendar(
+          productCodes.saleProdCd || productCodes.rprsProdCd,
+          meta,
+        );
+        if (fallback) {
+          calendarPayload = calendarPayload
+            ? globalThis.HanatourCalendarFetch.mergeCalendarPayloads(calendarPayload, fallback)
+            : fallback;
+          const suffix = "content_fallback";
+          calendarMeta.source = calendarMeta.source
+            ? `${calendarMeta.source}+${suffix}`
+            : suffix;
+          calendarMeta.dayCount = countCalendarDayTotal(calendarPayload);
+        }
+      } catch (err) {
+        console.warn("[thealltour-import] content calendar fallback failed:", err);
+      }
+    }
+
+    if (!calendarPayload) {
+      console.warn(
+        "[thealltour-import] 상품 코드는 확인됐으나 달력 데이터를 확보하지 못했습니다. 상품 본문은 계속 저장합니다.",
+      );
+    }
+
+    return {
+      hanatourCalendarPayload: calendarPayload ?? undefined,
+      hanatourCalendarMeta: calendarMeta,
+    };
+  }
+
   async function scrapePagePayload(onProgress) {
     const report = (pct, label) => {
       onProgress?.(pct, label);
@@ -86,6 +221,7 @@ if (globalThis.__theallTourImportContentLoaded) {
       sourceProductTitle,
       seoHashtags,
       itineraryBlocks,
+      itineraryExtractMeta,
     } = await hx.capturePageContext(
       document,
       report,
@@ -98,6 +234,18 @@ if (globalThis.__theallTourImportContentLoaded) {
       throw new Error("수집된 페이지 텍스트가 비어 있습니다.");
     }
 
+    let hanatourCalendarPayload;
+    let hanatourCalendarMeta;
+    if (/hanatour\.com/i.test(window.location.hostname)) {
+      const productCodes = globalThis.HanatourProductCode?.extractHanatourProductCodes?.(document);
+      if (productCodes?.saleProdCd || productCodes?.rprsProdCd) {
+        report(38, "부모 탭 출발일·가격 수집…");
+        const calendarResult = await fetchHanatourCalendarPayload(productCodes, report);
+        hanatourCalendarPayload = calendarResult.hanatourCalendarPayload;
+        hanatourCalendarMeta = calendarResult.hanatourCalendarMeta;
+      }
+    }
+
     report(40, "수집 완료");
     return {
       cleanHtmlStructure,
@@ -107,6 +255,9 @@ if (globalThis.__theallTourImportContentLoaded) {
       sourceProductTitle: sourceProductTitle ?? undefined,
       seoHashtags: seoHashtags?.length ? seoHashtags : undefined,
       itineraryBlocks: itineraryBlocks?.length ? itineraryBlocks : undefined,
+      itineraryExtractMeta: itineraryExtractMeta ?? undefined,
+      hanatourCalendarPayload: hanatourCalendarPayload ?? undefined,
+      hanatourCalendarMeta: hanatourCalendarMeta ?? undefined,
       product_source_url: window.location.href,
     };
   }
@@ -142,4 +293,8 @@ if (globalThis.__theallTourImportContentLoaded) {
     }
     return false;
   });
+
+  if (/hanatour\.com/i.test(window.location.hostname)) {
+    globalThis.HanatourCrossTabCalendar?.installParentCalendarResponder?.();
+  }
 }

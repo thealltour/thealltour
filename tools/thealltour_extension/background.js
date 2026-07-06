@@ -1,3 +1,5 @@
+importScripts("hanatourCalendarApi.js");
+
 const PRODUCTION_API_BASE = "https://thealltour.com";
 const LOCAL_API_BASE = "http://localhost:3000";
 
@@ -112,6 +114,16 @@ function startAiProgressTimer(tabId) {
   return () => clearInterval(timer);
 }
 
+function formatDepartureScheduleAlert(departureScheduleCount, scrapePayload) {
+  if (departureScheduleCount != null && departureScheduleCount > 0) {
+    return `\n출발일: ${departureScheduleCount}건`;
+  }
+  if (scrapePayload?.hanatourCalendarPayload) {
+    return "\n출발일: API 응답은 있으나 파싱 결과 0건";
+  }
+  return "\n출발일: API 미응답 (상품은 저장됨)";
+}
+
 async function importExternal(payload, tabId) {
   const apiBase = await getApiBaseUrl();
   const url = `${apiBase}/api/admin/products/import-external`;
@@ -197,10 +209,534 @@ async function importExternal(payload, tabId) {
     data.parsed?.itineraryEventCount != null
       ? `\n일정 이벤트: ${data.parsed.itineraryEventCount}개`
       : "";
+  const schedules = formatDepartureScheduleAlert(data.parsed?.departureScheduleCount, payload);
   await notifyTab(tabId, {
     type: "SHOW_ALERT",
-    text: `상품 등록 완료!${title}${price}${gallery}${events}\nID: ${data.id}`,
+    text: `상품 등록 완료!${title}${price}${gallery}${events}${schedules}\nID: ${data.id}`,
   });
+}
+
+const tabRelations = new Map();
+
+function registerTabRelation(childTabId, parentTabId) {
+  if (childTabId && parentTabId && childTabId !== parentTabId) {
+    tabRelations.set(childTabId, parentTabId);
+  }
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  tabRelations.delete(tabId);
+  for (const [childId, parentId] of tabRelations.entries()) {
+    if (parentId === tabId) {
+      tabRelations.delete(childId);
+    }
+  }
+});
+
+async function queryParentCalendar(parentTabId) {
+  try {
+    return await chrome.tabs.sendMessage(parentTabId, {
+      type: "GET_ACTIVE_CALENDAR",
+      tabId: parentTabId,
+    });
+  } catch {
+    await ensureContentScripts(parentTabId);
+    return chrome.tabs.sendMessage(parentTabId, {
+      type: "GET_ACTIVE_CALENDAR",
+      tabId: parentTabId,
+    });
+  }
+}
+
+async function extractSearchCalendarFromPageMain(tabId) {
+  const [injection] = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: () => {
+      const MAX_DEPTH = 12;
+
+      function isObject(value) {
+        return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function extractCal(json) {
+        if (!isObject(json)) return null;
+        const fromData = json.data?.searchCalendar;
+        if (isObject(fromData) && Object.keys(fromData).length > 0) return fromData;
+        const root = json.searchCalendar;
+        if (isObject(root) && Object.keys(root).length > 0) return root;
+        return null;
+      }
+
+      function countDays(cal) {
+        if (!isObject(cal)) return 0;
+        let n = 0;
+        for (const rows of Object.values(cal)) {
+          if (Array.isArray(rows)) n += rows.length;
+        }
+        return n;
+      }
+
+      function walk(node, depth, found) {
+        if (depth > MAX_DEPTH || node == null) return;
+        if (typeof node === "string") {
+          try {
+            const parsed = JSON.parse(node.trim());
+            const cal = extractCal(parsed);
+            if (cal) found.push(cal);
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
+        if (!isObject(node) && !Array.isArray(node)) return;
+        const direct = extractCal(node);
+        if (direct) found.push(direct);
+        const children = Array.isArray(node) ? node.slice(0, 60) : Object.values(node).slice(0, 50);
+        for (const child of children) walk(child, depth + 1, found);
+      }
+
+      const merged = {};
+      function mergeCal(target, source) {
+        if (!isObject(source)) return;
+        for (const [key, rows] of Object.entries(source)) {
+          if (Array.isArray(rows) && rows.length > 0) target[key] = rows;
+        }
+      }
+
+      const nuxt = window.__NUXT__;
+      const roots = [
+        window.__INITIAL_STATE__,
+        nuxt,
+        nuxt?.state,
+        nuxt?.data,
+        nuxt?.payload,
+        window.__NEXT_DATA__,
+        window.__PRELOADED_STATE__,
+      ];
+      try {
+        const app = window.useNuxtApp?.();
+        if (app?.payload) roots.push(app.payload);
+        if (app?.$pinia?.state?.value) roots.push(app.$pinia.state.value);
+      } catch {
+        /* ignore */
+      }
+
+      for (const root of roots) {
+        if (!root) continue;
+        const found = [];
+        walk(root, 0, found);
+        for (const cal of found) mergeCal(merged, cal);
+      }
+
+      for (const script of document.querySelectorAll("script")) {
+        const text = script.textContent || "";
+        if (!text.includes("searchCalendar")) continue;
+        const idx = text.indexOf('"searchCalendar"');
+        if (idx < 0) continue;
+        const slice = text.slice(Math.max(0, idx - 200), idx + 12000);
+        try {
+          const parsed = JSON.parse(`{${slice}`);
+          const cal = extractCal(parsed);
+          if (cal) mergeCal(merged, cal);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function findVisibleYearMonth() {
+        const walker = document.createTreeWalker(document.body ?? document.documentElement, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          const text = node.textContent?.trim() ?? "";
+          const match = text.match(/(\d{4})\s*년\s*(\d{1,2})\s*월/);
+          if (match) {
+            const month = String(Number(match[2])).padStart(2, "0");
+            return `${match[1]}${month}`;
+          }
+        }
+        return null;
+      }
+
+      function filterByVisibleMonth(cal) {
+        if (!cal) return null;
+        const anchor = findVisibleYearMonth();
+        if (!anchor) return cal;
+        const rows = cal[anchor];
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        return { [anchor]: rows };
+      }
+
+      const filtered = filterByVisibleMonth(countDays(merged) > 0 ? merged : null);
+      return filtered ?? (countDays(merged) > 0 ? merged : null);
+    },
+  });
+  return injection?.result ?? null;
+}
+
+async function browseParentCalendar(tabId, maxMonths) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, {
+      type: "BROWSE_CALENDAR_MONTHS",
+      maxMonths,
+      tabId,
+    });
+  } catch {
+    await ensureContentScripts(tabId);
+    return chrome.tabs.sendMessage(tabId, {
+      type: "BROWSE_CALENDAR_MONTHS",
+      maxMonths,
+      tabId,
+    });
+  }
+}
+
+async function clickDateStripNextInMainWorld(tabId) {
+  const [injection] = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: () => {
+      function elementText(el) {
+        return (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+      }
+
+      function findMonthHeader() {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+        let node;
+        while ((node = walker.nextNode())) {
+          const text = elementText(node);
+          if (text.length > 40) continue;
+          if (/\d{4}\s*년\s*\d{1,2}\s*월/.test(text)) return node;
+        }
+        return null;
+      }
+
+      function countDayCells(root) {
+        if (!root) return 0;
+        let n = 0;
+        for (const cell of root.querySelectorAll("li, button, a, td, [class*='day']")) {
+          const t = elementText(cell);
+          if (/^\d{1,2}$/.test(t) || /\d{1,2}/.test(t)) n += 1;
+        }
+        return n;
+      }
+
+      function hasDayStrip(root) {
+        if (!root) return false;
+        if (!/[월화수목금토일]/.test(root.textContent ?? "")) return false;
+        return countDayCells(root) >= 5;
+      }
+
+      function findInnerStrip(header) {
+        if (!header) return null;
+        const row = header.parentElement;
+        let sib = row?.nextElementSibling;
+        if (sib && hasDayStrip(sib)) return sib;
+        const parent = row?.parentElement;
+        if (parent) {
+          const kids = [...parent.children];
+          const idx = kids.indexOf(row);
+          for (let i = idx + 1; i < kids.length; i += 1) {
+            if (hasDayStrip(kids[i])) return kids[i];
+          }
+        }
+        return sib;
+      }
+
+      function findStripRow(header) {
+        if (!header) return null;
+        const headerRow = header.parentElement;
+        const innerStrip = findInnerStrip(header);
+        const nextSibling = headerRow?.nextElementSibling;
+
+        if (nextSibling) {
+          if (hasDayStrip(nextSibling) || countDayCells(nextSibling) >= 5) return nextSibling;
+          if (innerStrip && nextSibling.contains(innerStrip)) return nextSibling;
+        }
+
+        const parent = headerRow?.parentElement;
+        if (parent) {
+          const kids = [...parent.children];
+          const idx = kids.indexOf(headerRow);
+          for (let i = idx + 1; i < kids.length; i += 1) {
+            const kid = kids[i];
+            if (hasDayStrip(kid) || countDayCells(kid) >= 5) return kid;
+            if (innerStrip && kid.contains(innerStrip)) return kid;
+          }
+        }
+
+        if (innerStrip?.parentElement) {
+          const row = innerStrip.parentElement;
+          if (row && row !== headerRow && !headerRow?.contains(row)) return row;
+        }
+
+        return nextSibling ?? innerStrip?.parentElement ?? innerStrip ?? null;
+      }
+
+      function isLikelyDayCell(el) {
+        if (!el) return false;
+        const text = elementText(el);
+        if (/^\d{1,2}$/.test(text)) return true;
+        if (/\d{1,2}\s*만|최저가/.test(text)) return true;
+        if (el.querySelector(".amt, .price, [class*='price'], [class*='amt']")) return true;
+        const cls = (el.className ?? "").toString().toLowerCase();
+        if (/day_box|day_num|calendar-day|date-item|_day\b/.test(cls)) return true;
+        return false;
+      }
+
+      function findSiblingNav(innerStrip, direction, headerRow) {
+        if (!innerStrip?.parentElement) return null;
+        const siblings = [...innerStrip.parentElement.children].filter((k) => !headerRow?.contains(k));
+        const idx = siblings.indexOf(innerStrip);
+        if (idx < 0) return null;
+        const candidate = direction === "next" ? siblings[idx + 1] : siblings[idx - 1];
+        if (!candidate || isLikelyDayCell(candidate)) return null;
+        if (hasDayStrip(candidate) && countDayCells(candidate) >= 5) return null;
+        return candidate;
+      }
+
+      function findRowDirectNav(stripRow, headerRow, innerStrip) {
+        if (!stripRow) return null;
+        const kids = [...stripRow.children].filter((k) => !headerRow?.contains(k));
+        const nonDay = kids.filter((k) => {
+          if (innerStrip && (k === innerStrip || k.contains(innerStrip))) return false;
+          if (hasDayStrip(k) && countDayCells(k) >= 5) return false;
+          if (isLikelyDayCell(k)) return false;
+          return true;
+        });
+        return nonDay.length ? nonDay[nonDay.length - 1] : null;
+      }
+
+      function hasChevronOrIcon(el) {
+        const text = (el.textContent ?? "").trim();
+        if (/^\d{1,2}$/.test(text)) return false;
+        if (
+          text.length <= 2 &&
+          el.querySelector("svg, [class*='chevron'], [class*='arrow'], [class*='icon']")
+        ) {
+          return true;
+        }
+        const style = getComputedStyle(el);
+        return Boolean(style?.cursor === "pointer" && !text);
+      }
+
+      function isNavLike(el) {
+        const text = (el.textContent ?? "").trim();
+        const aria = (el.getAttribute("aria-label") ?? "").toLowerCase();
+        const cls = (el.className ?? "").toString().toLowerCase();
+        return (
+          /^>$|^›$|^▶$/.test(text) ||
+          /next|forward|right|다음|slide-next/.test(aria) ||
+          /next|forward|right|arrow-right|swiper-button-next|slide-next/.test(cls) ||
+          hasChevronOrIcon(el)
+        );
+      }
+
+      function isStripNavDisabled(el) {
+        if (!el) return true;
+        return (
+          el.classList?.contains("off") &&
+          (el.classList.contains("next") || el.classList.contains("prev"))
+        );
+      }
+
+      function findHanatourNextLink(stripRow, headerRow, header) {
+        const card =
+          header?.closest?.('[class*="calendar"], [class*="Calendar"], [class*="search"]') ??
+          stripRow?.parentElement ??
+          document.body;
+        const scopes = [stripRow, stripRow?.parentElement, card].filter(Boolean);
+        const seen = new Set();
+        const links = [];
+        for (const scope of scopes) {
+          for (const el of scope.querySelectorAll("a.next")) {
+            if (seen.has(el) || headerRow?.contains(el)) continue;
+            seen.add(el);
+            links.push(el);
+          }
+        }
+        const enabled = links.filter((el) => !isStripNavDisabled(el));
+        return enabled[0] ?? links[0] ?? null;
+      }
+
+      function findNextButton(stripRow, headerRow, innerStrip) {
+        const hanatourNext = findHanatourNextLink(stripRow, headerRow, findMonthHeader());
+        if (hanatourNext && !isStripNavDisabled(hanatourNext)) return hanatourNext;
+
+        const sibling = findSiblingNav(innerStrip, "next", headerRow);
+        if (sibling) return sibling;
+
+        const rowNav = findRowDirectNav(stripRow, headerRow, innerStrip);
+        if (rowNav) return rowNav;
+
+        const nodes = [
+          ...(stripRow?.querySelectorAll(
+            "button, a, [role='button'], span, i, div, [class*='btn']",
+          ) ?? []),
+        ].filter((el) => !headerRow?.contains(el) && !isLikelyDayCell(el));
+
+        const nav = nodes.filter(isNavLike);
+        if (nav.length) return nav[nav.length - 1];
+
+        const narrow = nodes.filter((el) => el.getBoundingClientRect().width < 72);
+        const pool = narrow.length ? narrow : nodes;
+        if (!pool.length) return null;
+        return pool.reduce((best, el) => {
+          if (!best) return el;
+          return el.getBoundingClientRect().right > best.getBoundingClientRect().right ? el : best;
+        }, null);
+      }
+
+      function trySwiperNext(row) {
+        const swiperEl = row?.querySelector(".swiper, [class*='swiper'], [class*='Swiper']");
+        if (!swiperEl) return false;
+        try {
+          const swiper = swiperEl.swiper ?? swiperEl.__swiper__;
+          if (typeof swiper?.slideNext === "function") {
+            swiper.slideNext();
+            return true;
+          }
+        } catch {
+          /* ignore */
+        }
+        return false;
+      }
+
+      const header = findMonthHeader();
+      const headerRow = header?.parentElement;
+      const stripRow = findStripRow(header);
+      const innerStrip = findInnerStrip(header);
+
+      if (trySwiperNext(stripRow)) return { ok: true, via: "swiper" };
+
+      const btn = findNextButton(stripRow, headerRow, innerStrip);
+      if (btn && !isStripNavDisabled(btn)) {
+        btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        btn.click();
+        return { ok: true, via: "a.next" };
+      }
+
+      return { ok: false, reason: "no_button" };
+    },
+  });
+  return injection?.result ?? { ok: false, reason: "no_result" };
+}
+
+function isHanatourTabUrl(url) {
+  return /hanatour\.com/i.test(url ?? "");
+}
+
+function isHanatourSearchPageUrl(url) {
+  const href = (url ?? "").toLowerCase();
+  if (href.includes("/all-search")) return true;
+  if (href.includes("allsearchtab=package")) return true;
+  if (href.includes("/search")) return true;
+  if (/chpc0pkg\d+m\d+/i.test(href) && !href.includes("/trp/pkg/")) return true;
+  return false;
+}
+
+async function resolveParentTabCandidates(childTabId) {
+  const child = await chrome.tabs.get(childTabId);
+  const ids = [];
+  const mapped = tabRelations.get(childTabId);
+  if (mapped) ids.push(mapped);
+  if (child.openerTabId > 0) ids.push(child.openerTabId);
+
+  const siblings = await chrome.tabs.query({ windowId: child.windowId });
+  const leftTabs = siblings
+    .filter(
+      (t) =>
+        t.id !== childTabId &&
+        t.index < child.index &&
+        isHanatourSearchPageUrl(t.url),
+    )
+    .sort((a, b) => b.index - a.index);
+  for (const t of leftTabs) ids.push(t.id);
+
+  const unique = [...new Set(ids)];
+  const tabs = await Promise.all(
+    unique.map(async (id) => {
+      try {
+        return await chrome.tabs.get(id);
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return tabs
+    .filter((t) => t?.id && isHanatourSearchPageUrl(t.url))
+    .map((t) => t.id);
+}
+
+async function queryParentCalendarFromCandidates(candidateTabIds, meta, browseMonths) {
+  const triedTabIds = [];
+  let lastReason = null;
+  const maxBrowse = Number(browseMonths) > 0 ? Number(browseMonths) : 0;
+
+  for (const tabId of candidateTabIds) {
+    triedTabIds.push(tabId);
+    try {
+      if (maxBrowse > 0) {
+        const browseResponse = await browseParentCalendar(tabId, maxBrowse);
+        if (browseResponse?.ok && browseResponse?.searchCalendar) {
+          return {
+            ok: true,
+            searchCalendar: browseResponse.searchCalendar,
+            dayCount: browseResponse.dayCount,
+            parentTabId: tabId,
+            triedTabIds,
+            source: browseResponse.source ?? "parent_tab_browse",
+            fetchMeta: browseResponse.fetchMeta ?? null,
+          };
+        }
+        lastReason = browseResponse?.reason ?? browseResponse?.error ?? lastReason;
+      }
+
+      let response = null;
+      try {
+        response = await queryParentCalendar(tabId);
+      } catch {
+        /* content script unavailable */
+      }
+
+      if (response?.ok && response?.searchCalendar) {
+        return {
+          ok: true,
+          searchCalendar: response.searchCalendar,
+          dayCount: response.dayCount,
+          parentTabId: tabId,
+          triedTabIds,
+          source: "parent_tab",
+        };
+      }
+
+      lastReason = response?.reason ?? lastReason;
+
+      const mainCal = await extractSearchCalendarFromPageMain(tabId);
+      if (mainCal && Object.keys(mainCal).length > 0) {
+        let dayCount = 0;
+        for (const rows of Object.values(mainCal)) {
+          if (Array.isArray(rows)) dayCount += rows.length;
+        }
+        return {
+          ok: true,
+          searchCalendar: mainCal,
+          dayCount,
+          parentTabId: tabId,
+          triedTabIds,
+          source: "parent_tab_main_world",
+        };
+      }
+    } catch {
+      /* try next candidate */
+    }
+  }
+
+  return {
+    ok: false,
+    error: lastReason ?? "인접 탭에서 출발일을 찾지 못했습니다.",
+    triedTabIds,
+  };
 }
 
 async function ensureContentScripts(tabId) {
@@ -213,12 +749,37 @@ async function ensureContentScripts(tabId) {
 
   await chrome.scripting.executeScript({
     target: { tabId },
-    files: ["htmlContextExtract.js", "content.js"],
+    world: "MAIN",
+    files: ["discoverHanatourCalendarMain.js"],
+  });
+
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: [
+      "discoverHanatourCalendar.js",
+      "hanatourItineraryUiPrep.js",
+      "htmlContextExtract.js",
+      "itineraryDomExtract.js",
+      "extractProductCode.js",
+      "hanatourCalendarFilter.js",
+      "hanatourCalendarApi.js",
+      "openHanatourCalendar.js",
+      "fetchHanatourCalendar.js",
+      "browseHanatourCalendarMonths.js",
+      "hanatourCrossTabCalendar.js",
+      "content.js",
+    ],
   });
   await new Promise((r) => setTimeout(r, 500));
 }
 
 async function scrapeTab(tabId) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    registerTabRelation(tabId, tab.openerTabId);
+  } catch {
+    /* ignore */
+  }
   await ensureContentScripts(tabId);
   const response = await chrome.tabs.sendMessage(tabId, { type: "SCRAPE_PAGE" });
   if (!response?.ok) {
@@ -257,6 +818,68 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const currentTabId = sender.tab?.id;
+
+  if (message?.type === "REGISTER_CHILD" && currentTabId) {
+    registerTabRelation(currentTabId, sender.tab?.openerTabId);
+    sendResponse({ ok: true, parentTabId: sender.tab?.openerTabId ?? null });
+    return true;
+  }
+
+  if (message?.type === "REQUEST_PARENT_CALENDAR" && currentTabId) {
+    const meta = message.meta ?? null;
+    const browseMonths = message.browseMonths ?? 0;
+    resolveParentTabCandidates(currentTabId)
+      .then((candidateTabIds) => {
+        if (candidateTabIds.length === 0) {
+          if (meta?.saleProdCd || meta?.rprsProdCd) {
+            return HanatourCalendarApi.fetchCalendarViaApi(meta).then((apiPayload) => {
+              if (apiPayload?.searchCalendar || apiPayload?.calendarData?.length) {
+                return {
+                  ok: true,
+                  searchCalendar: apiPayload.searchCalendar ?? {},
+                  calendarData: apiPayload.calendarData,
+                  dayCount: HanatourCalendarApi.countCalendarDays(apiPayload.searchCalendar),
+                  parentTabId: null,
+                  triedTabIds: [],
+                  source: "background_api_no_parent_tab",
+                };
+              }
+              return { ok: false, error: "인접 탭을 찾을 수 없습니다.", triedTabIds: [] };
+            });
+          }
+          return { ok: false, error: "인접 탭을 찾을 수 없습니다.", triedTabIds: [] };
+        }
+        return queryParentCalendarFromCandidates(candidateTabIds, meta, browseMonths);
+      })
+      .then((parentResponse) => {
+        if (!parentResponse) return;
+        sendResponse(parentResponse);
+      })
+      .catch((err) => {
+        sendResponse({ ok: false, error: String(err), triedTabIds: [] });
+      });
+    return true;
+  }
+
+  if (message?.type === "CLICK_DATE_STRIP_NEXT") {
+    const tabId = message.tabId ?? currentTabId;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "no tab id" });
+      return true;
+    }
+    clickDateStripNextInMainWorld(tabId)
+      .then((result) => sendResponse(result ?? { ok: false }))
+      .catch((err) => sendResponse({ ok: false, error: String(err) }));
+    return true;
+  }
+
+  if (message?.type === "FETCH_HANATOUR_CALENDAR" && message.meta) {
+    HanatourCalendarApi.fetchCalendarViaApi(message.meta)
+      .then((payload) => sendResponse({ ok: true, payload }))
+      .catch((err) => sendResponse({ ok: false, error: String(err) }));
+    return true;
+  }
   if (message?.type === "IMPORT_EXTERNAL" && message.payload) {
     importExternal(message.payload, sender.tab?.id).then(() => sendResponse({ ok: true }));
     return true;

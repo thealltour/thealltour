@@ -118,6 +118,52 @@ describe("mapExternalParsedToInsert", () => {
     });
     expect(result.meta_title).toBe("계림여행추천 이강유람체험");
   });
+
+  it("maps hanatour calendar payload to departure_schedules_json and min price", () => {
+    const result = mapExternalParsedToInsert({
+      parsed: baseParsed({
+        price: 1_549_900,
+        departure_from_date: null,
+        departure_to_date: null,
+      }),
+      provider: "hanatour",
+      hanatourCalendarPayload: {
+        searchCalendar: {
+          "202609": [
+            { depDay: "20260924", depDayNm: "09.24.목", adtAmt: "151만" },
+            { depDay: "20260927", depDayNm: "09.27.일", adtAmt: "136만" },
+          ],
+        },
+        calendarData: [
+          {
+            depDay: "20260924",
+            adtAmt: 1519900,
+            reserveStatus: "예약가능",
+          },
+        ],
+      },
+    });
+
+    expect(result.departure_schedules_json).toEqual([
+      {
+        departureDate: "2026-09-24",
+        returnDate: null,
+        price: 1519900,
+        label: "09.24.목",
+        status: "AVAILABLE",
+      },
+      {
+        departureDate: "2026-09-27",
+        returnDate: null,
+        price: 1_360_000,
+        label: "09.27.일",
+        status: null,
+      },
+    ]);
+    expect(result.price).toBe(1_360_000);
+    expect(result.departure_from_date).toBe("2026-09-24");
+    expect(result.departure_to_date).toBeNull();
+  });
 });
 
 describe("normalizeSellingPoints", () => {

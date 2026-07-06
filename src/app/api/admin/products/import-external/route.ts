@@ -44,6 +44,8 @@ import {
 
 } from "@/lib/admin/externalImport/mapExternalParsedToInsert";
 
+import { normalizeHanatourCalendarPayload } from "@/lib/admin/externalImport/hanatour/types";
+
 import { insertProductWithSchemaFallback } from "@/lib/supabaseProductsColumnFallback";
 
 
@@ -86,6 +88,7 @@ type ImportExternalBody = {
   /** @deprecated 관리자 수동 폼용 */
   rawHtmlText?: string;
   itineraryBlocks?: unknown[];
+  hanatourCalendarPayload?: unknown;
 };
 
 
@@ -216,6 +219,8 @@ export async function POST(request: NextRequest) {
 
   const seoHashtags = normalizeUrlList(body.seoHashtags);
 
+  const hanatourCalendarPayload = normalizeHanatourCalendarPayload(body.hanatourCalendarPayload);
+
 
 
   let metaResult;
@@ -272,7 +277,24 @@ export async function POST(request: NextRequest) {
 
     seoHashtags: seoHashtags.length > 0 ? seoHashtags : undefined,
 
+    hanatourCalendarPayload,
+
   });
+
+  const parsedSummary = summarizeExternalParsedForResponse(parsed, { hanatourCalendarPayload });
+  if (provider === "hanatour" && parsedSummary.departureScheduleCount === 0) {
+    console.warn(
+      "[import-external] hanatour calendar empty",
+      JSON.stringify({
+        saleProdCd: hanatourCalendarPayload?.saleProdCd ?? null,
+        rprsProdCd: hanatourCalendarPayload?.rprsProdCd ?? null,
+        monthKeys: hanatourCalendarPayload?.searchCalendar
+          ? Object.keys(hanatourCalendarPayload.searchCalendar)
+          : [],
+        fetchMeta: hanatourCalendarPayload?.fetchMeta ?? null,
+      }),
+    );
+  }
 
 
 
@@ -334,7 +356,7 @@ export async function POST(request: NextRequest) {
 
       provider: getExternalProviderLabel(provider),
 
-      parsed: summarizeExternalParsedForResponse(parsed),
+      parsed: parsedSummary,
 
     },
 

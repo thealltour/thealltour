@@ -11,8 +11,14 @@ import {
   mapExternalItineraryToV2,
 } from "@/lib/admin/externalImport/mapExternalItineraryToV2";
 import { countGalleryUrls } from "@/lib/admin/externalImport/mergeExternalImport";
+import { mapHanatourCalendarToImport } from "@/lib/admin/externalImport/hanatour/mapHanatourCalendarToImport";
+import type { HanatourCalendarPayload } from "@/lib/admin/externalImport/hanatour/types";
 import { sellingPointsToJsonColumn } from "@/lib/products/normalizeSellingPoints";
 import { formatSeoHashtagsForMetaTitle } from "@/lib/products/formatSeoHashtagsForMetaTitle";
+import {
+  normalizeProductDepartureDateToYmd,
+  ymdDayDiff,
+} from "@/lib/products/productDepartureDates";
 
 export type MapExternalParsedInput = {
   parsed: ExternalParsedProduct;
@@ -20,6 +26,7 @@ export type MapExternalParsedInput = {
   provider: ExternalProvider | null;
   sourceProductTitle?: string | null;
   seoHashtags?: string[];
+  hanatourCalendarPayload?: HanatourCalendarPayload | null;
 };
 
 const PROVIDER_DEFAULT_CATEGORY: Record<ExternalProvider, string> = {
@@ -82,6 +89,27 @@ function pickTime(
   return trimOrNull(primary) ?? trimOrNull(legacy);
 }
 
+function resolveFlightDepartureToDate(
+  parsed: ExternalParsedProduct,
+  hasCalendarSchedules: boolean,
+): string | null {
+  const fromRaw = trimOrNull(parsed.departure_from_date);
+  const toRaw = trimOrNull(parsed.departure_to_date);
+  if (!fromRaw || !toRaw) return toRaw;
+
+  const fromYmd = normalizeProductDepartureDateToYmd(fromRaw);
+  const toYmd = normalizeProductDepartureDateToYmd(toRaw);
+  if (!fromYmd || !toYmd) return toRaw;
+
+  if (fromYmd === toYmd) return toYmd;
+  if (ymdDayDiff(fromYmd, toYmd) <= 1) return toYmd;
+
+  // 달력 스케줄이 있으면 to는 귀국일이므로 가는편 도착일로 쓰지 않음
+  if (hasCalendarSchedules) return null;
+
+  return toRaw;
+}
+
 function resolveMetaTitle(
   parsed: ExternalParsedProduct,
   seoHashtags?: string[],
@@ -94,9 +122,18 @@ function resolveMetaTitle(
 }
 
 export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record<string, unknown> {
-  const { parsed, productSourceUrl, provider, sourceProductTitle, seoHashtags } = input;
+  const {
+    parsed,
+    productSourceUrl,
+    provider,
+    sourceProductTitle,
+    seoHashtags,
+    hanatourCalendarPayload,
+  } = input;
 
   const itineraryV2 = resolveItineraryV2(parsed.itinerary_v2_json);
+  const { departureSchedules, minPrice: calendarMinPrice } =
+    mapHanatourCalendarToImport(hanatourCalendarPayload);
 
   const productImages = normalizeImageUrls(parsed.images_json);
   const imageUrl =
@@ -120,6 +157,18 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
 
   const sellingPoints = sellingPointsToJsonColumn(parsed.selling_points_json ?? undefined);
 
+  let price = toSafeInteger(parsed.price);
+  if (calendarMinPrice != null) {
+    price = calendarMinPrice;
+  }
+
+  const firstScheduleDate = departureSchedules?.[0]?.departureDate ?? null;
+  const hasCalendarSchedules = Boolean(departureSchedules?.length);
+  const resolvedDepartureFromDate = hasCalendarSchedules
+    ? firstScheduleDate
+    : trimOrNull(parsed.departure_from_date) ?? firstScheduleDate;
+  const resolvedDepartureToDate = resolveFlightDepartureToDate(parsed, hasCalendarSchedules);
+
   return {
     title,
     description,
@@ -127,7 +176,7 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     images_json: finalGallery.length > 0 ? finalGallery : null,
     category,
     theme: trimOrNull(parsed.theme),
-    price: toSafeInteger(parsed.price),
+    price,
     duration,
     overview_duration: duration,
     overview_region: trimOrNull(parsed.departure_region),
@@ -143,9 +192,9 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     departure_flight_name: departureFlight,
     departure_from_airport: trimOrNull(parsed.departure_from_airport),
     departure_to_airport: trimOrNull(parsed.departure_to_airport),
-    departure_from_date: trimOrNull(parsed.departure_from_date),
+    departure_from_date: resolvedDepartureFromDate,
     departure_from_time: pickTime(parsed.departure_from_time, parsed.departure_time),
-    departure_to_date: trimOrNull(parsed.departure_to_date),
+    departure_to_date: resolvedDepartureToDate,
     departure_to_time: pickTime(parsed.departure_to_time, parsed.arrival_time),
     arrival_flight_name: arrivalFlight,
     arrival_from_airport: trimOrNull(parsed.arrival_from_airport),
@@ -155,25 +204,33 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     arrival_to_date: trimOrNull(parsed.arrival_to_date),
     arrival_to_time: trimOrNull(parsed.arrival_to_time),
     itinerary_v2_json: itineraryV2,
+    departure_schedules_json: departureSchedules,
     product_source_url: trimOrNull(productSourceUrl ?? undefined),
   };
 }
 
-export function summarizeExternalParsedForResponse(parsed: ExternalParsedProduct): {
+export function summarizeExternalParsedForResponse(
+  parsed: ExternalParsedProduct,
+  options?: { hanatourCalendarPayload?: HanatourCalendarPayload | null },
+): {
   title: string | null;
   price: number | null;
   duration: string | null;
   galleryCount: number;
   itineraryEventCount: number;
   itineraryImageCount: number;
+  departureScheduleCount: number;
 } {
   const itineraryV2 = resolveItineraryV2(parsed.itinerary_v2_json);
+  const calendar = mapHanatourCalendarToImport(options?.hanatourCalendarPayload);
+  const price = calendar.minPrice ?? parsed.price;
   return {
     title: trimOrNull(parsed.title),
-    price: parsed.price,
+    price,
     duration: trimOrNull(parsed.duration),
     galleryCount: countGalleryUrls(parsed),
     itineraryEventCount: countItineraryEvents(parsed.itinerary_v2_json),
     itineraryImageCount: countItineraryImages(itineraryV2),
+    departureScheduleCount: calendar.departureSchedules?.length ?? 0,
   };
 }

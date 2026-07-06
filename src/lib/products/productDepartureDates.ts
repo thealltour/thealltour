@@ -139,6 +139,7 @@ function addDatesFromText(dates: Set<string>, raw: string | null | undefined): v
 /** 상품 1건의 모든 출발 가능 YMD를 수집합니다. */
 export function collectProductDepartureDates(product: Product): string[] {
   const dates = new Set<string>();
+  const hasSchedules = Boolean(product.departureSchedules?.length);
 
   for (const schedule of product.departureSchedules ?? []) {
     addDatesFromText(dates, schedule.departureDate);
@@ -146,6 +147,11 @@ export function collectProductDepartureDates(product: Product): string[] {
 
   for (const raw of product.departures ?? []) {
     addDatesFromText(dates, raw);
+  }
+
+  // 출발일 스케줄이 있으면 항공/여정 from·to 구간은 달력에 쓰지 않음
+  if (hasSchedules) {
+    return Array.from(dates).sort();
   }
 
   const fromRaw = product.departure_from_date?.trim();
@@ -164,7 +170,8 @@ export function collectProductDepartureDates(product: Product): string[] {
         // 항공 출발일·현지 도착일(0~1일 차) — 출발일만 달력에 표시
         dates.add(fromYmd);
       } else {
-        for (const ymd of expandYmdRange(fromYmd, toYmd)) dates.add(ymd);
+        // 여정 전체 기간(귀국일 등) — 출발일만 달력에 표시
+        dates.add(fromYmd);
       }
     } else if (fromYmd) {
       dates.add(fromYmd);

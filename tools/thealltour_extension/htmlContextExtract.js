@@ -166,72 +166,55 @@
 
 
 
-  function clickTabByText(doc, patterns, exactPatterns) {
+  function findTabBarRoot(doc) {
+    const tablist = doc.querySelector('[role="tablist"]');
+    if (tablist) return tablist;
+    const nav = doc.querySelector("nav");
+    if (nav?.querySelector('[role="tab"]')) return nav;
+    return doc;
+  }
 
-    const candidates = doc.querySelectorAll('[role="tab"], button, a[href="#"], a[role="button"], li');
+  function clickTabByText(doc, patterns, exactPatterns) {
+    const root = findTabBarRoot(doc);
+    const candidates = root.querySelectorAll('[role="tab"], button, a[href="#"], a[role="button"]');
 
     let fallback = null;
 
     for (const el of candidates) {
-
       const text = elementText(el);
-
       if (!text) continue;
 
       for (const exact of exactPatterns ?? []) {
-
         if (text === exact || new RegExp(`^${exact}$`, "i").test(text)) {
-
           el.click();
-
           return true;
-
         }
-
       }
 
       for (const pat of patterns) {
-
         if (pat.test(text)) {
-
           el.click();
-
           return true;
-
         }
-
       }
 
       if (!fallback && patterns.some((p) => p.test(text))) fallback = el;
-
     }
 
     if (fallback) {
-
       fallback.click();
-
       return true;
-
     }
 
     return false;
-
   }
 
-
-
   function clickMainItineraryTab(doc) {
-
     return clickTabByText(
-
       doc,
-
-      [/^여행\s*일정$/i, /여행일정/, /^일정$/],
-
+      [/^여행\s*일정$/i, /여행일정/],
       ["여행일정", "여행 일정"],
-
     );
-
   }
 
 
@@ -307,21 +290,24 @@
 
 
   async function prepareItineraryView(doc) {
+    const ui = global.HanatourItineraryUiPrep;
+    const mainWait = ui?.MAIN_TAB_WAIT_MS ?? 800;
+    const expandWait = ui?.EXPAND_ALL_WAIT_MS ?? 700;
 
     clickMainItineraryTab(doc);
+    await sleep(mainWait);
 
-    await sleep(500);
+    const itineraryPanel = ui?.findItineraryTabPanel?.(doc) ?? findHtmlCaptureRoot(doc);
+    if (ui?.clickExpandAllItineraryInScope && itineraryPanel) {
+      ui.clickExpandAllItineraryInScope(itineraryPanel);
+    } else {
+      clickExpandAllItinerary(doc);
+    }
+    await sleep(expandWait);
 
-    clickExpandAllItinerary(doc);
-
-    await sleep(400);
-
-    const root = findHtmlCaptureRoot(doc) ?? doc.body;
-
-    if (root) await expandAccordionsIn(root, 60);
-
-    await sleep(300);
-
+    if (itineraryPanel && ui?.waitForPanelStable) {
+      await ui.waitForPanelStable(itineraryPanel);
+    }
   }
 
 
@@ -944,6 +930,12 @@
 
     await prepareItineraryView(doc);
 
+    const ui = global.HanatourItineraryUiPrep;
+    const itineraryPanel = ui?.findItineraryTabPanel?.(doc) ?? findHtmlCaptureRoot(doc);
+    if (itineraryPanel && ui?.scrollPanelToLoadLazy) {
+      await ui.scrollPanelToLoadLazy(itineraryPanel);
+    }
+
     onProgress?.(28, "이미지 로딩 중…");
 
     await scrollToLoadLazyContent(doc);
@@ -956,8 +948,18 @@
 
     onProgress?.(36, "일정 블록 추출 중…");
 
-    const itineraryBlocks =
-      global.ItineraryDomExtract?.extractItineraryBlocks?.(doc) ?? [];
+    let itineraryBlocks = [];
+    let itineraryExtractMeta;
+    const extractAsync = global.ItineraryDomExtract?.extractItineraryBlocksAsync;
+    if (typeof extractAsync === "function") {
+      const result = await extractAsync(doc, {
+        onDayProgress: (day) => onProgress?.(36, `일정 ${day}일차 수집 중…`),
+      });
+      itineraryBlocks = result?.blocks ?? [];
+      itineraryExtractMeta = result?.meta;
+    } else {
+      itineraryBlocks = global.ItineraryDomExtract?.extractItineraryBlocks?.(doc) ?? [];
+    }
 
     onProgress?.(38, "수집 완료");
 
@@ -969,6 +971,7 @@
       sourceProductTitle,
       seoHashtags,
       itineraryBlocks,
+      itineraryExtractMeta,
     };
 
   }

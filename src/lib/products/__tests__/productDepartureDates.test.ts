@@ -80,12 +80,48 @@ describe("collectProductDepartureDates", () => {
     expect(collectProductDepartureDates(product)).toEqual(["2026-08-13"]);
   });
 
-  it("expands departure_from_date and departure_to_date", () => {
+  it("returns only departure date when from/to span trip duration without tilde range", () => {
+    const product = {
+      id: "p-trip",
+      title: "패키지 여행",
+      departure_from_date: "2026-10-04",
+      departure_to_date: "2026-10-09",
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-10-04"]);
+  });
+
+  it("expands explicit tilde range on departure_from_date", () => {
+    const product = {
+      id: "p-inline",
+      title: "인라인 범위",
+      departure_from_date: "2026.07.01~2026.08.31",
+    } as Product;
+
+    const dates = collectProductDepartureDates(product);
+    expect(dates).toHaveLength(62);
+  });
+
+  it("prefers departure schedules over flight from/to date range", () => {
+    const product = {
+      id: "p-schedules-win",
+      title: "하나투어 패키지",
+      departureSchedules: [
+        { departureDate: "2026-09-24", returnDate: null, price: 1510000 },
+        { departureDate: "2026-09-27", returnDate: null, price: 1360000 },
+      ],
+      departure_from_date: "2026-10-04",
+      departure_to_date: "2026-10-09",
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-09-24", "2026-09-27"]);
+  });
+
+  it("expands departure_from_date and departure_to_date when both are separate range endpoints", () => {
     const product = {
       id: "p-range",
       title: "여름 골프",
-      departure_from_date: "2026.07.01",
-      departure_to_date: "2026.08.31",
+      departure_from_date: "2026.07.01~2026.08.31",
     } as Product;
 
     const dates = collectProductDepartureDates(product);

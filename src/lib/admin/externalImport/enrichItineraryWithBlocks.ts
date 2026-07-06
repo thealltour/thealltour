@@ -100,13 +100,19 @@ function indexBlocksByDayAndHeading(blocks: ItineraryBlock[]): Map<string, Itine
   return index;
 }
 
+function hasExplicitDayBlocks(blocks: ItineraryBlock[]): boolean {
+  return blocks.some((b) => typeof b.day === "number" && b.day > 0);
+}
+
 function findBlocksForEvent(
   blockIndex: Map<string, ItineraryBlock[]>,
   day: number,
   heading: string,
+  allowDayAgnostic: boolean,
 ): ItineraryBlock[] {
   const hKey = normalizeHeadingKey(heading);
   const exact = blockIndex.get(`${day}::${hKey}`) ?? [];
+  if (!allowDayAgnostic) return exact;
   const dayAgnostic = blockIndex.get(`0::${hKey}`) ?? [];
   return [...exact, ...dayAgnostic];
 }
@@ -127,11 +133,12 @@ export function enrichAiItineraryWithBlocks(
   if (!base?.days?.length) return mapItineraryBlocksToV2(richBlocks);
 
   const blockIndex = indexBlocksByDayAndHeading(richBlocks);
+  const allowDayAgnostic = !hasExplicitDayBlocks(richBlocks);
   const usedBlockKeys = new Set<string>();
 
   const enrichedDays: ItineraryV2Day[] = base.days.map((day) => {
     const events = day.events.map((event) => {
-      const candidates = findBlocksForEvent(blockIndex, day.day, event.heading);
+      const candidates = findBlocksForEvent(blockIndex, day.day, event.heading, allowDayAgnostic);
       if (candidates.length === 0) return event;
 
       const best = pickBestBlock(candidates);

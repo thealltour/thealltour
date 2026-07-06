@@ -74,13 +74,12 @@ describe("buildGolfDepartureEvents", () => {
     expect(events[0].date).toBe("2026-11-01");
   });
 
-  it("expands departure date range into daily events", () => {
+  it("expands inline tilde departure range into daily events", () => {
     const products = [
       {
         id: "p-range",
         title: "연태 6색 골프",
-        departure_from_date: "2026.07.01",
-        departure_to_date: "2026.08.31",
+        departure_from_date: "2026.07.01~2026.08.31",
         price: 599000,
       } as Product,
     ];
@@ -89,6 +88,22 @@ describe("buildGolfDepartureEvents", () => {
     expect(events).toHaveLength(62);
     expect(events[0]?.date).toBe("2026-07-01");
     expect(events[61]?.date).toBe("2026-08-31");
+  });
+
+  it("uses only departure date when from/to span trip duration without tilde range", () => {
+    const products = [
+      {
+        id: "p-trip",
+        title: "패키지 골프",
+        departure_from_date: "2026.07.01",
+        departure_to_date: "2026.08.31",
+        price: 599000,
+      } as Product,
+    ];
+
+    const events = buildGolfDepartureEvents(products);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.date).toBe("2026-07-01");
   });
 
   it("uses only departure date for overnight flight (not arrival day)", () => {

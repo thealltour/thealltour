@@ -8,6 +8,8 @@ import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
 import AlertCard from "@/components/ui/AlertCard";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductBookingSelectionPanel } from "@/components/products/ProductBookingSelectionPanel";
+import { ProductCheckoutSection } from "@/components/products/ProductCheckoutSection";
+import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { useProductQuote, type SelectedDeparture } from "@/components/products/ProductQuoteContext";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
 import { calcQuote, formatPriceKR } from "@/lib/pricing/calcQuote";
@@ -55,6 +57,11 @@ import {
   STICKY_SEASONAL_VOLATILITY_HINT,
 } from "@/lib/products/detailSeasonalPriceDisplay";
 import { getDepartureSchedulesMinPrice } from "@/lib/products/normalizeDepartureSchedules";
+import { collectProductDepartureDates } from "@/lib/products/productDepartureDates";
+import {
+  resolveDepartureUiForProduct,
+  resolveProductBookingUxMode,
+} from "@/lib/products/resolveProductBookingUx";
 import { buildRecommendedAudienceBullets } from "@/lib/products/buildRecommendedAudienceBullets";
 import {
   ProductDetailRecommendedAudience,
@@ -109,6 +116,8 @@ export type ProductDetailV2Props = {
   overviewFallbackUrl?: string;
   /** PR6: 리뷰 요약 (있으면 제목 근처에 평점·후기 수 표시) */
   reviewSummary?: { averageRating: number; reviewCount: number } | null;
+  /** PortOne 예약금 결제 UI 노출 여부 (서버에서 isPortOneEnabled() 전달) */
+  portOneEnabled?: boolean;
 };
 
 type ScheduleDay = { label: string; content: string };
@@ -188,6 +197,7 @@ export default function ProductDetailV2({
   overviewModel,
   overviewFallbackUrl = "",
   reviewSummary,
+  portOneEnabled = false,
 }: ProductDetailV2Props) {
   const resolvedOverview = useMemo(() => {
     if (product != null) return mapProductToOverview(product);
@@ -279,6 +289,7 @@ export default function ProductDetailV2({
     [product],
   );
   const bookingPanelRef = useRef<HTMLDivElement>(null);
+  const { openModal: openConsultModal } = useConsultModal();
   const {
     setQuoteSummary,
     setRequiredGroupsMissing,
@@ -289,9 +300,28 @@ export default function ProductDetailV2({
     registerScrollToBooking,
   } = useProductQuote();
 
+  const bookingUxMode = useMemo(
+    () => (product ? resolveProductBookingUxMode(product) : "calendar_booking"),
+    [product],
+  );
+  const showCalendarBooking = bookingUxMode === "calendar_booking";
+  const departureUi = useMemo(
+    () => (product ? resolveDepartureUiForProduct(product) : "chips"),
+    [product],
+  );
+  const calendarDepartureDates = useMemo(
+    () => (product ? collectProductDepartureDates(product) : []),
+    [product],
+  );
   const hasDepartures = Boolean(product?.departureSchedules?.length || product?.departures?.length);
+  const hasCalendarDepartures = calendarDepartureDates.length > 0;
   const hasOptions = ENABLE_PRODUCT_OPTIONS && options?.groups != null && options.groups.length > 0;
-  const hasBookingPanel = hasDepartures || hasOptions;
+  const hasBookingPanel = showCalendarBooking
+    ? Boolean(hasCalendarDepartures || hasOptions)
+    : hasDepartures || hasOptions;
+  const departureRequiredForBooking = showCalendarBooking
+    ? hasCalendarDepartures
+    : hasDepartures;
   const quote = useMemo(
     () => calcQuote(options, selectedOptions),
     [options, selectedOptions],
@@ -335,12 +365,12 @@ export default function ProductDetailV2({
     );
   }, [hasOptions, quote, requiredGroupsMissing, selectedOptions, setQuoteSummary, setRequiredGroupsMissing, syncSelectedOptionsToQuote]);
 
-  const departureSelectionMissing = hasDepartures && !selectedDepartureKey;
+  const departureSelectionMissing = departureRequiredForBooking && !selectedDepartureKey;
 
   useEffect(() => {
-    setDepartureRequired(hasDepartures);
+    setDepartureRequired(departureRequiredForBooking);
     setDepartureSelectionMissing(departureSelectionMissing);
-  }, [hasDepartures, departureSelectionMissing, setDepartureRequired, setDepartureSelectionMissing]);
+  }, [departureRequiredForBooking, departureSelectionMissing, setDepartureRequired, setDepartureSelectionMissing]);
 
   const handleDepartureChange = useCallback(
     (departure: SelectedDeparture | null, key: string | null) => {
@@ -731,6 +761,8 @@ export default function ProductDetailV2({
         {hasBookingPanel ? (
           <div className="mt-6" ref={bookingPanelRef}>
             <ProductBookingSelectionPanel
+              product={product}
+              departureUi={departureUi}
               schedules={product?.departureSchedules}
               departures={product?.departures}
               options={hasOptions ? options : null}
@@ -739,7 +771,25 @@ export default function ProductDetailV2({
               onDepartureChange={handleDepartureChange}
               onOptionSingleChange={handleOptionSingleChange}
               onOptionMultiToggle={handleOptionMultiToggle}
+              onConsultClick={() =>
+                openConsultModal({
+                  productId: product?.id,
+                  productTitle: title,
+                  sourcePath: product?.id ? `/products/${product.id}` : undefined,
+                })
+              }
             />
+            {showCalendarBooking && portOneEnabled ? (
+              <ProductCheckoutSection
+                productId={product?.id ?? ""}
+                productTitle={title ?? ""}
+                options={hasOptions ? options : undefined}
+                selectedOptions={selectedOptions}
+                selectedDepartureKey={selectedDepartureKey}
+                departureRequired={departureRequiredForBooking}
+                requiredGroupsMissing={requiredGroupsMissing}
+              />
+            ) : null}
           </div>
         ) : null}
 

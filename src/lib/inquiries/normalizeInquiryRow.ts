@@ -73,13 +73,22 @@ export function normalizeInquiryRow(row: Record<string, unknown>): Inquiry {
       inquiredAt: typeof o.inquiredAt === "string" ? o.inquiredAt : undefined,
       desiredDeparture,
       golf_brief: golf_brief && Object.keys(golf_brief).length > 0 ? golf_brief : undefined,
+      pointsUseRequested:
+        typeof o.pointsUseRequested === "number" && Number.isFinite(o.pointsUseRequested)
+          ? o.pointsUseRequested
+          : undefined,
+      pointsBalanceAtSubmit:
+        typeof o.pointsBalanceAtSubmit === "number" && Number.isFinite(o.pointsBalanceAtSubmit)
+          ? o.pointsBalanceAtSubmit
+          : undefined,
     };
     const hasData =
       quote_snapshot.selectedOptions ||
       quote_snapshot.quoteSummary ||
       quote_snapshot.inquiredAt ||
       quote_snapshot.desiredDeparture ||
-      quote_snapshot.golf_brief;
+      quote_snapshot.golf_brief ||
+      quote_snapshot.pointsUseRequested;
     if (!hasData) {
       quote_snapshot = undefined;
     }

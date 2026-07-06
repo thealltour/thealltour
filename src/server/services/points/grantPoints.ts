@@ -14,6 +14,8 @@ type GrantPointsParams = {
   refId?: string;
   actorAdminId?: string | null;
   expiresAt?: string | null;
+  notificationTitle?: string;
+  notificationBody?: string;
 };
 
 export async function grantPointsToUser(params: GrantPointsParams) {
@@ -74,11 +76,12 @@ export async function grantPointsToUser(params: GrantPointsParams) {
   await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     type: "POINT_EARNED",
-    title: "포인트 적립",
+    title: params.notificationTitle?.trim() || "포인트 적립",
     body:
-      status === "CONFIRMED"
+      params.notificationBody?.trim() ||
+      (status === "CONFIRMED"
         ? `${amount}P가 적립되었습니다.`
-        : `${amount}P가 적립 예정입니다. (확정 후 사용 가능합니다.)`,
+        : `${amount}P가 적립 예정입니다. (확정 후 사용 가능합니다.)`),
   });
 
   return {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { BookingPaymentRow, BookingTravelerRow } from "@/types/travelBooking";
+import type { CheckoutSnapshot } from "@/types/checkout";
 
 type BookingDetail = {
   id: string;
@@ -20,6 +21,10 @@ type BookingDetail = {
   return_date: string | null;
   inquiry_id: string | null;
   member_id: string | null;
+  checkout_snapshot: CheckoutSnapshot | null;
+  balance_payment_preference: string | null;
+  cash_receipt_requested: boolean;
+  local_perks_matched: boolean;
   booking_confirmed_sms_sent_at: string | null;
   trip_completed_sms_sent_at: string | null;
   travelers: BookingTravelerRow[];
@@ -140,6 +145,38 @@ export default function AdminBookingDetailPage({ bookingId }: { bookingId: strin
           </div>
         </div>
       </section>
+
+      {detail.checkout_snapshot ? (
+        <section className="rounded-xl border border-[var(--border)] p-4">
+          <h3 className="font-semibold">Checkout 스냅샷</h3>
+          <dl className="mt-3 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-[var(--text-muted)]">견적 합계</dt>
+              <dd>{detail.checkout_snapshot.quoteTotal.toLocaleString()}원</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--text-muted)]">포인트 요청</dt>
+              <dd>{detail.checkout_snapshot.pointsUseRequested.toLocaleString()}P</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--text-muted)]">예약금</dt>
+              <dd>{detail.checkout_snapshot.depositAmount.toLocaleString()}원</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--text-muted)]">잔금</dt>
+              <dd>{detail.checkout_snapshot.balanceDue.toLocaleString()}원</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--text-muted)]">출발일</dt>
+              <dd>{detail.checkout_snapshot.departure?.label ?? "—"}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--text-muted)]">잔금 선호</dt>
+              <dd>{detail.balance_payment_preference ?? "—"}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       <section className="rounded-xl border border-[var(--border)] p-4">
         <h3 className="font-semibold">여행자</h3>

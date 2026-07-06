@@ -23,6 +23,7 @@ import {
   type GolfBriefSnapshot,
 } from "@/lib/inquiry/golfBriefFields";
 import { buildProductInquiryPrefill } from "@/lib/products/buildProductInquiryPrefill";
+import { resolveDefaultPointsUseAmount } from "@/lib/inquiry/inquiryPointsUse";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -94,6 +95,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
   const [kakaoHref, setKakaoHref] = useState<string | undefined>();
   const [slaMinutes, setSlaMinutes] = useState(30);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [pointBalance, setPointBalance] = useState<number | null>(null);
+  const [pointsUseEnabled, setPointsUseEnabled] = useState(false);
+  const [pointsUseAmount, setPointsUseAmount] = useState(0);
+  const [pointsLoading, setPointsLoading] = useState(false);
   const quoteCtx = useProductQuote();
 
   const showGolfBrief = isGolfBriefContext({
@@ -117,6 +122,46 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+    setPointsLoading(true);
+    fetch("/api/me/points", { credentials: "include", cache: "no-store" })
+      .then(async (res) => {
+        if (!mounted) return;
+        if (!res.ok) {
+          setPointBalance(null);
+          setPointsUseEnabled(false);
+          setPointsUseAmount(0);
+          return;
+        }
+        const data = (await res.json()) as { balance?: number };
+        const balance = Number(data.balance ?? 0);
+        setPointBalance(balance);
+        const defaultAmount = resolveDefaultPointsUseAmount(balance, quoteCtx.quoteSummary?.total ?? null);
+        setPointsUseAmount(defaultAmount);
+        setPointsUseEnabled(defaultAmount > 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setPointBalance(null);
+        setPointsUseEnabled(false);
+        setPointsUseAmount(0);
+      })
+      .finally(() => {
+        if (mounted) setPointsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, quoteCtx.quoteSummary?.total]);
+
+  useEffect(() => {
+    if (pointBalance == null || pointBalance <= 0) return;
+    const defaultAmount = resolveDefaultPointsUseAmount(pointBalance, quoteCtx.quoteSummary?.total ?? null);
+    setPointsUseAmount((prev) => (prev > 0 ? Math.min(prev, pointBalance) : defaultAmount));
+  }, [pointBalance, quoteCtx.quoteSummary?.total]);
 
   useEffect(() => {
     if (isOpen) {
@@ -145,6 +190,9 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
     setGolfBrief({});
     setFieldErrors({});
     setIsSuccess(false);
+    setPointBalance(null);
+    setPointsUseEnabled(false);
+    setPointsUseAmount(0);
     setIsOpen(true);
   }, [
     quoteCtx.selectedDeparture,
@@ -238,6 +286,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
         body.inquired_at = new Date().toISOString();
       }
 
+      if (pointsUseEnabled && pointsUseAmount > 0 && pointBalance != null) {
+        body.points_use_requested = pointsUseAmount;
+      }
+
       setIsSubmitting(true);
       try {
         const response = await fetch("/api/inquiries", {
@@ -247,7 +299,14 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
         });
 
         if (!response.ok) {
-          showToast("error", "문의 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+          let message = "문의 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+          try {
+            const data = (await response.json()) as { message?: string };
+            if (data.message?.trim()) message = data.message.trim();
+          } catch {
+            /* ignore */
+          }
+          showToast("error", message);
           return;
         }
 
@@ -282,7 +341,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
         setIsSubmitting(false);
       }
     },
-    [form, params, showToast, quoteCtx],
+    [form, params, showToast, quoteCtx, pointsUseEnabled, pointsUseAmount, pointBalance, showGolfBrief, golfBrief],
   );
 
   const value: ConsultModalContextValue = { isOpen, openModal, closeModal };
@@ -411,6 +470,45 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         />
                       </label>
                     </div>
+                    {pointBalance != null && pointBalance > 0 ? (
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3.5 text-sm">
+                        <p className="font-medium text-[var(--text-primary)]">
+                          보유 포인트: {pointBalance.toLocaleString("ko-KR")}P
+                        </p>
+                        <label className="mt-2 flex cursor-pointer items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={pointsUseEnabled}
+                            onChange={(e) => setPointsUseEnabled(e.target.checked)}
+                            disabled={pointsLoading}
+                            className="mt-0.5 h-4 w-4 rounded border-[var(--border)]"
+                          />
+                          <span className="text-[var(--text-secondary)]">
+                            포인트 사용 요청 (카카오 30,000P 포함)
+                          </span>
+                        </label>
+                        {pointsUseEnabled ? (
+                          <div className="mt-2 flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={pointBalance}
+                              value={pointsUseAmount}
+                              onChange={(e) => {
+                                const next = Number.parseInt(e.target.value, 10);
+                                if (!Number.isFinite(next)) {
+                                  setPointsUseAmount(0);
+                                  return;
+                                }
+                                setPointsUseAmount(Math.max(0, Math.min(pointBalance, next)));
+                              }}
+                              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] outline-none focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+                            />
+                            <span className="shrink-0 text-[var(--text-muted)]">P</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="mt-2 flex flex-col gap-3">
                       <div className="flex justify-end">
                         <button

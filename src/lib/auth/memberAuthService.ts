@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { syncMemberCustomerProfiles } from "@/lib/customerAccountLinks";
 import { createNewMemberNotification } from "@/lib/adminNotifications";
 import { generateUniqueUsername } from "@/lib/auth/username";
+import { grantKakaoSignupWelcomePoints } from "@/lib/auth/grantKakaoSignupWelcomePoints";
 import type {
   AuthMode,
   AuthProviderId,
@@ -227,11 +228,22 @@ export async function handleOAuthCallback(params: {
   const member = await createSocialMember(provider, profile);
   await upsertProviderLink(String(member.id), provider, profile);
   await syncMemberAfterAuth(member);
+
+  let kakaoWelcomeGranted = false;
+  if (provider === "kakao") {
+    const welcomeResult = await grantKakaoSignupWelcomePoints(String(member.id)).catch((err) => {
+      console.error("[memberAuthService] grantKakaoSignupWelcomePoints failed", err);
+      return null;
+    });
+    kakaoWelcomeGranted = welcomeResult?.granted === true;
+  }
+
   return {
     type: "session",
     member,
     next,
     needsProfile: true,
+    kakaoWelcomeGranted,
   };
 }
 

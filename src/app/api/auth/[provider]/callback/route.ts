@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { verifyOAuthStateToken, OAUTH_STATE_COOKIE } from "@/lib/auth/oauthState";
 import { getOAuthProvider, isAuthProviderId } from "@/lib/auth/providerRegistry";
 import { getOAuthRedirectUri, sanitizeNextPath } from "@/lib/auth/redirect";
+import { resolveKakaoWelcomeNextPath } from "@/lib/auth/kakaoSignupWelcome";
 import { loginErrorRedirect } from "@/lib/auth/authErrors";
 import { handleOAuthCallback, cleanupExpiredPendingLinks } from "@/lib/auth/memberAuthService";
 import { appendMemberSessionCookie } from "@/lib/auth/setMemberSessionCookie";
@@ -60,9 +61,14 @@ export async function GET(request: Request, context: RouteContext) {
       return response;
     }
 
-    const destination = result.needsProfile
-      ? `/auth/complete-profile?next=${encodeURIComponent(result.next)}`
-      : result.next;
+    let destination = result.next;
+    if (result.kakaoWelcomeGranted) {
+      destination = resolveKakaoWelcomeNextPath(result.next);
+    }
+
+    if (result.needsProfile) {
+      destination = `/auth/complete-profile?next=${encodeURIComponent(destination)}`;
+    }
 
     const response = NextResponse.redirect(new URL(destination, request.url));
     appendMemberSessionCookie(response, result.member);

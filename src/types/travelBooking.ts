@@ -2,7 +2,7 @@
  * 여행 예약/완료 건 — 통합 예약 도메인
  */
 
-export type TravelBookingStatus = "reserved" | "completed" | "canceled";
+export type TravelBookingStatus = "pending_deposit" | "reserved" | "completed" | "canceled";
 
 export type BookingPaymentStatus = "unpaid" | "partial" | "paid" | "refunded";
 
@@ -109,6 +109,7 @@ export type BookingPaymentRow = {
   status: string;
   external_provider: string | null;
   external_payment_id: string | null;
+  payment_kind?: "deposit" | "balance" | null;
   recorded_by: string | null;
   admin_memo: string | null;
   recorded_at: string;

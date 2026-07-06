@@ -119,6 +119,55 @@
 
 **DB:** `supabase/migrations/20260614100000_member_social_auth.sql` 적용 필요.
 
+### 카카오 신규 가입 웰컴 포인트
+
+- **정책:** 카카오로 **최초 가입**하는 신규 회원에게 **30,000P** 1회 지급 (원장 reason: `카카오 30,000P`, `ref_type`: `KAKAO_SIGNUP_WELCOME`)
+- **비즈보드·광고 랜딩 URL 예시:** `https://thealltour.com/api/auth/kakao/start?next=/mypage`
+- 가입 완료 후 마이페이지에서 토스트 안내 → 빠른문의(ConsultModal)에서 포인트 사용 **요청** 가능 (실제 차감은 상담·예약 확정 시 운영 반영)
+- 구현: [`src/lib/auth/grantKakaoSignupWelcomePoints.ts`](../src/lib/auth/grantKakaoSignupWelcomePoints.ts), [`src/lib/auth/kakaoSignupWelcome.ts`](../src/lib/auth/kakaoSignupWelcome.ts)
+
+## PortOne 결제 (상품 예약금·잔금)
+
+| 변수 | 설명 |
+|------|------|
+| `PORTONE_STORE_ID` | PortOne V2 Store ID (서버 checkout/prepare) |
+| `PORTONE_CHANNEL_KEY` | 채널 키 (결제창) |
+| `PORTONE_API_SECRET` | REST API Secret — 결제 단건 조회·검증 |
+| `PORTONE_WEBHOOK_SECRET` | (권장) 웹훅 서명 검증 |
+| `PORTONE_ENABLED` | (선택) `false`이면 **신규 결제 UI 숨김** + prepare/balance API 503. 진행 중 결제 처리용으로 `PORTONE_API_SECRET`은 유지 권장. 미설정 시 env 키 3종이 모두 있을 때만 활성. |
+
+**웹훅 URL:** `https://{APP_URL}/api/webhooks/payment/portone`
+
+**플로우:** 상품 상세 → 예약금 10만원 PortOne → `/mypage/bookings/{id}` 잔금 (기본: 현금+현금영수증 / 선택: PortOne 잔금)
+
+**DB:** `supabase/migrations/20260704100000_booking_checkout_portone.sql` (`checkout_snapshot`, `pending_deposit`, `payment_kind`)
+
+로컬/스테이징 적용:
+
+```bash
+supabase db push
+# 또는 Supabase SQL Editor에서 마이그레이션 파일 실행
+```
+
+**UI vs env:** `PORTONE_*` 미설정이거나 `PORTONE_ENABLED=false`이면 상품 상세 **예약금 결제 UI는 숨깁니다**. 상담·달력·빠른문의는 그대로 노출됩니다.
+
+일시 중단 예시:
+
+```
+PORTONE_ENABLED=false
+```
+
+`.env.local` 예시:
+
+```
+PORTONE_STORE_ID=
+PORTONE_CHANNEL_KEY=
+PORTONE_API_SECRET=
+PORTONE_WEBHOOK_SECRET=
+```
+
+**노출 진단:** `npx tsx scripts/diagnose-product-booking-ux.ts [productId]`
+
 ## 기타
 
 - `REVALIDATE_SECRET` — on-demand revalidate API.

@@ -359,3 +359,24 @@
   color: #fff;
 }
 
+/* 상품 상세: 2개월 가로 2열 (Sticky에서 선택일 표시) */
+.theall-golf-calendar--product-detail .rdp-months {
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .theall-golf-calendar--product-detail {
+    --rdp-day-height: 2.5rem;
+    --rdp-day-width: 2.5rem;
+    font-size: 0.9375rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .theall-golf-calendar--product-detail .rdp-months {
+    flex-wrap: wrap;
+  }
+}
+

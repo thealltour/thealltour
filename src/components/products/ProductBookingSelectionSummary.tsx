@@ -1,7 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
+import { formatIsoDateKorean, isIsoDateYmd } from "@/lib/inquiry/desiredDeparture";
+import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
 
 /**
  * Sticky CTA 영역용 출발일·옵션 선택 요약
@@ -12,12 +15,21 @@ export function ProductBookingSelectionSummary({ className = "" }: { className?:
     quoteSummary,
     requiredGroupsMissing,
     departureRequired,
-    departureSelectionMissing,
   } = useProductQuote();
 
   const hasDeparture = Boolean(selectedDeparture?.label);
   const optionLines = quoteSummary?.breakdown ?? [];
   const hasOptions = optionLines.length > 0;
+
+  const departureDateLabel = useMemo(() => {
+    if (!selectedDeparture) return null;
+    const raw = selectedDeparture.inquiryValue?.trim() ?? "";
+    const ymd = isIsoDateYmd(raw)
+      ? raw
+      : normalizeProductDepartureDateToYmd(raw) ?? normalizeProductDepartureDateToYmd(selectedDeparture.label);
+    if (ymd) return formatIsoDateKorean(ymd) ?? ymd;
+    return null;
+  }, [selectedDeparture]);
 
   if (!departureRequired && !hasOptions && !requiredGroupsMissing) {
     return null;
@@ -30,17 +42,22 @@ export function ProductBookingSelectionSummary({ className = "" }: { className?:
     >
       {departureRequired ? (
         hasDeparture ? (
-          <p className="font-medium text-slate-800">
-            <span className="text-slate-500">선택 출발일</span>
-            {" · "}
-            {selectedDeparture!.label}
-            {selectedDeparture!.price != null && selectedDeparture!.price > 0 ? (
-              <span className="text-[var(--primary)]">
-                {" · "}
-                {selectedDeparture!.price.toLocaleString("ko-KR")}원
-              </span>
+          <div className="space-y-0.5">
+            {departureDateLabel ? (
+              <p className="font-semibold text-slate-800">{departureDateLabel}</p>
             ) : null}
-          </p>
+            <p className="font-medium text-slate-800">
+              <span className="text-slate-500">선택 출발일</span>
+              {" · "}
+              {selectedDeparture!.label}
+              {selectedDeparture!.price != null && selectedDeparture!.price > 0 ? (
+                <span className="text-[var(--primary)]">
+                  {" · "}
+                  {selectedDeparture!.price.toLocaleString("ko-KR")}원
+                </span>
+              ) : null}
+            </p>
+          </div>
         ) : (
           <p className="font-medium text-amber-700">출발일을 선택해 주세요.</p>
         )

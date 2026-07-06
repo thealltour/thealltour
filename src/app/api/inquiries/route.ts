@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
+import { normalizePointsUseRequested, validateInquiryPointsUse } from "@/lib/inquiry/inquiryPointsUse";
 import { LANDING_ANALYTICS_UNATTRIBUTED_SLUG } from "@/lib/adminLandings/analyticsConstants";
 import { notifyInquiryCreated } from "@/lib/notifications";
 import { createNewInquiryNotification } from "@/lib/adminNotifications";
@@ -503,9 +506,36 @@ export async function POST(request: Request) {
   const quoteSnapshotBody = body.quote_snapshot;
   const firstTouch = body.first_touch;
   const inquiryPageUrl = body.inquiry_page_url?.trim();
+  const pointsUseRequested = normalizePointsUseRequested(body.points_use_requested);
 
   if (!name || !phone) {
     return NextResponse.json({ message: "이름과 연락처를 입력해 주세요." }, { status: 400 });
+  }
+
+  const cookieStore = await cookies();
+  const memberSession = getMemberSessionFromCookies(cookieStore);
+  let memberPointBalance: number | null = null;
+
+  if (pointsUseRequested > 0) {
+    if (!memberSession) {
+      return NextResponse.json({ message: "포인트 사용은 로그인 후 가능합니다." }, { status: 401 });
+    }
+    const { data: memberRow, error: memberErr } = await supabaseAdmin
+      .from("members")
+      .select("point_balance")
+      .eq("id", memberSession.memberId)
+      .maybeSingle();
+    if (memberErr || !memberRow) {
+      return NextResponse.json({ message: "회원 포인트 정보를 확인할 수 없습니다." }, { status: 500 });
+    }
+    memberPointBalance = Number((memberRow as { point_balance?: number }).point_balance ?? 0);
+    const validation = validateInquiryPointsUse({
+      pointsUseRequested,
+      pointBalance: memberPointBalance,
+    });
+    if (!validation.ok) {
+      return NextResponse.json({ message: validation.message }, { status: 400 });
+    }
   }
 
   const hasOptionPayload =
@@ -557,6 +587,12 @@ export async function POST(request: Request) {
     }
   }
 
+  if (pointsUseRequested > 0 && memberPointBalance != null) {
+    if (!quoteSnapshot) quoteSnapshot = {};
+    quoteSnapshot.pointsUseRequested = pointsUseRequested;
+    quoteSnapshot.pointsBalanceAtSubmit = memberPointBalance;
+  }
+
   const contentValue = content ?? "";
   const insertPayload: Record<string, unknown> = {
     name,
@@ -566,6 +602,9 @@ export async function POST(request: Request) {
     product_title: productTitle || null,
     source_path: sourcePath || null,
   };
+  if (memberSession) {
+    insertPayload.member_id = memberSession.memberId;
+  }
   if (quoteSnapshot) {
     insertPayload.quote_snapshot = quoteSnapshot;
   }

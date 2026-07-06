@@ -13,12 +13,11 @@ const USAGE_STEPS = [
     ].join("\n"),
   },
   {
-    title: "2. API 주소 설정 (운영 사용 시)",
+    title: "2. API 주소",
     body: [
-      "기본값은 `http://localhost:3000` 입니다.",
-      "운영 도메인 사용 시 Chrome 개발자 도구 → Application → Extension storage에서 `apiBaseUrl`을 `https://thealltour.com`으로 설정하세요.",
-      "또는 익스텐션 Service Worker 콘솔에서:",
-      'chrome.storage.sync.set({ apiBaseUrl: "https://thealltour.com" });',
+      "관리자에서 다운로드한 ZIP 설치 시 API 주소는 `https://thealltour.com`으로 자동 설정됩니다.",
+      "로컬에서 `tools/thealltour_extension` 폴더를 압축 해제 로드하면 기본값은 `http://localhost:3000` 입니다.",
+      "다른 도메인을 쓸 때만 Extension storage의 `apiBaseUrl`을 수동 변경하세요.",
     ].join("\n"),
   },
   {
@@ -35,7 +34,6 @@ const USAGE_STEPS = [
     body: [
       "401 오류: 관리자 로그인 후 다시 시도하세요.",
       "이미 등록된 URL: 기존 상품 ID가 alert로 안내됩니다.",
-      "익스텐션 없이 테스트: 관리자 → 상품 → 상품 등록(WEB) 메뉴에서 동일 API를 수동 호출할 수 있습니다.",
     ].join("\n"),
   },
 ] as const;

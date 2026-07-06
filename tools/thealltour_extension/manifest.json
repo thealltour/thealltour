@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "thealltour_extension",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "하나투어·모두투어 상세 페이지를 수집해 더올투어 관리자에 등록합니다.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [

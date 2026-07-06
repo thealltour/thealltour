@@ -65,6 +65,8 @@ export default function GlobalSiteFooter() {
     return null;
   }
 
+  const isGolfAdLanding = pathname.startsWith("/golf/ads");
+
   const companyName = settings?.company_name ?? "(주)더올투어";
   const ceoName = settings?.ceo_name ?? "김지호";
   const address = settings?.address ?? "경기도 고양시 덕양구 용현로 27, 407호(행신동, 행신프라자)";
@@ -95,7 +97,12 @@ export default function GlobalSiteFooter() {
     "flex min-h-[44px] h-full w-full min-w-0 shrink-0 items-center justify-center gap-1.5 px-1.5 py-1 text-center";
 
   return (
-    <footer className="border-t border-[var(--divider)] bg-[var(--surface-muted)] text-[var(--foreground)]">
+    <footer
+      className={cn(
+        "border-t border-[var(--divider)] bg-[var(--surface-muted)] text-[var(--foreground)]",
+        isGolfAdLanding && "pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))]",
+      )}
+    >
       <PageContainer size="wide">
         {/* 본문: 브랜드·회사정보 | 연락·액션 */}
         <div className="border-b border-[var(--divider)] py-5 sm:py-7 md:py-8">

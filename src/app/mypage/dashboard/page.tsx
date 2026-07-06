@@ -1,4 +1,5 @@
 import MyPageLayout from "@/components/mypage/MyPageLayout";
+import WelcomeKakaoPointsToast from "@/components/mypage/WelcomeKakaoPointsToast";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
 import { MyPageList, MyPageListItem } from "@/components/mypage/ui/MyPageListItem";
@@ -6,6 +7,7 @@ import { MyPageStatCard, MyPageStatGrid } from "@/components/mypage/ui/MyPageSta
 import { MyPageStatusBadge } from "@/components/mypage/ui/MyPageStatusBadge";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Suspense } from "react";
 import { getMemberPointsData, getMemberRedemptionList } from "@/lib/member/meServerData";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getMyPageReviewSections } from "@/lib/mypageReviews";
@@ -34,6 +36,9 @@ export default async function MyPageDashboardPage() {
 
   return (
     <MyPageLayout title="마이페이지 대시보드" description="회원 활동 요약을 확인할 수 있습니다.">
+      <Suspense fallback={null}>
+        <WelcomeKakaoPointsToast />
+      </Suspense>
       <div className="space-y-6">
         <MyPageStatGrid>
           <MyPageStatCard

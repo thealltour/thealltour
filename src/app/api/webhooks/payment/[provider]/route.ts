@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
+import { confirmPortOneBookingPayment } from "@/lib/payments/confirmPortOneBookingPayment";
 
-/** PG webhook placeholder — 실제 PG 연동 시 provider별 서명 검증 후 booking_payments 반영 */
+/** PG webhook — provider=portone 은 전용 라우트 사용 권장 */
 export async function POST(
   request: Request,
   context: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await context.params;
+
+  if (provider === "portone") {
+    const { POST: portonePost } = await import("@/app/api/webhooks/payment/portone/route");
+    return portonePost(request);
+  }
+
   let body: unknown;
   try {
     body = await request.json();

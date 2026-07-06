@@ -43,6 +43,10 @@ export default function KakaoFloatingButton() {
     return null;
   }
 
+  if (pathname.startsWith("/golf/ads")) {
+    return null;
+  }
+
   if (isProductDetailPage) {
     return null;
   }

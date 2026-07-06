@@ -15,19 +15,13 @@
 
 1. **관리자 로그인**: 동일 브라우저에서 `http://localhost:3000/theall_manager_only/login` (또는 운영 도메인)에 로그인
 2. **API 서버 실행**: `npm run dev` (로컬) 또는 운영 배포 URL
-3. **OPENAI_API_KEY**: 서버 `.env`에 설정
+3. **OPENAI_API_KEY**: 서버 `.env`에 설정 (Vercel `OPENAI_API_KEY`)
 
-## API Base URL 설정 (운영)
+## API Base URL
 
-기본값: `http://localhost:3000`
-
-운영 사용 시 Chrome 개발자 도구 → Application → Extension storage → `apiBaseUrl` = `https://thealltour.com`
-
-또는 Service Worker 콘솔에서:
-
-```js
-chrome.storage.sync.set({ apiBaseUrl: "https://thealltour.com" });
-```
+- **ZIP 설치(운영)**: 기본값 `https://thealltour.com` — 별도 설정 불필요
+- **압축 해제 로드(로컬 개발)**: 기본값 `http://localhost:3000`
+- 다른 URL이 필요할 때만 Extension storage의 `apiBaseUrl`을 수동 변경
 
 ## 사용법
 
@@ -44,10 +38,6 @@ npm run package
 # 또는 루트에서
 npm run extensions:package:local -- --slug=thealltour-extension
 ```
-
-## 관리자 UI (테스트)
-
-익스텐션 없이 **상품 → 상품 등록(WEB)** 메뉴에서 동일 API를 수동 호출할 수 있습니다.
 
 ## 레거시 익스텐션
 

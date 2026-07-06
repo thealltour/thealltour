@@ -12,6 +12,7 @@ import GlobalSiteFooter from "@/components/site-chrome/GlobalSiteFooter";
 import KakaoFloatingButton from "@/components/site-chrome/KakaoFloatingButton";
 import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
 import AuthProvidersShell from "@/components/auth/AuthProvidersShell";
+import SiteToastProvider from "@/components/site-chrome/SiteToastProvider";
 import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 
@@ -127,13 +128,15 @@ export default function RootLayout({
       <body className="site-public flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-[color:color-mix(in_oklab,var(--primary)_18%,white)] selection:text-foreground">
         <FirstTouchInit />
         {process.env.NODE_ENV === "development" ? <WebVitalsReporter /> : null}
-        <ConsultModalProvider>
-          <AuthProvidersShell>
-            <div className="flex-1">{children}</div>
-            <KakaoFloatingButton />
-            <GlobalSiteFooter />
-          </AuthProvidersShell>
-        </ConsultModalProvider>
+        <SiteToastProvider>
+          <ConsultModalProvider>
+            <AuthProvidersShell>
+              <div className="flex-1">{children}</div>
+              <KakaoFloatingButton />
+              <GlobalSiteFooter />
+            </AuthProvidersShell>
+          </ConsultModalProvider>
+        </SiteToastProvider>
       </body>
     </html>
   );

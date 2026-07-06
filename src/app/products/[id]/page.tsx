@@ -26,6 +26,7 @@ import { getProductByIdFresh, getProducts } from "@/lib/products";
 import { getRelatedProducts } from "@/lib/products/getRelatedProducts";
 import { getGuidesByDestinationId } from "@/lib/guides";
 import { getProductReviewStats, getProductReviews } from "@/lib/reviewStats";
+import { isPortOneEnabled } from "@/lib/payments/portone/config";
 import { buildProductReviewJsonLd } from "@/lib/seo/products";
 import { addTrustScoresToReviews } from "@/lib/reviewTrustScore";
 import {
@@ -267,6 +268,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                     product={product}
                     overviewFallbackUrl={product.image_url}
                     reviewSummary={productReviewStats.reviewCount > 0 ? { averageRating: productReviewStats.averageRating, reviewCount: productReviewStats.reviewCount } : undefined}
+                    portOneEnabled={isPortOneEnabled()}
                   />
                 </div>
               </section>

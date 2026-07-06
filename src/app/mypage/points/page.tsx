@@ -1,4 +1,5 @@
 import MyPageLayout from "@/components/mypage/MyPageLayout";
+import WelcomeKakaoPointsToast from "@/components/mypage/WelcomeKakaoPointsToast";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
 import { MyPageList, MyPageListItem } from "@/components/mypage/ui/MyPageListItem";
@@ -7,6 +8,7 @@ import { MyPageStatusBadge } from "@/components/mypage/ui/MyPageStatusBadge";
 import { buttonVariants } from "@/components/ui/Button";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Suspense } from "react";
 import { cn } from "@/lib/cn";
 import { getMemberPointsData } from "@/lib/member/meServerData";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
@@ -32,6 +34,9 @@ export default async function MyPagePointsPage() {
 
   return (
     <MyPageLayout title="포인트" description="잔액 및 포인트 내역을 확인할 수 있습니다.">
+      <Suspense fallback={null}>
+        <WelcomeKakaoPointsToast />
+      </Suspense>
       <div className="space-y-6">
         <MyPageStatGrid>
           <MyPageStatCard label="포인트 잔액" value={`${Number(data?.balance ?? 0).toLocaleString()}P`} />

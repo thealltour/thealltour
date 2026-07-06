@@ -54,5 +54,11 @@ export type MemberRowForAuth = {
 };
 
 export type OAuthCallbackResult =
-  | { type: "session"; member: MemberRowForAuth; next: string; needsProfile: boolean }
+  | {
+      type: "session";
+      member: MemberRowForAuth;
+      next: string;
+      needsProfile: boolean;
+      kakaoWelcomeGranted?: boolean;
+    }
   | { type: "link_account"; pendingId: string; email: string; provider: AuthProviderId };

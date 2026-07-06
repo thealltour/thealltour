@@ -221,6 +221,8 @@ export type QuoteSnapshot = {
   inquiredAt?: string;
   desiredDeparture?: DesiredDepartureSnapshot;
   golf_brief?: Record<string, string>;
+  pointsUseRequested?: number;
+  pointsBalanceAtSubmit?: number;
 };
 
 export type InquiryInput = {
@@ -248,4 +250,6 @@ export type InquiryInput = {
   inquiry_page_url?: string | null;
   /** 견적/골프 브리프 등 구조화 스냅샷 */
   quote_snapshot?: QuoteSnapshot | null;
+  /** 로그인 회원 빠른문의 시 포인트 사용 요청 (원) */
+  points_use_requested?: number;
 };

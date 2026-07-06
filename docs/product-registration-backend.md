@@ -132,7 +132,7 @@ sequenceDiagram
 | `POST` | `/api/admin/modetour/normalize-import-images` | 모두투어 import 이미지 정규화 |
 | `POST` | `/api/admin/hanatour/normalize-import-images` | 하나투어 import 이미지 정규화 |
 | `POST` | `/api/admin/products/import-band` | 밴드/HWP 텍스트 **gpt-4o-mini 2패스** AI 파싱(메타+일정) 후 상품 insert |
-| `POST` | `/api/admin/products/import-external` | 하나/모두 WEB dumb-pipe AI import (익스텐션·상품 등록 WEB) |
+| `POST` | `/api/admin/products/import-external` | 하나/모두 통합 익스텐션 AI import (OpenAI gpt-4o-mini) |
 
 Import UI는 `buildProductCreateBody()`로 payload를 만든 뒤 `createAdminProduct()` → `POST /api/admin/products`를 호출합니다.
 
@@ -398,3 +398,53 @@ UI 폼 전용. API와 차이:
 
 - 상단 **임시 저장본** 배너가 있으면 복원하지 말고 삭제 후 재시도
 - `images_json` 컬럼 없음: 응답 `IMAGES_JSON_NOT_PERSISTED`
+
+---
+
+## 9. 상품 상세 달력 예약 (`calendar_booking`)
+
+일반 상품(시즌 구간가·promotion 캠페인 **아님**)은 상세 페이지에서 **홈 골프 달력과 동일한 출발일 UI**를 사용합니다.
+
+| UX 모드 | 조건 | 출발일 UI |
+|---------|------|-----------|
+| `seasonal_consult` | `seasonal_price_bands` 존재 | 기존 Hero 구간가, 달력 미노출 |
+| `promotion_fixed` | `campaign_card_meta.isPromotionCampaign` + 출발일 데이터 | 기존 칩 UI |
+| `calendar_booking` | 그 외 | `ProductDepartureCalendarPanel` |
+
+**달력 dot 표시 조건:** [`collectProductDepartureDates`](../src/lib/products/productDepartureDates.ts) 기준 출발 가능일이 1건 이상 등록되어 있어야 합니다.
+
+관리자 입력 경로:
+
+- **출발일 스케줄:** `departure_schedules_json` (여행 정보 탭 출발일 스케줄 테이블)
+- **레거시:** `departures[]`, `departure_from_date` / `departure_to_date`
+- **옵션:** `products.options` JSON (`options.groups` 있으면 옵션 섹션 노출)
+
+출발일 없이 옵션만 있는 상품은 옵션 패널만 노출되며, 달력 영역은 empty-state + 상담 CTA가 표시됩니다.
+
+### 9.1 달력·예약금이 안 보일 때 (트러블슈팅)
+
+**env(`PORTONE_*`) 미설정은 UI 숨김 원인이 아닙니다.** PortOne 키는 결제 버튼 클릭 시 prepare API에만 영향을 줍니다(미설정 시 503).
+
+| 증상 | 원인 | 조치 |
+|------|------|------|
+| 달력·예약금 둘 다 없음 | `seasonal_price_bands` 있음 → `seasonal_consult` | **정상.** 시즌 상품은 Hero 구간가 + 상담. 달력이 필요하면 구간가 제거 |
+| 달력 없음, 칩만 있음 | `promotion_fixed` (특가 캠페인 + 출발일) | **정상.** 예약금 CTA는 `calendar_booking` 전용 |
+| 패널 자체 없음 | 출발일·옵션 데이터 모두 없음 | `departure_schedules_json` 또는 `options` 등록 |
+| 예약금 CTA 없음 (일반 상품) | 출발일 미선택 | Summary 아래 **「예약금 결제」** 블록에서 안내 확인 후 달력에서 날짜 선택 |
+
+**진단 스크립트** (로컬 `.env.local` Supabase 키 사용):
+
+```bash
+npx tsx scripts/diagnose-product-booking-ux.ts [productId ...]
+```
+
+출력: `bookingUxMode`, `calendarDepartureCount`, `showDepositSection`, `uiExpectation`
+
+### 9.2 일반 상품(calendar_booking)으로 전환하려면
+
+1. 관리자 → 상품 편집 → **시즌 구간가(`seasonal_price_bands`) 제거** (밴드 import 상품은 보통 여기 해당)
+2. promotion 캠페인 해제 (특가 칩 UI 방지)
+3. 여행 정보 → **출발일 스케줄** (`departure_schedules_json`) 등록
+4. (선택) `options` JSON으로 추가 옵션 구성
+
+구현: [`resolveProductBookingUx.ts`](../src/lib/products/resolveProductBookingUx.ts), [`ProductDepartureCalendarPanel.tsx`](../src/components/products/ProductDepartureCalendarPanel.tsx), [`diagnoseProductBookingUx.ts`](../src/lib/products/diagnoseProductBookingUx.ts)

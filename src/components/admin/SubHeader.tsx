@@ -193,10 +193,6 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         router.push("/theall_manager_only/products/new-band");
         return;
       }
-      if (label === "상품 등록(WEB)") {
-        router.push("/theall_manager_only/products/new-web");
-        return;
-      }
       const view = mapProductLabelToView(label);
       const params = new URLSearchParams(searchParams.toString());
       if (view) {
@@ -208,8 +204,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       const basePath =
         pathname.includes("/products/new-modetour") ||
         pathname.includes("/products/new-hanatour") ||
-        pathname.includes("/products/new-band") ||
-        pathname.includes("/products/new-web")
+        pathname.includes("/products/new-band")
           ? "/theall_manager_only/products"
           : pathname;
       const target = query ? `${basePath}?${query}` : basePath;
@@ -290,6 +285,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       return;
     }
     if (activeMenu === "landings") {
+      if (label === "모바일 골프 랜딩") {
+        router.push("/theall_manager_only/landings/mobile-golf-ads");
+        return;
+      }
       if (label === "taxonomy 기반 생성") {
         router.push("/theall_manager_only/landings/generate-from-taxonomy");
         return;

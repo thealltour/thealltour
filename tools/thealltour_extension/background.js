@@ -1,10 +1,32 @@
-const DEFAULT_API_BASE = "http://localhost:3000";
+const PRODUCTION_API_BASE = "https://thealltour.com";
+const LOCAL_API_BASE = "http://localhost:3000";
+
+async function resolveDefaultApiBaseUrl() {
+  try {
+    const self = await chrome.management.getSelf();
+    if (self.installType === "development") {
+      return LOCAL_API_BASE;
+    }
+  } catch {
+    /* ignore */
+  }
+  return PRODUCTION_API_BASE;
+}
 
 async function getApiBaseUrl() {
   const stored = await chrome.storage.sync.get(["apiBaseUrl"]);
   const value = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl.trim() : "";
-  return value || DEFAULT_API_BASE;
+  if (value) return value;
+  return resolveDefaultApiBaseUrl();
 }
+
+chrome.runtime.onInstalled.addListener(async () => {
+  const stored = await chrome.storage.sync.get(["apiBaseUrl"]);
+  const value = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl.trim() : "";
+  if (value) return;
+  const apiBaseUrl = await resolveDefaultApiBaseUrl();
+  await chrome.storage.sync.set({ apiBaseUrl });
+});
 
 async function notifyTab(tabId, message) {
   if (!tabId) return;

@@ -84,8 +84,12 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
   const hasDesiredDeparture = Boolean(
     snapshot.desiredDeparture?.flexible || snapshot.desiredDeparture?.date?.trim(),
   );
+  const hasPointsUse =
+    typeof snapshot.pointsUseRequested === "number" && snapshot.pointsUseRequested > 0;
 
-  if (!hasOptions && !hasSummary && !snapshot.inquiredAt && !hasDesiredDeparture) return null;
+  if (!hasOptions && !hasSummary && !snapshot.inquiredAt && !hasDesiredDeparture && !hasPointsUse) {
+    return null;
+  }
 
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm">
@@ -132,6 +136,17 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
           {snapshot.quoteSummary.total != null ? (
             <p className="font-semibold text-[var(--text-primary)]">예상 합계: {formatPrice(snapshot.quoteSummary.total)}</p>
           ) : null}
+        </div>
+      ) : null}
+      {hasPointsUse ? (
+        <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[var(--text-secondary)]">
+          <p className="font-semibold text-emerald-800">포인트 사용 요청</p>
+          <p>
+            요청: {Number(snapshot.pointsUseRequested).toLocaleString("ko-KR")}P
+            {typeof snapshot.pointsBalanceAtSubmit === "number"
+              ? ` · 제출 시 보유: ${Number(snapshot.pointsBalanceAtSubmit).toLocaleString("ko-KR")}P`
+              : ""}
+          </p>
         </div>
       ) : null}
       {snapshot.inquiredAt ? (

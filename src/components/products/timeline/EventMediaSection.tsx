@@ -78,6 +78,29 @@ export type EventMediaSectionProps = {
 
 const COMPACT_MAX = 5;
 
+/** 이미지 장수·뷰포트에 맞춰 슬라이드 폭 조절 (모바일 2장 노출, 데스크톱 3~4장) */
+function getCompactSlideClass(count: number): string {
+  const base =
+    "relative aspect-[4/3] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] shadow-sm transition hover:border-[var(--primary)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2";
+
+  if (count === 1) {
+    return `${base} w-full max-w-sm sm:max-w-md`;
+  }
+  if (count === 2) {
+    return `${base} w-[calc(50%-0.25rem)]`;
+  }
+  if (count === 3) {
+    return `${base} w-[calc(33.333%-0.34rem)] min-w-[6.5rem]`;
+  }
+  return `${base} w-[min(48vw,11rem)] sm:w-[min(36vw,12.5rem)] md:w-[min(28vw,13.5rem)] lg:w-[min(22vw,14rem)]`;
+}
+
+function compactImageSizes(count: number): string {
+  if (count <= 2) return "(max-width: 640px) 50vw, 280px";
+  if (count === 3) return "(max-width: 640px) 33vw, 240px";
+  return "(max-width: 640px) 48vw, (max-width: 1024px) 36vw, 216px";
+}
+
 export function EventMediaSection({
   images,
   normalizeUrl,
@@ -94,9 +117,11 @@ export function EventMediaSection({
   if (variant === "compact") {
     const thumbnails = inOrder.slice(0, COMPACT_MAX);
     const canOpenLightbox = typeof onOpenLightbox === "function";
+    const slideClass = getCompactSlideClass(thumbnails.length);
+    const imageSizes = compactImageSizes(thumbnails.length);
 
     return (
-      <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+      <div className="scrollbar-hide -mx-0.5 flex w-full snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [touch-action:pan-x]">
         {thumbnails.map((img, idx) => {
           const thumb = (
             <ImageWithFallback
@@ -104,7 +129,7 @@ export function EventMediaSection({
               alt={img.alt ?? `${eventTitle} 이미지 ${idx + 1}`}
               fill
               className="object-cover"
-              sizes="112px"
+              sizes={imageSizes}
               unoptimized
             />
           );
@@ -113,16 +138,13 @@ export function EventMediaSection({
               key={`${img.url}-${idx}`}
               type="button"
               onClick={(e) => onOpenLightbox(idx, e.currentTarget)}
-              className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] shadow-sm transition hover:border-[var(--primary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+              className={slideClass}
               aria-label={`${eventTitle} 이미지 ${idx + 1} 크게 보기`}
             >
               {thumb}
             </button>
           ) : (
-            <div
-              key={`${img.url}-${idx}`}
-              className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] shadow-sm"
-            >
+            <div key={`${img.url}-${idx}`} className={slideClass}>
               {thumb}
             </div>
           );

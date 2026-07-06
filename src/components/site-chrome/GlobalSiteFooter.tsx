@@ -65,7 +65,8 @@ export default function GlobalSiteFooter() {
     return null;
   }
 
-  const isGolfAdLanding = pathname.startsWith("/golf/ads");
+  const isGolfAdLanding =
+    pathname.startsWith("/golf/ads") || pathname.startsWith("/golf/kakao-sync");
 
   const companyName = settings?.company_name ?? "(주)더올투어";
   const ceoName = settings?.ceo_name ?? "김지호";

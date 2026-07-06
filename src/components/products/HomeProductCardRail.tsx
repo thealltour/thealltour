@@ -19,6 +19,7 @@ export type HomeProductCardRailProps = {
   analyticsSection?: string;
   listAriaLabel?: string;
   className?: string;
+  priceDisplay?: "default" | "coinBenefit";
 };
 
 /**
@@ -29,6 +30,7 @@ export function HomeProductCardRail({
   analyticsSection,
   listAriaLabel = "추천 상품",
   className,
+  priceDisplay = "default",
 }: HomeProductCardRailProps) {
   const scrollRef = useRef<HTMLUListElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -95,6 +97,7 @@ export function HomeProductCardRail({
               variant="rail"
               className="h-full min-h-0 w-full"
               analyticsSection={analyticsSection}
+              priceDisplay={priceDisplay}
             />
           </li>
         ))}

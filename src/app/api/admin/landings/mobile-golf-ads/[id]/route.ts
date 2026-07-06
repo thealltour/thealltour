@@ -51,8 +51,7 @@ export async function PATCH(
       title: body.title ?? existing.title,
       slug: body.slug ?? existing.slug,
       heroImageUrl: body.heroImageUrl ?? existing.heroImageUrl,
-      benefitText: body.benefitText ?? existing.benefitText,
-      trustActionText: body.trustActionText ?? existing.trustActionText,
+      bodyDoc: body.bodyDoc ?? existing.bodyDoc,
       seoTitle: body.seoTitle !== undefined ? body.seoTitle : existing.seoTitle,
       seoDescription:
         body.seoDescription !== undefined ? body.seoDescription : existing.seoDescription,

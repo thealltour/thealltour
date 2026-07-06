@@ -43,7 +43,7 @@ export default function KakaoFloatingButton() {
     return null;
   }
 
-  if (pathname.startsWith("/golf/ads")) {
+  if (pathname.startsWith("/golf/ads") || pathname.startsWith("/golf/kakao-sync")) {
     return null;
   }
 

@@ -22,6 +22,7 @@ import {
   getSeasonalCardMainLineFull,
   SEASONAL_CARD_SUBLINE,
 } from "@/lib/products/productCardSeasonalPriceDisplay";
+import { KAKAO_SYNC_COIN_BENEFIT_WON } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
 import {
   pickProductCardHighlightTag,
   PRODUCT_CARD_HIGHLIGHT_LABELS,
@@ -36,6 +37,8 @@ export type HomeProductCardProps = {
   analyticsSection?: string;
   /** grid: 기존(모바일 16:9). rail: 레일 전용 4:3 고정 */
   variant?: "grid" | "rail";
+  /** coinBenefit: 정가(취소선) + 회원가 2줄 — 카카오싱크 랜딩 전용 */
+  priceDisplay?: "default" | "coinBenefit";
 };
 
 const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/thealltour-home-card/800/600";
@@ -66,6 +69,7 @@ export function HomeProductCard({
   className,
   analyticsSection,
   variant = "grid",
+  priceDisplay = "default",
 }: HomeProductCardProps) {
   const resolvedHref = (href?.trim() || `/products/${product.id}`).trim();
   const titleText = product.title?.trim() || "상품";
@@ -115,6 +119,25 @@ export function HomeProductCard({
   const priceFormatted = hasNumericPrice ? formatPriceKR(price) : null;
   const priceMetaLine = product.price_meta?.trim() || "1인 기준";
   const seasonalBandInfo = getProductCardSeasonalBandInfo(product.seasonal_price_bands);
+
+  const listPriceWon = (() => {
+    if (seasonalBandInfo && product.seasonal_price_bands) {
+      const bands = product.seasonal_price_bands;
+      return seasonalBandInfo.hasOffSeason ? bands.offSeason! : seasonalBandInfo.min;
+    }
+    if (hasNumericPrice) return price!;
+    return null;
+  })();
+
+  const memberPriceWon =
+    listPriceWon != null
+      ? Math.max(0, listPriceWon - KAKAO_SYNC_COIN_BENEFIT_WON)
+      : null;
+
+  const coinBenefitListPriceFormatted =
+    listPriceWon != null ? formatPriceKR(listPriceWon) : null;
+  const coinBenefitMemberPriceFormatted =
+    memberPriceWon != null && memberPriceWon > 0 ? formatPriceKR(memberPriceWon) : null;
 
   const regionLabel =
     product.overview_region?.trim() ||
@@ -246,7 +269,25 @@ export function HomeProductCard({
         ) : null}
 
         <div className="mt-auto border-t border-[var(--border)]/60 pt-1.5 sm:border-0 sm:pt-1">
-          {seasonalBandInfo && product.seasonal_price_bands ? (
+          {priceDisplay === "coinBenefit" && coinBenefitMemberPriceFormatted ? (
+            <>
+              <p className="text-sm leading-tight text-slate-400 tabular-nums line-through">
+                정가 ₩{coinBenefitListPriceFormatted}
+              </p>
+              <p className="mt-0.5 text-lg font-extrabold leading-tight text-slate-900 tabular-nums sm:text-xl">
+                회원가 ₩{coinBenefitMemberPriceFormatted}~
+              </p>
+              {seasonalBandInfo && product.seasonal_price_bands ? (
+                <p className="mt-0.5 text-xs leading-tight text-[var(--text-muted)] sm:text-sm">
+                  {SEASONAL_CARD_SUBLINE}
+                </p>
+              ) : priceMetaLine ? (
+                <p className="mt-0.5 text-xs leading-tight text-[var(--text-muted)] sm:text-sm">
+                  {priceMetaLine}
+                </p>
+              ) : null}
+            </>
+          ) : seasonalBandInfo && product.seasonal_price_bands ? (
             <>
               <p className="line-clamp-2 text-sm font-bold leading-tight text-[var(--primary)] tabular-nums sm:text-base sm:leading-snug md:text-lg">
                 {getSeasonalCardMainLineFull(product.seasonal_price_bands, seasonalBandInfo)}

@@ -1,22 +1,36 @@
 "use client";
 
-import Link from "next/link";
 import { buttonVariants } from "@/components/ui/Button";
+import { MobileGolfAdBodyRenderer } from "@/components/mobile-golf-ads/MobileGolfAdBodyRenderer";
 import { MobileGolfAdViewTracker } from "@/components/mobile-golf-ads/MobileGolfAdViewTracker";
-import type { MobileGolfAdLanding } from "@/lib/adminMobileGolfAds/types";
+import {
+  MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL,
+  type MobileGolfAdLanding,
+} from "@/lib/adminMobileGolfAds/types";
 import { buildMobileGolfAdPublicPath } from "@/lib/adminMobileGolfAds/types";
+import type { Product } from "@/types/product";
 
 export type MobileGolfAdPageProps = {
   landing: MobileGolfAdLanding;
+  productsById?: Map<string, Product>;
+  homeGolfProducts?: Product[];
+  /** 미리보기 모드 — 트래커 비활성화 */
+  previewMode?: boolean;
 };
 
-export function MobileGolfAdPage({ landing }: MobileGolfAdPageProps) {
+export function MobileGolfAdPage({
+  landing,
+  productsById,
+  homeGolfProducts,
+  previewMode = false,
+}: MobileGolfAdPageProps) {
   const sourcePath = buildMobileGolfAdPublicPath(landing.slug);
-  const kakaoHref = `/api/auth/kakao/start?next=${encodeURIComponent("/mypage")}`;
 
   return (
     <>
-      <MobileGolfAdViewTracker slug={landing.slug} sourcePath={sourcePath} />
+      {!previewMode ? (
+        <MobileGolfAdViewTracker slug={landing.slug} sourcePath={sourcePath} />
+      ) : null}
       <main className="w-full bg-white">
         <section aria-label="Hero">
           {/* eslint-disable-next-line @next/next/no-img-element -- CMS 업로드 원본 비율 유지 */}
@@ -29,22 +43,16 @@ export function MobileGolfAdPage({ landing }: MobileGolfAdPageProps) {
           />
         </section>
 
-        <section aria-label="Benefit" className="w-full py-5">
-          <p className="whitespace-pre-wrap break-words text-[clamp(0.9375rem,4vw,1.0625rem)] font-bold leading-relaxed text-slate-900">
-            {landing.benefitText}
-          </p>
-        </section>
-
-        <section aria-label="Trust and Action" className="w-full border-t border-slate-100 py-5">
-          <p className="whitespace-pre-wrap break-words text-[clamp(0.8125rem,3.6vw,0.9375rem)] leading-relaxed text-slate-700">
-            {landing.trustActionText}
-          </p>
-        </section>
+        <MobileGolfAdBodyRenderer
+          bodyDoc={landing.bodyDoc}
+          productsById={productsById}
+          homeGolfProducts={homeGolfProducts}
+        />
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-50 w-full pb-[env(safe-area-inset-bottom,0px)]">
-        <Link
-          href={kakaoHref}
+        <a
+          href={MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL}
           className={buttonVariants({
             variant: "kakao",
             size: "lg",
@@ -52,7 +60,7 @@ export function MobileGolfAdPage({ landing }: MobileGolfAdPageProps) {
           })}
         >
           간편 가입하기
-        </Link>
+        </a>
       </div>
     </>
   );

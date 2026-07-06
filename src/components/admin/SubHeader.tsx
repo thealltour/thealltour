@@ -285,6 +285,10 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       return;
     }
     if (activeMenu === "landings") {
+      if (label === "하드코딩 랜딩") {
+        router.push("/theall_manager_only/landings/hardcoded");
+        return;
+      }
       if (label === "모바일 골프 랜딩") {
         router.push("/theall_manager_only/landings/mobile-golf-ads");
         return;

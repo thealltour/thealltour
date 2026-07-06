@@ -1,3 +1,31 @@
+import type { MobileGolfAdBodyDoc } from "@/lib/adminMobileGolfAds/bodyDoc";
+import {
+  deriveLegacyFieldsFromBodyDoc,
+  deriveStyleConfigFromBodyDoc,
+  resolveMobileGolfAdBodyDoc,
+} from "@/lib/adminMobileGolfAds/bodyDoc";
+
+export type MobileGolfAdFontSize = "sm" | "md" | "lg";
+
+export type MobileGolfAdSectionStyle = {
+  fontSize: MobileGolfAdFontSize;
+  accentColor: string | null;
+  roundBox: boolean;
+};
+
+export type MobileGolfAdStyleConfig = {
+  benefit: MobileGolfAdSectionStyle;
+  trust: MobileGolfAdSectionStyle;
+};
+
+export const DEFAULT_MOBILE_GOLF_AD_STYLE_CONFIG: MobileGolfAdStyleConfig = {
+  benefit: { fontSize: "md", accentColor: "#0f172a", roundBox: false },
+  trust: { fontSize: "sm", accentColor: "#334155", roundBox: false },
+};
+
+export const MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL =
+  "https://kauth.kakao.com/oauth/authorize?client_id=79baf477d28606e808c53468c82aea74&redirect_uri=https://thealltour.com/api/auth/kakao/callback&response_type=code";
+
 export type MobileGolfAdLandingRow = {
   id: string;
   title: string;
@@ -8,6 +36,8 @@ export type MobileGolfAdLandingRow = {
   is_published: boolean;
   seo_title: string | null;
   seo_description: string | null;
+  style_config: MobileGolfAdStyleConfig | Record<string, unknown> | null;
+  body_doc: MobileGolfAdBodyDoc | Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -17,11 +47,16 @@ export type MobileGolfAdLanding = {
   title: string;
   slug: string;
   heroImageUrl: string;
+  bodyDoc: MobileGolfAdBodyDoc;
+  /** @deprecated legacy — derived from bodyDoc */
   benefitText: string;
+  /** @deprecated legacy — derived from bodyDoc */
   trustActionText: string;
   isPublished: boolean;
   seoTitle: string | null;
   seoDescription: string | null;
+  /** @deprecated legacy — derived from bodyDoc */
+  styleConfig: MobileGolfAdStyleConfig;
   createdAt: string;
   updatedAt: string;
 };
@@ -30,8 +65,7 @@ export type MobileGolfAdLandingInput = {
   title: string;
   slug: string;
   heroImageUrl: string;
-  benefitText: string;
-  trustActionText: string;
+  bodyDoc: MobileGolfAdBodyDoc;
   seoTitle?: string | null;
   seoDescription?: string | null;
 };
@@ -41,17 +75,62 @@ export type MobileGolfAdLandingListItem = Pick<
   "id" | "title" | "slug" | "isPublished" | "updatedAt"
 >;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseSectionStyle(
+  raw: unknown,
+  fallback: MobileGolfAdSectionStyle,
+): MobileGolfAdSectionStyle {
+  if (!isRecord(raw)) return { ...fallback };
+  const fontSize = raw.fontSize === "sm" || raw.fontSize === "md" || raw.fontSize === "lg"
+    ? raw.fontSize
+    : fallback.fontSize;
+  const accentColor =
+    typeof raw.accentColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.accentColor)
+      ? raw.accentColor
+      : raw.accentColor === null
+        ? null
+        : fallback.accentColor;
+  const roundBox = typeof raw.roundBox === "boolean" ? raw.roundBox : fallback.roundBox;
+  return { fontSize, accentColor, roundBox };
+}
+
+export function parseMobileGolfAdStyleConfig(raw: unknown): MobileGolfAdStyleConfig {
+  if (!isRecord(raw)) {
+    return {
+      benefit: { ...DEFAULT_MOBILE_GOLF_AD_STYLE_CONFIG.benefit },
+      trust: { ...DEFAULT_MOBILE_GOLF_AD_STYLE_CONFIG.trust },
+    };
+  }
+  return {
+    benefit: parseSectionStyle(raw.benefit, DEFAULT_MOBILE_GOLF_AD_STYLE_CONFIG.benefit),
+    trust: parseSectionStyle(raw.trust, DEFAULT_MOBILE_GOLF_AD_STYLE_CONFIG.trust),
+  };
+}
+
 export function mapMobileGolfAdLandingRow(row: MobileGolfAdLandingRow): MobileGolfAdLanding {
+  const styleConfig = parseMobileGolfAdStyleConfig(row.style_config);
+  const bodyDoc = resolveMobileGolfAdBodyDoc(row.body_doc, {
+    benefitText: row.benefit_text,
+    trustActionText: row.trust_action_text,
+    styleConfig,
+  });
+  const legacy = deriveLegacyFieldsFromBodyDoc(bodyDoc);
+
   return {
     id: row.id,
     title: row.title,
     slug: row.slug,
     heroImageUrl: row.hero_image_url,
-    benefitText: row.benefit_text,
-    trustActionText: row.trust_action_text,
+    bodyDoc,
+    benefitText: legacy.benefitText || row.benefit_text,
+    trustActionText: legacy.trustActionText || row.trust_action_text,
     isPublished: row.is_published,
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
+    styleConfig: deriveStyleConfigFromBodyDoc(bodyDoc),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -80,3 +159,5 @@ export function buildMobileGolfAdPublicUrl(slug: string, withUtm = true): string
   });
   return `${origin}${path}?${params.toString()}`;
 }
+
+export type { MobileGolfAdBodyDoc } from "@/lib/adminMobileGolfAds/bodyDoc";

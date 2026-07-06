@@ -8,16 +8,20 @@ import {
   type MobileGolfAdLandingListItem,
   type MobileGolfAdLandingRow,
 } from "@/lib/adminMobileGolfAds/types";
+import { buildLegacyDbFieldsFromInput } from "@/lib/adminMobileGolfAds/validation";
 
 function toDbPayload(input: MobileGolfAdLandingInput) {
+  const legacy = buildLegacyDbFieldsFromInput(input);
   return {
     title: input.title,
     slug: input.slug,
     hero_image_url: input.heroImageUrl,
-    benefit_text: input.benefitText,
-    trust_action_text: input.trustActionText,
+    benefit_text: legacy.benefit_text,
+    trust_action_text: legacy.trust_action_text,
     seo_title: input.seoTitle ?? null,
     seo_description: input.seoDescription ?? null,
+    style_config: legacy.style_config,
+    body_doc: legacy.body_doc,
     updated_at: new Date().toISOString(),
   };
 }

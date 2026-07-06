@@ -98,8 +98,7 @@ export async function publishAdminMobileGolfAd(id: string) {
       title: existing.title,
       slug: existing.slug,
       heroImageUrl: existing.heroImageUrl,
-      benefitText: existing.benefitText,
-      trustActionText: existing.trustActionText,
+      bodyDoc: existing.bodyDoc,
       seoTitle: existing.seoTitle,
       seoDescription: existing.seoDescription,
     });

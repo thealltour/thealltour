@@ -1,9 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
+import { MobileGolfAdLivePreview } from "@/components/admin/mobile-golf-ads/MobileGolfAdLivePreview";
 import {
   buildAdminMobileGolfAdEditHref,
   buildMobileGolfAdPreviewHref,
@@ -13,18 +15,37 @@ import {
   updateMobileGolfAdClient,
 } from "@/components/admin/mobile-golf-ads/api/mobileGolfAds.client";
 import {
+  createEmptyTipTapBodyDoc,
+  type MobileGolfAdBodyDoc,
+} from "@/lib/adminMobileGolfAds/bodyDoc";
+import {
   buildMobileGolfAdPublicPath,
   buildMobileGolfAdPublicUrl,
+  MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL,
   type MobileGolfAdLanding,
 } from "@/lib/adminMobileGolfAds/types";
 import { normalizeMobileGolfAdSlug } from "@/lib/adminMobileGolfAds/validation";
+
+const MobileGolfAdTipTapEditor = dynamic(
+  () =>
+    import("@/components/admin/mobile-golf-ads/editor/MobileGolfAdTipTapEditor").then(
+      (mod) => mod.MobileGolfAdTipTapEditor,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-[var(--border)] text-sm text-[var(--text-muted)]">
+        에디터 로딩 중…
+      </div>
+    ),
+  },
+);
 
 type FormState = {
   title: string;
   slug: string;
   heroImageUrl: string;
-  benefitText: string;
-  trustActionText: string;
+  bodyDoc: MobileGolfAdBodyDoc;
   seoTitle: string;
   seoDescription: string;
 };
@@ -33,8 +54,7 @@ const emptyForm: FormState = {
   title: "",
   slug: "",
   heroImageUrl: "",
-  benefitText: "",
-  trustActionText: "",
+  bodyDoc: createEmptyTipTapBodyDoc(),
   seoTitle: "",
   seoDescription: "",
 };
@@ -44,12 +64,11 @@ function toFormState(item: MobileGolfAdLanding): FormState {
     title: item.title,
     slug: item.slug,
     heroImageUrl: item.heroImageUrl,
-    benefitText: item.benefitText,
-    trustActionText: item.trustActionText,
+    bodyDoc: item.bodyDoc,
     seoTitle: item.seoTitle ?? "",
     seoDescription: item.seoDescription ?? "",
   };
-}
+};
 
 export type AdminMobileGolfAdFormProps = {
   mode: "create" | "edit";
@@ -63,6 +82,7 @@ export default function AdminMobileGolfAdForm({ mode, initial }: AdminMobileGolf
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
   const [busy, setBusy] = useState(false);
   const [publishBusy, setPublishBusy] = useState(false);
+  const [mobilePreviewTab, setMobilePreviewTab] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     if (initial) setForm(toFormState(initial));
@@ -92,8 +112,7 @@ export default function AdminMobileGolfAdForm({ mode, initial }: AdminMobileGolf
     title: form.title.trim(),
     slug: normalizeMobileGolfAdSlug(form.slug),
     heroImageUrl: form.heroImageUrl.trim(),
-    benefitText: form.benefitText.trim(),
-    trustActionText: form.trustActionText.trim(),
+    bodyDoc: form.bodyDoc,
     seoTitle: form.seoTitle.trim() || null,
     seoDescription: form.seoDescription.trim() || null,
   });
@@ -149,6 +168,25 @@ export default function AdminMobileGolfAdForm({ mode, initial }: AdminMobileGolf
       showToast("error", "URL 복사에 실패했습니다.");
     }
   };
+
+  const copyKakaoSyncUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL);
+      showToast("success", "카카오싱크 OAuth URL이 복사되었습니다.");
+    } catch {
+      showToast("error", "URL 복사에 실패했습니다.");
+    }
+  };
+
+  const previewDraft = useMemo(
+    () => ({
+      title: form.title,
+      slug: form.slug,
+      heroImageUrl: form.heroImageUrl,
+      bodyDoc: form.bodyDoc,
+    }),
+    [form.title, form.slug, form.heroImageUrl, form.bodyDoc],
+  );
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
@@ -223,29 +261,69 @@ export default function AdminMobileGolfAdForm({ mode, initial }: AdminMobileGolf
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Benefit Section</h2>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">볼드체로 표시됩니다.</p>
-        <textarea
-          required
-          rows={5}
-          value={form.benefitText}
-          onChange={(e) => setForm((prev) => ({ ...prev, benefitText: e.target.value }))}
-          className="mt-4 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
-          placeholder="핵심 혜택을 짧고 강하게 입력하세요."
-        />
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">본문 (통합 에디터)</h2>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Benefit / Trust 섹션을 하나의 문서로 편집합니다. 텍스트 선택 후 폰트·색상·배경·라운드박스를 적용하세요.
+            </p>
+          </div>
+          <div className="flex rounded-lg border border-[var(--border)] lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobilePreviewTab("edit")}
+              className={`px-3 py-1.5 text-xs font-semibold ${
+                mobilePreviewTab === "edit" ? "bg-[var(--surface-muted)]" : ""
+              }`}
+            >
+              편집
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobilePreviewTab("preview")}
+              className={`px-3 py-1.5 text-xs font-semibold ${
+                mobilePreviewTab === "preview" ? "bg-[var(--surface-muted)]" : ""
+              }`}
+            >
+              미리보기
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,420px)]">
+          <div className={mobilePreviewTab === "preview" ? "hidden lg:block" : ""}>
+            <MobileGolfAdTipTapEditor
+              value={form.bodyDoc}
+              onChange={(bodyDoc) => setForm((prev) => ({ ...prev, bodyDoc }))}
+            />
+          </div>
+          <div
+            className={`${mobilePreviewTab === "edit" ? "hidden lg:block" : ""} lg:sticky lg:top-4 lg:self-start`}
+          >
+            <MobileGolfAdLivePreview draft={previewDraft} />
+          </div>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Trust &amp; Action Section</h2>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">일반 안내 텍스트로 표시됩니다.</p>
-        <textarea
-          required
-          rows={6}
-          value={form.trustActionText}
-          onChange={(e) => setForm((prev) => ({ ...prev, trustActionText: e.target.value }))}
-          className="mt-4 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
-          placeholder="신뢰 요소, 이용 안내, 다음 행동을 안내하는 문구"
-        />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">CTA (카카오싱크)</h2>
+        <p className="mt-1 text-xs text-[var(--text-muted)]">
+          모든 모바일 골프 랜딩 CTA는 카카오싱크 OAuth URL로 연결됩니다.
+        </p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            readOnly
+            value={MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL}
+            className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]"
+          />
+          <button
+            type="button"
+            onClick={() => void copyKakaoSyncUrl()}
+            className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold"
+          >
+            URL 복사
+          </button>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">

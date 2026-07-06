@@ -5,6 +5,7 @@ import {
   listAdminMobileGolfAds,
   MobileGolfAdServiceError,
 } from "@/lib/adminMobileGolfAds/service";
+import { createEmptyTipTapBodyDoc } from "@/lib/adminMobileGolfAds/bodyDoc";
 import type { MobileGolfAdLandingInput } from "@/lib/adminMobileGolfAds/types";
 
 type PostBody = Partial<MobileGolfAdLandingInput>;
@@ -38,8 +39,7 @@ export async function POST(request: Request) {
       title: body.title ?? "",
       slug: body.slug ?? "",
       heroImageUrl: body.heroImageUrl ?? "",
-      benefitText: body.benefitText ?? "",
-      trustActionText: body.trustActionText ?? "",
+      bodyDoc: body.bodyDoc ?? createEmptyTipTapBodyDoc(),
       seoTitle: body.seoTitle,
       seoDescription: body.seoDescription,
     });

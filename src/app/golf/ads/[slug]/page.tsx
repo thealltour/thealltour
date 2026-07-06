@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MobileGolfAdPage } from "@/components/mobile-golf-ads/MobileGolfAdPage";
+import { extractPlainTextFromBodyDoc } from "@/lib/adminMobileGolfAds/bodyDoc";
+import {
+  resolveAllMobileGolfAdProducts,
+  resolveProductsForGolfProductRail,
+} from "@/lib/adminMobileGolfAds/resolveMobileGolfAdProducts";
 import { getPublishedMobileGolfAdLandingBySlug } from "@/lib/adminMobileGolfAds/service";
 import { buildMobileGolfAdPublicPath } from "@/lib/adminMobileGolfAds/types";
-import {
-  buildOgBrandFallbackMetadata,
-} from "@/lib/seo/buildOgPageMetadata";
+import { buildOgBrandFallbackMetadata } from "@/lib/seo/buildOgPageMetadata";
 
 type GolfAdLandingPageProps = {
   params: Promise<{ slug: string }>;
@@ -35,11 +38,14 @@ export async function generateMetadata({ params }: GolfAdLandingPageProps): Prom
     });
   }
 
+  const plainBody = extractPlainTextFromBodyDoc(landing.bodyDoc);
+
   return buildOgBrandFallbackMetadata({
     canonicalPath,
     documentTitle: landing.seoTitle?.trim() || `${landing.title} | 더올투어`,
     description:
       landing.seoDescription?.trim() ||
+      plainBody.slice(0, 120) ||
       landing.benefitText.slice(0, 120) ||
       "더올투어 골프투어 모바일 랜딩",
     useAbsolutePageTitle: true,
@@ -54,5 +60,16 @@ export default async function GolfAdLandingPage({ params }: GolfAdLandingPagePro
   const landing = await getPublishedMobileGolfAdLandingBySlug(trimmed);
   if (!landing) notFound();
 
-  return <MobileGolfAdPage landing={landing} />;
+  const [productsById, homeGolfProducts] = await Promise.all([
+    resolveAllMobileGolfAdProducts(landing.bodyDoc),
+    resolveProductsForGolfProductRail("home_default", []),
+  ]);
+
+  return (
+    <MobileGolfAdPage
+      landing={landing}
+      productsById={productsById}
+      homeGolfProducts={homeGolfProducts}
+    />
+  );
 }

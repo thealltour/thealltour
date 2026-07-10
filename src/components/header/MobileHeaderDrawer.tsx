@@ -125,11 +125,11 @@ export function MobileHeaderDrawer({
             {session ? (
               <div className="flex flex-col gap-2">
                 <Link
-                  href="/mypage"
+                  href="/mypage/dashboard"
                   onClick={onClose}
                   className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-transparent px-4 py-3 type-small font-semibold text-[var(--foreground)] active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                 >
-                  마이페이지
+                  대시보드
                 </Link>
                 <Link
                   href="/mypage/points"

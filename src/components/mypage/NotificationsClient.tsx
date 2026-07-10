@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
 import { Button } from "@/components/ui/Button";
+import { MyPageListSkeleton } from "@/components/mypage/ui/MyPageSkeleton";
 import { cn } from "@/lib/cn";
 
 type NotificationItem = {
@@ -42,7 +43,7 @@ export default function NotificationsClient() {
   };
 
   if (loading) {
-    return <p className="text-sm text-[var(--text-secondary)]">알림을 불러오는 중...</p>;
+    return <MyPageListSkeleton rows={4} />;
   }
 
   if (items.length === 0) {

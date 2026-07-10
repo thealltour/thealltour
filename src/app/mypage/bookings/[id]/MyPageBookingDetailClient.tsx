@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import MyPageLayout from "@/components/mypage/MyPageLayout";
+import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
+import { MyPageCardSkeleton } from "@/components/mypage/ui/MyPageSkeleton";
 import { PortOneCheckoutButton } from "@/components/payments/PortOneCheckoutButton";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import type { CheckoutSnapshot } from "@/types/checkout";
@@ -110,32 +111,31 @@ export default function MyPageBookingDetailClient({
   };
 
   return (
-    <MyPageLayout
-      title="예약 상세"
-      description="예약금·잔금 결제 상태와 선택하신 출발일·옵션을 확인할 수 있습니다."
-    >
+    <>
       <p className="mb-4 text-sm">
-        <Link href="/mypage/bookings" className="text-[var(--primary)] hover:underline">
+        <Link href="/mypage/bookings" className="link-primary font-medium">
           ← 내 예약 목록
         </Link>
       </p>
 
       {depositSuccess ? (
-        <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <p className="mb-4 rounded-xl border border-[var(--success)]/30 bg-[var(--success-bg)] px-4 py-3 text-sm text-[var(--success)]">
           예약금 결제가 접수되었습니다. 잔금 결제 방법을 선택해 주세요.
         </p>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-[var(--text-muted)]">불러오는 중…</p>
+        <MyPageCardSkeleton />
       ) : !detail ? (
         <p className="text-sm text-[var(--danger)]">{message || "예약을 찾을 수 없습니다."}</p>
       ) : (
         <div className="space-y-6">
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <h2 className="font-semibold text-[var(--primary)]">{detail.booking_number}</h2>
-            <p className="mt-1 text-sm">{detail.product_title ?? "상품명 미등록"}</p>
-            <dl className="mt-4 space-y-2 text-sm">
+          <MyPageCard>
+            <h2 className="text-lg font-semibold text-[var(--primary)]">{detail.booking_number}</h2>
+            <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+              {detail.product_title ?? "상품명 미등록"}
+            </p>
+            <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-[var(--text-muted)]">일정</dt>
                 <dd>
@@ -169,18 +169,16 @@ export default function MyPageBookingDetailClient({
                 </>
               ) : null}
             </dl>
-          </section>
+          </MyPageCard>
 
           {snapshot?.departure ? (
-            <section className="rounded-xl border border-[var(--border)] p-4">
-              <h3 className="font-semibold">선택 출발일</h3>
-              <p className="mt-2 text-sm">{snapshot.departure.label}</p>
-            </section>
+            <MyPageCard title="선택 출발일">
+              <p className="text-sm text-[var(--text-primary)]">{snapshot.departure.label}</p>
+            </MyPageCard>
           ) : null}
 
           {showBalanceSection ? (
-            <section className="rounded-xl border border-[var(--border)] p-4">
-              <h3 className="font-semibold">잔금 결제</h3>
+            <MyPageCard title="잔금 결제">
               <p className="mt-1 text-xs text-[var(--text-muted)]">
                 잔금 {formatPriceKR(balanceDue)} — 기본은 현금+현금영수증(현지 특전)입니다.
               </p>
@@ -260,16 +258,18 @@ export default function MyPageBookingDetailClient({
                   카드·간편결제로 잔금 결제
                 </button>
               ) : null}
-            </section>
+            </MyPageCard>
           ) : null}
 
           {detail.local_perks_matched ? (
-            <p className="text-sm text-green-700">현지 특전 매칭이 적용되었습니다.</p>
+            <p className="rounded-xl border border-[var(--success)]/30 bg-[var(--success-bg)] px-4 py-3 text-sm text-[var(--success)]">
+              현지 특전 매칭이 적용되었습니다.
+            </p>
           ) : null}
 
           {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
         </div>
       )}
-    </MyPageLayout>
+    </>
   );
 }

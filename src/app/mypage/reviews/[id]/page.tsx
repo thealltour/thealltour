@@ -7,6 +7,7 @@ import MyPageLayout from "@/components/mypage/MyPageLayout";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import { buttonVariants } from "@/components/ui/Button";
+import { getMyPageMemberSummary } from "@/lib/mypage/memberSummary";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getReviewById } from "@/lib/reviews";
 import { cn } from "@/lib/cn";
@@ -61,7 +62,10 @@ export default async function MyPageReviewDetailPage({ params }: Props) {
     notFound();
   }
 
-  const review = await getReviewById(id);
+  const [memberSummary, review] = await Promise.all([
+    getMyPageMemberSummary(),
+    getReviewById(id),
+  ]);
 
   if (!review) {
     notFound();
@@ -77,7 +81,11 @@ export default async function MyPageReviewDetailPage({ params }: Props) {
     review.rating_schedule || review.rating_stay || review.rating_guide || review.rating_food;
 
   return (
-    <MyPageLayout title="후기 상세" description="작성한 후기의 상세 내용입니다.">
+    <MyPageLayout
+      title="후기 상세"
+      description="작성한 후기의 상세 내용입니다."
+      memberSummary={memberSummary}
+    >
       <div className="space-y-6">
         <Link href="/mypage/reviews" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "inline-flex px-0")}>
           ← 목록으로

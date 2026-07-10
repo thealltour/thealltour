@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { MyPageNavIcon, resolveMyPageNavIconKey } from "@/components/mypage/ui/MyPageNavIcon";
+import type { MyPageMemberSummary } from "@/lib/mypage/memberSummary";
 import { cn } from "@/lib/cn";
 
 const MENU_GROUPS = [
@@ -40,6 +42,7 @@ const ALL_MENU_ITEMS: MenuItem[] = MENU_GROUPS.flatMap((group) => [...group.item
 
 type MyPageSidebarProps = {
   showMobileBack?: boolean;
+  memberSummary?: MyPageMemberSummary | null;
 };
 
 type ScrollHints = {
@@ -55,7 +58,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function MyPageSidebar({ showMobileBack = false }: MyPageSidebarProps) {
+export default function MyPageSidebar({ showMobileBack = false, memberSummary }: MyPageSidebarProps) {
   const pathname = usePathname();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollHints, setScrollHints] = useState<ScrollHints>({
@@ -100,18 +103,30 @@ export default function MyPageSidebar({ showMobileBack = false }: MyPageSidebarP
       "font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
       mobile
         ? cn(
-            "inline-flex min-h-[44px] shrink-0 snap-center items-center whitespace-nowrap rounded-xl border px-4 py-2 text-sm active:bg-[var(--surface-muted)]",
+            "inline-flex min-h-[44px] shrink-0 snap-center items-center gap-1.5 whitespace-nowrap rounded-xl border px-4 py-2 text-sm active:bg-[var(--surface-muted)]",
             active
               ? "border-[var(--primary)]/30 bg-[var(--primary-soft)] text-[var(--primary)]"
               : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]",
           )
         : cn(
-            "flex min-h-[44px] w-full items-center rounded-xl border px-3 py-2.5 text-sm active:bg-[var(--surface-muted)]",
+            "flex min-h-[44px] w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm active:bg-[var(--surface-muted)]",
             active
               ? "border-[var(--primary)]/30 bg-[var(--primary-soft)] text-[var(--primary)]"
               : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]",
           ),
     );
+
+  const profileCard =
+    memberSummary && !showMobileBack ? (
+      <div className="mb-4 hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] lg:block">
+        <p className="text-sm font-semibold text-[var(--text-primary)]">{memberSummary.name}님</p>
+        {typeof memberSummary.points === "number" ? (
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            포인트 <span className="font-semibold text-[var(--primary)]">{memberSummary.points.toLocaleString()}P</span>
+          </p>
+        ) : null}
+      </div>
+    ) : null;
 
   const fadeBase =
     "pointer-events-none absolute inset-y-0 z-10 w-10 from-[var(--surface)] transition-opacity duration-200";
@@ -172,6 +187,7 @@ export default function MyPageSidebar({ showMobileBack = false }: MyPageSidebarP
                   data-active={active ? "true" : undefined}
                   className={linkClass(active, true)}
                 >
+                  <MyPageNavIcon iconKey={resolveMyPageNavIconKey(item.href)} />
                   {item.label}
                 </Link>
               );
@@ -190,6 +206,7 @@ export default function MyPageSidebar({ showMobileBack = false }: MyPageSidebarP
 
       {/* 데스크톱: 세로 그룹 네비 */}
       <nav aria-label="마이페이지 메뉴" className="hidden lg:flex lg:flex-col lg:gap-5">
+        {profileCard}
         {MENU_GROUPS.map((group) => (
           <div key={group.label} className="space-y-1">
             <p className="type-caption px-1 font-semibold uppercase tracking-wide text-[var(--text-muted)]">
@@ -200,6 +217,7 @@ export default function MyPageSidebar({ showMobileBack = false }: MyPageSidebarP
                 const active = isActive(pathname, item.href);
                 return (
                   <Link key={item.href} href={item.href} className={linkClass(active, false)}>
+                    <MyPageNavIcon iconKey={resolveMyPageNavIconKey(item.href)} />
                     {item.label}
                   </Link>
                 );

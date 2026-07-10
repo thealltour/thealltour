@@ -15,15 +15,22 @@ function variantForStatus(status: string): BadgeProps["variant"] {
   switch (status) {
     case "REQUESTED":
     case "PENDING":
+    case "pending_deposit":
       return "warning";
     case "APPROVED":
     case "COMPLETED":
+    case "completed":
+    case "reserved":
       return "success";
     case "REJECTED":
     case "CANCELED":
+    case "canceled":
       return "danger";
     case "SHIPPED":
+    case "partial":
       return "primary";
+    case "paid":
+      return "success";
     default:
       return "neutral";
   }

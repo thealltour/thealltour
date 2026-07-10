@@ -2,6 +2,7 @@ import MyPageLayout from "@/components/mypage/MyPageLayout";
 import RewardsRedemptionClient from "@/components/mypage/RewardsRedemptionClient";
 import { cookies } from "next/headers";
 import { getActiveRewardCatalog, getMemberPointsData } from "@/lib/member/meServerData";
+import { getMyPageMemberSummary } from "@/lib/mypage/memberSummary";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabase } from "@/lib/supabase";
 
@@ -12,7 +13,8 @@ export default async function MyPageRewardsPage() {
     return null;
   }
 
-  const [catalog, points] = await Promise.all([
+  const [memberSummary, catalog, points] = await Promise.all([
+    getMyPageMemberSummary(),
     getActiveRewardCatalog(),
     getMemberPointsData(session.memberId),
   ]);
@@ -26,7 +28,11 @@ export default async function MyPageRewardsPage() {
   profile = data as { name: string | null; phone: string | null } | null;
 
   return (
-    <MyPageLayout title="리워드 교환소" description="포인트로 교환 가능한 리워드를 확인할 수 있습니다.">
+    <MyPageLayout
+      title="리워드 교환소"
+      description="포인트로 교환 가능한 리워드를 확인할 수 있습니다."
+      memberSummary={memberSummary}
+    >
       <RewardsRedemptionClient
         initialCatalog={catalog}
         initialBalance={Number(points?.balance ?? 0)}

@@ -8,9 +8,10 @@ import { cn } from "@/lib/cn";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 
 const QUICK_LINKS: Array<{ label: string; href: string; requiresAuth?: boolean }> = [
+  { label: "대시보드", href: "/mypage/dashboard", requiresAuth: true },
   { label: "견적문의 내역", href: "/quote", requiresAuth: true },
   { label: "포인트", href: "/mypage/points", requiresAuth: true },
-  { label: "마이페이지", href: "/mypage", requiresAuth: true },
+  { label: "마이페이지", href: "/mypage/dashboard", requiresAuth: true },
 ];
 
 export default function GuestAuthHoverMenu() {

@@ -109,7 +109,12 @@ export default function RewardsRedemptionClient({
 
   return (
     <div className="space-y-6">
-      <MyPageStatCard label="현재 사용 가능 포인트" value={`${balance.toLocaleString()}P`} />
+      <MyPageStatCard
+        label="현재 사용 가능 포인트"
+        value={`${balance.toLocaleString()}P`}
+        iconKey="points"
+        elevated
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {catalog.map((reward) => (

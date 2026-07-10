@@ -4,15 +4,22 @@ import { usePathname } from "next/navigation";
 import MyPageSidebar from "@/components/mypage/MyPageSidebar";
 import { MobileBackHeader } from "@/components/navigation/MobileBackHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
+import type { MyPageMemberSummary } from "@/lib/mypage/memberSummary";
 import { cn } from "@/lib/cn";
 
 type MyPageContentProps = {
   children: React.ReactNode;
   title: string;
   description?: string;
+  memberSummary?: MyPageMemberSummary | null;
 };
 
-export default function MyPageContent({ children, title, description }: MyPageContentProps) {
+export default function MyPageContent({
+  children,
+  title,
+  description,
+  memberSummary,
+}: MyPageContentProps) {
   const pathname = usePathname();
   const isDashboard = pathname === "/mypage/dashboard" || pathname === "/mypage";
   const showMobileBack = !isDashboard;
@@ -34,7 +41,7 @@ export default function MyPageContent({ children, title, description }: MyPageCo
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <aside className="min-w-0 lg:w-[240px] lg:shrink-0">
-            <MyPageSidebar showMobileBack={showMobileBack} />
+            <MyPageSidebar showMobileBack={showMobileBack} memberSummary={memberSummary} />
           </aside>
           <section className="min-w-0 flex-1">{children}</section>
         </div>

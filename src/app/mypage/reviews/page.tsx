@@ -4,8 +4,10 @@ import MyPageLayout from "@/components/mypage/MyPageLayout";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
 import { MyPageStatusBadge } from "@/components/mypage/ui/MyPageStatusBadge";
-import { SectionHeader } from "@/components/layout/SectionHeader";
+import { MyPageSectionHeader } from "@/components/mypage/ui/MyPageSectionHeader";
+import { Card } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/Button";
+import { getMyPageMemberSummary } from "@/lib/mypage/memberSummary";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getMyPageReviewSections } from "@/lib/mypageReviews";
 import { cn } from "@/lib/cn";
@@ -78,7 +80,7 @@ function DraftReviewCard({ item }: { item: MyPageDraftReviewItem }) {
 
 function SubmittedReviewCard({ item }: { item: MyPageSubmittedReviewItem }) {
   return (
-    <MyPageCard>
+    <Card variant="interactive" className="p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -97,22 +99,29 @@ function SubmittedReviewCard({ item }: { item: MyPageSubmittedReviewItem }) {
           보기
         </Link>
       </div>
-    </MyPageCard>
+    </Card>
   );
 }
 
 export default async function MyPageReviewsPage() {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
-  const sections = session
-    ? await getMyPageReviewSections(session.memberId)
-    : { writable: [], drafts: [], submitted: [] };
+  const [memberSummary, sections] = session
+    ? await Promise.all([
+        getMyPageMemberSummary(),
+        getMyPageReviewSections(session.memberId),
+      ])
+    : [null, { writable: [], drafts: [], submitted: [] }];
 
   const hasAnyData =
     sections.writable.length > 0 || sections.drafts.length > 0 || sections.submitted.length > 0;
 
   return (
-    <MyPageLayout title="리뷰 관리" description="내 후기를 작성하고 관리할 수 있습니다.">
+    <MyPageLayout
+      title="리뷰 관리"
+      description="내 후기를 작성하고 관리할 수 있습니다."
+      memberSummary={memberSummary}
+    >
       {!hasAnyData ? (
         <MyPageEmptyState
           message="리뷰를 남기고 5,000포인트를 적립해 보세요"
@@ -122,7 +131,10 @@ export default async function MyPageReviewsPage() {
       ) : (
         <div className="space-y-8">
           <section>
-            <SectionHeader title="작성 가능한 후기" description="여행을 마친 상품의 후기를 작성할 수 있습니다." />
+            <MyPageSectionHeader
+              title="작성 가능한 후기"
+              description="여행을 마친 상품의 후기를 작성할 수 있습니다."
+            />
             {sections.writable.length === 0 ? (
               <MyPageEmptyState message="현재 작성 가능한 후기가 없습니다." dashed className="mt-4" />
             ) : (
@@ -135,7 +147,7 @@ export default async function MyPageReviewsPage() {
           </section>
 
           <section>
-            <SectionHeader title="작성 중인 후기" description="임시저장된 후기를 이어서 작성하세요." />
+            <MyPageSectionHeader title="작성 중인 후기" description="임시저장된 후기를 이어서 작성하세요." />
             {sections.drafts.length === 0 ? (
               <MyPageEmptyState message="임시저장된 후기가 없습니다." dashed className="mt-4" />
             ) : (
@@ -148,7 +160,7 @@ export default async function MyPageReviewsPage() {
           </section>
 
           <section>
-            <SectionHeader title="작성 완료 후기" description="이미 등록한 후기를 확인할 수 있습니다." />
+            <MyPageSectionHeader title="작성 완료 후기" description="이미 등록한 후기를 확인할 수 있습니다." />
             {sections.submitted.length === 0 ? (
               <MyPageEmptyState message="아직 작성 완료한 후기가 없습니다." dashed className="mt-4" />
             ) : (

@@ -23,25 +23,27 @@ export function KakaoSyncGolfLandingPage({
 
   return (
     <>
-      <div className="hardcoded-landing-page pb-14">
-        {/* 히어로 — 전폭 이미지, 셸 밖 */}
-        <section aria-label="Hero" className="relative w-full">
-          {/* eslint-disable-next-line @next/next/no-img-element -- 외부 히어로 URL */}
-          <img
-            src={hero.imageUrl}
-            alt={hero.imageAlt}
-            className="block h-auto w-full"
-            loading="eager"
-            decoding="async"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 px-4 pb-2.5 text-white">
-            <p className="text-base font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-              {hero.title}
-            </p>
-            <h1 className="mt-2 whitespace-pre-line text-3xl font-extrabold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-              {hero.subtitle}
-            </h1>
+      <div className="hardcoded-landing-page pb-24">
+        {/* 히어로 — 셸과 동일 px-4 거터 + 라운드 (홈 히어로·섹션 래퍼와 톤 맞춤) */}
+        <section aria-label="Hero" className="relative w-full px-4 pt-2">
+          <div className="relative overflow-hidden rounded-2xl">
+            {/* eslint-disable-next-line @next/next/no-img-element -- 외부 히어로 URL */}
+            <img
+              src={hero.imageUrl}
+              alt={hero.imageAlt}
+              className="block h-auto w-full"
+              loading="eager"
+              decoding="async"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 px-4 pb-2.5 text-white">
+              <p className="text-base font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
+                {hero.title}
+              </p>
+              <h1 className="mt-2 whitespace-pre-line text-3xl font-extrabold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+                {hero.subtitle}
+              </h1>
+            </div>
           </div>
         </section>
 

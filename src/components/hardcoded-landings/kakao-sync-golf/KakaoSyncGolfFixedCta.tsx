@@ -4,15 +4,15 @@ import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/confi
 
 export function KakaoSyncGolfFixedCta() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center border-t border-black/10 bg-white/95 pb-[env(safe-area-inset-bottom,0px)] pt-1 backdrop-blur-sm">
-      <div className="pointer-events-auto w-full px-3">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+      <div className="pointer-events-auto w-full rounded-2xl border border-black/5 bg-white/95 p-2 shadow-[0_8px_28px_rgba(0,0,0,0.14)] backdrop-blur-sm">
         <a
           href={MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL}
           className={buttonVariants({
             variant: "kakao",
             size: "lg",
             className:
-              "min-h-[3.5rem] w-full text-base font-extrabold leading-snug tracking-tight shadow-lg sm:text-lg",
+              "min-h-[3.5rem] w-full text-base font-extrabold leading-snug tracking-tight shadow-md sm:text-lg",
           })}
         >
           {kakaoSyncGolfConfig.cta.label}

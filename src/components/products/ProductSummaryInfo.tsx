@@ -1,10 +1,6 @@
 "use client";
 
-import { useConsultModal } from "@/components/inquiry/ConsultModal";
-import { useQuoteHrefWithUtm } from "@/hooks/useQuoteHrefWithUtm";
 import { InfoItem } from "@/components/products/detail/InfoItem";
-import { buttonVariants } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
 
 type ProductSummaryInfoProps = {
   duration?: string;
@@ -16,12 +12,6 @@ type ProductSummaryInfoProps = {
   minDeparturePeople?: string;
   includedSummary?: string;
   excludedSummary?: string;
-  consultHref?: string;
-  kakaoHref?: string;
-  /** 있으면 문의하기 클릭 시 빠른 상담 모달 오픈 (consultHref는 모달 내 폼 기본 링크로 사용) */
-  productId?: string;
-  productTitle?: string;
-  sourcePath?: string;
   /** true면 숫자 가격 대신 상단 대표 출발가 안내 참고 문구 */
   usePriceHeroGuide?: boolean;
 };
@@ -36,15 +26,8 @@ export default function ProductSummaryInfo({
   minDeparturePeople,
   includedSummary,
   excludedSummary,
-  consultHref,
-  kakaoHref,
-  productId,
-  productTitle = "",
-  sourcePath = "",
   usePriceHeroGuide = false,
 }: ProductSummaryInfoProps) {
-  const { openModal } = useConsultModal();
-  const consultHrefWithUtm = useQuoteHrefWithUtm(consultHref ?? "");
   const hasAny =
     duration ||
     departure ||
@@ -95,67 +78,25 @@ export default function ProductSummaryInfo({
 
       {usePriceHeroGuide ? (
         <div className="border-t border-slate-200 pt-3">
-          <InfoItem
-            icon="price"
-            label="가격"
-            value={
-              <span className="text-base leading-relaxed text-slate-600">
-                상단 &quot;대표 출발가 안내&quot;와 동일한 기준입니다. 정확한 요금은 상담을 통해 안내드립니다.
-              </span>
-            }
-          />
+          <div className="grid grid-cols-1 gap-x-6 md:grid-cols-2">
+            <InfoItem
+              icon="price"
+              label="가격"
+              value={
+                <span className="text-base leading-relaxed text-slate-600">
+                  상단 &quot;대표 출발가 안내&quot;와 동일한 기준입니다. 정확한 요금은 상담을 통해 안내드립니다.
+                </span>
+              }
+            />
+          </div>
         </div>
       ) : priceFormatted ? (
         <div className="border-t border-slate-200 pt-3">
-          <InfoItem icon="price" label="가격" value={priceFormatted} />
+          <div className="grid grid-cols-1 gap-x-6 md:grid-cols-2">
+            <InfoItem icon="price" label="가격" value={priceFormatted} />
+          </div>
         </div>
       ) : null}
-
-      {(consultHref || kakaoHref || productId) && (
-        <div className="hidden flex-col gap-2 border-t border-slate-200 pt-3 md:flex md:flex-row">
-          {productId ? (
-            <button
-              type="button"
-              onClick={() => openModal({ productId, productTitle, sourcePath })}
-              className={cn(
-                buttonVariants({ variant: "primary", size: "md" }),
-                "flex-1 text-base font-semibold",
-              )}
-              aria-label="일정·견적 문의하기"
-            >
-              일정·견적 문의하기
-            </button>
-          ) : consultHref ? (
-            <a
-              href={consultHrefWithUtm || consultHref}
-              className={cn(
-                buttonVariants({ variant: "primary", size: "md" }),
-                "flex-1 text-base font-semibold",
-              )}
-              aria-label="일정·견적 문의하기"
-            >
-              일정·견적 문의하기
-            </a>
-          ) : null}
-          {kakaoHref && (
-            <a
-              href={kakaoHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                buttonVariants({
-                  variant: "kakao",
-                  size: "md",
-                  className: "min-h-11 flex-1 text-base font-semibold sm:flex-none",
-                }),
-              )}
-              aria-label="카톡으로 견적 문의하기"
-            >
-              카톡 견적 문의
-            </a>
-          )}
-        </div>
-      )}
     </section>
   );
 }

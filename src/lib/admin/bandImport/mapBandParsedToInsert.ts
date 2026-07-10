@@ -20,6 +20,7 @@ import {
 } from "@/lib/products/normalizeDepartureSchedules";
 import {
   normalizeProductDepartureDateToYmd,
+  normalizeProductDepartureDateToYmdWithForcedYear,
 } from "@/lib/products/productDepartureDates";
 import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
 import type { ProductDepartureSchedule } from "@/types/product";
@@ -46,13 +47,6 @@ function trimOrNull(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function extractYearFromDateString(raw: string): number | null {
-  const ymd = normalizeProductDepartureDateToYmd(raw);
-  if (ymd) return Number(ymd.slice(0, 4));
-  const match = raw.match(/(\d{4})/);
-  return match ? Number(match[1]) : null;
-}
-
 function extractMostFrequentYearFromText(text: string): number | null {
   const years = [...text.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
   if (!years.length) return null;
@@ -61,45 +55,41 @@ function extractMostFrequentYearFromText(text: string): number | null {
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
-/** 밴드/HWP 문맥에서 연도 없는 M/D 출발일에 쓸 기본 연도 추론 */
-export function inferBandScheduleDefaultYear(
-  parsed: BandParsedProduct,
-  bandText: string,
-  hwpText: string,
-): number {
-  const fromFlight = trimOrNull(parsed.departure_from_date);
-  if (fromFlight) {
-    const year = extractYearFromDateString(fromFlight);
-    if (year) return year;
-  }
+/** 밴드/HWP 원문에 20xx 연도가 명시돼 있는지 */
+export function hasExplicitYearInBandSource(bandText: string, hwpText: string): boolean {
+  return /\b20\d{2}\b/.test(`${bandText}\n${hwpText}`);
+}
 
-  for (const row of parsed.departure_schedules ?? []) {
-    for (const field of [row.departure_date, row.return_date]) {
-      const raw = trimOrNull(field);
-      if (!raw) continue;
-      const year = extractYearFromDateString(raw);
-      if (year) return year;
-    }
-  }
-
+/** 밴드/HWP 원문에서 기본 연도 추론 — AI 파싱 연도는 신뢰하지 않음, 없으면 KST 올해 */
+export function inferBandScheduleDefaultYear(bandText: string, hwpText: string): number {
   const textYear = extractMostFrequentYearFromText(`${bandText}\n${hwpText}`);
   if (textYear) return textYear;
-
   return Number(kstTodayYmd().slice(0, 4));
 }
+
+type NormalizeBandDateOptions = {
+  forceDefaultYear?: boolean;
+};
 
 function normalizeBandDateField(
   raw: string | null | undefined,
   defaultYear: number,
+  opts?: NormalizeBandDateOptions,
 ): string | null {
   const trimmed = trimOrNull(raw);
   if (!trimmed) return null;
+
+  if (opts?.forceDefaultYear) {
+    return normalizeProductDepartureDateToYmdWithForcedYear(trimmed, defaultYear);
+  }
+
   return normalizeProductDepartureDateToYmd(trimmed, { defaultYear });
 }
 
 function mapBandDepartureSchedules(
   parsed: BandParsedProduct,
   defaultYear: number,
+  dateOpts: NormalizeBandDateOptions,
 ): ProductDepartureSchedule[] | null {
   const rows = parsed.departure_schedules;
   if (!rows?.length) return null;
@@ -110,10 +100,10 @@ function mapBandDepartureSchedules(
     if (!departureRaw) continue;
 
     const departureDate =
-      normalizeProductDepartureDateToYmd(departureRaw, { defaultYear }) ?? departureRaw;
+      normalizeBandDateField(departureRaw, defaultYear, dateOpts) ?? departureRaw;
     const returnRaw = trimOrNull(row.return_date);
     const returnDate = returnRaw
-      ? normalizeProductDepartureDateToYmd(returnRaw, { defaultYear }) ?? returnRaw
+      ? normalizeBandDateField(returnRaw, defaultYear, dateOpts) ?? returnRaw
       : null;
 
     schedules.push({
@@ -258,8 +248,10 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     parseSeasonalPriceBandsFromUnknown(parsed.seasonal_price_bands),
   );
 
-  const defaultYear = inferBandScheduleDefaultYear(parsed, bandText, hwpText);
-  const departureSchedulesJson = mapBandDepartureSchedules(parsed, defaultYear);
+  const defaultYear = inferBandScheduleDefaultYear(bandText, hwpText);
+  const forceDefaultYear = !hasExplicitYearInBandSource(bandText, hwpText);
+  const dateOpts: NormalizeBandDateOptions = { forceDefaultYear };
+  const departureSchedulesJson = mapBandDepartureSchedules(parsed, defaultYear, dateOpts);
 
   let price = toSafeInteger(parsed.price);
   const scheduleMinPrice = getDepartureSchedulesMinPrice(
@@ -285,7 +277,8 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
   const firstScheduleDate =
     departureSchedulesJson?.[0]?.departureDate ?? null;
   const resolvedDepartureFromDate =
-    normalizeBandDateField(parsed.departure_from_date, defaultYear) ?? firstScheduleDate;
+    normalizeBandDateField(parsed.departure_from_date, defaultYear, dateOpts) ??
+    firstScheduleDate;
 
   const payload: Record<string, unknown> = {
     title,
@@ -329,15 +322,15 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     departure_to_airport: trimOrNull(parsed.departure_to_airport),
     departure_from_date: resolvedDepartureFromDate,
     departure_from_time: pickTime(parsed.departure_from_time, parsed.departure_time),
-    departure_to_date: normalizeBandDateField(parsed.departure_to_date, defaultYear),
+    departure_to_date: normalizeBandDateField(parsed.departure_to_date, defaultYear, dateOpts),
     departure_to_time: pickTime(parsed.departure_to_time, parsed.arrival_time),
     departure_baggage_limit: trimOrNull(parsed.departure_baggage_limit),
     arrival_flight_name: arrivalFlight,
     arrival_from_airport: trimOrNull(parsed.arrival_from_airport),
     arrival_to_airport: trimOrNull(parsed.arrival_to_airport),
-    arrival_from_date: normalizeBandDateField(parsed.arrival_from_date, defaultYear),
+    arrival_from_date: normalizeBandDateField(parsed.arrival_from_date, defaultYear, dateOpts),
     arrival_from_time: trimOrNull(parsed.arrival_from_time),
-    arrival_to_date: normalizeBandDateField(parsed.arrival_to_date, defaultYear),
+    arrival_to_date: normalizeBandDateField(parsed.arrival_to_date, defaultYear, dateOpts),
     arrival_to_time: trimOrNull(parsed.arrival_to_time),
     arrival_baggage_limit: trimOrNull(parsed.arrival_baggage_limit),
     itinerary_v2_json: itineraryV2,

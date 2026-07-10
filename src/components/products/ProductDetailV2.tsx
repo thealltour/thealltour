@@ -298,6 +298,8 @@ export default function ProductDetailV2({
     setDepartureRequired,
     setDepartureSelectionMissing,
     registerScrollToBooking,
+    travelerCount,
+    setTravelerCount,
   } = useProductQuote();
 
   const bookingUxMode = useMemo(
@@ -316,12 +318,8 @@ export default function ProductDetailV2({
   const hasDepartures = Boolean(product?.departureSchedules?.length || product?.departures?.length);
   const hasCalendarDepartures = calendarDepartureDates.length > 0;
   const hasOptions = ENABLE_PRODUCT_OPTIONS && options?.groups != null && options.groups.length > 0;
-  const hasBookingPanel = showCalendarBooking
-    ? Boolean(hasCalendarDepartures || hasOptions)
-    : hasDepartures || hasOptions;
-  const departureRequiredForBooking = showCalendarBooking
-    ? hasCalendarDepartures
-    : hasDepartures;
+  const hasBookingPanel = Boolean(hasCalendarDepartures || hasDepartures || hasOptions);
+  const departureRequiredForBooking = hasCalendarDepartures || hasDepartures;
   const quote = useMemo(
     () => calcQuote(options, selectedOptions),
     [options, selectedOptions],
@@ -381,8 +379,15 @@ export default function ProductDetailV2({
   );
 
   useEffect(() => {
-    registerScrollToBooking(() => {
-      bookingPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    registerScrollToBooking((target = "panel") => {
+      const id =
+        target === "departure"
+          ? "product-departure-section"
+          : target === "options"
+            ? "product-options-section"
+            : "product-booking-panel";
+      const el = document.getElementById(id) ?? bookingPanelRef.current;
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [registerScrollToBooking]);
 
@@ -742,11 +747,6 @@ export default function ProductDetailV2({
               minDeparturePeople={(product?.min_departure_people ?? minDeparturePeople) || undefined}
               includedSummary={includedSummary}
               excludedSummary={excludedSummary}
-              consultHref={consultHref || undefined}
-              kakaoHref={kakaoHref || undefined}
-              productId={productId}
-              productTitle={productTitle ?? ""}
-              sourcePath={sourcePath ?? ""}
             />
           </div>
         )}
@@ -768,6 +768,8 @@ export default function ProductDetailV2({
               options={hasOptions ? options : null}
               selectedDepartureKey={selectedDepartureKey}
               selectedOptions={selectedOptions}
+              travelerCount={travelerCount}
+              onTravelerCountChange={setTravelerCount}
               onDepartureChange={handleDepartureChange}
               onOptionSingleChange={handleOptionSingleChange}
               onOptionMultiToggle={handleOptionMultiToggle}

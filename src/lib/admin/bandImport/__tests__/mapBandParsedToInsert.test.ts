@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildBandBookingNotes,
   buildBandDescription,
+  hasExplicitYearInBandSource,
+  inferBandScheduleDefaultYear,
   mapBandParsedToInsert,
   mapItineraryDaysToV2,
 } from "@/lib/admin/bandImport/mapBandParsedToInsert";
@@ -196,7 +198,7 @@ describe("mapBandParsedToInsert", () => {
         ],
         departure_from_date: null,
       }),
-      bandText: "",
+      bandText: "2025년 7월 골프투어",
       hwpText: "",
     });
 
@@ -264,5 +266,115 @@ describe("mapBandParsedToInsert", () => {
     ]);
     expect(payload.price).toBe(890000);
     expect(payload.departure_from_date).toBe("2026-07-23");
+  });
+
+  it("overrides AI-hallucinated year when source has no explicit year", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-10T12:00:00+09:00"));
+
+    const payload = mapBandParsedToInsert({
+      parsed: minimalBandParsed({
+        price: 999000,
+        departure_schedules: [
+          {
+            departure_date: "2023-07-23",
+            return_date: "2023-07-26",
+            price: 890000,
+            label: "7/23(수)",
+            status: "AVAILABLE",
+          },
+          {
+            departure_date: "2023-07-30",
+            return_date: null,
+            price: 920000,
+            label: "7/30(목)",
+            status: null,
+          },
+        ],
+        departure_from_date: "2023-07-23",
+        departure_to_date: "2023-07-26",
+      }),
+      bandText: "여름휴가 석문산 골프 — 7/23, 7/30 출발",
+      hwpText: "",
+    });
+
+    expect(payload.departure_schedules_json).toEqual([
+      {
+        departureDate: "2026-07-23",
+        returnDate: "2026-07-26",
+        price: 890000,
+        label: "7/23(수)",
+        status: "AVAILABLE",
+      },
+      {
+        departureDate: "2026-07-30",
+        returnDate: null,
+        price: 920000,
+        label: "7/30(목)",
+        status: null,
+      },
+    ]);
+    expect(payload.departure_from_date).toBe("2026-07-23");
+    expect(payload.departure_to_date).toBe("2026-07-26");
+
+    vi.useRealTimers();
+  });
+
+  it("respects explicit year in source when AI returns matching ISO dates", () => {
+    const payload = mapBandParsedToInsert({
+      parsed: minimalBandParsed({
+        departure_schedules: [
+          {
+            departure_date: "2025-07-23",
+            return_date: null,
+            price: 890000,
+            label: null,
+            status: null,
+          },
+        ],
+        departure_from_date: "2025-07-23",
+      }),
+      bandText: "2025년 7월 특가",
+      hwpText: "",
+    });
+
+    expect(payload.departure_schedules_json).toEqual([
+      {
+        departureDate: "2025-07-23",
+        returnDate: null,
+        price: 890000,
+        label: null,
+        status: null,
+      },
+    ]);
+    expect(payload.departure_from_date).toBe("2025-07-23");
+  });
+});
+
+describe("inferBandScheduleDefaultYear", () => {
+  it("returns current KST year when source has no explicit year", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-10T12:00:00+09:00"));
+
+    expect(inferBandScheduleDefaultYear("7/23 출발", "")).toBe(2026);
+    expect(hasExplicitYearInBandSource("7/23 출발", "")).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it("returns most frequent year from source text", () => {
+    expect(inferBandScheduleDefaultYear("2026년 여름 골프투어", "")).toBe(2026);
+    expect(hasExplicitYearInBandSource("2026년 여름", "")).toBe(true);
+  });
+
+  it("ignores AI-parsed years — only source text matters", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-10T12:00:00+09:00"));
+
+    expect(
+      inferBandScheduleDefaultYear("여름 골프 7/23", ""),
+    ).toBe(2026);
+
+    vi.useRealTimers();
   });
 });

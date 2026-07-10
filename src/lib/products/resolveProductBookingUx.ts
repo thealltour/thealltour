@@ -34,6 +34,13 @@ export function resolveProductBookingUxMode(product: Product): ProductBookingUxM
 }
 
 export function resolveDepartureUiForProduct(product: Product): "chips" | "calendar" {
-  const mode = resolveProductBookingUxMode(product);
-  return mode === "calendar_booking" ? "calendar" : "chips";
+  const hasDepartureData = Boolean(
+    product.departureSchedules?.length ||
+      product.departures?.length ||
+      product.departure_from_date?.trim() ||
+      product.departure_to_date?.trim(),
+  );
+  // 상품 상세 출발일은 특가/기획(promotion_fixed) 포함 달력 UI 통일
+  if (hasDepartureData) return "calendar";
+  return "chips";
 }

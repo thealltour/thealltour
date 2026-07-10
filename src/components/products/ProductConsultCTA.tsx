@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
-import { useProductQuote } from "@/components/products/ProductQuoteContext";
+import { useProductQuote, type BookingScrollTarget } from "@/components/products/ProductQuoteContext";
+import { ActionPromptToast } from "@/components/ui/ActionPromptToast";
 import { Button } from "@/components/ui/Button";
 import {
   getProductCtaLabel,
@@ -27,9 +28,9 @@ export type ProductConsultCTAProps = {
   /** true면 주 CTA 클릭 시 옵션 영역으로 스크롤만 함 */
   requiredGroupsMissing?: boolean;
   departureSelectionMissing?: boolean;
-  scrollToBooking?: () => void;
+  scrollToBooking?: (target?: BookingScrollTarget) => void;
   /** @deprecated use scrollToBooking */
-  scrollToOptions?: () => void;
+  scrollToOptions?: (target?: BookingScrollTarget) => void;
   isSoldOut?: boolean;
   /** itinerary: 보조 문구 */
   copy?: string;
@@ -52,6 +53,21 @@ export type ProductConsultCTAProps = {
   /** 고정 출발일 상품 등 CTA 문구 분기 */
   ctaLabelOptions?: ProductCtaLabelOptions;
 };
+
+type PendingAction = "primary" | "kakao";
+
+function buildSelectionPromptMessage(
+  departureMissing: boolean,
+  optionsMissing: boolean,
+): string {
+  if (departureMissing && optionsMissing) {
+    return "출발일·옵션을 선택하면 더 정확한 상담이 가능합니다.";
+  }
+  if (departureMissing) {
+    return "출발일을 선택하면 더 정확한 상담이 가능합니다.";
+  }
+  return "추가 옵션·할증을 선택하면 더 정확한 상담이 가능합니다.";
+}
 
 export function ProductConsultCTA({
   productId,
@@ -81,6 +97,8 @@ export function ProductConsultCTA({
   const { openModal } = useConsultModal();
   const quoteCtx = useProductQuote();
   const [kakaoToast, setKakaoToast] = useState<string | null>(null);
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const requiredGroupsMissing = requiredGroupsMissingProp ?? quoteCtx.requiredGroupsMissing;
   const departureSelectionMissing =
@@ -95,20 +113,14 @@ export function ProductConsultCTA({
     buildProductInquiryPrefill({
       productTitle,
       selectedDeparture: quoteCtx.selectedDeparture,
+      travelerCount: quoteCtx.travelerCount,
       quoteSummary: quoteCtx.quoteSummary,
       selectedOptions: quoteCtx.selectedOptions,
     });
 
-  const scrollToSelectionIfNeeded = () => {
-    if ((departureSelectionMissing || requiredGroupsMissing) && scrollToBooking) {
-      scrollToBooking();
-      return true;
-    }
-    return false;
-  };
+  const selectionMissing = departureSelectionMissing || requiredGroupsMissing;
 
-  const handlePrimary = () => {
-    if (scrollToSelectionIfNeeded()) return;
+  const proceedPrimary = useCallback(() => {
     if (isSoldOut && typeof window !== "undefined") {
       window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
       return;
@@ -122,13 +134,29 @@ export function ProductConsultCTA({
       sourcePath,
       prefillContent: prefill || undefined,
     });
-  };
+  }, [
+    isSoldOut,
+    productId,
+    section,
+    onPrimaryClick,
+    productTitle,
+    sourcePath,
+    openModal,
+    quoteCtx.selectedDeparture,
+    quoteCtx.quoteSummary,
+    quoteCtx.selectedOptions,
+    quoteCtx.travelerCount,
+  ]);
 
-  const handleKakao = async (event: React.MouseEvent) => {
-    event.preventDefault();
-    if (scrollToSelectionIfNeeded()) return;
+  const proceedKakao = useCallback(async () => {
     trackProductCtaClick({ productId, ctaType: "kakao", section });
-    const summary = buildPrefill();
+    const summary = buildProductInquiryPrefill({
+      productTitle,
+      selectedDeparture: quoteCtx.selectedDeparture,
+      travelerCount: quoteCtx.travelerCount,
+      quoteSummary: quoteCtx.quoteSummary,
+      selectedOptions: quoteCtx.selectedOptions,
+    });
     if (summary && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(summary);
@@ -142,6 +170,59 @@ export function ProductConsultCTA({
     if (kakaoHref && typeof window !== "undefined") {
       window.open(kakaoHref, "_blank", "noopener,noreferrer");
     }
+  }, [
+    productId,
+    section,
+    kakaoHref,
+    productTitle,
+    quoteCtx.selectedDeparture,
+    quoteCtx.quoteSummary,
+    quoteCtx.selectedOptions,
+    quoteCtx.travelerCount,
+  ]);
+
+  const dismissPrompt = useCallback(() => {
+    setPromptOpen(false);
+    setPendingAction(null);
+  }, []);
+
+  const handleScrollToSelection = useCallback(() => {
+    const target: BookingScrollTarget = departureSelectionMissing
+      ? "departure"
+      : requiredGroupsMissing
+        ? "options"
+        : "panel";
+    scrollToBooking(target);
+    dismissPrompt();
+  }, [departureSelectionMissing, requiredGroupsMissing, scrollToBooking, dismissPrompt]);
+
+  const handleProceedWithoutSelection = useCallback(() => {
+    const action = pendingAction;
+    dismissPrompt();
+    if (action === "kakao") {
+      void proceedKakao();
+    } else {
+      proceedPrimary();
+    }
+  }, [pendingAction, dismissPrompt, proceedKakao, proceedPrimary]);
+
+  const handlePrimary = () => {
+    if (selectionMissing) {
+      setPendingAction("primary");
+      setPromptOpen(true);
+      return;
+    }
+    proceedPrimary();
+  };
+
+  const handleKakao = (event: React.MouseEvent) => {
+    event.preventDefault();
+    if (selectionMissing) {
+      setPendingAction("kakao");
+      setPromptOpen(true);
+      return;
+    }
+    void proceedKakao();
   };
 
   const kakaoButton = kakaoHref ? (
@@ -162,6 +243,24 @@ export function ProductConsultCTA({
         {departureSelectionMissing ? "출발일을 선택해 주세요." : "필수 옵션을 선택해 주세요."}
       </p>
     ) : null;
+
+  const actionPrompt = (
+    <ActionPromptToast
+      open={promptOpen}
+      message={buildSelectionPromptMessage(departureSelectionMissing, requiredGroupsMissing)}
+      primaryLabel={
+        departureSelectionMissing && requiredGroupsMissing
+          ? "출발일·옵션 선택하기"
+          : departureSelectionMissing
+            ? "출발일 선택하기"
+            : "옵션 선택하기"
+      }
+      secondaryLabel="선택 없이 문의"
+      onPrimary={handleScrollToSelection}
+      onSecondary={handleProceedWithoutSelection}
+      onDismiss={dismissPrompt}
+    />
+  );
 
   if (section === "sticky") {
     return (
@@ -206,6 +305,7 @@ export function ProductConsultCTA({
             {kakaoButton ? <div className="min-w-0 shrink">{kakaoButton}</div> : null}
           </div>
         </div>
+        {actionPrompt}
       </div>
     );
   }
@@ -216,8 +316,8 @@ export function ProductConsultCTA({
         {copy && <p className="mb-3 text-sm font-medium text-[var(--text-secondary)]">{copy}</p>}
         {subCopy && <p className="mb-4 text-xs text-[var(--text-muted)]">{subCopy}</p>}
         {selectionHint}
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button variant="accent" size="md" onClick={handlePrimary}>
+        <div className="flex flex-col gap-2">
+          <Button variant="accent" size="md" onClick={handlePrimary} className="w-full">
             {primaryLabel}
           </Button>
           {kakaoButton}
@@ -225,6 +325,7 @@ export function ProductConsultCTA({
         {kakaoToast ? (
           <p className="mt-2 text-center text-xs text-slate-600">{kakaoToast}</p>
         ) : null}
+        {actionPrompt}
       </div>
     );
   }
@@ -244,6 +345,7 @@ export function ProductConsultCTA({
       </div>
       {kakaoToast ? <p className="mt-2 text-xs text-slate-600">{kakaoToast}</p> : null}
       <p className="mt-2 text-xs leading-relaxed text-slate-500">{helperText}</p>
+      {actionPrompt}
     </div>
   );
 }

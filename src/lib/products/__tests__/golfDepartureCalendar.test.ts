@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
+import * as desiredDeparture from "@/lib/inquiry/desiredDeparture";
 import {
   buildGolfDepartureEvents,
   groupGolfDepartureEventsByDate,
+  resolveGolfCalendarInitialDate,
   sortGolfDepartureEventsForList,
 } from "@/lib/products/golfDepartureCalendar";
 import type { Product } from "@/types/product";
@@ -90,7 +92,7 @@ describe("buildGolfDepartureEvents", () => {
     expect(events[61]?.date).toBe("2026-08-31");
   });
 
-  it("uses only departure date when from/to span trip duration without tilde range", () => {
+  it("expands from/to departure window for home golf calendar (legacy products)", () => {
     const products = [
       {
         id: "p-trip",
@@ -102,8 +104,28 @@ describe("buildGolfDepartureEvents", () => {
     ];
 
     const events = buildGolfDepartureEvents(products);
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(62);
     expect(events[0]?.date).toBe("2026-07-01");
+    expect(events[61]?.date).toBe("2026-08-31");
+  });
+
+  it("falls back to departure_from_date when schedules are unparseable placeholders", () => {
+    const products = [
+      {
+        id: "p-legacy",
+        title: "레거시 골프",
+        departureSchedules: [{ departureDate: "미정", returnDate: null, price: null }],
+        departure_from_date: "2026-10-15",
+        price: 890000,
+      } as Product,
+    ];
+
+    const events = buildGolfDepartureEvents(products);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      date: "2026-10-15",
+      productId: "p-legacy",
+    });
   });
 
   it("uses only departure date for overnight flight (not arrival day)", () => {
@@ -232,6 +254,47 @@ describe("sortGolfDepartureEventsForList", () => {
     ]);
 
     expect(events.map((e) => e.productId)).toEqual(["a", "b"]);
+  });
+
+  it("builds events only from the provided product subset", () => {
+    const products = [
+      {
+        id: "included",
+        title: "포함 상품",
+        departures: ["2026-09-01"],
+      } as Product,
+      {
+        id: "excluded",
+        title: "제외 상품",
+        departures: ["2026-10-01"],
+      } as Product,
+    ];
+
+    const events = buildGolfDepartureEvents([products[0]]);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.productId).toBe("included");
+  });
+});
+
+describe("resolveGolfCalendarInitialDate", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("selects first upcoming departure on or after KST today", () => {
+    vi.spyOn(desiredDeparture, "kstTodayYmd").mockReturnValue("2026-07-10");
+    const result = resolveGolfCalendarInitialDate(["2026-05-01", "2026-08-15", "2026-09-01"]);
+    expect(result.getFullYear()).toBe(2026);
+    expect(result.getMonth()).toBe(7);
+    expect(result.getDate()).toBe(15);
+  });
+
+  it("falls back to latest past departure when no upcoming dates remain", () => {
+    vi.spyOn(desiredDeparture, "kstTodayYmd").mockReturnValue("2026-12-01");
+    const result = resolveGolfCalendarInitialDate(["2026-05-01", "2026-08-15"]);
+    expect(result.getFullYear()).toBe(2026);
+    expect(result.getMonth()).toBe(7);
+    expect(result.getDate()).toBe(15);
   });
 });
 

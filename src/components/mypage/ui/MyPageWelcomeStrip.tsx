@@ -15,7 +15,7 @@ export function MyPageWelcomeStrip({ userName, points, className }: MyPageWelcom
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl border border-[var(--primary)]/20 p-5 sm:p-6",
-        "bg-[var(--gradient-primary)] text-white shadow-[var(--shadow-soft-strong)]",
+        "bg-[var(--primary)] [background-image:var(--gradient-primary)] text-white shadow-[var(--shadow-soft-strong)]",
         className,
       )}
     >

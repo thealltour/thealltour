@@ -19,6 +19,11 @@ import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollecti
 import {
   isGolfTourType,
 } from "@/lib/products/golfChannel";
+import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
+import {
+  resolvePromotionCampaignDisplayLabel,
+  resolvePromotionCampaignId,
+} from "@/lib/products/golfCalendarPromotion";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildOgMetadataFromSeoData(getProductsIndexOgPageSeo());
@@ -63,6 +68,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   const collectionCampaignNames = await getCollectionCampaignNamesForListing();
 
+  let golfCalendarPromotionCampaignId: string | null = null;
+  let golfCalendarPromotionLegendLabel: string | null = null;
+  if (golfPresetActive) {
+    const campaignTaxonomies = await getCampaignTaxonomiesForCard();
+    golfCalendarPromotionCampaignId = resolvePromotionCampaignId(campaignTaxonomies);
+    golfCalendarPromotionLegendLabel = resolvePromotionCampaignDisplayLabel(campaignTaxonomies);
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
@@ -93,6 +106,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               initialKeyword={initialKeywordFromLanding || searchKeyword}
               golfChannelPreset={golfPresetActive}
               presetLabel={golfPresetActive ? "골프/파크골프" : undefined}
+              golfCalendarMeta={
+                golfPresetActive
+                  ? {
+                      promotionCampaignId: golfCalendarPromotionCampaignId,
+                      promotionLegendLabel: golfCalendarPromotionLegendLabel,
+                    }
+                  : undefined
+              }
               listing={{
                 initialFiltersFromServer,
                 regionTaxonomies: hubDestinations,

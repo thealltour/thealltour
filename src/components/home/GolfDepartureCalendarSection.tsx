@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { DayButton, type DayButtonProps } from "react-day-picker";
@@ -22,21 +22,32 @@ import { formatIsoDateKorean } from "@/lib/inquiry/desiredDeparture";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import {
   groupGolfDepartureEventsByDate,
+  resolveGolfCalendarInitialDate,
   type GolfDepartureEvent,
 } from "@/lib/products/golfDepartureCalendar";
 
 const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/thealltour-home-card/800/600";
 const DEFAULT_PROMOTION_LEGEND = "특가·기획 상품 출발일";
+const DEFAULT_EYEBROW = "출발일 한눈에";
+const DEFAULT_TITLE = "더올투어 골프 달력";
+const DEFAULT_DESCRIPTION =
+  "골프·파크골프 상품의 출발 가능일을 달력에서 확인하고 바로 상품으로 이동할 수 있습니다.";
 
 export type GolfDepartureCalendarSectionProps = {
   events: GolfDepartureEvent[];
   promotionLegendLabel?: string | null;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
   className?: string;
 };
 
 export default function GolfDepartureCalendarSection({
   events,
   promotionLegendLabel,
+  eyebrow = DEFAULT_EYEBROW,
+  title = DEFAULT_TITLE,
+  description = DEFAULT_DESCRIPTION,
   className,
 }: GolfDepartureCalendarSectionProps) {
   const isWide = useIsDesktop(1024);
@@ -65,9 +76,17 @@ export default function GolfDepartureCalendarSection({
     [promotionYmdSet],
   );
 
-  const initialSelected = departureDates[0] ?? new Date();
-  const [selectedDate, setSelectedDate] = useState<Date>(initialSelected);
-  const [month, setMonth] = useState<Date>(initialSelected);
+  const initialCalendarDate = useMemo(
+    () => resolveGolfCalendarInitialDate(events.map((event) => event.date)),
+    [events],
+  );
+  const [selectedDate, setSelectedDate] = useState<Date>(initialCalendarDate);
+  const [month, setMonth] = useState<Date>(initialCalendarDate);
+
+  useEffect(() => {
+    setSelectedDate(initialCalendarDate);
+    setMonth(initialCalendarDate);
+  }, [initialCalendarDate]);
 
   const extraHolidayYears = useMemo(
     () => collectYearsFromYmdList(events.map((event) => event.date)),
@@ -106,9 +125,9 @@ export default function GolfDepartureCalendarSection({
       className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
     >
       <SectionHeader
-        eyebrow="출발일 한눈에"
-        title="더올투어 골프 달력"
-        description="골프·파크골프 상품의 출발 가능일을 달력에서 확인하고 바로 상품으로 이동할 수 있습니다."
+        eyebrow={eyebrow}
+        title={title}
+        description={description}
       />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-start">

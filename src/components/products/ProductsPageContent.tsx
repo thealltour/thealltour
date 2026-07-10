@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
 import ProductCatalogSection from "@/components/product-detail/ProductCatalogSection";
@@ -31,6 +32,24 @@ import type { Product } from "@/types/product";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import { getSelfAndDescendantIdsAndNames } from "@/lib/productTaxonomies";
 import type { ProductsPageContentListingConfig } from "@/lib/products/productsPageContentConfig";
+import { buildGolfDepartureEvents } from "@/lib/products/golfDepartureCalendar";
+
+const GolfDepartureCalendarSection = dynamic(
+  () => import("@/components/home/GolfDepartureCalendarSection"),
+  {
+    loading: () => (
+      <div
+        className="min-h-[22rem] w-full animate-pulse rounded-2xl bg-[var(--surface-muted)] ring-1 ring-[var(--border)]/60"
+        aria-hidden
+      />
+    ),
+  },
+);
+
+export type ProductsPageGolfCalendarMeta = {
+  promotionCampaignId: string | null;
+  promotionLegendLabel: string | null;
+};
 
 export type { ProductsPageContentListingConfig };
 
@@ -48,6 +67,7 @@ export type ProductsPageContentProps = {
   initialKeyword?: string;
   golfChannelPreset?: boolean;
   presetLabel?: string;
+  golfCalendarMeta?: ProductsPageGolfCalendarMeta;
   /** 목록 퍼널 옵션(랜딩·basePath·카드 레이아웃 등). 미전달 시 각 필드 기본값 */
   listing?: ProductsPageContentListingConfig;
 };
@@ -63,6 +83,7 @@ export function ProductsPageContent({
   initialKeyword = "",
   golfChannelPreset = false,
   presetLabel,
+  golfCalendarMeta,
   listing,
 }: ProductsPageContentProps) {
   const initialFiltersFromServer = listing?.initialFiltersFromServer ?? null;
@@ -191,6 +212,15 @@ export function ProductsPageContent({
     [baseProducts, filters, taxonomyNameMap, filterApplyOptions],
   );
 
+  const golfCalendarEvents = useMemo(() => {
+    if (!golfChannelPreset) return [];
+    return buildGolfDepartureEvents(
+      filteredProducts,
+      taxonomyNameMap ?? {},
+      golfCalendarMeta?.promotionCampaignId ?? null,
+    );
+  }, [golfChannelPreset, filteredProducts, taxonomyNameMap, golfCalendarMeta?.promotionCampaignId]);
+
   function handleFilterChange(next: Partial<ProductFiltersState>) {
     const merged: ProductFiltersState = { ...filters, ...next };
     const nextParams = mergeFiltersIntoSearchParams(searchParams, merged);
@@ -225,7 +255,19 @@ export function ProductsPageContent({
   const golfRegionLabel = golfRegionPreset ? GOLF_REGION_PRESET_LABELS[golfRegionPreset] : null;
 
   return (
-    <div className="flex w-full max-w-full gap-8 items-start">
+    <div className="flex w-full max-w-full flex-col gap-6">
+      {golfChannelPreset ? (
+        <GolfDepartureCalendarSection
+          events={golfCalendarEvents}
+          promotionLegendLabel={golfCalendarMeta?.promotionLegendLabel}
+          eyebrow="출발일 한눈에"
+          title="골프 출발 달력"
+          description="현재 보고 있는 골프 상품의 출발 가능일을 확인하고 바로 상품으로 이동할 수 있습니다."
+          className="!px-0"
+        />
+      ) : null}
+
+      <div className="flex w-full max-w-full items-start gap-8">
       <ProductFilterSidebar
         regionOptions={regionOptions}
         regionTree={regionTree}
@@ -332,6 +374,7 @@ export function ProductsPageContent({
         currentSort={filters.sort}
         onSelect={(sort: ProductSortId) => handleFilterChange({ sort })}
       />
+      </div>
     </div>
   );
 }

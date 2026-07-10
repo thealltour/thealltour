@@ -77,6 +77,15 @@ function formatPhoneInput(raw: string) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
+function maskPhoneDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 7) return phone;
+  if (digits.length <= 10) {
+    return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
+  }
+  return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
+}
+
 function validateForm(form: QuickFormState): FieldErrors {
   const errors: FieldErrors = {};
   if (!form.name.trim()) errors.name = "이름을 입력해 주세요.";
@@ -99,6 +108,8 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
   const [pointsUseEnabled, setPointsUseEnabled] = useState(false);
   const [pointsUseAmount, setPointsUseAmount] = useState(0);
   const [pointsLoading, setPointsLoading] = useState(false);
+  const [memberProfile, setMemberProfile] = useState<{ name: string; phone: string } | null>(null);
+  const [memberProfileLoading, setMemberProfileLoading] = useState(false);
   const quoteCtx = useProductQuote();
 
   const showGolfBrief = isGolfBriefContext({
@@ -106,6 +117,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
     productTitle: params.productTitle,
     landingSlug: params.landingSlug,
   });
+
+  const hideNameField = Boolean(memberProfile?.name?.trim());
+  const hidePhoneField = Boolean(memberProfile?.phone?.trim());
+  const hideContactFields = hideNameField && hidePhoneField;
 
   useEffect(() => {
     let mounted = true;
@@ -127,7 +142,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
     if (!isOpen) return;
     let mounted = true;
     setPointsLoading(true);
-    fetch("/api/me/points", { credentials: "include", cache: "no-store" })
+    setMemberProfileLoading(true);
+    setMemberProfile(null);
+
+    const pointsPromise = fetch("/api/me/points", { credentials: "include", cache: "no-store" })
       .then(async (res) => {
         if (!mounted) return;
         if (!res.ok) {
@@ -152,6 +170,36 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         if (mounted) setPointsLoading(false);
       });
+
+    const profilePromise = fetch("/api/me/profile", { credentials: "include", cache: "no-store" })
+      .then(async (res) => {
+        if (!mounted) return;
+        if (!res.ok) {
+          setMemberProfile(null);
+          return;
+        }
+        const data = (await res.json()) as { name?: string; phone?: string };
+        const name = typeof data.name === "string" ? data.name.trim() : "";
+        const phoneRaw = typeof data.phone === "string" ? data.phone.trim() : "";
+        const phone = phoneRaw ? formatPhoneInput(phoneRaw) : "";
+        setMemberProfile({ name, phone });
+        if (name || phone) {
+          setForm((prev) => ({
+            ...prev,
+            name: name || prev.name,
+            phone: phone || prev.phone,
+          }));
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setMemberProfile(null);
+      })
+      .finally(() => {
+        if (mounted) setMemberProfileLoading(false);
+      });
+
+    void Promise.all([pointsPromise, profilePromise]);
     return () => {
       mounted = false;
     };
@@ -180,6 +228,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
       buildProductInquiryPrefill({
         productTitle: nextParams?.productTitle,
         selectedDeparture: quoteCtx.selectedDeparture,
+        travelerCount: quoteCtx.travelerCount,
         quoteSummary: quoteCtx.quoteSummary,
         selectedOptions: quoteCtx.selectedOptions,
       });
@@ -193,17 +242,20 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
     setPointBalance(null);
     setPointsUseEnabled(false);
     setPointsUseAmount(0);
+    setMemberProfile(null);
     setIsOpen(true);
   }, [
     quoteCtx.selectedDeparture,
     quoteCtx.quoteSummary,
     quoteCtx.selectedOptions,
+    quoteCtx.travelerCount,
   ]);
 
   const closeModal = useCallback(() => {
     setIsOpen(false);
     setIsSuccess(false);
     setFieldErrors({});
+    setMemberProfile(null);
   }, []);
 
   const showToast = useCallback((kind: "success" | "error", message: string) => {
@@ -235,6 +287,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
         const departureLines = buildProductInquiryPrefill({
           productTitle: params.productTitle,
           selectedDeparture,
+          travelerCount: quoteCtx.travelerCount,
         });
         contentBase = departureLines
           ? contentBase
@@ -408,10 +461,23 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-3.5">
-                    <p className="text-sm text-[var(--text-muted)]">
-                      이름과 연락처만 입력하셔도 상담이 가능합니다.
-                    </p>
+                    {memberProfileLoading ? null : hideContactFields ? (
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3.5 py-3 text-sm text-[var(--text-secondary)]">
+                        <p className="font-medium text-[var(--text-primary)]">회원 정보로 접수됩니다.</p>
+                        <p className="mt-1">
+                          {form.name}
+                          {form.phone ? ` · ${maskPhoneDisplay(form.phone)}` : null}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-[var(--text-muted)]">
+                        {hideNameField
+                          ? "연락처를 입력해 주시면 상담이 가능합니다."
+                          : "이름과 연락처만 입력하셔도 상담이 가능합니다."}
+                      </p>
+                    )}
                     {showGolfBrief ? <GolfBriefFields value={golfBrief} onChange={setGolfBrief} /> : null}
+                    {!memberProfileLoading && !hideNameField ? (
                     <div className="flex flex-col gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
                         <span>이름 *</span>
@@ -434,6 +500,8 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         ) : null}
                       </label>
                     </div>
+                    ) : null}
+                    {!memberProfileLoading && !hidePhoneField ? (
                     <div className="flex flex-col gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
                         <span>연락처 *</span>
@@ -456,6 +524,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                         ) : null}
                       </label>
                     </div>
+                    ) : null}
                     <div className="flex flex-col gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
                       <label className="space-y-1.5">
                         <span>문의 내용 <span className="text-[var(--text-muted)]">(선택)</span></span>

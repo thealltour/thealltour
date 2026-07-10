@@ -13,6 +13,8 @@ export const OG_ACCENT_SOFT = "#fdba74";
 export const OG_PAD_X = 64;
 export const OG_PAD_Y = 52;
 
+export const OG_WORDMARK_HEIGHT = 40;
+
 export const OG_FALLBACK_PANEL_BG =
   "linear-gradient(165deg, #0b1220 0%, #0f172a 42%, #1e293b 88%, #0f172a 100%)";
 
@@ -40,50 +42,67 @@ export function ogSplitTitle(title: string, max1 = 19, max2 = 21): { line1: stri
   return { line1, line2: rest };
 }
 
-export function OgBrandChip({ logoDataUrl }: { logoDataUrl?: string | null }) {
+/** 좌상단 워드마크 헤더 (통일 OG 셸) */
+export function OgWordmarkHeader({
+  logoDataUrl,
+  hasHero = false,
+}: {
+  logoDataUrl?: string | null;
+  hasHero?: boolean;
+}) {
+  if (!logoDataUrl) {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: OG_PAD_Y,
+          left: OG_PAD_X,
+          zIndex: 4,
+          fontSize: 22,
+          fontWeight: 800,
+          color: OG_TEXT,
+          letterSpacing: "-0.02em",
+          textShadow: hasHero ? "0 1px 14px rgba(0,0,0,0.55)" : undefined,
+        }}
+      >
+        더올투어
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
         position: "absolute",
-        top: OG_PAD_Y,
+        top: OG_PAD_Y - 4,
         left: OG_PAD_X,
         zIndex: 4,
         display: "flex",
-        flexDirection: "row",
         alignItems: "center",
-        padding: "8px 16px 8px 12px",
-        borderRadius: 999,
-        background: "rgba(15, 23, 42, 0.78)",
-        border: "1px solid rgba(255, 255, 255, 0.14)",
+        padding: hasHero ? "10px 14px" : "0",
+        borderRadius: hasHero ? 12 : 0,
+        background: hasHero ? "rgba(15, 23, 42, 0.55)" : "transparent",
+        border: hasHero ? "1px solid rgba(255, 255, 255, 0.12)" : "none",
       }}
     >
-      {logoDataUrl ? (
-        <img
-          src={logoDataUrl}
-          alt=""
-          height={26}
-          width={26}
-          style={{
-            height: 26,
-            width: 26,
-            objectFit: "contain",
-            flexShrink: 0,
-          }}
-        />
-      ) : null}
-      <span
+      <img
+        src={logoDataUrl}
+        alt=""
+        height={OG_WORDMARK_HEIGHT}
         style={{
-          marginLeft: logoDataUrl ? 10 : 0,
-          fontSize: 18,
-          fontWeight: 700,
-          color: OG_TEXT,
-          letterSpacing: "-0.02em",
+          height: OG_WORDMARK_HEIGHT,
+          width: "auto",
+          objectFit: "contain",
+          display: "flex",
         }}
-      >
-        더올투어
-      </span>
+      />
     </div>
   );
+}
+
+/** @deprecated OgWordmarkHeader 사용 */
+export function OgBrandChip({ logoDataUrl }: { logoDataUrl?: string | null }) {
+  return <OgWordmarkHeader logoDataUrl={logoDataUrl} hasHero />;
 }
 
 type OgCardShellProps = {
@@ -142,7 +161,7 @@ export function OgCardShell({ logoDataUrl, heroImageDataUrl, children }: OgCardS
           height: 4,
           zIndex: 3,
           background: "linear-gradient(90deg, #ea580c 0%, #fb923c 50%, #ea580c 100%)",
-          opacity: hasHero ? 0.85 : 1,
+          opacity: hasHero ? 0.9 : 1,
         }}
       />
 
@@ -153,12 +172,12 @@ export function OgCardShell({ logoDataUrl, heroImageDataUrl, children }: OgCardS
             inset: 0,
             zIndex: 1,
             background:
-              "linear-gradient(180deg, rgba(15,23,42,0.06) 0%, rgba(15,23,42,0) 38%, rgba(11,18,32,0.25) 58%, rgba(11,18,32,0.82) 82%, rgba(8,12,22,0.94) 100%)",
+              "linear-gradient(180deg, rgba(15,23,42,0.18) 0%, rgba(15,23,42,0.08) 32%, rgba(11,18,32,0.35) 58%, rgba(11,18,32,0.86) 82%, rgba(8,12,22,0.96) 100%)",
           }}
         />
       ) : null}
 
-      <OgBrandChip logoDataUrl={logoDataUrl} />
+      <OgWordmarkHeader logoDataUrl={logoDataUrl} hasHero={hasHero} />
 
       <div
         style={{

@@ -1,17 +1,19 @@
 /**
  * next/og ImageResponse용 브랜드 OG 카드 JSX.
  * 인라인 스타일만 사용 (Satori 호환).
- * 홈·지역·테마·상품 fallback 등 공통.
+ * 홈·지역·테마·상품 fallback 등 공통 — 다크 셸 + 워드마크 통일.
  */
+
+import { OG_FONT, OG_MUTED, OG_TEXT, OG_WORDMARK_HEIGHT } from "@/components/seo/ogCardShared";
 
 export type BrandOgBackgroundVariant = "navy" | "navyWarm";
 
 export type BrandOgCardProps = {
   /** 상단 작은 라벨 (예: REGION, THEME). 없으면 생략 */
   tagLabel?: string;
-  /** 로고 옆 첫 줄 브랜드명 (기본: 더올투어) */
+  /** @deprecated 워드마크 사용으로 미표시 */
   eyebrow?: string;
-  /** 로고 옆 둘째 줄 (기본: THEALL TOUR) */
+  /** @deprecated 워드마크 사용으로 미표시 */
   brandSubline?: string;
   title: string;
   subtitle?: string;
@@ -29,13 +31,9 @@ const BG: Record<BrandOgBackgroundVariant, string> = {
 };
 
 const ACCENT = "#ea580c";
-const TEXT = "#f8fafc";
-const MUTED = "#94a3b8";
 
 export function BrandOgCard({
   tagLabel,
-  eyebrow = "더올투어",
-  brandSubline = "THEALL TOUR",
   title,
   subtitle,
   badge,
@@ -53,8 +51,7 @@ export function BrandOgCard({
         flexDirection: "column",
         background: BG[backgroundVariant],
         position: "relative",
-        fontFamily:
-          'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif',
+        fontFamily: OG_FONT,
       }}
     >
       <div
@@ -77,6 +74,33 @@ export function BrandOgCard({
           padding: "52px 64px 60px",
         }}
       >
+        {logoDataUrl ? (
+          <img
+            src={logoDataUrl}
+            alt=""
+            height={OG_WORDMARK_HEIGHT + 4}
+            style={{
+              height: OG_WORDMARK_HEIGHT + 4,
+              width: "auto",
+              objectFit: "contain",
+              marginBottom: 28,
+              alignSelf: "flex-start",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              fontSize: 26,
+              fontWeight: 800,
+              color: OG_TEXT,
+              letterSpacing: "-0.02em",
+              marginBottom: 28,
+            }}
+          >
+            더올투어
+          </div>
+        )}
+
         {tagLabel ? (
           <div
             style={{
@@ -91,58 +115,12 @@ export function BrandOgCard({
             {tagLabel}
           </div>
         ) : null}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 36,
-          }}
-        >
-          {logoDataUrl ? (
-            <img
-              src={logoDataUrl}
-              alt=""
-              height={44}
-              style={{
-                height: 44,
-                width: "auto",
-                objectFit: "contain",
-                marginRight: 20,
-              }}
-            />
-          ) : null}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span
-              style={{
-                fontSize: 26,
-                fontWeight: 700,
-                color: TEXT,
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {eyebrow}
-            </span>
-            <span
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: MUTED,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase" as const,
-                marginTop: 4,
-              }}
-            >
-              {brandSubline}
-            </span>
-          </div>
-        </div>
 
         <div
           style={{
             fontSize: titleFontSize,
             fontWeight: 800,
-            color: TEXT,
+            color: OG_TEXT,
             lineHeight: 1.12,
             letterSpacing: "-0.03em",
             maxWidth: 1000,
@@ -157,7 +135,7 @@ export function BrandOgCard({
             style={{
               fontSize: 30,
               fontWeight: 600,
-              color: MUTED,
+              color: OG_MUTED,
               lineHeight: 1.35,
               maxWidth: 920,
             }}

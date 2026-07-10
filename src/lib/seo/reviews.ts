@@ -8,7 +8,6 @@
 import "server-only";
 import type { PublicReviewItem } from "@/types/review";
 import { mediumUrlToOriginalUrl } from "@/lib/reviewImagePolicy";
-import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
 
 const SITE_NAME = "더올투어";
 const DEFAULT_DESC_LENGTH = 155;
@@ -106,7 +105,9 @@ export function buildReviewDetailMetadata(
     : review.image_url
       ? [review.image_url]
       : [];
-  const ogImage = imageUrls[0] ? toAbsoluteUrl(imageUrls[0]) : `${siteUrl}${THEALL_WORDMARK_IMAGE_SRC}`;
+  const ogImage = imageUrls[0]
+    ? toAbsoluteUrl(imageUrls[0])
+    : `${siteUrl}/opengraph-image`;
 
   return {
     title,

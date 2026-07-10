@@ -30,7 +30,7 @@ Rules:
 - overview_accommodation: hotel names like "천홍 호텔 또는 동급".
 - seasonal_price_bands: numeric KRW integers only. Put date ranges and conditions in seasonal_price_band_notes.
 - Flight: split outbound (가는편) and return (오는편/귀국). Use YYYY-MM-DD for dates, HH:mm for times when available.
-- departure_schedules: each row from 출발일/회차/가격 tables = one array item (departure_date, return_date, price, label). Multiple departure dates = multiple items. departure_from_date = first schedule date only when no single flight departure date in the table. Prefer YYYY-MM-DD in departure_date when year is known; put display text like 7/23(수) in label (server normalizes month/day-only dates).
+- departure_schedules: each row from 출발일/회차/가격 tables = one array item (departure_date, return_date, price, label). Multiple departure dates = multiple items. departure_from_date = first schedule date only when no single flight departure date in the table. If the source text has NO year (20xx), do NOT guess a year in departure_date — use month/day only (e.g. 7/23 or 07.23) and put the display text in label. Use YYYY-MM-DD only when the year is explicitly stated in the source.
 - selling_points_json: extract 핵심포인트, 관광, 식사, 교통, 보험 sections verbatim when present.
 - point_tourism, point_guide, meeting_info, travel_insurance: "O" or "X" only when explicitly stated; else null.
 - Do NOT build itinerary_v2_json in this pass.`;
@@ -60,7 +60,7 @@ function buildBandMetaPrompt(input: ParseBandProductTextInput): string {
     "6. 선택관광 → optional_tours",
     "7. 약관·유의·환불 → terms_and_notes, travel_notes, booking_conditions, refund_policy",
     "8. 항공 표 → 가는편/오는편 각 필드 분리",
-    "9. 출발일·회차·가격 표 → departure_schedules 각 행 분리 (7/23 89만, 7/30 92만 → 2건). price는 원화 정수. departure_date는 가능하면 YYYY-MM-DD, 원문 표기는 label에.",
+    "9. 출발일·회차·가격 표 → departure_schedules 각 행 분리 (7/23 89만, 7/30 92만 → 2건). price는 원화 정수. 원문에 연도(20xx)가 없으면 departure_date에 연도를 추측하지 말고 7/23·07.23 형식만 사용하고 표기는 label에. 원문에 연도가 있을 때만 YYYY-MM-DD.",
     "10. price는 원화 정수(쉼표·만원·원 제거). 스케줄 가격이 있으면 최저가, 없으면 본문 기본가.",
     "11. status: AVAILABLE/LIMITED/SOLD_OUT/CONSULT_REQUIRED 또는 null",
     "",

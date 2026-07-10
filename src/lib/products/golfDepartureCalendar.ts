@@ -1,4 +1,6 @@
 import type { Product } from "@/types/product";
+import { ymdToDate } from "@/lib/datePickerUtils";
+import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
 import { filterGolfChannelProducts } from "@/lib/products/golfChannel";
 import {
   productHasPromotionCampaign,
@@ -27,6 +29,21 @@ export type GolfDepartureCalendarBuildResult = {
   products: Product[];
   promotionLegendLabel: string | null;
 };
+
+/** 달력 초기 선택일: KST 오늘 이후 첫 출발일, 없으면 가장 가까운 과거 출발일 또는 오늘 */
+export function resolveGolfCalendarInitialDate(eventYmds: string[]): Date {
+  const today = kstTodayYmd();
+  const sorted = [...new Set(eventYmds)].sort();
+  const upcoming = sorted.find((ymd) => ymd >= today);
+  if (upcoming) {
+    return ymdToDate(upcoming) ?? new Date();
+  }
+  const last = sorted[sorted.length - 1];
+  if (last) {
+    return ymdToDate(last) ?? new Date();
+  }
+  return new Date();
+}
 
 function resolveProductRegionLabel(
   product: Product,
@@ -61,7 +78,7 @@ export function buildGolfDepartureEvents(
     const imageUrl = resolveProductImageUrl(product);
     const isPromotion = productHasPromotionCampaign(product, promotionCampaignId);
 
-    for (const date of collectProductDepartureDates(product)) {
+    for (const date of collectProductDepartureDates(product, { expandDepartureWindow: true })) {
       events.push({
         date,
         productId: product.id,

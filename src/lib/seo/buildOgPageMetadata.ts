@@ -4,7 +4,7 @@ import type { OgPageSeoData } from "@/lib/seo/ogPageSeoTypes";
 
 export const OG_CARD_SIZE = { width: 1200, height: 630 } as const;
 
-const BRAND_DEFAULT_OG_PATH = "/og-default-v1.png";
+const BRAND_DEFAULT_OG_PATH = "/opengraph-image";
 
 export type BuildOgPageMetadataArgs = {
   siteUrl: string;

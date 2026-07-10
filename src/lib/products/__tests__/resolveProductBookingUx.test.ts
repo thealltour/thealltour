@@ -37,7 +37,7 @@ describe("resolveProductBookingUxMode", () => {
       departureSchedules: [{ departureDate: "2026-07-01", returnDate: null, price: 120000, label: null, status: "AVAILABLE" }],
     });
     expect(resolveProductBookingUxMode(product)).toBe("promotion_fixed");
-    expect(resolveDepartureUiForProduct(product)).toBe("chips");
+    expect(resolveDepartureUiForProduct(product)).toBe("calendar");
   });
 
   it("returns calendar_booking for general products", () => {

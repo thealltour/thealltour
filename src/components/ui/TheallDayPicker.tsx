@@ -1,5 +1,7 @@
 "use client";
 
+import "react-day-picker/style.css";
+import "@/components/ui/datePicker.css";
 import { useCallback, useMemo } from "react";
 import {
   DayPicker,

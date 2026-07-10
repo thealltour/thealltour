@@ -1,8 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
+import { Minus, Plus } from "lucide-react";
 import { OptionGroup } from "@/components/products/OptionGroup";
 import { ProductDepartureCalendarPanel } from "@/components/products/ProductDepartureCalendarPanel";
+import {
+  MAX_TRAVELER_COUNT,
+  MIN_TRAVELER_COUNT,
+} from "@/components/products/ProductQuoteContext";
 import { sortOptionGroups } from "@/lib/pricing/calcQuote";
 import {
   hasAnyOptionSelection,
@@ -15,6 +20,7 @@ import {
 import { collectProductDepartureDates } from "@/lib/products/productDepartureDates";
 import type { SelectedDeparture } from "@/lib/products/buildProductInquiryPrefill";
 import type { ProductDepartureSchedule, ProductOptions, Product, SelectedOptions } from "@/types/product";
+import { cn } from "@/lib/cn";
 
 export type ProductBookingSelectionPanelProps = {
   product?: Product | null;
@@ -24,6 +30,8 @@ export type ProductBookingSelectionPanelProps = {
   options?: ProductOptions | null;
   selectedDepartureKey: string | null;
   selectedOptions: SelectedOptions;
+  travelerCount: number;
+  onTravelerCountChange: (count: number) => void;
   onDepartureChange: (departure: SelectedDeparture | null, key: string | null) => void;
   onOptionSingleChange: (groupKey: string, itemValue: string) => void;
   onOptionMultiToggle: (groupKey: string, itemValue: string) => void;
@@ -88,6 +96,8 @@ export function ProductBookingSelectionPanel({
   options,
   selectedDepartureKey,
   selectedOptions,
+  travelerCount,
+  onTravelerCountChange,
   onDepartureChange,
   onOptionSingleChange,
   onOptionMultiToggle,
@@ -118,6 +128,62 @@ export function ProductBookingSelectionPanel({
   if (!hasDepartures && !hasOptions && !showCalendarDeparture) return null;
 
   const showDepartureSection = hasDepartures || showCalendarDeparture;
+  const canDecrease = travelerCount > MIN_TRAVELER_COUNT;
+  const canIncrease = travelerCount < MAX_TRAVELER_COUNT;
+
+  const travelerSection = (
+    <div id="product-traveler-section" className="space-y-3 scroll-mt-24">
+      <div>
+        <h3 className="text-base font-bold text-[#0f172a]">인원</h3>
+        <p className="mt-0.5 text-xs text-slate-500">여행에 참여하는 총 인원을 선택해 주세요.</p>
+      </div>
+      <div className={selectionAreaClass(true)}>
+        <div className="flex items-center justify-between gap-4 px-1 py-1">
+          <span className="text-sm font-medium text-slate-700">총 인원</span>
+          <div
+            className="inline-flex items-center gap-3"
+            role="group"
+            aria-label="인원 선택"
+          >
+            <button
+              type="button"
+              onClick={() => onTravelerCountChange(travelerCount - 1)}
+              disabled={!canDecrease}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-full border-2 transition",
+                canDecrease
+                  ? "border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50"
+                  : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300",
+              )}
+              aria-label="인원 줄이기"
+            >
+              <Minus className="h-4 w-4" aria-hidden />
+            </button>
+            <span
+              className="min-w-[3.5rem] text-center text-lg font-bold tabular-nums text-[#0f172a]"
+              aria-live="polite"
+            >
+              {travelerCount}명
+            </span>
+            <button
+              type="button"
+              onClick={() => onTravelerCountChange(travelerCount + 1)}
+              disabled={!canIncrease}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-full border-2 transition",
+                canIncrease
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[#0f172a] hover:opacity-90"
+                  : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300",
+              )}
+              aria-label="인원 늘리기"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <section
@@ -126,7 +192,7 @@ export function ProductBookingSelectionPanel({
       aria-label="출발일 및 옵션 선택"
     >
       {showDepartureSection ? (
-        <div className="space-y-3">
+        <div id="product-departure-section" className="space-y-3 scroll-mt-24">
           <h3 className="text-base font-bold text-[#0f172a]">출발일 선택</h3>
           {!hasDepartureSelection ? (
             <p className="text-xs font-medium text-amber-700">
@@ -196,40 +262,45 @@ export function ProductBookingSelectionPanel({
         </div>
       ) : null}
 
-      {showDepartureSection && hasOptions ? (
+      {(showDepartureSection || hasOptions) ? (
         <hr className="my-5 border-[var(--divider)]" />
       ) : null}
 
+      {travelerSection}
+
       {hasOptions ? (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-bold text-[#0f172a]">{optionsSectionTitle}</h3>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {!hasOptionSelection
-                ? hasMultiOptions
-                  ? "필요한 항목을 선택해 주세요. (여러 개 선택 가능)"
-                  : "필요한 옵션을 선택해 주세요."
-                : hasMultiOptions
-                  ? "여러 항목을 동시에 선택할 수 있습니다."
-                  : "필요한 옵션을 선택해 주세요."}
-            </p>
-          </div>
-          <div className={selectionAreaClass(hasOptionSelection)}>
-            <div className="flex flex-col space-y-5 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
-              {sortedOptionGroups.map((group) => (
-                <OptionGroup
-                  key={group.key}
-                  group={group}
-                  selected={selectedOptions}
-                  isRequired={requiredSet.has(group.key)}
-                  hideTitle={shouldHideGroupTitle(group.title, optionsSectionTitle, isSingleMultiGroup)}
-                  onSingleChange={(itemValue) => onOptionSingleChange(group.key, itemValue)}
-                  onMultiToggle={(itemValue) => onOptionMultiToggle(group.key, itemValue)}
-                />
-              ))}
+        <>
+          <hr className="my-5 border-[var(--divider)]" />
+          <div id="product-options-section" className="space-y-4 scroll-mt-24">
+            <div>
+              <h3 className="text-base font-bold text-[#0f172a]">{optionsSectionTitle}</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {!hasOptionSelection
+                  ? hasMultiOptions
+                    ? "필요한 항목을 선택해 주세요. (여러 개 선택 가능)"
+                    : "필요한 옵션을 선택해 주세요."
+                  : hasMultiOptions
+                    ? "여러 항목을 동시에 선택할 수 있습니다."
+                    : "필요한 옵션을 선택해 주세요."}
+              </p>
+            </div>
+            <div className={selectionAreaClass(hasOptionSelection)}>
+              <div className="flex flex-col space-y-5 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
+                {sortedOptionGroups.map((group) => (
+                  <OptionGroup
+                    key={group.key}
+                    group={group}
+                    selected={selectedOptions}
+                    isRequired={requiredSet.has(group.key)}
+                    hideTitle={shouldHideGroupTitle(group.title, optionsSectionTitle, isSingleMultiGroup)}
+                    onSingleChange={(itemValue) => onOptionSingleChange(group.key, itemValue)}
+                    onMultiToggle={(itemValue) => onOptionMultiToggle(group.key, itemValue)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       ) : null}
     </section>
   );

@@ -3,6 +3,7 @@ import {
   collectProductDepartureDates,
   expandYmdRange,
   normalizeProductDepartureDateToYmd,
+  normalizeProductDepartureDateToYmdWithForcedYear,
   parseDepartureRangeText,
   ymdDayDiff,
 } from "@/lib/products/productDepartureDates";
@@ -25,6 +26,26 @@ describe("normalizeProductDepartureDateToYmd", () => {
   it("parses month/day-only dates with defaultYear", () => {
     expect(normalizeProductDepartureDateToYmd("7/23(수)", { defaultYear: 2026 })).toBe("2026-07-23");
     expect(normalizeProductDepartureDateToYmd("07.23", { defaultYear: 2026 })).toBe("2026-07-23");
+  });
+
+  it("parses Korean YYYY년 M월 D일 and M월 D일 formats", () => {
+    expect(normalizeProductDepartureDateToYmd("2026년 7월 23일")).toBe("2026-07-23");
+    expect(normalizeProductDepartureDateToYmd("2026년 07월 23일(금)")).toBe("2026-07-23");
+    expect(normalizeProductDepartureDateToYmd("7월 23일", { defaultYear: 2026 })).toBe("2026-07-23");
+    expect(normalizeProductDepartureDateToYmd("07월 23일(목)", { defaultYear: 2026 })).toBe(
+      "2026-07-23",
+    );
+  });
+
+  it("forces default year over AI-hallucinated ISO dates", () => {
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("2023-07-23", 2026)).toBe(
+      "2026-07-23",
+    );
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("2023.07.23(수)", 2026)).toBe(
+      "2026-07-23",
+    );
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("7/23(수)", 2026)).toBe("2026-07-23");
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("7월 23일", 2026)).toBe("2026-07-23");
   });
 
   it("returns null for empty or unparseable input", () => {
@@ -162,5 +183,73 @@ describe("collectProductDepartureDates", () => {
     } as Product;
 
     expect(collectProductDepartureDates(product)).toEqual(["2026-07-23"]);
+  });
+
+  it("falls back to departure_from_date when schedules contain unparseable placeholder", () => {
+    const product = {
+      id: "p-placeholder",
+      title: "레거시 골프",
+      departureSchedules: [{ departureDate: "미정", returnDate: null, price: null }],
+      departure_from_date: "2026-09-15",
+      departure_to_date: "2026-09-20",
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-09-15"]);
+  });
+
+  it("falls back to departure_from_date when schedules array exists but yields zero parseable dates", () => {
+    const product = {
+      id: "p-empty-schedules",
+      title: "추후 안내 골프",
+      departureSchedules: [
+        { departureDate: "추후 안내", returnDate: null, price: null },
+        { departureDate: "미정", returnDate: null, price: null },
+      ],
+      departure_from_date: "2026.07.01~2026.08.31",
+    } as Product;
+
+    const dates = collectProductDepartureDates(product);
+    expect(dates).toHaveLength(62);
+    expect(dates[0]).toBe("2026-07-01");
+  });
+
+  it("expands from/to window when expandDepartureWindow is true", () => {
+    const product = {
+      id: "p-window",
+      title: "출발 가능 기간",
+      departure_from_date: "2026-07-01",
+      departure_to_date: "2026-08-31",
+    } as Product;
+
+    const dates = collectProductDepartureDates(product, { expandDepartureWindow: true });
+    expect(dates).toHaveLength(62);
+    expect(dates[0]).toBe("2026-07-01");
+    expect(dates[dates.length - 1]).toBe("2026-08-31");
+  });
+
+  it("does not expand from/to window by default (product detail UX)", () => {
+    const product = {
+      id: "p-window-default",
+      title: "패키지 여행",
+      departure_from_date: "2026-07-01",
+      departure_to_date: "2026-08-31",
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-07-01"]);
+  });
+
+  it("ignores from/to when valid schedule dates exist", () => {
+    const product = {
+      id: "p-valid-schedules",
+      title: "하나투어 패키지",
+      departureSchedules: [
+        { departureDate: "2026-09-24", returnDate: null, price: 1510000 },
+        { departureDate: "미정", returnDate: null, price: null },
+      ],
+      departure_from_date: "2026-10-04",
+      departure_to_date: "2026-10-09",
+    } as Product;
+
+    expect(collectProductDepartureDates(product)).toEqual(["2026-09-24"]);
   });
 });

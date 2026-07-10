@@ -15,6 +15,7 @@ export function ProductBookingSelectionSummary({ className = "" }: { className?:
     quoteSummary,
     requiredGroupsMissing,
     departureRequired,
+    travelerCount,
   } = useProductQuote();
 
   const hasDeparture = Boolean(selectedDeparture?.label);
@@ -62,6 +63,12 @@ export function ProductBookingSelectionSummary({ className = "" }: { className?:
           <p className="font-medium text-amber-700">출발일을 선택해 주세요.</p>
         )
       ) : null}
+
+      <p className="font-medium text-slate-800">
+        <span className="text-slate-500">인원</span>
+        {" · "}
+        {travelerCount}명
+      </p>
 
       {hasOptions ? (
         <ul className="list-none space-y-0.5 text-slate-600">

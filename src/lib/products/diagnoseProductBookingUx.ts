@@ -41,9 +41,8 @@ export function diagnoseProductBookingUx(product: Product): ProductBookingUxDiag
     Boolean(product.options?.groups != null && product.options.groups.length > 0);
   const hasLegacyDepartures = scheduleRowCount > 0 || legacyDepartureCount > 0;
 
-  const hasBookingPanel = showCalendarBooking
-    ? calendarDepartureCount > 0 || hasOptions
-    : hasLegacyDepartures || hasOptions;
+  const hasBookingPanel =
+    calendarDepartureCount > 0 || hasLegacyDepartures || hasOptions;
 
   const seasonalBandsPresent = Boolean(
     product.seasonal_price_bands &&
@@ -59,7 +58,7 @@ export function diagnoseProductBookingUx(product: Product): ProductBookingUxDiag
       "시즌 구간가 상품 — 달력·예약금 CTA 미노출(정상). Hero 구간가 + 상담 문의 이용.";
   } else if (bookingUxMode === "promotion_fixed") {
     uiExpectation =
-      "특가/기획 상품 — 출발일 칩 UI. 예약금 CTA는 calendar_booking 전용이라 미노출(정상).";
+      "특가/기획 상품 — 출발일 달력 UI. 예약금 CTA는 calendar_booking 전용이라 미노출(정상).";
   } else if (!hasBookingPanel) {
     uiExpectation =
       "일반 상품이지만 출발일·옵션 데이터 없음 — 예약 패널 전체 숨김. departure_schedules_json 또는 options 등록 필요.";

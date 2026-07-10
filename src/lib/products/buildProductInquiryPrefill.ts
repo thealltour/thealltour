@@ -10,6 +10,7 @@ export type SelectedDeparture = {
 export type BuildProductInquiryPrefillParams = {
   productTitle?: string | null;
   selectedDeparture?: SelectedDeparture | null;
+  travelerCount?: number | null;
   quoteSummary?: QuoteResult | null;
   selectedOptions?: SelectedOptions | null;
 };
@@ -31,6 +32,14 @@ export function buildProductInquiryPrefill(params: BuildProductInquiryPrefillPar
     if (departure.price != null && departure.price > 0) {
       lines.push(`선택 요금: ${departure.price.toLocaleString("ko-KR")}원`);
     }
+  }
+
+  const travelerCount =
+    typeof params.travelerCount === "number" && Number.isFinite(params.travelerCount)
+      ? Math.round(params.travelerCount)
+      : null;
+  if (travelerCount != null && travelerCount > 0) {
+    lines.push(`인원: ${travelerCount}명`);
   }
 
   const breakdown = params.quoteSummary?.breakdown ?? [];

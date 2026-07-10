@@ -188,7 +188,7 @@ export function ProductBookingSelectionPanel({
   return (
     <section
       id="product-booking-panel"
-      className="rounded-2xl border border-[var(--border)] bg-white p-5 shadow-sm md:p-6"
+      className="rounded-2xl border-2 border-[#93c5fd] bg-white p-5 shadow-sm ring-1 ring-[#bfdbfe] md:p-6"
       aria-label="출발일 및 옵션 선택"
     >
       {showDepartureSection ? (

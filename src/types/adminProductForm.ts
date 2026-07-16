@@ -25,7 +25,7 @@ export function createEmptyDepartureScheduleRow(): DepartureScheduleFormRow {
     returnDate: "",
     price: "",
     label: "",
-    status: "",
+    status: "AVAILABLE",
   };
 }
 

@@ -215,7 +215,7 @@ describe("mapBandParsedToInsert", () => {
         returnDate: null,
         price: 920000,
         label: null,
-        status: null,
+        status: "AVAILABLE",
       },
     ]);
     expect(payload.price).toBe(890000);
@@ -261,7 +261,7 @@ describe("mapBandParsedToInsert", () => {
         returnDate: null,
         price: 920000,
         label: "7/30(수)",
-        status: null,
+        status: "AVAILABLE",
       },
     ]);
     expect(payload.price).toBe(890000);
@@ -311,11 +311,47 @@ describe("mapBandParsedToInsert", () => {
         returnDate: null,
         price: 920000,
         label: "7/30(목)",
-        status: null,
+        status: "AVAILABLE",
       },
     ]);
     expect(payload.departure_from_date).toBe("2026-07-23");
     expect(payload.departure_to_date).toBe("2026-07-26");
+
+    vi.useRealTimers();
+  });
+
+  it("ignores document write dates and bare years — uses current year without 20xx년", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-10T12:00:00+09:00"));
+
+    const payload = mapBandParsedToInsert({
+      parsed: minimalBandParsed({
+        departure_schedules: [
+          {
+            departure_date: "2023-07-24",
+            return_date: null,
+            price: 1799000,
+            label: "7/24 출발 (요금 179만)",
+            status: null,
+          },
+        ],
+        departure_from_date: "2023-07-24",
+      }),
+      bandText: "7/24 출발 1,799,000",
+      hwpText: "작성일: 2023.01.15\n문서번호 2023-0042",
+    });
+
+    expect(payload.departure_schedules_json).toEqual([
+      {
+        departureDate: "2026-07-24",
+        returnDate: null,
+        price: 1799000,
+        label: "7/24 출발 (요금 179만)",
+        status: "AVAILABLE",
+      },
+    ]);
+    expect(payload.departure_from_date).toBe("2026-07-24");
+    expect(hasExplicitYearInBandSource("7/24 출발", "작성일: 2023.01.15")).toBe(false);
 
     vi.useRealTimers();
   });
@@ -344,7 +380,7 @@ describe("mapBandParsedToInsert", () => {
         returnDate: null,
         price: 890000,
         label: null,
-        status: null,
+        status: "AVAILABLE",
       },
     ]);
     expect(payload.departure_from_date).toBe("2025-07-23");

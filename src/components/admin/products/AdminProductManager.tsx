@@ -1435,7 +1435,14 @@ export default function AdminProductManager() {
 
   function setCoverAsPrimary(url: string) {
     const hadCover = !!(form.image_url?.trim());
-    setForm((prev) => ({ ...prev, image_url: url }));
+    setForm((prev) => {
+      const images = normalizeImageList(prev.images_json).filter((item) => item !== url);
+      return {
+        ...prev,
+        image_url: url,
+        images_json: [url, ...images],
+      };
+    });
     showLocalToast("success", hadCover ? "대표 이미지를 변경했습니다." : "대표 이미지가 지정되었습니다.");
     setShowCoverRecommendModal(false);
   }

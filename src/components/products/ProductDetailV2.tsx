@@ -227,12 +227,17 @@ export default function ProductDetailV2({
       list.push({ url: normalized, alt: `${altBase} 이미지`, label });
     };
 
+    // 대표(image_url)를 캐러셀 첫 장으로 — 목록 썸네일과 상세 히어로 일치
+    const primaryUrl = product ? getPrimaryImageUrl(product) : "";
+    pushImage(primaryUrl, "대표 이미지");
     if (Array.isArray(product?.images_json)) {
-      product.images_json.forEach((url, idx) => {
-        pushImage(url, idx === 0 ? "대표 이미지" : `추가 이미지 ${idx + 1}`);
+      let extraIndex = 0;
+      product.images_json.forEach((url) => {
+        const before = list.length;
+        pushImage(url, `추가 이미지 ${extraIndex + 1}`);
+        if (list.length > before) extraIndex += 1;
       });
     }
-    pushImage(product?.image_url, "대표 이미지");
 
     if (Array.isArray(product?.itinerary_v2_json?.days)) {
       product?.itinerary_v2_json.days.forEach((day) => {

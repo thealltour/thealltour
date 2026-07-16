@@ -250,7 +250,16 @@ export function BasicInfoSection({
             <MultiImageUploadField
               value={form.images_json}
               primaryImageUrl={form.image_url?.trim() || form.images_json[0] || undefined}
-              onSetPrimary={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
+              onSetPrimary={(url) =>
+                setForm((prev) => {
+                  const images = prev.images_json.filter((item) => item !== url);
+                  return {
+                    ...prev,
+                    image_url: url,
+                    images_json: [url, ...images],
+                  };
+                })
+              }
               onChange={(urls) =>
                 setForm((prev) => {
                   const prevCover = prev.image_url?.trim();

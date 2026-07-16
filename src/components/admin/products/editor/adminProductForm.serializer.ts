@@ -5,7 +5,7 @@
  */
 
 import type { ProductFormState } from "@/types/adminProductForm";
-import { normalizeImageList } from "@/lib/products/images";
+import { normalizeImageList, withPrimaryImageFirst } from "@/lib/products/images";
 import { serializeStructuredDaysToSchedule } from "@/lib/products/mapProductToTimelineModel";
 import { serializeItineraryImages } from "@/lib/images/serializeItineraryImages";
 import { parseCampaignsFormString, parseDetailedSchedule } from "./adminProductForm.helpers";
@@ -100,8 +100,8 @@ export function serializeAdminProductForm(
   const priceForPayload: number | null =
     normalizedPrice === "" ? null : toSafeInteger(Number(normalizedPrice));
   /* PR-D: 대표가(price)는 구간가에서 자동 보정하지 않음 — 운영자가 price를 직접 관리 */
-  const normalizedImages = normalizeImageList(form.images_json);
-  const primaryImageUrl = form.image_url.trim() || normalizedImages[0] || "";
+  const primaryImageUrl = form.image_url.trim() || normalizeImageList(form.images_json)[0] || "";
+  const normalizedImages = withPrimaryImageFirst(form.images_json, primaryImageUrl);
 
   const serialized = serializeItineraryImages({
     v2Days: form.itinerary_v2_json?.days ?? [],

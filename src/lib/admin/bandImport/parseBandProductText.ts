@@ -30,7 +30,7 @@ Rules:
 - overview_accommodation: hotel names like "천홍 호텔 또는 동급".
 - seasonal_price_bands: numeric KRW integers only. Put date ranges and conditions in seasonal_price_band_notes.
 - Flight: split outbound (가는편) and return (오는편/귀국). Use YYYY-MM-DD for dates, HH:mm for times when available.
-- departure_schedules: each row from 출발일/회차/가격 tables = one array item (departure_date, return_date, price, label). Multiple departure dates = multiple items. departure_from_date = first schedule date only when no single flight departure date in the table. If the source text has NO year (20xx), do NOT guess a year in departure_date — use month/day only (e.g. 7/23 or 07.23) and put the display text in label. Use YYYY-MM-DD only when the year is explicitly stated in the source.
+- departure_schedules: each row from 출발일/회차/가격 tables = one array item (departure_date, return_date, price, label, status). Multiple departure dates = multiple items. departure_from_date = first schedule date only when no single flight departure date in the table. If the source text has NO year as "20xx년", do NOT guess a year in departure_date — use month/day only (e.g. 7/23 or 07.23) and put the display text in label. Use YYYY-MM-DD only when "20xx년" (or an explicit tour year) is stated in the source. status defaults to AVAILABLE when not stated.
 - selling_points_json: extract 핵심포인트, 관광, 식사, 교통, 보험 sections verbatim when present.
 - point_tourism, point_guide, meeting_info, travel_insurance: "O" or "X" only when explicitly stated; else null.
 - Do NOT build itinerary_v2_json in this pass.`;
@@ -60,9 +60,9 @@ function buildBandMetaPrompt(input: ParseBandProductTextInput): string {
     "6. 선택관광 → optional_tours",
     "7. 약관·유의·환불 → terms_and_notes, travel_notes, booking_conditions, refund_policy",
     "8. 항공 표 → 가는편/오는편 각 필드 분리",
-    "9. 출발일·회차·가격 표 → departure_schedules 각 행 분리 (7/23 89만, 7/30 92만 → 2건). price는 원화 정수. 원문에 연도(20xx)가 없으면 departure_date에 연도를 추측하지 말고 7/23·07.23 형식만 사용하고 표기는 label에. 원문에 연도가 있을 때만 YYYY-MM-DD.",
+    "9. 출발일·회차·가격 표 → departure_schedules 각 행 분리 (7/23 89만, 7/30 92만 → 2건). price는 원화 정수. 원문에 `20xx년` 형태 연도가 없으면 departure_date에 연도를 추측하지 말고 7/23·07.23 형식만 사용하고 표기는 label에. `20xx년`이 있을 때만 YYYY-MM-DD. 각 행 status는 명시 없으면 AVAILABLE.",
     "10. price는 원화 정수(쉼표·만원·원 제거). 스케줄 가격이 있으면 최저가, 없으면 본문 기본가.",
-    "11. status: AVAILABLE/LIMITED/SOLD_OUT/CONSULT_REQUIRED 또는 null",
+    "11. 상품 status: AVAILABLE/LIMITED/SOLD_OUT/CONSULT_REQUIRED 또는 null. 출발일 스케줄 status는 AVAILABLE/LIMITED/SOLD_OUT (미기재 시 AVAILABLE).",
     "",
     "=== 원문 (HWP 우선, 밴드 본문 포함) ===",
     source,

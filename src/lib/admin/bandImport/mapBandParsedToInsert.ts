@@ -47,28 +47,38 @@ function trimOrNull(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function extractMostFrequentYearFromText(text: string): number | null {
-  const years = [...text.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
+function extractMostFrequentYear(years: number[]): number | null {
   if (!years.length) return null;
   const counts = new Map<number, number>();
   for (const year of years) counts.set(year, (counts.get(year) ?? 0) + 1);
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
-/** 밴드/HWP 원문에 20xx 연도가 명시돼 있는지 */
-export function hasExplicitYearInBandSource(bandText: string, hwpText: string): boolean {
-  return /\b20\d{2}\b/.test(`${bandText}\n${hwpText}`);
+/**
+ * 원문에서 일정·투어 연도로 쓰인 값만 추출합니다.
+ * `2026년` 형태만 신뢰합니다. 작성일(2023.01.15)·문서번호(2023-0042)·단독 2023 등은 제외합니다.
+ */
+export function extractExplicitScheduleYearsFromText(text: string): number[] {
+  return [...text.matchAll(/(20\d{2})\s*년/g)].map((m) => Number(m[1]));
 }
 
-/** 밴드/HWP 원문에서 기본 연도 추론 — AI 파싱 연도는 신뢰하지 않음, 없으면 KST 올해 */
+/** 밴드/HWP 원문에 투어 연도(`20xx년`)가 명시돼 있는지 */
+export function hasExplicitYearInBandSource(bandText: string, hwpText: string): boolean {
+  return extractExplicitScheduleYearsFromText(`${bandText}\n${hwpText}`).length > 0;
+}
+
+/** 밴드/HWP 원문에서 기본 연도 추론 — `20xx년`만 신뢰, 없으면 KST 올해 */
 export function inferBandScheduleDefaultYear(bandText: string, hwpText: string): number {
-  const textYear = extractMostFrequentYearFromText(`${bandText}\n${hwpText}`);
+  const textYear = extractMostFrequentYear(
+    extractExplicitScheduleYearsFromText(`${bandText}\n${hwpText}`),
+  );
   if (textYear) return textYear;
   return Number(kstTodayYmd().slice(0, 4));
 }
 
 type NormalizeBandDateOptions = {
   forceDefaultYear?: boolean;
+  allowedYears?: number[];
 };
 
 function normalizeBandDateField(
@@ -83,7 +93,27 @@ function normalizeBandDateField(
     return normalizeProductDepartureDateToYmdWithForcedYear(trimmed, defaultYear);
   }
 
-  return normalizeProductDepartureDateToYmd(trimmed, { defaultYear });
+  const normalized = normalizeProductDepartureDateToYmd(trimmed, { defaultYear });
+  if (!normalized) return null;
+
+  const allowed = opts?.allowedYears;
+  if (allowed?.length) {
+    const year = Number(normalized.slice(0, 4));
+    if (!allowed.includes(year)) {
+      return normalizeProductDepartureDateToYmdWithForcedYear(trimmed, defaultYear);
+    }
+  }
+
+  return normalized;
+}
+
+function resolveBandScheduleStatus(
+  status: string | null | undefined,
+): NonNullable<ProductDepartureSchedule["status"]> {
+  if (status === "AVAILABLE" || status === "LIMITED" || status === "SOLD_OUT") {
+    return status;
+  }
+  return "AVAILABLE";
 }
 
 function mapBandDepartureSchedules(
@@ -111,7 +141,7 @@ function mapBandDepartureSchedules(
       returnDate,
       price: toSafeInteger(row.price),
       label: trimOrNull(row.label),
-      status: row.status ?? null,
+      status: resolveBandScheduleStatus(row.status),
     });
   }
 
@@ -248,9 +278,10 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     parseSeasonalPriceBandsFromUnknown(parsed.seasonal_price_bands),
   );
 
+  const allowedYears = extractExplicitScheduleYearsFromText(`${bandText}\n${hwpText}`);
   const defaultYear = inferBandScheduleDefaultYear(bandText, hwpText);
-  const forceDefaultYear = !hasExplicitYearInBandSource(bandText, hwpText);
-  const dateOpts: NormalizeBandDateOptions = { forceDefaultYear };
+  const forceDefaultYear = allowedYears.length === 0;
+  const dateOpts: NormalizeBandDateOptions = { forceDefaultYear, allowedYears };
   const departureSchedulesJson = mapBandDepartureSchedules(parsed, defaultYear, dateOpts);
 
   let price = toSafeInteger(parsed.price);

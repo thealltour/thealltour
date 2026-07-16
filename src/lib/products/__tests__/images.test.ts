@@ -3,6 +3,7 @@ import {
   getPrimaryImageUrl,
   getPrimaryImageUrlFromFormFields,
   mapAdminListProductRow,
+  withPrimaryImageFirst,
 } from "@/lib/products/images";
 import { normalizeProduct } from "@/lib/products";
 
@@ -36,6 +37,23 @@ describe("getPrimaryImageUrl", () => {
         "https://example.com/cover.jpg",
       ]),
     ).toBe("https://example.com/cover.jpg");
+  });
+});
+
+describe("withPrimaryImageFirst", () => {
+  it("moves primary url to the front of the gallery", () => {
+    expect(
+      withPrimaryImageFirst(
+        ["https://example.com/first.jpg", "https://example.com/cover.jpg"],
+        "https://example.com/cover.jpg",
+      ),
+    ).toEqual(["https://example.com/cover.jpg", "https://example.com/first.jpg"]);
+  });
+
+  it("prepends primary when it is missing from the gallery", () => {
+    expect(
+      withPrimaryImageFirst(["https://example.com/first.jpg"], "https://example.com/cover.jpg"),
+    ).toEqual(["https://example.com/cover.jpg", "https://example.com/first.jpg"]);
   });
 });
 

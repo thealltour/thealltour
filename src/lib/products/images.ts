@@ -14,6 +14,20 @@ export function normalizeImageList(images: Array<string | null | undefined> | nu
   return result;
 }
 
+/** 대표 URL을 갤러리 맨 앞으로 재정렬 (상세 캐러셀·저장 일관성) */
+export function withPrimaryImageFirst(
+  images: Array<string | null | undefined> | null | undefined,
+  primaryUrl: string | null | undefined,
+): string[] {
+  const list = normalizeImageList(images);
+  const primary = primaryUrl?.trim() ?? "";
+  if (!primary) return list;
+  if (list.includes(primary)) {
+    return [primary, ...list.filter((url) => url !== primary)];
+  }
+  return [primary, ...list];
+}
+
 export function getPrimaryImageUrl(product: Pick<Product, "image_url" | "images_json">): string {
   const list = normalizeImageList(product.images_json);
   const cover = product.image_url?.trim();

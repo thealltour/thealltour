@@ -48,11 +48,15 @@ export function KakaoSyncGolfLandingPage({
         </section>
 
         <HardcodedLandingShell className="space-y-3 py-2.5">
-          {/* 혜택 */}
+          {/* 혜택 — 광고 소재(3만 포인트)와 동일 문구를 첫 스크롤에서 확인 가능하도록 강조 */}
           <section aria-label="Benefit">
-            <div className="rounded-2xl bg-[#f8f9fa] px-2 py-2">
+            <div className="rounded-2xl bg-[#f8f9fa] px-3 py-3">
               <h2 className="text-base font-bold text-slate-900">{benefit.title}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-700">
+              <p className="mt-2 text-3xl font-extrabold tracking-tight text-orange-500">
+                {benefit.amountLabel}
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800">{benefit.amountSubLabel}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
                 {benefit.segments.map((segment, index) =>
                   segment.type === "highlight" ? (
                     <span key={index} className="font-bold text-orange-500">

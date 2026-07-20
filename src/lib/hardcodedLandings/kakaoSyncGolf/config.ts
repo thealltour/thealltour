@@ -21,20 +21,26 @@ export const kakaoSyncGolfConfig = {
   seo: {
     title: "카카오 간편가입 | 더올투어 골프투어",
     description:
-      "카카오 간편가입하고 30,000포인트 혜택 받으세요. 하이난·사이판 시그니처 골프투어와 10만 원 예약제로 편하게 시작하세요.",
+      "카카오 간편가입하고 3만 포인트(30,000P) 혜택 받으세요. 하이난·사이판 시그니처 골프투어와 10만 원 예약제로 편하게 시작하세요.",
   },
   hero: {
     imageUrl: "/images/landings/kakao-sync-golf-hero.png",
     imageAlt: "더올투어 프리미엄 골프투어",
     title: "더올투어 프리미엄 골프투어",
-    subtitle: "카카오 간편가입하고\n지금 바로 혜택 받기",
+    subtitle: "카카오 간편가입하고\n3만 포인트 받기",
   },
   benefit: {
     title: "가입 즉시 드리는 혜택",
+    /** 광고·심사 대조용 핵심 혜택명 (쿠폰 아님) */
+    amountLabel: "3만 포인트",
+    amountSubLabel: "30,000P 즉시 지급",
     segments: [
       { type: "text", value: "카카오 간편가입 시 " },
-      { type: "highlight", value: "30,000포인트 지급" },
-      { type: "text", value: "\n더올투어 골프투어 예약·상담에 바로 사용할 수 있습니다." },
+      { type: "highlight", value: "3만 포인트(30,000P) 지급" },
+      {
+        type: "text",
+        value: "\n더올투어 골프투어 예약·상담에 바로 사용할 수 있는 포인트입니다.",
+      },
     ] satisfies KakaoSyncBenefitSegment[],
     footnote: "신규 가입 회원 대상. 자세한 조건은 마이페이지에서 확인하세요.",
   },
@@ -48,9 +54,9 @@ export const kakaoSyncGolfConfig = {
     sectionDescription: "복잡한 절차 없이 4단계로 원하는 명문 코스를 가장 먼저 선점하세요.",
     steps: [
       {
-        title: "카카오 간편가입",
+        title: "카카오 간편가입 · 3만 포인트 지급",
         description:
-          "하단 버튼을 통해 단 1초 만에 안전하게 가입하고 30,000포인트를 즉시 확보합니다.",
+          "하단 버튼을 통해 단 1초 만에 안전하게 가입하고 3만 포인트(30,000P)를 즉시 확보합니다.",
       },
       {
         title: "10만 원 예약금 결제",
@@ -65,7 +71,7 @@ export const kakaoSyncGolfConfig = {
       {
         title: "잔금 결제 후 출발",
         description:
-          "매니저와 상담 후 최종 확정된 일정에 따라 안심하고 잔금을 결제하시면 모든 여행 준비가 완료됩니다. 여행을 마치실 때마다 30,000포인트가 추가로 자동 적립됩니다.",
+          "매니저와 상담 후 최종 확정된 일정에 따라 안심하고 잔금을 결제하시면 모든 여행 준비가 완료됩니다. 여행을 마치실 때마다 3만 포인트가 추가로 자동 적립됩니다.",
       },
     ] satisfies KakaoSyncTimelineStep[],
   },
@@ -73,9 +79,9 @@ export const kakaoSyncGolfConfig = {
     sectionTitle: "자주 묻는 질문",
     items: [
       {
-        question: "30,000포인트는 언제 지급되나요?",
+        question: "3만 포인트는 언제 지급되나요?",
         answer:
-          "카카오 간편가입이 완료되면 자동으로 지급됩니다. 마이페이지 > 포인트에서 확인하실 수 있습니다.",
+          "카카오 간편가입이 완료되면 3만 포인트(30,000P)가 자동으로 지급됩니다. 마이페이지 > 포인트에서 확인하실 수 있습니다. 쿠폰이 아닌 포인트이며, 예약·상담 시 사용할 수 있습니다.",
       },
       {
         question: "10만 원 예약금은 환불이 가능한가요?",
@@ -94,6 +100,6 @@ export const kakaoSyncGolfConfig = {
     ] satisfies KakaoSyncFaqItem[],
   },
   cta: {
-    label: "30,000포인트 받고 1초 간편가입",
+    label: "3만 포인트 받고 1초 간편가입",
   },
 } as const;

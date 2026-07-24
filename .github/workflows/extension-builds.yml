@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - "tools/hanatour-extractor-extension/**"
       - "tools/modetour-extractor-extension/**"
       - "tools/thealltour_extension/**"
       - "scripts/upload-extension-builds.mjs"
@@ -24,12 +23,6 @@ jobs:
 
       - name: Install root dependencies (upload script)
         run: npm ci
-
-      - name: Package hanatour extension
-        working-directory: tools/hanatour-extractor-extension
-        run: |
-          npm ci
-          npm run package
 
       - name: Package modetour extension
         working-directory: tools/modetour-extractor-extension

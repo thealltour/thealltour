@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { buttonVariants } from "@/components/ui/Button";
 import { MobileGolfAdBodyRenderer } from "@/components/mobile-golf-ads/MobileGolfAdBodyRenderer";
 import { MobileGolfAdViewTracker } from "@/components/mobile-golf-ads/MobileGolfAdViewTracker";
@@ -28,18 +28,25 @@ export function MobileGolfAdPage({
 }: MobileGolfAdPageProps) {
   const sourcePath = buildMobileGolfAdPublicPath(landing.slug);
   const ctaLabel = "간편 가입하기";
+  const fallbackHref = `/api/auth/kakao/start?next=/mypage&landing_slug=${encodeURIComponent(landing.slug)}&landing_path=${encodeURIComponent(sourcePath)}`;
+  const [href, setHref] = useState(fallbackHref);
+
+  useEffect(() => {
+    if (previewMode) return;
+    setHref(
+      buildKakaoSyncAuthStartHref({
+        next: "/mypage",
+        landingSlug: landing.slug,
+        sourcePath,
+      }),
+    );
+  }, [landing.slug, previewMode, sourcePath]);
 
   function handleCtaClick(e: MouseEvent<HTMLAnchorElement>) {
     if (previewMode) {
       e.preventDefault();
       return;
     }
-    e.preventDefault();
-    const href = buildKakaoSyncAuthStartHref({
-      next: "/mypage",
-      landingSlug: landing.slug,
-      sourcePath,
-    });
     trackKakaoSyncCtaClick({
       landingSlug: landing.slug,
       sourcePath,
@@ -47,7 +54,6 @@ export function MobileGolfAdPage({
       label: ctaLabel,
       href,
     });
-    window.location.assign(href);
   }
 
   return (
@@ -76,7 +82,7 @@ export function MobileGolfAdPage({
 
       <div className="fixed inset-x-0 bottom-0 z-50 w-full pb-[env(safe-area-inset-bottom,0px)]">
         <a
-          href="/api/auth/kakao/start?next=/mypage"
+          href={previewMode ? "#" : href}
           onClick={handleCtaClick}
           className={buttonVariants({
             variant: "kakao",

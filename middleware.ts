@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest } from "next/server";
 import { ADMIN_AUTH_COOKIE } from "@/lib/adminAuth";
 import { sanitizeAdminReturnTo } from "@/lib/adminConsolePaths";
 import {
@@ -8,6 +8,11 @@ import {
   isSessionAllowedForApiPath,
 } from "@/lib/adminRolePolicy";
 import { resolveAdminSessionFromRequestToken } from "@/lib/adminSessionEdge";
+import {
+  KAKAO_SYNC_LANDING_VIEW_COOKIE,
+  resolveKakaoSyncLandingHitTarget,
+  shouldSkipLandingHitRequest,
+} from "@/lib/analytics/kakaoSyncLandingHit";
 
 const LEGACY_ADMIN_PREFIX = "/admin";
 const MANAGER_PREFIX = "/theall_manager_only";
@@ -18,8 +23,54 @@ async function getAdminSession(request: NextRequest) {
   return resolveAdminSessionFromRequestToken(token);
 }
 
-export async function middleware(request: NextRequest) {
+function fireKakaoSyncLandingHit(request: NextRequest, event: NextFetchEvent): void {
+  if (shouldSkipLandingHitRequest(request)) return;
+
+  const target = resolveKakaoSyncLandingHitTarget(request.nextUrl.pathname);
+  if (!target) return;
+
+  const sp = request.nextUrl.searchParams;
+  const hitUrl = new URL("/api/analytics/landing-hit", request.url);
+  const payload = JSON.stringify({
+    pathname: target.sourcePath,
+    sourcePath: target.sourcePath,
+    landingSlug: target.landingSlug,
+    templateType: target.templateType,
+    utm_source: sp.get("utm_source"),
+    utm_medium: sp.get("utm_medium"),
+    utm_campaign: sp.get("utm_campaign"),
+    utm_term: sp.get("utm_term"),
+    utm_content: sp.get("utm_content"),
+    userAgent: request.headers.get("user-agent"),
+  });
+
+  const task = fetch(hitUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: payload,
+  }).catch(() => {
+    // fire-and-forget
+  });
+
+  event.waitUntil(task);
+}
+
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
+
+  const golfTarget = resolveKakaoSyncLandingHitTarget(pathname);
+  if (golfTarget) {
+    fireKakaoSyncLandingHit(request, event);
+    const response = NextResponse.next();
+    response.cookies.set(KAKAO_SYNC_LANDING_VIEW_COOKIE, "1", {
+      path: golfTarget.sourcePath,
+      maxAge: 60 * 30,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+    return response;
+  }
+
   const session = await getAdminSession(request);
   const authenticated = session !== null;
 
@@ -77,5 +128,8 @@ export const config = {
     "/api/admin/:path*",
     "/api/inquiries",
     "/api/inquiries/:path*",
+    "/golf/kakao-sync",
+    "/golf/kakao-sync/:path*",
+    "/golf/ads/:path*",
   ],
 };

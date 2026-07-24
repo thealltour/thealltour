@@ -81,15 +81,16 @@ export function V2EventRow({
         placeholder="제목 (필수)"
         className="min-w-[90px] rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
       />
-      <input
+      <textarea
         value={event.description ?? ""}
         onChange={(e) =>
           onEventChange({
             description: e.target.value.trim() || undefined,
           })
         }
-        placeholder="설명"
-        className="min-w-0 flex-1 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+        placeholder="설명 (원문 전체)"
+        rows={3}
+        className="min-h-[4.5rem] min-w-0 flex-1 resize-y rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs leading-relaxed text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
       />
       <select
         value={event.timeOfDay ?? ""}

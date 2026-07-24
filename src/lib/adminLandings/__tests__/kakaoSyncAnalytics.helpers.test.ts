@@ -79,3 +79,18 @@ describe("kakao sync funnel filters", () => {
     expect(formatKakaoSyncRate(0.1234)).toBe("12.3%");
   });
 });
+
+describe("kakao sync landing hit helpers", () => {
+  it("resolves hardcoded and ads paths", async () => {
+    const { resolveKakaoSyncLandingHitTarget, isKakaoSyncFunnelAcquisition } = await import(
+      "@/lib/analytics/kakaoSyncLandingHit"
+    );
+    expect(resolveKakaoSyncLandingHitTarget("/golf/kakao-sync")?.landingSlug).toBe("kakao-sync");
+    expect(resolveKakaoSyncLandingHitTarget("/golf/ads/hainan")?.templateType).toBe("mobile_golf_ad");
+    expect(resolveKakaoSyncLandingHitTarget("/products")).toBeNull();
+    expect(
+      isKakaoSyncFunnelAcquisition({ landing_slug: "kakao-sync", landing_path: "/golf/kakao-sync" }),
+    ).toBe(true);
+    expect(isKakaoSyncFunnelAcquisition({ landing_slug: null, landing_path: null })).toBe(false);
+  });
+});

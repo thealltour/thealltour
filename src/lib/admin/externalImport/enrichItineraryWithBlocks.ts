@@ -16,8 +16,34 @@ import {
 export const SIGHTSEEING_EVENT_IMAGE_MAX = 5;
 export const NOTICE_EVENT_IMAGE_MAX = 5;
 
-function normalizeHeadingKey(heading: string): string {
+/** 공백·대소문자 정규화 */
+export function normalizeHeadingKey(heading: string): string {
   return heading.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+/**
+ * 매칭용: 괄호/영문 부제 제거 후 한·영 혼합 제목도 같은 POI로 본다.
+ * 예: "기요미즈데라 (Kiyomizu-dera)" → "기요미즈데라"
+ */
+export function normalizeHeadingForMatch(heading: string): string {
+  return normalizeHeadingKey(heading)
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\[[^\]]*]/g, "")
+    .replace(/[a-z0-9._\-]+/gi, (chunk) => (/[가-힣]/.test(heading) ? "" : chunk))
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .trim();
+}
+
+/** 정확 일치 또는 한쪽이 다른 쪽을 포함하면 매칭 */
+export function headingsMatchFuzzy(a: string, b: string): boolean {
+  const na = normalizeHeadingForMatch(a);
+  const nb = normalizeHeadingForMatch(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  if (na.length >= 2 && nb.length >= 2 && (na.includes(nb) || nb.includes(na))) return true;
+  const ka = normalizeHeadingKey(a);
+  const kb = normalizeHeadingKey(b);
+  return ka === kb || (ka.length >= 2 && kb.length >= 2 && (ka.includes(kb) || kb.includes(ka)));
 }
 
 function maxImagesForHeading(heading: string, kind?: ItineraryBlock["kind"]): number {
@@ -88,39 +114,71 @@ function blockToEvent(block: ItineraryBlock): ItineraryV2Event {
   };
 }
 
-function indexBlocksByDayAndHeading(blocks: ItineraryBlock[]): Map<string, ItineraryBlock[]> {
-  const index = new Map<string, ItineraryBlock[]>();
-  for (const block of blocks) {
-    const day = block.day ?? 0;
-    const key = `${day}::${normalizeHeadingKey(block.heading)}`;
-    const list = index.get(key) ?? [];
-    list.push(block);
-    index.set(key, list);
-  }
-  return index;
-}
-
 function hasExplicitDayBlocks(blocks: ItineraryBlock[]): boolean {
   return blocks.some((b) => typeof b.day === "number" && b.day > 0);
 }
 
+function blockDayMatches(block: ItineraryBlock, day: number, allowDayAgnostic: boolean): boolean {
+  const blockDay = block.day ?? 0;
+  if (blockDay === day) return true;
+  if (allowDayAgnostic && blockDay === 0) return true;
+  return false;
+}
+
+function eventImageUrlSet(event: ItineraryV2Event): Set<string> {
+  const urls = event.images?.map((img) => img.url.trim()).filter(Boolean) ?? [];
+  return new Set(urls);
+}
+
+function imageUrlOverlap(block: ItineraryBlock, event: ItineraryV2Event): number {
+  if (block.imageUrls.length === 0) return 0;
+  const eventUrls = eventImageUrlSet(event);
+  if (eventUrls.size === 0) return 0;
+  let n = 0;
+  for (const url of block.imageUrls) {
+    if (eventUrls.has(url.trim())) n += 1;
+  }
+  return n;
+}
+
 function findBlocksForEvent(
-  blockIndex: Map<string, ItineraryBlock[]>,
+  blocks: ItineraryBlock[],
   day: number,
-  heading: string,
+  event: ItineraryV2Event,
   allowDayAgnostic: boolean,
-): ItineraryBlock[] {
-  const hKey = normalizeHeadingKey(heading);
-  const exact = blockIndex.get(`${day}::${hKey}`) ?? [];
-  if (!allowDayAgnostic) return exact;
-  const dayAgnostic = blockIndex.get(`0::${hKey}`) ?? [];
-  return [...exact, ...dayAgnostic];
+  usedIndexes: Set<number>,
+): { block: ItineraryBlock; index: number }[] {
+  const byHeading: { block: ItineraryBlock; index: number }[] = [];
+  const byImage: { block: ItineraryBlock; index: number }[] = [];
+
+  blocks.forEach((block, index) => {
+    if (usedIndexes.has(index)) return;
+    if (!blockDayMatches(block, day, allowDayAgnostic)) return;
+
+    if (headingsMatchFuzzy(block.heading, event.heading)) {
+      byHeading.push({ block, index });
+      return;
+    }
+    if (imageUrlOverlap(block, event) > 0) {
+      byImage.push({ block, index });
+    }
+  });
+
+  if (byHeading.length > 0) return byHeading;
+  return byImage;
+}
+
+function isAppendableSightseeingOrNotice(block: ItineraryBlock): boolean {
+  if (block.kind === "notice" || isNoticeEventHeading(block.heading)) return true;
+  if (block.kind === "sightseeing" || isSightseeingEventHeading(block.heading)) return true;
+  // kind 미지정 POI 카드: 설명이 충분히 길면 sightseeing으로 취급
+  return block.description.trim().length >= 40 && block.imageUrls.length > 0;
 }
 
 /**
  * AI 일정 골격 + DOM itineraryBlocks 병합.
- * DOM 블록이 더 풍부한 설명·이미지를 제공하면 해당 이벤트를 덮어쓰고,
- * notice(출입국 정보 등)는 AI에 없으면 마지막 일차 끝에 추가합니다.
+ * DOM 설명을 sightseeing/notice 정본으로 두고, heading 퍼지·이미지 교집합으로 매칭한다.
+ * 미매칭 sightseeing/notice 블록은 해당 일차(또는 마지막 날)에 append한다.
  */
 export function enrichAiItineraryWithBlocks(
   aiParsed: ExternalParsedItineraryV2 | null | undefined,
@@ -132,59 +190,89 @@ export function enrichAiItineraryWithBlocks(
   if (richBlocks.length === 0) return base;
   if (!base?.days?.length) return mapItineraryBlocksToV2(richBlocks);
 
-  const blockIndex = indexBlocksByDayAndHeading(richBlocks);
   const allowDayAgnostic = !hasExplicitDayBlocks(richBlocks);
-  const usedBlockKeys = new Set<string>();
+  const usedIndexes = new Set<number>();
 
   const enrichedDays: ItineraryV2Day[] = base.days.map((day) => {
     const events = day.events.map((event) => {
-      const candidates = findBlocksForEvent(blockIndex, day.day, event.heading, allowDayAgnostic);
+      const candidates = findBlocksForEvent(richBlocks, day.day, event, allowDayAgnostic, usedIndexes);
       if (candidates.length === 0) return event;
 
-      const best = pickBestBlock(candidates);
-      usedBlockKeys.add(`${best.day ?? 0}::${normalizeHeadingKey(best.heading)}`);
-      if (!isBlockRicher(best, event)) return event;
-      return applyBlockToEvent(event, best);
+      const bestEntry = candidates.reduce((best, current) => {
+        const bestScore = best.block.description.length + best.block.imageUrls.length * 200;
+        const currentScore = current.block.description.length + current.block.imageUrls.length * 200;
+        return currentScore > bestScore ? current : best;
+      });
+
+      usedIndexes.add(bestEntry.index);
+      if (!isBlockRicher(bestEntry.block, event)) return event;
+      return applyBlockToEvent(event, bestEntry.block);
     });
 
-    for (const block of richBlocks) {
-      if (isNoticeEventHeading(block.heading) || block.kind === "notice") continue;
-      const blockDay = block.day ?? 0;
-      if (blockDay !== 0 && blockDay !== day.day) continue;
-      const hKey = normalizeHeadingKey(block.heading);
-      const evIdx = events.findIndex((e) => normalizeHeadingKey(e.heading) === hKey);
-      if (evIdx < 0) continue;
-      const blockKey = `${block.day ?? 0}::${hKey}`;
-      if (usedBlockKeys.has(blockKey)) continue;
-      if (isBlockRicher(block, events[evIdx])) {
-        events[evIdx] = applyBlockToEvent(events[evIdx], block);
-        usedBlockKeys.add(blockKey);
-      }
-    }
+    // 같은 day에서 아직 미사용 · heading fuzzy로 남는 블록 재적용
+    richBlocks.forEach((block, index) => {
+      if (usedIndexes.has(index)) return;
+      if (!blockDayMatches(block, day.day, allowDayAgnostic)) return;
+      if (isNoticeEventHeading(block.heading) || block.kind === "notice") return;
+
+      const evIdx = events.findIndex((e) => headingsMatchFuzzy(e.heading, block.heading));
+      if (evIdx < 0) return;
+      if (!isBlockRicher(block, events[evIdx])) return;
+      events[evIdx] = applyBlockToEvent(events[evIdx], block);
+      usedIndexes.add(index);
+    });
 
     return { ...day, events };
   });
 
-  const existingHeadings = new Set(
-    enrichedDays.flatMap((d) => d.events.map((e) => normalizeHeadingKey(e.heading))),
-  );
+  // 미매칭 sightseeing/notice → 해당 day에 append (명시 day가 없으면 마지막 날)
+  const unusedToAppend = richBlocks
+    .map((block, index) => ({ block, index }))
+    .filter(({ block, index }) => !usedIndexes.has(index) && isAppendableSightseeingOrNotice(block));
 
-  const noticeToAppend = richBlocks.filter((block) => {
-    if (!isNoticeEventHeading(block.heading) && block.kind !== "notice") return false;
-    const key = normalizeHeadingKey(block.heading);
-    if (existingHeadings.has(key)) return false;
-    const blockKey = `${block.day ?? 0}::${key}`;
-    return !usedBlockKeys.has(blockKey);
-  });
+  for (const { block, index } of unusedToAppend) {
+    const blockDay = block.day ?? 0;
+    // 명시적 일차 블록이 있는데 day 없는 블록은 다른 날에 잘못 붙지 않게 스킵
+    if (blockDay === 0 && !allowDayAgnostic) continue;
 
-  if (noticeToAppend.length > 0) {
-    const lastIdx = enrichedDays.length - 1;
-    const lastDay = enrichedDays[lastIdx];
-    enrichedDays[lastIdx] = {
-      ...lastDay,
-      events: [...lastDay.events, ...noticeToAppend.map(blockToEvent)],
+    let dayIdx = blockDay > 0 ? enrichedDays.findIndex((d) => d.day === blockDay) : -1;
+    if (dayIdx < 0 && blockDay > 0) {
+      enrichedDays.push({
+        day: blockDay,
+        dateText: block.dateText,
+        title: block.dayTitle,
+        events: [blockToEvent(block)],
+      });
+      enrichedDays.sort((a, b) => a.day - b.day);
+      usedIndexes.add(index);
+      continue;
+    }
+    if (dayIdx < 0) dayIdx = enrichedDays.length - 1;
+
+    const day = enrichedDays[dayIdx];
+    const evIdx = day.events.findIndex((e) => headingsMatchFuzzy(e.heading, block.heading));
+    if (evIdx >= 0) {
+      if (isBlockRicher(block, day.events[evIdx])) {
+        day.events[evIdx] = applyBlockToEvent(day.events[evIdx], block);
+      }
+      usedIndexes.add(index);
+      continue;
+    }
+
+    enrichedDays[dayIdx] = {
+      ...day,
+      events: [...day.events, blockToEvent(block)],
     };
+    usedIndexes.add(index);
   }
 
   return { days: enrichedDays };
 }
+
+/** 테스트·프롬프트용 export */
+export const __enrichTestUtils = {
+  pickBestBlock,
+  isBlockRicher,
+  headingsMatchFuzzy,
+  normalizeHeadingForMatch,
+};

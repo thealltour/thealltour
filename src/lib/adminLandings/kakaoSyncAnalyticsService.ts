@@ -6,6 +6,7 @@ import {
   isKakaoSyncAnalyticsEvent,
   resolveKakaoSyncCampaign,
 } from "@/lib/adminLandings/kakaoSyncAnalyticsFilters";
+import { KAKAO_SYNC_GOLF_LANDING_SLUG } from "@/lib/hardcodedLandings/kakaoSyncGolf/urls";
 import type {
   KakaoSyncAnalyticsCampaignRow,
   KakaoSyncAnalyticsRange,
@@ -47,17 +48,6 @@ function emptyTrend(range: KakaoSyncAnalyticsRange): KakaoSyncAnalyticsTrendPoin
   return out;
 }
 
-function isKakaoSyncEvent(row: {
-  template_type?: string | null;
-  landing_slug?: string | null;
-  source_path?: string | null;
-  page_path?: string | null;
-  section?: string | null;
-  metadata?: unknown;
-}): boolean {
-  return isKakaoSyncAnalyticsEvent(row);
-}
-
 function campaignKey(row: {
   template_type?: string | null;
   landing_slug?: string | null;
@@ -65,6 +55,40 @@ function campaignKey(row: {
 }): { key: string; label: string; templateType: string } {
   return resolveKakaoSyncCampaign(row);
 }
+
+function metadataIngest(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const ingest = (metadata as Record<string, unknown>).ingest;
+  return typeof ingest === "string" ? ingest : null;
+}
+
+/**
+ * 클라이언트·서버 이중 기록 시 집계 규칙:
+ * - landing_view: ingest=client 제외 (middleware/레거시만)
+ * - landing_cta_click: ingest=client 제외 (oauth_start 보정/레거시만)
+ */
+function shouldCountEvent(row: {
+  event_name?: string | null;
+  metadata?: unknown;
+}): boolean {
+  const name = String(row.event_name ?? "");
+  const ingest = metadataIngest(row.metadata);
+  if (name === "landing_view" && ingest === "client") return false;
+  if (name === "landing_cta_click" && ingest === "client") return false;
+  return true;
+}
+
+/** PostgREST or: 카카오싱크 후보만 조회해 전역 2만 건 truncation 회피 */
+const KAKAO_SYNC_EVENT_OR = [
+  `template_type.in.(kakao_sync_golf,mobile_golf_ad)`,
+  `landing_slug.eq.${KAKAO_SYNC_GOLF_LANDING_SLUG}`,
+  `source_path.ilike./golf/kakao-sync%`,
+  `source_path.ilike./golf/ads/%`,
+  `page_path.ilike./golf/kakao-sync%`,
+  `page_path.ilike./golf/ads/%`,
+  `section.eq.kakao_sync_golf_landing`,
+  `section.eq.kakao_sync_cta`,
+].join(",");
 
 export async function fetchKakaoSyncAnalytics(input: {
   range: KakaoSyncAnalyticsRange;
@@ -83,7 +107,8 @@ export async function fetchKakaoSyncAnalytics(input: {
       "kakao_signup_new",
       "product_card_click",
     ])
-    .order("occurred_at", { ascending: true })
+    .or(KAKAO_SYNC_EVENT_OR)
+    .order("occurred_at", { ascending: false })
     .limit(20000);
 
   if (since) eventsQuery = eventsQuery.gte("occurred_at", since);
@@ -128,7 +153,9 @@ export async function fetchKakaoSyncAnalytics(input: {
   if (channelRes.error) throw new Error(channelRes.error.message);
   if (leadsRes.error) throw new Error(leadsRes.error.message);
 
-  const events = (eventsRes.data ?? []).filter((row) => isKakaoSyncEvent(row));
+  const events = (eventsRes.data ?? [])
+    .filter((row) => isKakaoSyncAnalyticsEvent(row))
+    .filter((row) => shouldCountEvent(row));
 
   let landingViews = 0;
   let ctaClicks = 0;

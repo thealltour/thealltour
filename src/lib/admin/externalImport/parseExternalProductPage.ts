@@ -93,8 +93,36 @@ Rules:
 - Images are only for tourist attractions, scenic spots, hotel exterior, and restaurant photos — not airline logos, map icons, or UI icons.
 - Exclude logo, icon, banner, spinner, arrow, badge, airline carrier image URLs from imageUrls.
 - Create separate events per attraction, meal, flight, hotel check-in, and major move.
-- event.description must preserve full source paragraphs. Do NOT summarize.
+- event.description must preserve full source paragraphs. Do NOT summarize, paraphrase, or shorten.
+- When [DOM itineraryBlocks] are provided below, copy each block's description VERBATIM onto the matching heading event. Prefer those block descriptions over HTML paraphrases. Do not invent text missing from the blocks/HTML.
 - Use empty imageUrls array when no valid POI photo exists for an event.`;
+
+const MAX_BLOCK_ANCHOR_CHARS = 24_000;
+
+function formatItineraryBlockAnchors(blocks: ItineraryBlock[] | undefined): string {
+  if (!blocks?.length) return "";
+  const lines: string[] = [
+    "[DOM itineraryBlocks — copy description VERBATIM onto matching events; prefer over HTML paraphrases]",
+  ];
+  let used = lines[0].length;
+  for (const block of blocks) {
+    const heading = block.heading.trim();
+    if (!heading) continue;
+    const dayLabel = typeof block.day === "number" && block.day > 0 ? `${block.day}일차` : "day?";
+    const desc = block.description.trim();
+    const chunk = [
+      `---`,
+      `day: ${dayLabel}`,
+      `heading: ${heading}`,
+      `description:`,
+      desc || "(empty)",
+    ].join("\n");
+    if (used + chunk.length + 1 > MAX_BLOCK_ANCHOR_CHARS) break;
+    lines.push(chunk);
+    used += chunk.length + 1;
+  }
+  return lines.length > 1 ? lines.join("\n") : "";
+}
 
 function buildMetaPrompt(input: ParseExternalProductPageInput): string {
   const providerLabel = getExternalProviderLabel(input.provider) ?? "외부 여행사";
@@ -114,23 +142,32 @@ function buildMetaPrompt(input: ParseExternalProductPageInput): string {
 function buildItineraryPrompt(input: ParseExternalProductPageInput): string {
   const providerLabel = getExternalProviderLabel(input.provider) ?? "외부 여행사";
   const { content, isHtml } = resolveItineraryContent(input);
+  const blockAnchors = formatItineraryBlockAnchors(input.itineraryBlocks);
 
   if (!isHtml) {
     return [
       `여행사: ${providerLabel}`,
       "",
+      blockAnchors,
+      blockAnchors ? "" : null,
       "[페이지 텍스트 — HTML 없음, 텍스트 기반 일정 추출]",
       content,
-    ].join("\n");
+    ]
+      .filter((line) => line != null)
+      .join("\n");
   }
 
   return [
     `여행사: ${providerLabel}`,
     `원본 URL: ${input.productSourceUrl || "(없음)"}`,
     "",
+    blockAnchors,
+    blockAnchors ? "" : null,
     "[정제된 일정 HTML — DOM 시퀀스로 이벤트·이미지 매핑]",
     content,
-  ].join("\n");
+  ]
+    .filter((line) => line != null)
+    .join("\n");
 }
 
 export async function parseExternalProductMeta(

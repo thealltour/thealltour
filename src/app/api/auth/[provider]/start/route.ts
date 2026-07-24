@@ -6,11 +6,32 @@ import { getOAuthProvider, isAuthProviderId } from "@/lib/auth/providerRegistry"
 import { getOAuthRedirectUri, sanitizeNextPath } from "@/lib/auth/redirect";
 import { loginErrorRedirect } from "@/lib/auth/authErrors";
 import { parseMemberAcquisitionFromSearchParams } from "@/lib/auth/memberAcquisition";
+import { isKakaoSyncFunnelAcquisition } from "@/lib/analytics/kakaoSyncLandingHit";
 import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import {
+  KAKAO_SYNC_GOLF_LANDING_SLUG,
+  KAKAO_SYNC_GOLF_TEMPLATE_TYPE,
+} from "@/lib/hardcodedLandings/kakaoSyncGolf/urls";
 import type { AuthMode } from "@/lib/auth/types";
 
 type RouteContext = { params: Promise<{ provider: string }> };
+
+function resolveKakaoTemplateType(acquisition: {
+  landing_slug?: string | null;
+  landing_path?: string | null;
+} | null): string | null {
+  if (!acquisition) return null;
+  const slug = String(acquisition.landing_slug ?? "").trim();
+  const path = String(acquisition.landing_path ?? "").trim();
+  if (slug === KAKAO_SYNC_GOLF_LANDING_SLUG || path.startsWith("/golf/kakao-sync")) {
+    return KAKAO_SYNC_GOLF_TEMPLATE_TYPE;
+  }
+  if (path.startsWith("/golf/ads/") || slug) {
+    return "mobile_golf_ad";
+  }
+  return null;
+}
 
 export async function GET(request: Request, context: RouteContext) {
   const { provider: providerId } = await context.params;
@@ -47,16 +68,39 @@ export async function GET(request: Request, context: RouteContext) {
   });
 
   if (providerId === "kakao") {
+    const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
+    const templateType = fromKakaoLanding ? resolveKakaoTemplateType(acquisition) : null;
+
+    if (fromKakaoLanding) {
+      await persistAnalyticsEventAdmin({
+        eventName: ANALYTICS_EVENTS.landing_cta_click,
+        source: ANALYTICS_SOURCES.recommended_landing,
+        pagePath: acquisition?.landing_path ?? null,
+        sourcePath: acquisition?.landing_path ?? null,
+        landingSlug: acquisition?.landing_slug ?? null,
+        templateType,
+        section: "kakao_sync_cta",
+        label: "간편 가입하기",
+        href: url.pathname + url.search,
+        metadata: {
+          funnel: "kakao_sync",
+          landingKind: templateType,
+          ingest: "oauth_start",
+          mode,
+          acquisition,
+        },
+      });
+    }
+
     await persistAnalyticsEventAdmin({
       eventName: ANALYTICS_EVENTS.kakao_oauth_start,
       source: ANALYTICS_SOURCES.kakao_sync_auth,
       pagePath: "/api/auth/kakao/start",
       sourcePath: acquisition?.landing_path ?? null,
       landingSlug: acquisition?.landing_slug ?? null,
-      templateType:
-        acquisition?.landing_slug === "kakao-sync" ? "kakao_sync_golf" : acquisition?.landing_slug ? "mobile_golf_ad" : null,
+      templateType,
       metadata: {
-        funnel: "kakao_sync",
+        ...(fromKakaoLanding ? { funnel: "kakao_sync" } : {}),
         mode,
         acquisition: acquisition ?? null,
       },

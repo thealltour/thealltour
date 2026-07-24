@@ -11,6 +11,7 @@ import { DesktopMegaMenu } from "@/components/header/DesktopMegaMenu";
 import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { GuestSignupPromoBanner } from "@/components/site-chrome/GuestSignupPromoBanner";
 import { HEADER_DESKTOP_PRIMARY_NAV_KEYS, HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF } from "@/components/header/headerNav.constants";
 import type { HeaderPrimaryNavKey } from "@/components/header/headerNav.constants";
 import type { HeaderNavigationData, HeaderPrimaryNavItem } from "@/components/header/headerNav.types";
@@ -82,14 +83,16 @@ export default function SiteHeaderUI({
   }, []);
 
   return (
-    <header
-      className={cn(
-        "sticky z-50 transition-all duration-200 safe-top top-[env(safe-area-inset-top)] lg:z-40",
-        scrolled
-          ? "border-b border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-soft)] backdrop-blur-sm"
-          : "border-b border-[var(--divider)] bg-[var(--surface)]",
-      )}
-    >
+    <div className="sticky top-[env(safe-area-inset-top)] z-50 lg:z-40">
+      <GuestSignupPromoBanner isLoggedIn={Boolean(session)} />
+      <header
+        className={cn(
+          "transition-all duration-200 safe-top",
+          scrolled
+            ? "border-b border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-soft)] backdrop-blur-sm"
+            : "border-b border-[var(--divider)] bg-[var(--surface)]",
+        )}
+      >
       {/* 데스크톱: 상단 유틸바 + 메인 헤더바 */}
       <PageContainer size="wide" className="hidden flex-col py-0 lg:flex">
         {/* 상단 유틸바: 회사소개 ~ 고객센터 */}
@@ -155,5 +158,6 @@ export default function SiteHeaderUI({
         showHeaderSearchRow={!isHomePath}
       />
     </header>
+    </div>
   );
 }

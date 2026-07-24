@@ -9,6 +9,7 @@ import { handleOAuthCallback, cleanupExpiredPendingLinks } from "@/lib/auth/memb
 import { appendMemberSessionCookie } from "@/lib/auth/setMemberSessionCookie";
 import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import { isKakaoSyncFunnelAcquisition } from "@/lib/analytics/kakaoSyncLandingHit";
 
 type RouteContext = { params: Promise<{ provider: string }> };
 
@@ -82,6 +83,8 @@ export async function GET(request: Request, context: RouteContext) {
 
     if (providerId === "kakao") {
       const acquisition = state.acquisition ?? null;
+      const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
+      const funnelMeta = fromKakaoLanding ? { funnel: "kakao_sync" as const } : {};
       await persistAnalyticsEventAdmin({
         eventName: ANALYTICS_EVENTS.kakao_oauth_success,
         source: ANALYTICS_SOURCES.kakao_sync_auth,
@@ -89,7 +92,7 @@ export async function GET(request: Request, context: RouteContext) {
         sourcePath: acquisition?.landing_path ?? null,
         landingSlug: acquisition?.landing_slug ?? null,
         metadata: {
-          funnel: "kakao_sync",
+          ...funnelMeta,
           isNewMember: Boolean(result.isNewMember),
           acquisition,
         },
@@ -103,7 +106,7 @@ export async function GET(request: Request, context: RouteContext) {
         sourcePath: acquisition?.landing_path ?? null,
         landingSlug: acquisition?.landing_slug ?? null,
         metadata: {
-          funnel: "kakao_sync",
+          ...funnelMeta,
           memberId: result.member.id,
           welcomeGranted: Boolean(result.kakaoWelcomeGranted),
           acquisition,

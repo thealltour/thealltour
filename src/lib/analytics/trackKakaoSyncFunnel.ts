@@ -35,6 +35,7 @@ export function trackKakaoSyncCtaClick(input: KakaoSyncCtaTrackInput): void {
     metadata: {
       funnel: "kakao_sync",
       landingKind: input.templateType,
+      ingest: "client",
     },
   });
 }
@@ -85,6 +86,7 @@ export function trackKakaoSyncLandingView(input: {
     metadata: {
       funnel: "kakao_sync",
       landingKind: input.templateType,
+      ingest: "client",
     },
   });
 }

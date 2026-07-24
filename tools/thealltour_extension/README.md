@@ -41,4 +41,4 @@ npm run extensions:package:local -- --slug=thealltour-extension
 
 ## 레거시 익스텐션
 
-`tools/hanatour-extractor-extension`, `tools/modetour-extractor-extension`은 JSON 클립보드 추출용으로 별도 유지됩니다.
+`tools/modetour-extractor-extension`은 JSON 클립보드 추출용으로 별도 유지됩니다. 하나투어는 이 통합 익스텐션으로만 수집합니다.

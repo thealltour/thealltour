@@ -4,7 +4,7 @@
  * 사용:
  *   node scripts/upload-extension-builds.mjs
  *   node scripts/upload-extension-builds.mjs --skip-upload
- *   node scripts/upload-extension-builds.mjs --slug=hanatour
+ *   node scripts/upload-extension-builds.mjs --slug=thealltour-extension
  *
  * 필요 env (.env.local): NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
@@ -22,10 +22,6 @@ const ROOT = path.resolve(__dirname, "..");
 const BUCKET = "extension-builds";
 
 const EXTENSIONS = [
-  {
-    slug: "hanatour",
-    dir: "tools/hanatour-extractor-extension",
-  },
   {
     slug: "modetour",
     dir: "tools/modetour-extractor-extension",

@@ -22,7 +22,6 @@ export const ADMIN_MENU_MAP = {
   notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
   notifications: ["알림 목록", "OS 푸시 알림", "로그인된 기기"],
   pwa: [] as string[],
-  tools_hanatour: [] as string[],
   tools_modetour: [] as string[],
   tools_thealltour_extension: [] as string[],
 } as const;
@@ -44,7 +43,6 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   notices: "공지사항",
   notifications: "알림 센터",
   pwa: "앱으로 설치",
-  tools_hanatour: "하나투어 익스텐션",
   tools_modetour: "모두투어 익스텐션",
   tools_thealltour_extension: "통합 익스텐션",
 };
@@ -79,7 +77,6 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel.startsWith("/notices")) return "notices";
   if (rel.startsWith("/notifications")) return "notifications";
   if (rel === "/pwa" || rel.startsWith("/pwa/")) return "pwa";
-  if (rel.startsWith("/tools/hanatour")) return "tools_hanatour";
   if (rel.startsWith("/tools/modetour")) return "tools_modetour";
   if (rel.startsWith("/tools/thealltour-extension")) return "tools_thealltour_extension";
   return null;
@@ -260,8 +257,8 @@ export function buildAdminBreadcrumbLabels(
     case "pwa":
       return [...base, "앱으로 설치"];
     case "tools":
-      if (rel.includes("/tools/hanatour")) return [...base, "도구", "하나투어 익스텐션"];
       if (rel.includes("/tools/modetour")) return [...base, "도구", "모두투어 익스텐션"];
+      if (rel.includes("/tools/thealltour-extension")) return [...base, "도구", "통합 익스텐션"];
       return [...base, "도구"];
     default:
       return [...base, "대시보드"];

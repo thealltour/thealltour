@@ -153,14 +153,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     roles: ["admin"],
   },
   {
-    href: "/theall_manager_only/tools/hanatour",
-    label: "하나투어 익스텐션",
-    icon: Puzzle,
-    group: "tools",
-    mainKey: "tools_hanatour",
-    roles: ["admin", "manager"],
-  },
-  {
     href: "/theall_manager_only/tools/modetour",
     label: "모두투어 익스텐션",
     icon: Puzzle,

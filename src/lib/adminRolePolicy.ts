@@ -209,7 +209,6 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, AdminPermissionKey[]> = {
   notices: ["notices.manage"],
   notifications: ["notifications.view"],
   pwa: ["dashboard.view"],
-  tools_hanatour: ["tools.view"],
   tools_modetour: ["tools.view"],
   tools_thealltour_extension: ["tools.view"],
   settings: ["settings.manage", "admin_users.manage"],

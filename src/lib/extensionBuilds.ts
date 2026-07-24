@@ -1,6 +1,6 @@
 export const EXTENSION_BUILDS_BUCKET = "extension-builds";
 
-export const EXTENSION_SLUGS = ["hanatour", "modetour", "thealltour-extension"] as const;
+export const EXTENSION_SLUGS = ["modetour", "thealltour-extension"] as const;
 
 export type ExtensionSlug = (typeof EXTENSION_SLUGS)[number];
 
@@ -14,12 +14,6 @@ export const EXTENSION_DISPLAY: Record<
   ExtensionSlug,
   { title: string; description: string; downloadFileName: string; downloadButtonLabel: string }
 > = {
-  hanatour: {
-    title: "하나투어 상품 추출기",
-    description: "하나투어 패키지 상세 페이지에서 상품 JSON을 추출합니다.",
-    downloadFileName: "hanatour-extractor.zip",
-    downloadButtonLabel: "하나투어 익스텐션.zip 다운로드",
-  },
   modetour: {
     title: "모두투어 상품 추출기",
     description: "모두투어 상품 상세 페이지에서 상품 JSON을 추출합니다.",

@@ -3,6 +3,7 @@ import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/Land
 import { HardcodedLandingShell } from "@/components/hardcoded-landings/shared/HardcodedLandingShell";
 import { KakaoSyncTimeline } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncTimeline";
 import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
+import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
 import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
 import type { Product } from "@/types/product";
 
@@ -23,6 +24,7 @@ export function KakaoSyncGolfLandingPage({
 
   return (
     <>
+      <KakaoSyncGolfViewTracker />
       <div className="hardcoded-landing-page pb-24">
         {/* 히어로 — 셸과 동일 px-4 거터 + 라운드 (홈 히어로·섹션 래퍼와 톤 맞춤) */}
         <section aria-label="Hero" className="relative w-full px-4 pt-2">

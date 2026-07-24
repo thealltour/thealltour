@@ -50,6 +50,11 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   consult_submit: "consult_submit",
   deposit_link_click: "deposit_link_click",
   deposit_payment_click: "deposit_payment_click",
+  kakao_oauth_start: "kakao_oauth_start",
+  kakao_oauth_success: "kakao_oauth_success",
+  kakao_signup_new: "kakao_signup_new",
+  kakao_login_returning: "kakao_login_returning",
+  kakao_oauth_failed: "kakao_oauth_failed",
 } as const;
 
 /** 소스 상수 (enum 성격) */
@@ -70,4 +75,5 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   quote_page: "quote_page",
   recommended_landing: "recommended_landing",
   deposit_page: "deposit_page",
+  kakao_sync_auth: "kakao_sync_auth",
 } as const;

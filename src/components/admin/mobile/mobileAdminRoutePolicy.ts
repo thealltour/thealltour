@@ -17,6 +17,7 @@ export function isMobileAdminRouteAllowed(
   if (!isSessionAllowedForConsolePath(session, path)) return false;
 
   if (path === "/") return true;
+  if (path === "/pwa") return true;
 
   if (path === "/inquiries") return hasAdminPermission(session, "inquiries.manage");
   if (path.startsWith("/inquiries/")) return false;
@@ -59,6 +60,7 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   if (relativePath == null) return "관리자";
   const path = relativePath === "" ? "/" : relativePath;
   if (path === "/") return "대시보드";
+  if (path === "/pwa") return "앱 · 메뉴";
   if (path === "/landings" || path.startsWith("/landings/")) return "검색/유입 랜딩 관리";
   if (path === "/inquiries" || path.startsWith("/inquiries/")) return "문의·상담";
   if (path === "/bookings" || path.startsWith("/bookings/")) return "예약 관리";

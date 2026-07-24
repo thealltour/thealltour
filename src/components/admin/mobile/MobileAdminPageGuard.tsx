@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ADMIN_PWA_HUB_HREF } from "@/components/admin/mobile/mobileAdmin.constants";
 
 type MobileAdminPageGuardProps = {
   title?: string;
@@ -12,8 +13,8 @@ export function MobileAdminPageGuard({
   title = "PC 관리자 전용",
   description = "이 화면은 PC 관리자에서 이용해 주세요.",
   desktopOnlyReason,
-  backHref,
-  backLabel = "돌아가기",
+  backHref = ADMIN_PWA_HUB_HREF,
+  backLabel = "태블릿 메뉴로",
 }: MobileAdminPageGuardProps) {
   return (
     <div
@@ -24,7 +25,7 @@ export function MobileAdminPageGuard({
       <p className="text-base font-semibold text-[var(--text-primary)]">{title}</p>
       <p className="text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
       <p className="text-xs text-[var(--text-subtle)]">
-        모바일에서는 조회·운영 중심 기능만 지원합니다.
+        태블릿·모바일에서는 조회·운영 중심 기능만 지원합니다. 홈 화면 추가는 앱 · 메뉴 허브에서 해주세요.
       </p>
       {desktopOnlyReason ? (
         <p className="text-xs text-[var(--text-muted)]">{desktopOnlyReason}</p>

@@ -18,6 +18,7 @@ import {
   Home,
   CalendarDays,
   Puzzle,
+  Smartphone,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
@@ -133,6 +134,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: Bell,
     group: "content",
     mainKey: "notifications",
+    roles: ["admin", "manager", "viewer"],
+  },
+  {
+    href: "/theall_manager_only/pwa",
+    label: "앱으로 설치",
+    icon: Smartphone,
+    group: "content",
+    mainKey: "pwa",
     roles: ["admin", "manager", "viewer"],
   },
   {

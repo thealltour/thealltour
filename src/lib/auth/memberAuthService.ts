@@ -5,6 +5,8 @@ import { syncMemberCustomerProfiles } from "@/lib/customerAccountLinks";
 import { createNewMemberNotification } from "@/lib/adminNotifications";
 import { generateUniqueUsername } from "@/lib/auth/username";
 import { grantKakaoSignupWelcomePoints } from "@/lib/auth/grantKakaoSignupWelcomePoints";
+import { memberNeedsProfileCompletion } from "@/lib/auth/memberProfileGate";
+import type { MemberAcquisition } from "@/lib/auth/memberAcquisition";
 import type {
   AuthMode,
   AuthProviderId,
@@ -13,17 +15,12 @@ import type {
   OAuthProfile,
 } from "@/lib/auth/types";
 
+export { memberNeedsProfileCompletion } from "@/lib/auth/memberProfileGate";
+
 const MEMBER_SELECT =
-  "id,username,name,email,phone,password_hash,password_salt,agree_terms,agree_privacy,signup_method,profile_completed_at";
+  "id,username,name,email,phone,password_hash,password_salt,agree_terms,agree_privacy,signup_method,profile_completed_at,kakao_channel_added";
 
 const PENDING_LINK_TTL_MS = 30 * 60 * 1000;
-
-export function memberNeedsProfileCompletion(member: MemberRowForAuth): boolean {
-  if (member.profile_completed_at) return false;
-  const hasTerms = member.agree_terms && member.agree_privacy;
-  const hasPhone = Boolean(member.phone?.trim());
-  return !hasTerms || !hasPhone;
-}
 
 async function isUsernameTaken(username: string): Promise<boolean> {
   const { data } = await supabaseAdmin.from("members").select("id").eq("username", username).maybeSingle();
@@ -67,7 +64,7 @@ async function upsertProviderLink(
       provider,
       provider_user_id: profile.providerUserId,
       email: profile.email,
-      display_name: profile.name,
+      display_name: profile.nickname ?? profile.name,
       avatar_url: profile.avatarUrl,
       raw_profile: profile.raw,
       last_login_at: now,
@@ -77,7 +74,35 @@ async function upsertProviderLink(
   if (error) throw new Error(error.message);
 }
 
-async function createSocialMember(provider: AuthProviderId, profile: OAuthProfile): Promise<MemberRowForAuth> {
+/** 카카오 동의항목으로 받은 값이 비어 있는 members 필드를 채움 */
+async function applyOAuthProfileToMember(memberId: string, profile: OAuthProfile): Promise<void> {
+  const existing = await getMemberById(memberId);
+  if (!existing) return;
+
+  const updates: Record<string, unknown> = {};
+  if (profile.email?.trim() && !existing.email?.trim()) {
+    updates.email = profile.email.trim();
+  }
+  if (profile.name?.trim() && (!existing.name?.trim() || existing.name === "회원")) {
+    updates.name = profile.name.trim();
+  }
+  if (profile.phone?.trim() && !existing.phone?.trim()) {
+    updates.phone = profile.phone.trim();
+  }
+  if (typeof profile.kakaoChannelAdded === "boolean") {
+    updates.kakao_channel_added = profile.kakaoChannelAdded;
+  }
+
+  if (Object.keys(updates).length === 0) return;
+  const { error } = await supabaseAdmin.from("members").update(updates).eq("id", memberId);
+  if (error) throw new Error(error.message);
+}
+
+async function createSocialMember(
+  provider: AuthProviderId,
+  profile: OAuthProfile,
+  acquisition?: MemberAcquisition | null,
+): Promise<MemberRowForAuth> {
   const username = await generateUniqueUsername(provider, profile.providerUserId, isUsernameTaken);
   const { data, error } = await supabaseAdmin
     .from("members")
@@ -85,7 +110,7 @@ async function createSocialMember(provider: AuthProviderId, profile: OAuthProfil
       username,
       name: profile.name,
       email: profile.email,
-      phone: null,
+      phone: profile.phone,
       birth_date: null,
       gender: null,
       password_hash: null,
@@ -95,6 +120,8 @@ async function createSocialMember(provider: AuthProviderId, profile: OAuthProfil
       agree_email: false,
       signup_method: "social",
       profile_completed_at: null,
+      kakao_channel_added: typeof profile.kakaoChannelAdded === "boolean" ? profile.kakaoChannelAdded : null,
+      acquisition: acquisition ?? null,
     })
     .select(MEMBER_SELECT)
     .single();
@@ -147,20 +174,24 @@ export async function handleOAuthCallback(params: {
   mode: AuthMode;
   linkMemberId?: string;
   next: string;
+  acquisition?: MemberAcquisition | null;
 }): Promise<OAuthCallbackResult> {
-  const { provider, profile, mode, linkMemberId, next } = params;
+  const { provider, profile, mode, linkMemberId, next, acquisition } = params;
 
   const existingLink = await findProviderLink(provider, profile.providerUserId);
   if (existingLink) {
-    const member = await getMemberById(String(existingLink.member_id));
+    const memberId = String(existingLink.member_id);
+    await upsertProviderLink(memberId, provider, profile);
+    await applyOAuthProfileToMember(memberId, profile);
+    const member = await getMemberById(memberId);
     if (!member) throw new Error("연결된 회원을 찾을 수 없습니다.");
-    await upsertProviderLink(String(member.id), provider, profile);
     await syncMemberAfterAuth(member);
     return {
       type: "session",
       member,
       next,
       needsProfile: memberNeedsProfileCompletion(member),
+      isNewMember: false,
     };
   }
 
@@ -178,6 +209,7 @@ export async function handleOAuthCallback(params: {
     if (otherLink.data) throw new Error("이미 연결된 소셜 계정입니다.");
 
     await upsertProviderLink(linkMemberId, provider, profile);
+    await applyOAuthProfileToMember(linkMemberId, profile);
     const signupMethod =
       targetMember.password_hash && targetMember.signup_method === "social"
         ? "mixed"
@@ -195,6 +227,7 @@ export async function handleOAuthCallback(params: {
       member,
       next,
       needsProfile: memberNeedsProfileCompletion(member),
+      isNewMember: false,
     };
   }
 
@@ -211,6 +244,7 @@ export async function handleOAuthCallback(params: {
 
   if (emailMember) {
     await upsertProviderLink(String(emailMember.id), provider, profile);
+    await applyOAuthProfileToMember(String(emailMember.id), profile);
     await supabaseAdmin
       .from("members")
       .update({ signup_method: emailMember.signup_method === "local" ? "mixed" : "social" })
@@ -222,10 +256,11 @@ export async function handleOAuthCallback(params: {
       member,
       next,
       needsProfile: memberNeedsProfileCompletion(member),
+      isNewMember: false,
     };
   }
 
-  const member = await createSocialMember(provider, profile);
+  const member = await createSocialMember(provider, profile, acquisition);
   await upsertProviderLink(String(member.id), provider, profile);
   await syncMemberAfterAuth(member);
 
@@ -242,8 +277,9 @@ export async function handleOAuthCallback(params: {
     type: "session",
     member,
     next,
-    needsProfile: true,
+    needsProfile: memberNeedsProfileCompletion(member),
     kakaoWelcomeGranted,
+    isNewMember: true,
   };
 }
 
@@ -277,6 +313,7 @@ export async function confirmPendingLink(pendingId: string, password: string): P
   }
 
   await upsertProviderLink(String(member.id), provider, profile);
+  await applyOAuthProfileToMember(String(member.id), profile);
   await supabaseAdmin.from("members").update({ signup_method: "mixed" }).eq("id", member.id);
   await supabaseAdmin.from("member_auth_pending_links").delete().eq("id", pendingId);
 

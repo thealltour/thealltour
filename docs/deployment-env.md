@@ -114,10 +114,11 @@
 1. **카카오 로그인** 활성화 ON
 2. **Redirect URI** 등록 (위 Kakao callback 2개)
 3. **플랫폼 > Web** 사이트 도메인: `http://localhost:3000`, `https://thealltour.com`
-4. **동의항목**: 닉네임(필수), 카카오계정(이메일)(권장 — 계정 병합용)
+4. **동의항목(카카오싱크 필수와 동기화)**: 닉네임, 카카오계정(이메일), 이름, 카카오계정(전화번호), 카카오톡 채널 추가 상태 및 내역 — 앱은 `/v2/user/me`·채널 API로 수신해 `members`에 저장
 5. Client Secret 사용 시 **보안**에서 Secret 생성 → `KAKAO_CLIENT_SECRET`에 설정
 
-**DB:** `supabase/migrations/20260614100000_member_social_auth.sql` 적용 필요.
+**DB:** `supabase/migrations/20260614100000_member_social_auth.sql`, `supabase/migrations/20260724120000_members_kakao_channel_added.sql` 적용 필요.
+**광고·하드코딩 랜딩 CTA:** `/api/auth/kakao/start?next=/mypage` 만 사용 (kauth 직링크 금지).
 
 ### 카카오 신규 가입 웰컴 포인트
 

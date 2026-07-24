@@ -10,8 +10,8 @@ type MobileReviewPageGuardProps = {
 export function MobileReviewPageGuard({
   title = "PC 관리자에서 이용해 주세요",
   description = "이 리뷰 화면은 PC 관리자에서 이용해 주세요.",
-  backHref = "/theall_manager_only/reviews/moderation",
-  backLabel = "리뷰 검토로 돌아가기",
+  backHref = "/theall_manager_only/pwa",
+  backLabel = "태블릿 메뉴로",
 }: MobileReviewPageGuardProps) {
   return (
     <div

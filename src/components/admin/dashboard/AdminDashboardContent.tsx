@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import AdminKakaoSyncAnalyticsPage from "@/components/admin/landings/AdminKakaoSyncAnalyticsPage";
 import { useDashboardData } from "./useDashboardData";
 import { useReviewSummary } from "./useReviewSummary";
 import { useDashboardPriority } from "./useDashboardPriority";
@@ -10,10 +11,15 @@ import { useDashboardInsights } from "./useDashboardInsights";
 import DashboardOpsTab from "./DashboardOpsTab";
 import DashboardMetricsTab from "./DashboardMetricsTab";
 
-export default function AdminDashboardContent() {
-  const searchParams = useSearchParams();
-  const dashboardTab = searchParams.get("tab") === "metrics" ? "metrics" : "ops";
+type DashboardTab = "ops" | "metrics" | "kakao_sync";
 
+function resolveDashboardTab(raw: string | null): DashboardTab {
+  if (raw === "metrics") return "metrics";
+  if (raw === "kakao_sync") return "kakao_sync";
+  return "ops";
+}
+
+function AdminDashboardOpsOrMetrics({ tab }: { tab: "ops" | "metrics" }) {
   const {
     counts,
     unreadNotificationCount,
@@ -64,7 +70,7 @@ export default function AdminDashboardContent() {
 
   const insightsLoading = dashLoading && !data;
 
-  if (dashboardTab === "metrics") {
+  if (tab === "metrics") {
     return (
       <DashboardMetricsTab
         data={data}
@@ -103,4 +109,15 @@ export default function AdminDashboardContent() {
       notificationsError={notificationsQuery.isError}
     />
   );
+}
+
+export default function AdminDashboardContent() {
+  const searchParams = useSearchParams();
+  const dashboardTab = resolveDashboardTab(searchParams.get("tab"));
+
+  if (dashboardTab === "kakao_sync") {
+    return <AdminKakaoSyncAnalyticsPage />;
+  }
+
+  return <AdminDashboardOpsOrMetrics tab={dashboardTab} />;
 }

@@ -308,7 +308,7 @@ export default function AdminMobileGolfAdForm({ mode, initial }: AdminMobileGolf
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
         <h2 className="text-sm font-semibold text-[var(--text-primary)]">CTA (카카오싱크)</h2>
         <p className="mt-1 text-xs text-[var(--text-muted)]">
-          모든 모바일 골프 랜딩 CTA는 카카오싱크 OAuth URL로 연결됩니다.
+          모든 모바일 골프 랜딩 CTA는 OAuth state를 심는 `/api/auth/kakao/start`로 연결됩니다.
         </p>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
           <input

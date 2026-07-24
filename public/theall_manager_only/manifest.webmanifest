@@ -1,11 +1,11 @@
 {
   "name": "더올투어 관리",
   "short_name": "더올관리",
-  "description": "더올투어 관리자 모바일 콘솔",
-  "start_url": "/theall_manager_only/",
+  "description": "더올투어 관리자 태블릿·모바일 콘솔",
+  "start_url": "/theall_manager_only/pwa",
   "scope": "/theall_manager_only/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#f8fafc",
   "theme_color": "#1e3a5f",
   "icons": [

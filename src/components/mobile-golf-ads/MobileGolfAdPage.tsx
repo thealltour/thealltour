@@ -1,13 +1,15 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { buttonVariants } from "@/components/ui/Button";
 import { MobileGolfAdBodyRenderer } from "@/components/mobile-golf-ads/MobileGolfAdBodyRenderer";
 import { MobileGolfAdViewTracker } from "@/components/mobile-golf-ads/MobileGolfAdViewTracker";
-import {
-  MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL,
-  type MobileGolfAdLanding,
-} from "@/lib/adminMobileGolfAds/types";
+import type { MobileGolfAdLanding } from "@/lib/adminMobileGolfAds/types";
 import { buildMobileGolfAdPublicPath } from "@/lib/adminMobileGolfAds/types";
+import {
+  buildKakaoSyncAuthStartHref,
+  trackKakaoSyncCtaClick,
+} from "@/lib/analytics/trackKakaoSyncFunnel";
 import type { Product } from "@/types/product";
 
 export type MobileGolfAdPageProps = {
@@ -25,6 +27,28 @@ export function MobileGolfAdPage({
   previewMode = false,
 }: MobileGolfAdPageProps) {
   const sourcePath = buildMobileGolfAdPublicPath(landing.slug);
+  const ctaLabel = "간편 가입하기";
+
+  function handleCtaClick(e: MouseEvent<HTMLAnchorElement>) {
+    if (previewMode) {
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    const href = buildKakaoSyncAuthStartHref({
+      next: "/mypage",
+      landingSlug: landing.slug,
+      sourcePath,
+    });
+    trackKakaoSyncCtaClick({
+      landingSlug: landing.slug,
+      sourcePath,
+      templateType: "mobile_golf_ad",
+      label: ctaLabel,
+      href,
+    });
+    window.location.assign(href);
+  }
 
   return (
     <>
@@ -52,14 +76,15 @@ export function MobileGolfAdPage({
 
       <div className="fixed inset-x-0 bottom-0 z-50 w-full pb-[env(safe-area-inset-bottom,0px)]">
         <a
-          href={MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL}
+          href="/api/auth/kakao/start?next=/mypage"
+          onClick={handleCtaClick}
           className={buttonVariants({
             variant: "kakao",
             size: "lg",
             className: "min-h-[3.25rem] w-full rounded-none shadow-lg",
           })}
         >
-          간편 가입하기
+          {ctaLabel}
         </a>
       </div>
     </>

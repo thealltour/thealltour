@@ -4,10 +4,17 @@
  */
 
 import { getMobileNavKeysForSession } from "@/lib/adminRolePolicy";
-import type { AdminSessionPermissions } from "@/lib/adminPermissions";
+import { hasAdminPermission, type AdminSessionPermissions } from "@/lib/adminPermissions";
 
-/** useIsMobileAdmin 및 미디어쿼리와 동기화 */
+/** useIsMobileAdmin 및 미디어쿼리와 동기화 (폰 세로 기준) */
 export const MOBILE_ADMIN_MAX_WIDTH_PX = 768;
+
+/** 태블릿·소형 랩탑까지 컴팩트 셸 사용 (이보다 넓고 standalone이 아니면 데스크톱) */
+export const TABLET_ADMIN_MAX_WIDTH_PX = 1280;
+
+/** PWA 설치·태블릿 메뉴 허브 (manifest start_url) */
+export const ADMIN_PWA_HUB_HREF = "/theall_manager_only/pwa";
+export const ADMIN_PWA_HUB_REL = "/pwa";
 
 /** 메뉴/정책 키 (표시·로깅용) */
 export const MOBILE_ADMIN_MENU_KEYS = {
@@ -91,4 +98,71 @@ export function getMobileAdminNavForSession(session: AdminSessionPermissions): M
   return getMobileNavKeysForSession(session)
     .map((key) => NAV_BY_KEY[key])
     .filter((item): item is MobileAdminNavItem => item != null);
+}
+
+export type TabletAdminHubMenuItem = {
+  key: string;
+  label: string;
+  description: string;
+  href: string;
+};
+
+/** 태블릿/PWA 허브에만 노출하는 허용 메뉴 (PC 전용 제외) */
+export function getTabletAdminHubMenus(session: AdminSessionPermissions): TabletAdminHubMenuItem[] {
+  const items: TabletAdminHubMenuItem[] = [];
+
+  if (hasAdminPermission(session, "dashboard.view")) {
+    items.push({
+      key: "dashboard",
+      label: "홈 · 대시보드",
+      description: "오늘 할 일, 지표, kakao_sync",
+      href: MANAGER_PREFIX,
+    });
+  }
+  if (hasAdminPermission(session, "inquiries.manage")) {
+    items.push({
+      key: "inquiries",
+      label: "문의·상담",
+      description: "문의 목록 · 처리",
+      href: `${MANAGER_PREFIX}/inquiries`,
+    });
+    items.push({
+      key: "bookings",
+      label: "예약 관리",
+      description: "예약 목록 · 상세",
+      href: `${MANAGER_PREFIX}/bookings`,
+    });
+    items.push({
+      key: "sms",
+      label: "SMS 센터",
+      description: "문자 발송 · 스레드",
+      href: `${MANAGER_PREFIX}/sms`,
+    });
+  }
+  if (hasAdminPermission(session, "members.manage")) {
+    items.push({
+      key: "members",
+      label: "회원",
+      description: "회원 목록 · 상세",
+      href: `${MANAGER_PREFIX}/members`,
+    });
+  }
+  if (hasAdminPermission(session, "notifications.view")) {
+    items.push({
+      key: "notifications",
+      label: "알림",
+      description: "알림 · 푸시 · 로그인 기기",
+      href: `${MANAGER_PREFIX}/notifications`,
+    });
+  }
+  if (hasAdminPermission(session, "reviews.ops") || hasAdminPermission(session, "reviews.analytics")) {
+    items.push({
+      key: "reviews",
+      label: "리뷰",
+      description: "목록 · 검토 · 운영 알림",
+      href: `${MANAGER_PREFIX}/reviews`,
+    });
+  }
+
+  return items;
 }

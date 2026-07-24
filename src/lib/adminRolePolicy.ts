@@ -58,6 +58,7 @@ const CONSOLE_PATH_RULES: Array<{
   anyOf: AdminPermissionKey[];
 }> = [
   { test: (r) => r === "/" || r === "", anyOf: ["dashboard.view"] },
+  { test: (r) => r === "/pwa" || r.startsWith("/pwa/"), anyOf: ["dashboard.view"] },
   { test: (r) => r.startsWith("/inquiries") || r.startsWith("/bookings"), anyOf: ["inquiries.manage"] },
   { test: (r) => r.startsWith("/sms") || r.startsWith("/inbound-sms"), anyOf: ["inquiries.manage"] },
   { test: (r) => r.startsWith("/members"), anyOf: ["members.manage"] },
@@ -207,6 +208,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, AdminPermissionKey[]> = {
   guides: ["guides.manage"],
   notices: ["notices.manage"],
   notifications: ["notifications.view"],
+  pwa: ["dashboard.view"],
   tools_hanatour: ["tools.view"],
   tools_modetour: ["tools.view"],
   tools_thealltour_extension: ["tools.view"],

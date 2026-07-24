@@ -13,7 +13,13 @@ export type OAuthTokens = {
 export type OAuthProfile = {
   providerUserId: string;
   email: string | null;
+  /** members.name에 저장 (실명 우선, 없으면 닉네임) */
   name: string;
+  /** member_auth_providers.display_name (닉네임) */
+  nickname: string | null;
+  phone: string | null;
+  /** 카카오톡 채널 추가 여부(plusfriends). null=미확인 */
+  kakaoChannelAdded: boolean | null;
   avatarUrl: string | null;
   raw: Record<string, unknown>;
 };
@@ -51,6 +57,7 @@ export type MemberRowForAuth = {
   agree_privacy: boolean;
   signup_method: string;
   profile_completed_at: string | null;
+  kakao_channel_added?: boolean | null;
 };
 
 export type OAuthCallbackResult =
@@ -60,5 +67,7 @@ export type OAuthCallbackResult =
       next: string;
       needsProfile: boolean;
       kakaoWelcomeGranted?: boolean;
+      /** 이번 콜백에서 members 행이 새로 생성됨 */
+      isNewMember?: boolean;
     }
   | { type: "link_account"; pendingId: string; email: string; provider: AuthProviderId };

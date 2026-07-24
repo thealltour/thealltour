@@ -312,9 +312,15 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
       const params = new URLSearchParams(searchParams.toString());
       if (label === "지표·리드") {
         params.set("tab", "metrics");
+      } else if (label === "kakao_sync") {
+        params.set("tab", "kakao_sync");
       } else {
         params.delete("tab");
       }
+      // 대시보드 탭마다 range 의미가 달라 전환 시 초기화
+      params.delete("range");
+      params.delete("from");
+      params.delete("to");
       const query = params.toString();
       router.push(query ? `/theall_manager_only?${query}` : "/theall_manager_only");
       return;

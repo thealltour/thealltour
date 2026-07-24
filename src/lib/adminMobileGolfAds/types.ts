@@ -23,8 +23,8 @@ export const DEFAULT_MOBILE_GOLF_AD_STYLE_CONFIG: MobileGolfAdStyleConfig = {
   trust: { fontSize: "sm", accentColor: "#334155", roundBox: false },
 };
 
-export const MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL =
-  "https://kauth.kakao.com/oauth/authorize?client_id=79baf477d28606e808c53468c82aea74&redirect_uri=https://thealltour.com/api/auth/kakao/callback&response_type=code";
+/** 광고·하드코딩 랜딩 CTA — OAuth state 쿠키를 심는 start 라우트만 사용 (kauth 직링크 금지) */
+export const MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL = "/api/auth/kakao/start?next=/mypage";
 
 export type MobileGolfAdLandingRow = {
   id: string;

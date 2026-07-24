@@ -47,7 +47,12 @@ export type AnalyticsEventName =
   | "consult_open"
   | "consult_submit"
   | "deposit_link_click"
-  | "deposit_payment_click";
+  | "deposit_payment_click"
+  | "kakao_oauth_start"
+  | "kakao_oauth_success"
+  | "kakao_signup_new"
+  | "kakao_login_returning"
+  | "kakao_oauth_failed";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =
@@ -66,7 +71,8 @@ export type AnalyticsSource =
   | "hero_search"
   | "quote_page"
   | "recommended_landing"
-  | "deposit_page";
+  | "deposit_page"
+  | "kakao_sync_auth";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {

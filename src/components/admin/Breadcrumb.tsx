@@ -8,7 +8,8 @@ export default function Breadcrumb() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const view = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
-  const labels = buildAdminBreadcrumbLabels(pathname, view);
+  const tab = searchParams.get("tab");
+  const labels = buildAdminBreadcrumbLabels(pathname, view, tab);
 
   if (labels.length === 0) {
     return null;

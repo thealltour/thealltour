@@ -56,6 +56,9 @@ export const naverProvider: OAuthProviderAdapter = {
       providerUserId: String(profile.id),
       email: profile.email?.trim() || null,
       name: profile.name?.trim() || profile.nickname?.trim() || "회원",
+      nickname: profile.nickname?.trim() || profile.name?.trim() || null,
+      phone: null,
+      kakaoChannelAdded: null,
       avatarUrl: profile.profile_image?.trim() || null,
       raw: profile as unknown as Record<string, unknown>,
     } satisfies OAuthProfile;

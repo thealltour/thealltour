@@ -62,6 +62,9 @@ export const googleProvider: OAuthProviderAdapter = {
       providerUserId: String(data.id),
       email: data.email?.trim() || null,
       name: data.name?.trim() || "회원",
+      nickname: data.name?.trim() || null,
+      phone: null,
+      kakaoChannelAdded: null,
       avatarUrl: data.picture?.trim() || null,
       raw: data as Record<string, unknown>,
     } satisfies OAuthProfile;

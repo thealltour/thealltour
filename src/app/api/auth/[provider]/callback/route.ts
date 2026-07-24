@@ -7,6 +7,8 @@ import { resolveKakaoWelcomeNextPath } from "@/lib/auth/kakaoSignupWelcome";
 import { loginErrorRedirect } from "@/lib/auth/authErrors";
 import { handleOAuthCallback, cleanupExpiredPendingLinks } from "@/lib/auth/memberAuthService";
 import { appendMemberSessionCookie } from "@/lib/auth/setMemberSessionCookie";
+import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 
 type RouteContext = { params: Promise<{ provider: string }> };
 
@@ -22,6 +24,14 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   if (oauthError || !code) {
+    if (providerId === "kakao") {
+      await persistAnalyticsEventAdmin({
+        eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
+        source: ANALYTICS_SOURCES.kakao_sync_auth,
+        pagePath: "/api/auth/kakao/callback",
+        metadata: { reason: oauthError ? "oauth_error" : "missing_code", oauthError },
+      });
+    }
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_cancelled"), request.url));
   }
 
@@ -29,6 +39,14 @@ export async function GET(request: Request, context: RouteContext) {
   const cookieState = cookieStore.get(OAUTH_STATE_COOKIE)?.value;
   const state = verifyOAuthStateToken(stateParam) ?? verifyOAuthStateToken(cookieState);
   if (!state || state.provider !== providerId) {
+    if (providerId === "kakao") {
+      await persistAnalyticsEventAdmin({
+        eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
+        source: ANALYTICS_SOURCES.kakao_sync_auth,
+        pagePath: "/api/auth/kakao/callback",
+        metadata: { reason: "oauth_invalid_state" },
+      });
+    }
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_invalid_state"), request.url));
   }
 
@@ -49,6 +67,7 @@ export async function GET(request: Request, context: RouteContext) {
       mode: state.mode,
       linkMemberId: state.memberId,
       next: sanitizeNextPath(state.next),
+      acquisition: state.acquisition ?? null,
     });
 
     if (result.type === "link_account") {
@@ -59,6 +78,37 @@ export async function GET(request: Request, context: RouteContext) {
       const response = NextResponse.redirect(linkUrl);
       response.cookies.delete(OAUTH_STATE_COOKIE);
       return response;
+    }
+
+    if (providerId === "kakao") {
+      const acquisition = state.acquisition ?? null;
+      await persistAnalyticsEventAdmin({
+        eventName: ANALYTICS_EVENTS.kakao_oauth_success,
+        source: ANALYTICS_SOURCES.kakao_sync_auth,
+        pagePath: "/api/auth/kakao/callback",
+        sourcePath: acquisition?.landing_path ?? null,
+        landingSlug: acquisition?.landing_slug ?? null,
+        metadata: {
+          funnel: "kakao_sync",
+          isNewMember: Boolean(result.isNewMember),
+          acquisition,
+        },
+      });
+      await persistAnalyticsEventAdmin({
+        eventName: result.isNewMember
+          ? ANALYTICS_EVENTS.kakao_signup_new
+          : ANALYTICS_EVENTS.kakao_login_returning,
+        source: ANALYTICS_SOURCES.kakao_sync_auth,
+        pagePath: "/api/auth/kakao/callback",
+        sourcePath: acquisition?.landing_path ?? null,
+        landingSlug: acquisition?.landing_slug ?? null,
+        metadata: {
+          funnel: "kakao_sync",
+          memberId: result.member.id,
+          welcomeGranted: Boolean(result.kakaoWelcomeGranted),
+          acquisition,
+        },
+      });
     }
 
     let destination = result.next;
@@ -76,6 +126,16 @@ export async function GET(request: Request, context: RouteContext) {
     return response;
   } catch (err) {
     console.error(`[auth/${providerId}/callback]`, err);
+    if (providerId === "kakao") {
+      await persistAnalyticsEventAdmin({
+        eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
+        source: ANALYTICS_SOURCES.kakao_sync_auth,
+        pagePath: "/api/auth/kakao/callback",
+        sourcePath: state.acquisition?.landing_path ?? null,
+        landingSlug: state.acquisition?.landing_slug ?? null,
+        metadata: { reason: "oauth_failed", message: err instanceof Error ? err.message : "unknown" },
+      });
+    }
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_failed", state.next), request.url));
   }
 }

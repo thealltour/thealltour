@@ -8,7 +8,7 @@ import { getAdminConsoleRelativePath, isAdminReviewSectionRelativePath } from "@
 export const ADMIN_MANAGER_PREFIX = "/theall_manager_only";
 
 export const ADMIN_MENU_MAP = {
-  dashboard: ["오늘 할 일", "지표·리드"],
+  dashboard: ["오늘 할 일", "지표·리드", "kakao_sync"],
   product: ["상품 목록", "상품 등록", "상품 등록(모두)", "상품 등록(하나)", "상품 등록(밴드)", "카테고리/테마 관리"],
   home: ["메인 골프투어 상품", "메인 지역카드", "메인 테마카드", "메인 추천상품", "메인배너"],
   landings: ["랜딩 목록", "하드코딩 랜딩", "모바일 골프 랜딩", "taxonomy 기반 생성", "성과·UTM", "골프 리드 (UTM)"],
@@ -21,6 +21,7 @@ export const ADMIN_MENU_MAP = {
   guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
   notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
   notifications: ["알림 목록", "OS 푸시 알림", "로그인된 기기"],
+  pwa: [] as string[],
   tools_hanatour: [] as string[],
   tools_modetour: [] as string[],
   tools_thealltour_extension: [] as string[],
@@ -42,6 +43,7 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   guides: "여행가이드",
   notices: "공지사항",
   notifications: "알림 센터",
+  pwa: "앱으로 설치",
   tools_hanatour: "하나투어 익스텐션",
   tools_modetour: "모두투어 익스텐션",
   tools_thealltour_extension: "통합 익스텐션",
@@ -76,6 +78,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel.startsWith("/guides")) return "guides";
   if (rel.startsWith("/notices")) return "notices";
   if (rel.startsWith("/notifications")) return "notifications";
+  if (rel === "/pwa" || rel.startsWith("/pwa/")) return "pwa";
   if (rel.startsWith("/tools/hanatour")) return "tools_hanatour";
   if (rel.startsWith("/tools/modetour")) return "tools_modetour";
   if (rel.startsWith("/tools/thealltour-extension")) return "tools_thealltour_extension";
@@ -164,7 +167,9 @@ export function resolveActiveSubTab(
     else initial = "랜딩 목록";
   }
   if (activeMenu === "dashboard") {
-    initial = searchParams.tab === "metrics" ? "지표·리드" : "오늘 할 일";
+    if (searchParams.tab === "metrics") initial = "지표·리드";
+    else if (searchParams.tab === "kakao_sync") initial = "kakao_sync";
+    else initial = "오늘 할 일";
   }
   if (activeMenu === "notifications") {
     if (pathname.includes("/notifications/push")) initial = "OS 푸시 알림";
@@ -177,13 +182,21 @@ export function resolveActiveSubTab(
 
 const LABEL_ADMIN = "관리자";
 
-export function buildAdminBreadcrumbLabels(pathname: string, view: string | null): string[] {
+export function buildAdminBreadcrumbLabels(
+  pathname: string,
+  view: string | null,
+  tab: string | null = null,
+): string[] {
   const base = [LABEL_ADMIN];
   const rel = getAdminConsoleRelativePath(pathname.split("?")[0] ?? pathname);
   if (rel == null) return base;
 
   const segments = rel.split("/").filter(Boolean);
-  if (segments.length === 0) return [...base, "대시보드", "운영 현황"];
+  if (segments.length === 0) {
+    const dashboardDetail =
+      tab === "metrics" ? "지표·리드" : tab === "kakao_sync" ? "kakao_sync" : "운영 현황";
+    return [...base, "대시보드", dashboardDetail];
+  }
 
   const section = segments[0] ?? "";
   switch (section) {
@@ -244,6 +257,8 @@ export function buildAdminBreadcrumbLabels(pathname: string, view: string | null
       if (rel.includes("/notifications/push")) return [...base, "알림", "OS 푸시 알림"];
       if (rel.includes("/notifications/devices")) return [...base, "알림", "로그인된 기기"];
       return [...base, "알림"];
+    case "pwa":
+      return [...base, "앱으로 설치"];
     case "tools":
       if (rel.includes("/tools/hanatour")) return [...base, "도구", "하나투어 익스텐션"];
       if (rel.includes("/tools/modetour")) return [...base, "도구", "모두투어 익스텐션"];

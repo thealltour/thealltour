@@ -6,13 +6,18 @@ import {
   HARDCODED_LANDINGS,
   resolveHardcodedLandingPublicUrl,
 } from "@/lib/hardcodedLandings/registry";
+import { buildKakaoSyncGolfPublicUrl } from "@/lib/hardcodedLandings/kakaoSyncGolf/urls";
 
 export default function AdminHardcodedLandingList() {
   const { showToast } = useAdminToast();
 
-  const copyUrl = async (path: string) => {
+  const copyUrl = async (entryId: string, path: string) => {
     try {
-      await navigator.clipboard.writeText(resolveHardcodedLandingPublicUrl(path));
+      const url =
+        entryId === "kakao-sync-golf"
+          ? buildKakaoSyncGolfPublicUrl(true)
+          : resolveHardcodedLandingPublicUrl(path);
+      await navigator.clipboard.writeText(url);
       showToast("success", "공개 URL이 복사되었습니다.");
     } catch {
       showToast("error", "URL 복사에 실패했습니다.");
@@ -60,7 +65,7 @@ export default function AdminHardcodedLandingList() {
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => void copyUrl(entry.publicPath)}
+                      onClick={() => void copyUrl(entry.id, entry.publicPath)}
                       className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold"
                     >
                       URL 복사

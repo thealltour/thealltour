@@ -5,6 +5,9 @@ import { createOAuthStateToken, OAUTH_STATE_COOKIE, OAUTH_STATE_COOKIE_OPTIONS }
 import { getOAuthProvider, isAuthProviderId } from "@/lib/auth/providerRegistry";
 import { getOAuthRedirectUri, sanitizeNextPath } from "@/lib/auth/redirect";
 import { loginErrorRedirect } from "@/lib/auth/authErrors";
+import { parseMemberAcquisitionFromSearchParams } from "@/lib/auth/memberAcquisition";
+import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import type { AuthMode } from "@/lib/auth/types";
 
 type RouteContext = { params: Promise<{ provider: string }> };
@@ -23,6 +26,7 @@ export async function GET(request: Request, context: RouteContext) {
   const url = new URL(request.url);
   const mode = (url.searchParams.get("mode") === "link" ? "link" : "login") satisfies AuthMode;
   const next = sanitizeNextPath(url.searchParams.get("next"));
+  const acquisition = parseMemberAcquisitionFromSearchParams(url.searchParams);
 
   let linkMemberId: string | undefined;
   if (mode === "link") {
@@ -39,7 +43,25 @@ export async function GET(request: Request, context: RouteContext) {
     mode,
     next,
     memberId: linkMemberId,
+    acquisition,
   });
+
+  if (providerId === "kakao") {
+    await persistAnalyticsEventAdmin({
+      eventName: ANALYTICS_EVENTS.kakao_oauth_start,
+      source: ANALYTICS_SOURCES.kakao_sync_auth,
+      pagePath: "/api/auth/kakao/start",
+      sourcePath: acquisition?.landing_path ?? null,
+      landingSlug: acquisition?.landing_slug ?? null,
+      templateType:
+        acquisition?.landing_slug === "kakao-sync" ? "kakao_sync_golf" : acquisition?.landing_slug ? "mobile_golf_ad" : null,
+      metadata: {
+        funnel: "kakao_sync",
+        mode,
+        acquisition: acquisition ?? null,
+      },
+    });
+  }
 
   const redirectUri = getOAuthRedirectUri(providerId);
   const authorizeUrl = adapter.getAuthorizationUrl({ state: stateToken, redirectUri });

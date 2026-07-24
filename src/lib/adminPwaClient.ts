@@ -1,5 +1,6 @@
 export const ADMIN_PWA_SW_PATH = "/theall_manager_only/sw.js";
 export const ADMIN_PWA_SCOPE = "/theall_manager_only/";
+export const ADMIN_PWA_START_URL = "/theall_manager_only/pwa";
 export const ADMIN_PWA_INSTALL_DISMISS_KEY = "theall-admin-pwa-install-dismissed";
 
 export function isAdminPwaStandalone(): boolean {

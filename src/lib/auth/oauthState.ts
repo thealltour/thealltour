@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { AuthMode, AuthProviderId } from "@/lib/auth/types";
+import type { MemberAcquisition } from "@/lib/auth/memberAcquisition";
 
 export const OAUTH_STATE_COOKIE = "theall_oauth_state";
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -10,6 +11,7 @@ export type OAuthStatePayload = {
   next: string;
   nonce: string;
   memberId?: string;
+  acquisition?: MemberAcquisition | null;
   expiresAt: number;
 };
 

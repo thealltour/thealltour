@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminAppBadgeSync } from "@/hooks/useAdminAppBadge";
 import {
@@ -9,6 +10,8 @@ import {
   registerAdminServiceWorker,
 } from "@/lib/adminPwaClient";
 import { isAdminConsolePublicPath } from "@/lib/adminConsolePaths";
+import { ADMIN_PWA_HUB_HREF, ADMIN_PWA_HUB_REL } from "@/components/admin/mobile/mobileAdmin.constants";
+import { getAdminConsoleRelativePath } from "@/lib/adminConsolePaths";
 
 function detectIosSafari(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -17,8 +20,10 @@ function detectIosSafari(): boolean {
 }
 
 export function AdminPwaInstallBanner() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [isIos, setIsIos] = useState(false);
+  const onHub = getAdminConsoleRelativePath(pathname) === ADMIN_PWA_HUB_REL;
 
   useEffect(() => {
     if (isAdminPwaStandalone()) return;
@@ -27,7 +32,8 @@ export function AdminPwaInstallBanner() {
     setVisible(true);
   }, []);
 
-  if (!visible) return null;
+  // 허브 페이지에 설치 안내가 이미 있음
+  if (!visible || onHub) return null;
 
   return (
     <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-950">
@@ -35,9 +41,12 @@ export function AdminPwaInstallBanner() {
         <div>
           <p className="font-semibold">홈 화면에 추가하면 앱처럼 사용할 수 있습니다</p>
           <p className="mt-1 leading-relaxed">
-            {isIos
-              ? "Safari 하단 공유(↑) → 「홈 화면에 추가」 → 추가된 아이콘으로 실행해 주세요."
-              : "Chrome 메뉴(⋮) → 「홈 화면에 추가」 또는 「앱 설치」를 선택해 주세요."}
+            PC 전용 메뉴에서 추가하면 설치 후 그 화면이 열려 「PC 전용」 안내가 뜰 수 있습니다.{" "}
+            <Link href={ADMIN_PWA_HUB_HREF} className="font-semibold underline">
+              앱 · 메뉴 허브
+            </Link>
+            에서 설치해 주세요.
+            {isIos ? " (Safari 공유 → 홈 화면에 추가)" : ""}
           </p>
         </div>
         <button

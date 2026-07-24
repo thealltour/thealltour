@@ -1,5 +1,6 @@
 /**
  * Plain MV3 익스텐션 ZIP 패키징
+ * 루트의 manifest.json · *.js · icons/*.png 를 모두 포함합니다.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -11,15 +12,16 @@ const JSZip = (await import(pathToFileURL(path.join(ROOT, "node_modules/jszip/di
 const EXT_DIR = path.resolve(__dirname, "..");
 const BUILD_DIR = path.join(EXT_DIR, "build");
 
-const INCLUDE = [
-  "manifest.json",
-  "background.js",
-  "content.js",
-  "htmlContextExtract.js",
-];
-
 function collectFiles() {
-  const files = [...INCLUDE];
+  const files = ["manifest.json"];
+
+  for (const name of fs.readdirSync(EXT_DIR)) {
+    if (!name.endsWith(".js")) continue;
+    const abs = path.join(EXT_DIR, name);
+    if (!fs.statSync(abs).isFile()) continue;
+    files.push(name);
+  }
+
   const iconsDir = path.join(EXT_DIR, "icons");
   if (fs.existsSync(iconsDir)) {
     for (const name of fs.readdirSync(iconsDir)) {
@@ -28,6 +30,7 @@ function collectFiles() {
       }
     }
   }
+
   return files;
 }
 
@@ -39,7 +42,8 @@ async function main() {
   fs.mkdirSync(BUILD_DIR, { recursive: true });
 
   const zip = new JSZip();
-  for (const rel of collectFiles()) {
+  const included = collectFiles();
+  for (const rel of included) {
     const abs = path.join(EXT_DIR, rel);
     if (!fs.existsSync(abs)) {
       throw new Error(`Missing file: ${rel}`);
@@ -51,6 +55,7 @@ async function main() {
   const outPath = path.join(BUILD_DIR, zipName);
   fs.writeFileSync(outPath, buffer);
   console.log(`[ok] ${outPath} (${buffer.length} bytes)`);
+  console.log(`[ok] files (${included.length}): ${included.join(", ")}`);
 }
 
 main().catch((err) => {

@@ -18,6 +18,10 @@ type ModalMode = "dm" | "group" | "invite" | null;
 
 const EMPTY_MEMBER_KEYS: string[] = [];
 
+/** 데스크톱에서 팝업이 비모달로 동작할지 판단하는 브레이크포인트(Tailwind `md`와 동일). */
+const DESKTOP_BREAKPOINT_PX = 768;
+const PANEL_TRANSITION_MS = 200;
+
 function ChatIcon() {
   return (
     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -36,6 +40,81 @@ function CloseIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
     </svg>
   );
+}
+
+function UserPlusIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.375 21c-2.331 0-4.512-.645-6.374-1.766Z"
+      />
+    </svg>
+  );
+}
+
+function UsersPlusIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+      />
+    </svg>
+  );
+}
+
+/**
+ * framer-motion 등 애니메이션 라이브러리를 새로 추가하지 않고, 순수 CSS 트랜지션으로
+ * 열림/닫힘 애니메이션을 구현하기 위한 마운트 상태 관리 훅.
+ * open=true → 즉시 마운트 후 다음 프레임에 entered=true로 전환(트랜지션 트리거).
+ * open=false → entered=false로 되돌린 뒤 트랜지션 시간만큼 대기 후 언마운트.
+ */
+function usePanelPresence(open: boolean, durationMs = PANEL_TRANSITION_MS) {
+  const [mounted, setMounted] = useState(open);
+  const [entered, setEntered] = useState(false);
+  // 렌더링 중 이전 prop 값을 state로 추적해 비교하는 React 공식 패턴("Adjusting state when a prop
+  // changes"). ref 대신 state를 쓰므로 렌더 중 ref 접근/변경 금지 규칙(react-hooks/refs)에 걸리지
+  // 않고, effect 본문에서 직접 setState하지 않아 react-hooks/set-state-in-effect도 피할 수 있다.
+  const [prevOpen, setPrevOpen] = useState(open);
+  const unmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setMounted(true);
+    } else {
+      setEntered(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!open) {
+      unmountTimerRef.current = setTimeout(() => setMounted(false), durationMs);
+      return () => {
+        if (unmountTimerRef.current) clearTimeout(unmountTimerRef.current);
+      };
+    }
+
+    if (unmountTimerRef.current) {
+      clearTimeout(unmountTimerRef.current);
+      unmountTimerRef.current = null;
+    }
+    // 트랜지션이 트리거되려면 "닫힌 스타일"이 한 번 페인트된 뒤 "열린 스타일"로 바뀌어야 하므로
+    // 더블 rAF로 한 프레임 이상 지연시켜 entered=true를 적용한다.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [open, durationMs]);
+
+  return { mounted, entered };
 }
 
 type AdminPickerModalProps = {
@@ -296,16 +375,81 @@ function RoomListItem({
   );
 }
 
+/** 목록 화면 전용 뷰 — 좁은 팝업(400px)에 맞춰 사이드바 없이 단일 패널로 렌더링. */
+function RoomListPane({
+  rooms,
+  onSelectRoom,
+  onNewDm,
+  onNewGroup,
+  onClose,
+}: {
+  rooms: AdminChatRoomSummary[];
+  onSelectRoom: (id: string) => void;
+  onNewDm: () => void;
+  onNewGroup: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="flex items-center gap-1 border-b border-[var(--border)] px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">팀 채팅</h2>
+          <p className="text-xs text-[var(--text-muted)]">관리자 간 실시간 소통</p>
+        </div>
+        <button
+          type="button"
+          onClick={onNewDm}
+          className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+          aria-label="새 1:1 채팅"
+          title="새 1:1 채팅"
+        >
+          <UserPlusIcon />
+        </button>
+        <button
+          type="button"
+          onClick={onNewGroup}
+          className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+          aria-label="새 그룹 채팅"
+          title="새 그룹 채팅"
+        >
+          <UsersPlusIcon />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+          aria-label="닫기"
+        >
+          <CloseIcon />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2">
+        {rooms.length === 0 ? (
+          <p className="px-2 py-6 text-center text-xs text-[var(--text-muted)]">
+            채팅방이 없습니다. 새 1:1 또는 그룹 채팅을 시작하세요.
+          </p>
+        ) : (
+          rooms.map((room) => (
+            <RoomListItem key={room.id} room={room} active={false} onClick={() => onSelectRoom(room.id)} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChatThread({
   room,
   selfKey,
   onBack,
   onInvite,
+  onClose,
 }: {
   room: AdminChatRoomSummary;
   selfKey: string;
   onBack: () => void;
   onInvite: () => void;
+  onClose: () => void;
 }) {
   const [messages, setMessages] = useState<AdminChatMessageDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -497,7 +641,7 @@ function ChatThread({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] md:hidden"
+          className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
           aria-label="목록으로"
         >
           ←
@@ -517,6 +661,14 @@ function ChatThread({
             초대
           </AdminButton>
         ) : null}
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+          aria-label="닫기"
+        >
+          <CloseIcon />
+        </button>
       </div>
 
       <div className="flex w-full flex-1 flex-col overflow-y-auto px-3 py-3">
@@ -529,10 +681,16 @@ function ChatThread({
             {messages.map((msg) => {
               const mine = msg.senderKey === selfKey;
               const read = isMessageRead(msg);
+              const showAvatar = !mine && room.type === "group";
               return (
-                <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <li key={msg.id} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                  {showAvatar ? (
+                    <span className="mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[11px] font-bold text-[var(--text-secondary)]">
+                      {msg.senderDisplayName.slice(0, 1)}
+                    </span>
+                  ) : null}
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3 py-2 ${
+                    className={`max-w-[80%] rounded-2xl px-3 py-2 ${
                       mine
                         ? "rounded-br-md bg-[var(--primary)] text-white"
                         : "rounded-bl-md border border-[var(--border)] bg-[var(--surface-muted)]"
@@ -647,6 +805,9 @@ export default function AdminChatWidget() {
   const [modal, setModal] = useState<ModalMode>(null);
   const [inviteRoomId, setInviteRoomId] = useState<string | null>(null);
   const [inviteMemberKeys, setInviteMemberKeys] = useState<string[]>([]);
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { mounted, entered } = usePanelPresence(open);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? null;
 
@@ -657,6 +818,20 @@ export default function AdminChatWidget() {
     setActiveRoomId(chatRoomId);
     void refreshRooms();
   }, [searchParams, selfKey, setOpen, setActiveRoomId, refreshRooms]);
+
+  // 데스크톱(팝업 비모달)에서만 바깥 클릭 시 닫힘. 모바일은 전체화면 백드롭 클릭으로 이미 처리됨.
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (typeof window !== "undefined" && window.innerWidth < DESKTOP_BREAKPOINT_PX) return;
+      const target = e.target as Node;
+      if (panelRef.current?.contains(target)) return;
+      if (fabRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open, setOpen]);
 
   const handleModalDone = (roomId?: string) => {
     void refreshRooms();
@@ -680,116 +855,82 @@ export default function AdminChatWidget() {
   return (
     <>
       <button
+        ref={fabRef}
         type="button"
         onClick={toggle}
         className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[var(--primary-hover)]"
-        aria-label="관리자 채팅"
+        aria-label={open ? "관리자 채팅 닫기" : "관리자 채팅 열기"}
       >
-        <ChatIcon />
-        {totalUnread > 0 ? (
+        {open ? <CloseIcon /> : <ChatIcon />}
+        {!open && totalUnread > 0 ? (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[10px] font-bold text-white">
             {totalUnread > 99 ? "99+" : totalUnread}
           </span>
         ) : null}
       </button>
 
-      {open ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[1px]">
-          <button
-            type="button"
-            className="absolute inset-0"
-            aria-label="채팅 닫기"
+      {mounted ? (
+        <>
+          {/* 모바일 전체화면 모달용 백드롭. 데스크톱 팝업에서는 숨김(비모달). */}
+          <div
+            className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] transition-opacity duration-200 md:hidden ${
+              entered ? "opacity-100" : "opacity-0"
+            }`}
             onClick={() => setOpen(false)}
+            aria-hidden="true"
           />
-          <div className="relative flex h-full w-full max-w-[720px] flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-2xl sm:max-w-[min(720px,100vw)]">
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-              <div>
-                <h2 className="text-base font-semibold text-[var(--text-primary)]">팀 채팅</h2>
-                <p className="text-xs text-[var(--text-muted)]">관리자 간 실시간 소통</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-                aria-label="닫기"
-              >
-                <CloseIcon />
-              </button>
+
+          <div
+            ref={panelRef}
+            className={`fixed z-50 flex flex-col overflow-hidden border-[var(--border)] bg-[var(--surface)] shadow-2xl transition-all duration-200 ${
+              entered
+                ? "translate-x-0 translate-y-0 scale-100 opacity-100"
+                : "translate-x-full opacity-0 md:translate-x-0 md:translate-y-4 md:scale-95"
+            } inset-0 h-full w-full rounded-none border-0 md:inset-auto md:bottom-40 md:right-6 md:h-[min(640px,calc(100vh-11rem))] md:w-[400px] md:rounded-2xl md:border`}
+            role="dialog"
+            aria-label="관리자 팀 채팅"
+          >
+            <div className="relative flex h-full min-h-0 w-full flex-col">
+              {!activeRoom ? (
+                <RoomListPane
+                  rooms={rooms}
+                  onSelectRoom={setActiveRoomId}
+                  onNewDm={() => setModal("dm")}
+                  onNewGroup={() => setModal("group")}
+                  onClose={() => setOpen(false)}
+                />
+              ) : (
+                <ChatThread
+                  room={activeRoom}
+                  selfKey={selfKey}
+                  onBack={() => setActiveRoomId(null)}
+                  onInvite={() => void openInvite(activeRoom.id)}
+                  onClose={() => setOpen(false)}
+                />
+              )}
+
+              {modal === "invite" ? (
+                <AdminPickerModal
+                  mode="invite"
+                  open
+                  onClose={() => setModal(null)}
+                  selfKey={selfKey}
+                  inviteRoomId={inviteRoomId ?? undefined}
+                  existingMemberKeys={inviteMemberKeys}
+                  onDone={handleModalDone}
+                />
+              ) : modal ? (
+                <AdminPickerModal
+                  mode={modal}
+                  open
+                  onClose={() => setModal(null)}
+                  selfKey={selfKey}
+                  onDone={handleModalDone}
+                />
+              ) : null}
             </div>
-
-            <div className="flex min-h-0 flex-1">
-              <aside
-                className={`flex w-full shrink-0 flex-col border-[var(--border)] md:w-[280px] md:border-r ${
-                  activeRoomId ? "hidden md:flex" : "flex"
-                }`}
-              >
-                <div className="flex gap-2 border-b border-[var(--border)] p-3">
-                  <AdminButton variant="secondary" size="sm" className="flex-1" onClick={() => setModal("dm")}>
-                    1:1
-                  </AdminButton>
-                  <AdminButton variant="secondary" size="sm" className="flex-1" onClick={() => setModal("group")}>
-                    그룹
-                  </AdminButton>
-                </div>
-                <div className="flex-1 overflow-y-auto p-2">
-                  {rooms.length === 0 ? (
-                    <p className="px-2 py-6 text-center text-xs text-[var(--text-muted)]">
-                      채팅방이 없습니다. 1:1 또는 그룹 채팅을 시작하세요.
-                    </p>
-                  ) : (
-                    rooms.map((room) => (
-                      <RoomListItem
-                        key={room.id}
-                        room={room}
-                        active={room.id === activeRoomId}
-                        onClick={() => setActiveRoomId(room.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </aside>
-
-              <main
-                className={`min-h-0 w-full flex-1 ${
-                  !activeRoomId
-                    ? "hidden md:flex md:items-center md:justify-center"
-                    : "flex flex-col"
-                }`}
-              >
-                {activeRoom ? (
-                  <ChatThread
-                    room={activeRoom}
-                    selfKey={selfKey}
-                    onBack={() => setActiveRoomId(null)}
-                    onInvite={() => void openInvite(activeRoom.id)}
-                  />
-                ) : (
-                  <p className="text-sm text-[var(--text-muted)]">채팅방을 선택하세요.</p>
-                )}
-              </main>
-            </div>
-
-            {modal === "invite" ? (
-              <AdminPickerModal
-                mode="invite"
-                open
-                onClose={() => setModal(null)}
-                selfKey={selfKey}
-                inviteRoomId={inviteRoomId ?? undefined}
-                existingMemberKeys={inviteMemberKeys}
-                onDone={handleModalDone}
-              />
-            ) : modal ? (
-              <AdminPickerModal
-                mode={modal}
-                open
-                onClose={() => setModal(null)}
-                selfKey={selfKey}
-                onDone={handleModalDone}
-              />
-            ) : null}
           </div>
-        </div>
+        </>
       ) : null}
     </>
   );

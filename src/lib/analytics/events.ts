@@ -32,6 +32,7 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   hero_autosuggest_click: "hero_autosuggest_click",
   cta_click: "cta_click",
   landing_view: "landing_view",
+  landing_section_view: "landing_section_view",
   landing_product_click: "landing_product_click",
   product_card_click: "product_card_click",
   product_detail_cta_click: "product_detail_cta_click",

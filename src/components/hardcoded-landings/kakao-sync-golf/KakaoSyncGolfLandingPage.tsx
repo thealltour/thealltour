@@ -1,28 +1,21 @@
 import { Flame } from "lucide-react";
-import { HomeProductCard } from "@/components/products/HomeProductCard";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/LandingFaqAccordion";
 import { HardcodedLandingShell } from "@/components/hardcoded-landings/shared/HardcodedLandingShell";
 import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
+import { KakaoSyncGolfInlineCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfInlineCta";
 import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
+import { KakaoSyncSectionViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncSectionViewTracker";
 import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
 import { getKakaoSyncDailySocialProofCount } from "@/lib/hardcodedLandings/kakaoSyncGolf/dailySocialProofCount";
 import type { Product } from "@/types/product";
 
 export type KakaoSyncGolfLandingPageProps = {
   products: Product[];
-  productsEyebrow?: string | null;
-  productsTitle?: string | null;
-  productsDescription?: string | null;
 };
 
-export function KakaoSyncGolfLandingPage({
-  products,
-  productsEyebrow,
-  productsTitle,
-  productsDescription,
-}: KakaoSyncGolfLandingPageProps) {
-  const { hero, benefit, valueProof, products: productsCopy, faq } = kakaoSyncGolfConfig;
+export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageProps) {
+  const { hero, benefit, products: productsCopy, faq } = kakaoSyncGolfConfig;
   const dailySocialProofCount = getKakaoSyncDailySocialProofCount();
 
   return (
@@ -45,7 +38,7 @@ export function KakaoSyncGolfLandingPage({
               <p className="text-base font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
                 {hero.title}
               </p>
-              <h1 className="mt-2 whitespace-pre-line text-3xl font-extrabold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+              <h1 className="heading-display-hero mt-2 whitespace-pre-line text-3xl font-extrabold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
                 {hero.subtitle}
               </h1>
               {/* 소셜프루프 — 헤드라인과 같은 시야에서 즉시 인지되도록 Hero 오버레이 안에 배치.
@@ -60,6 +53,7 @@ export function KakaoSyncGolfLandingPage({
 
         <HardcodedLandingShell className="space-y-3 py-2.5">
           {/* 혜택 — 광고 소재(3만 포인트)와 동일 문구를 첫 스크롤에서 확인 가능하도록 강조 */}
+          <KakaoSyncSectionViewTracker sectionName="kakao_sync_benefit" />
           <section aria-label="Benefit">
             <div className="rounded-2xl bg-[#f8f9fa] px-3 py-3">
               <h2 className="text-base font-bold text-slate-900">{benefit.title}</h2>
@@ -93,40 +87,23 @@ export function KakaoSyncGolfLandingPage({
               {benefit.footnote ? (
                 <p className="mt-1 text-xs text-slate-500">{benefit.footnote}</p>
               ) : null}
+              <KakaoSyncGolfInlineCta />
             </div>
           </section>
 
-          {/* 실물 가치 증거 — 타임라인 대신 대표 상품 1건의 정가→회원가(−3만원)를 그대로 보여줌 */}
-          {products[0] ? (
-            <section aria-label="포인트 가치 예시">
-              <p className="text-sm font-bold text-slate-900">{valueProof.title}</p>
-              <div className="mt-2 max-w-[220px]">
-                <HomeProductCard
-                  product={products[0]}
-                  variant="rail"
-                  priceDisplay="coinBenefit"
-                  analyticsSection="kakao_sync_golf_landing_value_proof"
-                />
-              </div>
-            </section>
-          ) : null}
-
-          {/* 추천 상품 — 홈과 동일 레일 */}
+          {/* 추천 상품 — 가치 증거(정가→회원가)와 브라우징을 한 섹션으로 병합, 홈 레일과 동일 컴포넌트 재사용 */}
+          <KakaoSyncSectionViewTracker sectionName="kakao_sync_products" />
           {products.length > 0 ? (
             <section aria-label="추천 골프투어">
               <div>
-                {(productsEyebrow ?? productsCopy.eyebrowFallback) ? (
+                {productsCopy.eyebrowFallback ? (
                   <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
-                    {productsEyebrow ?? productsCopy.eyebrowFallback}
+                    {productsCopy.eyebrowFallback}
                   </p>
                 ) : null}
-                <h2 className="mt-0.5 text-lg font-bold text-slate-900">
-                  {productsTitle ?? productsCopy.titleFallback}
-                </h2>
-                {(productsDescription ?? productsCopy.descriptionFallback) ? (
-                  <p className="mt-0.5 text-sm text-slate-600">
-                    {productsDescription ?? productsCopy.descriptionFallback}
-                  </p>
+                <h2 className="mt-0.5 text-lg font-bold text-slate-900">{productsCopy.titleFallback}</h2>
+                {productsCopy.descriptionFallback ? (
+                  <p className="mt-0.5 text-sm text-slate-600">{productsCopy.descriptionFallback}</p>
                 ) : null}
                 <div className="mt-1.5">
                   <HomeProductCardRail
@@ -142,6 +119,7 @@ export function KakaoSyncGolfLandingPage({
           ) : null}
 
           {/* FAQ */}
+          <KakaoSyncSectionViewTracker sectionName="kakao_sync_faq" />
           <LandingFaqAccordion
             sectionTitle={faq.sectionTitle}
             items={[...faq.items]}

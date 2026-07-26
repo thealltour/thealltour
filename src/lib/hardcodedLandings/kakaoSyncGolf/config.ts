@@ -42,14 +42,12 @@ export const kakaoSyncGolfConfig = {
     /** "조건"이라는 표현이 의심을 유발할 수 있어 즉시 확인 가능하다는 긍정적 프레이밍으로 서술 */
     footnote: "신규 가입 회원 대상 · 지급 즉시 마이페이지에서 바로 확인할 수 있어요.",
   },
-  /** Timeline을 대체하는 실물 가치 증거 카드(대표 상품 1건, 정가→회원가) 문구 */
-  valueProof: {
-    title: "3만 포인트, 이만큼 아껴요",
-  },
+  /** 추천 상품 레일 헤딩 — 가치 증거(정가→회원가)와 브라우징을 한 섹션으로 병합.
+   *  홈페이지 CMS 설정(home_golf_tour_section_*)과 분리된 이 랜딩 전용 고정 문구. */
   products: {
-    eyebrowFallback: "GOLF TOURS",
-    titleFallback: "추천 골프투어",
-    descriptionFallback: "인기 골프·파크골프 여행을 만나보세요.",
+    eyebrowFallback: "",
+    titleFallback: "3만 포인트, 이만큼 아껴요",
+    descriptionFallback: "정가에서 3만 포인트 즉시 차감된 회원가로, 지금 바로 확인해보세요.",
   },
   faq: {
     sectionTitle: "자주 묻는 질문",

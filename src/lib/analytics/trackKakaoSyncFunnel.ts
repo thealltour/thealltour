@@ -18,6 +18,8 @@ export type KakaoSyncCtaTrackInput = {
   templateType: string;
   label: string;
   href?: string;
+  /** CTA 노출 위치 — 대시보드 집계(section)는 그대로 두고 metadata로만 세분화 */
+  ctaPlacement?: "fixed" | "inline";
 };
 
 /** landing_cta_click fire-and-forget */
@@ -36,6 +38,7 @@ export function trackKakaoSyncCtaClick(input: KakaoSyncCtaTrackInput): void {
       funnel: "kakao_sync",
       landingKind: input.templateType,
       ingest: "client",
+      ctaPlacement: input.ctaPlacement ?? "fixed",
     },
   });
 }
@@ -83,6 +86,32 @@ export function trackKakaoSyncLandingView(input: {
     sourcePath: input.sourcePath,
     landingSlug: input.landingSlug,
     templateType: input.templateType,
+    metadata: {
+      funnel: "kakao_sync",
+      landingKind: input.templateType,
+      ingest: "client",
+    },
+  });
+}
+
+/**
+ * 섹션 스크롤 노출 계측 — 어디까지 보고 이탈/클릭하는지 파악용 (fire-and-forget, 1회성).
+ * 이번 단계는 이벤트 적재만 하며, 어드민 대시보드 시각화는 후속 작업.
+ */
+export function trackKakaoSyncSectionView(input: {
+  landingSlug: string;
+  sourcePath: string;
+  templateType: string;
+  sectionName: string;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.landing_section_view,
+    source: ANALYTICS_SOURCES.recommended_landing,
+    pagePath: input.sourcePath,
+    sourcePath: input.sourcePath,
+    landingSlug: input.landingSlug,
+    templateType: input.templateType,
+    section: input.sectionName,
     metadata: {
       funnel: "kakao_sync",
       landingKind: input.templateType,

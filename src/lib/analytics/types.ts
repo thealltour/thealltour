@@ -30,6 +30,7 @@ export type AnalyticsEventName =
   | "hero_autosuggest_click"
   | "cta_click"
   | "landing_view"
+  | "landing_section_view"
   | "landing_product_click"
   | "product_card_click"
   | "product_detail_cta_click"

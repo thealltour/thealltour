@@ -1,8 +1,3 @@
-export type KakaoSyncTimelineStep = {
-  title: string;
-  description: string;
-};
-
 export type KakaoSyncFaqItem = {
   question: string;
   answer: string;
@@ -44,46 +39,30 @@ export const kakaoSyncGolfConfig = {
         value: "\n더올투어 골프투어 예약·상담에 바로 사용할 수 있는 포인트입니다.",
       },
     ] satisfies KakaoSyncBenefitSegment[],
-    footnote: "신규 가입 회원 대상. 자세한 조건은 마이페이지에서 확인하세요.",
+    /** "조건"이라는 표현이 의심을 유발할 수 있어 즉시 확인 가능하다는 긍정적 프레이밍으로 서술 */
+    footnote: "신규 가입 회원 대상 · 지급 즉시 마이페이지에서 바로 확인할 수 있어요.",
+  },
+  /** Timeline을 대체하는 실물 가치 증거 카드(대표 상품 1건, 정가→회원가) 문구 */
+  valueProof: {
+    title: "3만 포인트, 이만큼 아껴요",
   },
   products: {
     eyebrowFallback: "GOLF TOURS",
     titleFallback: "추천 골프투어",
     descriptionFallback: "인기 골프·파크골프 여행을 만나보세요.",
   },
-  timeline: {
-    sectionTitle: "3만 포인트, 이렇게 받고 사용해요",
-    sectionDescription: "복잡한 절차 없이 딱 3단계, 가입비도 조건도 없습니다.",
-    steps: [
-      {
-        title: "카카오 1초 간편가입",
-        description:
-          "별도 회원가입 없이 카카오 계정으로 바로 가입 완료. 이름과 연락처만 자동으로 연동됩니다.",
-      },
-      {
-        title: "3만 포인트 즉시 적립",
-        description:
-          "가입이 완료되는 순간 3만 포인트(30,000P)가 마이페이지에 자동으로 지급됩니다.",
-      },
-      {
-        title: "원하는 골프투어에 바로 사용",
-        description:
-          "상담 신청 시 포인트를 바로 차감해 드립니다. 추가 조건이나 부담스러운 절차는 없습니다.",
-      },
-    ] satisfies KakaoSyncTimelineStep[],
-  },
   faq: {
     sectionTitle: "자주 묻는 질문",
     items: [
       {
-        question: "3만 포인트는 언제 지급되나요?",
-        answer:
-          "카카오 간편가입이 완료되면 3만 포인트(30,000P)가 자동으로 지급됩니다. 마이페이지 > 포인트에서 확인하실 수 있습니다. 쿠폰이 아닌 포인트이며, 예약·상담 시 사용할 수 있습니다.",
-      },
-      {
         question: "가입비나 별도 비용이 드나요?",
         answer:
           "아니요. 카카오 간편가입은 완전히 무료이며, 가입 즉시 3만 포인트가 지급됩니다. 별도로 결제하실 금액은 없습니다.",
+      },
+      {
+        question: "3만 포인트는 언제 지급되나요?",
+        answer:
+          "카카오 간편가입이 완료되면 3만 포인트(30,000P)가 자동으로 지급됩니다. 마이페이지 > 포인트에서 확인하실 수 있습니다. 쿠폰이 아닌 포인트이며, 예약·상담 시 사용할 수 있습니다.",
       },
       {
         question: "골프투어 상품에만 포인트 할인 가능한가요?",
@@ -97,6 +76,7 @@ export const kakaoSyncGolfConfig = {
     ] satisfies KakaoSyncFaqItem[],
   },
   cta: {
-    label: "3만 포인트 받고 1초 간편가입",
+    /** "지금"(긴급성) → "가입하고"(행동) → "3만 포인트 받기"(혜택) 순으로 배치 */
+    label: "지금 가입하고 3만 포인트 받기",
   },
 } as const;

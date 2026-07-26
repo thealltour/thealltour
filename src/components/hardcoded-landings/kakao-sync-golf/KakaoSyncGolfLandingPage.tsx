@@ -1,8 +1,8 @@
 import { Flame } from "lucide-react";
+import { HomeProductCard } from "@/components/products/HomeProductCard";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/LandingFaqAccordion";
 import { HardcodedLandingShell } from "@/components/hardcoded-landings/shared/HardcodedLandingShell";
-import { KakaoSyncTimeline } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncTimeline";
 import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
 import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
 import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
@@ -22,7 +22,7 @@ export function KakaoSyncGolfLandingPage({
   productsTitle,
   productsDescription,
 }: KakaoSyncGolfLandingPageProps) {
-  const { hero, benefit, products: productsCopy, timeline, faq } = kakaoSyncGolfConfig;
+  const { hero, benefit, valueProof, products: productsCopy, faq } = kakaoSyncGolfConfig;
   const dailySocialProofCount = getKakaoSyncDailySocialProofCount();
 
   return (
@@ -48,17 +48,17 @@ export function KakaoSyncGolfLandingPage({
               <h1 className="mt-2 whitespace-pre-line text-3xl font-extrabold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
                 {hero.subtitle}
               </h1>
+              {/* 소셜프루프 — 헤드라인과 같은 시야에서 즉시 인지되도록 Hero 오버레이 안에 배치.
+                  실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150), 매일 00시 전환 */}
+              <p className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
+                <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                오늘 {dailySocialProofCount}명이 3만 포인트를 받았어요
+              </p>
             </div>
           </div>
         </section>
 
         <HardcodedLandingShell className="space-y-3 py-2.5">
-          {/* 소셜프루프 — 실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150), 매일 00시 전환 */}
-          <p className="flex w-fit items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-600">
-            <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            오늘 {dailySocialProofCount}명이 3만 포인트를 받았어요
-          </p>
-
           {/* 혜택 — 광고 소재(3만 포인트)와 동일 문구를 첫 스크롤에서 확인 가능하도록 강조 */}
           <section aria-label="Benefit">
             <div className="rounded-2xl bg-[#f8f9fa] px-3 py-3">
@@ -96,12 +96,20 @@ export function KakaoSyncGolfLandingPage({
             </div>
           </section>
 
-          {/* 시스템 안내 타임라인 */}
-          <KakaoSyncTimeline
-            title={timeline.sectionTitle}
-            description={timeline.sectionDescription}
-            steps={[...timeline.steps]}
-          />
+          {/* 실물 가치 증거 — 타임라인 대신 대표 상품 1건의 정가→회원가(−3만원)를 그대로 보여줌 */}
+          {products[0] ? (
+            <section aria-label="포인트 가치 예시">
+              <p className="text-sm font-bold text-slate-900">{valueProof.title}</p>
+              <div className="mt-2 max-w-[220px]">
+                <HomeProductCard
+                  product={products[0]}
+                  variant="rail"
+                  priceDisplay="coinBenefit"
+                  analyticsSection="kakao_sync_golf_landing_value_proof"
+                />
+              </div>
+            </section>
+          ) : null}
 
           {/* 추천 상품 — 홈과 동일 레일 */}
           {products.length > 0 ? (

@@ -162,7 +162,9 @@ export default function GlobalSiteFooter() {
                     rel="noreferrer"
                     className={cn(
                       buttonVariants({
-                        variant: "kakao",
+                        // 광고 랜딩(isGolfAdLanding)에서는 하단 고정 간편가입 CTA(카카오 옐로우)와
+                        // 시각적으로 경쟁하지 않도록 outline 스타일로 전환. 일반 페이지는 기존 유지.
+                        variant: isGolfAdLanding ? "outline" : "kakao",
                         size: "md",
                         className: cn(
                           channelBtnEqual,

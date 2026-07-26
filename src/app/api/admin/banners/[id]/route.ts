@@ -1,16 +1,7 @@
-import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-type BannerBody = {
-  title?: string;
-  image_url?: string;
-  mobile_image_url?: string | null;
-  link_url?: string | null;
-  sort_order?: number | null;
-  is_active?: boolean;
-};
+import { jsonError, jsonOk } from "@/lib/api/response";
+import { deleteHomeBanner, updateHomeBanner, type BannerWriteInput } from "@/lib/adminBanners/repository";
 
 export async function PATCH(
   request: Request,
@@ -20,20 +11,20 @@ export async function PATCH(
   if (!auth.ok) return auth.res;
 
   const { id } = await context.params;
-  const body = (await request.json()) as BannerBody;
+  const body = (await request.json()) as BannerWriteInput;
   const updates: Record<string, unknown> = {};
 
   if (body.title !== undefined) {
     const title = body.title.trim();
     if (!title) {
-      return NextResponse.json({ message: "배너 제목은 비워둘 수 없습니다." }, { status: 400 });
+      return jsonError("배너 제목은 비워둘 수 없습니다.", 400);
     }
     updates.title = title;
   }
   if (body.image_url !== undefined) {
     const imageUrl = body.image_url.trim();
     if (!imageUrl) {
-      return NextResponse.json({ message: "PC 배너 이미지 URL은 비워둘 수 없습니다." }, { status: 400 });
+      return jsonError("PC 배너 이미지 URL은 비워둘 수 없습니다.", 400);
     }
     updates.image_url = imageUrl;
   }
@@ -51,23 +42,16 @@ export async function PATCH(
   }
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ message: "변경할 항목이 없습니다." }, { status: 400 });
+    return jsonError("변경할 항목이 없습니다.", 400);
   }
 
-  const result = await supabaseAdmin
-    .from("home_banners")
-    .update(updates)
-    .eq("id", id)
-    .select("id")
-    .maybeSingle();
-
-  if (result.error || !result.data) {
-    const msg = result.error?.message ?? "배너 수정에 실패했습니다.";
-    return NextResponse.json({ message: msg }, { status: 500 });
+  const updated = await updateHomeBanner(id, updates);
+  if (!updated.ok) {
+    return jsonError(updated.message, 500);
   }
 
   revalidateTag("home-banners", "max");
-  return NextResponse.json({ message: "배너가 수정되었습니다." });
+  return jsonOk({ message: "배너가 수정되었습니다." });
 }
 
 export async function DELETE(
@@ -78,19 +62,11 @@ export async function DELETE(
   if (!auth.ok) return auth.res;
 
   const { id } = await context.params;
-
-  const deleteResult = await supabaseAdmin
-    .from("home_banners")
-    .delete()
-    .eq("id", id)
-    .select("id")
-    .maybeSingle();
-
-  if (deleteResult.error || !deleteResult.data) {
-    const msg = deleteResult.error?.message ?? "배너 삭제에 실패했습니다.";
-    return NextResponse.json({ message: msg }, { status: 500 });
+  const deleted = await deleteHomeBanner(id);
+  if (!deleted.ok) {
+    return jsonError(deleted.message, 500);
   }
 
   revalidateTag("home-banners", "max");
-  return NextResponse.json({ message: "배너가 삭제되었습니다." });
+  return jsonOk({ message: "배너가 삭제되었습니다." });
 }

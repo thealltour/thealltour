@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { jsonError, jsonOk } from "@/lib/api/response";
+import { adminChatErrorResponse } from "@/lib/adminChat/errors";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const BUCKET = "admin-chat-attachments";
@@ -26,13 +28,13 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) {
-      return NextResponse.json({ message: "이미지 파일이 필요합니다." }, { status: 400 });
+      return jsonError("이미지 파일이 필요합니다.", 400);
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ message: "허용 형식: JPEG, PNG, WebP, GIF" }, { status: 400 });
+      return jsonError("허용 형식: JPEG, PNG, WebP, GIF", 400);
     }
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ message: "파일 용량은 10MB 이하만 업로드할 수 있습니다." }, { status: 400 });
+      return jsonError("파일 용량은 10MB 이하만 업로드할 수 있습니다.", 400);
     }
 
     const now = new Date();
@@ -47,12 +49,14 @@ export async function POST(request: NextRequest) {
       upsert: false,
     });
     if (uploadError) {
-      return NextResponse.json({ message: uploadError.message }, { status: 500 });
+      return jsonError(uploadError.message, 500);
     }
 
     const { data: publicData } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-    return NextResponse.json({ url: publicData.publicUrl });
-  } catch {
-    return NextResponse.json({ message: "이미지 업로드에 실패했습니다." }, { status: 500 });
+    return jsonOk({ url: publicData.publicUrl });
+  } catch (e) {
+    const errRes = adminChatErrorResponse(e);
+    if (errRes) return errRes;
+    return jsonError("이미지 업로드에 실패했습니다.", 500);
   }
 }

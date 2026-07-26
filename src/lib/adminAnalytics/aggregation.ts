@@ -1,7 +1,7 @@
 /**
  * 관리자 analytics 읽기 전용 집계 레이어.
  * analytics_events 테이블에서만 읽기 수행. 기존 저장/트래킹 레이어는 변경하지 않음.
- * 후속 PR: AdminDashboardKpiSection, /api/admin/dashboard, AdminProductTaxonomyView 에서 사용.
+ * 후속 PR: AdminDashboardKpiSectionWithProvider, /api/admin/dashboard, AdminProductTaxonomyView 에서 사용.
  */
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";

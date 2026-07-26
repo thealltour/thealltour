@@ -3,7 +3,7 @@ import { getAdminCounts } from "@/lib/adminCounts";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { getAdminAnalyticsOverview, type AdminAnalyticsOverview } from "@/lib/adminAnalytics";
 
-/** analytics 조회 실패 시 반환할 빈 overview. 후속 PR에서 AdminDashboardKpiSection KPI/Top list 렌더에 사용. */
+/** analytics 조회 실패 시 반환할 빈 overview. 후속 PR에서 AdminDashboardKpiSectionWithProvider KPI/Top list 렌더에 사용. */
 function emptyAnalyticsOverview(): AdminAnalyticsOverview {
   return {
     summary: {

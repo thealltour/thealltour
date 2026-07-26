@@ -1,7 +1,7 @@
 /**
  * 관리자 대시보드·taxonomy analytics 공통 날짜 범위 파서.
  * 후속 PR에서 /api/admin/dashboard, taxonomy 성과 API에서 재사용.
- * 계약: range / from / to 는 AdminDashboardKpiSection 및 /api/admin/dashboard 와 동일.
+ * 계약: range / from / to 는 AdminDashboardKpiSectionWithProvider 및 /api/admin/dashboard 와 동일.
  */
 
 export type AdminDateRangeResult = {

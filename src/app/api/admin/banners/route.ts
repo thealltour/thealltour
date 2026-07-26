@@ -1,81 +1,44 @@
-import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import type { HomeBanner } from "@/types/homeBanner";
-
-type BannerBody = {
-  title?: string;
-  image_url?: string;
-  mobile_image_url?: string | null;
-  link_url?: string | null;
-  sort_order?: number | null;
-  is_active?: boolean;
-};
-
-function normalize(row: Record<string, unknown>): HomeBanner {
-  return {
-    id: String(row.id ?? ""),
-    title: String(row.title ?? ""),
-    image_url: String(row.image_url ?? ""),
-    mobile_image_url:
-      typeof row.mobile_image_url === "string" && row.mobile_image_url.trim() !== ""
-        ? row.mobile_image_url
-        : null,
-    link_url:
-      typeof row.link_url === "string" && row.link_url.trim() !== "" ? row.link_url : null,
-    sort_order: typeof row.sort_order === "number" ? row.sort_order : null,
-    is_active: typeof row.is_active === "boolean" ? row.is_active : true,
-    created_at: typeof row.created_at === "string" ? row.created_at : null,
-  };
-}
+import { jsonError, jsonOk } from "@/lib/api/response";
+import { insertHomeBanner, listHomeBanners, type BannerWriteInput } from "@/lib/adminBanners/repository";
 
 export async function GET() {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.res;
 
-  const result = await supabaseAdmin
-    .from("home_banners")
-    .select("*")
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false, nullsFirst: false });
-
-  if (result.error) {
-    return NextResponse.json({ message: "배너 목록 조회에 실패했습니다." }, { status: 500 });
+  const result = await listHomeBanners();
+  if (result.errorMessage) {
+    return jsonError(result.errorMessage, 500);
   }
-
-  return NextResponse.json((result.data ?? []).map((row) => normalize(row as Record<string, unknown>)));
+  return jsonOk(result.data ?? []);
 }
 
 export async function POST(request: Request) {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.res;
 
-  const body = (await request.json()) as BannerBody;
+  const body = (await request.json()) as BannerWriteInput;
   const title = body.title?.trim() ?? "";
   const imageUrl = body.image_url?.trim() ?? "";
 
   if (!title || !imageUrl) {
-    return NextResponse.json({ message: "배너 제목과 PC 배너 이미지 URL은 필수입니다." }, { status: 400 });
+    return jsonError("배너 제목과 PC 배너 이미지 URL은 필수입니다.", 400);
   }
 
-  const insertResult = await supabaseAdmin
-    .from("home_banners")
-    .insert({
-      title,
-      image_url: imageUrl,
-      mobile_image_url: body.mobile_image_url?.trim() || null,
-      link_url: body.link_url?.trim() || null,
-      sort_order: typeof body.sort_order === "number" ? body.sort_order : null,
-      is_active: body.is_active ?? true,
-    })
-    .select("id")
-    .maybeSingle();
+  const inserted = await insertHomeBanner({
+    title,
+    image_url: imageUrl,
+    mobile_image_url: body.mobile_image_url?.trim() || null,
+    link_url: body.link_url?.trim() || null,
+    sort_order: typeof body.sort_order === "number" ? body.sort_order : null,
+    is_active: body.is_active ?? true,
+  });
 
-  if (insertResult.error || !insertResult.data) {
-    return NextResponse.json({ message: "배너 추가에 실패했습니다." }, { status: 500 });
+  if (!inserted.ok) {
+    return jsonError(inserted.message, 500);
   }
 
   revalidateTag("home-banners", "max");
-  return NextResponse.json({ message: "배너가 추가되었습니다." }, { status: 201 });
+  return jsonOk({ message: "배너가 추가되었습니다." }, { status: 201 });
 }

@@ -1,7 +1,14 @@
 /**
- * 헤더/검색/CTA 계측용 analytics — 타입·상수·유틸 진입점.
- * 저장·전송은 연결하지 않음. 기존 동작 변경 없음.
+ * Public analytics entry — prefer importing from `@/lib/analytics`.
+ *
+ * Client tracking:
+ * - `trackClientEvent` — low-level client event helper
+ * - `trackClientAnalytics` — preferred wrapper used by most UI
+ * - `trackLandingView` / `trackLandingCtaClick` / `trackQuoteView` — landing funnel
+ * Domain-specific funnels (e.g. kakao sync) may import their own `track*.ts` modules;
+ * keep event names in `events.ts` / `types.ts` as the single source of truth.
  */
+
 
 export type {
   AnalyticsEventName,

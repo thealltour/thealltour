@@ -87,7 +87,9 @@ Array<{
 
 ---
 
-### POST /api/rewards/redemptions
+### POST /api/me/rewards/redemptions
+
+> Canonical member redemption endpoint. Legacy `POST /api/rewards/redemptions` may re-export the same handler.
 
 **Auth:** 회원 세션 필수.
 

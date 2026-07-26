@@ -1,6 +1,6 @@
 /**
  * 관리자 analytics 읽기 전용 집계 레이어 타입.
- * 후속 PR에서 AdminDashboardKpiSection, /api/admin/dashboard, AdminProductTaxonomyView 연결 시 사용.
+ * 후속 PR에서 AdminDashboardKpiSectionWithProvider, /api/admin/dashboard, AdminProductTaxonomyView 연결 시 사용.
  */
 
 /** 이벤트 source 구분용 (저장 레이어의 source 값과 일치) */

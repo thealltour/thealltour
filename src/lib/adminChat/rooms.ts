@@ -3,79 +3,23 @@ import "server-only";
 import type { AdminSessionPayload } from "@/lib/adminSession";
 import { getAdminId, hasBootstrapAdminConfigured } from "@/lib/adminAuth";
 import { listAdminUsers } from "@/lib/adminUsers";
+import { AdminChatError } from "@/lib/adminChat/errors";
 import { buildDirectKey, isValidAdminUserKey, toAdminUserKey } from "@/lib/adminChat/keys";
 import {
   BOOTSTRAP_ROLE_LABEL,
   resolveParticipantProfile,
   resolveParticipants,
-  resolveSenderProfile,
   rolePresetLabel,
 } from "@/lib/adminChat/labels";
-import { broadcastChatMessage, broadcastChatTyping } from "@/lib/adminChat/realtime";
+import { getMemberKeys } from "@/lib/adminChat/rooms.internal";
 import {
   mapMessageRow,
   type AdminChatAdminOption,
-  type AdminChatMessageDto,
   type AdminChatMessageRow,
   type AdminChatRoomRow,
   type AdminChatRoomSummary,
 } from "@/lib/adminChat/types";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { dispatchAdminWebPushToUserKeys } from "@/lib/adminWebPush";
-
-const DEFAULT_MESSAGE_LIMIT = 50;
-const MAX_MESSAGE_LIMIT = 100;
-
-export class AdminChatError extends Error {
-  constructor(
-    message: string,
-    public status: number = 400,
-  ) {
-    super(message);
-    this.name = "AdminChatError";
-  }
-}
-
-async function assertRoomMember(roomId: string, memberKey: string): Promise<void> {
-  const { data, error } = await supabaseAdmin
-    .from("admin_chat_room_members")
-    .select("id")
-    .eq("room_id", roomId)
-    .eq("admin_user_key", memberKey)
-    .maybeSingle();
-
-  if (error) throw new AdminChatError(error.message, 500);
-  if (!data) throw new AdminChatError("이 채팅방에 접근할 수 없습니다.", 403);
-}
-
-async function getRoom(roomId: string): Promise<AdminChatRoomRow> {
-  const { data, error } = await supabaseAdmin
-    .from("admin_chat_rooms")
-    .select("*")
-    .eq("id", roomId)
-    .maybeSingle();
-
-  if (error) throw new AdminChatError(error.message, 500);
-  if (!data) throw new AdminChatError("채팅방을 찾을 수 없습니다.", 404);
-  return data as AdminChatRoomRow;
-}
-
-async function getMemberKeys(roomId: string): Promise<string[]> {
-  const { data, error } = await supabaseAdmin
-    .from("admin_chat_room_members")
-    .select("admin_user_key")
-    .eq("room_id", roomId);
-
-  if (error) throw new AdminChatError(error.message, 500);
-  return (data ?? []).map((r) => String((r as { admin_user_key: string }).admin_user_key));
-}
-
-async function touchRoomUpdatedAt(roomId: string): Promise<void> {
-  await supabaseAdmin
-    .from("admin_chat_rooms")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", roomId);
-}
 
 export async function listChatAdmins(): Promise<AdminChatAdminOption[]> {
   const options: AdminChatAdminOption[] = [];
@@ -92,7 +36,7 @@ export async function listChatAdmins(): Promise<AdminChatAdminOption[]> {
   }
 
   const users = await listAdminUsers();
-  for (const user of users.filter((u) => u.is_active)) {
+  for (const user of users.filter((candidate) => candidate.is_active)) {
     options.push({
       key: `user:${user.id}`,
       displayName: user.display_name?.trim() || user.username,
@@ -112,7 +56,7 @@ async function buildRoomSummary(
 ): Promise<AdminChatRoomSummary> {
   const memberKeys = await getMemberKeys(room.id);
   const profiles = await resolveParticipants(memberKeys);
-  const profileByKey = new Map(profiles.map((p) => [p.key, p]));
+  const profileByKey = new Map(profiles.map((profile) => [profile.key, profile]));
 
   const { data: lastMsg } = await supabaseAdmin
     .from("admin_chat_messages")
@@ -142,7 +86,7 @@ async function buildRoomSummary(
   let otherParticipant: AdminChatRoomSummary["otherParticipant"];
 
   if (room.type === "direct") {
-    const otherKey = memberKeys.find((k) => k !== memberKey);
+    const otherKey = memberKeys.find((key) => key !== memberKey);
     if (otherKey) {
       const other = profileByKey.get(otherKey);
       if (other) {
@@ -168,7 +112,9 @@ async function buildRoomSummary(
   };
 }
 
-export async function listMyChatRooms(session: AdminSessionPayload): Promise<AdminChatRoomSummary[]> {
+export async function listMyChatRooms(
+  session: AdminSessionPayload,
+): Promise<AdminChatRoomSummary[]> {
   const memberKey = toAdminUserKey(session);
 
   const { data: memberships, error } = await supabaseAdmin
@@ -180,7 +126,9 @@ export async function listMyChatRooms(session: AdminSessionPayload): Promise<Adm
   if (error) throw new AdminChatError(error.message, 500);
   if (!memberships?.length) return [];
 
-  const roomIds = memberships.map((m) => String((m as { room_id: string }).room_id));
+  const roomIds = memberships.map((membership) =>
+    String((membership as { room_id: string }).room_id),
+  );
   const { data: rooms, error: roomsError } = await supabaseAdmin
     .from("admin_chat_rooms")
     .select("*")
@@ -190,9 +138,11 @@ export async function listMyChatRooms(session: AdminSessionPayload): Promise<Adm
   if (roomsError) throw new AdminChatError(roomsError.message, 500);
 
   const membershipByRoom = new Map(
-    memberships.map((m) => [
-      String((m as { room_id: string }).room_id),
-      { last_read_at: (m as { last_read_at: string | null }).last_read_at },
+    memberships.map((membership) => [
+      String((membership as { room_id: string }).room_id),
+      {
+        last_read_at: (membership as { last_read_at: string | null }).last_read_at,
+      },
     ]),
   );
 
@@ -228,7 +178,6 @@ export async function findOrCreateDirectRoom(
   }
 
   const directKey = buildDirectKey(selfKey, targetKey);
-
   const { data: existing } = await supabaseAdmin
     .from("admin_chat_rooms")
     .select("*")
@@ -236,19 +185,17 @@ export async function findOrCreateDirectRoom(
     .maybeSingle();
 
   if (existing) {
-    const memberKey = selfKey;
     const { data: membership } = await supabaseAdmin
       .from("admin_chat_room_members")
       .select("last_read_at")
       .eq("room_id", existing.id)
-      .eq("admin_user_key", memberKey)
+      .eq("admin_user_key", selfKey)
       .maybeSingle();
 
-    return buildRoomSummary(
-      existing as AdminChatRoomRow,
-      memberKey,
-      { last_read_at: (membership as { last_read_at: string | null } | null)?.last_read_at ?? null },
-    );
+    return buildRoomSummary(existing as AdminChatRoomRow, selfKey, {
+      last_read_at:
+        (membership as { last_read_at: string | null } | null)?.last_read_at ?? null,
+    });
   }
 
   const now = new Date().toISOString();
@@ -263,14 +210,17 @@ export async function findOrCreateDirectRoom(
     .select("*")
     .single();
 
-  if (roomError || !room) throw new AdminChatError(roomError?.message ?? "채팅방 생성 실패", 500);
+  if (roomError || !room) {
+    throw new AdminChatError(roomError?.message ?? "채팅방 생성 실패", 500);
+  }
 
   const members = [
     { room_id: room.id, admin_user_key: selfKey, role: "owner" },
     { room_id: room.id, admin_user_key: targetKey, role: "member" },
   ];
-
-  const { error: membersError } = await supabaseAdmin.from("admin_chat_room_members").insert(members);
+  const { error: membersError } = await supabaseAdmin
+    .from("admin_chat_room_members")
+    .insert(members);
   if (membersError) throw new AdminChatError(membersError.message, 500);
 
   return buildRoomSummary(room as AdminChatRoomRow, selfKey, { last_read_at: null });
@@ -285,7 +235,11 @@ export async function createGroupRoom(
   if (!trimmedName) throw new AdminChatError("그룹 이름을 입력하세요.");
 
   const selfKey = toAdminUserKey(session);
-  const uniqueKeys = [...new Set(memberKeys.filter((k) => k !== selfKey && isValidAdminUserKey(k)))];
+  const uniqueKeys = [
+    ...new Set(
+      memberKeys.filter((key) => key !== selfKey && isValidAdminUserKey(key)),
+    ),
+  ];
 
   if (uniqueKeys.length < 1) {
     throw new AdminChatError("그룹에 초대할 관리자를 1명 이상 선택하세요.");
@@ -308,302 +262,40 @@ export async function createGroupRoom(
     .select("*")
     .single();
 
-  if (error || !room) throw new AdminChatError(error?.message ?? "그룹 생성 실패", 500);
+  if (error || !room) {
+    throw new AdminChatError(error?.message ?? "그룹 생성 실패", 500);
+  }
 
   const members = [
     { room_id: room.id, admin_user_key: selfKey, role: "owner" },
-    ...uniqueKeys.map((k) => ({ room_id: room.id, admin_user_key: k, role: "member" })),
+    ...uniqueKeys.map((key) => ({
+      room_id: room.id,
+      admin_user_key: key,
+      role: "member",
+    })),
   ];
-
-  const { error: membersError } = await supabaseAdmin.from("admin_chat_room_members").insert(members);
+  const { error: membersError } = await supabaseAdmin
+    .from("admin_chat_room_members")
+    .insert(members);
   if (membersError) throw new AdminChatError(membersError.message, 500);
 
   return buildRoomSummary(room as AdminChatRoomRow, selfKey, { last_read_at: null });
 }
 
-export async function inviteToGroupRoom(
-  session: AdminSessionPayload,
-  roomId: string,
-  memberKeys: string[],
-): Promise<{ added: string[] }> {
-  const selfKey = toAdminUserKey(session);
-  await assertRoomMember(roomId, selfKey);
-
-  const room = await getRoom(roomId);
-  if (room.type !== "group") {
-    throw new AdminChatError("그룹 채팅방에서만 초대할 수 있습니다.");
-  }
-
-  const { data: selfMember } = await supabaseAdmin
-    .from("admin_chat_room_members")
-    .select("role")
-    .eq("room_id", roomId)
-    .eq("admin_user_key", selfKey)
-    .maybeSingle();
-
-  const isOwner = (selfMember as { role: string } | null)?.role === "owner";
-  if (!isOwner && !session.isBootstrapAdmin) {
-    throw new AdminChatError("방장 또는 총괄 관리자만 초대할 수 있습니다.", 403);
-  }
-
-  const existingKeys = new Set(await getMemberKeys(roomId));
-  const toAdd = [...new Set(memberKeys.filter((k) => isValidAdminUserKey(k) && !existingKeys.has(k)))];
-
-  if (!toAdd.length) return { added: [] };
-
-  for (const key of toAdd) {
-    const profile = await resolveParticipantProfile(key);
-    if (!profile) throw new AdminChatError(`관리자를 찾을 수 없습니다: ${key}`, 404);
-  }
-
-  const rows = toAdd.map((k) => ({
-    room_id: roomId,
-    admin_user_key: k,
-    role: "member",
-  }));
-
-  const { error } = await supabaseAdmin.from("admin_chat_room_members").insert(rows);
-  if (error) throw new AdminChatError(error.message, 500);
-
-  await touchRoomUpdatedAt(roomId);
-  return { added: toAdd };
-}
-
-export async function listRoomMembers(roomId: string, session: AdminSessionPayload) {
-  const selfKey = toAdminUserKey(session);
-  await assertRoomMember(roomId, selfKey);
-
-  const keys = await getMemberKeys(roomId);
-  const profiles = await resolveParticipants(keys);
-
-  const { data: memberRows } = await supabaseAdmin
-    .from("admin_chat_room_members")
-    .select("admin_user_key,role,joined_at")
-    .eq("room_id", roomId);
-
-  const roleByKey = new Map(
-    (memberRows ?? []).map((r) => [
-      String((r as { admin_user_key: string }).admin_user_key),
-      {
-        role: (r as { role: string }).role,
-        joinedAt: (r as { joined_at: string }).joined_at,
-      },
-    ]),
-  );
-
-  return profiles.map((p) => ({
-    ...p,
-    memberRole: roleByKey.get(p.key)?.role ?? "member",
-    joinedAt: roleByKey.get(p.key)?.joinedAt ?? null,
-  }));
-}
-
-export async function listRoomMessages(
-  session: AdminSessionPayload,
-  roomId: string,
-  options?: { before?: string; limit?: number },
-): Promise<{ messages: AdminChatMessageDto[]; peerLastReadAt?: string | null }> {
-  const selfKey = toAdminUserKey(session);
-  await assertRoomMember(roomId, selfKey);
-
-  const room = await getRoom(roomId);
-  const limit = Math.min(Math.max(options?.limit ?? DEFAULT_MESSAGE_LIMIT, 1), MAX_MESSAGE_LIMIT);
-
-  let query = supabaseAdmin
-    .from("admin_chat_messages")
-    .select("*")
-    .eq("room_id", roomId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (options?.before) {
-    query = query.lt("created_at", options.before);
-  }
-
-  const { data, error } = await query;
-  if (error) throw new AdminChatError(error.message, 500);
-
-  const messages = (data ?? [])
-    .map((row) => mapMessageRow(row as AdminChatMessageRow))
-    .reverse();
-
-  let peerLastReadAt: string | null | undefined;
-  if (room.type === "direct") {
-    const memberKeys = await getMemberKeys(roomId);
-    const peerKey = memberKeys.find((k) => k !== selfKey);
-    if (peerKey) {
-      const { data: peerMember } = await supabaseAdmin
-        .from("admin_chat_room_members")
-        .select("last_read_at")
-        .eq("room_id", roomId)
-        .eq("admin_user_key", peerKey)
-        .maybeSingle();
-      peerLastReadAt = (peerMember as { last_read_at: string | null } | null)?.last_read_at ?? null;
-    }
-  }
-
-  return { messages, peerLastReadAt };
-}
-
-export type SendRoomMessageInput = {
-  body?: string;
-  attachmentUrls?: string[];
-};
-
-function resolveMessageType(body: string, attachmentUrls: string[]): "text" | "image" | "mixed" {
-  if (attachmentUrls.length > 0 && body) return "mixed";
-  if (attachmentUrls.length > 0) return "image";
-  return "text";
-}
-
-async function notifyChatMessagePush(
-  roomId: string,
-  room: AdminChatRoomRow,
-  senderKey: string,
-  senderDisplayName: string,
-  preview: string,
-): Promise<void> {
-  const memberKeys = await getMemberKeys(roomId);
-  const recipientKeys = memberKeys.filter((k) => k !== senderKey);
-  if (recipientKeys.length === 0) return;
-
-  const roomLabel = room.type === "group" && room.name ? room.name : senderDisplayName;
-  void dispatchAdminWebPushToUserKeys(
-    recipientKeys,
-    {
-      title: `팀 채팅 · ${roomLabel}`,
-      body: preview,
-      targetUrl: `/theall_manager_only?chatRoom=${roomId}`,
-      type: "admin_chat_message",
-    },
-    { chatOnly: true },
-  ).catch(() => {
-    // 푸시 실패해도 메시지 전송은 유지
-  });
-}
-
-export async function sendRoomMessage(
-  session: AdminSessionPayload,
-  roomId: string,
-  input: string | SendRoomMessageInput,
-): Promise<AdminChatMessageDto> {
-  const normalized =
-    typeof input === "string"
-      ? { body: input, attachmentUrls: [] as string[] }
-      : { body: input.body ?? "", attachmentUrls: input.attachmentUrls ?? [] };
-
-  const trimmed = normalized.body.trim();
-  const attachmentUrls = normalized.attachmentUrls
-    .map((u) => u.trim())
-    .filter((u) => u.length > 0)
-    .slice(0, 8);
-
-  if (!trimmed && attachmentUrls.length === 0) {
-    throw new AdminChatError("메시지 또는 이미지를 입력하세요.");
-  }
-
-  const selfKey = toAdminUserKey(session);
-  await assertRoomMember(roomId, selfKey);
-
-  const room = await getRoom(roomId);
-  const sender = await resolveSenderProfile(session);
-  const now = new Date().toISOString();
-  const messageType = resolveMessageType(trimmed, attachmentUrls);
-
-  const { data, error } = await supabaseAdmin
-    .from("admin_chat_messages")
-    .insert({
-      room_id: roomId,
-      sender_key: selfKey,
-      sender_display_name: sender.displayName,
-      sender_role_label: sender.roleLabel,
-      body: trimmed,
-      message_type: messageType,
-      attachment_urls: attachmentUrls,
-      created_at: now,
-    })
-    .select("*")
-    .single();
-
-  if (error || !data) throw new AdminChatError(error?.message ?? "메시지 전송 실패", 500);
-
-  await supabaseAdmin
-    .from("admin_chat_room_members")
-    .update({ last_read_at: now })
-    .eq("room_id", roomId)
-    .eq("admin_user_key", selfKey);
-
-  await touchRoomUpdatedAt(roomId);
-
-  const message = mapMessageRow(data as AdminChatMessageRow);
-
-  try {
-    await broadcastChatMessage(roomId, {
-      id: message.id,
-      roomId: message.roomId,
-      senderKey: message.senderKey,
-      senderDisplayName: message.senderDisplayName,
-      senderRoleLabel: message.senderRoleLabel,
-      body: message.body,
-      messageType: message.messageType,
-      attachmentUrls: message.attachmentUrls,
-      createdAt: message.createdAt,
-    });
-  } catch {
-    // Broadcast 실패해도 메시지는 저장됨 — 폴링으로 수신 가능
-  }
-
-  const preview = trimmed || (attachmentUrls.length > 0 ? "사진을 보냈습니다." : "");
-  void notifyChatMessagePush(roomId, room, selfKey, sender.displayName, preview);
-
-  return message;
-}
-
-export async function sendRoomTyping(
-  session: AdminSessionPayload,
-  roomId: string,
-  typing: boolean,
-): Promise<void> {
-  const selfKey = toAdminUserKey(session);
-  await assertRoomMember(roomId, selfKey);
-  const sender = await resolveSenderProfile(session);
-
-  try {
-    await broadcastChatTyping(roomId, {
-      roomId,
-      senderKey: selfKey,
-      senderDisplayName: sender.displayName,
-      typing,
-    });
-  } catch {
-    // typing 신호 실패는 무시
-  }
-}
-
-export async function markRoomRead(session: AdminSessionPayload, roomId: string): Promise<void> {
-  const selfKey = toAdminUserKey(session);
-  await assertRoomMember(roomId, selfKey);
-
-  const now = new Date().toISOString();
-  const { error } = await supabaseAdmin
-    .from("admin_chat_room_members")
-    .update({ last_read_at: now })
-    .eq("room_id", roomId)
-    .eq("admin_user_key", selfKey);
-
-  if (error) throw new AdminChatError(error.message, 500);
-}
-
-export async function getRoomChannelName(
-  session: AdminSessionPayload,
-  roomId: string,
-): Promise<string> {
-  const selfKey = toAdminUserKey(session);
-  await assertRoomMember(roomId, selfKey);
-  const { buildChatChannelName } = await import("@/lib/adminChat/realtime");
-  return buildChatChannelName(roomId);
-}
-
 export function getTotalUnreadCount(rooms: AdminChatRoomSummary[]): number {
-  return rooms.reduce((sum, r) => sum + r.unreadCount, 0);
+  return rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 }
+
+export { AdminChatError, adminChatErrorResponse } from "./errors";
+export {
+  listRoomMessages,
+  sendRoomMessage,
+  type SendRoomMessageInput,
+} from "./messages";
+export {
+  inviteToGroupRoom,
+  listRoomMembers,
+  sendRoomTyping,
+  markRoomRead,
+  getRoomChannelName,
+} from "./membership";

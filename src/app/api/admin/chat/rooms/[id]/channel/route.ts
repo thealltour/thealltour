@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { AdminChatError, getRoomChannelName } from "@/lib/adminChat/rooms";
+import { jsonOk } from "@/lib/api/response";
+import { adminChatErrorResponse } from "@/lib/adminChat/errors";
+import { getRoomChannelName } from "@/lib/adminChat/rooms";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -14,11 +15,10 @@ export async function GET(_request: Request, context: RouteContext) {
 
   try {
     const channelName = await getRoomChannelName(auth.session, id);
-    return NextResponse.json({ channelName });
+    return jsonOk({ channelName });
   } catch (e) {
-    if (e instanceof AdminChatError) {
-      return NextResponse.json({ message: e.message }, { status: e.status });
-    }
+    const errRes = adminChatErrorResponse(e);
+    if (errRes) return errRes;
     throw e;
   }
 }

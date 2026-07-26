@@ -1,7 +1,8 @@
 /**
  * 리워드(경품 교환) 정책 검증
  *
- * 검증 위치: POST /api/rewards/redemptions 호출 시 (교환 신청 직전)
+ * 검증 위치: POST /api/me/rewards/redemptions (canonical).
+ * 레거시 호환: POST /api/rewards/redemptions 는 동일 핸들러를 re-export 할 수 있음.
  * - 최소 교환 포인트
  * - 월 교환 횟수 제한
  * - CONFIRMED 포인트만 사용: point_balance 사용으로 이미 충족 (pending 미포함)

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
-import { AdminChatError, listMyChatRooms } from "@/lib/adminChat/rooms";
+import { jsonOk } from "@/lib/api/response";
+import { adminChatErrorResponse } from "@/lib/adminChat/errors";
+import { listMyChatRooms } from "@/lib/adminChat/rooms";
 
 export async function GET() {
   const auth = await requireAdminSession();
@@ -8,11 +9,10 @@ export async function GET() {
 
   try {
     const rooms = await listMyChatRooms(auth.session);
-    return NextResponse.json({ rooms });
+    return jsonOk({ rooms });
   } catch (e) {
-    if (e instanceof AdminChatError) {
-      return NextResponse.json({ message: e.message }, { status: e.status });
-    }
+    const errRes = adminChatErrorResponse(e);
+    if (errRes) return errRes;
     throw e;
   }
 }
@@ -31,11 +31,10 @@ export async function POST(request: Request) {
   try {
     const { createGroupRoom } = await import("@/lib/adminChat/rooms");
     const room = await createGroupRoom(auth.session, body.name ?? "", body.memberKeys ?? []);
-    return NextResponse.json({ room });
+    return jsonOk({ room });
   } catch (e) {
-    if (e instanceof AdminChatError) {
-      return NextResponse.json({ message: e.message }, { status: e.status });
-    }
+    const errRes = adminChatErrorResponse(e);
+    if (errRes) return errRes;
     throw e;
   }
 }

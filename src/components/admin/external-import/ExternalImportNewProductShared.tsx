@@ -1,0 +1,440 @@
+"use client";
+
+import type { Dispatch, SetStateAction } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import type { Product, SelectedEventRef } from "@/types/product";
+import type { ProductFormState } from "@/types/adminProductForm";
+import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
+import { UnassignedImagePool } from "@/components/admin/modetour/UnassignedImagePool";
+import { ScheduleVisualEditorV2 } from "@/components/admin/ScheduleVisualEditorV2";
+import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
+import type {
+  ImagePlacementIssue,
+  IssuesByUrl,
+} from "@/components/admin/modetour/modetourImageValidation";
+import { ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
+import {
+  PRODUCTS_LIST_PATH,
+  SNIPPET_LEN,
+  type ImageReviewSummary,
+} from "./externalImportNewProduct.helpers";
+
+type ImagePlacementValidation = {
+  issues: ImagePlacementIssue[];
+  hasError: boolean;
+  errors: ImagePlacementIssue[];
+  warnings: ImagePlacementIssue[];
+};
+
+type DiffSummary = {
+  changed: boolean;
+  sections: Array<{ key: string; items: string[] }>;
+};
+
+export function ExternalImportPreviewSection({ previewProduct }: { previewProduct: Product }) {
+  return (
+    <div className="space-y-4 text-sm">
+      <div>
+        <span className="font-medium text-slate-400">제목</span>
+        <p className="mt-0.5 text-slate-100">{previewProduct.title || "-"}</p>
+      </div>
+
+      {previewProduct.one_liner && (
+        <div>
+          <span className="font-medium text-slate-400">요약</span>
+          <p className="mt-0.5 text-slate-300">{previewProduct.one_liner}</p>
+        </div>
+      )}
+
+      {(previewProduct.overview_region || previewProduct.duration) && (
+        <div className="flex flex-wrap gap-4">
+          {previewProduct.overview_region && (
+            <span className="text-slate-300">지역: {previewProduct.overview_region}</span>
+          )}
+          {previewProduct.duration && (
+            <span className="text-slate-300">기간: {previewProduct.duration}</span>
+          )}
+        </div>
+      )}
+
+      {previewProduct.image_url && (
+        <div className="relative aspect-[21/9] w-full max-w-2xl overflow-hidden rounded-lg bg-slate-800">
+          <Image
+            src={normalizeProductImageUrl(previewProduct.image_url)}
+            alt={previewProduct.title || "대표 이미지"}
+            fill
+            unoptimized
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 672px"
+          />
+        </div>
+      )}
+
+      {(previewProduct.included_items || previewProduct.excluded_items) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {previewProduct.included_items && (
+            <div>
+              <span className="font-medium text-slate-400">포함</span>
+              <p className="mt-0.5 whitespace-pre-wrap text-slate-300">
+                {previewProduct.included_items.length > SNIPPET_LEN
+                  ? `${previewProduct.included_items.slice(0, SNIPPET_LEN)}…`
+                  : previewProduct.included_items}
+              </p>
+            </div>
+          )}
+          {previewProduct.excluded_items && (
+            <div>
+              <span className="font-medium text-slate-400">불포함</span>
+              <p className="mt-0.5 whitespace-pre-wrap text-slate-300">
+                {previewProduct.excluded_items.length > SNIPPET_LEN
+                  ? `${previewProduct.excluded_items.slice(0, SNIPPET_LEN)}…`
+                  : previewProduct.excluded_items}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {previewProduct.terms_and_notes && (
+        <div>
+          <span className="font-medium text-slate-400">약관/취소/유의사항</span>
+          <p className="mt-0.5 whitespace-pre-wrap text-slate-300">
+            {previewProduct.terms_and_notes.length > SNIPPET_LEN * 2
+              ? `${previewProduct.terms_and_notes.slice(0, SNIPPET_LEN * 2)}…`
+              : previewProduct.terms_and_notes}
+          </p>
+        </div>
+      )}
+
+      {previewProduct.itinerary_v2_json?.days?.length ? (
+        <div>
+          <span className="font-medium text-slate-400">일정</span>
+          <ul className="mt-2 space-y-3">
+            {previewProduct.itinerary_v2_json.days.map((day, index) => (
+              <li key={`day-${day.day}-${index}`} className="rounded border border-slate-700 bg-slate-800/50 p-3">
+                <div className="font-medium text-slate-200">
+                  Day {day.day}
+                  {day.title ? ` - ${day.title}` : ""}
+                  {day.dateText ? ` (${day.dateText})` : ""}
+                </div>
+                <ul className="mt-2 space-y-1 pl-2 text-slate-400">
+                  {(day.events ?? []).slice(0, 2).map((ev, i) => (
+                    <li key={i}>
+                      {ev.timeText ? `${ev.timeText} ` : ""}
+                      {ev.heading || "(제목 없음)"}
+                    </li>
+                  ))}
+                  {(day.events?.length ?? 0) > 2 && (
+                    <li className="text-slate-500">… 외 {(day.events?.length ?? 0) - 2}개</li>
+                  )}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function ExternalImportImageBatchPanel({
+  imagePlacementValidation,
+  imagePlacementIssuesByUrl,
+  unassignedImageUrls,
+  activeUnassignedImageUrls,
+  formState,
+  setFormState,
+  activeDayIndex,
+  setActiveDayIndex,
+  selectedEvent,
+  setSelectedEvent,
+  selectedEventSummary,
+  unassignedDeletedNorm,
+  removeUnassignedUrls,
+  applyProductHeroUrl,
+  assignUnassignedToSelectedEvent,
+  assignUnassignedToDayFirstEvent,
+  assignUnassignedToDayLastEvent,
+  pushToast,
+  handleAutoAssignImages,
+  recommendHeroFromHeuristic,
+  toggleUnassignedMarkedDeleted,
+  handleDropOnEvent,
+  returnEventImageToUnassigned,
+}: {
+  imagePlacementValidation: ImagePlacementValidation;
+  imagePlacementIssuesByUrl: IssuesByUrl;
+  unassignedImageUrls: string[];
+  activeUnassignedImageUrls: string[];
+  formState: ProductFormState;
+  setFormState: Dispatch<SetStateAction<ProductFormState>>;
+  activeDayIndex: number;
+  setActiveDayIndex: Dispatch<SetStateAction<number>>;
+  selectedEvent: SelectedEventRef | null;
+  setSelectedEvent: Dispatch<SetStateAction<SelectedEventRef | null>>;
+  selectedEventSummary: string | null;
+  unassignedDeletedNorm: Set<string>;
+  removeUnassignedUrls: (urls: string[]) => void;
+  applyProductHeroUrl: (url: string) => void;
+  assignUnassignedToSelectedEvent: (url: string) => void;
+  assignUnassignedToDayFirstEvent: (url: string, dayIndex: number) => void;
+  assignUnassignedToDayLastEvent: (url: string, dayIndex: number) => void;
+  pushToast: (message: string) => void;
+  handleAutoAssignImages: () => void;
+  recommendHeroFromHeuristic: () => void;
+  toggleUnassignedMarkedDeleted: (norm: string) => void;
+  handleDropOnEvent: (
+    payload: ModetourImageDragItem,
+    destination: {
+      editorType: "v2" | "structured";
+      dayIndex: number;
+      eventIndex: number;
+      insertAt?: number;
+    },
+  ) => void;
+  returnEventImageToUnassigned: (params: { url: string }) => void;
+}) {
+  return (
+    <div className="mt-8 space-y-4 rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+      <h3 className="font-semibold text-slate-200">일정 이미지 배치</h3>
+      {imagePlacementValidation.issues.length > 0 && (
+        <div
+          className={`rounded-lg border px-3 py-2 text-sm ${
+            imagePlacementValidation.hasError
+              ? "border-red-800 bg-red-900/40 text-red-200"
+              : "border-amber-700 bg-amber-900/30 text-amber-200"
+          }`}
+          role="alert"
+        >
+          {imagePlacementValidation.hasError ? (
+            <p className="font-medium">오류가 있어 저장할 수 없습니다.</p>
+          ) : (
+            <p className="font-medium">저장 전 확인해 주세요.</p>
+          )}
+          <p className="mt-0.5 text-xs opacity-90">
+            오류 {imagePlacementValidation.errors.length}건
+            {imagePlacementValidation.warnings.length > 0 &&
+              ` / 경고 ${imagePlacementValidation.warnings.length}건`}
+          </p>
+          <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs opacity-95">
+            {imagePlacementValidation.errors.slice(0, 5).map((e, i) => (
+              <li key={`e-${i}`}>{e.message}</li>
+            ))}
+            {imagePlacementValidation.warnings.slice(0, 3).map((w, i) => (
+              <li key={`w-${i}`}>{w.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="text-xs text-slate-400">
+        미할당 이미지를 드래그하여 각 일정 이벤트에 배치할 수 있습니다. 이벤트에서 삭제 시 미할당 풀로 돌아갑니다.
+      </p>
+      <UnassignedImagePool
+        imageUrls={unassignedImageUrls}
+        title={`미할당 이미지 (${unassignedImageUrls.length}장 · 저장 반영 ${activeUnassignedImageUrls.length}장)`}
+        className="mb-4"
+        heroImageUrl={formState.image_url}
+        issuesByUrl={imagePlacementIssuesByUrl}
+        activeDayIndex={activeDayIndex}
+        v2Days={formState.itinerary_v2_json?.days ?? []}
+        selectedEvent={selectedEvent}
+        selectedEventSummary={selectedEventSummary}
+        onRemoveUrls={removeUnassignedUrls}
+        onSetHero={applyProductHeroUrl}
+        onAddToSelectedEvent={assignUnassignedToSelectedEvent}
+        onAddToDayFirstEvent={assignUnassignedToDayFirstEvent}
+        onAddToDayLastEvent={assignUnassignedToDayLastEvent}
+        onToast={pushToast}
+        onAutoAssignImages={handleAutoAssignImages}
+        onRecommendHero={recommendHeroFromHeuristic}
+        imageReviewMode
+        markedDeletedNormUrls={unassignedDeletedNorm}
+        onToggleMarkedDeleted={toggleUnassignedMarkedDeleted}
+      />
+      <ScheduleVisualEditorV2
+        form={{
+          itinerary_v2_json: formState.itinerary_v2_json ?? { days: [] },
+          legacy_itinerary_text: formState.legacy_itinerary_text ?? "",
+          images_json: formState.images_json,
+          image_url: formState.image_url,
+        }}
+        setForm={(updater: SetStateAction<any>) => {
+          setFormState((prev) => {
+            const formSlice = {
+              itinerary_v2_json: prev.itinerary_v2_json ?? { days: [] },
+              legacy_itinerary_text: prev.legacy_itinerary_text ?? "",
+              images_json: prev.images_json,
+              image_url: prev.image_url,
+            };
+            const nextSlice =
+              typeof updater === "function" ? (updater as (p: typeof formSlice) => typeof formSlice)(formSlice) : updater;
+            return { ...prev, ...nextSlice };
+          });
+        }}
+        previewProductImageUrl={formState.image_url?.trim() || ""}
+        activeDayIndex={activeDayIndex}
+        setActiveDayIndex={setActiveDayIndex}
+        selectedEvent={selectedEvent}
+        onSelectEvent={setSelectedEvent}
+        modetourDnDEnabled
+        onDropExternalImage={handleDropOnEvent}
+        onReturnImageToPool={(url) => {
+          returnEventImageToUnassigned({ url });
+          pushToast("이미지를 미할당 풀로 옮겼습니다.");
+        }}
+        imagePlacementIssuesByUrl={imagePlacementIssuesByUrl}
+        showPlacementWarnings={true}
+        onAutoAssignImages={handleAutoAssignImages}
+        unassignedImageCount={activeUnassignedImageUrls.length}
+        modetourSelectionSummary={selectedEventSummary}
+        modetourImageReviewMode
+      />
+    </div>
+  );
+}
+
+export function ExternalImportDiffSummary({
+  show,
+  diffSummary,
+}: {
+  show: boolean;
+  diffSummary: DiffSummary;
+}) {
+  if (!show || !diffSummary.changed) return null;
+  return (
+    <div
+      className="rounded-lg border border-emerald-700/50 bg-emerald-900/20 px-4 py-3 text-sm text-slate-200"
+      role="region"
+      aria-label="저장 시 반영될 변경사항"
+    >
+      <p className="mb-2 font-semibold">저장 시 반영될 변경사항</p>
+      <ul className="list-inside list-disc space-y-0.5 text-slate-300">
+        {diffSummary.sections.flatMap((s) =>
+          s.items.map((item, i) => (
+            <li key={`${s.key}-${i}`}>{item}</li>
+          )),
+        )}
+      </ul>
+    </div>
+  );
+}
+
+export function ExternalImportCreateProductSection({
+  imageReviewSummary,
+  onCreateProduct,
+  canCreate,
+  isSaving,
+  saveError,
+  existingProductId,
+  createdProductId,
+}: {
+  imageReviewSummary: ImageReviewSummary;
+  onCreateProduct: () => void;
+  canCreate: boolean;
+  isSaving: boolean;
+  saveError: string | null;
+  existingProductId: string | null;
+  createdProductId: string | null;
+}) {
+  return (
+    <div className="mt-6 flex flex-col gap-4 border-t border-slate-700 pt-4">
+      <div
+        className="rounded-lg border border-slate-600 bg-slate-800/60 px-4 py-3 text-sm text-slate-200"
+        role="region"
+        aria-label="이미지 검수 요약"
+      >
+        <p className="mb-2 font-semibold text-slate-100">이미지 검수 요약</p>
+        <ul className="grid gap-1 text-xs text-slate-300 sm:grid-cols-2">
+          <li>총 수집(대표+갤러리+미할당+일정 배치 합산): {imageReviewSummary.totalListed}장</li>
+          <li>현재 미할당(저장 반영): {imageReviewSummary.unassigned}장</li>
+          {imageReviewSummary.unassignedDeletedPending > 0 ? (
+            <li>미할당 삭제 예정: {imageReviewSummary.unassignedDeletedPending}장</li>
+          ) : null}
+          <li>일정 이벤트에 배치됨(삭제 예정 제외): {imageReviewSummary.placedInEvents}장</li>
+          <li>대표 이미지 지정: {imageReviewSummary.hasHero ? "예" : "아니오"}</li>
+          <li>중복 의심(동일 그룹 다건): {imageReviewSummary.dupSus}건</li>
+          <li>로고/썸네일 의심(URL 기준): {imageReviewSummary.logoThumbSus}건</li>
+        </ul>
+      </div>
+      <p className="text-xs text-slate-400">
+        자동 삭제·자동 정리는 하지 않습니다. 이벤트별 이미지에서 삭제 예정·미할당 이동을 선택하고, 저장 시
+        반영됩니다.
+      </p>
+      <button
+        type="button"
+        onClick={onCreateProduct}
+        disabled={!canCreate || isSaving}
+        className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isSaving ? "생성 중…" : "상품 생성"}
+      </button>
+
+      {saveError && (
+        <div
+          className="rounded-lg border border-red-800 bg-red-900/50 px-4 py-3 text-sm text-red-200"
+          role="alert"
+        >
+          {saveError}
+          {existingProductId && (
+            <div className="mt-2">
+              <Link
+                href={`${PRODUCTS_LIST_PATH}?editingId=${existingProductId}`}
+                className="inline-block rounded border border-red-600 bg-red-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+              >
+                기존 상품으로 이동
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {createdProductId && !saveError && (
+        <div className="rounded-lg border border-emerald-800 bg-emerald-900/30 px-4 py-3 text-sm text-emerald-200">
+          <p className="font-medium">생성 완료</p>
+          <p className="mt-1 text-slate-300">상품이 등록되었습니다.</p>
+          <div className="mt-3 flex gap-3">
+            <Link
+              href={`/products/${createdProductId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded border border-sky-600 bg-sky-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-600"
+            >
+              미리보기
+            </Link>
+            <Link
+              href={`${PRODUCTS_LIST_PATH}?view=list&${ADMIN_PRODUCTS_QUERY_KEYS.CREATED}=${encodeURIComponent(createdProductId)}`}
+              className="rounded border border-emerald-600 bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600"
+            >
+              상품 목록에서 보기
+            </Link>
+            <Link
+              href={`${PRODUCTS_LIST_PATH}?${ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID}=${encodeURIComponent(createdProductId)}`}
+              className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-600"
+            >
+              상품 편집으로 이동
+            </Link>
+            <Link
+              href={PRODUCTS_LIST_PATH}
+              className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-600"
+            >
+              상품 목록으로 이동
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ExternalImportReviewToast({ reviewToast }: { reviewToast: string | null }) {
+  if (!reviewToast) return null;
+  return (
+    <div
+      className="fixed bottom-6 left-1/2 z-[80] max-w-[min(90vw,420px)] -translate-x-1/2 rounded-lg border border-slate-600 bg-slate-900 px-4 py-3 text-center text-sm text-slate-100 shadow-lg"
+      role="status"
+    >
+      {reviewToast}
+    </div>
+  );
+}

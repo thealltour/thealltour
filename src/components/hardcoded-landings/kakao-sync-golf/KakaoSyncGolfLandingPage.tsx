@@ -1,3 +1,4 @@
+import { Flame } from "lucide-react";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/LandingFaqAccordion";
 import { HardcodedLandingShell } from "@/components/hardcoded-landings/shared/HardcodedLandingShell";
@@ -5,6 +6,7 @@ import { KakaoSyncTimeline } from "@/components/hardcoded-landings/kakao-sync-go
 import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
 import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
 import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
+import { getKakaoSyncDailySocialProofCount } from "@/lib/hardcodedLandings/kakaoSyncGolf/dailySocialProofCount";
 import type { Product } from "@/types/product";
 
 export type KakaoSyncGolfLandingPageProps = {
@@ -21,6 +23,7 @@ export function KakaoSyncGolfLandingPage({
   productsDescription,
 }: KakaoSyncGolfLandingPageProps) {
   const { hero, benefit, products: productsCopy, timeline, faq } = kakaoSyncGolfConfig;
+  const dailySocialProofCount = getKakaoSyncDailySocialProofCount();
 
   return (
     <>
@@ -50,6 +53,12 @@ export function KakaoSyncGolfLandingPage({
         </section>
 
         <HardcodedLandingShell className="space-y-3 py-2.5">
+          {/* 소셜프루프 — 실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150), 매일 00시 전환 */}
+          <p className="flex w-fit items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-600">
+            <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            오늘 {dailySocialProofCount}명이 3만 포인트를 받았어요
+          </p>
+
           {/* 혜택 — 광고 소재(3만 포인트)와 동일 문구를 첫 스크롤에서 확인 가능하도록 강조 */}
           <section aria-label="Benefit">
             <div className="rounded-2xl bg-[#f8f9fa] px-3 py-3">
@@ -58,6 +67,16 @@ export function KakaoSyncGolfLandingPage({
                 {benefit.amountLabel}
               </p>
               <p className="mt-0.5 text-sm font-semibold text-slate-800">{benefit.amountSubLabel}</p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {benefit.highlights.map((highlight) => (
+                  <li
+                    key={highlight}
+                    className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                  >
+                    {highlight}
+                  </li>
+                ))}
+              </ul>
               <p className="mt-2 text-sm leading-relaxed text-slate-700">
                 {benefit.segments.map((segment, index) =>
                   segment.type === "highlight" ? (

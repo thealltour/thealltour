@@ -230,11 +230,9 @@
 
 
 
-  function extractParentSearchCalendar(doc, options) {
+  function extractParentSearchCalendar(doc, _options) {
 
     const merged = {};
-
-    const skipFilter = options?.skipVisibleMonthFilter === true;
 
 
 
@@ -320,9 +318,9 @@
 
     if (countCalendarDays(merged) === 0) return null;
 
-    if (skipFilter) return merged;
+    // 데이터 완전성 우선: 보이는 달로 축소하지 않고 수집된 전체 searchCalendar를 반환한다.
 
-    return applyVisibleMonthFilter(merged, doc);
+    return merged;
 
   }
 
@@ -437,7 +435,8 @@
           paging(document, { tabId: message.tabId ?? null })
             .then((paged) => {
               if (paged && countCalendarDays(paged) > 0) {
-                respond(applyVisibleMonthFilter(paged, document));
+                // 데이터 완전성 우선: 페이징으로 모은 여러 달을 보이는 달로 축소하지 않고 그대로 전달.
+                respond(paged);
                 return;
               }
               respond(extractParentSearchCalendar(document));

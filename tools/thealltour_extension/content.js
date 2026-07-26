@@ -93,9 +93,6 @@ if (globalThis.__theallTourImportContentLoaded) {
       return { hanatourCalendarPayload: undefined, hanatourCalendarMeta: calendarMeta };
     }
 
-    const isSufficient = (payload) =>
-      globalThis.HanatourCalendarFetch?.isCalendarSufficient?.(payload) ?? false;
-
     let calendarPayload = null;
     const crossTab = globalThis.HanatourCrossTabCalendar;
 
@@ -114,9 +111,8 @@ if (globalThis.__theallTourImportContentLoaded) {
           calendarMeta.source = parentResult.payload.fetchMeta?.[0]?.source ?? "parent_tab";
           calendarMeta.dayCount = countCalendarDayTotal(calendarPayload);
           calendarMeta.parentAuthoritative = calendarMeta.dayCount > 0;
-          if (calendarMeta.dayCount > 0) {
-            return { hanatourCalendarPayload: calendarPayload, hanatourCalendarMeta: calendarMeta };
-          }
+          // 데이터 완전성 우선: 인접 탭에서 일부라도 찾았어도 여기서 바로 반환하지 않고
+          // 아래 백그라운드 API 결과와 병합해 더 많은 출발일을 확보한다.
         } else if (parentResult?.error) {
           calendarMeta.parentError = {
             error: parentResult.error,
@@ -154,13 +150,12 @@ if (globalThis.__theallTourImportContentLoaded) {
           ? `${calendarMeta.source}+background_api`
           : "background_api";
         calendarMeta.dayCount = countCalendarDayTotal(calendarPayload);
-        if (isSufficient(calendarPayload)) {
-          calendarPayload.fetchMeta = [
-            { source: calendarMeta.source, ok: true },
-            ...(calendarPayload.fetchMeta || []),
-          ];
-          return { hanatourCalendarPayload: calendarPayload, hanatourCalendarMeta: calendarMeta };
-        }
+        calendarPayload.fetchMeta = [
+          { source: calendarMeta.source, ok: true },
+          ...(calendarPayload.fetchMeta || []),
+        ];
+        // 데이터 완전성 우선: "충분함" 기준으로 바로 반환하지 않고 아래 content fallback도
+        // 시도해 추가로 발견되는 출발일이 있으면 병합한다.
       }
     } catch (err) {
       console.warn("[thealltour-import] background calendar API failed:", err);

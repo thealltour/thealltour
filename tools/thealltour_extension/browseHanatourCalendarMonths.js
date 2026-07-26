@@ -81,12 +81,8 @@
       if (fromExtract) mergeSearchCalendar(merged, fromExtract);
     }
 
-    const anchor = readVisibleYearMonth(doc);
-    if (anchor && countCalendarDays(merged) > 0) {
-      const filtered = global.HanatourCalendarFilter?.filterSearchCalendarByYearMonth?.(merged, anchor);
-      if (filtered) return filtered;
-    }
-
+    // 데이터 완전성 우선: 보이는 달(anchor)로 축소하지 않고, 이번 스텝에서 모인
+    // searchCalendar 전체(여러 달이 섞여 있어도)를 그대로 반환해 상위 누적에 활용한다.
     return countCalendarDays(merged) > 0 ? merged : null;
   }
 

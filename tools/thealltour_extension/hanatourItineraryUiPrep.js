@@ -2,16 +2,20 @@
  * 하나투어 패키지 상세 — 여행일정 UI 준비 (탭·전체펼침·일차 서브탭·아코디언).
  */
 (function (global) {
-  const MAIN_TAB_WAIT_MS = 800;
-  const DAY_TAB_WAIT_MS = 600;
-  const ACCORDION_CLICK_INTERVAL_MS = 200;
+  // 데이터 완전성 우선: 렌더링/전환 대기 시간을 넉넉히 잡아 1일차 등 첫 패널이
+  // 충분히 안정화되기 전에 추출되는 위험을 줄인다(시간이 걸려도 상관없음).
+  const MAIN_TAB_WAIT_MS = 1200;
+  const DAY_TAB_WAIT_MS = 900;
+  const ACCORDION_CLICK_INTERVAL_MS = 250;
   const ACCORDION_MAX_PER_PANEL = 30;
-  const EXPAND_ALL_WAIT_MS = 700;
-  const PANEL_STABLE_TIMEOUT_MS = 2500;
+  const EXPAND_ALL_WAIT_MS = 1000;
+  const PANEL_STABLE_TIMEOUT_MS = 4000;
   const PANEL_STABLE_POLL_MS = 150;
-  const PANEL_STABLE_QUIET_MS = 400;
+  const PANEL_STABLE_QUIET_MS = 600;
 
-  const DAY_TAB_REGEX = /^\s*(\d{1,2})\s*일차(?:\s|$)/;
+  // "일차" 뒤에 공백/문자열 끝이 반드시 와야 하던 경계 조건을 제거 —
+  // "1일차(9/24목)"처럼 괄호가 바로 붙는 포맷에서도 1일차 탭이 매칭되도록 완화.
+  const DAY_TAB_REGEX = /^\s*(\d{1,2})\s*일차/;
   const DAY_ACCORDION_HEADER = /(\d{1,2})일차/;
   const DATE_IN_ACCORDION = /(\d{1,2}\/\d{1,2}\([^)]+\)|\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2})/;
 
@@ -166,7 +170,9 @@
       if (text.length > 200 || text.length < 4) continue;
       const m = text.match(DAY_ACCORDION_HEADER);
       if (!m) continue;
-      if (!DATE_IN_ACCORDION.test(text) && text.length > 60) continue;
+      // 날짜 패턴이 없어도 헤더 텍스트가 다소 길다는 이유만으로 스킵하지 않도록 완화
+      // (1일차 헤더에 부가 안내문이 붙어 길어지는 경우에도 매칭되도록).
+      if (!DATE_IN_ACCORDION.test(text) && text.length > 120) continue;
 
       const dayNumber = parseInt(m[1], 10);
       if (!Number.isFinite(dayNumber) || dayNumber < 1 || dayNumber > 31) continue;

@@ -29,19 +29,17 @@
       depDay: options?.depDay ?? null,
     };
 
+    // 데이터 완전성 우선: 각 단계에서 "충분함" 판정으로 조기 반환하지 않고
+    // api_direct → discover → prepare 세 소스를 모두 시도해 병합한다.
     let merged = await fetchCalendarViaApi(meta, options);
-    if (isCalendarSufficient(merged)) {
-      return {
-        ...merged,
-        fetchMeta: [{ source: "api_direct", ok: true }, ...(merged.fetchMeta || [])],
-      };
+    if (merged) {
+      merged = { ...merged, fetchMeta: [{ source: "api_direct", ok: true }, ...(merged.fetchMeta || [])] };
     }
 
     const discover = global.HanatourCalendarDiscover?.discoverHanatourCalendar;
     if (typeof discover === "function" && typeof document !== "undefined") {
       const discovered = await discover(document, meta);
       merged = mergeCalendarPayloads(merged, discovered);
-      if (isCalendarSufficient(merged)) return merged;
     }
 
     const prepare = global.HanatourCalendarOpen?.prepareHanatourCalendar;

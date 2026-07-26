@@ -3,7 +3,9 @@
  * 일차 탭/아코디언 순회 후 패널별 파싱 — day 없는 전역 재파싱 없음.
  */
 (function (global) {
-  const MAX_EVENT_IMAGES = 5;
+  // 데이터 완전성 우선: 일정 카드(관광지/공지)별 이미지 캡을 대폭 상향
+  // (기존 5장 캡으로 인해 다수 이벤트 이미지가 누락되던 문제 해결).
+  const MAX_EVENT_IMAGES = 30;
   const MAX_DESCRIPTION_LEN = 8000;
   const SECTION_LABEL = /^(예정호텔|호텔|식사|항공)$/;
   const UI_SKIP =
@@ -355,6 +357,16 @@
       deduped.push(block);
     }
 
+    const finalUniqueDays = new Set(deduped.filter((b) => b.day > 0).map((b) => b.day));
+    const minDayFound = finalUniqueDays.size > 0 ? Math.min(...finalUniqueDays) : 0;
+    if (minDayFound > 1) {
+      // 진단용 경고: 1일차보다 큰 일차만 수집된 경우(예: 2,3일차만 수집되고 1일차 누락).
+      console.warn(
+        `[thealltour-import] 1일차가 누락된 것으로 보입니다. 수집된 최소 일차=${minDayFound}, ` +
+          `발견된 일차=${[...finalUniqueDays].sort((a, b) => a - b).join(",")}`,
+      );
+    }
+
     return {
       blocks: deduped,
       meta: {
@@ -366,6 +378,7 @@
         blockCountByDay: buildBlockCountByDay(deduped),
         uniqueDays: countUniqueDays(deduped),
         totalBlocks: deduped.length,
+        minDayFound,
       },
     };
   }

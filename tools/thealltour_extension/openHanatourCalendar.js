@@ -6,7 +6,9 @@
   const NETWORK_POLL_MS = 200;
   const NETWORK_MAX_WAIT_MS = 1500;
   const MIN_DAY_STRIP_CELLS = 2;
-  const STRIP_PAGING_SKIP_MIN_DAYS = 5;
+  // 데이터 완전성 우선: API 캡처가 이 정도만 있어도 해당 달 스트립 페이징을 건너뛰던
+  // 임계값을 매우 높여 실질적으로 건너뛰지 않도록 함(시간이 걸려도 끝까지 페이징).
+  const STRIP_PAGING_SKIP_MIN_DAYS = 999;
 
   const OPEN_TEXT_PATTERNS = [
     /^출발일\s*선택/,
@@ -890,7 +892,9 @@
 
   const DATE_STRIP_POLL_MS = 50;
   const DATE_STRIP_ADVANCE_TIMEOUT_MS = 2000;
-  const DEFAULT_MAX_DATE_STRIP_CLICKS = 3;
+  // 데이터 완전성 우선: 거의 매일 출발일이 있는 상품도 놓치지 않도록 날짜 스트립을
+  // 최대한 끝까지 넘긴다(시간이 걸려도 상관없음).
+  const DEFAULT_MAX_DATE_STRIP_CLICKS = 40;
   let lastDateStripPagingMeta = null;
 
   function getCaptureCount() {

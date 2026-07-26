@@ -160,9 +160,8 @@
         fetchMeta.push({ yearMonth, ok: false, reason: "all_candidates_failed" });
       }
 
-      if (isCalendarSufficient({ searchCalendar, calendarData })) {
-        break;
-      }
+      // 데이터 완전성 우선: "충분함" 기준으로 조기 종료하지 않고 요청된 개월 수를
+      // 전부 순회한다(시간이 걸려도 거의 매일 있는 출발일을 놓치지 않도록).
     }
 
     const hasCalendar = Object.keys(searchCalendar).length > 0 || calendarData.length > 0;

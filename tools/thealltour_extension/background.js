@@ -344,31 +344,8 @@ async function extractSearchCalendarFromPageMain(tabId) {
         }
       }
 
-      function findVisibleYearMonth() {
-        const walker = document.createTreeWalker(document.body ?? document.documentElement, NodeFilter.SHOW_TEXT);
-        let node;
-        while ((node = walker.nextNode())) {
-          const text = node.textContent?.trim() ?? "";
-          const match = text.match(/(\d{4})\s*년\s*(\d{1,2})\s*월/);
-          if (match) {
-            const month = String(Number(match[2])).padStart(2, "0");
-            return `${match[1]}${month}`;
-          }
-        }
-        return null;
-      }
-
-      function filterByVisibleMonth(cal) {
-        if (!cal) return null;
-        const anchor = findVisibleYearMonth();
-        if (!anchor) return cal;
-        const rows = cal[anchor];
-        if (!Array.isArray(rows) || rows.length === 0) return null;
-        return { [anchor]: rows };
-      }
-
-      const filtered = filterByVisibleMonth(countDays(merged) > 0 ? merged : null);
-      return filtered ?? (countDays(merged) > 0 ? merged : null);
+      // 데이터 완전성 우선: 보이는 달로 축소하지 않고 수집된 전체 searchCalendar를 반환한다.
+      return countDays(merged) > 0 ? merged : null;
     },
   });
   return injection?.result ?? null;

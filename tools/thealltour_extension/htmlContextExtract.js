@@ -790,6 +790,8 @@
 
   function collectSlideImages(slide, baseUrl, push) {
 
+    activateLazyLoadedImages(slide);
+
     slide.querySelectorAll("img").forEach((img) => {
 
       const url = resolveImageUrl(img, baseUrl);
@@ -802,7 +804,171 @@
 
 
 
-  function collectPageGalleryUrls(doc, maxCount = 10) {
+  function findGallerySwiperInstance(heroRoot) {
+
+    const swiperEl = heroRoot.querySelector?.(".swiper, [class*='swiper'], [class*='Swiper']");
+
+    if (!swiperEl) return null;
+
+    try {
+
+      return swiperEl.swiper ?? swiperEl.__swiper__ ?? null;
+
+    } catch {
+
+      return null;
+
+    }
+
+  }
+
+
+
+  function findGalleryNavButton(heroRoot) {
+
+    const candidates = heroRoot.querySelectorAll(
+
+      "button, a, [role='button'], span, div, i",
+
+    );
+
+    for (const el of candidates) {
+
+      const cls = (el.className && typeof el.className === "string" ? el.className : "") || "";
+
+      const aria = (el.getAttribute?.("aria-label") ?? "").toLowerCase();
+
+      if (
+
+        /swiper-button-next/i.test(cls) ||
+
+        /next|다음|slide-next|arrow-right/i.test(cls) ||
+
+        /next|다음/i.test(aria)
+
+      ) {
+
+        return el;
+
+      }
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function isGalleryNavDisabled(el) {
+
+    if (!el) return true;
+
+    return (
+
+      el.classList?.contains("swiper-button-disabled") ||
+
+      el.getAttribute("aria-disabled") === "true" ||
+
+      el.hasAttribute("disabled")
+
+    );
+
+  }
+
+
+
+  /**
+
+   * 가상/지연 렌더링 슬라이더는 활성 슬라이드만 DOM에 존재할 수 있음 —
+
+   * 다음 버튼을 반복 클릭해 슬라이드를 순회하며 새 이미지가 더 없을 때까지 수집.
+
+   * 시간이 걸려도 완전한 수집을 우선함(요청사항).
+
+   */
+
+  async function advanceGalleryAndCollect(heroRoot, baseUrl, push, out) {
+
+    const MAX_CLICKS = 25;
+
+    const MAX_STAGNANT = 4;
+
+    let stagnant = 0;
+
+
+
+    for (let i = 0; i < MAX_CLICKS; i += 1) {
+
+      const before = out.length;
+
+      const swiper = findGallerySwiperInstance(heroRoot);
+
+      let advanced = false;
+
+      if (swiper && typeof swiper.slideNext === "function") {
+
+        try {
+
+          swiper.slideNext();
+
+          advanced = true;
+
+        } catch {
+
+          advanced = false;
+
+        }
+
+      }
+
+      if (!advanced) {
+
+        const navBtn = findGalleryNavButton(heroRoot);
+
+        if (!navBtn || isGalleryNavDisabled(navBtn)) break;
+
+        navBtn.click();
+
+        advanced = true;
+
+      }
+
+      if (!advanced) break;
+
+
+
+      await sleep(280);
+
+      activateLazyLoadedImages(heroRoot);
+
+      heroRoot.querySelectorAll(".swiper-slide, [class*='swiper-slide']").forEach((slide) => {
+
+        collectSlideImages(slide, baseUrl, push);
+
+      });
+
+
+
+      if (out.length > before) {
+
+        stagnant = 0;
+
+      } else {
+
+        stagnant += 1;
+
+        if (stagnant >= MAX_STAGNANT) break;
+
+      }
+
+    }
+
+  }
+
+
+
+  async function collectPageGalleryUrls(doc, maxCount = 30) {
 
     const baseUrl = doc.defaultView?.location?.href ?? global.location?.href ?? "";
 
@@ -862,6 +1028,14 @@
 
 
 
+    // 슬라이더가 가상/지연 렌더링이라 슬라이드가 1~2개만 DOM에 있는 경우를 대비해
+
+    // 다음 버튼을 눌러가며 추가 슬라이드를 계속 수집한다.
+
+    await advanceGalleryAndCollect(heroRoot, baseUrl, push, out);
+
+
+
     if (out.length === 0) {
 
       let count = 0;
@@ -902,7 +1076,7 @@
 
     activateLazyLoadedImages(doc);
 
-    const { productGalleryUrls, heroImageUrl } = collectPageGalleryUrls(doc);
+    const { productGalleryUrls, heroImageUrl } = await collectPageGalleryUrls(doc);
 
     const sourceProductTitle = extractSourceProductTitle(doc);
 

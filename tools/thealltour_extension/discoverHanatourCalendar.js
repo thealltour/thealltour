@@ -321,7 +321,7 @@
         mergeSearchCalendar(searchCalendar, extractSearchCalendar(json));
         mergeCalendarData(calendarData, json?.data?.data);
         fetchMeta.push({ url, ok: true, dayCount: countCalendarDays(extractSearchCalendar(json)) });
-        if (isCalendarSufficient({ searchCalendar, calendarData })) break;
+        // 데이터 완전성 우선: "충분함" 기준으로 중단하지 않고 후보 URL을 모두 시도한다.
       } catch (err) {
         fetchMeta.push({ url, ok: false, error: String(err) });
       }
@@ -369,10 +369,8 @@
       ...extractFromGlobals().map((json) => ({ json, source: "global" })),
     ];
 
+    // 데이터 완전성 우선: 캡처만으로 "충분"해도 바로 반환하지 않고 후보 엔드포인트도 시도해 병합한다.
     let result = normalizeFromCaptures(captures, meta);
-    if (isCalendarSufficient(result)) {
-      return result;
-    }
 
     const trial = await trialFetchEndpoints(meta);
     if (countCalendarDays(trial.searchCalendar) > 0 || trial.calendarData.length > 0) {

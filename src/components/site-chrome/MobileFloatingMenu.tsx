@@ -100,8 +100,8 @@ export default function MobileFloatingMenu({ activeTab, isLoggedIn = false }: Mo
       {isOpen ? (
         <div
           className={cn(
-            "mt-2 w-[min(80vw,17rem)] rounded-2xl border border-[var(--border)] p-2 backdrop-blur-md",
-            "bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-modal)]",
+            "mt-2 w-[min(80vw,17rem)] rounded-2xl glass-float p-2",
+            "text-[var(--foreground)]",
           )}
         >
           <ul className="flex flex-col gap-1">

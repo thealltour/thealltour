@@ -45,8 +45,7 @@ export function MobileProductSortSheet({
       />
       <div
         className={cn(
-          "relative z-10 rounded-t-2xl border border-b-0 border-[var(--border)]",
-          "bg-[var(--surface-elevated)] shadow-[var(--shadow-modal)] safe-bottom",
+          "relative z-10 rounded-t-2xl glass-float border-b-0 safe-bottom",
         )}
         onClick={(e) => e.stopPropagation()}
       >

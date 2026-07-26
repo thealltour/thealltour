@@ -56,11 +56,11 @@ export function ProductListToolbar({
       <div
         className={cn(
           "sticky z-30 flex w-full flex-col gap-2 rounded-xl px-0.5 py-2",
-          "border-b border-[var(--border)]/40 bg-[var(--surface)]/85 backdrop-blur-md",
+          "border-b border-[var(--border)]/40 glass-chrome",
           belowMobileBackHeader
             ? "top-[var(--products-mobile-toolbar-top)]"
             : "top-[var(--products-mobile-stack-top)]",
-          "lg:static lg:top-auto lg:z-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none",
+          "lg:static lg:top-auto lg:z-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none lg:[backdrop-filter:none] lg:[-webkit-backdrop-filter:none]",
         )}
       >
         <div className="hidden items-center gap-2 lg:flex" role="tablist" aria-label="상품 컬렉션 전환">

@@ -90,7 +90,7 @@ export function MobileHeaderDrawer({
     >
       <div
         className={cn(
-          "flex w-full max-w-sm flex-1 flex-col bg-[var(--surface-elevated)] shadow-[var(--shadow-modal)]",
+          "flex w-full max-w-sm flex-1 flex-col glass-float",
           "ml-0 overflow-hidden",
         )}
         onClick={(e) => e.stopPropagation()}

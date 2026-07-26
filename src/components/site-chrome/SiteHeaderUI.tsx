@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import HeaderQuickConsultCtas from "@/components/header/HeaderQuickConsultCtas";
@@ -68,31 +67,14 @@ export default function SiteHeaderUI({
   const pathname = usePathname();
   /** 모바일/태블릿 헤더 검색행: 홈에서만 숨겨 히어로 검색과 중복 제거 */
   const isHomePath = pathname === "/";
-  const [scrolled, setScrolled] = useState(false);
   const primaryNav = headerNavigationData?.primaryNav?.length
     ? headerNavigationData.primaryNav
     : getFallbackPrimaryNav();
 
-  useEffect(() => {
-    function onScroll() {
-      setScrolled(window.scrollY > 8);
-    }
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
     <div className="sticky top-[env(safe-area-inset-top)] z-50 lg:z-40">
       <GuestSignupPromoBanner isLoggedIn={Boolean(session)} />
-      <header
-        className={cn(
-          "transition-all duration-200 safe-top",
-          scrolled
-            ? "border-b border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-soft)] backdrop-blur-sm"
-            : "border-b border-[var(--divider)] bg-[var(--surface)]",
-        )}
-      >
+      <header className="glass-chrome border-b border-[var(--divider)] transition-all duration-200 safe-top">
       {/* 데스크톱: 상단 유틸바 + 메인 헤더바 */}
       <PageContainer size="wide" className="hidden flex-col py-0 lg:flex">
         {/* 상단 유틸바: 회사소개 ~ 고객센터 */}

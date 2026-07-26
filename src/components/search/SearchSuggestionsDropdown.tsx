@@ -33,7 +33,7 @@ export default function SearchSuggestionsDropdown({
   if (isLoading) {
     return (
       <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 shadow-[var(--shadow-modal)]">
+        <div className="glass-float rounded-2xl px-4 py-3">
           <p className="text-xs text-[var(--text-muted)]">추천어를 불러오는 중...</p>
         </div>
       </div>
@@ -43,7 +43,7 @@ export default function SearchSuggestionsDropdown({
   if (suggestions.length === 0 && query.trim().length >= 2) {
     return (
       <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 shadow-[var(--shadow-modal)]">
+        <div className="glass-float rounded-2xl px-4 py-3">
           <p className="text-xs text-[var(--text-muted)]">일치하는 추천어가 없습니다.</p>
           <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
             검색어를 더 구체적으로 입력해보세요.
@@ -59,7 +59,7 @@ export default function SearchSuggestionsDropdown({
     <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50">
       <ul
         id="hero-autosuggest-list"
-        className="max-h-[min(70vh,320px)] overflow-y-auto overflow-x-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] py-1 shadow-[var(--shadow-modal)]"
+        className="glass-float max-h-[min(70vh,320px)] overflow-y-auto overflow-x-hidden rounded-2xl py-1"
         role="listbox"
         aria-label="검색 추천 목록"
       >

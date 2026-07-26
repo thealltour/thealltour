@@ -56,7 +56,7 @@ export function HeaderExpandSearch({ searchQuery }: HeaderExpandSearchProps) {
 
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-2 w-[min(420px,calc(100vw-2rem))] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-soft)]"
+          className="glass-float absolute right-0 top-full z-50 mt-2 w-[min(420px,calc(100vw-2rem))] rounded-2xl p-3"
           role="dialog"
           aria-label="검색"
         >

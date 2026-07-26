@@ -236,8 +236,7 @@ export function MobileProductFilterDrawer({
       />
       <div
         className={cn(
-          "relative z-10 flex max-h-[85vh] flex-col rounded-t-2xl border border-b-0 border-[var(--border)]",
-          "bg-[var(--surface-elevated)] shadow-[var(--shadow-modal)]",
+          "relative z-10 flex max-h-[85vh] flex-col rounded-t-2xl glass-float border-b-0",
           "safe-bottom",
         )}
         onClick={(e) => e.stopPropagation()}

@@ -21,7 +21,7 @@ type ModalProps = {
 /**
  * 테마 토큰 기반 공통 모달 레이아웃.
  * - 백드롭: var(--overlay)
- * - 컨테이너: var(--surface-elevated), var(--shadow-modal), var(--border)
+ * - 컨테이너: Floating glass (.glass-float), 기존 rounded-2xl 유지
  */
 export function Modal({
   isOpen,
@@ -54,7 +54,7 @@ export function Modal({
     >
       <div
         className={cn(
-          "rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-6 shadow-[var(--shadow-modal)]",
+          "glass-float rounded-2xl p-6",
           className,
         )}
         onClick={(e) => e.stopPropagation()}

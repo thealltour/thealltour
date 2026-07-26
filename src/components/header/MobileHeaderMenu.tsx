@@ -111,7 +111,7 @@ export function MobileHeaderMenu({
           <button
             type="button"
             onClick={handleConsultClick}
-            className="mobile-header-top-bar__cta relative z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
+            className="mobile-header-top-bar__cta glass-cta-edge relative z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
           >
             문의하기
           </button>

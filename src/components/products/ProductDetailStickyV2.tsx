@@ -400,7 +400,7 @@ export function ProductDetailStickyV2Mobile({
     <div
       role="banner"
       aria-label="상품 예약 상담"
-      className="fixed left-0 right-0 z-50 box-border w-full border-t border-[var(--divider)] bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:hidden"
+      className="fixed left-0 right-0 z-50 box-border w-full border-t border-[var(--divider)] glass-chrome glass-chrome-bottom md:hidden"
       style={{
         bottom: "var(--mobile-cta-viewport-offset, 0px)",
         paddingTop: `${PADDING_TOP}px`,

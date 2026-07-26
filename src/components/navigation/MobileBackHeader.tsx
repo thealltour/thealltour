@@ -27,8 +27,7 @@ export function MobileBackHeader({ title, fallbackHref, hint, className }: Mobil
   return (
     <header
       className={cn(
-        "md:hidden sticky z-40 w-full border-b border-[var(--border)]/40",
-        "bg-white/70 backdrop-blur-md dark:bg-[var(--surface)]/75",
+        "md:hidden sticky z-40 w-full border-b border-[var(--border)]/40 glass-chrome",
         "top-[var(--products-mobile-stack-top)]",
         className,
       )}

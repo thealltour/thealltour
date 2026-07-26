@@ -125,7 +125,7 @@ export default function HeaderQuickConsultCtas({
           variant="accent"
           size="sm"
           onClick={() => setIsOpen(true)}
-          className="h-11 px-4 text-[14px] md:px-5 md:text-[15px]"
+          className="glass-cta-edge h-11 px-4 text-[14px] md:px-5 md:text-[15px]"
         >
           <Send
             className="mr-1.5 h-4 w-4 opacity-90"
@@ -141,7 +141,7 @@ export default function HeaderQuickConsultCtas({
           className={buttonVariants({
             variant: "kakao",
             size: "sm",
-            className: "h-11 px-4 text-[14px] md:px-5 md:text-[15px]",
+            className: "glass-cta-edge h-11 px-4 text-[14px] md:px-5 md:text-[15px]",
           })}
         >
           <MessageCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
@@ -152,7 +152,7 @@ export default function HeaderQuickConsultCtas({
       {isOpen ? (
         <div className="fixed inset-0 z-50 bg-[var(--overlay)] backdrop-blur-[2px]">
           <div className="flex min-h-full items-center justify-center px-4 py-6">
-            <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-6 text-[var(--text-primary)] shadow-[var(--shadow-modal)]">
+            <div className="glass-float w-full max-w-md rounded-2xl p-6 text-[var(--text-primary)]">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold tracking-[0.18em] text-[var(--text-muted)]">

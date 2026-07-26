@@ -326,9 +326,9 @@ export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSea
       >
         <div
           className={cn(
-            "flex items-center border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] transition focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]",
+            "glass-on-media flex items-center ring-1 ring-[var(--border)] transition focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]",
             variant === "hero-mobile"
-              ? "gap-2 px-3 py-2 sm:gap-2 sm:px-5 sm:py-2.5 rounded-2xl border-slate-400/70 bg-white shadow-md ring-1 ring-slate-300/95 sm:rounded-[1.25rem] max-md:shadow-[0_12px_44px_rgba(15,23,42,0.15)] max-md:ring-2 max-md:ring-white lg:rounded-full lg:border-[var(--border)] lg:bg-[var(--surface)] lg:shadow-[var(--shadow-soft)] lg:ring-1 lg:ring-[var(--border)]"
+              ? "gap-2 px-3 py-2 sm:gap-2 sm:px-5 sm:py-2.5 rounded-2xl sm:rounded-[1.25rem] max-md:ring-2 max-md:ring-white/80 lg:rounded-full"
               : "gap-2 rounded-full px-4 py-2 sm:px-5 sm:py-2.5",
           )}
         >

@@ -111,7 +111,7 @@ export default function GuestAuthHoverMenu() {
 
           <ul className="space-y-1">
             {QUICK_LINKS.map((item) => (
-              <li key={item.href}>
+              <li key={item.label}>
                 {item.requiresAuth ? (
                   <button
                     type="button"

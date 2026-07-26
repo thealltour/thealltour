@@ -405,7 +405,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
       {isOpen && (
         <div className="fixed inset-0 z-[60] bg-[var(--overlay)] backdrop-blur-[2px]">
           <div className="flex min-h-full items-center justify-center px-4 py-6">
-            <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-6 text-[var(--text-primary)] shadow-[var(--shadow-modal)]">
+            <div className="glass-float w-full max-w-md rounded-2xl p-6 text-[var(--text-primary)]">
               {isSuccess ? (
                 <div className="space-y-4">
                   <div>

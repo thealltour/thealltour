@@ -122,9 +122,17 @@
   --chart-tooltip-bg: #ffffff;
   --chart-tooltip-border: #e6e8ee;
 
-  /* Glass surface (light) */
-  --glass-surface: rgba(255, 255, 255, 0.9);
+  /* Glass surface (light) — Floating Layer only; Hue unchanged */
+  --glass-surface: rgba(255, 255, 255, 0.86);
   --glass-border: rgba(15, 23, 42, 0.06);
+  --glass-blur: 12px;
+  --glass-saturate: 180%;
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-highlight-bottom: rgba(255, 255, 255, 0.22);
+  --glass-shadow: 0 4px 20px rgba(11, 18, 32, 0.05);
+  --glass-shadow-up: 0 -4px 20px rgba(11, 18, 32, 0.05);
+  --glass-surface-chrome: rgba(255, 255, 255, 0.65);
+  --glass-surface-on-media: rgba(255, 255, 255, 0.55);
 
   --font-sans-fallback: "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans KR",
     "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
@@ -224,7 +232,7 @@
   /* 모바일 2단 헤더 (탑바 + 검색) — 전환·탐색 동선 */
   --mobile-header-top-height: 56px;
   --mobile-header-search-row-height: 56px;
-  --mobile-header-search-bg: #f7f9fb;
+  --mobile-header-search-bg: rgba(255, 255, 255, 0.55);
   --mobile-header-text-strong: #1a1a1a;
   /**
    * 상품 탐색: 모바일 SiteHeader(탑바+검색) 바로 아래 sticky 앵커
@@ -327,8 +335,7 @@
 /* 모바일 헤더 스택: 탑바(햄버거·로고·CTA) + 검색바 */
 .mobile-header-stack {
   width: 100%;
-  background: var(--surface);
-  border-bottom: 1px solid var(--divider);
+  background: transparent;
 }
 .mobile-header-top-bar {
   position: relative;
@@ -357,16 +364,13 @@
   color: var(--on-accent);
   border: none;
   white-space: nowrap;
-  box-shadow: var(--shadow-soft);
-  transition: background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 .mobile-header-top-bar__cta:hover {
   background: var(--accent-hover);
-  box-shadow: var(--shadow-soft-strong);
 }
 .mobile-header-top-bar__cta:active {
   background: var(--accent-active);
-  box-shadow: var(--shadow-soft);
 }
 .mobile-header-search-row {
   display: flex;
@@ -563,7 +567,7 @@
   --footer-text: #e2e8f0;
   --footer-text-muted: #cbd5e1;
 
-  --mobile-header-search-bg: #111827;
+  --mobile-header-search-bg: rgba(17, 24, 39, 0.55);
 
   --border: #374151;
   --border-strong: #4b5563;
@@ -636,9 +640,17 @@
   --chart-tooltip-bg: #111827;
   --chart-tooltip-border: #374151;
 
-  /* Glass surface (dark premium SaaS) */
-  --glass-surface: rgba(17, 24, 39, 0.75);
+  /* Glass surface (dark) — Floating Layer only */
+  --glass-surface: rgba(17, 24, 39, 0.72);
   --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-blur: 12px;
+  --glass-saturate: 180%;
+  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --glass-highlight-bottom: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --glass-shadow-up: 0 -4px 20px rgba(0, 0, 0, 0.35);
+  --glass-surface-chrome: rgba(17, 24, 39, 0.62);
+  --glass-surface-on-media: rgba(17, 24, 39, 0.5);
 
   /* Hero overlay tokens (dark mode) */
   --hero-bg: var(--site-bg);
@@ -1015,13 +1027,135 @@ body {
   border: 1px solid var(--border);
 }
 
+/**
+ * Public Floating Glass utilities.
+ * Apply only to Z-elevated chrome (header, modal, sheet, hero search shell).
+ * Do not set border-radius here — keep the call site’s rounded-*.
+ * Brand CTA faces (accent / kakao / primary) stay solid.
+ */
+.glass-float {
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--shadow-modal);
+}
+
+.glass-chrome {
+  background: var(--glass-surface-chrome);
+  border-color: var(--glass-border);
+  border-top: 1px solid var(--glass-highlight);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--glass-shadow);
+}
+
+.glass-chrome-bottom {
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--glass-shadow-up);
+}
+
+.glass-on-media {
+  background: var(--glass-surface-on-media);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--glass-shadow);
+}
+
+/**
+ * Header CTA edge — solid brand faces (accent/kakao) kept opaque.
+ * Adds a faint top gloss + white hairline ring so header CTAs share the
+ * glass chrome's lighting language. No blur, no color change.
+ */
+.glass-cta-edge {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    var(--shadow-soft);
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+  outline-offset: -1px;
+}
+
+.glass-cta-edge:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    var(--shadow-soft-strong);
+}
+
+.dark .glass-cta-edge {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    var(--shadow-soft);
+  outline: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dark .glass-cta-edge:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    var(--shadow-soft-strong);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-float {
+    background: var(--surface-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--shadow-modal);
+  }
+
+  .glass-chrome {
+    background: var(--surface);
+    border-top-color: var(--border);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass-chrome-bottom {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--glass-shadow-up);
+  }
+
+  .glass-on-media {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--shadow-soft);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-float {
+    background: var(--surface-elevated);
+  }
+
+  .glass-chrome,
+  .glass-chrome-bottom,
+  .glass-on-media {
+    background: var(--surface);
+  }
+}
+
 .kpi-card {
   position: relative;
   border-radius: 0.75rem;
   padding: 1.5rem;
   background: var(--glass-surface);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur));
   transition: background 150ms ease-out, border-color 150ms ease-out;
 }
 

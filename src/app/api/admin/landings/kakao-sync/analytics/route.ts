@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const range = parseKakaoSyncAnalyticsRangeParam(request.nextUrl.searchParams.get("range"));
-    const data = await fetchKakaoSyncAnalytics({ range });
+    const momentImportId = request.nextUrl.searchParams.get("importId");
+    const data = await fetchKakaoSyncAnalytics({ range, momentImportId });
     return NextResponse.json(data);
   } catch (err) {
     console.error("[api/admin/landings/kakao-sync/analytics]", err);

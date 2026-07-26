@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { buildAdminGuidesHref } from "@/lib/adminNav/sectionListNavigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import { GuidePdfUploadField } from "@/components/admin/GuidePdfUploadField";
@@ -58,6 +59,7 @@ const initialForm: GuideFormState = {
 
 export default function AdminGuideManager() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [guides, setGuides] = useState<Guide[]>([]);
   const [form, setForm] = useState<GuideFormState>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,6 +78,21 @@ export default function AdminGuideManager() {
     view === "notion" || view === "general" ? view : "list";
   const isNotionForm = activeView === "notion" || (editingId !== null && editingType === "notion");
   const isGeneralForm = activeView === "general" || (editingId !== null && editingType === "general");
+  const editingIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    editingIdRef.current = editingId;
+  }, [editingId]);
+
+  // 목록으로 이동하면 인페이지 수정 상태를 해제 (수정 폼에 갇히지 않도록)
+  useEffect(() => {
+    if (activeView !== "list" || !editingIdRef.current) return;
+    setEditingId(null);
+    setEditingType(null);
+    setForm(initialForm);
+    setMessage("");
+    setErrorMessage("");
+  }, [activeView]);
 
   const sortedGuides = useMemo(() => {
     return [...guides].sort((a, b) => {
@@ -124,8 +141,9 @@ export default function AdminGuideManager() {
   }, []);
 
   function startEdit(item: Guide) {
+    const nextType = item.notion_url || item.notion_page_id ? "notion" : "general";
     setEditingId(item.id);
-    setEditingType(item.notion_url || item.notion_page_id ? "notion" : "general");
+    setEditingType(nextType);
     setForm({
       title: item.title ?? "",
       summary: item.summary ?? "",
@@ -150,6 +168,8 @@ export default function AdminGuideManager() {
     });
     setMessage("");
     setErrorMessage("");
+    // 수정 화면을 목록과 다른 URL로 두어야 「가이드 목록」으로 되돌아올 수 있다
+    router.push(buildAdminGuidesHref(nextType));
   }
 
   function cancelEdit() {
@@ -158,6 +178,7 @@ export default function AdminGuideManager() {
     setForm(initialForm);
     setMessage("");
     setErrorMessage("");
+    router.push(buildAdminGuidesHref("list"));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -205,11 +226,13 @@ export default function AdminGuideManager() {
         setErrorMessage(result.message ?? "저장에 실패했습니다.");
         return;
       }
+      const wasEdit = Boolean(editingId);
       setMessage(editingId ? "여행가이드를 수정했습니다." : "여행가이드를 등록했습니다.");
       setForm(initialForm);
       setEditingId(null);
       setEditingType(null);
       await loadGuides();
+      if (wasEdit) router.push(buildAdminGuidesHref("list"));
     } catch {
       setErrorMessage("저장 중 오류가 발생했습니다.");
     } finally {

@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { AdminKakaoMomentCsvUpload } from "@/components/admin/landings/AdminKakaoMomentCsvUpload";
+import { AdminKakaoMomentEfficiencySection } from "@/components/admin/landings/AdminKakaoMomentEfficiencySection";
 import {
   formatKakaoSyncRate,
   parseKakaoSyncAnalyticsRangeParam,
@@ -38,6 +40,7 @@ function emptyData(): KakaoSyncAnalyticsResponse {
     },
     trend: [],
     campaigns: [],
+    moment: null,
   };
 }
 
@@ -74,6 +77,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
         summary: json.summary ?? emptyData().summary,
         trend: Array.isArray(json.trend) ? json.trend : [],
         campaigns: Array.isArray(json.campaigns) ? json.campaigns : [],
+        moment: json.moment ?? null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "카카오싱크 성과를 불러오지 못했습니다.");
@@ -139,6 +143,9 @@ export default function AdminKakaoSyncAnalyticsPage() {
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
       ) : null}
 
+      <AdminKakaoMomentEfficiencySection moment={data?.moment ?? null} />
+      <AdminKakaoMomentCsvUpload onApplied={() => void load()} />
+
       {loading && !data ? (
         <div className="grid animate-pulse gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -147,17 +154,20 @@ export default function AdminKakaoSyncAnalyticsPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {cards.map((c) => (
-              <div
-                key={c.label}
-                className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3"
-              >
-                <p className="text-xs text-[var(--text-muted)]">{c.label}</p>
-                <p className="mt-1 text-xl font-bold text-[var(--text-primary)]">{c.value}</p>
-                {c.hint ? <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">{c.hint}</p> : null}
-              </div>
-            ))}
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">온사이트 퍼널</h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {cards.map((c) => (
+                <div
+                  key={c.label}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3"
+                >
+                  <p className="text-xs text-[var(--text-muted)]">{c.label}</p>
+                  <p className="mt-1 text-xl font-bold text-[var(--text-primary)]">{c.value}</p>
+                  {c.hint ? <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">{c.hint}</p> : null}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">

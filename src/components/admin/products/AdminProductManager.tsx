@@ -88,6 +88,10 @@ import { FlyerGenerateModal } from "@/components/admin/products/modals/FlyerGene
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
 import { ADMIN_PRODUCTS_VIEW, ADMIN_PRODUCTS_QUERY_KEYS } from "@/components/admin/products/adminProducts.constants";
+import {
+  buildAdminProductEditHref,
+  buildAdminProductsListHref,
+} from "@/lib/adminNav/sectionListNavigation";
 import { downloadProductImagesAsZip } from "@/lib/images/downloadProductImagesAsZip";
 import type { ProductImageDownloadProgress } from "@/lib/images/imageDownloadProgress.types";
 import ProductImageDownloadProgressModal from "@/components/admin/products/modals/ProductImageDownloadProgressModal";
@@ -849,6 +853,13 @@ export default function AdminProductManager() {
   const urlEditingId = searchParams.get(ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID);
   const initialFormSnapshotRef = useRef<ProductFormState | null>(null);
   const loadedDepartureScheduleCountRef = useRef(0);
+  const editingIdRef = useRef<string | null>(null);
+  /** 목록에서 로컬 상태로 연 수정 id (URL 반영 후 중복 조회 방지) */
+  const locallyOpenedEditingIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    editingIdRef.current = editingId;
+  }, [editingId]);
 
   const writeDraftToStorage = useCallback((nextForm: ProductFormState) => {
     const key = getDraftKey(editingId);
@@ -893,9 +904,34 @@ export default function AdminProductManager() {
     setActiveSectionId: (id) => setActiveSectionId(id as SectionId),
   });
 
+  /** 수정 상태 해제: 취소·삭제·목록 복귀에서 공통 사용 */
+  const clearEditorState = useCallback(() => {
+    markSafeNavigation();
+    locallyOpenedEditingIdRef.current = null;
+    try {
+      sessionStorage.removeItem(EDITOR_UI_STATE_KEY(null));
+    } catch {
+      // ignore
+    }
+    setEditingId(null);
+    setForm(initialFormState);
+    resetBaseSnapshot(initialFormState);
+    setActiveSchedulePreviewIndex(0);
+    setShowRawScheduleEditor(false);
+    setScheduleEditorMode("visual");
+    setErrorMessage("");
+  }, [markSafeNavigation, resetBaseSnapshot]);
+
   useEffect(() => {
     if (!urlEditingId) {
       loadedDepartureScheduleCountRef.current = 0;
+      // 사이드바·서브헤더 「상품 목록」 등으로 URL의 editingId가 사라지면 에디터를 닫는다
+      if (editingIdRef.current && !locallyOpenedEditingIdRef.current) clearEditorState();
+      return;
+    }
+    // 목록에서 막 연 수정은 이미 로컬 상태로 채워져 있어 재조회하지 않는다
+    if (locallyOpenedEditingIdRef.current === urlEditingId) {
+      locallyOpenedEditingIdRef.current = null;
       return;
     }
     initialFormSnapshotRef.current = null;
@@ -941,7 +977,7 @@ export default function AdminProductManager() {
     return () => {
       cancelled = true;
     };
-  }, [urlEditingId, resetBaseSnapshot]);
+  }, [urlEditingId, resetBaseSnapshot, clearEditorState]);
 
   const diffSummary = useMemo(() => {
     const initial = editingId
@@ -1029,7 +1065,7 @@ export default function AdminProductManager() {
         const paramKey = wasEdit
           ? ADMIN_PRODUCTS_QUERY_KEYS.UPDATED
           : ADMIN_PRODUCTS_QUERY_KEYS.CREATED;
-        router.replace(`${pathname}?view=list&${paramKey}=${encodeURIComponent(savedId)}`);
+        router.replace(`${buildAdminProductsListHref()}&${paramKey}=${encodeURIComponent(savedId)}`);
       } else {
         await refreshListRef.current?.();
       }
@@ -1729,19 +1765,8 @@ export default function AdminProductManager() {
                 <button
                   type="button"
                   onClick={() => {
-                    markSafeNavigation();
-                    try {
-                      sessionStorage.removeItem(EDITOR_UI_STATE_KEY(null));
-                    } catch {
-                      // ignore
-                    }
-                    setEditingId(null);
-                    setForm(initialFormState);
-                    resetBaseSnapshot(initialFormState);
-                    setActiveSchedulePreviewIndex(0);
-                    setShowRawScheduleEditor(false);
-                    setScheduleEditorMode("visual");
-                    setErrorMessage("");
+                    clearEditorState();
+                    router.replace(buildAdminProductsListHref());
                   }}
                   className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 >
@@ -2155,22 +2180,13 @@ export default function AdminProductManager() {
           confirm={confirm}
           onAfterDelete={(id) => {
             if (editingId === id) {
-              markSafeNavigation();
-              try {
-                sessionStorage.removeItem(EDITOR_UI_STATE_KEY(null));
-              } catch {
-                // ignore
-              }
-              setEditingId(null);
-              setForm(initialFormState);
-              resetBaseSnapshot(initialFormState);
-              setActiveSchedulePreviewIndex(0);
-              setShowRawScheduleEditor(false);
-              setScheduleEditorMode("visual");
-              setErrorMessage("");
+              clearEditorState();
+              if (urlEditingId === id) router.replace(buildAdminProductsListHref());
             }
           }}
           onEditProduct={(product: Product) => {
+            locallyOpenedEditingIdRef.current = product.id;
+            router.replace(buildAdminProductEditHref(product.id));
             setEditingId(product.id);
             const nextForm = deserializeAdminProductToForm(product);
             setForm(nextForm);

@@ -43,11 +43,25 @@ export type LandingAnalyticsTopPerformers = {
   byCVR: LandingAnalyticsItem[];
 };
 
+/** UTM source × medium × campaign 집계 */
+export type LandingAnalyticsUtmRow = {
+  key: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  views: number;
+  clicks: number;
+  submits: number;
+  ctr: number;
+  cvr: number;
+};
+
 export type LandingAnalyticsResponse = {
   summary: LandingAnalyticsSummary;
   items: LandingAnalyticsItem[];
   trend: LandingAnalyticsTrendPoint[];
   topPerformers: LandingAnalyticsTopPerformers;
+  utmBreakdown: LandingAnalyticsUtmRow[];
 };
 
 export function parseLandingAnalyticsRangeParam(v: string | null): LandingAnalyticsRange {

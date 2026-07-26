@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { buildAdminNoticesHref } from "@/lib/adminNav/sectionListNavigation";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { useAdminConfirm } from "@/components/admin/AdminConfirmProvider";
 import type { Notice } from "@/types/notice";
@@ -35,7 +36,6 @@ const initialLegalDocuments: LegalDocumentsState = {
 export default function AdminNoticeManager() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
   const view = (searchParams.get("view") ?? "list") as "legal" | "create" | "list";
 
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -53,6 +53,11 @@ export default function AdminNoticeManager() {
   const [isLegalPanelOpen, setIsLegalPanelOpen] = useState(false);
   const { showToast } = useAdminToast();
   const { confirm } = useAdminConfirm();
+  const editingIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    editingIdRef.current = editingId;
+  }, [editingId]);
 
   function formatDate(value: string | null) {
     if (!value) return "-";
@@ -88,6 +93,15 @@ export default function AdminNoticeManager() {
     if (view === "legal") setIsLegalPanelOpen(true);
   }, [view]);
 
+  // 목록·법률 문서로 이동하면 인페이지 수정 상태를 해제 (다음 「공지 등록」이 수정 모드로 열리지 않도록)
+  useEffect(() => {
+    if (view === "create" || !editingIdRef.current) return;
+    setEditingId(null);
+    setForm(initialForm);
+    setMessage("");
+    setErrorMessage("");
+  }, [view]);
+
   async function loadLegalDocuments() {
     try {
       setIsLegalLoading(true);
@@ -120,7 +134,7 @@ export default function AdminNoticeManager() {
     });
     setMessage("");
     setErrorMessage("");
-    router.push(`${pathname}?view=create`);
+    router.push(buildAdminNoticesHref("create"));
   }
 
   function cancelEdit() {
@@ -128,7 +142,7 @@ export default function AdminNoticeManager() {
     setForm(initialForm);
     setMessage("");
     setErrorMessage("");
-    router.push(`${pathname}?view=list`);
+    router.push(buildAdminNoticesHref("list"));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -158,7 +172,7 @@ export default function AdminNoticeManager() {
       setForm(initialForm);
       setEditingId(null);
       await loadNotices();
-      router.push(`${pathname}?view=list`);
+      router.push(buildAdminNoticesHref("list"));
     } catch {
       setErrorMessage("저장 중 오류가 발생했습니다.");
     } finally {

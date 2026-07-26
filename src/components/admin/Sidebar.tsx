@@ -16,6 +16,7 @@ import { SIDEBAR_GROUPS, SIDEBAR_ITEMS } from "@/components/admin/sidebarConfig"
 import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
 import { ThemedWordmarkImage } from "@/components/header/ThemedWordmarkImage";
 import { isSidebarMainKeyActive } from "@/components/admin/sidebarUtils";
+import { buildAdminSectionHomeHref } from "@/lib/adminNav/sectionListNavigation";
 import { canAccessSidebarMainKey } from "@/lib/adminRolePolicy";
 import { hasAdminPermission } from "@/lib/adminPermissions";
 import { THEALL_FAVICON_32_SRC } from "@/lib/brandAssets";
@@ -141,7 +142,9 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
                           if (!confirmAdminProductUnsavedIfNeeded()) return;
                           setActiveMenu(item.mainKey!);
                           router.push(
-                            item.mainKey === "member_rewards" ? memberRewardsHref(session) : item.href,
+                            item.mainKey === "member_rewards"
+                              ? memberRewardsHref(session)
+                              : buildAdminSectionHomeHref(item.mainKey!, item.href),
                           );
                         }}
                         className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${

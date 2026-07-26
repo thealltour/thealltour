@@ -7,6 +7,7 @@ import AdminLandingAnalyticsFilters from "@/components/admin/landings/AdminLandi
 import AdminLandingAnalyticsSummary from "@/components/admin/landings/AdminLandingAnalyticsSummary";
 import AdminLandingAnalyticsTable from "@/components/admin/landings/AdminLandingAnalyticsTable";
 import AdminLandingAnalyticsTopPerformers from "@/components/admin/landings/AdminLandingAnalyticsTopPerformers";
+import AdminLandingAnalyticsUtmBreakdown from "@/components/admin/landings/AdminLandingAnalyticsUtmBreakdown";
 import type {
   LandingAnalyticsRange,
   LandingAnalyticsResponse,
@@ -134,6 +135,7 @@ export default function AdminLandingAnalyticsPage() {
           byCTR: Array.isArray(tp?.byCTR) ? tp.byCTR : [],
           byCVR: Array.isArray(tp?.byCVR) ? tp.byCVR : [],
         },
+        utmBreakdown: Array.isArray(json.utmBreakdown) ? json.utmBreakdown : [],
       });
       setError(null);
     } catch (e) {
@@ -177,6 +179,7 @@ export default function AdminLandingAnalyticsPage() {
   const items = data?.items ?? [];
   const trend = data?.trend ?? [];
   const topPerformers = data?.topPerformers ?? emptyTopPerformers();
+  const utmBreakdown = data?.utmBreakdown ?? [];
 
   const hasNoFunnelActivity =
     summary.totalViews === 0 && summary.totalClicks === 0 && summary.totalSubmits === 0;
@@ -203,6 +206,7 @@ export default function AdminLandingAnalyticsPage() {
         </p>
       ) : null}
       <div className={loading && data ? "space-y-6 opacity-60 transition-opacity" : "space-y-6"}>
+        <AdminLandingAnalyticsUtmBreakdown rows={utmBreakdown} />
         <AdminLandingAnalyticsTrendChart trend={trend} />
         <AdminLandingAnalyticsConversionCards summary={summary} trend={trend} />
         <AdminLandingAnalyticsTopPerformers topPerformers={topPerformers} />

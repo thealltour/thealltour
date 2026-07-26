@@ -14,6 +14,7 @@ import type {
   KakaoSyncAnalyticsSummary,
   KakaoSyncAnalyticsTrendPoint,
 } from "@/lib/adminLandings/kakaoSyncAnalyticsModels";
+import { fetchKakaoMomentAnalyticsBlock } from "@/lib/adminLandings/kakaoMomentImportService";
 
 function rangeStartIso(range: KakaoSyncAnalyticsRange): string | null {
   if (range === "all") return null;
@@ -92,6 +93,7 @@ const KAKAO_SYNC_EVENT_OR = [
 
 export async function fetchKakaoSyncAnalytics(input: {
   range: KakaoSyncAnalyticsRange;
+  momentImportId?: string | null;
 }): Promise<KakaoSyncAnalyticsResponse> {
   const since = rangeStartIso(input.range);
 
@@ -141,11 +143,15 @@ export async function fetchKakaoSyncAnalytics(input: {
     return q;
   })();
 
-  const [eventsRes, welcomeRes, channelRes, leadsRes] = await Promise.all([
+  const [eventsRes, welcomeRes, channelRes, leadsRes, moment] = await Promise.all([
     eventsQuery,
     welcomeQuery,
     channelQuery,
     leadsQuery,
+    fetchKakaoMomentAnalyticsBlock(input.momentImportId).catch((err) => {
+      console.error("[kakaoSyncAnalytics] moment block:", err);
+      return null;
+    }),
   ]);
 
   if (eventsRes.error) throw new Error(eventsRes.error.message);
@@ -243,5 +249,5 @@ export async function fetchKakaoSyncAnalytics(input: {
 
   const trend = [...trendMap.values()].sort((a, b) => a.date.localeCompare(b.date));
 
-  return { summary, trend, campaigns };
+  return { summary, trend, campaigns, moment };
 }

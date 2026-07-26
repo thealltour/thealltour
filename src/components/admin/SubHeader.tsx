@@ -20,6 +20,13 @@ import {
   PRODUCT_VIEW_TO_LABEL,
 } from "@/components/admin/products/adminProducts.constants";
 import { confirmAdminProductUnsavedIfNeeded } from "@/components/admin/products/editor/hooks/useUnsavedChangesGuard";
+import {
+  buildAdminGuidesHref,
+  buildAdminNoticesHref,
+  buildAdminProductsHref,
+  type AdminGuidesView,
+  type AdminNoticesView,
+} from "@/lib/adminNav/sectionListNavigation";
 import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
 import {
   ADMIN_MANAGER_PREFIX,
@@ -152,18 +159,16 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
     return view ?? null;
   }
 
-  function mapNoticesLabelToView(label: string): string | null {
+  function mapNoticesLabelToView(label: string): AdminNoticesView {
     if (label === "회원가입 법률 문서") return "legal";
     if (label === "공지 등록") return "create";
-    if (label === "등록된 공지 목록") return "list";
-    return null;
+    return "list";
   }
 
-  function mapGuidesLabelToView(label: string): string | null {
+  function mapGuidesLabelToView(label: string): AdminGuidesView {
     if (label === "가이드등록(노션)") return "notion";
     if (label === "가이드등록(일반)") return "general";
-    if (label === "가이드 목록") return "list";
-    return null;
+    return "list";
   }
 
   const HOME_LABEL_TO_PATH: Record<string, string> = {
@@ -193,48 +198,16 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
         router.push("/theall_manager_only/products/new-band");
         return;
       }
-      const view = mapProductLabelToView(label);
-      const params = new URLSearchParams(searchParams.toString());
-      if (view) {
-        params.set(ADMIN_PRODUCTS_QUERY_KEYS.VIEW, view);
-      } else {
-        params.delete(ADMIN_PRODUCTS_QUERY_KEYS.VIEW);
-      }
-      const query = params.toString();
-      const basePath =
-        pathname.includes("/products/new-modetour") ||
-        pathname.includes("/products/new-hanatour") ||
-        pathname.includes("/products/new-band")
-          ? "/theall_manager_only/products"
-          : pathname;
-      const target = query ? `${basePath}?${query}` : basePath;
-      router.push(target);
+      // 현재 쿼리(editingId 등)를 물고 가면 수정 화면에 갇히므로 항상 깨끗한 목록 URL로 이동
+      router.push(buildAdminProductsHref(mapProductLabelToView(label)));
       return;
     }
     if (activeMenu === "notices") {
-      const view = mapNoticesLabelToView(label);
-      const params = new URLSearchParams(searchParams.toString());
-      if (view) {
-        params.set("view", view);
-      } else {
-        params.delete("view");
-      }
-      const query = params.toString();
-      const target = query ? `${pathname}?${query}` : pathname;
-      router.push(target);
+      router.push(buildAdminNoticesHref(mapNoticesLabelToView(label)));
       return;
     }
     if (activeMenu === "guides") {
-      const view = mapGuidesLabelToView(label);
-      const params = new URLSearchParams(searchParams.toString());
-      if (view) {
-        params.set("view", view);
-      } else {
-        params.delete("view");
-      }
-      const query = params.toString();
-      const target = query ? `${pathname}?${query}` : pathname;
-      router.push(target);
+      router.push(buildAdminGuidesHref(mapGuidesLabelToView(label)));
       return;
     }
     if (activeMenu === "member_rewards") {

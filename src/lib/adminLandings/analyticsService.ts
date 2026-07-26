@@ -18,7 +18,12 @@ import type {
   LandingAnalyticsSummary,
   LandingAnalyticsTopPerformers,
   LandingAnalyticsTrendPoint,
+  LandingAnalyticsUtmRow,
 } from "@/lib/adminLandings/landingAnalyticsModels";
+import {
+  extractUtmFromMetadata,
+  utmBreakdownKey,
+} from "@/lib/adminLandings/landingUtmExtract";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export type {
@@ -29,6 +34,7 @@ export type {
   LandingAnalyticsSummary,
   LandingAnalyticsTopPerformers,
   LandingAnalyticsTrendPoint,
+  LandingAnalyticsUtmRow,
 } from "@/lib/adminLandings/landingAnalyticsModels";
 
 export {
@@ -46,6 +52,7 @@ type FunnelRow = {
   landing_slug: string | null;
   source_path: string | null;
   occurred_at: string | null;
+  metadata: unknown;
 };
 
 function resolveSlugFromRecord(record: AdminLandingRecord): string {
@@ -110,7 +117,7 @@ async function fetchFunnelEventRows(startIso: string | null): Promise<FunnelRow[
   while (from < MAX_ROWS) {
     let q = supabaseAdmin
       .from("analytics_events")
-      .select("event_name, landing_slug, source_path, occurred_at")
+      .select("event_name, landing_slug, source_path, occurred_at, metadata")
       .in("event_name", [...FUNNEL_EVENTS])
       .order("occurred_at", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -134,6 +141,7 @@ async function fetchFunnelEventRows(startIso: string | null): Promise<FunnelRow[
           typeof (r as { occurred_at?: string | null }).occurred_at === "string"
             ? ((r as { occurred_at?: string }).occurred_at as string)
             : null,
+        metadata: (r as { metadata?: unknown }).metadata ?? null,
       });
     }
     if (batch.length < PAGE_SIZE) break;
@@ -257,6 +265,44 @@ function computeTopPerformers(items: LandingAnalyticsItem[]): LandingAnalyticsTo
   return { bySubmits, byCTR, byCVR };
 }
 
+function buildUtmBreakdown(rows: FunnelRow[]): LandingAnalyticsUtmRow[] {
+  const map = new Map<string, LandingAnalyticsUtmRow>();
+  for (const row of rows) {
+    const utm = extractUtmFromMetadata(row.metadata);
+    const key = utmBreakdownKey(utm);
+    const bucket =
+      map.get(key) ??
+      ({
+        key,
+        utmSource: utm.utmSource,
+        utmMedium: utm.utmMedium,
+        utmCampaign: utm.utmCampaign,
+        views: 0,
+        clicks: 0,
+        submits: 0,
+        ctr: 0,
+        cvr: 0,
+      } satisfies LandingAnalyticsUtmRow);
+    if (row.event_name === "landing_view") bucket.views += 1;
+    else if (row.event_name === "landing_cta_click") bucket.clicks += 1;
+    else if (row.event_name === "quote_submit") bucket.submits += 1;
+    map.set(key, bucket);
+  }
+
+  return [...map.values()]
+    .map((r) => ({
+      ...r,
+      ctr: landingAnalyticsRatio(r.clicks, r.views),
+      cvr: landingAnalyticsRatio(r.submits, r.clicks),
+    }))
+    .sort((a, b) => {
+      if (b.views !== a.views) return b.views - a.views;
+      if (b.clicks !== a.clicks) return b.clicks - a.clicks;
+      return b.submits - a.submits;
+    })
+    .slice(0, 50);
+}
+
 export async function fetchLandingAnalytics(input: {
   range: LandingAnalyticsRange;
   sort?: LandingAnalyticsSort;
@@ -332,6 +378,7 @@ export async function fetchLandingAnalytics(input: {
 
   const trend = buildTrendSeries(rows, input.range, startIso);
   const topPerformers = computeTopPerformers(items);
+  const utmBreakdown = buildUtmBreakdown(rows);
 
-  return { summary, items, trend, topPerformers };
+  return { summary, items, trend, topPerformers, utmBreakdown };
 }

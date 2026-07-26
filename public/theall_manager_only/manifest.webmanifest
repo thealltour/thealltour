@@ -27,5 +27,43 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "문의·상담",
+      "short_name": "문의",
+      "description": "문의 목록으로 이동",
+      "url": "/theall_manager_only/inquiries",
+      "icons": [
+        {
+          "src": "/theall_manager_only/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "알림",
+      "short_name": "알림",
+      "description": "관리자 알림·푸시 설정",
+      "url": "/theall_manager_only/notifications",
+      "icons": [
+        {
+          "src": "/theall_manager_only/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "SMS 센터",
+      "short_name": "SMS",
+      "description": "문자 발송·스레드",
+      "url": "/theall_manager_only/sms",
+      "icons": [
+        {
+          "src": "/theall_manager_only/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

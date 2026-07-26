@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminAppBadgeSync } from "@/hooks/useAdminAppBadge";
+import { useAdminPwaUpdateToast } from "@/hooks/useAdminPwaUpdateToast";
 import {
   ADMIN_PWA_INSTALL_DISMISS_KEY,
   isAdminPwaStandalone,
@@ -65,6 +66,34 @@ export function AdminPwaInstallBanner() {
   );
 }
 
+function AdminPwaUpdateToast() {
+  const { updateReady, applyUpdate, dismiss } = useAdminPwaUpdateToast();
+  if (!updateReady) return null;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[70] flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
+      <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm shadow-lg">
+        <p className="min-w-0 flex-1 text-[var(--text-primary)]">새 버전이 있습니다. 새로고침할까요?</p>
+        <button
+          type="button"
+          onClick={applyUpdate}
+          className="shrink-0 rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white"
+        >
+          새로고침
+        </button>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="shrink-0 rounded-lg px-2 py-1.5 text-xs text-[var(--text-muted)]"
+          aria-label="닫기"
+        >
+          나중에
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** 관리자 PWA: Service Worker 등록 + 설치 안내 + OS 아이콘 배지 동기화 */
 export function AdminPwaProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -110,5 +139,10 @@ export function AdminPwaProvider({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {!isAdminConsolePublicPath(pathname) ? <AdminPwaUpdateToast /> : null}
+    </>
+  );
 }

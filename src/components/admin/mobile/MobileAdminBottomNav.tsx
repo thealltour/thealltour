@@ -6,6 +6,7 @@ import { Bell, Home, MessageSquare, MessagesSquare, Users } from "lucide-react";
 import { getMobileAdminNavForSession } from "@/components/admin/mobile/mobileAdmin.constants";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
 import { getAdminConsoleRelativePath } from "@/lib/adminConsolePaths";
+import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
 
 const ICONS = {
   home: Home,
@@ -37,6 +38,7 @@ export function MobileAdminBottomNav() {
   const pathname = usePathname();
   const session = useAdminSession();
   const navItems = getMobileAdminNavForSession(session);
+  const { unreadCount } = useAdminNotificationsRealtime();
 
   return (
     <nav
@@ -47,19 +49,30 @@ export function MobileAdminBottomNav() {
         {navItems.map((item) => {
           const Icon = ICONS[item.icon];
           const active = isNavItemActive(pathname, item.href);
+          const showBadge = item.key === "notifications" && unreadCount > 0;
 
           return (
             <li key={item.key} className="flex-1">
               <Link
                 href={item.href}
-                className={`flex min-h-[3rem] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-[11px] font-medium transition-colors ${
+                className={`relative flex min-h-[3rem] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-[11px] font-medium transition-colors ${
                   active
                     ? "text-[var(--primary)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 }`}
                 aria-current={active ? "page" : undefined}
+                aria-label={
+                  showBadge ? `${item.label}, 미읽음 ${unreadCount}건` : item.label
+                }
               >
-                <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
+                <span className="relative inline-flex">
+                  <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
+                  {showBadge ? (
+                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold leading-none text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="leading-tight">{item.label}</span>
               </Link>
             </li>

@@ -3,6 +3,63 @@
 
 const DEFAULT_ICON = "/theall_manager_only/icon-192.png";
 const DEFAULT_URL = "/theall_manager_only/notifications";
+const OFFLINE_URL = "/theall_manager_only/offline.html";
+const STATIC_CACHE = "admin-pwa-static-v1";
+const PRECACHE_URLS = [
+  OFFLINE_URL,
+  DEFAULT_ICON,
+  "/theall_manager_only/icon-512.png",
+  "/theall_manager_only/manifest.webmanifest",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(STATIC_CACHE);
+      await cache.addAll(PRECACHE_URLS);
+      // 대기열에만 두지 않고 바로 활성화할지는 클라이언트 SKIP_WAITING에 따름
+    })(),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key.startsWith("admin-pwa-static-") && key !== STATIC_CACHE)
+          .map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    void self.skipWaiting();
+  }
+});
+
+/** 문서 네비게이션만 오프라인 폴백 — API/HTML 앱 셸 광역 캐시 금지 */
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
+  if (request.mode !== "navigate") return;
+
+  event.respondWith(
+    (async () => {
+      try {
+        return await fetch(request);
+      } catch {
+        const cache = await caches.open(STATIC_CACHE);
+        const offline = await cache.match(OFFLINE_URL);
+        return offline ?? Response.error();
+      }
+    })(),
+  );
+});
 
 function parsePushPayload(event) {
   const fallback = {

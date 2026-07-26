@@ -19,8 +19,10 @@ export function isMobileAdminRouteAllowed(
   if (path === "/") return true;
   if (path === "/pwa") return true;
 
-  if (path === "/inquiries") return hasAdminPermission(session, "inquiries.manage");
-  if (path.startsWith("/inquiries/")) return false;
+  // 목록·대시보드·상세(향후) 포함 — 읽기/상담 중심 모바일 허용
+  if (path === "/inquiries" || path.startsWith("/inquiries/")) {
+    return hasAdminPermission(session, "inquiries.manage");
+  }
 
   if (path === "/bookings" || path.startsWith("/bookings/")) {
     return hasAdminPermission(session, "inquiries.manage");
@@ -62,6 +64,7 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   if (path === "/") return "대시보드";
   if (path === "/pwa") return "앱 · 메뉴";
   if (path === "/landings" || path.startsWith("/landings/")) return "검색/유입 랜딩 관리";
+  if (path === "/inquiries/dashboard") return "문의 대시보드";
   if (path === "/inquiries" || path.startsWith("/inquiries/")) return "문의·상담";
   if (path === "/bookings" || path.startsWith("/bookings/")) return "예약 관리";
   if (path === "/sms") return "SMS 센터";

@@ -10,16 +10,22 @@ import { usePanelPresence } from "@/components/admin/chat/usePanelPresence";
 import { AdminPickerModal } from "@/components/admin/chat/AdminPickerModal";
 import { RoomListPane } from "@/components/admin/chat/RoomListPane";
 import { ChatThread } from "@/components/admin/chat/ChatThread";
+import { useAdminCompactShell } from "@/components/admin/mobile/useAdminCompactShell";
 
 type ModalMode = "dm" | "group" | "invite" | null;
 
 /** 데스크톱에서 팝업이 비모달로 동작할지 판단하는 브레이크포인트(Tailwind `md`와 동일). */
 const DESKTOP_BREAKPOINT_PX = 768;
 
+/** 세로 컴팩트 셸: 하단탭(≈3.5rem)+safe-area 위여백 */
+const COMPACT_FAB_BOTTOM =
+  "bottom-[calc(5.5rem+0.75rem+env(safe-area-inset-bottom,0px))]";
+
 export default function AdminChatWidget() {
   const session = useAdminSession();
   const selfKey = deriveClientAdminUserKey(session);
   const searchParams = useSearchParams();
+  const { useCompactShell, isLandscape } = useAdminCompactShell();
   const { open, setOpen, toggle, rooms, refreshRooms, activeRoomId, setActiveRoomId, totalUnread } =
     useAdminChat();
   const [modal, setModal] = useState<ModalMode>(null);
@@ -30,13 +36,22 @@ export default function AdminChatWidget() {
   const { mounted, entered } = usePanelPresence(open);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? null;
+  const compactPortrait = useCompactShell && !isLandscape;
 
   useEffect(() => {
     const chatRoomId = searchParams.get("chatRoom")?.trim();
-    if (!chatRoomId || !selfKey) return;
-    setOpen(true);
-    setActiveRoomId(chatRoomId);
-    void refreshRooms();
+    const openChat = searchParams.get("openChat") === "1";
+    if (!selfKey) return;
+    if (chatRoomId) {
+      setOpen(true);
+      setActiveRoomId(chatRoomId);
+      void refreshRooms();
+      return;
+    }
+    if (openChat) {
+      setOpen(true);
+      void refreshRooms();
+    }
   }, [searchParams, selfKey, setOpen, setActiveRoomId, refreshRooms]);
 
   // 데스크톱(팝업 비모달)에서만 바깥 클릭 시 닫힘. 모바일은 전체화면 백드롭 클릭으로 이미 처리됨.
@@ -72,28 +87,39 @@ export default function AdminChatWidget() {
 
   if (!selfKey) return null;
 
+  // 채팅 패널이 열린 컴팩트(풀스크린)에서는 FAB를 숨겨 하단탭·패널과 겹치지 않게 함.
+  const showFab = !(open && useCompactShell);
+
+  const fabBottomClass = compactPortrait
+    ? COMPACT_FAB_BOTTOM
+    : useCompactShell
+      ? "bottom-6"
+      : "bottom-24";
+
   return (
     <>
-      <button
-        ref={fabRef}
-        type="button"
-        onClick={toggle}
-        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[var(--primary-hover)]"
-        aria-label={open ? "관리자 채팅 닫기" : "관리자 채팅 열기"}
-      >
-        {open ? <CloseIcon /> : <ChatIcon />}
-        {!open && totalUnread > 0 ? (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[10px] font-bold text-white">
-            {totalUnread > 99 ? "99+" : totalUnread}
-          </span>
-        ) : null}
-      </button>
+      {showFab ? (
+        <button
+          ref={fabRef}
+          type="button"
+          onClick={toggle}
+          className={`fixed right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[var(--primary-hover)] md:right-6 ${fabBottomClass}`}
+          aria-label={open ? "관리자 채팅 닫기" : "관리자 채팅 열기"}
+        >
+          {open ? <CloseIcon /> : <ChatIcon />}
+          {!open && totalUnread > 0 ? (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[10px] font-bold text-white">
+              {totalUnread > 99 ? "99+" : totalUnread}
+            </span>
+          ) : null}
+        </button>
+      ) : null}
 
       {mounted ? (
         <>
           {/* 모바일 전체화면 모달용 백드롭. 데스크톱 팝업에서는 숨김(비모달). */}
           <div
-            className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] transition-opacity duration-200 md:hidden ${
+            className={`fixed inset-0 z-[55] bg-black/30 backdrop-blur-[1px] transition-opacity duration-200 md:hidden ${
               entered ? "opacity-100" : "opacity-0"
             }`}
             onClick={() => setOpen(false)}
@@ -102,7 +128,7 @@ export default function AdminChatWidget() {
 
           <div
             ref={panelRef}
-            className={`fixed z-50 flex flex-col overflow-hidden border-[var(--border)] bg-[var(--surface)] shadow-2xl transition-all duration-200 ${
+            className={`fixed z-[60] flex flex-col overflow-hidden border-[var(--border)] bg-[var(--surface)] shadow-2xl transition-all duration-200 ${
               entered
                 ? "translate-x-0 translate-y-0 scale-100 opacity-100"
                 : "translate-x-full opacity-0 md:translate-x-0 md:translate-y-4 md:scale-95"

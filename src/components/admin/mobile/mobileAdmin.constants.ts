@@ -123,8 +123,14 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
     items.push({
       key: "inquiries",
       label: "문의·상담",
-      description: "문의 목록 · 처리",
+      description: "문의 목록 · 대시보드 · 처리",
       href: `${MANAGER_PREFIX}/inquiries`,
+    });
+    items.push({
+      key: "inquiry-dashboard",
+      label: "문의 대시보드",
+      description: "현장 상담용 요약 지표",
+      href: `${MANAGER_PREFIX}/inquiries/dashboard`,
     });
     items.push({
       key: "bookings",
@@ -139,6 +145,12 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
       href: `${MANAGER_PREFIX}/sms`,
     });
   }
+  items.push({
+    key: "team-chat",
+    label: "팀 채팅",
+    description: "관리자 간 실시간 메시지",
+    href: `${MANAGER_PREFIX}/pwa?openChat=1`,
+  });
   if (hasAdminPermission(session, "members.manage")) {
     items.push({
       key: "members",

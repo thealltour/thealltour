@@ -19,6 +19,7 @@ import {
 } from "@/components/admin/mobile/mobileAdmin.constants";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
 import { getAdminConsoleRelativePath } from "@/lib/adminConsolePaths";
+import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
 
 function isNavItemActive(pathname: string, href: string): boolean {
   const currentRel = getAdminConsoleRelativePath(pathname);
@@ -51,6 +52,10 @@ function hubIcon(key: string) {
       return Star;
     case "hub":
       return LayoutGrid;
+    case "team-chat":
+      return MessagesSquare;
+    case "inquiry-dashboard":
+      return MessageSquare;
     default:
       return Home;
   }
@@ -64,6 +69,7 @@ export function TabletAdminSideRail() {
   const session = useAdminSession();
   const primary = getMobileAdminNavForSession(session);
   const hubMenus = getTabletAdminHubMenus(session);
+  const { unreadCount } = useAdminNotificationsRealtime();
   const extra = hubMenus.filter(
     (m) => !primary.some((p) => getAdminConsoleRelativePath(p.href) === getAdminConsoleRelativePath(m.href)),
   );
@@ -92,6 +98,7 @@ export function TabletAdminSideRail() {
           {primary.map((item) => {
             const Icon = PRIMARY_ICONS[item.icon];
             const active = isNavItemActive(pathname, item.href);
+            const showBadge = item.key === "notifications" && unreadCount > 0;
             return (
               <li key={item.key}>
                 <Link
@@ -102,9 +109,19 @@ export function TabletAdminSideRail() {
                       : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                   }`}
                   aria-current={active ? "page" : undefined}
+                  aria-label={
+                    showBadge ? `${item.label}, 미읽음 ${unreadCount}건` : item.label
+                  }
                 >
-                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-                  {item.label}
+                  <span className="relative inline-flex">
+                    <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+                    {showBadge ? (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold leading-none text-white">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 </Link>
               </li>
             );

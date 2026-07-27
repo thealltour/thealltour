@@ -3,6 +3,7 @@
 import "react-day-picker/style.css";
 import "@/components/ui/datePicker.css";
 import { useCallback, useMemo } from "react";
+import { useMonthSwipeNavigation } from "@/hooks/useMonthSwipeNavigation";
 import {
   DayPicker,
   DayButton,
@@ -36,6 +37,8 @@ export function TheallDayPicker({
   modifiers,
   modifiersClassNames,
   components,
+  month,
+  onMonthChange,
   ...rest
 }: TheallDayPickerProps) {
   const holidayYears = useMemo(() => {
@@ -79,15 +82,28 @@ export function TheallDayPicker({
     [components],
   );
 
+  const { swipeActive, swipeHandlers } = useMonthSwipeNavigation({
+    month,
+    onMonthChange,
+    enabled: Boolean(onMonthChange),
+  });
+
   return (
-    <DayPicker
-      locale={ko}
-      showOutsideDays
-      className={cn("theall-day-picker theall-calendar-themed", className)}
-      modifiers={mergedModifiers}
-      modifiersClassNames={mergedModifiersClassNames}
-      components={mergedComponents}
-      {...rest}
-    />
+    <div
+      className={cn(swipeActive && "touch-pan-y")}
+      {...(swipeActive ? swipeHandlers : undefined)}
+    >
+      <DayPicker
+        locale={ko}
+        showOutsideDays
+        className={cn("theall-day-picker theall-calendar-themed", className)}
+        modifiers={mergedModifiers}
+        modifiersClassNames={mergedModifiersClassNames}
+        components={mergedComponents}
+        month={month}
+        onMonthChange={onMonthChange}
+        {...rest}
+      />
+    </div>
   );
 }

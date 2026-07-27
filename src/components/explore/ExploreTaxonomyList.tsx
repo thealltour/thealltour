@@ -86,8 +86,8 @@ export function ExploreTaxonomyList({
 
   const railUlClass =
     layoutPreset === "home"
-      ? "flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 [touch-action:pan-x]"
-      : "flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 [touch-action:pan-x] md:hidden";
+      ? "flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 [touch-action:pan-x_pan-y]"
+      : "flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 [touch-action:pan-x_pan-y] md:hidden";
 
   const gridUlClass =
     "hidden gap-3 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";

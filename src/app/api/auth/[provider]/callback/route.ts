@@ -24,21 +24,35 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_unavailable"), request.url));
   }
 
+  const cookieStore = await cookies();
+  const cookieState = cookieStore.get(OAUTH_STATE_COOKIE)?.value;
+  /** 취소·오류 시에도 acquisition을 붙이기 위해 state를 먼저 해석 */
+  const earlyState = verifyOAuthStateToken(stateParam) ?? verifyOAuthStateToken(cookieState);
+
   if (oauthError || !code) {
     if (providerId === "kakao") {
+      const acquisition = earlyState?.acquisition ?? null;
+      const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
       await persistAnalyticsEventAdmin({
         eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
         source: ANALYTICS_SOURCES.kakao_sync_auth,
         pagePath: "/api/auth/kakao/callback",
-        metadata: { reason: oauthError ? "oauth_error" : "missing_code", oauthError },
+        sourcePath: acquisition?.landing_path ?? null,
+        landingSlug: acquisition?.landing_slug ?? null,
+        metadata: {
+          reason: oauthError ? "oauth_error" : "missing_code",
+          oauthError,
+          ...(fromKakaoLanding ? { funnel: "kakao_sync" as const } : {}),
+          acquisition,
+        },
       });
     }
-    return NextResponse.redirect(new URL(loginErrorRedirect("oauth_cancelled"), request.url));
+    const response = NextResponse.redirect(new URL(loginErrorRedirect("oauth_cancelled"), request.url));
+    response.cookies.delete(OAUTH_STATE_COOKIE);
+    return response;
   }
 
-  const cookieStore = await cookies();
-  const cookieState = cookieStore.get(OAUTH_STATE_COOKIE)?.value;
-  const state = verifyOAuthStateToken(stateParam) ?? verifyOAuthStateToken(cookieState);
+  const state = earlyState;
   if (!state || state.provider !== providerId) {
     if (providerId === "kakao") {
       await persistAnalyticsEventAdmin({
@@ -71,7 +85,26 @@ export async function GET(request: Request, context: RouteContext) {
       acquisition: state.acquisition ?? null,
     });
 
+    const acquisition = state.acquisition ?? null;
+    const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
+    const funnelMeta = fromKakaoLanding ? { funnel: "kakao_sync" as const } : {};
+
     if (result.type === "link_account") {
+      if (providerId === "kakao") {
+        await persistAnalyticsEventAdmin({
+          eventName: ANALYTICS_EVENTS.kakao_oauth_success,
+          source: ANALYTICS_SOURCES.kakao_sync_auth,
+          pagePath: "/api/auth/kakao/callback",
+          sourcePath: acquisition?.landing_path ?? null,
+          landingSlug: acquisition?.landing_slug ?? null,
+          metadata: {
+            ...funnelMeta,
+            needsLink: true,
+            isNewMember: false,
+            acquisition,
+          },
+        });
+      }
       const linkUrl = new URL("/auth/link-account", request.url);
       linkUrl.searchParams.set("pending", result.pendingId);
       linkUrl.searchParams.set("email", result.email);
@@ -82,9 +115,6 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     if (providerId === "kakao") {
-      const acquisition = state.acquisition ?? null;
-      const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
-      const funnelMeta = fromKakaoLanding ? { funnel: "kakao_sync" as const } : {};
       await persistAnalyticsEventAdmin({
         eventName: ANALYTICS_EVENTS.kakao_oauth_success,
         source: ANALYTICS_SOURCES.kakao_sync_auth,
@@ -130,13 +160,20 @@ export async function GET(request: Request, context: RouteContext) {
   } catch (err) {
     console.error(`[auth/${providerId}/callback]`, err);
     if (providerId === "kakao") {
+      const acquisition = state.acquisition ?? null;
+      const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
       await persistAnalyticsEventAdmin({
         eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
         source: ANALYTICS_SOURCES.kakao_sync_auth,
         pagePath: "/api/auth/kakao/callback",
-        sourcePath: state.acquisition?.landing_path ?? null,
-        landingSlug: state.acquisition?.landing_slug ?? null,
-        metadata: { reason: "oauth_failed", message: err instanceof Error ? err.message : "unknown" },
+        sourcePath: acquisition?.landing_path ?? null,
+        landingSlug: acquisition?.landing_slug ?? null,
+        metadata: {
+          reason: "oauth_failed",
+          message: err instanceof Error ? err.message : "unknown",
+          ...(fromKakaoLanding ? { funnel: "kakao_sync" as const } : {}),
+          acquisition,
+        },
       });
     }
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_failed", state.next), request.url));

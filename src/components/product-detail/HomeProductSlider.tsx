@@ -155,7 +155,7 @@ export default function HomeProductSlider({ products, categories }: HomeProductS
       <div
         key={`${activeTab}-${activeThemeTab}`}
         ref={sliderRef}
-        className="fade-in-up flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 scroll-smooth [scrollbar-width:thin] [touch-action:pan-x]"
+        className="fade-in-up flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 scroll-smooth [scrollbar-width:thin] [touch-action:pan-x_pan-y]"
       >
         {themeFilteredProducts.length === 0 ? (
           <div className="w-full rounded-2xl bg-white p-8 text-center text-sm text-slate-500 shadow-md ring-1 ring-[#e2e8f0]">

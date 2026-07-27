@@ -43,6 +43,8 @@ function emptyTrend(range: KakaoSyncAnalyticsRange): KakaoSyncAnalyticsTrendPoin
       clicks: 0,
       oauthStarts: 0,
       signups: 0,
+      returning: 0,
+      oauthFailed: 0,
     });
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
@@ -106,7 +108,10 @@ export async function fetchKakaoSyncAnalytics(input: {
       "landing_view",
       "landing_cta_click",
       "kakao_oauth_start",
+      "kakao_oauth_success",
       "kakao_signup_new",
+      "kakao_login_returning",
+      "kakao_oauth_failed",
       "product_card_click",
     ])
     .or(KAKAO_SYNC_EVENT_OR)
@@ -166,6 +171,10 @@ export async function fetchKakaoSyncAnalytics(input: {
   let landingViews = 0;
   let ctaClicks = 0;
   let oauthStarts = 0;
+  let oauthSuccess = 0;
+  let oauthFailed = 0;
+  let loginReturning = 0;
+  let oauthNeedsLink = 0;
   let newSignups = 0;
   let productClicks = 0;
 
@@ -179,7 +188,15 @@ export async function fetchKakaoSyncAnalytics(input: {
     const ymd = toYmd(String(row.occurred_at ?? ""));
     const bucket =
       trendMap.get(ymd) ??
-      ({ date: ymd, views: 0, clicks: 0, oauthStarts: 0, signups: 0 } satisfies KakaoSyncAnalyticsTrendPoint);
+      ({
+        date: ymd,
+        views: 0,
+        clicks: 0,
+        oauthStarts: 0,
+        signups: 0,
+        returning: 0,
+        oauthFailed: 0,
+      } satisfies KakaoSyncAnalyticsTrendPoint);
 
     const campMeta = campaignKey(row);
     const camp =
@@ -205,6 +222,19 @@ export async function fetchKakaoSyncAnalytics(input: {
     } else if (name === "kakao_oauth_start") {
       oauthStarts += 1;
       bucket.oauthStarts += 1;
+    } else if (name === "kakao_oauth_success") {
+      oauthSuccess += 1;
+      const meta =
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null;
+      if (meta?.needsLink === true) oauthNeedsLink += 1;
+    } else if (name === "kakao_oauth_failed") {
+      oauthFailed += 1;
+      bucket.oauthFailed += 1;
+    } else if (name === "kakao_login_returning") {
+      loginReturning += 1;
+      bucket.returning += 1;
     } else if (name === "kakao_signup_new") {
       newSignups += 1;
       bucket.signups += 1;
@@ -229,6 +259,10 @@ export async function fetchKakaoSyncAnalytics(input: {
     ctaClicks,
     ctr: landingViews > 0 ? ctaClicks / landingViews : 0,
     oauthStarts,
+    oauthSuccess,
+    oauthFailed,
+    loginReturning,
+    oauthNeedsLink,
     newSignups,
     welcomeGrants,
     channelAdded,

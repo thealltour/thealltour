@@ -28,6 +28,10 @@ function emptyData(): KakaoSyncAnalyticsResponse {
       ctaClicks: 0,
       ctr: 0,
       oauthStarts: 0,
+      oauthSuccess: 0,
+      oauthFailed: 0,
+      loginReturning: 0,
+      oauthNeedsLink: 0,
       newSignups: 0,
       welcomeGrants: 0,
       channelAdded: 0,
@@ -104,7 +108,31 @@ export default function AdminKakaoSyncAnalyticsPage() {
     { label: "CTA 클릭", value: summary.ctaClicks.toLocaleString("ko-KR") },
     { label: "CTR", value: formatKakaoSyncRate(summary.ctr), hint: "CTA ÷ 조회" },
     { label: "OAuth 시작", value: summary.oauthStarts.toLocaleString("ko-KR") },
-    { label: "신규 가입", value: summary.newSignups.toLocaleString("ko-KR") },
+    {
+      label: "OAuth 성공",
+      value: summary.oauthSuccess.toLocaleString("ko-KR"),
+      hint: "콜백 완료(신규·기존·계정연결)",
+    },
+    {
+      label: "OAuth 실패",
+      value: summary.oauthFailed.toLocaleString("ko-KR"),
+      hint: "동의 취소·오류 콜백",
+    },
+    {
+      label: "기존 로그인",
+      value: summary.loginReturning.toLocaleString("ko-KR"),
+      hint: "이미 가입된 회원 OAuth 완료",
+    },
+    {
+      label: "계정 연결 대기",
+      value: summary.oauthNeedsLink.toLocaleString("ko-KR"),
+      hint: "로컬 계정 링크 필요",
+    },
+    {
+      label: "신규 가입",
+      value: summary.newSignups.toLocaleString("ko-KR"),
+      hint: "신규만 집계 (기존 로그인 제외)",
+    },
     {
       label: "조회→가입",
       value: formatKakaoSyncRate(summary.viewToSignupRate),
@@ -119,6 +147,11 @@ export default function AdminKakaoSyncAnalyticsPage() {
     { label: "상품 클릭", value: summary.productClicks.toLocaleString("ko-KR") },
     { label: "비즈보드 리드", value: summary.bizboardLeads.toLocaleString("ko-KR"), hint: "utm kakao/bizboard 문의" },
   ];
+
+  const oauthAbandoned = Math.max(
+    0,
+    summary.oauthStarts - summary.oauthSuccess - summary.oauthFailed,
+  );
 
   return (
     <div className="space-y-6">
@@ -148,7 +181,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
 
       {loading && !data ? (
         <div className="grid animate-pulse gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {Array.from({ length: 10 }).map((_, i) => (
+          {Array.from({ length: 14 }).map((_, i) => (
             <div key={i} className="h-24 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]" />
           ))}
         </div>
@@ -174,8 +207,20 @@ export default function AdminKakaoSyncAnalyticsPage() {
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">퍼널 전환</h2>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
               조회 {summary.landingViews.toLocaleString("ko-KR")} → CTA {summary.ctaClicks.toLocaleString("ko-KR")} (
-              {formatKakaoSyncRate(summary.ctr)}) → OAuth {summary.oauthStarts.toLocaleString("ko-KR")} → 가입{" "}
-              {summary.newSignups.toLocaleString("ko-KR")} ({formatKakaoSyncRate(summary.oauthToSignupRate)} OAuth→가입)
+              {formatKakaoSyncRate(summary.ctr)}) → OAuth {summary.oauthStarts.toLocaleString("ko-KR")} → 신규 가입{" "}
+              {summary.newSignups.toLocaleString("ko-KR")} ({formatKakaoSyncRate(summary.oauthToSignupRate)}{" "}
+              OAuth→신규가입)
+            </p>
+            <p className="mt-2 text-xs text-[var(--text-secondary)]">
+              OAuth 결과: 성공 {summary.oauthSuccess.toLocaleString("ko-KR")} · 기존 로그인{" "}
+              {summary.loginReturning.toLocaleString("ko-KR")} · 계정연결{" "}
+              {summary.oauthNeedsLink.toLocaleString("ko-KR")} · 실패{" "}
+              {summary.oauthFailed.toLocaleString("ko-KR")} · 콜백 미도달(추정){" "}
+              {oauthAbandoned.toLocaleString("ko-KR")}
+            </p>
+            <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+              가입 = 신규만 집계합니다. 기존 회원이 OAuth를 완료하면 &quot;기존 로그인&quot;으로만 잡히며 신규 가입은
+              오르지 않습니다. 콜백 미도달은 동의 화면에서 창을 닫아 사이트로 돌아오지 않은 경우입니다.
             </p>
           </div>
 

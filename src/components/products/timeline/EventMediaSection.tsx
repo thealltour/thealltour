@@ -121,7 +121,7 @@ export function EventMediaSection({
     const imageSizes = compactImageSizes(thumbnails.length);
 
     return (
-      <div className="scrollbar-hide -mx-0.5 flex w-full snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [touch-action:pan-x]">
+      <div className="scrollbar-hide -mx-0.5 flex w-full snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [touch-action:pan-x_pan-y]">
         {thumbnails.map((img, idx) => {
           const thumb = (
             <ImageWithFallback

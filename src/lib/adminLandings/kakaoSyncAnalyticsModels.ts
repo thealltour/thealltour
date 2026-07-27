@@ -11,6 +11,14 @@ export type KakaoSyncAnalyticsSummary = {
   ctaClicks: number;
   ctr: number;
   oauthStarts: number;
+  /** 콜백 성공(신규·기존·계정연결 대기 포함) */
+  oauthSuccess: number;
+  /** 동의 취소·state 오류·서버 예외 등 */
+  oauthFailed: number;
+  /** 기존 회원 OAuth 로그인 완료 */
+  loginReturning: number;
+  /** 로컬 계정 연결 대기(link_account) */
+  oauthNeedsLink: number;
   newSignups: number;
   welcomeGrants: number;
   channelAdded: number;
@@ -28,6 +36,10 @@ export type KakaoSyncAnalyticsTrendPoint = {
   clicks: number;
   oauthStarts: number;
   signups: number;
+  /** 기존 로그인 — 차트 보조 시리즈 */
+  returning: number;
+  /** OAuth 실패 — 차트 보조 시리즈 */
+  oauthFailed: number;
 };
 
 export type KakaoSyncAnalyticsCampaignRow = {

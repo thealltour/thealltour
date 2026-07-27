@@ -117,7 +117,7 @@ export function ProductCardGridSection({
           <div
             className={cn(
               "flex overflow-x-auto pb-2 scrollbar-hide",
-              hubLandingLayout && "snap-x snap-mandatory scroll-smooth [touch-action:pan-x]",
+              hubLandingLayout && "snap-x snap-mandatory scroll-smooth [touch-action:pan-x_pan-y]",
               hubLandingLayout
                 ? guideBridgeMobileTightGap
                   ? "gap-2"

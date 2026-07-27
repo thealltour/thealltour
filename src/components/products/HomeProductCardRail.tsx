@@ -11,10 +11,10 @@ const SCROLL_AMOUNT = 320;
 const RAIL_ITEM_CLASS = "h-full min-h-0 snap-start";
 
 const RAIL_UL_CLASS_DEFAULT =
-  "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 sm:auto-cols-[280px] lg:auto-cols-[calc((min(100%,1344px)-3*1rem)/4)] [touch-action:pan-x]";
+  "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 sm:auto-cols-[280px] lg:auto-cols-[calc((min(100%,1344px)-3*1rem)/4)] [touch-action:pan-x_pan-y]";
 
 const RAIL_UL_CLASS_COMPACT =
-  "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 [touch-action:pan-x]";
+  "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 [touch-action:pan-x_pan-y]";
 
 export type HomeProductCardRailProps = {
   products: Product[];

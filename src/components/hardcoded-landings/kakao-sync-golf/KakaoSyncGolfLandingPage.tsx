@@ -6,7 +6,10 @@ import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-syn
 import { KakaoSyncGolfInlineCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfInlineCta";
 import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
 import { KakaoSyncSectionViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncSectionViewTracker";
-import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
+import {
+  KAKAO_SYNC_HERO_ACCENT,
+  kakaoSyncGolfConfig,
+} from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
 import { getKakaoSyncDailySocialProofCount } from "@/lib/hardcodedLandings/kakaoSyncGolf/dailySocialProofCount";
 import type { Product } from "@/types/product";
 
@@ -22,7 +25,7 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
     <>
       <KakaoSyncGolfViewTracker />
       <div className="hardcoded-landing-page pb-24">
-        {/* 히어로 — 셸과 동일 px-4 거터 + 라운드 (홈 히어로·섹션 래퍼와 톤 맞춤) */}
+        {/* 히어로 — Hierarchy: 핵심 혜택 → 대표 1명 편의 → 사회적 증거 */}
         <section aria-label="Hero" className="relative w-full px-4 pt-2">
           <div className="relative overflow-hidden rounded-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element -- 외부 히어로 URL */}
@@ -33,19 +36,39 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
               loading="eager"
               decoding="async"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 px-4 pb-2.5 text-white">
-              <p className="text-base font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-                {hero.title}
-              </p>
-              <h1 className="heading-display-hero mt-2 whitespace-pre-line text-3xl font-extrabold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-                {hero.subtitle}
+            {/* 밝은 골프장 배경 대비: 전면 어둡기 + 하단 텍스트 가독성 보강 */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(to bottom, rgba(0,0,0,0.42), rgba(0,0,0,0.58) 45%, rgba(0,0,0,0.78))",
+              }}
+              aria-hidden
+            />
+            <div className="absolute inset-x-0 bottom-0 px-4 pb-3 text-white">
+              {hero.eyebrow ? (
+                <p className="text-[0.6875rem] font-semibold tracking-wide text-white/90 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">
+                  {hero.eyebrow}
+                </p>
+              ) : null}
+              <h1 className="heading-display-hero mt-1.5 text-[1.5rem] font-extrabold leading-[1.25] drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)] sm:text-3xl sm:leading-tight">
+                {hero.titleSegments.map((segment, index) =>
+                  segment.type === "accent" ? (
+                    <span key={index} style={{ color: KAKAO_SYNC_HERO_ACCENT }}>
+                      {segment.value}
+                    </span>
+                  ) : (
+                    <span key={index}>{segment.value}</span>
+                  ),
+                )}
               </h1>
-              {/* 소셜프루프 — 헤드라인과 같은 시야에서 즉시 인지되도록 Hero 오버레이 안에 배치.
-                  실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150), 매일 00시 전환 */}
+              <p className="mt-1.5 text-sm font-semibold leading-snug text-white/95 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] sm:text-base">
+                {hero.subtitle}
+              </p>
+              {/* 소셜프루프 — 실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150) */}
               <p className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
                 <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                오늘 {dailySocialProofCount}명이 5만원 쿠폰팩을 받았어요
+                오늘 {dailySocialProofCount}명이 5만원 할인 쿠폰을 받아갔어요
               </p>
             </div>
           </div>
@@ -91,8 +114,7 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
                 <p className="mt-1 text-[0.6875rem] text-slate-400">{benefit.footnote}</p>
               ) : null}
 
-              {/* 핵심 후킹 포인트 — 인원수별 할인 티어. 이번 캠페인의 주인공이므로 카드/보더/그림자로
-                  분리해 다른 정보보다 눈에 먼저 들어오게 하고, BEST(4인 1팀) 행은 한 단계 더 강조 */}
+              {/* 핵심 후킹 — 1·2·4인 티어. BEST(4인)만 강조해 총무·단체도 설득 */}
               {benefit.tiers?.length ? (
                 <div className="mt-4 rounded-2xl border-2 border-orange-200 bg-gradient-to-b from-orange-50 to-white p-3.5 shadow-[0_2px_14px_rgba(249,115,22,0.1)]">
                   {benefit.tiersTitle ? (
@@ -104,8 +126,6 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
                   <ul className="mt-2.5 space-y-2">
                     {benefit.tiers.map((tier) =>
                       tier.best ? (
-                        // BEST 티어는 라벨(헤드카운트+뱃지)과 금액을 한 줄에 나란히 두면 375px 모바일에서
-                        // 폭이 부족해 잘리므로, 금액을 별도 줄에 크게(text-xl) 배치해 안전하게 표시
                         <li
                           key={tier.headcountLabel}
                           className="rounded-xl bg-orange-500 px-3.5 py-3 shadow-[0_4px_16px_rgba(249,115,22,0.35)]"
@@ -113,7 +133,7 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
                           <span className="flex items-center gap-1.5 text-sm font-bold text-white">
                             {tier.headcountLabel}
                             <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-tight text-orange-600">
-                              BEST
+                              {tier.badgeLabel ?? "BEST"}
                             </span>
                           </span>
                           <p className="mt-1 text-right text-xl font-extrabold tracking-tight text-white">

@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "crypto";
 import { resolveCustomerProfileForMember } from "@/lib/bookings/searchBookingCustomers";
+import { memberHasConfirmedBooking } from "@/lib/bookings/memberHasConfirmedBooking";
 import {
   buildCheckoutQuote,
   validateCheckoutQuote,
@@ -11,10 +12,18 @@ import { findDepartureScheduleForYmd } from "@/lib/products/matchDepartureSchedu
 import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
 import { validateInquiryPointsUse } from "@/lib/inquiry/inquiryPointsUse";
 import { isPortOneEnabled } from "@/lib/payments/portone/config";
+import { recommendCouponPackTier } from "@/lib/coupons/couponPacks";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { fetchMemberPoints } from "@/server/services/rewards/memberPoints";
+import {
+  findAvailableCouponPack,
+  reserveCouponForBooking,
+} from "@/server/services/coupons/reserveCouponForBooking";
+import { releaseCouponReservation } from "@/server/services/coupons/releaseCouponReservation";
 import type { CheckoutSnapshot } from "@/types/checkout";
 import type { ProductOptions, SelectedOptions } from "@/types/product";
+import type { CheckoutBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
+import { isGolfCouponBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
 
 export type CreatePendingDepositBookingInput = {
   memberId: string;
@@ -28,6 +37,8 @@ export type CreatePendingDepositBookingInput = {
   pointsUse?: number;
   travelerCount?: number;
   returnDate?: string | null;
+  /** 미전달 시 package_points (쿠폰 미적용) — prepare에서 반드시 판정 */
+  benefitMode?: CheckoutBenefitMode;
 };
 
 export type CreatePendingDepositBookingResult = {
@@ -64,15 +75,39 @@ export async function createPendingDepositBooking(
   }
 
   const customer = await resolveCustomerProfileForMember(input.memberId);
-  const { balance: pointBalance } = await fetchMemberPoints(supabaseAdmin, input.memberId);
+  const benefitMode: CheckoutBenefitMode = input.benefitMode ?? "package_points";
+  const isGolfCoupon = isGolfCouponBenefitMode(benefitMode);
 
-  const checkoutQuote = buildCheckoutQuote({
+  const [{ balance: pointBalance }, hasPreviousBooking] = await Promise.all([
+    fetchMemberPoints(supabaseAdmin, input.memberId),
+    memberHasConfirmedBooking(input.memberId),
+  ]);
+
+  const pointsUse = isGolfCoupon ? 0 : input.pointsUse;
+  const preferredTier = recommendCouponPackTier(hasPreviousBooking);
+
+  const availablePack = isGolfCoupon
+    ? await findAvailableCouponPack({
+        userId: input.memberId,
+        preferredTier,
+      })
+    : null;
+
+  const applyPaxDiscount = Boolean(isGolfCoupon && availablePack);
+  const couponPackInput = availablePack
+    ? { tier: availablePack.tier, unitAmount: availablePack.unit_amount }
+    : null;
+
+  let checkoutQuote = buildCheckoutQuote({
     options: input.options,
     selectedOptions: input.selectedOptions,
     departure: input.departure,
     productBasePrice: input.productBasePrice,
-    pointsUse: input.pointsUse,
+    pointsUse,
     travelerCount: input.travelerCount,
+    applyPaxDiscount,
+    hasPreviousBooking,
+    couponPack: couponPackInput,
   });
 
   const quoteValidation = validateCheckoutQuote(checkoutQuote);
@@ -80,12 +115,14 @@ export async function createPendingDepositBooking(
     throw new Error(quoteValidation.message);
   }
 
-  const pointsValidation = validateInquiryPointsUse({
-    pointsUseRequested: checkoutQuote.pointsApplied,
-    pointBalance,
-  });
-  if (!pointsValidation.ok) {
-    throw new Error(pointsValidation.message);
+  if (!isGolfCoupon) {
+    const pointsValidation = validateInquiryPointsUse({
+      pointsUseRequested: checkoutQuote.pointsApplied,
+      pointBalance,
+    });
+    if (!pointsValidation.ok) {
+      throw new Error(pointsValidation.message);
+    }
   }
 
   const departureYmd = parseDepartureYmd(input.departure);
@@ -105,7 +142,9 @@ export async function createPendingDepositBooking(
   const bookingNumber = String(bookingNumberData);
   const externalPaymentId = `dep-${randomUUID()}`;
 
-  const checkoutSnapshot: CheckoutSnapshot = {
+  let couponPackId: string | null = availablePack?.id ?? null;
+
+  const buildSnapshot = (): CheckoutSnapshot => ({
     productId: input.productId,
     productTitle: input.productTitle,
     sourcePath: input.sourcePath,
@@ -119,11 +158,19 @@ export async function createPendingDepositBooking(
     quoteBreakdown: checkoutQuote.breakdown,
     quoteTotal: checkoutQuote.quoteTotal,
     pointsUseRequested: checkoutQuote.pointsApplied,
+    paxDiscountAmount: checkoutQuote.paxDiscountAmount,
+    discountTier: checkoutQuote.discountTier,
+    discountLabel: checkoutQuote.discountLabel,
+    benefitMode,
+    isGolfProduct: isGolfCoupon,
+    couponPackId,
     depositAmount: checkoutQuote.depositAmount,
     balanceDue: checkoutQuote.balanceDue,
     travelerCount: checkoutQuote.travelerCount,
     preparedAt: new Date().toISOString(),
-  };
+  });
+
+  let checkoutSnapshot = buildSnapshot();
 
   const { data: bookingRow, error: bookingError } = await supabaseAdmin
     .from("travel_bookings")
@@ -154,6 +201,48 @@ export async function createPendingDepositBooking(
 
   const bookingId = String(bookingRow.id);
 
+  if (availablePack && checkoutQuote.paxDiscountAmount > 0) {
+    const reserved = await reserveCouponForBooking({
+      userId: input.memberId,
+      bookingId,
+      packId: availablePack.id,
+      discountAmount: checkoutQuote.paxDiscountAmount,
+      travelerCount: checkoutQuote.travelerCount,
+    });
+
+    if (!reserved.ok) {
+      // 레이스: 할인 없이 재계산
+      couponPackId = null;
+      checkoutQuote = buildCheckoutQuote({
+        options: input.options,
+        selectedOptions: input.selectedOptions,
+        departure: input.departure,
+        productBasePrice: input.productBasePrice,
+        pointsUse,
+        travelerCount: input.travelerCount,
+        applyPaxDiscount: false,
+        hasPreviousBooking,
+        couponPack: null,
+      });
+      checkoutSnapshot = buildSnapshot();
+      await supabaseAdmin
+        .from("travel_bookings")
+        .update({
+          checkout_snapshot: checkoutSnapshot,
+          payment_total_amount: checkoutQuote.quoteTotal,
+          traveler_count: checkoutQuote.travelerCount,
+        })
+        .eq("id", bookingId);
+    } else {
+      couponPackId = reserved.pack.id;
+      checkoutSnapshot = buildSnapshot();
+      await supabaseAdmin
+        .from("travel_bookings")
+        .update({ checkout_snapshot: checkoutSnapshot })
+        .eq("id", bookingId);
+    }
+  }
+
   const { data: paymentRow, error: paymentError } = await supabaseAdmin
     .from("booking_payments")
     .insert({
@@ -169,6 +258,13 @@ export async function createPendingDepositBooking(
     .single();
 
   if (paymentError || !paymentRow) {
+    if (couponPackId) {
+      await releaseCouponReservation({
+        userId: input.memberId,
+        bookingId,
+        packId: couponPackId,
+      }).catch(() => undefined);
+    }
     await supabaseAdmin.from("travel_bookings").delete().eq("id", bookingId);
     throw new Error(paymentError?.message || "결제 준비에 실패했습니다.");
   }

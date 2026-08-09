@@ -2,14 +2,29 @@ import { cn } from "@/lib/cn";
 
 type MyPageWelcomeStripProps = {
   userName?: string | null;
+  /** @deprecated 대시보드는 benefitHeadline 사용 */
   points?: number | null;
+  benefitHeadline?: string | null;
+  benefitCaption?: string | null;
   className?: string;
 };
 
-export function MyPageWelcomeStrip({ userName, points, className }: MyPageWelcomeStripProps) {
+export function MyPageWelcomeStrip({
+  userName,
+  points,
+  benefitHeadline,
+  benefitCaption = "골프투어 혜택",
+  className,
+}: MyPageWelcomeStripProps) {
   const displayName = userName?.trim() || "회원";
-  const pointsLabel =
-    typeof points === "number" ? `${points.toLocaleString("ko-KR")}P` : null;
+  const headline =
+    benefitHeadline?.trim() ||
+    (typeof points === "number" ? `${points.toLocaleString("ko-KR")}P` : null);
+  const caption = benefitHeadline?.trim()
+    ? benefitCaption?.trim() || "골프투어 혜택"
+    : typeof points === "number"
+      ? "포인트 잔액"
+      : null;
 
   return (
     <div
@@ -27,10 +42,10 @@ export function MyPageWelcomeStrip({ userName, points, className }: MyPageWelcom
           </h2>
           <p className="mt-1 text-sm text-white/75">여행·포인트·리워드를 한곳에서 관리하세요.</p>
         </div>
-        {pointsLabel ? (
+        {headline ? (
           <div className="rounded-xl bg-white/15 px-4 py-3 backdrop-blur-sm">
-            <p className="text-xs font-medium text-white/80">포인트 잔액</p>
-            <p className="font-price-strong mt-0.5 text-2xl text-white">{pointsLabel}</p>
+            <p className="text-xs font-medium text-white/80">{caption}</p>
+            <p className="font-price-strong mt-0.5 text-2xl text-white">{headline}</p>
           </div>
         ) : null}
       </div>

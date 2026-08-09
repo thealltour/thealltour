@@ -36,6 +36,8 @@ export type ProductBookingSelectionPanelProps = {
   onOptionSingleChange: (groupKey: string, itemValue: string) => void;
   onOptionMultiToggle: (groupKey: string, itemValue: string) => void;
   onConsultClick?: () => void;
+  /** 로그인 회원 인원 할인 미리보기 (선택) */
+  paxDiscountPreview?: { label: string; amount: number } | null;
 };
 
 type DepartureOption = {
@@ -102,6 +104,7 @@ export function ProductBookingSelectionPanel({
   onOptionSingleChange,
   onOptionMultiToggle,
   onConsultClick,
+  paxDiscountPreview = null,
 }: ProductBookingSelectionPanelProps) {
   const departureOptions = useMemo(
     () => buildDepartureOptions(schedules, departures),
@@ -181,6 +184,19 @@ export function ProductBookingSelectionPanel({
             </button>
           </div>
         </div>
+        {paxDiscountPreview && paxDiscountPreview.amount > 0 ? (
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2 text-sm font-bold text-emerald-800">
+              <span>🎁 {paxDiscountPreview.label}</span>
+              <span className="shrink-0 text-emerald-600">
+                -{paxDiscountPreview.amount.toLocaleString("ko-KR")}원
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-emerald-600">
+              동반자 가입 불필요 · 대표 1명 예약 시 전체 인원 자동 할인 적용
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

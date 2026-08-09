@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isLegacyCouponPointRefType } from "@/lib/coupons/couponPacks";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getPointExpiresAt } from "@/config/rewardPolicy";
 
@@ -16,6 +17,8 @@ type GrantPointsParams = {
   expiresAt?: string | null;
   notificationTitle?: string;
   notificationBody?: string;
+  /** @deprecated 쿠폰은 grantCouponPack 사용. 잔액 미반영 옵션은 일반 포인트에만 */
+  affectBalance?: boolean;
 };
 
 export async function grantPointsToUser(params: GrantPointsParams) {
@@ -23,6 +26,13 @@ export async function grantPointsToUser(params: GrantPointsParams) {
   const amount = Number(params.amount);
   if (!userId) throw new Error("userId는 필수입니다.");
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount는 1 이상의 숫자여야 합니다.");
+
+  const refType = params.refType?.trim() || undefined;
+  if (isLegacyCouponPointRefType(refType)) {
+    throw new Error("쿠폰팩은 포인트 지급 API가 아닌 쿠폰 지급 API를 사용하세요.");
+  }
+
+  const affectBalance = params.affectBalance !== false;
 
   const { data: memberRow, error: memberErr } = await supabaseAdmin
     .from("members")
@@ -47,7 +57,7 @@ export async function grantPointsToUser(params: GrantPointsParams) {
       status,
       amount,
       reason: params.reason?.trim() || "관리자 지급",
-      ref_type: params.refType?.trim() || null,
+      ref_type: refType || null,
       ref_id: params.refId?.trim() || null,
       expires_at: params.expiresAt ?? getPointExpiresAt(),
       created_at: now,
@@ -59,18 +69,20 @@ export async function grantPointsToUser(params: GrantPointsParams) {
     throw new Error("포인트 원장 기록에 실패했습니다.");
   }
 
-  if (status === "CONFIRMED") {
-    const { error: updateErr } = await supabaseAdmin
-      .from("members")
-      .update({ point_balance: currentBalance + amount })
-      .eq("id", userId);
-    if (updateErr) throw new Error("포인트 반영에 실패했습니다.");
-  } else {
-    const { error: updateErr } = await supabaseAdmin
-      .from("members")
-      .update({ point_pending: currentPending + amount })
-      .eq("id", userId);
-    if (updateErr) throw new Error("대기 포인트 반영에 실패했습니다.");
+  if (affectBalance) {
+    if (status === "CONFIRMED") {
+      const { error: updateErr } = await supabaseAdmin
+        .from("members")
+        .update({ point_balance: currentBalance + amount })
+        .eq("id", userId);
+      if (updateErr) throw new Error("포인트 반영에 실패했습니다.");
+    } else {
+      const { error: updateErr } = await supabaseAdmin
+        .from("members")
+        .update({ point_pending: currentPending + amount })
+        .eq("id", userId);
+      if (updateErr) throw new Error("대기 포인트 반영에 실패했습니다.");
+    }
   }
 
   await supabaseAdmin.from("notifications").insert({
@@ -88,5 +100,6 @@ export async function grantPointsToUser(params: GrantPointsParams) {
     ledgerId: (ledgerRow as { id: string }).id,
     appliedStatus: status,
     actorAdminId: params.actorAdminId ?? null,
+    balanceAffected: affectBalance,
   };
 }

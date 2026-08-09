@@ -15,6 +15,12 @@ export type CheckoutSnapshot = {
   quoteBreakdown: QuoteBreakdownItem[];
   quoteTotal: number;
   pointsUseRequested: number;
+  paxDiscountAmount?: number;
+  discountTier?: string | null;
+  discountLabel?: string | null;
+  benefitMode?: "golf_coupon" | "package_points";
+  isGolfProduct?: boolean;
+  couponPackId?: string | null;
   depositAmount: number;
   balanceDue: number;
   travelerCount: number;

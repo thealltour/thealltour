@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { buildAdminBookingNewUrl } from "@/lib/bookings/bookingNewUrl";
 import { MemberInquiryLinkPanel } from "@/components/admin/members/MemberInquiryLinkPanel";
+import {
+  COUPON_PACKS,
+  type CouponPackTier,
+} from "@/lib/points/couponPacks";
 
 type Props = {
   memberId: string;
@@ -161,6 +165,33 @@ export default function AdminMemberDetailPage({
   const [isLoadingReviews, setIsLoadingReviews] = useState(true);
   const [reviewError, setReviewError] = useState("");
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [couponRecommendedTier, setCouponRecommendedTier] = useState<CouponPackTier>("WELCOME");
+  const [hasWelcomePack, setHasWelcomePack] = useState(false);
+  const [hasReturningPack, setHasReturningPack] = useState(false);
+  const [isLoadingCouponPack, setIsLoadingCouponPack] = useState(true);
+
+  async function loadCouponPackStatus() {
+    setIsLoadingCouponPack(true);
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/coupon-pack`, { cache: "no-store" });
+      const data = (await res.json()) as {
+        recommendedTier?: CouponPackTier;
+        hasWelcomePack?: boolean;
+        hasReturningPack?: boolean;
+        message?: string;
+      };
+      if (!res.ok) return;
+      if (data.recommendedTier === "WELCOME" || data.recommendedTier === "RETURNING") {
+        setCouponRecommendedTier(data.recommendedTier);
+      }
+      setHasWelcomePack(Boolean(data.hasWelcomePack));
+      setHasReturningPack(Boolean(data.hasReturningPack));
+    } catch {
+      // 쿠폰팩 메타는 보조 정보 — 실패해도 수동 지급은 가능
+    } finally {
+      setIsLoadingCouponPack(false);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -221,6 +252,7 @@ export default function AdminMemberDetailPage({
     }
 
     load();
+    void loadCouponPackStatus();
     return () => {
       mounted = false;
     };
@@ -397,6 +429,81 @@ export default function AdminMemberDetailPage({
       setGrantRefType("");
       setGrantRefId("");
       setGrantExpiresAt("");
+      await loadCouponPackStatus();
+    } finally {
+      setGrantSubmitting(false);
+    }
+  }
+
+  async function handleGrantCouponPack(tier: CouponPackTier) {
+    if (grantSubmitting || !member) return;
+
+    const pack = COUPON_PACKS[tier];
+    if (tier !== couponRecommendedTier) {
+      const ok = window.confirm(
+        `권장 티어는 ${COUPON_PACKS[couponRecommendedTier].label}입니다.\n그래도 "${pack.buttonLabel}"을(를) 지급할까요?`,
+      );
+      if (!ok) return;
+    }
+
+    const alreadyGranted = tier === "WELCOME" ? hasWelcomePack : hasReturningPack;
+    if (alreadyGranted) {
+      const ok = window.confirm(
+        `이 회원에게 "${pack.buttonLabel}"이(가) 이미 지급된 이력이 있습니다.\n그래도 다시 지급할까요?`,
+      );
+      if (!ok) return;
+    }
+
+    setGrantAmount(String(pack.amount));
+    setGrantReason(pack.reason);
+    setGrantRefType(pack.refType);
+    setGrantRefId(member.id);
+    setGrantStatus("CONFIRMED");
+    setGrantExpiresAt("");
+    setGrantSubmitting(true);
+    setGrantMessage(null);
+
+    try {
+      const response = await fetch("/api/admin/coupons/grant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: member.id,
+          tier,
+          reason: pack.reason,
+        }),
+      });
+
+      const result = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        packId?: string;
+        ledgerId?: string;
+      };
+
+      if (!response.ok) {
+        setGrantMessage({ type: "err", text: result.message || "쿠폰팩 지급에 실패했습니다." });
+        return;
+      }
+
+      setGrantMessage({
+        type: "ok",
+        text: result.message || `${pack.buttonLabel}이 지급되었습니다.`,
+      });
+
+      setGrantAmount("");
+      setGrantReason("관리자 지급");
+      setGrantRefType("");
+      setGrantRefId("");
+      setGrantExpiresAt("");
+      await loadCouponPackStatus();
+      // 원장 새로고침
+      const ledgerResponse = await fetch(`/api/admin/members/${memberId}/point-ledger?limit=20`, {
+        cache: "no-store",
+      });
+      if (ledgerResponse.ok) {
+        const ledgerResult = (await ledgerResponse.json()) as PointLedgerRow[];
+        if (Array.isArray(ledgerResult)) setLedger(ledgerResult);
+      }
     } finally {
       setGrantSubmitting(false);
     }
@@ -489,6 +596,44 @@ export default function AdminMemberDetailPage({
       <p className="mt-1 text-sm text-[var(--text-muted)]">
         이 회원에게 포인트를 수동 지급합니다.
       </p>
+
+      <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-[var(--text-muted)]">쿠폰팩 권장 티어</span>
+          {isLoadingCouponPack ? (
+            <span className="text-xs text-[var(--text-muted)]">확인 중…</span>
+          ) : (
+            <Badge variant={couponRecommendedTier === "WELCOME" ? "success" : "blue"}>
+              {COUPON_PACKS[couponRecommendedTier].label}
+            </Badge>
+          )}
+          {hasWelcomePack ? (
+            <span className="text-[11px] text-[var(--text-muted)]">웰컴 지급됨</span>
+          ) : null}
+          {hasReturningPack ? (
+            <span className="text-[11px] text-[var(--text-muted)]">리턴 지급됨</span>
+          ) : null}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(["WELCOME", "RETURNING"] as const).map((tier) => {
+            const pack = COUPON_PACKS[tier];
+            const recommended = tier === couponRecommendedTier;
+            return (
+              <Button
+                key={tier}
+                type="button"
+                variant={recommended ? "primary" : "outline"}
+                size="sm"
+                disabled={grantSubmitting || isLoadingCouponPack}
+                onClick={() => void handleGrantCouponPack(tier)}
+              >
+                {pack.buttonLabel}
+                {recommended ? " · 권장" : ""}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
@@ -851,6 +996,30 @@ export default function AdminMemberDetailPage({
             <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--primary)]">
               {pointBalance.toLocaleString("ko-KR")}P
             </p>
+            <div className="mt-3 border-t border-[var(--border)] pt-3">
+              <p className="text-xs font-medium text-[var(--text-muted)]">보유 중인 쿠폰팩</p>
+              {isLoadingCouponPack ? (
+                <p className="mt-1.5 text-xs text-[var(--text-muted)]">확인 중…</p>
+              ) : !hasWelcomePack && !hasReturningPack ? (
+                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">없음</p>
+              ) : (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {hasWelcomePack ? (
+                    <Badge variant="success" className="px-2 py-0.5 text-[11px]">
+                      웰컴 {COUPON_PACKS.WELCOME.amount.toLocaleString("ko-KR")}원
+                    </Badge>
+                  ) : null}
+                  {hasReturningPack ? (
+                    <Badge variant="blue" className="px-2 py-0.5 text-[11px]">
+                      리턴 {COUPON_PACKS.RETURNING.amount.toLocaleString("ko-KR")}원
+                    </Badge>
+                  ) : null}
+                </div>
+              )}
+              <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
+                쿠폰팩은 포인트 잔액과 별도로 관리됩니다.
+              </p>
+            </div>
           </div>
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
             <p className="text-xs text-[var(--text-muted)]">대기 포인트</p>

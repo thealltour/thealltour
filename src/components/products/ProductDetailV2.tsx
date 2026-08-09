@@ -12,6 +12,8 @@ import { ProductCheckoutSection } from "@/components/products/ProductCheckoutSec
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { useProductQuote, type SelectedDeparture } from "@/components/products/ProductQuoteContext";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
+import { calculatePaxDiscount } from "@/lib/payments/calculatePaxDiscount";
+import { resolveCheckoutBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
 import { calcQuote, formatPriceKR } from "@/lib/pricing/calcQuote";
 import {
   hasAnyOptionSelection,
@@ -306,6 +308,39 @@ export default function ProductDetailV2({
     travelerCount,
     setTravelerCount,
   } = useProductQuote();
+
+  const [memberLoggedIn, setMemberLoggedIn] = useState(false);
+  const [hasPreviousBooking, setHasPreviousBooking] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch("/api/me/points", { cache: "no-store" });
+      if (res.status === 401) {
+        setMemberLoggedIn(false);
+        setHasPreviousBooking(false);
+        return;
+      }
+      if (!res.ok) return;
+      setMemberLoggedIn(true);
+      const data = (await res.json()) as { hasPreviousBooking?: boolean };
+      setHasPreviousBooking(Boolean(data.hasPreviousBooking));
+    })();
+  }, []);
+
+  const benefitMode = useMemo(
+    () =>
+      product
+        ? resolveCheckoutBenefitMode(product)
+        : resolveCheckoutBenefitMode({ category: category ?? null, product_line_id: null }),
+    [product, category],
+  );
+  const isGolfCoupon = benefitMode === "golf_coupon";
+
+  const paxDiscountPreview = useMemo(() => {
+    if (!isGolfCoupon || !memberLoggedIn) return null;
+    const pax = calculatePaxDiscount({ travelerCount, hasPreviousBooking });
+    return { label: pax.label, amount: pax.totalDiscount };
+  }, [isGolfCoupon, memberLoggedIn, travelerCount, hasPreviousBooking]);
 
   const bookingUxMode = useMemo(
     () => (product ? resolveProductBookingUxMode(product) : "calendar_booking"),
@@ -775,6 +810,7 @@ export default function ProductDetailV2({
               selectedOptions={selectedOptions}
               travelerCount={travelerCount}
               onTravelerCountChange={setTravelerCount}
+              paxDiscountPreview={paxDiscountPreview}
               onDepartureChange={handleDepartureChange}
               onOptionSingleChange={handleOptionSingleChange}
               onOptionMultiToggle={handleOptionMultiToggle}
@@ -795,6 +831,8 @@ export default function ProductDetailV2({
                 selectedDepartureKey={selectedDepartureKey}
                 departureRequired={departureRequiredForBooking}
                 requiredGroupsMissing={requiredGroupsMissing}
+                travelerCount={travelerCount}
+                benefitMode={benefitMode}
               />
             ) : null}
           </div>

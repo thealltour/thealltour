@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireMemberSession } from "@/lib/apiAuth";
 import { createPendingDepositBooking } from "@/lib/bookings/createPendingDepositBooking";
+import { resolveCheckoutBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
 import { isPortOneEnabled } from "@/lib/payments/portone/config";
 import { normalizeDepartureSchedulesFromUnknown } from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
@@ -44,13 +45,40 @@ export async function POST(request: Request) {
 
   const { data: product } = await supabaseAdmin
     .from("products")
-    .select("id, title, price, options, departure_schedules_json")
+    .select("id, title, price, options, departure_schedules_json, product_line_id, category")
     .eq("id", body.product_id)
     .maybeSingle();
 
   if (!product) {
     return NextResponse.json({ message: "상품을 찾을 수 없습니다." }, { status: 404 });
   }
+
+  const productLineId =
+    typeof (product as { product_line_id?: string | null }).product_line_id === "string"
+      ? String((product as { product_line_id: string }).product_line_id).trim()
+      : "";
+
+  let taxonomyNameMap: Record<string, string> = {};
+  if (productLineId) {
+    const { data: line } = await supabaseAdmin
+      .from("product_taxonomies")
+      .select("id, name")
+      .eq("id", productLineId)
+      .maybeSingle();
+    if (line?.id && line?.name) {
+      taxonomyNameMap = { [String(line.id)]: String(line.name) };
+    }
+  }
+
+  const benefitMode = resolveCheckoutBenefitMode(
+    {
+      id: String(product.id),
+      title: String(product.title ?? ""),
+      category: (product as { category?: string | null }).category ?? null,
+      product_line_id: productLineId || null,
+    },
+    taxonomyNameMap,
+  );
 
   try {
     const schedules = normalizeDepartureSchedulesFromUnknown(product.departure_schedules_json);
@@ -78,6 +106,7 @@ export async function POST(request: Request) {
       pointsUse: body.points_use,
       travelerCount: body.traveler_count,
       returnDate,
+      benefitMode,
     });
 
     return NextResponse.json({

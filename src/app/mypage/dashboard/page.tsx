@@ -3,15 +3,22 @@ import WelcomeKakaoPointsToast from "@/components/mypage/WelcomeKakaoPointsToast
 import { MYPAGE_QUICK_ACTIONS } from "@/components/mypage/ui/MyPageNavIcon";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
+import { MyPageGolfBenefitCard } from "@/components/mypage/ui/MyPageGolfBenefitCard";
+import { MyPageHeldCouponCard } from "@/components/mypage/ui/MyPageHeldCouponCard";
 import { MyPageList, MyPageListItem } from "@/components/mypage/ui/MyPageListItem";
 import { MyPageQuickActionGrid } from "@/components/mypage/ui/MyPageQuickActionGrid";
 import { MyPageSectionHeader } from "@/components/mypage/ui/MyPageSectionHeader";
-import { MyPageStatCard, MyPageStatGrid } from "@/components/mypage/ui/MyPageStatGrid";
+import { MyPageStatGrid } from "@/components/mypage/ui/MyPageStatGrid";
 import { MyPageStatusBadge } from "@/components/mypage/ui/MyPageStatusBadge";
 import { MyPageWelcomeStrip } from "@/components/mypage/ui/MyPageWelcomeStrip";
+import { memberHasConfirmedBooking } from "@/lib/bookings/memberHasConfirmedBooking";
+import { getMemberGolfDiscountCopy } from "@/lib/mypage/memberGolfDiscountCopy";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
-import { getMemberPointsData, getMemberRedemptionList } from "@/lib/member/meServerData";
+import {
+  getMemberCouponPackSummary,
+  getMemberRedemptionList,
+} from "@/lib/member/meServerData";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getMyPageMemberSummary } from "@/lib/mypage/memberSummary";
 import { getMyPageReviewSections } from "@/lib/mypageReviews";
@@ -30,14 +37,17 @@ export default async function MyPageDashboardPage() {
     return null;
   }
 
-  const [memberSummary, pointsData, redemptions, reviewSections] = await Promise.all([
-    getMyPageMemberSummary(),
-    getMemberPointsData(session.memberId),
-    getMemberRedemptionList(session.memberId),
-    getMyPageReviewSections(session.memberId),
-  ]);
+  const [memberSummary, redemptions, reviewSections, hasPreviousBooking, couponPacks] =
+    await Promise.all([
+      getMyPageMemberSummary(),
+      getMemberRedemptionList(session.memberId),
+      getMyPageReviewSections(session.memberId),
+      memberHasConfirmedBooking(session.memberId),
+      getMemberCouponPackSummary(session.memberId),
+    ]);
   const recentRedemptions = redemptions.slice(0, 3);
   const recentReviews = reviewSections.submitted.slice(0, 3);
+  const golfBenefitCopy = getMemberGolfDiscountCopy(hasPreviousBooking);
 
   return (
     <MyPageLayout
@@ -51,24 +61,15 @@ export default async function MyPageDashboardPage() {
       <div className="space-y-6">
         <MyPageWelcomeStrip
           userName={memberSummary?.name}
-          points={pointsData?.balance ?? memberSummary?.points}
+          benefitHeadline={golfBenefitCopy.headline}
+          benefitCaption={golfBenefitCopy.badgeLabel}
         />
 
         <MyPageQuickActionGrid items={MYPAGE_QUICK_ACTIONS} />
 
         <MyPageStatGrid>
-          <MyPageStatCard
-            label="포인트 잔액"
-            value={`${Number(pointsData?.balance ?? 0).toLocaleString()}P`}
-            iconKey="points"
-            elevated
-          />
-          <MyPageStatCard
-            label="적립 예정 포인트"
-            value={`${Number(pointsData?.pending ?? 0).toLocaleString()}P`}
-            iconKey="points-request"
-            elevated
-          />
+          <MyPageGolfBenefitCard copy={golfBenefitCopy} />
+          <MyPageHeldCouponCard names={couponPacks.heldNames} />
         </MyPageStatGrid>
 
         <MyPageCard>

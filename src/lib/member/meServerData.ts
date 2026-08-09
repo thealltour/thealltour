@@ -6,6 +6,9 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { PointLedgerRow } from "@/types/pointsRewardsV2";
+import {
+  listHeldCouponPackNames,
+} from "@/lib/points/couponPacks";
 
 const LEDGER_PAGE_SIZE = 50;
 const EXPIRING_DAYS = 30;
@@ -87,6 +90,45 @@ export async function getMemberPointsData(memberId: string): Promise<MemberPoint
   );
 
   return { balance, pending, expiringSoon, ledger };
+}
+
+export type MemberCouponPackSummary = {
+  hasWelcomePack: boolean;
+  hasReturningPack: boolean;
+  heldNames: string[];
+  availableCount: number;
+};
+
+export async function getMemberCouponPackSummary(
+  memberId: string,
+): Promise<MemberCouponPackSummary> {
+  if (!memberId) {
+    return { hasWelcomePack: false, hasReturningPack: false, heldNames: [], availableCount: 0 };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("member_coupon_packs")
+    .select("tier, status")
+    .eq("user_id", memberId)
+    .in("status", ["AVAILABLE", "RESERVED"])
+    .limit(50);
+
+  if (error) {
+    console.error("[getMemberCouponPackSummary]", error.message);
+    return { hasWelcomePack: false, hasReturningPack: false, heldNames: [], availableCount: 0 };
+  }
+
+  const rows = data ?? [];
+  const hasWelcomePack = rows.some((r) => r.tier === "WELCOME");
+  const hasReturningPack = rows.some((r) => r.tier === "RETURNING");
+  const availableCount = rows.filter((r) => r.status === "AVAILABLE").length;
+
+  return {
+    hasWelcomePack,
+    hasReturningPack,
+    heldNames: listHeldCouponPackNames({ hasWelcomePack, hasReturningPack }),
+    availableCount,
+  };
 }
 
 export async function getMemberRedemptionList(memberId: string): Promise<MemberRedemptionItem[]> {

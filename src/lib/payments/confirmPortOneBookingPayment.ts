@@ -104,6 +104,17 @@ export async function confirmPortOneBookingPayment(
         refType: "BOOKING_DEPOSIT",
       });
     }
+
+    if (memberId && snapshot?.couponPackId && (snapshot.paxDiscountAmount ?? 0) > 0) {
+      const { redeemCouponForBooking } = await import(
+        "@/server/services/coupons/redeemCouponForBooking"
+      );
+      await redeemCouponForBooking({
+        userId: memberId,
+        bookingId,
+        packId: snapshot.couponPackId,
+      });
+    }
   } else {
     const prevPaid = Number(booking.payment_paid_amount ?? 0);
     const totalPaid = prevPaid + expectedAmount;

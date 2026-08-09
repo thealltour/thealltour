@@ -36,9 +36,10 @@ export default function GolfTourProductsSection({
 
   return (
     <SectionBlock
+      id="home-golf-tours"
       surface="none"
       padding="md"
-      className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
+      className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, "scroll-mt-24", className)}
     >
       <SectionHeader
         eyebrow={eyebrow?.trim() || undefined}

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { memberHasConfirmedBooking } from "@/lib/bookings/memberHasConfirmedBooking";
+import { DISCOUNT_RATES } from "@/lib/payments/calculatePaxDiscount";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireMemberSession } from "@/lib/apiAuth";
 import type { PointLedgerRow } from "@/types/pointsRewardsV2";
@@ -11,7 +13,7 @@ export async function GET() {
   if (auth.res) return auth.res;
   const userId = auth.session.memberId;
 
-  const [memberRes, ledgerRes, expiringRes] = await Promise.all([
+  const [memberRes, ledgerRes, expiringRes, hasPreviousBooking] = await Promise.all([
     supabaseAdmin.from("members").select("point_balance, point_pending").eq("id", userId).maybeSingle(),
     supabaseAdmin
       .from("point_ledger")
@@ -28,6 +30,7 @@ export async function GET() {
       .not("expires_at", "is", null)
       .gte("expires_at", new Date().toISOString())
       .lte("expires_at", new Date(Date.now() + EXPIRING_DAYS * 24 * 60 * 60 * 1000).toISOString()),
+    memberHasConfirmedBooking(userId),
   ]);
 
   if (memberRes.error || !memberRes.data) {
@@ -38,11 +41,16 @@ export async function GET() {
   const pending = Number((memberRes.data as { point_pending?: number }).point_pending ?? 0);
   const ledger = (ledgerRes.data ?? []) as PointLedgerRow[];
   const expiringSoon = (expiringRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount), 0);
+  const discountTier = hasPreviousBooking ? "RETURNING" : "WELCOME";
+  const unitDiscount = DISCOUNT_RATES[discountTier];
 
   return NextResponse.json({
     balance,
     pending,
     expiringSoon,
     ledger,
+    hasPreviousBooking,
+    discountTier,
+    unitDiscount,
   });
 }

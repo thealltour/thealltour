@@ -12,7 +12,7 @@ type Body = {
   status?: "CONFIRMED" | "PENDING";
 };
 
-/** 관리자: 포인트 수동 지급 — ledger EARN, balance 또는 pending 반영, 알림 */
+/** 관리자: 포인트 수동 지급 — coupon ref 거부, point_ledger + balance만 */
 export async function POST(request: Request) {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.res;
@@ -28,6 +28,7 @@ export async function POST(request: Request) {
   const amount = Number(body.amount);
   const reason = body.reason?.trim() || "관리자 지급";
   const status = body.status === "PENDING" ? "PENDING" : "CONFIRMED";
+  const refType = body.refType?.trim() || undefined;
 
   if (!userId) {
     return NextResponse.json({ message: "userId는 필수입니다." }, { status: 400 });
@@ -42,18 +43,23 @@ export async function POST(request: Request) {
       amount,
       status,
       reason,
-      refType: body.refType?.trim() || undefined,
+      refType,
       refId: body.refId?.trim() || undefined,
       expiresAt: body.expiresAt?.trim() || null,
       actorAdminId: "ADMIN",
     });
 
     return NextResponse.json({
-      message: status === "CONFIRMED" ? `${amount}P 지급되었습니다.` : `${amount}P가 대기 상태로 기록되었습니다.`,
+      message:
+        status === "CONFIRMED"
+          ? `${amount}P 지급되었습니다.`
+          : `${amount}P가 대기 상태로 기록되었습니다.`,
       ledgerId: result.ledgerId,
+      balanceAffected: result.balanceAffected,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "포인트 지급에 실패했습니다.";
-    return NextResponse.json({ message }, { status: 500 });
+    const statusCode = message.includes("쿠폰팩") ? 400 : 500;
+    return NextResponse.json({ message }, { status: statusCode });
   }
 }

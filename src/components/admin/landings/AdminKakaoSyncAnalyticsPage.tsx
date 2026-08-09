@@ -44,8 +44,17 @@ function emptyData(): KakaoSyncAnalyticsResponse {
     },
     trend: [],
     campaigns: [],
+    oauthFailureBreakdown: [],
+    oauthFailureRecent: [],
     moment: null,
   };
+}
+
+function formatFailureOccurredAt(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 }
 
 export default function AdminKakaoSyncAnalyticsPage() {
@@ -81,6 +90,10 @@ export default function AdminKakaoSyncAnalyticsPage() {
         summary: json.summary ?? emptyData().summary,
         trend: Array.isArray(json.trend) ? json.trend : [],
         campaigns: Array.isArray(json.campaigns) ? json.campaigns : [],
+        oauthFailureBreakdown: Array.isArray(json.oauthFailureBreakdown)
+          ? json.oauthFailureBreakdown
+          : [],
+        oauthFailureRecent: Array.isArray(json.oauthFailureRecent) ? json.oauthFailureRecent : [],
         moment: json.moment ?? null,
       });
     } catch (e) {
@@ -259,6 +272,93 @@ export default function AdminKakaoSyncAnalyticsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div>
+            <h2 className="mb-1 text-sm font-semibold text-[var(--text-primary)]">OAuth 실패 원인</h2>
+            <p className="mb-3 text-xs text-[var(--text-muted)]">
+              reason · oauthError 기준 집계입니다. 동의 취소(access_denied)와 KOE 코드 등을 구분합니다.
+            </p>
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">reason</th>
+                    <th className="px-4 py-3 font-semibold">oauthError</th>
+                    <th className="px-4 py-3 text-right font-semibold">건수</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.oauthFailureBreakdown ?? []).length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-8 text-center text-[var(--text-muted)]">
+                        선택한 기간에 OAuth 실패가 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    (data?.oauthFailureBreakdown ?? []).map((row) => (
+                      <tr key={row.key} className="border-t border-[var(--border)]">
+                        <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{row.reason}</td>
+                        <td className="px-4 py-3 text-[var(--text-secondary)]">{row.oauthError ?? "—"}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          {row.count.toLocaleString("ko-KR")}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="mb-1 text-sm font-semibold text-[var(--text-primary)]">최근 OAuth 실패</h2>
+            <p className="mb-3 text-xs text-[var(--text-muted)]">최신순 최대 30건 샘플입니다.</p>
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">시각</th>
+                    <th className="px-4 py-3 font-semibold">reason</th>
+                    <th className="px-4 py-3 font-semibold">oauthError</th>
+                    <th className="px-4 py-3 font-semibold">설명 / 메시지</th>
+                    <th className="px-4 py-3 font-semibold">랜딩</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.oauthFailureRecent ?? []).length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">
+                        선택한 기간에 OAuth 실패가 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    (data?.oauthFailureRecent ?? []).map((row, i) => {
+                      const detail =
+                        row.oauthErrorDescription || row.message || null;
+                      return (
+                        <tr
+                          key={`${row.occurredAt}-${row.reason}-${i}`}
+                          className="border-t border-[var(--border)]"
+                        >
+                          <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
+                            {formatFailureOccurredAt(row.occurredAt)}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{row.reason}</td>
+                          <td className="px-4 py-3 text-[var(--text-secondary)]">{row.oauthError ?? "—"}</td>
+                          <td className="max-w-[280px] truncate px-4 py-3 text-[var(--text-secondary)]" title={detail ?? undefined}>
+                            {detail ?? "—"}
+                          </td>
+                          <td className="px-4 py-3 text-[var(--text-secondary)]">
+                            {row.landingSlug ?? row.sourcePath ?? "—"}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}

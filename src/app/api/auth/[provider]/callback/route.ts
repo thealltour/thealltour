@@ -10,14 +10,46 @@ import { appendMemberSessionCookie } from "@/lib/auth/setMemberSessionCookie";
 import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { isKakaoSyncFunnelAcquisition } from "@/lib/analytics/kakaoSyncLandingHit";
+import {
+  buildKakaoOAuthFailureMetadata,
+  kakaoOAuthFailureAttribution,
+  type KakaoOAuthFailureReason,
+} from "@/lib/analytics/kakaoOAuthFailureMetadata";
+import type { MemberAcquisition } from "@/lib/auth/memberAcquisition";
 
 type RouteContext = { params: Promise<{ provider: string }> };
+
+async function persistKakaoOAuthFailure(input: {
+  reason: KakaoOAuthFailureReason;
+  acquisition?: MemberAcquisition | null;
+  oauthError?: string | null;
+  oauthErrorDescription?: string | null;
+  message?: string | null;
+}) {
+  const acquisition = input.acquisition ?? null;
+  const { sourcePath, landingSlug } = kakaoOAuthFailureAttribution(acquisition);
+  await persistAnalyticsEventAdmin({
+    eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
+    source: ANALYTICS_SOURCES.kakao_sync_auth,
+    pagePath: "/api/auth/kakao/callback",
+    sourcePath,
+    landingSlug,
+    metadata: buildKakaoOAuthFailureMetadata({
+      reason: input.reason,
+      oauthError: input.oauthError,
+      oauthErrorDescription: input.oauthErrorDescription,
+      message: input.message,
+      acquisition,
+    }),
+  });
+}
 
 export async function GET(request: Request, context: RouteContext) {
   const { provider: providerId } = await context.params;
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const oauthError = url.searchParams.get("error");
+  const oauthErrorDescription = url.searchParams.get("error_description");
   const stateParam = url.searchParams.get("state");
 
   if (!isAuthProviderId(providerId)) {
@@ -31,20 +63,11 @@ export async function GET(request: Request, context: RouteContext) {
 
   if (oauthError || !code) {
     if (providerId === "kakao") {
-      const acquisition = earlyState?.acquisition ?? null;
-      const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
-      await persistAnalyticsEventAdmin({
-        eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
-        source: ANALYTICS_SOURCES.kakao_sync_auth,
-        pagePath: "/api/auth/kakao/callback",
-        sourcePath: acquisition?.landing_path ?? null,
-        landingSlug: acquisition?.landing_slug ?? null,
-        metadata: {
-          reason: oauthError ? "oauth_error" : "missing_code",
-          oauthError,
-          ...(fromKakaoLanding ? { funnel: "kakao_sync" as const } : {}),
-          acquisition,
-        },
+      await persistKakaoOAuthFailure({
+        reason: oauthError ? "oauth_error" : "missing_code",
+        acquisition: earlyState?.acquisition ?? null,
+        oauthError,
+        oauthErrorDescription,
       });
     }
     const response = NextResponse.redirect(new URL(loginErrorRedirect("oauth_cancelled"), request.url));
@@ -55,11 +78,10 @@ export async function GET(request: Request, context: RouteContext) {
   const state = earlyState;
   if (!state || state.provider !== providerId) {
     if (providerId === "kakao") {
-      await persistAnalyticsEventAdmin({
-        eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
-        source: ANALYTICS_SOURCES.kakao_sync_auth,
-        pagePath: "/api/auth/kakao/callback",
-        metadata: { reason: "oauth_invalid_state" },
+      await persistKakaoOAuthFailure({
+        reason: "oauth_invalid_state",
+        acquisition: earlyState?.acquisition ?? null,
+        oauthErrorDescription,
       });
     }
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_invalid_state"), request.url));
@@ -67,6 +89,13 @@ export async function GET(request: Request, context: RouteContext) {
 
   const adapter = getOAuthProvider(providerId);
   if (!adapter?.isConfigured()) {
+    if (providerId === "kakao") {
+      await persistKakaoOAuthFailure({
+        reason: "oauth_unavailable",
+        acquisition: state.acquisition ?? null,
+        message: "kakao_adapter_not_configured",
+      });
+    }
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_unavailable"), request.url));
   }
 
@@ -161,20 +190,10 @@ export async function GET(request: Request, context: RouteContext) {
   } catch (err) {
     console.error(`[auth/${providerId}/callback]`, err);
     if (providerId === "kakao") {
-      const acquisition = state.acquisition ?? null;
-      const fromKakaoLanding = isKakaoSyncFunnelAcquisition(acquisition);
-      await persistAnalyticsEventAdmin({
-        eventName: ANALYTICS_EVENTS.kakao_oauth_failed,
-        source: ANALYTICS_SOURCES.kakao_sync_auth,
-        pagePath: "/api/auth/kakao/callback",
-        sourcePath: acquisition?.landing_path ?? null,
-        landingSlug: acquisition?.landing_slug ?? null,
-        metadata: {
-          reason: "oauth_failed",
-          message: err instanceof Error ? err.message : "unknown",
-          ...(fromKakaoLanding ? { funnel: "kakao_sync" as const } : {}),
-          acquisition,
-        },
+      await persistKakaoOAuthFailure({
+        reason: "oauth_failed",
+        acquisition: state.acquisition ?? null,
+        message: err instanceof Error ? err.message : "unknown",
       });
     }
     return NextResponse.redirect(new URL(loginErrorRedirect("oauth_failed", state.next), request.url));

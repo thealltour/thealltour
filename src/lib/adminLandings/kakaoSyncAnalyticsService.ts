@@ -6,6 +6,7 @@ import {
   isKakaoSyncAnalyticsEvent,
   resolveKakaoSyncCampaign,
 } from "@/lib/adminLandings/kakaoSyncAnalyticsFilters";
+import { aggregateKakaoOAuthFailures } from "@/lib/adminLandings/kakaoOAuthFailureStats";
 import { KAKAO_SYNC_GOLF_LANDING_SLUG } from "@/lib/hardcodedLandings/kakaoSyncGolf/urls";
 import type {
   KakaoSyncAnalyticsCampaignRow,
@@ -89,6 +90,8 @@ const KAKAO_SYNC_EVENT_OR = [
   `source_path.ilike./golf/ads/%`,
   `page_path.ilike./golf/kakao-sync%`,
   `page_path.ilike./golf/ads/%`,
+  /** landing_slug 없어도 metadata.funnel=kakao_sync 인 콜백 실패를 조회 */
+  `page_path.eq./api/auth/kakao/callback`,
   `section.eq.kakao_sync_golf_landing`,
   `section.eq.kakao_sync_cta`,
 ].join(",");
@@ -283,5 +286,8 @@ export async function fetchKakaoSyncAnalytics(input: {
 
   const trend = [...trendMap.values()].sort((a, b) => a.date.localeCompare(b.date));
 
-  return { summary, trend, campaigns, moment };
+  const { breakdown: oauthFailureBreakdown, recent: oauthFailureRecent } =
+    aggregateKakaoOAuthFailures(events);
+
+  return { summary, trend, campaigns, oauthFailureBreakdown, oauthFailureRecent, moment };
 }

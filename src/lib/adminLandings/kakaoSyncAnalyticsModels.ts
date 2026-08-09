@@ -2,9 +2,18 @@
  * 카카오싱크 성과 API/클라이언트 공유 모델
  */
 
+import type {
+  KakaoOAuthFailureBreakdownRow,
+  KakaoOAuthFailureRecentRow,
+} from "@/lib/adminLandings/kakaoOAuthFailureStats";
 import type { KakaoMomentAnalyticsBlock } from "@/lib/adminLandings/kakaoMomentModels";
 
 export type KakaoSyncAnalyticsRange = "7d" | "30d" | "all";
+
+export type {
+  KakaoOAuthFailureBreakdownRow,
+  KakaoOAuthFailureRecentRow,
+};
 
 export type KakaoSyncAnalyticsSummary = {
   landingViews: number;
@@ -56,6 +65,10 @@ export type KakaoSyncAnalyticsResponse = {
   summary: KakaoSyncAnalyticsSummary;
   trend: KakaoSyncAnalyticsTrendPoint[];
   campaigns: KakaoSyncAnalyticsCampaignRow[];
+  /** OAuth 실패 reason/oauthError 집계 */
+  oauthFailureBreakdown: KakaoOAuthFailureBreakdownRow[];
+  /** 최근 OAuth 실패 샘플 (최신순) */
+  oauthFailureRecent: KakaoOAuthFailureRecentRow[];
   /** 월간 Moment CSV 임포트 기준 광고 효율 (없으면 null) */
   moment: KakaoMomentAnalyticsBlock | null;
 };

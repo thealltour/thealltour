@@ -122,7 +122,7 @@
 
 ### 카카오 신규 가입 웰컴 포인트
 
-- **정책:** 카카오로 **최초 가입**하는 신규 회원에게 **30,000P** 1회 지급 (원장 reason: `카카오 30,000P`, `ref_type`: `KAKAO_SIGNUP_WELCOME`)
+- **정책:** 카카오로 **최초 가입**하는 신규 회원에게 **50,000P** 1회 지급 (원장 reason: `카카오 50,000P`, `ref_type`: `KAKAO_SIGNUP_WELCOME`)
 - **비즈보드·광고 랜딩 URL 예시:** `https://thealltour.com/api/auth/kakao/start?next=/mypage`
 - 가입 완료 후 마이페이지에서 토스트 안내 → 빠른문의(ConsultModal)에서 포인트 사용 **요청** 가능 (실제 차감은 상담·예약 확정 시 운영 반영)
 - 구현: [`src/lib/auth/grantKakaoSignupWelcomePoints.ts`](../src/lib/auth/grantKakaoSignupWelcomePoints.ts), [`src/lib/auth/kakaoSignupWelcome.ts`](../src/lib/auth/kakaoSignupWelcome.ts)

@@ -50,7 +50,10 @@ export default function GolfDepartureCalendarSection({
   description = DEFAULT_DESCRIPTION,
   className,
 }: GolfDepartureCalendarSectionProps) {
-  const isWide = useIsDesktop(1024);
+  // 카드가 아직 2열(달력+상품 리스트)로 분리되지 않는 lg(1024px) 미만 구간에서도
+  // 달력 카드 자체는 이미 뷰포트 전체 폭을 차지하므로, 태블릿 가로 폭(md, 768px)부터
+  // 2개월(이번 달 + 다음 달)을 나란히 보여줄 여유가 있다.
+  const showTwoMonths = useIsDesktop(768);
   const eventsByDate = useMemo(() => groupGolfDepartureEventsByDate(events), [events]);
   const departureDates = useMemo(
     () =>
@@ -136,7 +139,7 @@ export default function GolfDepartureCalendarSection({
             mode="single"
             month={month}
             onMonthChange={setMonth}
-            numberOfMonths={isWide ? 2 : 1}
+            numberOfMonths={showTwoMonths ? 2 : 1}
             selected={selectedDate}
             onSelect={(date) => {
               if (date) setSelectedDate(date);
@@ -151,7 +154,10 @@ export default function GolfDepartureCalendarSection({
               hasPromotion: "rdp-has-promotion",
             }}
             components={{ DayButton: GolfCalendarDayButton }}
-            className="theall-golf-calendar w-full"
+            className={cn(
+              "theall-golf-calendar w-full",
+              showTwoMonths && "theall-golf-calendar--two-up",
+            )}
           />
           <div className="mt-3 space-y-1.5 text-xs text-[var(--text-muted)]">
             <p className="flex items-center gap-2">

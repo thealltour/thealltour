@@ -359,6 +359,33 @@
   color: #fff;
 }
 
+/* 골프 홈/목록 달력 — 태블릿 가로(md, 768px)부터 2개월(이번 달+다음 달) 나란히 표시.
+   md~lg(1024px 미만) 구간은 아직 카드가 2열로 분리되지 않아(달력 카드가 컨테이너 폭 전체를
+   사용) 2개월을 나란히 놓을 여유가 있으므로, 데스크톱 전용이던 2개월 표시를 이 구간까지 낮춘다. */
+.theall-golf-calendar--two-up .rdp-months {
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .theall-golf-calendar--two-up {
+    --rdp-day-height: 2.5rem;
+    --rdp-day-width: 2.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .theall-golf-calendar--two-up .rdp-months {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .theall-golf-calendar--two-up .rdp-months {
+    flex-wrap: wrap;
+  }
+}
+
 /* 상품 상세: 2개월 가로 2열 (Sticky에서 선택일 표시) */
 .theall-golf-calendar--product-detail .rdp-months {
   flex-wrap: nowrap;

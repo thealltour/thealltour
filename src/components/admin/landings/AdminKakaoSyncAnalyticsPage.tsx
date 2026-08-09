@@ -138,7 +138,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
       value: formatKakaoSyncRate(summary.viewToSignupRate),
       hint: "신규 가입 ÷ 조회",
     },
-    { label: "웰컴 30,000P", value: summary.welcomeGrants.toLocaleString("ko-KR") },
+    { label: "웰컴 50,000P", value: summary.welcomeGrants.toLocaleString("ko-KR") },
     {
       label: "채널 추가율",
       value: formatKakaoSyncRate(summary.channelAddRate),

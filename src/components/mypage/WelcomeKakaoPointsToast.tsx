@@ -12,7 +12,7 @@ export default function WelcomeKakaoPointsToast() {
   useEffect(() => {
     if (searchParams.get(KAKAO_WELCOME_QUERY_KEY) !== "1") return;
 
-    showToast("success", "카카오 30,000P가 지급되었습니다. 빠른문의 시 사용할 수 있습니다.");
+    showToast("success", "5만원 쿠폰팩(50,000P)이 지급되었습니다. 빠른문의 시 바로 사용할 수 있습니다.");
 
     const url = new URL(window.location.href);
     url.searchParams.delete(KAKAO_WELCOME_QUERY_KEY);

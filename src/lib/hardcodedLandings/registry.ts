@@ -16,7 +16,7 @@ export const HARDCODED_LANDINGS: HardcodedLandingEntry[] = [
     configPath: "src/lib/hardcodedLandings/kakaoSyncGolf/config.ts",
     componentPath: "src/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfLandingPage.tsx",
     updatedAt: "2026-07-24",
-    description: "비즈보드·카카오싱크 유입용 모바일 랜딩 (3만 포인트 · 성과 계측)",
+    description: "비즈보드·카카오싱크 유입용 모바일 랜딩 (5만원 쿠폰팩 · 성과 계측)",
   },
 ];
 

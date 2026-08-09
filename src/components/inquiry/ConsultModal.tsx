@@ -553,7 +553,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                             className="mt-0.5 h-4 w-4 rounded border-[var(--border)]"
                           />
                           <span className="text-[var(--text-secondary)]">
-                            포인트 사용 요청 (카카오 30,000P 포함)
+                            포인트 사용 요청 (카카오 50,000P 포함)
                           </span>
                         </label>
                         {pointsUseEnabled ? (

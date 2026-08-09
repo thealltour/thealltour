@@ -86,10 +86,10 @@ export function GuestSignupPromoBanner({ isLoggedIn }: GuestSignupPromoBannerPro
           <span className="mr-1.5 inline-block rounded bg-[#FFE812] px-1.5 py-0.5 text-[10px] font-bold text-[#3C1E1E] md:text-[11px]">
             신규 혜택
           </span>
-          <span className="md:hidden">신규회원 전용 3만P 즉시 지급 &gt;</span>
+          <span className="md:hidden">🎁 신규회원 전용 5만원 쿠폰팩 즉시 발급 &gt;</span>
           <span className="hidden md:inline">
-            지금 카카오 1초 간편가입 시{" "}
-            <strong className="font-semibold text-[#FFE812]">30,000P</strong> 즉시 지급!
+            🎁 지금 카카오 1초 간편가입 시{" "}
+            <strong className="font-semibold text-[#FFE812]">50,000원 쿠폰팩</strong> 즉시 발급!
           </span>
         </a>
         <button

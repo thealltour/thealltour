@@ -107,7 +107,8 @@ export async function GET(request: Request, context: RouteContext) {
       }
       const linkUrl = new URL("/auth/link-account", request.url);
       linkUrl.searchParams.set("pending", result.pendingId);
-      linkUrl.searchParams.set("email", result.email);
+      linkUrl.searchParams.set("identifier", result.identifier);
+      linkUrl.searchParams.set("matched_by", result.matchedBy);
       linkUrl.searchParams.set("provider", result.provider);
       const response = NextResponse.redirect(linkUrl);
       response.cookies.delete(OAUTH_STATE_COOKIE);

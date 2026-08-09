@@ -37,6 +37,26 @@ async function findMemberByEmail(email: string | null): Promise<MemberRowForAuth
   return (data as MemberRowForAuth | null) ?? null;
 }
 
+/**
+ * 전화번호 기준 기존 회원 조회 (email 매칭 실패 시 폴백).
+ * 카카오 동의항목에서 email이 빠져도 phone_number는 필수 동의라 신뢰할 수 있는 보조 식별자.
+ * members.phone은 unique 제약이 없으므로, 정확히 1명만 일치할 때만 매칭한다 (모호하면 신규 가입으로 처리).
+ */
+async function findMemberByPhone(phone: string | null): Promise<MemberRowForAuth | null> {
+  const normalized = phone?.replace(/\D/g, "").trim();
+  if (!normalized) return null;
+  const { data } = await supabaseAdmin.from("members").select(MEMBER_SELECT).eq("phone", normalized).limit(2);
+  if (!data || data.length !== 1) return null;
+  return data[0] as MemberRowForAuth;
+}
+
+/** 계정 연결 화면에 노출할 전화번호 마스킹 (예: 010-****-5678) */
+function maskPhoneForDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 7) return phone;
+  return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
+}
+
 async function findProviderLink(provider: AuthProviderId, providerUserId: string) {
   const { data } = await supabaseAdmin
     .from("member_auth_providers")
@@ -232,24 +252,34 @@ export async function handleOAuthCallback(params: {
   }
 
   const emailMember = await findMemberByEmail(profile.email);
-  if (emailMember?.password_hash) {
-    const pendingId = await createPendingLink(provider, profile, String(emailMember.id));
+  /** email이 없거나(동의 미획득) 매칭 실패 시 phone으로 폴백 — 중복 회원 생성 방지 */
+  const phoneMember = emailMember ? null : await findMemberByPhone(profile.phone);
+  const matchedMember = emailMember ?? phoneMember;
+  const matchedBy: "email" | "phone" = emailMember ? "email" : "phone";
+
+  if (matchedMember?.password_hash) {
+    const pendingId = await createPendingLink(provider, profile, String(matchedMember.id));
+    const identifier =
+      matchedBy === "email"
+        ? profile.email ?? matchedMember.email ?? ""
+        : maskPhoneForDisplay(matchedMember.phone ?? profile.phone ?? "");
     return {
       type: "link_account",
       pendingId,
-      email: profile.email ?? "",
+      identifier,
+      matchedBy,
       provider,
     };
   }
 
-  if (emailMember) {
-    await upsertProviderLink(String(emailMember.id), provider, profile);
-    await applyOAuthProfileToMember(String(emailMember.id), profile);
+  if (matchedMember) {
+    await upsertProviderLink(String(matchedMember.id), provider, profile);
+    await applyOAuthProfileToMember(String(matchedMember.id), profile);
     await supabaseAdmin
       .from("members")
-      .update({ signup_method: emailMember.signup_method === "local" ? "mixed" : "social" })
-      .eq("id", emailMember.id);
-    const member = (await getMemberById(String(emailMember.id)))!;
+      .update({ signup_method: matchedMember.signup_method === "local" ? "mixed" : "social" })
+      .eq("id", matchedMember.id);
+    const member = (await getMemberById(String(matchedMember.id)))!;
     await syncMemberAfterAuth(member);
     return {
       type: "session",

@@ -4,16 +4,23 @@ import { isAuthProviderId } from "@/lib/auth/providerRegistry";
 import type { AuthProviderId } from "@/lib/auth/types";
 
 type PageProps = {
-  searchParams?: Promise<{ pending?: string; email?: string; provider?: string }>;
+  searchParams?: Promise<{
+    pending?: string;
+    identifier?: string;
+    matched_by?: string;
+    provider?: string;
+  }>;
 };
 
 export default async function LinkAccountPage({ searchParams }: PageProps) {
   const resolved = (await searchParams) ?? {};
   const pendingId = resolved.pending?.trim() ?? "";
-  const email = resolved.email?.trim() ?? "";
+  const identifier = resolved.identifier?.trim() ?? "";
+  const matchedByRaw = resolved.matched_by?.trim() ?? "";
+  const matchedBy: "email" | "phone" = matchedByRaw === "phone" ? "phone" : "email";
   const providerRaw = resolved.provider?.trim() ?? "";
 
-  const valid = pendingId && email && isAuthProviderId(providerRaw);
+  const valid = pendingId && identifier && isAuthProviderId(providerRaw);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--bg)] text-[var(--text-primary)]">
@@ -26,7 +33,8 @@ export default async function LinkAccountPage({ searchParams }: PageProps) {
           {valid ? (
             <LinkAccountForm
               pendingId={pendingId}
-              email={email}
+              identifier={identifier}
+              matchedBy={matchedBy}
               provider={providerRaw as AuthProviderId}
             />
           ) : (

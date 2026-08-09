@@ -7,7 +7,7 @@ import {
 
 describe("kakaoSignupWelcome", () => {
   it("exposes welcome point amount", () => {
-    expect(KAKAO_SIGNUP_WELCOME_POINTS).toBe(30_000);
+    expect(KAKAO_SIGNUP_WELCOME_POINTS).toBe(50_000);
   });
 
   it("resolves /mypage to dashboard welcome path", () => {

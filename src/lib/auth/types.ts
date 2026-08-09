@@ -70,4 +70,12 @@ export type OAuthCallbackResult =
       /** 이번 콜백에서 members 행이 새로 생성됨 */
       isNewMember?: boolean;
     }
-  | { type: "link_account"; pendingId: string; email: string; provider: AuthProviderId };
+  | {
+      type: "link_account";
+      pendingId: string;
+      /** 화면에 노출할 식별자. matchedBy가 phone이면 마스킹된 전화번호 */
+      identifier: string;
+      /** 이메일 동의를 받지 못한 경우(예: 카카오 email 항목 미동의) phone으로 기존 계정을 찾음 */
+      matchedBy: "email" | "phone";
+      provider: AuthProviderId;
+    };

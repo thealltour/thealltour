@@ -28,7 +28,8 @@ type MemberDetail = {
   username: string;
   name: string;
   phone: string;
-  email: string;
+  /** 소셜(카카오) 가입 시 이메일 동의항목을 받지 않으면 null일 수 있음 */
+  email: string | null;
   birth_date: string;
   gender: "male" | "female" | "other";
   agree_email: boolean;

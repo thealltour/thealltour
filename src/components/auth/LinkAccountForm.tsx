@@ -14,14 +14,16 @@ const PROVIDER_DISPLAY_NAMES: Record<AuthProviderId, string> = {
 
 type LinkAccountFormProps = {
   pendingId: string;
-  email: string;
+  identifier: string;
+  matchedBy: "email" | "phone";
   provider: AuthProviderId;
   nextPath?: string;
 };
 
 export default function LinkAccountForm({
   pendingId,
-  email,
+  identifier,
+  matchedBy,
   provider,
   nextPath = "/mypage",
 }: LinkAccountFormProps) {
@@ -57,7 +59,8 @@ export default function LinkAccountForm({
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <p className="text-sm text-[var(--text-secondary)]">
-        <strong>{email}</strong> 주소로 이미 가입된 계정이 있습니다.
+        <strong>{identifier}</strong>
+        {matchedBy === "email" ? " 주소로" : " 번호로"} 이미 가입된 계정이 있습니다.
         <br />
         {PROVIDER_DISPLAY_NAMES[provider]} 계정을 연결하려면 기존 비밀번호를 입력해 주세요.
       </p>

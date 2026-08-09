@@ -40,7 +40,7 @@ export async function grantKakaoSignupWelcomePoints(
     reason: KAKAO_SIGNUP_WELCOME_REASON,
     refType: KAKAO_SIGNUP_WELCOME_REF_TYPE,
     refId: userId,
-    notificationTitle: "카카오 30,000P",
+    notificationTitle: "카카오 50,000P",
     notificationBody: `${KAKAO_SIGNUP_WELCOME_POINTS.toLocaleString("ko-KR")}P가 지급되었습니다. 빠른문의 시 사용할 수 있습니다.`,
   });
 

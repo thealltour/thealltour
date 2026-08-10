@@ -45,4 +45,30 @@ describe("memberNeedsProfileCompletion", () => {
       ),
     ).toBe(false);
   });
+
+  it("skips complete-profile when Kakao Sync already agreed terms and phone exists", () => {
+    expect(
+      memberNeedsProfileCompletion(
+        baseMember({
+          phone: "01012345678",
+          agree_terms: true,
+          agree_privacy: true,
+          profile_completed_at: "2026-08-10T00:00:00Z",
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("skips complete-profile when Kakao Sync completed profile without phone", () => {
+    expect(
+      memberNeedsProfileCompletion(
+        baseMember({
+          phone: null,
+          agree_terms: true,
+          agree_privacy: true,
+          profile_completed_at: "2026-08-10T00:00:00Z",
+        }),
+      ),
+    ).toBe(false);
+  });
 });

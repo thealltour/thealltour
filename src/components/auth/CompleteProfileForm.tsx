@@ -8,9 +8,15 @@ import { cn } from "@/lib/cn";
 type CompleteProfileFormProps = {
   nextPath?: string;
   needsPhone?: boolean;
+  /** false면 카카오싱크 등에서 이미 동의한 약관 UI를 숨김 */
+  needsTerms?: boolean;
 };
 
-export default function CompleteProfileForm({ nextPath = "/mypage", needsPhone = true }: CompleteProfileFormProps) {
+export default function CompleteProfileForm({
+  nextPath = "/mypage",
+  needsPhone = true,
+  needsTerms = true,
+}: CompleteProfileFormProps) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -28,8 +34,8 @@ export default function CompleteProfileForm({ nextPath = "/mypage", needsPhone =
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: needsPhone ? phone : undefined,
-          agreeTerms,
-          agreePrivacy,
+          agreeTerms: needsTerms ? agreeTerms : true,
+          agreePrivacy: needsTerms ? agreePrivacy : true,
           next: nextPath,
         }),
       });
@@ -50,8 +56,8 @@ export default function CompleteProfileForm({ nextPath = "/mypage", needsPhone =
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <p className="text-sm text-[var(--text-secondary)]">
-        서비스 이용을 위해 약관 동의가 필요합니다.
-        {needsPhone ? " 리워드·상담 연동을 위해 전화번호도 입력해 주세요." : null}
+        {needsTerms ? "서비스 이용을 위해 약관 동의가 필요합니다." : null}
+        {needsPhone ? " 리워드·상담 연동을 위해 전화번호를 입력해 주세요." : null}
       </p>
       {needsPhone ? (
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
@@ -66,24 +72,28 @@ export default function CompleteProfileForm({ nextPath = "/mypage", needsPhone =
           />
         </label>
       ) : null}
-      <label className="flex items-start gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
-          checked={agreeTerms}
-          onChange={(e) => setAgreeTerms(e.target.checked)}
-          className="mt-1"
-        />
-        <span>[필수] 이용약관에 동의합니다.</span>
-      </label>
-      <label className="flex items-start gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
-          checked={agreePrivacy}
-          onChange={(e) => setAgreePrivacy(e.target.checked)}
-          className="mt-1"
-        />
-        <span>[필수] 개인정보 처리방침에 동의합니다.</span>
-      </label>
+      {needsTerms ? (
+        <>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              className="mt-1"
+            />
+            <span>[필수] 이용약관에 동의합니다.</span>
+          </label>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={agreePrivacy}
+              onChange={(e) => setAgreePrivacy(e.target.checked)}
+              className="mt-1"
+            />
+            <span>[필수] 개인정보 처리방침에 동의합니다.</span>
+          </label>
+        </>
+      ) : null}
       <button
         type="submit"
         disabled={isSubmitting}

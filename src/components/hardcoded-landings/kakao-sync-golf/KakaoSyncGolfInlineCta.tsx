@@ -11,7 +11,8 @@ import {
   trackKakaoSyncCtaClick,
 } from "@/lib/analytics/trackKakaoSyncFunnel";
 
-const FALLBACK_HREF = "/api/auth/kakao/start?next=/mypage&landing_slug=kakao-sync&landing_path=%2Fgolf%2Fkakao-sync";
+const FALLBACK_HREF =
+  "/api/auth/kakao/start?next=%2Fmypage%2Fdashboard&landing_slug=kakao-sync&landing_path=%2Fgolf%2Fkakao-sync";
 
 /**
  * Benefit 섹션 바로 아래 배치되는 보조 CTA.
@@ -25,7 +26,7 @@ export function KakaoSyncGolfInlineCta() {
   useEffect(() => {
     setHref(
       buildKakaoSyncAuthStartHref({
-        next: "/mypage",
+        next: "/mypage/dashboard",
         landingSlug: KAKAO_SYNC_GOLF_LANDING_SLUG,
         sourcePath: KAKAO_SYNC_GOLF_PUBLIC_PATH,
       }),

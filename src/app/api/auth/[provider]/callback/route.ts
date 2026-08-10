@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { verifyOAuthStateToken, OAUTH_STATE_COOKIE } from "@/lib/auth/oauthState";
 import { getOAuthProvider, isAuthProviderId } from "@/lib/auth/providerRegistry";
 import { getOAuthRedirectUri, sanitizeNextPath } from "@/lib/auth/redirect";
-import { resolveKakaoWelcomeNextPath } from "@/lib/auth/kakaoSignupWelcome";
+import { resolveKakaoWelcomeNextPath, resolveKakaoSyncPostAuthDestination } from "@/lib/auth/kakaoSignupWelcome";
 import { loginErrorRedirect } from "@/lib/auth/authErrors";
 import { handleOAuthCallback, cleanupExpiredPendingLinks } from "@/lib/auth/memberAuthService";
 import { appendMemberSessionCookie } from "@/lib/auth/setMemberSessionCookie";
@@ -175,12 +175,19 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     let destination = result.next;
-    if (result.kakaoWelcomeGranted) {
-      destination = resolveKakaoWelcomeNextPath(result.next);
-    }
-
-    if (result.needsProfile) {
-      destination = `/auth/complete-profile?next=${encodeURIComponent(destination)}`;
+    if (fromKakaoLanding) {
+      // 싱크 동의로 약관·추가입력을 갈음 — complete-profile 미경유, 대시보드 직행
+      destination = resolveKakaoSyncPostAuthDestination({
+        next: result.next,
+        welcomeGranted: Boolean(result.kakaoWelcomeGranted),
+      });
+    } else {
+      if (result.kakaoWelcomeGranted) {
+        destination = resolveKakaoWelcomeNextPath(result.next);
+      }
+      if (result.needsProfile) {
+        destination = `/auth/complete-profile?next=${encodeURIComponent(destination)}`;
+      }
     }
 
     const response = NextResponse.redirect(new URL(destination, request.url));

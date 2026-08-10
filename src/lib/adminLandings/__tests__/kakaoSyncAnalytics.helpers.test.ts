@@ -4,8 +4,17 @@ import { buildKakaoSyncGolfPublicUrl } from "@/lib/hardcodedLandings/kakaoSyncGo
 import {
   isKakaoSyncAnalyticsEvent,
   resolveKakaoSyncCampaign,
+  shouldCountKakaoSyncAnalyticsEvent,
 } from "@/lib/adminLandings/kakaoSyncAnalyticsFilters";
-import { formatKakaoSyncRate } from "@/lib/adminLandings/kakaoSyncAnalyticsModels";
+import {
+  formatKakaoSyncRate,
+  parseKakaoSyncAnalyticsRangeParam,
+} from "@/lib/adminLandings/kakaoSyncAnalyticsModels";
+import {
+  parseKakaoSyncAnalyticsDateParam,
+  resolveKakaoSyncAnalyticsWindow,
+  toKstYmd,
+} from "@/lib/adminLandings/kakaoSyncAnalyticsRange";
 
 describe("parseMemberAcquisitionFromSearchParams", () => {
   it("returns null when empty", () => {
@@ -77,6 +86,62 @@ describe("kakao sync funnel filters", () => {
   it("formats rates for KPI cards", () => {
     expect(formatKakaoSyncRate(0)).toBe("0%");
     expect(formatKakaoSyncRate(0.1234)).toBe("12.3%");
+  });
+
+  it("counts client landing_view as fallback but excludes client cta", () => {
+    expect(
+      shouldCountKakaoSyncAnalyticsEvent({
+        event_name: "landing_view",
+        metadata: { ingest: "client" },
+      }),
+    ).toBe(true);
+    expect(
+      shouldCountKakaoSyncAnalyticsEvent({
+        event_name: "landing_view",
+        metadata: { ingest: "middleware" },
+      }),
+    ).toBe(true);
+    expect(
+      shouldCountKakaoSyncAnalyticsEvent({
+        event_name: "landing_cta_click",
+        metadata: { ingest: "client" },
+      }),
+    ).toBe(false);
+    expect(
+      shouldCountKakaoSyncAnalyticsEvent({
+        event_name: "landing_cta_click",
+        metadata: { ingest: "oauth_start" },
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("kakao sync analytics range", () => {
+  it("parses range and date params", () => {
+    expect(parseKakaoSyncAnalyticsRangeParam("1d")).toBe("1d");
+    expect(parseKakaoSyncAnalyticsRangeParam("custom")).toBe("custom");
+    expect(parseKakaoSyncAnalyticsRangeParam("nope")).toBe("30d");
+    expect(parseKakaoSyncAnalyticsDateParam("2026-08-10")).toBe("2026-08-10");
+    expect(parseKakaoSyncAnalyticsDateParam("2026/08/10")).toBeNull();
+  });
+
+  it("builds KST custom day window", () => {
+    const w = resolveKakaoSyncAnalyticsWindow("custom", "2026-08-10");
+    expect(w.trendDates).toEqual(["2026-08-10"]);
+    expect(w.since).toBe(new Date("2026-08-10T00:00:00+09:00").toISOString());
+    expect(w.until).toBe(new Date("2026-08-10T23:59:59.999+09:00").toISOString());
+  });
+
+  it("builds 7d trend with 7 KST dates", () => {
+    const w = resolveKakaoSyncAnalyticsWindow("7d");
+    expect(w.trendDates).toHaveLength(7);
+    expect(w.since).toBeTruthy();
+    expect(w.until).toBeTruthy();
+  });
+
+  it("maps late UTC night to next KST calendar day", () => {
+    // 2026-08-09 15:30 UTC = 2026-08-10 00:30 KST
+    expect(toKstYmd("2026-08-09T15:30:00.000Z")).toBe("2026-08-10");
   });
 });
 

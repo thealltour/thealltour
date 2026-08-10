@@ -2,10 +2,12 @@ import { Flame, Users } from "lucide-react";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/LandingFaqAccordion";
 import { HardcodedLandingShell } from "@/components/hardcoded-landings/shared/HardcodedLandingShell";
+import { KakaoSyncCouponVisual } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncCouponVisual";
 import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
 import { KakaoSyncGolfInlineCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfInlineCta";
 import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
 import { KakaoSyncSectionViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncSectionViewTracker";
+import { KakaoSyncTrustReviewsSection } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncTrustReviewsSection";
 import {
   KAKAO_SYNC_HERO_ACCENT,
   kakaoSyncGolfConfig,
@@ -68,7 +70,8 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
               {/* 소셜프루프 — 실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150) */}
               <p className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
                 <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                오늘 {dailySocialProofCount}명이 5만원 할인 쿠폰을 받아갔어요
+                오늘 {dailySocialProofCount}
+                {hero.socialProofSuffix}
               </p>
             </div>
           </div>
@@ -79,6 +82,8 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
           <KakaoSyncSectionViewTracker sectionName="kakao_sync_benefit" />
           <section aria-label="Benefit">
             <div className="rounded-2xl bg-[#f8f9fa] px-3 py-4">
+              <KakaoSyncCouponVisual />
+
               {/* 기본 혜택 카피 — 티어 섹션(핵심 후킹)에 시선을 넘겨주는 보조 인트로로 축소 */}
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{benefit.title}</p>
               <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
@@ -114,7 +119,7 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
                 <p className="mt-1 text-[0.6875rem] text-slate-400">{benefit.footnote}</p>
               ) : null}
 
-              {/* 핵심 후킹 — 1·2·4인 티어. BEST(4인)만 강조해 총무·단체도 설득 */}
+              {/* 핵심 후킹 — 1·2·4·8인 티어. BEST(4인) + 8인 무제한 보조 강조 */}
               {benefit.tiers?.length ? (
                 <div className="mt-4 rounded-2xl border-2 border-orange-200 bg-gradient-to-b from-orange-50 to-white p-3.5 shadow-[0_2px_14px_rgba(249,115,22,0.1)]">
                   {benefit.tiersTitle ? (
@@ -137,6 +142,23 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
                             </span>
                           </span>
                           <p className="mt-1 text-right text-xl font-extrabold tracking-tight text-white">
+                            {tier.amountLabel}
+                          </p>
+                        </li>
+                      ) : tier.emphasize ? (
+                        <li
+                          key={tier.headcountLabel}
+                          className="rounded-xl bg-orange-600 px-3.5 py-3 shadow-[0_4px_16px_rgba(234,88,12,0.35)]"
+                        >
+                          <span className="flex items-center gap-1.5 text-sm font-bold text-white">
+                            {tier.headcountLabel}
+                            {tier.badgeLabel ? (
+                              <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-tight text-orange-700">
+                                {tier.badgeLabel}
+                              </span>
+                            ) : null}
+                          </span>
+                          <p className="mt-1 text-right text-lg font-extrabold tracking-tight text-white">
                             {tier.amountLabel}
                           </p>
                         </li>
@@ -172,7 +194,7 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
             </div>
           </section>
 
-          {/* 추천 상품 — 가치 증거(정가→회원가)와 브라우징을 한 섹션으로 병합, 홈 레일과 동일 컴포넌트 재사용 */}
+          {/* 추천 상품 — 팀(4인) 총할인 가치 증거 */}
           <KakaoSyncSectionViewTracker sectionName="kakao_sync_products" />
           {products.length > 0 ? (
             <section aria-label="추천 골프투어">
@@ -189,7 +211,7 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
                 <div className="mt-1.5">
                   <HomeProductCardRail
                     products={products}
-                    priceDisplay="coinBenefit"
+                    priceDisplay="teamCouponBenefit"
                     edgeInset="compact"
                     analyticsSection="kakao_sync_golf_landing"
                     listAriaLabel="추천 골프투어"
@@ -198,6 +220,10 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
               </div>
             </section>
           ) : null}
+
+          {/* 신뢰·후기 */}
+          <KakaoSyncSectionViewTracker sectionName="kakao_sync_trust" />
+          <KakaoSyncTrustReviewsSection />
 
           {/* FAQ */}
           <KakaoSyncSectionViewTracker sectionName="kakao_sync_faq" />

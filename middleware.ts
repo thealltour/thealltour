@@ -23,11 +23,12 @@ async function getAdminSession(request: NextRequest) {
   return resolveAdminSessionFromRequestToken(token);
 }
 
-function fireKakaoSyncLandingHit(request: NextRequest, event: NextFetchEvent): void {
-  if (shouldSkipLandingHitRequest(request)) return;
+/** landing-hit 성공 시에만 true — 실패 시 쿠키를 심지 않아 클라이언트가 폴백 적재 */
+async function recordKakaoSyncLandingHit(request: NextRequest): Promise<boolean> {
+  if (shouldSkipLandingHitRequest(request)) return false;
 
   const target = resolveKakaoSyncLandingHitTarget(request.nextUrl.pathname);
-  if (!target) return;
+  if (!target) return false;
 
   const sp = request.nextUrl.searchParams;
   const hitUrl = new URL("/api/analytics/landing-hit", request.url);
@@ -44,30 +45,40 @@ function fireKakaoSyncLandingHit(request: NextRequest, event: NextFetchEvent): v
     userAgent: request.headers.get("user-agent"),
   });
 
-  const task = fetch(hitUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: payload,
-  }).catch(() => {
-    // fire-and-forget
-  });
-
-  event.waitUntil(task);
+  try {
+    const res = await fetch(hitUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!res.ok) {
+      console.error("[middleware] landing-hit failed:", res.status, target.sourcePath);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[middleware] landing-hit error:", err);
+    return false;
+  }
 }
 
-export async function middleware(request: NextRequest, event: NextFetchEvent) {
+export async function middleware(request: NextRequest, _event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
   const golfTarget = resolveKakaoSyncLandingHitTarget(pathname);
   if (golfTarget) {
-    fireKakaoSyncLandingHit(request, event);
+    const recorded = await recordKakaoSyncLandingHit(request);
     const response = NextResponse.next();
-    response.cookies.set(KAKAO_SYNC_LANDING_VIEW_COOKIE, "1", {
-      path: golfTarget.sourcePath,
-      maxAge: 60 * 30,
-      sameSite: "lax",
-      httpOnly: false,
-    });
+    // 성공 시에만 쿠키 — 실패 시 ViewTracker가 ingest=client 로 폴백
+    if (recorded) {
+      response.cookies.set(KAKAO_SYNC_LANDING_VIEW_COOKIE, "1", {
+        path: golfTarget.sourcePath,
+        maxAge: 60 * 30,
+        sameSite: "lax",
+        httpOnly: false,
+      });
+    }
     return response;
   }
 

@@ -24,7 +24,7 @@ export const DEFAULT_MOBILE_GOLF_AD_STYLE_CONFIG: MobileGolfAdStyleConfig = {
 };
 
 /** 광고·하드코딩 랜딩 CTA — OAuth state 쿠키를 심는 start 라우트만 사용 (kauth 직링크 금지) */
-export const MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL = "/api/auth/kakao/start?next=/mypage";
+export const MOBILE_GOLF_AD_KAKAO_SYNC_AUTH_URL = "/api/auth/kakao/start?next=/mypage/dashboard";
 
 export type MobileGolfAdLandingRow = {
   id: string;

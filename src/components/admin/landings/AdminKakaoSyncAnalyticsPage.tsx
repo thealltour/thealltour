@@ -2,15 +2,20 @@
 
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminKakaoMomentCsvUpload } from "@/components/admin/landings/AdminKakaoMomentCsvUpload";
 import { AdminKakaoMomentEfficiencySection } from "@/components/admin/landings/AdminKakaoMomentEfficiencySection";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   formatKakaoSyncRate,
   parseKakaoSyncAnalyticsRangeParam,
   type KakaoSyncAnalyticsRange,
   type KakaoSyncAnalyticsResponse,
 } from "@/lib/adminLandings/kakaoSyncAnalyticsModels";
+import {
+  kstYmd,
+  parseKakaoSyncAnalyticsDateParam,
+} from "@/lib/adminLandings/kakaoSyncAnalyticsRange";
 
 const TrendChart = dynamic(
   () => import("@/components/admin/landings/AdminKakaoSyncAnalyticsTrendChart"),
@@ -57,11 +62,24 @@ function formatFailureOccurredAt(iso: string): string {
   return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 }
 
+function rangeButtonLabel(r: Exclude<KakaoSyncAnalyticsRange, "custom">): string {
+  if (r === "1d") return "1일";
+  if (r === "7d") return "7일";
+  if (r === "30d") return "30일";
+  return "전체";
+}
+
 export default function AdminKakaoSyncAnalyticsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const range = parseKakaoSyncAnalyticsRangeParam(searchParams.get("range"));
+  const selectedDate = useMemo(() => {
+    const parsed = parseKakaoSyncAnalyticsDateParam(searchParams.get("date"));
+    if (parsed) return parsed;
+    if (range === "custom" || range === "1d") return kstYmd();
+    return "";
+  }, [searchParams, range]);
 
   const [data, setData] = useState<KakaoSyncAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,6 +98,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
     try {
       const p = new URLSearchParams();
       p.set("range", range);
+      if (range === "custom" && selectedDate) p.set("date", selectedDate);
       const res = await fetch(`/api/admin/landings/kakao-sync/analytics?${p.toString()}`, {
         credentials: "include",
         cache: "no-store",
@@ -102,15 +121,23 @@ export default function AdminKakaoSyncAnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, [range, selectedDate]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  function setRange(next: KakaoSyncAnalyticsRange) {
+  function setRange(next: Exclude<KakaoSyncAnalyticsRange, "custom">) {
     const p = new URLSearchParams(searchParams.toString());
     p.set("range", next);
+    p.delete("date");
+    router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+  }
+
+  function setCustomDate(ymd: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("range", "custom");
+    p.set("date", ymd);
     router.replace(`${pathname}?${p.toString()}`, { scroll: false });
   }
 
@@ -166,10 +193,12 @@ export default function AdminKakaoSyncAnalyticsPage() {
     summary.oauthStarts - summary.oauthSuccess - summary.oauthFailed,
   );
 
+  const presetRanges = ["1d", "7d", "30d", "all"] as const;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        {(["7d", "30d", "all"] as KakaoSyncAnalyticsRange[]).map((r) => (
+        {presetRanges.map((r) => (
           <button
             key={r}
             type="button"
@@ -180,9 +209,24 @@ export default function AdminKakaoSyncAnalyticsPage() {
                 : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]"
             }`}
           >
-            {r === "7d" ? "7일" : r === "30d" ? "30일" : "전체"}
+            {rangeButtonLabel(r)}
           </button>
         ))}
+        <div className={`min-w-[10.5rem] ${range === "custom" ? "rounded-xl ring-2 ring-[var(--accent)]" : ""}`}>
+          <DatePicker
+            value={range === "custom" ? selectedDate : ""}
+            onChange={setCustomDate}
+            max={kstYmd()}
+            placeholder="날짜 선택"
+            size="compact"
+            aria-label="통계 일자 달력"
+            triggerClassName={
+              range === "custom"
+                ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent)] hover:border-[var(--accent)]"
+                : undefined
+            }
+          />
+        </div>
       </div>
 
       {error ? (

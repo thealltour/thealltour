@@ -22,7 +22,11 @@ import {
   getSeasonalCardMainLineFull,
   SEASONAL_CARD_SUBLINE,
 } from "@/lib/products/productCardSeasonalPriceDisplay";
-import { KAKAO_SYNC_COIN_BENEFIT_WON } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
+import {
+  KAKAO_SYNC_COIN_BENEFIT_WON,
+  KAKAO_SYNC_TEAM_DISCOUNT_WON,
+} from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
+import { buildTeamCouponBenefitPrices } from "@/lib/hardcodedLandings/kakaoSyncGolf/teamCouponBenefitPrices";
 import {
   pickProductCardHighlightTag,
   PRODUCT_CARD_HIGHLIGHT_LABELS,
@@ -37,8 +41,8 @@ export type HomeProductCardProps = {
   analyticsSection?: string;
   /** grid: 기존(모바일 16:9). rail: 레일 전용 4:3 고정 */
   variant?: "grid" | "rail";
-  /** coinBenefit: 정가(취소선) + 회원가 2줄 — 카카오싱크 랜딩 전용 */
-  priceDisplay?: "default" | "coinBenefit";
+  /** coinBenefit: 1인 정가→회원가 / teamCouponBenefit: 4인 팀 총할인 */
+  priceDisplay?: "default" | "coinBenefit" | "teamCouponBenefit";
 };
 
 const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/thealltour-home-card/800/600";
@@ -138,6 +142,13 @@ export function HomeProductCard({
     listPriceWon != null ? formatPriceKR(listPriceWon) : null;
   const coinBenefitMemberPriceFormatted =
     memberPriceWon != null && memberPriceWon > 0 ? formatPriceKR(memberPriceWon) : null;
+
+  const teamPrices =
+    listPriceWon != null ? buildTeamCouponBenefitPrices(listPriceWon) : null;
+  const teamListFormatted = teamPrices ? formatPriceKR(teamPrices.listTeamWon) : null;
+  const teamMemberFormatted =
+    teamPrices && teamPrices.memberTeamWon > 0 ? formatPriceKR(teamPrices.memberTeamWon) : null;
+  const teamDiscountFormatted = formatPriceKR(KAKAO_SYNC_TEAM_DISCOUNT_WON);
 
   const regionLabel =
     product.overview_region?.trim() ||
@@ -269,7 +280,22 @@ export function HomeProductCard({
         ) : null}
 
         <div className="mt-auto border-t border-[var(--border)]/60 pt-1.5 sm:border-0 sm:pt-1">
-          {priceDisplay === "coinBenefit" && coinBenefitMemberPriceFormatted ? (
+          {priceDisplay === "teamCouponBenefit" && teamListFormatted && teamMemberFormatted ? (
+            <>
+              <p className="mb-1 inline-flex max-w-full rounded-md bg-orange-500 px-2 py-0.5 text-[0.625rem] font-extrabold leading-tight text-white sm:text-[0.6875rem]">
+                🏷️ 4인 예약 시 총 {teamDiscountFormatted}원 즉시 차감!
+              </p>
+              <p className="text-xs leading-tight text-slate-400 tabular-nums line-through sm:text-sm">
+                정가: {teamListFormatted}원 (4인)
+              </p>
+              <p className="mt-0.5 text-base font-extrabold leading-tight text-slate-900 tabular-nums sm:text-lg">
+                쿠폰 적용가: {teamMemberFormatted}원
+              </p>
+              <p className="mt-0.5 inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[0.625rem] font-bold text-emerald-700 sm:text-xs">
+                [{teamDiscountFormatted}원 할인]
+              </p>
+            </>
+          ) : priceDisplay === "coinBenefit" && coinBenefitMemberPriceFormatted ? (
             <>
               <p className="text-sm leading-tight text-slate-400 tabular-nums line-through">
                 정가 ₩{coinBenefitListPriceFormatted}

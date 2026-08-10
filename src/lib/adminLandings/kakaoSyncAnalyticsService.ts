@@ -5,6 +5,7 @@ import { KAKAO_SIGNUP_WELCOME_REF_TYPE } from "@/lib/auth/kakaoSignupWelcome";
 import {
   isKakaoSyncAnalyticsEvent,
   resolveKakaoSyncCampaign,
+  shouldCountKakaoSyncAnalyticsEvent,
 } from "@/lib/adminLandings/kakaoSyncAnalyticsFilters";
 import { aggregateKakaoOAuthFailures } from "@/lib/adminLandings/kakaoOAuthFailureStats";
 import { KAKAO_SYNC_GOLF_LANDING_SLUG } from "@/lib/hardcodedLandings/kakaoSyncGolf/urls";
@@ -16,40 +17,21 @@ import type {
   KakaoSyncAnalyticsTrendPoint,
 } from "@/lib/adminLandings/kakaoSyncAnalyticsModels";
 import { fetchKakaoMomentAnalyticsBlock } from "@/lib/adminLandings/kakaoMomentImportService";
+import {
+  resolveKakaoSyncAnalyticsWindow,
+  toKstYmd,
+} from "@/lib/adminLandings/kakaoSyncAnalyticsRange";
 
-function rangeStartIso(range: KakaoSyncAnalyticsRange): string | null {
-  if (range === "all") return null;
-  const days = range === "7d" ? 7 : 30;
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() - (days - 1));
-  return d.toISOString();
-}
-
-function toYmd(iso: string): string {
-  return iso.slice(0, 10);
-}
-
-function emptyTrend(range: KakaoSyncAnalyticsRange): KakaoSyncAnalyticsTrendPoint[] {
-  if (range === "all") return [];
-  const days = range === "7d" ? 7 : 30;
-  const out: KakaoSyncAnalyticsTrendPoint[] = [];
-  const cursor = new Date();
-  cursor.setUTCHours(0, 0, 0, 0);
-  cursor.setUTCDate(cursor.getUTCDate() - (days - 1));
-  for (let i = 0; i < days; i++) {
-    out.push({
-      date: cursor.toISOString().slice(0, 10),
-      views: 0,
-      clicks: 0,
-      oauthStarts: 0,
-      signups: 0,
-      returning: 0,
-      oauthFailed: 0,
-    });
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return out;
+function emptyTrendPoint(date: string): KakaoSyncAnalyticsTrendPoint {
+  return {
+    date,
+    views: 0,
+    clicks: 0,
+    oauthStarts: 0,
+    signups: 0,
+    returning: 0,
+    oauthFailed: 0,
+  };
 }
 
 function campaignKey(row: {
@@ -58,28 +40,6 @@ function campaignKey(row: {
   source_path?: string | null;
 }): { key: string; label: string; templateType: string } {
   return resolveKakaoSyncCampaign(row);
-}
-
-function metadataIngest(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
-  const ingest = (metadata as Record<string, unknown>).ingest;
-  return typeof ingest === "string" ? ingest : null;
-}
-
-/**
- * 클라이언트·서버 이중 기록 시 집계 규칙:
- * - landing_view: ingest=client 제외 (middleware/레거시만)
- * - landing_cta_click: ingest=client 제외 (oauth_start 보정/레거시만)
- */
-function shouldCountEvent(row: {
-  event_name?: string | null;
-  metadata?: unknown;
-}): boolean {
-  const name = String(row.event_name ?? "");
-  const ingest = metadataIngest(row.metadata);
-  if (name === "landing_view" && ingest === "client") return false;
-  if (name === "landing_cta_click" && ingest === "client") return false;
-  return true;
 }
 
 /** PostgREST or: 카카오싱크 후보만 조회해 전역 2만 건 truncation 회피 */
@@ -98,9 +58,12 @@ const KAKAO_SYNC_EVENT_OR = [
 
 export async function fetchKakaoSyncAnalytics(input: {
   range: KakaoSyncAnalyticsRange;
+  date?: string | null;
   momentImportId?: string | null;
 }): Promise<KakaoSyncAnalyticsResponse> {
-  const since = rangeStartIso(input.range);
+  const window = resolveKakaoSyncAnalyticsWindow(input.range, input.date);
+  const since = window.since;
+  const until = window.until;
 
   let eventsQuery = supabaseAdmin
     .from("analytics_events")
@@ -122,6 +85,7 @@ export async function fetchKakaoSyncAnalytics(input: {
     .limit(20000);
 
   if (since) eventsQuery = eventsQuery.gte("occurred_at", since);
+  if (until) eventsQuery = eventsQuery.lte("occurred_at", until);
 
   const welcomeQuery = (() => {
     let q = supabaseAdmin
@@ -129,6 +93,7 @@ export async function fetchKakaoSyncAnalytics(input: {
       .select("id, created_at", { count: "exact" })
       .eq("ref_type", KAKAO_SIGNUP_WELCOME_REF_TYPE);
     if (since) q = q.gte("created_at", since);
+    if (until) q = q.lte("created_at", until);
     return q;
   })();
 
@@ -138,6 +103,7 @@ export async function fetchKakaoSyncAnalytics(input: {
       .select("id, kakao_channel_added, created_at", { count: "exact" })
       .not("kakao_channel_added", "is", null);
     if (since) q = q.gte("created_at", since);
+    if (until) q = q.lte("created_at", until);
     return q;
   })();
 
@@ -148,6 +114,7 @@ export async function fetchKakaoSyncAnalytics(input: {
       .eq("utm_source", "kakao")
       .eq("utm_medium", "bizboard");
     if (since) q = q.gte("created_at", since);
+    if (until) q = q.lte("created_at", until);
     return q;
   })();
 
@@ -169,7 +136,7 @@ export async function fetchKakaoSyncAnalytics(input: {
 
   const events = (eventsRes.data ?? [])
     .filter((row) => isKakaoSyncAnalyticsEvent(row))
-    .filter((row) => shouldCountEvent(row));
+    .filter((row) => shouldCountKakaoSyncAnalyticsEvent(row));
 
   let landingViews = 0;
   let ctaClicks = 0;
@@ -182,13 +149,13 @@ export async function fetchKakaoSyncAnalytics(input: {
   let productClicks = 0;
 
   const trendMap = new Map<string, KakaoSyncAnalyticsTrendPoint>();
-  for (const p of emptyTrend(input.range)) trendMap.set(p.date, { ...p });
+  for (const d of window.trendDates) trendMap.set(d, emptyTrendPoint(d));
 
   const campaignMap = new Map<string, KakaoSyncAnalyticsCampaignRow>();
 
   for (const row of events) {
     const name = String(row.event_name ?? "");
-    const ymd = toYmd(String(row.occurred_at ?? ""));
+    const ymd = toKstYmd(String(row.occurred_at ?? ""));
     const bucket =
       trendMap.get(ymd) ??
       ({

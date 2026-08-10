@@ -28,14 +28,14 @@ export function MobileGolfAdPage({
 }: MobileGolfAdPageProps) {
   const sourcePath = buildMobileGolfAdPublicPath(landing.slug);
   const ctaLabel = "간편 가입하기";
-  const fallbackHref = `/api/auth/kakao/start?next=/mypage&landing_slug=${encodeURIComponent(landing.slug)}&landing_path=${encodeURIComponent(sourcePath)}`;
+  const fallbackHref = `/api/auth/kakao/start?next=/mypage/dashboard&landing_slug=${encodeURIComponent(landing.slug)}&landing_path=${encodeURIComponent(sourcePath)}`;
   const [href, setHref] = useState(fallbackHref);
 
   useEffect(() => {
     if (previewMode) return;
     setHref(
       buildKakaoSyncAuthStartHref({
-        next: "/mypage",
+        next: "/mypage/dashboard",
         landingSlug: landing.slug,
         sourcePath,
       }),

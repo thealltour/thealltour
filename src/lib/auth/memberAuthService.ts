@@ -6,6 +6,8 @@ import { createNewMemberNotification } from "@/lib/adminNotifications";
 import { generateUniqueUsername } from "@/lib/auth/username";
 import { grantKakaoSignupWelcomePoints } from "@/lib/auth/grantKakaoSignupWelcomePoints";
 import { memberNeedsProfileCompletion } from "@/lib/auth/memberProfileGate";
+import { isKakaoSyncFunnelAcquisition } from "@/lib/analytics/kakaoSyncLandingHit";
+import { resolveOAuthIdentityMatchMode } from "@/lib/auth/oauthIdentityMatch";
 import type { MemberAcquisition } from "@/lib/auth/memberAcquisition";
 import type {
   AuthMode,
@@ -101,7 +103,8 @@ async function applyOAuthProfileToMember(memberId: string, profile: OAuthProfile
 
   const updates: Record<string, unknown> = {};
   if (profile.email?.trim() && !existing.email?.trim()) {
-    updates.email = profile.email.trim();
+    const conflict = await findMemberByEmail(profile.email);
+    if (!conflict) updates.email = profile.email.trim();
   }
   if (profile.name?.trim() && (!existing.name?.trim() || existing.name === "회원")) {
     updates.name = profile.name.trim();
@@ -118,28 +121,43 @@ async function applyOAuthProfileToMember(memberId: string, profile: OAuthProfile
   if (error) throw new Error(error.message);
 }
 
+async function resolveInsertableEmail(
+  email: string | null | undefined,
+  fromKakaoSync: boolean,
+): Promise<string | null> {
+  const trimmed = email?.trim() || null;
+  if (!trimmed) return null;
+  if (!fromKakaoSync) return trimmed;
+  /** members_email_unique_idx — 싱크는 email로 기존 계정과 묶지 않으므로 충돌 시 null */
+  const existing = await findMemberByEmail(trimmed);
+  return existing ? null : trimmed;
+}
+
 async function createSocialMember(
   provider: AuthProviderId,
   profile: OAuthProfile,
   acquisition?: MemberAcquisition | null,
 ): Promise<MemberRowForAuth> {
   const username = await generateUniqueUsername(provider, profile.providerUserId, isUsernameTaken);
+  const fromKakaoSync = isKakaoSyncFunnelAcquisition(acquisition ?? null);
+  const email = await resolveInsertableEmail(profile.email, fromKakaoSync);
   const { data, error } = await supabaseAdmin
     .from("members")
     .insert({
       username,
       name: profile.name,
-      email: profile.email,
+      email,
       phone: profile.phone,
       birth_date: null,
       gender: null,
       password_hash: null,
       password_salt: null,
-      agree_terms: false,
-      agree_privacy: false,
+      /** 카카오싱크 동의 화면에 서비스 약관이 포함되므로 complete-profile 전면 스킵 */
+      agree_terms: fromKakaoSync,
+      agree_privacy: fromKakaoSync,
       agree_email: false,
       signup_method: "social",
-      profile_completed_at: null,
+      profile_completed_at: fromKakaoSync ? new Date().toISOString() : null,
       kakao_channel_added: typeof profile.kakaoChannelAdded === "boolean" ? profile.kakaoChannelAdded : null,
       acquisition: acquisition ?? null,
     })
@@ -155,6 +173,36 @@ async function createSocialMember(
   }).catch((err) => console.error("[memberAuthService] createNewMemberNotification failed", err));
 
   return data as MemberRowForAuth;
+}
+
+/**
+ * 카카오싱크 유입은 싱크 동의로 약관을 갈음하고 complete-profile을 전면 스킵한다.
+ * (전화번호 유무와 무관)
+ */
+async function applyKakaoSyncTermsAgreementIfNeeded(
+  member: MemberRowForAuth,
+  acquisition?: MemberAcquisition | null,
+): Promise<MemberRowForAuth> {
+  if (!isKakaoSyncFunnelAcquisition(acquisition ?? null)) return member;
+  const hasTerms = member.agree_terms && member.agree_privacy;
+  if (hasTerms && member.profile_completed_at) return member;
+
+  const updates: Record<string, unknown> = {};
+  if (!hasTerms) {
+    updates.agree_terms = true;
+    updates.agree_privacy = true;
+  }
+  if (!member.profile_completed_at) {
+    updates.profile_completed_at = new Date().toISOString();
+  }
+  if (Object.keys(updates).length === 0) return member;
+
+  const { error } = await supabaseAdmin.from("members").update(updates).eq("id", member.id);
+  if (error) {
+    console.error("[memberAuthService] applyKakaoSyncTermsAgreementIfNeeded:", error.message);
+    return member;
+  }
+  return (await getMemberById(String(member.id))) ?? member;
 }
 
 async function createPendingLink(
@@ -203,8 +251,9 @@ export async function handleOAuthCallback(params: {
     const memberId = String(existingLink.member_id);
     await upsertProviderLink(memberId, provider, profile);
     await applyOAuthProfileToMember(memberId, profile);
-    const member = await getMemberById(memberId);
+    let member = await getMemberById(memberId);
     if (!member) throw new Error("연결된 회원을 찾을 수 없습니다.");
+    member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
     await syncMemberAfterAuth(member);
     return {
       type: "session",
@@ -240,7 +289,8 @@ export async function handleOAuthCallback(params: {
             : "social";
     await supabaseAdmin.from("members").update({ signup_method: signupMethod }).eq("id", linkMemberId);
 
-    const member = (await getMemberById(linkMemberId))!;
+    let member = (await getMemberById(linkMemberId))!;
+    member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
     await syncMemberAfterAuth(member);
     return {
       type: "session",
@@ -251,9 +301,17 @@ export async function handleOAuthCallback(params: {
     };
   }
 
-  const emailMember = await findMemberByEmail(profile.email);
-  /** email이 없거나(동의 미획득) 매칭 실패 시 phone으로 폴백 — 중복 회원 생성 방지 */
-  const phoneMember = emailMember ? null : await findMemberByPhone(profile.phone);
+  const matchMode = resolveOAuthIdentityMatchMode(acquisition);
+  let emailMember: MemberRowForAuth | null = null;
+  let phoneMember: MemberRowForAuth | null = null;
+  if (matchMode === "phone_only") {
+    /** 카카오싱크: 전화만 기존 로컬 계정 연결 기준. 이메일·이름은 신규 취급 */
+    phoneMember = await findMemberByPhone(profile.phone);
+  } else {
+    emailMember = await findMemberByEmail(profile.email);
+    /** email이 없거나(동의 미획득) 매칭 실패 시 phone으로 폴백 — 중복 회원 생성 방지 */
+    phoneMember = emailMember ? null : await findMemberByPhone(profile.phone);
+  }
   const matchedMember = emailMember ?? phoneMember;
   const matchedBy: "email" | "phone" = emailMember ? "email" : "phone";
 
@@ -279,7 +337,8 @@ export async function handleOAuthCallback(params: {
       .from("members")
       .update({ signup_method: matchedMember.signup_method === "local" ? "mixed" : "social" })
       .eq("id", matchedMember.id);
-    const member = (await getMemberById(String(matchedMember.id)))!;
+    let member = (await getMemberById(String(matchedMember.id)))!;
+    member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
     await syncMemberAfterAuth(member);
     return {
       type: "session",
@@ -290,8 +349,9 @@ export async function handleOAuthCallback(params: {
     };
   }
 
-  const member = await createSocialMember(provider, profile, acquisition);
+  let member = await createSocialMember(provider, profile, acquisition);
   await upsertProviderLink(String(member.id), provider, profile);
+  member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
   await syncMemberAfterAuth(member);
 
   let kakaoWelcomeGranted = false;

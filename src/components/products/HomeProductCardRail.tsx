@@ -22,7 +22,7 @@ export type HomeProductCardRailProps = {
   analyticsSection?: string;
   listAriaLabel?: string;
   className?: string;
-  priceDisplay?: "default" | "coinBenefit";
+  priceDisplay?: "default" | "coinBenefit" | "teamCouponBenefit";
   /** compact: 하드코딩 랜딩 등 좁은 좌우 inset */
   edgeInset?: "default" | "compact";
 };

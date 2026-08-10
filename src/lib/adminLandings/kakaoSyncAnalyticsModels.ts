@@ -8,7 +8,7 @@ import type {
 } from "@/lib/adminLandings/kakaoOAuthFailureStats";
 import type { KakaoMomentAnalyticsBlock } from "@/lib/adminLandings/kakaoMomentModels";
 
-export type KakaoSyncAnalyticsRange = "7d" | "30d" | "all";
+export type KakaoSyncAnalyticsRange = "1d" | "7d" | "30d" | "all" | "custom";
 
 export type {
   KakaoOAuthFailureBreakdownRow,
@@ -74,7 +74,7 @@ export type KakaoSyncAnalyticsResponse = {
 };
 
 export function parseKakaoSyncAnalyticsRangeParam(v: string | null): KakaoSyncAnalyticsRange {
-  if (v === "7d" || v === "30d" || v === "all") return v;
+  if (v === "1d" || v === "7d" || v === "30d" || v === "all" || v === "custom") return v;
   return "30d";
 }
 

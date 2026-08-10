@@ -34,6 +34,7 @@ export default async function CompleteProfilePage({ searchParams }: PageProps) {
   const resolved = (await searchParams) ?? {};
   const nextPath = sanitizeNextPath(resolved.next, "/mypage");
   const needsPhone = !memberRow.phone?.trim();
+  const needsTerms = !(memberRow.agree_terms && memberRow.agree_privacy);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--bg)] text-[var(--text-primary)]">
@@ -44,7 +45,7 @@ export default async function CompleteProfilePage({ searchParams }: PageProps) {
             <h1 className="text-2xl font-bold">추가 정보 입력</h1>
             <p className="text-sm text-[var(--text-secondary)]">소셜 로그인 가입을 마무리해 주세요.</p>
           </div>
-          <CompleteProfileForm nextPath={nextPath} needsPhone={needsPhone} />
+          <CompleteProfileForm nextPath={nextPath} needsPhone={needsPhone} needsTerms={needsTerms} />
         </section>
       </main>
     </div>

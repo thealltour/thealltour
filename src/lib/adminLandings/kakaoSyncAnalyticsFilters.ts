@@ -47,3 +47,24 @@ export function resolveKakaoSyncCampaign(row: {
   }
   return { key: "other", label: "기타", templateType: template || "unknown" };
 }
+
+function metadataIngest(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const ingest = (metadata as Record<string, unknown>).ingest;
+  return typeof ingest === "string" ? ingest : null;
+}
+
+/**
+ * 클라이언트·서버 이중 기록 시 집계 규칙:
+ * - landing_view: middleware 실패 시 client 폴백을 집계에 포함
+ * - landing_cta_click: ingest=client 제외 (oauth_start 보정과 이중 집계 방지)
+ */
+export function shouldCountKakaoSyncAnalyticsEvent(row: {
+  event_name?: string | null;
+  metadata?: unknown;
+}): boolean {
+  const name = String(row.event_name ?? "");
+  const ingest = metadataIngest(row.metadata);
+  if (name === "landing_cta_click" && ingest === "client") return false;
+  return true;
+}

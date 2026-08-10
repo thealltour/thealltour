@@ -97,12 +97,14 @@ export default function GlobalSiteFooter() {
       >
         <PageContainer size="wide" className="hardcoded-landing-x w-full px-4">
           <div className="flex flex-col items-center gap-2 py-4 text-center">
-            <p className="type-caption leading-relaxed text-[var(--footer-text-muted)]">
+            <p className="type-caption leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">
               {companyName} · 대표 {ceoName} · 사업자등록번호 {businessRegNo}
               {showTourismReg ? ` · 관광사업등록번호 ${tourismRegNo}` : ""}
               {showMailOrderReg ? ` · 통신판매업신고번호 ${mailOrderRegNo}` : ""}
             </p>
-            <p className="type-caption leading-relaxed text-[var(--footer-text-muted)]">{address}</p>
+            <p className="type-caption leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">
+              {address}
+            </p>
             <nav className="flex gap-3" aria-label="약관 및 정책">
               <Link href="/terms" className={cn("footer-pill-tertiary", focusRing)}>
                 이용약관

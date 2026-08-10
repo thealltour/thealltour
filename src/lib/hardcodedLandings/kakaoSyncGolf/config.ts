@@ -3,10 +3,6 @@ export type KakaoSyncFaqItem = {
   answer: string;
 };
 
-export type KakaoSyncBenefitSegment =
-  | { type: "text"; value: string }
-  | { type: "highlight"; value: string };
-
 /** 히어로 메인 타이틀 세그먼트 — 핵심 수치에 포인트 색을 주기 위함 */
 export type KakaoSyncHeroTitleSegment =
   | { type: "text"; value: string }
@@ -71,25 +67,9 @@ export const kakaoSyncGolfConfig = {
     socialProofSuffix: "명이 5만원 무제한 할인 쿠폰을 받아갔어요",
   },
   benefit: {
-    title: "가입 즉시 드리는 혜택",
-    /** 광고·심사 대조용 핵심 혜택명 */
+    /** 광고·심사 대조용 핵심 혜택명 — 쿠폰 그래픽 바로 아래 초소형 fine print로만 노출(중복 방지) */
     amountLabel: "5만원 쿠폰팩",
     amountSubLabel: "1인당 · 팀 전체 무제한",
-    /** 첫 스크롤에서 신뢰를 주는 3가지 핵심 팩트 — 금액·조건 언급 없음 */
-    highlights: ["가입비 무료", "1초 완료", "즉시 발급"],
-    segments: [
-      { type: "text", value: "카카오 간편가입 시 " },
-      { type: "highlight", value: "1인당 5만원 · 팀 전체 무제한 할인" },
-      {
-        type: "text",
-        value: "\n더올투어 골프투어 예약·상담에 바로 쓸 수 있는 즉시 할인입니다.",
-      },
-    ] satisfies KakaoSyncBenefitSegment[],
-    /** "조건"이라는 표현이 의심을 유발할 수 있어 긍정적 프레이밍으로 서술.
-     *  짧은 자격 안내만 담당 — 지급 프로세스 설명은 trustFlow가 전담(중복 방지). */
-    footnote: "신규 가입 회원 대상",
-    /** 가입 버튼 바로 아래 안심 뱃지 */
-    trustFlow: "⏱️ 1초 간편가입 → 쿠폰 즉시 발급 → 결제 시 바로 차감",
     /** 1·2·4·8인 모두 자기 혜택으로 읽히도록 티어 노출. BEST는 4인(1팀). */
     tiersTitle: "예약 인원수만큼, 할인이 커져요",
     tiers: [
@@ -109,8 +89,9 @@ export const kakaoSyncGolfConfig = {
       },
     ] satisfies KakaoSyncDiscountTier[],
     /** 동반자도 각자 가입해야 하는 것 아니냐는 의심 해소 — 대표/총무 1인 가입으로 충분 */
-    tiersNote:
-      "동반자분들은 별도 가입하실 필요 없습니다. 대표 1명 계정으로 예약 인원 전체 할인이 자동 적용됩니다.",
+    tiersNote: "대표 1명 계정으로 예약 인원 전체 할인이 자동 적용됩니다.",
+    /** 자격 안내 + 지급 프로세스를 한 줄로 압축 — 티어 박스 아래 초소형 fine print */
+    eligibilityNote: "신규 가입 회원 대상 · 가입 즉시 쿠폰 자동 발급",
   },
   /** 추천 상품 레일 헤딩 — 팀 총할인 가치 증거 */
   products: {
@@ -119,7 +100,7 @@ export const kakaoSyncGolfConfig = {
     descriptionFallback: "정가(4인)에서 쿠폰 총액을 뺀 적용가를 바로 확인해보세요.",
   },
   trust: {
-    sectionTitle: "더올투어 안심 보장 & 생생 후기",
+    badgesSectionTitle: "🛡️ 더올투어 안심 보장 약속",
     reviewsHeading: "💬 더올투어 이용 고객들의 생생한 한 줄 후기",
     badges: ["현지 직영 가이드", "노쇼핑·노옵션 원칙", "정식 관광사업등록업체"],
     reviews: [

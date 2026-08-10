@@ -4,10 +4,10 @@ import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/Land
 import { HardcodedLandingShell } from "@/components/hardcoded-landings/shared/HardcodedLandingShell";
 import { KakaoSyncCouponVisual } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncCouponVisual";
 import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
-import { KakaoSyncGolfInlineCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfInlineCta";
 import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
 import { KakaoSyncSectionViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncSectionViewTracker";
-import { KakaoSyncTrustReviewsSection } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncTrustReviewsSection";
+import { KakaoSyncTrustBadgesSection } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncTrustBadgesSection";
+import { KakaoSyncReviewsSection } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncReviewsSection";
 import {
   KAKAO_SYNC_HERO_ACCENT,
   kakaoSyncGolfConfig,
@@ -19,6 +19,11 @@ export type KakaoSyncGolfLandingPageProps = {
   products: Product[];
 };
 
+/**
+ * 스크롤 흐름 6단계: 히어로(흥미) → 쿠폰·할인표(혜택 이해) → 안심 뱃지(신뢰)
+ * → 상품(증거) → 후기(확신) → FAQ(이탈 방지).
+ * 3·5번은 전폭 muted 배경 띠로 감싸 4·6번(흰 배경)과 교대 대비를 줌.
+ */
 export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageProps) {
   const { hero, benefit, products: productsCopy, faq } = kakaoSyncGolfConfig;
   const dailySocialProofCount = getKakaoSyncDailySocialProofCount();
@@ -27,7 +32,7 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
     <>
       <KakaoSyncGolfViewTracker />
       <div className="hardcoded-landing-page pb-24">
-        {/* 히어로 — Hierarchy: 핵심 혜택 → 대표 1명 편의 → 사회적 증거 */}
+        {/* 1. 히어로 — Hierarchy: 핵심 혜택 → 대표 1명 편의 → 사회적 증거 */}
         <section aria-label="Hero" className="relative w-full px-4 pt-2">
           <div className="relative overflow-hidden rounded-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element -- 외부 히어로 URL */}
@@ -77,51 +82,15 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
           </div>
         </section>
 
-        <HardcodedLandingShell className="space-y-5 py-3">
-          {/* 혜택 — 광고 소재(5만원 쿠폰팩)와 동일 문구를 첫 스크롤에서 확인 가능하도록 강조 */}
+        {/* 2. 쿠폰 그래픽 & 인원별 할인표 — 중복 설명 삭제, 압축 고지문만 유지 */}
+        <HardcodedLandingShell className="py-4">
           <KakaoSyncSectionViewTracker sectionName="kakao_sync_benefit" />
           <section aria-label="Benefit">
-            <div className="rounded-2xl bg-[#f8f9fa] px-3 py-4">
-              <KakaoSyncCouponVisual />
-
-              {/* 기본 혜택 카피 — 티어 섹션(핵심 후킹)에 시선을 넘겨주는 보조 인트로로 축소 */}
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{benefit.title}</p>
-              <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
-                <p className="text-2xl font-extrabold tracking-tight text-orange-500">
-                  {benefit.amountLabel}
-                </p>
-                <p className="text-sm font-semibold text-slate-600">{benefit.amountSubLabel}</p>
-              </div>
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {benefit.highlights.map((highlight) => (
-                  <li
-                    key={highlight}
-                    className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
-                  >
-                    {highlight}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                {benefit.segments.map((segment, index) =>
-                  segment.type === "highlight" ? (
-                    <span key={index} className="font-bold text-orange-500">
-                      {segment.value}
-                    </span>
-                  ) : (
-                    <span key={index} className="whitespace-pre-line">
-                      {segment.value}
-                    </span>
-                  ),
-                )}
-              </p>
-              {benefit.footnote ? (
-                <p className="mt-1 text-[0.6875rem] text-slate-400">{benefit.footnote}</p>
-              ) : null}
-
-              {/* 핵심 후킹 — 1·2·4·8인 티어. BEST(4인) + 8인 무제한 보조 강조 */}
+            <div className="rounded-2xl bg-[var(--surface-muted)] px-3 py-4">
+              {/* 핵심 후킹 — 1·2·4·8인 티어를 먼저 보여줘 혜택 크기를 이해시키고,
+                  바로 아래 실물 쿠폰 그래픽으로 "이렇게 지급된다"는 증거를 이어 붙임 */}
               {benefit.tiers?.length ? (
-                <div className="mt-4 rounded-2xl border-2 border-orange-200 bg-gradient-to-b from-orange-50 to-white p-3.5 shadow-[0_2px_14px_rgba(249,115,22,0.1)]">
+                <div className="rounded-2xl border-2 border-orange-200 bg-gradient-to-b from-orange-50 to-white p-3.5 shadow-[0_2px_14px_rgba(249,115,22,0.1)]">
                   {benefit.tiersTitle ? (
                     <h3 className="flex items-center gap-1.5 text-base font-extrabold text-slate-900">
                       <Users className="h-4 w-4 shrink-0 text-orange-500" aria-hidden />
@@ -183,18 +152,33 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
                 </div>
               ) : null}
 
-              <KakaoSyncGolfInlineCta />
+              {/* 실물 쿠폰 그래픽 — 티어표로 이해한 혜택이 실제 지급되는 형태를 보여주는 증거 */}
+              <div className="mt-4">
+                <KakaoSyncCouponVisual />
+                <p className="mt-2 text-center text-[0.6875rem] text-slate-400">
+                  {benefit.amountLabel} · {benefit.amountSubLabel}
+                </p>
+              </div>
 
-              {/* 안심 보조 정보 — CTA 하위, 폰트/톤을 낮춰 후순위로 표시 */}
-              {benefit.trustFlow ? (
-                <p className="mt-2 flex w-full items-center justify-center rounded-full bg-white px-3 py-1.5 text-center text-[0.6875rem] font-medium text-slate-400 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
-                  {benefit.trustFlow}
+              {benefit.eligibilityNote ? (
+                <p className="mt-2 text-center text-[0.6875rem] text-slate-400">
+                  {benefit.eligibilityNote}
                 </p>
               ) : null}
             </div>
           </section>
+        </HardcodedLandingShell>
 
-          {/* 추천 상품 — 팀(4인) 총할인 가치 증거 */}
+        {/* 3. 안심 보장 — 상품 보기 전 신뢰 구축, muted 배경 띠로 구분 */}
+        <section aria-label="안심 보장 배경" className="w-full bg-[var(--surface-muted)] py-5">
+          <HardcodedLandingShell>
+            <KakaoSyncSectionViewTracker sectionName="kakao_sync_trust" />
+            <KakaoSyncTrustBadgesSection />
+          </HardcodedLandingShell>
+        </section>
+
+        {/* 4. 할인 적용 대표 상품 — 팀(4인) 총할인 가치 증거 */}
+        <HardcodedLandingShell className="py-5">
           <KakaoSyncSectionViewTracker sectionName="kakao_sync_products" />
           {products.length > 0 ? (
             <section aria-label="추천 골프투어">
@@ -220,12 +204,18 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
               </div>
             </section>
           ) : null}
+        </HardcodedLandingShell>
 
-          {/* 신뢰·후기 */}
-          <KakaoSyncSectionViewTracker sectionName="kakao_sync_trust" />
-          <KakaoSyncTrustReviewsSection />
+        {/* 5. 고객 후기 — muted 배경 띠로 구분, 확신 부여 */}
+        <section aria-label="고객 후기 배경" className="w-full bg-[var(--surface-muted)] py-5">
+          <HardcodedLandingShell>
+            <KakaoSyncSectionViewTracker sectionName="kakao_sync_reviews" />
+            <KakaoSyncReviewsSection />
+          </HardcodedLandingShell>
+        </section>
 
-          {/* FAQ */}
+        {/* 6. FAQ — 이탈 방지 */}
+        <HardcodedLandingShell className="py-5">
           <KakaoSyncSectionViewTracker sectionName="kakao_sync_faq" />
           <LandingFaqAccordion
             sectionTitle={faq.sectionTitle}

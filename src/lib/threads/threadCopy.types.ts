@@ -8,7 +8,9 @@ export const threadCopySchema = z.object({
     .string()
     .min(80)
     .max(500)
-    .describe("150~250자 내외의 솔직하고 전문성 있는 대화체 본문. 낚시성 과장 금지."),
+    .describe(
+      "150~200자 내외. 2~3문장마다 빈 줄, 핵심 혜택은 • 불렛 2~3개. 친근한 구어체. 낚시성 과장 금지.",
+    ),
   targetKeyword: z
     .string()
     .min(1)
@@ -22,7 +24,9 @@ export const threadCopySchema = z.object({
     .string()
     .min(8)
     .max(160)
-    .describe("댓글 작성 유도 문구. targetKeyword를 포함"),
+    .describe(
+      "댓글로 [targetKeyword] 남겨주시면 3초 만에 상세 일정표 바로 쏘아드릴게요! 형태의 반응 유도. targetKeyword 필수.",
+    ),
 });
 
 export type ThreadCopy = z.infer<typeof threadCopySchema>;

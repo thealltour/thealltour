@@ -3,6 +3,7 @@ import { KakaoSyncGolfLandingPage } from "@/components/hardcoded-landings/kakao-
 import { getHomeGolfTourProducts } from "@/lib/homeGolfTourProducts";
 import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
 import { buildOgBrandFallbackMetadata } from "@/lib/seo/buildOgPageMetadata";
+import { getSiteSettings } from "@/lib/siteSettings";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildOgBrandFallbackMetadata({
@@ -14,7 +15,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function KakaoSyncGolfPage() {
-  const products = await getHomeGolfTourProducts();
+  const [products, settings] = await Promise.all([
+    getHomeGolfTourProducts(),
+    getSiteSettings(),
+  ]);
 
-  return <KakaoSyncGolfLandingPage products={products} />;
+  return (
+    <KakaoSyncGolfLandingPage
+      products={products}
+      tourismRegNo={settings.tourism_reg_no}
+    />
+  );
 }

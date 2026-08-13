@@ -1,9 +1,9 @@
 import { Flame, Users } from "lucide-react";
+import { HomeTrustSection } from "@/components/home/HomeTrustSection";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/LandingFaqAccordion";
 import { HardcodedLandingShell } from "@/components/hardcoded-landings/shared/HardcodedLandingShell";
 import { KakaoSyncCouponVisual } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncCouponVisual";
-import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
 import { KakaoSyncGolfViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfViewTracker";
 import { KakaoSyncSectionViewTracker } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncSectionViewTracker";
 import { KakaoSyncTrustBadgesSection } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncTrustBadgesSection";
@@ -17,21 +17,22 @@ import type { Product } from "@/types/product";
 
 export type KakaoSyncGolfLandingPageProps = {
   products: Product[];
+  tourismRegNo?: string;
 };
 
 /**
- * 스크롤 흐름 6단계: 히어로(흥미) → 쿠폰·할인표(혜택 이해) → 안심 뱃지(신뢰)
- * → 상품(증거) → 후기(확신) → FAQ(이탈 방지).
- * 3·5번은 전폭 muted 배경 띠로 감싸 4·6번(흰 배경)과 교대 대비를 줌.
+ * 스크롤 흐름: 히어로(흥미) → 쿠폰·할인표(혜택 이해) → 안심 뱃지(신뢰)
+ * → 상품(증거) → 후기(확신) → FAQ(이탈 방지) → 홈 신뢰 카드(재확인).
+ * 3·5·7번은 전폭 muted 배경 띠로 감싸 4·6번(흰 배경)과 교대 대비를 줌.
  */
-export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageProps) {
+export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGolfLandingPageProps) {
   const { hero, benefit, products: productsCopy, faq } = kakaoSyncGolfConfig;
   const dailySocialProofCount = getKakaoSyncDailySocialProofCount();
 
   return (
     <>
       <KakaoSyncGolfViewTracker />
-      <div className="hardcoded-landing-page pb-24">
+      <div className="hardcoded-landing-page">
         {/* 1. 히어로 — Hierarchy: 핵심 혜택 → 대표 1명 편의 → 사회적 증거 */}
         <section aria-label="Hero" className="relative w-full px-4 pt-2">
           <div className="relative overflow-hidden rounded-2xl">
@@ -222,9 +223,15 @@ export function KakaoSyncGolfLandingPage({ products }: KakaoSyncGolfLandingPageP
             items={[...faq.items]}
           />
         </HardcodedLandingShell>
-      </div>
 
-      <KakaoSyncGolfFixedCta />
+        {/* 7. 홈과 동일한 신뢰 카드 — FAQ 아래·고정 CTA 위 */}
+        <section aria-label="신뢰 배경" className="w-full bg-[var(--surface-muted)] py-5">
+          <HardcodedLandingShell>
+            <KakaoSyncSectionViewTracker sectionName="kakao_sync_home_trust" />
+            <HomeTrustSection stackCards tourismRegNo={tourismRegNo} />
+          </HardcodedLandingShell>
+        </section>
+      </div>
     </>
   );
 }

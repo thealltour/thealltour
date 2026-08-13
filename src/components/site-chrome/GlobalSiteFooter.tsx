@@ -65,10 +65,12 @@ export default function GlobalSiteFooter() {
     return null;
   }
 
-  const isGolfAdLanding =
-    pathname.startsWith("/golf/ads") || pathname.startsWith("/golf/kakao-sync");
-  /** 단일 CTA(간편가입)에 집중해야 하는 카카오싱크 랜딩만 축소형 풋터로 교체 (/golf/ads는 기존 전체 풋터 유지) */
-  const isKakaoSyncLanding = pathname.startsWith("/golf/kakao-sync");
+  /** 카카오싱크는 랜딩 레이아웃 안 축소 푸터를 쓰므로 루트 전폭 푸터는 숨김 */
+  if (pathname.startsWith("/golf/kakao-sync")) {
+    return null;
+  }
+
+  const isGolfAdLanding = pathname.startsWith("/golf/ads");
 
   const companyName = settings?.company_name ?? "(주)더올투어";
   const ceoName = settings?.ceo_name ?? "김지호";
@@ -85,42 +87,6 @@ export default function GlobalSiteFooter() {
   const instagramUrl = settings?.instagram_url ?? "https://www.instagram.com/thealltour";
   const naverBandUrl = (settings?.naver_band_url ?? "").trim();
   const naverBlogUrl = (settings?.naver_blog_url ?? "").trim();
-
-  /** 카카오싱크 랜딩 전용 축소형 풋터 — 채널 버튼·연락처 제거, 사업자정보+약관 링크+저작권만 유지 */
-  if (isKakaoSyncLanding) {
-    return (
-      <footer
-        className={cn(
-          "border-t border-[var(--divider)] bg-[var(--surface-muted)] text-[var(--foreground)]",
-          "pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))]",
-        )}
-      >
-        <PageContainer size="wide" className="hardcoded-landing-x w-full px-4">
-          <div className="flex flex-col items-center gap-2 py-4 text-center">
-            <p className="type-caption leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">
-              {companyName} · 대표 {ceoName} · 사업자등록번호 {businessRegNo}
-              {showTourismReg ? ` · 관광사업등록번호 ${tourismRegNo}` : ""}
-              {showMailOrderReg ? ` · 통신판매업신고번호 ${mailOrderRegNo}` : ""}
-            </p>
-            <p className="type-caption leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">
-              {address}
-            </p>
-            <nav className="flex gap-3" aria-label="약관 및 정책">
-              <Link href="/terms" className={cn("footer-pill-tertiary", focusRing)}>
-                이용약관
-              </Link>
-              <Link href="/privacy" className={cn("footer-pill-tertiary", focusRing)}>
-                개인정보처리방침
-              </Link>
-            </nav>
-            <p className="type-caption leading-snug text-[var(--footer-text-muted)]">
-              © {new Date().getFullYear()} 더올투어. All rights reserved
-            </p>
-          </div>
-        </PageContainer>
-      </footer>
-    );
-  }
 
   /** 상담·채널: 카카오, 인스타, (선택)밴드·블로그 — 그리드에서 동일 셀 크기 */
   const channelCount =

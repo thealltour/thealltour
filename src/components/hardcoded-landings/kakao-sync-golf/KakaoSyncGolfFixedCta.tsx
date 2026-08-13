@@ -42,8 +42,8 @@ export function KakaoSyncGolfFixedCta() {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
-      <div className="pointer-events-auto w-full rounded-2xl border border-black/5 bg-white/95 p-2 shadow-[0_8px_28px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+    <div className="shrink-0 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pt-2 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]">
+      <div className="rounded-2xl border border-black/5 bg-white/95 p-2 shadow-[0_8px_28px_rgba(0,0,0,0.14)]">
         <a
           href={href}
           onClick={handleClick}

@@ -70,13 +70,23 @@ describe("generateThreadCopy", () => {
     };
     expect(call.model).toBe("google:g-key:gemini-3.6-flash");
     expect(call.system).toContain("TIMEDEAL");
-    expect(call.system).toContain("가격, 혜택, 잔여");
+    expect(call.system).toContain("긴급성");
+    expect(call.system).toContain("올포함");
+    expect(call.system).toContain("3초");
     expect(call.prompt).toContain("발리 4박5일");
+  });
+
+  it("uses curation prompt for CURATION", () => {
+    const system = buildThreadCopySystemPrompt("CURATION");
+    expect(system).toContain("타겟");
+    expect(system).toContain("저장 욕구");
   });
 
   it("uses seasonal experience prompt for SEASONAL_EXPERIENCE", () => {
     const system = buildThreadCopySystemPrompt("SEASONAL_EXPERIENCE");
-    expect(system).toContain("계절, 트렌드, 현지 독점 경험");
+    expect(system).toContain("시의성");
+    expect(system).toContain("현지");
+    expect(system).toContain("3초");
   });
 });
 

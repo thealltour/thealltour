@@ -1,7 +1,7 @@
 import "server-only";
 
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { resolveImportLanguageModel } from "@/lib/admin/ai/importAiModel";
 import {
   externalProductMetaSchema,
   type ExternalParsedMeta,
@@ -20,7 +20,6 @@ import {
 } from "@/lib/admin/externalImport/htmlContextExtract";
 
 /** 메타: plain text만 (HTML 전체 금지 — TPM 초과 방지) */
-const EXTERNAL_IMPORT_MODEL = "gpt-4o-mini";
 const MAX_META_CHARS = 18_000;
 
 /** 일정: minify 후 HTML */
@@ -173,18 +172,13 @@ function buildItineraryPrompt(input: ParseExternalProductPageInput): string {
 export async function parseExternalProductMeta(
   input: ParseExternalProductPageInput,
 ): Promise<ExternalParsedMeta> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY가 설정되어 있지 않습니다.");
-  }
-
   const metaContent = resolveMetaContent(input);
   if (!metaContent) {
     throw new Error("메타 추출용 페이지 텍스트가 비어 있습니다.");
   }
 
   const { object } = await generateObject({
-    model: openai(EXTERNAL_IMPORT_MODEL),
+    model: resolveImportLanguageModel(),
     schema: externalProductMetaSchema,
     system: META_SYSTEM_PROMPT,
     prompt: buildMetaPrompt(input),
@@ -196,18 +190,13 @@ export async function parseExternalProductMeta(
 export async function parseExternalItineraryFromHtml(
   input: ParseExternalProductPageInput,
 ): Promise<ExternalParsedItineraryV2> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY가 설정되어 있지 않습니다.");
-  }
-
   const { content } = resolveItineraryContent(input);
   if (!content) {
     return null;
   }
 
   const { object } = await generateObject({
-    model: openai(EXTERNAL_IMPORT_MODEL),
+    model: resolveImportLanguageModel(),
     schema: externalItineraryOnlySchema,
     system: ITINERARY_HTML_PROMPT,
     prompt: buildItineraryPrompt(input),
@@ -246,7 +235,12 @@ export function formatExternalParseError(error: unknown): string {
   if (!(error instanceof Error)) {
     return "외부 상품 페이지 파싱에 실패했습니다.";
   }
-  if (error.message.includes("OPENAI_API_KEY")) {
+  if (
+    error.message.includes("OPENAI_API_KEY") ||
+    error.message.includes("GOOGLE_GENERATIVE_AI_API_KEY") ||
+    error.message.includes("GEMINI_API_KEY") ||
+    error.message.includes("상품 파서용 AI 키")
+  ) {
     return error.message;
   }
   const lower = error.message.toLowerCase();
@@ -255,7 +249,7 @@ export function formatExternalParseError(error: unknown): string {
     lower.includes("tokens per min") ||
     lower.includes("request too large")
   ) {
-    return "AI 토큰 한도를 초과했습니다. 잠시 후 다시 시도하거나 OpenAI 사용 한도를 확인해 주세요.";
+    return "AI 토큰 한도를 초과했습니다. 잠시 후 다시 시도하거나 모델 사용 한도를 확인해 주세요.";
   }
   return "외부 상품 페이지 파싱에 실패했습니다.";
 }

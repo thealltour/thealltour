@@ -69,6 +69,8 @@ export type AdminProductsListViewProps = {
   onOpenBandHook?: (product: Product) => void;
   /** 카카오채널 게시글 생성 모달 (목록 작업 열) */
   onOpenKakaoPost?: (product: Product) => void;
+  /** Threads 카피 생성·게시 모달 (목록 작업 열) */
+  onOpenThreadsPost?: (product: Product) => void;
   /** 이미지 ZIP 옵션 모달 열기 (메뉴·레거시 버튼) */
   onOpenDownloadOptions?: (product: Product) => void;
   /** preset 즉시 다운로드 (메뉴) */

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { resolveImportLanguageModel, resolveImportModelId } from "@/lib/admin/ai/importAiModel";
 import { bandItineraryOnlySchema } from "@/lib/admin/bandImport/bandItineraryOnlySchema";
 import { bandProductMetaSchema } from "@/lib/admin/bandImport/bandProductMetaSchema";
 import { mergeBandParsed } from "@/lib/admin/bandImport/mergeBandParsed";
@@ -16,7 +16,9 @@ export type ParseBandProductTextInput = {
   hwpText: string;
 };
 
-export const BAND_IMPORT_MODEL = process.env.BAND_IMPORT_MODEL?.trim() || "gpt-4o-mini";
+export function getBandImportModelId(): string {
+  return resolveImportModelId().modelId;
+}
 
 const META_SYSTEM_PROMPT = `You map Korean travel-agency band/HWP text into a strict JSON metadata schema.
 Rules:
@@ -89,19 +91,10 @@ function buildBandItineraryPrompt(input: ParseBandProductTextInput): string {
   ].join("\n");
 }
 
-function resolveBandModel() {
-  return openai(BAND_IMPORT_MODEL);
-}
-
 export async function parseBandProductText(
   input: ParseBandProductTextInput,
 ): Promise<BandParsedProduct> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY가 설정되어 있지 않습니다.");
-  }
-
-  const model = resolveBandModel();
+  const model = resolveImportLanguageModel();
 
   const { object: meta } = await generateObject({
     model,

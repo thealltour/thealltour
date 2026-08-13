@@ -117,6 +117,7 @@ export default function AdminProductsListView({
   onOpenBlogPost,
   onOpenBandHook,
   onOpenKakaoPost,
+  onOpenThreadsPost,
   onOpenDownloadOptions,
   onRunProductImageDownloadWithPreset,
   downloadPresets,
@@ -301,6 +302,7 @@ export default function AdminProductsListView({
             onBlogPost={onOpenBlogPost}
             onBandHook={onOpenBandHook}
             onKakaoPost={onOpenKakaoPost}
+            onThreadsPost={onOpenThreadsPost}
             onOpenDownloadOptions={onOpenDownloadOptions}
             onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
             downloadPresets={downloadPresets}
@@ -439,6 +441,7 @@ export default function AdminProductsListView({
           onBlogPost={onOpenBlogPost}
           onBandHook={onOpenBandHook}
           onKakaoPost={onOpenKakaoPost}
+          onThreadsPost={onOpenThreadsPost}
           onOpenDownloadOptions={onOpenDownloadOptions}
           onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
           downloadPresets={downloadPresets}

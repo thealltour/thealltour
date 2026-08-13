@@ -26,6 +26,8 @@ export type AdminProductListSectionProps = {
   onOpenBandHook?: (product: Product) => void;
   /** 카카오채널 게시글 생성 (목록 작업 열) */
   onOpenKakaoPost?: (product: Product) => void;
+  /** Threads 카피 생성·게시 (목록 작업 열) */
+  onOpenThreadsPost?: (product: Product) => void;
   /** 이미지 ZIP 옵션 모달 (목록 작업 열) */
   onOpenDownloadOptions?: (product: Product) => void;
   /** preset 즉시 다운로드 */
@@ -56,6 +58,7 @@ export default function AdminProductListSection({
   onOpenBlogPost,
   onOpenBandHook,
   onOpenKakaoPost,
+  onOpenThreadsPost,
   onOpenDownloadOptions,
   onRunProductImageDownloadWithPreset,
   downloadPresets,
@@ -128,7 +131,8 @@ export default function AdminProductListSection({
       onOpenSmartstoreHtml={onOpenSmartstoreHtml}
       onOpenBlogPost={onOpenBlogPost}
       onOpenBandHook={onOpenBandHook}
-      onOpenKakaoPost={onOpenKakaoPost}
+        onOpenKakaoPost={onOpenKakaoPost}
+      onOpenThreadsPost={onOpenThreadsPost}
       onOpenDownloadOptions={onOpenDownloadOptions}
       onRunProductImageDownloadWithPreset={onRunProductImageDownloadWithPreset}
       downloadPresets={downloadPresets}

@@ -9,7 +9,7 @@ const USAGE_STEPS = [
     body: [
       "동일 Chrome 브라우저에서 더올투어 관리자에 로그인합니다.",
       "로컬 개발 시 `npm run dev`로 API 서버를 실행합니다.",
-      "서버 `.env`에 `OPENAI_API_KEY`가 설정되어 있어야 AI 파싱이 동작합니다.",
+      "서버 `.env`에 `GOOGLE_GENERATIVE_AI_API_KEY`(또는 `GEMINI_API_KEY`)가 있어야 AI 파싱이 동작합니다. OpenAI만 쓸 경우 `OPENAI_API_KEY`도 가능합니다.",
     ].join("\n"),
   },
   {

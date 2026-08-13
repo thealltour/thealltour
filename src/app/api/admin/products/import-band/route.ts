@@ -4,6 +4,7 @@ import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { requireAdminSession } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { findExistingProductIdBySourceUrl } from "@/lib/admin/bandImport/checkProductSourceUrl";
+import { hasImportAiKey, MISSING_IMPORT_AI_KEY_MESSAGE } from "@/lib/admin/ai/importAiModel";
 import { parseBandProductText, formatBandParseError } from "@/lib/admin/bandImport/parseBandProductText";
 import {
   mapBandParsedToInsert,
@@ -142,11 +143,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
-    return NextResponse.json(
-      { message: "OPENAI_API_KEY가 설정되어 있지 않습니다. 배포 환경 변수를 확인해 주세요." },
-      { status: 500 },
-    );
+  if (!hasImportAiKey()) {
+    return NextResponse.json({ message: MISSING_IMPORT_AI_KEY_MESSAGE }, { status: 500 });
   }
 
   let parsed;

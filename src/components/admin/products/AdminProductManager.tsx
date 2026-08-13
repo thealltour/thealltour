@@ -84,6 +84,7 @@ import SmartstoreHtmlGenerateModal from "@/components/admin/products/modals/Smar
 import BlogPostGenerateModal from "@/components/admin/products/modals/BlogPostGenerateModal";
 import BandHookGenerateModal from "@/components/admin/products/modals/BandHookGenerateModal";
 import KakaoPostGenerateModal from "@/components/admin/products/modals/KakaoPostGenerateModal";
+import ThreadsGenerateModal from "@/components/admin/products/modals/ThreadsGenerateModal";
 import { FlyerGenerateModal } from "@/components/admin/products/modals/FlyerGenerateModal";
 import { useAdminProductTaxonomyController } from "@/components/admin/products/hooks/useAdminProductTaxonomyController";
 import AdminProductEditorView from "@/components/admin/products/AdminProductEditorView";
@@ -366,6 +367,8 @@ export default function AdminProductManager() {
   const [bandHookProduct, setBandHookProduct] = useState<Product | null>(null);
   const [kakaoModalOpen, setKakaoModalOpen] = useState(false);
   const [kakaoProduct, setKakaoProduct] = useState<Product | null>(null);
+  const [threadsModalOpen, setThreadsModalOpen] = useState(false);
+  const [threadsProduct, setThreadsProduct] = useState<Product | null>(null);
   const [flyerModalOpen, setFlyerModalOpen] = useState(false);
   const [flyerProduct, setFlyerProduct] = useState<Product | null>(null);
   const [pendingDownloadId, setPendingDownloadId] = useState<string | null>(null);
@@ -2232,6 +2235,10 @@ export default function AdminProductManager() {
             setKakaoProduct(product);
             setKakaoModalOpen(true);
           }}
+          onOpenThreadsPost={(product) => {
+            setThreadsProduct(product);
+            setThreadsModalOpen(true);
+          }}
           pendingDownloadId={pendingDownloadId}
           onOpenDownloadOptions={(product) => {
             if (zipDownloadBusyRef.current || pendingDownloadId) {
@@ -2305,6 +2312,22 @@ export default function AdminProductManager() {
           setKakaoProduct(null);
         }}
         onCopied={() => showToast("success", "카카오채널 게시글이 복사되었습니다.")}
+      />
+
+      <ThreadsGenerateModal
+        open={threadsModalOpen}
+        productId={threadsProduct?.id ?? null}
+        productTitle={threadsProduct?.title?.trim() ?? ""}
+        onClose={() => {
+          setThreadsModalOpen(false);
+          setThreadsProduct(null);
+        }}
+        onPublished={(permalink) =>
+          showToast(
+            "success",
+            permalink ? "Threads에 게시되었습니다." : "Threads에 게시되었습니다. permalink는 아직 확인되지 않았습니다.",
+          )
+        }
       />
 
       <FlyerGenerateModal

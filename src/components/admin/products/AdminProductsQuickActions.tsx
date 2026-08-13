@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
+  AtSign,
   BookOpen,
   ChevronDown,
   Download,
@@ -35,6 +36,8 @@ type AdminProductsQuickActionsProps = {
   onBandHook?: (product: Product) => void;
   /** 카카오채널 게시글 생성 모달 */
   onKakaoPost?: (product: Product) => void;
+  /** Threads 카피 생성·게시 모달 */
+  onThreadsPost?: (product: Product) => void;
   /** 옵션 모달만 열기 (레거시 단일 버튼용) */
   onOpenDownloadOptions?: (product: Product) => void;
   /** preset 선택 메뉴 + 즉시 실행 */
@@ -66,6 +69,7 @@ export default function AdminProductsQuickActions({
   onBlogPost,
   onBandHook,
   onKakaoPost,
+  onThreadsPost,
   onOpenDownloadOptions,
   downloadPresets,
   downloadDefaultPresetId,
@@ -195,6 +199,18 @@ export default function AdminProductsQuickActions({
         >
           <MessageCircle className={icoCls} aria-hidden />
           {!compact && !dense ? <span className="max-w-[4.5rem] truncate">카카오 글</span> : null}
+        </button>
+      ) : null}
+      {onThreadsPost ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onThreadsPost(product)}
+          className={`${btnBase} ${iconBtn} border-sky-200/80 bg-sky-50 text-sky-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-1 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100`}
+          title="Threads 카피 생성·게시"
+        >
+          <AtSign className={icoCls} aria-hidden />
+          {!compact && !dense ? <span className="max-w-[4.5rem] truncate">스레드</span> : null}
         </button>
       ) : null}
       {showDownloadMenu ? (

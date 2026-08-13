@@ -9,7 +9,14 @@ vi.mock("ai", () => ({
 }));
 
 vi.mock("@ai-sdk/openai", () => ({
-  openai: (model: string) => model,
+  openai: (model: string) => `openai:${model}`,
+}));
+
+vi.mock("@ai-sdk/google", () => ({
+  createGoogleGenerativeAI:
+    ({ apiKey }: { apiKey: string }) =>
+    (model: string) =>
+      `google:${apiKey}:${model}`,
 }));
 
 import { parseBandProductText } from "@/lib/admin/bandImport/parseBandProductText";
@@ -72,7 +79,11 @@ const baseMeta = {
 describe("parseBandProductText", () => {
   beforeEach(() => {
     generateObjectMock.mockReset();
-    process.env.OPENAI_API_KEY = "test-key";
+    delete process.env.IMPORT_AI_PROVIDER;
+    delete process.env.BAND_IMPORT_MODEL;
+    delete process.env.IMPORT_AI_MODEL;
+    delete process.env.OPENAI_API_KEY;
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = "test-google-key";
   });
 
   it("calls generateObject twice for meta and itinerary passes", async () => {
@@ -94,6 +105,8 @@ describe("parseBandProductText", () => {
     expect(generateObjectMock).toHaveBeenCalledTimes(2);
     expect(result.title).toBe("테스트 상품");
     expect(result.itinerary_v2_json).toHaveLength(1);
-    expect(generateObjectMock.mock.calls[0][0].model).toBe("gpt-4o-mini");
+    expect(generateObjectMock.mock.calls[0][0].model).toBe(
+      "google:test-google-key:gemini-3.6-flash",
+    );
   });
 });

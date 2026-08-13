@@ -32,6 +32,8 @@ import {
 
 import { normalizeItineraryBlocks } from "@/lib/admin/externalImport/itineraryBlockTypes";
 
+import { hasImportAiKey, MISSING_IMPORT_AI_KEY_MESSAGE } from "@/lib/admin/ai/importAiModel";
+
 import { parseExternalProductPage, formatExternalParseError } from "@/lib/admin/externalImport/parseExternalProductPage";
 
 import { mergeExternalImport } from "@/lib/admin/externalImport/mergeExternalImport";
@@ -195,15 +197,9 @@ export async function POST(request: NextRequest) {
 
 
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
+  if (!hasImportAiKey()) {
 
-    return corsOnly(
-
-      { message: "OPENAI_API_KEY가 설정되어 있지 않습니다. 배포 환경 변수를 확인해 주세요." },
-
-      500,
-
-    );
+    return corsOnly({ message: MISSING_IMPORT_AI_KEY_MESSAGE }, 500);
 
   }
 

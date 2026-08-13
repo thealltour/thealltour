@@ -19,6 +19,7 @@ const API_PATH_PERMISSIONS: Array<{ prefix: string; permission: AdminPermissionK
   { prefix: "/api/admin/reward", permission: "rewards.manage" },
   { prefix: "/api/admin/rewards", permission: "rewards.manage" },
   { prefix: "/api/admin/products", permission: "products.manage" },
+  { prefix: "/api/admin/threads", permission: "products.manage" },
   { prefix: "/api/admin/product-taxonomies", permission: "products.manage" },
   { prefix: "/api/admin/banners", permission: "home.manage" },
   { prefix: "/api/admin/home-curated", permission: "home.manage" },

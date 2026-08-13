@@ -29,6 +29,10 @@ import { ProductFeatureCard } from "@/components/products/ProductFeatureCard";
 import { FlightSummarySection } from "@/components/products/FlightSummarySection";
 import { ProductIncludeExclude } from "@/components/products/ProductIncludeExclude";
 import { ProductSellingPointsSection } from "@/components/products/ProductSellingPointsSection";
+import {
+  ProductDescriptionSection,
+  shouldShowProductDescription,
+} from "@/components/products/ProductDescriptionSection";
 import { formatAirlineLabel } from "@/lib/products/formatAirlineLabel";
 import { ProductHotelCard } from "@/components/products/ProductHotelCard";
 import { getHotelValue } from "@/lib/products/mapProductToOverview";
@@ -790,6 +794,12 @@ export default function ProductDetailV2({
             />
           </div>
         )}
+
+        {shouldShowProductDescription(product?.description) ? (
+          <div className="mt-6">
+            <ProductDescriptionSection description={product?.description} />
+          </div>
+        ) : null}
 
         {product?.selling_points_json ? (
           <div className="mt-6">

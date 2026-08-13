@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Upload, X } from "lucide-react";
 import AdminButton from "@/components/admin/ui/AdminButton";
 import AdminImportProgressOverlay from "@/components/admin/ui/AdminImportProgressOverlay";
 import { useSimulatedImportProgress } from "@/components/admin/hooks/useSimulatedImportProgress";
@@ -23,6 +24,9 @@ type ImportResponse = {
   };
 };
 
+const HWP_ACCEPT = ".hwp,.hwpx,application/haansofthwp,application/x-hwp";
+const HWP_EXT_RE = /\.(hwp|hwpx)$/i;
+
 function parseImageUrls(raw: string): string[] {
   return raw
     .split(/\r?\n/)
@@ -30,10 +34,21 @@ function parseImageUrls(raw: string): string[] {
     .filter(Boolean);
 }
 
+function isHwpFilename(name: string): boolean {
+  return HWP_EXT_RE.test(name.trim());
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 export default function BandNewProductPage() {
   const router = useRouter();
   const [bandText, setBandText] = useState("");
-  const [hwpText, setHwpText] = useState("");
+  const [hwpFile, setHwpFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [productSourceUrl, setProductSourceUrl] = useState("");
   const [imageUrlsText, setImageUrlsText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +56,16 @@ export default function BandNewProductPage() {
   const [existingId, setExistingId] = useState<string | null>(null);
   const [successSummary, setSuccessSummary] = useState<ImportResponse["parsed"] | null>(null);
   const progress = useSimulatedImportProgress();
+
+  const assignHwpFile = useCallback((file: File | undefined | null) => {
+    if (!file) return;
+    if (!isHwpFilename(file.name)) {
+      setError("hwp 또는 hwpx 파일만 업로드할 수 있습니다.");
+      return;
+    }
+    setError(null);
+    setHwpFile(file);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,15 +76,17 @@ export default function BandNewProductPage() {
     progress.start();
 
     try {
+      const formData = new FormData();
+      formData.append("bandText", bandText);
+      if (hwpFile) formData.append("hwpFile", hwpFile);
+      if (productSourceUrl.trim()) {
+        formData.append("product_source_url", productSourceUrl.trim());
+      }
+      formData.append("imageUrls", JSON.stringify(parseImageUrls(imageUrlsText)));
+
       const res = await fetch("/api/admin/products/import-band", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bandText,
-          hwpText,
-          product_source_url: productSourceUrl.trim() || undefined,
-          imageUrls: parseImageUrls(imageUrlsText),
-        }),
+        body: formData,
       });
 
       const data = (await res.json()) as ImportResponse;
@@ -102,7 +129,7 @@ export default function BandNewProductPage() {
       <div>
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">상품 등록(밴드)</h1>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          네이버 밴드 게시글과 HWP 문서 텍스트를 붙여넣으면 AI가 상품 필드를 추출해 등록합니다.
+          네이버 밴드 게시글과 한글 문서(.hwp / .hwpx)를 올리면 AI가 상품 필드를 추출해 등록합니다.
         </p>
       </div>
 
@@ -117,18 +144,66 @@ export default function BandNewProductPage() {
           />
         </label>
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-[var(--text-primary)]">HWP 텍스트</span>
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium text-[var(--text-primary)]">한글 문서</span>
           <span className="block text-xs text-[var(--text-secondary)]">
-            한글(HWP)에서 전체 선택 후 복사해 붙여넣으세요. 파일 업로드는 지원하지 않습니다.
+            한글 문서(.hwp / .hwpx)를 업로드하세요. 서버에서 본문·표를 추출한 뒤 AI가 상품 필드를
+            채웁니다.
           </span>
-          <textarea
-            className={`${fieldClass} min-h-[120px]`}
-            value={hwpText}
-            onChange={(e) => setHwpText(e.target.value)}
-            placeholder="HWP 문서에서 복사한 텍스트"
-          />
-        </label>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              assignHwpFile(e.dataTransfer.files[0]);
+            }}
+            className={`rounded-lg border border-dashed px-4 py-5 transition ${
+              isDragging
+                ? "border-[var(--primary)] bg-[var(--surface-muted)]"
+                : "border-[var(--border)] bg-[var(--surface)]"
+            }`}
+          >
+            {hwpFile ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                    {hwpFile.name}
+                  </p>
+                  <p className="text-xs text-[var(--text-secondary)]">{formatFileSize(hwpFile.size)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHwpFile(null)}
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden />
+                  제거
+                </button>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer flex-col items-center gap-2 text-center">
+                <Upload className="h-6 w-6 text-[var(--text-secondary)]" aria-hidden />
+                <span className="text-sm text-[var(--text-primary)]">
+                  {isDragging ? "여기에 놓기" : "파일을 선택하거나 드래그 앤 드롭"}
+                </span>
+                <span className="text-xs text-[var(--text-secondary)]">.hwp, .hwpx · 최대 20MB</span>
+                <input
+                  type="file"
+                  accept={HWP_ACCEPT}
+                  className="sr-only"
+                  onChange={(e) => {
+                    assignHwpFile(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        </div>
 
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-[var(--text-primary)]">밴드 URL (선택)</span>

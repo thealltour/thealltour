@@ -45,6 +45,34 @@ function statusBadgeClass(status: string): string {
   return "bg-[var(--primary-soft)] text-[var(--primary)]";
 }
 
+function CloseBookingButton({
+  product,
+  pendingId,
+  onCloseBooking,
+  compact = false,
+}: {
+  product: Product;
+  pendingId: string | null;
+  onCloseBooking: (product: Product) => void;
+  compact?: boolean;
+}) {
+  if (product.status === "SOLD_OUT") return null;
+  return (
+    <button
+      type="button"
+      disabled={pendingId === product.id}
+      onClick={() => onCloseBooking(product)}
+      className={
+        compact
+          ? "shrink-0 rounded border border-[var(--danger)]/40 px-1.5 py-0.5 text-[11px] font-medium text-[var(--danger)] hover:bg-[var(--danger-bg)] disabled:opacity-50"
+          : "shrink-0 rounded border border-[var(--danger)]/40 px-1.5 py-0.5 text-[11px] font-medium leading-tight text-[var(--danger)] hover:bg-[var(--danger-bg)] disabled:opacity-50"
+      }
+    >
+      예약마감
+    </button>
+  );
+}
+
 export default function AdminProductsListView({
   products,
   pageSourceCount,
@@ -66,6 +94,7 @@ export default function AdminProductsListView({
   pendingMoveId,
   pendingToggleId,
   pendingDeleteId,
+  pendingCloseBookingId = null,
   pendingDownloadId = null,
   filterActive,
   filterStatus,
@@ -97,6 +126,7 @@ export default function AdminProductsListView({
   onOpenImageSelector,
   onOpenFlyer,
   onDeleteProduct,
+  onCloseBooking,
   onQuickToggleActive,
   onMoveSortOrder,
   onFilterActiveChange,
@@ -185,7 +215,7 @@ export default function AdminProductsListView({
             </p>
           </div>
         </td>
-        <td className="min-w-[120px] max-w-[160px] px-2 py-2 align-middle">
+        <td className="min-w-[160px] max-w-[220px] px-2 py-2 align-middle">
           <div className="inline-flex flex-nowrap items-center gap-1 rounded-md border border-[var(--border)]/70 bg-[var(--surface-muted)]/40 px-1.5 py-1">
             {product.is_active === false ? (
               <span className="inline-flex shrink-0 rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
@@ -206,6 +236,11 @@ export default function AdminProductsListView({
             ) : (
               <span className="text-xs text-[var(--text-muted)]">—</span>
             )}
+            <CloseBookingButton
+              product={product}
+              pendingId={pendingCloseBookingId}
+              onCloseBooking={onCloseBooking}
+            />
           </div>
         </td>
         <td className="min-w-[5.5rem] whitespace-nowrap px-2 py-2 align-middle text-sm font-medium text-[var(--text-primary)]">
@@ -350,6 +385,12 @@ export default function AdminProductsListView({
               {STATUS_LABELS[product.status]}
             </span>
           ) : null}
+          <CloseBookingButton
+            product={product}
+            pendingId={pendingCloseBookingId}
+            onCloseBooking={onCloseBooking}
+            compact
+          />
         </div>
         <span className="shrink-0 text-sm font-medium text-[var(--text-primary)]">
           {typeof product.price === "number"

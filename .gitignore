@@ -75,3 +75,8 @@ tools/modetour-extractor-extension/dist
 
 # vscode
 .vscode
+
+# local HWP parser smoke dump (do not commit land-company files)
+/sample.hwp
+/sample.hwpx
+/extracted_sample.txt

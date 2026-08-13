@@ -11,15 +11,15 @@ import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GuestSignupPromoBanner } from "@/components/site-chrome/GuestSignupPromoBanner";
-import { HEADER_DESKTOP_PRIMARY_NAV_KEYS, HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF } from "@/components/header/headerNav.constants";
+import { HEADER_DESKTOP_PRIMARY_NAV_KEYS, HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF, HEADER_UTILITY_GUIDES_ENABLED } from "@/components/header/headerNav.constants";
 import type { HeaderPrimaryNavKey } from "@/components/header/headerNav.constants";
-import type { HeaderNavigationData, HeaderPrimaryNavItem } from "@/components/header/headerNav.types";
+import type { HeaderNavigationData, HeaderPrimaryNavItem, HeaderUtilityTab } from "@/components/header/headerNav.types";
 import { cn } from "@/lib/cn";
 
 export type SiteHeaderUIProps = {
   /** 서버에서 조회한 헤더 네비 데이터. null이면 직접 링크 fallback */
   headerNavigationData?: HeaderNavigationData | null;
-  activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
+  activeTab?: HeaderUtilityTab;
   searchQuery?: string;
   golfPresetActive?: boolean;
   quickConsultHref?: string;
@@ -67,9 +67,12 @@ export default function SiteHeaderUI({
   const pathname = usePathname();
   /** 모바일/태블릿 헤더 검색행: 홈에서만 숨겨 히어로 검색과 중복 제거 */
   const isHomePath = pathname === "/";
-  const primaryNav = headerNavigationData?.primaryNav?.length
+  const primaryNavRaw = headerNavigationData?.primaryNav?.length
     ? headerNavigationData.primaryNav
     : getFallbackPrimaryNav();
+  const primaryNav = HEADER_UTILITY_GUIDES_ENABLED
+    ? primaryNavRaw
+    : primaryNavRaw.filter((item) => item.key !== "guides");
 
   return (
     <div className="sticky top-[env(safe-area-inset-top)] z-50 lg:z-40">
@@ -78,8 +81,8 @@ export default function SiteHeaderUI({
       {/* 데스크톱: 상단 유틸바 + 메인 헤더바 */}
       <PageContainer size="wide" className="hidden flex-col py-0 lg:flex">
         {/* 상단 유틸바: 회사소개 ~ 고객센터 */}
-        <div className="flex h-10 items-center justify-center gap-x-8 border-b border-[var(--divider)]">
-          <nav className="flex items-center gap-x-8 tracking-tight" aria-label="유틸리티 메뉴">
+        <div className="flex h-10 items-center justify-center gap-x-6 border-b border-[var(--divider)] xl:gap-x-8">
+          <nav className="flex items-center gap-x-6 tracking-tight xl:gap-x-8" aria-label="유틸리티 메뉴">
             <Link className={getNavLinkClass(activeTab === "about")} href="/about">
               회사소개
             </Link>
@@ -89,8 +92,13 @@ export default function SiteHeaderUI({
             <Link className={getNavLinkClass(activeTab === "reviews")} href="/reviews">
               여행후기
             </Link>
+            {HEADER_UTILITY_GUIDES_ENABLED ? (
+              <Link className={getNavLinkClass(activeTab === "guides")} href="/guides">
+                여행가이드
+              </Link>
+            ) : null}
             <Link className={getNavLinkClass(activeTab === "blog")} href="/blog">
-              여행가이드
+              블로그
             </Link>
             <Link className={getNavLinkClass(activeTab === "support")} href="/support">
               고객센터

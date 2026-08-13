@@ -11,7 +11,7 @@ import { BAND_IMPORT_PLACEHOLDER_IMAGE } from "@/lib/admin/bandImport/constants"
 import { minimalBandParsed } from "@/lib/admin/bandImport/__tests__/bandParsedFixtures";
 
 describe("buildBandDescription", () => {
-  it("merges description and band_marketing_copy", () => {
+  it("puts band_marketing_copy before HWP description", () => {
     const text = buildBandDescription(
       minimalBandParsed({
         description: "HWP 요약",
@@ -20,7 +20,32 @@ describe("buildBandDescription", () => {
       "",
       "",
     );
-    expect(text).toBe("HWP 요약\n\n🔥 밴드 특가 홍보 문구");
+    expect(text).toBe("🔥 밴드 특가 홍보 문구\n\nHWP 요약");
+  });
+
+  it("falls back to raw bandText when band_marketing_copy is empty", () => {
+    const text = buildBandDescription(
+      minimalBandParsed({
+        description: "HWP 요약",
+        band_marketing_copy: null,
+      }),
+      "밴드 원문 붙여넣기",
+      "HWP 원문",
+    );
+    expect(text).toBe("밴드 원문 붙여넣기\n\nHWP 요약");
+  });
+
+  it("does not duplicate raw bandText when band_marketing_copy exists", () => {
+    const text = buildBandDescription(
+      minimalBandParsed({
+        description: "HWP 요약",
+        band_marketing_copy: "🔥 밴드 특가 홍보 문구",
+      }),
+      "밴드 원문 전체 붙여넣기",
+      "",
+    );
+    expect(text).toBe("🔥 밴드 특가 홍보 문구\n\nHWP 요약");
+    expect(text).not.toContain("밴드 원문 전체 붙여넣기");
   });
 
   it("uses full hwp+band text fallback without truncation", () => {

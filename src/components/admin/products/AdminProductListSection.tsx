@@ -115,6 +115,7 @@ export default function AdminProductListSection({
       pendingMoveId={ctrl.pendingMoveId}
       pendingToggleId={ctrl.pendingToggleId}
       pendingDeleteId={ctrl.pendingDeleteId}
+      pendingCloseBookingId={ctrl.pendingCloseBookingId}
       pendingDownloadId={pendingDownloadId}
       onKeywordChange={ctrl.setKeyword}
       onSortChange={ctrl.handleSortChange}
@@ -137,6 +138,7 @@ export default function AdminProductListSection({
       onOpenImageSelector={onOpenImageSelector}
       onOpenFlyer={onOpenFlyer}
       onDeleteProduct={ctrl.handleDelete}
+      onCloseBooking={ctrl.closeBooking}
       onQuickToggleActive={ctrl.quickToggleActive}
       onMoveSortOrder={ctrl.moveSortOrder}
       filterActive={ctrl.filterActive}

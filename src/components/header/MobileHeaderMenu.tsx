@@ -10,10 +10,11 @@ import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
 import HeaderProductSearch from "@/components/header/HeaderProductSearch";
+import type { HeaderUtilityTab } from "@/components/header/headerNav.types";
 
 export type MobileHeaderMenuProps = {
   primaryNav: HeaderPrimaryNavItem[];
-  activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
+  activeTab?: HeaderUtilityTab;
   searchQuery?: string;
   session: { name: string } | null;
   /**

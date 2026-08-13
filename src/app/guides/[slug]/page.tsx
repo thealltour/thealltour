@@ -171,7 +171,7 @@ export default async function GuideDetailPage({ params }: Props) {
           <BreadcrumbWrapper
             items={[
               { label: "홈", href: "/" },
-              { label: "여행가이드", href: "/blog" },
+              { label: "여행가이드", href: "/guides" },
               { label: displayTitle },
             ]}
           />
@@ -367,7 +367,7 @@ export default async function GuideDetailPage({ params }: Props) {
                   </div>
                   <div className="flex flex-1 flex-col items-center justify-center gap-2 sm:max-w-[28%]">
                     <Link
-                      href="/blog"
+                      href="/guides"
                       className="type-btn inline-flex rounded-xl border border-[var(--border-strong)] bg-[var(--surface-muted)]/40 px-5 py-2.5 font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
                     >
                       가이드 전체 보기

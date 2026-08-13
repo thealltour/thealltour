@@ -188,10 +188,13 @@ function buildDescriptionFallback(bandText: string, hwpText: string): string {
 }
 
 export function buildBandDescription(parsed: BandParsedProduct, bandText: string, hwpText: string): string {
-  return (
-    joinNonEmpty([parsed.description, parsed.band_marketing_copy]) ??
-    buildDescriptionFallback(bandText, hwpText)
-  );
+  const marketing = trimOrNull(parsed.band_marketing_copy);
+  const overview = trimOrNull(parsed.description);
+  if (!marketing && !overview) {
+    return buildDescriptionFallback(bandText, hwpText);
+  }
+  const resolvedMarketing = marketing ?? trimOrNull(bandText);
+  return joinNonEmpty([resolvedMarketing, overview]) ?? buildDescriptionFallback(bandText, hwpText);
 }
 
 export function buildBandBookingNotes(

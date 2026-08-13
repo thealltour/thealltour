@@ -8,6 +8,7 @@ import type {
   AdminProductMessageResponse,
   AdminProductSaveResponse,
   AdminProductPatchPayload,
+  CloseAdminProductBookingResponse,
 } from "./adminProducts.types";
 import { ADMIN_PRODUCTS_MESSAGES } from "@/components/admin/products/adminProducts.constants";
 
@@ -108,6 +109,22 @@ export async function patchAdminProduct(
     const result = await parseJsonResponse<AdminProductMessageResponse>(response).catch(() => ({}));
     throw new Error(extractErrorMessage(result, "수정에 실패했습니다."));
   }
+}
+
+/**
+ * 예약마감 + 메인 추천 제외. 실패 시 throw.
+ */
+export async function closeAdminProductBooking(
+  productId: string,
+): Promise<CloseAdminProductBookingResponse> {
+  const response = await fetch(`${BASE}/${productId}/close-booking`, { method: "POST" });
+  const result = await parseJsonResponse<
+    CloseAdminProductBookingResponse | AdminProductMessageResponse
+  >(response).catch(() => ({}));
+  if (!response.ok || !result || typeof result !== "object" || !("status" in result)) {
+    throw new Error(extractErrorMessage(result, "예약마감 처리에 실패했습니다."));
+  }
+  return result as CloseAdminProductBookingResponse;
 }
 
 /**

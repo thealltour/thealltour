@@ -12,7 +12,7 @@ import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
 import { getSiteSettings, parseHomeRegionCardIds, parseHomeThemeCardIds } from "@/lib/siteSettings";
 import { getHomeGolfTourProducts, resolveHomeGolfTourMoreHref } from "@/lib/homeGolfTourProducts";
 import { getGolfDepartureCalendarData } from "@/lib/products/getGolfDepartureCalendarProducts";
-import { getHomeGuidesWithTaxonomyNames } from "@/lib/guides";
+import { collectBlogRssPosts, resolveBlogRssUrls } from "@/lib/rss";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/inquiry/HeroQuickConsultButton";
 import HeroSection from "@/components/home/HeroSection";
@@ -56,17 +56,24 @@ const C_P3 =
 export const metadata: Metadata = buildOgMetadataFromSeoData(getHomeOgPageSeo());
 
 export default async function Home() {
-  const [homeCurated, topBanners, heroContent, settings, destinations, themes, golfTourProducts, golfCalendarData, homeGuides, homeReviews] =
+  const settingsPromise = getSiteSettings();
+  const homeBlogPromise = settingsPromise.then(async (siteSettings) => {
+    const urls = resolveBlogRssUrls({ blogPageUrl: siteSettings.naver_blog_url });
+    const posts = await collectBlogRssPosts(urls);
+    return posts.slice(0, 8);
+  });
+
+  const [homeCurated, topBanners, heroContent, settings, destinations, themes, golfTourProducts, golfCalendarData, homeBlogPosts, homeReviews] =
     await Promise.all([
       getHomeCuratedData(),
       getHomeBanners(),
       getHeroContent(),
-      getSiteSettings(),
+      settingsPromise,
       getHubDestinations(),
       getHubThemes(),
       getHomeGolfTourProducts(),
       getGolfDepartureCalendarData(),
-      getHomeGuidesWithTaxonomyNames(4),
+      homeBlogPromise,
       getTopRatedPublishedReviews(4),
     ]);
 
@@ -132,7 +139,7 @@ export default async function Home() {
               }}
               curatedSettings={curatedSettings}
               curatedSections={curatedSections}
-              homeGuides={homeGuides}
+              homeBlogPosts={homeBlogPosts}
               homeReviews={homeReviews}
             />
 

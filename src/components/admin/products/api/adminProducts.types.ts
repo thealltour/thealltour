@@ -35,6 +35,11 @@ export type AdminProductMessageResponse = { message?: string };
 
 export type AdminProductSaveResponse = { message?: string; warningCode?: string; id?: string };
 
+export type CloseAdminProductBookingResponse = {
+  status: "SOLD_OUT";
+  removedFromFeatured: number;
+};
+
 /** PATCH body for partial update (e.g. is_active, sort_order only) */
 export type AdminProductPatchPayload = Partial<{
   is_active: boolean;

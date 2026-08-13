@@ -10,6 +10,11 @@ import {
   summarizeBandParsedForResponse,
 } from "@/lib/admin/bandImport/mapBandParsedToInsert";
 import { insertProductWithSchemaFallback } from "@/lib/supabaseProductsColumnFallback";
+import {
+  HwpParseError,
+  MAX_HWP_FILE_BYTES,
+  parseHwpFileToText,
+} from "@/lib/admin/bandImport/hwpParser";
 
 type ImportBandBody = {
   bandText?: string;
@@ -18,27 +23,112 @@ type ImportBandBody = {
   imageUrls?: string[];
 };
 
-export async function POST(request: NextRequest) {
-  const auth = await requireAdminSession();
-  if (!auth.ok) return auth.res;
+function parseImageUrlsField(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0).map((v) => v.trim());
+  }
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+          .map((v) => v.trim());
+      }
+    } catch {
+      // fall through to newline split
+    }
+  }
+  return trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function formString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+function pickHwpFile(formData: FormData): File | null {
+  const entry = formData.get("hwpFile") ?? formData.get("file");
+  if (entry instanceof File && entry.size > 0) return entry;
+  return null;
+}
+
+async function readImportRequest(request: NextRequest): Promise<{
+  bandText: string;
+  hwpText: string;
+  productSourceUrl: string;
+  imageUrls: string[];
+}> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const bandText = formString(formData, "bandText").trim();
+    const pastedHwpText = formString(formData, "hwpText").trim();
+    const productSourceUrl = formString(formData, "product_source_url").trim();
+    const imageUrls = parseImageUrlsField(formString(formData, "imageUrls"));
+    const hwpFile = pickHwpFile(formData);
+
+    let hwpText = pastedHwpText;
+    if (hwpFile) {
+      if (hwpFile.size > MAX_HWP_FILE_BYTES) {
+        throw new HwpParseError("HWP 파일은 20MB 이하만 업로드할 수 있습니다.");
+      }
+      hwpText = await parseHwpFileToText(hwpFile, hwpFile.name || "upload.hwpx");
+    }
+
+    return { bandText, hwpText, productSourceUrl, imageUrls };
+  }
 
   let body: ImportBandBody;
   try {
     body = (await request.json()) as ImportBandBody;
   } catch {
-    return NextResponse.json({ message: "요청 본문이 올바르지 않습니다." }, { status: 400 });
+    throw new HwpParseError("요청 본문이 올바르지 않습니다.");
   }
 
-  const bandText = body.bandText?.trim() ?? "";
-  const hwpText = body.hwpText?.trim() ?? "";
+  return {
+    bandText: body.bandText?.trim() ?? "",
+    hwpText: body.hwpText?.trim() ?? "",
+    productSourceUrl: body.product_source_url?.trim() ?? "",
+    imageUrls: parseImageUrlsField(body.imageUrls),
+  };
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.res;
+
+  let bandText = "";
+  let hwpText = "";
+  let productSourceUrl = "";
+  let imageUrls: string[] = [];
+
+  try {
+    const parsedBody = await readImportRequest(request);
+    bandText = parsedBody.bandText;
+    hwpText = parsedBody.hwpText;
+    productSourceUrl = parsedBody.productSourceUrl;
+    imageUrls = parsedBody.imageUrls;
+  } catch (error) {
+    if (error instanceof HwpParseError) {
+      return NextResponse.json({ message: error.message }, { status: error.httpStatus });
+    }
+    const message = error instanceof Error ? error.message : "요청 본문이 올바르지 않습니다.";
+    return NextResponse.json({ message }, { status: 400 });
+  }
+
   if (!bandText && !hwpText) {
     return NextResponse.json(
-      { message: "밴드 본문 또는 HWP 텍스트 중 하나 이상을 입력해 주세요." },
+      { message: "밴드 본문 또는 HWP 파일(.hwp/.hwpx) 중 하나 이상을 입력해 주세요." },
       { status: 400 },
     );
   }
 
-  const productSourceUrl = body.product_source_url?.trim() ?? "";
   if (productSourceUrl) {
     const existingId = await findExistingProductIdBySourceUrl(productSourceUrl);
     if (existingId) {
@@ -66,10 +156,6 @@ export async function POST(request: NextRequest) {
     console.error("[import-band] AI parse failed:", error);
     return NextResponse.json({ message: formatBandParseError(error) }, { status: 500 });
   }
-
-  const imageUrls = Array.isArray(body.imageUrls)
-    ? body.imageUrls.filter((v): v is string => typeof v === "string")
-    : [];
 
   const insertPayload = mapBandParsedToInsert({
     parsed,

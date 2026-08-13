@@ -9,6 +9,7 @@ import {
   fetchAdminProducts,
   deleteAdminProduct,
   patchAdminProduct,
+  closeAdminProductBooking,
 } from "@/components/admin/products/api/adminProducts.client";
 import { fetchAdminProductTaxonomy } from "@/components/admin/products/api/adminProductTaxonomy.client";
 import {
@@ -91,6 +92,7 @@ export function useAdminProductsListController({
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingMoveId, setPendingMoveId] = useState<string | null>(null);
+  const [pendingCloseBookingId, setPendingCloseBookingId] = useState<string | null>(null);
   const [taxonomyNameMap, setTaxonomyNameMap] = useState<Record<string, string>>({});
   const [destinationOptions, setDestinationOptions] = useState<AdminProductsTaxonomyOption[]>([]);
   const [productLineOptions, setProductLineOptions] = useState<AdminProductsTaxonomyOption[]>([]);
@@ -356,6 +358,39 @@ export function useAdminProductsListController({
     }
   }
 
+  async function closeBooking(product: Product) {
+    if (product.status === "SOLD_OUT") return;
+    const ok = await confirm({
+      title: "예약마감 처리할까요?",
+      description: "상품 상태가 마감으로 바뀌고, 메인 추천상품에서도 제외됩니다.",
+      confirmLabel: "확인",
+      cancelLabel: "취소",
+    });
+    if (!ok) return;
+
+    const prevStatus = product.status;
+    setPendingCloseBookingId(product.id);
+    setProducts((current) =>
+      current.map((item) => (item.id === product.id ? { ...item, status: "SOLD_OUT" } : item)),
+    );
+    try {
+      const result = await closeAdminProductBooking(product.id);
+      showToast(
+        "success",
+        result.removedFromFeatured > 0
+          ? "예약마감 처리했습니다. 메인 추천상품에서도 제외했습니다."
+          : "예약마감 처리했습니다.",
+      );
+    } catch (err) {
+      setProducts((current) =>
+        current.map((item) => (item.id === product.id ? { ...item, status: prevStatus } : item)),
+      );
+      showToast("error", err instanceof Error ? err.message : "예약마감 처리에 실패했습니다.");
+    } finally {
+      setPendingCloseBookingId(null);
+    }
+  }
+
   async function quickToggleActive(product: Product) {
     const prev = product.is_active ?? true;
     const next = !prev;
@@ -420,6 +455,7 @@ export function useAdminProductsListController({
     pendingToggleId,
     pendingDeleteId,
     pendingMoveId,
+    pendingCloseBookingId,
     filterActive,
     filterStatus,
     filterDestinationId,
@@ -447,6 +483,7 @@ export function useAdminProductsListController({
     handleBulkDeleteSelected,
     handleSortChange,
     handleDelete,
+    closeBooking,
     quickToggleActive,
     moveSortOrder,
   };

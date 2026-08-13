@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Info, FileText, Map, LifeBuoy, PackageSearch, Star, LogIn, LogOut } from "lucide-react";
+import { Info, FileText, Map, Newspaper, LifeBuoy, PackageSearch, Star, LogIn, LogOut } from "lucide-react";
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { cn } from "@/lib/cn";
+import type { HeaderUtilityTab } from "@/components/header/headerNav.types";
+import { HEADER_UTILITY_GUIDES_ENABLED } from "@/components/header/headerNav.constants";
 
 type MobileFloatingMenuProps = {
-  activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
+  activeTab?: HeaderUtilityTab;
   isLoggedIn?: boolean;
 };
 
@@ -17,10 +19,15 @@ const menuItems = [
   { href: "/about", label: "회사소개", key: "about", icon: Info },
   { href: "/quote", label: "견적문의", key: "quote", icon: FileText },
   { href: "/reviews", label: "여행후기", key: "reviews", icon: Star },
-  { href: "/blog", label: "여행가이드", key: "blog", icon: Map },
+  { href: "/guides", label: "여행가이드", key: "guides", icon: Map },
+  { href: "/blog", label: "블로그", key: "blog", icon: Newspaper },
   { href: "/support", label: "고객센터", key: "support", icon: LifeBuoy },
   { href: "/products", label: "패키지상품", key: "products", icon: PackageSearch },
 ] as const;
+
+const visibleMenuItems = HEADER_UTILITY_GUIDES_ENABLED
+  ? menuItems
+  : menuItems.filter((item) => item.key !== "guides");
 
 const itemBase =
   "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-[clamp(14px,3.5vw,16px)] font-semibold leading-tight transition-colors duration-150";
@@ -105,7 +112,7 @@ export default function MobileFloatingMenu({ activeTab, isLoggedIn = false }: Mo
           )}
         >
           <ul className="flex flex-col gap-1">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const isPathActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const isActive = activeTab === item.key || isPathActive;
               const isPending = pendingKey === item.key;

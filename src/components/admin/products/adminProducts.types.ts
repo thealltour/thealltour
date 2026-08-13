@@ -41,6 +41,7 @@ export type AdminProductsListViewProps = {
   pendingMoveId: string | null;
   pendingToggleId: string | null;
   pendingDeleteId: string | null;
+  pendingCloseBookingId?: string | null;
   /** 이미지 ZIP 생성·다운로드 중인 상품 id (연타 방지) */
   pendingDownloadId?: string | null;
   filterActive: "all" | "active" | "inactive";
@@ -82,6 +83,7 @@ export type AdminProductsListViewProps = {
   /** A4 유인물 빌더 모달 (목록 작업 열) */
   onOpenFlyer?: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;
+  onCloseBooking: (product: Product) => void;
   onQuickToggleActive: (product: Product) => void;
   onMoveSortOrder: (product: Product, direction: "up" | "down") => void;
   onFilterActiveChange: (value: "all" | "active" | "inactive") => void;

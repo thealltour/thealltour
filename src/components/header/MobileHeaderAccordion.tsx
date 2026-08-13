@@ -448,6 +448,18 @@ export function MobileHeaderAccordion({
             회사소개
           </Link>
         </li>
+        <li className="border-b border-[var(--divider)]">
+          <Link
+            href="/blog"
+            onClick={() => handleDirectLinkClick("blog", "블로그", "/blog")}
+            className={cn(
+              "flex w-full items-center py-4 pr-4 pl-4 type-small font-semibold text-[var(--foreground)]",
+              "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
+            )}
+          >
+            블로그
+          </Link>
+        </li>
       </ul>
     </nav>
   );

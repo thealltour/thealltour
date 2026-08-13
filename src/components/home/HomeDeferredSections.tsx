@@ -3,11 +3,11 @@ import { cn } from "@/lib/cn";
 import "react-day-picker/style.css";
 import "@/components/ui/datePicker.css";
 import type { HomeCuratedSettings, HomeCuratedSectionWithProducts } from "@/types/homeCurated";
-import type { Guide } from "@/types/guide";
 import type { Review } from "@/types/review";
 import type { Product } from "@/types/product";
 import type { GolfDepartureEvent } from "@/lib/products/golfDepartureCalendar";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
+import type { RssPost } from "@/lib/rss.types";
 
 function SectionSkeleton({ className }: { className?: string }) {
   return (
@@ -49,8 +49,8 @@ const CuratedProductsSection = dynamic(() => import("@/components/home/CuratedPr
   loading: () => <SectionSkeleton className="min-h-[18rem]" />,
 });
 
-const HomeGuideSection = dynamic(
-  () => import("@/components/home/HomeGuideSection").then((m) => ({ default: m.HomeGuideSection })),
+const HomeBlogSection = dynamic(
+  () => import("@/components/home/HomeBlogSection").then((m) => ({ default: m.HomeBlogSection })),
   { loading: () => <SectionSkeleton className="min-h-[14rem]" /> },
 );
 
@@ -86,12 +86,12 @@ export type HomeDeferredSectionsProps = {
   themeRail: HomeDeferredRailProps;
   curatedSettings: HomeCuratedSettings | null;
   curatedSections: HomeCuratedSectionWithProducts[];
-  homeGuides: Guide[];
+  homeBlogPosts: RssPost[];
   homeReviews: Review[];
 };
 
 /**
- * 홈 히어로 아래 본문 블록 — 골프투어·지역·테마 레일 + 추천·가이드·리뷰.
+ * 홈 히어로 아래 본문 블록 — 골프투어·지역·테마 레일 + 추천·블로그·리뷰.
  * 초기 JS 파싱·실행 분산(Speed Index·TBT 완화). SSR 유지, 청크만 지연 로드.
  */
 export function HomeDeferredSections({
@@ -101,7 +101,7 @@ export function HomeDeferredSections({
   themeRail,
   curatedSettings,
   curatedSections,
-  homeGuides,
+  homeBlogPosts,
   homeReviews,
 }: HomeDeferredSectionsProps) {
   return (
@@ -130,7 +130,7 @@ export function HomeDeferredSections({
         description={themeRail.description}
       />
       <CuratedProductsSection settings={curatedSettings} sections={curatedSections} />
-      <HomeGuideSection guides={homeGuides} />
+      <HomeBlogSection posts={homeBlogPosts} />
       <HomeReviewSection reviews={homeReviews} />
     </>
   );

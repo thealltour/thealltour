@@ -20,7 +20,7 @@ const CARD_LINK_CLASS =
 
 /**
  * 단일 가이드 카드. 썸네일, 제목, 요약, 카테고리/태그 일부.
- * 클릭 시 /guides/[slug] 브리지(또는 slug 없으면 landing /blog)로 이동. 노션은 브리지에서 연다.
+ * 클릭 시 /guides/[slug] 브리지(또는 slug 없으면 landing /guides)로 이동. 노션은 브리지에서 연다.
  */
 export function GuideCard({
   guide,

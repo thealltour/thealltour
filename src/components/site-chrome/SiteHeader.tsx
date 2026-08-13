@@ -3,9 +3,10 @@ import SiteHeaderUI from "@/components/site-chrome/SiteHeaderUI";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabase } from "@/lib/supabase";
 import { getHeaderNavigationData } from "@/lib/headerNavigation";
+import type { HeaderUtilityTab } from "@/components/header/headerNav.types";
 
 type SiteHeaderProps = {
-  activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
+  activeTab?: HeaderUtilityTab;
   searchQuery?: string;
   golfPresetActive?: boolean;
   quickConsultHref?: string;

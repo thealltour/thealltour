@@ -136,7 +136,7 @@ function normalizeGuide(row: Record<string, unknown>): Guide {
   };
 }
 
-// 유저 여행가이드(/blog) 통합 목록: PDF/Notion 모두 노출. limit 있으면 해당 건수만.
+// 유저 여행가이드(/guides) 통합 목록: PDF/Notion 모두 노출. limit 있으면 해당 건수만.
 // 정렬: sort_order asc → published_at desc → created_at desc
 export async function getPublishedGuides(limit?: number): Promise<Guide[]> {
   let query = supabase
@@ -285,7 +285,7 @@ export async function getRelatedGuidesByGuide(
 }
 
 /**
- * /blog 여행가이드 목록과 동일한 정렬·풀(getPublishedGuidesWithTaxonomyNames)에서 slug 기준 이전·다음.
+ * /guides 여행가이드 목록과 동일한 정렬·풀(getPublishedGuidesWithTaxonomyNames)에서 slug 기준 이전·다음.
  * (sort_order asc → published_at desc → created_at desc)
  */
 export async function getAdjacentPublishedGuidesBySlug(
@@ -302,7 +302,7 @@ export async function getAdjacentPublishedGuidesBySlug(
 }
 
 /**
- * 브리지(/guides/[slug]) 하단 연관 가이드: /blog와 동일한 공개 풀·정렬을 베이스로,
+ * 브리지(/guides/[slug]) 하단 연관 가이드: /guides와 동일한 공개 풀·정렬을 베이스로,
  * 동일 destination/theme 우선, 나머지는 목록 순서를 유지해 채움 (노션 전용 /guides 목록과 무관).
  */
 export async function getRelatedGuidesForBlogBridge(guide: Guide, limit = 4): Promise<Guide[]> {
@@ -330,7 +330,7 @@ export async function getRelatedGuidesForBlogBridge(guide: Guide, limit = 4): Pr
   return entries.slice(0, limit).map((e) => e.g);
 }
 
-/** 브리지 하단: 현재 가이드 제외 + 추가 제외 ID 이후 상위 limit건 (/blog 동일 풀·정렬) */
+/** 브리지 하단: 현재 가이드 제외 + 추가 제외 ID 이후 상위 limit건 (/guides 동일 풀·정렬) */
 export async function getMoreGuidesForBridge(
   excludeId: string,
   alsoExcludeIds: string[],
@@ -356,11 +356,11 @@ export function getGuideNotionViewUrl(guide: Guide): string {
   return "";
 }
 
-/** 가이드 카드/상세 링크. slug 있으면 /guides/[slug] 브리지, 없으면 landing_url, 없으면 사용자 목록 /blog */
+/** 가이드 카드/상세 링크. slug 있으면 /guides/[slug] 브리지, 없으면 landing_url, 없으면 사용자 목록 /guides */
 export function getGuideHref(guide: Guide): string {
   if (guide.slug?.trim()) return `/guides/${encodeURIComponent(guide.slug.trim())}`;
   if (guide.landing_url?.trim()) return guide.landing_url.trim();
-  return "/blog";
+  return "/guides";
 }
 
 // Notion 기반 상세 페이지(/guides)용: slug와 notion_page_id가 있는 가이드만

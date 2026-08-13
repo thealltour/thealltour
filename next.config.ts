@@ -113,6 +113,27 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.googleusercontent.com",
       },
+      /* 네이버/티스토리 블로그 RSS 썸네일 */
+      {
+        protocol: "https",
+        hostname: "*.pstatic.net",
+      },
+      {
+        protocol: "https",
+        hostname: "blog.naver.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.daumcdn.net",
+      },
+      {
+        protocol: "https",
+        hostname: "*.kakaocdn.net",
+      },
+      {
+        protocol: "https",
+        hostname: "*.tistory.com",
+      },
     ],
   },
   async headers() {

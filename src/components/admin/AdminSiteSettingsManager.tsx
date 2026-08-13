@@ -392,7 +392,7 @@ export default function AdminSiteSettingsManager() {
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_20%,transparent)]"
           />
           <span className="text-xs font-normal text-[var(--text-muted)]">
-            푸터 상담·채널의 네이버 블로그 버튼에 사용됩니다. 비워 두면 버튼이 표시되지 않습니다.
+            푸터 상담·채널의 네이버 블로그 버튼과 `/blog` RSS 목록에 사용됩니다. 비워 두면 버튼이 숨겨지고, RSS는 `BLOG_RSS_URL` 환경변수가 있을 때만 표시됩니다.
           </span>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-[var(--text-primary)]">

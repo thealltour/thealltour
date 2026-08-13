@@ -45,3 +45,14 @@ export type HeaderPrimaryNavItem = {
 export type HeaderNavigationData = {
   primaryNav: HeaderPrimaryNavItem[];
 };
+
+/** 상단 유틸리티 메뉴(회사소개~고객센터) 활성 탭 */
+export type HeaderUtilityTab =
+  | "about"
+  | "quote"
+  | "reviews"
+  | "guides"
+  | "blog"
+  | "support"
+  | "products"
+  | "signup";

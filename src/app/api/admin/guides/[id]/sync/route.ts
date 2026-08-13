@@ -35,7 +35,6 @@ export async function POST(_: Request, context: RouteContext) {
     revalidatePath(`/guides/${guide.slug}`);
   }
   revalidatePath("/guides");
-  revalidatePath("/blog");
 
   return NextResponse.json({ message: "노션 동기화 및 캐시 갱신이 완료되었습니다." });
 }

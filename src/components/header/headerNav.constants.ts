@@ -49,3 +49,9 @@ export const HEADER_DESKTOP_PRIMARY_NAV_KEYS: readonly HeaderPrimaryNavKey[] = [
   "theme",
   "inquiry",
 ];
+
+/**
+ * 상단 유틸리티 메뉴(회사소개~고객센터)의 여행가이드 탭.
+ * false면 숨김. 재활성화하려면 true로 바꾸면 됩니다.
+ */
+export const HEADER_UTILITY_GUIDES_ENABLED = false;

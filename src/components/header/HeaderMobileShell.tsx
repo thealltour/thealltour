@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
 import HeaderProductSearch from "@/components/header/HeaderProductSearch";
+import type { HeaderUtilityTab } from "@/components/header/headerNav.types";
 
 type HeaderMobileShellProps = {
-  activeTab?: "about" | "quote" | "reviews" | "blog" | "support" | "products" | "signup";
+  activeTab?: HeaderUtilityTab;
   searchQuery?: string;
 };
 

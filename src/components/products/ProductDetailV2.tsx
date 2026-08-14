@@ -306,6 +306,7 @@ export default function ProductDetailV2({
     setRequiredGroupsMissing,
     setSelectedOptions: syncSelectedOptionsToQuote,
     setSelectedDeparture: syncSelectedDeparture,
+    selectedDeparture,
     setDepartureRequired,
     setDepartureSelectionMissing,
     registerScrollToBooking,
@@ -364,10 +365,14 @@ export default function ProductDetailV2({
   const hasOptions = ENABLE_PRODUCT_OPTIONS && options?.groups != null && options.groups.length > 0;
   const hasBookingPanel = Boolean(hasCalendarDepartures || hasDepartures || hasOptions);
   const departureRequiredForBooking = hasCalendarDepartures || hasDepartures;
-  const quote = useMemo(
-    () => calcQuote(options, selectedOptions),
-    [options, selectedOptions],
-  );
+  const quote = useMemo(() => {
+    const departurePrice = selectedDeparture?.price;
+    const optionsForQuote =
+      options && departurePrice != null && departurePrice > 0
+        ? { ...options, basePrice: departurePrice }
+        : options;
+    return calcQuote(optionsForQuote, selectedOptions);
+  }, [options, selectedOptions, selectedDeparture?.price]);
   const displayPrice = hasOptions && quote.total != null
     ? formatPriceKR(quote.total)
     : priceFormatted;

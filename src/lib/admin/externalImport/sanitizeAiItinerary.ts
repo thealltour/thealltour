@@ -14,7 +14,7 @@ const MOVE_FLIGHT_INLINE_RE = /출발|도착|이동|탑승|공항|항공편/;
 
 const NOTICE_HEADING_RE = /^(출입국\s*정보|예약\s*전\s*유의사항|유의사항|안내사항)/;
 
-const SUMMARY_HEADING_RE = /^(예정호텔|호텔|식사)$/;
+const SUMMARY_HEADING_RE = /^(예정호텔|호텔|숙소|식사|조식|중식|석식|아침|점심|저녁)$/;
 
 const MEAL_HEADING_RE = /^(조식|중식|석식|기내|기내식|식사|아침|점심|저녁)/;
 
@@ -77,19 +77,48 @@ export function filterItineraryImageUrls(
   return out;
 }
 
+export function isLodgingEventHeading(heading: string): boolean {
+  const h = heading.trim();
+  if (!h) return false;
+  if (isMoveOrFlightEvent(h)) return false;
+  return /^(예정호텔|호텔|숙소)$/.test(h);
+}
+
+export function isCabinMealHeading(heading: string): boolean {
+  return /^기내/.test(heading.trim());
+}
+
 export function inferIconKeyFromHeading(heading: string): string | undefined {
   const h = heading.trim();
   if (isNoticeEventHeading(h)) return "info";
-  if (h === "식사" || isMealEventHeading(h)) return "utensils";
-  if (/^(예정호텔|호텔)$/.test(h)) return "hotel";
+  if (
+    isSummaryEventHeading(h) &&
+    (h === "식사" || isMealEventHeading(h)) &&
+    !isCabinMealHeading(h)
+  ) {
+    return "utensils";
+  }
+  if (isLodgingEventHeading(h)) return "hotel";
   if (isMoveOrFlightEvent(h)) return "plane";
   if (isSightseeingEventHeading(h)) return "landmark";
   return undefined;
 }
 
 export function inferDisplayRoleFromHeading(heading: string): "summary" | "activity" {
+  if (isMoveOrFlightEvent(heading)) return "activity";
+  if (isCabinMealHeading(heading)) return "activity";
   if (isSummaryEventHeading(heading)) return "summary";
+  if (isLodgingEventHeading(heading)) return "summary";
   return "activity";
+}
+
+export function isItinerarySummaryEvent(event: {
+  displayRole?: string | null;
+  heading: string;
+}): boolean {
+  if (event.displayRole === "summary") return true;
+  if (event.displayRole === "activity") return false;
+  return inferDisplayRoleFromHeading(event.heading) === "summary";
 }
 
 function sanitizeEvent(ev: ExternalParsedItineraryEvent): ExternalParsedItineraryEvent {

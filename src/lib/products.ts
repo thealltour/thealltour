@@ -444,6 +444,10 @@ function normalizeItineraryV2(raw: unknown): ItineraryV2 | undefined {
               ? ev.location.trim()
               : undefined,
           order: typeof ev.order === "number" && Number.isFinite(ev.order) ? ev.order : undefined,
+          displayRole:
+            ev.displayRole === "summary" || ev.displayRole === "activity"
+              ? (ev.displayRole as ItineraryV2Event["displayRole"])
+              : undefined,
           images: normalizeEventImages(ev.images),
         };
       })

@@ -4,6 +4,7 @@ import { bandItineraryOnlySchema } from "@/lib/admin/bandImport/bandItineraryOnl
 import {
   bandOptionSchema,
   itineraryDaySchema,
+  itineraryEventSchema,
   seasonalPriceBandNotesSchema,
 } from "@/lib/admin/bandImport/bandSharedSchemas";
 
@@ -12,5 +13,6 @@ export const productParserSchema = bandProductMetaSchema.extend(bandItineraryOnl
 
 export type BandParsedProduct = z.infer<typeof productParserSchema>;
 export type BandParsedItineraryDay = z.infer<typeof itineraryDaySchema>;
+export type BandParsedItineraryEvent = z.infer<typeof itineraryEventSchema>;
 export type BandParsedOption = z.infer<typeof bandOptionSchema>;
 export type BandSeasonalPriceBandNotes = z.infer<typeof seasonalPriceBandNotesSchema>;

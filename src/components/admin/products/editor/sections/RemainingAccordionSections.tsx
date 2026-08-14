@@ -16,6 +16,7 @@ import { useTemplateInsert } from "@/components/admin/products/editor/hooks/useT
 import type { NoticeTemplateGroup, NoticeTemplatesByGroup } from "@/lib/noticeTemplates";
 import { LEGACY_SECTION_ID_MAP } from "@/components/admin/products/editor/adminProductForm.types";
 import { DepartureSchedulesEditor } from "@/components/admin/products/editor/sections/DepartureSchedulesEditor";
+import { ProductOptionsEditor } from "@/components/admin/products/editor/sections/ProductOptionsEditor";
 
 export type RemainingAccordionSectionsProps = {
   sectionId: "taxonomy" | "travel" | "ops" | "advanced";
@@ -582,6 +583,11 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
             setForm={setForm}
             formatPriceWithCommas={formatPriceWithCommas}
           />
+          <ProductOptionsEditor
+            form={form}
+            setForm={setForm}
+            formatPriceWithCommas={formatPriceWithCommas}
+          />
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3">
             <p className="text-sm font-semibold text-[var(--primary)]">항공편 정보</p>
             <p className="text-xs text-[var(--text-secondary)]">
@@ -897,7 +903,10 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
           </div>
           <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] p-3 md:col-span-2">
             <p className="text-sm font-semibold text-[var(--primary)]">상품 옵션 JSON</p>
-            <HintDisclosure id="advanced.optionsJsonGuide" summary="JSON 형식 보기">
+            <p className="text-xs text-[var(--text-secondary)]">
+              여행 정보 섹션의 「추가 옵션·할증」에서 수정하는 것이 기본입니다. 필요하면 아래에서 JSON을 직접 고칠 수 있습니다.
+            </p>
+            <HintDisclosure id="advanced.optionsJsonGuide" summary="JSON 직접 편집">
               {`{"basePrice": 1000000, "currency": "KRW", "groups": [...]}`}
             </HintDisclosure>
             <textarea

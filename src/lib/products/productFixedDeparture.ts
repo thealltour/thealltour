@@ -36,15 +36,26 @@ export function getProductFixedDepartureDateLabel(product: Product | null | unde
   return first ? formatYmdDisplay(first.trim()) : "";
 }
 
+export function formatStickyDateYmd(s: string): string {
+  return formatYmdDisplay(s);
+}
+
 /** duration · price_meta 앞에 고정 출발일을 붙인 메타 줄 */
 export function buildProductStickyMetaLine(
   product: Product | null | undefined,
-  options?: { includePriceMeta?: boolean; seasonalMode?: boolean },
+  options?: {
+    includePriceMeta?: boolean;
+    seasonalMode?: boolean;
+    selectedDateLabel?: string | null;
+  },
 ): string {
   if (!product) return "";
-  const dateLabel = hasProductFixedDeparture(product)
-    ? getProductFixedDepartureDateLabel(product)
-    : "";
+  const selected = options?.selectedDateLabel?.trim() ?? "";
+  const dateLabel = selected
+    ? selected
+    : hasProductFixedDeparture(product)
+      ? getProductFixedDepartureDateLabel(product)
+      : "";
   const parts: string[] = [];
   if (dateLabel) parts.push(dateLabel);
   const duration = product.duration?.trim();

@@ -71,12 +71,17 @@ describe("buildBandBookingNotes", () => {
 });
 
 describe("mapItineraryDaysToV2", () => {
-  it("maps meals and description into events", () => {
+  it("maps meals and description into events with meals last", () => {
     const v2 = mapItineraryDaysToV2(minimalBandParsed().itinerary_v2_json);
     expect(v2?.days).toHaveLength(1);
     const events = v2?.days[0].events ?? [];
+    expect(events[0]).toMatchObject({ heading: "1일차", timeOfDay: "종일", displayRole: "activity" });
+    expect(events.map((e) => e.heading).slice(-2)).toEqual(["중식", "석식"]);
+    expect(events.filter((e) => e.displayRole === "summary").map((e) => e.heading)).toEqual([
+      "중식",
+      "석식",
+    ]);
     expect(events.some((e) => e.heading === "중식" && e.description === "흑돼지")).toBe(true);
-    expect(events.some((e) => e.heading === "1일차" && e.timeOfDay === "종일")).toBe(true);
   });
 
   it("preserves transfer duration in description events", () => {
@@ -89,7 +94,108 @@ describe("mapItineraryDaysToV2", () => {
       },
     ]);
     const events = v2?.days[0].events ?? [];
-    expect(events.some((e) => e.description.includes("약 40분"))).toBe(true);
+    expect(events.some((e) => e.description?.includes("약 40분"))).toBe(true);
+  });
+
+  it("splits legacy description on two or more clock times", () => {
+    const v2 = mapItineraryDaysToV2([
+      {
+        day: 1,
+        title: "인천 출발 / 연태 도착",
+        description: "08:55 인천 국제공항 출발\n09:25 연태 국제공항 도착",
+        meals: { breakfast: null, lunch: "중식", dinner: null },
+      },
+    ]);
+    const events = v2?.days[0].events ?? [];
+    const depart = events.find((e) => e.timeText === "08:55");
+    const arrive = events.find((e) => e.timeText === "09:25");
+    expect(depart?.heading).toContain("인천");
+    expect(arrive?.heading).toContain("연태");
+    expect(depart).not.toBe(arrive);
+    expect(events.at(-1)).toMatchObject({ heading: "중식", displayRole: "summary" });
+  });
+
+  it("maps 연태 day 1 events with split flights and meal summaries last", () => {
+    const v2 = mapItineraryDaysToV2([
+      {
+        day: 1,
+        title: "인천 출발 / 연태 도착 / 18홀 라운드",
+        events: [
+          {
+            heading: "인천 국제공항 출발",
+            description: null,
+            timeText: "08:55",
+            timeOfDay: "오전",
+            location: null,
+          },
+          {
+            heading: "연태 국제공항 도착",
+            description: null,
+            timeText: "09:25",
+            timeOfDay: "오전",
+            location: null,
+          },
+          {
+            heading: "중식",
+            description: "현지식",
+            timeText: null,
+            timeOfDay: "오후",
+            location: null,
+          },
+          {
+            heading: "가이드 미팅 후 호텔 이동",
+            description: "약 40분",
+            timeText: null,
+            timeOfDay: null,
+            location: null,
+          },
+          {
+            heading: "18홀 라운드",
+            description: "회원제 추가요금",
+            timeText: null,
+            timeOfDay: null,
+            location: null,
+          },
+          {
+            heading: "석식 후 호텔 휴식",
+            description: null,
+            timeText: null,
+            timeOfDay: null,
+            location: null,
+          },
+          {
+            heading: "석식",
+            description: "호텔식",
+            timeText: null,
+            timeOfDay: "저녁",
+            location: null,
+          },
+          {
+            heading: "숙소",
+            description: "천홍 호텔 또는 동급",
+            timeText: null,
+            timeOfDay: null,
+            location: null,
+          },
+        ],
+        description: null,
+        meals: { breakfast: null, lunch: "현지식", dinner: "호텔식" },
+      },
+    ]);
+    const events = v2?.days[0].events ?? [];
+    const headings = events.map((e) => e.heading);
+    expect(events.find((e) => e.timeText === "08:55")?.heading).toBe("인천 국제공항 출발");
+    expect(events.find((e) => e.timeText === "09:25")?.heading).toBe("연태 국제공항 도착");
+    expect(headings.indexOf("인천 국제공항 출발")).toBeLessThan(headings.indexOf("연태 국제공항 도착"));
+    expect(events.find((e) => e.heading === "가이드 미팅 후 호텔 이동")?.displayRole).toBe("activity");
+    expect(events.find((e) => e.heading === "석식 후 호텔 휴식")?.displayRole).toBe("activity");
+    expect(headings.slice(-3)).toEqual(["중식", "석식", "숙소"]);
+    expect(events.filter((e) => e.displayRole === "summary").map((e) => e.heading)).toEqual([
+      "중식",
+      "석식",
+      "숙소",
+    ]);
+    expect(headings.filter((h) => h === "중식")).toHaveLength(1);
   });
 });
 

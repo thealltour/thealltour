@@ -19,6 +19,8 @@ import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { TimelineEventCard } from "@/components/products/timeline/TimelineEventCard";
 import { TimelineSummaryEventCard } from "@/components/products/timeline/TimelineSummaryEventCard";
 import { EventMediaSection } from "@/components/products/timeline/EventMediaSection";
+import { isItinerarySummaryEvent } from "@/lib/admin/externalImport/sanitizeAiItinerary";
+
 type TimelineEventRowDesktopProps = {
   ev: TimelineEvent;
   i: number;
@@ -373,12 +375,8 @@ export function InteractiveTimelineV2({
     maxEventsVisible != null && day.events.length > maxEventsVisible && !isExpanded
       ? day.events.slice(0, maxEventsVisible)
       : day.events;
-  const activityEvents = displayEvents.filter(
-    (ev) => ev.displayRole !== "summary" && !/^(예정호텔|호텔|식사)$/.test(ev.heading.trim()),
-  );
-  const summaryEvents = displayEvents.filter(
-    (ev) => ev.displayRole === "summary" || /^(예정호텔|호텔|식사)$/.test(ev.heading.trim()),
-  );
+  const activityEvents = displayEvents.filter((ev) => !isItinerarySummaryEvent(ev));
+  const summaryEvents = displayEvents.filter((ev) => isItinerarySummaryEvent(ev));
   const hasMore =
     maxEventsVisible != null && day.events.length > maxEventsVisible && !isExpanded;
   const moreCount = hasMore ? day.events.length - maxEventsVisible! : 0;

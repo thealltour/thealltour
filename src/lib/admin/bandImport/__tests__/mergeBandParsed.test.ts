@@ -42,6 +42,7 @@ describe("mergeBandParsed", () => {
       arrival_baggage_limit: null,
       departure_time: null,
       arrival_time: null,
+      departure_schedules: null,
       seasonal_price_bands: null,
       seasonal_price_band_notes: null,
       selling_points_json: null,

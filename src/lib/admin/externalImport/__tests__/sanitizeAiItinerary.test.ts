@@ -8,6 +8,7 @@ import {
   sanitizeAiItinerary,
   inferIconKeyFromHeading,
   inferDisplayRoleFromHeading,
+  isItinerarySummaryEvent,
 } from "@/lib/admin/externalImport/sanitizeAiItinerary";
 import { mapExternalItineraryToV2 } from "@/lib/admin/externalImport/mapExternalItineraryToV2";
 
@@ -93,12 +94,26 @@ describe("sanitizeAiItinerary", () => {
   it("infers iconKey and displayRole from headings", () => {
     expect(inferIconKeyFromHeading("항공편")).toBe("plane");
     expect(inferIconKeyFromHeading("호텔")).toBe("hotel");
+    expect(inferIconKeyFromHeading("숙소")).toBe("hotel");
     expect(inferIconKeyFromHeading("식사")).toBe("utensils");
+    expect(inferIconKeyFromHeading("중식")).toBe("utensils");
     expect(inferIconKeyFromHeading("상비산")).toBe("landmark");
     expect(inferDisplayRoleFromHeading("호텔")).toBe("summary");
+    expect(inferDisplayRoleFromHeading("중식")).toBe("summary");
+    expect(inferDisplayRoleFromHeading("석식")).toBe("summary");
+    expect(inferDisplayRoleFromHeading("숙소")).toBe("summary");
+    expect(inferDisplayRoleFromHeading("호텔로 이동")).toBe("activity");
+    expect(inferDisplayRoleFromHeading("석식 후 호텔 휴식")).toBe("activity");
     expect(inferDisplayRoleFromHeading("상비산")).toBe("activity");
     expect(isSightseeingEventHeading("상비산")).toBe(true);
     expect(isSightseeingEventHeading("항공편")).toBe(false);
+  });
+
+  it("treats explicit displayRole as authoritative for summary placement", () => {
+    expect(isItinerarySummaryEvent({ heading: "중식" })).toBe(true);
+    expect(isItinerarySummaryEvent({ heading: "호텔로 이동" })).toBe(false);
+    expect(isItinerarySummaryEvent({ heading: "중식", displayRole: "activity" })).toBe(false);
+    expect(isItinerarySummaryEvent({ heading: "상비산", displayRole: "summary" })).toBe(true);
   });
 });
 

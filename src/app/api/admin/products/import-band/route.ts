@@ -16,37 +16,20 @@ import {
   MAX_HWP_FILE_BYTES,
   parseHwpFileToText,
 } from "@/lib/admin/bandImport/hwpParser";
+import { BandImportImageError } from "@/lib/admin/bandImport/extractBandImportImages";
+import {
+  filesToBandImportSources,
+  processBandImportImages,
+} from "@/lib/admin/bandImport/processBandImportImages";
+import type { ItineraryV2 } from "@/types/product";
+
+export const maxDuration = 300;
 
 type ImportBandBody = {
   bandText?: string;
   hwpText?: string;
   product_source_url?: string;
-  imageUrls?: string[];
 };
-
-function parseImageUrlsField(raw: unknown): string[] {
-  if (Array.isArray(raw)) {
-    return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0).map((v) => v.trim());
-  }
-  if (typeof raw !== "string" || !raw.trim()) return [];
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      if (Array.isArray(parsed)) {
-        return parsed
-          .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
-          .map((v) => v.trim());
-      }
-    } catch {
-      // fall through to newline split
-    }
-  }
-  return trimmed
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
 
 function formString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -59,11 +42,17 @@ function pickHwpFile(formData: FormData): File | null {
   return null;
 }
 
+function pickImageFiles(formData: FormData): File[] {
+  return [...formData.getAll("images"), ...formData.getAll("imageFiles")].filter(
+    (entry): entry is File => entry instanceof File && entry.size > 0,
+  );
+}
+
 async function readImportRequest(request: NextRequest): Promise<{
   bandText: string;
   hwpText: string;
   productSourceUrl: string;
-  imageUrls: string[];
+  imageFiles: File[];
 }> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
@@ -71,7 +60,7 @@ async function readImportRequest(request: NextRequest): Promise<{
     const bandText = formString(formData, "bandText").trim();
     const pastedHwpText = formString(formData, "hwpText").trim();
     const productSourceUrl = formString(formData, "product_source_url").trim();
-    const imageUrls = parseImageUrlsField(formString(formData, "imageUrls"));
+    const imageFiles = pickImageFiles(formData);
     const hwpFile = pickHwpFile(formData);
 
     let hwpText = pastedHwpText;
@@ -82,7 +71,7 @@ async function readImportRequest(request: NextRequest): Promise<{
       hwpText = await parseHwpFileToText(hwpFile, hwpFile.name || "upload.hwpx");
     }
 
-    return { bandText, hwpText, productSourceUrl, imageUrls };
+    return { bandText, hwpText, productSourceUrl, imageFiles };
   }
 
   let body: ImportBandBody;
@@ -96,7 +85,7 @@ async function readImportRequest(request: NextRequest): Promise<{
     bandText: body.bandText?.trim() ?? "",
     hwpText: body.hwpText?.trim() ?? "",
     productSourceUrl: body.product_source_url?.trim() ?? "",
-    imageUrls: parseImageUrlsField(body.imageUrls),
+    imageFiles: [],
   };
 }
 
@@ -107,14 +96,14 @@ export async function POST(request: NextRequest) {
   let bandText = "";
   let hwpText = "";
   let productSourceUrl = "";
-  let imageUrls: string[] = [];
+  let imageFiles: File[] = [];
 
   try {
     const parsedBody = await readImportRequest(request);
     bandText = parsedBody.bandText;
     hwpText = parsedBody.hwpText;
     productSourceUrl = parsedBody.productSourceUrl;
-    imageUrls = parsedBody.imageUrls;
+    imageFiles = parsedBody.imageFiles;
   } catch (error) {
     if (error instanceof HwpParseError) {
       return NextResponse.json({ message: error.message }, { status: error.httpStatus });
@@ -160,8 +149,28 @@ export async function POST(request: NextRequest) {
     bandText,
     hwpText,
     productSourceUrl: productSourceUrl || null,
-    imageUrls,
   });
+
+  if (imageFiles.length > 0) {
+    try {
+      const applied = await processBandImportImages({
+        sources: await filesToBandImportSources(imageFiles),
+        itinerary: (insertPayload.itinerary_v2_json as ItineraryV2 | null) ?? null,
+      });
+      insertPayload.image_url = applied.imageUrl;
+      insertPayload.images_json = applied.imagesJson;
+      insertPayload.itinerary_v2_json = applied.itinerary;
+    } catch (error) {
+      if (error instanceof BandImportImageError) {
+        return NextResponse.json({ message: error.message }, { status: error.httpStatus });
+      }
+      console.error("[import-band] image import failed:", error);
+      return NextResponse.json(
+        { message: error instanceof Error ? error.message : "사진 업로드에 실패했습니다." },
+        { status: 500 },
+      );
+    }
+  }
 
   const insertResult = await insertProductWithSchemaFallback(
     async (payload) =>

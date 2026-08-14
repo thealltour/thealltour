@@ -8,6 +8,7 @@ import { ProductBookingSelectionSummary } from "@/components/products/ProductBoo
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
+import type { QuoteResult } from "@/lib/pricing/calcQuote";
 import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { trackReviewConversionCtaClick } from "@/lib/reviewExperimentTracking";
@@ -22,6 +23,10 @@ import {
   buildProductStickyMetaLine,
   hasProductFixedDeparture,
 } from "@/lib/products/productFixedDeparture";
+import {
+  getSelectedDepartureStickyDateLabel,
+  resolveStickyExpectedAmount,
+} from "@/lib/products/stickyExpectedPrice";
 
 export type ProductDetailStickyV2Status =
   | "AVAILABLE"
@@ -50,34 +55,44 @@ type StickyPriceParts = {
   subLabel: string | undefined;
   /** 구간가 표시 시 모바일 sticky 두 번째 힌트 */
   seasonalSecondLine: string | undefined;
-  mode: "quote" | "seasonal" | "single" | "none";
+  mode: "quote" | "seasonal" | "single" | "departure" | "none";
+  showTilde: boolean;
 };
 
 function getStickyPriceParts(
   priceFormatted: string | null,
-  quoteTotal: number | null | undefined,
+  quote: QuoteResult | null | undefined,
   product: Product | null | undefined,
   departurePrice?: number | null,
 ): StickyPriceParts {
-  const quoteDigits = quoteTotal != null ? formatPriceKR(quoteTotal) : null;
-  if (quoteDigits) {
-    return {
-      digits: quoteDigits,
-      prefix: undefined,
-      subLabel: undefined,
-      seasonalSecondLine: undefined,
-      mode: "quote",
-    };
-  }
-  if (departurePrice != null && departurePrice > 0) {
-    const digits = formatPriceKR(departurePrice);
+  const resolved = resolveStickyExpectedAmount({
+    selectedDeparturePrice: departurePrice,
+    quoteTotal: quote?.total,
+    quoteBasePrice: quote?.basePrice,
+  });
+  if (resolved?.fromDeparture) {
+    const digits = formatPriceKR(resolved.amount);
     if (digits) {
       return {
         digits,
         prefix: undefined,
         subLabel: "선택 출발일 기준",
         seasonalSecondLine: undefined,
-        mode: "single",
+        mode: "departure",
+        showTilde: false,
+      };
+    }
+  }
+  if (resolved && !resolved.fromDeparture) {
+    const digits = formatPriceKR(resolved.amount);
+    if (digits) {
+      return {
+        digits,
+        prefix: undefined,
+        subLabel: undefined,
+        seasonalSecondLine: undefined,
+        mode: "quote",
+        showTilde: true,
       };
     }
   }
@@ -93,6 +108,7 @@ function getStickyPriceParts(
         subLabel: SEASONAL_CARD_SUBLINE,
         seasonalSecondLine: STICKY_SEASONAL_VOLATILITY_HINT,
         mode: "seasonal",
+        showTilde: true,
       };
     }
   }
@@ -103,6 +119,7 @@ function getStickyPriceParts(
       subLabel: undefined,
       seasonalSecondLine: undefined,
       mode: "single",
+      showTilde: true,
     };
   }
   return {
@@ -111,6 +128,7 @@ function getStickyPriceParts(
     subLabel: undefined,
     seasonalSecondLine: undefined,
     mode: "none",
+    showTilde: false,
   };
 }
 
@@ -152,11 +170,11 @@ export function ProductDetailStickyV2Desktop({
     () =>
       getStickyPriceParts(
         priceFormatted,
-        quoteSummary?.total,
+        quoteSummary,
         product,
         selectedDeparture?.price,
       ),
-    [priceFormatted, quoteSummary?.total, product, selectedDeparture?.price],
+    [priceFormatted, quoteSummary, product, selectedDeparture?.price],
   );
   const fixedDeparture = hasProductFixedDeparture(product);
   const ctaLabelOptions = useMemo(
@@ -168,8 +186,9 @@ export function ProductDetailStickyV2Desktop({
       buildProductStickyMetaLine(product, {
         seasonalMode: stickyPrice.mode === "seasonal",
         includePriceMeta: stickyPrice.mode !== "seasonal",
+        selectedDateLabel: getSelectedDepartureStickyDateLabel(selectedDeparture),
       }),
-    [product, stickyPrice.mode],
+    [product, stickyPrice.mode, selectedDeparture],
   );
 
   /** PR23: 데스크톱 sticky 헤더 충돌 방지 — SiteHeader(유틸바 40px + 메인 바 64px) + 여백 */
@@ -193,7 +212,8 @@ export function ProductDetailStickyV2Desktop({
             {stickyPrice.digits ? (
               <>
                 <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[var(--primary)]">
-                  {stickyPrice.prefix ?? ""}₩{stickyPrice.digits}~
+                  {stickyPrice.prefix ?? ""}₩{stickyPrice.digits}
+                  {stickyPrice.showTilde ? "~" : ""}
                 </p>
                 {stickyPrice.mode === "seasonal" ? (
                   <>
@@ -315,11 +335,11 @@ export function ProductDetailStickyV2Mobile({
     () =>
       getStickyPriceParts(
         priceFormatted,
-        quoteSummary?.total,
+        quoteSummary,
         product,
         selectedDeparture?.price,
       ),
-    [priceFormatted, quoteSummary?.total, product, selectedDeparture?.price],
+    [priceFormatted, quoteSummary, product, selectedDeparture?.price],
   );
   const fixedDeparture = hasProductFixedDeparture(product);
   const ctaLabelOptions = useMemo(
@@ -331,8 +351,9 @@ export function ProductDetailStickyV2Mobile({
       buildProductStickyMetaLine(product, {
         seasonalMode: stickyPrice.mode === "seasonal",
         includePriceMeta: stickyPrice.mode !== "seasonal",
+        selectedDateLabel: getSelectedDepartureStickyDateLabel(selectedDeparture),
       }),
-    [product, stickyPrice.mode],
+    [product, stickyPrice.mode, selectedDeparture],
   );
 
   useEffect(() => {
@@ -425,6 +446,7 @@ export function ProductDetailStickyV2Mobile({
             stickyPrice.subLabel
           }
           stickyPriceSecondLine={stickyPrice.seasonalSecondLine}
+          stickyShowRangeSuffix={stickyPrice.showTilde}
           ctaLabelOptions={ctaLabelOptions}
           requiredGroupsMissing={requiredGroupsMissing}
           departureSelectionMissing={departureSelectionMissing}

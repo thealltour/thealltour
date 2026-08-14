@@ -1,6 +1,7 @@
 "use client";
 
 import type { ItineraryV2Event } from "@/types/product";
+import { inferDisplayRoleFromHeading } from "@/lib/admin/externalImport/sanitizeAiItinerary";
 import { EventImagesEditor } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { EventImageItem } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { ModetourImageDragItem } from "@/components/admin/modetour/modetourImageDnd";
@@ -23,6 +24,11 @@ const ICON_KEY_OPTIONS = [
   { value: "hotel", label: "숙소" },
   { value: "map", label: "관광" },
   { value: "sun", label: "자유" },
+] as const;
+
+const DISPLAY_ROLE_OPTIONS = [
+  { value: "activity", label: "일정 본문" },
+  { value: "summary", label: "하단 요약 (식사·숙소)" },
 ] as const;
 
 export type EventEditorProps = {
@@ -169,21 +175,41 @@ export function EventEditor({
         </div>
       </div>
 
-      <div>
-        <label className="mb-1 block text-[11px] font-semibold text-[var(--text-muted)]">유형</label>
-        <select
-          value={event.iconKey ?? ""}
-          onChange={(e) =>
-            onChange({ iconKey: e.target.value.trim() || undefined })
-          }
-          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
-        >
-          {ICON_KEY_OPTIONS.map((o) => (
-            <option key={o.value || "x"} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-[var(--text-muted)]">유형</label>
+          <select
+            value={event.iconKey ?? ""}
+            onChange={(e) =>
+              onChange({ iconKey: e.target.value.trim() || undefined })
+            }
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
+          >
+            {ICON_KEY_OPTIONS.map((o) => (
+              <option key={o.value || "x"} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-[var(--text-muted)]">표시 역할</label>
+          <select
+            value={event.displayRole ?? inferDisplayRoleFromHeading(event.heading)}
+            onChange={(e) =>
+              onChange({
+                displayRole: e.target.value as NonNullable<ItineraryV2Event["displayRole"]>,
+              })
+            }
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
+          >
+            {DISPLAY_ROLE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>

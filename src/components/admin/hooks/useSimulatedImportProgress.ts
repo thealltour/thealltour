@@ -37,7 +37,7 @@ export function useSimulatedImportProgress() {
     const labels = [
       "AI 메타 분석 중…",
       "AI 일정 분석 중…",
-      "상품 저장 준비 중…",
+      "사진 업로드·배치 중…",
     ];
 
     timerRef.current = setInterval(() => {

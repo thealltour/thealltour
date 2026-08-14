@@ -1,4 +1,4 @@
-import type { ItineraryV2 } from "@/types/product";
+import type { ItineraryV2, ItineraryV2Event } from "@/types/product";
 import {
   parseSeasonalPriceBandsFromUnknown,
   seasonalPriceBandsToJsonColumn,
@@ -8,11 +8,18 @@ import {
   BAND_IMPORT_PLACEHOLDER_IMAGE,
 } from "@/lib/admin/bandImport/constants";
 import { mapBandOptionsToProductOptions } from "@/lib/admin/bandImport/mapBandOptionsToProductOptions";
+import { splitTimedItineraryDescription } from "@/lib/admin/bandImport/splitTimedItineraryDescription";
 import type {
   BandParsedItineraryDay,
+  BandParsedItineraryEvent,
   BandParsedProduct,
   BandSeasonalPriceBandNotes,
 } from "@/lib/admin/bandImport/productParserSchema";
+import {
+  inferDisplayRoleFromHeading,
+  inferIconKeyFromHeading,
+  isItinerarySummaryEvent,
+} from "@/lib/admin/externalImport/sanitizeAiItinerary";
 import { sellingPointsToJsonColumn } from "@/lib/products/normalizeSellingPoints";
 import {
   departureSchedulesToJsonColumn,
@@ -221,6 +228,124 @@ export function buildBandBookingNotes(
   return base ? `${base}${appendix}` : noteLines.join("\n");
 }
 
+function countClockTimes(text: string): number {
+  return [...text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g)].length;
+}
+
+function normalizeTimeText(raw: string | null | undefined): string | undefined {
+  const trimmed = trimOrNull(raw);
+  if (!trimmed) return undefined;
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return trimmed;
+  return `${match[1].padStart(2, "0")}:${match[2]}`;
+}
+
+function inferTimeOfDayFromClock(timeText: string | undefined): ItineraryV2Event["timeOfDay"] | undefined {
+  const match = timeText?.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return undefined;
+  const hour = Number(match[1]);
+  if (hour < 12) return "오전";
+  if (hour < 17) return "오후";
+  return "저녁";
+}
+
+function toV2Event(input: {
+  heading: string;
+  description?: string | null;
+  timeText?: string | null;
+  timeOfDay?: ItineraryV2Event["timeOfDay"] | null;
+  location?: string | null;
+}): ItineraryV2Event {
+  const heading = input.heading.trim();
+  const timeText = normalizeTimeText(input.timeText);
+  return {
+    heading,
+    description: trimOrNull(input.description) ?? undefined,
+    timeText,
+    timeOfDay: input.timeOfDay ?? inferTimeOfDayFromClock(timeText),
+    location: trimOrNull(input.location) ?? undefined,
+    iconKey: inferIconKeyFromHeading(heading),
+    displayRole: inferDisplayRoleFromHeading(heading),
+  };
+}
+
+function mapParsedEvent(ev: BandParsedItineraryEvent): ItineraryV2Event | null {
+  const heading = ev.heading?.trim();
+  if (!heading) return null;
+  return toV2Event(ev);
+}
+
+function mealEventsFromDay(day: BandParsedItineraryDay): ItineraryV2Event[] {
+  const out: ItineraryV2Event[] = [];
+  if (day.meals?.breakfast?.trim()) {
+    out.push(toV2Event({ heading: "조식", description: day.meals.breakfast, timeOfDay: "오전" }));
+  }
+  if (day.meals?.lunch?.trim()) {
+    out.push(toV2Event({ heading: "중식", description: day.meals.lunch, timeOfDay: "오후" }));
+  }
+  if (day.meals?.dinner?.trim()) {
+    out.push(toV2Event({ heading: "석식", description: day.meals.dinner, timeOfDay: "저녁" }));
+  }
+  return out;
+}
+
+function hasMealHeading(events: ItineraryV2Event[], mealHeading: string): boolean {
+  return events.some((ev) => {
+    const heading = ev.heading.trim();
+    if (heading === mealHeading) return true;
+    return isItinerarySummaryEvent(ev) && heading.includes(mealHeading);
+  });
+}
+
+function appendMissingMeals(events: ItineraryV2Event[], day: BandParsedItineraryDay): ItineraryV2Event[] {
+  const extra = mealEventsFromDay(day).filter((meal) => !hasMealHeading(events, meal.heading));
+  return extra.length > 0 ? [...events, ...extra] : events;
+}
+
+function sortActivityThenSummary(events: ItineraryV2Event[]): ItineraryV2Event[] {
+  const activities: ItineraryV2Event[] = [];
+  const summaries: ItineraryV2Event[] = [];
+  for (const ev of events) {
+    if (isItinerarySummaryEvent(ev)) summaries.push(ev);
+    else activities.push(ev);
+  }
+  activities.sort((a, b) => {
+    if (a.timeText && b.timeText) return a.timeText.localeCompare(b.timeText);
+    return 0;
+  });
+  return [...activities, ...summaries];
+}
+
+function eventsFromLegacyDescription(day: BandParsedItineraryDay): ItineraryV2Event[] {
+  const description = day.description?.trim();
+  if (!description) {
+    if (day.title?.trim()) {
+      return [toV2Event({ heading: day.title.trim(), description: "", timeOfDay: "종일" })];
+    }
+    return [];
+  }
+
+  const clockCount = countClockTimes(description);
+  const split = splitTimedItineraryDescription(description);
+  if (clockCount >= 2 && split.length >= 2) {
+    return split.map((chunk) =>
+      toV2Event({
+        heading: chunk.heading,
+        description: chunk.description,
+        timeText: chunk.timeText,
+      }),
+    );
+  }
+
+  return [
+    toV2Event({
+      heading: day.title?.trim() || `${day.day}일차`,
+      description,
+      timeOfDay: "종일",
+    }),
+  ];
+}
+
 export function mapItineraryDaysToV2(days: BandParsedItineraryDay[] | null): ItineraryV2 | null {
   if (!days?.length) return null;
 
@@ -228,32 +353,11 @@ export function mapItineraryDaysToV2(days: BandParsedItineraryDay[] | null): Iti
     .slice()
     .sort((a, b) => a.day - b.day)
     .map((day) => {
-      const events: ItineraryV2["days"][number]["events"] = [];
-
-      if (day.meals?.breakfast?.trim()) {
-        events.push({ heading: "조식", description: day.meals.breakfast.trim(), timeOfDay: "오전" });
-      }
-      if (day.meals?.lunch?.trim()) {
-        events.push({ heading: "중식", description: day.meals.lunch.trim(), timeOfDay: "오후" });
-      }
-      if (day.meals?.dinner?.trim()) {
-        events.push({ heading: "석식", description: day.meals.dinner.trim(), timeOfDay: "저녁" });
-      }
-
-      const description = day.description?.trim();
-      if (description) {
-        events.push({
-          heading: day.title?.trim() || `${day.day}일차`,
-          description,
-          timeOfDay: "종일",
-        });
-      } else if (day.title?.trim() && events.length === 0) {
-        events.push({
-          heading: day.title.trim(),
-          description: "",
-          timeOfDay: "종일",
-        });
-      }
+      const parsedEvents = (day.events ?? [])
+        .map((ev) => mapParsedEvent(ev))
+        .filter((ev): ev is ItineraryV2Event => ev !== null);
+      const source = parsedEvents.length > 0 ? parsedEvents : eventsFromLegacyDescription(day);
+      const events = sortActivityThenSummary(appendMissingMeals(source, day));
 
       if (events.length === 0) return null;
 

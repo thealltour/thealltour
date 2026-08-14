@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ItineraryV2Event } from "@/types/product";
+import { inferDisplayRoleFromHeading } from "@/lib/admin/externalImport/sanitizeAiItinerary";
 import { EventImagesEditor } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import type { EventImageItem } from "@/components/admin/itinerary/shared/EventImagesEditor";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -22,6 +23,11 @@ const ICON_KEY_OPTIONS = [
   { value: "hotel", label: "숙소" },
   { value: "map", label: "관광" },
   { value: "sun", label: "자유" },
+] as const;
+
+const DISPLAY_ROLE_OPTIONS = [
+  { value: "activity", label: "일정 본문" },
+  { value: "summary", label: "하단 요약" },
 ] as const;
 
 export type V2EventRowProps = {
@@ -129,6 +135,22 @@ export function V2EventRow({
       >
         {ICON_KEY_OPTIONS.map((o) => (
           <option key={o.value || "x"} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <select
+        value={event.displayRole ?? inferDisplayRoleFromHeading(event.heading)}
+        onChange={(e) =>
+          onEventChange({
+            displayRole: e.target.value as NonNullable<ItineraryV2Event["displayRole"]>,
+          })
+        }
+        className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-primary)]"
+        title="표시 역할"
+      >
+        {DISPLAY_ROLE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}

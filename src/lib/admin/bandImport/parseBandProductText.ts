@@ -28,7 +28,7 @@ Rules:
 - Band post text is authoritative for band_marketing_copy (promotional paragraphs not in HWP).
 - description: copy HWP product overview/selling paragraphs verbatim. Do NOT include day-by-day schedule (handled separately).
 - included_items, excluded_items, optional_expenses, booking_notes, travel_notes, booking_conditions, terms_and_notes, refund_policy: preserve line breaks, ■ bullets, and [category] brackets.
-- Also extract each surcharge/option into options[] (name + priceText) in addition to booking_notes when present.
+- Also extract each surcharge/option into options[] (name + priceText) in addition to booking_notes when present. "18홀" is a hole count, not KRW. Keep "위안"/"元" in priceText as-is; never convert them to "원".
 - overview_accommodation: hotel names like "천홍 호텔 또는 동급".
 - seasonal_price_bands: numeric KRW integers only. Put date ranges and conditions in seasonal_price_band_notes.
 - Flight: split outbound (가는편) and return (오는편/귀국). Use YYYY-MM-DD for dates, HH:mm for times when available.
@@ -40,8 +40,13 @@ Rules:
 const ITINERARY_SYSTEM_PROMPT = `You extract day-by-day itinerary from Korean travel HWP/band schedule text into itinerary_v2_json only.
 Rules:
 - Focus on the schedule table / 일차 sections in the source.
-- itinerary_v2_json[].description must include meeting times, transfer duration (e.g. 약 40분), golf course names, and ALL schedule details for that day. Do NOT summarize.
-- meals: copy breakfast/lunch/dinner from the schedule row verbatim.
+- Split each day into events[]. Do NOT dump the whole day into a single description.
+- Each distinct clock time in the 시간 column is its own event with timeText as HH:mm (e.g. 08:55 인천 국제공항 출발 and 09:25 연태 국제공항 도착 are TWO events).
+- Split 출발 and 도착 even when they sit in the same table row.
+- Transfers, golf rounds, meetings, and rest are separate activity events. Keep transfer duration (e.g. 약 40분), course names, and surcharge notes in that event's description. Do NOT summarize.
+- 18홀 is a hole count, not a price.
+- Meals (조식/중식/석식) from the meal column and lodging (숙소/호텔 또는 동급) are separate events. Do not mix them into the all-day activity blob.
+- meals: still copy breakfast/lunch/dinner from the schedule row verbatim (in addition to meal events).
 - Preserve every day from 1일차 through the last day. Do not skip days.
 - Use null for itinerary_v2_json only when no schedule exists at all.`;
 
@@ -54,7 +59,7 @@ function buildBandMetaPrompt(input: ParseBandProductTextInput): string {
     "다음 원문에서 메타데이터 스키마 필드를 빠짐없이 추출하세요. 단어·금액·조건을 요약하거나 생략하지 마세요.",
     "",
     "[추출 지침]",
-    "1. 비고 섹션 → booking_notes 원문 + options[] 각 항목 분리",
+    "1. 비고 섹션 → booking_notes 원문 + options[] 각 항목 분리. 18홀은 가격이 아님. 위안은 원으로 바꾸지 말고 priceText에 그대로.",
     "2. 호텔/숙박 → overview_accommodation",
     "3. 밴드 홍보·특가 문단 → band_marketing_copy (HWP에 없는 내용)",
     "4. 구간 요금 날짜·조건 → seasonal_price_band_notes, 숫자만 → seasonal_price_bands",
@@ -83,8 +88,10 @@ function buildBandItineraryPrompt(input: ParseBandProductTextInput): string {
     "",
     "[추출 지침]",
     "1. 1일차부터 마지막 일차까지 모든 day 포함",
-    "2. description에 해당 일차 모든 행동·시간·장소 원문",
-    "3. meals는 일정표 우측 식사란 문자열 그대로",
+    "2. 시간 컬럼의 각 시각(08:55, 09:25 등)은 events[]에서 별 이벤트. 출발/도착 분리",
+    "3. 이동·미팅·라운드·휴식은 각각 events 항목. description에 원문 상세",
+    "4. 조식/중식/석식·숙소는 별 이벤트. 본문 일정과 한 덩어리로 합치지 말 것",
+    "5. meals는 일정표 우측 식사란 문자열 그대로",
     "",
     "=== 일정 원문 (HWP 우선) ===",
     source,

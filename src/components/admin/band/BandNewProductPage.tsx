@@ -26,16 +26,15 @@ type ImportResponse = {
 
 const HWP_ACCEPT = ".hwp,.hwpx,application/haansofthwp,application/x-hwp";
 const HWP_EXT_RE = /\.(hwp|hwpx)$/i;
-
-function parseImageUrls(raw: string): string[] {
-  return raw
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
+const IMAGE_ACCEPT = ".jpg,.jpeg,.png,.webp,.zip,image/jpeg,image/png,image/webp,application/zip";
+const IMAGE_OR_ZIP_RE = /\.(jpe?g|png|webp|zip)$/i;
 
 function isHwpFilename(name: string): boolean {
   return HWP_EXT_RE.test(name.trim());
+}
+
+function isImageOrZipFilename(name: string): boolean {
+  return IMAGE_OR_ZIP_RE.test(name.trim());
 }
 
 function formatFileSize(bytes: number): string {
@@ -48,9 +47,10 @@ export default function BandNewProductPage() {
   const router = useRouter();
   const [bandText, setBandText] = useState("");
   const [hwpFile, setHwpFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingImages, setIsDraggingImages] = useState(false);
   const [productSourceUrl, setProductSourceUrl] = useState("");
-  const [imageUrlsText, setImageUrlsText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingId, setExistingId] = useState<string | null>(null);
@@ -65,6 +65,20 @@ export default function BandNewProductPage() {
     }
     setError(null);
     setHwpFile(file);
+  }, []);
+
+  const addImageFiles = useCallback((incoming: FileList | File[] | undefined | null) => {
+    if (!incoming?.length) return;
+    const next: File[] = [];
+    for (const file of Array.from(incoming)) {
+      if (!isImageOrZipFilename(file.name)) {
+        setError("사진은 jpg, jpeg, png, webp 또는 zip만 올릴 수 있습니다.");
+        return;
+      }
+      next.push(file);
+    }
+    setError(null);
+    setImageFiles((prev) => [...prev, ...next]);
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -82,7 +96,9 @@ export default function BandNewProductPage() {
       if (productSourceUrl.trim()) {
         formData.append("product_source_url", productSourceUrl.trim());
       }
-      formData.append("imageUrls", JSON.stringify(parseImageUrls(imageUrlsText)));
+      for (const file of imageFiles) {
+        formData.append("images", file);
+      }
 
       const res = await fetch("/api/admin/products/import-band", {
         method: "POST",
@@ -130,6 +146,7 @@ export default function BandNewProductPage() {
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">상품 등록(밴드)</h1>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           네이버 밴드 게시글과 한글 문서(.hwp / .hwpx)를 올리면 AI가 상품 필드를 추출해 등록합니다.
+          사진이나 네이버 블로그 zip을 함께 올리면 대표·갤러리·일정 이미지로 배치합니다.
         </p>
       </div>
 
@@ -216,18 +233,87 @@ export default function BandNewProductPage() {
           />
         </label>
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-[var(--text-primary)]">이미지 URL (선택)</span>
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium text-[var(--text-primary)]">상품 사진 (선택)</span>
           <span className="block text-xs text-[var(--text-secondary)]">
-            한 줄에 하나씩 입력. 첫 URL이 대표 이미지로 사용됩니다.
+            jpg, png, jpeg, webp 여러 장 또는 네이버 블로그 zip. 일정표·로고·QR은 자동으로 제외합니다.
           </span>
-          <textarea
-            className={`${fieldClass} min-h-[80px] font-mono text-xs`}
-            value={imageUrlsText}
-            onChange={(e) => setImageUrlsText(e.target.value)}
-            placeholder={"https://example.com/image1.jpg\nhttps://example.com/image2.jpg"}
-          />
-        </label>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDraggingImages(true);
+            }}
+            onDragLeave={() => setIsDraggingImages(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDraggingImages(false);
+              addImageFiles(e.dataTransfer.files);
+            }}
+            className={`rounded-lg border border-dashed px-4 py-5 transition ${
+              isDraggingImages
+                ? "border-[var(--primary)] bg-[var(--surface-muted)]"
+                : "border-[var(--border)] bg-[var(--surface)]"
+            }`}
+          >
+            {imageFiles.length > 0 ? (
+              <ul className="space-y-2">
+                {imageFiles.map((file, index) => (
+                  <li key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">{file.name}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{formatFileSize(file.size)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setImageFiles((prev) => prev.filter((_, i) => i !== index))
+                      }
+                      className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                      제거
+                    </button>
+                  </li>
+                ))}
+                <li>
+                  <label className="inline-flex cursor-pointer text-xs font-medium text-[var(--primary)]">
+                    사진 더 추가
+                    <input
+                      type="file"
+                      accept={IMAGE_ACCEPT}
+                      multiple
+                      className="sr-only"
+                      onChange={(e) => {
+                        addImageFiles(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </li>
+              </ul>
+            ) : (
+              <label className="flex cursor-pointer flex-col items-center gap-2 text-center">
+                <Upload className="h-6 w-6 text-[var(--text-secondary)]" aria-hidden />
+                <span className="text-sm text-[var(--text-primary)]">
+                  {isDraggingImages ? "여기에 놓기" : "사진 또는 zip을 선택하거나 드래그 앤 드롭"}
+                </span>
+                <span className="text-xs text-[var(--text-secondary)]">
+                  jpg, png, jpeg, webp, zip · 장당 10MB
+                </span>
+                <input
+                  type="file"
+                  accept={IMAGE_ACCEPT}
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => {
+                    addImageFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        </div>
 
         {error && (
           <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">

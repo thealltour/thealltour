@@ -2,7 +2,11 @@ import { normalizeNullablePriceNumber } from "@/lib/products/seasonalPriceBands"
 import type { ProductOptions } from "@/types/product";
 import type { BandParsedOption } from "@/lib/admin/bandImport/productParserSchema";
 
-/** "인/박/4만원", "2만원" 등에서 원화 금액 추출 */
+const FOREIGN_CURRENCY_RE = /위안|元|엔|달러|CNY|USD|JPY/i;
+const HAS_KRW_RE = /만\s*원?|(?:\d{1,3}(?:,\d{3})+|\d+)\s*원/;
+const NON_PRICE_UNIT_RE = /^(홀|인|박|명)/;
+
+/** "인/박/4만원", "2만원" 등에서 원화 금액 추출. 18홀·120위안은 KRW가 아님. */
 export function parseKrwDeltaFromPriceText(priceText: string): number | null {
   const trimmed = priceText.trim();
   if (!trimmed) return null;
@@ -18,9 +22,14 @@ export function parseKrwDeltaFromPriceText(priceText: string): number | null {
     return normalizeNullablePriceNumber(wonMatch[1].replace(/,/g, ""));
   }
 
-  const digitsOnly = trimmed.match(/\d{1,3}(?:,\d{3})+|\d+/);
-  if (digitsOnly) {
-    return normalizeNullablePriceNumber(digitsOnly[0].replace(/,/g, ""));
+  if (FOREIGN_CURRENCY_RE.test(trimmed) && !HAS_KRW_RE.test(trimmed)) {
+    return null;
+  }
+
+  for (const match of trimmed.matchAll(/(\d{1,3}(?:,\d{3})+|\d+)/g)) {
+    const after = trimmed.slice((match.index ?? 0) + match[0].length);
+    if (NON_PRICE_UNIT_RE.test(after)) continue;
+    return normalizeNullablePriceNumber(match[0].replace(/,/g, ""));
   }
 
   return null;

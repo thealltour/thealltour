@@ -160,6 +160,6 @@ export const kakaoSyncGolfConfig = {
     ] satisfies KakaoSyncFaqItem[],
   },
   cta: {
-    label: "💬 1인 5만원 무제한 할인 쿠폰 받기",
+    label: "1초 카카오 가입하고 혜택 받기",
   },
 } as const;

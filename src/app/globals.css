@@ -1402,21 +1402,15 @@ body {
 .footer-pill-instagram.footer-pill-channel-equal {
   box-sizing: border-box;
   min-height: 2.75rem;
-  height: 100%;
-  width: 100%;
-  min-width: 0;
-  align-self: stretch;
-  padding: 0.25rem 0.375rem;
+  min-width: 10.5rem;
+  flex: 1 1 10.5rem;
+  width: auto;
+  padding: 0.5rem 0.75rem;
   font-size: var(--type-small-size);
   font-weight: 600;
   letter-spacing: var(--type-letter-tight);
   line-height: 1.35;
-}
-@media (min-width: 640px) {
-  .footer-pill-naver.footer-pill-channel-equal,
-  .footer-pill-instagram.footer-pill-channel-equal {
-    padding: 0.25rem 0.4375rem;
-  }
+  white-space: nowrap;
 }
 
 /** @deprecated 푸터 리디자인 후 미사용. 하위 호환 필요 시 .footer-pill-secondary 와 유사 */

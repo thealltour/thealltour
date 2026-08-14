@@ -261,12 +261,24 @@ export function HomeProductCard({
           </p>
         ) : null}
 
-        <h3 className="line-clamp-2 text-sm font-semibold leading-tight text-[var(--foreground)] sm:text-base sm:leading-snug">
+        <h3
+          className={cn(
+            "line-clamp-2 font-semibold leading-tight text-[var(--foreground)]",
+            priceDisplay === "teamCouponBenefit"
+              ? "text-base"
+              : "text-sm sm:text-base sm:leading-snug",
+          )}
+        >
           {titleText}
         </h3>
 
         {campaignPitch ? (
-          <p className="line-clamp-2 text-xs font-semibold leading-snug text-[var(--primary)] sm:line-clamp-1 sm:text-sm">
+          <p
+            className={cn(
+              "line-clamp-2 font-semibold leading-snug text-[var(--primary)]",
+              priceDisplay === "teamCouponBenefit" ? "text-sm" : "text-xs sm:line-clamp-1 sm:text-sm",
+            )}
+          >
             {campaignPitch}
           </p>
         ) : null}
@@ -288,7 +300,7 @@ export function HomeProductCard({
               <p className="text-xs leading-tight text-slate-400 tabular-nums line-through sm:text-sm">
                 정가: {teamListFormatted}원 (4인)
               </p>
-              <p className="mt-0.5 text-base font-extrabold leading-tight text-slate-900 tabular-nums sm:text-lg">
+              <p className="mt-0.5 text-[1.1875rem] font-extrabold leading-tight text-orange-600 tabular-nums sm:text-xl">
                 쿠폰 적용가: {teamMemberFormatted}원
               </p>
               <p className="mt-0.5 inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[0.625rem] font-bold text-emerald-700 sm:text-xs">

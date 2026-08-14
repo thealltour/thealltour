@@ -30,7 +30,7 @@ export function KakaoSyncLandingFooter({ settings }: { settings: KakaoSyncLandin
   const showMailOrderReg = !isPlaceholderRegNo(mailOrderRegNo);
 
   return (
-    <footer className="border-t border-[var(--divider)] bg-[var(--surface-muted)] text-[var(--foreground)]">
+    <footer className="border-t border-[var(--divider)] bg-[var(--surface-muted)] pb-6 text-[var(--foreground)]">
       <PageContainer size="wide" className="hardcoded-landing-x w-full px-4">
         <div className="flex flex-col items-center gap-2 py-4 text-center">
           <p className="type-caption leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">

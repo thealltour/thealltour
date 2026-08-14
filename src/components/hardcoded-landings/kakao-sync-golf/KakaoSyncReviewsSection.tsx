@@ -23,6 +23,7 @@ export function KakaoSyncReviewsSection() {
               <span className="text-sm font-bold text-slate-900">{review.name} 님</span>
               <span className="text-xs text-slate-500">({review.persona})</span>
             </div>
+            <p className="mt-0.5 text-xs text-slate-400">{review.productLine}</p>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-700">&ldquo;{review.quote}&rdquo;</p>
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {review.tags.map((tag) => (

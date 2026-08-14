@@ -88,18 +88,10 @@ export default function GlobalSiteFooter() {
   const naverBandUrl = (settings?.naver_band_url ?? "").trim();
   const naverBlogUrl = (settings?.naver_blog_url ?? "").trim();
 
-  /** 상담·채널: 카카오, 인스타, (선택)밴드·블로그 — 그리드에서 동일 셀 크기 */
-  const channelCount =
-    1 + 1 + (naverBandUrl ? 1 : 0) + (naverBlogUrl ? 1 : 0);
-  const channelGridClass = cn(
-    "grid w-full items-stretch gap-2",
-    channelCount === 2 && "grid-cols-2",
-    channelCount === 3 && "grid-cols-3",
-    channelCount >= 4 && "grid-cols-2 sm:grid-cols-4",
-  );
-  /** 그리드 행 높이에 맞춤. 글자는 카카오와 동일하게 `type-btn`(globals) 기준 */
+  /** 상담·채널: 내용 너비만큼 커지고, 좁으면 2열로 줄바꿈 (글자 중간 분절 방지) */
+  const channelGridClass = "flex w-full flex-wrap gap-2";
   const channelBtnEqual =
-    "flex min-h-[44px] h-full w-full min-w-0 shrink-0 items-center justify-center gap-1.5 px-1.5 py-1 text-center";
+    "inline-flex min-h-[44px] min-w-[10.5rem] flex-1 items-center justify-center gap-1.5 px-3 py-2 text-center whitespace-nowrap";
 
   return (
     <footer
@@ -172,14 +164,14 @@ export default function GlobalSiteFooter() {
                         size: "md",
                         className: cn(
                           channelBtnEqual,
-                          "!min-h-[44px] h-full !px-1.5 py-1 [&_svg]:h-3.5 [&_svg]:w-3.5 sm:[&_svg]:h-4 sm:[&_svg]:w-4",
+                          "!min-h-[44px] [&_svg]:h-3.5 [&_svg]:w-3.5 sm:[&_svg]:h-4 sm:[&_svg]:w-4",
                         ),
                       }),
                       focusRing,
                     )}
                   >
                     <MessageCircle className="shrink-0" aria-hidden />
-                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">카카오 채널</span>
+                    <span className="whitespace-nowrap">카카오 채널</span>
                   </a>
                   <a
                     href={instagramUrl ?? "https://www.instagram.com/thealltour"}
@@ -192,7 +184,7 @@ export default function GlobalSiteFooter() {
                     )}
                   >
                     <Instagram className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">인스타그램</span>
+                    <span className="whitespace-nowrap">인스타그램</span>
                   </a>
                   {naverBandUrl ? (
                     <a
@@ -206,7 +198,7 @@ export default function GlobalSiteFooter() {
                       )}
                     >
                       <UsersRound className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">네이버 밴드</span>
+                      <span className="whitespace-nowrap">네이버 밴드</span>
                     </a>
                   ) : null}
                   {naverBlogUrl ? (
@@ -221,7 +213,7 @@ export default function GlobalSiteFooter() {
                       )}
                     >
                       <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">네이버 블로그</span>
+                      <span className="whitespace-nowrap">네이버 블로그</span>
                     </a>
                   ) : null}
                 </div>

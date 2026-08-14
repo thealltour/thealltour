@@ -59,9 +59,11 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                   {hero.eyebrow}
                 </p>
               ) : null}
-              <h1 className="heading-display-hero mt-1.5 text-[1.5rem] font-extrabold leading-[1.25] drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)] sm:text-3xl sm:leading-tight">
+              <h1 className="heading-display-hero mt-1.5 text-[1.5rem] font-extrabold leading-[1.25] [word-break:keep-all] drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)] sm:text-3xl sm:leading-tight">
                 {hero.titleSegments.map((segment, index) =>
-                  segment.type === "accent" ? (
+                  segment.type === "break" ? (
+                    <br key={index} />
+                  ) : segment.type === "accent" ? (
                     <span key={index} style={{ color: KAKAO_SYNC_HERO_ACCENT }}>
                       {segment.value}
                     </span>
@@ -70,11 +72,16 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                   ),
                 )}
               </h1>
-              <p className="mt-1.5 text-sm font-semibold leading-snug text-white/95 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] sm:text-base">
-                {hero.subtitle}
+              <p className="mt-1.5 text-sm font-semibold leading-snug text-white/95 [word-break:keep-all] drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] sm:text-base">
+                {hero.subtitleLines.map((line, index) => (
+                  <span key={line}>
+                    {index > 0 ? <br /> : null}
+                    {line}
+                  </span>
+                ))}
               </p>
               {/* 소셜프루프 — 실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150) */}
-              <p className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
+              <p className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
                 <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 오늘 {dailySocialProofCount}
                 {hero.socialProofSuffix}
@@ -148,7 +155,7 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                     )}
                   </ul>
                   {benefit.tiersNote ? (
-                    <p className="mt-2.5 text-xs leading-relaxed text-slate-500">{benefit.tiersNote}</p>
+                    <p className="mt-2.5 text-xs leading-relaxed text-slate-600">{benefit.tiersNote}</p>
                   ) : null}
                 </div>
               ) : null}

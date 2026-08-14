@@ -6,7 +6,8 @@ export type KakaoSyncFaqItem = {
 /** 히어로 메인 타이틀 세그먼트 — 핵심 수치에 포인트 색을 주기 위함 */
 export type KakaoSyncHeroTitleSegment =
   | { type: "text"; value: string }
-  | { type: "accent"; value: string };
+  | { type: "accent"; value: string }
+  | { type: "break" };
 
 /** 예약 인원수별 할인 티어 — 총무(리더) 1인이 가입하면 팀 전체 인원수에 비례해 혜택이 커진다는 프레이밍용. */
 export type KakaoSyncDiscountTier = {
@@ -23,6 +24,8 @@ export type KakaoSyncDiscountTier = {
 export type KakaoSyncTrustReview = {
   name: string;
   persona: string;
+  /** 이름 아래 표시할 이용 상품 한 줄 */
+  productLine: string;
   quote: string;
   tags: string[];
 };
@@ -56,14 +59,16 @@ export const kakaoSyncGolfConfig = {
      */
     titleSegments: [
       { type: "accent", value: "1인당 5만 원" },
-      { type: "text", value: ", 팀 전체 " },
-      { type: "accent", value: "무제한 할인" },
+      { type: "text", value: "," },
+      { type: "break" },
+      { type: "text", value: "팀 전체 " },
+      { type: "accent", value: "무제한 즉시 할인" },
       { type: "text", value: "!" },
     ] satisfies KakaoSyncHeroTitleSegment[],
     /** 스크린리더·메타용 plain title (titleSegments와 동일 의미) */
-    title: "1인당 5만 원, 팀 전체 무제한 할인!",
-    /** 총무 편의성 어필 — 1~2인에게도 "대표 1명"으로 부담 없이 읽힘 */
-    subtitle: "동반자 가입 없이, 대표 1명 가입으로 전체 할인 자동 적용",
+    title: "1인당 5만 원, 팀 전체 무제한 즉시 할인!",
+    /** 총무 편의성 어필 — 명시 2줄 (동반자 부담 해소 → 대표 1명 자동 적용) */
+    subtitleLines: ["동반자 가입 필요 없이", "대표 1명만 가입해도 팀 전체 할인 자동 적용"],
     socialProofSuffix: "명이 5만원 무제한 할인 쿠폰을 받아갔어요",
   },
   benefit: {
@@ -83,7 +88,7 @@ export const kakaoSyncGolfConfig = {
       },
       {
         headcountLabel: "8인(2팀) 예약 시",
-        amountLabel: "총 40만 원 할인",
+        amountLabel: "총 40만원 즉시 할인",
         emphasize: true,
         badgeLabel: "무제한 적용!",
       },
@@ -107,18 +112,21 @@ export const kakaoSyncGolfConfig = {
       {
         name: "김O훈",
         persona: "50대 · 모임 총무",
+        productLine: "다낭 3박5일 2팀 이용",
         quote: "동반자 가입 없이 내 계정 하나로 20만 원 할인받았습니다",
         tags: ["4인 20만 원 할인", "동반자 가입 불필요"],
       },
       {
         name: "박O숙",
         persona: "60대 · 부부 골퍼",
+        productLine: "베트남 부부 2인 이용",
         quote: "2명이서 가도 10만 원 즉시 할인되네요",
         tags: ["2인 10만 원 할인", "1초 간편가입"],
       },
       {
         name: "이O철",
         persona: "50대 · 동호회 회장",
+        productLine: "하이난 8인 2팀 이용",
         quote: "8명 2팀 예약에 40만 원 할인! 노쇼핑이라 더 만족합니다",
         tags: ["8인 40만 원 할인", "노쇼핑·노옵션"],
       },

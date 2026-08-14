@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Gift } from "lucide-react";
 import { THEALL_WORDMARK_DARK_SRC } from "@/lib/brandAssets";
 
 /** 다크 워드마크 원본 비율(1024x189)과 동기화 */
@@ -45,14 +46,18 @@ export function KakaoSyncCouponVisual() {
             <p className="mt-0.5 text-xs font-semibold text-[#e8d9a8]">1인당 · 무제한</p>
           </div>
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-extrabold"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
             style={{
-              background: "radial-gradient(circle at 30% 30%, #d8c184, #8a6d1f)",
-              color: "#0f172a",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+              background: "radial-gradient(circle at 30% 30%, #e8d9a8, #b8962e 52%, #8a6d1f)",
+              boxShadow:
+                "0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.18)",
             }}
           >
-            5만
+            <span
+              className="absolute inset-[3px] rounded-full border border-[#0f172a]/18"
+              aria-hidden
+            />
+            <Gift className="relative h-6 w-6 text-[#0f172a]" strokeWidth={1.75} aria-hidden />
           </div>
         </div>
         <div

@@ -118,6 +118,12 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
       description: "오늘 할 일, 지표, kakao_sync",
       href: MANAGER_PREFIX,
     });
+    items.push({
+      key: "kakao-sync",
+      label: "카카오싱크 성과",
+      description: "랜딩 조회 · CTA · 가입 퍼널",
+      href: `${MANAGER_PREFIX}?tab=kakao_sync`,
+    });
   }
   if (hasAdminPermission(session, "inquiries.manage")) {
     items.push({

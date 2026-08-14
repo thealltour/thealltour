@@ -84,7 +84,7 @@ export default function RecentInquiriesList({ items, isLoading, isError }: Recen
         const { label, tone } = statusMeta(inquiry);
         const badgeClass = BADGE_BY_TONE[tone];
         const consultation = (inquiry.consultation_status ?? "new") as ConsultationStatus;
-        const detailHref = `/admin/inquiries?id=${encodeURIComponent(inquiry.id)}`;
+        const detailHref = `/theall_manager_only/inquiries?id=${encodeURIComponent(inquiry.id)}`;
         const busy = actingId === inquiry.id;
         const showContacted = consultation === "new";
         const showCloseConsultation = consultation === "new" || consultation === "contacted";

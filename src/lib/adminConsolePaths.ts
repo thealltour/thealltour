@@ -75,3 +75,44 @@ export function isAdminReviewSectionRelativePath(rel: string): boolean {
     rel.startsWith("/review-summaries")
   );
 }
+
+const MANAGER_NOTIFICATIONS_HREF = "/theall_manager_only/notifications";
+
+/**
+ * 알림 target_url·대시보드 링크용. `/admin/...` → `/theall_manager_only/...`.
+ * 비어 있으면 알림 목록으로 폴백.
+ */
+export function normalizeAdminConsoleHref(
+  url: string | null | undefined,
+  fallback: string = MANAGER_NOTIFICATIONS_HREF,
+): string {
+  const raw = url?.trim();
+  if (!raw) return fallback;
+
+  let pathname = raw;
+  let search = "";
+  let hash = "";
+  try {
+    const parsed = new URL(raw, "https://admin.local");
+    pathname = parsed.pathname;
+    search = parsed.search;
+    hash = parsed.hash;
+  } catch {
+    const hashIdx = raw.indexOf("#");
+    const withoutHash = hashIdx >= 0 ? raw.slice(0, hashIdx) : raw;
+    hash = hashIdx >= 0 ? raw.slice(hashIdx) : "";
+    const q = withoutHash.indexOf("?");
+    if (q >= 0) {
+      pathname = withoutHash.slice(0, q);
+      search = withoutHash.slice(q);
+    } else {
+      pathname = withoutHash;
+    }
+  }
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    pathname = pathname.replace(/^\/admin(?=\/|$)/, "/theall_manager_only");
+  }
+
+  return `${pathname}${search}${hash}`;
+}

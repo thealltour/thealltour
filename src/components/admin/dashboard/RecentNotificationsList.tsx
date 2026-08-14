@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AdminNotificationItem } from "@/lib/adminNotifications";
+import { normalizeAdminConsoleHref } from "@/lib/adminConsolePaths";
 import { formatRelativeTimeKo } from "./formatRelativeTimeKo";
 
 type RecentNotificationsListProps = {
@@ -16,17 +17,6 @@ function rawTypeKey(type: string) {
   return t || "notification";
 }
 
-/** 알림 target URL 정규화 (/theall_manager_only 기준) */
-function normalizeTargetUrl(url: string | null): string {
-  const fallback = "/theall_manager_only/notifications";
-  const u = url?.trim();
-  if (!u) return fallback;
-  if (u.startsWith("/admin/")) {
-    return u.replace("/admin", "/theall_manager_only");
-  }
-  return u;
-}
-
 function isHighPriorityType(type: string) {
   return type === "new_inquiry" || type === "new_review";
 }
@@ -36,7 +26,7 @@ export default function RecentNotificationsList({ items, isLoading, isError }: R
   const queryClient = useQueryClient();
 
   const openNotification = async (n: AdminNotificationItem) => {
-    const href = normalizeTargetUrl(n.target_url);
+    const href = normalizeAdminConsoleHref(n.target_url);
     if (!n.is_read) {
       try {
         await fetch(`/api/admin/notifications/${n.id}/read`, { method: "PATCH" });

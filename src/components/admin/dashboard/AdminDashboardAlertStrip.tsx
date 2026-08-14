@@ -79,7 +79,7 @@ export default function AdminDashboardAlertStrip({
   if (delayedInquiries > 0) {
     badges.push({
       key: "delayed",
-      href: "/admin/inquiries?status=delayed",
+      href: "/theall_manager_only/inquiries?status=delayed",
       label: "지연",
       count: delayedInquiries,
       variant: "delayed",
@@ -97,7 +97,7 @@ export default function AdminDashboardAlertStrip({
   if (pendingInquiries > 0) {
     badges.push({
       key: "pending",
-      href: "/admin/inquiries?status=pending",
+      href: "/theall_manager_only/inquiries?status=pending",
       label: "미처리",
       count: pendingInquiries,
       variant: "pending",
@@ -106,7 +106,7 @@ export default function AdminDashboardAlertStrip({
   if (hasUnread) {
     badges.push({
       key: "unread",
-      href: "/admin/notifications?filter=unread",
+      href: "/theall_manager_only/notifications?filter=unread",
       label: "알림",
       count: unreadNotificationCount,
       variant: "unread",
@@ -115,7 +115,7 @@ export default function AdminDashboardAlertStrip({
   if (hasReserved) {
     badges.push({
       key: "reserved",
-      href: "/admin/inquiries?status=reserved",
+      href: "/theall_manager_only/inquiries?status=reserved",
       label: "예약",
       count: reservedInquiries,
       variant: "reserved",

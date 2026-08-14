@@ -38,34 +38,34 @@ export default function AdminDashboardCompactKpiGrid({ counts, isLoading }: Admi
         <DashboardMetricTile
           label="전체 문의"
           value={counts.totalInquiries}
-          href="/admin/inquiries"
+          href="/theall_manager_only/inquiries"
           changePercent={counts.totalInquiriesDeltaPercent}
         />
         <DashboardMetricTile
           label="미처리"
           value={counts.pendingInquiries}
-          href="/admin/inquiries?status=pending"
+          href="/theall_manager_only/inquiries?status=pending"
           changePercent={counts.pendingInquiriesDeltaPercent}
         />
         <DashboardMetricTile
           label="완료"
           value={counts.completedInquiries}
-          href="/admin/inquiries?status=completed"
+          href="/theall_manager_only/inquiries?status=completed"
           changePercent={counts.completedInquiriesDeltaPercent}
         />
         <DashboardMetricTile
           label="예약확정"
           value={counts.reservedInquiries}
-          href="/admin/inquiries?status=reserved"
+          href="/theall_manager_only/inquiries?status=reserved"
           footnote="—"
         />
         <DashboardMetricTile
           label="지연"
           value={counts.delayedInquiries}
-          href="/admin/inquiries?status=delayed"
+          href="/theall_manager_only/inquiries?status=delayed"
           changePercent={counts.delayedInquiriesDeltaPercent}
         />
-        <DashboardMetricTile label="보류" value={onHold} href="/admin/inquiries?status=on_hold" footnote="큐 제외" />
+        <DashboardMetricTile label="보류" value={onHold} href="/theall_manager_only/inquiries?status=on_hold" footnote="큐 제외" />
         <DashboardMetricTile label="완료율" value={completionLabel} footnote="누적 비율" />
       </div>
     </div>

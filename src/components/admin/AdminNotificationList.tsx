@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isSmsNotificationType, notificationTypeIcon } from "@/lib/adminNotificationTypes";
 import { syncAdminAppBadge } from "@/lib/adminPwaClient";
+import { normalizeAdminConsoleHref } from "@/lib/adminConsolePaths";
 
 type NotificationItem = {
   id: string;
@@ -115,9 +116,7 @@ export default function AdminNotificationList() {
     );
     setUnreadCount((prev) => Math.max(0, prev - (item.is_read ? 0 : 1)));
     router.refresh();
-    if (item.target_url) {
-      router.push(item.target_url);
-    }
+    router.push(normalizeAdminConsoleHref(item.target_url));
   }
 
   if (isLoading) {

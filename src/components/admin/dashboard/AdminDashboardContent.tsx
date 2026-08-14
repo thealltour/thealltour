@@ -10,6 +10,7 @@ import { useSearchInsightsModel } from "./useSearchInsights";
 import { useDashboardInsights } from "./useDashboardInsights";
 import DashboardOpsTab from "./DashboardOpsTab";
 import DashboardMetricsTab from "./DashboardMetricsTab";
+import { DashboardCompactTabs } from "./DashboardCompactTabs";
 
 type DashboardTab = "ops" | "metrics" | "kakao_sync";
 
@@ -115,9 +116,14 @@ export default function AdminDashboardContent() {
   const searchParams = useSearchParams();
   const dashboardTab = resolveDashboardTab(searchParams.get("tab"));
 
-  if (dashboardTab === "kakao_sync") {
-    return <AdminKakaoSyncAnalyticsPage />;
-  }
-
-  return <AdminDashboardOpsOrMetrics tab={dashboardTab} />;
+  return (
+    <div>
+      <DashboardCompactTabs />
+      {dashboardTab === "kakao_sync" ? (
+        <AdminKakaoSyncAnalyticsPage />
+      ) : (
+        <AdminDashboardOpsOrMetrics tab={dashboardTab} />
+      )}
+    </div>
+  );
 }

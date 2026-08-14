@@ -237,7 +237,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
       <AdminKakaoMomentCsvUpload onApplied={() => void load()} />
 
       {loading && !data ? (
-        <div className="grid animate-pulse gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 animate-pulse gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {Array.from({ length: 14 }).map((_, i) => (
             <div key={i} className="h-24 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]" />
           ))}
@@ -246,7 +246,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
         <>
           <div>
             <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">온사이트 퍼널</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {cards.map((c) => (
                 <div
                   key={c.label}
@@ -284,7 +284,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
           <TrendChart trend={data?.trend ?? []} />
 
           <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-[36rem] w-full text-left text-sm">
               <thead className="bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]">
                 <tr>
                   <th className="px-4 py-3 font-semibold">캠페인 / 랜딩</th>
@@ -324,7 +324,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
               reason · oauthError 기준 집계입니다. 동의 취소(access_denied)와 KOE 코드 등을 구분합니다.
             </p>
             <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-[36rem] w-full text-left text-sm">
                 <thead className="bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]">
                   <tr>
                     <th className="px-4 py-3 font-semibold">reason</th>
@@ -359,7 +359,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
             <h2 className="mb-1 text-sm font-semibold text-[var(--text-primary)]">최근 OAuth 실패</h2>
             <p className="mb-3 text-xs text-[var(--text-muted)]">최신순 최대 30건 샘플입니다.</p>
             <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-[36rem] w-full text-left text-sm">
                 <thead className="bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]">
                   <tr>
                     <th className="px-4 py-3 font-semibold">시각</th>

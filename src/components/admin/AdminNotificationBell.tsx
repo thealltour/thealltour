@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
 import { notificationTypeIcon } from "@/lib/adminNotificationTypes";
+import { normalizeAdminConsoleHref } from "@/lib/adminConsolePaths";
 
 type NotificationItem = {
   id: string;
@@ -81,11 +82,7 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
     }
     setIsOpen(false);
     router.refresh();
-    if (item.target_url) {
-      router.push(item.target_url);
-    } else {
-      router.push("/theall_manager_only/notifications");
-    }
+    router.push(normalizeAdminConsoleHref(item.target_url));
   }
 
   async function markAllAsRead() {

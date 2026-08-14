@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAdminConsoleRelativePath, sanitizeAdminReturnTo } from "@/lib/adminConsolePaths";
+import { getAdminConsoleRelativePath, normalizeAdminConsoleHref, sanitizeAdminReturnTo } from "@/lib/adminConsolePaths";
 import { parseAdminDeviceLabel } from "@/lib/adminDeviceLabel";
 import {
   ADMIN_SESSION_COOKIE_MAX_AGE_SEC,
@@ -39,6 +39,26 @@ describe("sanitizeAdminReturnTo", () => {
     expect(sanitizeAdminReturnTo("https://evil.example/phish")).toBeNull();
     expect(sanitizeAdminReturnTo("/products/1")).toBeNull();
     expect(sanitizeAdminReturnTo("//evil.example")).toBeNull();
+  });
+});
+
+describe("normalizeAdminConsoleHref", () => {
+  it("rewrites /admin to /theall_manager_only and keeps query/hash", () => {
+    expect(normalizeAdminConsoleHref("/admin/inquiries?status=pending")).toBe(
+      "/theall_manager_only/inquiries?status=pending",
+    );
+    expect(normalizeAdminConsoleHref("/admin")).toBe("/theall_manager_only");
+    expect(normalizeAdminConsoleHref("/admin/notifications#top")).toBe(
+      "/theall_manager_only/notifications#top",
+    );
+  });
+
+  it("falls back when empty and leaves manager paths alone", () => {
+    expect(normalizeAdminConsoleHref(null)).toBe("/theall_manager_only/notifications");
+    expect(normalizeAdminConsoleHref("")).toBe("/theall_manager_only/notifications");
+    expect(normalizeAdminConsoleHref("/theall_manager_only/inquiries")).toBe(
+      "/theall_manager_only/inquiries",
+    );
   });
 });
 

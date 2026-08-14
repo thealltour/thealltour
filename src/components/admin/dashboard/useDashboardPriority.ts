@@ -39,7 +39,7 @@ export function buildDashboardPriorityItems(input: BuildInput, maxItems = 5): Da
       priority: "high",
       count: delayedInquiries,
       label: "지연 문의",
-      href: "/admin/inquiries?status=delayed",
+      href: "/theall_manager_only/inquiries?status=delayed",
       order: 1,
     });
   }
@@ -75,7 +75,7 @@ export function buildDashboardPriorityItems(input: BuildInput, maxItems = 5): Da
       priority: "medium",
       count: pendingInquiries,
       label: "미처리 문의",
-      href: "/admin/inquiries?status=pending",
+      href: "/theall_manager_only/inquiries?status=pending",
       order: 4,
     });
   }
@@ -87,7 +87,7 @@ export function buildDashboardPriorityItems(input: BuildInput, maxItems = 5): Da
       priority: "low",
       count: unreadNotificationCount,
       label: "미읽음 알림",
-      href: "/admin/notifications?filter=unread",
+      href: "/theall_manager_only/notifications?filter=unread",
       order: 5,
     });
   }

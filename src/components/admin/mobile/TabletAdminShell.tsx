@@ -2,13 +2,14 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LayoutGrid, MessageCircle } from "lucide-react";
+import { Bell, LayoutGrid, MessageCircle } from "lucide-react";
 import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
 import { AdminPwaInstallBanner } from "@/components/admin/pwa/AdminPwaProvider";
 import { MobileAdminBottomNav } from "@/components/admin/mobile/MobileAdminBottomNav";
 import { TabletAdminSideRail } from "@/components/admin/mobile/TabletAdminSideRail";
 import { ADMIN_PWA_HUB_HREF } from "@/components/admin/mobile/mobileAdmin.constants";
 import { useAdminChat } from "@/components/admin/chat/AdminChatProvider";
+import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsRealtime";
 
 type TabletAdminShellProps = {
   title: string;
@@ -18,12 +19,27 @@ type TabletAdminShellProps = {
 };
 
 const MAIN_BOTTOM_PAD = "calc(5.5rem + env(safe-area-inset-bottom, 0px))";
+const NOTIFICATIONS_HREF = "/theall_manager_only/notifications";
 
 function CompactHeaderActions() {
   const { setOpen, totalUnread, refreshRooms } = useAdminChat();
+  const { unreadCount } = useAdminNotificationsRealtime();
 
   return (
     <div className="flex shrink-0 items-center gap-2">
+      <Link
+        href={NOTIFICATIONS_HREF}
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+        aria-label={unreadCount > 0 ? `알림, 미읽음 ${unreadCount}건` : "알림"}
+        title="알림"
+      >
+        <Bell className="h-4 w-4" aria-hidden />
+        {unreadCount > 0 ? (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold leading-none text-white">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        ) : null}
+      </Link>
       <button
         type="button"
         onClick={() => {

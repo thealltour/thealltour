@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/apiAuth";
+import { captureServerException } from "@/lib/observability";
+import { upsertThreadMarketingPost } from "@/lib/threads/threadMarketingStore";
 import { publishToThreads, ThreadsClientError } from "@/lib/threads/threadsClient";
 
 type PublishBody = {
@@ -37,13 +39,38 @@ export async function POST(request: Request) {
 
   try {
     const threads = await publishToThreads({ text: draftContent, imageUrl });
+    const publishedAt = new Date().toISOString();
+    let logId: string | null = null;
+    try {
+      logId = await upsertThreadMarketingPost({
+        mediaId: threads.id,
+        productId,
+        targetKeyword,
+        permalink: threads.permalink,
+        publishedAt,
+      });
+    } catch (persistError) {
+      captureServerException(persistError, { mediaId: threads.id, productId });
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "스레드는 게시됐지만 자동 답글용 이력을 저장하지 못했습니다.",
+          productId,
+          targetKeyword,
+          publishedAt,
+          threads,
+          logId: null,
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({
       ok: true,
       productId,
       targetKeyword,
-      publishedAt: new Date().toISOString(),
+      publishedAt,
       threads,
-      logId: null,
+      logId,
     });
   } catch (error) {
     console.error("[api/admin/threads/publish]", error);

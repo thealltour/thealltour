@@ -5,6 +5,14 @@
     {
       "path": "/api/cron/sms-bulk",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/threads-replies",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/threads-refresh-token",
+      "schedule": "0 0 * * 1"
     }
   ]
 }

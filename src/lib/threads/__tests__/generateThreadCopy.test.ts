@@ -73,6 +73,9 @@ describe("generateThreadCopy", () => {
     expect(call.system).toContain("긴급성");
     expect(call.system).toContain("올포함");
     expect(call.system).toContain("3초");
+    expect(call.system).toContain("할인 링크");
+    expect(call.system).toContain("1줄 훅");
+    expect(call.system).toContain("•");
     expect(call.prompt).toContain("발리 4박5일");
   });
 
@@ -80,6 +83,8 @@ describe("generateThreadCopy", () => {
     const system = buildThreadCopySystemPrompt("CURATION");
     expect(system).toContain("타겟");
     expect(system).toContain("저장 욕구");
+    expect(system).toContain("할인 링크");
+    expect(system).toContain("1줄 훅");
   });
 
   it("uses seasonal experience prompt for SEASONAL_EXPERIENCE", () => {
@@ -87,6 +92,8 @@ describe("generateThreadCopy", () => {
     expect(system).toContain("시의성");
     expect(system).toContain("현지");
     expect(system).toContain("3초");
+    expect(system).toContain("할인 링크");
+    expect(system).toContain("•");
   });
 });
 

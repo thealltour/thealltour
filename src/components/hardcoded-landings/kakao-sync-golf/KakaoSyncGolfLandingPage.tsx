@@ -1,4 +1,4 @@
-import { Flame, Users } from "lucide-react";
+import { Flame, ShieldCheck, Users } from "lucide-react";
 import { HomeTrustSection } from "@/components/home/HomeTrustSection";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/LandingFaqAccordion";
@@ -172,6 +172,26 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                 <p className="mt-2 text-center text-[0.6875rem] text-slate-400">
                   {benefit.eligibilityNote}
                 </p>
+              ) : null}
+
+              {benefit.reassurance ? (
+                <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-3">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                    {benefit.reassurance.title}
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {benefit.reassurance.bullets.map((bullet) => (
+                      <li
+                        key={bullet}
+                        className="flex gap-2 text-[13px] leading-snug text-slate-600"
+                      >
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-600" aria-hidden />
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ) : null}
             </div>
           </section>

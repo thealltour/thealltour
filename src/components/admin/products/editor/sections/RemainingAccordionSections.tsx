@@ -129,7 +129,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                         }}
                         className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                           !form.destination_id && !selectedLevel1Id
-                            ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                            ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                             : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                         }`}
                       >
@@ -155,9 +155,9 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                             }}
                             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                               selected && !form.destination_id
-                                ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                                 : destinationPath[0]?.id === node.id
-                                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                  ? "bg-[var(--primary-soft)] text-[var(--primary)] ring-1 ring-[var(--primary)]/25"
                                   : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                             }`}
                           >
@@ -196,9 +196,9 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                                 }}
                                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                                   selected && !form.destination_id
-                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                                     : destinationPath[1]?.id === node.id
-                                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                      ? "bg-[var(--primary-soft)] text-[var(--primary)] ring-1 ring-[var(--primary)]/25"
                                       : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                                 }`}
                               >
@@ -234,7 +234,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                                 }}
                                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                                   selected
-                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                                     : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                                 }`}
                               >
@@ -272,7 +272,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                         }}
                         className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                           !form.theme.trim() && !selectedThemeLevel1Id
-                            ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                            ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                             : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                         }`}
                       >
@@ -298,9 +298,9 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                             }}
                             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                               selected && !form.theme.trim()
-                                ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                                 : themePath[0]?.id === node.id
-                                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                  ? "bg-[var(--primary-soft)] text-[var(--primary)] ring-1 ring-[var(--primary)]/25"
                                   : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                             }`}
                           >
@@ -338,9 +338,9 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                                 }}
                                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                                   selected && !form.theme.trim()
-                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                                     : themePath[1]?.id === node.id
-                                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                      ? "bg-[var(--primary-soft)] text-[var(--primary)] ring-1 ring-[var(--primary)]/25"
                                       : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                                 }`}
                               >
@@ -375,7 +375,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                                 }}
                                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                                   selected
-                                    ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                    ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                                     : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                                 }`}
                               >
@@ -406,7 +406,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                     onClick={() => setForm((prev) => ({ ...prev, product_line_id: "" }))}
                     className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                       !form.product_line_id
-                        ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                        ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                         : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                     }`}
                   >
@@ -421,7 +421,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                         onClick={() => setForm((prev) => ({ ...prev, product_line_id: item.id }))}
                         className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                           selected
-                            ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                            ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                             : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                         }`}
                       >
@@ -450,7 +450,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                       onClick={() => toggleCampaign(item.name)}
                       className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                         selected
-                          ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                          ? "bg-[var(--primary)]/15 text-[var(--primary)] ring-1 ring-[var(--primary)]/40"
                           : "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-muted)]"
                       }`}
                     >
@@ -462,9 +462,9 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
             </div>
             <p className="text-xs text-[var(--text-muted)]">선택된 기획/추천: {selectedCampaigns.join(", ") || "-"}</p>
           </div>
-          <div className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2">
-            <p className="text-xs font-medium text-blue-900">여행 오버뷰 품질 가이드</p>
-            <p className="mt-0.5 text-xs text-blue-800">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+            <p className="text-xs font-medium text-[var(--text-primary)]">여행 오버뷰 품질 가이드</p>
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
               지역·테마는 상세 첫 화면의 여행 오버뷰 &quot;지역&quot; 카드에 반영됩니다. 대표 이미지는 오버뷰 커버로 사용됩니다.
             </p>
           </div>

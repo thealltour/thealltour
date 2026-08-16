@@ -34,9 +34,9 @@ export function ProductOptionsEditor({ form, setForm, formatPriceWithCommas }: P
 
   if (!parsed.ok) {
     return (
-      <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
+      <div className="space-y-2 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger-bg)] p-3">
         <p className="text-sm font-semibold text-[var(--text-primary)]">추가 옵션·할증</p>
-        <p className="text-xs text-amber-800">
+        <p className="text-xs text-[var(--danger)]">
           {parsed.error} 고급 섹션의 옵션 JSON을 수정한 뒤 다시 열어 주세요.
         </p>
       </div>
@@ -141,7 +141,7 @@ export function ProductOptionsEditor({ form, setForm, formatPriceWithCommas }: P
                                 removeProductOptionItem(options, groupIndex, itemIndex),
                               )
                             }
-                            className="rounded border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50"
+                            className="rounded border border-[var(--danger)]/40 px-2 py-1 text-[var(--danger)] hover:bg-[var(--danger-bg)]"
                           >
                             삭제
                           </button>

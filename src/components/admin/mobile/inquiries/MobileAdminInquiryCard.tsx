@@ -211,7 +211,7 @@ export function MobileAdminInquiryCard({
             type="button"
             disabled={isRowPending || isDeletePending}
             onClick={onSetContacted}
-            className="min-h-9 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+            className="min-h-9 rounded-lg border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-3 py-1.5 text-xs font-medium text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
           >
             상담중
           </button>
@@ -230,7 +230,7 @@ export function MobileAdminInquiryCard({
               type="button"
               disabled={isRowPending || isDeletePending}
               onClick={onSetOnHold}
-              className="min-h-9 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/40 dark:text-slate-200"
+              className="min-h-9 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface)] disabled:opacity-50"
             >
               보류
             </button>
@@ -241,7 +241,7 @@ export function MobileAdminInquiryCard({
             type="button"
             disabled={isRowPending || isDeletePending}
             onClick={onResumeContacted}
-            className="min-h-9 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+            className="min-h-9 rounded-lg border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-3 py-1.5 text-xs font-medium text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
           >
             재개
           </button>
@@ -252,7 +252,7 @@ export function MobileAdminInquiryCard({
               type="button"
               disabled={isRowPending || isDeletePending}
               onClick={onSetOnHold}
-              className="min-h-9 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/40 dark:text-slate-200"
+              className="min-h-9 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface)] disabled:opacity-50"
             >
               보류
             </button>
@@ -260,7 +260,7 @@ export function MobileAdminInquiryCard({
               type="button"
               disabled={isRowPending || isDeletePending}
               onClick={onSetContacted}
-              className="min-h-9 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+              className="min-h-9 rounded-lg border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-3 py-1.5 text-xs font-medium text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
             >
               상담 재개
             </button>
@@ -271,7 +271,7 @@ export function MobileAdminInquiryCard({
             type="button"
             disabled={isRowPending || isDeletePending}
             onClick={onOpenReserve}
-            className="min-h-9 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-900 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
+            className="min-h-9 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-medium text-[var(--primary)] hover:opacity-90 disabled:opacity-50"
           >
             예약 확정
           </button>
@@ -290,7 +290,7 @@ export function MobileAdminInquiryCard({
           type="button"
           disabled={isDeletePending || isRowPending}
           onClick={onDelete}
-          className="min-h-9 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-900 hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
+          className="min-h-9 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-1.5 text-xs font-medium text-[var(--danger)] hover:opacity-90 disabled:opacity-50"
         >
           삭제
         </button>

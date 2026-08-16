@@ -154,7 +154,7 @@ export function ModerationReviewCard({
             type="button"
             disabled={!!loading}
             onClick={() => runAction("restore")}
-            className="rounded border border-green-300 bg-green-50 px-2 py-1 text-xs hover:bg-green-100 disabled:opacity-50"
+            className="rounded border border-[var(--success)]/50 bg-[var(--success-bg)] px-2 py-1 text-xs text-[var(--success)] hover:opacity-90 disabled:opacity-50"
           >
             Restore
           </button>
@@ -164,7 +164,7 @@ export function ModerationReviewCard({
             type="button"
             disabled={!!loading}
             onClick={() => runAction("under_review")}
-            className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs hover:bg-amber-100 disabled:opacity-50"
+            className="rounded border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-2 py-1 text-xs text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
           >
             Mark Under Review
           </button>
@@ -174,7 +174,7 @@ export function ModerationReviewCard({
             type="button"
             disabled={!!loading}
             onClick={() => runAction("resolve")}
-            className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs hover:bg-blue-100 disabled:opacity-50"
+            className="rounded border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-2 py-1 text-xs text-[var(--primary)] hover:opacity-90 disabled:opacity-50"
           >
             Resolve
           </button>

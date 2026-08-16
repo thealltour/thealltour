@@ -157,8 +157,8 @@ export function AdminKakaoMomentCsvUpload({ onApplied }: Props) {
               저장·적용
             </button>
           </div>
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
-          {okMsg ? <p className="text-xs text-emerald-700">{okMsg}</p> : null}
+          {error ? <p className="text-xs text-[var(--danger)]">{error}</p> : null}
+          {okMsg ? <p className="text-xs text-[var(--success)]">{okMsg}</p> : null}
           {preview ? (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs">
               <p>

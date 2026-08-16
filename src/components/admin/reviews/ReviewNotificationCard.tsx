@@ -50,7 +50,7 @@ export function ReviewNotificationCard({
   return (
     <article
       className={`rounded-xl border p-4 transition-colors ${
-        isUnread ? "border-amber-400/40 bg-amber-50/30 dark:bg-amber-900/10" : "border-[var(--border)] bg-[var(--surface)]"
+        isUnread ? "border-[var(--warning)]/40 bg-[var(--warning-bg)]/50" : "border-[var(--border)] bg-[var(--surface)]"
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">

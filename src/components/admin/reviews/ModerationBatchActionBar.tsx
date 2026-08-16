@@ -46,7 +46,7 @@ export function ModerationBatchActionBar({
         type="button"
         onClick={() => run("under_review")}
         disabled={!!loading}
-        className="rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium hover:bg-amber-100 disabled:opacity-50"
+        className="rounded border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-3 py-1.5 text-xs font-medium text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
       >
         Mark Under Review
       </button>
@@ -54,7 +54,7 @@ export function ModerationBatchActionBar({
         type="button"
         onClick={() => run("hide")}
         disabled={!!loading}
-        className="rounded border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-50"
+        className="rounded border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface)] disabled:opacity-50"
       >
         Hide Selected
       </button>
@@ -62,7 +62,7 @@ export function ModerationBatchActionBar({
         type="button"
         onClick={() => run("restore")}
         disabled={!!loading}
-        className="rounded border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-medium hover:bg-green-100 disabled:opacity-50"
+        className="rounded border border-[var(--success)]/50 bg-[var(--success-bg)] px-3 py-1.5 text-xs font-medium text-[var(--success)] hover:opacity-90 disabled:opacity-50"
       >
         Restore Selected
       </button>
@@ -70,7 +70,7 @@ export function ModerationBatchActionBar({
         type="button"
         onClick={() => run("resolve")}
         disabled={!!loading}
-        className="rounded border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium hover:bg-blue-100 disabled:opacity-50"
+        className="rounded border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-medium text-[var(--primary)] hover:opacity-90 disabled:opacity-50"
       >
         Resolve Selected
       </button>

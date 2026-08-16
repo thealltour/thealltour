@@ -264,7 +264,7 @@ export default function AdminNoticeManager() {
                 {isLegalSaving ? "저장 중..." : "법률 문서 저장"}
               </button>
             </div>
-            {legalErrorMessage ? <p className="text-sm text-red-500">{legalErrorMessage}</p> : null}
+            {legalErrorMessage ? <p className="text-sm text-[var(--danger)]">{legalErrorMessage}</p> : null}
             <div className="flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
               <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
                 서비스 이용약관
@@ -360,8 +360,8 @@ export default function AdminNoticeManager() {
 
       {view === "create" || view === "list" ? (
         <>
-      {message ? <p className="text-sm text-green-600">{message}</p> : null}
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+      {message ? <p className="text-sm text-[var(--success)]">{message}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
         </>
       ) : null}
 
@@ -392,7 +392,7 @@ export default function AdminNoticeManager() {
                   <div className="flex items-center gap-2">
                     <span
                       className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                        item.is_published ? "bg-green-100 text-green-700" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                        item.is_published ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
                       }`}
                     >
                       {item.is_published ? "게시중" : "비공개"}
@@ -408,7 +408,7 @@ export default function AdminNoticeManager() {
                       type="button"
                       disabled={pendingDeleteId === item.id}
                       onClick={() => deleteNotice(item)}
-                      className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      className="rounded border border-[var(--danger)]/40 px-2 py-1 text-xs text-[var(--danger)] transition hover:bg-[var(--danger-bg)] disabled:opacity-50"
                     >
                       삭제
                     </button>

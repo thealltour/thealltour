@@ -230,7 +230,7 @@ export default function AdminKakaoSyncAnalyticsPage() {
       </div>
 
       {error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+        <p className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)]">{error}</p>
       ) : null}
 
       <AdminKakaoMomentEfficiencySection moment={data?.moment ?? null} />

@@ -134,7 +134,7 @@ export function DepartureSchedulesEditor({ form, setForm, formatPriceWithCommas 
                           departure_schedules: prev.departure_schedules.filter((_, i) => i !== index),
                         }))
                       }
-                      className="rounded border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50"
+                      className="rounded border border-[var(--danger)]/40 px-2 py-1 text-[var(--danger)] hover:bg-[var(--danger-bg)]"
                     >
                       삭제
                     </button>

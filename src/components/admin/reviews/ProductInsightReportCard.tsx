@@ -14,7 +14,7 @@ export function ProductInsightReportCard({ report }: ProductInsightReportCardPro
     <div
       className={`rounded-xl border p-4 ${
         isRiskOrWatch
-          ? "border-amber-300 bg-amber-50/50 dark:border-amber-600 dark:bg-amber-950/20"
+          ? "border-[var(--warning)]/40 bg-[var(--warning-bg)]/60"
           : "border-[var(--border)] bg-[var(--surface-muted)]"
       }`}
     >

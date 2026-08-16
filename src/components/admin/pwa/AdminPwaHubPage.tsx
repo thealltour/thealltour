@@ -121,9 +121,9 @@ export default function AdminPwaHubPage() {
             앱으로 실행 중입니다. 아래 메뉴로 이동하세요. 화면을 가로로 돌리면 좌측 메뉴가 펼쳐집니다.
           </div>
           {pushSubscribed === false ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <div className="rounded-2xl border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-4 py-3 text-sm text-[var(--warning)]">
               <p className="font-semibold">OS 알림이 꺼져 있습니다</p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+              <p className="mt-1 text-xs leading-relaxed opacity-90">
                 새 문의·SMS·채팅을 받으려면 알림을 켜 주세요.
               </p>
               <Link

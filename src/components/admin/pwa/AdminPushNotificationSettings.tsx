@@ -189,7 +189,7 @@ export function AdminPushNotificationSettings() {
 
   if (!supported) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <div className="rounded-xl border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-4 py-3 text-sm text-[var(--warning)]">
         이 브라우저는 OS 푸시 알림을 지원하지 않습니다. iOS 16.4+에서 홈 화면에 추가한
         뒤 Safari PWA로 이용해 주세요.
       </div>

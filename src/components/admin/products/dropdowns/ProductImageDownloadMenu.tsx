@@ -101,12 +101,12 @@ export default function ProductImageDownloadMenu({
               <button
                 type="button"
                 onClick={() => onRunWithPreset(defaultPreset)}
-                className="w-full rounded-lg border border-indigo-200/80 bg-indigo-50/90 px-3 py-2.5 text-left dark:border-indigo-800 dark:bg-indigo-950/40"
+                className="w-full rounded-lg border border-[var(--primary)]/35 bg-[var(--primary-soft)] px-3 py-2.5 text-left"
               >
-                <span className="text-sm font-semibold text-indigo-950 dark:text-indigo-100">
+                <span className="text-sm font-semibold text-[var(--primary)]">
                   기본 설정으로 다운로드
                 </span>
-                <span className="mt-0.5 block font-mono text-[11px] text-indigo-800/80 dark:text-indigo-200/80">
+                <span className="mt-0.5 block font-mono text-[11px] text-[var(--primary)]/80">
                   {getImageDownloadPresetSummary(defaultPreset)}
                 </span>
               </button>

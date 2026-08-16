@@ -479,7 +479,7 @@ function FlyerModalShell({ product, onClose, showToast, persistedBootstrap }: Fl
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-[var(--border)] ${
                 saving
-                  ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
+                  ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                   : dirty
                     ? "bg-[var(--surface-muted)] text-[var(--text-muted)]"
                     : savedDraftId

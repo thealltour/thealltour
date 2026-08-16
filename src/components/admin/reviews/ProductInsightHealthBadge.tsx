@@ -8,9 +8,9 @@ type ProductInsightHealthBadgeProps = {
 };
 
 const STYLES: Record<ProductReviewHealth, string> = {
-  healthy: "bg-green-100 text-green-800 border-green-200",
-  watch: "bg-amber-100 text-amber-800 border-amber-200",
-  risk: "bg-red-100 text-red-800 border-red-200",
+  healthy: "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/30",
+  watch: "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/30",
+  risk: "bg-[var(--danger-bg)] text-[var(--danger)] border-[var(--danger)]/30",
 };
 
 const LABELS: Record<ProductReviewHealth, string> = {

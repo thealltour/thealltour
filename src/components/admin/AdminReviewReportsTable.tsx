@@ -172,7 +172,7 @@ export default function AdminReviewReportsTable({ reports: initialReports }: Pro
                       type="button"
                       onClick={() => handleHide(row.review_id)}
                       disabled={loadingId !== null}
-                      className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                      className="rounded border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-2 py-1 text-xs font-medium text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
                     >
                       리뷰 숨김
                     </button>

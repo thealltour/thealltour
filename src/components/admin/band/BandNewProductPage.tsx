@@ -316,7 +316,7 @@ export default function BandNewProductPage() {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+          <div className="rounded-lg border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
             {error}
             {existingId && (
               <div className="mt-2">
@@ -332,7 +332,7 @@ export default function BandNewProductPage() {
         )}
 
         {successSummary && (
-          <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+          <div className="rounded-lg border border-[var(--success)]/40 bg-[var(--success-bg)] px-3 py-2 text-sm text-[var(--success)]">
             등록 완료: {successSummary.title ?? "제목 미정"}
             {successSummary.price != null && ` · ${successSummary.price.toLocaleString("ko-KR")}원`}
             {successSummary.duration && ` · ${successSummary.duration}`}

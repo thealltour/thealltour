@@ -63,11 +63,11 @@ export function ScheduleSection({
   return (
 ﻿        <div className="space-y-3" id="field-schedule-root" tabIndex={-1}>
           {showLegacyBanner ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/40">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+            <div className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2">
+              <p className="text-sm font-semibold text-[var(--warning)]">
                 레거시 텍스트 일정이 있습니다
               </p>
-              <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+              <p className="mt-1 text-xs text-[var(--warning)]">
                 시각화 일정(v2)으로 옮기면 상세 페이지 표시 품질이 좋아집니다. 아래에서 시각화 편집을 사용하거나, 고급
                 레거시 편집기로 내용을 확인할 수 있습니다.
               </p>

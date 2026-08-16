@@ -125,7 +125,7 @@ export default function RecentInquiriesList({ items, isLoading, isError }: Recen
                       e.preventDefault();
                       void runStatus(inquiry.id, "contacted");
                     }}
-                    className="min-h-9 rounded-md border border-amber-400/50 bg-amber-50 px-3 text-xs font-bold text-amber-900 transition active:scale-[0.98] disabled:opacity-50 dark:bg-amber-950/40 dark:text-amber-100"
+                    className="min-h-9 rounded-md border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-3 text-xs font-bold text-[var(--warning)] transition active:scale-[0.98] disabled:opacity-50"
                   >
                     상담중
                   </button>
@@ -151,7 +151,7 @@ export default function RecentInquiriesList({ items, isLoading, isError }: Recen
                       e.preventDefault();
                       void runStatus(inquiry.id, "on_hold");
                     }}
-                    className="min-h-9 rounded-md border border-slate-300/80 bg-slate-50 px-3 text-xs font-bold text-slate-800 transition active:scale-[0.98] disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
+                    className="min-h-9 rounded-md border border-[var(--border)] bg-[var(--surface-muted)] px-3 text-xs font-bold text-[var(--text-secondary)] transition active:scale-[0.98] disabled:opacity-50"
                   >
                     보류
                   </button>
@@ -164,7 +164,7 @@ export default function RecentInquiriesList({ items, isLoading, isError }: Recen
                       e.preventDefault();
                       void runStatus(inquiry.id, "contacted");
                     }}
-                    className="min-h-9 rounded-md border border-amber-400/50 bg-amber-50 px-3 text-xs font-bold text-amber-900 transition active:scale-[0.98] disabled:opacity-50 dark:bg-amber-950/40 dark:text-amber-100"
+                    className="min-h-9 rounded-md border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-3 text-xs font-bold text-[var(--warning)] transition active:scale-[0.98] disabled:opacity-50"
                   >
                     재개
                   </button>

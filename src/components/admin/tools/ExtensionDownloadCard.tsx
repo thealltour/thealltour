@@ -109,7 +109,7 @@ export default function ExtensionDownloadCard({ slug }: ExtensionDownloadCardPro
             </dl>
 
             {!loading && !meta?.available ? (
-              <p className="rounded-lg border border-amber-200/60 bg-amber-50/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+              <p className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2 text-sm text-[var(--warning)]">
                 아직 업로드된 빌드가 없습니다. 로컬에서{" "}
                 <code className="rounded bg-black/5 px-1 py-0.5 text-xs dark:bg-white/10">
                   npm run extensions:package

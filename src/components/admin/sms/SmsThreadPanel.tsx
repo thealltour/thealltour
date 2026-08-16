@@ -107,8 +107,8 @@ export function SmsThreadPanel({
         ) : null}
 
         {!hasLink ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-50 px-3 py-2 dark:bg-amber-950/20">
-            <p className="text-sm text-amber-950 dark:text-amber-100">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2">
+            <p className="text-sm text-[var(--warning)]">
               연결된 문의 또는 회원이 없습니다.
             </p>
             <button

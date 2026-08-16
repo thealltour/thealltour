@@ -76,7 +76,7 @@ export function ProductFormSectionIssuesPanel({
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span
-                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]"
                         aria-hidden
                       />
                       <span className="truncate">{issue.message}</span>

@@ -38,7 +38,7 @@ function formatUpdatedAt(value: string): string {
 }
 
 function statusBadgeClass(status: AdminLandingListItem["status"]): string {
-  if (status === "published") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (status === "published") return "border-[var(--success)]/40 bg-[var(--success-bg)] text-[var(--success)]";
   if (status === "draft") return "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]";
   return "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]";
 }
@@ -137,7 +137,7 @@ export default function AdminLandingListTable({
                       type="button"
                       onClick={() => onPublish(item)}
                       disabled={busyId === item.id}
-                      className="rounded-md border border-emerald-600/30 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                      className="rounded-md border border-[var(--success)]/40 bg-[var(--success-bg)] px-2 py-1 text-xs font-medium text-[var(--success)] hover:opacity-90 disabled:opacity-50"
                     >
                       {busyId === item.id ? "처리 중..." : "Publish"}
                     </button>

@@ -5,9 +5,9 @@ import type { ReviewNotificationSummary } from "@/types/reviewNotifications";
 
 const cards: Array<{ key: keyof ReviewNotificationSummary; label: string; className?: string }> = [
   { key: "total", label: "전체" },
-  { key: "unread", label: "읽지 않음", className: "ring-1 ring-amber-400/50" },
-  { key: "critical", label: "긴급", className: "ring-1 ring-red-400/50" },
-  { key: "warning", label: "경고", className: "ring-1 ring-amber-400/30" },
+  { key: "unread", label: "읽지 않음", className: "ring-1 ring-[var(--warning)]/50" },
+  { key: "critical", label: "긴급", className: "ring-1 ring-[var(--danger)]/50" },
+  { key: "warning", label: "경고", className: "ring-1 ring-[var(--warning)]/30" },
 ];
 
 export function ReviewNotificationSummaryCards({

@@ -6,9 +6,9 @@ const severityConfig: Record<
   ReviewNotificationSeverity,
   { label: string; className: string }
 > = {
-  critical: { label: "긴급", className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
-  warning: { label: "경고", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
-  info: { label: "정보", className: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300" },
+  critical: { label: "긴급", className: "bg-[var(--danger-bg)] text-[var(--danger)]" },
+  warning: { label: "경고", className: "bg-[var(--warning-bg)] text-[var(--warning)]" },
+  info: { label: "정보", className: "bg-[var(--primary-soft)] text-[var(--primary)]" },
 };
 
 export function ReviewNotificationSeverityBadge({

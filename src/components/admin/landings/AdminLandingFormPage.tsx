@@ -284,7 +284,7 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
                   onClick={() => {
                     void handlePublishClick();
                   }}
-                  className="rounded-lg border border-emerald-600/40 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                  className="rounded-lg border border-[var(--success)]/40 bg-[var(--success-bg)] px-3 py-2 text-sm font-semibold text-[var(--success)] hover:opacity-90 disabled:opacity-50"
                 >
                   {publishBusy ? "처리 중..." : "Publish"}
                 </button>
@@ -310,13 +310,13 @@ export default function AdminLandingFormPage({ mode, landingId }: AdminLandingFo
       {publishIssues.length > 0 ? (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          className="rounded-xl border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)]"
         >
           <p className="font-semibold">Publish 검증 실패 — 아래를 수정한 뒤 다시 시도하세요.</p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             {publishIssues.map((issue, idx) => (
               <li key={`${issue.field}-${idx}`}>
-                <span className="font-mono text-xs text-amber-900/80">{issue.field}</span>: {issue.message}
+                <span className="font-mono text-xs opacity-80">{issue.field}</span>: {issue.message}
               </li>
             ))}
           </ul>

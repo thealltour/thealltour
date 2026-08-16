@@ -26,18 +26,18 @@ function eligibilityLabel(item: LandingGenerationCandidate): { text: string; cla
   if (item.eligibilityReason === "HAS_GOLF_PRODUCTS") {
     return {
       text: "골프 상품 연결됨",
-      className: "rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-900 ring-1 ring-sky-200",
+      className: "rounded-md bg-[var(--success-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--success)] ring-1 ring-[var(--success)]/30",
     };
   }
   if (item.isPreseedCandidate) {
     return {
       text: "상품 없음(사전 생성 가능)",
-      className: "rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900 ring-1 ring-amber-200",
+      className: "rounded-md bg-[var(--warning-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--warning)] ring-1 ring-[var(--warning)]/30",
     };
   }
   return {
     text: "상품 연결됨",
-    className: "rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-200",
+    className: "rounded-md bg-[var(--success-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--success)] ring-1 ring-[var(--success)]/30",
   };
 }
 

@@ -139,8 +139,8 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
         </div>
       ) : null}
       {hasPointsUse ? (
-        <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[var(--text-secondary)]">
-          <p className="font-semibold text-emerald-800">포인트 사용 요청</p>
+        <div className="mb-3 rounded-md border border-[var(--success)]/40 bg-[var(--success-bg)] px-3 py-2 text-[var(--text-secondary)]">
+          <p className="font-semibold text-[var(--success)]">포인트 사용 요청</p>
           <p>
             요청: {Number(snapshot.pointsUseRequested).toLocaleString("ko-KR")}P
             {typeof snapshot.pointsBalanceAtSubmit === "number"
@@ -175,13 +175,13 @@ function getInquiryActionFlags(inquiry: Inquiry) {
 /** MobileAdminInquiryCard와 동일 팔레트(라이트/다크) */
 const INQUIRY_ACTION_STYLES = {
   amber:
-    "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
+    "border-[var(--warning)]/50 bg-[var(--warning-bg)] text-[var(--warning)] hover:opacity-90",
   success:
     "border-[var(--success)]/50 bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90",
   slate:
-    "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900/40 dark:text-slate-200",
-  blue: "border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100",
-  red: "border-red-300 bg-red-50 text-red-900 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100",
+    "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:bg-[var(--surface)]",
+  blue: "border-[var(--primary)]/40 bg-[var(--primary-soft)] text-[var(--primary)] hover:opacity-90",
+  red: "border-[var(--danger)]/40 bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-90",
 } as const;
 
 function inquiryActionBtnClass(variant: "table" | "modal", tone: keyof typeof INQUIRY_ACTION_STYLES): string {
@@ -562,7 +562,7 @@ export default function AdminInquiryTable() {
                 const overdue = isFollowUpOverdue(inquiry);
                 const hot = isHotLead(inquiry);
                 const rowQueueHighlight = overdue
-                  ? "bg-red-50/90 hover:bg-red-100/80 dark:bg-red-950/25 dark:hover:bg-red-950/35"
+                  ? "bg-[var(--danger-bg)]/70 hover:bg-[var(--danger-bg)]"
                   : consultationStatus === "new" || consultationStatus === "contacted"
                     ? "bg-[var(--warning-bg)]/30 hover:bg-[var(--warning-bg)]/50"
                     : consultationStatus === "on_hold"

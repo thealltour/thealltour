@@ -141,9 +141,9 @@ export default function AdminProductsQuickActions({
         type="button"
         disabled={busy}
         onClick={() => onToggleActive(product)}
-        className={`${btnBase} ${iconBtn} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/35 focus-visible:ring-offset-1 ${
+        className={`${btnBase} ${iconBtn} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--warning)]/35 focus-visible:ring-offset-1 ${
           active
-            ? "border-amber-200/80 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+            ? "border-[var(--warning)]/40 bg-[var(--warning-bg)] text-[var(--warning)]"
             : "border-[var(--success)]/40 bg-[var(--success-bg)] text-[var(--success)]"
         }`}
         title={active ? "비노출로 전환" : "노출로 전환"}
@@ -156,7 +156,7 @@ export default function AdminProductsQuickActions({
           type="button"
           disabled={busy}
           onClick={() => onSmartstoreHtml(product)}
-          className={`${btnBase} ${iconBtn} border-sky-200/80 bg-sky-50 text-sky-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-1 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100`}
+          className={`${btnBase} ${iconBtn} border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/25 focus-visible:ring-offset-1`}
           title="스마트스토어 상세 HTML 생성"
         >
           <FileCode2 className={icoCls} aria-hidden />
@@ -168,7 +168,7 @@ export default function AdminProductsQuickActions({
           type="button"
           disabled={busy}
           onClick={() => onBlogPost(product)}
-          className={`${btnBase} ${iconBtn} border-emerald-200/80 bg-emerald-50 text-emerald-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 focus-visible:ring-offset-1 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100`}
+          className={`${btnBase} ${iconBtn} border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/25 focus-visible:ring-offset-1`}
           title="블로그 텍스트 생성"
         >
           <BookOpen className={icoCls} aria-hidden />
@@ -182,7 +182,7 @@ export default function AdminProductsQuickActions({
           type="button"
           disabled={busy}
           onClick={() => onBandHook(product)}
-          className={`${btnBase} ${iconBtn} border-violet-200/80 bg-violet-50 text-violet-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40 focus-visible:ring-offset-1 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100`}
+          className={`${btnBase} ${iconBtn} border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/25 focus-visible:ring-offset-1`}
           title="밴드 공유용 훅 생성"
         >
           <Share2 className={icoCls} aria-hidden />
@@ -206,7 +206,7 @@ export default function AdminProductsQuickActions({
           type="button"
           disabled={busy}
           onClick={() => onThreadsPost(product)}
-          className={`${btnBase} ${iconBtn} border-sky-200/80 bg-sky-50 text-sky-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-1 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100`}
+          className={`${btnBase} ${iconBtn} border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[var(--accent)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40 focus-visible:ring-offset-1`}
           title="Threads 카피 생성·게시"
         >
           <AtSign className={icoCls} aria-hidden />
@@ -224,7 +224,7 @@ export default function AdminProductsQuickActions({
               if (downloadDisabled) return;
               setDownloadMenuOpen((v) => !v);
             }}
-            className={`${btnBase} ${iconBtn} border-indigo-200/80 bg-indigo-50 text-indigo-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 focus-visible:ring-offset-1 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100`}
+            className={`${btnBase} ${iconBtn} border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/25 focus-visible:ring-offset-1`}
             title={
               rowDownloadBusy
                 ? "이미지 ZIP 생성 중"
@@ -275,7 +275,7 @@ export default function AdminProductsQuickActions({
           type="button"
           disabled={downloadDisabled}
           onClick={() => onOpenDownloadOptions(product)}
-          className={`${btnBase} ${iconBtn} border-indigo-200/80 bg-indigo-50 text-indigo-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 focus-visible:ring-offset-1 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100`}
+          className={`${btnBase} ${iconBtn} border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/25 focus-visible:ring-offset-1`}
           title={
             rowDownloadBusy
               ? "이미지 ZIP 생성 중"
@@ -293,7 +293,7 @@ export default function AdminProductsQuickActions({
           type="button"
           disabled={busy}
           onClick={() => onFlyer(product)}
-          className={`${btnBase} ${iconBtn} border-violet-200/80 bg-violet-50 text-violet-900 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40 focus-visible:ring-offset-1 dark:border-violet-800 dark:bg-violet-950/45 dark:text-violet-100`}
+          className={`${btnBase} ${iconBtn} border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/25 focus-visible:ring-offset-1`}
           title="유인물 생성"
         >
           <FileImage className={icoCls} aria-hidden />

@@ -39,7 +39,7 @@ export function AdminKakaoMomentEfficiencySection({ moment }: Props) {
     <section className="space-y-3">
       <div>
         <h2 className="text-sm font-semibold text-[var(--text-primary)]">월간 광고 효율 (Moment)</h2>
-        <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+        <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
           광고 기간: {moment.periodStart} ~ {moment.periodEnd}
           {moment.filename ? ` · ${moment.filename}` : ""}. 위 온사이트 7일/30일과 기간이 다를 수 있습니다. CPA는
           광고 기간의 비즈보드 리드·카카오싱크 가입 기준입니다.

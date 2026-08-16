@@ -23,20 +23,20 @@ export function ReviewAuthorSummaryCards({
       <AdminSummaryCard
         title="High Risk"
         value={highRiskCount}
-        className="bg-red-50"
-        valueClassName="text-red-800"
+        className="bg-[var(--danger-bg)]"
+        valueClassName="text-[var(--danger)]"
       />
       <AdminSummaryCard
         title="Medium Risk"
         value={mediumRiskCount}
-        className="bg-amber-50"
-        valueClassName="text-amber-800"
+        className="bg-[var(--warning-bg)]"
+        valueClassName="text-[var(--warning)]"
       />
       <AdminSummaryCard
         title="Low Risk"
         value={lowRiskCount}
-        className="bg-green-50"
-        valueClassName="text-green-800"
+        className="bg-[var(--success-bg)]"
+        valueClassName="text-[var(--success)]"
       />
       <AdminSummaryCard
         title="Avg Author Trust"

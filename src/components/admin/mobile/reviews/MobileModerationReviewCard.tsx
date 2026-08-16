@@ -130,7 +130,7 @@ export function MobileModerationReviewCard({
             disabled={loading !== null}
             onClick={() => runAction("restore")}
             aria-label="리뷰 복원"
-            className="min-h-9 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-900 hover:bg-green-100 disabled:opacity-50 dark:border-green-800 dark:bg-green-950/40 dark:text-green-100"
+            className="min-h-9 rounded-lg border border-[var(--success)]/50 bg-[var(--success-bg)] px-3 py-1.5 text-xs font-medium text-[var(--success)] hover:opacity-90 disabled:opacity-50"
           >
             {loading === "restore" ? "처리 중…" : "복원"}
           </button>
@@ -141,7 +141,7 @@ export function MobileModerationReviewCard({
             disabled={loading !== null}
             onClick={() => runAction("under_review")}
             aria-label="검토 중으로 표시"
-            className="min-h-9 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+            className="min-h-9 rounded-lg border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-3 py-1.5 text-xs font-medium text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
           >
             {loading === "under_review" ? "처리 중…" : "검토 중"}
           </button>
@@ -152,7 +152,7 @@ export function MobileModerationReviewCard({
             disabled={loading !== null}
             onClick={() => runAction("resolve")}
             aria-label="검토 완료 처리"
-            className="min-h-9 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-900 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
+            className="min-h-9 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-medium text-[var(--primary)] hover:opacity-90 disabled:opacity-50"
           >
             {loading === "resolve" ? "처리 중…" : "완료"}
           </button>

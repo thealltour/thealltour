@@ -1810,15 +1810,15 @@ export default function AdminProductManager() {
           noValidate
         >
         {showDraftBanner && draftData && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm text-amber-800 dark:text-amber-200">
+          <div className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-[var(--warning)]">
               임시 저장본이 있습니다 ({new Date(draftData.savedAt).toLocaleString("ko-KR")})
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleRestoreDraft}
-                className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-700"
+                className="rounded-lg bg-[var(--warning)] px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90"
               >
                 복원
               </button>
@@ -1937,7 +1937,7 @@ export default function AdminProductManager() {
           >
             {isSubmitting ? "저장 중..." : editingId ? "수정 저장" : "상품 등록"}
           </button>
-          {errorMessage ? <p className="text-xs text-red-600">{errorMessage}</p> : null}
+          {errorMessage ? <p className="text-xs text-[var(--danger)]">{errorMessage}</p> : null}
         </div>
         </form>
           </main>
@@ -1951,15 +1951,15 @@ export default function AdminProductManager() {
               <h3 className="text-lg font-bold text-[var(--primary)]">실시간 미리보기</h3>
 
               {previewWarnings.length > 0 && (
-                <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/80 p-3">
-                  <p className="text-xs font-semibold text-amber-800">미리보기 품질 경고</p>
+                <div className="space-y-1.5 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] p-3">
+                  <p className="text-xs font-semibold text-[var(--warning)]">미리보기 품질 경고</p>
                   <ul className="space-y-1">
                     {previewWarnings.map((w) => (
                       <li key={w.id}>
                         <button
                           type="button"
                           onClick={() => handleWarningClick(w.sectionId)}
-                          className="w-full text-left text-xs text-amber-800 underline-offset-2 hover:underline"
+                          className="w-full text-left text-xs text-[var(--warning)] underline-offset-2 hover:underline"
                         >
                           {w.message}
                         </button>

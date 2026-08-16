@@ -12,19 +12,19 @@ const STYLES: Record<
   { bg: string; text: string; dot: string }
 > = {
   pending: {
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    dot: "bg-amber-500",
+    bg: "bg-[var(--warning-bg)]",
+    text: "text-[var(--warning)]",
+    dot: "bg-[var(--warning)]",
   },
   completed: {
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    dot: "bg-emerald-500",
+    bg: "bg-[var(--success-bg)]",
+    text: "text-[var(--success)]",
+    dot: "bg-[var(--success)]",
   },
   delayed: {
-    bg: "bg-rose-50",
-    text: "text-rose-700",
-    dot: "bg-rose-500",
+    bg: "bg-[var(--danger-bg)]",
+    text: "text-[var(--danger)]",
+    dot: "bg-[var(--danger)]",
   },
 };
 

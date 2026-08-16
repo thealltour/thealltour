@@ -72,7 +72,7 @@ export function SmsComposePanel({
       <h3 className="text-sm font-semibold text-[var(--text-primary)]">문자 발송 (알리고)</h3>
 
       {!inquiryId ? (
-        <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
+        <div className="mt-2 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2 text-sm text-[var(--warning)]">
           <p>문의·회원 없이 번호만으로도 발송할 수 있습니다. 연결 시 CS 이력을 문의/회원과 함께 관리할 수 있습니다.</p>
           {onRequestLink ? (
             <button

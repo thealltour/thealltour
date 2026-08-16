@@ -6,17 +6,20 @@ import type { ReactNode } from "react";
 
 export const OG_FONT =
   'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif';
-export const OG_TEXT = "#f8fafc";
-export const OG_MUTED = "#94a3b8";
-export const OG_ACCENT_SOFT = "#fdba74";
+export const OG_TEXT = "#0c1929";
+export const OG_MUTED = "#4b6474";
+export const OG_ACCENT = "#e0612a";
+export const OG_PRIMARY = "#1e5b8f";
+export const OG_ACCENT_SOFT = "#b84d20";
 
-export const OG_PAD_X = 64;
-export const OG_PAD_Y = 52;
+export const OG_PAD_X = 40;
+export const OG_PAD_Y = 36;
+export const OG_SAFE_X = 120;
 
-export const OG_WORDMARK_HEIGHT = 40;
+export const OG_WORDMARK_HEIGHT = 36;
 
 export const OG_FALLBACK_PANEL_BG =
-  "linear-gradient(165deg, #0b1220 0%, #0f172a 42%, #1e293b 88%, #0f172a 100%)";
+  "linear-gradient(135deg, #f8fbfe 0%, #eef6fb 45%, #fff4ed 100%)";
 
 export function ogClipOneLine(s: string, max = 88): string {
   const t = s.replace(/\s+/g, " ").trim();
@@ -42,10 +45,9 @@ export function ogSplitTitle(title: string, max1 = 19, max2 = 21): { line1: stri
   return { line1, line2: rest };
 }
 
-/** 좌상단 워드마크 헤더 (통일 OG 셸) */
+/** 밝은 정보 카드 안 워드마크 헤더 */
 export function OgWordmarkHeader({
   logoDataUrl,
-  hasHero = false,
 }: {
   logoDataUrl?: string | null;
   hasHero?: boolean;
@@ -57,12 +59,10 @@ export function OgWordmarkHeader({
           position: "absolute",
           top: OG_PAD_Y,
           left: OG_PAD_X,
-          zIndex: 4,
-          fontSize: 22,
+          fontSize: 21,
           fontWeight: 800,
           color: OG_TEXT,
           letterSpacing: "-0.02em",
-          textShadow: hasHero ? "0 1px 14px rgba(0,0,0,0.55)" : undefined,
         }}
       >
         더올투어
@@ -74,24 +74,20 @@ export function OgWordmarkHeader({
     <div
       style={{
         position: "absolute",
-        top: OG_PAD_Y - 4,
+        top: OG_PAD_Y - 2,
         left: OG_PAD_X,
-        zIndex: 4,
         display: "flex",
         alignItems: "center",
-        padding: hasHero ? "10px 14px" : "0",
-        borderRadius: hasHero ? 12 : 0,
-        background: hasHero ? "rgba(15, 23, 42, 0.55)" : "transparent",
-        border: hasHero ? "1px solid rgba(255, 255, 255, 0.12)" : "none",
       }}
     >
       <img
         src={logoDataUrl}
         alt=""
+        width={200}
         height={OG_WORDMARK_HEIGHT}
         style={{
           height: OG_WORDMARK_HEIGHT,
-          width: "auto",
+          width: 200,
           objectFit: "contain",
           display: "flex",
         }}
@@ -113,6 +109,8 @@ type OgCardShellProps = {
 
 export function OgCardShell({ logoDataUrl, heroImageDataUrl, children }: OgCardShellProps) {
   const hasHero = Boolean(heroImageDataUrl?.trim());
+  const panelLeft = hasHero ? OG_SAFE_X : 140;
+  const panelWidth = hasHero ? 720 : 920;
 
   return (
     <div
@@ -123,7 +121,7 @@ export function OgCardShell({ logoDataUrl, heroImageDataUrl, children }: OgCardS
         display: "flex",
         flexDirection: "column",
         fontFamily: OG_FONT,
-        background: "#0f172a",
+        background: OG_FALLBACK_PANEL_BG,
         overflow: "hidden",
       }}
     >
@@ -135,8 +133,9 @@ export function OgCardShell({ logoDataUrl, heroImageDataUrl, children }: OgCardS
           height={630}
           style={{
             position: "absolute",
-            inset: 0,
-            width: "100%",
+            top: 0,
+            right: 0,
+            width: 780,
             height: "100%",
             objectFit: "cover",
             objectPosition: "center center",
@@ -152,47 +151,46 @@ export function OgCardShell({ logoDataUrl, heroImageDataUrl, children }: OgCardS
         />
       )}
 
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 4,
-          zIndex: 3,
-          background: "linear-gradient(90deg, #ea580c 0%, #fb923c 50%, #ea580c 100%)",
-          opacity: hasHero ? 0.9 : 1,
-        }}
-      />
-
       {hasHero ? (
         <div
           style={{
             position: "absolute",
             inset: 0,
-            zIndex: 1,
             background:
-              "linear-gradient(180deg, rgba(15,23,42,0.18) 0%, rgba(15,23,42,0.08) 32%, rgba(11,18,32,0.35) 58%, rgba(11,18,32,0.86) 82%, rgba(8,12,22,0.96) 100%)",
+              "linear-gradient(90deg, #f3f7fb 0%, rgba(243,247,251,0.98) 25%, rgba(243,247,251,0.7) 52%, rgba(243,247,251,0.05) 78%)",
           }}
         />
       ) : null}
 
-      <OgWordmarkHeader logoDataUrl={logoDataUrl} hasHero={hasHero} />
-
       <div
         style={{
           position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 2,
+          left: panelLeft,
+          top: 68,
+          width: panelWidth,
+          height: 494,
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
-          padding: `${OG_PAD_Y}px ${OG_PAD_X}px ${OG_PAD_Y + 6}px`,
-          minHeight: hasHero ? 280 : 320,
+          padding: `${OG_PAD_Y + 46}px ${OG_PAD_X}px ${OG_PAD_Y}px`,
+          borderRadius: 28,
+          background: "rgba(255,255,255,0.96)",
+          border: "1px solid rgba(230,232,238,0.96)",
+          boxShadow: "0 22px 55px rgba(12,25,41,0.14)",
         }}
       >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: 7,
+            borderRadius: "28px 0 0 28px",
+            background: `linear-gradient(180deg, ${OG_PRIMARY} 0%, ${OG_ACCENT} 100%)`,
+          }}
+        />
+        <OgWordmarkHeader logoDataUrl={logoDataUrl} hasHero={false} />
         {children}
       </div>
     </div>

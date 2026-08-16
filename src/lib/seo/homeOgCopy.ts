@@ -1,7 +1,10 @@
-/** 홈 OG 이미지·메타데이터에서 동일 카피 유지용 */
+/** 홈·전역 폴백 OG 이미지·메타데이터에서 동일 카피 유지용 */
 
-export const HOME_OG_IMAGE_TITLE = "맞춤형 해외·국내 골프투어";
-export const HOME_OG_IMAGE_SUBTITLE = "가족여행 · 효도여행 · 테마여행";
+export const HOME_OG_IMAGE_TITLE = "해외 골프투어, 맞춤 일정 상담";
+export const HOME_OG_IMAGE_SUBTITLE = "가족여행 · 효도여행 · 테마여행까지";
+
+/** 전역 폴백 카드에 쓸 브랜드 히어로 (public/) */
+export const HOME_OG_HERO_PUBLIC_PATH = "/images/landings/kakao-sync-golf-hero.png";
 
 /** `<title>` / meta description — page.tsx와 동일(ASCII escape로 인코딩 이슈 회피) */
 export const HOME_METADATA_TITLE =

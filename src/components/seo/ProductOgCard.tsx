@@ -5,6 +5,7 @@
 import {
   OG_ACCENT_SOFT,
   OG_MUTED,
+  OG_PRIMARY,
   OG_TEXT,
   OgCardShell,
   ogClipOneLine,
@@ -47,10 +48,9 @@ type ContentBlockProps = {
   eyebrow: string | null;
   detail: string | null;
   priceLabel: string | null;
-  hasHero: boolean;
 };
 
-function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHero }: ContentBlockProps) {
+function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel }: ContentBlockProps) {
   const { line1, line2 } = ogSplitTitle(productTitle);
   const priceText = priceLabel?.trim() || null;
   const showConsultBadge = !priceText;
@@ -62,7 +62,7 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
         flexDirection: "column",
         alignItems: "stretch",
         justifyContent: "flex-end",
-        maxWidth: hasHero ? 920 : 980,
+        maxWidth: 640,
       }}
     >
       {eyebrow ? (
@@ -70,10 +70,9 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
           style={{
             fontSize: 20,
             fontWeight: 600,
-            color: hasHero ? "rgba(226, 232, 240, 0.92)" : OG_MUTED,
+            color: OG_PRIMARY,
             letterSpacing: "0.02em",
             marginBottom: 12,
-            textShadow: hasHero ? "0 1px 12px rgba(0,0,0,0.65)" : undefined,
           }}
         >
           {ogClipOneLine(eyebrow, 56)}
@@ -89,12 +88,11 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
       >
         <div
           style={{
-            fontSize: 54,
+            fontSize: 43,
             fontWeight: 800,
             color: OG_TEXT,
             lineHeight: 1.12,
             letterSpacing: "-0.03em",
-            textShadow: hasHero ? "0 2px 24px rgba(0,0,0,0.55)" : undefined,
           }}
         >
           {line1}
@@ -102,13 +100,12 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
         {line2 ? (
           <div
             style={{
-              fontSize: 54,
+              fontSize: 43,
               fontWeight: 800,
               color: OG_TEXT,
               lineHeight: 1.12,
               letterSpacing: "-0.03em",
               marginTop: 4,
-              textShadow: hasHero ? "0 2px 24px rgba(0,0,0,0.55)" : undefined,
             }}
           >
             {line2}
@@ -121,10 +118,9 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
           style={{
             fontSize: 22,
             fontWeight: 500,
-            color: hasHero ? "rgba(203, 213, 225, 0.95)" : OG_MUTED,
+            color: OG_MUTED,
             lineHeight: 1.35,
             marginBottom: priceText || showConsultBadge ? 16 : 0,
-            textShadow: hasHero ? "0 1px 14px rgba(0,0,0,0.6)" : undefined,
           }}
         >
           {detail}
@@ -138,13 +134,12 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
             marginTop: detail ? 0 : 4,
             padding: "10px 20px",
             borderRadius: 10,
-            background: "rgba(234, 88, 12, 0.22)",
-            border: "1px solid rgba(251, 146, 60, 0.38)",
+            background: "#fff1e8",
+            border: "1px solid #f6c8ad",
             fontSize: 24,
             fontWeight: 700,
             color: OG_ACCENT_SOFT,
             letterSpacing: "-0.02em",
-            textShadow: hasHero ? "0 1px 10px rgba(0,0,0,0.45)" : undefined,
           }}
         >
           {priceText}
@@ -156,13 +151,12 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
             marginTop: detail ? 0 : 4,
             padding: "8px 18px",
             borderRadius: 10,
-            background: "rgba(248, 250, 252, 0.08)",
-            border: "1px solid rgba(255, 255, 255, 0.16)",
+            background: "#edf6fb",
+            border: "1px solid #cddfea",
             fontSize: 19,
             fontWeight: 600,
-            color: "rgba(226, 232, 240, 0.88)",
+            color: OG_PRIMARY,
             letterSpacing: "-0.01em",
-            textShadow: hasHero ? "0 1px 10px rgba(0,0,0,0.45)" : undefined,
           }}
         >
           맞춤 견적 · 상담
@@ -175,7 +169,6 @@ function ProductContentBlock({ productTitle, eyebrow, detail, priceLabel, hasHer
 export function ProductOgCard(props: ProductOgCardProps) {
   const { productTitle, regionLine, themeLine, summaryLine, priceLabel, logoDataUrl, heroImageDataUrl } =
     props;
-  const hasHero = Boolean(heroImageDataUrl?.trim());
   const { eyebrow, detail } = pickMetaLines(regionLine, themeLine, summaryLine);
   const safeTitle = productTitle?.trim() || "여행 상품";
 
@@ -186,7 +179,6 @@ export function ProductOgCard(props: ProductOgCardProps) {
         eyebrow={eyebrow}
         detail={detail}
         priceLabel={priceLabel ?? null}
-        hasHero={hasHero}
       />
     </OgCardShell>
   );

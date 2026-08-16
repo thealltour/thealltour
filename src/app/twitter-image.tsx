@@ -1,7 +1,11 @@
 import { ImageResponse } from "next/og";
 import { BrandOgCard } from "@/components/seo/BrandOgCard";
-import { HOME_OG_IMAGE_SUBTITLE, HOME_OG_IMAGE_TITLE } from "@/lib/seo/homeOgCopy";
-import { loadTheallLogoDataUrl } from "@/lib/seo/loadOgLogo";
+import {
+  HOME_OG_HERO_PUBLIC_PATH,
+  HOME_OG_IMAGE_SUBTITLE,
+  HOME_OG_IMAGE_TITLE,
+} from "@/lib/seo/homeOgCopy";
+import { loadPublicImageDataUrl, loadTheallLogoDataUrl } from "@/lib/seo/loadOgLogo";
 
 export const runtime = "nodejs";
 
@@ -10,7 +14,10 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
-  const logoDataUrl = await loadTheallLogoDataUrl();
+  const [logoDataUrl, heroImageDataUrl] = await Promise.all([
+    loadTheallLogoDataUrl(),
+    loadPublicImageDataUrl(HOME_OG_HERO_PUBLIC_PATH),
+  ]);
 
   return new ImageResponse(
     (
@@ -19,7 +26,8 @@ export default async function Image() {
         title={HOME_OG_IMAGE_TITLE}
         subtitle={HOME_OG_IMAGE_SUBTITLE}
         logoDataUrl={logoDataUrl}
-        backgroundVariant="navyWarm"
+        heroImageDataUrl={heroImageDataUrl}
+        backgroundVariant="light"
         variant="home"
       />
     ),

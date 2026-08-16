@@ -4,7 +4,9 @@ import type { OgPageSeoData } from "@/lib/seo/ogPageSeoTypes";
 
 export const OG_CARD_SIZE = { width: 1200, height: 630 } as const;
 
-const BRAND_DEFAULT_OG_PATH = "/opengraph-image";
+const BRAND_DEFAULT_OG_PATH = "/brand-og";
+/** 카톡·메신저 OG 캐시 무효화 — 썸네일 교체 시 숫자만 올린다 */
+const OG_IMAGE_CACHE_BUST = "v=20260816-light1";
 
 export type BuildOgPageMetadataArgs = {
   siteUrl: string;
@@ -27,6 +29,11 @@ function joinUrl(siteUrl: string, path: string): string {
   return `${siteUrl}${p}`;
 }
 
+function ogImageUrl(siteUrl: string, path: string): string {
+  const abs = joinUrl(siteUrl, path);
+  return abs.includes("?") ? `${abs}&${OG_IMAGE_CACHE_BUST}` : `${abs}?${OG_IMAGE_CACHE_BUST}`;
+}
+
 /**
  * 공통 Open Graph / Twitter / canonical 메타 조립.
  * 개별 page.tsx는 이미지 후보 계산 없이 getter + 이 빌더만 호출하도록 맞춘다.
@@ -34,9 +41,9 @@ function joinUrl(siteUrl: string, path: string): string {
 export function buildOgPageMetadata(args: BuildOgPageMetadataArgs): Metadata {
   const canonicalUrl = joinUrl(args.siteUrl, args.canonicalPath);
   const ogPath = args.ogImagePath ?? BRAND_DEFAULT_OG_PATH;
-  const ogAbs = joinUrl(args.siteUrl, ogPath);
+  const ogAbs = ogImageUrl(args.siteUrl, ogPath);
   const twPath = args.twitterImagePath ?? args.ogImagePath ?? BRAND_DEFAULT_OG_PATH;
-  const twAbs = joinUrl(args.siteUrl, twPath);
+  const twAbs = ogImageUrl(args.siteUrl, twPath);
 
   const titleField: Metadata["title"] = args.useAbsolutePageTitle
     ? { absolute: args.documentTitle }

@@ -16,7 +16,7 @@ function truncate(s: string, max: number): string {
 
 /**
  * 공개 유인물 `/flyers/[slug]`용 Open Graph / Twitter 카드 ImageResponse.
- * 홈·상품과 동일한 다크 브랜드 셸을 사용한다.
+ * 홈·상품과 동일한 밝은 브랜드 셸을 사용한다.
  */
 export async function getFlyerOpenGraphImageResponse(slug: string): Promise<ImageResponse> {
   const logoDataUrl = await loadTheallLogoDataUrl();

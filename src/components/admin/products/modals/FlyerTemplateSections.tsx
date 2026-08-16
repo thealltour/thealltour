@@ -260,12 +260,12 @@ export function FlyerMainStackBlocks({
     <div className={`flyer-main-col w-full ${sp.mainStack}`}>
       {sections.baggage ? (
         <section
-          className={`flyer-card rounded-xl border border-amber-200/55 bg-gradient-to-br from-amber-50/75 to-white ${sp.cardPad} shadow-sm print:border-amber-200/80 print:bg-amber-50/45`}
+          className={`flyer-card rounded-xl border border-slate-200/70 bg-slate-50/70 ${sp.cardPad} shadow-sm print:bg-slate-50/90`}
         >
-          <p className={`${typoSec(typo)} text-amber-950/95`}>{f.baggageTitle}</p>
-          <p className="mt-2 text-[12px] font-medium leading-snug text-amber-900/80">수하물 · 기내 안내</p>
+          <p className={`${typoSec(typo)} text-slate-900`}>{f.baggageTitle}</p>
+          <p className="mt-2 text-[12px] font-medium leading-snug text-slate-600">수하물 · 기내 안내</p>
           <ul
-            className={`${typoList(typo)} mt-4 list-outside list-disc space-y-4 pl-5 leading-[1.65] text-slate-800 marker:text-amber-700/70`}
+            className={`${typoList(typo)} mt-4 list-outside list-disc space-y-4 pl-5 leading-[1.65] text-slate-800 marker:text-slate-400`}
           >
             {f.baggageLines.map((line, i) => (
               <li key={i} className="break-words ps-0.5 [text-wrap:pretty]">
@@ -279,12 +279,12 @@ export function FlyerMainStackBlocks({
       {sections.preparation ? (
         <>
           <section
-            className={`flyer-card rounded-xl border border-sky-100/90 bg-gradient-to-br from-sky-50/95 via-white to-white ${sp.cardPad} shadow-sm ring-1 ring-sky-100/50 print:border-sky-100 print:from-sky-50/80`}
+            className={`flyer-card rounded-xl border border-slate-200/70 bg-slate-50/70 ${sp.cardPad} shadow-sm print:bg-slate-50/90`}
           >
             <p className={`${typoSec(typo)} text-slate-900`}>{f.preparationTitle}</p>
             <p className="mt-2 text-[12px] font-semibold leading-snug text-[var(--primary)]">준비물 체크</p>
             <ul
-              className={`${typoList(typo)} mt-4 list-outside list-disc space-y-4 pl-5 leading-[1.65] text-slate-800 marker:text-sky-700/70`}
+              className={`${typoList(typo)} mt-4 list-outside list-disc space-y-4 pl-5 leading-[1.65] text-slate-800 marker:text-slate-400`}
             >
               {f.preparationLines.map((line, i) => (
                 <li key={i} className="break-words ps-0.5 [text-wrap:pretty]">
@@ -295,7 +295,7 @@ export function FlyerMainStackBlocks({
           </section>
           {outfitIncluded.length > 0 ? (
             <section
-              className={`flyer-card rounded-xl border border-sky-200/60 bg-white ${sp.cardPad} shadow-sm ring-1 ring-sky-100/40 print:border-sky-200/70`}
+              className={`flyer-card rounded-xl border border-slate-200/70 bg-white ${sp.cardPad} shadow-sm`}
             >
               <p className={`${typoSec(typo)} text-slate-900`}>여행 준비물 (체크)</p>
               {outfit?.summaryText?.trim() ? (

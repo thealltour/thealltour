@@ -98,35 +98,35 @@ const PoolCard = memo(function PoolCard({
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-lg border bg-slate-800 transition ${
-        selected ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/40" : "border-slate-600"
-      } ${isHero ? "ring-2 ring-amber-500/60" : ""} ${isMarkedDeleted ? "opacity-50" : ""}`}
+      className={`group relative flex flex-col overflow-hidden rounded-lg border bg-[var(--surface)] transition ${
+        selected ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/40" : "border-[var(--border)]"
+      } ${isHero ? "ring-2 ring-[var(--warning)]/60" : ""} ${isMarkedDeleted ? "opacity-50" : ""}`}
     >
-      <div className="flex items-center gap-1 border-b border-slate-600/80 bg-slate-900/80 px-1.5 py-1">
+      <div className="flex items-center gap-1 border-b border-[var(--border)] bg-[var(--surface-muted)] px-1.5 py-1">
         <input
           type="checkbox"
           checked={selected}
           onChange={onToggleSelect}
-          className="h-3.5 w-3.5 rounded border-slate-500"
+          className="h-3.5 w-3.5 rounded border-[var(--border)]"
           aria-label={`이미지 ${globalIndex + 1} 선택`}
         />
-        <span className="text-[10px] font-mono text-slate-400">#{globalIndex + 1}</span>
+        <span className="text-[10px] font-mono text-[var(--text-muted)]">#{globalIndex + 1}</span>
         {isHero && (
-          <span className="rounded bg-amber-600/90 px-1 py-0.5 text-[9px] font-bold text-white">대표</span>
+          <span className="rounded bg-[var(--warning)] px-1 py-0.5 text-[9px] font-bold text-white">대표</span>
         )}
         {isMarkedDeleted && (
-          <span className="rounded bg-red-900/90 px-1 py-0.5 text-[9px] font-bold text-red-100">삭제 예정</span>
+          <span className="rounded bg-[var(--danger)] px-1 py-0.5 text-[9px] font-bold text-white">삭제 예정</span>
         )}
       </div>
       <div
         draggable
         onDragStart={handleDragStart}
-        className="relative aspect-square cursor-grab overflow-hidden bg-slate-900 active:cursor-grabbing"
+        className="relative aspect-square cursor-grab overflow-hidden bg-[var(--surface-muted)] active:cursor-grabbing"
         title="드래그하여 이벤트에 배치"
         role="presentation"
       >
         {broken ? (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center text-[10px] text-slate-500">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center text-[10px] text-[var(--text-muted)]">
             <span>이미지 로드 실패</span>
             <span className="line-clamp-3 break-all font-mono text-[9px] opacity-80">{url}</span>
           </div>
@@ -140,25 +140,25 @@ const PoolCard = memo(function PoolCard({
           />
         )}
       </div>
-      <div className="flex flex-wrap gap-0.5 border-b border-slate-600/80 p-1">
+      <div className="flex flex-wrap gap-0.5 border-b border-[var(--border)] p-1">
         {badges.map((b) => (
           <span
             key={b}
-            className="rounded bg-slate-700 px-1 py-0.5 text-[9px] font-medium text-amber-200/90"
+            className="rounded bg-[var(--surface-muted)] px-1 py-0.5 text-[9px] font-medium text-[var(--warning)]"
           >
             {b}
           </span>
         ))}
         {errCount > 0 && (
-          <span className="rounded bg-red-900/60 px-1 py-0.5 text-[9px] text-red-200">오류 {errCount}</span>
+          <span className="rounded bg-[var(--danger-bg)] px-1 py-0.5 text-[9px] text-[var(--danger)]">오류 {errCount}</span>
         )}
         {issueBadges.map((b) => (
-          <span key={b} className="rounded bg-amber-900/40 px-1 py-0.5 text-[9px] text-amber-200">
+          <span key={b} className="rounded bg-[var(--warning-bg)] px-1 py-0.5 text-[9px] text-[var(--warning)]">
             {b}
           </span>
         ))}
       </div>
-      <p className="line-clamp-2 break-all px-1.5 py-1 font-mono text-[9px] text-slate-500" title={url}>
+      <p className="line-clamp-2 break-all px-1.5 py-1 font-mono text-[9px] text-[var(--text-muted)]" title={url}>
         {url.length > 72 ? `${url.slice(0, 72)}…` : url}
       </p>
       <div className="mt-auto flex flex-col gap-0.5 p-1.5">
@@ -169,7 +169,7 @@ const PoolCard = memo(function PoolCard({
               void navigator.clipboard.writeText(url);
               onToast("URL을 클립보드에 복사했습니다.");
             }}
-            className="rounded border border-slate-600 bg-slate-700 px-1 py-0.5 text-[9px] text-slate-200 hover:bg-slate-600"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-1 py-0.5 text-[9px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
           >
             복사
           </button>
@@ -177,7 +177,7 @@ const PoolCard = memo(function PoolCard({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded border border-slate-600 bg-slate-700 px-1 py-0.5 text-[9px] text-sky-300 hover:bg-slate-600"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-1 py-0.5 text-[9px] text-[var(--primary)] hover:bg-[var(--surface-muted)]"
           >
             새 탭
           </a>
@@ -187,8 +187,8 @@ const PoolCard = memo(function PoolCard({
               onClick={onToggleMarkedDeleted}
               className={`rounded border px-1 py-0.5 text-[9px] ${
                 isMarkedDeleted
-                  ? "border-emerald-700/50 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/50"
-                  : "border-red-800/50 bg-red-950/40 text-red-200 hover:bg-red-900/50"
+                  ? "border-[var(--success)]/50 bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90"
+                  : "border-[var(--danger)]/50 bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-90"
               }`}
             >
               {isMarkedDeleted ? "복구" : "삭제 예정"}
@@ -197,7 +197,7 @@ const PoolCard = memo(function PoolCard({
             <button
               type="button"
               onClick={onRemoveOne}
-              className="rounded border border-red-800/50 bg-red-950/40 px-1 py-0.5 text-[9px] text-red-200 hover:bg-red-900/50"
+              className="rounded border border-[var(--danger)]/50 bg-[var(--danger-bg)] px-1 py-0.5 text-[9px] text-[var(--danger)] hover:opacity-90"
             >
               삭제
             </button>
@@ -206,7 +206,7 @@ const PoolCard = memo(function PoolCard({
         <button
           type="button"
           onClick={onSetHero}
-          className="w-full rounded border border-amber-700/50 bg-amber-950/30 py-1 text-[10px] font-semibold text-amber-100 hover:bg-amber-900/40"
+          className="w-full rounded border border-[var(--warning)]/50 bg-[var(--warning-bg)] py-1 text-[10px] font-semibold text-[var(--warning)] hover:opacity-90"
         >
           대표로 지정
         </button>
@@ -224,7 +224,7 @@ const PoolCard = memo(function PoolCard({
             <button
               type="button"
               onClick={onAddFirst}
-              className="flex-1 rounded border border-slate-600 bg-slate-700 py-1 text-[9px] text-slate-200 hover:bg-slate-600"
+              className="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] py-1 text-[9px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             >
               Day 첫 이벤트
             </button>
@@ -233,7 +233,7 @@ const PoolCard = memo(function PoolCard({
             <button
               type="button"
               onClick={onAddLast}
-              className="flex-1 rounded border border-slate-600 bg-slate-700 py-1 text-[9px] text-slate-200 hover:bg-slate-600"
+              className="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] py-1 text-[9px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             >
               Day 끝 이벤트
             </button>
@@ -243,7 +243,7 @@ const PoolCard = memo(function PoolCard({
           <button
             type="button"
             onClick={onKeepOnlyInDuplicateGroup}
-            className="w-full rounded border border-slate-500 py-1 text-[9px] text-slate-300 hover:bg-slate-700"
+            className="w-full rounded border border-[var(--border)] py-1 text-[9px] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
           >
             이 URL만 남기고 동일 그룹 제거
           </button>
@@ -335,25 +335,25 @@ export function UnassignedImagePool({
   );
 
   return (
-    <div className={`rounded-lg border border-slate-600 bg-slate-900/50 p-4 ${className}`}>
+    <div className={`rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4 ${className}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-200">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
           {title ?? `미할당 이미지 (${count}장)`}
         </h3>
         {visible < count && (
-          <span className="text-[11px] text-slate-500">
+          <span className="text-[11px] text-[var(--text-muted)]">
             표시 {Math.min(visible, count)}/{count}
           </span>
         )}
       </div>
 
       {selectedEventSummary ? (
-        <div className="mb-3 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 px-3 py-2 text-xs text-slate-200">
+        <div className="mb-3 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 px-3 py-2 text-xs text-[var(--text-secondary)]">
           <span className="font-semibold text-[var(--primary)]">현재 선택 이벤트: </span>
           {selectedEventSummary}
         </div>
       ) : (
-        <div className="mb-3 rounded border border-dashed border-slate-600 px-3 py-2 text-[11px] text-slate-500">
+        <div className="mb-3 rounded border border-dashed border-[var(--border)] px-3 py-2 text-[11px] text-[var(--text-muted)]">
           왼쪽 일정에서 이벤트를 선택하면 &quot;선택 이벤트에 추가&quot;를 사용할 수 있습니다.
         </div>
       )}
@@ -363,14 +363,14 @@ export function UnassignedImagePool({
           <button
             type="button"
             onClick={selectAll}
-            className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-700"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
           >
             전체 선택
           </button>
           <button
             type="button"
             onClick={selectNone}
-            className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-700"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
           >
             전체 해제
           </button>
@@ -378,7 +378,7 @@ export function UnassignedImagePool({
             type="button"
             onClick={deleteSelected}
             disabled={selected.size === 0}
-            className="rounded border border-red-800/50 bg-red-950/40 px-2 py-1 text-[11px] text-red-200 hover:bg-red-900/50 disabled:opacity-40"
+            className="rounded border border-[var(--danger)]/50 bg-[var(--danger-bg)] px-2 py-1 text-[11px] text-[var(--danger)] hover:opacity-90 disabled:opacity-40"
           >
             선택 삭제 ({selected.size})
           </button>
@@ -387,21 +387,21 @@ export function UnassignedImagePool({
             onClick={() =>
               selectWhere((u) => (dupMeta.urlToGroupSize.get(u) ?? 1) > 1)
             }
-            className="rounded border border-amber-800/40 bg-amber-950/30 px-2 py-1 text-[11px] text-amber-100 hover:bg-amber-900/40"
+            className="rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1 text-[11px] text-[var(--warning)] hover:opacity-90"
           >
             중복 그룹만 선택
           </button>
           <button
             type="button"
             onClick={() => selectWhere((u) => getImageHeuristicFlags(u).isLikelyThumbnail)}
-            className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-700"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
           >
             thumb 의심만
           </button>
           <button
             type="button"
             onClick={() => selectWhere((u) => getImageHeuristicFlags(u).isLikelyLogo)}
-            className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-700"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
           >
             로고 의심만
           </button>
@@ -409,7 +409,7 @@ export function UnassignedImagePool({
             <button
               type="button"
               onClick={() => onRecommendHero()}
-              className="rounded border border-amber-600/50 bg-amber-900/30 px-2 py-1 text-[11px] font-semibold text-amber-100 hover:bg-amber-900/50"
+              className="rounded border border-[var(--warning)]/50 bg-[var(--warning-bg)] px-2 py-1 text-[11px] font-semibold text-[var(--warning)] hover:opacity-90"
             >
               자동 대표 추천
             </button>
@@ -430,7 +430,7 @@ export function UnassignedImagePool({
       )}
 
       {count === 0 ? (
-        <p className="rounded border border-dashed border-slate-600 bg-slate-800/50 px-4 py-8 text-center text-xs text-slate-400">
+        <p className="rounded border border-dashed border-[var(--border)] bg-[var(--surface)]/50 px-4 py-8 text-center text-xs text-[var(--text-muted)]">
           미할당 이미지가 없습니다.
         </p>
       ) : (
@@ -522,7 +522,7 @@ export function UnassignedImagePool({
             <button
               type="button"
               onClick={() => setVisible((v) => Math.min(v + LOAD_MORE, count))}
-              className="mt-3 w-full rounded-lg border border-slate-600 bg-slate-800 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700"
+              className="mt-3 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
             >
               더 보기 ({count - visible}장 남음)
             </button>

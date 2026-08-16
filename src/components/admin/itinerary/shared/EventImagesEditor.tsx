@@ -720,8 +720,8 @@ export function EventImagesEditor({
                     dragIndex === index ? "opacity-50 border-[var(--border)]" : ""
                   } ${overIndex === index ? "ring-2 ring-[var(--primary)] border-[var(--primary)]" : "border-[var(--border)]"} ${
                     hoverImageIndex === index && hoverPosition === "after" ? "ring-2 ring-[var(--primary)] ring-offset-1" : ""
-                  } ${hasError ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""} ${hasWarning && !hasError ? "border-amber-500/70" : ""} ${
-                    item.isCover ? "ring-2 ring-amber-500/80 border-amber-500/60" : ""
+                  } ${hasError ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""} ${hasWarning && !hasError ? "border-[var(--warning)]/70" : ""} ${
+                    item.isCover ? "ring-2 ring-[var(--warning)]/80 border-[var(--warning)]/60" : ""
                   } ${item.status === "deleted" ? "opacity-50" : ""}`}
                   onDragOver={handleDragOverCard(index)}
                   onDragLeave={handleDragLeave}
@@ -755,12 +755,12 @@ export function EventImagesEditor({
                     #{index + 1}
                   </span>
                   {item.isCover && (
-                    <span className="absolute left-0 top-0 rounded-br bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                    <span className="absolute left-0 top-0 rounded-br bg-[var(--warning)] px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
                       대표
                     </span>
                   )}
                   {item.status === "deleted" && (
-                    <span className="absolute left-0 bottom-0 rounded-tr bg-red-900/85 px-1 py-0.5 text-[8px] font-bold text-red-100">
+                    <span className="absolute left-0 bottom-0 rounded-tr bg-[var(--danger)] px-1 py-0.5 text-[8px] font-bold text-white">
                       삭제 예정
                     </span>
                   )}
@@ -768,7 +768,7 @@ export function EventImagesEditor({
                     <button
                       type="button"
                       onClick={() => restoreImage(index)}
-                      className="absolute right-0 bottom-0 rounded-tl bg-emerald-800/90 px-1 py-0.5 text-[8px] font-semibold text-emerald-100 opacity-0 transition group-hover:opacity-100"
+                      className="absolute right-0 bottom-0 rounded-tl bg-[var(--success)] px-1 py-0.5 text-[8px] font-semibold text-white opacity-0 transition group-hover:opacity-100"
                     >
                       복구
                     </button>
@@ -779,7 +779,7 @@ export function EventImagesEditor({
                     {badgeLabels.slice(0, 5).map((lb) => (
                       <span
                         key={lb}
-                        className="rounded bg-amber-950/50 px-0.5 py-0 text-[8px] text-amber-200/90"
+                        className="rounded bg-[var(--warning-bg)] px-0.5 py-0 text-[8px] text-[var(--warning)]"
                       >
                         {lb}
                       </span>
@@ -788,7 +788,7 @@ export function EventImagesEditor({
                 )}
                 {caption && (
                   <p
-                    className={`text-[10px] text-center max-w-[5rem] truncate ${hasError ? "text-[var(--danger)] font-medium" : "text-amber-600 dark:text-amber-400"}`}
+                    className={`text-[10px] text-center max-w-[5rem] truncate ${hasError ? "text-[var(--danger)] font-medium" : "text-[var(--warning)]"}`}
                     title={caption}
                   >
                     {hasError ? "오류" : "경고"}
@@ -832,7 +832,7 @@ export function EventImagesEditor({
                           <button
                             type="button"
                             onClick={() => markImageDeleted(index)}
-                            className="rounded border border-red-800/40 bg-red-950/35 px-1 py-0.5 text-[10px] text-red-200 hover:opacity-90"
+                            className="rounded border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-1 py-0.5 text-[10px] text-[var(--danger)] hover:opacity-90"
                             title="저장 시 제외(삭제 예정)"
                           >
                             삭제 예정
@@ -841,7 +841,7 @@ export function EventImagesEditor({
                             <button
                               type="button"
                               onClick={() => moveImageToUnassignedPool(index)}
-                              className="rounded border border-sky-700/40 bg-sky-950/30 px-1 py-0.5 text-[10px] text-sky-200 hover:opacity-90"
+                              className="rounded border border-[var(--primary)]/35 bg-[var(--primary-soft)] px-1 py-0.5 text-[10px] text-[var(--primary)] hover:opacity-90"
                               title="미할당 풀로 이동"
                             >
                               미할당

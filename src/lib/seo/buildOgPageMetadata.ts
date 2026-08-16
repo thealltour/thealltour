@@ -6,7 +6,7 @@ export const OG_CARD_SIZE = { width: 1200, height: 630 } as const;
 
 const BRAND_DEFAULT_OG_PATH = "/brand-og";
 /** 카톡·메신저 OG 캐시 무효화 — 썸네일 교체 시 숫자만 올린다 */
-const OG_IMAGE_CACHE_BUST = "v=20260816-light1";
+const OG_IMAGE_CACHE_BUST = "v=20260816-clean3";
 
 export type BuildOgPageMetadataArgs = {
   siteUrl: string;

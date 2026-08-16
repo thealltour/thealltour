@@ -9,6 +9,7 @@ export async function GET() {
 
   return new ImageResponse(
     <BrandOgCard
+      tagLabel="THEALLTOUR"
       title="여행이 쉬워지는 맞춤 상담"
       subtitle="골프 · 가족 · 효도 · 테마여행"
       badge="일정부터 예약까지 함께"

@@ -58,7 +58,7 @@ export const metadata: Metadata = {
       "\uac00\uc871\uc5ec\ud589, \ud6a8\ub3c4\uc5ec\ud589, \uace8\ud504\ud22c\uc5b4, \ud14c\ub9c8\uc5ec\ud589\uae4c\uc9c0. \uc0c1\ub2f4\ubd80\ud130 \uc77c\uc815 \uc81c\uc548\uae4c\uc9c0 \ub9de\ucda4\ud615\uc73c\ub85c \ub3c4\uc640\ub4dc\ub9bd\ub2c8\ub2e4.",
     images: [
       {
-        url: "/brand-og?v=20260816-light1",
+        url: "/brand-og?v=20260816-clean3",
         width: 1200,
         height: 630,
         alt: "\ub354\uc62c\ud22c\uc5b4 - \ub9de\ucda4\ud615 \uace8\ud504 \ubc0f \ud14c\ub9c8 \uc5ec\ud589",
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     title: "\ub354\uc62c\ud22c\uc5b4 | \ub9de\ucda4\ud615 \ud574\uc678\u00b7\uad6d\ub0b4 \uace8\ud504\ud22c\uc5b4",
     description:
       "\uac00\uc871\uc5ec\ud589, \ud6a8\ub3c4\uc5ec\ud589, \uace8\ud504\ud22c\uc5b4, \ud14c\ub9c8\uc5ec\ud589\uae4c\uc9c0. \uc0c1\ub2f4\ubd80\ud130 \uc77c\uc815 \uc81c\uc548\uae4c\uc9c0 \ub9de\ucda4\ud615\uc73c\ub85c \ub3c4\uc640\ub4dc\ub9bd\ub2c8\ub2e4.",
-    images: ["/brand-og?v=20260816-light1"],
+    images: ["/brand-og?v=20260816-clean3"],
   },
 };
 

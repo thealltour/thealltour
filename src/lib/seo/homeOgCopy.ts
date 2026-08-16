@@ -3,9 +3,6 @@
 export const HOME_OG_IMAGE_TITLE = "해외 골프투어, 맞춤 일정 상담";
 export const HOME_OG_IMAGE_SUBTITLE = "가족여행 · 효도여행 · 테마여행까지";
 
-/** 전역 폴백 카드에 쓸 브랜드 히어로 (public/) */
-export const HOME_OG_HERO_PUBLIC_PATH = "/images/landings/kakao-sync-golf-hero.png";
-
 /** `<title>` / meta description — page.tsx와 동일(ASCII escape로 인코딩 이슈 회피) */
 export const HOME_METADATA_TITLE =
   "\uace8\ud504\uc5ec\ud589\u00b7\ud328\ud0a4\uc9c0\u0020\uc5ec\ud589\u0020\ucd94\ucc9c\u0020\u007c\u0020\ub9de\ucda4\u0020\uc77c\uc815\u0020\uc0c1\ub2f4\u0020\u007c\u0020\ub354\uc62c\ud22c\uc5b4";

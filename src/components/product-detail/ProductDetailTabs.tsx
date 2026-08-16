@@ -199,13 +199,13 @@ export default function ProductDetailTabs({
         <div key="included" className="fade-in-up space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             {/* 포함 사항 - 긍정 색상 박스, 웹에서 왼쪽 */}
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 ring-1 ring-emerald-200">
-              <h3 className="mb-3 text-sm font-bold text-emerald-800">포함 사항</h3>
+            <div className="rounded-xl border border-[var(--success)]/25 bg-[var(--success-bg)] p-4">
+              <h3 className="mb-3 text-sm font-bold text-[var(--success)]">포함 사항</h3>
               {includedLines.length > 0 ? (
                 <ul className={listClass}>
                   {includedLines.map((line, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" />
                       <span>{line}</span>
                     </li>
                   ))}
@@ -216,13 +216,13 @@ export default function ProductDetailTabs({
             </div>
 
             {/* 불포함 사항 - 웹에서 오른쪽 */}
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 ring-1 ring-amber-200">
-              <h3 className="mb-3 text-sm font-bold text-amber-800">불포함 사항</h3>
+            <div className="rounded-xl border border-[var(--border-strong)] bg-[var(--surface-muted)] p-4">
+              <h3 className="mb-3 text-sm font-bold text-[var(--text-secondary)]">불포함 사항</h3>
               {excludedLines.length > 0 ? (
                 <ul className={listClass}>
                   {excludedLines.map((line, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--text-muted)]" />
                       <span>{line}</span>
                     </li>
                   ))}

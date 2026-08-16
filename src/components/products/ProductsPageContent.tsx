@@ -295,10 +295,10 @@ export function ProductsPageContent({
         <div className="space-y-2">
           {golfRegionLabel && (
             <div
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--primary-soft)] bg-[var(--primary-soft)] px-3 py-2"
               role="status"
             >
-              <p className="type-small text-amber-900">
+              <p className="type-small text-[var(--primary)]">
                 현재 <span className="font-semibold">{golfRegionLabel}</span> 지역 골프 상품만
                 보여주고 있습니다.
               </p>

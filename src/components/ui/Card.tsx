@@ -19,7 +19,7 @@ export function Card({ variant = "default", className, ...props }: CardProps) {
     case "hero":
       variantClass =
         "rounded-3xl bg-[var(--theall-primary-navy)] text-[var(--site-text-primary)] " +
-        "shadow-xl ring-1 ring-[var(--site-border)]";
+        "shadow-[var(--shadow-soft-strong)] ring-1 ring-[var(--site-border)]";
       break;
     case "interactive":
       variantClass =

@@ -167,7 +167,7 @@ export default function GolfDepartureCalendarSection({
             {showPromotionLegend ? (
               <p className="flex items-center gap-2">
                 <Star
-                  className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400"
+                  className="h-4 w-4 shrink-0 fill-[var(--warning)] text-[var(--warning)]"
                   aria-hidden
                 />
                 {promotionLegend}
@@ -208,10 +208,10 @@ export default function GolfDepartureCalendarSection({
                           {event.isPromotionDeparture ? (
                             <>
                               <Star
-                                className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400"
+                                className="h-3.5 w-3.5 shrink-0 fill-[var(--warning)] text-[var(--warning)]"
                                 aria-hidden
                               />
-                              <span className="inline-flex max-w-full truncate rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 sm:text-[11px]">
+                              <span className="inline-flex max-w-full truncate rounded-full border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--warning)] sm:text-[11px]">
                                 {promotionLegend}
                               </span>
                             </>

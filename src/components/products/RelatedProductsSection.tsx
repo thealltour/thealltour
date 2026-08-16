@@ -37,7 +37,7 @@ export default function RelatedProductsSection({
       <div className="space-y-1 mb-4">
         <h2
           id="related-products-section-heading"
-          className="text-lg font-semibold text-slate-900"
+          className="text-lg font-bold text-slate-900"
         >
           {title}
         </h2>

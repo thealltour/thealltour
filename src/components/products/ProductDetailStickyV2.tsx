@@ -205,7 +205,7 @@ export function ProductDetailStickyV2Desktop({
       aria-label="상품 요약"
     >
       {/* 전환 핵심 그룹: 예상가 + CTA. 스크롤 위치와 무관하게 카드/버튼 UI 일관 유지 */}
-      <div className="rounded-2xl border-2 border-[#93c5fd] bg-white p-5 shadow-lg ring-1 ring-[#bfdbfe]">
+      <div className="rounded-2xl border-2 border-[var(--primary-soft)] bg-white p-5 shadow-[var(--shadow-soft-strong)]">
         <div className="space-y-3">
           <div>
             <p className="text-xs font-medium text-slate-500">예상가</p>

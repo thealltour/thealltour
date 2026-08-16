@@ -77,7 +77,7 @@ export default function ReviewReportModal({ reviewId, onClose, onSuccess }: Prop
             {REPORT_REASONS.map((r) => (
               <label
                 key={r.value}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 p-3 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50"
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--border)] p-3 has-[:checked]:border-[var(--primary)] has-[:checked]:bg-[var(--primary-soft)]"
               >
                 <input
                   type="radio"
@@ -85,7 +85,7 @@ export default function ReviewReportModal({ reviewId, onClose, onSuccess }: Prop
                   value={r.value}
                   checked={selected === r.value}
                   onChange={() => setSelected(r.value)}
-                  className="h-4 w-4 border-slate-300 text-blue-600"
+                  className="h-4 w-4 border-[var(--border-strong)] text-[var(--primary)]"
                 />
                 <span className="text-sm font-medium text-slate-800">{r.label}</span>
               </label>

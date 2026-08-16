@@ -114,7 +114,7 @@ export default function ProductDepartureSelector({
       >
         예약 문의
       </button>
-      {hint ? <p className="text-xs text-amber-600">{hint}</p> : null}
+      {hint ? <p className="text-xs text-[var(--warning)]">{hint}</p> : null}
     </section>
   );
 }

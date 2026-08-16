@@ -15,11 +15,10 @@ export function KakaoSyncCouponVisual() {
       aria-hidden
     >
       <div
-        className="relative overflow-hidden rounded-xl px-4 py-3.5 shadow-[0_6px_20px_rgba(15,23,42,0.35)]"
+        className="relative overflow-hidden rounded-xl px-4 py-3.5 shadow-[var(--shadow-soft-strong)]"
         style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)",
+          background: "#0f172a",
           border: "2px solid #b8962e",
-          boxShadow: "0 0 0 1px rgba(184,150,46,0.35) inset, 0 6px 20px rgba(15,23,42,0.35)",
         }}
       >
         {/* 좌우 반원 컷아웃 */}
@@ -47,16 +46,8 @@ export function KakaoSyncCouponVisual() {
           </div>
           <div
             className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "radial-gradient(circle at 30% 30%, #e8d9a8, #b8962e 52%, #8a6d1f)",
-              boxShadow:
-                "0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.18)",
-            }}
+            style={{ background: "#b8962e" }}
           >
-            <span
-              className="absolute inset-[3px] rounded-full border border-[#0f172a]/18"
-              aria-hidden
-            />
             <Gift className="relative h-6 w-6 text-[#0f172a]" strokeWidth={1.75} aria-hidden />
           </div>
         </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { pretendard } from "@/lib/fonts";
 import "./globals.css";
 import {
   THEALL_APPLE_TOUCH_ICON_SRC,
@@ -86,7 +87,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={pretendard.variable}>
       <head>
         {/* 파비콘: metadata 외에 표준 경로 직접 링크 (일부 환경·캐시 호환) */}
         <link rel="icon" href="/favicon.ico" sizes="any" />

@@ -17,7 +17,7 @@ export default async function DepositPage({ searchParams }: DepositPageProps) {
   if (!info) notFound();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white">
+    <div className="min-h-screen page-bg-wash">
       <SiteHeader />
       <SectionBody className="py-10">
         <DepositPageContent info={info} />

@@ -157,7 +157,7 @@ export default async function Home() {
                   <p className="mb-2 type-caption font-medium leading-snug text-[var(--text-secondary)] sm:mb-3 md:type-small">
                     {C_P3}
                   </p>
-                  <div className="mt-auto rounded-none bg-transparent p-0 pt-0 ring-0 sm:rounded-xl sm:bg-[var(--surface-muted)] sm:p-3 sm:pt-3 sm:ring-1 sm:ring-[var(--border)] md:p-4">
+                  <div className="mt-auto pt-0 sm:border-t sm:border-[var(--border)] sm:pt-3 md:pt-4">
                     <HeroQuickConsultButton />
                   </div>
                 </div>

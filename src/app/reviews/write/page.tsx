@@ -107,7 +107,7 @@ export default async function ReviewWritePage({ searchParams }: Props) {
     : undefined;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
+    <div className="min-h-screen page-bg-wash text-content-primary">
       <SiteHeader activeTab="reviews" />
       <SectionBody className="flex flex-col gap-[var(--space-5)]">
         <PageHero
@@ -125,55 +125,55 @@ export default async function ReviewWritePage({ searchParams }: Props) {
         </p>
         <ContentCard>
           {showNotOwnerWarning ? (
-            <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="space-y-4 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger-bg)] p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--danger)]/15">
+                <svg className="h-6 w-6 text-[var(--danger)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
               <div>
-                <p className="font-medium text-red-700">본인에게 부여된 후기 작성 권한이 아닙니다.</p>
-                <p className="mt-1 text-sm text-red-600">마이페이지에서 작성 가능한 후기를 확인해주세요.</p>
+                <p className="font-medium text-[var(--danger)]">본인에게 부여된 후기 작성 권한이 아닙니다.</p>
+                <p className="mt-1 text-sm text-[var(--danger)]">마이페이지에서 작성 가능한 후기를 확인해주세요.</p>
               </div>
               <Link
                 href="/mypage/reviews"
-                className="inline-flex items-center gap-1 text-sm font-medium text-red-700 hover:text-red-800"
+                className="inline-flex items-center gap-1 text-sm font-medium text-[var(--danger)] hover:opacity-80"
               >
                 마이페이지로 이동 →
               </Link>
             </div>
           ) : showInvalidWarning ? (
-            <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="space-y-4 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger-bg)] p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--danger)]/15">
+                <svg className="h-6 w-6 text-[var(--danger)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
               <div>
-                <p className="font-medium text-red-700">유효하지 않은 후기 작성 링크입니다.</p>
-                <p className="mt-1 text-sm text-red-600">마이페이지에서 작성 가능한 후기를 확인해주세요.</p>
+                <p className="font-medium text-[var(--danger)]">유효하지 않은 후기 작성 링크입니다.</p>
+                <p className="mt-1 text-sm text-[var(--danger)]">마이페이지에서 작성 가능한 후기를 확인해주세요.</p>
               </div>
               <Link
                 href="/mypage/reviews"
-                className="inline-flex items-center gap-1 text-sm font-medium text-red-700 hover:text-red-800"
+                className="inline-flex items-center gap-1 text-sm font-medium text-[var(--danger)] hover:opacity-80"
               >
                 마이페이지로 이동 →
               </Link>
             </div>
           ) : showAlreadySubmittedWarning ? (
-            <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-                <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="space-y-4 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--warning)]/15">
+                <svg className="h-6 w-6 text-[var(--warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div>
-                <p className="font-medium text-amber-700">이미 작성 완료된 후기입니다.</p>
-                <p className="mt-1 text-sm text-amber-600">마이페이지에서 작성한 후기를 확인할 수 있습니다.</p>
+                <p className="font-medium text-[var(--warning)]">이미 작성 완료된 후기입니다.</p>
+                <p className="mt-1 text-sm text-[var(--warning)]">마이페이지에서 작성한 후기를 확인할 수 있습니다.</p>
               </div>
               <Link
                 href="/mypage/reviews"
-                className="inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:text-amber-800"
+                className="inline-flex items-center gap-1 text-sm font-medium text-[var(--warning)] hover:opacity-80"
               >
                 내 후기 보기 →
               </Link>

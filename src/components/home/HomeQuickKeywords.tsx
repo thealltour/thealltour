@@ -29,11 +29,11 @@ export function HomeQuickKeywords() {
             <li key={item.id} className="flex min-w-0">
               <Link
                 href={item.href}
-                className="group flex h-full min-h-[76px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-white/80 bg-white/95 px-1 py-3 text-center shadow-[0_2px_8px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--hero-accent)]/25 hover:shadow-[0_6px_16px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white active:translate-y-0 active:shadow-[0_2px_6px_rgba(15,23,42,0.06)] sm:min-h-[80px] sm:px-1.5"
+                className="group flex h-full min-h-[76px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-1 py-3 text-center shadow-[var(--shadow-soft)] transition-colors duration-200 hover:border-[var(--hero-accent)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:min-h-[80px] sm:px-1.5"
                 aria-label={item.ariaLabel ?? item.label}
               >
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--hero-accent)]/15 to-[var(--hero-accent)]/5 text-[var(--hero-accent)] ring-1 ring-[var(--hero-accent)]/15 transition-all duration-200 group-hover:from-[var(--hero-accent)]/22 group-hover:to-[var(--hero-accent)]/10 group-hover:ring-[var(--hero-accent)]/30 sm:h-12 sm:w-12"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--hero-accent)]/10 text-[var(--hero-accent)] transition-colors duration-200 group-hover:bg-[var(--hero-accent)]/16 sm:h-12 sm:w-12"
                   aria-hidden
                 >
                   <IconComponent className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />

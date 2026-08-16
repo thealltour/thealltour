@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function StatusPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">
+    <div className="min-h-screen page-bg-wash text-[var(--text-primary)]">
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl space-y-8 px-6 py-12 md:px-10">
         <section className="rounded-3xl bg-[var(--primary)] p-8 text-[var(--on-primary)] shadow-xl">

@@ -84,7 +84,7 @@ export default function LinkAccountForm({
       >
         {isSubmitting ? "연결 중..." : "계정 연결하기"}
       </button>
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
     </form>
   );
 }

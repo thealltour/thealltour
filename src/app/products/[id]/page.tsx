@@ -218,7 +218,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     <ConsultModalProvider>
       <ProductQuoteProvider>
         <SiteHeader activeTab="products" />
-      <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white py-6 sm:py-10 md:py-14">
+      <div className="min-h-screen page-bg-wash py-6 sm:py-10 md:py-14">
         <PageContainer size="wide">
           <main className="w-full">
             <NavigationContextHeader

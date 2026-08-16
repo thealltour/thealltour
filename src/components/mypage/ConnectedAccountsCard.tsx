@@ -125,8 +125,8 @@ export default function ConnectedAccountsCard({ initialSummary }: ConnectedAccou
         </div>
       ) : null}
 
-      {message ? <p className="mt-3 text-sm text-green-600">{message}</p> : null}
-      {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm text-[var(--success)]">{message}</p> : null}
+      {error ? <p className="mt-3 text-sm text-[var(--danger)]">{error}</p> : null}
     </MyPageCard>
   );
 }

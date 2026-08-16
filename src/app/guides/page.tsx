@@ -24,7 +24,7 @@ export default async function GuidesIndexPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
+    <div className="min-h-screen page-bg-wash text-content-primary">
       <SiteHeader activeTab="guides" />
 
       <SectionBody className="flex flex-col gap-[var(--space-5)] max-w-6xl">

@@ -14,7 +14,10 @@ import { CARD_HOVER, CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
 import { buildProductCardInfoBadges, CAMPAIGN_BADGE_MAX, resolveProductCardOverlayBadges, shouldOmitCampaignPitchForCard } from "@/lib/productCardProps";
 import { buildCampaignRepresentativeBadges } from "@/lib/productCampaignBadges";
-import { buildCampaignPitchLineFromProduct } from "@/lib/productCampaignPresentation";
+import {
+  buildCampaignPitchLineFromProduct,
+  CAMPAIGN_BADGE_PROMOTION_PALETTE,
+} from "@/lib/productCampaignPresentation";
 import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
 import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
 import {
@@ -207,7 +210,12 @@ export function HomeProductCard({
           </div>
         ) : highlightLabel ? (
           <div className="absolute left-1.5 top-1.5 z-10 max-w-[calc(100%-0.75rem)] sm:left-2 sm:top-2">
-            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[10px]">
+            <span
+              className={cn(
+                "inline-flex max-w-[min(100%,11rem)] truncate rounded-md px-2 py-1 text-[9px] font-bold leading-tight shadow-sm ring-1 sm:text-[10px]",
+                CAMPAIGN_BADGE_PROMOTION_PALETTE,
+              )}
+            >
               {highlightLabel}
             </span>
           </div>
@@ -294,16 +302,16 @@ export function HomeProductCard({
         <div className="mt-auto border-t border-[var(--border)]/60 pt-1.5 sm:border-0 sm:pt-1">
           {priceDisplay === "teamCouponBenefit" && teamListFormatted && teamMemberFormatted ? (
             <>
-              <p className="mb-1 inline-flex max-w-full rounded-md bg-orange-500 px-2 py-0.5 text-[0.625rem] font-extrabold leading-tight text-white sm:text-[0.6875rem]">
-                🏷️ 4인 예약 시 총 {teamDiscountFormatted}원 즉시 차감!
+              <p className="mb-1 inline-flex max-w-full rounded-md bg-[var(--accent)] px-2 py-0.5 text-[0.625rem] font-extrabold leading-tight text-[var(--on-accent)] sm:text-[0.6875rem]">
+                4인 예약 시 총 {teamDiscountFormatted}원 즉시 차감!
               </p>
               <p className="text-xs leading-tight text-slate-400 tabular-nums line-through sm:text-sm">
                 정가: {teamListFormatted}원 (4인)
               </p>
-              <p className="mt-0.5 text-[1.1875rem] font-extrabold leading-tight text-orange-600 tabular-nums sm:text-xl">
+              <p className="mt-0.5 text-[1.1875rem] font-extrabold leading-tight text-[var(--accent)] tabular-nums sm:text-xl">
                 쿠폰 적용가: {teamMemberFormatted}원
               </p>
-              <p className="mt-0.5 inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[0.625rem] font-bold text-emerald-700 sm:text-xs">
+              <p className="mt-0.5 inline-flex rounded bg-[var(--success-bg)] px-1.5 py-0.5 text-[0.625rem] font-bold text-[var(--success)] sm:text-xs">
                 [{teamDiscountFormatted}원 할인]
               </p>
             </>

@@ -253,7 +253,7 @@ export default function HeaderQuickConsultCtas({
         <div className="fixed top-4 right-4 z-50">
           <div
             className={`rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
-              toast.kind === "success" ? "bg-emerald-600" : "bg-red-600"
+              toast.kind === "success" ? "bg-[var(--success)]" : "bg-[var(--danger)]"
             }`}
           >
             {toast.message}

@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { MessageCircle, Star } from "lucide-react";
 import { kakaoSyncGolfConfig } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
 
 /** 고객 후기만 — 상품 노출 직후(확신 부여)에 배치 */
@@ -7,7 +7,10 @@ export function KakaoSyncReviewsSection() {
 
   return (
     <section aria-label="고객 후기" className="space-y-2">
-      <p className="text-sm font-bold text-slate-800">{trust.reviewsHeading}</p>
+      <p className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+        <MessageCircle className="h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden />
+        {trust.reviewsHeading}
+      </p>
       <ul className="mt-2 space-y-2.5">
         {trust.reviews.map((review) => (
           <li
@@ -29,9 +32,9 @@ export function KakaoSyncReviewsSection() {
               {review.tags.map((tag) => (
                 <li
                   key={tag}
-                  className="rounded-md bg-orange-50 px-2 py-0.5 text-[0.6875rem] font-semibold text-orange-700"
+                  className="rounded-md bg-[var(--accent)]/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--accent)]"
                 >
-                  🏷️ {tag}
+                  {tag}
                 </li>
               ))}
             </ul>

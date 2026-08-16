@@ -104,7 +104,7 @@ export default function CompleteProfileForm({
       >
         {isSubmitting ? "저장 중..." : "완료"}
       </button>
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
     </form>
   );
 }

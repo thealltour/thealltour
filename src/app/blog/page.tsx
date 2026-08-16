@@ -30,7 +30,7 @@ export default async function BlogPage() {
   const posts = await collectBlogRssPosts(rssUrls);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
+    <div className="min-h-screen page-bg-wash text-content-primary">
       <SiteHeader activeTab="blog" />
 
       <SectionBody className="flex flex-col gap-[var(--space-5)] max-w-6xl">

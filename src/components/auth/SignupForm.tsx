@@ -414,8 +414,8 @@ export default function SignupForm() {
         </label>
       </div>
 
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
-      {successMessage ? <p className="text-sm text-green-600">{successMessage}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
+      {successMessage ? <p className="text-sm text-[var(--success)]">{successMessage}</p> : null}
 
       <button
         type="submit"

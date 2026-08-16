@@ -40,7 +40,7 @@ export function HomeBlogCard({ post, className }: HomeBlogCardProps) {
             alt=""
             fill
             sizes="(max-width: 640px) 58vw, 272px"
-            className="object-cover transition duration-200 group-hover:scale-[1.02]"
+            className="object-cover"
             onError={(event) => {
               const img = event.currentTarget;
               if (img.src.endsWith(GUIDE_CARD_FALLBACK_IMAGE)) return;
@@ -59,7 +59,7 @@ export function HomeBlogCard({ post, className }: HomeBlogCardProps) {
         )}
       </div>
       <div className="flex min-h-0 flex-col overflow-hidden p-4 sm:p-5">
-        <p className="section-label uppercase tracking-wide text-[#B8962E]">
+        <p className="section-label uppercase tracking-wide text-[var(--accent-premium)]">
           {sourceLabel(post.source)}
         </p>
         <h3 className="font-card-title mt-1 line-clamp-2 type-small font-semibold text-[var(--foreground)]">

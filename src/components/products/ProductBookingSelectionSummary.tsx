@@ -60,7 +60,7 @@ export function ProductBookingSelectionSummary({ className = "" }: { className?:
             </p>
           </div>
         ) : (
-          <p className="font-medium text-amber-700">출발일을 선택해 주세요.</p>
+          <p className="font-medium text-[var(--warning)]">출발일을 선택해 주세요.</p>
         )
       ) : null}
 
@@ -86,7 +86,7 @@ export function ProductBookingSelectionSummary({ className = "" }: { className?:
           ))}
         </ul>
       ) : requiredGroupsMissing ? (
-        <p className="font-medium text-amber-700">필수 옵션을 선택해 주세요.</p>
+        <p className="font-medium text-[var(--warning)]">필수 옵션을 선택해 주세요.</p>
       ) : null}
     </div>
   );

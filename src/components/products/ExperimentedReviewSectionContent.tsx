@@ -211,7 +211,7 @@ export function ExperimentedReviewSectionContent({
             className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
           >
             {bestReview && review.id === bestReview.id && !showPersonalizedBlock && (
-              <div className="bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-800">
+              <div className="bg-[var(--accent-premium-soft)] px-4 py-2 text-center text-sm font-semibold text-[var(--accent-premium)]">
                 BEST REVIEW
               </div>
             )}

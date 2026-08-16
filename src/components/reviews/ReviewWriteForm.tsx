@@ -615,7 +615,7 @@ export default function ReviewWriteForm({
         <div className="mt-2 flex items-center gap-2">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-300"
+              className="h-full rounded-full bg-[var(--primary)] transition-all duration-300"
               style={{ width: `${progress.percent}%` }}
             />
           </div>
@@ -822,10 +822,10 @@ export default function ReviewWriteForm({
         </section>
 
         {errorMessage && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{errorMessage}</div>
+          <div className="rounded-xl bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">{errorMessage}</div>
         )}
         {draftStatus === "saved" && (
-          <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">임시 저장됨</div>
+          <div className="rounded-xl bg-[var(--success-bg)] px-4 py-3 text-sm text-[var(--success)]">임시 저장됨</div>
         )}
 
         <p className="text-center text-xs text-slate-500 sm:text-left">

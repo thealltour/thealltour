@@ -215,7 +215,7 @@ export function ProductCheckoutSection({
       </p>
 
       {checkoutBlockedReason ? (
-        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="mt-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-3 py-2 text-sm text-[var(--warning)]">
           {checkoutBlockedReason}
         </p>
       ) : null}
@@ -238,14 +238,14 @@ export function ProductCheckoutSection({
               <dd className="font-semibold">{formatPriceKR(quotePreview.quoteTotal)}</dd>
             </div>
             {quotePreview.paxDiscountAmount > 0 && quotePreview.discountLabel ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-                <div className="flex justify-between gap-3 text-sm font-bold text-emerald-800">
-                  <span>🎁 {quotePreview.discountLabel}</span>
-                  <span className="shrink-0 text-emerald-600">
+              <div className="rounded-xl border border-[var(--success)]/25 bg-[var(--success-bg)] px-3 py-2.5">
+                <div className="flex justify-between gap-3 text-sm font-bold text-[var(--success)]">
+                  <span>{quotePreview.discountLabel}</span>
+                  <span className="shrink-0 text-[var(--success)]">
                     -{quotePreview.paxDiscountAmount.toLocaleString("ko-KR")}원
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] font-medium text-emerald-600">
+                <p className="mt-1 text-[11px] font-medium text-[var(--success)]">
                   동반자 가입 불필요 · 대표 1명 예약 시 전체 인원 자동 할인 적용
                 </p>
               </div>
@@ -267,13 +267,13 @@ export function ProductCheckoutSection({
           </dl>
 
           {loggedIn === false && isGolfCoupon ? (
-            <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-800">
+            <p className="mt-3 rounded-lg border border-[var(--success)]/25 bg-[var(--success-bg)] px-3 py-2 text-xs text-[var(--success)]">
               로그인(카카오 간편가입) 후 골프투어 쿠폰팩(1인당 5만원~) 할인이 적용됩니다.
             </p>
           ) : null}
 
           {loggedIn === true && isGolfCoupon && !availableCoupon ? (
-            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <p className="mt-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-3 py-2 text-xs text-[var(--warning)]">
               사용 가능한 골프투어 쿠폰팩이 없습니다. 쿠폰팩 지급 후 인원 할인이 적용됩니다.
             </p>
           ) : null}

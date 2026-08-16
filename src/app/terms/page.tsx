@@ -4,7 +4,7 @@ import { getLegalDocuments } from "@/lib/legalDocuments";
 export default async function TermsPage() {
   const documents = await getLegalDocuments();
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-[#0f172a]">
+    <div className="min-h-screen page-bg-wash text-[var(--text-primary)]">
       <SiteHeader />
       <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-12 md:px-10">
         <section className="rounded-3xl bg-[var(--primary)] p-8 text-[var(--on-primary)] shadow-xl">

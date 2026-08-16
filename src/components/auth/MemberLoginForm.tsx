@@ -83,7 +83,7 @@ export default function MemberLoginForm({ nextPath = "/" }: MemberLoginFormProps
       >
         {isSubmitting ? "로그인 중..." : "로그인"}
       </button>
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
     </form>
   );
 }

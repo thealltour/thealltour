@@ -58,7 +58,7 @@ export default function ReviewHelpfulButton({
       disabled={loading}
       className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm transition ${
         voted
-          ? "border-blue-600 bg-blue-50 text-blue-700"
+          ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
           : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
       } ${loading ? "pointer-events-none opacity-70" : ""}`}
       aria-pressed={voted}

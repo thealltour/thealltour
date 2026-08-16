@@ -110,7 +110,7 @@ export default async function PublicReviewDetailPage({ params }: Props) {
   const reviewJsonLd = buildReviewJsonLd(review, { pageUrl });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-slate-900">
+    <div className="min-h-screen page-bg-wash text-slate-900">
       <SiteHeader activeTab="reviews" />
 
       <SectionBody className="flex flex-col gap-6">

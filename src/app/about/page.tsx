@@ -17,7 +17,7 @@ export default async function AboutPage() {
   const isExternal = ctaHref.startsWith("http://") || ctaHref.startsWith("https://");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
+    <div className="min-h-screen page-bg-wash text-content-primary">
       <SiteHeader activeTab="about" />
 
       <SectionBody className="flex flex-col gap-[var(--space-5)]">

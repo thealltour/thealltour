@@ -23,7 +23,7 @@ export default function HomeTopBanner({ banners }: HomeTopBannerProps) {
   }, [hasMany, banners.length]);
 
   const containerClass = useMemo(
-    () => "relative overflow-hidden rounded-3xl shadow-xl ring-1 ring-[var(--border)]",
+    () => "relative overflow-hidden rounded-3xl shadow-[var(--shadow-soft-strong)] ring-1 ring-[var(--border)]",
     [],
   );
 

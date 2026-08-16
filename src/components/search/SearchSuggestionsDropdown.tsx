@@ -82,12 +82,7 @@ export default function SearchSuggestionsDropdown({
             )}
           >
             <span
-              className={cn(
-                "shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold",
-                item.type === "destination" && "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
-                item.type === "theme" && "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-                item.type === "product" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
-              )}
+              className="shrink-0 rounded bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-secondary)]"
             >
               {TYPE_LABELS[item.type]}
             </span>

@@ -134,12 +134,14 @@
   --glass-surface-chrome: rgba(255, 255, 255, 0.65);
   --glass-surface-on-media: rgba(255, 255, 255, 0.55);
 
-  --font-sans-fallback: "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans KR",
-    "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
+  /* --font-pretendard: next/font/local이 <html>에 주입하는 실제 로드된 웹폰트 변수 (src/lib/fonts.ts) */
+  --font-sans-fallback: var(--font-pretendard), "Pretendard", system-ui, -apple-system, BlinkMacSystemFont,
+    "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
   --font-mono-fallback: "D2Coding", "Consolas", "Courier New", monospace;
 
-  --font-display-sans: "Wanted Sans Variable", system-ui, -apple-system, BlinkMacSystemFont, "Pretendard",
-    "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
+  --font-display-sans: var(--font-pretendard), "Wanted Sans Variable", system-ui, -apple-system,
+    BlinkMacSystemFont, "Pretendard", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica,
+    sans-serif;
 
   /* Typography scale v1.1 (middle-aged readability, premium tone) */
   --type-h1-size: 2.625rem;     /* 42px */
@@ -977,6 +979,15 @@ body {
   padding-inline: var(--space-7);
   box-shadow: var(--shadow-soft-strong);
   color: var(--on-primary);
+}
+
+/*
+ * 콘텐츠 페이지(약관/후기/블로그/견적 등) 공통 배경. 이전에는 20여개 페이지에
+ * `bg-gradient-to-b from-[#f3f8ff] to-white`가 각자 하드코딩돼 있어 하나만
+ * 바꾸려면 전부 찾아 고쳐야 했음. 값 자체는 동일하게 유지하고 토큰화만 함.
+ */
+.page-bg-wash {
+  background-image: linear-gradient(to bottom, #f3f8ff, #ffffff);
 }
 
 /* 히어로는 --primary 위에 올라가므로, 전역 .section-label / .section-title 의 페이지 본문 색이

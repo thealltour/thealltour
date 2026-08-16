@@ -185,14 +185,14 @@ export function ProductBookingSelectionPanel({
           </div>
         </div>
         {paxDiscountPreview && paxDiscountPreview.amount > 0 ? (
-          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-            <div className="flex items-center justify-between gap-2 text-sm font-bold text-emerald-800">
-              <span>🎁 {paxDiscountPreview.label}</span>
-              <span className="shrink-0 text-emerald-600">
+          <div className="mt-3 rounded-xl border border-[var(--success)]/25 bg-[var(--success-bg)] px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2 text-sm font-bold text-[var(--success)]">
+              <span>{paxDiscountPreview.label}</span>
+              <span className="shrink-0 text-[var(--success)]">
                 -{paxDiscountPreview.amount.toLocaleString("ko-KR")}원
               </span>
             </div>
-            <p className="mt-1 text-[11px] font-medium text-emerald-600">
+            <p className="mt-1 text-[11px] font-medium text-[var(--success)]">
               동반자 가입 불필요 · 대표 1명 예약 시 전체 인원 자동 할인 적용
             </p>
           </div>
@@ -204,14 +204,14 @@ export function ProductBookingSelectionPanel({
   return (
     <section
       id="product-booking-panel"
-      className="rounded-2xl border-2 border-[#93c5fd] bg-white p-5 shadow-sm ring-1 ring-[#bfdbfe] md:p-6"
+      className="rounded-2xl border-2 border-[var(--primary-soft)] bg-white p-5 shadow-[var(--shadow-soft-strong)] md:p-6"
       aria-label="출발일 및 옵션 선택"
     >
       {showDepartureSection ? (
         <div id="product-departure-section" className="space-y-3 scroll-mt-24">
           <h3 className="text-base font-bold text-[#0f172a]">출발일 선택</h3>
           {!hasDepartureSelection ? (
-            <p className="text-xs font-medium text-amber-700">
+            <p className="text-xs font-medium text-[var(--warning)]">
               원하시는 출발일을 1개 선택해 주세요.
             </p>
           ) : null}

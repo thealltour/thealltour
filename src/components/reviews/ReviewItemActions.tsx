@@ -202,7 +202,7 @@ export default function ReviewItemActions({
             </button>
           </div>
         ) : null}
-        {errorMessage ? <p className="text-xs text-red-500">{errorMessage}</p> : null}
+        {errorMessage ? <p className="text-xs text-[var(--danger)]">{errorMessage}</p> : null}
         <div className="flex items-center gap-2">
           <button
             type="submit"
@@ -249,11 +249,11 @@ export default function ReviewItemActions({
         type="button"
         disabled={isSubmitting}
         onClick={handleDelete}
-        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg border border-[var(--danger)]/30 px-3 py-1.5 text-xs text-[var(--danger)] transition hover:bg-[var(--danger-bg)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         삭제
       </button>
-      {errorMessage ? <p className="text-xs text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-xs text-[var(--danger)]">{errorMessage}</p> : null}
     </div>
   );
 }

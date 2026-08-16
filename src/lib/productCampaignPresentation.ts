@@ -131,14 +131,19 @@ export function resolveCampaignCardKind(args: {
 /** 이미지 오버레이 vs 본문 인라인(리스트 카드 제목 주변) */
 export type CampaignBadgeSurface = "overlay" | "inline";
 
+/**
+ * 배지 톤 ↔ 브랜드 토큰 매핑. violet/sky/emerald 같은 브랜드와 무관한 "기본 후보 색"
+ * 대신, 사이트 전역에서 이미 쓰는 --primary/--accent/--success/--foreground만 사용한다.
+ */
 const CAMPAIGN_BADGE_TONE_PALETTE: Record<CampaignVisualTone, string> = {
-  recommend: "bg-violet-600/95 text-white ring-violet-700/30",
-  popular: "bg-sky-600/95 text-white ring-sky-700/30",
-  new: "bg-emerald-600/95 text-white ring-emerald-700/30",
-  secondary: "bg-slate-700/90 text-white ring-slate-800/25",
+  recommend: "bg-[var(--primary)]/95 text-white ring-[var(--primary-active)]/35",
+  popular: "bg-[var(--accent)]/95 text-white ring-[var(--accent-hover)]/35",
+  new: "bg-[var(--success)]/95 text-white ring-[var(--success)]/35",
+  secondary: "bg-[var(--foreground)]/90 text-white ring-[var(--foreground)]/25",
 };
 
-const CAMPAIGN_BADGE_PROMOTION_PALETTE = "bg-amber-500/95 text-white ring-amber-600/30";
+/** 시즌/특가(promotion) — --warning 톤 (기존 amber와 색감 유지, 토큰화만) */
+export const CAMPAIGN_BADGE_PROMOTION_PALETTE = "bg-[var(--warning)]/95 text-white ring-[var(--warning)]/35";
 
 function campaignBadgeShellClasses(surface: CampaignBadgeSurface): string {
   const maxW =

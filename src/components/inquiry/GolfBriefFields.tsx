@@ -16,8 +16,8 @@ type GolfBriefFieldsProps = {
 
 export function GolfBriefFields({ value, onChange }: GolfBriefFieldsProps) {
   return (
-    <div className="md:col-span-2 space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-      <p className="text-sm font-semibold text-emerald-900">골프투어 맞춤 정보 (선택)</p>
+    <div className="md:col-span-2 space-y-3 rounded-xl border border-[var(--success)]/25 bg-[var(--success-bg)] p-4">
+      <p className="text-sm font-semibold text-[var(--success)]">골프투어 맞춤 정보 (선택)</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
           인원

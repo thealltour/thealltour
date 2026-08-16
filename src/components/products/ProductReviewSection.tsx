@@ -35,7 +35,7 @@ export function ProductReviewSection({
       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
       aria-label="여행 후기"
     >
-      <h2 className="mb-4 text-sm font-semibold text-slate-800">여행 후기</h2>
+      <h2 className="mb-4 text-base font-bold text-slate-900">여행 후기</h2>
 
       {hasReviews && displayRating != null ? (
         <div className="flex flex-col gap-0.5">

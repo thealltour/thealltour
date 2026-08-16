@@ -89,13 +89,13 @@ export default function ClaimTokenPage({
   }, [params, router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
+    <div className="min-h-screen page-bg-wash text-content-primary">
       <SiteHeaderUI activeTab="reviews" session={null} memberPoints={null} />
       <SectionBody className="flex flex-col items-center gap-[var(--space-5)] py-12">
         <ContentCard className="w-full max-w-md text-center">
           {status === "loading" && (
             <div className="space-y-4 py-8">
-              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[var(--primary)]/20 border-t-[var(--primary)]" />
               <p className="text-sm text-[var(--text-secondary)]">
                 후기 작성 권한을 연결하고 있습니다...
               </p>
@@ -104,8 +104,8 @@ export default function ClaimTokenPage({
 
           {status === "success" && (
             <div className="space-y-4 py-8">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/15">
+                <svg className="h-8 w-8 text-[var(--success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -125,8 +125,8 @@ export default function ClaimTokenPage({
 
           {status === "need_login" && (
             <div className="space-y-4 py-8">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-                <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--primary)]/12">
+                <svg className="h-8 w-8 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
@@ -160,8 +160,8 @@ export default function ClaimTokenPage({
 
           {status === "error" && errorType !== "unauthorized" && (
             <div className="space-y-4 py-8">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--danger)]/15">
+                <svg className="h-8 w-8 text-[var(--danger)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>

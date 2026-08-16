@@ -12,7 +12,7 @@ import { trackProductCardClick } from "@/lib/analytics/trackProductClick";
 import { CARD_TRANSITION } from "@/lib/cardTokens";
 import { cn } from "@/lib/cn";
 import type { CampaignCardKind } from "@/lib/productCampaignPresentation";
-import { resolveCampaignCardKind } from "@/lib/productCampaignPresentation";
+import { CAMPAIGN_BADGE_PROMOTION_PALETTE, resolveCampaignCardKind } from "@/lib/productCampaignPresentation";
 import { infoDisplayChipSurfaceClass, pickInfoDisplayChips } from "@/lib/productCardSignals";
 import { ProductCampaignBadge } from "@/components/products/ProductCampaignBadge";
 import type { SeasonalPriceBands } from "@/types/product";
@@ -360,7 +360,10 @@ export default function ProductCard({
               ))
             ) : highlightLabel ? (
               <span
-                className="inline-flex max-w-[min(100%,11rem)] shrink-0 truncate rounded-md bg-amber-500/95 px-2 py-1 text-[9px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30"
+                className={cn(
+                  "inline-flex max-w-[min(100%,11rem)] shrink-0 truncate rounded-md px-2 py-1 text-[9px] font-bold leading-tight shadow-sm ring-1",
+                  CAMPAIGN_BADGE_PROMOTION_PALETTE,
+                )}
                 title={highlightLabel}
               >
                 {highlightLabel}
@@ -552,14 +555,24 @@ export default function ProductCard({
           </div>
         ) : highlightLabel && !isListLayout ? (
           <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
-            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30 sm:text-[11px]">
+            <span
+              className={cn(
+                "inline-flex max-w-[min(100%,11rem)] truncate rounded-md px-2 py-1 text-[10px] font-bold leading-tight shadow-sm ring-1 sm:text-[11px]",
+                CAMPAIGN_BADGE_PROMOTION_PALETTE,
+              )}
+            >
               {highlightLabel}
             </span>
           </div>
         ) : null}
         {isListLayout && highlightLabel ? (
           <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
-            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30">
+            <span
+              className={cn(
+                "inline-flex max-w-[min(100%,11rem)] truncate rounded-md px-2 py-1 text-[10px] font-bold leading-tight shadow-sm ring-1",
+                CAMPAIGN_BADGE_PROMOTION_PALETTE,
+              )}
+            >
               {highlightLabel}
             </span>
           </div>

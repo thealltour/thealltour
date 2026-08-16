@@ -691,9 +691,9 @@ export default function ProductDetailV2({
         {reviewSummary && reviewSummary.reviewCount > 0 && (
           <a
             href="#reviews"
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-bg)] px-3 py-1.5 text-sm font-medium text-[var(--warning)] transition hover:bg-[var(--warning-bg)]/70"
           >
-            <span className="text-amber-500">★</span>
+            <span className="text-[var(--warning)]">★</span>
             <span>{reviewSummary.averageRating.toFixed(1)}</span>
             <span className="text-slate-500">(후기 {reviewSummary.reviewCount})</span>
           </a>
@@ -706,7 +706,7 @@ export default function ProductDetailV2({
         {/* Price Summary Card: 캐러셀 위 대표가·구간 비교·추천 대상(PR-F) */}
         <Card
           variant="default"
-          className="mt-4 border-[#dbeafe] bg-[#f8fbff] p-5 ring-[#dbeafe]"
+          className="mt-4 border-[var(--primary-soft)] bg-[var(--primary-soft)] p-5 ring-1 ring-[var(--primary-soft)]"
         >
           {showDepartureSchedulePrice ? (
             <>

@@ -22,7 +22,7 @@ export function ProductFeatureCard({ features }: ProductFeatureCardProps) {
       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
       aria-label="이 여행의 특징"
     >
-      <h2 className="mb-4 text-sm font-semibold text-slate-800">이 여행의 특징</h2>
+      <h2 className="mb-4 text-base font-bold text-slate-900">이 여행의 특징</h2>
       <ul className="flex flex-col gap-2 text-sm leading-relaxed text-slate-700">
         {items.map((label, i) => (
           <li key={`${i}-${label}`} className="flex items-center gap-2">

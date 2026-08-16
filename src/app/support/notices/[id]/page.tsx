@@ -26,7 +26,7 @@ export default async function NoticeDetailPage({ params }: NoticeDetailPageProps
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3f8ff] to-white text-content-primary">
+    <div className="min-h-screen page-bg-wash text-content-primary">
       <SiteHeader activeTab="support" />
       <SectionBody className="flex flex-col gap-[var(--space-5)] max-w-4xl">
         <PageHero kicker="NOTICE BOARD" title={notice.title} subtitle={undefined} />

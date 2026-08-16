@@ -109,13 +109,13 @@ export const kakaoSyncGolfConfig = {
   },
   /** 추천 상품 레일 헤딩 — 팀 총할인 가치 증거 */
   products: {
-    eyebrowFallback: "🏷️ 4인 기준 팀 총할인 적용 예시",
+    eyebrowFallback: "4인 기준 팀 총할인 적용 예시",
     titleFallback: "4인 예약 시 총 20만 원 즉시 차감!",
     descriptionFallback: "정가(4인)에서 쿠폰 총액을 뺀 적용가를 바로 확인해보세요.",
   },
   trust: {
-    badgesSectionTitle: "🛡️ 더올투어 안심 보장 약속",
-    reviewsHeading: "💬 더올투어 이용 고객들의 생생한 한 줄 후기",
+    badgesSectionTitle: "더올투어 안심 보장 약속",
+    reviewsHeading: "더올투어 이용 고객들의 생생한 한 줄 후기",
     badges: ["현지 직영 가이드", "노쇼핑·노옵션 원칙", "정식 관광사업등록업체"],
     reviews: [
       {

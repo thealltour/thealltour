@@ -242,7 +242,7 @@ export function ProductConsultCTA({
 
   const selectionHint =
     departureSelectionMissing || requiredGroupsMissing ? (
-      <p className="mb-2 text-sm text-amber-600">
+      <p className="mb-2 text-sm text-[var(--warning)]">
         {departureSelectionMissing ? "출발일을 선택해 주세요." : "필수 옵션을 선택해 주세요."}
       </p>
     ) : null;

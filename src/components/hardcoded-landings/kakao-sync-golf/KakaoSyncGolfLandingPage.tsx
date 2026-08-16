@@ -1,4 +1,4 @@
-import { Flame, ShieldCheck, Users } from "lucide-react";
+import { Flame, ShieldCheck, Tag, Users } from "lucide-react";
 import { HomeTrustSection } from "@/components/home/HomeTrustSection";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { LandingFaqAccordion } from "@/components/hardcoded-landings/shared/LandingFaqAccordion";
@@ -98,10 +98,10 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
               {/* 핵심 후킹 — 1·2·4·8인 티어를 먼저 보여줘 혜택 크기를 이해시키고,
                   바로 아래 실물 쿠폰 그래픽으로 "이렇게 지급된다"는 증거를 이어 붙임 */}
               {benefit.tiers?.length ? (
-                <div className="rounded-2xl border-2 border-orange-200 bg-gradient-to-b from-orange-50 to-white p-3.5 shadow-[0_2px_14px_rgba(249,115,22,0.1)]">
+                <div className="rounded-2xl border-2 border-[var(--accent)]/25 bg-white p-3.5 shadow-[var(--shadow-soft)]">
                   {benefit.tiersTitle ? (
                     <h3 className="flex items-center gap-1.5 text-base font-extrabold text-slate-900">
-                      <Users className="h-4 w-4 shrink-0 text-orange-500" aria-hidden />
+                      <Users className="h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden />
                       {benefit.tiersTitle}
                     </h3>
                   ) : null}
@@ -110,11 +110,11 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                       tier.best ? (
                         <li
                           key={tier.headcountLabel}
-                          className="rounded-xl bg-orange-500 px-3.5 py-3 shadow-[0_4px_16px_rgba(249,115,22,0.35)]"
+                          className="rounded-xl bg-[var(--accent)] px-3.5 py-3 shadow-[var(--shadow-soft-strong)]"
                         >
                           <span className="flex items-center gap-1.5 text-sm font-bold text-white">
                             {tier.headcountLabel}
-                            <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-tight text-orange-600">
+                            <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-tight text-[var(--accent)]">
                               {tier.badgeLabel ?? "BEST"}
                             </span>
                           </span>
@@ -125,12 +125,12 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                       ) : tier.emphasize ? (
                         <li
                           key={tier.headcountLabel}
-                          className="rounded-xl bg-orange-600 px-3.5 py-3 shadow-[0_4px_16px_rgba(234,88,12,0.35)]"
+                          className="rounded-xl bg-[var(--accent-hover)] px-3.5 py-3 shadow-[var(--shadow-soft-strong)]"
                         >
                           <span className="flex items-center gap-1.5 text-sm font-bold text-white">
                             {tier.headcountLabel}
                             {tier.badgeLabel ? (
-                              <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-tight text-orange-700">
+                              <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-tight text-[var(--accent-hover)]">
                                 {tier.badgeLabel}
                               </span>
                             ) : null}
@@ -177,7 +177,7 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
               {benefit.reassurance ? (
                 <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-3">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
-                    <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden />
                     {benefit.reassurance.title}
                   </p>
                   <ul className="mt-2 space-y-1.5">
@@ -186,7 +186,7 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                         key={bullet}
                         className="flex gap-2 text-[13px] leading-snug text-slate-600"
                       >
-                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-600" aria-hidden />
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[var(--success)]" aria-hidden />
                         <span>{bullet}</span>
                       </li>
                     ))}
@@ -212,7 +212,8 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
             <section aria-label="추천 골프투어">
               <div>
                 {productsCopy.eyebrowFallback ? (
-                  <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
+                  <p className="flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
+                    <Tag className="h-3 w-3 shrink-0" aria-hidden />
                     {productsCopy.eyebrowFallback}
                   </p>
                 ) : null}

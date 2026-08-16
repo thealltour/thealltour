@@ -249,7 +249,7 @@ export default function InquiryForm({
 
       <div className="flex flex-col gap-1 md:col-span-1">
         <Label className="flex flex-col gap-2">
-          이름 <span className="text-red-500">*</span>
+          이름 <span className="text-[var(--danger)]">*</span>
           <Input
             type="text"
             name="name"
@@ -263,7 +263,7 @@ export default function InquiryForm({
           />
         </Label>
         {touched.name && errors.name ? (
-          <p id="name-error" className="text-sm text-red-600" role="alert">
+          <p id="name-error" className="text-sm text-[var(--danger)]" role="alert">
             {errors.name}
           </p>
         ) : null}
@@ -271,7 +271,7 @@ export default function InquiryForm({
 
       <div className="flex flex-col gap-1 md:col-span-1">
         <Label className="flex flex-col gap-2">
-          연락처 <span className="text-red-500">*</span>
+          연락처 <span className="text-[var(--danger)]">*</span>
           <Input
             type="tel"
             name="phone"
@@ -290,7 +290,7 @@ export default function InquiryForm({
           />
         </Label>
         {touched.phone && errors.phone ? (
-          <p id="phone-error" className="text-sm text-red-600" role="alert">
+          <p id="phone-error" className="text-sm text-[var(--danger)]" role="alert">
             {errors.phone}
           </p>
         ) : null}
@@ -336,7 +336,7 @@ export default function InquiryForm({
       {message ? (
         <div
           className={`md:col-span-2 rounded-lg px-3 py-2 type-small ${
-            isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
+            isSuccess ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--danger-bg)] text-[var(--danger)]"
           }`}
           role="alert"
         >

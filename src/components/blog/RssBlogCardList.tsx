@@ -3,6 +3,8 @@
 import Image from "next/image";
 import type { RssPost } from "@/lib/rss.types";
 import { GUIDE_CARD_FALLBACK_IMAGE } from "@/lib/guides/imageUrl";
+import { CARD_BASE, CARD_HOVER, CARD_TRANSITION } from "@/lib/cardTokens";
+import { cn } from "@/lib/cn";
 
 type RssBlogCardListProps = {
   posts: RssPost[];
@@ -11,7 +13,7 @@ type RssBlogCardListProps = {
 export function RssBlogCardList({ posts }: RssBlogCardListProps) {
   if (posts.length === 0) {
     return (
-      <div className="rounded-2xl bg-white p-8 type-small text-content-muted shadow-md ring-1 ring-[#e2e8f0]">
+      <div className={cn(CARD_BASE, "p-8 type-small text-content-muted")}>
         업데이트된 블로그 소식이 없습니다.
       </div>
     );
@@ -33,9 +35,9 @@ export function RssBlogCardList({ posts }: RssBlogCardListProps) {
             href={post.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-[#e2e8f0] transition hover:-translate-y-1 hover:shadow-lg"
+            className={cn(CARD_BASE, CARD_HOVER, CARD_TRANSITION, "flex h-full flex-col overflow-hidden")}
           >
-            <div className="relative h-40 w-full overflow-hidden bg-[#eff6ff]">
+            <div className="relative h-40 w-full overflow-hidden bg-[var(--primary-soft)]">
               {post.thumbnail ? (
                 <Image
                   src={post.thumbnail}
@@ -63,7 +65,7 @@ export function RssBlogCardList({ posts }: RssBlogCardListProps) {
 
             <div className="flex flex-1 flex-col gap-3 p-5">
               <div className="space-y-1.5">
-                <p className="section-label uppercase tracking-wide text-[#B8962E]">
+                <p className="section-label uppercase tracking-wide text-[var(--accent-premium)]">
                   {sourceLabel}
                 </p>
                 <h2 className="font-card-title line-clamp-2 type-body font-semibold text-content-primary md:type-small">
@@ -77,7 +79,7 @@ export function RssBlogCardList({ posts }: RssBlogCardListProps) {
                 </p>
               ) : null}
 
-              <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+              <div className="mt-auto flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
                 <span className="type-caption text-content-muted">{post.pubDate}</span>
                 <span className="section-label flex items-center gap-0.5 text-[var(--primary)]">
                   원문 읽기 <span aria-hidden>→</span>

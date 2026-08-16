@@ -18,6 +18,7 @@ import {
 } from "@/lib/products/productCardSeasonalPriceDisplay";
 import { PRODUCT_CARD_HIGHLIGHT_LABELS } from "@/lib/products/productCardHighlightTag";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
+import { CAMPAIGN_BADGE_PROMOTION_PALETTE } from "@/lib/productCampaignPresentation";
 
 export type ProductListCardProps = ProductCardProps;
 
@@ -204,7 +205,12 @@ export default function ProductListCard({
           </div>
         ) : highlightLabel ? (
           <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)]">
-            <span className="inline-flex max-w-[min(100%,11rem)] truncate rounded-md bg-amber-500/95 px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm ring-1 ring-amber-600/30">
+            <span
+              className={cn(
+                "inline-flex max-w-[min(100%,11rem)] truncate rounded-md px-2 py-1 text-[10px] font-bold leading-tight shadow-sm ring-1",
+                CAMPAIGN_BADGE_PROMOTION_PALETTE,
+              )}
+            >
               {highlightLabel}
             </span>
           </div>

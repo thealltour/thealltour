@@ -75,7 +75,7 @@ function ReviewCard({ review, isBest }: { review: PublicReviewItem; isBest?: boo
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
       {isBest && (
-        <div className="bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-800">
+        <div className="bg-[var(--accent-premium-soft)] px-4 py-2 text-center text-sm font-semibold text-[var(--accent-premium)]">
           BEST REVIEW
         </div>
       )}
@@ -301,13 +301,13 @@ export async function ProductReviewsSection({
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
         <Link
           href={`/reviews?productId=${encodeURIComponent(productId)}`}
-          className="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+          className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[var(--primary-hover)]"
         >
           후기 더 보기
         </Link>
         <Link
           href={`/reviews/write?productId=${encodeURIComponent(productId)}`}
-          className="inline-flex items-center justify-center rounded-full border border-blue-600 bg-white px-6 py-2.5 text-sm font-medium text-blue-600 transition hover:bg-blue-50"
+          className="inline-flex items-center justify-center rounded-full border border-[var(--primary)] bg-white px-6 py-2.5 text-sm font-medium text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
         >
           후기 작성하기
         </Link>

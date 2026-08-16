@@ -28,7 +28,7 @@ function extractSlugFromHref(href: string): string | null {
 }
 
 const PANEL_BASE =
-  "absolute left-0 top-full z-50 mt-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl py-8 px-8 min-h-[360px] mega-menu-panel-enter";
+  "absolute left-0 top-full z-50 mt-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-modal)] py-8 px-8 min-h-[360px] mega-menu-panel-enter";
 
 /** 메가메뉴 링크 공통: hover = surface-muted, active = primary-soft + primary + semibold */
 const LINK_BASE =

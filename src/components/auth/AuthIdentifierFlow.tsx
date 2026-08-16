@@ -220,7 +220,7 @@ export default function AuthIdentifierFlow({ nextPath = "/", onSuccess }: AuthId
             비밀번호 찾기
           </Link>
         </div>
-        {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+        {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
       </form>
     );
   }
@@ -376,7 +376,7 @@ export default function AuthIdentifierFlow({ nextPath = "/", onSuccess }: AuthId
         <button type="button" onClick={resetToIdentifier} className="text-sm text-[var(--primary)] hover:underline">
           다른 계정으로 시도
         </button>
-        {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+        {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
       </form>
     );
   }
@@ -412,7 +412,7 @@ export default function AuthIdentifierFlow({ nextPath = "/", onSuccess }: AuthId
           비밀번호 또는 이메일 찾기
         </Link>
       </p>
-      {errorMessage ? <p className="text-sm text-red-500">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-sm text-[var(--danger)]">{errorMessage}</p> : null}
     </form>
   );
 }

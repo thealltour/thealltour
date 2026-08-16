@@ -41,7 +41,7 @@ export function OptionGroup({
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-base font-semibold text-[#0f172a]">{group.title}</span>
           {isRequired ? (
-            <span className="text-xs font-medium text-amber-600" aria-hidden>
+            <span className="text-xs font-medium text-[var(--warning)]" aria-hidden>
               필수
             </span>
           ) : (

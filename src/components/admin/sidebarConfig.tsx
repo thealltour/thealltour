@@ -19,6 +19,7 @@ import {
   CalendarDays,
   Puzzle,
   Smartphone,
+  Rss,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
@@ -119,6 +120,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     group: "content",
     mainKey: "guides",
     roles: ["admin", "manager", "viewer"],
+  },
+  {
+    href: "/theall_manager_only/blog",
+    label: "블로그(RSS)",
+    icon: Rss,
+    group: "content",
+    mainKey: "blog",
+    roles: ["admin", "manager"],
   },
   {
     href: "/theall_manager_only/notices",

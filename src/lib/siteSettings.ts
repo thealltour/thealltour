@@ -69,6 +69,11 @@ export type SiteSettings = {
   deposit_payment_links: string;
   /** @deprecated deposit_payment_links로 이전. DB에만 남을 수 있음 */
   deposit_payment_link?: string;
+  /**
+   * Threads 자동답글 유도 URL 목록 JSON: [{ id, label, url }]
+   * url은 https://... 또는 /blog 같은 사이트 path.
+   */
+  thread_reply_destinations: string;
   /** 상담 SLA 안내 (분) */
   consult_sla_minutes: string;
 };
@@ -147,6 +152,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   deposit_bank_account: "",
   deposit_account_holder: "(주)더올투어",
   deposit_payment_links: "[]",
+  thread_reply_destinations: "[]",
   consult_sla_minutes: "30",
 };
 
@@ -239,6 +245,8 @@ async function fetchSiteSettingsRaw(): Promise<SiteSettings> {
     deposit_payment_links:
       map.get("deposit_payment_links") ?? DEFAULT_SITE_SETTINGS.deposit_payment_links,
     deposit_payment_link: map.get("deposit_payment_link") ?? "",
+    thread_reply_destinations:
+      map.get("thread_reply_destinations") ?? DEFAULT_SITE_SETTINGS.thread_reply_destinations,
     consult_sla_minutes:
       map.get("consult_sla_minutes") ?? DEFAULT_SITE_SETTINGS.consult_sla_minutes,
   };

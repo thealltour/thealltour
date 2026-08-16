@@ -19,6 +19,7 @@ export const ADMIN_MENU_MAP = {
   settings: [] as string[],
   reviews: [] as string[],
   guides: ["가이드 목록", "가이드등록(노션)", "가이드등록(일반)"],
+  blog: [] as string[],
   notices: ["회원가입 법률 문서", "공지 등록", "등록된 공지 목록"],
   notifications: ["알림 목록", "OS 푸시 알림", "로그인된 기기"],
   pwa: [] as string[],
@@ -40,6 +41,7 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   settings: "환경설정",
   reviews: "후기",
   guides: "여행가이드",
+  blog: "블로그(RSS)",
   notices: "공지사항",
   notifications: "알림 센터",
   pwa: "앱으로 설치",
@@ -74,6 +76,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel.startsWith("/settings")) return "settings";
   if (isAdminReviewSectionRelativePath(rel)) return "reviews";
   if (rel.startsWith("/guides")) return "guides";
+  if (rel.startsWith("/blog")) return "blog";
   if (rel.startsWith("/notices")) return "notices";
   if (rel.startsWith("/notifications")) return "notifications";
   if (rel === "/pwa" || rel.startsWith("/pwa/")) return "pwa";
@@ -244,6 +247,8 @@ export function buildAdminBreadcrumbLabels(
       else if (view === "general") guideDetail = "가이드등록(일반)";
       return [...base, "여행가이드", guideDetail];
     }
+    case "blog":
+      return [...base, "블로그(RSS)"];
     case "notices": {
       let noticeDetail = "등록된 공지 목록";
       if (view === "legal") noticeDetail = "회원가입 법률 문서 관리";

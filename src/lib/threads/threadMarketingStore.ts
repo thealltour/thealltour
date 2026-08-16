@@ -2,29 +2,43 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+export type ThreadMarketingSourceType = "product" | "blog";
+
 export type ThreadMarketingPostRow = {
   media_id: string;
-  product_id: string;
+  product_id: string | null;
   target_keyword: string;
+  reply_destination_url: string | null;
 };
 
 export async function upsertThreadMarketingPost(input: {
   mediaId: string;
-  productId: string;
+  productId?: string | null;
   targetKeyword: string;
   permalink: string | null;
   publishedAt: string;
+  replyDestinationUrl?: string | null;
+  sourceType?: ThreadMarketingSourceType;
+  sourceUrl?: string | null;
 }): Promise<string> {
+  const sourceType = input.sourceType ?? "product";
+  const productId = input.productId?.trim() || null;
+  const replyDestinationUrl = input.replyDestinationUrl?.trim() || null;
+  const sourceUrl = input.sourceUrl?.trim() || null;
+
   const { data, error } = await supabaseAdmin
     .from("thread_marketing_posts")
     .upsert(
       {
         media_id: input.mediaId,
-        product_id: input.productId,
+        product_id: productId,
         target_keyword: input.targetKeyword,
         permalink: input.permalink,
         is_active: true,
         published_at: input.publishedAt,
+        reply_destination_url: replyDestinationUrl,
+        source_type: sourceType,
+        source_url: sourceUrl,
       },
       { onConflict: "media_id" },
     )
@@ -44,7 +58,7 @@ export async function upsertThreadMarketingPost(input: {
 export async function listActiveThreadMarketingPostsSince(since: Date): Promise<ThreadMarketingPostRow[]> {
   const { data, error } = await supabaseAdmin
     .from("thread_marketing_posts")
-    .select("media_id, product_id, target_keyword")
+    .select("media_id, product_id, target_keyword, reply_destination_url")
     .eq("is_active", true)
     .neq("target_keyword", "")
     .gte("published_at", since.toISOString())
@@ -57,10 +71,21 @@ export async function listActiveThreadMarketingPostsSince(since: Date): Promise<
   const rows: ThreadMarketingPostRow[] = [];
   for (const row of data ?? []) {
     const mediaId = typeof row.media_id === "string" ? row.media_id.trim() : "";
-    const productId = typeof row.product_id === "string" ? row.product_id.trim() : "";
+    const productId =
+      typeof row.product_id === "string" && row.product_id.trim() ? row.product_id.trim() : null;
     const targetKeyword = typeof row.target_keyword === "string" ? row.target_keyword.trim() : "";
-    if (!mediaId || !productId || !targetKeyword) continue;
-    rows.push({ media_id: mediaId, product_id: productId, target_keyword: targetKeyword });
+    const replyDestinationUrl =
+      typeof row.reply_destination_url === "string" && row.reply_destination_url.trim()
+        ? row.reply_destination_url.trim()
+        : null;
+    if (!mediaId || !targetKeyword) continue;
+    if (!replyDestinationUrl && !productId) continue;
+    rows.push({
+      media_id: mediaId,
+      product_id: productId,
+      target_keyword: targetKeyword,
+      reply_destination_url: replyDestinationUrl,
+    });
   }
   return rows;
 }

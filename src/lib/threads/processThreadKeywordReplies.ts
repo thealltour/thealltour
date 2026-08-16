@@ -13,6 +13,7 @@ import {
   type ThreadMarketingPostRow,
 } from "@/lib/threads/threadMarketingStore";
 import {
+  buildThreadReplyDestinationUrl,
   buildThreadReplyProductUrl,
   getRandomReplyMessage,
   THREAD_REPLY_GAP_MS,
@@ -141,7 +142,15 @@ export async function processThreadKeywordReplies(
         if (result.replied > 0) {
           await deps.sleepBetweenReplies();
         }
-        const productUrl = buildThreadReplyProductUrl(post.product_id, post.target_keyword, siteOrigin);
+        const productUrl = post.reply_destination_url
+          ? buildThreadReplyDestinationUrl(post.reply_destination_url, post.target_keyword, siteOrigin)
+          : post.product_id
+            ? buildThreadReplyProductUrl(post.product_id, post.target_keyword, siteOrigin)
+            : null;
+        if (!productUrl) {
+          result.skipped += 1;
+          continue;
+        }
         await deps.postReply(
           comment.id,
           getRandomReplyMessage({

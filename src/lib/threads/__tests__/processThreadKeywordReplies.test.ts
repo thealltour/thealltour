@@ -20,7 +20,12 @@ import type { ThreadReply } from "@/lib/threads/threadsClient";
 function makeDeps(overrides: Partial<ProcessThreadKeywordRepliesDeps> = {}): Partial<ProcessThreadKeywordRepliesDeps> {
   return {
     listActivePostsSince: async () => [
-      { media_id: "media-1", product_id: "prod-1", target_keyword: "하이난골프" },
+      {
+        media_id: "media-1",
+        product_id: "prod-1",
+        target_keyword: "하이난골프",
+        reply_destination_url: null,
+      },
     ],
     listRepliedOnPost: async () => ({ commentIds: new Set<string>(), userHandles: new Set<string>() }),
     insertReply: async () => undefined,
@@ -189,5 +194,27 @@ describe("processThreadKeywordReplies", () => {
     );
     expect(result.replied).toBe(MAX_THREAD_REPLIES_PER_RUN);
     expect(postReply).toHaveBeenCalledTimes(MAX_THREAD_REPLIES_PER_RUN);
+  });
+
+  it("prefers reply_destination_url over product_id", async () => {
+    const postReply = vi.fn(async () => ({ id: "reply-1" }));
+    await processThreadKeywordReplies(
+      makeDeps({
+        listActivePostsSince: async () => [
+          {
+            media_id: "media-blog",
+            product_id: "prod-should-not-use",
+            target_keyword: "발리",
+            reply_destination_url: "/blog",
+          },
+        ],
+        getReplies: async () => [comment({ id: "c1", text: "발리 일정", username: "u1" })],
+        postReply,
+      }),
+    );
+    expect(postReply).toHaveBeenCalledTimes(1);
+    const replyText = String((postReply.mock.calls as unknown as Array<[string, string]>)[0]?.[1] ?? "");
+    expect(replyText).toContain("https://thealltour.com/blog?");
+    expect(replyText).not.toContain("/products/");
   });
 });

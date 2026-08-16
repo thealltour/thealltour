@@ -39,6 +39,33 @@ export function buildThreadReplyProductUrl(
   return `${origin}/products/${encodeURIComponent(productId)}?utm_source=threads&utm_medium=auto_reply&utm_campaign=${campaign}`;
 }
 
+/** 절대 URL 또는 `/path` → UTM이 붙은 절대 URL */
+export function buildThreadReplyDestinationUrl(
+  base: string,
+  keyword: string,
+  siteOrigin: string,
+): string {
+  const origin = siteOrigin.replace(/\/$/, "");
+  const trimmed = base.trim();
+  let absolute: string;
+  if (trimmed.startsWith("/")) {
+    absolute = `${origin}${trimmed}`;
+  } else if (/^https?:\/\//i.test(trimmed)) {
+    absolute = trimmed;
+  } else {
+    absolute = `${origin}/${trimmed.replace(/^\/+/, "")}`;
+  }
+
+  const url = new URL(absolute);
+  url.searchParams.set("utm_source", "threads");
+  url.searchParams.set("utm_medium", "auto_reply");
+  const campaign = keyword.trim();
+  if (campaign) {
+    url.searchParams.set("utm_campaign", campaign);
+  }
+  return url.toString();
+}
+
 export function getRandomReplyMessage(
   input: RandomReplyMessageInput,
   random: () => number = Math.random,

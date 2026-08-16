@@ -77,6 +77,7 @@ export async function PATCH(request: Request) {
     { key: "deposit_bank_account", defaultValue: "" },
     { key: "deposit_account_holder", defaultValue: "" },
     { key: "deposit_payment_links", defaultValue: "[]" },
+    { key: "thread_reply_destinations", defaultValue: "[]" },
     { key: "consult_sla_minutes", defaultValue: "30" },
   ];
 

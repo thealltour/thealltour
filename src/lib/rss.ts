@@ -19,7 +19,7 @@ const parser = new Parser({
   },
 });
 
-type MappedRssPost = RssPost & { publishedAtMs: number };
+type MappedRssPost = RssPost & { publishedAtMs: number; bodyText: string };
 
 type RssItem = {
   guid?: string;
@@ -78,7 +78,17 @@ function cleanSummary(rawContent: string, snippet?: string): string {
   const fromSnippet = snippet?.replace(/\s+/g, " ").trim();
   if (fromSnippet) return fromSnippet.slice(0, 120);
 
-  const cleaned = rawContent
+  const cleaned = stripHtmlToPlainText(rawContent);
+  if (!cleaned) return "";
+  return cleaned.length > 120 ? `${cleaned.slice(0, 120)}...` : cleaned;
+}
+
+const MAX_THREADS_BODY_TEXT = 4000;
+
+function stripHtmlToPlainText(rawContent: string): string {
+  return rawContent
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -88,9 +98,14 @@ function cleanSummary(rawContent: string, snippet?: string): string {
     .replace(/&gt;/gi, ">")
     .replace(/\s+/g, " ")
     .trim();
+}
 
+function bodyTextFromRawContent(rawContent: string): string {
+  const cleaned = stripHtmlToPlainText(rawContent);
   if (!cleaned) return "";
-  return cleaned.length > 120 ? `${cleaned.slice(0, 120)}...` : cleaned;
+  return cleaned.length > MAX_THREADS_BODY_TEXT
+    ? `${cleaned.slice(0, MAX_THREADS_BODY_TEXT)}…`
+    : cleaned;
 }
 
 function formatPubDate(value?: string): string {
@@ -198,6 +213,7 @@ function mapFeedItems(rssUrl: string, items: RssItem[]): MappedRssPost[] {
       thumbnail,
       source: detectSource(link !== "#" ? link : rssUrl),
       publishedAtMs: publishedAtMs(item),
+      bodyText: bodyTextFromRawContent(rawContent) || summary,
     };
   });
 }
@@ -206,24 +222,16 @@ function toPublicPosts(posts: MappedRssPost[]): RssPost[] {
   return posts
     .slice()
     .sort((a, b) => b.publishedAtMs - a.publishedAtMs)
-    .map(({ publishedAtMs: _unused, ...post }) => post);
+    .map(({ publishedAtMs: _unused, bodyText: _body, ...post }) => post);
 }
 
-export async function getBlogRssPosts(rssUrl: string): Promise<RssPost[]> {
-  const url = rssUrl.trim();
-  if (!url) return [];
+export type RssPostForThreads = RssPost & { bodyText: string };
 
-  try {
-    const feed = await parser.parseURL(url);
-    const items = (feed.items ?? []) as RssItem[];
-    return toPublicPosts(mapFeedItems(url, items));
-  } catch (error) {
-    console.error("[RSS Error] 피드를 불러오는데 실패했습니다:", url, error);
-    return [];
-  }
+function normalizeLinkKey(link: string): string {
+  return link.trim().replace(/\/+$/, "").toLowerCase();
 }
 
-export async function collectBlogRssPosts(rssUrls: string[]): Promise<RssPost[]> {
+async function collectMappedRssPosts(rssUrls: string[]): Promise<MappedRssPost[]> {
   const uniqueUrls = [...new Set(rssUrls.map((url) => url.trim()).filter(Boolean))];
   if (uniqueUrls.length === 0) return [];
 
@@ -250,5 +258,40 @@ export async function collectBlogRssPosts(rssUrls: string[]): Promise<RssPost[]>
     }
   }
 
+  return posts.sort((a, b) => b.publishedAtMs - a.publishedAtMs);
+}
+
+/** Threads 생성용: link로 RSS 글을 찾고 본문 텍스트를 포함해 반환 */
+export async function findBlogRssPostForThreads(
+  link: string,
+  rssUrls: string[],
+): Promise<RssPostForThreads | null> {
+  const needle = normalizeLinkKey(link);
+  if (!needle || needle === "#") return null;
+
+  const posts = await collectMappedRssPosts(rssUrls);
+  const matched = posts.find((post) => normalizeLinkKey(post.link) === needle);
+  if (!matched) return null;
+
+  const { publishedAtMs: _unused, ...rest } = matched;
+  return rest;
+}
+
+export async function getBlogRssPosts(rssUrl: string): Promise<RssPost[]> {
+  const url = rssUrl.trim();
+  if (!url) return [];
+
+  try {
+    const feed = await parser.parseURL(url);
+    const items = (feed.items ?? []) as RssItem[];
+    return toPublicPosts(mapFeedItems(url, items));
+  } catch (error) {
+    console.error("[RSS Error] 피드를 불러오는데 실패했습니다:", url, error);
+    return [];
+  }
+}
+
+export async function collectBlogRssPosts(rssUrls: string[]): Promise<RssPost[]> {
+  const posts = await collectMappedRssPosts(rssUrls);
   return toPublicPosts(posts);
 }

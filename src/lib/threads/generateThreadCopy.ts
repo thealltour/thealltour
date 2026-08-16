@@ -106,3 +106,38 @@ export async function generateThreadCopy(
   });
   return object;
 }
+
+export type BlogThreadCopyInput = {
+  title: string;
+  bodyText: string;
+  link: string;
+  thumbnail: string | null;
+};
+
+function buildBlogBrief(post: BlogThreadCopyInput): string {
+  return [
+    `블로그 제목: ${post.title}`,
+    `원문 링크: ${post.link}`,
+    `대표이미지: ${post.thumbnail || "(없음)"}`,
+    "본문:",
+    post.bodyText || "(본문 없음)",
+  ].join("\n");
+}
+
+export async function generateBlogThreadCopy(
+  post: BlogThreadCopyInput,
+  marketingMode: ThreadsMarketingMode,
+): Promise<ThreadCopy> {
+  const { object } = await generateObject({
+    model: resolveThreadsLanguageModel(),
+    schema: threadCopySchema,
+    system: `${buildThreadCopySystemPrompt(marketingMode)}
+
+[블로그 글 추가 규칙]
+- 입력은 여행사 네이버/티스토리 블로그 RSS 글이다. 상품 상세가 아닐 수 있다.
+- 본문에 없는 가격·좌석·쿠폰·일정을 만들지 마.
+- CTA의 targetKeyword는 글 주제와 잘 맞는 짧은 한국어 키워드로.`,
+    prompt: ["다음 블로그 글로 Threads 카피를 작성하세요.", "", buildBlogBrief(post)].join("\n"),
+  });
+  return object;
+}

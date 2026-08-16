@@ -117,6 +117,7 @@ const EMPTY_SETTINGS: SiteSettings = {
   deposit_bank_account: "",
   deposit_account_holder: "",
   deposit_payment_links: "[]",
+  thread_reply_destinations: "[]",
   consult_sla_minutes: "30",
 };
 
@@ -198,6 +199,7 @@ export default function AdminSiteSettingsManager() {
         deposit_bank_account: data.deposit_bank_account ?? "",
         deposit_account_holder: data.deposit_account_holder ?? "",
         deposit_payment_links: data.deposit_payment_links ?? "[]",
+        thread_reply_destinations: data.thread_reply_destinations ?? "[]",
         consult_sla_minutes: data.consult_sla_minutes ?? "30",
       };
 

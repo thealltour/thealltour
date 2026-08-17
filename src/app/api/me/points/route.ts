@@ -34,7 +34,20 @@ export async function GET() {
   ]);
 
   if (memberRes.error || !memberRes.data) {
+    console.error("[GET /api/me/points] members 조회 실패", {
+      userId,
+      error: memberRes.error?.message,
+    });
     return NextResponse.json({ message: "회원 정보를 불러올 수 없습니다." }, { status: 500 });
+  }
+  if (ledgerRes.error) {
+    console.error("[GET /api/me/points] point_ledger 조회 실패", { userId, error: ledgerRes.error.message });
+  }
+  if (expiringRes.error) {
+    console.error("[GET /api/me/points] 만료 예정 포인트 조회 실패", {
+      userId,
+      error: expiringRes.error.message,
+    });
   }
 
   const balance = Number((memberRes.data as { point_balance?: number }).point_balance ?? 0);

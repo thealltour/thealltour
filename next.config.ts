@@ -39,6 +39,8 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 86400,
     deviceSizes: [360, 375, 640, 768, 1024, 1280, 1536, 1920],
     imageSizes: [96, 128, 192, 256, 360, 384],
+    // Next.js 16+: quality 값을 allowlist로 제한. 기본 75 + 히어로(HeroSection/HeroPanorama) 82.
+    qualities: [75, 82],
     remotePatterns: [
       {
         protocol: "https",

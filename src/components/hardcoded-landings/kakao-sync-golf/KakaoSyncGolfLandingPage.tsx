@@ -135,7 +135,7 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                               </span>
                             ) : null}
                           </span>
-                          <p className="mt-1 text-right text-lg font-extrabold tracking-tight text-white">
+                          <p className="mt-1 text-right text-xl font-extrabold tracking-tight text-white">
                             {tier.amountLabel}
                           </p>
                         </li>

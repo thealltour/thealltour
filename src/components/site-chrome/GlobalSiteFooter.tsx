@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BookOpen, Instagram, Mail, MessageCircle, Phone, UsersRound } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 type SiteSettingsClient = {
@@ -88,10 +87,13 @@ export default function GlobalSiteFooter() {
   const naverBandUrl = (settings?.naver_band_url ?? "").trim();
   const naverBlogUrl = (settings?.naver_blog_url ?? "").trim();
 
-  /** 상담·채널: 내용 너비만큼 커지고, 좁으면 2열로 줄바꿈 (글자 중간 분절 방지) */
-  const channelGridClass = "flex w-full flex-wrap gap-2";
+  /** 상담·채널: 모든 폭에서 2열 동일 셀. wrap+flex-1은 3+1 전폭 깨짐을 만든다. */
+  const channelGridClass = "grid w-full grid-cols-2 gap-2";
   const channelBtnEqual =
-    "inline-flex min-h-[44px] min-w-[10.5rem] flex-1 items-center justify-center gap-1.5 px-3 py-2 text-center whitespace-nowrap";
+    "flex h-11 w-full min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap";
+  const kakaoChannelClass = isGolfAdLanding
+    ? "border border-[var(--border-strong)] bg-transparent text-[var(--foreground)] hover:bg-[var(--surface-muted)]"
+    : "border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] text-[var(--theall-kakao-text)] hover:bg-[var(--theall-kakao-hover-bg)]";
 
   return (
     <footer
@@ -156,35 +158,23 @@ export default function GlobalSiteFooter() {
                     href={kakaoChannelUrl ?? "https://pf.kakao.com"}
                     target="_blank"
                     rel="noreferrer"
-                    className={cn(
-                      buttonVariants({
-                        // 광고 랜딩(isGolfAdLanding)에서는 하단 고정 간편가입 CTA(카카오 옐로우)와
-                        // 시각적으로 경쟁하지 않도록 outline 스타일로 전환. 일반 페이지는 기존 유지.
-                        variant: isGolfAdLanding ? "outline" : "kakao",
-                        size: "md",
-                        className: cn(
-                          channelBtnEqual,
-                          "!min-h-[44px] [&_svg]:h-3.5 [&_svg]:w-3.5 sm:[&_svg]:h-4 sm:[&_svg]:w-4",
-                        ),
-                      }),
-                      focusRing,
-                    )}
+                    className={cn(channelBtnEqual, kakaoChannelClass, focusRing)}
                   >
-                    <MessageCircle className="shrink-0" aria-hidden />
-                    <span className="whitespace-nowrap">카카오 채널</span>
+                    <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+                    <span>카카오 채널</span>
                   </a>
                   <a
                     href={instagramUrl ?? "https://www.instagram.com/thealltour"}
                     target="_blank"
                     rel="noreferrer"
                     className={cn(
-                      "footer-pill-instagram footer-pill-channel-equal inline-flex",
+                      "footer-pill-instagram footer-pill-channel-equal",
                       channelBtnEqual,
                       focusRing,
                     )}
                   >
-                    <Instagram className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                    <span className="whitespace-nowrap">인스타그램</span>
+                    <Instagram className="h-4 w-4 shrink-0" aria-hidden />
+                    <span>인스타그램</span>
                   </a>
                   {naverBandUrl ? (
                     <a
@@ -192,13 +182,13 @@ export default function GlobalSiteFooter() {
                       target="_blank"
                       rel="noreferrer"
                       className={cn(
-                        "footer-pill-naver footer-pill-channel-equal inline-flex",
+                        "footer-pill-naver footer-pill-channel-equal",
                         channelBtnEqual,
                         focusRing,
                       )}
                     >
-                      <UsersRound className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                      <span className="whitespace-nowrap">네이버 밴드</span>
+                      <UsersRound className="h-4 w-4 shrink-0" aria-hidden />
+                      <span>네이버 밴드</span>
                     </a>
                   ) : null}
                   {naverBlogUrl ? (
@@ -207,13 +197,13 @@ export default function GlobalSiteFooter() {
                       target="_blank"
                       rel="noreferrer"
                       className={cn(
-                        "footer-pill-naver footer-pill-channel-equal inline-flex",
+                        "footer-pill-naver footer-pill-channel-equal",
                         channelBtnEqual,
                         focusRing,
                       )}
                     >
-                      <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                      <span className="whitespace-nowrap">네이버 블로그</span>
+                      <BookOpen className="h-4 w-4 shrink-0" aria-hidden />
+                      <span>네이버 블로그</span>
                     </a>
                   ) : null}
                 </div>

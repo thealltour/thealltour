@@ -153,24 +153,24 @@
   --type-h3-size: 1.5rem;       /* 24px */
   --type-h3-weight: 600;
   --type-h3-leading: 1.25;
-  --type-body-size: 1.0625rem;  /* 17px */
+  --type-body-size: 1.275rem;   /* 20.4px — 17px × 1.2, 40~60대 가독성 */
   --type-body-weight: 400;
   --type-body-leading: 1.65;
-  --type-small-size: 0.9375rem; /* 15px */
+  --type-small-size: 1.125rem;  /* 18px — 15px × 1.2 */
   --type-small-weight: 400;
   --type-small-leading: 1.6;
-  --type-caption-size: 0.8125rem; /* 13px */
+  --type-caption-size: 0.975rem; /* 15.6px — 13px × 1.2 */
   --type-caption-weight: 400;
   --type-caption-leading: 1.4;
   --type-letter-tight: -0.01em;
   --type-letter-tighter: -0.02em;
 
   /* Tailwind text-* scale (public site — synced with type tokens) */
-  --tw-text-xs: 0.8125rem;   /* 13px — badges, legal fine print */
-  --tw-text-sm: 0.9375rem;   /* 15px — secondary labels */
-  --tw-text-base: 1.0625rem; /* 17px — body */
-  --tw-text-lg: 1.1875rem;   /* 19px */
-  --tw-text-xl: 1.3125rem;   /* 21px */
+  --tw-text-xs: 0.975rem;    /* 15.6px — badges, legal fine print */
+  --tw-text-sm: 1.125rem;    /* 18px — secondary labels */
+  --tw-text-base: 1.275rem;  /* 20.4px — body */
+  --tw-text-lg: 1.425rem;    /* 22.8px */
+  --tw-text-xl: 1.575rem;    /* 25.2px */
 
   /* Spacing scale */
   --space-1: 4px;
@@ -1408,15 +1408,15 @@ body {
   color: #fff;
 }
 
-/* 상담·채널 그리드: 네이버·인스타 pill — 카카오 버튼과 동일 .type-btn 타이포(덮어쓰기) */
+/* 상담·채널 그리드: 네이버·인스타 pill — 카카오와 동일 셀 기하 */
 .footer-pill-naver.footer-pill-channel-equal,
 .footer-pill-instagram.footer-pill-channel-equal {
   box-sizing: border-box;
+  height: 2.75rem;
   min-height: 2.75rem;
-  min-width: 10.5rem;
-  flex: 1 1 10.5rem;
-  width: auto;
-  padding: 0.5rem 0.75rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0 0.625rem;
   font-size: var(--type-small-size);
   font-weight: 600;
   letter-spacing: var(--type-letter-tight);

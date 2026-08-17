@@ -13,3 +13,12 @@ export async function convertToJpg(buffer: Buffer): Promise<Buffer | null> {
     return null;
   }
 }
+
+/** product-images 버킷이 jpeg를 거부하는 환경이 있어 상품 이미지는 webp로 통일 */
+export async function convertToWebp(buffer: Buffer): Promise<Buffer | null> {
+  try {
+    return await sharp(buffer).rotate().webp({ quality: 82 }).toBuffer();
+  } catch {
+    return null;
+  }
+}

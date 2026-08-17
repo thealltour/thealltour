@@ -3,7 +3,7 @@ import "server-only";
 import { applyBandImageAssignments } from "@/lib/admin/bandImport/applyBandImageAssignments";
 import type { ApplyBandImageAssignmentsResult } from "@/lib/admin/bandImport/applyBandImageAssignments";
 import { classifyBandImportImages } from "@/lib/admin/bandImport/classifyBandImportImages";
-import { extractBandImportImages } from "@/lib/admin/bandImport/extractBandImportImages";
+import { extractBandImportImages, BandImportImageError } from "@/lib/admin/bandImport/extractBandImportImages";
 import { uploadBandImportImages } from "@/lib/admin/bandImport/uploadBandImportImages";
 import { downloadBandImportStagingFile } from "@/lib/admin/bandImport/bandImportStaging";
 import type { BandImportImageSource } from "@/lib/admin/bandImport/bandImportImageConstants";
@@ -24,13 +24,18 @@ export async function filesToBandImportSources(files: File[]): Promise<BandImpor
 
 /** 브라우저가 Supabase Storage에 직접 올려둔 스테이징 zip/사진을 내려받아 소스로 변환. */
 export async function stagingPathsToBandImportSources(
-  paths: string[],
+  items: Array<{ path: string; filename?: string }>,
 ): Promise<BandImportImageSource[]> {
   const sources: BandImportImageSource[] = [];
-  for (const path of paths) {
-    if (!path) continue;
+  for (const item of items) {
+    const path = item.path?.trim();
+    if (!path || path.includes("..") || path.includes("\\")) continue;
     const { bytes, contentType } = await downloadBandImportStagingFile(path);
-    sources.push({ name: path.split("/").pop() ?? path, bytes, type: contentType });
+    sources.push({
+      name: item.filename?.trim() || path.split("/").pop() || path,
+      bytes,
+      type: contentType,
+    });
   }
   return sources;
 }
@@ -49,6 +54,9 @@ export async function processBandImportImages(input: {
   }
 
   const uploaded = await uploadBandImportImages(extracted);
+  if (uploaded.length === 0) {
+    throw new BandImportImageError("추출한 사진을 스토리지에 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+  }
 
   let assignments = null;
   try {

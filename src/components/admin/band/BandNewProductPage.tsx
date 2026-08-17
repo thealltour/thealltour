@@ -66,7 +66,7 @@ function guessContentType(file: File): string {
  * zip/사진을 Vercel 함수(4.5MB 요청 본문 제한)를 거치지 않고
  * 브라우저에서 Supabase Storage로 직접 업로드한 뒤 저장 경로만 반환.
  */
-async function uploadImageFileToStaging(file: File): Promise<string> {
+async function uploadImageFileToStaging(file: File): Promise<{ path: string; filename: string }> {
   const res = await fetch("/api/admin/products/import-band/upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -84,7 +84,7 @@ async function uploadImageFileToStaging(file: File): Promise<string> {
   if (error) {
     throw new Error(`사진 업로드에 실패했습니다: ${error.message}`);
   }
-  return path;
+  return { path, filename: file.name };
 }
 
 export default function BandNewProductPage() {
@@ -148,7 +148,7 @@ export default function BandNewProductPage() {
     progress.start();
 
     try {
-      const stagingImagePaths: string[] = [];
+      const stagingImagePaths: Array<{ path: string; filename: string }> = [];
       for (const file of imageFiles) {
         stagingImagePaths.push(await uploadImageFileToStaging(file));
       }

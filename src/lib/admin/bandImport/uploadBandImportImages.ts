@@ -53,19 +53,23 @@ export async function uploadBandImportImages(
   const uploaded: BandImportUploadedImage[] = [];
   for (let i = 0; i < images.length; i++) {
     const image = images[i];
-    const stored = await toStorageImage(image);
-    const blob = new Blob([new Uint8Array(stored.bytes)], { type: stored.contentType });
-    const { url } = await provider.uploadPublicImage({
-      file: blob,
-      path: storagePathForImage(stored.storageExt, i),
-      contentType: stored.contentType,
-    });
-    uploaded.push({
-      url,
-      filename: image.filename,
-      contentType: stored.contentType,
-      bytes: stored.bytes,
-    });
+    try {
+      const stored = await toStorageImage(image);
+      const blob = new Blob([new Uint8Array(stored.bytes)], { type: stored.contentType });
+      const { url } = await provider.uploadPublicImage({
+        file: blob,
+        path: storagePathForImage(stored.storageExt, i),
+        contentType: stored.contentType,
+      });
+      uploaded.push({
+        url,
+        filename: image.filename,
+        contentType: stored.contentType,
+        bytes: stored.bytes,
+      });
+    } catch (error) {
+      console.error("[import-band] image upload skip:", image.filename, error);
+    }
   }
   return uploaded;
 }

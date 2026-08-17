@@ -8,6 +8,8 @@ export const BAND_IMPORT_IMAGE_MIME: Record<(typeof BAND_IMPORT_IMAGE_EXTS)[numb
 
 export const MAX_BAND_IMPORT_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_BAND_IMPORT_VISION_IMAGES = 40;
+/** zip 폴더 중첩·대량 사진으로 함수 타임아웃 나지 않게 추출 상한 */
+export const MAX_BAND_IMPORT_EXTRACT_IMAGES = 40;
 
 /** 클라이언트가 브라우저에서 Supabase Storage로 직접 올리는 임시 업로드 버킷 (zip/사진 원본). */
 export const BAND_IMPORT_STAGING_BUCKET = "band-import-staging";

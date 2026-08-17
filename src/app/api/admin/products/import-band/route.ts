@@ -27,6 +27,8 @@ import type { ItineraryV2 } from "@/types/product";
 
 export const maxDuration = 300;
 
+type StagingImageRef = { path: string; filename?: string };
+
 type ImportBandBody = {
   bandText?: string;
   hwpText?: string;
@@ -34,12 +36,25 @@ type ImportBandBody = {
   product_source_url?: string;
 };
 
-function parseStagingImagePaths(raw: string): string[] {
+function parseStagingImagePaths(raw: string): Array<{ path: string; filename?: string }> {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((p): p is string => typeof p === "string" && p.length > 0);
+    const out: Array<{ path: string; filename?: string }> = [];
+    for (const item of parsed) {
+      if (typeof item === "string" && item.length > 0) {
+        out.push({ path: item });
+        continue;
+      }
+      if (item && typeof item === "object" && typeof item.path === "string" && item.path.length > 0) {
+        out.push({
+          path: item.path,
+          filename: typeof item.filename === "string" ? item.filename : undefined,
+        });
+      }
+    }
+    return out;
   } catch {
     return [];
   }
@@ -68,7 +83,7 @@ async function readImportRequest(request: NextRequest): Promise<{
   golfCourseInfo: string;
   productSourceUrl: string;
   imageFiles: File[];
-  stagingImagePaths: string[];
+  stagingImagePaths: StagingImageRef[];
 }> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
@@ -125,7 +140,7 @@ export async function POST(request: NextRequest) {
   let golfCourseInfo = "";
   let productSourceUrl = "";
   let imageFiles: File[] = [];
-  let stagingImagePaths: string[] = [];
+  let stagingImagePaths: StagingImageRef[] = [];
 
   try {
     const parsedBody = await readImportRequest(request);
@@ -207,7 +222,7 @@ export async function POST(request: NextRequest) {
       );
     } finally {
       if (stagingImagePaths.length > 0) {
-        await deleteBandImportStagingFiles(stagingImagePaths);
+        await deleteBandImportStagingFiles(stagingImagePaths.map((item) => item.path));
       }
     }
   }

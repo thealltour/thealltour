@@ -70,15 +70,20 @@ describe("uploadBandImportImages", () => {
     expect(uploadPublicImage.mock.calls[1][0].path).toMatch(/\.webp$/);
   });
 
-  it("throws when PNG conversion fails", async () => {
+  it("skips a file when PNG conversion fails instead of aborting the batch", async () => {
     convertToJpgMock.mockResolvedValue(null);
-    const { provider } = mockProvider();
+    const { provider, uploadPublicImage } = mockProvider();
 
-    await expect(
-      uploadBandImportImages(
-        [{ filename: "broken.png", bytes: Buffer.from("x"), contentType: "image/png" }],
-        provider,
-      ),
-    ).rejects.toThrow("PNG를 JPEG로 변환하지 못했습니다: broken.png");
+    const result = await uploadBandImportImages(
+      [
+        { filename: "broken.png", bytes: Buffer.from("x"), contentType: "image/png" },
+        { filename: "ok.jpg", bytes: Buffer.from("jpeg"), contentType: "image/jpeg" },
+      ],
+      provider,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].filename).toBe("ok.jpg");
+    expect(uploadPublicImage).toHaveBeenCalledTimes(1);
   });
 });

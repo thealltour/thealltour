@@ -3,6 +3,7 @@ import {
   getFilenameExt,
   isBandImportImageExt,
   mimeFromImageExt,
+  MAX_BAND_IMPORT_EXTRACT_IMAGES,
   MAX_BAND_IMPORT_IMAGE_BYTES,
   type BandImportExtractedImage,
   type BandImportImageSource,
@@ -24,9 +25,10 @@ function basename(path: string): string {
 
 function shouldSkipZipPath(path: string): boolean {
   const normalized = path.replace(/\\/g, "/");
+  if (normalized.endsWith("/")) return true;
   if (normalized.includes("__MACOSX/")) return true;
   const base = basename(normalized);
-  return base.startsWith(".") || base.startsWith("._");
+  return !base || base.startsWith(".") || base.startsWith("._");
 }
 
 function isZipSource(name: string, bytes: Uint8Array): boolean {
@@ -50,7 +52,7 @@ function pushImage(
   });
 }
 
-async function extractFromZip(bytes: Uint8Array): Promise<BandImportExtractedImage[]> {
+async function extractFromZip(bytes: Uint8Array, depth = 0): Promise<BandImportExtractedImage[]> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(bytes);
@@ -64,12 +66,29 @@ async function extractFromZip(bytes: Uint8Array): Promise<BandImportExtractedIma
 
   const out: BandImportExtractedImage[] = [];
   for (const entry of entries) {
+    if (out.length >= MAX_BAND_IMPORT_EXTRACT_IMAGES) break;
+    let buf: Buffer;
+    try {
+      buf = Buffer.from(await entry.async("uint8array"));
+    } catch (error) {
+      console.warn("[extractBandImportImages] zip entry skip:", entry.name, error);
+      continue;
+    }
+    if (buf.length === 0) continue;
+
     const ext = getFilenameExt(entry.name);
+    if (ext === "zip" && depth < 2) {
+      try {
+        out.push(...(await extractFromZip(buf, depth + 1)));
+      } catch (error) {
+        console.warn("[extractBandImportImages] nested zip skip:", entry.name, error);
+      }
+      continue;
+    }
     if (!isBandImportImageExt(ext)) continue;
-    const buf = Buffer.from(await entry.async("uint8array"));
     pushImage(out, entry.name, buf);
   }
-  return out;
+  return out.slice(0, MAX_BAND_IMPORT_EXTRACT_IMAGES);
 }
 
 export async function extractBandImportImages(
@@ -83,7 +102,13 @@ export async function extractBandImportImages(
     if (!bytes || bytes.length === 0) continue;
 
     if (isZipSource(name, bytes)) {
-      out.push(...(await extractFromZip(bytes)));
+      const fromZip = await extractFromZip(bytes);
+      if (fromZip.length === 0) {
+        throw new BandImportImageError(
+          "zip 안에서 jpg/jpeg/png/webp 사진을 찾지 못했습니다. 하위 폴더에 있어도 됩니다. bmp·heic·gif는 지원하지 않습니다.",
+        );
+      }
+      out.push(...fromZip);
       continue;
     }
 
@@ -97,5 +122,5 @@ export async function extractBandImportImages(
     pushImage(out, name, Buffer.from(bytes));
   }
 
-  return out;
+  return out.slice(0, MAX_BAND_IMPORT_EXTRACT_IMAGES);
 }

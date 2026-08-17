@@ -30,6 +30,31 @@ describe("extractBandImportImages", () => {
     expect(images.every((img) => img.bytes.length > 0)).toBe(true);
   });
 
+  it("extracts images that live only inside a nested folder", async () => {
+    const zipBytes = await zipWithFiles({
+      "여행사진/커버.jpg": TINY_PNG,
+      "여행사진/갤러리/코스.png": TINY_PNG,
+    });
+
+    const images = await extractBandImportImages([{ name: "nested.zip", bytes: zipBytes }]);
+    expect(images.map((img) => img.filename).sort()).toEqual(["커버.jpg", "코스.png"]);
+  });
+
+  it("extracts images from a zip nested inside the uploaded zip", async () => {
+    const inner = await zipWithFiles({ "nested/shot.jpg": TINY_PNG });
+    const outer = await zipWithFiles({ "bundle.zip": inner, "root.png": TINY_PNG });
+
+    const images = await extractBandImportImages([{ name: "outer.zip", bytes: outer }]);
+    expect(images.map((img) => img.filename).sort()).toEqual(["root.png", "shot.jpg"]);
+  });
+
+  it("throws a clear error when zip has no supported images", async () => {
+    const zipBytes = await zipWithFiles({ "notes.txt": "hello", "folder/readme.md": "# hi" });
+    await expect(
+      extractBandImportImages([{ name: "empty.zip", bytes: zipBytes }]),
+    ).rejects.toBeInstanceOf(BandImportImageError);
+  });
+
   it("accepts standalone webp/jpeg files", async () => {
     const images = await extractBandImportImages([
       { name: "a.jpeg", bytes: TINY_PNG },

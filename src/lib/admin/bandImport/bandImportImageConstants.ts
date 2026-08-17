@@ -9,6 +9,11 @@ export const BAND_IMPORT_IMAGE_MIME: Record<(typeof BAND_IMPORT_IMAGE_EXTS)[numb
 export const MAX_BAND_IMPORT_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_BAND_IMPORT_VISION_IMAGES = 40;
 
+/** 클라이언트가 브라우저에서 Supabase Storage로 직접 올리는 임시 업로드 버킷 (zip/사진 원본). */
+export const BAND_IMPORT_STAGING_BUCKET = "band-import-staging";
+/** zip 전체 용량 상한 — Vercel 서버리스 함수의 4.5MB 요청 본문 제한과 무관 (직접 업로드로 우회). */
+export const MAX_BAND_IMPORT_ZIP_BYTES = 100 * 1024 * 1024;
+
 export type BandImageRole = "hero" | "gallery" | "dayCover" | "event" | "skip";
 
 export type BandImportImageSource = {

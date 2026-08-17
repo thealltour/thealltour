@@ -5,6 +5,7 @@ import type { ApplyBandImageAssignmentsResult } from "@/lib/admin/bandImport/app
 import { classifyBandImportImages } from "@/lib/admin/bandImport/classifyBandImportImages";
 import { extractBandImportImages } from "@/lib/admin/bandImport/extractBandImportImages";
 import { uploadBandImportImages } from "@/lib/admin/bandImport/uploadBandImportImages";
+import { downloadBandImportStagingFile } from "@/lib/admin/bandImport/bandImportStaging";
 import type { BandImportImageSource } from "@/lib/admin/bandImport/bandImportImageConstants";
 import type { ItineraryV2 } from "@/types/product";
 
@@ -17,6 +18,19 @@ export async function filesToBandImportSources(files: File[]): Promise<BandImpor
       bytes: new Uint8Array(await file.arrayBuffer()),
       type: file.type,
     });
+  }
+  return sources;
+}
+
+/** 브라우저가 Supabase Storage에 직접 올려둔 스테이징 zip/사진을 내려받아 소스로 변환. */
+export async function stagingPathsToBandImportSources(
+  paths: string[],
+): Promise<BandImportImageSource[]> {
+  const sources: BandImportImageSource[] = [];
+  for (const path of paths) {
+    if (!path) continue;
+    const { bytes, contentType } = await downloadBandImportStagingFile(path);
+    sources.push({ name: path.split("/").pop() ?? path, bytes, type: contentType });
   }
   return sources;
 }

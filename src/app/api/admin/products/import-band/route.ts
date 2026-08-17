@@ -20,7 +20,9 @@ import { BandImportImageError } from "@/lib/admin/bandImport/extractBandImportIm
 import {
   filesToBandImportSources,
   processBandImportImages,
+  stagingPathsToBandImportSources,
 } from "@/lib/admin/bandImport/processBandImportImages";
+import { deleteBandImportStagingFiles } from "@/lib/admin/bandImport/bandImportStaging";
 import type { ItineraryV2 } from "@/types/product";
 
 export const maxDuration = 300;
@@ -31,6 +33,17 @@ type ImportBandBody = {
   golfCourseInfo?: string;
   product_source_url?: string;
 };
+
+function parseStagingImagePaths(raw: string): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((p): p is string => typeof p === "string" && p.length > 0);
+  } catch {
+    return [];
+  }
+}
 
 function formString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -55,6 +68,7 @@ async function readImportRequest(request: NextRequest): Promise<{
   golfCourseInfo: string;
   productSourceUrl: string;
   imageFiles: File[];
+  stagingImagePaths: string[];
 }> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
@@ -71,6 +85,7 @@ async function readImportRequest(request: NextRequest): Promise<{
     const golfCourseInfo = formString(formData, "golfCourseInfo").trim();
     const productSourceUrl = formString(formData, "product_source_url").trim();
     const imageFiles = pickImageFiles(formData);
+    const stagingImagePaths = parseStagingImagePaths(formString(formData, "stagingImagePaths"));
     const hwpFile = pickHwpFile(formData);
 
     let hwpText = pastedHwpText;
@@ -81,7 +96,7 @@ async function readImportRequest(request: NextRequest): Promise<{
       hwpText = await parseHwpFileToText(hwpFile, hwpFile.name || "upload.hwpx");
     }
 
-    return { bandText, hwpText, golfCourseInfo, productSourceUrl, imageFiles };
+    return { bandText, hwpText, golfCourseInfo, productSourceUrl, imageFiles, stagingImagePaths };
   }
 
   let body: ImportBandBody;
@@ -97,6 +112,7 @@ async function readImportRequest(request: NextRequest): Promise<{
     golfCourseInfo: body.golfCourseInfo?.trim() ?? "",
     productSourceUrl: body.product_source_url?.trim() ?? "",
     imageFiles: [],
+    stagingImagePaths: [],
   };
 }
 
@@ -109,6 +125,7 @@ export async function POST(request: NextRequest) {
   let golfCourseInfo = "";
   let productSourceUrl = "";
   let imageFiles: File[] = [];
+  let stagingImagePaths: string[] = [];
 
   try {
     const parsedBody = await readImportRequest(request);
@@ -117,6 +134,7 @@ export async function POST(request: NextRequest) {
     golfCourseInfo = parsedBody.golfCourseInfo;
     productSourceUrl = parsedBody.productSourceUrl;
     imageFiles = parsedBody.imageFiles;
+    stagingImagePaths = parsedBody.stagingImagePaths;
   } catch (error) {
     if (error instanceof HwpParseError) {
       return NextResponse.json({ message: error.message }, { status: error.httpStatus });
@@ -165,10 +183,14 @@ export async function POST(request: NextRequest) {
     productSourceUrl: productSourceUrl || null,
   });
 
-  if (imageFiles.length > 0) {
+  if (imageFiles.length > 0 || stagingImagePaths.length > 0) {
     try {
+      const sources = [
+        ...(await filesToBandImportSources(imageFiles)),
+        ...(await stagingPathsToBandImportSources(stagingImagePaths)),
+      ];
       const applied = await processBandImportImages({
-        sources: await filesToBandImportSources(imageFiles),
+        sources,
         itinerary: (insertPayload.itinerary_v2_json as ItineraryV2 | null) ?? null,
       });
       insertPayload.image_url = applied.imageUrl;
@@ -183,6 +205,10 @@ export async function POST(request: NextRequest) {
         { message: error instanceof Error ? error.message : "사진 업로드에 실패했습니다." },
         { status: 500 },
       );
+    } finally {
+      if (stagingImagePaths.length > 0) {
+        await deleteBandImportStagingFiles(stagingImagePaths);
+      }
     }
   }
 

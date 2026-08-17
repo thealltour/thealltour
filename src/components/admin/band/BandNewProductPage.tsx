@@ -11,6 +11,12 @@ import {
   ADMIN_PRODUCTS_QUERY_KEYS,
   ADMIN_PRODUCTS_VIEW,
 } from "@/components/admin/products/adminProducts.constants";
+import { supabase } from "@/lib/supabase";
+import {
+  BAND_IMPORT_STAGING_BUCKET,
+  MAX_BAND_IMPORT_IMAGE_BYTES,
+  MAX_BAND_IMPORT_ZIP_BYTES,
+} from "@/lib/admin/bandImport/bandImportImageConstants";
 
 type ImportResponse = {
   id?: string;
@@ -41,6 +47,44 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function isZipFilename(name: string): boolean {
+  return /\.zip$/i.test(name.trim());
+}
+
+function guessContentType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (ext === "zip") return "application/zip";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
+}
+
+/**
+ * zip/사진을 Vercel 함수(4.5MB 요청 본문 제한)를 거치지 않고
+ * 브라우저에서 Supabase Storage로 직접 업로드한 뒤 저장 경로만 반환.
+ */
+async function uploadImageFileToStaging(file: File): Promise<string> {
+  const res = await fetch("/api/admin/products/import-band/upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename: file.name }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message ?? "업로드 URL 발급에 실패했습니다.");
+  }
+  const { path, token } = (await res.json()) as { path: string; token: string };
+
+  const { error } = await supabase.storage
+    .from(BAND_IMPORT_STAGING_BUCKET)
+    .uploadToSignedUrl(path, token, file, { contentType: guessContentType(file) });
+  if (error) {
+    throw new Error(`사진 업로드에 실패했습니다: ${error.message}`);
+  }
+  return path;
 }
 
 export default function BandNewProductPage() {
@@ -76,6 +120,19 @@ export default function BandNewProductPage() {
         setError("사진은 jpg, jpeg, png, webp 또는 zip만 올릴 수 있습니다.");
         return;
       }
+      if (isZipFilename(file.name)) {
+        if (file.size > MAX_BAND_IMPORT_ZIP_BYTES) {
+          setError(
+            `zip은 ${formatFileSize(MAX_BAND_IMPORT_ZIP_BYTES)} 이하만 올릴 수 있습니다. (${file.name}: ${formatFileSize(file.size)})`,
+          );
+          return;
+        }
+      } else if (file.size > MAX_BAND_IMPORT_IMAGE_BYTES) {
+        setError(
+          `사진 한 장은 ${formatFileSize(MAX_BAND_IMPORT_IMAGE_BYTES)} 이하만 올릴 수 있습니다. (${file.name}: ${formatFileSize(file.size)})`,
+        );
+        return;
+      }
       next.push(file);
     }
     setError(null);
@@ -91,6 +148,11 @@ export default function BandNewProductPage() {
     progress.start();
 
     try {
+      const stagingImagePaths: string[] = [];
+      for (const file of imageFiles) {
+        stagingImagePaths.push(await uploadImageFileToStaging(file));
+      }
+
       const formData = new FormData();
       formData.append("bandText", bandText);
       formData.append("golfCourseInfo", golfCourseInfo);
@@ -98,8 +160,8 @@ export default function BandNewProductPage() {
       if (productSourceUrl.trim()) {
         formData.append("product_source_url", productSourceUrl.trim());
       }
-      for (const file of imageFiles) {
-        formData.append("images", file);
+      if (stagingImagePaths.length > 0) {
+        formData.append("stagingImagePaths", JSON.stringify(stagingImagePaths));
       }
 
       const res = await fetch("/api/admin/products/import-band", {
@@ -114,11 +176,11 @@ export default function BandNewProductPage() {
       } catch {
         progress.stop();
         if (res.status === 413) {
-          setError("업로드 용량이 너무 큽니다. 사진 zip을 100MB 이하로 나눠 올려 주세요.");
+          setError("업로드 용량이 너무 큽니다. 한글 문서(HWP)를 20MB 이하로 줄여서 다시 시도해 주세요.");
           return;
         }
         setError(
-          `서버 응답을 읽지 못했습니다 (${res.status || "네트워크"}). 사진 zip이 크면 나눠 올리거나, 잠시 후 다시 시도해 주세요.`,
+          `서버 응답을 읽지 못했습니다 (${res.status || "네트워크"}). 잠시 후 다시 시도해 주세요.`,
         );
         return;
       }
@@ -149,9 +211,7 @@ export default function BandNewProductPage() {
       progress.stop();
       const detail = error instanceof Error ? error.message : "";
       if (/failed to fetch|networkerror|load failed/i.test(detail)) {
-        setError(
-          "네트워크 오류가 발생했습니다. 사진 zip이 10MB를 넘으면 나눠 올리거나, 개발 서버를 재시작한 뒤 다시 시도해 주세요.",
-        );
+        setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
       setError(detail || "네트워크 오류가 발생했습니다.");

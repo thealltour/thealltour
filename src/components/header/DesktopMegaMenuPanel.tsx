@@ -32,7 +32,7 @@ const PANEL_BASE =
 
 /** 메가메뉴 링크 공통: hover = surface-muted, active = primary-soft + primary + semibold */
 const LINK_BASE =
-  "block rounded-lg py-2 px-2.5 type-small transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1";
+  "block rounded-lg py-2 px-2.5 type-body transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1";
 const LINK_HOVER = "hover:bg-[var(--surface-muted)]";
 const LINK_ACTIVE = "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]";
 const LINK_DEFAULT = "text-[var(--foreground)] hover:text-[var(--primary)]";
@@ -73,7 +73,7 @@ function RegionCascadePanel({
       <div className="grid grid-cols-[200px_200px_200px_260px] gap-8">
         {/* Column 1: 지역별 여행 */}
         <div className="space-y-3">
-          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">지역별 여행</p>
+          <p className="px-2.5 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">지역별 여행</p>
           {hubGroup && (
             <ul className="space-y-0.5" role="none">
               {hubGroup.items.map((leaf, i) => (
@@ -94,7 +94,7 @@ function RegionCascadePanel({
 
         {/* Column 2: 권역 (대분류) */}
         <div className="space-y-3 border-l border-[var(--border)] pl-6">
-          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">권역</p>
+          <p className="px-2.5 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">권역</p>
           <ul className="space-y-0.5" role="none">
             {regionRootGroups.map((group) => (
               <li key={group.key} role="none" onMouseEnter={() => setActiveGroupKey(group.key)}>
@@ -127,7 +127,7 @@ function RegionCascadePanel({
 
         {/* Column 3: 지역/국가 (중분류: 일본, 동남아, 남미 등) */}
         <div className="space-y-3 border-l border-[var(--border)] pl-6">
-          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">지역/국가</p>
+          <p className="px-2.5 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">지역/국가</p>
           {activeGroup && (
             <ul className="space-y-0.5" role="none">
               {activeGroup.subGroups.map((sub) => (
@@ -162,7 +162,7 @@ function RegionCascadePanel({
 
         {/* Column 4: 국가/도시 (소분류: 도쿄, 오키나와, 베트남 등) */}
         <div className="space-y-3 border-l border-[var(--border)] pl-6">
-          <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">국가/도시</p>
+          <p className="px-2.5 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">국가/도시</p>
           {activeSubGroup && (
             <ul className="space-y-0.5" role="none">
               {activeSubGroup.items.map((leaf, i) => (
@@ -252,7 +252,7 @@ export function DesktopMegaMenuPanel({
                 {group.label}
               </Link>
             ) : (
-              <p className="px-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+              <p className="px-2.5 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                 {group.label}
               </p>
             )}

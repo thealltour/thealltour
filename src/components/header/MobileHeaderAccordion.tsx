@@ -94,7 +94,7 @@ export function MobileHeaderAccordion({
                     key={leaf.key}
                     href={leaf.href}
                     onClick={() => onNavigate?.()}
-                    className="block py-2 pl-4 pr-4 type-small font-medium text-[var(--foreground)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                    className="block py-2 pl-4 pr-4 type-body font-medium text-[var(--foreground)] active:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
                   >
                     {leaf.label}
                   </Link>
@@ -183,7 +183,7 @@ export function MobileHeaderAccordion({
                                   <Link
                                     href={leaf.href}
                                     onClick={() => handleLeafClick(item, leaf)}
-                                    className="block py-2 pl-8 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                                    className="block py-2 pl-8 pr-4 type-body text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
                                   >
                                     {leaf.label}
                                   </Link>
@@ -220,7 +220,7 @@ export function MobileHeaderAccordion({
                     <Link
                       href={leaf.href}
                       onClick={() => handleLeafClick(item, leaf)}
-                      className="block py-2 pl-6 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
+                      className="block py-2 pl-6 pr-4 type-body text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset"
                     >
                       {leaf.label}
                     </Link>
@@ -251,7 +251,7 @@ export function MobileHeaderAccordion({
                       handleDirectLinkClick(item.key, item.label, item.href!);
                     }}
                     className={cn(
-                      "flex flex-1 items-center py-4 text-left type-small font-semibold text-[var(--foreground)]",
+                      "flex flex-1 items-center py-4 text-left type-body font-semibold text-[var(--foreground)]",
                       "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
                     )}
                   >
@@ -305,7 +305,7 @@ export function MobileHeaderAccordion({
                                 </li>
                                 {sub.items.map((leaf) => (
                                   <li key={leaf.key}>
-                                    <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-8 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
+                                    <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-8 pr-4 type-body text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
                                   </li>
                                 ))}
                               </ul>
@@ -321,7 +321,7 @@ export function MobileHeaderAccordion({
                             <ul className="flex flex-col">
                               {group.items.map((leaf) => (
                                 <li key={leaf.key}>
-                                  <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-6 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
+                                  <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-6 pr-4 type-body text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
                                 </li>
                               ))}
                             </ul>
@@ -346,7 +346,7 @@ export function MobileHeaderAccordion({
                   id={`mobile-nav-trigger-${item.key}`}
                   onClick={() => onToggle(item.key)}
                   className={cn(
-                    "flex w-full items-center justify-between gap-2 py-4 pr-4 pl-4 text-left type-small font-semibold text-[var(--foreground)]",
+                    "flex w-full items-center justify-between gap-2 py-4 pr-4 pl-4 text-left type-body font-semibold text-[var(--foreground)]",
                     "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
                   )}
                 >
@@ -386,7 +386,7 @@ export function MobileHeaderAccordion({
                                 </li>
                                 {sub.items.map((leaf) => (
                                   <li key={leaf.key}>
-                                    <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-8 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
+                                    <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-8 pr-4 type-body text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
                                   </li>
                                 ))}
                               </ul>
@@ -402,7 +402,7 @@ export function MobileHeaderAccordion({
                             <ul className="flex flex-col">
                               {group.items.map((leaf) => (
                                 <li key={leaf.key}>
-                                  <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-6 pr-4 type-small text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
+                                  <Link href={leaf.href} onClick={() => handleLeafClick(item, leaf)} className="block py-2 pl-6 pr-4 type-body text-[var(--foreground)] transition-colors active:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset">{leaf.label}</Link>
                                 </li>
                               ))}
                             </ul>
@@ -424,7 +424,7 @@ export function MobileHeaderAccordion({
                   href={item.href}
                   onClick={() => handleDirectLinkClick(item.key, item.label, item.href!)}
                   className={cn(
-                    "flex w-full items-center py-4 pr-4 pl-4 type-small font-semibold text-[var(--foreground)]",
+                    "flex w-full items-center py-4 pr-4 pl-4 type-body font-semibold text-[var(--foreground)]",
                     "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
                   )}
                 >
@@ -441,7 +441,7 @@ export function MobileHeaderAccordion({
             href="/about"
             onClick={() => handleDirectLinkClick("about", "회사소개", "/about")}
             className={cn(
-              "flex w-full items-center py-4 pr-4 pl-4 type-small font-semibold text-[var(--foreground)]",
+              "flex w-full items-center py-4 pr-4 pl-4 type-body font-semibold text-[var(--foreground)]",
               "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
             )}
           >
@@ -453,7 +453,7 @@ export function MobileHeaderAccordion({
             href="/blog"
             onClick={() => handleDirectLinkClick("blog", "블로그", "/blog")}
             className={cn(
-              "flex w-full items-center py-4 pr-4 pl-4 type-small font-semibold text-[var(--foreground)]",
+              "flex w-full items-center py-4 pr-4 pl-4 type-body font-semibold text-[var(--foreground)]",
               "active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset",
             )}
           >

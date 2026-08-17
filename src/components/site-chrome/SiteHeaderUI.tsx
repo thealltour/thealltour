@@ -39,7 +39,7 @@ function getFallbackPrimaryNav(): HeaderPrimaryNavItem[] {
 
 function getNavLinkClass(isActive: boolean) {
   const base =
-    "relative shrink-0 whitespace-nowrap text-sm tracking-tight transition-colors duration-150 py-1 px-0.5 rounded";
+    "relative shrink-0 whitespace-nowrap text-base tracking-tight transition-colors duration-150 py-1 px-0.5 rounded";
   if (isActive) {
     return cn(
       base,
@@ -81,7 +81,7 @@ export default function SiteHeaderUI({
       {/* 데스크톱: 상단 유틸바 + 메인 헤더바 */}
       <PageContainer size="wide" className="hidden flex-col py-0 lg:flex">
         {/* 상단 유틸바: 회사소개 ~ 고객센터 */}
-        <div className="flex h-10 items-center justify-center gap-x-6 border-b border-[var(--divider)] xl:gap-x-8">
+        <div className="flex h-11 items-center justify-center gap-x-6 border-b border-[var(--divider)] xl:gap-x-8">
           <nav className="flex items-center gap-x-6 tracking-tight xl:gap-x-8" aria-label="유틸리티 메뉴">
             <Link className={getNavLinkClass(activeTab === "about")} href="/about">
               회사소개

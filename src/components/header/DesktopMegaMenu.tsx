@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 
 function getNavLinkClass(isActive: boolean) {
   const base =
-    "relative shrink-0 whitespace-nowrap text-sm lg:text-[15px] lg:leading-snug tracking-tight transition-colors duration-150 py-1.5 px-2.5 rounded-lg";
+    "relative shrink-0 whitespace-nowrap text-base tracking-tight transition-colors duration-150 py-1.5 px-2.5 rounded-lg";
   if (isActive) {
     return cn(
       base,

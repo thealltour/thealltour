@@ -73,16 +73,16 @@ export function ExploreCategoryCard({
         ) : null}
       </div>
       <div className={cn("flex flex-1 flex-col", CARD_PADDING_HOME)}>
-        <h3 className="font-card-title text-sm font-semibold leading-tight text-[var(--foreground)]">
+        <h3 className="font-card-title text-base font-semibold leading-tight text-[var(--foreground)]">
           {title}
         </h3>
         {subtitle ? (
-          <p className="mt-0.5 line-clamp-1 text-xs text-[var(--text-muted)] md:type-caption">
+          <p className="mt-0.5 line-clamp-1 text-sm text-[var(--text-muted)]">
             {subtitle}
           </p>
         ) : null}
         {showDetailLink ? (
-          <span className="mt-2 inline-flex items-center text-xs font-medium text-[var(--primary)] sm:mt-3 md:section-label">
+          <span className="mt-2 inline-flex items-center text-sm font-medium text-[var(--primary)] sm:mt-3">
             자세히 보기
             <span className="ml-1" aria-hidden>
               →

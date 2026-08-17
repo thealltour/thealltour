@@ -1,15 +1,8 @@
 import type { Matcher } from "react-day-picker";
-
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+import { parseIsoDateYmd } from "@/lib/datetime/isoDate";
 
 export function ymdToDate(ymd: string | null | undefined): Date | undefined {
-  if (!ymd || !ISO_DATE_RE.test(ymd)) return undefined;
-  const [y, m, d] = ymd.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
-    return undefined;
-  }
-  return date;
+  return parseIsoDateYmd(ymd);
 }
 
 export function dateToYmd(date: Date): string {

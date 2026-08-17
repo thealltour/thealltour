@@ -3,16 +3,12 @@
  */
 
 import type { KakaoSyncAnalyticsRange } from "@/lib/adminLandings/kakaoSyncAnalyticsModels";
+import { formatKstYmd } from "@/lib/datetime/kst";
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function kstYmd(now = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
+  return formatKstYmd(now);
 }
 
 export function toKstYmd(iso: string): string {

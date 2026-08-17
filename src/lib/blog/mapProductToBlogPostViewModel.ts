@@ -12,10 +12,12 @@ import {
   sanitizeInlineNoise,
   stripBlogRetailNoise,
 } from "@/lib/blog/blogPost.sanitize";
+import { formatPriceKR as formatPriceKRCanonical } from "@/lib/pricing/calcQuote";
 
-function formatPriceKR(price?: number): string {
-  if (typeof price !== "number" || !Number.isFinite(price)) return "별도 문의";
-  return `${new Intl.NumberFormat("ko-KR").format(price)}원`;
+/** 정본 `formatPriceKR`(calcQuote.ts)에 "원" 접미사와 미확정가 폴백 문구를 더한 블로그 전용 변형 */
+function formatPriceKRWithFallback(price?: number): string {
+  const formatted = formatPriceKRCanonical(price);
+  return formatted ? `${formatted}원` : "별도 문의";
 }
 
 function trimOrUndefined(s: string | null | undefined): string | undefined {
@@ -176,7 +178,7 @@ export function mapProductToBlogPostViewModel(
     title: cleanProductTitle(product.title),
     oneLiner,
     concept: detectConcept(product),
-    priceText: formatPriceKR(product.price),
+    priceText: formatPriceKRWithFallback(product.price),
     durationText,
     regionText,
     ...(seoRegionKeyword ? { seoRegionKeyword } : {}),

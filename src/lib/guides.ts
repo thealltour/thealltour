@@ -106,33 +106,24 @@ function normalizeGuide(row: Record<string, unknown>): Guide {
     is_published: typeof row.is_published === "boolean" ? row.is_published : undefined,
     sort_order: typeof row.sort_order === "number" ? row.sort_order : undefined,
     created_at: typeof row.created_at === "string" ? row.created_at : undefined,
-    slug: typeof (row as any).slug === "string" ? ((row as any).slug as string) : null,
-    notion_page_id:
-      typeof (row as any).notion_page_id === "string" ? ((row as any).notion_page_id as string) : null,
-    notion_url: typeof (row as any).notion_url === "string" ? ((row as any).notion_url as string) : null,
-    title_override:
-      typeof (row as any).title_override === "string" ? ((row as any).title_override as string) : null,
-    cover_image_url:
-      typeof (row as any).cover_image_url === "string" ? ((row as any).cover_image_url as string) : null,
-    tags: Array.isArray((row as any).tags) ? (((row as any).tags as string[]) ?? null) : null,
-    category: typeof (row as any).category === "string" ? ((row as any).category as string) : null,
-    published_at:
-      typeof (row as any).published_at === "string" ? ((row as any).published_at as string) : null,
-    destination_id: safeUuidOrNull((row as any).destination_id),
-    theme_id: safeUuidOrNull((row as any).theme_id),
-    destination_name: typeof (row as any).destination_name === "string" ? ((row as any).destination_name as string) : null,
-    theme_name: typeof (row as any).theme_name === "string" ? ((row as any).theme_name as string) : null,
+    slug: typeof row.slug === "string" ? row.slug : null,
+    notion_page_id: typeof row.notion_page_id === "string" ? row.notion_page_id : null,
+    notion_url: typeof row.notion_url === "string" ? row.notion_url : null,
+    title_override: typeof row.title_override === "string" ? row.title_override : null,
+    cover_image_url: typeof row.cover_image_url === "string" ? row.cover_image_url : null,
+    tags: Array.isArray(row.tags) ? (row.tags as string[]) : null,
+    category: typeof row.category === "string" ? row.category : null,
+    published_at: typeof row.published_at === "string" ? row.published_at : null,
+    destination_id: safeUuidOrNull(row.destination_id),
+    theme_id: safeUuidOrNull(row.theme_id),
+    destination_name: typeof row.destination_name === "string" ? row.destination_name : null,
+    theme_name: typeof row.theme_name === "string" ? row.theme_name : null,
     notion_last_edited_time:
-      typeof (row as any).notion_last_edited_time === "string"
-        ? ((row as any).notion_last_edited_time as string)
-        : null,
-    last_synced_at:
-      typeof (row as any).last_synced_at === "string" ? ((row as any).last_synced_at as string) : null,
-    seo_title: typeof (row as any).seo_title === "string" ? ((row as any).seo_title as string) : null,
-    seo_description:
-      typeof (row as any).seo_description === "string" ? ((row as any).seo_description as string) : null,
-    focus_keyword:
-      typeof (row as any).focus_keyword === "string" ? ((row as any).focus_keyword as string) : null,
+      typeof row.notion_last_edited_time === "string" ? row.notion_last_edited_time : null,
+    last_synced_at: typeof row.last_synced_at === "string" ? row.last_synced_at : null,
+    seo_title: typeof row.seo_title === "string" ? row.seo_title : null,
+    seo_description: typeof row.seo_description === "string" ? row.seo_description : null,
+    focus_keyword: typeof row.focus_keyword === "string" ? row.focus_keyword : null,
   };
 }
 

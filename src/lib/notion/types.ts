@@ -11,6 +11,98 @@ export type NotionRichText = {
   };
 };
 
+/**
+ * Notion API가 반환하는 raw block 구조 (필요한 필드만 명시, 그 외는 index signature로 허용).
+ * `@notionhq/client`의 discriminated union 전체를 그대로 옮기지 않고,
+ * 이 코드베이스가 실제로 사용하는 필드만 좁게 타입해 any를 제거하는 목적.
+ */
+export type NotionRawBlock = {
+  id?: string;
+  type: string;
+  has_children?: boolean;
+  children?: NotionRawBlock[];
+  heading_1?: { rich_text?: NotionRichText[] };
+  heading_2?: { rich_text?: NotionRichText[] };
+  heading_3?: { rich_text?: NotionRichText[] };
+  paragraph?: { rich_text?: NotionRichText[] };
+  bulleted_list_item?: { rich_text?: NotionRichText[] };
+  numbered_list_item?: { rich_text?: NotionRichText[] };
+  quote?: { rich_text?: NotionRichText[] };
+  callout?: { rich_text?: NotionRichText[]; icon?: { emoji?: string } };
+  table?: { has_column_header?: boolean; has_row_header?: boolean };
+  table_row?: { cells?: NotionRichText[][] };
+  image?: {
+    type?: string;
+    external?: { url?: string };
+    file?: { url?: string };
+    caption?: NotionRichText[];
+  };
+  [key: string]: unknown;
+};
+
+export type NotionPropertyValue = {
+  type: string;
+  title?: NotionRichText[];
+  [key: string]: unknown;
+};
+
+/** `client.pages.retrieve()` 응답 중 이 코드베이스가 실제로 읽는 필드만 좁게 타입 */
+export type NotionPageMeta = {
+  id?: string;
+  last_edited_time?: string;
+  cover?: {
+    type?: string;
+    external?: { url?: string };
+    file?: { url?: string };
+  } | null;
+  properties?: Record<string, NotionPropertyValue>;
+};
+
+/**
+ * 동적 키(`block[type]`)로 rich_text를 읽어야 하는 지점 전용 헬퍼.
+ * NotionRawBlock의 index signature(unknown)를 여기 한 곳에서만 narrow한다.
+ */
+export function getBlockRichText(block: NotionRawBlock, key: string): NotionRichText[] {
+  const value = block[key];
+  if (value && typeof value === "object" && Array.isArray((value as { rich_text?: unknown }).rich_text)) {
+    return (value as { rich_text: NotionRichText[] }).rich_text;
+  }
+  return [];
+}
+
+/** 헤딩 텍스트 → anchor id (notion/text.ts, notion/normalize.ts 공용) */
+export function slugifyHeading(text: string, fallbackId: string): string {
+  const normalized = text
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+  return normalized || fallbackId;
+}
+
+/** Notion 페이지 커버 URL 추출 (notion/normalize.ts, notionSync.ts 공용) */
+export function extractNotionCoverUrl(pageMeta: NotionPageMeta | null | undefined): string | undefined {
+  const cover = pageMeta?.cover;
+  if (!cover) return undefined;
+  if (cover.type === "external" && cover.external?.url) return cover.external.url;
+  if (cover.type === "file" && cover.file?.url) return cover.file.url;
+  return undefined;
+}
+
+/** Notion 페이지 properties에서 title 속성의 plain text 추출 (notion/cache.ts, notionSync.ts 공용) */
+export function extractNotionTitleFromProperties(
+  properties: Record<string, NotionPropertyValue> | undefined,
+): string {
+  if (!properties) return "";
+  for (const value of Object.values(properties)) {
+    if (value?.type === "title" && Array.isArray(value.title) && value.title[0]?.plain_text) {
+      return value.title.map((item) => item.plain_text ?? "").join("");
+    }
+  }
+  return "";
+}
+
 export type GuideImage = {
   src: string;
   width?: number;

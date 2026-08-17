@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { GuideContent } from "@/lib/notion/types";
+import { extractNotionTitleFromProperties } from "@/lib/notion/types";
 import { fetchNotionBlocks, fetchNotionPageMeta } from "@/lib/notion/fetchers";
 import { normalizeGuideContent } from "@/lib/notion/normalize";
 import { getGuideBySlug } from "@/lib/notionSync";
@@ -15,14 +16,7 @@ async function loadGuideContentBySlug(slug: string): Promise<GuideContent | null
     fetchNotionPageMeta(guide.notion_page_id),
   ]);
 
-  let titleFromNotion = "";
-  const properties = (pageMeta as any)?.properties ?? {};
-  for (const value of Object.values(properties) as any[]) {
-    if (value?.type === "title" && Array.isArray(value.title) && value.title[0]?.plain_text) {
-      titleFromNotion = value.title.map((item: any) => item.plain_text).join("");
-      break;
-    }
-  }
+  const titleFromNotion = extractNotionTitleFromProperties(pageMeta?.properties);
 
   return normalizeGuideContent({
     guide,

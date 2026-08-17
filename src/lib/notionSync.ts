@@ -3,19 +3,13 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { Guide } from "@/types/guide";
 import { extractNotionPageId, fetchNotionPageMeta } from "@/lib/notion";
+import { extractNotionCoverUrl as extractNotionCoverUrlOrUndefined, extractNotionTitleFromProperties } from "@/lib/notion/types";
 import { uploadImageFromUrl } from "@/lib/images/uploadImageFromUrl";
 import { isLikelySignedNotionImageUrl } from "@/lib/guides/imageUrl";
 
-function extractNotionCoverUrl(pageMeta: any): string | null {
-  const cover = pageMeta?.cover;
-  if (!cover) return null;
-  if (cover.type === "external" && typeof cover.external?.url === "string") {
-    return cover.external.url.trim() || null;
-  }
-  if (cover.type === "file" && typeof cover.file?.url === "string") {
-    return cover.file.url.trim() || null;
-  }
-  return null;
+/** notion/types.ts의 공용 헬퍼는 `undefined`를 반환하므로, 이 파일의 기존 `null` 반환 계약에 맞춰 얇게 래핑 */
+function extractNotionCoverUrl(pageMeta: Parameters<typeof extractNotionCoverUrlOrUndefined>[0]): string | null {
+  return extractNotionCoverUrlOrUndefined(pageMeta)?.trim() || null;
 }
 
 function isStableUrl(value?: string | null): boolean {
@@ -47,14 +41,7 @@ export async function syncGuideFromNotion(guideId: string): Promise<Guide | null
   const lastEdited = page.last_edited_time ? new Date(page.last_edited_time) : null;
 
   // Notion 기본 title 추출 (title 속성 또는 페이지 아이콘 제목 등)
-  let notionTitle = "";
-  const properties = page.properties ?? {};
-  for (const value of Object.values(properties) as any[]) {
-    if (value?.type === "title" && Array.isArray(value.title) && value.title[0]?.plain_text) {
-      notionTitle = value.title.map((t: any) => t.plain_text).join("") ?? "";
-      break;
-    }
-  }
+  const notionTitle = extractNotionTitleFromProperties(page.properties);
 
   const updates: Record<string, unknown> = {
     notion_page_id: notionPageId,

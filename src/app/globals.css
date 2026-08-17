@@ -3,13 +3,32 @@
 /* `SubHeader` 등에서 `html.dark` 로 토글 — 미디어 쿼리만 쓰면 관리자 다크모드와 불일치 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/**
+ * 디자인 토큰 네이밍 계층 (문서화 전용 — 이번 정리에서 값/이름은 변경하지 않음, alias 전부 유지):
+ *
+ * Layer 1 — Brand primitives: `--theall-*`
+ *   원색값 원본. 컴포넌트에서 직접 쓰지 말고 Layer 2를 거쳐 참조.
+ *
+ * Layer 2 — Semantic role tokens: `--primary`, `--accent`, `--surface*`, `--text-*`, `--border*`, `--success` 등
+ *   신규 컴포넌트가 실제로 사용해야 하는 레이어. `--theall-*`를 역할별로 매핑한 값.
+ *
+ * Layer 3 — Domain-scoped tokens: `--hero-*`, `--header-*`, `--mobile-header-*`,
+ *   `--products-mobile-*`, `--mypage-mobile-*`, `--site-*` 등
+ *   특정 영역(히어로/헤더/모바일 sticky 등) 전용 값. Layer 2를 참조해 구성.
+ *
+ * Legacy admin aliases (`--background`, `--foreground`, `--card`, `--card-muted`, `--brand`,
+ *   `--brand-strong`, `--text`, `--muted` — 아래 "Backwards-compatible aliases" 섹션 및 `.dark` 동일 위치):
+ *   기존 admin 컴포넌트 호환용으로만 유지. 신규 코드에서는 사용하지 말고 Layer 2 토큰을 직접 사용할 것.
+ *
+ * 주의 — 이름 유사도로 혼동하기 쉬운 쌍: `--muted`(레거시 alias → `--text-secondary`를 가리킴)와
+ *   `--text-muted`(Layer 2, 별도 값)는 서로 다른 값이다. 이름 변경은 2단계 이후 검토 대상이며
+ *   이번 정리에서는 값을 바꾸지 않는다.
+ */
 :root {
   /* THEALL TOUR brand tokens v2.0 — 로고/아이콘 기준 UI 컬러 시스템 */
   --theall-brand-blue: #1e5b8f;
   --theall-brand-orange: #e0612a;
   --theall-primary-navy: #0f172a;
-  /** @deprecated 레거시 명칭 — 브랜드 블루는 --theall-brand-blue */
-  --theall-accent-blue: var(--theall-brand-blue);
   --theall-premium-gold: #b8962e;
 
   /* Kakao official CTA — Button `kakao` variant 및 링크 스타일과 동기화 */
@@ -88,7 +107,7 @@
   --danger: #dc2626;
   --danger-bg: #ffe8e8;
 
-  /* Backwards-compatible aliases for existing admin components */
+  /* Backwards-compatible aliases for existing admin components (legacy — 신규 코드는 위 semantic 토큰을 직접 사용) */
   --background: var(--bg);
   --card: var(--surface);
   --card-muted: var(--surface-muted);
@@ -193,9 +212,7 @@
   --site-accent: var(--accent);
   /* Hero: theme-aware (light by default) */
   --hero-bg: var(--theall-page-bg);
-  /* 레거시/베일용 (메인 스크림은 .hero-scrim 다중 스톱 사용) */
-  --hero-scrim-from: rgba(255, 255, 255, 0.65);
-  --hero-scrim-to: transparent;
+  /* 좌우 세로 베일(.hero-scrim 중앙 gradient stop)에서만 사용 — from/to는 미사용으로 제거됨 */
   --hero-scrim-veil-mid: rgba(255, 255, 255, 0.22);
   --hero-text-primary: var(--foreground);
   --hero-text-secondary: var(--text-muted);
@@ -216,7 +233,6 @@
   --overlay-accent-blue: color-mix(in srgb, var(--theall-brand-blue) 22%, transparent);
   --overlay-accent-blue-subtle: color-mix(in srgb, var(--theall-brand-blue) 16%, transparent);
   --overlay-accent-green: rgba(34, 197, 94, 0.2);
-  --cta-h: 0px;
 
   /**
    * Site header — 데스크톱 메인 바 비율 토큰 (모바일 2단 헤더는 --mobile-header-* 사용)
@@ -542,6 +558,7 @@
   --danger: #ef4444;
   --danger-bg: rgba(239, 68, 68, 0.16);
 
+  /* Backwards-compatible aliases (legacy, :root와 동일 — 상단 네이밍 계층 설명 참고) */
   --background: var(--bg);
   --card: var(--surface);
   --card-muted: var(--surface-muted);
@@ -589,8 +606,6 @@
 
   /* Hero overlay tokens (dark mode) */
   --hero-bg: var(--site-bg);
-  --hero-scrim-from: var(--site-bg);
-  --hero-scrim-to: transparent;
   --hero-scrim-veil-mid: rgba(15, 23, 42, 0.38);
   --hero-text-primary: var(--site-text-primary);
   --hero-text-secondary: var(--site-text-secondary);
@@ -1370,22 +1385,6 @@ body {
   letter-spacing: var(--type-letter-tight);
   line-height: 1.35;
   white-space: nowrap;
-}
-
-/** @deprecated 푸터 리디자인 후 미사용. 하위 호환 필요 시 .footer-pill-secondary 와 유사 */
-.footer-pill-cta {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  color: var(--primary);
-}
-.footer-pill-cta:hover {
-  background: var(--primary-bg);
-  border-color: var(--primary-hover);
-  color: var(--primary-hover);
-}
-.footer-pill-cta:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* 모바일(<sm): 푸터 pill 밀도만 축소. sm 이상은 위 기본값 유지 */

@@ -19,6 +19,7 @@ import {
   normalizeProductDepartureDateToYmd,
   ymdDayDiff,
 } from "@/lib/products/productDepartureDates";
+import { trimOrNull } from "@/lib/admin/stringHelpers";
 
 export type MapExternalParsedInput = {
   parsed: ExternalParsedProduct;
@@ -41,11 +42,6 @@ function toSafeInteger(value: unknown): number | null {
   const int = Math.round(n);
   if (int < -2147483648 || int > 2147483647) return null;
   return int;
-}
-
-function trimOrNull(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
 }
 
 function normalizeImageUrls(urls: string[] | null | undefined, max = 10): string[] {

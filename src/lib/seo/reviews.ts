@@ -8,6 +8,7 @@
 import "server-only";
 import type { PublicReviewItem } from "@/types/review";
 import { mediumUrlToOriginalUrl } from "@/lib/reviewImagePolicy";
+import { truncateForMeta as truncateForMetaShared } from "@/lib/seo/textTruncation";
 
 const SITE_NAME = "더올투어";
 const DEFAULT_DESC_LENGTH = 155;
@@ -24,9 +25,7 @@ function toAbsoluteUrl(pathOrUrl: string): string {
 }
 
 function truncateForMeta(text: string, maxLen = DEFAULT_DESC_LENGTH): string {
-  const oneLine = text.replace(/\s+/g, " ").trim();
-  if (oneLine.length <= maxLen) return oneLine;
-  return oneLine.slice(0, maxLen - 1).trim() + "…";
+  return truncateForMetaShared(text, maxLen);
 }
 
 /** Review(schema.org) JSON-LD 생성. review는 이미 submitted 공개 리뷰로 가정. */

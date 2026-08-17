@@ -11,10 +11,10 @@ import {
   sanitizeSmartstoreUserText,
   sanitizeSmartstoreLines,
 } from "@/lib/smartstore/smartstoreHtml.safety";
+import { formatPriceKR as formatPriceKRCanonical } from "@/lib/pricing/calcQuote";
 
 function formatPriceKR(price?: number): string | undefined {
-  if (typeof price !== "number" || !Number.isFinite(price)) return undefined;
-  return new Intl.NumberFormat("ko-KR").format(price);
+  return formatPriceKRCanonical(price) ?? undefined;
 }
 
 function toSmartstoreImageUrl(raw: string): string {

@@ -7,6 +7,7 @@ import { hasRichItineraryBlocks } from "@/lib/admin/externalImport/mapExternalIt
 import type { ExternalParsedItineraryV2 } from "@/lib/admin/externalImport/externalProductSchema";
 import type { ItineraryV2 } from "@/types/product";
 import { formatSeoHashtagsForMetaTitle } from "@/lib/products/formatSeoHashtagsForMetaTitle";
+import { trimOrNull } from "@/lib/admin/stringHelpers";
 
 export type MergeExternalImportInput = {
   meta: ExternalParsedMeta;
@@ -42,11 +43,6 @@ function normalizeGalleryUrls(
 
   if (out.length === 0) return { imageUrl: null, imagesJson: null };
   return { imageUrl: out[0], imagesJson: out.slice(0, max) };
-}
-
-function trimOrNull(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
 }
 
 export function mergeExternalImport(input: MergeExternalImportInput): ExternalParsedProduct {

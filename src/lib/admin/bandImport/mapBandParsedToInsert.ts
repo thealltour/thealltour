@@ -30,6 +30,7 @@ import {
   normalizeProductDepartureDateToYmdWithForcedYear,
 } from "@/lib/products/productDepartureDates";
 import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
+import { trimOrNull } from "@/lib/admin/stringHelpers";
 import type { ProductDepartureSchedule } from "@/types/product";
 
 export type MapBandParsedInput = {
@@ -48,11 +49,6 @@ function toSafeInteger(value: unknown): number | null {
   const int = Math.round(n);
   if (int < -2147483648 || int > 2147483647) return null;
   return int;
-}
-
-function trimOrNull(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
 }
 
 function extractMostFrequentYear(years: number[]): number | null {

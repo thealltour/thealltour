@@ -1,4 +1,5 @@
 import { ensureNotionClient } from "@/lib/notion/client";
+import type { NotionPageMeta, NotionRawBlock } from "@/lib/notion/types";
 
 export function extractNotionPageId(notionUrl: string): string | null {
   if (!notionUrl) return null;
@@ -19,10 +20,12 @@ export function extractNotionPageId(notionUrl: string): string | null {
   }
 }
 
-export async function fetchNotionPageMeta(pageId: string) {
+export async function fetchNotionPageMeta(pageId: string): Promise<NotionPageMeta> {
   const client = ensureNotionClient();
   const page = await client.pages.retrieve({ page_id: pageId });
-  return page as any;
+  // SDK의 PageObjectResponse/PartialPageObjectResponse 판별 유니온 전체를 옮기지 않고,
+  // 이 코드베이스가 실제로 읽는 필드만 다루는 좁은 타입으로 경계 캐스트.
+  return page as unknown as NotionPageMeta;
 }
 
 /** Notion Integration으로 해당 페이지 접근 가능 여부 검증 (등록/수정 시 호출) */
@@ -51,11 +54,11 @@ export async function validateNotionPageAccess(
   }
 }
 
-export async function fetchNotionBlocks(pageId: string) {
+export async function fetchNotionBlocks(pageId: string): Promise<NotionRawBlock[]> {
   const client = ensureNotionClient();
 
-  async function listBlockChildren(blockId: string): Promise<any[]> {
-    const blocks: any[] = [];
+  async function listBlockChildren(blockId: string): Promise<NotionRawBlock[]> {
+    const blocks: NotionRawBlock[] = [];
     let cursor: string | undefined;
 
     do {
@@ -65,14 +68,16 @@ export async function fetchNotionBlocks(pageId: string) {
         page_size: 100,
       });
 
-      blocks.push(...response.results);
+      // SDK 판별 유니온(BlockObjectResponse | PartialBlockObjectResponse) 전체를 옮기지 않고,
+      // 실제로 읽는 필드만 다루는 좁은 타입으로 경계 캐스트.
+      blocks.push(...(response.results as unknown as NotionRawBlock[]));
       cursor = response.has_more ? response.next_cursor ?? undefined : undefined;
     } while (cursor);
 
     return blocks;
   }
 
-  async function attachChildrenRecursive(items: any[]): Promise<any[]> {
+  async function attachChildrenRecursive(items: NotionRawBlock[]): Promise<NotionRawBlock[]> {
     const next = await Promise.all(
       items.map(async (block) => {
         if (block?.has_children && block?.id) {

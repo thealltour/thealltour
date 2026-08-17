@@ -13,11 +13,7 @@ import {
   isSightseeingEventHeading,
   sanitizeAiItinerary,
 } from "@/lib/admin/externalImport/sanitizeAiItinerary";
-
-function trimOrNull(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-}
+import { trimOrNull } from "@/lib/admin/stringHelpers";
 
 function mapEvent(ev: ExternalParsedItineraryDay["events"][number]): ItineraryV2Event | null {
   const heading = trimOrNull(ev.heading);

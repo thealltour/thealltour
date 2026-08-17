@@ -1,6 +1,5 @@
 import type { Product } from "@/types/product";
-
-const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
+import { WEEKDAYS_KO as WEEKDAY } from "@/lib/datetime/isoDate";
 
 function formatYmdDisplay(s: string): string {
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);

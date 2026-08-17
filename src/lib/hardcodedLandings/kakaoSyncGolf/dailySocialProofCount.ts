@@ -6,14 +6,14 @@
  * 다음 값으로 전환되도록 한다. (실 데이터 아님)
  */
 
+import { formatKstYmd } from "@/lib/datetime/kst";
+
 const MIN_COUNT = 75;
 const MAX_COUNT = 150;
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 /** KST 기준 YYYY-MM-DD 문자열 */
 export function getKstDateKey(now: Date = new Date()): string {
-  const kst = new Date(now.getTime() + KST_OFFSET_MS);
-  return kst.toISOString().slice(0, 10);
+  return formatKstYmd(now);
 }
 
 /** FNV-1a 스타일 32비트 해시 (외부 의존성 없이 결정론적 시드 생성) */

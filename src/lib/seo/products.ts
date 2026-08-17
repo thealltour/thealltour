@@ -5,6 +5,7 @@ import "server-only";
 import type { PublicReviewItem } from "@/types/review";
 import type { ProductReviewStats } from "@/types/review";
 import { THEALL_WORDMARK_IMAGE_SRC } from "@/lib/brandAssets";
+import { truncateForMeta as truncateForMetaShared } from "@/lib/seo/textTruncation";
 
 const SITE_NAME = "더올투어";
 
@@ -20,9 +21,7 @@ function toAbsoluteUrl(pathOrUrl: string): string {
 }
 
 function truncateForMeta(text: string, maxLen = 200): string {
-  const oneLine = text.replace(/\s+/g, " ").trim();
-  if (oneLine.length <= maxLen) return oneLine;
-  return oneLine.slice(0, maxLen - 1).trim() + "…";
+  return truncateForMetaShared(text, maxLen);
 }
 
 export type ProductForSeo = {

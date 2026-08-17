@@ -1,25 +1,24 @@
 import type { Guide } from "@/types/guide";
-import type { GuideBlock, GuideContent, GuideImage, GuideTocItem, NotionRichText } from "@/lib/notion/types";
+import type {
+  GuideBlock,
+  GuideContent,
+  GuideImage,
+  GuideTocItem,
+  NotionPageMeta,
+  NotionRawBlock,
+  NotionRichText,
+} from "@/lib/notion/types";
+import { extractNotionCoverUrl, getBlockRichText, slugifyHeading } from "@/lib/notion/types";
 import { extractNotionSeoFromBlocks } from "@/lib/notion/text";
 
 function richTextToString(richText: NotionRichText[]): string {
   return richText.map((item) => item.plain_text ?? "").join("").trim();
 }
 
-function slugifyHeading(text: string, fallbackId: string): string {
-  const normalized = text
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-  return normalized || fallbackId;
-}
-
-function toGuideImage(block: any): GuideImage | null {
-  const source = block?.image?.type === "external" ? block?.image?.external?.url : block?.image?.file?.url;
+function toGuideImage(block: NotionRawBlock): GuideImage | null {
+  const source = block.image?.type === "external" ? block.image?.external?.url : block.image?.file?.url;
   if (!source) return null;
-  const caption = ((block?.image?.caption as NotionRichText[] | undefined) ?? [])
+  const caption = (block.image?.caption ?? [])
     .map((item) => item.plain_text ?? "")
     .join("")
     .trim();
@@ -30,7 +29,7 @@ function toGuideImage(block: any): GuideImage | null {
   };
 }
 
-function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBlock[] {
+function normalizeBlocksInternal(rawBlocks: NotionRawBlock[], toc: GuideTocItem[]): GuideBlock[] {
   const blocks: GuideBlock[] = [];
   let index = 0;
 
@@ -40,7 +39,7 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
     const id = String(block?.id ?? `block-${index}`);
 
     if (type === "image") {
-      const consecutive: any[] = [];
+      const consecutive: NotionRawBlock[] = [];
       while (rawBlocks[index]?.type === "image") {
         consecutive.push(rawBlocks[index]);
         index += 1;
@@ -69,9 +68,9 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
       while (rawBlocks[index]?.type === type) {
         const item = rawBlocks[index];
         const itemId = String(item?.id ?? `${id}-${items.length}`);
-        const richText = (ordered
+        const richText = ordered
           ? item?.numbered_list_item?.rich_text
-          : item?.bulleted_list_item?.rich_text) as NotionRichText[] | undefined;
+          : item?.bulleted_list_item?.rich_text;
         const children = Array.isArray(item?.children) ? normalizeBlocksInternal(item.children, toc) : [];
         items.push({
           id: itemId,
@@ -90,7 +89,7 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
     }
 
     if (type === "heading_1" || type === "heading_2" || type === "heading_3") {
-      const richText = (block?.[type]?.rich_text as NotionRichText[] | undefined) ?? [];
+      const richText = getBlockRichText(block, type);
       const headingText = richTextToString(richText);
       const level = type === "heading_1" ? 1 : type === "heading_2" ? 2 : 3;
       const anchorId = slugifyHeading(headingText, id);
@@ -113,11 +112,11 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
 
     if (type === "column_list") {
       const rawColumns = Array.isArray(block?.children)
-        ? block.children.filter((child: any) => child?.type === "column")
+        ? block.children.filter((child) => child?.type === "column")
         : [];
 
       const columns: Array<{ id: string; blocks: GuideBlock[] }> = rawColumns
-        .map((column: any, columnIndex: number) => {
+        .map((column, columnIndex: number) => {
           const columnChildren = Array.isArray(column?.children) ? column.children : [];
           const columnBlocks = normalizeBlocksInternal(columnChildren, toc);
           return {
@@ -143,12 +142,10 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
     if (type === "table") {
       const rows = Array.isArray(block?.children)
         ? block.children
-            .filter((child: any) => child?.type === "table_row")
-            .map((row: any, rowIndex: number) => ({
+            .filter((child) => child?.type === "table_row")
+            .map((row, rowIndex: number) => ({
               id: String(row?.id ?? `${id}-row-${rowIndex}`),
-              cells: Array.isArray(row?.table_row?.cells)
-                ? (row.table_row.cells as NotionRichText[][])
-                : [],
+              cells: row.table_row?.cells ?? [],
             }))
         : [];
 
@@ -171,7 +168,7 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
       blocks.push({
         type: "paragraph",
         id,
-        richText: (block?.paragraph?.rich_text as NotionRichText[] | undefined) ?? [],
+        richText: block?.paragraph?.rich_text ?? [],
       });
       index += 1;
       continue;
@@ -181,7 +178,7 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
       blocks.push({
         type: "quote",
         id,
-        richText: (block?.quote?.rich_text as NotionRichText[] | undefined) ?? [],
+        richText: block?.quote?.rich_text ?? [],
       });
       index += 1;
       continue;
@@ -192,7 +189,7 @@ function normalizeBlocksInternal(rawBlocks: any[], toc: GuideTocItem[]): GuideBl
         type: "callout",
         id,
         icon: block?.callout?.icon?.emoji ?? undefined,
-        richText: (block?.callout?.rich_text as NotionRichText[] | undefined) ?? [],
+        richText: block?.callout?.rich_text ?? [],
         children: Array.isArray(block?.children) ? normalizeBlocksInternal(block.children, toc) : [],
       });
       index += 1;
@@ -247,19 +244,11 @@ function collectPlainTextFromBlocks(blocks: GuideBlock[]): string {
   return chunks.join(" ").replace(/\s+/g, " ").trim();
 }
 
-function extractNotionCoverUrl(pageMeta: any): string | undefined {
-  const cover = pageMeta?.cover;
-  if (!cover) return undefined;
-  if (cover.type === "external" && cover.external?.url) return cover.external.url;
-  if (cover.type === "file" && cover.file?.url) return cover.file.url;
-  return undefined;
-}
-
 export function normalizeGuideContent(input: {
   guide: Guide;
-  rawBlocks: any[];
+  rawBlocks: NotionRawBlock[];
   pageTitleFromNotion?: string;
-  pageMeta?: any;
+  pageMeta?: NotionPageMeta;
 }): GuideContent {
   const toc: GuideTocItem[] = [];
   // 외부 TOC를 사용하지 않는 경우를 고려해, 본문 내 목차 섹션은 제거하지 않고 유지합니다.

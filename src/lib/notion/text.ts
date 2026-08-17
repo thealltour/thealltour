@@ -1,3 +1,6 @@
+import type { NotionRawBlock, NotionRichText } from "@/lib/notion/types";
+import { getBlockRichText, slugifyHeading } from "@/lib/notion/types";
+
 /**
  * Notion 블록에서 SEO용 plain text + TOC 추출 (크롤러 인덱싱용).
  * 스타일 재현이 아니라 본문에 넣을 텍스트/구조만 산출.
@@ -5,20 +8,10 @@
 
 const DEFAULT_MAX_EXCERPT_LENGTH = 2500;
 
-function slugifyHeading(text: string, fallbackId: string): string {
-  const normalized = text
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-  return normalized || fallbackId;
-}
-
-function richTextToPlain(richText: unknown): string {
+function richTextToPlain(richText: NotionRichText[] | undefined): string {
   if (!Array.isArray(richText)) return "";
   return richText
-    .map((item: any) => (item?.plain_text != null ? String(item.plain_text) : ""))
+    .map((item) => (item?.plain_text != null ? String(item.plain_text) : ""))
     .join("")
     .trim();
 }
@@ -51,12 +44,16 @@ function appendLine(acc: BlockAcc, line: string): void {
   acc.length += trimmed.length + 1;
 }
 
-function walkBlock(block: any, acc: BlockAcc, listPrefix?: { bullet: string; index: number }): void {
+function walkBlock(
+  block: NotionRawBlock | undefined,
+  acc: BlockAcc,
+  listPrefix?: { bullet: string; index: number },
+): void {
   if (!block || acc.length >= acc.maxLength) return;
   const type = block.type;
 
   if (type === "heading_1" || type === "heading_2" || type === "heading_3") {
-    const rich = block[type]?.rich_text;
+    const rich = getBlockRichText(block, type);
     const text = richTextToPlain(rich);
     if (text) {
       const level = type === "heading_1" ? 1 : type === "heading_2" ? 2 : 3;
@@ -80,7 +77,7 @@ function walkBlock(block: any, acc: BlockAcc, listPrefix?: { bullet: string; ind
     if (text) appendLine(acc, (listPrefix?.bullet ?? "- ") + text);
     const children = block.children;
     if (Array.isArray(children) && children.length > 0) {
-      children.forEach((ch: any) => walkBlock(ch, acc, { bullet: "  - ", index: 0 }));
+      children.forEach((ch) => walkBlock(ch, acc, { bullet: "  - ", index: 0 }));
     }
     return;
   }
@@ -90,7 +87,7 @@ function walkBlock(block: any, acc: BlockAcc, listPrefix?: { bullet: string; ind
     if (text) appendLine(acc, (listPrefix ? `${listPrefix.index}. ` : "1. ") + text);
     const children = block.children;
     if (Array.isArray(children) && children.length > 0) {
-      children.forEach((ch: any, i: number) =>
+      children.forEach((ch, i: number) =>
         walkBlock(ch, acc, { bullet: "", index: (listPrefix?.index ?? 1) + i + 1 }),
       );
     }
@@ -108,23 +105,23 @@ function walkBlock(block: any, acc: BlockAcc, listPrefix?: { bullet: string; ind
     if (text) appendLine(acc, text);
     const children = block.children;
     if (Array.isArray(children)) {
-      children.forEach((ch: any) => walkBlock(ch, acc));
+      children.forEach((ch) => walkBlock(ch, acc));
     }
     return;
   }
 
   if (type === "column_list" && Array.isArray(block.children)) {
-    block.children.forEach((col: any) => {
-      if (Array.isArray(col?.children)) col.children.forEach((c: any) => walkBlock(c, acc));
+    block.children.forEach((col) => {
+      if (Array.isArray(col?.children)) col.children.forEach((c) => walkBlock(c, acc));
     });
     return;
   }
 
   if (type === "table" && Array.isArray(block.children)) {
-    block.children.forEach((row: any) => {
+    block.children.forEach((row) => {
       const cells = row?.table_row?.cells;
       if (Array.isArray(cells)) {
-        const rowText = cells.map((cell: any) => richTextToPlain(cell)).filter(Boolean).join(" ");
+        const rowText = cells.map((cell) => richTextToPlain(cell)).filter(Boolean).join(" ");
         if (rowText) appendLine(acc, rowText);
       }
     });
@@ -137,7 +134,7 @@ function walkBlock(block: any, acc: BlockAcc, listPrefix?: { bullet: string; ind
   }
 
   if (Array.isArray(block.children)) {
-    block.children.forEach((ch: any) => walkBlock(ch, acc, listPrefix));
+    block.children.forEach((ch) => walkBlock(ch, acc, listPrefix));
   }
 }
 
@@ -145,7 +142,7 @@ function walkBlock(block: any, acc: BlockAcc, listPrefix?: { bullet: string; ind
  * Raw Notion blocks에서 SEO용 excerpt 텍스트와 TOC 추출
  */
 export function extractNotionSeoFromBlocks(
-  rawBlocks: any[],
+  rawBlocks: NotionRawBlock[],
   options?: { maxExcerptLength?: number },
 ): { excerptText: string; toc: NotionSeoTocItem[] } {
   const maxLength = options?.maxExcerptLength ?? DEFAULT_MAX_EXCERPT_LENGTH;

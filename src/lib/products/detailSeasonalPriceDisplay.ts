@@ -50,10 +50,11 @@ export function getSeasonalHeroPriceLines(model: SeasonalPriceDisplayModel): Sea
   return entries;
 }
 
-/** 상세 가격 카드 공통 안내 (PR-E: 의미 중복 최소화, 최대 2줄) */
+/** 상세 가격 카드 공통 안내 (개요 — sticky CTA 마이크로카피와 통합) */
 export const DETAIL_UNIFIED_PRICE_NOTICE_LINES = [
   "출발일, 항공 좌석 상황 및 예약 시점에 따라 가격이 변동될 수 있습니다.",
-  "정확한 요금은 상담을 통해 안내드립니다.",
+  "최종 금액은 일정과 인원 기준으로 안내되며, 포함사항·옵션은 상세 정보에서 확인할 수 있습니다.",
+  "정확한 요금과 예약 가능 여부는 상담을 통해 안내드립니다.",
 ] as const;
 
 /** Sticky·데스크톱 요약: 구간가 사용 시 변동성 힌트 (PR-E) */

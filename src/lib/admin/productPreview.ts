@@ -56,6 +56,7 @@ function logProductNoticeMigrationCheckDev(product: Product) {
 export type ProductFormPayload = {
   title?: string;
   description?: string;
+  golf_course_info?: string;
   one_liner?: string;
   options_json?: string;
   image_url?: string;
@@ -181,6 +182,7 @@ export function formToPreviewProduct(
     id: "_preview",
     title: ((form.title?.trim() || "상품명") as string).slice(0, 200),
     description: (form.description?.trim() || "") as string,
+    golf_course_info: form.golf_course_info?.trim() || undefined,
     image_url: primaryImageUrl as string,
     images_json: imagesJson.length > 0 ? imagesJson : undefined,
     category: (form.category?.trim() || "여행상품") as string,

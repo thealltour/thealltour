@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { CalendarDays, ChevronUp } from "lucide-react";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
-import { ProductBookingSelectionSummary } from "@/components/products/ProductBookingSelectionSummary";
-import { ThemeChartCard } from "@/components/products/ThemeChartCard";
-import { useProductQuote } from "@/components/products/ProductQuoteContext";
+import { ConnectedProductBookingSelectionPanel } from "@/components/products/ConnectedProductBookingSelectionPanel";
+import { ProductBookingSheet } from "@/components/products/ProductBookingSheet";
+import {
+  useProductQuote,
+  type BookingScrollTarget,
+} from "@/components/products/ProductQuoteContext";
+import { cn } from "@/lib/cn";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import type { QuoteResult } from "@/lib/pricing/calcQuote";
-import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
-import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { trackReviewConversionCtaClick } from "@/lib/reviewExperimentTracking";
 import type { Product, ProductTrust } from "@/types/product";
 import {
@@ -27,6 +29,7 @@ import {
   getSelectedDepartureStickyDateLabel,
   resolveStickyExpectedAmount,
 } from "@/lib/products/stickyExpectedPrice";
+import { productHasBookingSelection } from "@/lib/products/resolveProductBookingUx";
 
 export type ProductDetailStickyV2Status =
   | "AVAILABLE"
@@ -132,6 +135,30 @@ function getStickyPriceParts(
   };
 }
 
+function StickyExpectedPriceAmount({ stickyPrice }: { stickyPrice: StickyPriceParts }) {
+  return (
+    <>
+      <p className="text-xs font-medium text-slate-500">예상가</p>
+      {stickyPrice.digits ? (
+        <>
+          <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[var(--primary)]">
+            {stickyPrice.prefix ?? ""}₩{stickyPrice.digits}
+            {stickyPrice.showTilde ? "~" : ""}
+          </p>
+          {stickyPrice.mode === "seasonal" ? (
+            <>
+              <p className="mt-0.5 text-xs text-slate-500">{SEASONAL_CARD_SUBLINE}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{STICKY_SEASONAL_VOLATILITY_HINT}</p>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <p className="mt-1 text-lg font-semibold text-slate-600">상담 후 안내</p>
+      )}
+    </>
+  );
+}
+
 export function ProductDetailStickyV2Desktop({
   priceFormatted,
   productId,
@@ -152,19 +179,6 @@ export function ProductDetailStickyV2Desktop({
     departureSelectionMissing,
   } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
-
-  const chart = useMemo(() => {
-    if (!product) return null;
-    const overview = mapProductToOverview(product);
-    return overview.chart?.items?.length ? overview.chart : null;
-  }, [product]);
-  const seoHashtags = useMemo(
-    () => parseMetaTitleAsHashtags(product?.meta_title),
-    [product?.meta_title],
-  );
-  const MAX_KEYWORDS_STICKY = 5;
-  const displayKeywords = seoHashtags.slice(0, MAX_KEYWORDS_STICKY);
-  const keywordOverflowCount = Math.max(0, seoHashtags.length - MAX_KEYWORDS_STICKY);
 
   const stickyPrice = useMemo(
     () =>
@@ -197,34 +211,17 @@ export function ProductDetailStickyV2Desktop({
 
   return (
     <aside
-      className="hidden lg:block sticky w-full max-w-[300px] shrink-0 overflow-auto"
+      className="hidden lg:flex sticky w-[min(100%,22.5rem)] shrink-0 flex-col overflow-hidden"
       style={{
         top: `${desktopStickyTop}px`,
         maxHeight: desktopStickyMaxHeight,
       }}
       aria-label="상품 요약"
     >
-      {/* 전환 핵심 그룹: 예상가 + CTA. 스크롤 위치와 무관하게 카드/버튼 UI 일관 유지 */}
-      <div className="rounded-2xl border-2 border-[var(--primary-soft)] bg-white p-5 shadow-[var(--shadow-soft-strong)]">
-        <div className="space-y-3">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-2 border-[var(--primary-soft)] bg-white shadow-[var(--shadow-soft-strong)]">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-5">
           <div>
-            <p className="text-xs font-medium text-slate-500">예상가</p>
-            {stickyPrice.digits ? (
-              <>
-                <p className="font-price-strong mt-1 text-2xl font-bold leading-tight text-[var(--primary)]">
-                  {stickyPrice.prefix ?? ""}₩{stickyPrice.digits}
-                  {stickyPrice.showTilde ? "~" : ""}
-                </p>
-                {stickyPrice.mode === "seasonal" ? (
-                  <>
-                    <p className="mt-0.5 text-xs text-slate-500">{SEASONAL_CARD_SUBLINE}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{STICKY_SEASONAL_VOLATILITY_HINT}</p>
-                  </>
-                ) : null}
-              </>
-            ) : (
-              <p className="mt-1 text-lg font-semibold text-slate-600">상담 후 안내</p>
-            )}
+            <StickyExpectedPriceAmount stickyPrice={stickyPrice} />
             {product && (
               <div className="mt-2 space-y-0.5">
                 {stickyMetaLine ? (
@@ -241,68 +238,38 @@ export function ProductDetailStickyV2Desktop({
               </div>
             )}
           </div>
-          {/* 가격/전환 신뢰도 마이크로카피: 기준·포함·문의 안내 */}
-          <ul className="mt-3 list-none space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500" aria-label="가격 및 예약 안내">
-            <li>최종 금액은 일정과 인원 기준으로 안내됩니다.</li>
-            <li>포함사항과 옵션 내용은 상세 정보에서 확인 가능합니다.</li>
-            <li>상담 후 예약 가능 여부와 예상 비용을 안내해드립니다.</li>
-          </ul>
-          <ProductBookingSelectionSummary className="mt-1" />
+          {productHasBookingSelection(product) ? (
+            <div className="mt-1">
+              <ConnectedProductBookingSelectionPanel
+                variant="rail"
+                product={product}
+                productTitle={productTitle}
+              />
+            </div>
+          ) : null}
           <TrustSignals trust={trust} />
-          <div className="flex flex-col gap-2 pt-0.5 rounded-xl">
-            <ProductConsultCTA
-              productId={productId}
-              productTitle={productTitle}
-              sourcePath={sourcePath}
-              status={status}
-              kakaoHref={kakaoHref}
-              section="top"
-              requiredGroupsMissing={requiredGroupsMissing}
-              departureSelectionMissing={departureSelectionMissing}
-              scrollToBooking={scrollToBooking}
-              isSoldOut={isSoldOut}
-              onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
-              primaryLabel={getProductCtaLabel(status, ctaLabelOptions)}
-              ctaLabelOptions={ctaLabelOptions}
-              helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
-            />
+        </div>
+        <div className="shrink-0 space-y-3 border-t border-slate-100 bg-white p-5 pt-4">
+          <ProductConsultCTA
+            productId={productId}
+            productTitle={productTitle}
+            sourcePath={sourcePath}
+            kakaoHref={kakaoHref}
+            status={status}
+            section="top"
+            requiredGroupsMissing={requiredGroupsMissing}
+            departureSelectionMissing={departureSelectionMissing}
+            scrollToBooking={scrollToBooking}
+            isSoldOut={isSoldOut}
+            onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
+            primaryLabel={getProductCtaLabel(status, ctaLabelOptions)}
+            ctaLabelOptions={ctaLabelOptions}
+            helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
+          />
+          <div className="border-t border-slate-100 pt-3">
+            <StickyExpectedPriceAmount stickyPrice={stickyPrice} />
           </div>
         </div>
-      </div>
-
-      {/* 보조 정보 그룹: 키워드 / 차트 / 목록 링크 (탐색 보조, CTA 방해 최소화) */}
-      <div className="sticky-supporting-info mt-5 space-y-3 border-t border-slate-200 pt-5" aria-label="보조 정보">
-        {displayKeywords.length > 0 && (
-          <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
-            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">핵심 키워드</p>
-            <div className="flex flex-wrap items-center gap-1">
-              {displayKeywords.map((tag, index) => (
-                <span
-                  key={`detail-seo-${tag}-${index}`}
-                  className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
-                >
-                  #{tag}
-                </span>
-              ))}
-              {keywordOverflowCount > 0 && (
-                <span className="inline-flex shrink-0 items-center text-[10px] font-medium text-slate-400">
-                  +{keywordOverflowCount}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        {chart && (
-          <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
-            <ThemeChartCard items={chart.items} />
-          </div>
-        )}
-        <Link
-          href="/products"
-          className="block text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 transition hover:text-slate-700 hover:decoration-slate-500"
-        >
-          ← 다른 상품 보기
-        </Link>
       </div>
     </aside>
   );
@@ -325,9 +292,13 @@ export function ProductDetailStickyV2Mobile({
     scrollToBooking,
     selectedDeparture,
     departureSelectionMissing,
+    travelerCount,
+    registerOpenBookingSheet,
   } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
   const [compact, setCompact] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetTarget, setSheetTarget] = useState<BookingScrollTarget>("panel");
   const lastScrollYRef = useRef(0);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -355,6 +326,21 @@ export function ProductDetailStickyV2Mobile({
       }),
     [product, stickyPrice.mode, selectedDeparture],
   );
+
+  const showBookingSheetTrigger = productHasBookingSelection(product);
+  const bookingSummaryLabel = useMemo(() => {
+    const dateLabel = getSelectedDepartureStickyDateLabel(selectedDeparture);
+    if (dateLabel) return `${dateLabel} · ${travelerCount}명`;
+    if (selectedDeparture?.label) return `${selectedDeparture.label} · ${travelerCount}명`;
+    return "출발일·인원 선택";
+  }, [selectedDeparture, travelerCount]);
+
+  useEffect(() => {
+    registerOpenBookingSheet((target = "panel") => {
+      setSheetTarget(target);
+      setSheetOpen(true);
+    });
+  }, [registerOpenBookingSheet]);
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY;
@@ -421,7 +407,7 @@ export function ProductDetailStickyV2Mobile({
     <div
       role="banner"
       aria-label="상품 예약 상담"
-      className="fixed left-0 right-0 z-50 box-border w-full border-t border-[var(--divider)] glass-chrome glass-chrome-bottom md:hidden"
+      className="fixed left-0 right-0 z-50 box-border w-full border-t border-[var(--divider)] glass-chrome glass-chrome-bottom lg:hidden"
       style={{
         bottom: "var(--mobile-cta-viewport-offset, 0px)",
         paddingTop: `${PADDING_TOP}px`,
@@ -430,7 +416,41 @@ export function ProductDetailStickyV2Mobile({
         paddingRight: "max(12px, env(safe-area-inset-right, 0px))",
       }}
     >
-      <div className="mx-auto flex min-h-[44px] w-full max-w-[100%] items-center gap-3">
+      <div className="mx-auto flex w-full max-w-[100%] flex-col gap-2">
+        {showBookingSheetTrigger ? (
+          <button
+            type="button"
+            aria-expanded={sheetOpen}
+            onClick={() => {
+              setSheetTarget("panel");
+              setSheetOpen(true);
+            }}
+            className={cn(
+              "flex min-h-12 w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium",
+              departureSelectionMissing || requiredGroupsMissing
+                ? "border-2 border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--warning)]"
+                : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]",
+            )}
+          >
+            <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1 truncate">{bookingSummaryLabel}</span>
+            <span
+              className={cn(
+                "shrink-0 text-sm font-semibold",
+                departureSelectionMissing || requiredGroupsMissing
+                  ? "text-[var(--accent)]"
+                  : "text-[var(--primary)]",
+              )}
+            >
+              {departureSelectionMissing || requiredGroupsMissing ? "선택하기" : "변경"}
+            </span>
+            <ChevronUp
+              className={cn("h-4 w-4 shrink-0 text-[var(--text-secondary)]", sheetOpen && "rotate-180")}
+              aria-hidden
+            />
+          </button>
+        ) : null}
+        <div className="flex min-h-[44px] items-center gap-3">
         <ProductConsultCTA
           productId={productId}
           productTitle={productTitle}
@@ -455,7 +475,15 @@ export function ProductDetailStickyV2Mobile({
           compact={compact}
           onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
         />
+        </div>
       </div>
+      <ProductBookingSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        product={product}
+        productTitle={productTitle}
+        focusTarget={sheetTarget}
+      />
     </div>
   );
 }

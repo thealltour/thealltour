@@ -227,6 +227,22 @@ describe("mapBandParsedToInsert", () => {
     expect(payload.price).toBe(599000);
     expect(payload.product_source_url).toBe("https://band.us/n/abc");
     expect(payload.is_active).toBe(true);
+    expect(payload.golf_course_info).toBeNull();
+  });
+
+  it("stores golf course info separately from band description", () => {
+    const payload = mapBandParsedToInsert({
+      parsed: minimalBandParsed({
+        band_marketing_copy: "밴드 홍보",
+        description: "HWP 개요",
+      }),
+      bandText: "밴드 본문",
+      hwpText: "",
+      golfCourseInfo: "  18홀 챔피언십 코스  ",
+    });
+
+    expect(payload.description).toBe("밴드 홍보\n\nHWP 개요");
+    expect(payload.golf_course_info).toBe("18홀 챔피언십 코스");
   });
 
   it("maps expanded meta fields", () => {

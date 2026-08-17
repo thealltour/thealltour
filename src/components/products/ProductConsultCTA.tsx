@@ -5,6 +5,7 @@ import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { useProductQuote, type BookingScrollTarget } from "@/components/products/ProductQuoteContext";
 import { ActionPromptToast } from "@/components/ui/ActionPromptToast";
 import { Button } from "@/components/ui/Button";
+import { KakaoIcon } from "@/components/auth/AuthProviderIcons";
 import {
   getProductCtaLabel,
   getProductCtaStickyPrimaryLabel,
@@ -229,15 +230,28 @@ export function ProductConsultCTA({
   };
 
   const kakaoButton = kakaoHref ? (
-    <Button
-      type="button"
-      variant="kakao"
-      size="md"
-      className={section === "sticky" ? "h-11 min-h-11 w-full whitespace-nowrap" : "w-full"}
-      onClick={handleKakao}
-    >
-      카톡 견적 문의
-    </Button>
+    section === "sticky" ? (
+      <Button
+        type="button"
+        variant="kakao"
+        size="md"
+        className="h-11 w-11 min-h-11 min-w-11 shrink-0 px-0"
+        onClick={handleKakao}
+        aria-label="카톡 견적 문의"
+      >
+        <KakaoIcon className="h-5 w-5" />
+      </Button>
+    ) : (
+      <Button
+        type="button"
+        variant="kakao"
+        size="md"
+        className="w-full"
+        onClick={handleKakao}
+      >
+        카톡 견적 문의
+      </Button>
+    )
   ) : null;
 
   const selectionHint =
@@ -301,11 +315,11 @@ export function ProductConsultCTA({
               variant="accent"
               size="md"
               onClick={handlePrimary}
-              className="h-11 min-h-11 flex-1 min-w-0 shrink-0 whitespace-nowrap"
+              className="h-11 min-h-11 flex-1 min-w-0 whitespace-nowrap"
             >
               {isSoldOut ? "대기" : stickyPrimaryLabel}
             </Button>
-            {kakaoButton ? <div className="min-w-0 shrink">{kakaoButton}</div> : null}
+            {kakaoButton}
           </div>
         </div>
         {actionPrompt}

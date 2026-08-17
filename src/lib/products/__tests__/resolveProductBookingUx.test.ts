@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  productHasBookingSelection,
   productHasPromotionCampaignMeta,
   resolveDepartureUiForProduct,
   resolveProductBookingUxMode,
@@ -61,6 +62,33 @@ describe("resolveProductBookingUxMode", () => {
             badge_tone: "primary",
             isPromotionCampaign: true,
           }],
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("productHasBookingSelection is true when schedules exist", () => {
+    expect(productHasBookingSelection(baseProduct())).toBe(false);
+    expect(
+      productHasBookingSelection(
+        baseProduct({
+          departureSchedules: [
+            { departureDate: "2026-07-01", returnDate: null, price: 120000, label: null, status: "AVAILABLE" },
+          ],
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("productHasBookingSelection is true when only options exist", () => {
+    expect(
+      productHasBookingSelection(
+        baseProduct({
+          options: {
+            basePrice: 0,
+            currency: "KRW",
+            groups: [{ key: "room", title: "객실", type: "radio", items: [{ value: "std", label: "스탠다드" }] }],
+          },
         }),
       ),
     ).toBe(true);

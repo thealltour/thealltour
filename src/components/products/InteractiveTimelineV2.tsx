@@ -17,9 +17,7 @@ import {
 import type { ProductDetailStatusTag } from "@/lib/products/productDetailCta";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { TimelineEventCard } from "@/components/products/timeline/TimelineEventCard";
-import { TimelineSummaryEventCard } from "@/components/products/timeline/TimelineSummaryEventCard";
 import { EventMediaSection } from "@/components/products/timeline/EventMediaSection";
-import { isItinerarySummaryEvent } from "@/lib/admin/externalImport/sanitizeAiItinerary";
 
 type TimelineEventRowDesktopProps = {
   ev: TimelineEvent;
@@ -375,8 +373,6 @@ export function InteractiveTimelineV2({
     maxEventsVisible != null && day.events.length > maxEventsVisible && !isExpanded
       ? day.events.slice(0, maxEventsVisible)
       : day.events;
-  const activityEvents = displayEvents.filter((ev) => !isItinerarySummaryEvent(ev));
-  const summaryEvents = displayEvents.filter((ev) => isItinerarySummaryEvent(ev));
   const hasMore =
     maxEventsVisible != null && day.events.length > maxEventsVisible && !isExpanded;
   const moreCount = hasMore ? day.events.length - maxEventsVisible! : 0;
@@ -477,7 +473,7 @@ export function InteractiveTimelineV2({
                   <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[var(--primary)]/25" />
                 </div>
                 <div className="flex flex-col space-y-6">
-                  {activityEvents.map((ev, i) => {
+                  {displayEvents.map((ev, i) => {
                     const isSelected =
                       onEventSelect != null &&
                       selectedDayIndex === dayIndex &&
@@ -512,7 +508,7 @@ export function InteractiveTimelineV2({
                 </div>
               </div>
               <div className="space-y-5 md:hidden" aria-label="모바일 일정">
-                {activityEvents.map((ev, i) => {
+                {displayEvents.map((ev, i) => {
                   const isSelected =
                     onEventSelect != null &&
                     selectedDayIndex === dayIndex &&
@@ -545,13 +541,6 @@ export function InteractiveTimelineV2({
                   );
                 })}
               </div>
-              {summaryEvents.length > 0 ? (
-                <div className="mt-8 space-y-3 border-t border-[var(--border)]/80 pt-6">
-                  {summaryEvents.map((ev, i) => (
-                    <TimelineSummaryEventCard key={`${day.day}-summary-${ev.heading}-${i}`} event={ev} />
-                  ))}
-                </div>
-              ) : null}
               {maxEventsVisible != null && day.events.length > maxEventsVisible && (
                 <div className="mt-6 flex justify-center">
                   <button

@@ -101,6 +101,10 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     id: String(row.id ?? ""),
     title: String(row.title ?? row.name ?? "상품명 미정"),
     description: String(row.description ?? row.content ?? "상세 설명이 준비 중입니다."),
+    golf_course_info:
+      typeof row.golf_course_info === "string" && row.golf_course_info.trim() !== ""
+        ? row.golf_course_info
+        : undefined,
     image_url: primaryImage,
     images_json: images.length > 0 ? images : undefined,
     category: String(row.category ?? row.type ?? "여행상품"),

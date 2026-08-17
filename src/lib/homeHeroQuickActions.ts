@@ -16,6 +16,13 @@ export type HomeHeroQuickAction = {
   ariaLabel?: string;
 };
 
+export type HomeHeroUtilityAction = {
+  id: string;
+  label: string;
+  href: string;
+  ariaLabel?: string;
+};
+
 export const HOME_HERO_QUICK_ACTIONS: readonly HomeHeroQuickAction[] = [
   {
     id: "golf",
@@ -45,11 +52,11 @@ export const HOME_HERO_QUICK_ACTIONS: readonly HomeHeroQuickAction[] = [
     iconName: "luxury",
     ariaLabel: "럭셔리 테마 상품 보기",
   },
-  {
-    id: "all",
-    label: "전체보기",
-    href: "/products",
-    iconName: "explore",
-    ariaLabel: "전체 상품 목록으로 이동",
-  },
 ] as const;
+
+export const HOME_HERO_ALL_PRODUCTS_ACTION: HomeHeroUtilityAction = {
+  id: "all",
+  label: "전체 상품",
+  href: "/products",
+  ariaLabel: "전체 상품 목록으로 이동",
+};

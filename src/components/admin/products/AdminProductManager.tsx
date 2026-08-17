@@ -2069,6 +2069,7 @@ export default function AdminProductManager() {
                             kakaoHref="#"
                             status={previewDetailProps.statusTag}
                             trust={undefined}
+                            product={effectivePreviewProduct}
                           />
                         )}
                       </div>
@@ -2080,6 +2081,7 @@ export default function AdminProductManager() {
                           sourcePath="/admin/products"
                           kakaoHref="#"
                           status={previewDetailProps.statusTag}
+                          product={effectivePreviewProduct}
                         />
                       )}
                     </ProductQuoteProvider>

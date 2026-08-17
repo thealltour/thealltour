@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import {
   needsDescriptionCollapse,
   ProductDescriptionSection,
+  shouldShowGolfCourseInfo,
   shouldShowProductDescription,
 } from "@/components/products/ProductDescriptionSection";
 
@@ -15,6 +16,17 @@ describe("shouldShowProductDescription", () => {
 
   it("shows real product copy", () => {
     expect(shouldShowProductDescription("🔥 밴드 특가")).toBe(true);
+  });
+});
+
+describe("shouldShowGolfCourseInfo", () => {
+  it("hides empty golf course copy", () => {
+    expect(shouldShowGolfCourseInfo(null)).toBe(false);
+    expect(shouldShowGolfCourseInfo("   ")).toBe(false);
+  });
+
+  it("shows filled golf course copy", () => {
+    expect(shouldShowGolfCourseInfo("18홀")).toBe(true);
   });
 });
 
@@ -37,6 +49,32 @@ describe("ProductDescriptionSection", () => {
   it("does not render placeholder description", () => {
     const { container } = render(<ProductDescriptionSection description="상품 설명을 확인해 주세요." />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("renders golf course info in a second column", () => {
+    render(
+      <ProductDescriptionSection
+        description="이왕가시는 해외골프여행"
+        golfCourseInfo={"챔피언십 18홀\n페어웨이 상태가 좋습니다."}
+      />,
+    );
+    expect(screen.getByRole("region", { name: "상품 소개와 골프장 정보" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "상품 소개" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "골프장 정보" })).toBeTruthy();
+    expect(screen.getByText(/챔피언십 18홀/)).toBeTruthy();
+  });
+
+  it("hides golf course column when empty", () => {
+    render(<ProductDescriptionSection description="밴드 특가" golfCourseInfo="   " />);
+    expect(screen.getByRole("region", { name: "상품 소개" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "골프장 정보" })).toBeNull();
+  });
+
+  it("renders golf course info alone when description is missing", () => {
+    render(<ProductDescriptionSection description="" golfCourseInfo="클럽하우스 안내" />);
+    expect(screen.getByRole("region", { name: "골프장 정보" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "상품 소개" })).toBeNull();
+    expect(screen.getByText("클럽하우스 안내")).toBeTruthy();
   });
 
   it("expands collapsed long copy", () => {

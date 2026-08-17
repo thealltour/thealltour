@@ -36,6 +36,7 @@ export type MapBandParsedInput = {
   parsed: BandParsedProduct;
   bandText: string;
   hwpText: string;
+  golfCourseInfo?: string | null;
   productSourceUrl?: string | null;
   imageUrls?: string[];
 };
@@ -373,7 +374,7 @@ export function mapItineraryDaysToV2(days: BandParsedItineraryDay[] | null): Iti
 }
 
 export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string, unknown> {
-  const { parsed, bandText, hwpText, productSourceUrl, imageUrls } = input;
+  const { parsed, bandText, hwpText, golfCourseInfo, productSourceUrl, imageUrls } = input;
   const images = normalizeImageUrls(imageUrls);
   const imageUrl = images[0] ?? BAND_IMPORT_PLACEHOLDER_IMAGE;
 
@@ -421,6 +422,7 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
   const payload: Record<string, unknown> = {
     title,
     description,
+    golf_course_info: trimOrNull(golfCourseInfo),
     image_url: imageUrl,
     images_json: images.length > 0 ? images : null,
     category: trimOrNull(parsed.category) ?? BAND_IMPORT_DEFAULT_CATEGORY,

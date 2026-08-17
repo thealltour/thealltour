@@ -68,7 +68,7 @@ export function OptionGroup({
         </Select>
       ) : isMulti ? (
         <div
-          className="flex flex-col space-y-2 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-2"
+          className="flex flex-col space-y-2"
           role="group"
           aria-label={group.title}
           aria-multiselectable="true"
@@ -85,7 +85,7 @@ export function OptionGroup({
         </div>
       ) : (
         <div
-          className="flex flex-col space-y-2 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-2"
+          className="flex flex-col space-y-2"
           role="radiogroup"
           aria-label={group.title}
           aria-required={isRequired}

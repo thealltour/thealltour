@@ -16,7 +16,7 @@ values (
   'product-images',
   true,
   10485760,
-  array['image/webp']
+  array['image/webp', 'image/jpeg', 'image/png']
 )
 on conflict (id) do update
 set public = excluded.public,

@@ -1,5 +1,7 @@
+import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
 import type { Product } from "@/types/product";
 import { getSeasonalPriceDisplayModel } from "@/lib/products/detailSeasonalPriceDisplay";
+import { collectProductDepartureDates } from "@/lib/products/productDepartureDates";
 
 export type ProductBookingUxMode =
   | "seasonal_consult"
@@ -43,4 +45,14 @@ export function resolveDepartureUiForProduct(product: Product): "chips" | "calen
   // 상품 상세 출발일은 특가/기획(promotion_fixed) 포함 달력 UI 통일
   if (hasDepartureData) return "calendar";
   return "chips";
+}
+
+/** 출발일·인원·옵션 선택 UI를 띄울 데이터가 있는지 */
+export function productHasBookingSelection(product: Product | null | undefined): boolean {
+  if (!product) return false;
+  const hasCalendarDates = collectProductDepartureDates(product).length > 0;
+  const hasDepartures = Boolean(product.departureSchedules?.length || product.departures?.length);
+  const hasOptions =
+    ENABLE_PRODUCT_OPTIONS && Boolean(product.options?.groups && product.options.groups.length > 0);
+  return hasCalendarDates || hasDepartures || hasOptions;
 }

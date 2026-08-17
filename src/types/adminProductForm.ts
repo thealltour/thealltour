@@ -32,6 +32,7 @@ export function createEmptyDepartureScheduleRow(): DepartureScheduleFormRow {
 export type ProductFormState = {
   title: string;
   description: string;
+  golf_course_info: string;
   product_source_url: string;
   point_benefits: string;
   point_tourism: "O" | "X";
@@ -158,6 +159,7 @@ export function createEmptyProductFormState(): ProductFormState {
   return {
     title: "",
     description: "",
+    golf_course_info: "",
     product_source_url: "",
     point_benefits: "",
     point_tourism: "X",

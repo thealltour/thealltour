@@ -67,7 +67,7 @@ export function diagnoseProductBookingUx(product: Product): ProductBookingUxDiag
       "일반 상품 — 옵션만 노출, 달력 empty-state. 출발일 스케줄 등록 시 달력 dot 표시.";
   } else {
     uiExpectation =
-      "일반 상품 — Summary 아래 달력 + (출발일 선택 후) 예약금 CTA. env 없어도 UI는 표시, 결제 클릭 시 PortOne 설정 필요.";
+      "일반 상품 — sticky/시트에서 달력·인원·옵션 선택. 출발일 선택 후 본문에 예약금 CTA. env 없어도 UI는 표시, 결제 클릭 시 PortOne 설정 필요.";
   }
 
   return {

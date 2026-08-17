@@ -163,10 +163,10 @@ export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps
         </div>
 
         <PageContainer size="wide" className="px-3 sm:px-6 lg:px-8 xl:px-10">
-          <div className="relative z-10 min-w-0 max-w-full pt-2 pb-7 text-[var(--hero-text-primary)] sm:pt-4 sm:pb-6 md:py-7 lg:py-10">
+          <div className="relative z-10 min-w-0 max-w-full pt-1.5 pb-3 text-[var(--hero-text-primary)] sm:pt-4 sm:pb-6 md:py-7 lg:py-10">
             <div className="min-w-0 space-y-1.5 md:space-y-4 lg:space-y-5">
               <div className="grid min-w-0 max-w-full gap-1.5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)] lg:items-center lg:gap-6">
-                <div className="flex w-full min-w-0 max-w-full flex-col gap-2 max-md:gap-2.5 md:mx-auto md:max-w-[560px] md:gap-3 lg:mx-0 lg:max-w-[720px] lg:gap-4">
+                <div className="flex w-full min-w-0 max-w-full flex-col gap-2 max-md:gap-1.5 md:mx-auto md:max-w-[560px] md:gap-3 lg:mx-0 lg:max-w-[720px] lg:gap-4">
                   <h1 className="line-clamp-2 font-semibold leading-snug tracking-tight text-[var(--hero-text-primary)] text-[1.4rem] sm:text-[2.06rem] sm:leading-tight md:line-clamp-none md:heading-display-hero md:text-[2.5rem] md:leading-[1.2] lg:type-h1 lg:text-[3.125rem] lg:leading-[1.15]">
                     <span className="md:hidden">
                       <MobileHeroHeadline hero={hero} />
@@ -187,14 +187,14 @@ export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps
                       {hero.sub_description}
                     </p>
                   ) : null}
-                  <div className="flex w-full min-w-0 flex-col max-md:gap-5 md:gap-1">
+                  <div className="flex w-full min-w-0 flex-col max-md:gap-2 md:gap-1">
                     <div className="relative z-[1] pt-0 md:pt-2 lg:pt-3">
                       <HomeHeroSearch
                         placeholder={hero.search_placeholder ?? "지역, 테마, 상품명을 검색해보세요"}
                         variant="hero-mobile"
                       />
                     </div>
-                    <div className="relative z-0 max-md:opacity-[0.96]">
+                    <div className="relative z-0">
                       <HomeQuickKeywords />
                     </div>
                     <p className="hidden pt-1 type-caption text-[var(--hero-text-secondary)]/80 lg:block">

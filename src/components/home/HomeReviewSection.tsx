@@ -4,7 +4,6 @@ import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
   SectionHeader,
   SECTION_HEADER_MORE_LINK_CLASS,
-  HOME_MAIN_SECTION_BLOCK_CLASS,
 } from "@/components/layout/SectionHeader";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import type { Review } from "@/types/review";
@@ -24,7 +23,7 @@ export function HomeReviewSection({ reviews, className }: HomeReviewSectionProps
     <SectionBlock
       surface="none"
       padding="md"
-      className={cn("space-y-2 sm:space-y-4 !p-3 sm:!p-6 md:!p-8", className)}
+      className={cn("space-y-2 sm:space-y-4 !px-4 !py-1.5 sm:!px-6 sm:!py-3 md:!px-8 md:!py-4", className)}
     >
       <SectionHeader
         title="여행자들의 실제 후기"

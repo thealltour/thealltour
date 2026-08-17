@@ -25,6 +25,8 @@ export type ProductDepartureCalendarPanelProps = {
   onDepartureChange: (departure: SelectedDeparture | null, key: string | null) => void;
   onConsultClick?: () => void;
   className?: string;
+  /** sticky 레일·모바일 시트용 1개월 축소 달력 */
+  compact?: boolean;
 };
 
 function resolveSelectedDateFromKey(
@@ -51,6 +53,7 @@ export function ProductDepartureCalendarPanel({
   onDepartureChange,
   onConsultClick,
   className,
+  compact = false,
 }: ProductDepartureCalendarPanelProps) {
   const isWide = useIsDesktop(1024);
   const departureYmds = useMemo(() => collectProductDepartureDates(product), [product]);
@@ -161,7 +164,8 @@ export function ProductDepartureCalendarPanel({
   return (
     <div
       className={cn(
-        "w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4",
+        "w-full rounded-xl border border-[var(--border)] bg-[var(--surface)]",
+        compact ? "p-2" : "p-3 sm:p-4",
         className,
       )}
     >
@@ -169,7 +173,8 @@ export function ProductDepartureCalendarPanel({
         mode="single"
         month={month}
         onMonthChange={setMonth}
-        numberOfMonths={isWide ? 2 : 1}
+        numberOfMonths={compact ? 1 : isWide ? 2 : 1}
+        navLayout="around"
         selected={pickerSelected}
         onSelect={handleDateSelect}
         extraHolidayYears={extraHolidayYears}
@@ -186,7 +191,10 @@ export function ProductDepartureCalendarPanel({
           hasPromotion: "rdp-has-promotion",
         }}
         components={{ DayButton: GolfCalendarDayButton }}
-        className="theall-golf-calendar theall-golf-calendar--product-detail w-full"
+        className={cn(
+          "theall-golf-calendar theall-golf-calendar--product-detail w-full",
+          compact && "theall-golf-calendar--compact",
+        )}
       />
       <div className="mt-3 space-y-1.5 text-xs text-[var(--text-muted)]">
         <p className="flex items-center gap-2">

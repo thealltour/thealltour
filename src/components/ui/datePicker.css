@@ -359,6 +359,68 @@
   color: #fff;
 }
 
+/* 골프 달력 공통: 월 그리드가 컬럼 폭을 채우고 연·월 캡션이 중앙 정렬되도록 */
+.theall-golf-calendar .rdp-months {
+  max-width: 100%;
+  width: 100%;
+  justify-content: center;
+}
+
+.theall-golf-calendar .rdp-month {
+  width: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+.theall-golf-calendar .rdp-month_grid {
+  width: 100%;
+  margin-inline: auto;
+  table-layout: fixed;
+}
+
+.theall-golf-calendar .rdp-weekday,
+.theall-golf-calendar .rdp-day {
+  width: auto;
+}
+
+/* navLayout=around: 캡션 전체 폭 + padding으로 라벨 중앙 (홈·목록·상세 공통) */
+.theall-golf-calendar.rdp-root[data-nav-layout="around"] .rdp-month_caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+  padding-inline: var(--rdp-nav_button-width);
+  text-align: center;
+}
+
+.theall-golf-calendar.rdp-root[data-nav-layout="around"] .rdp-caption_label {
+  display: inline-flex;
+  flex: 0 1 auto;
+  justify-content: center;
+  text-align: center;
+  width: auto;
+  max-width: 100%;
+}
+
+.theall-golf-calendar.rdp-root[data-nav-layout="around"] .rdp-button_previous {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  z-index: 2;
+  height: var(--rdp-nav-height);
+}
+
+.theall-golf-calendar.rdp-root[data-nav-layout="around"] .rdp-button_next {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 0;
+  z-index: 2;
+  height: var(--rdp-nav-height);
+}
+
 /* 골프 홈/목록 달력 — 태블릿 가로(md, 768px)부터 2개월(이번 달+다음 달) 나란히 표시.
    md~lg(1024px 미만) 구간은 아직 카드가 2열로 분리되지 않아(달력 카드가 컨테이너 폭 전체를
    사용) 2개월을 나란히 놓을 여유가 있으므로, 데스크톱 전용이던 2개월 표시를 이 구간까지 낮춘다. */
@@ -366,6 +428,10 @@
   flex-wrap: nowrap;
   justify-content: center;
   gap: 1.25rem;
+}
+
+.theall-golf-calendar--two-up .rdp-month {
+  flex: 1 1 0;
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
@@ -384,12 +450,15 @@
   .theall-golf-calendar--two-up .rdp-months {
     flex-wrap: wrap;
   }
+
+  .theall-golf-calendar--two-up .rdp-month {
+    flex: 1 1 100%;
+  }
 }
 
 /* 상품 상세: 2개월 가로 2열 (Sticky에서 선택일 표시) */
 .theall-golf-calendar--product-detail .rdp-months {
   flex-wrap: nowrap;
-  justify-content: center;
   gap: 0.75rem;
 }
 
@@ -404,6 +473,39 @@
 @media (max-width: 1023px) {
   .theall-golf-calendar--product-detail .rdp-months {
     flex-wrap: wrap;
+  }
+}
+
+.theall-golf-calendar.theall-golf-calendar--compact {
+  --rdp-day-height: 2.25rem;
+  --rdp-day-width: 2.25rem;
+  font-size: 0.8125rem;
+}
+
+.theall-golf-calendar--compact .rdp-months {
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.theall-golf-calendar--compact .rdp-weekday {
+  font-size: 0.6875rem;
+}
+
+.theall-golf-calendar--compact .rdp-month_caption {
+  font-size: 0.875rem;
+}
+
+.theall-golf-calendar--compact .rdp-promotion-star {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+@media (min-width: 1024px) {
+  .theall-golf-calendar.theall-golf-calendar--compact {
+    --rdp-day-height: 2.25rem;
+    --rdp-day-width: 2.25rem;
+    font-size: 0.8125rem;
   }
 }
 

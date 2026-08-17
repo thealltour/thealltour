@@ -93,7 +93,7 @@ export default async function Home() {
 
           <PageContainer
             size="wide"
-            className="flex flex-col max-md:gap-10 max-md:pt-8 md:gap-20 md:pt-0"
+            className="flex flex-col max-md:gap-5 max-md:pt-4 md:gap-10 md:pt-0"
           >
             <HomeDeferredSections
               golfTour={{

@@ -227,10 +227,18 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
               })}
               pageTitle={product.title}
               fallbackHref={getProductsNavFallbackHref("product_detail")}
+              endAction={
+                <Link
+                  href="/products"
+                  className="text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 transition hover:text-slate-700 hover:decoration-slate-500"
+                >
+                  ← 다른 상품 보기
+                </Link>
+              }
             />
 
             <div className="flex gap-8 xl:gap-10 lg:items-start">
-            <div className="min-w-0 flex-1 space-y-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+            <div className="min-w-0 flex-1 space-y-8 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
               <section className="rounded-none bg-transparent shadow-none ring-0 sm:rounded-3xl sm:bg-white sm:shadow-md sm:ring-1 sm:ring-[#dbeafe]">
                 <script
                   type="application/ld+json"

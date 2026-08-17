@@ -202,6 +202,8 @@ export type Product = {
   id: string;
   title: string;
   description: string;
+  /** 골프장 정보 본문. 비어 있으면 상품 상세에서 숨김 */
+  golf_course_info?: string | null;
   /** 상세 히어로용 (hero 1920px). 카드 썸네일은 image_card_url 우선, 없으면 이 값 사용 */
   image_url: string;
   /** 상품 이미지 갤러리 URL 배열. 첫 번째가 대표 이미지로 사용됨 */

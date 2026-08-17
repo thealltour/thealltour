@@ -1,5 +1,8 @@
 import type { ProductOptionGroup, SelectedOptions } from "@/types/product";
 
+/** `?? {}` 대신 쓸 안정 참조 — 매 렌더 새 객체를 만들면 quote sync effect가 무한 루프함 */
+export const EMPTY_SELECTED_OPTIONS: SelectedOptions = {};
+
 export function getGroupSelectedValues(
   group: ProductOptionGroup,
   selected: SelectedOptions,

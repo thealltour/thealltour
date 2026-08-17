@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Breadcrumb, type BreadcrumbItem } from "@/components/navigation/Breadcrumb";
 import { MobileBackHeader } from "@/components/navigation/MobileBackHeader";
@@ -16,6 +17,8 @@ export type NavigationContextHeaderProps = {
   desktopBreadcrumbVariant?: "full" | "compact";
   /** false면 하단 여백 없음 — 부모 flex gap 등으로 간격 조절 */
   withMarginBottom?: boolean;
+  /** 데스크톱 브레드크럼 우측 액션 (상품 상세 「다른 상품 보기」 등) */
+  endAction?: ReactNode;
 };
 
 /**
@@ -29,6 +32,7 @@ export function NavigationContextHeader({
   className,
   desktopBreadcrumbVariant = "full",
   withMarginBottom = true,
+  endAction,
 }: NavigationContextHeaderProps) {
   const pathname = usePathname();
   const fallbackHref = fallbackHrefProp ?? getProductsBackFallbackFromPathname(pathname);
@@ -43,8 +47,9 @@ export function NavigationContextHeader({
         className,
       )}
     >
-      <div className="hidden md:block">
-        <Breadcrumb items={items} variant={desktopBreadcrumbVariant} />
+      <div className="hidden md:flex md:items-center md:justify-between md:gap-4">
+        <Breadcrumb items={items} variant={desktopBreadcrumbVariant} className="min-w-0 flex-1" />
+        {endAction ? <div className="hidden shrink-0 md:inline-flex">{endAction}</div> : null}
       </div>
       <MobileBackHeader title={pageTitle} fallbackHref={fallbackHref} />
     </div>

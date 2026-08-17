@@ -53,7 +53,7 @@ export const SECTION_HEADER_MOBILE_CTA_CLASS = SECTION_HEADER_MORE_LINK_CLASS;
  * 홈 메인 콘텐츠 `SectionBlock` 공통: 좌우 px-4(모바일), 헤더↔리스트 리듬은 부모 `space-y-*`로 맞춤.
  */
 export const HOME_MAIN_SECTION_BLOCK_CLASS =
-  "space-y-4 sm:space-y-5 !px-4 !py-3 sm:!p-6 md:!p-8";
+  "space-y-4 sm:space-y-5 !px-4 !py-1.5 sm:!px-6 sm:!py-3 md:!px-8 md:!py-4";
 
 /**
  * 섹션 헤더. 홈·랜딩 등 섹션 공통.

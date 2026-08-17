@@ -90,7 +90,7 @@ export default function GlobalSiteFooter() {
   /** 상담·채널: 모든 폭에서 2열 동일 셀. wrap+flex-1은 3+1 전폭 깨짐을 만든다. */
   const channelGridClass = "grid w-full grid-cols-2 gap-2";
   const channelBtnEqual =
-    "flex h-11 w-full min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap";
+    "footer-pill-channel-equal flex h-11 w-full min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2.5 font-semibold whitespace-nowrap";
   const kakaoChannelClass = isGolfAdLanding
     ? "border border-[var(--border-strong)] bg-transparent text-[var(--foreground)] hover:bg-[var(--surface-muted)]"
     : "border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] text-[var(--theall-kakao-text)] hover:bg-[var(--theall-kakao-hover-bg)]";
@@ -168,7 +168,7 @@ export default function GlobalSiteFooter() {
                     target="_blank"
                     rel="noreferrer"
                     className={cn(
-                      "footer-pill-instagram footer-pill-channel-equal",
+                      "footer-pill-instagram",
                       channelBtnEqual,
                       focusRing,
                     )}
@@ -182,7 +182,7 @@ export default function GlobalSiteFooter() {
                       target="_blank"
                       rel="noreferrer"
                       className={cn(
-                        "footer-pill-naver footer-pill-channel-equal",
+                        "footer-pill-naver",
                         channelBtnEqual,
                         focusRing,
                       )}
@@ -197,7 +197,7 @@ export default function GlobalSiteFooter() {
                       target="_blank"
                       rel="noreferrer"
                       className={cn(
-                        "footer-pill-naver footer-pill-channel-equal",
+                        "footer-pill-naver",
                         channelBtnEqual,
                         focusRing,
                       )}

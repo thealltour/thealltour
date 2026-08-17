@@ -100,6 +100,9 @@ export function getProductDiffSummary(
   if (!strEq(initial.description, current.description)) {
     basic.push("상품 설명이 수정되었습니다.");
   }
+  if (!strEq(initial.golf_course_info, current.golf_course_info)) {
+    basic.push("골프장 정보가 수정되었습니다.");
+  }
   if (priceNormalized(initial.price) !== priceNormalized(current.price)) {
     basic.push("가격 정보가 변경되었습니다.");
   }

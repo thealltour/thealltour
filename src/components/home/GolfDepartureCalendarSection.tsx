@@ -140,6 +140,7 @@ export default function GolfDepartureCalendarSection({
             month={month}
             onMonthChange={setMonth}
             numberOfMonths={showTwoMonths ? 2 : 1}
+            navLayout="around"
             selected={selectedDate}
             onSelect={(date) => {
               if (date) setSelectedDate(date);
@@ -167,7 +168,7 @@ export default function GolfDepartureCalendarSection({
             {showPromotionLegend ? (
               <p className="flex items-center gap-2">
                 <Star
-                  className="h-4 w-4 shrink-0 fill-[var(--warning)] text-[var(--warning)]"
+                  className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400"
                   aria-hidden
                 />
                 {promotionLegend}

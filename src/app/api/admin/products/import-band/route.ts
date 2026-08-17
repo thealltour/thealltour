@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
-import { requireAdminSession } from "@/lib/apiAuth";
+import { requireAdminSessionForPath } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { findExistingProductIdBySourceUrl } from "@/lib/admin/bandImport/checkProductSourceUrl";
 import { hasImportAiKey, MISSING_IMPORT_AI_KEY_MESSAGE } from "@/lib/admin/ai/importAiModel";
@@ -28,6 +28,7 @@ export const maxDuration = 300;
 type ImportBandBody = {
   bandText?: string;
   hwpText?: string;
+  golfCourseInfo?: string;
   product_source_url?: string;
 };
 
@@ -51,14 +52,23 @@ function pickImageFiles(formData: FormData): File[] {
 async function readImportRequest(request: NextRequest): Promise<{
   bandText: string;
   hwpText: string;
+  golfCourseInfo: string;
   productSourceUrl: string;
   imageFiles: File[];
 }> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
-    const formData = await request.formData();
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      throw new HwpParseError(
+        "업로드 파일을 읽지 못했습니다. zip이 크면 10MB 단위로 나눠 올리거나, 개발 서버를 재시작한 뒤 다시 시도해 주세요.",
+      );
+    }
     const bandText = formString(formData, "bandText").trim();
     const pastedHwpText = formString(formData, "hwpText").trim();
+    const golfCourseInfo = formString(formData, "golfCourseInfo").trim();
     const productSourceUrl = formString(formData, "product_source_url").trim();
     const imageFiles = pickImageFiles(formData);
     const hwpFile = pickHwpFile(formData);
@@ -71,7 +81,7 @@ async function readImportRequest(request: NextRequest): Promise<{
       hwpText = await parseHwpFileToText(hwpFile, hwpFile.name || "upload.hwpx");
     }
 
-    return { bandText, hwpText, productSourceUrl, imageFiles };
+    return { bandText, hwpText, golfCourseInfo, productSourceUrl, imageFiles };
   }
 
   let body: ImportBandBody;
@@ -84,17 +94,19 @@ async function readImportRequest(request: NextRequest): Promise<{
   return {
     bandText: body.bandText?.trim() ?? "",
     hwpText: body.hwpText?.trim() ?? "",
+    golfCourseInfo: body.golfCourseInfo?.trim() ?? "",
     productSourceUrl: body.product_source_url?.trim() ?? "",
     imageFiles: [],
   };
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminSessionForPath("/api/admin/products/import-band");
   if (!auth.ok) return auth.res;
 
   let bandText = "";
   let hwpText = "";
+  let golfCourseInfo = "";
   let productSourceUrl = "";
   let imageFiles: File[] = [];
 
@@ -102,6 +114,7 @@ export async function POST(request: NextRequest) {
     const parsedBody = await readImportRequest(request);
     bandText = parsedBody.bandText;
     hwpText = parsedBody.hwpText;
+    golfCourseInfo = parsedBody.golfCourseInfo;
     productSourceUrl = parsedBody.productSourceUrl;
     imageFiles = parsedBody.imageFiles;
   } catch (error) {
@@ -148,6 +161,7 @@ export async function POST(request: NextRequest) {
     parsed,
     bandText,
     hwpText,
+    golfCourseInfo,
     productSourceUrl: productSourceUrl || null,
   });
 

@@ -43,6 +43,7 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
   const baseForm: ProductFormState = {
     title: product.title ?? "",
     description: product.description ?? "",
+    golf_course_info: product.golf_course_info ?? "",
     product_source_url: product.product_source_url ?? "",
     point_benefits: product.point_benefits ?? "",
     point_tourism: normalizeOXValue(product.point_tourism),

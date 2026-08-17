@@ -46,6 +46,7 @@ function formatFileSize(bytes: number): string {
 export default function BandNewProductPage() {
   const router = useRouter();
   const [bandText, setBandText] = useState("");
+  const [golfCourseInfo, setGolfCourseInfo] = useState("");
   const [hwpFile, setHwpFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -92,6 +93,7 @@ export default function BandNewProductPage() {
     try {
       const formData = new FormData();
       formData.append("bandText", bandText);
+      formData.append("golfCourseInfo", golfCourseInfo);
       if (hwpFile) formData.append("hwpFile", hwpFile);
       if (productSourceUrl.trim()) {
         formData.append("product_source_url", productSourceUrl.trim());
@@ -105,7 +107,21 @@ export default function BandNewProductPage() {
         body: formData,
       });
 
-      const data = (await res.json()) as ImportResponse;
+      const raw = await res.text();
+      let data: ImportResponse = {};
+      try {
+        data = raw ? (JSON.parse(raw) as ImportResponse) : {};
+      } catch {
+        progress.stop();
+        if (res.status === 413) {
+          setError("업로드 용량이 너무 큽니다. 사진 zip을 100MB 이하로 나눠 올려 주세요.");
+          return;
+        }
+        setError(
+          `서버 응답을 읽지 못했습니다 (${res.status || "네트워크"}). 사진 zip이 크면 나눠 올리거나, 잠시 후 다시 시도해 주세요.`,
+        );
+        return;
+      }
 
       if (res.status === 409 && data.existingId) {
         progress.stop();
@@ -129,9 +145,16 @@ export default function BandNewProductPage() {
         });
         router.push(`/theall_manager_only/products?${params.toString()}`);
       }
-    } catch {
+    } catch (error) {
       progress.stop();
-      setError("네트워크 오류가 발생했습니다.");
+      const detail = error instanceof Error ? error.message : "";
+      if (/failed to fetch|networkerror|load failed/i.test(detail)) {
+        setError(
+          "네트워크 오류가 발생했습니다. 사진 zip이 10MB를 넘으면 나눠 올리거나, 개발 서버를 재시작한 뒤 다시 시도해 주세요.",
+        );
+        return;
+      }
+      setError(detail || "네트워크 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -158,6 +181,20 @@ export default function BandNewProductPage() {
             value={bandText}
             onChange={(e) => setBandText(e.target.value)}
             placeholder="네이버 밴드 게시글 전체를 붙여넣으세요."
+          />
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium text-[var(--text-primary)]">골프장 정보 (선택)</span>
+          <span className="block text-xs text-[var(--text-secondary)]">
+            골프장 소개·코스 구성 등을 따로 붙여넣으세요. 비워 두면 상품 상세에 골프장 정보 섹션이
+            나오지 않습니다.
+          </span>
+          <textarea
+            className={`${fieldClass} min-h-[120px]`}
+            value={golfCourseInfo}
+            onChange={(e) => setGolfCourseInfo(e.target.value)}
+            placeholder="예: 18홀 챔피언십 코스, 페어웨이·그린 특징, 클럽하우스 안내"
           />
         </label>
 
@@ -298,7 +335,7 @@ export default function BandNewProductPage() {
                   {isDraggingImages ? "여기에 놓기" : "사진 또는 zip을 선택하거나 드래그 앤 드롭"}
                 </span>
                 <span className="text-xs text-[var(--text-secondary)]">
-                  jpg, png, jpeg, webp, zip · 장당 10MB
+                  jpg, png, jpeg, webp, zip · 장당 10MB, zip 합계 100MB
                 </span>
                 <input
                   type="file"

@@ -62,7 +62,7 @@ export function HomeTrustSection({ tourismRegNo, className, stackCards }: HomeTr
     <SectionBlock
       surface="none"
       padding="md"
-      className={className ?? (stackCards ? "!px-4 !py-3" : "!px-4 !py-3 sm:!p-6 md:!p-8")}
+      className={className ?? (stackCards ? "!px-4 !py-3" : "!px-4 !py-1.5 sm:!px-6 sm:!py-3 md:!px-8 md:!py-4")}
     >
       <div className={stackCards ? "mb-6 space-y-3 text-center" : "mb-6 space-y-3 text-center sm:mb-8"}>
         <h3

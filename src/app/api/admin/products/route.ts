@@ -33,6 +33,7 @@ function toSafeInteger(value: unknown): number | null {
 type ProductBody = {
   title?: string;
   description?: string;
+  golf_course_info?: string | null;
   product_source_url?: string | null;
   point_benefits?: string | null;
   point_tourism?: string | null;
@@ -313,6 +314,9 @@ export async function POST(request: Request) {
   }
   if (body.optional_expenses !== undefined) {
     insertPayload.optional_expenses = body.optional_expenses?.trim() || null;
+  }
+  if (body.golf_course_info !== undefined) {
+    insertPayload.golf_course_info = body.golf_course_info?.trim() || null;
   }
   if (body.selling_points_json !== undefined) {
     insertPayload.selling_points_json = body.selling_points_json ?? null;

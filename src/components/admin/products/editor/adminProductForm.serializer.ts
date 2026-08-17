@@ -112,6 +112,7 @@ export function serializeAdminProductForm(
   const payload: AdminProductSavePayload = {
     title: form.title.trim(),
     description: form.description,
+    golf_course_info: form.golf_course_info.trim() === "" ? null : form.golf_course_info.trim(),
     meta_title: form.meta_title.trim() === "" ? null : form.meta_title.trim(),
     meta_description: form.meta_description.trim() === "" ? null : form.meta_description.trim(),
     point_benefits: form.point_benefits.trim() === "" ? null : form.point_benefits.trim(),

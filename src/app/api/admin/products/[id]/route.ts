@@ -21,6 +21,7 @@ import {
 type ProductBody = {
   title?: string;
   description?: string;
+  golf_course_info?: string | null;
   product_source_url?: string | null;
   point_benefits?: string | null;
   point_tourism?: string | null;
@@ -133,6 +134,9 @@ export async function PATCH(
 
   if (body.title !== undefined) updates.title = body.title?.trim();
   if (body.description !== undefined) updates.description = body.description?.trim();
+  if (body.golf_course_info !== undefined) {
+    updates.golf_course_info = body.golf_course_info?.trim() || null;
+  }
   if (body.meta_title !== undefined) updates.meta_title = body.meta_title?.trim() || null;
   if (body.meta_description !== undefined) updates.meta_description = body.meta_description?.trim() || null;
   if (body.point_benefits !== undefined) updates.point_benefits = body.point_benefits?.trim() || null;

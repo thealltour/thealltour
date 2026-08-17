@@ -22,6 +22,8 @@ import type { SelectedDeparture } from "@/lib/products/buildProductInquiryPrefil
 import type { ProductDepartureSchedule, ProductOptions, Product, SelectedOptions } from "@/types/product";
 import { cn } from "@/lib/cn";
 
+export type ProductBookingSelectionPanelVariant = "page" | "rail" | "sheet";
+
 export type ProductBookingSelectionPanelProps = {
   product?: Product | null;
   departureUi?: "chips" | "calendar";
@@ -36,8 +38,8 @@ export type ProductBookingSelectionPanelProps = {
   onOptionSingleChange: (groupKey: string, itemValue: string) => void;
   onOptionMultiToggle: (groupKey: string, itemValue: string) => void;
   onConsultClick?: () => void;
-  /** 로그인 회원 인원 할인 미리보기 (선택) */
   paxDiscountPreview?: { label: string; amount: number } | null;
+  variant?: ProductBookingSelectionPanelVariant;
 };
 
 type DepartureOption = {
@@ -47,6 +49,23 @@ type DepartureOption = {
   price?: number | null;
   disabled?: boolean;
 };
+
+function panelSectionIds(variant: ProductBookingSelectionPanelVariant) {
+  if (variant === "sheet") {
+    return {
+      panel: "product-booking-sheet",
+      departure: "product-sheet-departure-section",
+      traveler: "product-sheet-traveler-section",
+      options: "product-sheet-options-section",
+    };
+  }
+  return {
+    panel: "product-booking-panel",
+    departure: "product-departure-section",
+    traveler: "product-traveler-section",
+    options: "product-options-section",
+  };
+}
 
 function buildDepartureOptions(
   schedules: ProductDepartureSchedule[] | undefined,
@@ -70,10 +89,11 @@ function buildDepartureOptions(
   }));
 }
 
-function selectionAreaClass(hasSelection: boolean): string {
+function selectionAreaClass(hasSelection: boolean, compact: boolean): string {
+  const pad = compact ? "p-2.5" : "p-3";
   return hasSelection
-    ? "rounded-xl border border-solid border-[var(--border)] bg-white p-3"
-    : "rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/60 p-3";
+    ? `rounded-xl border border-solid border-[var(--border)] bg-white ${pad}`
+    : `rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/60 ${pad}`;
 }
 
 function shouldHideGroupTitle(
@@ -88,7 +108,7 @@ function shouldHideGroupTitle(
 }
 
 /**
- * 출발일 선택 + 옵션 선택 통합 패널 (상품 상세 본문)
+ * 출발일 선택 + 옵션 선택 통합 패널
  */
 export function ProductBookingSelectionPanel({
   product,
@@ -105,7 +125,10 @@ export function ProductBookingSelectionPanel({
   onOptionMultiToggle,
   onConsultClick,
   paxDiscountPreview = null,
+  variant = "page",
 }: ProductBookingSelectionPanelProps) {
+  const compact = variant !== "page";
+  const ids = panelSectionIds(variant);
   const departureOptions = useMemo(
     () => buildDepartureOptions(schedules, departures),
     [schedules, departures],
@@ -133,27 +156,27 @@ export function ProductBookingSelectionPanel({
   const showDepartureSection = hasDepartures || showCalendarDeparture;
   const canDecrease = travelerCount > MIN_TRAVELER_COUNT;
   const canIncrease = travelerCount < MAX_TRAVELER_COUNT;
+  const stepperSize = compact ? "h-9 w-9" : "h-11 w-11";
 
   const travelerSection = (
-    <div id="product-traveler-section" className="space-y-3 scroll-mt-24">
+    <div id={ids.traveler} className="space-y-2 scroll-mt-24">
       <div>
-        <h3 className="text-base font-bold text-[#0f172a]">인원</h3>
-        <p className="mt-0.5 text-xs text-slate-500">여행에 참여하는 총 인원을 선택해 주세요.</p>
+        <h3 className={cn("font-bold text-[#0f172a]", compact ? "text-sm" : "text-base")}>인원</h3>
+        {compact ? null : (
+          <p className="mt-0.5 text-xs text-slate-500">여행에 참여하는 총 인원을 선택해 주세요.</p>
+        )}
       </div>
-      <div className={selectionAreaClass(true)}>
+      <div className={selectionAreaClass(true, compact)}>
         <div className="flex items-center justify-between gap-4 px-1 py-1">
           <span className="text-sm font-medium text-slate-700">총 인원</span>
-          <div
-            className="inline-flex items-center gap-3"
-            role="group"
-            aria-label="인원 선택"
-          >
+          <div className="inline-flex items-center gap-3" role="group" aria-label="인원 선택">
             <button
               type="button"
               onClick={() => onTravelerCountChange(travelerCount - 1)}
               disabled={!canDecrease}
               className={cn(
-                "inline-flex h-11 w-11 items-center justify-center rounded-full border-2 transition",
+                "inline-flex items-center justify-center rounded-full border-2 transition",
+                stepperSize,
                 canDecrease
                   ? "border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50"
                   : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300",
@@ -163,7 +186,10 @@ export function ProductBookingSelectionPanel({
               <Minus className="h-4 w-4" aria-hidden />
             </button>
             <span
-              className="min-w-[3.5rem] text-center text-lg font-bold tabular-nums text-[#0f172a]"
+              className={cn(
+                "min-w-[3rem] text-center font-bold tabular-nums text-[#0f172a]",
+                compact ? "text-base" : "text-lg min-w-[3.5rem]",
+              )}
               aria-live="polite"
             >
               {travelerCount}명
@@ -173,7 +199,8 @@ export function ProductBookingSelectionPanel({
               onClick={() => onTravelerCountChange(travelerCount + 1)}
               disabled={!canIncrease}
               className={cn(
-                "inline-flex h-11 w-11 items-center justify-center rounded-full border-2 transition",
+                "inline-flex items-center justify-center rounded-full border-2 transition",
+                stepperSize,
                 canIncrease
                   ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[#0f172a] hover:opacity-90"
                   : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300",
@@ -203,13 +230,19 @@ export function ProductBookingSelectionPanel({
 
   return (
     <section
-      id="product-booking-panel"
-      className="rounded-2xl border-2 border-[var(--primary-soft)] bg-white p-5 shadow-[var(--shadow-soft-strong)] md:p-6"
+      id={ids.panel}
+      className={cn(
+        compact
+          ? "@container space-y-0 bg-transparent p-0 shadow-none"
+          : "rounded-2xl border-2 border-[var(--primary-soft)] bg-white p-5 shadow-[var(--shadow-soft-strong)] md:p-6",
+      )}
       aria-label="출발일 및 옵션 선택"
     >
       {showDepartureSection ? (
-        <div id="product-departure-section" className="space-y-3 scroll-mt-24">
-          <h3 className="text-base font-bold text-[#0f172a]">출발일 선택</h3>
+        <div id={ids.departure} className="space-y-2 scroll-mt-24">
+          <h3 className={cn("font-bold text-[#0f172a]", compact ? "text-sm" : "text-base")}>
+            출발일 선택
+          </h3>
           {!hasDepartureSelection ? (
             <p className="text-xs font-medium text-[var(--warning)]">
               원하시는 출발일을 1개 선택해 주세요.
@@ -223,9 +256,10 @@ export function ProductBookingSelectionPanel({
               selectedDepartureKey={selectedDepartureKey}
               onDepartureChange={onDepartureChange}
               onConsultClick={onConsultClick}
+              compact={compact}
             />
           ) : (
-            <div className={selectionAreaClass(hasDepartureSelection)}>
+            <div className={selectionAreaClass(hasDepartureSelection, compact)}>
               <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="출발일">
                 {departureOptions.map((option) => {
                   const active = selectedDepartureKey === option.key;
@@ -245,7 +279,7 @@ export function ProductBookingSelectionPanel({
                           option.key,
                         );
                       }}
-                      className={`flex min-h-[48px] items-center gap-3 rounded-xl border-2 px-3.5 py-2.5 text-sm font-medium transition
+                      className={`flex min-h-[40px] items-center gap-3 rounded-xl border-2 px-3 py-2 text-sm font-medium transition
                       ${option.disabled
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
                         : active
@@ -279,17 +313,19 @@ export function ProductBookingSelectionPanel({
       ) : null}
 
       {(showDepartureSection || hasOptions) ? (
-        <hr className="my-5 border-[var(--divider)]" />
+        <hr className={cn("border-[var(--divider)]", compact ? "my-3" : "my-5")} />
       ) : null}
 
       {travelerSection}
 
       {hasOptions ? (
         <>
-          <hr className="my-5 border-[var(--divider)]" />
-          <div id="product-options-section" className="space-y-4 scroll-mt-24">
+          <hr className={cn("border-[var(--divider)]", compact ? "my-3" : "my-5")} />
+          <div id={ids.options} className="space-y-3 scroll-mt-24">
             <div>
-              <h3 className="text-base font-bold text-[#0f172a]">{optionsSectionTitle}</h3>
+              <h3 className={cn("font-bold text-[#0f172a]", compact ? "text-sm" : "text-base")}>
+                {optionsSectionTitle}
+              </h3>
               <p className="mt-0.5 text-xs text-slate-500">
                 {!hasOptionSelection
                   ? hasMultiOptions
@@ -300,8 +336,14 @@ export function ProductBookingSelectionPanel({
                     : "필요한 옵션을 선택해 주세요."}
               </p>
             </div>
-            <div className={selectionAreaClass(hasOptionSelection)}>
-              <div className="flex flex-col space-y-5 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
+            <div className={selectionAreaClass(hasOptionSelection, compact)}>
+              <div
+                className={
+                  compact
+                    ? "flex flex-col space-y-4"
+                    : "flex flex-col space-y-5 md:grid md:grid-cols-2 md:gap-6 md:space-y-0"
+                }
+              >
                 {sortedOptionGroups.map((group) => (
                   <OptionGroup
                     key={group.key}

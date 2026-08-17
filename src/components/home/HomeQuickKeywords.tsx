@@ -1,20 +1,13 @@
-"use client";
-
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
-import { Flag, Gem, LayoutGrid, Palmtree, Users } from "lucide-react";
-import { HOME_HERO_QUICK_ACTIONS } from "@/lib/homeHeroQuickActions";
-
-const QUICK_ACTION_ICONS: Record<string, LucideIcon> = {
-  golf: Flag,
-  healing: Palmtree,
-  family: Users,
-  luxury: Gem,
-  all: LayoutGrid,
-};
+import { Icon } from "@/components/ui/Icon";
+import { cn } from "@/lib/cn";
+import {
+  HOME_HERO_ALL_PRODUCTS_ACTION,
+  HOME_HERO_QUICK_ACTIONS,
+} from "@/lib/homeHeroQuickActions";
 
 /**
- * 모바일 홈 히어로 검색창 하단 — 보조 빠른 탐색 카드 (1행 5칸).
+ * 모바일 홈 히어로 검색창 하단 — 테마 바로가기 (카드 없이 아이콘+라벨).
  */
 export function HomeQuickKeywords() {
   return (
@@ -22,23 +15,33 @@ export function HomeQuickKeywords() {
       className="w-full min-w-0 max-w-full md:hidden"
       aria-label="테마·상품군 빠른 탐색 (보조)"
     >
-      <ul className="grid w-full grid-cols-5 items-stretch gap-2.5 sm:gap-3">
+      <ul className="grid w-full grid-cols-4 items-stretch">
         {HOME_HERO_QUICK_ACTIONS.map((item) => {
-          const IconComponent = QUICK_ACTION_ICONS[item.id] ?? LayoutGrid;
+          const isGolf = item.id === "golf";
           return (
             <li key={item.id} className="flex min-w-0">
               <Link
                 href={item.href}
-                className="group flex h-full min-h-[76px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-1 py-3 text-center shadow-[var(--shadow-soft)] transition-colors duration-200 hover:border-[var(--hero-accent)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:min-h-[80px] sm:px-1.5"
+                className="group flex min-h-10 w-full flex-col items-center justify-center gap-0.5 px-0.5 py-0.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 aria-label={item.ariaLabel ?? item.label}
               >
+                <Icon
+                  name={item.iconName}
+                  size={24}
+                  className={
+                    isGolf
+                      ? "text-[var(--hero-accent)]"
+                      : "text-[var(--hero-text-secondary)] group-hover:text-[var(--hero-text-primary)]"
+                  }
+                />
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--hero-accent)]/10 text-[var(--hero-accent)] transition-colors duration-200 group-hover:bg-[var(--hero-accent)]/16 sm:h-12 sm:w-12"
-                  aria-hidden
+                  className={cn(
+                    "line-clamp-1 w-full text-xs font-medium leading-tight tracking-tight",
+                    isGolf
+                      ? "text-[var(--hero-accent)]"
+                      : "text-[var(--hero-text-secondary)] group-hover:text-[var(--hero-text-primary)]",
+                  )}
                 >
-                  <IconComponent className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
-                </span>
-                <span className="line-clamp-1 w-full max-w-full px-0.5 text-center text-xs font-semibold leading-tight tracking-tight text-[var(--hero-text-secondary)] group-hover:text-[var(--hero-text-primary)]">
                   {item.label}
                 </span>
               </Link>
@@ -46,6 +49,16 @@ export function HomeQuickKeywords() {
           );
         })}
       </ul>
+      <div className="flex justify-end">
+        <Link
+          href={HOME_HERO_ALL_PRODUCTS_ACTION.href}
+          className="inline-flex items-center py-0.5 text-xs font-medium tracking-tight text-[var(--hero-text-secondary)] transition-colors duration-150 hover:text-[var(--hero-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          aria-label={HOME_HERO_ALL_PRODUCTS_ACTION.ariaLabel}
+        >
+          {HOME_HERO_ALL_PRODUCTS_ACTION.label}
+          <span aria-hidden> →</span>
+        </Link>
+      </div>
     </nav>
   );
 }

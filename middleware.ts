@@ -136,7 +136,7 @@ export const config = {
     "/theall_manager_only",
     "/admin/:path*",
     "/theall_manager_only/:path*",
-    "/api/admin/:path*",
+    "/api/admin/((?!products/import-band$).*)",
     "/api/inquiries",
     "/api/inquiries/:path*",
     "/golf/kakao-sync",

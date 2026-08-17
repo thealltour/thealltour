@@ -28,11 +28,24 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "110mb",
     },
-    // API 라우트 FormData 업로드 시 본문 크기 제한 (기본 10MB → 110MB)
+    // middleware.ts가 /api/admin 을 가로채면 본문을 복제한다. 기본 10MB를 넘기면
+    // FormData가 잘려 클라이언트는 '네트워크 오류'로만 보인다.
     proxyClientMaxBodySize: "110mb",
   },
   turbopack: {
     root: __dirname,
+  },
+  // Sentry → Prisma/OpenTelemetry가 require(변수)를 써서, 서버 라우트 컴파일마다
+  // "Critical dependency" 경고와 Import trace가 반복된다. 동작에는 영향 없음.
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      ...(Array.isArray(config.ignoreWarnings) ? config.ignoreWarnings : []),
+      {
+        module: /@opentelemetry[\\/]instrumentation/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+    ];
+    return config;
   },
   images: {
     formats: ["image/avif", "image/webp"],

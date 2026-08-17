@@ -1,14 +1,15 @@
 import "server-only";
 
 import { getStorageProvider, type IStorageProvider } from "@/lib/storage";
-import { getFilenameExt } from "@/lib/admin/bandImport/bandImportImageConstants";
+import {
+  detectImageMime,
+  getFilenameExt,
+} from "@/lib/admin/bandImport/bandImportImageConstants";
 import type {
   BandImportExtractedImage,
   BandImportUploadedImage,
 } from "@/lib/admin/bandImport/bandImportImageConstants";
 import { convertToJpg } from "@/lib/images/convertImage";
-
-const STORAGE_PASSTHROUGH_MIME = new Set(["image/jpeg", "image/webp"]);
 
 function storagePathForImage(storageExt: string, index: number): string {
   const now = new Date();
@@ -19,9 +20,10 @@ function storagePathForImage(storageExt: string, index: number): string {
   return `products/${yyyy}/${mm}/band-${timestamp}-${index}-${random}.${storageExt}`;
 }
 
-function passthroughStorageExt(filename: string, contentType: string): string {
-  const ext = getFilenameExt(filename);
+function extForContentType(filename: string, contentType: string): string {
   if (contentType === "image/webp") return "webp";
+  if (contentType === "image/png") return "png";
+  const ext = getFilenameExt(filename);
   if (ext === "jpeg" || ext === "jpg") return ext;
   return "jpg";
 }
@@ -31,33 +33,44 @@ async function toStorageImage(image: BandImportExtractedImage): Promise<{
   contentType: string;
   storageExt: string;
 }> {
-  if (STORAGE_PASSTHROUGH_MIME.has(image.contentType)) {
+  const detected = detectImageMime(image.bytes) ?? image.contentType;
+
+  if (detected === "image/jpeg" || detected === "image/webp") {
     return {
       bytes: image.bytes,
-      contentType: image.contentType,
-      storageExt: passthroughStorageExt(image.filename, image.contentType),
+      contentType: detected,
+      storageExt: extForContentType(image.filename, detected),
     };
   }
 
-  const jpgBuffer = await convertToJpg(image.bytes);
-  if (!jpgBuffer?.length) {
-    throw new Error(`PNG를 JPEG로 변환하지 못했습니다: ${image.filename}`);
+  if (detected === "image/png") {
+    const jpgBuffer = await convertToJpg(image.bytes);
+    if (jpgBuffer?.length) {
+      return { bytes: jpgBuffer, contentType: "image/jpeg", storageExt: "jpg" };
+    }
+    return { bytes: image.bytes, contentType: "image/png", storageExt: "png" };
   }
-  return { bytes: jpgBuffer, contentType: "image/jpeg", storageExt: "jpg" };
+
+  const jpgBuffer = await convertToJpg(image.bytes);
+  if (jpgBuffer?.length) {
+    return { bytes: jpgBuffer, contentType: "image/jpeg", storageExt: "jpg" };
+  }
+  throw new Error(`지원하지 않는 이미지 형식입니다: ${image.filename}`);
 }
 
 export async function uploadBandImportImages(
   images: BandImportExtractedImage[],
   provider: IStorageProvider = getStorageProvider(),
-): Promise<BandImportUploadedImage[]> {
+): Promise<{ uploaded: BandImportUploadedImage[]; errors: string[] }> {
   const uploaded: BandImportUploadedImage[] = [];
+  const errors: string[] = [];
+
   for (let i = 0; i < images.length; i++) {
     const image = images[i];
     try {
       const stored = await toStorageImage(image);
-      const blob = new Blob([new Uint8Array(stored.bytes)], { type: stored.contentType });
       const { url } = await provider.uploadPublicImage({
-        file: blob,
+        file: stored.bytes,
         path: storagePathForImage(stored.storageExt, i),
         contentType: stored.contentType,
       });
@@ -68,8 +81,12 @@ export async function uploadBandImportImages(
         bytes: stored.bytes,
       });
     } catch (error) {
-      console.error("[import-band] image upload skip:", image.filename, error);
+      const detail = error instanceof Error ? error.message : String(error);
+      const message = `${image.filename}: ${detail}`;
+      errors.push(message);
+      console.error("[import-band] image upload skip:", message);
     }
   }
-  return uploaded;
+
+  return { uploaded, errors };
 }

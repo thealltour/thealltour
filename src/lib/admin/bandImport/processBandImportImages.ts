@@ -53,9 +53,15 @@ export async function processBandImportImages(input: {
     });
   }
 
-  const uploaded = await uploadBandImportImages(extracted);
+  const { uploaded, errors } = await uploadBandImportImages(extracted);
   if (uploaded.length === 0) {
-    throw new BandImportImageError("추출한 사진을 스토리지에 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    const detail = errors[0] ? ` (${errors[0]})` : "";
+    throw new BandImportImageError(
+      `추출한 사진을 스토리지에 올리지 못했습니다.${detail}`,
+    );
+  }
+  if (errors.length > 0) {
+    console.warn("[import-band] some images skipped:", errors.join(" | "));
   }
 
   let assignments = null;

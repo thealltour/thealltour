@@ -23,13 +23,16 @@ export class SupabaseStorageProvider implements IStorageProvider {
   }
 
   async uploadPublicImage(params: {
-    file: Blob | File;
+    file: Blob | File | Buffer;
     path: string;
     contentType: string;
     bucket?: string;
   }): Promise<{ url: string; path: string }> {
     const { file, path, contentType, bucket = BUCKET } = params;
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = Buffer.isBuffer(file) ? file : Buffer.from(await file.arrayBuffer());
+    if (buffer.length === 0) {
+      throw new Error("빈 파일은 업로드할 수 없습니다.");
+    }
 
     const { error } = await this.client.storage.from(bucket).upload(path, buffer, {
       contentType,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
 import { extractBandImportImages, BandImportImageError } from "@/lib/admin/bandImport/extractBandImportImages";
+import { detectImageMime } from "@/lib/admin/bandImport/bandImportImageConstants";
 
 const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -69,5 +70,16 @@ describe("extractBandImportImages", () => {
     await expect(
       extractBandImportImages([{ name: "notes.txt", bytes: Buffer.from("hi") }]),
     ).rejects.toBeInstanceOf(BandImportImageError);
+  });
+});
+
+describe("detectImageMime", () => {
+  it("reads jpeg/png/webp magic bytes", () => {
+    expect(detectImageMime(Buffer.from([0xff, 0xd8, 0xff, 0x00]))).toBe("image/jpeg");
+    expect(detectImageMime(TINY_PNG)).toBe("image/png");
+    expect(
+      detectImageMime(Buffer.from([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])),
+    ).toBe("image/webp");
+    expect(detectImageMime(Buffer.from("hello"))).toBeNull();
   });
 });

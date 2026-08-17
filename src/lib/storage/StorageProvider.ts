@@ -5,13 +5,13 @@
 export interface IStorageProvider {
   /**
    * 이미지 업로드 후 public URL 및 저장 경로 반환
-   * @param file 업로드할 파일 (Blob | File)
+   * @param file 업로드할 파일 (Blob | File | Buffer)
    * @param path 저장 경로 (예: public/1234567890-abc123.webp)
    * @param contentType MIME 타입 (예: image/webp)
    * @param bucket 기본 product-images. PDF 등 다른 타입은 bucket 지정
    */
   uploadPublicImage(params: {
-    file: Blob | File;
+    file: Blob | File | Buffer;
     path: string;
     contentType: string;
     bucket?: string;

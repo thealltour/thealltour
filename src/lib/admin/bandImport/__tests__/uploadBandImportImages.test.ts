@@ -33,7 +33,7 @@ describe("uploadBandImportImages", () => {
     convertToJpgMock.mockResolvedValue(jpgBytes);
     const { provider, uploadPublicImage } = mockProvider();
 
-    const result = await uploadBandImportImages(
+    const { uploaded } = await uploadBandImportImages(
       [{ filename: "hero.png", bytes: pngBytes, contentType: "image/png" }],
       provider,
     );
@@ -43,7 +43,8 @@ describe("uploadBandImportImages", () => {
     const call = uploadPublicImage.mock.calls[0][0];
     expect(call.contentType).toBe("image/jpeg");
     expect(call.path).toMatch(/\.jpg$/);
-    expect(result[0]).toMatchObject({
+    expect(Buffer.isBuffer(call.file)).toBe(true);
+    expect(uploaded[0]).toMatchObject({
       filename: "hero.png",
       contentType: "image/jpeg",
       bytes: jpgBytes,
@@ -70,11 +71,11 @@ describe("uploadBandImportImages", () => {
     expect(uploadPublicImage.mock.calls[1][0].path).toMatch(/\.webp$/);
   });
 
-  it("skips a file when PNG conversion fails instead of aborting the batch", async () => {
+  it("uploads original PNG when conversion fails instead of aborting the batch", async () => {
     convertToJpgMock.mockResolvedValue(null);
     const { provider, uploadPublicImage } = mockProvider();
 
-    const result = await uploadBandImportImages(
+    const { uploaded, errors } = await uploadBandImportImages(
       [
         { filename: "broken.png", bytes: Buffer.from("x"), contentType: "image/png" },
         { filename: "ok.jpg", bytes: Buffer.from("jpeg"), contentType: "image/jpeg" },
@@ -82,8 +83,9 @@ describe("uploadBandImportImages", () => {
       provider,
     );
 
-    expect(result).toHaveLength(1);
-    expect(result[0].filename).toBe("ok.jpg");
-    expect(uploadPublicImage).toHaveBeenCalledTimes(1);
+    expect(errors).toEqual([]);
+    expect(uploaded.map((item) => item.filename)).toEqual(["broken.png", "ok.jpg"]);
+    expect(uploadPublicImage).toHaveBeenCalledTimes(2);
+    expect(uploadPublicImage.mock.calls[0][0].contentType).toBe("image/png");
   });
 });

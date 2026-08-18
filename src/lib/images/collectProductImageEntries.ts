@@ -149,5 +149,28 @@ export function collectProductImageEntries(product: Product): ProductImageEntry[
     });
   }
 
+  const catalog = product.package_catalog_json;
+  if (catalog) {
+    for (const item of catalog.attractions ?? []) {
+      for (const raw of item.imageUrls ?? []) {
+        const url = t(raw);
+        if (!url) continue;
+        addIfNew(map, { url, source: "catalog", index: seq++ });
+      }
+    }
+    for (const item of catalog.optionalTours ?? []) {
+      for (const raw of item.imageUrls ?? []) {
+        const url = t(raw);
+        if (!url) continue;
+        addIfNew(map, { url, source: "catalog", index: seq++ });
+      }
+    }
+  }
+
+  const overviewCover = t(product.overview_json?.coverImageUrl);
+  if (overviewCover) {
+    addIfNew(map, { url: overviewCover, source: "overview-cover", index: seq++ });
+  }
+
   return Array.from(map.values());
 }

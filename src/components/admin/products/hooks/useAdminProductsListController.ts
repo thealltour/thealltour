@@ -292,7 +292,7 @@ export function useAdminProductsListController({
     if (selectedIds.length === 0) return;
     const ok = await confirm({
       title: "선택 상품 삭제",
-      description: `선택된 ${selectedIds.length}개 상품을 삭제합니다. 계속 진행할까요?`,
+      description: `선택된 ${selectedIds.length}개 상품과 업로드된 사진(스토리지)을 삭제합니다. 되돌릴 수 없습니다. 계속 진행할까요?`,
       confirmLabel: "삭제",
       cancelLabel: "취소",
     });
@@ -338,7 +338,7 @@ export function useAdminProductsListController({
   async function handleDelete(id: string) {
     const ok = await confirm({
       title: "상품 삭제",
-      description: "이 상품을 삭제하면 되돌릴 수 없습니다. 계속 진행할까요?",
+      description: "이 상품과 함께 업로드된 사진(스토리지)도 삭제되며 되돌릴 수 없습니다. 계속 진행할까요?",
       confirmLabel: "삭제",
       cancelLabel: "취소",
     });

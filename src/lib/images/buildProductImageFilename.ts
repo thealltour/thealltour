@@ -80,6 +80,10 @@ export function buildProductImageFilename(
       return `${slug}__day-${nn(entry.dayNumber)}__v2-cover.${ext}`;
     case "v2-event-image":
       return `${slug}__day-${nn(entry.dayNumber)}__v2-event-${ee()}__${eventSlug}-${ii()}.${ext}`;
+    case "catalog":
+      return `${slug}__catalog-${pad2(entry.index + 1)}.${ext}`;
+    case "overview-cover":
+      return `${slug}__overview-cover.${ext}`;
   }
 }
 

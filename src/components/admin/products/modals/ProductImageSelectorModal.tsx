@@ -13,6 +13,8 @@ const SOURCE_LABEL: Record<ProductImageEntry["source"], string> = {
   "structured-event-image": "일정 이미지",
   "v2-day-cover": "일차 커버",
   "v2-event-image": "일정 이미지",
+  catalog: "카탈로그",
+  "overview-cover": "오버뷰 커버",
 };
 
 function entryCaption(entry: ProductImageEntry): string {

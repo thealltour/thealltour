@@ -19,6 +19,7 @@ import {
 } from "@/lib/supabaseProductsColumnFallback";
 import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
 import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
+import { deleteProductSupabaseImages } from "@/lib/admin/deleteProductSupabaseImages";
 import type { PackageCatalog } from "@/types/product";
 
 type ProductBody = {
@@ -372,6 +373,17 @@ export async function DELETE(
   if (!auth.ok) return auth.res;
 
   const { id } = await context.params;
+
+  const existing = await supabaseAdmin.from("products").select("*").eq("id", id).maybeSingle();
+  if (existing.error) {
+    return NextResponse.json({ message: "상품 조회에 실패했습니다." }, { status: 500 });
+  }
+  if (!existing.data) {
+    return NextResponse.json({ message: "상품을 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  const imageUrlsProduct = normalizeProduct(existing.data as Record<string, unknown>);
+
   const deleteResult = await supabaseAdmin.from("products").delete().eq("id", id).select("id").maybeSingle();
 
   if (deleteResult.error) {
@@ -382,6 +394,15 @@ export async function DELETE(
       { message: "상품 삭제 권한이 없거나 대상 상품을 찾지 못했습니다. (RLS 정책 확인 필요)" },
       { status: 403 },
     );
+  }
+
+  try {
+    const storage = await deleteProductSupabaseImages(imageUrlsProduct);
+    if (storage.errors.length > 0) {
+      console.error("[admin/products DELETE] storage cleanup", storage.errors);
+    }
+  } catch (err) {
+    console.error("[admin/products DELETE] storage cleanup failed", err);
   }
 
   revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);

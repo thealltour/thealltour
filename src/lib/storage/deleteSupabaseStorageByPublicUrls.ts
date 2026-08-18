@@ -42,15 +42,18 @@ export async function deleteSupabaseStorageByPublicUrls(rawUrls: string[]): Prom
 
   const deletedPaths: string[] = [];
   const errors: string[] = [];
+  const REMOVE_CHUNK = 100;
 
   for (const [bucket, pathSet] of byBucket) {
     const paths = [...pathSet];
-    if (paths.length === 0) continue;
-    const { error } = await client.storage.from(bucket).remove(paths);
-    if (error) {
-      errors.push(`[${bucket}] ${error.message}`);
-    } else {
-      deletedPaths.push(...paths.map((p) => `${bucket}/${p}`));
+    for (let i = 0; i < paths.length; i += REMOVE_CHUNK) {
+      const chunk = paths.slice(i, i + REMOVE_CHUNK);
+      const { error } = await client.storage.from(bucket).remove(chunk);
+      if (error) {
+        errors.push(`[${bucket}] ${error.message}`);
+      } else {
+        deletedPaths.push(...chunk.map((p) => `${bucket}/${p}`));
+      }
     }
   }
 

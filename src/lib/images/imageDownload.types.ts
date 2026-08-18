@@ -32,7 +32,9 @@ export type ProductImageEntrySource =
   | "structured-day-cover"
   | "structured-event-image"
   | "v2-day-cover"
-  | "v2-event-image";
+  | "v2-event-image"
+  | "catalog"
+  | "overview-cover";
 
 export type ProductImageEntry = {
   /** 선택 UI·부분 ZIP용 안정 식별자 (source·일차·이벤트·인덱스 기반) */

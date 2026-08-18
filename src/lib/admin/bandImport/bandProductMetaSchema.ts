@@ -95,7 +95,9 @@ export const bandProductMetaSchema = z.object({
   terms_and_notes: nullableString.describe(`약관·유의사항 원문. ${VERBATIM}`),
   refund_policy: nullableString.describe(`환불 규정 원문. ${VERBATIM}`),
   min_departure_people: nullableString.describe("최소 출발 인원 (예: 10명)"),
-  meta_title: nullableString.describe("SEO meta_title (키워드)"),
+  meta_title: nullableString.describe(
+    "SEO 검색 키워드 4~8개. 공백 구분, # 없이. 목적지·테마·혜택에서 작성. 상품명 통째 복사 금지. 전용 해시태그 섹션이 있으면 그 토큰 우선.",
+  ),
   meta_description: nullableString.describe("SEO meta_description"),
   point_benefits: nullableString.describe(`포인트·혜택 안내 원문. ${VERBATIM}`),
   point_tourism: oxFieldSchema,

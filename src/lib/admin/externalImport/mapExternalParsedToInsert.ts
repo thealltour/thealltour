@@ -14,7 +14,7 @@ import { countGalleryUrls } from "@/lib/admin/externalImport/mergeExternalImport
 import { mapHanatourCalendarToImport } from "@/lib/admin/externalImport/hanatour/mapHanatourCalendarToImport";
 import type { HanatourCalendarPayload } from "@/lib/admin/externalImport/hanatour/types";
 import { sellingPointsToJsonColumn } from "@/lib/products/normalizeSellingPoints";
-import { formatSeoHashtagsForMetaTitle } from "@/lib/products/formatSeoHashtagsForMetaTitle";
+import { normalizeSeoMetaTitleKeywords } from "@/lib/products/seoMetaTitleAi";
 import {
   normalizePackageCatalog,
   optionalToursToPlainText,
@@ -118,9 +118,9 @@ function resolveMetaTitle(
   seoHashtags?: string[],
 ): string | null {
   return (
-    formatSeoHashtagsForMetaTitle(seoHashtags) ??
-    trimOrNull(parsed.meta_title) ??
-    formatSeoHashtagsForMetaTitle(parsed.seo_hashtags ?? undefined)
+    normalizeSeoMetaTitleKeywords(seoHashtags) ??
+    normalizeSeoMetaTitleKeywords(parsed.meta_title) ??
+    normalizeSeoMetaTitleKeywords(parsed.seo_hashtags ?? undefined)
   );
 }
 

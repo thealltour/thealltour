@@ -11,6 +11,7 @@ import {
   buildBandMetaSourceText,
 } from "@/lib/admin/bandImport/bandTextTruncate";
 import { THEME_CHART_PROMPT_RULES } from "@/lib/admin/themeChartSchema";
+import { SEO_META_TITLE_AI_PROMPT_RULES } from "@/lib/products/seoMetaTitleAi";
 
 export type ParseBandProductTextInput = {
   bandText: string;
@@ -36,6 +37,7 @@ Rules:
 - departure_schedules: each row from 출발일/회차/가격 tables = one array item (departure_date, return_date, price, label, status). Multiple departure dates = multiple items. departure_from_date = first schedule date only when no single flight departure date in the table. If the source text has NO year as "20xx년", do NOT guess a year in departure_date — use month/day only (e.g. 7/23 or 07.23) and put the display text in label. Use YYYY-MM-DD only when "20xx년" (or an explicit tour year) is stated in the source. status defaults to AVAILABLE when not stated.
 - selling_points_json: extract 핵심포인트, 관광, 식사, 교통, 보험 sections verbatim when present.
 - point_tourism, point_guide, meeting_info, travel_insurance: "O" or "X" only when explicitly stated; else null.
+- ${SEO_META_TITLE_AI_PROMPT_RULES}
 - Do NOT build itinerary_v2_json in this pass.`;
 
 const ITINERARY_SYSTEM_PROMPT = `You extract day-by-day itinerary from Korean travel HWP/band schedule text into itinerary_v2_json and theme_chart_json.
@@ -72,6 +74,7 @@ function buildBandMetaPrompt(input: ParseBandProductTextInput): string {
     "9. 출발일·회차·가격 표 → departure_schedules 각 행 분리 (7/23 89만, 7/30 92만 → 2건). price는 원화 정수. 원문에 `20xx년` 형태 연도가 없으면 departure_date에 연도를 추측하지 말고 7/23·07.23 형식만 사용하고 표기는 label에. `20xx년`이 있을 때만 YYYY-MM-DD. 각 행 status는 명시 없으면 AVAILABLE.",
     "10. price는 원화 정수(쉼표·만원·원 제거). 스케줄 가격이 있으면 최저가, 없으면 본문 기본가.",
     "11. 상품 status: AVAILABLE/LIMITED/SOLD_OUT/CONSULT_REQUIRED 또는 null. 출발일 스케줄 status는 AVAILABLE/LIMITED/SOLD_OUT (미기재 시 AVAILABLE).",
+    "12. meta_title: 목적지·테마·혜택으로 검색 키워드 4~8개 작성 (공백 구분, # 없음). 상품명 통째 복사 금지. 해시태그 섹션이 있으면 그 토큰 우선.",
     "",
     "=== 원문 (HWP 우선, 밴드 본문 포함) ===",
     source,

@@ -176,6 +176,16 @@ describe("mapExternalParsedToInsert", () => {
     expect(result.meta_title).toBe("계림여행추천 이강유람체험");
   });
 
+  it("strips hashes from AI seo_hashtags fallback", () => {
+    const result = mapExternalParsedToInsert({
+      parsed: baseParsed({
+        seo_hashtags: ["#시드니", "#오페라하우스", "가족여행"],
+      }),
+      provider: "hanatour",
+    });
+    expect(result.meta_title).toBe("시드니 오페라하우스 가족여행");
+  });
+
   it("maps hanatour calendar payload to departure_schedules_json and min price", () => {
     const result = mapExternalParsedToInsert({
       parsed: baseParsed({

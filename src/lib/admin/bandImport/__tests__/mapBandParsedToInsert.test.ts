@@ -303,6 +303,17 @@ describe("mapBandParsedToInsert", () => {
     expect(payload.meta_info).toBe("제주항공 OZ8123");
   });
 
+  it("normalizes AI meta_title hashtags and caps at 8 keywords", () => {
+    const payload = mapBandParsedToInsert({
+      parsed: minimalBandParsed({
+        meta_title: "#제주 #골프 #72홀 #특가 #가족 #휴양 #직항 #라운딩 #버림",
+      }),
+      bandText: "",
+      hwpText: "",
+    });
+    expect(payload.meta_title).toBe("제주 골프 72홀 특가 가족 휴양 직항 라운딩");
+  });
+
   it("maps golf-specific fields", () => {
     const payload = mapBandParsedToInsert({
       parsed: minimalBandParsed({

@@ -33,6 +33,7 @@ import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
 import { trimOrNull } from "@/lib/admin/stringHelpers";
 import { normalizeThemeChartForInsert } from "@/lib/admin/themeChartSchema";
 import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
+import { normalizeSeoMetaTitleKeywords } from "@/lib/products/seoMetaTitleAi";
 import type { ProductDepartureSchedule } from "@/types/product";
 
 export type MapBandParsedInput = {
@@ -445,7 +446,7 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     terms_and_notes: trimOrNull(parsed.terms_and_notes),
     refund_policy: trimOrNull(parsed.refund_policy),
     min_departure_people: trimOrNull(parsed.min_departure_people),
-    meta_title: trimOrNull(parsed.meta_title),
+    meta_title: normalizeSeoMetaTitleKeywords(parsed.meta_title),
     meta_description: trimOrNull(parsed.meta_description),
     point_benefits: trimOrNull(parsed.point_benefits),
     point_tourism: parsed.point_tourism ?? null,

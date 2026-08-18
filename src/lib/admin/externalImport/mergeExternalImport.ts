@@ -6,7 +6,7 @@ import { mapExternalItineraryToV2 } from "@/lib/admin/externalImport/mapExternal
 import { hasRichItineraryBlocks } from "@/lib/admin/externalImport/mapExternalItineraryToV2";
 import type { ExternalParsedItineraryV2 } from "@/lib/admin/externalImport/externalProductSchema";
 import type { ItineraryV2 } from "@/types/product";
-import { formatSeoHashtagsForMetaTitle } from "@/lib/products/formatSeoHashtagsForMetaTitle";
+import { normalizeSeoMetaTitleKeywords } from "@/lib/products/seoMetaTitleAi";
 import { trimOrNull } from "@/lib/admin/stringHelpers";
 import type { ThemeChartJson } from "@/lib/admin/themeChartSchema";
 
@@ -69,8 +69,8 @@ export function mergeExternalImport(input: MergeExternalImportInput): ExternalPa
     itineraryV2 = aiMapped;
   }
 
-  const domMetaTitle = formatSeoHashtagsForMetaTitle(seoHashtags);
-  const aiMetaTitle = formatSeoHashtagsForMetaTitle(meta.seo_hashtags ?? undefined);
+  const domMetaTitle = normalizeSeoMetaTitleKeywords(seoHashtags);
+  const aiMetaTitle = normalizeSeoMetaTitleKeywords(meta.seo_hashtags ?? undefined);
 
   return {
     ...meta,

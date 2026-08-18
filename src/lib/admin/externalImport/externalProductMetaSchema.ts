@@ -39,7 +39,7 @@ export const externalProductMetaSchema = z.object({
     .array(z.string())
     .nullable()
     .describe(
-      "AI 해시태그 섹션 키워드만 (# 없이). 상품명에 포함된 #키워드와 혼동 금지.",
+      "SEO 검색 키워드 4~8개 (# 없이). 전용 AI 해시태그 섹션이 있으면 그 토큰 우선. 없으면 목적지·테마·혜택에서 작성. 상품명 통째 복사·제목 속 #키워드 재사용 금지.",
     ),
   description: nullableString.describe("상품 요약 및 핵심 셀링 포인트"),
 

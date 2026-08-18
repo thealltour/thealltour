@@ -14,6 +14,7 @@ import {
   THEME_CHART_PROMPT_RULES,
   type ThemeChartJson,
 } from "@/lib/admin/themeChartSchema";
+import { SEO_META_TITLE_AI_PROMPT_RULES } from "@/lib/products/seoMetaTitleAi";
 import type { ItineraryBlock } from "@/lib/admin/externalImport/itineraryBlockTypes";
 import type { ExternalProvider } from "@/lib/admin/externalImport/detectExternalProvider";
 import { getExternalProviderLabel } from "@/lib/admin/externalImport/detectExternalProvider";
@@ -83,7 +84,7 @@ Rules:
   Use YYYY-MM-DD for dates, HH:mm for times. Keep duration text as-is (e.g. 03시간 45분).
 - selling_points_json: extract 핵심포인트, 관광, 식사, 교통, 보험 sections verbatim when present.
 - title: copy the page product name EXACTLY as shown (include [brackets], inline #keywords, all spaces). Do NOT shorten or clean up.
-- seo_hashtags: extract only from the separate "AI 해시태그" section. Do NOT include hashtags that are part of the product title string.`;
+- ${SEO_META_TITLE_AI_PROMPT_RULES}`;
 
 const ITINERARY_HTML_PROMPT = `Extract itinerary_v2_json and theme_chart_json from sanitized HTML.
 Rules:

@@ -608,8 +608,42 @@ function isHanatourSearchPageUrl(url) {
   if (href.includes("/all-search")) return true;
   if (href.includes("allsearchtab=package")) return true;
   if (href.includes("/search")) return true;
+  if (href.includes("keywordcateg=")) return true;
   if (/chpc0pkg\d+m\d+/i.test(href) && !href.includes("/trp/pkg/")) return true;
   return false;
+}
+
+function isHanatourDetailPageUrl(url) {
+  const href = (url ?? "").toLowerCase();
+  if (href.includes("/trp/pkg/")) return true;
+  try {
+    const parsed = new URL(href);
+    const params = parsed.searchParams;
+    return (
+      Boolean(params.get("pkgcd") || params.get("pkgCd")) &&
+      Boolean(params.get("depday") || params.get("depDay"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isMessageChannelClosedError(err) {
+  const raw = err instanceof Error ? err.message : String(err);
+  return /message channel closed|asynchronous response by returning true/i.test(raw);
+}
+
+function scrapeFailureUserMessage(err, startUrl, afterUrl) {
+  if (afterUrl && startUrl && afterUrl !== startUrl) {
+    return "수집 중 페이지가 이동했습니다. 상품 상세에서 다시 눌러 주세요.";
+  }
+  if (isHanatourSearchPageUrl(afterUrl || startUrl)) {
+    return "수집 중 페이지가 이동했습니다. 상품 상세에서 다시 눌러 주세요.";
+  }
+  if (isMessageChannelClosedError(err)) {
+    return "수집 중 페이지가 이동했습니다. 상품 상세에서 다시 눌러 주세요.";
+  }
+  return err instanceof Error ? err.message : String(err);
 }
 
 async function resolveParentTabCandidates(childTabId) {
@@ -752,22 +786,42 @@ async function ensureContentScripts(tabId) {
 }
 
 async function scrapeTab(tabId) {
+  let startUrl = "";
   try {
     const tab = await chrome.tabs.get(tabId);
+    startUrl = tab.url ?? "";
     registerTabRelation(tabId, tab.openerTabId);
   } catch {
     /* ignore */
   }
   await ensureContentScripts(tabId);
-  const response = await chrome.tabs.sendMessage(tabId, { type: "SCRAPE_PAGE" });
-  if (!response?.ok) {
-    throw new Error(response?.error ?? "scrape failed");
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: "SCRAPE_PAGE" });
+    if (!response?.ok) {
+      throw new Error(response?.error ?? "scrape failed");
+    }
+    return response.payload;
+  } catch (err) {
+    let afterUrl = startUrl;
+    try {
+      afterUrl = (await chrome.tabs.get(tabId)).url ?? startUrl;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(scrapeFailureUserMessage(err, startUrl, afterUrl));
   }
-  return response.payload;
 }
 
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
+
+  if (isHanatourTabUrl(tab.url) && isHanatourSearchPageUrl(tab.url) && !isHanatourDetailPageUrl(tab.url)) {
+    await notifyTab(tab.id, {
+      type: "SHOW_ALERT",
+      text: "하나투어 검색 페이지에서는 수집할 수 없습니다. 상품 상세 페이지에서 다시 눌러 주세요.",
+    });
+    return;
+  }
 
   await showProgress(tab.id, 5, "준비 중…");
 

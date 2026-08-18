@@ -18,6 +18,7 @@
   const DAY_TAB_REGEX = /^\s*(\d{1,2})\s*일차/;
   const DAY_ACCORDION_HEADER = /(\d{1,2})일차/;
   const DATE_IN_ACCORDION = /(\d{1,2}\/\d{1,2}\([^)]+\)|\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2})/;
+  const NAV_HREF_RE = /\/all-search|\/search|keywordcateg=/i;
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,6 +26,63 @@
 
   function elementText(el) {
     return (el?.textContent ?? "").trim();
+  }
+
+  function resolveAnchorHref(el) {
+    if (!el) return "";
+    const a = el.tagName?.toLowerCase() === "a" ? el : el.closest?.("a");
+    return (a?.getAttribute("href") ?? "").trim();
+  }
+
+  function isInPageHref(href, doc) {
+    const raw = (href || "").trim();
+    if (!raw || raw === "#" || raw.startsWith("#")) return true;
+    if (raw.toLowerCase().startsWith("javascript:")) return true;
+    if (NAV_HREF_RE.test(raw)) return false;
+    try {
+      const base = doc?.defaultView?.location?.href ?? "https://www.hanatour.com/";
+      const next = new URL(raw, base);
+      const cur = new URL(base);
+      if (NAV_HREF_RE.test(next.href)) return false;
+      if (next.origin !== cur.origin) return false;
+      return next.pathname === cur.pathname;
+    } catch {
+      return false;
+    }
+  }
+
+  function isSafeClickTarget(el) {
+    if (!el) return false;
+    const text = elementText(el).replace(/\s+/g, " ");
+    if (text === "상세보기" || /^상세보기$/.test(text)) return false;
+    const href = resolveAnchorHref(el);
+    if (href && !isInPageHref(href, el.ownerDocument)) return false;
+    return true;
+  }
+
+  /** 페이지를 떠나지 않는 요소만 click. 내비게이션 링크는 건너뛴다. */
+  function safeClick(el) {
+    if (!isSafeClickTarget(el)) return false;
+    el.click();
+    return true;
+  }
+
+  function isHeaderOrFooter(el) {
+    return Boolean(el?.closest?.("header, footer, [role='banner'], [role='contentinfo']"));
+  }
+
+  /** GNB가 아닌 상품 상세 탭/본문 범위 */
+  function findProductTabScope(doc) {
+    if (!doc) return null;
+    const main = doc.querySelector("main");
+    if (main) {
+      const inner = main.querySelector('[role="tablist"]');
+      return inner ?? main;
+    }
+    for (const tablist of doc.querySelectorAll('[role="tablist"]')) {
+      if (!isHeaderOrFooter(tablist)) return tablist;
+    }
+    return doc.body ?? doc;
   }
 
   function findItineraryTabPanel(doc) {
@@ -44,12 +102,15 @@
 
   function clickExpandAllItineraryInScope(scope) {
     if (!scope) return false;
-    const candidates = scope.querySelectorAll("button, a, [role='button'], span");
-    for (const el of candidates) {
-      const text = elementText(el);
-      if (/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) {
-        el.click();
-        return true;
+    const groups = [
+      scope.querySelectorAll("button, [role='tab'], [role='button']"),
+      scope.querySelectorAll("a, span"),
+    ];
+    for (const candidates of groups) {
+      for (const el of candidates) {
+        const text = elementText(el);
+        if (!/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) continue;
+        if (safeClick(el)) return true;
       }
     }
     return false;
@@ -74,6 +135,7 @@
         el.getAttribute("role") === "tab" ||
         el.closest('[role="tablist"]') != null;
       if (!clickable && text.length > 12) continue;
+      if (!isSafeClickTarget(el)) continue;
       seen.add(dayNumber);
       out.push({ dayNumber, el });
     }
@@ -148,7 +210,7 @@
       const nav = findDayNavButton(doc, "next");
       if (!nav || nav.disabled) break;
       const before = byDay.size;
-      nav.el.click();
+      if (!safeClick(nav.el)) break;
       await sleep(DAY_TAB_WAIT_MS);
       absorbVisibleTabs();
       if (byDay.size === before) break;
@@ -189,7 +251,7 @@
   }
 
   async function activateDayTab(tab, doc) {
-    tab.el.click();
+    if (!safeClick(tab.el)) return findAccordionPanelForHeader(tab.el, doc);
     await sleep(DAY_TAB_WAIT_MS);
 
     const selected = doc.querySelector('[role="tab"][aria-selected="true"]');
@@ -239,7 +301,7 @@
       if (clicks >= limit) break;
       if (seen.has(btn)) continue;
       seen.add(btn);
-      btn.click();
+      if (!safeClick(btn)) continue;
       clicks += 1;
       await sleep(ACCORDION_CLICK_INTERVAL_MS);
     }
@@ -300,6 +362,9 @@
     PANEL_STABLE_TIMEOUT_MS,
     sleep,
     elementText,
+    isSafeClickTarget,
+    safeClick,
+    findProductTabScope,
     findItineraryTabPanel,
     clickExpandAllItineraryInScope,
     findDaySubTabs,

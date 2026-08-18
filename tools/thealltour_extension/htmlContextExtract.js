@@ -167,11 +167,29 @@
 
 
   function findTabBarRoot(doc) {
-    const tablist = doc.querySelector('[role="tablist"]');
+    const ui = global.HanatourItineraryUiPrep;
+    if (ui?.findProductTabScope) {
+      const scope = ui.findProductTabScope(doc);
+      if (scope) {
+        if (scope.getAttribute?.("role") === "tablist") return scope;
+        const inner = scope.querySelector?.('[role="tablist"]');
+        if (inner) return inner;
+        if (scope !== doc) return scope;
+      }
+    }
+    const main = doc.querySelector("main");
+    const tablist = (main ?? doc).querySelector('[role="tablist"]');
     if (tablist) return tablist;
-    const nav = doc.querySelector("nav");
+    const nav = (main ?? doc).querySelector("nav");
     if (nav?.querySelector('[role="tab"]')) return nav;
-    return doc;
+    return main ?? doc;
+  }
+
+  function clickIfSafe(el) {
+    const ui = global.HanatourItineraryUiPrep;
+    if (ui?.safeClick) return ui.safeClick(el);
+    el.click();
+    return true;
   }
 
   function clickTabByText(doc, patterns, exactPatterns) {
@@ -186,15 +204,13 @@
 
       for (const exact of exactPatterns ?? []) {
         if (text === exact || new RegExp(`^${exact}$`, "i").test(text)) {
-          el.click();
-          return true;
+          if (clickIfSafe(el)) return true;
         }
       }
 
       for (const pat of patterns) {
         if (pat.test(text)) {
-          el.click();
-          return true;
+          if (clickIfSafe(el)) return true;
         }
       }
 
@@ -202,8 +218,7 @@
     }
 
     if (fallback) {
-      fallback.click();
-      return true;
+      return clickIfSafe(fallback);
     }
 
     return false;
@@ -238,53 +253,34 @@
 
 
   function clickExpandAllItinerary(doc) {
-
-    const candidates = doc.querySelectorAll("button, a, [role='button'], span");
-
-    for (const el of candidates) {
-
-      const text = elementText(el);
-
-      if (/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) {
-
-        el.click();
-
-        return true;
-
+    const ui = global.HanatourItineraryUiPrep;
+    const scope = ui?.findItineraryTabPanel?.(doc) ?? doc.querySelector("main") ?? doc;
+    const groups = [
+      scope.querySelectorAll("button, [role='tab'], [role='button']"),
+      scope.querySelectorAll("a, span"),
+    ];
+    for (const candidates of groups) {
+      for (const el of candidates) {
+        const text = elementText(el);
+        if (!/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) continue;
+        if (clickIfSafe(el)) return true;
       }
-
     }
-
     return false;
-
   }
 
-
-
   async function expandAccordionsIn(root, maxClicks) {
-
     const toggles = [];
-
     root.querySelectorAll('[aria-expanded="false"]').forEach((el) => toggles.push(el));
-
     let clicks = 0;
-
     for (const btn of toggles) {
-
       if (clicks >= (maxClicks ?? 60)) break;
-
       if (btn.getAttribute("aria-expanded") === "true") continue;
-
-      btn.click();
-
+      if (!clickIfSafe(btn)) continue;
       clicks++;
-
       await sleep(120);
-
     }
-
     return clicks;
-
   }
 
 

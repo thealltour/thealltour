@@ -4,6 +4,49 @@ if (globalThis.__theallTourImportContentLoaded) {
   globalThis.__theallTourImportContentLoaded = true;
 
   const PROGRESS_ID = "thealltour-import-progress";
+  const LOCK_ID = "thealltour-import-lock";
+
+  function ensureLockOverlay() {
+    let root = document.getElementById(LOCK_ID);
+    if (root) return root;
+
+    root = document.createElement("div");
+    root.id = LOCK_ID;
+    root.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:2147483645",
+      "background:rgba(15,23,42,0.45)",
+      "pointer-events:all",
+      "display:none",
+      "cursor:wait",
+      "font-family:system-ui,-apple-system,sans-serif",
+    ].join(";");
+    root.innerHTML = `
+      <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:8px;background:rgba(15,23,42,0.92);color:#f8fafc;font-size:13px;font-weight:600;white-space:nowrap;">
+        수집 중이니 페이지를 클릭하지 마세요.
+      </div>
+    `;
+    const block = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    root.addEventListener("click", block, true);
+    root.addEventListener("mousedown", block, true);
+    root.addEventListener("mouseup", block, true);
+    root.addEventListener("pointerdown", block, true);
+    (document.body ?? document.documentElement).appendChild(root);
+    return root;
+  }
+
+  function showLockOverlay() {
+    ensureLockOverlay().style.display = "block";
+  }
+
+  function hideLockOverlay() {
+    const root = document.getElementById(LOCK_ID);
+    if (root) root.style.display = "none";
+  }
 
   function ensureProgressOverlay() {
     let root = document.getElementById(PROGRESS_ID);
@@ -53,9 +96,9 @@ if (globalThis.__theallTourImportContentLoaded) {
 
   function hideProgress(delayMs) {
     const root = document.getElementById(PROGRESS_ID);
-    if (!root) return;
     const hide = () => {
-      root.style.display = "none";
+      if (root) root.style.display = "none";
+      hideLockOverlay();
     };
     if (delayMs && delayMs > 0) setTimeout(hide, delayMs);
     else hide();
@@ -201,6 +244,7 @@ if (globalThis.__theallTourImportContentLoaded) {
       showProgress(pct, label);
     };
 
+    showLockOverlay();
     report(5, "준비 중…");
 
     const hx = globalThis.HtmlContextExtract;
@@ -273,6 +317,7 @@ if (globalThis.__theallTourImportContentLoaded) {
       return true;
     }
     if (message?.type === "SHOW_PROGRESS") {
+      showLockOverlay();
       showProgress(message.percent ?? 0, message.label ?? "처리 중…");
       sendResponse({ ok: true });
       return true;

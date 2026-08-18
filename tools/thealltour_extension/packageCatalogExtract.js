@@ -58,24 +58,39 @@
     return out.slice(0, MAX_ITEM_IMAGES);
   }
 
+  function catalogClickScope(doc) {
+    const ui = global.HanatourItineraryUiPrep;
+    if (ui?.findProductTabScope) return ui.findProductTabScope(doc);
+    return doc.querySelector("main") ?? doc.body ?? doc;
+  }
+
+  function clickIfSafe(el) {
+    const ui = global.HanatourItineraryUiPrep;
+    if (ui?.safeClick) return ui.safeClick(el);
+    el.click();
+    return true;
+  }
+
   function clickByExactText(doc, exactTexts) {
     const wanted = exactTexts.map((t) => t.replace(/\s+/g, " ").trim());
-    const candidates = doc.querySelectorAll("a, button, [role='tab'], [role='link']");
-    for (const el of candidates) {
-      const text = elementText(el);
-      if (!text) continue;
-      if (wanted.includes(text)) {
-        el.click();
-        return true;
+    const scope = catalogClickScope(doc);
+    const preferred = scope.querySelectorAll("button, [role='tab']");
+    const fallback = scope.querySelectorAll("a, [role='link']");
+
+    const tryList = (candidates, matchFn) => {
+      for (const el of candidates) {
+        const text = elementText(el);
+        if (!text) continue;
+        if (!matchFn(text)) continue;
+        if (clickIfSafe(el)) return true;
       }
-    }
-    for (const el of candidates) {
-      const text = elementText(el);
-      if (wanted.some((w) => text === w || text.startsWith(w))) {
-        el.click();
-        return true;
-      }
-    }
+      return false;
+    };
+
+    if (tryList(preferred, (text) => wanted.includes(text))) return true;
+    if (tryList(fallback, (text) => wanted.includes(text))) return true;
+    if (tryList(preferred, (text) => wanted.some((w) => text === w || text.startsWith(w)))) return true;
+    if (tryList(fallback, (text) => wanted.some((w) => text === w || text.startsWith(w)))) return true;
     return false;
   }
 
@@ -96,7 +111,7 @@
     let clicks = 0;
     root.querySelectorAll('[aria-expanded="false"]').forEach((btn) => {
       if (clicks >= 40) return;
-      btn.click();
+      if (!clickIfSafe(btn)) return;
       clicks += 1;
     });
     if (clicks) await sleep(200);

@@ -6,6 +6,9 @@
   const CAPTURE_POLL_MS = 150;
   const CAPTURE_WAIT_MS = 1200;
   const DEFAULT_MAX_MONTHS = 12;
+  // 안전망(무한 대기 방지)용 전체 시간 예산. 근접-매일 출발 x 다개월(예: 7개월) 상품도
+  // 정상적으로는 이 예산 안에서 끝나도록 넉넉하게 잡는다 — 완전성을 깎기 위한 값이 아니다.
+  const DEFAULT_TOTAL_BUDGET_MS = 150_000;
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -67,9 +70,11 @@
     const merged = {};
     const open = global.HanatourCalendarOpen;
     const tabId = options?.tabId ?? null;
+    const deadline = options?.deadline ?? null;
 
     const pagedHorizontal = await open?.scrapeAllSearchHorizontalCalendarWithPaging?.(doc, {
       tabId,
+      deadline,
     });
     if (pagedHorizontal) mergeSearchCalendar(merged, pagedHorizontal);
 
@@ -111,8 +116,17 @@
     const visited = new Set();
     const pagingMeta = [];
     const skipMeta = [];
+    // 안전망 deadline: 호출자가 넘겨주면 그대로 쓰고, 없으면 넉넉한 기본 예산으로 계산한다.
+    // 정상적인 진행 중에는 절대 걸리지 않도록 값을 크게 잡아둔다(초 단위가 아니라 분 단위).
+    const deadline = options?.deadline ?? Date.now() + (options?.totalBudgetMs ?? DEFAULT_TOTAL_BUDGET_MS);
+    let deadlineHit = false;
 
     for (let step = 0; step < maxMonths; step += 1) {
+      if (Date.now() > deadline) {
+        deadlineHit = true;
+        break;
+      }
+
       const ym = readVisibleYearMonth(doc);
       if (ym) {
         if (visited.has(ym)) break;
@@ -121,9 +135,14 @@
 
       onProgress?.(step + 1, maxMonths, ym);
 
-      const monthCal = await collectCalendarFromTabAsync(doc, { tabId });
+      const monthCal = await collectCalendarFromTabAsync(doc, { tabId, deadline });
       if (monthCal) mergeSearchCalendar(merged, monthCal);
       mergeApiCapturesInto(merged);
+
+      if (Date.now() > deadline) {
+        deadlineHit = true;
+        break;
+      }
 
       const stripMeta = open?.getLastDateStripPagingMeta?.();
       if (stripMeta) pagingMeta.push({ yearMonth: ym, ...stripMeta });
@@ -168,8 +187,14 @@
       if (skipMeta.length > 0) {
         fetchMetaExtensions.push(...skipMeta);
       }
+      if (deadlineHit) {
+        fetchMetaExtensions.push({ source: "month_browse_deadline", ok: false, reason: "deadline" });
+      }
       if (pagingMeta.length > 0) {
         result.__dateStripPagingMeta = pagingMeta;
+      }
+      if (deadlineHit) {
+        result.__deadlineHit = true;
       }
       if (fetchMetaExtensions.length > 0) {
         result.__fetchMetaExtensions = fetchMetaExtensions;
@@ -180,6 +205,7 @@
 
   global.HanatourCalendarBrowse = {
     DEFAULT_MAX_MONTHS,
+    DEFAULT_TOTAL_BUDGET_MS,
     readVisibleYearMonth,
     findMonthHeaderElement,
     findMonthNavButton,

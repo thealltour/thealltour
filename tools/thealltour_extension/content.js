@@ -81,6 +81,7 @@
       <div id="${PROGRESS_ID}-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#6366f1);border-radius:999px;transition:width 0.35s ease;"></div>
     </div>
     <div id="${PROGRESS_ID}-pct" style="margin-top:8px;font-size:12px;color:#cbd5e1;text-align:right;">0%</div>
+    <div id="${PROGRESS_ID}-log" style="margin-top:10px;max-height:120px;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.12);padding-top:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;line-height:1.5;color:#94a3b8;white-space:pre-wrap;word-break:break-all;"></div>
   `;
     (document.body ?? document.documentElement).appendChild(root);
     return root;
@@ -96,6 +97,59 @@
     if (bar) bar.style.width = `${clamped}%`;
     if (pct) pct.textContent = `${clamped}%`;
     if (lbl && label) lbl.textContent = label;
+  }
+
+  // 진행 로그: 40%대 정지처럼 단계 사이 소요 시간을 진단하기 위한 타임스탬프 로그.
+  // 실제 완전성(수집량)에는 영향을 주지 않는 순수 진단용 UI다.
+  const MAX_PROGRESS_LOG_ENTRIES = 60;
+  const VISIBLE_PROGRESS_LOG_LINES = 8;
+  let progressLogStartedAt = null;
+  let progressLogLastAt = null;
+  let progressLogEntries = [];
+  let lastReportedPct = 0;
+
+  function nowMs() {
+    return (globalThis.performance ?? Date).now();
+  }
+
+  function resetProgressLog() {
+    progressLogStartedAt = null;
+    progressLogLastAt = null;
+    progressLogEntries = [];
+    lastReportedPct = 0;
+    renderProgressLog();
+  }
+
+  function renderProgressLog() {
+    const el = document.getElementById(`${PROGRESS_ID}-log`);
+    if (!el) return;
+    el.textContent = progressLogEntries.slice(-VISIBLE_PROGRESS_LOG_LINES).join("\n");
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function logStep(label, pct) {
+    const now = nowMs();
+    if (progressLogStartedAt == null) progressLogStartedAt = now;
+    const totalS = ((now - progressLogStartedAt) / 1000).toFixed(1);
+    const deltaS = ((now - (progressLogLastAt ?? progressLogStartedAt)) / 1000).toFixed(1);
+    progressLogLastAt = now;
+    if (typeof pct === "number") lastReportedPct = pct;
+    const pctText = `${Math.round(lastReportedPct)}%`;
+    const line = `[+${deltaS}s] ${label ?? ""} (총 ${totalS}s · ${pctText})`;
+    progressLogEntries.push(line);
+    if (progressLogEntries.length > MAX_PROGRESS_LOG_ENTRIES) progressLogEntries.shift();
+    renderProgressLog();
+    try {
+      console.debug(`[thealltour-import] ${line}`);
+    } catch {
+      /* ignore */
+    }
+    return line;
+  }
+
+  /** 진행률 바는 그대로 두고, 두 체크포인트 사이의 세부 단계만 로그에 추가한다. */
+  function logNote(text) {
+    return logStep(text, lastReportedPct);
   }
 
   function hideProgress(delayMs) {
@@ -160,18 +214,22 @@
           calendarMeta.parentAuthoritative = calendarMeta.dayCount > 0;
           // 데이터 완전성 우선: 인접 탭에서 일부라도 찾았어도 여기서 바로 반환하지 않고
           // 아래 백그라운드 API 결과와 병합해 더 많은 출발일을 확보한다.
+          logNote(
+            `부모 탭 순회 완료 (source=${calendarMeta.source}, ${calendarMeta.dayCount}건)`,
+          );
         } else if (parentResult?.error) {
           calendarMeta.parentError = {
             error: parentResult.error,
             triedTabIds: parentResult.triedTabIds ?? null,
             parentTabId: parentResult.parentTabId ?? null,
           };
+          logNote(`부모 탭 순회 실패 (${parentResult.error}) → 배경 API로 진행`);
         }
       } catch (err) {
         console.warn("[thealltour-import] parent tab calendar failed:", err);
-        calendarMeta.parentError = {
-          error: err instanceof Error ? err.message : String(err),
-        };
+        const message = err instanceof Error ? err.message : String(err);
+        calendarMeta.parentError = { error: message };
+        logNote(`부모 탭 순회 예외 (${message}) → 배경 API로 진행`);
       }
     }
 
@@ -203,10 +261,15 @@
         ];
         // 데이터 완전성 우선: "충분함" 기준으로 바로 반환하지 않고 아래 content fallback도
         // 시도해 추가로 발견되는 출발일이 있으면 병합한다.
+        logNote(`배경 API 수집 완료 (총 ${calendarMeta.dayCount}건)`);
+      } else {
+        logNote("배경 API 응답 없음/빈 결과 → 콘텐츠 폴백으로 진행");
       }
     } catch (err) {
       console.warn("[thealltour-import] background calendar API failed:", err);
       calendarMeta.apiAttempted = true;
+      const message = err instanceof Error ? err.message : String(err);
+      logNote(`배경 API 실패 (${message}) → 콘텐츠 폴백으로 진행`);
     }
 
     if (globalThis.HanatourCalendarFetch?.fetchHanatourCalendar) {
@@ -224,9 +287,14 @@
             ? `${calendarMeta.source}+${suffix}`
             : suffix;
           calendarMeta.dayCount = countCalendarDayTotal(calendarPayload);
+          logNote(`콘텐츠 폴백 완료 (총 ${calendarMeta.dayCount}건)`);
+        } else {
+          logNote("콘텐츠 폴백 결과 없음");
         }
       } catch (err) {
         console.warn("[thealltour-import] content calendar fallback failed:", err);
+        const message = err instanceof Error ? err.message : String(err);
+        logNote(`콘텐츠 폴백 실패 (${message})`);
       }
     }
 
@@ -243,9 +311,11 @@
   }
 
   async function scrapePagePayload(onProgress) {
+    resetProgressLog();
     const report = (pct, label) => {
       onProgress?.(pct, label);
       showProgress(pct, label);
+      logStep(label, pct);
     };
 
     showLockOverlay();
@@ -328,6 +398,11 @@
     if (message?.type === "SHOW_PROGRESS") {
       showLockOverlay();
       showProgress(message.percent ?? 0, message.label ?? "처리 중…");
+      if (message.logLine) {
+        progressLogEntries.push(message.logLine);
+        if (progressLogEntries.length > MAX_PROGRESS_LOG_ENTRIES) progressLogEntries.shift();
+        renderProgressLog();
+      }
       sendResponse({ ok: true });
       return false;
     }
@@ -355,6 +430,14 @@
   globalThis.__theallTourImportOnMessage = onRuntimeMessage;
   chrome.runtime.onMessage.addListener(onRuntimeMessage);
   globalThis.__theallTourImportContentLoaded = extId;
+
+  // 테스트 전용 훅. 프로덕션 동작에는 영향 없음(진행 로그 계산 로직만 노출).
+  globalThis.__theallTourProgressLogTestHooks = {
+    resetProgressLog,
+    logStep,
+    logNote,
+    getEntries: () => progressLogEntries.slice(),
+  };
 
   if (/hanatour\.com/i.test(window.location.hostname)) {
     globalThis.HanatourCrossTabCalendar?.installParentCalendarResponder?.();

@@ -539,9 +539,23 @@
 
 
 
+  // 안전망(무한 대기 방지)용 상한. background.js가 여러 후보 부모 탭을 순차로 시도할 수
+  // 있고, 각 후보마다 browseParentCalendar 자체 상한(약 180초)이 걸릴 수 있으므로 그보다
+  // 훨씬 여유 있게 잡는다. 완전성을 깎기 위한 값이 아니라 배경 스크립트가 응답 자체를
+  // 못 주는 극단적 상황(예: 서비스 워커 재시작)에서만 개입한다.
+  const REQUEST_PARENT_CALENDAR_TIMEOUT_MS = 360_000;
+
   function requestParentCalendarViaBackground(productCodes, options) {
 
     return new Promise((resolve) => {
+
+      let settled = false;
+
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resolve({ ok: false, error: "timeout", triedTabIds: [] });
+      }, REQUEST_PARENT_CALENDAR_TIMEOUT_MS);
 
       chrome.runtime.sendMessage(
 
@@ -564,6 +578,12 @@
         },
 
         (response) => {
+
+          if (settled) return;
+
+          settled = true;
+
+          clearTimeout(timer);
 
           if (chrome.runtime.lastError) {
 
@@ -672,6 +692,8 @@
     registerChildTab,
 
     requestParentCalendarViaBackground,
+
+    REQUEST_PARENT_CALENDAR_TIMEOUT_MS,
 
     fetchParentTabCalendar,
 

@@ -1083,6 +1083,9 @@
   async function scrapeAllSearchHorizontalCalendarWithPaging(doc, options) {
     const maxClicks = options?.maxDateStripClicks ?? DEFAULT_MAX_DATE_STRIP_CLICKS;
     const tabId = options?.tabId ?? null;
+    // 안전망 deadline(선택): browseHanatourCalendarMonths 등 호출자가 전체 예산을 넘겨줄 때만 적용.
+    // 넘어오지 않으면(단독 호출 등) 기존과 동일하게 maxClicks만으로 동작한다.
+    const deadline = options?.deadline ?? null;
     const merged = {};
     let clicks = 0;
     let maxDaySeen = 0;
@@ -1090,6 +1093,11 @@
     let lastVia = null;
 
     for (let i = 0; i <= maxClicks; i += 1) {
+      if (deadline != null && Date.now() > deadline) {
+        lastReason = "deadline";
+        break;
+      }
+
       mergeDiscoveredCapturesInto(merged);
       const pageCal = scrapeAllSearchHorizontalCalendar(doc);
       if (pageCal) mergeSearchCalendarDedupe(merged, pageCal);

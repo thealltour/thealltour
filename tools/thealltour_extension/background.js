@@ -83,7 +83,7 @@ async function sendTabMessage(tabId, message, timeoutMs = TAB_MESSAGE_TIMEOUT_MS
   return withTimeout(chrome.tabs.sendMessage(tabId, message), timeoutMs, "tab-message-timeout");
 }
 
-function paintProgressInPage(percent, label) {
+function paintProgressInPage(percent, label, logLine) {
   const PROGRESS_ID = "thealltour-import-progress";
   const LOCK_ID = "thealltour-import-lock";
   const clamped = Math.max(0, Math.min(100, Math.round(percent ?? 0)));
@@ -107,7 +107,7 @@ function paintProgressInPage(percent, label) {
     root.id = PROGRESS_ID;
     root.style.cssText =
       "position:fixed;bottom:24px;right:24px;z-index:2147483646;width:280px;padding:16px 18px;border-radius:12px;background:rgba(15,23,42,0.94);color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;font-size:13px;line-height:1.4;box-shadow:0 12px 40px rgba(0,0,0,0.35);";
-    root.innerHTML = `<div id="${PROGRESS_ID}-label" style="font-weight:600;margin-bottom:10px;"></div><div style="height:8px;background:rgba(255,255,255,0.15);border-radius:999px;overflow:hidden;"><div id="${PROGRESS_ID}-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#6366f1);border-radius:999px;"></div></div><div id="${PROGRESS_ID}-pct" style="margin-top:8px;font-size:12px;color:#cbd5e1;text-align:right;"></div>`;
+    root.innerHTML = `<div id="${PROGRESS_ID}-label" style="font-weight:600;margin-bottom:10px;"></div><div style="height:8px;background:rgba(255,255,255,0.15);border-radius:999px;overflow:hidden;"><div id="${PROGRESS_ID}-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#6366f1);border-radius:999px;"></div></div><div id="${PROGRESS_ID}-pct" style="margin-top:8px;font-size:12px;color:#cbd5e1;text-align:right;"></div><div id="${PROGRESS_ID}-log" style="margin-top:10px;max-height:120px;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.12);padding-top:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;line-height:1.5;color:#94a3b8;white-space:pre-wrap;word-break:break-all;"></div>`;
     (document.body ?? document.documentElement).appendChild(root);
   }
   root.style.display = "block";
@@ -117,14 +117,41 @@ function paintProgressInPage(percent, label) {
   if (bar) bar.style.width = `${clamped}%`;
   if (pct) pct.textContent = `${clamped}%`;
   if (lbl) lbl.textContent = text;
+
+  if (logLine) {
+    const logEl = document.getElementById(`${PROGRESS_ID}-log`);
+    if (logEl) {
+      const key = "__thealltourProgressLog";
+      if (!Array.isArray(window[key])) window[key] = [];
+      window[key].push(logLine);
+      if (window[key].length > 8) window[key].shift();
+      logEl.textContent = window[key].join("\n");
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }
 }
 
-async function injectProgressOverlay(tabId, percent, label) {
+function resetPaintedProgressLog(tabId) {
+  chrome.scripting
+    .executeScript({
+      target: { tabId },
+      func: () => {
+        window.__thealltourProgressLog = [];
+        const logEl = document.getElementById("thealltour-import-progress-log");
+        if (logEl) logEl.textContent = "";
+      },
+    })
+    .catch(() => {
+      /* chrome:// 등 스크립트 주입 불가 */
+    });
+}
+
+async function injectProgressOverlay(tabId, percent, label, logLine) {
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: paintProgressInPage,
-      args: [percent, label],
+      args: [percent, label, logLine ?? null],
     });
   } catch {
     /* chrome:// 등 스크립트 주입 불가 */
@@ -189,10 +216,32 @@ chrome.runtime.onStartup.addListener(() => {
   void onExtensionReady();
 });
 
+// 탭별 진행 로그 타이머: 배경 스크립트가 직접 그리는 진행 단계(예: AI 분석 단계)의
+// 경과·델타 시간을 계산해 콘텐츠 스크립트/폴백 오버레이 로그 패널에 반영한다.
+const progressLogTimers = new Map();
+
+function resetProgressLogTimer(tabId) {
+  progressLogTimers.set(tabId, { start: Date.now(), last: Date.now() });
+}
+
+function buildProgressLogLine(tabId, label) {
+  let timer = progressLogTimers.get(tabId);
+  if (!timer) {
+    timer = { start: Date.now(), last: Date.now() };
+    progressLogTimers.set(tabId, timer);
+  }
+  const now = Date.now();
+  const totalS = ((now - timer.start) / 1000).toFixed(1);
+  const deltaS = ((now - timer.last) / 1000).toFixed(1);
+  timer.last = now;
+  return `[+${deltaS}s] ${label ?? ""} (총 ${totalS}s)`;
+}
+
 async function showProgress(tabId, percent, label) {
-  await injectProgressOverlay(tabId, percent, label);
+  const logLine = buildProgressLogLine(tabId, label);
+  await injectProgressOverlay(tabId, percent, label, logLine);
   try {
-    await sendTabMessage(tabId, { type: "SHOW_PROGRESS", percent, label }, 400);
+    await sendTabMessage(tabId, { type: "SHOW_PROGRESS", percent, label, logLine }, 400);
   } catch {
     /* 오버레이는 이미 그렸음. orphaned listener가 채널을 붙잡아도 진행 */
   }
@@ -461,19 +510,34 @@ async function extractSearchCalendarFromPageMain(tabId) {
   return injection?.result ?? null;
 }
 
+// 안전망(무한 대기 방지)용 상한. 부모 탭 내부의 browseHanatourCalendarMonths 자체 예산
+// (DEFAULT_TOTAL_BUDGET_MS, 약 150초)보다 여유를 두어, 정상 진행 중에는 절대 여기서
+// 먼저 끊기지 않도록 한다. 완전성을 깎기 위한 값이 아니라 "응답 자체가 없는" 극단적
+// 상황(탭이 닫히거나 콘텐츠 스크립트가 완전히 죽은 경우)에만 개입한다.
+const BROWSE_PARENT_CALENDAR_TIMEOUT_MS = 180_000;
+
 async function browseParentCalendar(tabId, maxMonths) {
+  const message = { type: "BROWSE_CALENDAR_MONTHS", maxMonths, tabId };
   try {
-    return await chrome.tabs.sendMessage(tabId, {
-      type: "BROWSE_CALENDAR_MONTHS",
-      maxMonths,
-      tabId,
-    });
-  } catch {
+    return await withTimeout(
+      chrome.tabs.sendMessage(tabId, message),
+      BROWSE_PARENT_CALENDAR_TIMEOUT_MS,
+      "browse-parent-calendar-timeout",
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "browse-parent-calendar-timeout") {
+      return { ok: false, reason: "timeout" };
+    }
     await ensureContentScripts(tabId);
-    return chrome.tabs.sendMessage(tabId, {
-      type: "BROWSE_CALENDAR_MONTHS",
-      maxMonths,
-      tabId,
+    return withTimeout(
+      chrome.tabs.sendMessage(tabId, message),
+      BROWSE_PARENT_CALENDAR_TIMEOUT_MS,
+      "browse-parent-calendar-timeout",
+    ).catch((retryErr) => {
+      if (retryErr instanceof Error && retryErr.message === "browse-parent-calendar-timeout") {
+        return { ok: false, reason: "timeout" };
+      }
+      throw retryErr;
     });
   }
 }
@@ -945,6 +1009,8 @@ chrome.action.onClicked.addListener(async (tab) => {
       return;
     }
 
+    resetProgressLogTimer(tabId);
+    resetPaintedProgressLog(tabId);
     await showProgress(tabId, 5, "준비 중…");
 
     let payload;

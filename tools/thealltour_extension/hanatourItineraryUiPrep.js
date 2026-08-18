@@ -18,7 +18,15 @@
   const DAY_TAB_REGEX = /^\s*(\d{1,2})\s*일차/;
   const DAY_ACCORDION_HEADER = /(\d{1,2})일차/;
   const DATE_IN_ACCORDION = /(\d{1,2}\/\d{1,2}\([^)]+\)|\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2})/;
-  const NAV_HREF_RE = /\/all-search|\/search|keywordcateg=/i;
+  const NAV_HREF_RE = /\/all-search|\/search|keywordcateg=|keyword=/i;
+  const SITE_CHROME_SELECTOR =
+    "header, footer, nav, [role='banner'], [role='navigation'], [role='search'], [role='contentinfo']";
+  const SITE_CHROME_ATTR_RE =
+    /gnb|lnb|mega[-_]?menu|global[-_]?nav|all[-_]?menu|top[-_]?nav|site[-_]?header|search[-_]?bar|search[-_]?form|hot[-_]?keyword|hash[-_]?tag|util[-_]?menu/i;
+  const GNB_LABEL_RE =
+    /^(전체메뉴|베스트|해외여행|항공|호텔|항공\s*\+\s*호텔|투어\/입장권|국내여행|테마여행|제우스|맞춤여행|하나LIVE|하나\s*LIVE|여행기획전|이달의 혜택|로그인|회원가입|고객센터|마이메뉴|예약내역|찜|HOT)$/i;
+  const PRODUCT_TAB_RE =
+    /여행\s*일정|상품\s*안내|호텔\s*&\s*관광지|호텔&관광지|선택관광|참고사항/;
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,10 +42,71 @@
     return (a?.getAttribute("href") ?? "").trim();
   }
 
-  function isInPageHref(href, doc) {
+  function classAndId(el) {
+    if (!el) return "";
+    const id = el.id || "";
+    const cls = typeof el.className === "string" ? el.className : "";
+    return `${id} ${cls}`;
+  }
+
+  function isSiteChrome(el) {
+    if (!el?.closest) return false;
+    if (el.closest(SITE_CHROME_SELECTOR)) return true;
+    const form = el.closest("form");
+    if (form) {
+      const action = `${form.getAttribute("action") ?? ""} ${classAndId(form)}`;
+      if (/search|keyword|all-search/i.test(action)) return true;
+    }
+    let node = el;
+    for (let i = 0; i < 14 && node && node !== el.ownerDocument?.body; i += 1) {
+      if (SITE_CHROME_ATTR_RE.test(classAndId(node))) return true;
+      node = node.parentElement;
+    }
+    const win = el.ownerDocument?.defaultView;
+    if (win) {
+      let sticky = el;
+      for (let i = 0; i < 10 && sticky && sticky !== el.ownerDocument.body; i += 1) {
+        const style = win.getComputedStyle(sticky);
+        if (style.position === "fixed" || style.position === "sticky") {
+          const rect = sticky.getBoundingClientRect();
+          const text = elementText(sticky).slice(0, 200);
+          if (PRODUCT_TAB_RE.test(text) && !/전체메뉴/.test(text.slice(0, 40))) {
+            break;
+          }
+          if (rect.top <= 16 && rect.height > 0 && rect.height <= 260) return true;
+        }
+        sticky = sticky.parentElement;
+      }
+    }
+    return false;
+  }
+
+  function isSearchControl(el) {
+    if (!el) return false;
+    const type = (el.getAttribute?.("type") ?? el.type ?? "").toLowerCase();
+    if (type === "submit") return true;
+    if (el.closest?.("[role='search']")) return true;
+    const form = el.closest?.("form");
+    if (form?.querySelector("input[type='search'], input[name*='keyword' i], input[placeholder*='검색']")) {
+      if (isSiteChrome(form) || form.closest(SITE_CHROME_SELECTOR)) return true;
+    }
+    return false;
+  }
+
+  function isInPageHref(href, doc, el) {
     const raw = (href || "").trim();
-    if (!raw || raw === "#" || raw.startsWith("#")) return true;
-    if (raw.toLowerCase().startsWith("javascript:")) return true;
+    if (!raw || raw === "#" || raw.startsWith("#") || raw.toLowerCase().startsWith("javascript:")) {
+      if (
+        el &&
+        (el.getAttribute("role") === "tab" ||
+          el.hasAttribute("aria-controls") ||
+          el.hasAttribute("aria-expanded")) &&
+        !isSiteChrome(el)
+      ) {
+        return true;
+      }
+      return false;
+    }
     if (NAV_HREF_RE.test(raw)) return false;
     try {
       const base = doc?.defaultView?.location?.href ?? "https://www.hanatour.com/";
@@ -51,16 +120,28 @@
     }
   }
 
-  function isSafeClickTarget(el) {
-    if (!el) return false;
-    const text = elementText(el).replace(/\s+/g, " ");
-    if (text === "상세보기" || /^상세보기$/.test(text)) return false;
-    const href = resolveAnchorHref(el);
-    if (href && !isInPageHref(href, el.ownerDocument)) return false;
+  function isInTopChromeBand(el) {
+    const rect = el.getBoundingClientRect?.();
+    if (!rect || rect.top > 96) return false;
+    const tablist = el.closest?.('[role="tablist"]');
+    if (tablist && PRODUCT_TAB_RE.test(elementText(tablist))) return false;
+    if (el.closest?.('[role="tabpanel"]') && !isSiteChrome(el)) return false;
     return true;
   }
 
-  /** 페이지를 떠나지 않는 요소만 click. 내비게이션 링크는 건너뛴다. */
+  function isSafeClickTarget(el) {
+    if (!el) return false;
+    if (isSiteChrome(el) || isSearchControl(el) || isInTopChromeBand(el)) return false;
+    const text = elementText(el).replace(/\s+/g, " ");
+    const short = text.slice(0, 24).trim();
+    if (GNB_LABEL_RE.test(text) || GNB_LABEL_RE.test(short)) return false;
+    if (text === "상세보기" || /^상세보기$/.test(text)) return false;
+    const href = resolveAnchorHref(el);
+    if (href && !isInPageHref(href, el.ownerDocument, el)) return false;
+    return true;
+  }
+
+  /** 페이지를 떠나지 않는 요소만 click. 헤더·메가메뉴·검색은 건너뛴다. */
   function safeClick(el) {
     if (!isSafeClickTarget(el)) return false;
     el.click();
@@ -68,36 +149,44 @@
   }
 
   function isHeaderOrFooter(el) {
-    return Boolean(el?.closest?.("header, footer, [role='banner'], [role='contentinfo']"));
+    return isSiteChrome(el);
   }
 
   /** GNB가 아닌 상품 상세 탭/본문 범위 */
   function findProductTabScope(doc) {
     if (!doc) return null;
+    const roots = [doc.querySelector("main"), doc.body].filter(Boolean);
+    for (const root of roots) {
+      for (const tablist of root.querySelectorAll('[role="tablist"]')) {
+        if (isSiteChrome(tablist)) continue;
+        if (PRODUCT_TAB_RE.test(elementText(tablist))) return tablist;
+      }
+    }
+    for (const root of roots) {
+      for (const tablist of root.querySelectorAll('[role="tablist"]')) {
+        if (!isSiteChrome(tablist)) return tablist;
+      }
+    }
     const main = doc.querySelector("main");
-    if (main) {
-      const inner = main.querySelector('[role="tablist"]');
-      return inner ?? main;
-    }
-    for (const tablist of doc.querySelectorAll('[role="tablist"]')) {
-      if (!isHeaderOrFooter(tablist)) return tablist;
-    }
-    return doc.body ?? doc;
+    if (main && !isSiteChrome(main)) return main;
+    return null;
   }
 
   function findItineraryTabPanel(doc) {
     const panels = doc.querySelectorAll('[role="tabpanel"]');
     for (const panel of panels) {
+      if (isSiteChrome(panel)) continue;
       if (panel.getAttribute("aria-hidden") === "true") continue;
       const text = elementText(panel);
       if (/일차/.test(text) && text.length > 80) return panel;
     }
     for (const panel of panels) {
+      if (isSiteChrome(panel)) continue;
       if (panel.getAttribute("aria-hidden") !== "true" && elementText(panel).length > 80) {
         return panel;
       }
     }
-    return doc.querySelector("main") ?? null;
+    return null;
   }
 
   function clickExpandAllItineraryInScope(scope) {
@@ -119,7 +208,8 @@
   function findDaySubTabs(doc) {
     const seen = new Set();
     const out = [];
-    const scope = findItineraryTabPanel(doc) ?? doc;
+    const scope = findItineraryTabPanel(doc) ?? findProductTabScope(doc);
+    if (!scope) return out;
     const candidates = scope.querySelectorAll('[role="tab"], button, a, li, span, div');
 
     for (const el of candidates) {
@@ -179,7 +269,8 @@
   }
 
   function findDayNavButton(doc, direction) {
-    const scope = findItineraryTabPanel(doc) ?? doc;
+    const scope = findItineraryTabPanel(doc) ?? findProductTabScope(doc);
+    if (!scope) return null;
     const pattern = direction === "next" ? /다음\s*일차/i : /이전\s*일차/i;
     const candidates = scope.querySelectorAll("button, a, [role='button'], span, i");
     for (const el of candidates) {
@@ -222,7 +313,8 @@
   function findDayAccordionEntries(doc) {
     const seen = new Set();
     const out = [];
-    const scope = findItineraryTabPanel(doc) ?? doc;
+    const scope = findItineraryTabPanel(doc) ?? findProductTabScope(doc);
+    if (!scope) return out;
     const candidates = scope.querySelectorAll(
       "button, [role='button'], summary, h2, h3, h4, div, span",
     );
@@ -363,6 +455,7 @@
     sleep,
     elementText,
     isSafeClickTarget,
+    isSiteChrome,
     safeClick,
     findProductTabScope,
     findItineraryTabPanel,

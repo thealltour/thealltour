@@ -173,16 +173,11 @@
       if (scope) {
         if (scope.getAttribute?.("role") === "tablist") return scope;
         const inner = scope.querySelector?.('[role="tablist"]');
-        if (inner) return inner;
-        if (scope !== doc) return scope;
+        if (inner && !ui.isSiteChrome?.(inner)) return inner;
+        if (scope !== doc && !ui.isSiteChrome?.(scope)) return scope;
       }
     }
-    const main = doc.querySelector("main");
-    const tablist = (main ?? doc).querySelector('[role="tablist"]');
-    if (tablist) return tablist;
-    const nav = (main ?? doc).querySelector("nav");
-    if (nav?.querySelector('[role="tab"]')) return nav;
-    return main ?? doc;
+    return null;
   }
 
   function clickIfSafe(el) {
@@ -194,6 +189,7 @@
 
   function clickTabByText(doc, patterns, exactPatterns) {
     const root = findTabBarRoot(doc);
+    if (!root) return false;
     const candidates = root.querySelectorAll('[role="tab"], button, a[href="#"], a[role="button"]');
 
     let fallback = null;
@@ -254,7 +250,8 @@
 
   function clickExpandAllItinerary(doc) {
     const ui = global.HanatourItineraryUiPrep;
-    const scope = ui?.findItineraryTabPanel?.(doc) ?? doc.querySelector("main") ?? doc;
+    const scope = ui?.findItineraryTabPanel?.(doc) ?? ui?.findProductTabScope?.(doc);
+    if (!scope) return false;
     const groups = [
       scope.querySelectorAll("button, [role='tab'], [role='button']"),
       scope.querySelectorAll("a, span"),

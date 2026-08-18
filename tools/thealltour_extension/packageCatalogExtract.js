@@ -60,8 +60,11 @@
 
   function catalogClickScope(doc) {
     const ui = global.HanatourItineraryUiPrep;
-    if (ui?.findProductTabScope) return ui.findProductTabScope(doc);
-    return doc.querySelector("main") ?? doc.body ?? doc;
+    if (ui?.findProductTabScope) {
+      const scope = ui.findProductTabScope(doc);
+      if (scope) return scope;
+    }
+    return null;
   }
 
   function clickIfSafe(el) {
@@ -74,6 +77,7 @@
   function clickByExactText(doc, exactTexts) {
     const wanted = exactTexts.map((t) => t.replace(/\s+/g, " ").trim());
     const scope = catalogClickScope(doc);
+    if (!scope) return false;
     const preferred = scope.querySelectorAll("button, [role='tab']");
     const fallback = scope.querySelectorAll("a, [role='link']");
 
@@ -95,15 +99,18 @@
   }
 
   function findVisiblePanel(doc) {
+    const ui = global.HanatourItineraryUiPrep;
     const panels = doc.querySelectorAll('[role="tabpanel"]');
     for (const panel of panels) {
+      if (ui?.isSiteChrome?.(panel)) continue;
       if (panel.getAttribute("aria-hidden") === "true") continue;
       if (elementText(panel).length > 40) return panel;
     }
-    return doc.querySelector("main") ?? doc.body;
+    return ui?.findProductTabScope?.(doc) ?? null;
   }
 
   async function expandAccordions(root) {
+    if (!root) return 0;
     const ui = global.HanatourItineraryUiPrep;
     if (ui?.expandAccordionsIn) {
       return ui.expandAccordionsIn(root);
@@ -294,17 +301,19 @@
     clickByExactText(doc, ["호텔정보"]);
     await sleep(400);
     let panel = findVisiblePanel(doc);
-    await expandAccordions(panel);
-    catalog.hotels = extractHotelNames(panel);
+    if (panel) await expandAccordions(panel);
+    catalog.hotels = panel ? extractHotelNames(panel) : [];
 
     clickByExactText(doc, ["관광지정보"]);
     await sleep(500);
     panel = findVisiblePanel(doc);
-    await expandAccordions(panel);
-    if (global.HanatourItineraryUiPrep?.scrollPanelToLoadLazy) {
-      await global.HanatourItineraryUiPrep.scrollPanelToLoadLazy(panel);
+    if (panel) {
+      await expandAccordions(panel);
+      if (global.HanatourItineraryUiPrep?.scrollPanelToLoadLazy) {
+        await global.HanatourItineraryUiPrep.scrollPanelToLoadLazy(panel);
+      }
+      catalog.attractions = extractNamedCards(panel, baseUrl);
     }
-    catalog.attractions = extractNamedCards(panel, baseUrl);
 
     onProgress?.("선택관광 탭 수집…");
     clickByExactText(doc, ["선택관광"]);
@@ -312,22 +321,26 @@
     clickByExactText(doc, ["선택관광 전체열기", "전체열기"]);
     await sleep(400);
     panel = findVisiblePanel(doc);
-    await expandAccordions(panel);
-    catalog.optionalTours = extractOptionalTours(panel, baseUrl);
-    if (catalog.optionalTours.length === 0) {
-      catalog.optionalTours = extractNamedCards(panel, baseUrl).map((card) => ({
-        name: card.name,
-        description: card.description,
-        imageUrls: card.imageUrls,
-      }));
+    if (panel) {
+      await expandAccordions(panel);
+      catalog.optionalTours = extractOptionalTours(panel, baseUrl);
+      if (catalog.optionalTours.length === 0) {
+        catalog.optionalTours = extractNamedCards(panel, baseUrl).map((card) => ({
+          name: card.name,
+          description: card.description,
+          imageUrls: card.imageUrls,
+        }));
+      }
     }
 
     onProgress?.("참고사항 수집…");
     clickByExactText(doc, ["참고사항"]);
     await sleep(500);
     panel = findVisiblePanel(doc);
-    await expandAccordions(panel);
-    catalog.referenceNotes = extractReferenceNotes(panel);
+    if (panel) {
+      await expandAccordions(panel);
+      catalog.referenceNotes = extractReferenceNotes(panel);
+    }
 
     return catalog;
   }

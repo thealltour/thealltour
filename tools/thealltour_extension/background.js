@@ -61,6 +61,126 @@ async function onExtensionReady() {
   await migrateApiBaseUrlIfNeeded();
 }
 
+const TAB_MESSAGE_TIMEOUT_MS = 1200;
+
+function withTimeout(promise, ms, errorMessage) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(errorMessage)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+async function sendTabMessage(tabId, message, timeoutMs = TAB_MESSAGE_TIMEOUT_MS) {
+  return withTimeout(chrome.tabs.sendMessage(tabId, message), timeoutMs, "tab-message-timeout");
+}
+
+function paintProgressInPage(percent, label) {
+  const PROGRESS_ID = "thealltour-import-progress";
+  const LOCK_ID = "thealltour-import-lock";
+  const clamped = Math.max(0, Math.min(100, Math.round(percent ?? 0)));
+  const text = label || "준비 중…";
+
+  let lock = document.getElementById(LOCK_ID);
+  if (!lock) {
+    lock = document.createElement("div");
+    lock.id = LOCK_ID;
+    lock.style.cssText =
+      "position:fixed;inset:0;z-index:2147483645;background:rgba(15,23,42,0.45);pointer-events:all;cursor:wait;font-family:system-ui,-apple-system,sans-serif;";
+    lock.innerHTML =
+      '<div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:8px;background:rgba(15,23,42,0.92);color:#f8fafc;font-size:13px;font-weight:600;white-space:nowrap;">수집 중이니 페이지를 클릭하지 마세요.</div>';
+    (document.body ?? document.documentElement).appendChild(lock);
+  }
+  lock.style.display = "block";
+
+  let root = document.getElementById(PROGRESS_ID);
+  if (!root) {
+    root = document.createElement("div");
+    root.id = PROGRESS_ID;
+    root.style.cssText =
+      "position:fixed;bottom:24px;right:24px;z-index:2147483646;width:280px;padding:16px 18px;border-radius:12px;background:rgba(15,23,42,0.94);color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;font-size:13px;line-height:1.4;box-shadow:0 12px 40px rgba(0,0,0,0.35);";
+    root.innerHTML = `<div id="${PROGRESS_ID}-label" style="font-weight:600;margin-bottom:10px;"></div><div style="height:8px;background:rgba(255,255,255,0.15);border-radius:999px;overflow:hidden;"><div id="${PROGRESS_ID}-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#6366f1);border-radius:999px;"></div></div><div id="${PROGRESS_ID}-pct" style="margin-top:8px;font-size:12px;color:#cbd5e1;text-align:right;"></div>`;
+    (document.body ?? document.documentElement).appendChild(root);
+  }
+  root.style.display = "block";
+  const bar = document.getElementById(`${PROGRESS_ID}-bar`);
+  const pct = document.getElementById(`${PROGRESS_ID}-pct`);
+  const lbl = document.getElementById(`${PROGRESS_ID}-label`);
+  if (bar) bar.style.width = `${clamped}%`;
+  if (pct) pct.textContent = `${clamped}%`;
+  if (lbl) lbl.textContent = text;
+}
+
+async function injectProgressOverlay(tabId, percent, label) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: paintProgressInPage,
+      args: [percent, label],
+    });
+  } catch {
+    /* chrome:// 등 스크립트 주입 불가 */
+  }
+}
+
+async function clearActionBadge(tabId) {
+  if (!tabId) return;
+  try {
+    await chrome.action.setBadgeText({ tabId, text: "" });
+  } catch {
+    /* ignore */
+  }
+}
+
+async function notifyTab(tabId, message) {
+  if (!tabId) return;
+  try {
+    await sendTabMessage(tabId, message);
+    return;
+  } catch {
+    /* 무효화된 content script가 채널을 붙잡고 있으면 timeout */
+  }
+  if (message.type === "SHOW_PROGRESS") {
+    await injectProgressOverlay(tabId, message.percent ?? 0, message.label ?? "처리 중…");
+    return;
+  }
+  if (message.type === "HIDE_PROGRESS") {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const progress = document.getElementById("thealltour-import-progress");
+          const lock = document.getElementById("thealltour-import-lock");
+          if (progress) progress.style.display = "none";
+          if (lock) lock.style.display = "none";
+        },
+      });
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  if (message.type === "SHOW_ALERT") {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (msg) => window.alert(msg),
+        args: [message.text],
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void onExtensionReady();
 });
@@ -69,23 +189,13 @@ chrome.runtime.onStartup.addListener(() => {
   void onExtensionReady();
 });
 
-async function notifyTab(tabId, message) {
-  if (!tabId) return;
-  try {
-    await chrome.tabs.sendMessage(tabId, message);
-  } catch {
-    if (message.type === "SHOW_ALERT") {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        func: (msg) => window.alert(msg),
-        args: [message.text],
-      });
-    }
-  }
-}
-
 async function showProgress(tabId, percent, label) {
-  await notifyTab(tabId, { type: "SHOW_PROGRESS", percent, label });
+  await injectProgressOverlay(tabId, percent, label);
+  try {
+    await sendTabMessage(tabId, { type: "SHOW_PROGRESS", percent, label }, 400);
+  } catch {
+    /* 오버레이는 이미 그렸음. orphaned listener가 채널을 붙잡아도 진행 */
+  }
 }
 
 async function hideProgress(tabId, delayMs) {
@@ -752,10 +862,10 @@ async function queryParentCalendarFromCandidates(candidateTabIds, meta, browseMo
 
 async function ensureContentScripts(tabId) {
   try {
-    const pong = await chrome.tabs.sendMessage(tabId, { type: "PING" });
+    const pong = await sendTabMessage(tabId, { type: "PING" }, 800);
     if (pong?.ok) return;
   } catch {
-    /* not injected yet */
+    /* not injected yet or orphaned after extension reload */
   }
 
   await chrome.scripting.executeScript({
@@ -814,39 +924,59 @@ async function scrapeTab(tabId) {
 
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
+  const tabId = tab.id;
 
-  if (isHanatourTabUrl(tab.url) && isHanatourSearchPageUrl(tab.url) && !isHanatourDetailPageUrl(tab.url)) {
-    await notifyTab(tab.id, {
-      type: "SHOW_ALERT",
-      text: "하나투어 검색 페이지에서는 수집할 수 없습니다. 상품 상세 페이지에서 다시 눌러 주세요.",
-    });
-    return;
-  }
-
-  await showProgress(tab.id, 5, "준비 중…");
-
-  let payload;
   try {
-    payload = await scrapeTab(tab.id);
+    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#0f172a" });
+    await chrome.action.setBadgeText({ tabId, text: "…" });
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    if (isHanatourTabUrl(tab.url) && isHanatourSearchPageUrl(tab.url) && !isHanatourDetailPageUrl(tab.url)) {
+      await notifyTab(tabId, {
+        type: "SHOW_ALERT",
+        text: "하나투어 검색 페이지에서는 수집할 수 없습니다. 상품 상세 페이지에서 다시 눌러 주세요.",
+      });
+      return;
+    }
+
+    await showProgress(tabId, 5, "준비 중…");
+
+    let payload;
+    try {
+      payload = await scrapeTab(tabId);
+    } catch (err) {
+      console.error("[thealltour-import] scrape failed:", err);
+      await hideProgress(tabId, 0);
+      const detail = err instanceof Error ? err.message : String(err);
+      await notifyTab(tabId, {
+        type: "SHOW_ALERT",
+        text: `페이지 수집에 실패했습니다.\n${detail}\n\n하나투어/모두투어 상세 페이지에서 다시 시도하거나, 상품 페이지를 새로고침한 뒤 익스텐션을 다시 눌러 주세요.`,
+      });
+      return;
+    }
+
+    if (!payload?.cleanHtmlStructure?.trim()) {
+      await hideProgress(tabId, 0);
+      await notifyTab(tabId, { type: "SHOW_ALERT", text: "수집된 HTML 구조가 없습니다." });
+      return;
+    }
+
+    await showProgress(tabId, 42, "수집 완료 · 서버 전송 준비…");
+    await importExternal(payload, tabId);
   } catch (err) {
-    console.error("[thealltour-import] scrape failed:", err);
-    await hideProgress(tab.id, 0);
+    console.error("[thealltour-import] action click failed:", err);
+    await hideProgress(tabId, 0);
     const detail = err instanceof Error ? err.message : String(err);
-    await notifyTab(tab.id, {
+    await notifyTab(tabId, {
       type: "SHOW_ALERT",
-      text: `페이지 수집에 실패했습니다.\n${detail}\n\n하나투어/모두투어 상세 페이지에서 다시 시도하거나 익스텐션을 새로고침해 주세요.`,
+      text: `수집을 시작하지 못했습니다.\n${detail}\n\n하나투어/모두투어 상품 상세 페이지를 새로고침한 뒤 다시 눌러 주세요.`,
     });
-    return;
+  } finally {
+    await clearActionBadge(tabId);
   }
-
-  if (!payload?.cleanHtmlStructure?.trim()) {
-    await hideProgress(tab.id, 0);
-    await notifyTab(tab.id, { type: "SHOW_ALERT", text: "수집된 HTML 구조가 없습니다." });
-    return;
-  }
-
-  await showProgress(tab.id, 42, "수집 완료 · 서버 전송 준비…");
-  await importExternal(payload, tab.id);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

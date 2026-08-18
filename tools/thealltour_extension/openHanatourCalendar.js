@@ -270,27 +270,86 @@
     return { day, priceText: cleanedPrice };
   }
 
-  function findMonthHeaderElement(doc) {
-    const walker = doc.createTreeWalker(doc.body ?? doc.documentElement, NodeFilter.SHOW_ELEMENT);
+  const YEAR_MONTH_RE = /\d{4}\s*년\s*\d{1,2}\s*월/;
+  const CALENDAR_ROOT_SEL =
+    '[class*="calendar"], [class*="Calendar"], [class*="departure"], [class*="Departure"]';
+  const monthHeaderCache = new WeakMap();
+  const calendarRootCache = new WeakMap();
+
+  function textPrefix(el, max) {
+    if (!el) return "";
+    const limit = max ?? 40;
+    let out = "";
+    const doc = el.ownerDocument ?? global.document;
+    const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
-      const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
-      if (text.length > 40) continue;
-      if (/\d{4}\s*년\s*\d{1,2}\s*월/.test(text)) return node;
+      out += node.nodeValue ?? "";
+      if (out.length >= limit) break;
     }
-    return null;
+    return out.replace(/\s+/g, " ").trim();
+  }
+
+  function findMonthHeaderElement(doc) {
+    if (!doc) return null;
+    if (monthHeaderCache.has(doc)) return monthHeaderCache.get(doc);
+
+    const selectors = [
+      ".calendar-title",
+      ".month_tit",
+      ".cal_top em",
+      "[class*='calendar'] [class*='title']",
+      "[class*='Calendar'] [class*='month']",
+    ];
+    let found = null;
+    for (const sel of selectors) {
+      const el = doc.querySelector(sel);
+      if (!el) continue;
+      if (YEAR_MONTH_RE.test(textPrefix(el, 40))) {
+        found = el;
+        break;
+      }
+    }
+
+    if (!found) {
+      const roots = doc.querySelectorAll('[class*="calendar"], [class*="Calendar"]');
+      outer: for (const root of roots) {
+        const walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+        let node;
+        let steps = 0;
+        while ((node = walker.nextNode()) && steps < 500) {
+          steps += 1;
+          const text = textPrefix(node, 40);
+          if (text.length > 40) continue;
+          if (YEAR_MONTH_RE.test(text)) {
+            found = node;
+            break outer;
+          }
+        }
+      }
+    }
+
+    monthHeaderCache.set(doc, found);
+    return found;
   }
 
   function findCalendarWidgetRoot(doc) {
+    if (!doc) return null;
+    if (calendarRootCache.has(doc)) return calendarRootCache.get(doc);
     const header = findMonthHeaderElement(doc);
-    if (!header) return null;
-    return (
-      header.closest?.(
-        '[class*="calendar"], [class*="Calendar"], [class*="departure"], [class*="Departure"]',
-      ) ??
-      header.parentElement?.parentElement ??
-      header.parentElement
-    );
+    const root = header
+      ? header.closest?.(CALENDAR_ROOT_SEL) ??
+        header.parentElement?.parentElement ??
+        header.parentElement
+      : null;
+    calendarRootCache.set(doc, root);
+    return root;
+  }
+
+  function invalidateCalendarDomCache(doc) {
+    if (!doc) return;
+    monthHeaderCache.delete(doc);
+    calendarRootCache.delete(doc);
   }
 
   function isProductDetailHref(href) {
@@ -1222,6 +1281,7 @@
     scrapeAllSearchHorizontalCalendarWithPaging,
     findMonthHeaderElement,
     findCalendarWidgetRoot,
+    invalidateCalendarDomCache,
     findMonthNavButton,
     isSafeCalendarNavTarget,
     isProductDetailHref,

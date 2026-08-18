@@ -268,7 +268,8 @@
     ];
     for (const candidates of groups) {
       for (const el of candidates) {
-        const text = elementText(el);
+        if ((el.childElementCount ?? 0) > 6) continue;
+        const text = (el.textContent ?? "").trim().slice(0, 40);
         if (!/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) continue;
         if (clickIfSafe(el)) return true;
       }
@@ -581,11 +582,13 @@
 
   function findHashtagSectionRoot(doc) {
 
-    const candidates = doc.querySelectorAll("h1, h2, h3, h4, h5, h6, p, span, div, label, button, strong");
+    const candidates = doc.querySelectorAll("h1, h2, h3, h4, h5, h6, p, label, button, strong, [class*='hash'], [class*='Hash']");
 
     for (const el of candidates) {
 
-      const text = elementText(el);
+      if ((el.childElementCount ?? 0) > 8) continue;
+
+      const text = (el.textContent ?? "").trim().slice(0, 80);
 
       if (!text) continue;
 
@@ -744,7 +747,10 @@
       return slides.length * 10 + imgs * 5 + Math.min(area / 20000, 20);
     }
 
-    const swipers = [...main.querySelectorAll(".swiper, [class*='swiper']")];
+    const swipers = [...main.querySelectorAll(".swiper, [class*='swiper-container']")].filter((el) => {
+      const cls = typeof el.className === "string" ? el.className : "";
+      return !/swiper-slide|swiper-wrapper|swiper-button|swiper-pagination|swiper-scrollbar/i.test(cls);
+    });
     let best = null;
     let bestScore = 0;
     for (const el of swipers) {
@@ -768,7 +774,7 @@
     }
     if (best && bestScore > 0) return best;
 
-    return main;
+    return null;
   }
 
 
@@ -850,37 +856,23 @@
 
 
   function findGalleryNavButton(heroRoot) {
-
-    const candidates = heroRoot.querySelectorAll(
-
-      "button, a, [role='button'], span, div, i",
-
+    const byClass = heroRoot.querySelector?.(
+      ".swiper-button-next, [class*='swiper-button-next'], [class*='slide-next']",
     );
-
+    if (byClass) return byClass;
+    const candidates = heroRoot.querySelectorAll("button, a, [role='button']");
     for (const el of candidates) {
-
       const cls = (el.className && typeof el.className === "string" ? el.className : "") || "";
-
       const aria = (el.getAttribute?.("aria-label") ?? "").toLowerCase();
-
       if (
-
         /swiper-button-next/i.test(cls) ||
-
         /next|다음|slide-next|arrow-right/i.test(cls) ||
-
         /next|다음/i.test(aria)
-
       ) {
-
         return el;
-
       }
-
     }
-
     return null;
-
   }
 
 

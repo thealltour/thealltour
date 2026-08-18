@@ -1,7 +1,11 @@
-if (globalThis.__theallTourImportContentLoaded) {
-  /* already injected — listeners are active */
-} else {
-  globalThis.__theallTourImportContentLoaded = true;
+(function bootThealltourImport() {
+  let extId = null;
+  try {
+    extId = chrome.runtime?.id ?? null;
+  } catch {
+    return;
+  }
+  if (!extId) return;
 
   const PROGRESS_ID = "thealltour-import-progress";
   const LOCK_ID = "thealltour-import-lock";
@@ -246,6 +250,11 @@ if (globalThis.__theallTourImportContentLoaded) {
 
     showLockOverlay();
     report(5, "준비 중…");
+    await new Promise((resolve) => {
+      const raf = globalThis.requestAnimationFrame ?? ((cb) => setTimeout(cb, 16));
+      raf(() => resolve());
+    });
+    await new Promise((resolve) => setTimeout(resolve, 40));
 
     const hx = globalThis.HtmlContextExtract;
     if (!hx?.capturePageContext) {
@@ -303,10 +312,10 @@ if (globalThis.__theallTourImportContentLoaded) {
     };
   }
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  function onRuntimeMessage(message, _sender, sendResponse) {
     if (message?.type === "PING") {
       sendResponse({ ok: true, loaded: true });
-      return true;
+      return false;
     }
     if (message?.type === "SCRAPE_PAGE") {
       scrapePagePayload((pct, label) => {
@@ -320,23 +329,34 @@ if (globalThis.__theallTourImportContentLoaded) {
       showLockOverlay();
       showProgress(message.percent ?? 0, message.label ?? "처리 중…");
       sendResponse({ ok: true });
-      return true;
+      return false;
     }
     if (message?.type === "HIDE_PROGRESS") {
       hideProgress(message.delayMs ?? 0);
       sendResponse({ ok: true });
-      return true;
+      return false;
     }
     if (message?.type === "SHOW_ALERT") {
       hideProgress(0);
       showAlert(String(message.text ?? ""));
       sendResponse({ ok: true });
-      return true;
+      return false;
     }
     return false;
-  });
+  }
+
+  try {
+    if (globalThis.__theallTourImportOnMessage) {
+      chrome.runtime.onMessage.removeListener(globalThis.__theallTourImportOnMessage);
+    }
+  } catch {
+    /* 이전 버전이 무효화된 뒤에도 전역 플래그만 남은 경우 */
+  }
+  globalThis.__theallTourImportOnMessage = onRuntimeMessage;
+  chrome.runtime.onMessage.addListener(onRuntimeMessage);
+  globalThis.__theallTourImportContentLoaded = extId;
 
   if (/hanatour\.com/i.test(window.location.hostname)) {
     globalThis.HanatourCrossTabCalendar?.installParentCalendarResponder?.();
   }
-}
+})();

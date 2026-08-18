@@ -146,6 +146,7 @@
       const captureBefore = global.HanatourCalendarDiscover?.getCapturedPayloads?.()?.length ?? 0;
       // 달력 위젯 안에서만 raw click. 상세 탭 lock overlay는 부모 탭에 없음.
       nextBtn.click();
+      open?.invalidateCalendarDomCache?.(doc);
       await waitForNewCapture(captureBefore);
     }
 

@@ -5,11 +5,12 @@ import { ChevronDown } from "lucide-react";
 
 const USAGE_STEPS = [
   {
-    title: "1. 설치·업데이트 (현재 0.2.29)",
+    title: "1. 설치·업데이트 (현재 0.2.30)",
     body: [
       "팝업이나 설정 화면은 없습니다. Chrome 툴바의 thealltour_extension 아이콘을 누르면 바로 수집이 시작됩니다.",
       "권한: activeTab, scripting, storage. 접속 허용: hanatour.com, modetour.com, thealltour.com, localhost:3000.",
       "Chrome은 압축 해제(개발자 모드) 확장을 자동 업데이트하지 않습니다. 이 페이지에서 새 ZIP을 받은 뒤, 기존 폴더에 덮어쓰고 chrome://extensions에서 해당 확장의 새로고침(원형 화살표)을 눌러야 새 버전이 적용됩니다.",
+      "확장을 새로고침한 뒤에는 하나투어/모두투어 상품 상세 탭도 한 번 새로고침한 다음 아이콘을 누르세요. chrome://extensions 화면에서 아이콘을 누르면 반응이 없습니다.",
       "버전은 chrome://extensions의 확장 카드와 이 페이지 다운로드 카드의 버전이 같아야 합니다.",
     ].join("\n"),
   },

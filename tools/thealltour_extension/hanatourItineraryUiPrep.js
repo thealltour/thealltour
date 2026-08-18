@@ -28,6 +28,8 @@
   const PRODUCT_TAB_RE =
     /여행\s*일정|상품\s*안내|호텔\s*&\s*관광지|호텔&관광지|선택관광|참고사항/;
 
+  const CALENDAR_CLOSEST_SEL = '[class*="calendar"], [class*="Calendar"]';
+
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -49,12 +51,32 @@
     return `${id} ${cls}`;
   }
 
+  function ownLabel(el, max) {
+    if (!el) return "";
+    const limit = max ?? 80;
+    const aria = (el.getAttribute?.("aria-label") ?? "").trim();
+    if (aria) return aria.slice(0, limit);
+    let s = "";
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3) s += n.nodeValue ?? "";
+      if (s.length >= limit) break;
+    }
+    s = s.replace(/\s+/g, " ").trim();
+    if (s) return s.slice(0, limit);
+    if ((el.childElementCount ?? 0) <= 4) {
+      return elementText(el).slice(0, limit);
+    }
+    return "";
+  }
+
   function isInsideCalendarWidget(el) {
+    if (!el?.closest) return false;
+    if (el.closest(CALENDAR_CLOSEST_SEL)) return true;
     const open = global.HanatourCalendarOpen;
-    const doc = el?.ownerDocument;
+    const doc = el.ownerDocument;
     if (!open?.findCalendarWidgetRoot || !doc) return false;
     const root = open.findCalendarWidgetRoot(doc);
-    return Boolean(root && el && root.contains(el));
+    return Boolean(root && root.contains(el));
   }
 
   function isGalleryNavEl(el) {
@@ -71,12 +93,18 @@
   function isProductUiClick(el) {
     if (!el) return false;
     if (isInsideCalendarWidget(el) || isGalleryNavEl(el)) return true;
-    const text = elementText(el).replace(/\s+/g, " ");
+    const text = ownLabel(el, 80).replace(/\s+/g, " ");
     if (PRODUCT_TAB_RE.test(text)) return true;
     if (DAY_TAB_REGEX.test(text) || DAY_ACCORDION_HEADER.test(text)) return true;
     if (/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) return true;
     const tablist = el.closest?.('[role="tablist"]');
-    if (tablist && PRODUCT_TAB_RE.test(elementText(tablist))) return true;
+    if (!tablist) return false;
+    let n = 0;
+    for (const t of tablist.querySelectorAll('[role="tab"], button')) {
+      if (PRODUCT_TAB_RE.test(ownLabel(t, 40))) return true;
+      n += 1;
+      if (n > 8) break;
+    }
     return false;
   }
 
@@ -98,7 +126,7 @@
     let node = el;
     for (let i = 0; i < 8 && node && node !== el.ownerDocument?.body; i += 1) {
       const idCls = classAndId(node);
-      if (SITE_CHROME_ATTR_RE.test(idCls) && !PRODUCT_TAB_RE.test(elementText(node).slice(0, 200))) {
+      if (SITE_CHROME_ATTR_RE.test(idCls) && !PRODUCT_TAB_RE.test(ownLabel(node, 200))) {
         return true;
       }
       node = node.parentElement;
@@ -159,7 +187,7 @@
     if (!el) return false;
     if (isInsideCalendarWidget(el) || isProductUiClick(el)) return true;
     if (isSiteChrome(el) || isSearchControl(el) || isInTopChromeBand(el)) return false;
-    const text = elementText(el).replace(/\s+/g, " ");
+    const text = ownLabel(el, 48).replace(/\s+/g, " ");
     const short = text.slice(0, 24).trim();
     if (GNB_LABEL_RE.test(text) || GNB_LABEL_RE.test(short)) return false;
     if (text === "상세보기" || /^상세보기$/.test(text)) return false;
@@ -231,7 +259,8 @@
     ];
     for (const candidates of groups) {
       for (const el of candidates) {
-        const text = elementText(el);
+        if ((el.childElementCount ?? 0) > 6) continue;
+        const text = ownLabel(el, 40);
         if (!/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) continue;
         if (safeClick(el)) return true;
       }
@@ -244,10 +273,11 @@
     const out = [];
     const scope = findItineraryTabPanel(doc) ?? findProductTabScope(doc);
     if (!scope) return out;
-    const candidates = scope.querySelectorAll('[role="tab"], button, a, li, span, div');
+    const candidates = scope.querySelectorAll('[role="tab"], button, a, [role="button"], li');
 
     for (const el of candidates) {
-      const text = elementText(el);
+      if ((el.childElementCount ?? 0) > 12) continue;
+      const text = ownLabel(el, 40);
       const m = text.match(DAY_TAB_REGEX);
       if (!m) continue;
       const dayNumber = parseInt(m[1], 10);
@@ -349,12 +379,17 @@
     const out = [];
     const scope = findItineraryTabPanel(doc) ?? findProductTabScope(doc);
     if (!scope) return out;
+    const scopeIsHuge =
+      scope === doc.body || scope === doc.documentElement || scope === doc.querySelector("main");
     const candidates = scope.querySelectorAll(
-      "button, [role='button'], summary, h2, h3, h4, div, span",
+      scopeIsHuge
+        ? "button, [role='button'], summary, h2, h3, h4, [role='tab']"
+        : "button, [role='button'], summary, h2, h3, h4, div, span",
     );
 
     for (const el of candidates) {
-      const text = elementText(el);
+      if ((el.childElementCount ?? 0) > 12) continue;
+      const text = ownLabel(el, 160);
       if (text.length > 200 || text.length < 4) continue;
       const m = text.match(DAY_ACCORDION_HEADER);
       if (!m) continue;
@@ -400,11 +435,11 @@
 
     if (tabpanels.length === 1) return tabpanels[0];
 
-    const container = tab.el.closest("section, article, main, div");
-    if (container) {
-      for (const s of container.querySelectorAll("div, section")) {
-        const t = elementText(s);
-        if (t.includes(`${tab.dayNumber}일차`) && t.length > 80) return s;
+    const container = tab.el.closest("[role='tabpanel'], section, article");
+    if (container && container !== doc.body && container.tagName?.toLowerCase() !== "main") {
+      for (const s of container.querySelectorAll(":scope > div, :scope > section")) {
+        const t = ownLabel(s, 80);
+        if (t.includes(`${tab.dayNumber}일차`)) return s;
       }
     }
 

@@ -484,11 +484,38 @@
       .join("\n");
   }
 
+  // 하나투어는 가격/할부 정보가 있는 예약 사이드바(.prod_detail_side)가 <main> 밖에
+  // 위치해 buildPageTextForMeta가 이를 놓치는 경우가 있다. 이 경우 AI가 성인 1인
+  // 총액을 보지 못해 본문의 다른 숫자를 가격으로 오인할 수 있으므로 별도로 찾아 붙인다.
+  function findBookingPriceRoot(doc) {
+    const bySelector = doc.querySelector(
+      ".prod_detail_side, [class*='price_area'], [class*='PriceArea'], [class*='priceArea']",
+    );
+    if (bySelector) return bySelector;
+
+    const candidates = doc.querySelectorAll("aside, [class*='side'], [class*='sticky'], section, div");
+    for (const el of candidates) {
+      if ((el.childElementCount ?? 0) > 40) continue;
+      const text = el.textContent ?? "";
+      if (text.length > 4000 || text.length < 10) continue;
+      if (/성인\s*1인/.test(text) && /\d{1,3}(,\d{3})+\s*원|₩\s*[\d,]+/.test(text)) return el;
+    }
+    return null;
+  }
+
   function buildPageTextForMeta(doc, maxChars) {
     const limit = maxChars ?? 18000;
     const root = doc.querySelector("main") ?? doc.body;
     const raw = (root?.innerText ?? "").replace(/\n{3,}/g, "\n\n").trim();
-    const text = stripInstallmentMetaLines(raw);
+    let text = stripInstallmentMetaLines(raw);
+
+    const priceRoot = findBookingPriceRoot(doc);
+    if (priceRoot && !(root?.contains(priceRoot))) {
+      const priceRaw = (priceRoot.innerText ?? "").replace(/\n{3,}/g, "\n\n").trim();
+      const priceText = stripInstallmentMetaLines(priceRaw);
+      if (priceText) text = `${text}\n\n[가격 정보]\n${priceText}`;
+    }
+
     return text.length > limit ? `${text.slice(0, limit)}\n…(truncated)` : text;
   }
 
@@ -1197,6 +1224,8 @@
     buildCleanHtmlStructure,
 
     buildPageTextForMeta,
+
+    findBookingPriceRoot,
 
     collectPageGalleryUrls,
 

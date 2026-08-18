@@ -720,6 +720,9 @@ function isHanatourSearchPageUrl(url) {
   if (href.includes("/search")) return true;
   if (href.includes("keywordcateg=")) return true;
   if (/chpc0pkg\d+m\d+/i.test(href) && !href.includes("/trp/pkg/")) return true;
+  // 일정수집용 부모탭(예: /package/major-products?rprsProdCds=...)도 검색/리스트
+  // 탭으로 인정해 크로스탭 달력 후보에서 제외되지 않도록 한다.
+  if (/\/package\//.test(href) && href.includes("rprsprodcds=")) return true;
   return false;
 }
 

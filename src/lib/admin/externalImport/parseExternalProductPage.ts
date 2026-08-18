@@ -91,6 +91,7 @@ Rules:
 - price: integer KRW for the adult 1-person TOTAL fare (strip commas). null if absent.
 - Ignore installment quotes: 할부, 무이자, 월 n원, 할부 예상가, 카드사별 무이자. Those are monthly amounts, not the product price.
 - ModeTour (모두투어) "예상가" next to ₩ amount IS the product price when it is NOT an installment (no 할부/월).
+- If a "[가격 정보]" section is present in the text, it is the booking sidebar and takes PRIORITY over any other number in the page for price. Use the "성인 1인" (adult 1-person) TOTAL amount inside it.
 - theme: travel style/themes only (e.g. 관광, 다이닝). NEVER put themes in departure_region.
 - departure_region: geographic departure area only (e.g. 인천, 김포).
 - included_items, excluded_items, optional_expenses: copy VERBATIM from source.

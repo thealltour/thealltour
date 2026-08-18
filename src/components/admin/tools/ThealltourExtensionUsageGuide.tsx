@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 
 const USAGE_STEPS = [
   {
-    title: "1. 설치·업데이트 (현재 0.2.30)",
+    title: "1. 설치·업데이트 (현재 0.2.31)",
     body: [
       "팝업이나 설정 화면은 없습니다. Chrome 툴바의 thealltour_extension 아이콘을 누르면 바로 수집이 시작됩니다.",
       "권한: activeTab, scripting, storage. 접속 허용: hanatour.com, modetour.com, thealltour.com, localhost:3000.",

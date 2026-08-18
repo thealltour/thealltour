@@ -110,6 +110,10 @@
 
     if (/chpc0pkg\d+m\d+/i.test(href) && !href.includes("/trp/pkg/")) return true;
 
+    // 일정수집용 부모탭(예: /package/major-products?rprsProdCds=...)도 검색/리스트
+    // 탭으로 인정한다.
+    if (/\/package\//.test(href) && href.includes("rprsprodcds=")) return true;
+
     if (!doc) return false;
 
     return Boolean(

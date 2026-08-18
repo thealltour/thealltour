@@ -63,7 +63,11 @@
     }
     s = s.replace(/\s+/g, " ").trim();
     if (s) return s.slice(0, limit);
-    if ((el.childElementCount ?? 0) <= 4) {
+    // 호출부(findDaySubTabs 등)는 이미 childElementCount<=12로 스캔 대상을 걸러내므로,
+    // 여기서 <=4로 다시 제한하면 아이콘+날짜+라벨처럼 자식이 여러 개인 일차 탭의 라벨을
+    // 놓친다(3일차 이후 탭 미인식의 원인). 다만 isSiteChrome의 조상 탐색(제한 없음)에서
+    // 거대한 메가메뉴 컨테이너까지 라벨로 읽어버리는 것은 막기 위해 상한을 20으로 완화.
+    if ((el.childElementCount ?? 0) <= 20) {
       return elementText(el).slice(0, limit);
     }
     return "";
@@ -96,6 +100,7 @@
     const text = ownLabel(el, 80).replace(/\s+/g, " ");
     if (PRODUCT_TAB_RE.test(text)) return true;
     if (DAY_TAB_REGEX.test(text) || DAY_ACCORDION_HEADER.test(text)) return true;
+    if (/다음\s*일차|이전\s*일차/i.test(text)) return true;
     if (/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) return true;
     const tablist = el.closest?.('[role="tablist"]');
     if (!tablist) return false;
@@ -523,6 +528,7 @@
     PANEL_STABLE_TIMEOUT_MS,
     sleep,
     elementText,
+    ownLabel,
     isSafeClickTarget,
     isSiteChrome,
     isInsideCalendarWidget,

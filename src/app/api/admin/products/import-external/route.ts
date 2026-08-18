@@ -51,7 +51,9 @@ import { normalizeHanatourCalendarPayload } from "@/lib/admin/externalImport/han
 import { insertProductWithSchemaFallback } from "@/lib/supabaseProductsColumnFallback";
 import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
 
-
+// import-band와 동일하게: 대형 캘린더 상품은 스크래핑+AI 분석이 오래 걸릴 수 있어
+// 플랫폼 기본 함수 시간 제한에 걸리지 않도록 넉넉히 잡는다.
+export const maxDuration = 300;
 
 function normalizeUrlList(raw: unknown): string[] {
 

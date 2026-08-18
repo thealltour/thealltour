@@ -381,16 +381,26 @@
     const root = findCalendarWidgetRoot(doc);
     if (!header || !root) return null;
 
+    // 날짜 스트립(하루~15일 페이징)에도 "다음/이전" 화살표가 따로 있는 2단 구조 페이지가
+    // 있다(예: major-products). 스트립의 blind 라벨은 "다음 날짜"/"이전 날짜"이고 월
+    // 헤더의 라벨은 "다음 달"/"다음 월"이므로 패턴을 분리하고, 스트립 영역(row/container)
+    // 내부 요소는 어떤 검색 범위에서도 월 버튼 후보에서 제외한다.
+    const stripRow = findDateStripRow(doc, header);
+    const stripContainer = findDateStripContainer(doc, header);
+    const isInDateStrip = (el) =>
+      (stripRow?.contains?.(el) ?? false) || (stripContainer?.contains?.(el) ?? false);
+
     const pattern =
       direction === "next" ? /^>$|^›$|^▶$|^다음$/i : /^<$|^‹$|^◀$|^이전$/i;
     const blindPattern =
-      direction === "next" ? /다음\s*달|다음\s*월|다음\s*날짜/ : /이전\s*달|이전\s*월|이전\s*날짜/;
+      direction === "next" ? /다음\s*달|다음\s*월/ : /이전\s*달|이전\s*월/;
     const headerRow = header.parentElement;
     const scopes = [headerRow, headerRow?.parentElement, root].filter(Boolean);
 
     for (const scope of scopes) {
       if (!root.contains(scope)) continue;
       for (const el of scope.querySelectorAll("button, a, [role='button']")) {
+        if (isInDateStrip(el)) continue;
         if (!isSafeCalendarNavTarget(el, root)) continue;
         const text = (el.textContent ?? "").trim();
         const blind = el.querySelector?.(".blind")?.textContent ?? "";
@@ -400,7 +410,9 @@
     }
 
     const siblings = headerRow?.querySelectorAll("button, a, [role='button']") ?? [];
-    const safeSiblings = [...siblings].filter((el) => isSafeCalendarNavTarget(el, root));
+    const safeSiblings = [...siblings].filter(
+      (el) => !isInDateStrip(el) && isSafeCalendarNavTarget(el, root),
+    );
     if (safeSiblings.length >= 2) {
       return direction === "next" ? safeSiblings[safeSiblings.length - 1] : safeSiblings[0];
     }
@@ -951,9 +963,12 @@
 
   const DATE_STRIP_POLL_MS = 50;
   const DATE_STRIP_ADVANCE_TIMEOUT_MS = 2000;
-  // 데이터 완전성 우선: 거의 매일 출발일이 있는 상품도 놓치지 않도록 날짜 스트립을
-  // 최대한 끝까지 넘긴다(시간이 걸려도 상관없음).
-  const DEFAULT_MAX_DATE_STRIP_CLICKS = 40;
+  // 실사용 확인: 날짜 스트립은 매월 1일부터 15일치씩 보여주므로 31일짜리 달도 최대
+  // 3번의 "다음" 클릭이면 충분하다. 관찰된 최대치의 2배(6)로 여유를 두어, 완전성은
+  // 그대로 유지하면서(3클릭이면 실제로 끝남) 불필요한 대기만 줄인다. 정말 예상 밖의
+  // 페이지 구조(예: 오늘 날짜부터 시작)를 만나도 browseHanatourCalendarMonths의
+  // deadline 안전망이 무한 대기를 막아준다.
+  const DEFAULT_MAX_DATE_STRIP_CLICKS = 6;
   let lastDateStripPagingMeta = null;
 
   function getCaptureCount() {

@@ -167,6 +167,22 @@
       nextBtn.click();
       open?.invalidateCalendarDomCache?.(doc);
       await waitForNewCapture(captureBefore);
+
+      // 클릭 후 검증: 월 헤더가 실제로 바뀌었는지 확인한다. 날짜 스트립의 "다음 날짜"
+      // 버튼을 잘못 눌렀거나(과거 findMonthNavButton 결함) 사이트 렌더링이 지연되는
+      // 경우를 구분하기 위해 짧은 유예 후 한 번 더 확인한 뒤에도 동일하면 "더 이상 달이
+      // 없어서 종료"가 아니라 "월 이동 자체가 실패함"으로 명확히 기록하고 멈춘다.
+      if (ym) {
+        let ymAfterClick = readVisibleYearMonth(doc);
+        if (ymAfterClick === ym) {
+          await sleep(MONTH_STEP_WAIT_MS);
+          ymAfterClick = readVisibleYearMonth(doc);
+        }
+        if (ymAfterClick === ym) {
+          skipMeta.push({ source: "month_nav_click_ineffective", yearMonth: ym });
+          break;
+        }
+      }
     }
 
     const result = countCalendarDays(merged) > 0 ? merged : null;

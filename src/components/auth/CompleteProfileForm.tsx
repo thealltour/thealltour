@@ -4,18 +4,22 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { fireKakaoPixelCompleteRegistrationOnce } from "@/lib/analytics/kakaoPixel";
 
 type CompleteProfileFormProps = {
   nextPath?: string;
   needsPhone?: boolean;
   /** false면 카카오싱크 등에서 이미 동의한 약관 UI를 숨김 */
   needsTerms?: boolean;
+  /** 카카오 신규 가입 플래그 — 저장 성공 후 completeRegistration */
+  trackKakaoSignup?: boolean;
 };
 
 export default function CompleteProfileForm({
   nextPath = "/mypage",
   needsPhone = true,
   needsTerms = true,
+  trackKakaoSignup = false,
 }: CompleteProfileFormProps) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
@@ -43,6 +47,9 @@ export default function CompleteProfileForm({
       if (!response.ok) {
         setErrorMessage(result.message ?? "저장에 실패했습니다.");
         return;
+      }
+      if (trackKakaoSignup) {
+        fireKakaoPixelCompleteRegistrationOnce();
       }
       router.push(result.next ?? nextPath);
       router.refresh();

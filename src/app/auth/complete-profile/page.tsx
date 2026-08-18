@@ -6,10 +6,11 @@ import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { memberNeedsProfileCompletion } from "@/lib/auth/memberAuthService";
 import { sanitizeNextPath } from "@/lib/auth/redirect";
+import { KAKAO_PIXEL_SIGNUP_QUERY } from "@/lib/analytics/kakaoPixel";
 import type { MemberRowForAuth } from "@/lib/auth/types";
 
 type PageProps = {
-  searchParams?: Promise<{ next?: string }>;
+  searchParams?: Promise<{ next?: string; kakao_signup?: string }>;
 };
 
 export default async function CompleteProfilePage({ searchParams }: PageProps) {
@@ -35,6 +36,7 @@ export default async function CompleteProfilePage({ searchParams }: PageProps) {
   const nextPath = sanitizeNextPath(resolved.next, "/mypage");
   const needsPhone = !memberRow.phone?.trim();
   const needsTerms = !(memberRow.agree_terms && memberRow.agree_privacy);
+  const trackKakaoSignup = resolved[KAKAO_PIXEL_SIGNUP_QUERY] === "1";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--bg)] text-[var(--text-primary)]">
@@ -45,7 +47,12 @@ export default async function CompleteProfilePage({ searchParams }: PageProps) {
             <h1 className="text-2xl font-bold">추가 정보 입력</h1>
             <p className="text-sm text-[var(--text-secondary)]">소셜 로그인 가입을 마무리해 주세요.</p>
           </div>
-          <CompleteProfileForm nextPath={nextPath} needsPhone={needsPhone} needsTerms={needsTerms} />
+          <CompleteProfileForm
+            nextPath={nextPath}
+            needsPhone={needsPhone}
+            needsTerms={needsTerms}
+            trackKakaoSignup={trackKakaoSignup}
+          />
         </section>
       </main>
     </div>

@@ -16,6 +16,7 @@ import AuthProvidersShell from "@/components/auth/AuthProvidersShell";
 import SiteToastProvider from "@/components/site-chrome/SiteToastProvider";
 import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
+import { KakaoPixel } from "@/components/site-chrome/KakaoPixel";
 
 const siteUrl = getSiteBaseUrl();
 const gaId = process.env.NEXT_PUBLIC_GA_ID?.trim();
@@ -111,6 +112,12 @@ export default function RootLayout({
             </Script>
           </>
         ) : null}
+        {/* 카카오 픽셀: PageView. 이벤트 호출은 KakaoPixel 클라이언트 */}
+        <Script
+          id="kakao-pixel-sdk"
+          src="https://t1.daumcdn.net/adfit/static/kp.js"
+          strategy="afterInteractive"
+        />
         {/* LCP: Supabase Storage preconnect */}
         <link
           rel="preconnect"
@@ -128,6 +135,7 @@ export default function RootLayout({
       </head>
       <body className="site-public flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-[color:color-mix(in_oklab,var(--primary)_18%,white)] selection:text-foreground">
         <FirstTouchInit />
+        <KakaoPixel />
         {process.env.NODE_ENV === "development" ? <WebVitalsReporter /> : null}
         <SiteToastProvider>
           <ConsultModalProvider>

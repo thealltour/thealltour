@@ -4,6 +4,7 @@ import { verifyOAuthStateToken, OAUTH_STATE_COOKIE } from "@/lib/auth/oauthState
 import { getOAuthProvider, isAuthProviderId } from "@/lib/auth/providerRegistry";
 import { getOAuthRedirectUri, sanitizeNextPath } from "@/lib/auth/redirect";
 import { resolveKakaoWelcomeNextPath, resolveKakaoSyncPostAuthDestination } from "@/lib/auth/kakaoSignupWelcome";
+import { withKakaoPixelSignupQuery } from "@/lib/analytics/kakaoPixel";
 import { loginErrorRedirect } from "@/lib/auth/authErrors";
 import { handleOAuthCallback, cleanupExpiredPendingLinks } from "@/lib/auth/memberAuthService";
 import { appendMemberSessionCookie } from "@/lib/auth/setMemberSessionCookie";
@@ -189,6 +190,12 @@ export async function GET(request: Request, context: RouteContext) {
         destination = `/auth/complete-profile?next=${encodeURIComponent(destination)}`;
       }
     }
+
+    destination = withKakaoPixelSignupQuery({
+      provider: providerId,
+      isNewMember: result.isNewMember,
+      destination,
+    });
 
     const response = NextResponse.redirect(new URL(destination, request.url));
     appendMemberSessionCookie(response, result.member);

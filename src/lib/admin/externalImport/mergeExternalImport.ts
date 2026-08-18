@@ -8,6 +8,7 @@ import type { ExternalParsedItineraryV2 } from "@/lib/admin/externalImport/exter
 import type { ItineraryV2 } from "@/types/product";
 import { formatSeoHashtagsForMetaTitle } from "@/lib/products/formatSeoHashtagsForMetaTitle";
 import { trimOrNull } from "@/lib/admin/stringHelpers";
+import type { ThemeChartJson } from "@/lib/admin/themeChartSchema";
 
 export type MergeExternalImportInput = {
   meta: ExternalParsedMeta;
@@ -17,6 +18,7 @@ export type MergeExternalImportInput = {
   seoHashtags?: string[];
   itineraryBlocks?: ItineraryBlock[];
   aiItineraryFallback?: ExternalParsedItineraryV2 | null;
+  theme_chart_json?: ThemeChartJson | null;
 };
 
 function normalizeGalleryUrls(
@@ -54,6 +56,7 @@ export function mergeExternalImport(input: MergeExternalImportInput): ExternalPa
     seoHashtags,
     itineraryBlocks,
     aiItineraryFallback,
+    theme_chart_json,
   } = input;
 
   const gallery = normalizeGalleryUrls(productGalleryUrls, heroImageUrl);
@@ -74,6 +77,7 @@ export function mergeExternalImport(input: MergeExternalImportInput): ExternalPa
     title: trimOrNull(sourceProductTitle) ?? meta.title,
     meta_title: domMetaTitle ?? aiMetaTitle ?? null,
     itinerary_v2_json: itineraryV2 as ExternalParsedProduct["itinerary_v2_json"],
+    theme_chart_json: theme_chart_json ?? null,
     image_url: gallery.imageUrl,
     images_json: gallery.imagesJson,
   };

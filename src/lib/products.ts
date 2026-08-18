@@ -105,6 +105,7 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
       typeof row.golf_course_info === "string" && row.golf_course_info.trim() !== ""
         ? row.golf_course_info
         : undefined,
+    golf_courses_json: normalizeGolfCoursesJson(row.golf_courses_json),
     image_url: primaryImage,
     images_json: images.length > 0 ? images : undefined,
     category: String(row.category ?? row.type ?? "여행상품"),
@@ -280,6 +281,18 @@ function normalizeThemeChartJson(raw: unknown): { items: Array<{ label: string; 
     })
     .filter((i) => i.label.length > 0);
   return parsed.length >= 2 ? { items: parsed } : undefined;
+}
+
+function normalizeGolfCoursesJson(raw: unknown): Array<{ name: string; content: string }> | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const items = raw
+    .filter((i): i is Record<string, unknown> => i != null && typeof i === "object")
+    .map((i) => ({
+      name: typeof i.name === "string" ? i.name.trim() : "",
+      content: typeof i.content === "string" ? i.content.trim() : "",
+    }))
+    .filter((i) => i.name.length > 0 && i.content.length > 0);
+  return items.length > 0 ? items : undefined;
 }
 
 const OVERVIEW_SUMMARY_KINDS = ["flight", "hotel", "region", "theme", "golf", "etc"] as const;

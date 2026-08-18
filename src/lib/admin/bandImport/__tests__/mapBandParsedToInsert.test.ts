@@ -228,6 +228,30 @@ describe("mapBandParsedToInsert", () => {
     expect(payload.product_source_url).toBe("https://band.us/n/abc");
     expect(payload.is_active).toBe(true);
     expect(payload.golf_course_info).toBeNull();
+    expect(payload.theme_chart_json).toBeNull();
+  });
+
+  it("maps theme_chart_json from itinerary parse", () => {
+    const payload = mapBandParsedToInsert({
+      parsed: minimalBandParsed({
+        theme_chart_json: {
+          items: [
+            { label: "골프", percent: 2 },
+            { label: "관광", percent: 1 },
+            { label: "식사", percent: 1 },
+          ],
+        },
+      }),
+      bandText: "밴드 본문",
+      hwpText: "",
+    });
+    expect(payload.theme_chart_json).toEqual({
+      items: [
+        { label: "골프", percent: 50 },
+        { label: "관광", percent: 25 },
+        { label: "식사", percent: 25 },
+      ],
+    });
   });
 
   it("stores golf course info separately from band description", () => {

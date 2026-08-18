@@ -10,6 +10,7 @@ import {
   buildBandItinerarySourceText,
   buildBandMetaSourceText,
 } from "@/lib/admin/bandImport/bandTextTruncate";
+import { THEME_CHART_PROMPT_RULES } from "@/lib/admin/themeChartSchema";
 
 export type ParseBandProductTextInput = {
   bandText: string;
@@ -37,7 +38,7 @@ Rules:
 - point_tourism, point_guide, meeting_info, travel_insurance: "O" or "X" only when explicitly stated; else null.
 - Do NOT build itinerary_v2_json in this pass.`;
 
-const ITINERARY_SYSTEM_PROMPT = `You extract day-by-day itinerary from Korean travel HWP/band schedule text into itinerary_v2_json only.
+const ITINERARY_SYSTEM_PROMPT = `You extract day-by-day itinerary from Korean travel HWP/band schedule text into itinerary_v2_json and theme_chart_json.
 Rules:
 - Focus on the schedule table / 일차 sections in the source.
 - Split each day into events[]. Do NOT dump the whole day into a single description.
@@ -48,7 +49,8 @@ Rules:
 - Meals (조식/중식/석식) from the meal column and lodging (숙소/호텔 또는 동급) are separate events. Do not mix them into the all-day activity blob.
 - meals: still copy breakfast/lunch/dinner from the schedule row verbatim (in addition to meal events).
 - Preserve every day from 1일차 through the last day. Do not skip days.
-- Use null for itinerary_v2_json only when no schedule exists at all.`;
+- Use null for itinerary_v2_json only when no schedule exists at all.
+${THEME_CHART_PROMPT_RULES}`;
 
 function buildBandMetaPrompt(input: ParseBandProductTextInput): string {
   const hwp = input.hwpText.trim();
@@ -92,6 +94,7 @@ function buildBandItineraryPrompt(input: ParseBandProductTextInput): string {
     "3. 이동·미팅·라운드·휴식은 각각 events 항목. description에 원문 상세",
     "4. 조식/중식/석식·숙소는 별 이벤트. 본문 일정과 한 덩어리로 합치지 말 것",
     "5. meals는 일정표 우측 식사란 문자열 그대로",
+    "6. theme_chart_json: 일정 시간 비중으로 골프/관광/자유일정/식사/이동 등 2~5개, 합 100%. theme·category 균등 분할 금지. 일정 없으면 null",
     "",
     "=== 일정 원문 (HWP 우선) ===",
     source,

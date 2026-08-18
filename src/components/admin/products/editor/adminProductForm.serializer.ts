@@ -21,6 +21,7 @@ import {
   formRowsToDepartureSchedules,
 } from "@/lib/admin/departureScheduleForm";
 import { deriveDerivedFieldsForSave } from "./adminProductForm.derive";
+import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
 
 /** PostgreSQL integer 호환: 유한 정수만, 범위 초과 시 null */
 function toSafeInteger(value: unknown): number | null {
@@ -113,6 +114,7 @@ export function serializeAdminProductForm(
     title: form.title.trim(),
     description: form.description,
     golf_course_info: form.golf_course_info.trim() === "" ? null : form.golf_course_info.trim(),
+    golf_courses_json: normalizeGolfCoursesJson(form.golf_courses_json),
     meta_title: form.meta_title.trim() === "" ? null : form.meta_title.trim(),
     meta_description: form.meta_description.trim() === "" ? null : form.meta_description.trim(),
     point_benefits: form.point_benefits.trim() === "" ? null : form.point_benefits.trim(),

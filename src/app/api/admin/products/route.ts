@@ -13,6 +13,7 @@ import {
 } from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeAdminProductsPageSize } from "@/components/admin/products/adminProducts.constants";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
 
 function isMissingImagesJsonColumn(message?: string): boolean {
   if (!message) return false;
@@ -34,6 +35,7 @@ type ProductBody = {
   title?: string;
   description?: string;
   golf_course_info?: string | null;
+  golf_courses_json?: Array<{ name: string; content: string }> | null;
   product_source_url?: string | null;
   point_benefits?: string | null;
   point_tourism?: string | null;
@@ -317,6 +319,9 @@ export async function POST(request: Request) {
   }
   if (body.golf_course_info !== undefined) {
     insertPayload.golf_course_info = body.golf_course_info?.trim() || null;
+  }
+  if (body.golf_courses_json !== undefined) {
+    insertPayload.golf_courses_json = normalizeGolfCoursesJson(body.golf_courses_json);
   }
   if (body.selling_points_json !== undefined) {
     insertPayload.selling_points_json = body.selling_points_json ?? null;

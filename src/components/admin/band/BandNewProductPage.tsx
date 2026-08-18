@@ -30,6 +30,21 @@ type ImportResponse = {
   };
 };
 
+type GolfCourseFormItem = {
+  name: string;
+  content: string;
+};
+
+function createGolfCourseItem(): GolfCourseFormItem {
+  return { name: "", content: "" };
+}
+
+function normalizeGolfCourses(items: GolfCourseFormItem[]): GolfCourseFormItem[] {
+  return items
+    .map((item) => ({ name: item.name.trim(), content: item.content.trim() }))
+    .filter((item) => item.name.length > 0 && item.content.length > 0);
+}
+
 const HWP_ACCEPT = ".hwp,.hwpx,application/haansofthwp,application/x-hwp";
 const HWP_EXT_RE = /\.(hwp|hwpx)$/i;
 const IMAGE_ACCEPT = ".jpg,.jpeg,.png,.webp,.zip,image/jpeg,image/png,image/webp,application/zip";
@@ -91,6 +106,7 @@ export default function BandNewProductPage() {
   const router = useRouter();
   const [bandText, setBandText] = useState("");
   const [golfCourseInfo, setGolfCourseInfo] = useState("");
+  const [golfCourses, setGolfCourses] = useState<GolfCourseFormItem[]>([createGolfCourseItem()]);
   const [hwpFile, setHwpFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -154,8 +170,10 @@ export default function BandNewProductPage() {
       }
 
       const formData = new FormData();
+      const normalizedGolfCourses = normalizeGolfCourses(golfCourses);
       formData.append("bandText", bandText);
       formData.append("golfCourseInfo", golfCourseInfo);
+      formData.append("golfCoursesJson", JSON.stringify(normalizedGolfCourses));
       if (hwpFile) formData.append("hwpFile", hwpFile);
       if (productSourceUrl.trim()) {
         formData.append("product_source_url", productSourceUrl.trim());
@@ -244,19 +262,78 @@ export default function BandNewProductPage() {
           />
         </label>
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-[var(--text-primary)]">골프장 정보 (선택)</span>
-          <span className="block text-xs text-[var(--text-secondary)]">
-            골프장 소개·코스 구성 등을 따로 붙여넣으세요. 비워 두면 상품 상세에 골프장 정보 섹션이
-            나오지 않습니다.
-          </span>
-          <textarea
-            className={`${fieldClass} min-h-[120px]`}
-            value={golfCourseInfo}
-            onChange={(e) => setGolfCourseInfo(e.target.value)}
-            placeholder="예: 18홀 챔피언십 코스, 페어웨이·그린 특징, 클럽하우스 안내"
-          />
-        </label>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <span className="text-sm font-medium text-[var(--text-primary)]">골프장 정보 (선택)</span>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                골프장별 이름/설명을 분리 입력하면 상세에서 이름 클릭 시 모달로 노출됩니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGolfCourses((prev) => [...prev, createGolfCourseItem()])}
+              className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+            >
+              골프장 추가
+            </button>
+          </div>
+
+          {golfCourses.map((item, index) => (
+            <div key={index} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--text-secondary)]">골프장 {index + 1}</span>
+                {golfCourses.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGolfCourses((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+                    }
+                    className="text-xs text-rose-600 hover:underline"
+                  >
+                    삭제
+                  </button>
+                ) : null}
+              </div>
+              <input
+                className={fieldClass}
+                value={item.name}
+                onChange={(e) =>
+                  setGolfCourses((prev) =>
+                    prev.map((course, itemIndex) =>
+                      itemIndex === index ? { ...course, name: e.target.value } : course,
+                    ),
+                  )
+                }
+                placeholder="골프장명 (예: 수트라하버 골프클럽)"
+              />
+              <textarea
+                className={`${fieldClass} mt-2 min-h-[96px]`}
+                value={item.content}
+                onChange={(e) =>
+                  setGolfCourses((prev) =>
+                    prev.map((course, itemIndex) =>
+                      itemIndex === index ? { ...course, content: e.target.value } : course,
+                    ),
+                  )
+                }
+                placeholder="코스 특징, 운영 시간, 플레이 포인트"
+              />
+            </div>
+          ))}
+
+          <label className="block space-y-1.5 pt-1">
+            <span className="text-xs font-semibold text-[var(--text-secondary)]">
+              레거시 단일 텍스트 (호환용, 선택)
+            </span>
+            <textarea
+              className={`${fieldClass} min-h-[88px]`}
+              value={golfCourseInfo}
+              onChange={(e) => setGolfCourseInfo(e.target.value)}
+              placeholder="기존 단일 골프장 정보 필드도 함께 저장하려면 입력하세요."
+            />
+          </label>
+        </div>
 
         <div className="space-y-1.5">
           <span className="text-sm font-medium text-[var(--text-primary)]">한글 문서</span>

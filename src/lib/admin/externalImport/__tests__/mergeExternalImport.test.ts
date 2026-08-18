@@ -301,4 +301,22 @@ describe("mergeExternalImport", () => {
     expect(meal?.displayRole).toBe("summary");
     expect(meal?.iconKey).toBe("utensils");
   });
+
+  it("passes theme_chart_json from itinerary parse onto the product", () => {
+    const merged = mergeExternalImport({
+      meta: minimalMeta(),
+      theme_chart_json: {
+        items: [
+          { label: "관광", percent: 70 },
+          { label: "식사", percent: 30 },
+        ],
+      },
+    });
+    expect(merged.theme_chart_json).toEqual({
+      items: [
+        { label: "관광", percent: 70 },
+        { label: "식사", percent: 30 },
+      ],
+    });
+  });
 });

@@ -20,6 +20,7 @@ import {
   ymdDayDiff,
 } from "@/lib/products/productDepartureDates";
 import { trimOrNull } from "@/lib/admin/stringHelpers";
+import { normalizeThemeChartForInsert } from "@/lib/admin/themeChartSchema";
 
 export type MapExternalParsedInput = {
   parsed: ExternalParsedProduct;
@@ -200,6 +201,7 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     arrival_to_date: trimOrNull(parsed.arrival_to_date),
     arrival_to_time: trimOrNull(parsed.arrival_to_time),
     itinerary_v2_json: itineraryV2,
+    theme_chart_json: normalizeThemeChartForInsert(parsed.theme_chart_json),
     departure_schedules_json: departureSchedules,
     product_source_url: trimOrNull(productSourceUrl ?? undefined),
   };

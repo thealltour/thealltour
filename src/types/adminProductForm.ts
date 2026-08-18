@@ -33,6 +33,7 @@ export type ProductFormState = {
   title: string;
   description: string;
   golf_course_info: string;
+  golf_courses_json: Array<{ name: string; content: string }>;
   product_source_url: string;
   point_benefits: string;
   point_tourism: "O" | "X";
@@ -160,6 +161,7 @@ export function createEmptyProductFormState(): ProductFormState {
     title: "",
     description: "",
     golf_course_info: "",
+    golf_courses_json: [],
     product_source_url: "",
     point_benefits: "",
     point_tourism: "X",

@@ -257,6 +257,8 @@ export async function POST(request: NextRequest) {
 
     aiItineraryFallback: metaResult.aiItineraryFallback,
 
+    theme_chart_json: metaResult.theme_chart_json,
+
   });
 
 

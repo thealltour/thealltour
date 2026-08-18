@@ -772,15 +772,79 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
             </label>
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold text-[var(--text-secondary)]">골프장 정보 (선택)</span>
+              <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]/60 p-3">
+                {form.golf_courses_json.map((item, index) => (
+                  <div key={index} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[var(--text-secondary)]">골프장 {index + 1}</span>
+                      {form.golf_courses_json.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              golf_courses_json: prev.golf_courses_json.filter(
+                                (_, rowIndex) => rowIndex !== index,
+                              ),
+                            }))
+                          }
+                          className="text-xs text-rose-600 hover:underline"
+                        >
+                          삭제
+                        </button>
+                      ) : null}
+                    </div>
+                    <input
+                      value={item.name}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          golf_courses_json: prev.golf_courses_json.map((course, rowIndex) =>
+                            rowIndex === index ? { ...course, name: event.target.value } : course,
+                          ),
+                        }))
+                      }
+                      placeholder="골프장명"
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                    />
+                    <textarea
+                      value={item.content}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          golf_courses_json: prev.golf_courses_json.map((course, rowIndex) =>
+                            rowIndex === index ? { ...course, content: event.target.value } : course,
+                          ),
+                        }))
+                      }
+                      rows={4}
+                      placeholder="골프장 설명"
+                      className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      golf_courses_json: [...prev.golf_courses_json, { name: "", content: "" }],
+                    }))
+                  }
+                  className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+                >
+                  골프장 추가
+                </button>
+              </div>
               <textarea
                 value={form.golf_course_info}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, golf_course_info: event.target.value }))
                 }
-                rows={8}
-                placeholder="입력하지 않으면 상품 상세에 노출되지 않습니다."
+                rows={4}
+                placeholder="레거시 단일 텍스트 (하위호환용)"
                 id="field-golf-course-info"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
               />
             </label>
           </div>

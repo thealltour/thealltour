@@ -31,6 +31,8 @@ import {
 } from "@/lib/products/productDepartureDates";
 import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
 import { trimOrNull } from "@/lib/admin/stringHelpers";
+import { normalizeThemeChartForInsert } from "@/lib/admin/themeChartSchema";
+import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
 import type { ProductDepartureSchedule } from "@/types/product";
 
 export type MapBandParsedInput = {
@@ -38,6 +40,7 @@ export type MapBandParsedInput = {
   bandText: string;
   hwpText: string;
   golfCourseInfo?: string | null;
+  golfCoursesJson?: Array<{ name: string; content: string }> | null;
   productSourceUrl?: string | null;
   imageUrls?: string[];
 };
@@ -370,7 +373,7 @@ export function mapItineraryDaysToV2(days: BandParsedItineraryDay[] | null): Iti
 }
 
 export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string, unknown> {
-  const { parsed, bandText, hwpText, golfCourseInfo, productSourceUrl, imageUrls } = input;
+  const { parsed, bandText, hwpText, golfCourseInfo, golfCoursesJson, productSourceUrl, imageUrls } = input;
   const images = normalizeImageUrls(imageUrls);
   const imageUrl = images[0] ?? BAND_IMPORT_PLACEHOLDER_IMAGE;
 
@@ -419,6 +422,7 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     title,
     description,
     golf_course_info: trimOrNull(golfCourseInfo),
+    golf_courses_json: normalizeGolfCoursesJson(golfCoursesJson),
     image_url: imageUrl,
     images_json: images.length > 0 ? images : null,
     category: trimOrNull(parsed.category) ?? BAND_IMPORT_DEFAULT_CATEGORY,
@@ -470,6 +474,7 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     arrival_to_time: trimOrNull(parsed.arrival_to_time),
     arrival_baggage_limit: trimOrNull(parsed.arrival_baggage_limit),
     itinerary_v2_json: itineraryV2,
+    theme_chart_json: normalizeThemeChartForInsert(parsed.theme_chart_json),
     departure_schedules_json: departureSchedulesJson,
     product_source_url: trimOrNull(productSourceUrl ?? undefined),
   };

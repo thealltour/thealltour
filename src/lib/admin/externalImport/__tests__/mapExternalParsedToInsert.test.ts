@@ -49,6 +49,7 @@ function baseParsed(overrides: Partial<ExternalParsedProduct> = {}): ExternalPar
       insurance: "3억원 여행자보험",
     },
     itinerary_v2_json: null,
+    theme_chart_json: null,
     image_url: "https://example.com/hero.jpg",
     images_json: ["https://example.com/hero.jpg"],
     ...overrides,
@@ -79,6 +80,27 @@ describe("mapExternalParsedToInsert", () => {
       corePoints: "1. 5성급 호텔",
       tourism: "관광 본문",
       insurance: "3억원 여행자보험",
+    });
+    expect(result.theme_chart_json).toBeNull();
+  });
+
+  it("maps theme_chart_json from itinerary parse", () => {
+    const result = mapExternalParsedToInsert({
+      parsed: baseParsed({
+        theme_chart_json: {
+          items: [
+            { label: "관광", percent: 3 },
+            { label: "식사", percent: 1 },
+          ],
+        },
+      }),
+      provider: "hanatour",
+    });
+    expect(result.theme_chart_json).toEqual({
+      items: [
+        { label: "관광", percent: 75 },
+        { label: "식사", percent: 25 },
+      ],
     });
   });
 

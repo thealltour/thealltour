@@ -38,7 +38,18 @@ export async function GET() {
       userId,
       error: memberRes.error?.message,
     });
-    return NextResponse.json({ message: "회원 정보를 불러올 수 없습니다." }, { status: 500 });
+    // 회원 row가 없거나 일시적으로 조회가 실패해도 프론트가 반복 에러로 스팸되지 않게 0으로 폴백
+    const discountTier = hasPreviousBooking ? "RETURNING" : "WELCOME";
+    const unitDiscount = DISCOUNT_RATES[discountTier];
+    return NextResponse.json({
+      balance: 0,
+      pending: 0,
+      expiringSoon: 0,
+      ledger: [],
+      hasPreviousBooking,
+      discountTier,
+      unitDiscount,
+    });
   }
   if (ledgerRes.error) {
     console.error("[GET /api/me/points] point_ledger 조회 실패", { userId, error: ledgerRes.error.message });

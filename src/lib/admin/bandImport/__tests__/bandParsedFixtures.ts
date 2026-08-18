@@ -68,6 +68,7 @@ export function minimalBandParsed(overrides: Partial<BandParsedProduct> = {}): B
         meals: { breakfast: null, lunch: "흑돼지", dinner: "해산물" },
       },
     ],
+    theme_chart_json: null,
     ...overrides,
   };
 }

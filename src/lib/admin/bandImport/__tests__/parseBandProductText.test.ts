@@ -94,6 +94,12 @@ describe("parseBandProductText", () => {
           itinerary_v2_json: [
             { day: 1, title: "1일차", description: "출발", meals: null },
           ],
+          theme_chart_json: {
+            items: [
+              { label: "골프", percent: 60 },
+              { label: "관광", percent: 40 },
+            ],
+          },
         },
       });
 
@@ -105,6 +111,12 @@ describe("parseBandProductText", () => {
     expect(generateObjectMock).toHaveBeenCalledTimes(2);
     expect(result.title).toBe("테스트 상품");
     expect(result.itinerary_v2_json).toHaveLength(1);
+    expect(result.theme_chart_json).toEqual({
+      items: [
+        { label: "골프", percent: 60 },
+        { label: "관광", percent: 40 },
+      ],
+    });
     expect(generateObjectMock.mock.calls[0][0].model).toBe(
       "google:test-google-key:gemini-3.6-flash",
     );

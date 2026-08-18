@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { externalProductMetaSchema } from "@/lib/admin/externalImport/externalProductMetaSchema";
+import { themeChartJsonSchema } from "@/lib/admin/themeChartSchema";
 
 
 
@@ -70,6 +71,8 @@ export const externalItineraryOnlySchema = z.object({
 
   itinerary_v2_json: externalItineraryV2Schema,
 
+  theme_chart_json: themeChartJsonSchema.optional(),
+
 });
 
 
@@ -83,6 +86,8 @@ export const externalProductSchema = externalProductMetaSchema.extend({
     "ItineraryV2 구조 일정. 관광지/식사/이동마다 별도 event, 이벤트별 imageUrls 포함",
 
   ),
+
+  theme_chart_json: themeChartJsonSchema,
 
   image_url: z.string().nullable().describe("대표 이미지 URL (본문 관련 고화질 1개)"),
 

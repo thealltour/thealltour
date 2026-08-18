@@ -857,6 +857,7 @@ export default function ProductDetailV2({
             <ProductDescriptionSection
               description={product?.description}
               golfCourseInfo={product?.golf_course_info}
+              golfCourses={product?.golf_courses_json}
             />
           </div>
         ) : null}

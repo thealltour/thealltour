@@ -33,8 +33,29 @@ type ImportBandBody = {
   bandText?: string;
   hwpText?: string;
   golfCourseInfo?: string;
+  golfCoursesJson?: Array<{ name: string; content: string }>;
   product_source_url?: string;
 };
+
+function normalizeGolfCoursesInput(raw: unknown): Array<{ name: string; content: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> => item != null && typeof item === "object")
+    .map((item) => ({
+      name: typeof item.name === "string" ? item.name.trim() : "",
+      content: typeof item.content === "string" ? item.content.trim() : "",
+    }))
+    .filter((item) => item.name.length > 0 && item.content.length > 0);
+}
+
+function parseGolfCoursesJsonString(raw: string): Array<{ name: string; content: string }> {
+  if (!raw.trim()) return [];
+  try {
+    return normalizeGolfCoursesInput(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
 
 function parseStagingImagePaths(raw: string): Array<{ path: string; filename?: string }> {
   if (!raw) return [];
@@ -81,6 +102,7 @@ async function readImportRequest(request: NextRequest): Promise<{
   bandText: string;
   hwpText: string;
   golfCourseInfo: string;
+  golfCoursesJson: Array<{ name: string; content: string }>;
   productSourceUrl: string;
   imageFiles: File[];
   stagingImagePaths: StagingImageRef[];
@@ -98,6 +120,7 @@ async function readImportRequest(request: NextRequest): Promise<{
     const bandText = formString(formData, "bandText").trim();
     const pastedHwpText = formString(formData, "hwpText").trim();
     const golfCourseInfo = formString(formData, "golfCourseInfo").trim();
+    const golfCoursesJson = parseGolfCoursesJsonString(formString(formData, "golfCoursesJson"));
     const productSourceUrl = formString(formData, "product_source_url").trim();
     const imageFiles = pickImageFiles(formData);
     const stagingImagePaths = parseStagingImagePaths(formString(formData, "stagingImagePaths"));
@@ -111,7 +134,15 @@ async function readImportRequest(request: NextRequest): Promise<{
       hwpText = await parseHwpFileToText(hwpFile, hwpFile.name || "upload.hwpx");
     }
 
-    return { bandText, hwpText, golfCourseInfo, productSourceUrl, imageFiles, stagingImagePaths };
+    return {
+      bandText,
+      hwpText,
+      golfCourseInfo,
+      golfCoursesJson,
+      productSourceUrl,
+      imageFiles,
+      stagingImagePaths,
+    };
   }
 
   let body: ImportBandBody;
@@ -125,6 +156,7 @@ async function readImportRequest(request: NextRequest): Promise<{
     bandText: body.bandText?.trim() ?? "",
     hwpText: body.hwpText?.trim() ?? "",
     golfCourseInfo: body.golfCourseInfo?.trim() ?? "",
+    golfCoursesJson: normalizeGolfCoursesInput(body.golfCoursesJson),
     productSourceUrl: body.product_source_url?.trim() ?? "",
     imageFiles: [],
     stagingImagePaths: [],
@@ -138,6 +170,7 @@ export async function POST(request: NextRequest) {
   let bandText = "";
   let hwpText = "";
   let golfCourseInfo = "";
+  let golfCoursesJson: Array<{ name: string; content: string }> = [];
   let productSourceUrl = "";
   let imageFiles: File[] = [];
   let stagingImagePaths: StagingImageRef[] = [];
@@ -147,6 +180,7 @@ export async function POST(request: NextRequest) {
     bandText = parsedBody.bandText;
     hwpText = parsedBody.hwpText;
     golfCourseInfo = parsedBody.golfCourseInfo;
+    golfCoursesJson = parsedBody.golfCoursesJson;
     productSourceUrl = parsedBody.productSourceUrl;
     imageFiles = parsedBody.imageFiles;
     stagingImagePaths = parsedBody.stagingImagePaths;
@@ -195,6 +229,7 @@ export async function POST(request: NextRequest) {
     bandText,
     hwpText,
     golfCourseInfo,
+    golfCoursesJson,
     productSourceUrl: productSourceUrl || null,
   });
 

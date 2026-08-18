@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Modal } from "@/components/ui/Modal";
+import type { GolfCourseInfoItem } from "@/types/product";
 
 const PLACEHOLDER_DESCRIPTION = "상품 설명을 확인해 주세요.";
 const COLLAPSE_LINE_LIMIT = 12;
@@ -55,19 +57,33 @@ function CollapsiblePlainText({ text, expandLabel }: { text: string; expandLabel
 export type ProductDescriptionSectionProps = {
   description?: string | null;
   golfCourseInfo?: string | null;
+  golfCourses?: GolfCourseInfoItem[] | null;
 };
 
 export function ProductDescriptionSection({
   description,
   golfCourseInfo,
+  golfCourses,
 }: ProductDescriptionSectionProps) {
   const descText = useMemo(() => description?.replace(/\r\n/g, "\n").trim() ?? "", [description]);
   const golfText = useMemo(
     () => golfCourseInfo?.replace(/\r\n/g, "\n").trim() ?? "",
     [golfCourseInfo],
   );
+  const normalizedCourses = useMemo(
+    () =>
+      (golfCourses ?? [])
+        .map((course) => ({
+          name: course.name?.trim() ?? "",
+          content: course.content?.trim() ?? "",
+        }))
+        .filter((course) => course.name.length > 0 && course.content.length > 0),
+    [golfCourses],
+  );
+  const [activeCourseIndex, setActiveCourseIndex] = useState<number | null>(null);
+  const activeCourse = activeCourseIndex != null ? normalizedCourses[activeCourseIndex] : null;
   const showDesc = shouldShowProductDescription(descText);
-  const showGolf = shouldShowGolfCourseInfo(golfText);
+  const showGolf = normalizedCourses.length > 0 || shouldShowGolfCourseInfo(golfText);
   const twoCol = showDesc && showGolf;
 
   if (!showDesc && !showGolf) return null;
@@ -87,10 +103,49 @@ export function ProductDescriptionSection({
         {showGolf ? (
           <div className={twoCol ? "md:border-l md:border-slate-200 md:pl-8" : undefined}>
             <h2 className="mb-4 text-lg font-bold text-[var(--primary)]">골프장 정보</h2>
-            <CollapsiblePlainText text={golfText} expandLabel="더보기" />
+            {normalizedCourses.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {normalizedCourses.map((course, index) => (
+                  <button
+                    key={`${course.name}-${index}`}
+                    type="button"
+                    onClick={() => setActiveCourseIndex(index)}
+                    className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                  >
+                    {course.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <CollapsiblePlainText text={golfText} expandLabel="더보기" />
+            )}
           </div>
         ) : null}
       </div>
+      <Modal
+        isOpen={activeCourse != null}
+        onClose={() => setActiveCourseIndex(null)}
+        aria-label={activeCourse ? `${activeCourse.name} 골프장 정보` : "골프장 정보"}
+        className="w-full max-w-2xl"
+      >
+        {activeCourse ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold text-[var(--text-primary)]">{activeCourse.name}</h3>
+              <button
+                type="button"
+                onClick={() => setActiveCourseIndex(null)}
+                className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+              >
+                닫기
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+              {activeCourse.content}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </section>
   );
 }

@@ -10,6 +10,10 @@ import {
   externalItineraryOnlySchema,
   type ExternalParsedItineraryV2,
 } from "@/lib/admin/externalImport/externalProductSchema";
+import {
+  THEME_CHART_PROMPT_RULES,
+  type ThemeChartJson,
+} from "@/lib/admin/themeChartSchema";
 import type { ItineraryBlock } from "@/lib/admin/externalImport/itineraryBlockTypes";
 import type { ExternalProvider } from "@/lib/admin/externalImport/detectExternalProvider";
 import { getExternalProviderLabel } from "@/lib/admin/externalImport/detectExternalProvider";
@@ -81,7 +85,7 @@ Rules:
 - title: copy the page product name EXACTLY as shown (include [brackets], inline #keywords, all spaces). Do NOT shorten or clean up.
 - seo_hashtags: extract only from the separate "AI 해시태그" section. Do NOT include hashtags that are part of the product title string.`;
 
-const ITINERARY_HTML_PROMPT = `Extract itinerary_v2_json from sanitized HTML.
+const ITINERARY_HTML_PROMPT = `Extract itinerary_v2_json and theme_chart_json from sanitized HTML.
 Rules:
 - Analyze DOM sequence top-to-bottom. Tag placement encodes context.
 - Split days using 'N일차' or '제 N일' markers in the HTML text.
@@ -94,7 +98,8 @@ Rules:
 - Create separate events per attraction, meal, flight, hotel check-in, and major move.
 - event.description must preserve full source paragraphs. Do NOT summarize, paraphrase, or shorten.
 - When [DOM itineraryBlocks] are provided below, copy each block's description VERBATIM onto the matching heading event. Prefer those block descriptions over HTML paraphrases. Do not invent text missing from the blocks/HTML.
-- Use empty imageUrls array when no valid POI photo exists for an event.`;
+- Use empty imageUrls array when no valid POI photo exists for an event.
+${THEME_CHART_PROMPT_RULES}`;
 
 const MAX_BLOCK_ANCHOR_CHARS = 24_000;
 
@@ -187,12 +192,22 @@ export async function parseExternalProductMeta(
   return object;
 }
 
+export type ParseExternalItineraryResult = {
+  itinerary_v2_json: ExternalParsedItineraryV2 | null;
+  theme_chart_json: ThemeChartJson | null;
+};
+
+const EMPTY_ITINERARY_RESULT: ParseExternalItineraryResult = {
+  itinerary_v2_json: null,
+  theme_chart_json: null,
+};
+
 export async function parseExternalItineraryFromHtml(
   input: ParseExternalProductPageInput,
-): Promise<ExternalParsedItineraryV2> {
+): Promise<ParseExternalItineraryResult> {
   const { content } = resolveItineraryContent(input);
   if (!content) {
-    return null;
+    return EMPTY_ITINERARY_RESULT;
   }
 
   const { object } = await generateObject({
@@ -202,7 +217,10 @@ export async function parseExternalItineraryFromHtml(
     prompt: buildItineraryPrompt(input),
   });
 
-  return object.itinerary_v2_json;
+  return {
+    itinerary_v2_json: object.itinerary_v2_json,
+    theme_chart_json: object.theme_chart_json ?? null,
+  };
 }
 
 /** @deprecated use parseExternalItineraryFromHtml */
@@ -217,18 +235,23 @@ export async function parseExternalProductPage(input: {
 }): Promise<{
   meta: ExternalParsedMeta;
   aiItineraryFallback: ExternalParsedItineraryV2 | null;
+  theme_chart_json: ThemeChartJson | null;
 }> {
   const itineraryPromise = parseExternalItineraryFromHtml(input).catch((error) => {
     console.warn("[import-external] itinerary AI parse failed:", error);
-    return null;
+    return EMPTY_ITINERARY_RESULT;
   });
 
-  const [meta, aiItineraryFallback] = await Promise.all([
+  const [meta, itineraryResult] = await Promise.all([
     parseExternalProductMeta(input),
     itineraryPromise,
   ]);
 
-  return { meta, aiItineraryFallback };
+  return {
+    meta,
+    aiItineraryFallback: itineraryResult.itinerary_v2_json,
+    theme_chart_json: itineraryResult.theme_chart_json,
+  };
 }
 
 export function formatExternalParseError(error: unknown): string {

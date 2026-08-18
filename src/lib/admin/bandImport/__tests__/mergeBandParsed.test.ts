@@ -70,10 +70,22 @@ describe("mergeBandParsed", () => {
           meals: { breakfast: null, lunch: null, dinner: null },
         },
       ],
+      theme_chart_json: {
+        items: [
+          { label: "골프", percent: 70 },
+          { label: "관광", percent: 30 },
+        ],
+      },
     };
 
     const merged = mergeBandParsed(meta, itinerary);
     expect(merged.title).toBe("연태 골프");
     expect(merged.itinerary_v2_json).toHaveLength(1);
+    expect(merged.theme_chart_json).toEqual({
+      items: [
+        { label: "골프", percent: 70 },
+        { label: "관광", percent: 30 },
+      ],
+    });
   });
 });

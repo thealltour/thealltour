@@ -9,5 +9,6 @@ export function mergeBandParsed(
   return {
     ...meta,
     itinerary_v2_json: itinerary.itinerary_v2_json,
+    theme_chart_json: itinerary.theme_chart_json ?? null,
   };
 }

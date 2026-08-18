@@ -102,11 +102,28 @@ export function useDashboardData() {
     queryKey: ["admin-dashboard-recent-notifications"],
     queryFn: async () => {
       const response = await fetch("/api/admin/notifications", { cache: "no-store" });
-      const json = (await response.json()) as NotificationsApiResponse;
+      const text = await response.text();
       if (!response.ok) {
-        throw new Error(json.message ?? "Failed to fetch notifications");
+        // 응답 body가 비어있으면 response.json()에서 또 에러가 나서, 여기서 최대한 안전 처리
+        if (!text.trim()) {
+          throw new Error("Failed to fetch notifications");
+        }
+        try {
+          const json = JSON.parse(text) as NotificationsApiResponse;
+          throw new Error(json.message ?? "Failed to fetch notifications");
+        } catch {
+          throw new Error("Failed to fetch notifications");
+        }
       }
-      return takePriorityNotifications(json.notifications ?? [], 3);
+
+      if (!text.trim()) return [];
+      try {
+        const json = JSON.parse(text) as NotificationsApiResponse;
+        return takePriorityNotifications(json.notifications ?? [], 3);
+      } catch {
+        // Unexpected end of JSON input 같은 케이스 방어: 빈/깨진 응답이면 최근 알림은 비우고 계속 진행
+        return [];
+      }
     },
   });
 

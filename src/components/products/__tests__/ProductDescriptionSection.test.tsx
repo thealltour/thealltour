@@ -70,6 +70,21 @@ describe("ProductDescriptionSection", () => {
     expect(screen.queryByRole("heading", { name: "골프장 정보" })).toBeNull();
   });
 
+  it("shows golf course chips and opens modal", () => {
+    render(
+      <ProductDescriptionSection
+        description="밴드 특가"
+        golfCourses={[
+          { name: "수트라하버 GC", content: "바다 전망 코스 정보" },
+          { name: "달릿베이 GC", content: "산악 지형 코스 정보" },
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "수트라하버 GC" }));
+    expect(screen.getByRole("dialog", { name: "수트라하버 GC 골프장 정보" })).toBeTruthy();
+    expect(screen.getByText("바다 전망 코스 정보")).toBeTruthy();
+  });
+
   it("renders golf course info alone when description is missing", () => {
     render(<ProductDescriptionSection description="" golfCourseInfo="클럽하우스 안내" />);
     expect(screen.getByRole("region", { name: "골프장 정보" })).toBeTruthy();

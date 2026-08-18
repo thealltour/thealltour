@@ -173,11 +173,18 @@
       if (scope) {
         if (scope.getAttribute?.("role") === "tablist") return scope;
         const inner = scope.querySelector?.('[role="tablist"]');
-        if (inner && !ui.isSiteChrome?.(inner)) return inner;
-        if (scope !== doc && !ui.isSiteChrome?.(scope)) return scope;
+        if (inner && (!ui.isSiteChrome?.(inner) || /여행\s*일정|상품\s*안내/.test(ui.elementText?.(inner) ?? inner.textContent ?? ""))) {
+          return inner;
+        }
+        if (scope !== doc) return scope;
       }
     }
-    return null;
+    const root = ui?.findProductContentRoot?.(doc) ?? doc.querySelector("main");
+    if (!root) return null;
+    const byText = [...root.querySelectorAll('[role="tab"], button, a, [role="button"]')].find((el) =>
+      /여행\s*일정|상품\s*안내|호텔\s*&\s*관광지|선택관광/.test((el.textContent ?? "").replace(/\s+/g, " ")),
+    );
+    return byText?.closest('[role="tablist"]') ?? byText?.parentElement ?? root;
   }
 
   function clickIfSafe(el) {
@@ -250,7 +257,10 @@
 
   function clickExpandAllItinerary(doc) {
     const ui = global.HanatourItineraryUiPrep;
-    const scope = ui?.findItineraryTabPanel?.(doc) ?? ui?.findProductTabScope?.(doc);
+    const scope =
+      ui?.findItineraryTabPanel?.(doc) ??
+      ui?.findProductTabScope?.(doc) ??
+      ui?.findProductContentRoot?.(doc);
     if (!scope) return false;
     const groups = [
       scope.querySelectorAll("button, [role='tab'], [role='button']"),
@@ -461,16 +471,24 @@
 
 
 
+  function stripInstallmentMetaLines(text) {
+    return text
+      .split(/\n/)
+      .filter((line) => {
+        if (/무이자\s*할부|할부\s*예상가|카드사별\s*무이자/.test(line)) return false;
+        if (/월\s*[\d,]+원/.test(line) && /할부|무이자|예상가/.test(line)) return false;
+        if (/^\s*월\s*[\d,]+원/.test(line)) return false;
+        return true;
+      })
+      .join("\n");
+  }
+
   function buildPageTextForMeta(doc, maxChars) {
-
     const limit = maxChars ?? 18000;
-
     const root = doc.querySelector("main") ?? doc.body;
-
-    const text = (root?.innerText ?? "").replace(/\n{3,}/g, "\n\n").trim();
-
+    const raw = (root?.innerText ?? "").replace(/\n{3,}/g, "\n\n").trim();
+    const text = stripInstallmentMetaLines(raw);
     return text.length > limit ? `${text.slice(0, limit)}\n…(truncated)` : text;
-
   }
 
 
@@ -708,35 +726,49 @@
 
 
   function findHeroGalleryRoot(doc) {
-
     const main = doc.querySelector("main") ?? doc.body;
-
     if (!main) return null;
+    const ui = global.HanatourItineraryUiPrep;
 
+    function scoreGallery(el) {
+      if (!el) return -1;
+      if (isInsideItineraryPanel(el)) return -1;
+      if (ui?.isSiteChrome?.(el) && !ui?.isProductUiClick?.(el)) return -1;
+      const slides = el.querySelectorAll(".swiper-slide, [class*='swiper-slide'], img");
+      let imgs = 0;
+      el.querySelectorAll("img").forEach(() => {
+        imgs += 1;
+      });
+      const rect = el.getBoundingClientRect?.();
+      const area = rect ? Math.max(0, rect.width) * Math.max(0, rect.height) : 0;
+      return slides.length * 10 + imgs * 5 + Math.min(area / 20000, 20);
+    }
 
+    const swipers = [...main.querySelectorAll(".swiper, [class*='swiper']")];
+    let best = null;
+    let bestScore = 0;
+    for (const el of swipers) {
+      const s = scoreGallery(el);
+      if (s > bestScore) {
+        bestScore = s;
+        best = el;
+      }
+    }
+    if (best && bestScore > 0) return best;
 
-    const swipers = [...main.querySelectorAll(".swiper, [class*='swiper']")].filter(
-
-      (el) => !isInsideItineraryPanel(el),
-
-    );
-
-    if (swipers.length > 0) return swipers[0];
-
-
-
-    const galleries = [...main.querySelectorAll("[class*='gallery']")].filter(
-
-      (el) => !isInsideItineraryPanel(el),
-
-    );
-
-    if (galleries.length > 0) return galleries[0];
-
-
+    const galleries = [...main.querySelectorAll("[class*='gallery']")];
+    best = null;
+    bestScore = 0;
+    for (const el of galleries) {
+      const s = scoreGallery(el);
+      if (s > bestScore) {
+        bestScore = s;
+        best = el;
+      }
+    }
+    if (best && bestScore > 0) return best;
 
     return main;
-
   }
 
 

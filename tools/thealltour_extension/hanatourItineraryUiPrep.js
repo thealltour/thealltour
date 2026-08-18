@@ -49,52 +49,80 @@
     return `${id} ${cls}`;
   }
 
+  function isInsideCalendarWidget(el) {
+    const open = global.HanatourCalendarOpen;
+    const doc = el?.ownerDocument;
+    if (!open?.findCalendarWidgetRoot || !doc) return false;
+    const root = open.findCalendarWidgetRoot(doc);
+    return Boolean(root && el && root.contains(el));
+  }
+
+  function isGalleryNavEl(el) {
+    if (!el) return false;
+    const cls = typeof el.className === "string" ? el.className : "";
+    const aria = (el.getAttribute?.("aria-label") ?? "").toLowerCase();
+    return (
+      /swiper-button-next|swiper-button-prev/i.test(cls) ||
+      /next|이전|다음|slide-next|slide-prev|arrow-right|arrow-left/i.test(cls) ||
+      /next|prev|이전|다음/.test(aria)
+    );
+  }
+
+  function isProductUiClick(el) {
+    if (!el) return false;
+    if (isInsideCalendarWidget(el) || isGalleryNavEl(el)) return true;
+    const text = elementText(el).replace(/\s+/g, " ");
+    if (PRODUCT_TAB_RE.test(text)) return true;
+    if (DAY_TAB_REGEX.test(text) || DAY_ACCORDION_HEADER.test(text)) return true;
+    if (/일정\s*전체\s*펼침|전체\s*펼침/i.test(text)) return true;
+    const tablist = el.closest?.('[role="tablist"]');
+    if (tablist && PRODUCT_TAB_RE.test(elementText(tablist))) return true;
+    return false;
+  }
+
   function isSiteChrome(el) {
     if (!el?.closest) return false;
-    if (el.closest(SITE_CHROME_SELECTOR)) return true;
+    if (isProductUiClick(el) || isInsideCalendarWidget(el)) return false;
+
+    const chrome = el.closest(SITE_CHROME_SELECTOR);
+    if (chrome) return true;
+
     const form = el.closest("form");
-    if (form) {
+    if (form && !isInsideCalendarWidget(form)) {
       const action = `${form.getAttribute("action") ?? ""} ${classAndId(form)}`;
-      if (/search|keyword|all-search/i.test(action)) return true;
-    }
-    let node = el;
-    for (let i = 0; i < 14 && node && node !== el.ownerDocument?.body; i += 1) {
-      if (SITE_CHROME_ATTR_RE.test(classAndId(node))) return true;
-      node = node.parentElement;
-    }
-    const win = el.ownerDocument?.defaultView;
-    if (win) {
-      let sticky = el;
-      for (let i = 0; i < 10 && sticky && sticky !== el.ownerDocument.body; i += 1) {
-        const style = win.getComputedStyle(sticky);
-        if (style.position === "fixed" || style.position === "sticky") {
-          const rect = sticky.getBoundingClientRect();
-          const text = elementText(sticky).slice(0, 200);
-          if (PRODUCT_TAB_RE.test(text) && !/전체메뉴/.test(text.slice(0, 40))) {
-            break;
-          }
-          if (rect.top <= 16 && rect.height > 0 && rect.height <= 260) return true;
-        }
-        sticky = sticky.parentElement;
+      if (/search|keyword|all-search/i.test(action) && form.closest(SITE_CHROME_SELECTOR)) {
+        return true;
       }
+    }
+
+    let node = el;
+    for (let i = 0; i < 8 && node && node !== el.ownerDocument?.body; i += 1) {
+      const idCls = classAndId(node);
+      if (SITE_CHROME_ATTR_RE.test(idCls) && !PRODUCT_TAB_RE.test(elementText(node).slice(0, 200))) {
+        return true;
+      }
+      node = node.parentElement;
     }
     return false;
   }
 
   function isSearchControl(el) {
     if (!el) return false;
+    if (isInsideCalendarWidget(el) || isProductUiClick(el)) return false;
     const type = (el.getAttribute?.("type") ?? el.type ?? "").toLowerCase();
-    if (type === "submit") return true;
-    if (el.closest?.("[role='search']")) return true;
-    const form = el.closest?.("form");
-    if (form?.querySelector("input[type='search'], input[name*='keyword' i], input[placeholder*='검색']")) {
-      if (isSiteChrome(form) || form.closest(SITE_CHROME_SELECTOR)) return true;
-    }
+    if (type === "submit" && el.closest(SITE_CHROME_SELECTOR)) return true;
+    if (el.closest?.("[role='search']") && !isProductUiClick(el)) return true;
     return false;
   }
 
   function isInPageHref(href, doc, el) {
     const raw = (href || "").trim();
+    if (el && (isInsideCalendarWidget(el) || isProductUiClick(el))) {
+      if (!raw || raw === "#" || raw.startsWith("#") || raw.toLowerCase().startsWith("javascript:")) {
+        return true;
+      }
+      if (NAV_HREF_RE.test(raw) && isInsideCalendarWidget(el)) return true;
+    }
     if (!raw || raw === "#" || raw.startsWith("#") || raw.toLowerCase().startsWith("javascript:")) {
       if (
         el &&
@@ -121,16 +149,15 @@
   }
 
   function isInTopChromeBand(el) {
+    if (isProductUiClick(el) || isInsideCalendarWidget(el)) return false;
     const rect = el.getBoundingClientRect?.();
     if (!rect || rect.top > 96) return false;
-    const tablist = el.closest?.('[role="tablist"]');
-    if (tablist && PRODUCT_TAB_RE.test(elementText(tablist))) return false;
-    if (el.closest?.('[role="tabpanel"]') && !isSiteChrome(el)) return false;
     return true;
   }
 
   function isSafeClickTarget(el) {
     if (!el) return false;
+    if (isInsideCalendarWidget(el) || isProductUiClick(el)) return true;
     if (isSiteChrome(el) || isSearchControl(el) || isInTopChromeBand(el)) return false;
     const text = elementText(el).replace(/\s+/g, " ");
     const short = text.slice(0, 24).trim();
@@ -152,30 +179,37 @@
     return isSiteChrome(el);
   }
 
+  function findProductContentRoot(doc) {
+    if (!doc) return null;
+    return doc.querySelector("main") ?? doc.body ?? null;
+  }
+
   /** GNB가 아닌 상품 상세 탭/본문 범위 */
   function findProductTabScope(doc) {
     if (!doc) return null;
     const roots = [doc.querySelector("main"), doc.body].filter(Boolean);
     for (const root of roots) {
       for (const tablist of root.querySelectorAll('[role="tablist"]')) {
-        if (isSiteChrome(tablist)) continue;
+        if (isSiteChrome(tablist) && !PRODUCT_TAB_RE.test(elementText(tablist))) continue;
         if (PRODUCT_TAB_RE.test(elementText(tablist))) return tablist;
       }
     }
     for (const root of roots) {
-      for (const tablist of root.querySelectorAll('[role="tablist"]')) {
-        if (!isSiteChrome(tablist)) return tablist;
+      const candidates = root.querySelectorAll('[role="tab"], button, a, [role="button"]');
+      for (const el of candidates) {
+        if (isSiteChrome(el) && !isProductUiClick(el)) continue;
+        if (PRODUCT_TAB_RE.test(elementText(el).replace(/\s+/g, " "))) {
+          return el.closest('[role="tablist"]') ?? el.parentElement ?? root;
+        }
       }
     }
-    const main = doc.querySelector("main");
-    if (main && !isSiteChrome(main)) return main;
-    return null;
+    return findProductContentRoot(doc);
   }
 
   function findItineraryTabPanel(doc) {
     const panels = doc.querySelectorAll('[role="tabpanel"]');
     for (const panel of panels) {
-      if (isSiteChrome(panel)) continue;
+      if (isSiteChrome(panel) && !PRODUCT_TAB_RE.test(elementText(panel).slice(0, 200))) continue;
       if (panel.getAttribute("aria-hidden") === "true") continue;
       const text = elementText(panel);
       if (/일차/.test(text) && text.length > 80) return panel;
@@ -186,7 +220,7 @@
         return panel;
       }
     }
-    return null;
+    return findProductContentRoot(doc);
   }
 
   function clickExpandAllItineraryInScope(scope) {
@@ -456,8 +490,11 @@
     elementText,
     isSafeClickTarget,
     isSiteChrome,
+    isInsideCalendarWidget,
+    isProductUiClick,
     safeClick,
     findProductTabScope,
+    findProductContentRoot,
     findItineraryTabPanel,
     clickExpandAllItineraryInScope,
     findDaySubTabs,

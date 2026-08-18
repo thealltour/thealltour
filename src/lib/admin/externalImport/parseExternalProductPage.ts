@@ -23,6 +23,10 @@ import {
   stripHtmlToText,
   truncatePageContent,
 } from "@/lib/admin/externalImport/htmlContextExtract";
+import {
+  preferTotalPriceOverInstallment,
+  stripInstallmentMetaText,
+} from "@/lib/admin/externalImport/preferTotalPriceOverInstallment";
 
 /** 메타: plain text만 (HTML 전체 금지 — TPM 초과 방지) */
 const MAX_META_CHARS = 18_000;
@@ -40,11 +44,21 @@ export type ParseExternalProductPageInput = {
 
 function resolveMetaContent(input: ParseExternalProductPageInput): string {
   const text = input.rawHtmlText?.trim();
-  if (text) return truncatePageContent(text, MAX_META_CHARS);
+  if (text) return stripInstallmentMetaText(truncatePageContent(text, MAX_META_CHARS));
   const html = input.cleanHtmlStructure?.trim();
   if (html) {
-    return truncatePageContent(stripHtmlToText(html), MAX_META_CHARS);
+    return stripInstallmentMetaText(
+      truncatePageContent(stripHtmlToText(html), MAX_META_CHARS),
+    );
   }
+  return "";
+}
+
+function resolveOriginalMetaText(input: ParseExternalProductPageInput): string {
+  const text = input.rawHtmlText?.trim();
+  if (text) return text;
+  const html = input.cleanHtmlStructure?.trim();
+  if (html) return stripHtmlToText(html);
   return "";
 }
 
@@ -74,7 +88,9 @@ Rules:
 - Do NOT invent prices or flights not in the text.
 - Do NOT select images or build itinerary — server handles those separately.
 - description: product summary/selling points, not day-by-day schedule.
-- price: integer KRW only (strip commas). null if absent.
+- price: integer KRW for the adult 1-person TOTAL fare (strip commas). null if absent.
+- Ignore installment quotes: 할부, 무이자, 월 n원, 할부 예상가, 카드사별 무이자. Those are monthly amounts, not the product price.
+- ModeTour (모두투어) "예상가" next to ₩ amount IS the product price when it is NOT an installment (no 할부/월).
 - theme: travel style/themes only (e.g. 관광, 다이닝). NEVER put themes in departure_region.
 - departure_region: geographic departure area only (e.g. 인천, 김포).
 - included_items, excluded_items, optional_expenses: copy VERBATIM from source.
@@ -190,7 +206,10 @@ export async function parseExternalProductMeta(
     prompt: buildMetaPrompt(input),
   });
 
-  return object;
+  return {
+    ...object,
+    price: preferTotalPriceOverInstallment(object.price, resolveOriginalMetaText(input)),
+  };
 }
 
 export type ParseExternalItineraryResult = {

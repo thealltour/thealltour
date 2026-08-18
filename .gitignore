@@ -62,6 +62,11 @@ tools/hanatour-extractor-extension/dist
 tools/modetour-extractor-extension/node_modules
 tools/modetour-extractor-extension/build
 tools/modetour-extractor-extension/dist
+tools/thealltour_extension/build
+
+# Tools-page download zips (committed; do not ignore)
+!public/extension-builds/
+!public/extension-builds/**
 
 # logs
 *.log

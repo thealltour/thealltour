@@ -39,3 +39,18 @@ export function extensionZipStoragePath(slug: ExtensionSlug): string {
 export function extensionManifestStoragePath(slug: ExtensionSlug): string {
   return `${slug}/manifest.json`;
 }
+
+/** Vercel 배포에 포함되는 다운로드 아티팩트 (git에 커밋). */
+export const COMMITTED_EXTENSION_BUILDS_DIR = "public/extension-builds";
+
+export function committedExtensionDirRel(slug: ExtensionSlug): string {
+  return `${COMMITTED_EXTENSION_BUILDS_DIR}/${slug}`;
+}
+
+export function committedExtensionZipRelPath(slug: ExtensionSlug): string {
+  return `${committedExtensionDirRel(slug)}/latest.zip`;
+}
+
+export function committedExtensionManifestRelPath(slug: ExtensionSlug): string {
+  return `${committedExtensionDirRel(slug)}/manifest.json`;
+}

@@ -6,6 +6,7 @@ on:
     paths:
       - "tools/modetour-extractor-extension/**"
       - "tools/thealltour_extension/**"
+      - "public/extension-builds/**"
       - "scripts/upload-extension-builds.mjs"
       - ".github/workflows/extension-builds.yml"
   workflow_dispatch:
@@ -34,6 +35,10 @@ jobs:
         working-directory: tools/thealltour_extension
         run: |
           npm run package
+
+      - name: Verify committed thealltour-extension download zip
+        run: |
+          node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('tools/thealltour_extension/package.json','utf8')); const man=JSON.parse(fs.readFileSync('public/extension-builds/thealltour-extension/manifest.json','utf8')); if (pkg.version!==man.version) { throw new Error('Committed download is v'+man.version+' but source is v'+pkg.version+'. Run npm run extensions:package:local -- --slug=thealltour-extension and commit public/extension-builds.'); } const zip=fs.statSync('public/extension-builds/thealltour-extension/latest.zip'); if (!zip.size) throw new Error('latest.zip is empty'); console.log('ok committed thealltour-extension v'+man.version+' ('+zip.size+' bytes)');"
 
       - name: Upload to Supabase Storage
         env:

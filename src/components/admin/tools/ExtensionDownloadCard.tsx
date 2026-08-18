@@ -112,9 +112,10 @@ export default function ExtensionDownloadCard({ slug }: ExtensionDownloadCardPro
               <p className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2 text-sm text-[var(--warning)]">
                 아직 업로드된 빌드가 없습니다. 로컬에서{" "}
                 <code className="rounded bg-black/5 px-1 py-0.5 text-xs dark:bg-white/10">
-                  npm run extensions:package
+                  npm run extensions:package:local -- --slug={slug}
                 </code>{" "}
-                실행 후 다시 시도해 주세요.
+                실행 후 <code className="rounded bg-black/5 px-1 py-0.5 text-xs dark:bg-white/10">public/extension-builds</code>{" "}
+                를 커밋·push 해 주세요.
               </p>
             ) : null}
 

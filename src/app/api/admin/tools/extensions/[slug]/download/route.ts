@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminPermission } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { readCommittedExtensionManifest, readCommittedExtensionZip } from "@/lib/extensionBuildFiles";
 import {
   EXTENSION_BUILDS_BUCKET,
   EXTENSION_DISPLAY,
@@ -12,6 +13,17 @@ import {
 
 type RouteContext = { params: Promise<{ slug: string }> };
 
+function zipResponse(buffer: Buffer, fileName: string) {
+  return new NextResponse(new Uint8Array(buffer), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${fileName}"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export async function GET(_request: Request, context: RouteContext) {
   const auth = await requireAdminPermission("tools.view");
   if (!auth.ok) return auth.res;
@@ -19,6 +31,11 @@ export async function GET(_request: Request, context: RouteContext) {
   const { slug } = await context.params;
   if (!isExtensionSlug(slug)) {
     return NextResponse.json({ message: "지원하지 않는 익스텐션입니다." }, { status: 404 });
+  }
+
+  const committed = readCommittedExtensionZip(slug);
+  if (committed) {
+    return zipResponse(committed.buffer, committed.fileName);
   }
 
   const zipPath = extensionZipStoragePath(slug);
@@ -45,15 +62,11 @@ export async function GET(_request: Request, context: RouteContext) {
     } catch {
       // fallback fileName
     }
+  } else {
+    const committedManifest = readCommittedExtensionManifest(slug);
+    if (committedManifest?.fileName) fileName = committedManifest.fileName;
   }
 
-  const buffer = await zipBlob.arrayBuffer();
-  return new NextResponse(buffer, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
-      "Cache-Control": "no-store",
-    },
-  });
+  const buffer = Buffer.from(await zipBlob.arrayBuffer());
+  return zipResponse(buffer, fileName);
 }

@@ -24,6 +24,9 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/api/admin/tools/extensions/**/*": ["./public/extension-builds/**/*"],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "110mb",
@@ -153,6 +156,15 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/extension-builds/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, max-age=0, must-revalidate",
+          },
+        ],
+      },
       {
         source: "/:path*",
         headers: [

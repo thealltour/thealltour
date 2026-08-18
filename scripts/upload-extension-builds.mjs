@@ -1,14 +1,18 @@
 /**
- * Chrome 익스텐션 ZIP 패키징 후 Supabase Storage(extension-builds) 업로드
+ * Chrome 익스텐션 ZIP 패키징 → public/extension-builds 복사(git 커밋용) → Supabase 업로드
  *
  * 사용:
  *   node scripts/upload-extension-builds.mjs
  *   node scripts/upload-extension-builds.mjs --skip-upload
  *   node scripts/upload-extension-builds.mjs --slug=thealltour-extension
  *
- * 필요 env (.env.local): NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * 도구 페이지 다운로드의 1차 소스는 git에 커밋된
+ * `public/extension-builds/<slug>/latest.zip` 입니다. 패키징 후 이 파일을
+ * 커밋·push 해야 운영 배포에서 새 버전이 내려받힙니다.
  *
- * CI: main 브랜치 push 시 `.github/workflows/extension-builds.yml`이 자동 업로드합니다.
+ * 필요 env (.env.local, 업로드 시): NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ *
+ * CI: main 브랜치 push 시 `.github/workflows/extension-builds.yml`이 Supabase에도 올립니다.
  * GitHub Secrets: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
 import { createClient } from "@supabase/supabase-js";
@@ -56,9 +60,10 @@ function loadEnvLocal() {
 function parseArgs(argv) {
   const skipUpload = argv.includes("--skip-upload");
   const skipPackage = argv.includes("--skip-package");
+  const skipPublic = argv.includes("--skip-public");
   const slugArg = argv.find((a) => a.startsWith("--slug="));
   const slugFilter = slugArg ? slugArg.split("=")[1] : null;
-  return { skipUpload, skipPackage, slugFilter };
+  return { skipUpload, skipPackage, skipPublic, slugFilter };
 }
 
 function findZipFile(buildDir) {
@@ -89,6 +94,33 @@ function runPackage(extensionDir) {
   });
 }
 
+function copyToPublic(slug, zipPath, zipName, version) {
+  const destDir = path.join(ROOT, "public", "extension-builds", slug);
+  fs.mkdirSync(destDir, { recursive: true });
+
+  const latestPath = path.join(destDir, "latest.zip");
+  fs.copyFileSync(zipPath, latestPath);
+  const versionedPath = path.join(destDir, zipName);
+  if (path.resolve(versionedPath) !== path.resolve(latestPath)) {
+    fs.copyFileSync(zipPath, versionedPath);
+  }
+
+  for (const name of fs.readdirSync(destDir)) {
+    if (!name.toLowerCase().endsWith(".zip")) continue;
+    if (name === "latest.zip" || name === zipName) continue;
+    fs.unlinkSync(path.join(destDir, name));
+  }
+
+  const manifest = {
+    version,
+    uploadedAt: new Date().toISOString(),
+    fileName: zipName,
+  };
+  fs.writeFileSync(path.join(destDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  const bytes = fs.statSync(latestPath).size;
+  console.log(`[ok] public copy ${slug} v${version} → public/extension-builds/${slug}/ (${zipName}, ${bytes} bytes)`);
+}
+
 async function ensureBucket(supabase) {
   const { data: buckets, error: listError } = await supabase.storage.listBuckets();
   if (listError) {
@@ -113,17 +145,24 @@ async function ensureBucket(supabase) {
   console.log(`[ok] Created storage bucket: ${BUCKET}`);
 }
 
-async function uploadExtension(supabase, { slug, dir }) {
+function resolveBuiltZip(dir) {
   const extensionDir = path.join(ROOT, dir);
   const buildDir = path.join(extensionDir, "build");
   const zipName = findZipFile(buildDir);
   if (!zipName) {
     throw new Error(`ZIP not found in ${buildDir}. Run npm run package first.`);
   }
+  return {
+    extensionDir,
+    zipName,
+    zipPath: path.join(buildDir, zipName),
+    version: readPackageVersion(extensionDir),
+  };
+}
 
-  const zipPath = path.join(buildDir, zipName);
+async function uploadExtension(supabase, { slug, dir }) {
+  const { zipName, zipPath, version } = resolveBuiltZip(dir);
   const zipBuffer = fs.readFileSync(zipPath);
-  const version = readPackageVersion(extensionDir);
   const uploadedAt = new Date().toISOString();
   const storageZipPath = `${slug}/latest.zip`;
   const storageManifestPath = `${slug}/manifest.json`;
@@ -160,7 +199,7 @@ async function uploadExtension(supabase, { slug, dir }) {
 }
 
 async function main() {
-  const { skipUpload, skipPackage, slugFilter } = parseArgs(process.argv.slice(2));
+  const { skipUpload, skipPackage, skipPublic, slugFilter } = parseArgs(process.argv.slice(2));
   const targets = EXTENSIONS.filter((ext) => !slugFilter || ext.slug === slugFilter);
   if (targets.length === 0) {
     console.error("No matching extension slug.");
@@ -173,8 +212,15 @@ async function main() {
     }
   }
 
+  if (!skipPublic) {
+    for (const ext of targets) {
+      const built = resolveBuiltZip(ext.dir);
+      copyToPublic(ext.slug, built.zipPath, built.zipName, built.version);
+    }
+  }
+
   if (skipUpload) {
-    console.log("\n[done] --skip-upload: local package only.");
+    console.log("\n[done] --skip-upload: packaged and copied to public/extension-builds. Commit that folder to ship downloads.");
     return;
   }
 

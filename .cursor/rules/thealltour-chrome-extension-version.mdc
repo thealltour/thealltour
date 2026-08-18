@@ -1,0 +1,27 @@
+---
+description: 통합(하나투어) Chrome 익스텐션 버전·다운로드 ZIP 커밋 규칙
+globs: tools/thealltour_extension/**/*
+alwaysApply: false
+---
+
+# Chrome 익스텐션 규칙 (thealltour_extension)
+
+## 버전
+
+- `tools/thealltour_extension/package.json`과 `manifest.json`의 `version`을 같이 올린다.
+- Semantic Versioning (`MAJOR.MINOR.PATCH`). 버그 수정은 PATCH, 수집 범위·기능은 MINOR, 권한/매칭 변경은 MAJOR.
+
+## 다운로드 페이지에 올리기 (필수)
+
+도구 페이지(` /theall_manager_only/tools/thealltour-extension `)는 git에 커밋된
+`public/extension-builds/thealltour-extension/latest.zip`을 내려준다.
+소스만 커밋하고 ZIP을 안 넣으면 운영 배포 후에도 버전이 바뀌지 않는다.
+
+`tools/thealltour_extension/`을 수정했다면 같은 작업에서:
+
+1. 버전을 한 단계 올린다.
+2. 저장소 루트에서 `npm run extensions:package:local -- --slug=thealltour-extension` 를 실행한다.
+3. `public/extension-builds/thealltour-extension/` (`latest.zip`, `manifest.json`, 버전 ZIP)을 커밋한다.
+4. `origin`(보통 main)에 push 한다. 운영 사이트는 main 배포 후 새 ZIP을 제공한다.
+
+`tools/*/build`는 gitignore된다. 다운로드용 산출물은 반드시 `public/extension-builds/`에 둔다.

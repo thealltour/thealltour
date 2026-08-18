@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminPermission } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { readCommittedExtensionManifest } from "@/lib/extensionBuildFiles";
 import {
   EXTENSION_BUILDS_BUCKET,
   extensionManifestStoragePath,
@@ -17,6 +18,15 @@ export async function GET(_request: Request, context: RouteContext) {
   const { slug } = await context.params;
   if (!isExtensionSlug(slug)) {
     return NextResponse.json({ message: "지원하지 않는 익스텐션입니다." }, { status: 404 });
+  }
+
+  const committed = readCommittedExtensionManifest(slug);
+  if (committed) {
+    return NextResponse.json({
+      slug,
+      available: true,
+      manifest: committed,
+    });
   }
 
   const manifestPath = extensionManifestStoragePath(slug);

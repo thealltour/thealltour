@@ -30,6 +30,8 @@ import {
   shouldShowGolfCourseInfo,
   shouldShowProductDescription,
 } from "@/components/products/ProductDescriptionSection";
+import { ProductPackageCatalogSection } from "@/components/products/ProductPackageCatalogSection";
+import { hasPackageCatalogContent } from "@/lib/admin/packageCatalog";
 import { formatAirlineLabel } from "@/lib/products/formatAirlineLabel";
 import { ProductHotelCard } from "@/components/products/ProductHotelCard";
 import { getHotelValue } from "@/lib/products/mapProductToOverview";
@@ -868,6 +870,12 @@ export default function ProductDetailV2({
           </div>
         ) : null}
 
+        {hasPackageCatalogContent(product?.package_catalog_json) ? (
+          <div className="mt-6">
+            <ProductPackageCatalogSection catalog={product?.package_catalog_json} />
+          </div>
+        ) : null}
+
         {showCalendarBooking && portOneEnabled && (hasCalendarDepartures || hasDepartures || hasOptions) ? (
           <div className="mt-6">
             <ProductCheckoutSection
@@ -1026,7 +1034,8 @@ export default function ProductDetailV2({
               optionalExpenseLines.length === 0) && (
               <p className="text-base text-slate-500">등록된 포함/불포함 사항이 없습니다.</p>
             )}
-            {optionalLines.length > 0 && (
+            {optionalLines.length > 0 &&
+              (product?.package_catalog_json?.optionalTours?.length ?? 0) === 0 && (
               <div>
                 <h3 className="mb-3 text-base font-bold text-[var(--primary)]">선택 관광</h3>
                 <ul className={listClass}>

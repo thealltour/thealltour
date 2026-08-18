@@ -17,6 +17,8 @@ import type { NoticeTemplateGroup, NoticeTemplatesByGroup } from "@/lib/noticeTe
 import { LEGACY_SECTION_ID_MAP } from "@/components/admin/products/editor/adminProductForm.types";
 import { DepartureSchedulesEditor } from "@/components/admin/products/editor/sections/DepartureSchedulesEditor";
 import { ProductOptionsEditor } from "@/components/admin/products/editor/sections/ProductOptionsEditor";
+import { emptyPackageCatalog } from "@/lib/admin/packageCatalog";
+import type { PackageAttractionItem, PackageOptionalTourItem } from "@/types/product";
 
 export type RemainingAccordionSectionsProps = {
   sectionId: "taxonomy" | "travel" | "ops" | "advanced";
@@ -845,6 +847,274 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                 placeholder="레거시 단일 텍스트 (하위호환용)"
                 id="field-golf-course-info"
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              />
+            </label>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:col-span-2">
+            <p className="mb-1 text-sm font-semibold text-[var(--text-primary)]">패키지 카탈로그</p>
+            <p className="mb-3 text-xs text-[var(--text-secondary)]">
+              하나투어 호텔·관광지·선택관광 탭 수집값. 밴드 상품은 비워 둡니다.
+            </p>
+            <label className="mb-3 block space-y-1">
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">예정 호텔 이름 (줄바꿈)</span>
+              <textarea
+                value={(form.package_catalog_json?.hotels ?? []).map((h) => h.name).join("\n")}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    package_catalog_json: {
+                      ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                      hotels: event.target.value
+                        .split("\n")
+                        .map((name) => name.trim())
+                        .filter(Boolean)
+                        .map((name) => ({ name })),
+                    },
+                  }))
+                }
+                rows={4}
+                placeholder="오스트레일리아(시드니) 로열 퍼시픽 호텔"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+              />
+            </label>
+            <p className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">관광지</p>
+            <div className="mb-3 space-y-2">
+              {(form.package_catalog_json?.attractions ?? []).map((item, index) => (
+                <div key={index} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                  <div className="mb-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          package_catalog_json: {
+                            ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                            attractions: (prev.package_catalog_json ?? emptyPackageCatalog()).attractions.filter(
+                              (_, rowIndex) => rowIndex !== index,
+                            ),
+                          },
+                        }))
+                      }
+                      className="text-xs text-rose-600 hover:underline"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                  <input
+                    value={item.name}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        package_catalog_json: {
+                          ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                          attractions: (prev.package_catalog_json ?? emptyPackageCatalog()).attractions.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, name: event.target.value } : row,
+                          ),
+                        },
+                      }))
+                    }
+                    placeholder="관광지명"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                  <textarea
+                    value={item.description}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        package_catalog_json: {
+                          ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                          attractions: (prev.package_catalog_json ?? emptyPackageCatalog()).attractions.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, description: event.target.value } : row,
+                          ),
+                        },
+                      }))
+                    }
+                    rows={3}
+                    placeholder="설명"
+                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                  <textarea
+                    value={item.imageUrls.join("\n")}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        package_catalog_json: {
+                          ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                          attractions: (prev.package_catalog_json ?? emptyPackageCatalog()).attractions.map((row, rowIndex) =>
+                            rowIndex === index
+                              ? {
+                                  ...row,
+                                  imageUrls: event.target.value
+                                    .split("\n")
+                                    .map((url) => url.trim())
+                                    .filter(Boolean),
+                                }
+                              : row,
+                          ),
+                        },
+                      }))
+                    }
+                    rows={2}
+                    placeholder="이미지 URL (줄바꿈)"
+                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((prev) => {
+                    const catalog = prev.package_catalog_json ?? emptyPackageCatalog();
+                    const next: PackageAttractionItem = { name: "", description: "", imageUrls: [] };
+                    return {
+                      ...prev,
+                      package_catalog_json: {
+                        ...catalog,
+                        attractions: [...catalog.attractions, next],
+                      },
+                    };
+                  })
+                }
+                className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+              >
+                관광지 추가
+              </button>
+            </div>
+            <p className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">선택관광</p>
+            <div className="mb-3 space-y-2">
+              {(form.package_catalog_json?.optionalTours ?? []).map((item, index) => (
+                <div key={index} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                  <div className="mb-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          package_catalog_json: {
+                            ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                            optionalTours: (prev.package_catalog_json ?? emptyPackageCatalog()).optionalTours.filter(
+                              (_, rowIndex) => rowIndex !== index,
+                            ),
+                          },
+                        }))
+                      }
+                      className="text-xs text-rose-600 hover:underline"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                  <input
+                    value={item.name}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        package_catalog_json: {
+                          ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                          optionalTours: (prev.package_catalog_json ?? emptyPackageCatalog()).optionalTours.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, name: event.target.value } : row,
+                          ),
+                        },
+                      }))
+                    }
+                    placeholder="선택관광명"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                  <input
+                    value={item.priceText ?? ""}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        package_catalog_json: {
+                          ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                          optionalTours: (prev.package_catalog_json ?? emptyPackageCatalog()).optionalTours.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, priceText: event.target.value } : row,
+                          ),
+                        },
+                      }))
+                    }
+                    placeholder="이용요금"
+                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                  <textarea
+                    value={item.description}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        package_catalog_json: {
+                          ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                          optionalTours: (prev.package_catalog_json ?? emptyPackageCatalog()).optionalTours.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, description: event.target.value } : row,
+                          ),
+                        },
+                      }))
+                    }
+                    rows={3}
+                    placeholder="설명"
+                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                  <textarea
+                    value={item.imageUrls.join("\n")}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        package_catalog_json: {
+                          ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                          optionalTours: (prev.package_catalog_json ?? emptyPackageCatalog()).optionalTours.map((row, rowIndex) =>
+                            rowIndex === index
+                              ? {
+                                  ...row,
+                                  imageUrls: event.target.value
+                                    .split("\n")
+                                    .map((url) => url.trim())
+                                    .filter(Boolean),
+                                }
+                              : row,
+                          ),
+                        },
+                      }))
+                    }
+                    rows={2}
+                    placeholder="이미지 URL (줄바꿈)"
+                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((prev) => {
+                    const catalog = prev.package_catalog_json ?? emptyPackageCatalog();
+                    const next: PackageOptionalTourItem = { name: "", description: "", imageUrls: [] };
+                    return {
+                      ...prev,
+                      package_catalog_json: {
+                        ...catalog,
+                        optionalTours: [...catalog.optionalTours, next],
+                      },
+                    };
+                  })
+                }
+                className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+              >
+                선택관광 추가
+              </button>
+            </div>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">참고사항 (상품 고유)</span>
+              <textarea
+                value={form.package_catalog_json?.referenceNotes ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    package_catalog_json: {
+                      ...(prev.package_catalog_json ?? emptyPackageCatalog()),
+                      referenceNotes: event.target.value,
+                    },
+                  }))
+                }
+                rows={4}
+                placeholder="비자·준비물 등 상품 고유 안내"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
               />
             </label>
           </div>

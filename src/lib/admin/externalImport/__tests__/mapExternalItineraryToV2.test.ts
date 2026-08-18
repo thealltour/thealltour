@@ -78,7 +78,7 @@ describe("mapExternalItineraryToV2", () => {
     expect(diecai?.description).toContain("일몰");
   });
 
-  it("caps sightseeing event images at 5", () => {
+  it("caps sightseeing event images at 10", () => {
     const manyUrls = Array.from({ length: 12 }, (_, i) => `https://cdn.example.com/img${i}.jpg`);
     const parsed: ExternalParsedItineraryV2 = {
       days: [
@@ -100,7 +100,7 @@ describe("mapExternalItineraryToV2", () => {
       ],
     };
     const result = mapExternalItineraryToV2(parsed);
-    expect(result!.days[0].events[0].images).toHaveLength(5);
+    expect(result!.days[0].events[0].images).toHaveLength(10);
   });
 
   it("filters logo/icon URLs from events", () => {
@@ -283,6 +283,10 @@ describe("mapItineraryBlocksToV2", () => {
     expect(hotel?.iconKey).toBe("hotel");
     expect(meal?.displayRole).toBe("summary");
     expect(meal?.iconKey).toBe("utensils");
+    expect(hotel).not.toHaveProperty("kind");
+    expect(hotel).not.toHaveProperty("imageUrls");
+    expect(meal).not.toHaveProperty("kind");
+    expect(meal).not.toHaveProperty("imageUrls");
   });
 
   it("keeps distinct images and descriptions per sightseeing block", () => {

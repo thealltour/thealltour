@@ -49,6 +49,7 @@ import {
 import { normalizeHanatourCalendarPayload } from "@/lib/admin/externalImport/hanatour/types";
 
 import { insertProductWithSchemaFallback } from "@/lib/supabaseProductsColumnFallback";
+import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
 
 
 
@@ -91,6 +92,7 @@ type ImportExternalBody = {
   rawHtmlText?: string;
   itineraryBlocks?: unknown[];
   hanatourCalendarPayload?: unknown;
+  packageCatalog?: unknown;
 };
 
 
@@ -216,6 +218,7 @@ export async function POST(request: NextRequest) {
   const seoHashtags = normalizeUrlList(body.seoHashtags);
 
   const hanatourCalendarPayload = normalizeHanatourCalendarPayload(body.hanatourCalendarPayload);
+  const packageCatalog = normalizePackageCatalog(body.packageCatalog);
 
 
 
@@ -276,6 +279,7 @@ export async function POST(request: NextRequest) {
     seoHashtags: seoHashtags.length > 0 ? seoHashtags : undefined,
 
     hanatourCalendarPayload,
+    packageCatalog,
 
   });
 

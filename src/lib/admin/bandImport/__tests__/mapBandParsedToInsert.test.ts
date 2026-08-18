@@ -292,6 +292,7 @@ describe("mapBandParsedToInsert", () => {
 
     expect(payload.optional_expenses).toBe("[숙박] 싱글룸 4만원");
     expect(payload.optional_tours).toBe("스노클링 5만원");
+    expect(payload.package_catalog_json).toBeUndefined();
     expect(payload.selling_points_json).toEqual({
       corePoints: "핵심포인트 원문",
       meals: "식사 안내",

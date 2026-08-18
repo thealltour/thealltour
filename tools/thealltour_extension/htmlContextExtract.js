@@ -1135,6 +1135,20 @@
       itineraryBlocks = global.ItineraryDomExtract?.extractItineraryBlocks?.(doc) ?? [];
     }
 
+    onProgress?.(37, "호텔·선택관광 탭 수집 중…");
+
+    let packageCatalog;
+    const extractCatalog = global.PackageCatalogExtract?.extractPackageCatalog;
+    if (typeof extractCatalog === "function") {
+      try {
+        packageCatalog = await extractCatalog(doc, {
+          onProgress: (label) => onProgress?.(37, label),
+        });
+      } catch (err) {
+        console.warn("[thealltour-import] package catalog extract failed:", err);
+      }
+    }
+
     onProgress?.(38, "수집 완료");
 
     return {
@@ -1146,6 +1160,7 @@
       seoHashtags,
       itineraryBlocks,
       itineraryExtractMeta,
+      packageCatalog,
     };
 
   }

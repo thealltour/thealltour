@@ -16,6 +16,11 @@ import type { HanatourCalendarPayload } from "@/lib/admin/externalImport/hanatou
 import { sellingPointsToJsonColumn } from "@/lib/products/normalizeSellingPoints";
 import { formatSeoHashtagsForMetaTitle } from "@/lib/products/formatSeoHashtagsForMetaTitle";
 import {
+  normalizePackageCatalog,
+  optionalToursToPlainText,
+} from "@/lib/admin/packageCatalog";
+import type { PackageCatalog } from "@/types/product";
+import {
   normalizeProductDepartureDateToYmd,
   ymdDayDiff,
 } from "@/lib/products/productDepartureDates";
@@ -29,6 +34,7 @@ export type MapExternalParsedInput = {
   sourceProductTitle?: string | null;
   seoHashtags?: string[];
   hanatourCalendarPayload?: HanatourCalendarPayload | null;
+  packageCatalog?: PackageCatalog | null;
 };
 
 const PROVIDER_DEFAULT_CATEGORY: Record<ExternalProvider, string> = {
@@ -126,6 +132,7 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     sourceProductTitle,
     seoHashtags,
     hanatourCalendarPayload,
+    packageCatalog,
   } = input;
 
   const itineraryV2 = resolveItineraryV2(parsed.itinerary_v2_json);
@@ -166,6 +173,9 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     : trimOrNull(parsed.departure_from_date) ?? firstScheduleDate;
   const resolvedDepartureToDate = resolveFlightDepartureToDate(parsed, hasCalendarSchedules);
 
+  const catalog = normalizePackageCatalog(packageCatalog);
+  const optionalToursFallback = optionalToursToPlainText(catalog);
+
   return {
     title,
     description,
@@ -180,6 +190,7 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     included_items: trimOrNull(parsed.included_items),
     excluded_items: trimOrNull(parsed.excluded_items),
     optional_expenses: trimOrNull(parsed.optional_expenses),
+    optional_tours: optionalToursFallback,
     selling_points_json: sellingPoints,
     booking_notes: trimOrNull(parsed.booking_notes),
     is_active: true,
@@ -204,6 +215,7 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     theme_chart_json: normalizeThemeChartForInsert(parsed.theme_chart_json),
     departure_schedules_json: departureSchedules,
     product_source_url: trimOrNull(productSourceUrl ?? undefined),
+    package_catalog_json: catalog,
   };
 }
 

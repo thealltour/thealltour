@@ -5,6 +5,7 @@ import {
   mapExternalItineraryToV2,
   mapItineraryBlocksToV2,
 } from "@/lib/admin/externalImport/mapExternalItineraryToV2";
+import { MAX_ITINERARY_EVENT_IMAGES } from "@/lib/images/normalizeEventImages";
 import {
   filterItineraryImageUrls,
   inferDisplayRoleFromHeading,
@@ -13,8 +14,8 @@ import {
   isSightseeingEventHeading,
 } from "@/lib/admin/externalImport/sanitizeAiItinerary";
 
-export const SIGHTSEEING_EVENT_IMAGE_MAX = 5;
-export const NOTICE_EVENT_IMAGE_MAX = 5;
+export const SIGHTSEEING_EVENT_IMAGE_MAX = MAX_ITINERARY_EVENT_IMAGES;
+export const NOTICE_EVENT_IMAGE_MAX = MAX_ITINERARY_EVENT_IMAGES;
 
 /** 공백·대소문자 정규화 */
 export function normalizeHeadingKey(heading: string): string {
@@ -168,10 +169,10 @@ function findBlocksForEvent(
   return byImage;
 }
 
-function isAppendableSightseeingOrNotice(block: ItineraryBlock): boolean {
+function isAppendableItineraryBlock(block: ItineraryBlock): boolean {
   if (block.kind === "notice" || isNoticeEventHeading(block.heading)) return true;
   if (block.kind === "sightseeing" || isSightseeingEventHeading(block.heading)) return true;
-  // kind 미지정 POI 카드: 설명이 충분히 길면 sightseeing으로 취급
+  if (block.kind === "meal" || block.kind === "move" || block.kind === "other") return true;
   return block.description.trim().length >= 40 && block.imageUrls.length > 0;
 }
 
@@ -228,7 +229,7 @@ export function enrichAiItineraryWithBlocks(
   // 미매칭 sightseeing/notice → 해당 day에 append (명시 day가 없으면 마지막 날)
   const unusedToAppend = richBlocks
     .map((block, index) => ({ block, index }))
-    .filter(({ block, index }) => !usedIndexes.has(index) && isAppendableSightseeingOrNotice(block));
+    .filter(({ block, index }) => !usedIndexes.has(index) && isAppendableItineraryBlock(block));
 
   for (const { block, index } of unusedToAppend) {
     const blockDay = block.day ?? 0;
@@ -250,7 +251,12 @@ export function enrichAiItineraryWithBlocks(
     if (dayIdx < 0) dayIdx = enrichedDays.length - 1;
 
     const day = enrichedDays[dayIdx];
-    const evIdx = day.events.findIndex((e) => headingsMatchFuzzy(e.heading, block.heading));
+    const evIdx = day.events.findIndex((e) => {
+      const na = normalizeHeadingForMatch(e.heading);
+      const nb = normalizeHeadingForMatch(block.heading);
+      if (!na || !nb) return false;
+      return na === nb || (na.length >= 2 && nb.length >= 2 && (na.includes(nb) || nb.includes(na)));
+    });
     if (evIdx >= 0) {
       if (isBlockRicher(block, day.events[evIdx])) {
         day.events[evIdx] = applyBlockToEvent(day.events[evIdx], block);

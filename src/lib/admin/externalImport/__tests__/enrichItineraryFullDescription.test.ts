@@ -133,4 +133,49 @@ describe("enrichAiItineraryWithBlocks full description preservation", () => {
       true,
     );
   });
+
+  it("appends unmatched hotel and meal DOM blocks onto the day", () => {
+    const ai = {
+      days: [
+        {
+          day: 2,
+          dateText: null,
+          title: null,
+          coverImageUrl: null,
+          events: [
+            {
+              heading: "오페라하우스",
+              description: "랜드마크",
+              timeOfDay: "오전" as const,
+              timeText: null,
+              imageUrls: [],
+            },
+          ],
+        },
+      ],
+    };
+    const blocks: ItineraryBlock[] = [
+      {
+        day: 2,
+        heading: "호텔",
+        description: "로열 퍼시픽 호텔",
+        imageUrls: [],
+        kind: "other",
+        displayRole: "summary",
+      },
+      {
+        day: 2,
+        heading: "조식 (호텔식)",
+        description: "",
+        imageUrls: [],
+        kind: "meal",
+        displayRole: "summary",
+      },
+    ];
+
+    const result = enrichAiItineraryWithBlocks(ai, blocks);
+    const headings = result?.days?.[0]?.events.map((e) => e.heading) ?? [];
+    expect(headings).toEqual(expect.arrayContaining(["오페라하우스", "호텔", "조식 (호텔식)"]));
+    expect(result?.days?.[0]?.events.find((e) => e.heading === "호텔")?.displayRole).toBe("summary");
+  });
 });

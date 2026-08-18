@@ -12,6 +12,7 @@ export default defineConfig({
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "tools/hanatour-extractor-extension/src/**/*.test.ts",
+      "tools/thealltour_extension/**/*.test.ts",
     ],
   },
   resolve: {

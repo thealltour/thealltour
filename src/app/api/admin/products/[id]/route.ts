@@ -18,12 +18,15 @@ import {
   updateProductWithSchemaFallback,
 } from "@/lib/supabaseProductsColumnFallback";
 import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
+import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
+import type { PackageCatalog } from "@/types/product";
 
 type ProductBody = {
   title?: string;
   description?: string;
   golf_course_info?: string | null;
   golf_courses_json?: Array<{ name: string; content: string }> | null;
+  package_catalog_json?: PackageCatalog | null;
   product_source_url?: string | null;
   point_benefits?: string | null;
   point_tourism?: string | null;
@@ -141,6 +144,9 @@ export async function PATCH(
   }
   if (body.golf_courses_json !== undefined) {
     updates.golf_courses_json = normalizeGolfCoursesJson(body.golf_courses_json);
+  }
+  if (body.package_catalog_json !== undefined) {
+    updates.package_catalog_json = normalizePackageCatalog(body.package_catalog_json);
   }
   if (body.meta_title !== undefined) updates.meta_title = body.meta_title?.trim() || null;
   if (body.meta_description !== undefined) updates.meta_description = body.meta_description?.trim() || null;

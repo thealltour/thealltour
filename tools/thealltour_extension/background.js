@@ -737,6 +737,7 @@ async function ensureContentScripts(tabId) {
       "hanatourItineraryUiPrep.js",
       "htmlContextExtract.js",
       "itineraryDomExtract.js",
+      "packageCatalogExtract.js",
       "extractProductCode.js",
       "hanatourCalendarFilter.js",
       "hanatourCalendarApi.js",

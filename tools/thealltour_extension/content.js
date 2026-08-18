@@ -217,6 +217,7 @@ if (globalThis.__theallTourImportContentLoaded) {
       seoHashtags,
       itineraryBlocks,
       itineraryExtractMeta,
+      packageCatalog,
     } = await hx.capturePageContext(
       document,
       report,
@@ -251,6 +252,7 @@ if (globalThis.__theallTourImportContentLoaded) {
       seoHashtags: seoHashtags?.length ? seoHashtags : undefined,
       itineraryBlocks: itineraryBlocks?.length ? itineraryBlocks : undefined,
       itineraryExtractMeta: itineraryExtractMeta ?? undefined,
+      packageCatalog: packageCatalog ?? undefined,
       hanatourCalendarPayload: hanatourCalendarPayload ?? undefined,
       hanatourCalendarMeta: hanatourCalendarMeta ?? undefined,
       product_source_url: window.location.href,

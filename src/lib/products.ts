@@ -29,6 +29,7 @@ import { extractGuideBridgeSearchTokens } from "@/lib/guides";
 import { normalizeImageList } from "@/lib/products/images";
 import { normalizeSellingPoints } from "@/lib/products/normalizeSellingPoints";
 import { parseSeasonalPriceBandsFromUnknown } from "@/lib/products/seasonalPriceBands";
+import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
 import {
   deriveDeparturesFromSchedules,
   normalizeDepartureSchedulesFromUnknown,
@@ -106,6 +107,7 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
         ? row.golf_course_info
         : undefined,
     golf_courses_json: normalizeGolfCoursesJson(row.golf_courses_json),
+    package_catalog_json: normalizePackageCatalog(row.package_catalog_json) ?? undefined,
     image_url: primaryImage,
     images_json: images.length > 0 ? images : undefined,
     category: String(row.category ?? row.type ?? "여행상품"),

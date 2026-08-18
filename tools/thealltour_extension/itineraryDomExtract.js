@@ -1,5 +1,6 @@
 /**
- * 하나투어 여행일정 DOM → itineraryBlocks 추출 (관광지 카드 + 출입국/안내 notice).
+ * 하나투어 여행일정 DOM → itineraryBlocks 추출.
+ * 관광지 카드 + 출입국/안내 notice + 호텔/식사/항공 섹션 + 조식 라인 + 타임라인 location.
  * 일차 탭/아코디언 순회 후 패널별 파싱 — day 없는 전역 재파싱 없음.
  */
 (function (global) {
@@ -8,6 +9,7 @@
   const MAX_EVENT_IMAGES = 30;
   const MAX_DESCRIPTION_LEN = 8000;
   const SECTION_LABEL = /^(예정호텔|호텔|식사|항공)$/;
+  const MEAL_LINE = /^(조식|중식|석식|기내|기내식|중식\s*또는\s*석식|석식\s*또는\s*중식)/;
   const UI_SKIP =
     /일정\s*전체\s*펼침|이전일차|다음일차|여행일정\s*변경|상세내용을\s*확인|일정\s*상세보기/i;
   const DATE_IN_HEADER = /(\d{1,2}\/\d{1,2}\([^)]+\)|\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2})/;
@@ -119,7 +121,7 @@
       if (!titleEl) return;
       const title = titleEl.textContent?.trim() ?? "";
       if (!title || title.length > 80 || isSkippableTitle(title)) return;
-      if (SECTION_LABEL.test(title)) return;
+      if (SECTION_LABEL.test(title) || MEAL_LINE.test(title)) return;
       const textLen = getElementText(el).length;
       if (!hasDetail && textLen < 20) return;
       raw.push(el);
@@ -209,11 +211,179 @@
     return out;
   }
 
+  function kindFromSectionLabel(label) {
+    if (label === "식사") return "meal";
+    if (label === "항공") return "move";
+    return "other";
+  }
+
+  function displayRoleFromSectionLabel(label) {
+    if (label === "항공") return "activity";
+    return "summary";
+  }
+
+  function extractSectionLabelBlocks(panel, baseUrl, dayMeta) {
+    if (!dayMeta?.day) return [];
+    const out = [];
+    const sectionLabels = ["예정호텔", "호텔", "식사", "항공"];
+    const seen = new Set();
+
+    panel.querySelectorAll("div, section, article, li").forEach((block) => {
+      const raw = getElementText(block).trim();
+      if (raw.length < 8 || raw.length > 3000) return;
+      for (const label of sectionLabels) {
+        if (!raw.startsWith(label)) continue;
+        const rest = raw.slice(label.length).replace(/상세보기/g, "").trim();
+        if (rest.length < 3) continue;
+        const key = `${dayMeta.day}::${label}::${rest.slice(0, 40)}`;
+        if (seen.has(key)) break;
+        seen.add(key);
+        out.push({
+          day: dayMeta.day,
+          dateText: dayMeta.dateText,
+          dayTitle: dayMeta.dayTitle,
+          heading: label,
+          description: rest.length > MAX_DESCRIPTION_LEN ? rest.slice(0, MAX_DESCRIPTION_LEN) : rest,
+          imageUrls: collectImagesFromScope(block, baseUrl),
+          kind: kindFromSectionLabel(label),
+          displayRole: displayRoleFromSectionLabel(label),
+        });
+        break;
+      }
+    });
+    return out;
+  }
+
+  function extractMealLineBlocks(panel, dayMeta) {
+    if (!dayMeta?.day) return [];
+    const out = [];
+    const seen = new Set();
+    const lines = getElementText(panel)
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length >= 2 && l.length <= 80);
+
+    for (const line of lines) {
+      if (UI_SKIP.test(line) || /^\d+일차/.test(line)) continue;
+      if (!MEAL_LINE.test(line)) continue;
+      const heading = line.slice(0, 300);
+      if (seen.has(heading)) continue;
+      seen.add(heading);
+      out.push({
+        day: dayMeta.day,
+        dateText: dayMeta.dateText,
+        dayTitle: dayMeta.dayTitle,
+        heading,
+        description: "",
+        imageUrls: [],
+        kind: "meal",
+        displayRole: /^기내/.test(heading) ? "activity" : "summary",
+      });
+    }
+    return out;
+  }
+
+  function getTimelineTitleEl(contentRoot) {
+    return (
+      contentRoot.querySelector('div[class*="text-[17px]"][class*="font-semibold"]') ??
+      contentRoot.querySelector('[class*="font-semibold"]') ??
+      contentRoot.querySelector("strong, h3, h4, h5")
+    );
+  }
+
+  function isLikelyLocationTitle(title) {
+    const t = title.trim();
+    if (t.length < 2 || t.length > 20) return false;
+    if (SECTION_LABEL.test(t)) return false;
+    if (MEAL_LINE.test(t)) return false;
+    if (/^\d+일차/.test(t)) return false;
+    if (/출입국|유의사항|예약\s*전/.test(t)) return false;
+    if (isSkippableTitle(t)) return false;
+    return true;
+  }
+
+  function collectTimelineRows(panel) {
+    const out = [];
+    const candidates = panel.querySelectorAll(
+      'div[class*="flex"][class*="items-stretch"], div[class*="flex"][class*="items-start"]',
+    );
+    for (const el of candidates) {
+      const cls = (el.className && typeof el.className === "string" ? el.className : "") || "";
+      if (cls.includes("space-x-[6px]") || cls.includes("space-x-[12px]")) {
+        out.push(el);
+      }
+    }
+    return out;
+  }
+
+  function getTimelineRowText(contentRoot) {
+    const titleEl = getTimelineTitleEl(contentRoot);
+    if (titleEl?.textContent?.trim()) return titleEl.textContent.trim();
+    const text = getElementText(contentRoot).trim();
+    const firstLine = text.split("\n").map((l) => l.trim()).find(Boolean);
+    return firstLine ?? "";
+  }
+
+  function extractLocationBlocks(panel, dayMeta) {
+    if (!dayMeta?.day) return [];
+    const out = [];
+    const rows = collectTimelineRows(panel);
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const contentRoot =
+        row.querySelector('div[class*="w-[calc(100%_-_24px)]"]') ??
+        row.querySelector('div[class*="calc(100%"]') ??
+        row;
+      const title = getTimelineRowText(contentRoot).slice(0, 300);
+      if (!isLikelyLocationTitle(title)) continue;
+
+      const descriptions = [];
+      for (let j = i + 1; j < rows.length; j++) {
+        const nextRow = rows[j];
+        const nextRoot =
+          nextRow.querySelector('div[class*="w-[calc(100%_-_24px)]"]') ??
+          nextRow.querySelector('div[class*="calc(100%"]') ??
+          nextRow;
+        const nextTitle = getTimelineRowText(nextRoot);
+        if (isLikelyLocationTitle(nextTitle)) break;
+        if (!nextTitle || nextTitle.length > 120) continue;
+        if (UI_SKIP.test(nextTitle)) continue;
+        descriptions.push(nextTitle);
+      }
+
+      const description = descriptions.join("\n");
+      out.push({
+        day: dayMeta.day,
+        dateText: dayMeta.dateText,
+        dayTitle: dayMeta.dayTitle,
+        heading: title,
+        description: description.length > MAX_DESCRIPTION_LEN ? description.slice(0, MAX_DESCRIPTION_LEN) : description,
+        imageUrls: [],
+        kind: "other",
+        displayRole: "activity",
+      });
+    }
+    return out;
+  }
+
   function parseBlocksFromPanel(panel, baseUrl, dayNumber) {
     const dayMeta = parseDayMetaFromPanel(panel, dayNumber);
     const sightseeing = extractSightseeingBlocks(panel, baseUrl, dayMeta);
     const notice = extractNoticeBlocks(panel, baseUrl, dayMeta);
-    return [...sightseeing, ...notice];
+    const section = extractSectionLabelBlocks(panel, baseUrl, dayMeta);
+    const meals = extractMealLineBlocks(panel, dayMeta);
+    const locations = extractLocationBlocks(panel, dayMeta);
+
+    const seenHeadings = new Set();
+    const out = [];
+    for (const block of [...sightseeing, ...notice, ...section, ...meals, ...locations]) {
+      const key = `${block.day}::${block.heading}`;
+      if (seenHeadings.has(key) && block.kind !== "notice") continue;
+      seenHeadings.add(key);
+      out.push(block);
+    }
+    return out;
   }
 
   function countUniqueHeadings(blocks) {
@@ -405,6 +575,7 @@
   global.ItineraryDomExtract = {
     extractItineraryBlocks,
     extractItineraryBlocksAsync,
+    parseBlocksFromPanel,
     MAX_EVENT_IMAGES,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

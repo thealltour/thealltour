@@ -176,6 +176,34 @@ export type GolfCourseInfoItem = {
   content: string;
 };
 
+/** 하나투어 패키지 카탈로그 (호텔 후보명·관광지·선택관광). itinerary_v2와 분리 */
+export type PackageHotelNameItem = {
+  name: string;
+};
+
+export type PackageAttractionItem = {
+  name: string;
+  description: string;
+  imageUrls: string[];
+};
+
+export type PackageOptionalTourItem = {
+  name: string;
+  description: string;
+  priceText?: string;
+  scheduleText?: string;
+  alternativeText?: string;
+  included?: boolean;
+  imageUrls: string[];
+};
+
+export type PackageCatalog = {
+  hotels: PackageHotelNameItem[];
+  attractions: PackageAttractionItem[];
+  optionalTours: PackageOptionalTourItem[];
+  referenceNotes?: string;
+};
+
 /** 출발일별 스케줄 (departure_schedules_json) */
 export type ProductDepartureSchedule = {
   /** YYYY-MM-DD 또는 표시용 "2025.07.23(수)" */
@@ -211,6 +239,8 @@ export type Product = {
   golf_course_info?: string | null;
   /** 골프장별 상세 정보. 골프장명 클릭 시 모달 노출용 */
   golf_courses_json?: GolfCourseInfoItem[] | null;
+  /** 하나투어 패키지 카탈로그 (예정 호텔 이름·관광지·선택관광). 밴드 상품은 비움 */
+  package_catalog_json?: PackageCatalog | null;
   /** 상세 히어로용 (hero 1920px). 카드 썸네일은 image_card_url 우선, 없으면 이 값 사용 */
   image_url: string;
   /** 상품 이미지 갤러리 URL 배열. 첫 번째가 대표 이미지로 사용됨 */

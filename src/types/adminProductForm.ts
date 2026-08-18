@@ -1,4 +1,4 @@
-import type { ItineraryStructuredDay, ItineraryV2 } from "@/types/product";
+import type { ItineraryStructuredDay, ItineraryV2, PackageCatalog } from "@/types/product";
 
 /** 약관 템플릿 타입 (상품 등록 폼용) */
 export type TermsTemplateType =
@@ -34,6 +34,7 @@ export type ProductFormState = {
   description: string;
   golf_course_info: string;
   golf_courses_json: Array<{ name: string; content: string }>;
+  package_catalog_json: PackageCatalog;
   product_source_url: string;
   point_benefits: string;
   point_tourism: "O" | "X";
@@ -152,7 +153,19 @@ export function mergeProductFormWithSchemaDefaults(
       ...(form.seasonal_price_bands ?? {}),
     },
     departure_schedules: form.departure_schedules ?? base.departure_schedules,
+    package_catalog_json: {
+      ...emptyCatalogForMerge(),
+      ...(form.package_catalog_json ?? {}),
+      hotels: form.package_catalog_json?.hotels ?? emptyCatalogForMerge().hotels,
+      attractions: form.package_catalog_json?.attractions ?? emptyCatalogForMerge().attractions,
+      optionalTours: form.package_catalog_json?.optionalTours ?? emptyCatalogForMerge().optionalTours,
+      referenceNotes: form.package_catalog_json?.referenceNotes ?? "",
+    },
   };
+}
+
+function emptyCatalogForMerge(): PackageCatalog {
+  return { hotels: [], attractions: [], optionalTours: [], referenceNotes: "" };
 }
 
 /** 빈 폼 상태 생성 (상품 등록 초기값·Import base 등) */
@@ -162,6 +175,7 @@ export function createEmptyProductFormState(): ProductFormState {
     description: "",
     golf_course_info: "",
     golf_courses_json: [],
+    package_catalog_json: { hotels: [], attractions: [], optionalTours: [], referenceNotes: "" },
     product_source_url: "",
     point_benefits: "",
     point_tourism: "X",

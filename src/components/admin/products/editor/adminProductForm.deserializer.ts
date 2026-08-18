@@ -45,6 +45,12 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     description: product.description ?? "",
     golf_course_info: product.golf_course_info ?? "",
     golf_courses_json: product.golf_courses_json ?? [],
+    package_catalog_json: {
+      hotels: product.package_catalog_json?.hotels ?? [],
+      attractions: product.package_catalog_json?.attractions ?? [],
+      optionalTours: product.package_catalog_json?.optionalTours ?? [],
+      referenceNotes: product.package_catalog_json?.referenceNotes ?? "",
+    },
     product_source_url: product.product_source_url ?? "",
     point_benefits: product.point_benefits ?? "",
     point_tourism: normalizeOXValue(product.point_tourism),

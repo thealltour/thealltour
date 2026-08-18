@@ -84,6 +84,41 @@ describe("mapExternalParsedToInsert", () => {
     expect(result.theme_chart_json).toBeNull();
   });
 
+  it("maps package catalog and optional_tours fallback without extra itinerary keys", () => {
+    const result = mapExternalParsedToInsert({
+      parsed: baseParsed(),
+      provider: "hanatour",
+      packageCatalog: {
+        hotels: [{ name: "로열 퍼시픽 호텔" }],
+        attractions: [],
+        optionalTours: [
+          {
+            name: "시드니 야경 투어",
+            description: "워킹투어",
+            priceText: "성인 AUD 70",
+            imageUrls: ["https://image.hanatour.com/night.jpg"],
+          },
+        ],
+      },
+    });
+
+    expect(result.package_catalog_json).toEqual({
+      hotels: [{ name: "로열 퍼시픽 호텔" }],
+      attractions: [],
+      optionalTours: [
+        {
+          name: "시드니 야경 투어",
+          description: "워킹투어",
+          priceText: "성인 AUD 70",
+          imageUrls: ["https://image.hanatour.com/night.jpg"],
+        },
+      ],
+    });
+    expect(result.optional_tours).toBe("시드니 야경 투어 — 성인 AUD 70");
+    expect(result).not.toHaveProperty("itinerary_days");
+    expect(result).not.toHaveProperty("overview_json");
+  });
+
   it("maps theme_chart_json from itinerary parse", () => {
     const result = mapExternalParsedToInsert({
       parsed: baseParsed({

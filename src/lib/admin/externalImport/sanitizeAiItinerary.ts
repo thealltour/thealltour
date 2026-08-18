@@ -3,6 +3,7 @@ import type {
   ExternalParsedItineraryEvent,
   ExternalParsedItineraryV2,
 } from "@/lib/admin/externalImport/externalProductSchema";
+import { MAX_ITINERARY_EVENT_IMAGES } from "@/lib/images/normalizeEventImages";
 
 const JUNK_ITINERARY_IMAGE_RE =
   /logo|icon|banner|spinner|arrow|badge|favicon|sprite|avatar|blank\.|1x1|pixel|placeholder|thumb(nail)?|_s\.|w=50|h=50|airline|carrier|jejuair|jeju-air|koreanair|asiana|tway|jinair|airbusan|\/common\/|\/assets\/ui\//i;
@@ -60,7 +61,7 @@ export function isSightseeingEventHeading(heading: string): boolean {
 export function filterItineraryImageUrls(
   urls: string[] | undefined,
   heading: string,
-  max = 8,
+  max = MAX_ITINERARY_EVENT_IMAGES,
 ): string[] {
   if (isMoveOrFlightEvent(heading)) return [];
 

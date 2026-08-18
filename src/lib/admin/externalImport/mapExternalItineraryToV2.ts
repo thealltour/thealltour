@@ -19,10 +19,7 @@ function mapEvent(ev: ExternalParsedItineraryDay["events"][number]): ItineraryV2
   const heading = trimOrNull(ev.heading);
   if (!heading) return null;
 
-  const maxImages = isSightseeingEventHeading(heading)
-    ? SIGHTSEEING_EVENT_IMAGE_MAX
-    : 8;
-  const imageUrls = filterItineraryImageUrls(ev.imageUrls, heading, maxImages);
+  const imageUrls = filterItineraryImageUrls(ev.imageUrls, heading, SIGHTSEEING_EVENT_IMAGE_MAX);
   const images =
     imageUrls.length > 0
       ? imageUrls.map((url, index) => ({
@@ -154,11 +151,7 @@ export function mapItineraryBlocksToV2(blocks: ItineraryBlock[]): ItineraryV2 | 
     .map(([dayNum, dayBlocks]) => {
       const events: ItineraryV2Event[] = dayBlocks.map((block) => {
         const heading = block.heading.trim();
-        const maxImages =
-          block.kind === "sightseeing" || isSightseeingEventHeading(heading)
-            ? SIGHTSEEING_EVENT_IMAGE_MAX
-            : 8;
-        const imageUrls = filterItineraryImageUrls(block.imageUrls, heading, maxImages);
+        const imageUrls = filterItineraryImageUrls(block.imageUrls, heading, SIGHTSEEING_EVENT_IMAGE_MAX);
         const images =
           imageUrls.length > 0
             ? imageUrls.map((url, index) => ({

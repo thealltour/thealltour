@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>하나투어 상품 수집</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        width: 340px;
+        font: 13px/1.45 system-ui, -apple-system, sans-serif;
+        color: #0f172a;
+        background: #f8fafc;
+      }
+      main {
+        padding: 14px 14px 16px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .status {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #e2e8f0;
+        color: #334155;
+        margin-bottom: 12px;
+        word-break: break-all;
+      }
+      .status.ok {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .status.warn {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      select,
+      input[type="url"] {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 7px 8px;
+        font: inherit;
+        background: #fff;
+      }
+      .row {
+        margin-bottom: 12px;
+      }
+      button {
+        width: 100%;
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font: inherit;
+        font-weight: 700;
+        color: #fff;
+        background: #0f172a;
+        cursor: pointer;
+        margin-bottom: 8px;
+      }
+      button.secondary {
+        background: #334155;
+      }
+      button.tertiary {
+        background: #475569;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .progress {
+        display: none;
+        margin-top: 12px;
+      }
+      .progress.show {
+        display: block;
+      }
+      .bar {
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .bar > span {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #38bdf8, #6366f1);
+      }
+      .spin {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid #cbd5e1;
+        border-top-color: #0f172a;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hint {
+        margin-top: 10px;
+        color: #64748b;
+        font-size: 12px;
+      }
+      .result {
+        margin-top: 10px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .summary {
+        display: none;
+        margin-top: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        font-size: 12px;
+        color: #334155;
+        white-space: pre-wrap;
+      }
+      .summary.show {
+        display: block;
+      }
+      .actions {
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>하나투어 상품 수집</h1>
+      <div id="pageStatus" class="status">탭 확인 중…</div>
+      <div class="row">
+        <label for="apiPreset">API Base URL</label>
+        <select id="apiPreset">
+          <option value="http://localhost:3000">로컬 (http://localhost:3000)</option>
+          <option value="https://www.thealltour.com">운영 (https://www.thealltour.com)</option>
+          <option value="custom">직접 입력</option>
+        </select>
+      </div>
+      <div class="row" id="customRow" hidden>
+        <input id="apiCustom" type="url" placeholder="https://example.com" />
+      </div>
+      <div id="authStatus" class="status">관리자 로그인 확인 중…</div>
+      <div class="actions">
+        <button id="runBtn" type="button" disabled>🚀 수집 후 서버 전송</button>
+        <button id="downloadMdBtn" type="button" class="secondary" disabled>📥 수집 데이터 다운로드 (Markdown)</button>
+        <button id="downloadJsonBtn" type="button" class="tertiary" disabled>📦 원본 Payload 다운로드 (JSON)</button>
+      </div>
+      <div id="progress" class="progress">
+        <div id="progressLabel"><span class="spin"></span>준비 중…</div>
+        <div class="bar" style="margin-top: 8px"><span id="progressBar"></span></div>
+      </div>
+      <div id="summary" class="summary"></div>
+      <div id="result" class="result"></div>
+      <p class="hint">
+        관리자 주소와 API Base의 호스트가 정확히 같아야 합니다 (예: www.thealltour.com ↔ www.thealltour.com).
+        Markdown/JSON 다운로드는 AI 크레딧 없이 수집 결과만 검증합니다. 서버 전송은 Gemini 정형화(full)를 사용하며, 캘린더가 0건이면 등록하지 않습니다.
+      </p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

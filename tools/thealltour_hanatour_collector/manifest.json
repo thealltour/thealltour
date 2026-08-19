@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "thealltour_hanatour_collector",
+  "version": "0.4.2",
+  "description": "하나투어 상품 페이지에서 텍스트·이미지·캘린더 API를 수집해 더올투어 관리자에 등록합니다.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.hanatour.com/*",
+    "https://hanatour.com/*",
+    "http://localhost:3000/*",
+    "https://thealltour.com/*",
+    "https://www.thealltour.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.hanatour.com/*",
+        "https://hanatour.com/*"
+      ],
+      "js": [
+        "discoverHanatourCalendarMain.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.hanatour.com/*",
+        "https://hanatour.com/*"
+      ],
+      "js": [
+        "discoverHanatourCalendar.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "하나투어 상품 수집",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  }
+}

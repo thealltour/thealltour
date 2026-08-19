@@ -2,6 +2,7 @@ import "server-only";
 
 import { generateObject } from "ai";
 import { resolveImportLanguageModel, resolveImportModelId } from "@/lib/admin/ai/importAiModel";
+import { formatQuotaExceededMessage, isAiQuotaError } from "@/lib/admin/ai/importAiErrors";
 import { bandItineraryOnlySchema } from "@/lib/admin/bandImport/bandItineraryOnlySchema";
 import { bandProductMetaSchema } from "@/lib/admin/bandImport/bandProductMetaSchema";
 import { mergeBandParsed } from "@/lib/admin/bandImport/mergeBandParsed";
@@ -114,6 +115,7 @@ export async function parseBandProductText(
     schema: bandProductMetaSchema,
     system: META_SYSTEM_PROMPT,
     prompt: buildBandMetaPrompt(input),
+    maxRetries: 0,
   });
 
   const { object: itinerary } = await generateObject({
@@ -121,12 +123,14 @@ export async function parseBandProductText(
     schema: bandItineraryOnlySchema,
     system: ITINERARY_SYSTEM_PROMPT,
     prompt: buildBandItineraryPrompt(input),
+    maxRetries: 0,
   });
 
   return mergeBandParsed(meta, itinerary);
 }
 
 export function formatBandParseError(error: unknown): string {
+  if (isAiQuotaError(error)) return formatQuotaExceededMessage(error);
   if (error instanceof Error) return error.message;
   return "밴드 상품 파싱 중 알 수 없는 오류가 발생했습니다.";
 }

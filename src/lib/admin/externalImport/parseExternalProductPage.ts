@@ -3,6 +3,11 @@ import "server-only";
 import { generateObject } from "ai";
 import { resolveImportLanguageModel } from "@/lib/admin/ai/importAiModel";
 import {
+  formatQuotaExceededMessage,
+  isAiQuotaError,
+  isTransientAiError,
+} from "@/lib/admin/ai/importAiErrors";
+import {
   externalProductMetaSchema,
   type ExternalParsedMeta,
 } from "@/lib/admin/externalImport/externalProductMetaSchema";
@@ -192,6 +197,25 @@ function buildItineraryPrompt(input: ParseExternalProductPageInput): string {
     .join("\n");
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableAiError(error: unknown): boolean {
+  return isTransientAiError(error);
+}
+
+async function withOneRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (isAiQuotaError(error) || !isRetryableAiError(error)) throw error;
+    console.warn(`[import-external] ${label} failed, retrying once after 1s:`, error);
+    await sleep(1000);
+    return await fn();
+  }
+}
+
 export async function parseExternalProductMeta(
   input: ParseExternalProductPageInput,
 ): Promise<ExternalParsedMeta> {
@@ -200,12 +224,15 @@ export async function parseExternalProductMeta(
     throw new Error("메타 추출용 페이지 텍스트가 비어 있습니다.");
   }
 
-  const { object } = await generateObject({
-    model: resolveImportLanguageModel(),
-    schema: externalProductMetaSchema,
-    system: META_SYSTEM_PROMPT,
-    prompt: buildMetaPrompt(input),
-  });
+  const { object } = await withOneRetry("parseExternalProductMeta", async () =>
+    generateObject({
+      model: resolveImportLanguageModel(),
+      schema: externalProductMetaSchema,
+      system: META_SYSTEM_PROMPT,
+      prompt: buildMetaPrompt(input),
+      maxRetries: 0,
+    }),
+  );
 
   return {
     ...object,
@@ -231,12 +258,15 @@ export async function parseExternalItineraryFromHtml(
     return EMPTY_ITINERARY_RESULT;
   }
 
-  const { object } = await generateObject({
-    model: resolveImportLanguageModel(),
-    schema: externalItineraryOnlySchema,
-    system: ITINERARY_HTML_PROMPT,
-    prompt: buildItineraryPrompt(input),
-  });
+  const { object } = await withOneRetry("parseExternalItineraryFromHtml", async () =>
+    generateObject({
+      model: resolveImportLanguageModel(),
+      schema: externalItineraryOnlySchema,
+      system: ITINERARY_HTML_PROMPT,
+      prompt: buildItineraryPrompt(input),
+      maxRetries: 0,
+    }),
+  );
 
   return {
     itinerary_v2_json: object.itinerary_v2_json,
@@ -259,6 +289,7 @@ export async function parseExternalProductPage(input: {
   theme_chart_json: ThemeChartJson | null;
 }> {
   const itineraryPromise = parseExternalItineraryFromHtml(input).catch((error) => {
+    if (isAiQuotaError(error)) throw error;
     console.warn("[import-external] itinerary AI parse failed:", error);
     return EMPTY_ITINERARY_RESULT;
   });
@@ -276,6 +307,9 @@ export async function parseExternalProductPage(input: {
 }
 
 export function formatExternalParseError(error: unknown): string {
+  if (isAiQuotaError(error)) {
+    return formatQuotaExceededMessage(error);
+  }
   if (!(error instanceof Error)) {
     return "외부 상품 페이지 파싱에 실패했습니다.";
   }
@@ -283,8 +317,12 @@ export function formatExternalParseError(error: unknown): string {
     error.message.includes("OPENAI_API_KEY") ||
     error.message.includes("GOOGLE_GENERATIVE_AI_API_KEY") ||
     error.message.includes("GEMINI_API_KEY") ||
-    error.message.includes("상품 파서용 AI 키")
+    error.message.includes("상품 파서용 AI 키") ||
+    error.message.includes("IMPORT_AI_PROVIDER")
   ) {
+    return error.message;
+  }
+  if (error.message.includes("메타 추출용 페이지 텍스트가 비어")) {
     return error.message;
   }
   const lower = error.message.toLowerCase();
@@ -294,6 +332,15 @@ export function formatExternalParseError(error: unknown): string {
     lower.includes("request too large")
   ) {
     return "AI 토큰 한도를 초과했습니다. 잠시 후 다시 시도하거나 모델 사용 한도를 확인해 주세요.";
+  }
+  if (
+    lower.includes("model") &&
+    (lower.includes("not found") || lower.includes("does not exist") || lower.includes("invalid"))
+  ) {
+    return `AI 모델 호출 실패: ${error.message}`;
+  }
+  if (error.message.trim() && error.message.length <= 240) {
+    return `외부 상품 페이지 파싱에 실패했습니다: ${error.message}`;
   }
   return "외부 상품 페이지 파싱에 실패했습니다.";
 }

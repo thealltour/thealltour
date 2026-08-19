@@ -85,6 +85,7 @@ export function resolveImportModelId(): { provider: ImportAiProvider; modelId: s
 export function resolveImportLanguageModel() {
   requireImportAiKey();
   const { provider, modelId } = resolveImportModelId();
+  // 호출 실패(쿼터 포함)해도 키·provider를 끄지 않는다. 매 요청마다 env에서 다시 연결한다.
   if (provider === "google") {
     const apiKey = getGoogleGenerativeAiKey();
     if (!apiKey) throw new Error(MISSING_IMPORT_AI_KEY_MESSAGE);

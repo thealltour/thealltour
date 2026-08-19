@@ -95,6 +95,8 @@ type ImportExternalBody = {
   itineraryBlocks?: unknown[];
   hanatourCalendarPayload?: unknown;
   packageCatalog?: unknown;
+  /** @deprecated light 모드는 거부됨. Gemini full 파싱만 허용 */
+  importMode?: "light" | "full";
 };
 
 
@@ -201,33 +203,31 @@ export async function POST(request: NextRequest) {
 
 
 
-  if (!hasImportAiKey()) {
-
-    return corsOnly({ message: MISSING_IMPORT_AI_KEY_MESSAGE }, 500);
-
-  }
-
-
-
   const itineraryBlocks = normalizeItineraryBlocks(body.itineraryBlocks);
-
   const productGalleryUrls = normalizeUrlList(body.productGalleryUrls);
-
   const heroImageUrl = body.heroImageUrl?.trim() || null;
-
   const sourceProductTitle = body.sourceProductTitle?.trim() || null;
-
   const seoHashtags = normalizeUrlList(body.seoHashtags);
 
   const hanatourCalendarPayload = normalizeHanatourCalendarPayload(body.hanatourCalendarPayload);
   const packageCatalog = normalizePackageCatalog(body.packageCatalog);
 
+  if (body.importMode === "light") {
+    return corsOnly(
+      {
+        message: "light import는 더 이상 지원하지 않습니다. Gemini AI 파싱(full)이 필수입니다.",
+        error: "AI 상품 분석에 실패했습니다. (Google AI Studio 응답 오류)",
+      },
+      400,
+    );
+  }
 
+  if (!hasImportAiKey()) {
+    return corsOnly({ message: MISSING_IMPORT_AI_KEY_MESSAGE }, 500);
+  }
 
   let metaResult;
-
   try {
-
     metaResult = await parseExternalProductPage({
       cleanHtmlStructure: cleanHtmlStructure || undefined,
       rawHtmlText: rawHtmlText || undefined,
@@ -235,13 +235,29 @@ export async function POST(request: NextRequest) {
       productSourceUrl,
       provider,
     });
-
   } catch (error) {
-
     console.error("[import-external] AI parse failed:", error);
+    const details = error instanceof Error ? error.message : String(error);
+    return corsOnly(
+      {
+        error: "AI 상품 분석에 실패했습니다. (Google AI Studio 응답 오류)",
+        message: formatExternalParseError(error),
+        details,
+        aiConnectionKept: true,
+      },
+      500,
+    );
+  }
 
-    return corsOnly({ message: formatExternalParseError(error) }, 500);
-
+  if (!metaResult?.meta) {
+    return corsOnly(
+      {
+        error: "AI 상품 분석에 실패했습니다. (Google AI Studio 응답 오류)",
+        message: "AI 메타 파싱 결과가 비어 있습니다.",
+        details: "parsedMeta is empty",
+      },
+      500,
+    );
   }
 
 
@@ -286,6 +302,18 @@ export async function POST(request: NextRequest) {
   });
 
   const parsedSummary = summarizeExternalParsedForResponse(parsed, { hanatourCalendarPayload });
+  const itineraryBlockDays = new Set(
+    itineraryBlocks.map((block) => block.day).filter((day): day is number => typeof day === "number" && day > 0),
+  ).size;
+  const fieldCoverage = {
+    hasCalendar: parsedSummary.departureScheduleCount > 0,
+    hasItinerary: parsedSummary.itineraryEventCount > 0,
+    hasInclusions: Boolean(parsed.included_items),
+    itineraryBlockDays,
+  };
+  console.log(
+    `[Import Result] itineraryEventCount: ${parsedSummary.itineraryEventCount}, departureScheduleCount: ${parsedSummary.departureScheduleCount}`,
+  );
   if (provider === "hanatour" && parsedSummary.departureScheduleCount === 0) {
     console.warn(
       "[import-external] hanatour calendar empty",
@@ -361,6 +389,8 @@ export async function POST(request: NextRequest) {
       provider: getExternalProviderLabel(provider),
 
       parsed: parsedSummary,
+      importModeUsed: "full",
+      fieldCoverage,
 
     },
 

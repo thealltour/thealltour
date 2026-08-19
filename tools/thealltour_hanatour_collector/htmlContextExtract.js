@@ -10,6 +10,55 @@
 
   const TRASH_SELECTORS = "script, style, iframe, noscript, svg, header, footer, nav";
 
+  // body 클론 후 제거할 노이즈 (GNB·푸터·최근본·후기필터 등). 본문 전체는 유지한다.
+  const BODY_CAPTURE_BLACKLIST_SELECTORS = [
+    "header",
+    "nav",
+    "footer",
+    ".footer",
+    "#header",
+    "#footer",
+    ".gnb_wrap",
+    ".quick_menu",
+    ".recent_prod",
+    ".app_banner",
+    ".review_filter_wrap",
+    "[class*='recommend']",
+    "[class*='related']",
+    "[class*='review_list'] select",
+    "[class*='review_list'] button",
+    "[class*='coupon']",
+    "[class*='gnb']",
+    "[class*='Gnb']",
+    "[class*='GNB']",
+    "[class*='recent_view']",
+    "[class*='recently']",
+    "[class*='Recent']",
+    "[class*='prod_recent']",
+    "[class*='recent_prod']",
+    "[class*='footer_wrap']",
+    "[class*='Footer']",
+    "[class*='banner_area']",
+    "[class*='Banner']",
+    ".ly_recent",
+    ".recent_prd",
+    "[class*='review']",
+    "[id*='review']",
+    ".review_wrap",
+    ".review_area",
+    ".related_items",
+    ".recommend_items",
+    ".recommend_prod",
+    "select",
+    "option",
+    "script",
+    "style",
+    "noscript",
+    "iframe",
+  ].join(", ");
+
+  const HTML_BLACKLIST_SELECTORS = BODY_CAPTURE_BLACKLIST_SELECTORS;
+
   const JUNK_URL_RE = /logo|icon|banner|spinner|arrow|badge|avatar|favicon/i;
 
 
@@ -366,43 +415,79 @@
 
 
 
+  function buildBodyHtmlCaptureRoot(doc) {
+    return doc.body ?? doc.documentElement ?? null;
+  }
+
+
+
+  function buildCombinedHtmlCaptureRoot(doc) {
+    return buildBodyHtmlCaptureRoot(doc);
+  }
+
+
+
   function findHtmlCaptureRoot(doc) {
+    return buildBodyHtmlCaptureRoot(doc);
+  }
 
-    const panels = doc.querySelectorAll('[role="tabpanel"]');
 
-    for (const panel of panels) {
 
-      const hidden = panel.getAttribute("aria-hidden");
+  function removeBlacklistedFromClone(clone) {
 
-      if (hidden === "true") continue;
+    clone.querySelectorAll(BODY_CAPTURE_BLACKLIST_SELECTORS).forEach((el) => el.remove());
 
-      const text = elementText(panel);
+    const badKeywords = [
+      "함께 많이 본 상품",
+      "구매고객 후기",
+      "명의 하나투어 후기",
+    ];
 
-      if (/일차/.test(text) && text.length > 80) return panel;
-
-    }
-
-    for (const panel of panels) {
-
-      if (panel.getAttribute("aria-hidden") !== "true" && elementText(panel).length > 80) {
-
-        return panel;
-
+    for (const kw of badKeywords) {
+      for (const el of clone.querySelectorAll("strong, h2, h3, h4, p, span, em")) {
+        const text = elementText(el);
+        if (!text.includes(kw)) continue;
+        const container = el.closest(
+          "section, aside, [class*='recommend'], [class*='related'], [class*='review'], div",
+        );
+        if (container && container !== clone && container.parentElement) container.remove();
       }
-
     }
 
-    return (
+    [...clone.querySelectorAll("div")].forEach((div) => {
+      const text = elementText(div);
+      if (text.length > 400) return;
+      if (badKeywords.some((keyword) => text.includes(keyword))) div.remove();
+    });
 
-      doc.querySelector("main") ??
+    clone.querySelectorAll("section, aside, div, ul").forEach((el) => {
 
-      doc.querySelector('[role="main"]') ??
+      if ((el.childElementCount ?? 0) > 30) return;
 
-      doc.querySelector("#content") ??
+      const text = elementText(el).slice(0, 64);
 
-      doc.body
+      if (/^최근\s*본\s*상품/.test(text)) el.remove();
+      if (/함께\s*많이\s*본\s*상품/.test(text)) el.remove();
+      if (/구매\s*고객\s*후기/.test(text)) el.remove();
+      if (/다른\s*상품\s*보기/.test(text)) el.remove();
+      if (/앱\s*설치|쿠폰\s*팩|쿠폰팩/.test(text)) el.remove();
 
-    );
+    });
+
+    clone.querySelectorAll("button").forEach((btn) => {
+      const btnText = elementText(btn);
+      if (/\[출발확정\]/.test(btnText)) {
+        const parentLi = btn.closest("li");
+        if (parentLi) parentLi.remove();
+        else btn.remove();
+        return;
+      }
+      if (/^(\[\s*출발\s*확정\s*\]|출발확정)/.test(btnText) && btnText.length > 24) {
+        const parentLi = btn.closest("li");
+        if (parentLi) parentLi.remove();
+        else btn.remove();
+      }
+    });
 
   }
 
@@ -449,6 +534,8 @@
 
 
   function minifyHtmlClone(clone) {
+
+    removeBlacklistedFromClone(clone);
 
     clone.querySelectorAll(TRASH_SELECTORS).forEach((el) => el.remove());
 
@@ -739,7 +826,7 @@
 
   function buildCleanHtmlStructure(doc) {
 
-    const root = findHtmlCaptureRoot(doc) ?? doc.body;
+    const root = buildBodyHtmlCaptureRoot(doc);
 
     if (!root) return "";
 
@@ -1242,6 +1329,12 @@
     sanitizeHtmlClone,
 
     buildCleanHtmlStructure,
+
+    buildBodyHtmlCaptureRoot,
+
+    buildCombinedHtmlCaptureRoot,
+
+    findHtmlCaptureRoot,
 
     buildPageTextForMeta,
 

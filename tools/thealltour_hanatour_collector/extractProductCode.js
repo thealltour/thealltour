@@ -2,6 +2,8 @@
  * 하나투어 상품 상세 페이지에서 saleProdCd / rprsProdCd 추출
  */
 (function (global) {
+  const RPRS_QUERY_RE = /rprsProdCd[s]?=([A-Z0-9]+)/i;
+
   function firstMatch(text, patterns) {
     for (const re of patterns) {
       const m = text.match(re);
@@ -28,11 +30,20 @@
     /"selectedRprsProd"\s*:\s*"([^"]+)"/,
   ];
 
+  function firstCodeToken(raw) {
+    if (!raw) return null;
+    const first = String(raw)
+      .split(/[,\s|]+/)
+      .map((part) => part.trim())
+      .find(Boolean);
+    return first || null;
+  }
+
   function extractCodesFromText(text) {
     if (!text) return { saleProdCd: null, rprsProdCd: null };
     return {
       saleProdCd: firstCodeToken(firstMatch(text, SALE_PATTERNS)),
-      rprsProdCd: firstCodeToken(firstMatch(text, RPRS_PATTERNS)),
+      rprsProdCd: firstCodeToken(firstMatch(text, RPRS_PATTERNS)) || firstCodeToken(text.match(RPRS_QUERY_RE)?.[1]),
     };
   }
 
@@ -122,22 +133,18 @@
     return extractCodesFromText(html);
   }
 
-  function firstCodeToken(raw) {
-    if (!raw) return null;
-    const first = String(raw)
-      .split(/[,\s|]+/)
-      .map((part) => part.trim())
-      .find(Boolean);
-    return first || null;
-  }
-
   function extractFromUrl(doc) {
     const href = doc.defaultView?.location?.href ?? "";
     const fromCore = global.HanatourCollectorCore?.parseProductCodesFromHref?.(href);
     if (fromCore && (fromCore.saleProdCd || fromCore.rprsProdCd || fromCore.depDay)) {
       return fromCore;
     }
-    const params = new URLSearchParams(doc.defaultView?.location?.search ?? "");
+    let params;
+    try {
+      params = new URL(href).searchParams;
+    } catch {
+      params = new URLSearchParams(doc.defaultView?.location?.search ?? "");
+    }
     const saleProdCd = firstCodeToken(
       params.get("saleProdCd") ||
         params.get("pkgCd") ||
@@ -145,7 +152,7 @@
         params.get("pkgProdCd"),
     );
     const rprsProdCd = firstCodeToken(
-      params.get("rprsProdCd") || params.get("rprsProdCds") || params.get("selectedRprsProd"),
+      params.get("rprsProdCds") || params.get("rprsProdCd") || params.get("selectedRprsProd"),
     );
     const depDay = params.get("depDay")?.trim() || null;
     return {
@@ -153,6 +160,59 @@
       rprsProdCd,
       depDay,
     };
+  }
+
+  function getMainContainer(doc) {
+    return doc.querySelector(".prod_detail_top") ?? doc.querySelector("main") ?? doc.body ?? doc.documentElement;
+  }
+
+  function extractRprsFromAnchors(doc) {
+    const parse = global.HanatourCollectorCore?.parseProductCodesFromHref;
+    const base = doc.defaultView?.location?.href;
+
+    const container = getMainContainer(doc);
+    const candidates = Array.from(
+      container?.querySelectorAll?.('a[href*="rprsProdCds="], a[href*="rprsProdCd="]') ?? [],
+    );
+
+    const isOtherDepartureAnchor = (a) => {
+      const text = (a?.textContent ?? "").trim();
+      if (!text) return false;
+      if (text.includes("다른 출발일")) return true;
+      // 페이지에서 쓰는 표현이 케이스마다 달라서, '최저가' 포함도 허용한다.
+      if (text.includes("최저가로 떠날 수 있는 날") || text.includes("최저가")) return true;
+      return false;
+    };
+
+    const preferred = candidates.find(
+      (a) =>
+        isOtherDepartureAnchor(a) &&
+        ((a.getAttribute("href") ?? "").includes("rprsProdCds=") || (a.getAttribute("href") ?? "").includes("rprsProdCd=")),
+    );
+    const fallback = preferred ?? candidates[0];
+    if (!fallback) return null;
+
+    const href = fallback.getAttribute("href") || fallback.href || "";
+    if (!href) return null;
+    let absolute = href;
+    try {
+      absolute = base ? new URL(href, base).href : href;
+    } catch {
+      /* keep href */
+    }
+    const codes = parse?.(absolute);
+    const rprs = codes?.rprsProdCd || firstCodeToken(href.match(RPRS_QUERY_RE)?.[1]);
+    if (rprs) return rprs;
+    return null;
+  }
+
+  function extractRprsFromRegex(doc) {
+    // 앵커가 없을 때도 헤더/배너 오추출을 막기 위해, 메인 컨테이너 HTML 범위로 제한한다.
+    const container = getMainContainer(doc);
+    const text = container?.outerHTML ?? doc.body?.innerHTML ?? "";
+    const query = text.match(RPRS_QUERY_RE);
+    if (query?.[1]) return firstCodeToken(query[1]);
+    return firstCodeToken(firstMatch(text, RPRS_PATTERNS));
   }
 
   function extractDepDayFromScripts(doc) {
@@ -169,10 +229,24 @@
   }
 
   function extractHanatourProductCodes(doc) {
-    const fromScripts = extractFromScripts(doc);
     const fromUrl = extractFromUrl(doc);
+    let saleProdCd = fromUrl.saleProdCd;
+    let rprsProdCd = fromUrl.rprsProdCd;
+    let rprsSource = rprsProdCd ? "url" : null;
+
+    if (!rprsProdCd) {
+      rprsProdCd = extractRprsFromAnchors(doc);
+      if (rprsProdCd) rprsSource = "href";
+    }
+
+    if (!rprsProdCd) {
+      rprsProdCd = extractRprsFromRegex(doc);
+      if (rprsProdCd) rprsSource = "regex";
+    }
+
+    const fromScripts = extractFromScripts(doc);
     const fromBody = extractFromBodyHtml(doc);
-    const fromGlobals = extractFromGlobals();
+    saleProdCd = saleProdCd || fromScripts.saleProdCd || fromBody.saleProdCd;
 
     const fromCaptures = [];
     const captures = global.HanatourCalendarDiscover?.getCapturedPayloads?.() ?? [];
@@ -180,25 +254,50 @@
       walkForProductCodes(item.json ?? item, 0, fromCaptures);
     }
 
-    let saleProdCd = fromUrl.saleProdCd || fromScripts.saleProdCd || fromBody.saleProdCd;
-    let rprsProdCd = fromUrl.rprsProdCd || fromScripts.rprsProdCd || fromBody.rprsProdCd;
+    if (!rprsProdCd) {
+      for (const item of fromCaptures) {
+        if (item.rprsProdCd) {
+          rprsProdCd = item.rprsProdCd;
+          rprsSource = "discover";
+          break;
+        }
+      }
+    }
 
-    for (const item of [...fromGlobals, ...fromCaptures]) {
-      saleProdCd = saleProdCd || item.saleProdCd;
-      rprsProdCd = rprsProdCd || item.rprsProdCd;
-      if (saleProdCd && rprsProdCd) break;
+    if (!rprsProdCd) {
+      for (const item of extractFromGlobals()) {
+        saleProdCd = saleProdCd || item.saleProdCd;
+        if (item.rprsProdCd) {
+          rprsProdCd = item.rprsProdCd;
+          rprsSource = "globals";
+          break;
+        }
+        if (saleProdCd && rprsProdCd) break;
+      }
+    } else {
+      for (const item of extractFromGlobals()) {
+        saleProdCd = saleProdCd || item.saleProdCd;
+        if (saleProdCd) break;
+      }
     }
 
     const depDay = fromUrl.depDay || extractDepDayFromScripts(doc);
+    if (rprsProdCd) {
+      console.log("[Scrape] rprsProdCd source=", rprsSource, rprsProdCd);
+    }
+
     return {
       saleProdCd: saleProdCd || null,
       rprsProdCd: rprsProdCd || null,
       depDay,
+      rprsSource,
     };
   }
 
   global.HanatourProductCode = {
     extractHanatourProductCodes,
     extractFromUrl,
+    extractRprsFromAnchors,
+    extractRprsFromRegex,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

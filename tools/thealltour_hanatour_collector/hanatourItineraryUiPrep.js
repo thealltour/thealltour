@@ -386,10 +386,14 @@
     if (!scope) return out;
     const scopeIsHuge =
       scope === doc.body || scope === doc.documentElement || scope === doc.querySelector("main");
+    // 실측 사이트에서 일차 아코디언 헤더가 <a>(예: <a><strong>1일차</strong>08/29(토)...</a>)로
+    // 구현된 경우가 있다. scope가 huge(=body/main 전체)일 때 성능 보호를 위해 div/span은
+    // 빼지만, a는 반드시 포함해야 한다 — 안 그러면 이런 페이지에서 아코디언 헤더 자체를
+    // 하나도 못 찾아 accordionsExpanded=0, extractionPath=none으로 항상 실패한다.
     const candidates = scope.querySelectorAll(
       scopeIsHuge
-        ? "button, [role='button'], summary, h2, h3, h4, [role='tab']"
-        : "button, [role='button'], summary, h2, h3, h4, div, span",
+        ? "button, [role='button'], summary, h2, h3, h4, [role='tab'], a"
+        : "button, [role='button'], summary, h2, h3, h4, div, span, a",
     );
 
     for (const el of candidates) {

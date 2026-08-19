@@ -48,9 +48,15 @@
       core?.resolveSearchCalendarFromApiResponse(json) ?? core?.normalizeYearMonthCalJson(json) ?? null;
     const calendarData = Array.isArray(json?.data?.data)
       ? json.data.data
-      : Array.isArray(json?.calList)
-        ? json.calList
-        : [];
+      : Array.isArray(json?.data) && json.data[0]?.depDay
+        ? json.data
+        : Array.isArray(json?.calList)
+          ? json.calList
+          : [];
+    const keys = Object.keys(searchCalendar ?? {});
+    console.log(
+      `[Scrape] getListYearMonthCal rprs=${rprsProdCd} keys=${keys.length ? keys.join(",") : "(none)"} days=${countDays(searchCalendar)}`,
+    );
     return {
       prodCode: rprsProdCd,
       rprsProdCd,
@@ -78,15 +84,36 @@
     return { ...payload, fetchMeta: [...(payload.fetchMeta || []), ...rows] };
   }
 
+  function resolveRprsFromPage(meta) {
+    if (meta?.rprsProdCd) return { rprsProdCd: meta.rprsProdCd, rprsSource: "meta" };
+    if (typeof document === "undefined") return { rprsProdCd: null, rprsSource: null };
+    const extracted = global.HanatourProductCode?.extractHanatourProductCodes?.(document);
+    if (extracted?.rprsProdCd) {
+      return {
+        rprsProdCd: extracted.rprsProdCd,
+        rprsSource: extracted.rprsSource ?? "dom",
+        saleProdCd: extracted.saleProdCd ?? meta?.saleProdCd ?? null,
+        depDay: extracted.depDay ?? meta?.depDay ?? null,
+      };
+    }
+    return { rprsProdCd: null, rprsSource: null };
+  }
+
   async function fetchHanatourCalendarInPage(meta, options) {
     const monthSpan = options?.monthSpan ?? 12;
     let merged = null;
     const sources = [];
+    const resolved = resolveRprsFromPage(meta);
+    const pageMeta = {
+      saleProdCd: resolved.saleProdCd ?? meta?.saleProdCd ?? null,
+      rprsProdCd: resolved.rprsProdCd ?? meta?.rprsProdCd ?? null,
+      depDay: resolved.depDay ?? meta?.depDay ?? null,
+    };
 
     const discover = global.HanatourCalendarDiscover?.discoverHanatourCalendar;
     if (typeof discover === "function" && typeof document !== "undefined") {
       try {
-        const discovered = await discover(document, meta);
+        const discovered = await discover(document, pageMeta);
         if (discovered) {
           merged = merge(merged, { ...discovered, source: "discover" });
           sources.push("discover");
@@ -101,9 +128,9 @@
       }
     }
 
-    if (meta?.rprsProdCd) {
+    if (pageMeta.rprsProdCd) {
       try {
-        const posted = await fetchYearMonthCalInPage(meta.rprsProdCd, { monthSpan });
+        const posted = await fetchYearMonthCalInPage(pageMeta.rprsProdCd, { monthSpan });
         merged = merge(merged, posted);
         sources.push("getListYearMonthCal");
       } catch (err) {
@@ -121,7 +148,7 @@
     const api = global.HanatourCalendarApi;
     if (api?.fetchCalendarViaApi) {
       try {
-        const viaApi = await api.fetchCalendarViaApi(meta, { months: monthSpan });
+        const viaApi = await api.fetchCalendarViaApi(pageMeta, { months: monthSpan });
         if (viaApi) {
           merged = merge(merged, { ...viaApi, source: "m_hanatour_calendar_get" });
           sources.push("m_hanatour_calendar_get");
@@ -142,10 +169,10 @@
 
     if (!merged || (dayCount === 0 && dataCount === 0)) {
       return {
-        prodCode: meta?.rprsProdCd || meta?.saleProdCd || null,
-        saleProdCd: meta?.saleProdCd ?? null,
-        rprsProdCd: meta?.rprsProdCd ?? null,
-        depDay: meta?.depDay ?? null,
+        prodCode: pageMeta.rprsProdCd || pageMeta.saleProdCd || null,
+        saleProdCd: pageMeta.saleProdCd,
+        rprsProdCd: pageMeta.rprsProdCd,
+        depDay: pageMeta.depDay,
         searchCalendar: undefined,
         calendarData: undefined,
         fetchMeta: merged?.fetchMeta ?? [],
@@ -155,10 +182,10 @@
 
     return {
       ...merged,
-      prodCode: merged.rprsProdCd || merged.prodCode || meta?.rprsProdCd || meta?.saleProdCd || null,
-      saleProdCd: merged.saleProdCd ?? meta?.saleProdCd ?? null,
-      rprsProdCd: merged.rprsProdCd ?? meta?.rprsProdCd ?? null,
-      depDay: merged.depDay ?? meta?.depDay ?? null,
+      prodCode: merged.rprsProdCd || merged.prodCode || pageMeta.rprsProdCd || pageMeta.saleProdCd || null,
+      saleProdCd: merged.saleProdCd ?? pageMeta.saleProdCd,
+      rprsProdCd: merged.rprsProdCd ?? pageMeta.rprsProdCd,
+      depDay: merged.depDay ?? pageMeta.depDay,
       source,
     };
   }

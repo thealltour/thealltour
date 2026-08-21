@@ -1,4 +1,5 @@
 import { transformCalendarData } from "@/lib/admin/externalImport/hanatour/transformCalendarData";
+import { parseHanatourCalendarPrice } from "@/lib/admin/externalImport/hanatour/parseHanatourWonAmount";
 import type { HanatourCalendarPayload } from "@/lib/admin/externalImport/hanatour/types";
 import {
   departureSchedulesToJsonColumn,
@@ -11,14 +12,21 @@ export type HanatourCalendarImportResult = {
   minPrice: number | null;
 };
 
+export { parseHanatourCalendarPrice };
+
 export function mapHanatourCalendarToImport(
   payload: HanatourCalendarPayload | null | undefined,
+  basePrice?: number | null,
 ): HanatourCalendarImportResult {
   if (!payload?.searchCalendar && !payload?.calendarData?.length) {
     return { departureSchedules: null, minPrice: null };
   }
 
-  const schedules = transformCalendarData(payload.searchCalendar, payload.calendarData);
+  const schedules = transformCalendarData(
+    payload.searchCalendar,
+    payload.calendarData,
+    basePrice,
+  );
   const departureSchedules = departureSchedulesToJsonColumn(schedules);
   const minPrice = getDepartureSchedulesMinPrice(departureSchedules ?? undefined);
 

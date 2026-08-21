@@ -222,12 +222,12 @@ describe("mapExternalParsedToInsert", () => {
       {
         departureDate: "2026-09-27",
         returnDate: null,
-        price: 1_360_000,
+        price: 1_369_900,
         label: "09.27.일",
         status: null,
       },
     ]);
-    expect(result.price).toBe(1_360_000);
+    expect(result.price).toBe(1_369_900);
     expect(result.departure_from_date).toBe("2026-09-24");
     expect(result.departure_to_date).toBeNull();
   });

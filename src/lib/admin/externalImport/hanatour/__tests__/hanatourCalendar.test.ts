@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { mapHanatourCalendarToImport } from "@/lib/admin/externalImport/hanatour/mapHanatourCalendarToImport";
-import { parseHanatourWonAmount, normalizeHanatourPriceText } from "@/lib/admin/externalImport/hanatour/parseHanatourWonAmount";
+import { parseHanatourWonAmount, normalizeHanatourPriceText, parseHanatourCalendarPrice } from "@/lib/admin/externalImport/hanatour/parseHanatourWonAmount";
 import { transformCalendarData } from "@/lib/admin/externalImport/hanatour/transformCalendarData";
 import type { HanatourCalendarPayload } from "@/lib/admin/externalImport/hanatour/types";
 
@@ -85,6 +85,24 @@ const FULL_USER_SAMPLE: HanatourCalendarPayload = {
   ],
 };
 
+describe("parseHanatourCalendarPrice", () => {
+  it("restores trailing digits from basePrice for 만-unit strings", () => {
+    expect(parseHanatourCalendarPrice("641만", 6_419_000)).toBe(6_419_000);
+    expect(parseHanatourCalendarPrice("417만", 6_419_000)).toBe(4_179_000);
+    expect(parseHanatourCalendarPrice("최저가 136만", 1_519_900)).toBe(1_369_900);
+  });
+
+  it("keeps exact numeric amounts without applying trailing digits", () => {
+    expect(parseHanatourCalendarPrice(1_519_900, 6_419_000)).toBe(1_519_900);
+    expect(parseHanatourCalendarPrice("1,519,900", 6_419_000)).toBe(1_519_900);
+  });
+
+  it("falls back to man*10000 when basePrice is missing", () => {
+    expect(parseHanatourCalendarPrice("151만")).toBe(1_510_000);
+    expect(parseHanatourCalendarPrice("151만", null)).toBe(1_510_000);
+  });
+});
+
 describe("parseHanatourWonAmount", () => {
   it("parses 만 suffix strings", () => {
     expect(parseHanatourWonAmount("151만")).toBe(1_510_000);
@@ -107,6 +125,23 @@ describe("parseHanatourWonAmount", () => {
 });
 
 describe("transformCalendarData", () => {
+  it("applies basePrice trailing digits to man-unit searchCalendar rows", () => {
+    const schedules = transformCalendarData(
+      {
+        "202608": [
+          { depDay: "20260820", depDayNm: "08.20", adtAmt: "641만" },
+          { depDay: "20260827", depDayNm: "08.27", adtAmt: "417만" },
+        ],
+      },
+      undefined,
+      6_419_000,
+    );
+
+    expect(schedules).toHaveLength(2);
+    expect(schedules[0]?.price).toBe(6_419_000);
+    expect(schedules[1]?.price).toBe(4_179_000);
+  });
+
   it("flattens searchCalendar into departure schedules", () => {
     const schedules = transformCalendarData(
       SAMPLE_PAYLOAD.searchCalendar,
@@ -164,6 +199,22 @@ describe("transformCalendarData", () => {
 });
 
 describe("mapHanatourCalendarToImport", () => {
+  it("maps payload with basePrice so minPrice includes trailing digits", () => {
+    const result = mapHanatourCalendarToImport(
+      {
+        searchCalendar: {
+          "202608": [
+            { depDay: "20260820", adtAmt: "641만" },
+            { depDay: "20260827", adtAmt: "417만" },
+          ],
+        },
+      },
+      6_419_000,
+    );
+    expect(result.departureSchedules).toHaveLength(2);
+    expect(result.minPrice).toBe(4_179_000);
+  });
+
   it("maps payload to departure_schedules_json and min price", () => {
     const result = mapHanatourCalendarToImport(SAMPLE_PAYLOAD);
 

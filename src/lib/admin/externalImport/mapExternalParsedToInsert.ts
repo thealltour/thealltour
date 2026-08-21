@@ -136,8 +136,11 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
   } = input;
 
   const itineraryV2 = resolveItineraryV2(parsed.itinerary_v2_json);
-  const { departureSchedules, minPrice: calendarMinPrice } =
-    mapHanatourCalendarToImport(hanatourCalendarPayload);
+  const parsedBasePrice = toSafeInteger(parsed.price);
+  const { departureSchedules, minPrice: calendarMinPrice } = mapHanatourCalendarToImport(
+    hanatourCalendarPayload,
+    parsedBasePrice,
+  );
 
   const productImages = normalizeImageUrls(parsed.images_json);
   const imageUrl =
@@ -161,7 +164,7 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
 
   const sellingPoints = sellingPointsToJsonColumn(parsed.selling_points_json ?? undefined);
 
-  let price = toSafeInteger(parsed.price);
+  let price = parsedBasePrice;
   if (calendarMinPrice != null) {
     price = calendarMinPrice;
   }
@@ -232,8 +235,12 @@ export function summarizeExternalParsedForResponse(
   departureScheduleCount: number;
 } {
   const itineraryV2 = resolveItineraryV2(parsed.itinerary_v2_json);
-  const calendar = mapHanatourCalendarToImport(options?.hanatourCalendarPayload);
-  const price = calendar.minPrice ?? parsed.price;
+  const parsedBasePrice = toSafeInteger(parsed.price);
+  const calendar = mapHanatourCalendarToImport(
+    options?.hanatourCalendarPayload,
+    parsedBasePrice,
+  );
+  const price = calendar.minPrice ?? parsedBasePrice;
   return {
     title: trimOrNull(parsed.title),
     price,

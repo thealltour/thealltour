@@ -70,6 +70,38 @@ function renderNoisyProductPage() {
   `;
 }
 
+function renderDeepNoiseWithoutReviewClass() {
+  const days = Array.from({ length: 5 }, (_, i) => {
+    const day = i + 1;
+    return `<div role="tabpanel"><h2>${day}일차</h2><p>${day}일차 일정 본문입니다.</p></div>`;
+  }).join("");
+
+  const noiseItems = Array.from({ length: 80 }, (_, i) => {
+    return `<li><button><span>[출발확정] 스페인/포르투갈 ${i + 1}일 패키지 상품명 긴 텍스트</span></button></li>`;
+  }).join("");
+
+  document.body.innerHTML = `
+    <main>
+      <div class="prod_detail_top"><h1>스페인·포르투갈 10일</h1></div>
+      <div class="detail_wrap">${days}</div>
+      <div class="bottom_block">
+        <div class="layer_a">
+          <div class="layer_b">
+            <div class="layer_c">
+              <div class="layer_d">
+                <strong>구매고객 후기</strong>
+                <label>동반자 유형</label>
+                <button>상품명</button>
+                <ul class="noise_list">${noiseItems}</ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  `;
+}
+
 describe("htmlContextExtract body blacklist scoping", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
@@ -109,5 +141,18 @@ describe("htmlContextExtract body blacklist scoping", () => {
     expect(html).not.toMatch(/쿠폰팩/);
     expect(html).not.toMatch(/푸터/);
     expect(html).not.toMatch(/<select/i);
+  });
+
+  it("truncates deep review/related blocks without review class names", () => {
+    renderDeepNoiseWithoutReviewClass();
+    const api = loadHtmlExtractModule();
+    const html = api.buildCleanHtmlStructure(document);
+
+    expect(html).toMatch(/스페인·포르투갈 10일/);
+    expect(html).toMatch(/5일차/);
+    expect(html).not.toMatch(/구매고객 후기/);
+    expect(html).not.toMatch(/동반자 유형/);
+    expect(html).not.toMatch(/\[출발확정\]/);
+    expect(html.length).toBeLessThan(8000);
   });
 });

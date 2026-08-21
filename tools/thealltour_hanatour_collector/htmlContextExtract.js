@@ -71,10 +71,88 @@
 
 
 
+  // cloneNode 결과(detached)에서는 innerText가 ""인 경우가 많다(렌더 트리 없음).
+  // ?? 는 ""를 유효값으로 취급해 textContent 폴백이 막히므로 || 를 쓴다.
   function elementText(el) {
+    return (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+  }
 
-    return (el.innerText ?? el.textContent ?? "").replace(/\s+/g, " ").trim();
+  const NOISE_CUT_KEYWORDS = [
+    "구매고객 후기",
+    "동반자 유형",
+    "함께 많이 본 상품",
+    "명의 하나투어 후기",
+  ];
 
+  function isNoiseMarkerText(text) {
+    if (!text) return false;
+    if (text === "상품명") return true;
+    return NOISE_CUT_KEYWORDS.some((kw) => text.includes(kw));
+  }
+
+  function climbNoiseContainer(el, clone, maxDepth) {
+    let target = el;
+    const depth = maxDepth ?? 5;
+    for (let i = 0; i < depth; i += 1) {
+      const parent = target.parentElement;
+      if (!parent || parent === clone) break;
+      const tag = parent.tagName?.toLowerCase?.() ?? "";
+      if (tag === "body" || tag === "html") break;
+      target = parent;
+    }
+    return target;
+  }
+
+  function removeNodeAndFollowingSiblings(node) {
+    if (!node || !node.parentElement) {
+      node?.remove?.();
+      return;
+    }
+    let cur = node;
+    while (cur) {
+      const next = cur.nextElementSibling;
+      cur.remove();
+      cur = next;
+    }
+  }
+
+  /** 노이즈 앵커부터 main/clone 직계 자식을 절단(이후 형제까지 제거). */
+  function truncateNoiseTailFromClone(clone) {
+    const root = clone.querySelector("main") ?? clone;
+    const candidates = root.querySelectorAll(
+      "button, a, strong, h2, h3, h4, h5, span, p, em, label, legend",
+    );
+    let firstMarker = null;
+    for (const el of candidates) {
+      if (isNoiseMarkerText(elementText(el))) {
+        firstMarker = el;
+        break;
+      }
+    }
+    if (!firstMarker) return;
+
+    let cut = firstMarker;
+    while (cut.parentElement && cut.parentElement !== root && cut.parentElement !== clone) {
+      cut = cut.parentElement;
+    }
+    if (cut === root || cut === clone) {
+      cut = climbNoiseContainer(firstMarker, clone, 5);
+    }
+    if (!cut || cut === root || cut === clone) return;
+    removeNodeAndFollowingSiblings(cut);
+  }
+
+  function removeNoiseByParentClimb(clone) {
+    const hits = [];
+    for (const el of clone.querySelectorAll("button, a, strong, h2, h3, h4, span, p, em, label")) {
+      if (!el.isConnected) continue;
+      if (isNoiseMarkerText(elementText(el))) hits.push(el);
+    }
+    for (const el of hits) {
+      if (!el.isConnected) continue;
+      const target = climbNoiseContainer(el, clone, 5);
+      if (target && target !== clone && target.parentElement) target.remove();
+    }
   }
 
 
@@ -434,61 +512,38 @@
 
 
   function removeBlacklistedFromClone(clone) {
-
     clone.querySelectorAll(BODY_CAPTURE_BLACKLIST_SELECTORS).forEach((el) => el.remove());
 
-    const badKeywords = [
-      "함께 많이 본 상품",
-      "구매고객 후기",
-      "명의 하나투어 후기",
-    ];
-
-    for (const kw of badKeywords) {
-      for (const el of clone.querySelectorAll("strong, h2, h3, h4, p, span, em")) {
-        const text = elementText(el);
-        if (!text.includes(kw)) continue;
-        const container = el.closest(
-          "section, aside, [class*='recommend'], [class*='related'], [class*='review'], div",
-        );
-        if (container && container !== clone && container.parentElement) container.remove();
-      }
-    }
-
-    [...clone.querySelectorAll("div")].forEach((div) => {
-      const text = elementText(div);
-      if (text.length > 400) return;
-      if (badKeywords.some((keyword) => text.includes(keyword))) div.remove();
-    });
+    // 노이즈 시작점부터 하단 형제(형제 포함). 클래스명에 의존하지 않음.
+    truncateNoiseTailFromClone(clone);
+    removeNoiseByParentClimb(clone);
 
     clone.querySelectorAll("section, aside, div, ul").forEach((el) => {
-
-      if ((el.childElementCount ?? 0) > 30) return;
-
-      const text = elementText(el).slice(0, 64);
-
+      if (!el.isConnected) return;
+      const text = elementText(el).slice(0, 80);
       if (/^최근\s*본\s*상품/.test(text)) el.remove();
       if (/함께\s*많이\s*본\s*상품/.test(text)) el.remove();
       if (/구매\s*고객\s*후기/.test(text)) el.remove();
+      if (/동반자\s*유형/.test(text)) el.remove();
       if (/다른\s*상품\s*보기/.test(text)) el.remove();
       if (/앱\s*설치|쿠폰\s*팩|쿠폰팩/.test(text)) el.remove();
+    });
 
+    // 타 상품 드롭다운 잔해: [출발확정] 목록 통째 삭제
+    clone.querySelectorAll("li").forEach((li) => {
+      if (!li.isConnected) return;
+      if (elementText(li).includes("[출발확정]")) li.remove();
     });
 
     clone.querySelectorAll("button").forEach((btn) => {
+      if (!btn.isConnected) return;
       const btnText = elementText(btn);
-      if (/\[출발확정\]/.test(btnText)) {
-        const parentLi = btn.closest("li");
-        if (parentLi) parentLi.remove();
-        else btn.remove();
-        return;
-      }
-      if (/^(\[\s*출발\s*확정\s*\]|출발확정)/.test(btnText) && btnText.length > 24) {
+      if (/\[출발확정\]/.test(btnText) || (/출발확정/.test(btnText) && btnText.length > 24)) {
         const parentLi = btn.closest("li");
         if (parentLi) parentLi.remove();
         else btn.remove();
       }
     });
-
   }
 
 

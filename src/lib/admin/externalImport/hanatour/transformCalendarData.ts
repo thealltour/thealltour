@@ -1,4 +1,4 @@
-import { parseHanatourWonAmount } from "@/lib/admin/externalImport/hanatour/parseHanatourWonAmount";
+import { parseHanatourCalendarPrice } from "@/lib/admin/externalImport/hanatour/parseHanatourWonAmount";
 import type {
   HanatourCalendarDataRow,
   HanatourCalendarDay,
@@ -24,6 +24,7 @@ export function mapHanatourReserveStatus(
 export function transformCalendarData(
   searchCalendar: Record<string, HanatourCalendarDay[]> | undefined,
   calendarData?: HanatourCalendarDataRow[],
+  basePrice?: number | null,
 ): ProductDepartureSchedule[] {
   const dataByDepDay = new Map<string, HanatourCalendarDataRow>();
   for (const row of calendarData ?? []) {
@@ -44,8 +45,8 @@ export function transformCalendarData(
 
         const enrich = dataByDepDay.get(depDay);
         const price =
-          (enrich?.adtAmt != null ? parseHanatourWonAmount(enrich.adtAmt) : null) ??
-          parseHanatourWonAmount(day.adtAmt);
+          (enrich?.adtAmt != null ? parseHanatourCalendarPrice(enrich.adtAmt, basePrice) : null) ??
+          parseHanatourCalendarPrice(day.adtAmt, basePrice);
 
         const returnDate = enrich?.arrDay ? depDayToYmd(enrich.arrDay) : null;
 
@@ -70,7 +71,7 @@ export function transformCalendarData(
     byDepDay.set(depDay, {
       departureDate,
       returnDate: row.arrDay ? depDayToYmd(row.arrDay) : null,
-      price: parseHanatourWonAmount(row.adtAmt),
+      price: parseHanatourCalendarPrice(row.adtAmt, basePrice),
       label: null,
       status: mapHanatourReserveStatus(row.reserveStatus),
     });

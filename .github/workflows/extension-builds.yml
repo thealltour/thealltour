@@ -5,11 +5,14 @@ on:
     branches: [main]
     paths:
       - "tools/modetour-extractor-extension/**"
-      - "tools/thealltour_extension/**"
+      - "tools/thealltour_hanatour_collector/**"
       - "public/extension-builds/**"
       - "scripts/upload-extension-builds.mjs"
       - ".github/workflows/extension-builds.yml"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   package-and-upload:
@@ -17,6 +20,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Allow bot commit of regenerated public/extension-builds
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -31,17 +37,33 @@ jobs:
           npm ci
           npm run package
 
-      - name: Package thealltour extension
-        working-directory: tools/thealltour_extension
+      - name: Package thealltour hanatour collector
+        working-directory: tools/thealltour_hanatour_collector
         run: |
           npm run package
 
+      - name: Sync public/extension-builds when package version changed
+        run: node scripts/upload-extension-builds.mjs --skip-package --skip-upload --only-if-version-changed
+
+      - name: Commit updated download artifacts (version change)
+        run: |
+          if git diff --quiet -- public/extension-builds; then
+            echo "public/extension-builds unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/extension-builds
+          git commit -m "chore(extensions): sync public zip to package versions"
+          git push
+
       - name: Verify committed thealltour-extension download zip
         run: |
-          node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('tools/thealltour_extension/package.json','utf8')); const man=JSON.parse(fs.readFileSync('public/extension-builds/thealltour-extension/manifest.json','utf8')); if (pkg.version!==man.version) { throw new Error('Committed download is v'+man.version+' but source is v'+pkg.version+'. Run npm run extensions:package:local -- --slug=thealltour-extension and commit public/extension-builds.'); } const zip=fs.statSync('public/extension-builds/thealltour-extension/latest.zip'); if (!zip.size) throw new Error('latest.zip is empty'); console.log('ok committed thealltour-extension v'+man.version+' ('+zip.size+' bytes)');"
+          node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('tools/thealltour_hanatour_collector/package.json','utf8')); const man=JSON.parse(fs.readFileSync('public/extension-builds/thealltour-extension/manifest.json','utf8')); if (pkg.version!==man.version) { throw new Error('Committed download is v'+man.version+' but source is v'+pkg.version+'. CI should have synced public/extension-builds.'); } const zip=fs.statSync('public/extension-builds/thealltour-extension/latest.zip'); if (!zip.size) throw new Error('latest.zip is empty'); console.log('ok committed thealltour-extension v'+man.version+' ('+zip.size+' bytes)');"
 
       - name: Upload to Supabase Storage
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/upload-extension-builds.mjs --skip-package
+        # 패키징은 위에서 완료. 버전 변경 여부와 무관하게 Storage를 최신 build zip으로 맞춤.
+        run: node scripts/upload-extension-builds.mjs --skip-package --skip-public

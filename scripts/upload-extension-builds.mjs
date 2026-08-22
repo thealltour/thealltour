@@ -5,14 +5,19 @@
  *   node scripts/upload-extension-builds.mjs
  *   node scripts/upload-extension-builds.mjs --skip-upload
  *   node scripts/upload-extension-builds.mjs --slug=thealltour-extension
+ *   node scripts/upload-extension-builds.mjs --only-if-version-changed
  *
  * 도구 페이지 다운로드의 1차 소스는 git에 커밋된
  * `public/extension-builds/<slug>/latest.zip` 입니다. 패키징 후 이 파일을
  * 커밋·push 해야 운영 배포에서 새 버전이 내려받힙니다.
  *
+ * `--only-if-version-changed`: package.json 버전이 커밋된 manifest와 같으면
+ * 해당 slug는 패키징·업로드를 건너뜁니다(버전만 올렸을 때 CI가 자동 반영).
+ *
  * 필요 env (.env.local, 업로드 시): NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
- * CI: main 브랜치 push 시 `.github/workflows/extension-builds.yml`이 Supabase에도 올립니다.
+ * CI: main 브랜치 push 시 `.github/workflows/extension-builds.yml`이
+ * 버전 변경을 감지해 public zip을 갱신·커밋하고 Supabase에도 올립니다.
  * GitHub Secrets: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
 import { createClient } from "@supabase/supabase-js";
@@ -32,7 +37,7 @@ const EXTENSIONS = [
   },
   {
     slug: "thealltour-extension",
-    dir: "tools/thealltour_extension",
+    dir: "tools/thealltour_hanatour_collector",
   },
 ];
 
@@ -61,9 +66,10 @@ function parseArgs(argv) {
   const skipUpload = argv.includes("--skip-upload");
   const skipPackage = argv.includes("--skip-package");
   const skipPublic = argv.includes("--skip-public");
+  const onlyIfVersionChanged = argv.includes("--only-if-version-changed");
   const slugArg = argv.find((a) => a.startsWith("--slug="));
   const slugFilter = slugArg ? slugArg.split("=")[1] : null;
-  return { skipUpload, skipPackage, skipPublic, slugFilter };
+  return { skipUpload, skipPackage, skipPublic, onlyIfVersionChanged, slugFilter };
 }
 
 function findZipFile(buildDir) {
@@ -83,6 +89,30 @@ function readPackageVersion(extensionDir) {
   const pkgPath = path.join(extensionDir, "package.json");
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
   return String(pkg.version ?? "0.0.0");
+}
+
+function readCommittedVersion(slug) {
+  const manifestPath = path.join(ROOT, "public", "extension-builds", slug, "manifest.json");
+  if (!fs.existsSync(manifestPath)) return null;
+  try {
+    const man = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    return String(man.version ?? "");
+  } catch {
+    return null;
+  }
+}
+
+function needsRebuild(slug, dir) {
+  const sourceVersion = readPackageVersion(path.join(ROOT, dir));
+  const committedVersion = readCommittedVersion(slug);
+  const zipPath = path.join(ROOT, "public", "extension-builds", slug, "latest.zip");
+  if (!committedVersion || !fs.existsSync(zipPath) || fs.statSync(zipPath).size === 0) {
+    return { needed: true, sourceVersion, committedVersion, reason: "missing_committed_artifact" };
+  }
+  if (committedVersion !== sourceVersion) {
+    return { needed: true, sourceVersion, committedVersion, reason: "version_changed" };
+  }
+  return { needed: false, sourceVersion, committedVersion, reason: "up_to_date" };
 }
 
 function runPackage(extensionDir) {
@@ -199,11 +229,29 @@ async function uploadExtension(supabase, { slug, dir }) {
 }
 
 async function main() {
-  const { skipUpload, skipPackage, skipPublic, slugFilter } = parseArgs(process.argv.slice(2));
-  const targets = EXTENSIONS.filter((ext) => !slugFilter || ext.slug === slugFilter);
+  const { skipUpload, skipPackage, skipPublic, onlyIfVersionChanged, slugFilter } = parseArgs(
+    process.argv.slice(2),
+  );
+  let targets = EXTENSIONS.filter((ext) => !slugFilter || ext.slug === slugFilter);
   if (targets.length === 0) {
     console.error("No matching extension slug.");
     process.exit(1);
+  }
+
+  if (onlyIfVersionChanged) {
+    const filtered = [];
+    for (const ext of targets) {
+      const check = needsRebuild(ext.slug, ext.dir);
+      console.log(
+        `[version] ${ext.slug}: source=v${check.sourceVersion} committed=${check.committedVersion ? `v${check.committedVersion}` : "(none)"} → ${check.reason}`,
+      );
+      if (check.needed) filtered.push(ext);
+    }
+    targets = filtered;
+    if (targets.length === 0) {
+      console.log("\n[done] All extension builds are up to date with package versions. Nothing to do.");
+      return;
+    }
   }
 
   if (!skipPackage) {
@@ -220,7 +268,9 @@ async function main() {
   }
 
   if (skipUpload) {
-    console.log("\n[done] --skip-upload: packaged and copied to public/extension-builds. Commit that folder to ship downloads.");
+    console.log(
+      "\n[done] --skip-upload: packaged and copied to public/extension-builds. Commit that folder to ship downloads.",
+    );
     return;
   }
 

@@ -1,7 +1,7 @@
 /**
  * 하나투어 상세/부모탭 — 「출발일 선택」 강제 클릭 + 달력 DOM 월/일 순회로 API/DOM 트리거
  * (thealltour_extension/openHanatourCalendar.js 이식 — 원본은 수정하지 않음)
- * 이식 시 변경점: DEFAULT_MAX_DATE_STRIP_CLICKS 을 6 → 3 으로 고정(요청에 따라 일자 순회 최대 3회).
+ * 이식 시 변경점: DEFAULT_MAX_DATE_STRIP_CLICKS = 3 (일자 스트립 > 최대 3회).
  */
 (function (global) {
   const OPEN_WAIT_MS = 1000;
@@ -17,8 +17,8 @@
   const STRIP_RESET_TARGET_MIN_DAY = 15;
   const HANATOUR_LOADING_WAIT_MS = 3000;
   const HANATOUR_LOADING_POLL_MS = 100;
-  const DATE_STRIP_POST_CLICK_MS = 400;
-  const MONTH_NAV_POST_CLICK_MS = 700;
+  const DATE_STRIP_POST_CLICK_MS = 3000;
+  const MONTH_NAV_POST_CLICK_MS = 3500;
   const MONTH_NAV_SETTLE_MS = 500;
   const HANATOUR_LOADING_SELECTORS =
     ".loading, .dimmed, .ly_loading, [class*='loading'], [class*='Loading'], [class*='spinner'], [class*='Spinner'], [class*='dim'], [class*='Dim'], [class*='progress']";
@@ -385,14 +385,93 @@
     );
   }
 
+  /**
+   * NCA가 단일 LI/버튼 등 leaf로 떨어지면 next 탐색 스코프가 깨진다.
+   * 가격 셀을 충분히 포함하는 비-leaf 조상(UL/DIV 등)으로 승격한다.
+   */
+  function isHanatourProdListRoot(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const tag = (el.tagName ?? "").toLowerCase();
+    const cls = (el.className ?? "").toString();
+    // embedded calendar_wrap이 있어도 ul.type 전체는 스트립 컨테이너가 아니다.
+    if (tag === "ul" && /\btype\b/.test(cls)) return true;
+    const preview = elementText(el).slice(0, 280);
+    if (/판매상품보기|베스트셀러/.test(preview) && el.querySelectorAll(".calendar_wrap").length > 0) {
+      return tag === "ul" || tag === "ol";
+    }
+    return false;
+  }
+
+  function isInsideCalendarWrap(el) {
+    return Boolean(el?.closest?.(".calendar_wrap, [class*='calendar_wrap']"));
+  }
+
+  function promoteStripContainerAwayFromLeaf(container, leafMatches) {
+    if (!container) return null;
+    const leafTags = new Set(["li", "button", "a", "span", "td", "em", "strong", "i", "label", "p"]);
+    let node = container;
+    for (let depth = 0; node && depth < 10; depth += 1) {
+      const tag = (node.tagName ?? "").toLowerCase();
+      if (!leafTags.has(tag)) {
+        const count = (leafMatches ?? []).filter((el) => node.contains(el)).length;
+        if (count >= MIN_DAY_STRIP_CELLS || !leafMatches?.length) return node;
+      }
+      node = node.parentElement;
+    }
+    let climb = container;
+    while (climb && leafTags.has((climb.tagName ?? "").toLowerCase())) {
+      climb = climb.parentElement;
+    }
+    if (isHanatourProdListRoot(climb)) {
+      const inner = climb.querySelector?.(".calendar_wrap .calendar_area, .calendar_wrap");
+      if (inner) return inner;
+    }
+    return climb ?? container;
+  }
+
+  function isStripContainerLeafTag(el) {
+    if (!el) return true;
+    const tag = (el.tagName ?? "").toLowerCase();
+    return ["li", "button", "a", "span", "td", "em", "strong", "i", "label", "p"].includes(tag);
+  }
+
+  function narrowStripContainerInsideWrap(container) {
+    if (!container || isHanatourProdListRoot(container)) {
+      const inner = container?.querySelector?.(".calendar_wrap .calendar_area, .calendar_wrap");
+      return inner ?? null;
+    }
+    const cls = (container.className ?? "").toString();
+    const isWrap =
+      container.matches?.(".calendar_wrap, [class*='calendar_wrap']") || /\bcalendar_wrap\b/.test(cls);
+    if (!isWrap) {
+      const area = container.closest?.(".calendar_area");
+      if (area && !isHanatourProdListRoot(area)) return area;
+      return container;
+    }
+    const innerArea = container.querySelector?.(".calendar_area");
+    if (innerArea && !isHanatourProdListRoot(innerArea)) return innerArea;
+    for (const ul of container.querySelectorAll("ul")) {
+      if (hasDayStripStructure(ul) || countDayCells(ul) >= MIN_DAY_STRIP_CELLS) return ul;
+    }
+    return container;
+  }
+
   function findDayPriceStripContainer(doc) {
     if (!doc) return null;
     if (stripContainerCache.has(doc)) return stripContainerCache.get(doc);
 
     const roots = [];
     const seen = new Set();
+    // 부모탭 실측: ul.type(상품 리스트 전체)가 아니라 calendar_wrap 내부 스트립만 본다.
+    for (const wrap of doc.querySelectorAll(".calendar_wrap, [class*='calendar_wrap']")) {
+      if (seen.has(wrap) || isExcludedFromCalendarPriceScan(wrap) || shouldSkipLyWrapScopedCalendar(wrap)) continue;
+      seen.add(wrap);
+      const area = wrap.querySelector(".calendar_area");
+      roots.push(area ?? wrap);
+    }
     for (const root of doc.querySelectorAll(STRIP_SEARCH_ROOT_SEL)) {
       if (seen.has(root) || isExcludedFromCalendarPriceScan(root)) continue;
+      if (isHanatourProdListRoot(root)) continue;
       seen.add(root);
       roots.push(root);
     }
@@ -415,8 +494,17 @@
     const leafMatches = matches.filter(
       (el) => !matches.some((other) => other !== el && el.contains(other)),
     );
-    const container =
+    const nca =
       leafMatches.length >= MIN_DAY_STRIP_CELLS ? nearestCommonAncestorOf(leafMatches) : null;
+    let container = promoteStripContainerAwayFromLeaf(nca, leafMatches);
+    if (container && isHanatourProdListRoot(container)) {
+      const innerWrap = container.querySelector?.(".calendar_wrap .calendar_area, .calendar_wrap");
+      container = innerWrap ?? null;
+    }
+    // calendar_wrap 전체로 넓히지 않음 — calendar_area 또는 내부 일자 ul로 좁힌다.
+    if (container) {
+      container = narrowStripContainerInsideWrap(container);
+    }
     stripContainerCache.set(doc, container);
     return container;
   }
@@ -428,9 +516,11 @@
     if (!el) return null;
     const levels = maxLevels ?? 8;
     const textLimit = maxTextLen ?? 220;
+    const skipLyWrap = !isInsideLyWrap(el);
     let node = el;
     const seen = new Set();
     for (let level = 0; level < levels && node; level += 1) {
+      if (skipLyWrap && isInsideLyWrap(node) && node !== el) break;
       const candidates = [node];
       let sib = node.previousElementSibling;
       let hops = 0;
@@ -442,6 +532,7 @@
       for (const cand of candidates) {
         if (seen.has(cand)) continue;
         seen.add(cand);
+        if (skipLyWrap && isInsideLyWrap(cand)) continue;
         const text = elementText(cand);
         if (!text || text.length > textLimit) continue;
         const match = text.match(YEAR_MONTH_RE);
@@ -469,7 +560,21 @@
       }
     }
 
+    // 부모탭 실측: calendar_wrap > .header > strong|em (2026년 9월)
+    for (const wrap of doc.querySelectorAll(".calendar_wrap, [class*='calendar_wrap']")) {
+      if (shouldSkipLyWrapScopedCalendar(wrap)) continue;
+      const monthHeader = wrap.querySelector(":scope > .header, .header");
+      if (!monthHeader) continue;
+      for (const el of monthHeader.querySelectorAll("strong, em, p, span")) {
+        if (YEAR_MONTH_RE.test(textPrefix(el, 40))) {
+          monthHeaderCache.set(doc, el);
+          return el;
+        }
+      }
+    }
+
     // 2순위(과거 방식, fallback): 가격 셀을 찾지 못했을 때만 문서 전역 탐색으로 대체.
+    // 가격 스트립이 이미 있으면 ly_wrap(위젯 A)으로 떨어지지 않게 한다.
     const selectors = [
       ".calendar-title",
       ".month_tit",
@@ -481,6 +586,7 @@
     for (const sel of selectors) {
       const el = doc.querySelector(sel);
       if (!el) continue;
+      if (stripContainer && isInsideLyWrap(el)) continue;
       if (YEAR_MONTH_RE.test(textPrefix(el, 40))) {
         found = el;
         break;
@@ -490,11 +596,13 @@
     if (!found) {
       const roots = doc.querySelectorAll('[class*="calendar"], [class*="Calendar"]');
       outer: for (const root of roots) {
+        if (stripContainer && isInsideLyWrap(root)) continue;
         const walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
         let node;
         let steps = 0;
         while ((node = walker.nextNode()) && steps < 500) {
           steps += 1;
+          if (stripContainer && isInsideLyWrap(node)) continue;
           const text = textPrefix(node, 40);
           if (text.length > 40) continue;
           if (YEAR_MONTH_RE.test(text)) {
@@ -502,6 +610,22 @@
             break outer;
           }
         }
+      }
+    }
+
+    // 스트립 위젯이 있는데 YM을 못 찾으면 null — ly_wrap으로 폴백하지 않음
+    if (!found && !stripContainer) {
+      const ly = findLyWrapMonthGrid(doc);
+      if (ly) {
+        const matchNode = (() => {
+          const walker = doc.createTreeWalker(ly, NodeFilter.SHOW_ELEMENT);
+          let node;
+          while ((node = walker.nextNode())) {
+            if (YEAR_MONTH_RE.test(textPrefix(node, 40))) return node;
+          }
+          return ly;
+        })();
+        found = matchNode;
       }
     }
 
@@ -569,24 +693,214 @@
     return header.closest(".calendar_wrap, [class*='calendar_wrap'], [class*='calendar']") ?? header;
   }
 
+  function isInsideCalendarArea(el) {
+    return Boolean(el?.closest?.(".calendar_area"));
+  }
+
+  function isInsideCalendarWrapHeader(el) {
+    const header = el?.closest?.(
+      ".calendar_wrap .header, .calendar_wrap > .header, .calendar_wrap .calendar_header, .calendar_wrap > .calendar_header",
+    );
+    return Boolean(header && !isInsideCalendarArea(el));
+  }
+
+  // 하나투어 부모탭 실측: calendar_wrap > header > a.next(다음달) = 월, calendar_area > a.next = 일
+  function findCalendarWrapMonthNavButton(doc, direction) {
+    const blindPattern =
+      direction === "next" ? /다음\s*달|다음달|다음\s*월/ : /이전\s*달|이전달|이전\s*월/;
+    const textPattern =
+      direction === "next" ? /^다음달$|^다음\s*달|^>$|^›$/i : /^이전달$|^이전\s*달|^<$|^‹$/i;
+    const classSel = direction === "next" ? "a.next, .next" : "a.prev, .prev";
+
+    for (const wrap of doc.querySelectorAll(".calendar_wrap, [class*='calendar_wrap']")) {
+      if (shouldSkipLyWrapScopedCalendar(wrap)) continue;
+      const monthHeader =
+        wrap.querySelector(".header, .calendar_header") ??
+        wrap.querySelector(":scope > .header, :scope > .calendar_header");
+      if (!monthHeader) continue;
+      for (const el of monthHeader.querySelectorAll(
+        `${classSel}, .btn_next, .btn_prev, button, a`,
+      )) {
+        if (isNavDisabled(el) || isLikelyDayCell(el) || isInsideCalendarArea(el)) continue;
+        const blind = el.querySelector?.(".blind")?.textContent ?? "";
+        const text = elementText(el);
+        if (blindPattern.test(blind) || textPattern.test(text)) return el;
+      }
+    }
+    // 문서 전역 폴백(스트립 NCA가 ul.type로 깨져도 월 버튼은 잡을 수 있게)
+    for (const el of doc.querySelectorAll(".calendar_wrap .header a.next, .calendar_wrap .header a.prev")) {
+      if (isInsideLyWrap(el) || isInsideCalendarArea(el)) continue;
+      const blind = el.querySelector?.(".blind")?.textContent ?? "";
+      const text = elementText(el);
+      const isNext = blindPattern.test(blind) || (direction === "next" && textPattern.test(text));
+      const isPrev =
+        direction !== "next" &&
+        (/이전\s*달|이전달|이전\s*월/.test(blind) || /^이전달$/i.test(text));
+      if ((direction === "next" && isNext) || (direction !== "next" && isPrev)) {
+        if (!isNavDisabled(el)) return el;
+      }
+    }
+    return null;
+  }
+
+  function findCalendarAreaDayNavButton(doc, direction) {
+    const blindPattern = dateStripDayPagerLabelPattern(direction);
+    const classSel = direction === "next" ? "a.next, .next" : "a.prev, .prev";
+
+    for (const wrap of doc.querySelectorAll(".calendar_wrap, [class*='calendar_wrap']")) {
+      if (shouldSkipLyWrapScopedCalendar(wrap)) continue;
+      const area = wrap.querySelector(".calendar_area");
+      if (!area) continue;
+      // 1순위: blind/aria 「다음 날짜」— 라벨이 있으면 월 페이저 판정을 거치지 않는다.
+      for (const el of area.querySelectorAll("a, button, [role='button']")) {
+        if (isInsideCalendarWrapHeader(el)) continue;
+        const blind = el.querySelector?.(".blind")?.textContent ?? "";
+        const aria = el.getAttribute("aria-label") ?? "";
+        if (!blindPattern.test(blind) && !blindPattern.test(aria)) continue;
+        if (isNavDisabled(el)) continue;
+        return el;
+      }
+      // 2순위: calendar_area 안 a.next/a.prev (헤더 월 버튼 제외)
+      for (const el of area.querySelectorAll(classSel)) {
+        if (isInsideCalendarWrapHeader(el)) continue;
+        if (isNavDisabled(el)) continue;
+        return el;
+      }
+    }
+    return null;
+  }
+
+  function isInsideLyWrap(el) {
+    return Boolean(el?.closest?.(".ly_wrap"));
+  }
+
+  function isEmbeddedProductListCalendar(el) {
+    return Boolean(
+      el?.closest?.(".prod_list_wrap, .sub_list_wrap, ul.type, [class*='prod_list']"),
+    );
+  }
+
+  /** ly_wrap 안의 검색/필터 위젯(A)은 제외하되, 상품 리스트에 박힌 calendar_wrap은 수집 대상 */
+  function shouldSkipLyWrapScopedCalendar(el) {
+    if (!isInsideLyWrap(el)) return false;
+    return !isEmbeddedProductListCalendar(el);
+  }
+
+  function isDateStripDayNavLabel(el) {
+    const blind = el?.querySelector?.(".blind")?.textContent ?? "";
+    return /다음\s*날짜|이전\s*날짜/.test(blind);
+  }
+
+  function monthPagerLabelPattern() {
+    return /다음달|이전달|다음\s*달|이전\s*달|다음\s*월|이전\s*월/;
+  }
+
+  function dateStripDayPagerLabelPattern(direction) {
+    return direction === "next" ? /다음\s*날짜/ : /이전\s*날짜/;
+  }
+
+  // 3개월 그리드/월 헤더의 「다음달」과 일자 스트립의 「다음 날짜」를 구분한다.
+  // major-products는 상품 캘린더가 ly_wrap 안에 있으므로, ly_wrap만으로 월 페이저 판정하면
+  // calendar_area의 일 next(>)까지 차단되어 매월 앞쪽 일자만 수집된다.
+  function isMonthPagerNavElement(el) {
+    if (!el) return false;
+    // 일자 스트립 영역·라벨은 절대 월 페이저가 아니다.
+    if (isInsideCalendarArea(el)) return false;
+    if (isDateStripDayNavLabel(el)) return false;
+    const blindRaw = el.querySelector?.(".blind")?.textContent?.replace(/\s+/g, "") ?? "";
+    const ariaRaw = (el.getAttribute("aria-label") ?? "").replace(/\s+/g, "");
+    if (/다음날짜|이전날짜/.test(blindRaw) || /다음날짜|이전날짜/.test(ariaRaw)) return false;
+
+    // 월 헤더 next/prev
+    if (isInsideCalendarWrapHeader(el)) return true;
+    if (el.closest?.(".calendar_header, .calendar_top")) return true;
+
+    // ly_wrap 검색/필터 위젯(A)만 월 페이저로 취급. 상품 리스트 embedded 캘린더는 제외.
+    if (isInsideLyWrap(el) && !isEmbeddedProductListCalendar(el)) return true;
+
+    const cls = (el.className ?? "").toString();
+    if (/month_next|next_month|month_prev|prev_month/.test(cls)) return true;
+    const text = (el.textContent ?? "").replace(/\s+/g, "");
+    return (
+      monthPagerLabelPattern().test(text) ||
+      monthPagerLabelPattern().test(blindRaw) ||
+      monthPagerLabelPattern().test(ariaRaw)
+    );
+  }
+
+  function findDateStripDayPagerByBlind(doc, direction) {
+    if (!doc) return null;
+    const inArea = findCalendarAreaDayNavButton(doc, direction);
+    if (inArea) return inArea;
+
+    const pattern = dateStripDayPagerLabelPattern(direction);
+    const header = findMonthHeaderElement(doc);
+    const strip = findDateStripContainer(doc, header) ?? findDayPriceStripContainer(doc);
+    const scopes = [
+      strip,
+      strip?.parentElement,
+      findDateStripRow(doc, header),
+      findCalendarWidgetRoot(doc),
+    ].filter(Boolean);
+    const seen = new Set();
+    for (const scope of scopes) {
+      for (const el of scope.querySelectorAll("a, button, [role='button'], span")) {
+        if (seen.has(el)) continue;
+        seen.add(el);
+        if (isMonthPagerNavElement(el)) continue;
+        const blind = el.querySelector?.(".blind")?.textContent ?? "";
+        const aria = el.getAttribute("aria-label") ?? "";
+        if (!pattern.test(blind) && !pattern.test(aria)) continue;
+        if (isNavDisabled(el)) continue;
+        return el;
+      }
+    }
+    return null;
+  }
+
+  function yearMonthDelta(fromYm, toYm) {
+    if (!fromYm || !toYm || !/^\d{6}$/.test(fromYm) || !/^\d{6}$/.test(toYm)) return null;
+    const from = Number(fromYm.slice(0, 4)) * 12 + Number(fromYm.slice(4, 6));
+    const to = Number(toYm.slice(0, 4)) * 12 + Number(toYm.slice(4, 6));
+    return to - from;
+  }
+
+  function isAcceptableMonthNavCandidate(el, strip) {
+    if (!el || isNavDisabled(el) || isLikelyDayCell(el)) return false;
+    if (isInsideLyWrap(el) && !isEmbeddedProductListCalendar(el)) return false;
+    if (isInsideCalendarArea(el)) return false;
+    if (isDateStripDayNavLabel(el)) return false;
+    if (strip?.contains?.(el)) {
+      if (isInsideCalendarWrapHeader(el) || el.closest?.(".calendar_header, .calendar_top")) return true;
+      return false;
+    }
+    return true;
+  }
+
   function findCalendarHeaderMonthNavButton(doc, direction) {
+    const strip = findDayPriceStripContainer(doc);
     const scope =
+      (strip &&
+        strip.closest?.(
+          ".calendar_wrap, [class*='calendar_wrap'], [class*='dep-calendar'], [class*='calendar']",
+        )) ??
       findCalendarHeaderMonthScope(doc) ??
       doc.querySelector(".calendar_wrap, .calendar_body, [class*='calendar_wrap']");
-    if (!scope) return null;
+    if (!scope || shouldSkipLyWrapScopedCalendar(scope)) return null;
 
+    // [class*='Next'] 는 day-strip/다른 위젯과 충돌하므로 쓰지 않는다.
     const classSelector =
       direction === "next"
-        ? ".calendar_header .btn_next, [class*='month_next'], .btn_next, [class*='next_month'], [class*='Next']"
-        : ".calendar_header .btn_prev, [class*='month_prev'], .btn_prev, [class*='prev_month'], [class*='Prev']";
+        ? ".calendar_header .btn_next, [class*='month_next'], [class*='next_month']"
+        : ".calendar_header .btn_prev, [class*='month_prev'], [class*='prev_month']";
     for (const el of scope.querySelectorAll(classSelector)) {
-      if (isLikelyDayCell(el)) continue;
-      if (!isNavDisabled(el)) return el;
+      if (!isAcceptableMonthNavCandidate(el, strip)) continue;
+      return el;
     }
 
     const header = scope.querySelector(".calendar_header, .calendar_top") ?? scope;
     for (const el of header.querySelectorAll("button, a, [role='button']")) {
-      if (isLikelyDayCell(el)) continue;
+      if (!isAcceptableMonthNavCandidate(el, strip)) continue;
       const text = elementText(el);
       const blind = el.querySelector?.(".blind")?.textContent ?? "";
       if (direction === "next") {
@@ -594,13 +908,13 @@
           /^다음달$|^다음\s*달|^다음\s*월|^>$|^›$/i.test(text) ||
           /다음\s*달|다음달|다음\s*월/.test(blind)
         ) {
-          if (!isNavDisabled(el)) return el;
+          return el;
         }
       } else if (
         /^이전달$|^이전\s*달|^이전\s*월|^<$|^‹$/i.test(text) ||
         /이전\s*달|이전달|이전\s*월/.test(blind)
       ) {
-        if (!isNavDisabled(el)) return el;
+        return el;
       }
     }
     return null;
@@ -659,53 +973,98 @@
     return null;
   }
 
+  function findMonthNavNearPriceStrip(doc, direction) {
+    invalidateCalendarDomCache(doc);
+    const strip = findDayPriceStripContainer(doc);
+    if (!strip) return null;
+
+    const scope =
+      strip.closest?.(
+        ".calendar_wrap, [class*='calendar_wrap'], [class*='dep-calendar'], [class*='Calendar'], [class*='calendar']",
+      ) ??
+      strip.parentElement?.parentElement ??
+      strip.parentElement;
+    if (!scope || shouldSkipLyWrapScopedCalendar(scope)) return null;
+
+    const classSelector =
+      direction === "next"
+        ? ".calendar_header .btn_next, [class*='month_next'], [class*='next_month']"
+        : ".calendar_header .btn_prev, [class*='month_prev'], [class*='prev_month']";
+
+    for (const el of scope.querySelectorAll(classSelector)) {
+      if (!isAcceptableMonthNavCandidate(el, strip)) continue;
+      return el;
+    }
+
+    const blindPattern = direction === "next" ? /다음\s*달|다음달|다음\s*월/ : /이전\s*달|이전달|이전\s*월/;
+    const textPattern = direction === "next" ? /^다음달$|^>$|^›$/i : /^이전달$|^<$|^‹$/i;
+    for (const el of scope.querySelectorAll("button, a, [role='button']")) {
+      if (!isAcceptableMonthNavCandidate(el, strip)) continue;
+      const text = elementText(el);
+      const blind = el.querySelector?.(".blind")?.textContent ?? "";
+      if (blindPattern.test(blind) || textPattern.test(text)) {
+        return el;
+      }
+    }
+    return null;
+  }
+
   function findMonthNavButton(doc, direction) {
+    // 가격 스트립이 있으면 ly_wrap(위젯 A)은 절대 쓰지 않는다.
+    const strip = findDayPriceStripContainer(doc);
+
+    const wrapHeaderBtn = findCalendarWrapMonthNavButton(doc, direction);
+    if (wrapHeaderBtn) return wrapHeaderBtn;
+
+    const nearStripBtn = findMonthNavNearPriceStrip(doc, direction);
+    if (nearStripBtn) return nearStripBtn;
+
     const calendarHeaderBtn = findCalendarHeaderMonthNavButton(doc, direction);
     if (calendarHeaderBtn) return calendarHeaderBtn;
 
-    const lyWrapBtn = findLyWrapMonthNavButton(doc, direction);
-    if (lyWrapBtn) return lyWrapBtn;
-
     const header = findMonthHeaderElement(doc);
     const root = findCalendarWidgetRoot(doc);
-    if (!header || !root) return null;
+    if (header && root && !isInsideLyWrap(header) && !isInsideLyWrap(root)) {
+      const stripRow = findDateStripRow(doc, header);
+      const stripContainer = findDateStripContainer(doc, header) ?? strip;
+      const isInDateStrip = (el) =>
+        (stripRow?.contains?.(el) ?? false) || (stripContainer?.contains?.(el) ?? false);
 
-    // 날짜 스트립(하루~15일 페이징)에도 "다음/이전" 화살표가 따로 있는 2단 구조 페이지가
-    // 있다(예: major-products). 스트립의 blind 라벨은 "다음 날짜"/"이전 날짜"이고 월
-    // 헤더의 라벨은 "다음 달"/"다음 월"이므로 패턴을 분리하고, 스트립 영역(row/container)
-    // 내부 요소는 어떤 검색 범위에서도 월 버튼 후보에서 제외한다.
-    const stripRow = findDateStripRow(doc, header);
-    const stripContainer = findDateStripContainer(doc, header);
-    const isInDateStrip = (el) =>
-      (stripRow?.contains?.(el) ?? false) || (stripContainer?.contains?.(el) ?? false);
+      const pattern =
+        direction === "next" ? /^>$|^›$|^▶$|^다음$|^다음달$/i : /^<$|^‹$|^◀$|^이전$|^이전달$/i;
+      const blindPattern =
+        direction === "next" ? /다음\s*달|다음달|다음\s*월/ : /이전\s*달|이전달|이전\s*월/;
+      const headerRow = header.parentElement;
+      const scopes = [headerRow, headerRow?.parentElement, root].filter(Boolean);
 
-    const pattern =
-      direction === "next" ? /^>$|^›$|^▶$|^다음$|^다음달$/i : /^<$|^‹$|^◀$|^이전$|^이전달$/i;
-    const blindPattern =
-      direction === "next" ? /다음\s*달|다음달|다음\s*월/ : /이전\s*달|이전달|이전\s*월/;
-    const headerRow = header.parentElement;
-    const scopes = [headerRow, headerRow?.parentElement, root].filter(Boolean);
+      for (const scope of scopes) {
+        if (!root.contains(scope)) continue;
+        for (const el of scope.querySelectorAll("button, a, [role='button']")) {
+          if (isInDateStrip(el)) continue;
+          if (!isAcceptableMonthNavCandidate(el, stripContainer)) continue;
+          if (!isSafeCalendarNavTarget(el, root)) continue;
+          const text = (el.textContent ?? "").trim();
+          const blind = el.querySelector?.(".blind")?.textContent ?? "";
+          const aria = (el.getAttribute("aria-label") ?? "").trim();
+          if (pattern.test(text) || pattern.test(aria) || blindPattern.test(blind)) return el;
+        }
+      }
 
-    for (const scope of scopes) {
-      if (!root.contains(scope)) continue;
-      for (const el of scope.querySelectorAll("button, a, [role='button']")) {
-        if (isInDateStrip(el)) continue;
-        if (!isSafeCalendarNavTarget(el, root)) continue;
-        const text = (el.textContent ?? "").trim();
-        const blind = el.querySelector?.(".blind")?.textContent ?? "";
-        const aria = (el.getAttribute("aria-label") ?? "").trim();
-        if (pattern.test(text) || pattern.test(aria) || blindPattern.test(blind)) return el;
+      const siblings = headerRow?.querySelectorAll("button, a, [role='button']") ?? [];
+      const safeSiblings = [...siblings].filter(
+        (el) =>
+          !isInDateStrip(el) &&
+          isAcceptableMonthNavCandidate(el, stripContainer) &&
+          isSafeCalendarNavTarget(el, root),
+      );
+      if (safeSiblings.length >= 2) {
+        return direction === "next" ? safeSiblings[safeSiblings.length - 1] : safeSiblings[0];
       }
     }
 
-    const siblings = headerRow?.querySelectorAll("button, a, [role='button']") ?? [];
-    const safeSiblings = [...siblings].filter(
-      (el) => !isInDateStrip(el) && isSafeCalendarNavTarget(el, root),
-    );
-    if (safeSiblings.length >= 2) {
-      return direction === "next" ? safeSiblings[safeSiblings.length - 1] : safeSiblings[0];
-    }
-    return null;
+    // 가격 스트립이 보이면 ly_wrap 폴백 금지 (가짜 월 순회 방지)
+    if (strip) return null;
+    return findLyWrapMonthNavButton(doc, direction);
   }
 
   function nextYearMonth(yearMonth) {
@@ -922,26 +1281,29 @@
   }
 
   function isNavLikeElement(el, direction) {
+    if (isMonthPagerNavElement(el)) return false;
     const text = (el.textContent ?? "").replace(/\s+/g, "").trim();
     const blind = el.querySelector?.(".blind")?.textContent?.replace(/\s+/g, "") ?? "";
     const aria = (el.getAttribute("aria-label") ?? "").toLowerCase();
     const cls = (el.className ?? "").toString().toLowerCase();
     if (direction === "next") {
+      if (/다음달|다음월/.test(text) || /다음달|다음월/.test(blind)) return false;
       return (
-        /^>$|^›$|^▶$/.test(text) ||
-        /다음날짜|다음/.test(text) ||
-        /다음날짜|다음/.test(blind) ||
-        /next|forward|right|다음|slide-next/.test(aria) ||
+        /^>$|^›$|^▶$|^다음$/.test(text) ||
+        /다음날짜/.test(text) ||
+        /다음날짜/.test(blind) ||
+        /next|forward|right|다음날짜|slide-next/.test(aria) ||
         /\bnext\b/.test(cls) ||
         /next|forward|right|arrow-right|swiper-button-next|slide-next/.test(cls) ||
         hasChevronOrIconChild(el)
       );
     }
+    if (/이전달|이전월/.test(text) || /이전달|이전월/.test(blind)) return false;
     return (
-      /^<$|^‹$|^◀$/.test(text) ||
-      /이전날짜|이전/.test(text) ||
-      /이전날짜|이전/.test(blind) ||
-      /prev|back|left|이전|slide-prev/.test(aria) ||
+      /^<$|^‹$|^◀$|^이전$/.test(text) ||
+      /이전날짜/.test(text) ||
+      /이전날짜/.test(blind) ||
+      /prev|back|left|이전날짜|slide-prev/.test(aria) ||
       /\bprev\b/.test(cls) ||
       /prev|back|left|arrow-left|swiper-button-prev|slide-prev/.test(cls) ||
       hasChevronOrIconChild(el)
@@ -1075,6 +1437,7 @@
     for (const scope of scopes) {
       for (const el of scope.querySelectorAll(selector)) {
         if (seen.has(el) || headerRow?.contains(el)) continue;
+        if (isMonthPagerNavElement(el)) continue;
         seen.add(el);
         candidates.push(el);
       }
@@ -1162,20 +1525,32 @@
   }
 
   const DATE_STRIP_EXPLICIT_NEXT_SEL =
-    ".btn_cal_next, .btn_next_date, [data-action='next-strip'], .calendar_body .btn_next, a.next, button.next";
+    ".btn_cal_next, .btn_next_date, [data-action='next-strip']";
   const DATE_STRIP_EXPLICIT_PREV_SEL =
-    ".btn_cal_prev, .btn_prev_date, [data-action='prev-strip'], .calendar_body .btn_prev, a.prev, button.prev";
+    ".btn_cal_prev, .btn_prev_date, [data-action='prev-strip']";
+  const DATE_STRIP_LOOSE_NEXT_SEL = "a.next, button.next";
+  const DATE_STRIP_LOOSE_PREV_SEL = "a.prev, button.prev";
+
+  function isUsableDateStripNavEl(el, root) {
+    if (!el || isLikelyDayCell(el) || isMonthPagerNavElement(el)) return false;
+    if (isInsideCalendarWrapHeader(el)) return false;
+    if (el.closest?.(".calendar_header, .calendar_top, .ly_wrap")) return false;
+    if (root && !isSafeCalendarNavTarget(el, root)) return false;
+    return !isNavDisabled(el);
+  }
 
   function findDateStripNavButtonByExplicitSelectors(context, direction, doc) {
     if (!context) return null;
     const rootDoc = doc ?? context.ownerDocument ?? global.document;
     const root = findCalendarWidgetRoot(rootDoc);
-    const sel = direction === "next" ? DATE_STRIP_EXPLICIT_NEXT_SEL : DATE_STRIP_EXPLICIT_PREV_SEL;
+    const tightSel = direction === "next" ? DATE_STRIP_EXPLICIT_NEXT_SEL : DATE_STRIP_EXPLICIT_PREV_SEL;
+    const looseSel = direction === "next" ? DATE_STRIP_LOOSE_NEXT_SEL : DATE_STRIP_LOOSE_PREV_SEL;
 
-    for (const el of context.querySelectorAll(sel)) {
-      if (isLikelyDayCell(el)) continue;
-      if (root && !isSafeCalendarNavTarget(el, root)) continue;
-      if (!isNavDisabled(el)) return el;
+    for (const el of context.querySelectorAll(tightSel)) {
+      if (isUsableDateStripNavEl(el, root)) return el;
+    }
+    for (const el of context.querySelectorAll(looseSel)) {
+      if (isUsableDateStripNavEl(el, root)) return el;
     }
     return null;
   }
@@ -1184,12 +1559,16 @@
     if (!doc) return null;
     invalidateCalendarDomCache(doc);
 
+    const byBlind = findDateStripDayPagerByBlind(doc, direction);
+    if (byBlind) return byBlind;
+
     const header = findMonthHeaderElement(doc);
     const stripRow = findDateStripRow(doc, header);
     const innerStrip = findDateStripContainer(doc, header) ?? findInnerDayStripInRow(stripRow);
-    const root = findCalendarWidgetRoot(doc);
 
-    const scopes = [stripRow?.parentElement, stripRow, innerStrip, root, doc.body].filter(Boolean);
+    // doc.body / widget root 전역 탐색은 calendar_header의 a.next(다음달)를 먼저 집어
+    // 3개월 점프를 만든다. 스트립과 그 부모만 본다.
+    const scopes = [innerStrip, stripRow, stripRow?.parentElement].filter(Boolean);
     const seen = new Set();
     for (const scope of scopes) {
       if (seen.has(scope)) continue;
@@ -1218,7 +1597,8 @@
     const innerStrip =
       findDateStripContainer(doc, header) ?? findInnerDayStripInRow(stripRow);
 
-    const pick = (el) => (el && (!root || isSafeCalendarNavTarget(el, root)) ? el : null);
+    const pick = (el) =>
+      el && !isMonthPagerNavElement(el) && (!root || isSafeCalendarNavTarget(el, root)) ? el : null;
 
     const hanatourLink = pick(findHanatourDateStripNavLink(doc, direction, headerRow));
     if (hanatourLink) return hanatourLink;
@@ -1328,6 +1708,7 @@
   // 실사용 확인: 날짜 스트립은 매월 1일부터 15일치씩 보여주므로 31일짜리 달도 최대
   // 3번의 "다음" 클릭이면 충분하다. 요청에 따라 안전 여유(6) 대신 실측 최대치(3)로
   // 고정한다.
+  // 실측 워크플로: 매월 calendar_area 일 next(>) 최대 3회.
   const DEFAULT_MAX_DATE_STRIP_CLICKS = 3;
   let lastDateStripPagingMeta = null;
 
@@ -1380,6 +1761,18 @@
   }
 
   function getMonthHeaderLabelText(doc) {
+    // 가격 스트립 캘린더(.calendar_wrap .header)를 최우선 — 문서 내 고아 <p>2026년 8월</p> 노이즈 방지
+    for (const wrap of doc.querySelectorAll(".calendar_wrap, [class*='calendar_wrap']")) {
+      if (shouldSkipLyWrapScopedCalendar(wrap)) continue;
+      const monthHeader = wrap.querySelector(".header, .calendar_header");
+      if (!monthHeader) continue;
+      for (const el of monthHeader.querySelectorAll("strong, em, span, p")) {
+        const match = elementText(el).match(YEAR_MONTH_RE);
+        if (match) return match[0];
+      }
+      const headerMatch = elementText(monthHeader).match(YEAR_MONTH_RE);
+      if (headerMatch) return headerMatch[0];
+    }
     const calendarMonthEl = doc.querySelector(
       '.calendar_header [class*="month"], .calendar_top strong, .calendar_top em',
     );
@@ -1387,13 +1780,16 @@
       const match = elementText(calendarMonthEl).match(YEAR_MONTH_RE);
       if (match) return match[0];
     }
-    const wrap = findLyWrapMonthGrid(doc);
-    if (wrap) {
-      const match = elementText(wrap).match(YEAR_MONTH_RE);
-      if (match) return match[0];
+    const stripContainer = findDayPriceStripContainer(doc);
+    if (stripContainer) {
+      const near = findYearMonthNearElement(doc, stripContainer);
+      if (near?.el) {
+        const match = elementText(near.el).match(YEAR_MONTH_RE);
+        if (match) return match[0];
+      }
     }
     const header = findMonthHeaderElement(doc);
-    if (header) {
+    if (header && !isInsideLyWrap(header)) {
       const match = elementText(header).match(YEAR_MONTH_RE);
       if (match) return match[0];
     }
@@ -1436,6 +1832,7 @@
     const deadline = Date.now() + DATE_STRIP_ADVANCE_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
+      invalidateCalendarDomCache(doc);
       mergeDiscoveredCapturesInto(merged);
 
       if (yearMonth && countDaysForYearMonth(merged, yearMonth) > daysBefore) {
@@ -1464,6 +1861,7 @@
   async function waitForDayStripAdvance(doc, previousMax, previousSignature) {
     const deadline = Date.now() + DATE_STRIP_ADVANCE_TIMEOUT_MS;
     while (Date.now() < deadline) {
+      invalidateCalendarDomCache(doc);
       if (getMaxVisibleDayInStrip(doc) > previousMax) return true;
       const sig = getVisibleDaySignature(doc);
       if (previousSignature && sig && sig !== previousSignature) return true;
@@ -1514,21 +1912,33 @@
   async function waitForDayStripDomReady(doc, timeoutMs) {
     const deadline = Date.now() + (timeoutMs ?? STRIP_RENDER_WAIT_MS);
     while (Date.now() < deadline) {
+      invalidateCalendarDomCache(doc);
+      const container = findDayPriceStripContainer(doc);
       const minMax = getVisibleDayMinMax(doc);
       const priceCells = findAllPriceDayCellElements(doc);
-      if (minMax && minMax.min >= 1 && priceCells.length > 0) {
+      const containerOk = container && !isStripContainerLeafTag(container);
+      if (
+        containerOk &&
+        minMax &&
+        minMax.min >= 1 &&
+        priceCells.length >= MIN_DAY_STRIP_CELLS
+      ) {
         return {
           ready: true,
           minMax,
           priceSignature: getVisiblePriceSignature(doc),
+          stripContainerTag: container.tagName ?? null,
         };
       }
       await sleep(STRIP_RENDER_POLL_MS);
     }
+    invalidateCalendarDomCache(doc);
+    const container = findDayPriceStripContainer(doc);
     return {
       ready: false,
       minMax: getVisibleDayMinMax(doc),
       priceSignature: getVisiblePriceSignature(doc),
+      stripContainerTag: container?.tagName ?? null,
     };
   }
 
@@ -1545,18 +1955,26 @@
 
     if (trySwiperSlide(doc, "prev")) return { ok: true, via: "swiper" };
 
-    const clickTarget = findDateStripNavButtonFresh(doc, "prev");
+    const areaDayPrev = findCalendarAreaDayNavButton(doc, "prev");
+    const clickTarget =
+      areaDayPrev && areaDayPrev.isConnected && !isNavDisabled(areaDayPrev)
+        ? areaDayPrev
+        : findDateStripNavButtonFresh(doc, "prev");
     if (!clickTarget || !clickTarget.isConnected || isNavDisabled(clickTarget)) {
       return { ok: false, reason: "no_button" };
     }
+    if (!isInsideCalendarArea(clickTarget) && isMonthPagerNavElement(clickTarget)) {
+      return { ok: false, reason: "month_pager" };
+    }
     if (!dispatchClick(clickTarget, doc)) return { ok: false, reason: "unsafe_target" };
-    return { ok: true, via: "a.prev" };
+    return { ok: true, via: isInsideCalendarArea(clickTarget) ? "calendar_area.prev" : "a.prev" };
   }
 
   async function resetDayStripToStart(doc, options) {
     const tabId = options?.tabId ?? null;
     const targetMaxMinDay = options?.targetMaxMinDay ?? STRIP_RESET_TARGET_MIN_DAY;
     const maxPrevClicks = options?.maxPrevClicks ?? MAX_STRIP_RESET_PREV_CLICKS;
+    const postClickMs = options?.dateStripPostClickMs ?? DATE_STRIP_POST_CLICK_MS;
 
     invalidateCalendarDomCache(doc);
     await waitForDayStripDomReady(doc, options?.renderWaitMs);
@@ -1586,7 +2004,7 @@
       if (!clickResult.ok) break;
 
       await waitForHanaTourLoading(doc);
-      await sleep(DATE_STRIP_POST_CLICK_MS);
+      await sleep(postClickMs);
 
       const retreated = await waitForDayStripRetreat(doc, beforeMin, beforeSig);
       const afterMinMax = getVisibleDayMinMax(doc);
@@ -1648,12 +2066,25 @@
 
     if (trySwiperSlide(doc, "next")) return { ok: true, via: "swiper" };
 
-    const clickTarget = findDateStripNavButtonFresh(doc, "next");
+    // calendar_area 일 next를 최우선 — ly_wrap 오탐으로 월 페이저 거부하지 않음.
+    const areaDayNext = findCalendarAreaDayNavButton(doc, "next");
+    const clickTarget =
+      areaDayNext && areaDayNext.isConnected && !isNavDisabled(areaDayNext)
+        ? areaDayNext
+        : findDateStripNavButtonFresh(doc, "next");
     if (!clickTarget || !clickTarget.isConnected || isNavDisabled(clickTarget)) {
       return { ok: false, reason: "no_button" };
     }
+    // calendar_area에서 고른 버튼은 이미 일 페이저. 그 외만 월 페이저 가드.
+    if (!isInsideCalendarArea(clickTarget) && isMonthPagerNavElement(clickTarget)) {
+      console.warn("[Calendar] 일자 다음 후보가 월 페이저라 클릭하지 않음", {
+        cls: (clickTarget.className ?? "").toString().slice(0, 80),
+        text: (clickTarget.textContent ?? "").trim().slice(0, 40),
+      });
+      return { ok: false, reason: "month_pager" };
+    }
     if (!dispatchClick(clickTarget, doc)) return { ok: false, reason: "unsafe_target" };
-    return { ok: true, via: "a.next" };
+    return { ok: true, via: isInsideCalendarArea(clickTarget) ? "calendar_area.next" : "a.next" };
   }
 
   function mergeDiscoveredCapturesInto(merged) {
@@ -1671,6 +2102,7 @@
     // 안전망 deadline(선택): browseHanatourCalendarMonths 등 호출자가 전체 예산을 넘겨줄 때만 적용.
     // 넘어오지 않으면(단독 호출 등) 기존과 동일하게 maxClicks만으로 동작한다.
     const deadline = options?.deadline ?? null;
+    const postClickMs = options?.dateStripPostClickMs ?? DATE_STRIP_POST_CLICK_MS;
     const merged = {};
     let clicks = 0;
     let maxDaySeen = 0;
@@ -1696,6 +2128,7 @@
         tabId,
         renderWaitMs: options?.stripRenderWaitMs,
         targetMaxMinDay: options?.stripResetTargetMinDay,
+        dateStripPostClickMs: postClickMs,
       });
     }
 
@@ -1728,6 +2161,9 @@
         break;
       }
 
+      invalidateCalendarDomCache(doc);
+      // 가드·클릭 동일 Fresh next: waitForDateStripNavEnabled 결과로 클릭 가능 여부만 판정.
+      // 실제 클릭은 clickDateStripNextWithFallback이 다시 Fresh로 잡는다.
       const next = await waitForDateStripNavEnabled(doc, "next");
       if (!next || !next.isConnected) {
         lastReason = "no_button";
@@ -1740,6 +2176,7 @@
 
       const daysBefore = countDaysForYearMonth(merged, currentYm);
       const captureBefore = getCaptureCount();
+      invalidateCalendarDomCache(doc);
       const beforeMax = getMaxVisibleDayInStrip(doc);
       const beforeSig = getVisibleDaySignature(doc);
       const prevFirstDay = getFirstVisibleDay(doc);
@@ -1751,7 +2188,19 @@
       }
 
       await waitForHanaTourLoading(doc);
-      await sleep(DATE_STRIP_POST_CLICK_MS);
+      console.log(`[Calendar] 일자 스크롤 버튼 클릭. ${postClickMs}ms 대기...`);
+      await sleep(postClickMs);
+
+      const ymAfterClick = getCurrentVisibleYearMonth(doc);
+      const jumpedMonths = yearMonthDelta(currentYm, ymAfterClick);
+      if (jumpedMonths != null && Math.abs(jumpedMonths) >= 2) {
+        lastReason = "clicked_month_pager";
+        lastVia = clickResult.via ?? null;
+        console.warn(
+          `[Calendar] 일자 다음 클릭이 월을 ${jumpedMonths}개월 이동시킴(ym ${currentYm}→${ymAfterClick}) — 일자 페이저가 아님. 일순회 중단`,
+        );
+        break;
+      }
 
       const advanced = await waitForPagingAdvance(doc, merged, {
         captureCountBefore: captureBefore,
@@ -1808,22 +2257,24 @@
   // (문서 전역에서 첫 "YYYY년 MM월" 텍스트를 찾는 예전 방식은, 페이지에 무관한
   // 달력 위젯이 여러 개 있을 때 잘못된 위젯의 라벨을 집어오는 문제가 있었다.)
   function getCurrentVisibleYearMonth(doc) {
-    const lyWrapYm = getLyWrapVisibleYearMonth(doc);
-    if (lyWrapYm) return lyWrapYm;
-
+    // 가격 스트립 근처 YM을 최우선. ly_wrap(위젯 A)은 스트립이 없을 때만.
     const stripContainer = findDayPriceStripContainer(doc);
     if (stripContainer) {
       const near = findYearMonthNearElement(doc, stripContainer);
       if (near?.yearMonth) return near.yearMonth;
     }
     const header = findMonthHeaderElement(doc);
-    if (header) {
+    if (header && !isInsideLyWrap(header)) {
       const text = elementText(header);
       const match = text.match(YEAR_MONTH_RE);
       if (match) {
         const ym = parseYearMonthFromTitle(match[0]);
         if (ym) return ym;
       }
+    }
+    if (!stripContainer) {
+      const lyWrapYm = getLyWrapVisibleYearMonth(doc);
+      if (lyWrapYm) return lyWrapYm;
     }
     const filter = global.HanatourCalendarFilter;
     return filter?.findVisibleYearMonthInDocument?.(doc) ?? null;
@@ -1937,7 +2388,8 @@
   // 확인할 수 있게 하기 위한 것으로, 실제 순회/스크랩 로직에는 영향을 주지 않는다.
   function describeCalendarDomState(doc) {
     const header = findMonthHeaderElement(doc);
-    const stripContainer = findDateStripContainer(doc, header);
+    const priceStrip = findDayPriceStripContainer(doc);
+    const stripContainer = findDateStripContainer(doc, header) ?? priceStrip;
     const stripRow = findDateStripRow(doc, header);
     const cells = stripContainer
       ? [
@@ -1947,18 +2399,21 @@
         ]
       : [];
     const priceDayCells = findAllPriceDayCellElements(doc);
+    const lyYm = getLyWrapVisibleYearMonth(doc);
+    const lyWrap = findLyWrapMonthGrid(doc);
     return {
       headerText: elementText(header).slice(0, 60),
       headerTag: header?.tagName ?? null,
       headerClass: (header?.className ?? "").toString().slice(0, 120),
+      lyWrapYearMonth: lyYm,
+      lyWrapHeaderText: lyWrap ? elementText(lyWrap).slice(0, 60) : null,
       stripContainerTag: stripContainer?.tagName ?? null,
       stripContainerClass: (stripContainer?.className ?? "").toString().slice(0, 160),
       stripContainerSameAsRow: Boolean(stripContainer && stripRow && stripContainer === stripRow),
+      priceStripContainerTag: priceStrip?.tagName ?? null,
+      priceStripContainerClass: (priceStrip?.className ?? "").toString().slice(0, 160),
       stripCellCount: cells.length,
       stripCellSamples: cells.slice(0, 20).map((cell) => elementText(cell).slice(0, 24)),
-      // 셀 기반(클래스명 무관) 진단: 실제 "일자+가격"으로 인식된 leaf 셀 개수/위치와
-      // 그로부터 역산한 진짜 스트립 컨테이너 정보. headerText/stripContainer*가 위와
-      // 다르면(예: 엉뚱한 위젯을 잡았을 때) 여기서 바로 드러난다.
       priceDayCellCount: priceDayCells.length,
       priceDayCellSamples: priceDayCells.slice(0, 20).map((cell) => elementText(cell).slice(0, 24)),
     };
@@ -1986,6 +2441,8 @@
     findDateStripRow,
     findDateStripNavButton,
     findDateStripNavButtonFresh,
+    isMonthPagerNavElement,
+    yearMonthDelta,
     getFirstVisibleDay,
     findDayPriceStripContainer,
     findAllPriceDayCellElements,

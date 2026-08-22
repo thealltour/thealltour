@@ -41,6 +41,12 @@ export const externalProductMetaSchema = z.object({
     .describe(
       "SEO 검색 키워드 4~8개 (# 없이). 전용 AI 해시태그 섹션이 있으면 그 토큰 우선. 없으면 목적지·테마·혜택에서 작성. 상품명 통째 복사·제목 속 #키워드 재사용 금지.",
     ),
+  one_liner: nullableString.describe(
+    "상세 상단용 한 줄 소개(셀링 카피). 짧은 한국어 문장 1개만. 본문·일정 요지로 추천 작성. 원문 복붙·과장·없는 목적지 금지. description보다 짧게.",
+  ),
+  meta_description: nullableString.describe(
+    "SEO meta_description. 한국어 1~2문장, 대략 80~160자. seo_hashtags와 정합. 일정 나열·가격 숫자 나열 지양.",
+  ),
   description: nullableString.describe("상품 요약 및 핵심 셀링 포인트"),
 
   price: z

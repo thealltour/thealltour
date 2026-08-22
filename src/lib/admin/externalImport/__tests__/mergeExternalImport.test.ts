@@ -20,6 +20,8 @@ function minimalMeta(overrides: Partial<ExternalParsedMeta> = {}): ExternalParse
     departure_time: null,
     arrival_time: null,
     seo_hashtags: null,
+    one_liner: null,
+    meta_description: null,
     selling_points_json: null,
     ...overrides,
   };

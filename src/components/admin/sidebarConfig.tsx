@@ -171,7 +171,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
   {
     href: "/theall_manager_only/tools/thealltour-extension",
-    label: "통합 익스텐션",
+    label: "하나투어 수집기",
     icon: Puzzle,
     group: "tools",
     mainKey: "tools_thealltour_extension",

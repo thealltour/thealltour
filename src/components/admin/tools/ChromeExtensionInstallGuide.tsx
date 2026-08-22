@@ -10,7 +10,7 @@ const STEPS = [
   },
   {
     title: "2단계 — ZIP 압축 풀기",
-    body: "다운로드한 ZIP 파일을 원하는 폴더에 압축 해제합니다. (예: 바탕화면\\thealltour-extension)",
+    body: "다운로드한 ZIP 파일을 원하는 폴더에 압축 해제합니다. (예: 바탕화면\\thealltour_hanatour_collector)",
   },
   {
     title: "3단계 — Chrome에 수동 설치",

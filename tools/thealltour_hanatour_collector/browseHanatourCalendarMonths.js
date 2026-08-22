@@ -6,14 +6,14 @@
   const MONTH_STEP_WAIT_MS = 450;
   const MONTH_HEADER_ADVANCE_WAIT_MS = 3000;
   const MONTH_HEADER_ADVANCE_POLL_MS = 100;
-  const MONTH_NAV_POST_CLICK_MS = 700;
+  // 완전 수집 우선: 월 클릭 후 DOM 재구성·네트워크를 위해 무조건 3.5초 하드 딜레이
+  const MONTH_NAV_POST_CLICK_MS = 3500;
   const MONTH_NAV_SETTLE_MS = 500;
   const CAPTURE_POLL_MS = 150;
   const CAPTURE_WAIT_MS = 1200;
   const DEFAULT_MAX_MONTHS = 12;
-  // 안전망(무한 대기 방지)용 전체 시간 예산. 근접-매일 출발 x 다개월(예: 7개월) 상품도
-  // 정상적으로는 이 예산 안에서 끝나도록 넉넉하게 잡는다 — 완전성을 깎기 위한 값이 아니다.
-  const DEFAULT_TOTAL_BUDGET_MS = 150_000;
+  // 월 3.5s + 일자 스트립 3s 하드 딜레이 기준으로 12개월 완전 순회 예산 (5분)
+  const DEFAULT_TOTAL_BUDGET_MS = 480_000;
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -108,7 +108,7 @@
     return parts.join(",");
   }
 
-  const PRICE_SIGNATURE_WAIT_MS = 2000;
+  const PRICE_SIGNATURE_WAIT_MS = 4000;
   const PRICE_SIGNATURE_POLL_MS = 100;
 
   async function waitForPriceSignatureChange(doc, beforeSignature, timeoutMs) {
@@ -141,6 +141,7 @@
       tabId,
       deadline,
       anchorYearMonth,
+      prepareStrip: options?.prepareStrip,
     });
     if (pagedHorizontal) mergeSearchCalendar(merged, pagedHorizontal);
 
@@ -158,12 +159,10 @@
   }
 
   async function waitForMonthHeaderAdvance(doc, beforeYm, timeoutMs) {
-    const open = global.HanatourCalendarOpen;
     const deadline = Date.now() + (timeoutMs ?? MONTH_HEADER_ADVANCE_WAIT_MS);
     while (Date.now() < deadline) {
-      const ym =
-        open?.getLyWrapVisibleYearMonth?.(doc) ??
-        readVisibleYearMonth(doc);
+      // ly_wrap YM은 위젯 A 고착/오탐이므로 가격 스트립 근처 월만 본다.
+      const ym = readVisibleYearMonth(doc);
       if (beforeYm && ym && ym !== beforeYm) {
         return { ok: true, yearMonth: ym };
       }
@@ -171,10 +170,7 @@
     }
     return {
       ok: false,
-      yearMonth:
-        open?.getLyWrapVisibleYearMonth?.(doc) ??
-        readVisibleYearMonth(doc) ??
-        null,
+      yearMonth: readVisibleYearMonth(doc) ?? null,
     };
   }
 
@@ -224,6 +220,9 @@
     const onProgress = options?.onProgress;
     const open = global.HanatourCalendarOpen;
     const merged = {};
+    const monthNavPostClickMs = options?.monthNavPostClickMs ?? MONTH_NAV_POST_CLICK_MS;
+    const priceSigWaitMs = options?.priceSignatureWaitMs ?? PRICE_SIGNATURE_WAIT_MS;
+    const monthHeaderWaitMs = options?.monthHeaderAdvanceWaitMs ?? MONTH_HEADER_ADVANCE_WAIT_MS;
 
     if (options?.startYearMonth) {
       const seek = await seekToStartMonth(doc, options.startYearMonth);
@@ -237,17 +236,41 @@
     const skipMeta = [];
     const domStates = [];
 
-    // 순회 시작 전, 실제로 "일자+가격" 셀 기반 위젯 탐지가 성공했는지 한 번 기록한다.
-    // 이후 스텝들이 진행되지 않고 조기 종료되더라도, 이 진단만으로 원인(엉뚱한 위젯을
-    // 잡았는지, 아예 가격 셀을 못 찾았는지)을 바로 알 수 있게 한다.
+    if (options?.collectorVersion) {
+      skipMeta.push({
+        source: "collector_runtime",
+        collectorVersion: options.collectorVersion,
+      });
+    }
+
+    // 순회 시작 전 스트립 DOM이 준비될 때까지 잠깐 대기한 뒤 탐지 스냅샷을 남긴다.
+    await open?.waitForHanaTourLoading?.(doc);
+    if (open?.waitForDayStripDomReady) {
+      await open.waitForDayStripDomReady(doc);
+    }
+    open?.invalidateCalendarDomCache?.(doc);
     const initialStripContainer = open?.findDayPriceStripContainer?.(doc) ?? null;
     const initialPriceCells = open?.findAllPriceDayCellElements?.(doc) ?? [];
+    const stripTag = (initialStripContainer?.tagName ?? "").toUpperCase();
+    const stripCls = (initialStripContainer?.className ?? "").toString();
+    const stripProdListMisdetect =
+      stripTag === "UL" && /\btype\b/.test(stripCls) && !initialStripContainer?.closest?.(".calendar_wrap");
+    const stripLeafBad = ["LI", "BUTTON", "A", "SPAN", "TD"].includes(stripTag);
     skipMeta.push({
       source: "strip_detection_init",
-      ok: Boolean(initialStripContainer),
+      ok: Boolean(initialStripContainer) && !stripLeafBad && !stripProdListMisdetect,
       priceDayCellCount: initialPriceCells.length,
       stripContainerTag: initialStripContainer?.tagName ?? null,
-      stripContainerClass: (initialStripContainer?.className ?? "").toString().slice(0, 160),
+      stripContainerClass: stripCls.slice(0, 160),
+      ...(stripProdListMisdetect
+        ? { note: "ul.type(상품 리스트 전체)를 가격 스트립으로 오탐 — calendar_wrap 내부만 보도록 수정 필요" }
+        : {}),
+      ...(stripLeafBad
+        ? { note: "가격 스트립 컨테이너가 leaf 태그(" + stripTag + ")로 오탐 — 수집 스코프가 깨질 수 있음" }
+        : {}),
+      ...(!initialStripContainer
+        ? { note: "가격 스트립 컨테이너를 아직 못 찾음(이후 스텝에서 잡힐 수 있음)" }
+        : {}),
     });
     // 안전망 deadline: 호출자가 넘겨주면 그대로 쓰고, 없으면 넉넉한 기본 예산으로 계산한다.
     // 정상적인 진행 중에는 절대 걸리지 않도록 값을 크게 잡아둔다(초 단위가 아니라 분 단위).
@@ -258,6 +281,9 @@
     // 화면의 "YYYY년 MM월" 텍스트 대신, 실제 스크랩한 일자 흐름(롤오버)으로 추적하는
     // 월 앵커. 페이지에 검색 결과와 무관한 별도 달력 위젯이 있어도 영향을 받지 않는다.
     let currentYm = options?.startYearMonth ?? readVisibleYearMonth(doc) ?? null;
+    // browse가 월 이동 직후 waitForDayStripAfterMonthChange로 이미 리셋했으면
+    // 다음 collect의 prepareStrip을 건너뛰어 이중 reset으로 스트립이 깨지는 걸 막는다.
+    let stripAlreadyPrepared = false;
 
     for (let step = 0; step < maxMonths; step += 1) {
       if (Date.now() > deadline) {
@@ -276,7 +302,13 @@
       console.log(`[Calendar] ${ym ?? "?"} 수집 진행 중... (step ${step + 1}/${maxMonths})`);
       await open?.waitForHanaTourLoading?.(doc);
 
-      const monthCal = await collectCalendarFromTabAsync(doc, { tabId, deadline, anchorYearMonth: ym });
+      const monthCal = await collectCalendarFromTabAsync(doc, {
+        tabId,
+        deadline,
+        anchorYearMonth: ym,
+        prepareStrip: !stripAlreadyPrepared,
+      });
+      stripAlreadyPrepared = false;
       if (monthCal) mergeSearchCalendar(merged, monthCal);
       mergeApiCapturesInto(merged);
 
@@ -323,115 +355,124 @@
       const monthKeys = open?.getCalendarMonthKeys?.(merged) ?? [];
       if (monthKeys.length >= maxMonths) break;
 
-      // "월 헤더" 전용 다음 버튼(findMonthNavButton)은 위젯 A(검색 결과와 무관한 오늘
-      // 날짜 기준 그리드)를 가리키는 경우가 많아, 실측 결과 이 버튼이 없거나 눌러도
-      // 아무 효과가 없는 사이트에서도 실제 가격 스트립(위젯 B)의 "다음" 버튼은 계속
-      // 동작했다(한 스텝에서 최대 3회 클릭으로 4개월치를 이미 정상 수집). 그래서 이
-      // 버튼을 못 찾거나 눌러도 소용없어도 더 이상 즉시 순회를 중단하지 않는다 — 다음
-      // 스텝에서 collectCalendarFromTabAsync가 내부적으로 day-strip "다음"을 다시
-      // 눌러 계속 진행하고, 정말 더 이상 진행할 수 없으면 위의
-      // duplicate_rows_detected(실제 수집 데이터 동일 여부)가 안전하게 멈춰준다.
-      const nextBtn = findMonthNavButton(doc, "next");
+      // 월 next는 가격 스트립 근처만 사용(ly_wrap 금지). 가격 시그니처가 안 바뀌면
+      // 가짜 월 앵커 전진을 하지 않고 순회를 중단한다.
       const nextYm = ym && open?.nextYearMonth ? open.nextYearMonth(ym) : null;
-      if (nextYm && open?.hasMonthInCalendar?.(merged, nextYm)) {
+      const alreadyHasNextMonth = Boolean(
+        nextYm && open?.hasMonthInCalendar?.(merged, nextYm),
+      );
+      if (alreadyHasNextMonth) {
         skipMeta.push({
           source: "month_nav_skip",
           skipped_dom_click: "api_already_has_month",
           yearMonth: nextYm,
         });
+        // 월 DOM 클릭은 생략. 앵커는 위에서 stripMeta.endYearMonth로만 갱신된 상태를 유지하고,
+        // 스트립 롤오버로 이미 다음 달 키가 생겼다면 다음 스텝으로, 아니면 종료.
+        if (stripMeta?.endYearMonth && stripMeta.endYearMonth !== ym) {
+          continue;
+        }
+        break;
       }
 
-      if (nextBtn) {
-        const priceSigBeforeMonthClick = getVisiblePriceSignature(doc);
-        const captureBefore = global.HanatourCalendarDiscover?.getCapturedPayloads?.()?.length ?? 0;
-        const ymBeforeNav =
-          open?.getLyWrapVisibleYearMonth?.(doc) ?? readVisibleYearMonth(doc) ?? ym;
-        const prevHeaderText = open?.getMonthHeaderLabelText?.(doc) ?? null;
-
-        await open?.waitForHanaTourLoading?.(doc);
-        nextBtn.click();
-        open?.invalidateCalendarDomCache?.(doc);
-        await open?.waitForHanaTourLoading?.(doc);
-        await sleep(MONTH_NAV_POST_CLICK_MS);
-        await waitForNewCapture(captureBefore);
-
-        const textChange = prevHeaderText
-          ? await open?.waitForMonthHeaderTextChange?.(doc, prevHeaderText, MONTH_HEADER_ADVANCE_WAIT_MS)
-          : null;
-        const headerAdvance = await waitForMonthHeaderAdvance(doc, ymBeforeNav);
-        if (textChange && !textChange.ok) {
-          skipMeta.push({
-            source: "month_header_text_unchanged",
-            yearMonth: ymBeforeNav,
-            note: `헤더 라벨(${prevHeaderText})이 ${MONTH_HEADER_ADVANCE_WAIT_MS}ms 내에 바뀌지 않음`,
-          });
-        }
-        if (!headerAdvance.ok) {
-          skipMeta.push({
-            source: "month_header_unchanged_after_nav",
-            yearMonth: ymBeforeNav,
-            note: `월 헤더가 ${MONTH_HEADER_ADVANCE_WAIT_MS}ms 내에 다음 달로 바뀌지 않음 (현재=${headerAdvance.yearMonth ?? "?"})`,
-          });
-          console.warn(
-            `[CalendarBrowse] step ${step + 1}: 월 헤더 미전진 (before=${ymBeforeNav}, after=${headerAdvance.yearMonth ?? "?"})`,
-          );
-        } else if (headerAdvance.yearMonth) {
-          currentYm = headerAdvance.yearMonth;
-          console.log(`[Calendar] ${headerAdvance.yearMonth} 월 이동 완료`);
-        }
-
-        await sleep(MONTH_NAV_SETTLE_MS);
-        await open?.waitForHanaTourLoading?.(doc);
-
-        if (ym) {
-          let ymAfterClick = readVisibleYearMonth(doc);
-          if (ymAfterClick === ym) {
-            await sleep(MONTH_STEP_WAIT_MS);
-            ymAfterClick = readVisibleYearMonth(doc);
-          }
-          if (ymAfterClick === ym && !headerAdvance.ok) {
-            skipMeta.push({
-              source: "month_nav_click_ineffective",
-              yearMonth: ym,
-              note: "월 헤더가 안 바뀜(경고) — 무관한 위젯의 버튼일 수 있어 계속 진행합니다.",
-            });
-          }
-        }
-
-        // 헤더는 바뀌어도 가격 배지가 늦게(네트워크 응답 지연 등으로 2초보다 오래) 갱신되는
-        // 사이트가 있어, 이 체크만으로 중단하면 실제로는 정상 진행 중인 순회를 조기에
-        // 끊어버릴 수 있다(실측 사례: 실제로는 여러 달을 잘 순회했는데 이 체크 때문에
-        // 1개월에서 멈춤). 그래서 여기서는 경고만 남기고 계속 진행하며, 진짜 "같은 데이터
-        // 중복"인지는 다음 스텝에서 rowsSignatureOf 비교(위 duplicate_rows_detected)로
-        // 판단한다.
-        const priceWait = await waitForPriceSignatureChange(doc, priceSigBeforeMonthClick);
-        if (!priceWait.changed) {
-          skipMeta.push({
-            source: "price_signature_unchanged_after_month_nav",
-            yearMonth: ym,
-            note: "가격 배지가 2초 내에 안 바뀜(경고) — 다음 스텝의 실제 수집 데이터로 중복 여부를 다시 판단합니다.",
-          });
-          console.warn(
-            `[CalendarBrowse] step ${step + 1}: 월 이동 후 가격 시그니처가 2초 내에 바뀌지 않음(경고, 계속 진행) (ym=${ym})`,
-          );
-        }
-
-        if (open?.waitForDayStripAfterMonthChange) {
-          await open.waitForDayStripAfterMonthChange(doc, { tabId });
-        }
-      } else {
+      const nextBtn = findMonthNavButton(doc, "next");
+      if (!nextBtn) {
         skipMeta.push({
           source: "month_nav_button_not_found",
           yearMonth: ym,
-          note: "월 헤더 다음 버튼을 못 찾음(경고) — day-strip 자체 다음 버튼으로 계속 진행을 시도합니다.",
+          note: "가격 스트립 쪽 월 다음 버튼을 못 찾음 — 가짜 ly_wrap 클릭 없이 순회 종료",
+        });
+        break;
+      }
+
+      const priceSigBeforeMonthClick = getVisiblePriceSignature(doc);
+      const daySigBefore =
+        open?.getVisibleDaySignature?.(doc) ?? priceSigBeforeMonthClick;
+      const cellsBefore = open?.findAllPriceDayCellElements?.(doc)?.length ?? 0;
+      const captureBefore = global.HanatourCalendarDiscover?.getCapturedPayloads?.()?.length ?? 0;
+      const ymBeforeNav = readVisibleYearMonth(doc) ?? ym;
+      const prevHeaderText = open?.getMonthHeaderLabelText?.(doc) ?? null;
+
+      await open?.waitForHanaTourLoading?.(doc);
+      nextBtn.click();
+      console.log(`[Calendar] 월 이동 버튼 클릭. ${monthNavPostClickMs}ms 대기...`);
+      open?.invalidateCalendarDomCache?.(doc);
+      await open?.waitForHanaTourLoading?.(doc);
+      await sleep(monthNavPostClickMs);
+      open?.invalidateCalendarDomCache?.(doc);
+      await waitForNewCapture(captureBefore);
+
+      const textChange = prevHeaderText
+        ? await open?.waitForMonthHeaderTextChange?.(doc, prevHeaderText, monthHeaderWaitMs)
+        : null;
+      const headerAdvance = await waitForMonthHeaderAdvance(doc, ymBeforeNav, monthHeaderWaitMs);
+      // calendar_wrap 헤더가 실제로 전진했으면 텍스트 불일치 진단은 남기지 않음(고아 <p> 노이즈 방지)
+      if (textChange && !textChange.ok && !headerAdvance.ok) {
+        skipMeta.push({
+          source: "month_header_text_unchanged",
+          yearMonth: ymBeforeNav,
+          note: `헤더 라벨(${prevHeaderText})이 ${monthHeaderWaitMs}ms 내에 바뀌지 않음`,
+        });
+      }
+      if (!headerAdvance.ok) {
+        skipMeta.push({
+          source: "month_header_unchanged_after_nav",
+          yearMonth: ymBeforeNav,
+          note: `월 헤더가 ${monthHeaderWaitMs}ms 내에 다음 달로 바뀌지 않음 (현재=${headerAdvance.yearMonth ?? "?"})`,
         });
       }
 
-      // "다음 달" 이동이 성공했다고 보고, 다음 스텝의 앵커를 1개월 전진시킨다.
-      // (다음 스텝에서 실제 일자 롤오버가 감지되면 그 값으로 다시 갱신된다. 버튼이
-      // 없었거나 무효였어도 이 값은 fallback 앵커일 뿐, 실제 라벨은 여전히 일자
-      // 롤오버가 우선한다.)
-      if (nextYm) currentYm = nextYm;
+      await sleep(options?.monthNavSettleMs ?? MONTH_NAV_SETTLE_MS);
+      await open?.waitForHanaTourLoading?.(doc);
+      open?.invalidateCalendarDomCache?.(doc);
+
+      const priceWait = await waitForPriceSignatureChange(
+        doc,
+        priceSigBeforeMonthClick,
+        priceSigWaitMs,
+      );
+      const daySigAfter = open?.getVisibleDaySignature?.(doc) ?? "";
+      const cellsAfter = open?.findAllPriceDayCellElements?.(doc)?.length ?? 0;
+      const priceAdvanced =
+        priceWait.changed ||
+        (daySigBefore && daySigAfter && daySigAfter !== daySigBefore) ||
+        cellsAfter !== cellsBefore;
+
+      if (priceAdvanced) {
+        console.log(
+          "[Calendar] 가격 스트립 변경 확인 (sigChanged=" +
+            priceWait.changed +
+            ", cells=" +
+            cellsBefore +
+            "→" +
+            cellsAfter +
+            ")",
+        );
+        if (headerAdvance.ok && headerAdvance.yearMonth) {
+          currentYm = headerAdvance.yearMonth;
+        } else if (nextYm) {
+          currentYm = nextYm;
+        }
+        if (open?.waitForDayStripAfterMonthChange) {
+          open.invalidateCalendarDomCache?.(doc);
+          await open.waitForDayStripAfterMonthChange(doc, { tabId });
+          stripAlreadyPrepared = true;
+        }
+      } else {
+        skipMeta.push({
+          source: "price_signature_unchanged_after_month_nav",
+          yearMonth: ym,
+          note: "가격 배지가 바뀌지 않음 — 가짜 월 앵커 전진 없이 순회 중단",
+        });
+        console.warn(
+          "[CalendarBrowse] step " +
+            (step + 1) +
+            ": 월 이동 후 가격 시그니처 미변경 — 순회 중단 (ym=" +
+            ym +
+            ")",
+        );
+        break;
+      }
     }
 
     const hasData = countCalendarDays(merged) > 0;

@@ -1,20 +1,22 @@
 # thealltour_hanatour_collector
 
-기존 `thealltour_extension`을 클론한 **하나투어 전용** Manifest V3 수집기입니다. 부모 탭 달력 클릭·모두투어 수집은 하지 않습니다.
+**운영 표준** 하나투어 Manifest V3 수집기입니다. 구 `thealltour_extension` / `hanatour-extractor-extension` 은 폐기되었습니다.
 
-- 팝업: **수집 후 서버 전송** / **Markdown·JSON 다운로드**(AI 크레딧 없이 수집 결과 검증)
+- 팝업: 아이콘 클릭 시 **독립 패널 창**으로 열림(탭 전환에도 UI 유지). **수집 후 서버 전송** / **Markdown·JSON 다운로드**(AI 크레딧 없이 수집 결과 검증)
 - 본문: 상품안내·상세일정 탭/아코디언을 펼친 뒤 DOM HTML(`cleanHtmlStructure`) + `itineraryBlocks` + `packageCatalog`
-- 출발일: 상품 탭에서 `POST https://www.hanatour.com/api/package/getListYearMonthCal` + discover 캡처 + `m.hanatour.com` 월별 GET 병합
+- 출발일: 상품 탭에서 `POST https://www.hanatour.com/api/package/getListYearMonthCal` + discover 캡처 + `m.hanatour.com` 월별 GET 병합 + 부모탭 DOM 월/일 순회 폴백
 - `POST {apiBase}/api/admin/products/import-external` — `importMode: "full"` (Gemini 메타·일정 파싱 필수, light 폴백 없음, `credentials: include`)
 
-운영 통합 익스텐션(0.2.33) ZIP은 이 폴더와 무관합니다.
+관리자 다운로드: `/theall_manager_only/tools/thealltour-extension`  
+로컬 패키징: 저장소 루트에서 `npm run extensions:package:local -- --slug=thealltour-extension`  
+(버전만 `package.json`/`manifest.json`에서 올린 뒤 main에 push하면 CI가 `public/extension-builds`와 Supabase Storage를 자동 갱신합니다.)
 
 ## 설치 (로컬)
 
 1. Chrome → `chrome://extensions` → 개발자 모드
 2. 「압축해제된 확장 프로그램을 로드합니다」→ **`tools/thealltour_hanatour_collector` 폴더만** 선택 (단위 테스트는 `tools/thealltour_hanatour_collector_tests`에 있으며, `_`로 시작하는 이름은 Chrome MV3 로드를 막습니다)
 3. 같은 Chrome에서 API Base와 **동일한 호스트**의 `/theall_manager_only`에 관리자 로그인 (운영: `https://www.thealltour.com/theall_manager_only`)
-4. 하나투어 상품 상세(`/trp/pkg/...` 또는 `pkgCd`)를 연 뒤 툴바 아이콘 → 수집
+4. 하나투어 상품 상세(`/trp/pkg/...` 또는 `pkgCd`)를 연 뒤 툴바 아이콘 → **독립 패널 창**이 열림 → 수집
 
 아이콘이 없으면 이 폴더에서 `npm run icons` (저장소 루트의 sharp 사용).
 
@@ -24,7 +26,18 @@
 
 다운로드 `.md` 하단에서 `1일차`·식사·호텔명을, `searchCalendar`에서 월별 `depDay`·`adtAmt`를 확인하세요.
 
-버전은 `0.4.13`입니다. Chrome은 압축 해제 확장을 자동 업데이트하지 않으므로 `chrome://extensions`에서 새로고침하세요.
+버전은 `0.4.32`입니다. Chrome은 압축 해제 확장을 자동 업데이트하지 않으므로 `chrome://extensions`에서 새로고침하세요.
+
+### 0.4.25: 일자 스트립 다음이 월(3개월) 페이저를 누르던 문제
+
+부모탭으로 전환하자마자 캘린더가 3개월씩 건너뛰고, 일자(15일) 순회는 전혀 안 되던 원인을 고쳤습니다. `findDateStripNavButtonFresh`가 `doc.body`/`a.next`로 넓은 범위를 탐색하면서 문서 앞쪽의 「다음달」(3개월 그리드 이동)을 「다음 날짜」로 오인하고, 한 스텝에서 그 버튼을 여러 번 눌렀습니다.
+
+- 일자 페이저는 `.blind`의 `다음 날짜`/`이전 날짜`, `.btn_cal_next`를 우선하고, `.calendar_header`·`다음달`·`.ly_wrap`은 제외합니다.
+- 일자 다음 클릭 후 월 라벨이 2개월 이상 점프하면 `clicked_month_pager`로 일순회를 즉시 중단합니다.
+
+### 0.4.22: 수집 UI를 독립 패널 창으로 유지
+
+크롬 `default_popup`은 탭 포커스가 바뀌면(캘린더 DOM 순회용 `withTabFocused`) 즉시 닫혀, 진행률·완료 메시지·자동 다운로드가 끊겼습니다. 이제 툴바 아이콘 클릭 시 `popup.html`을 **별도 창**으로 열어 탭이 바뀌어도 패널이 유지됩니다. 상품 탭 탐지도 `currentWindow`가 아니라 normal 브라우저 창의 하나투어 탭을 찾도록 바꿨습니다.
 
 major-products(부모탭)에서 캘린더 API가 비어 있으면, `thealltour_extension`에서 검증된 월/일 DOM 순회 모듈(`openHanatourCalendar.js` + `hanatourCalendarFilter.js` + `browseHanatourCalendarMonths.js`)을 이식해 자동 폴백합니다(월 헤더/날짜 스트립을 클래스명이 아닌 텍스트·구조·geometry로 탐지). 일자 스트립 다음 버튼은 최대 3회까지만 클릭합니다. 이 폴백은 **활성 탭이 아니라 `calendarTabId`가 가리키는 탭**의 URL로 major-products 여부를 판정하므로, 상세페이지에서 실행해도 왼쪽 부모탭에서 순회가 시도됩니다.
 
@@ -40,7 +53,7 @@ major-products(부모탭)에서 캘린더 API가 비어 있으면, `thealltour_e
 1. **엉뚱한 위젯을 "월 헤더"로 오인식**: 하나투어 페이지에는 서로 무관한 달력 위젯이 최소 두 개 있습니다 — (a) `이전달/다음달` 버튼이 달린 오늘 날짜 기준의 일반 월간 그리드(가격 없음), (b) 실제 출발일별 가격을 보여주는 가로 스트립(진짜 데이터). 기존 `findMonthHeaderElement`는 문서 전역에서 "YYYY년 MM월" 텍스트를 처음 만나는 요소를 그대로 채택해 (a)를 "월 헤더"로 오인식했고, 그 결과 `이전달/다음달` 클릭도 (a)에만 적용되어 실제 가격 스트립(b)은 전혀 움직이지 않았습니다. 그런데도 (a)의 헤더 텍스트는 정상적으로 바뀌었기 때문에 "월 이동 성공"으로 오판하고, 움직이지 않은 (b)의 데이터를 새 월 키로 다시 저장하려 했습니다.
    - **수정**: `openHanatourCalendar.js`에 `findDayPriceStripContainer()`를 추가해, 실제 "일자+가격" 셀들을 먼저 찾고 그 셀들의 최소 공통 조상(nearest common ancestor)을 역산해 진짜 위젯을 클래스명과 무관하게 특정합니다. `findMonthHeaderElement`/`findCalendarWidgetRoot`/`findDateStripContainer`/`findDateStripRow`/월-라벨 판정(`getCurrentVisibleYearMonth`)이 모두 이 결과를 1순위로 사용하도록 변경했습니다(문서 전역 탐색은 셀을 못 찾았을 때만 쓰는 2순위 폴백으로 남겼습니다).
 2. **가격 시그니처 불변을 경고로만 남기고 계속 진행**: 헤더 텍스트는 바뀌었지만 가격 배지가 그대로인 경우, 이전 버전은 경고만 남기고 다음 스텝으로 진행해 동일한 실제 데이터가 다른 월 키로 중복 저장됐습니다. 이제는 이 경우 **즉시 순회를 중단**해 신뢰 가능한 데이터만 반환합니다.
-3. **백그라운드 탭 타이머 스로틀링으로 인한 조기 deadline**: 월 순회는 `sleep()`을 매우 많이 호출하는데, 대상 탭(`calendarTabId`)이 비활성(백그라운드) 탭이면 크롬이 타이머를 강하게 지연시켜 로직상 10~20초면 끝날 순회가 실제로는 훨씬 오래 걸려 안전망(150초) deadline에 조기 도달할 수 있습니다. `background.js`에 `withTabFocused()`를 추가해 DOM 순회 동안 대상 탭/창을 잠깐 활성화하고 종료 후 원래 활성 탭으로 복구합니다.
+3. **백그라운드 탭 타이머 스로틀링으로 인한 조기 deadline**: 월 순회는 `sleep()`을 매우 많이 호출하는데, 대상 탭(`calendarTabId`)이 비활성(백그라운드) 탭이면 크롬이 타이머를 강하게 지연시켜 로직상 수십 초면 끝날 순회가 실제로는 훨씬 오래 걸려 안전망(300초) deadline에 조기 도달할 수 있습니다. `background.js`에 `withTabFocused()`를 추가해 DOM 순회 동안 대상 탭/창을 잠깐 활성화하고 종료 후 원래 활성 탭으로 복구합니다.
 4. **진단 강화**: `dom_debug`에 클래스명과 무관하게 찾은 실제 가격 셀 개수/샘플(`priceDayCellCount`, `priceDayCellSamples`)을 추가하고, 순회 시작 시점의 위젯 탐지 성공 여부를 `strip_detection_init` 항목으로 별도 기록합니다.
 
 ### 0.4.9: 다운로드 버튼 무응답 + 조기 종료(1개월만 수집) 수정

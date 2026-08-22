@@ -27,7 +27,8 @@
     "supabase:status": "supabase status",
     "supabase:reset": "supabase db reset",
     "extensions:package": "node scripts/upload-extension-builds.mjs",
-    "extensions:package:local": "node scripts/upload-extension-builds.mjs --skip-upload"
+    "extensions:package:local": "node scripts/upload-extension-builds.mjs --skip-upload",
+    "extensions:package:changed": "node scripts/upload-extension-builds.mjs --only-if-version-changed"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.43",

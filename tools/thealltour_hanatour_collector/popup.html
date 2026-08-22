@@ -9,7 +9,8 @@
       }
       body {
         margin: 0;
-        width: 340px;
+        width: 380px;
+        min-height: 640px;
         font: 13px/1.45 system-ui, -apple-system, sans-serif;
         color: #0f172a;
         background: #f8fafc;
@@ -144,7 +145,7 @@
   </head>
   <body>
     <main>
-      <h1>하나투어 상품 수집</h1>
+      <h1>하나투어 상품 수집 <span style="font-weight:500;color:#64748b;font-size:11px">(독립 패널)</span></h1>
       <div id="pageStatus" class="status">탭 확인 중…</div>
       <div class="row">
         <label for="apiPreset">API Base URL</label>
@@ -171,15 +172,16 @@
       <div id="result" class="result"></div>
       <div id="quickDownload" class="actions" hidden>
         <button id="quickDownloadMdBtn" type="button" class="secondary">
-          ⬇️ 지금 이 결과 즉시 다운로드 (Markdown)
+          ⬇️ 수동 다운로드 (Markdown) — 자동 저장이 안 됐을 때
         </button>
         <button id="quickDownloadJsonBtn" type="button" class="tertiary">
-          ⬇️ 지금 이 결과 즉시 다운로드 (JSON)
+          ⬇️ 수동 다운로드 (JSON) — 자동 저장이 안 됐을 때
         </button>
       </div>
       <p class="hint">
-        관리자 주소와 API Base의 호스트가 정확히 같아야 합니다 (예: www.thealltour.com ↔ www.thealltour.com).
-        Markdown/JSON 다운로드는 AI 크레딧 없이 수집 결과만 검증합니다. 서버 전송은 Gemini 정형화(full)를 사용하며, 캘린더가 0건이면 등록하지 않습니다.
+        확장 아이콘을 누르면 이 패널이 별도 창으로 열립니다. 캘린더 순회 중 탭이 바뀌어도 패널은 유지됩니다.
+        수집이 끝나면 Markdown이 자동으로 다운로드됩니다. 브라우저가 막으면 아래 수동 버튼을 사용하세요.
+        서버 전송은 Gemini 정형화(full)를 사용하며, 캘린더가 0건이면 등록하지 않습니다.
       </p>
     </main>
     <script src="popup.js"></script>

@@ -43,6 +43,8 @@ function minimalMeta(overrides: Partial<ExternalParsedMeta> = {}): ExternalParse
     departure_to_airport: "방콕",
     departure_time: "09:00",
     arrival_time: "13:30",
+    one_liner: null,
+    meta_description: null,
     ...overrides,
   };
 }

@@ -138,6 +138,7 @@ describe("openHanatourCalendar widget detection (cell-based)", () => {
       result = await open.scrapeAllSearchHorizontalCalendarWithPaging(document, {
         maxDateStripClicks: 1,
         anchorYearMonth: "202608",
+        dateStripPostClickMs: 50,
       });
     } finally {
       globalThis.MouseEvent = OriginalMouseEvent;
@@ -197,7 +198,10 @@ describe("openHanatourCalendar widget detection (cell-based)", () => {
     (globalThis as unknown as { MouseEvent: typeof Event }).MouseEvent = class extends Event {} as unknown as typeof Event;
 
     try {
-      const reset = await open.resetDayStripToStart(document, { renderWaitMs: 500 });
+      const reset = await open.resetDayStripToStart(document, {
+        renderWaitMs: 500,
+        dateStripPostClickMs: 50,
+      });
       expect(reset.ok).toBe(true);
       expect(reset.prevClicks).toBeGreaterThan(0);
       expect(reset.minDay).toBeLessThanOrEqual(15);
@@ -206,6 +210,7 @@ describe("openHanatourCalendar widget detection (cell-based)", () => {
         maxDateStripClicks: 1,
         anchorYearMonth: "202609",
         prepareStrip: false,
+        dateStripPostClickMs: 50,
       });
 
       expect(result).not.toBeNull();
@@ -293,4 +298,405 @@ describe("openHanatourCalendar widget detection (cell-based)", () => {
     expect(cells.length).toBe(5);
     expect(cells.some((c) => (c.textContent ?? "").includes("999만"))).toBe(false);
   });
+
+  it("promotes leaf LI NCA to parent UL for day price strip container", () => {
+    document.body.innerHTML = `
+      <div class="dep-calendar-strip">
+        <ul id="price-ul">
+          <li id="cell-a"><span class="num">10</span><span class="amt">100만</span></li>
+          <li id="cell-b"><span class="num">11</span><span class="amt">110만</span></li>
+          <li id="cell-c"><span class="num">12</span><span class="amt">120만</span></li>
+        </ul>
+      </div>
+    `;
+    const open = loadOpenModule();
+    const container = open.findDayPriceStripContainer(document);
+    expect(container).not.toBeNull();
+    expect(container!.tagName).not.toBe("LI");
+    const ul = document.getElementById("price-ul")!;
+    expect(container === ul || container!.contains(ul) || ul.contains(container!)).toBe(true);
+  });
+
+  it("prefers month next near price strip over ly_wrap widget A", () => {
+    document.body.innerHTML = `
+      <div class="ly_wrap">
+        <button class="prev">이전달</button>
+        <button class="next" id="ly-next">다음달</button>
+        <em>2027년 7월</em>
+        <table><tbody><tr><td>1</td><td>2</td></tr></tbody></table>
+      </div>
+      <div class="calendar_wrap dep-calendar-strip">
+        <div class="calendar_header">
+          <button class="btn_prev">이전달</button>
+          <em>2026년 8월</em>
+          <button class="btn_next" id="strip-month-next">다음달</button>
+        </div>
+        <ul>
+          <li><span class="num">16</span><span class="amt">164만</span></li>
+          <li><span class="num">17</span><span class="amt">269만</span></li>
+          <li><span class="num">18</span><span class="amt">194만</span></li>
+        </ul>
+        <a class="next" id="strip-day-next"><span class="blind">다음 날짜</span></a>
+      </div>
+    `;
+    const open = loadOpenModule() as OpenApi & {
+      findMonthNavButton: (doc: Document, direction: "next" | "prev") => Element | null;
+    };
+    const btn = open.findMonthNavButton(document, "next");
+    expect(btn).not.toBeNull();
+    expect(btn!.id).toBe("strip-month-next");
+    expect(btn!.id).not.toBe("ly-next");
+  });
+
+  it("invalidates DOM cache while waiting for date-strip paging advance", async () => {
+    document.body.innerHTML = `
+      <div class="dep-calendar-strip">
+        <div class="strip-row">
+          <a class="prev">이전</a>
+          <ul id="days">
+            <li><span class="num">1</span><span class="amt">111만</span></li>
+            <li><span class="num">5</span><span class="amt">150만</span></li>
+            <li><span class="num">10</span><span class="amt">200만</span></li>
+          </ul>
+          <a class="next" id="day-next">다음</a>
+        </div>
+      </div>
+    `;
+    let clickCount = 0;
+    document.getElementById("day-next")!.addEventListener("click", () => {
+      clickCount += 1;
+      document.getElementById("days")!.innerHTML = `
+        <li><span class="num">11</span><span class="amt">210만</span></li>
+        <li><span class="num">15</span><span class="amt">250만</span></li>
+        <li><span class="num">20</span><span class="amt">300만</span></li>
+      `;
+    });
+
+    const open = loadOpenModule() as OpenApi & {
+      scrapeAllSearchHorizontalCalendarWithPaging: (
+        doc: Document,
+        options: {
+          maxDateStripClicks?: number;
+          anchorYearMonth?: string;
+          dateStripPostClickMs?: number;
+        },
+      ) => Promise<Record<string, unknown> | null>;
+      getLastDateStripPagingMeta: () => { clicks?: number; reason?: string } | null;
+      DEFAULT_MAX_DATE_STRIP_CLICKS: number;
+    };
+
+    expect(open.DEFAULT_MAX_DATE_STRIP_CLICKS).toBe(3);
+
+    const OriginalMouseEvent = globalThis.MouseEvent;
+    (globalThis as unknown as { MouseEvent: typeof Event }).MouseEvent = class extends Event {} as unknown as typeof Event;
+    try {
+      const result = await open.scrapeAllSearchHorizontalCalendarWithPaging(document, {
+        maxDateStripClicks: 1,
+        anchorYearMonth: "202608",
+        dateStripPostClickMs: 20,
+      });
+      expect(result).not.toBeNull();
+      expect(clickCount).toBeGreaterThanOrEqual(1);
+      expect((open.getLastDateStripPagingMeta()?.clicks ?? 0) >= 1 || Object.keys(result!).length >= 1).toBe(
+        true,
+      );
+    } finally {
+      globalThis.MouseEvent = OriginalMouseEvent;
+    }
+  });
+
+
+  it("picks calendar_wrap inside ly_wrap prod_list ul.type, not the whole ul.type list", () => {
+    document.body.innerHTML = `
+      <div class="ly_wrap">
+        <em>2026년 8월</em>
+        <div class="prod_list_wrap">
+          <ul class="type">
+            <li>판매상품보기 패키지 스페인/포르투갈 9~11일 #베스트셀러</li>
+            <li>
+              <span>4,099,000원~</span>
+              <div class="sub_list_wrap">
+                <div class="calendar_wrap">
+                  <div class="header">
+                    <a class="prev"><span class="blind">이전달</span></a>
+                    <strong>2026년 9월</strong>
+                    <a href="#none" class="next" id="mes-month-next"><span class="blind">다음달</span></a>
+                  </div>
+                  <div class="calendar_area">
+                    <a class="prev"><span class="blind">이전 날짜</span></a>
+                    <ul>
+                      <li><span class="num">1</span><span class="amt">641만</span></li>
+                      <li><span class="num">4</span><span class="amt">659만</span></li>
+                      <li><span class="num">5</span><span class="amt">444만</span></li>
+                    </ul>
+                    <a href="#none" class="next" id="mes-day-next"><span class="blind">다음 날짜</span></a>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    `;
+    const open = loadOpenModule() as OpenApi & {
+      findDateStripNavButtonFresh: (doc: Document, direction: "next" | "prev") => Element | null;
+      findMonthNavButton: (doc: Document, direction: "next" | "prev") => Element | null;
+      getCurrentVisibleYearMonth: (doc: Document) => string | null;
+    };
+    const container = open.findDayPriceStripContainer(document);
+    expect(container).not.toBeNull();
+    expect(container?.tagName?.toUpperCase()).not.toBe("UL");
+    expect(container?.className).toContain("calendar_area");
+    expect(container?.className).not.toMatch(/\btype\b/);
+    expect(open.getCurrentVisibleYearMonth(document)).toBe("202609");
+    expect(open.findMonthNavButton(document, "next")?.id).toBe("mes-month-next");
+    expect(open.findDateStripNavButtonFresh(document, "next")?.id).toBe("mes-day-next");
+  });
+
+  it("does not treat ly_wrap calendar_area 다음 날짜 as month pager (0.4.28)", () => {
+    document.body.innerHTML = `
+      <div class="ly_wrap">
+        <button class="next" id="ly-filter-next">다음달</button>
+        <em>2026년 8월</em>
+        <div class="prod_list_wrap">
+          <ul class="type">
+            <li>
+              <div class="sub_list_wrap">
+                <div class="calendar_wrap">
+                  <div class="header">
+                    <a class="next" id="mes-month-next"><span class="blind">다음달</span></a>
+                    <strong>2026년 9월</strong>
+                  </div>
+                  <div class="calendar_area">
+                    <ul id="days">
+                      <li><span class="num">1</span><span class="amt">100만</span></li>
+                      <li><span class="num">5</span><span class="amt">110만</span></li>
+                      <li><span class="num">10</span><span class="amt">120만</span></li>
+                    </ul>
+                    <a href="#none" class="next" id="mes-day-next"><span class="blind">다음 날짜</span></a>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    `;
+    const open = loadOpenModule() as OpenApi & {
+      isMonthPagerNavElement: (el: Element) => boolean;
+      findDateStripNavButtonFresh: (doc: Document, direction: "next" | "prev") => Element | null;
+      findMonthNavButton: (doc: Document, direction: "next" | "prev") => Element | null;
+      scrapeAllSearchHorizontalCalendarWithPaging: (
+        doc: Document,
+        options: Record<string, unknown>,
+      ) => Promise<Record<string, unknown> | null>;
+      getLastDateStripPagingMeta: () => { clicks?: number; reason?: string; via?: string } | null;
+      DEFAULT_MAX_DATE_STRIP_CLICKS: number;
+    };
+
+    expect(open.DEFAULT_MAX_DATE_STRIP_CLICKS).toBe(3);
+    expect(open.isMonthPagerNavElement(document.getElementById("ly-filter-next")!)).toBe(true);
+    expect(open.isMonthPagerNavElement(document.getElementById("mes-month-next")!)).toBe(true);
+    expect(open.isMonthPagerNavElement(document.getElementById("mes-day-next")!)).toBe(false);
+    expect(open.findDateStripNavButtonFresh(document, "next")?.id).toBe("mes-day-next");
+    expect(open.findMonthNavButton(document, "next")?.id).toBe("mes-month-next");
+
+    let dayClicks = 0;
+    document.getElementById("mes-day-next")!.addEventListener("click", () => {
+      dayClicks += 1;
+      const ul = document.getElementById("days")!;
+      const base = dayClicks * 5;
+      ul.innerHTML = `
+        <li><span class="num">${base + 1}</span><span class="amt">${100 + base}만</span></li>
+        <li><span class="num">${base + 5}</span><span class="amt">${110 + base}만</span></li>
+        <li><span class="num">${base + 10}</span><span class="amt">${120 + base}만</span></li>
+      `;
+    });
+
+    const OriginalMouseEvent = globalThis.MouseEvent;
+    (globalThis as unknown as { MouseEvent: typeof Event }).MouseEvent =
+      class extends Event {} as unknown as typeof Event;
+    return (async () => {
+      try {
+        await open.scrapeAllSearchHorizontalCalendarWithPaging(document, {
+          maxDateStripClicks: 3,
+          anchorYearMonth: "202609",
+          prepareStrip: false,
+          dateStripPostClickMs: 5,
+          stripRenderWaitMs: 5,
+        });
+        const meta = open.getLastDateStripPagingMeta();
+        expect(meta?.reason).not.toBe("month_pager");
+        expect(meta?.clicks ?? 0).toBeGreaterThanOrEqual(1);
+        expect(dayClicks).toBeGreaterThanOrEqual(1);
+      } finally {
+        globalThis.MouseEvent = OriginalMouseEvent;
+      }
+    })();
+  });
+
+  it("picks calendar_wrap .header 다음달 for month and calendar_area 다음 날짜 for day strip", () => {
+    document.body.innerHTML = `
+      <div class="calendar_wrap">
+        <div class="header">
+          <a class="prev"><span class="blind">이전달</span></a>
+          <strong>2026년 9월</strong>
+          <a href="#none" class="next" id="mes-month-next"><span class="blind">다음달</span></a>
+        </div>
+        <div class="calendar_area">
+          <a class="prev"><span class="blind">이전 날짜</span></a>
+          <ul>
+            <li><span class="num">1</span><span class="amt">641만</span></li>
+            <li><span class="num">4</span><span class="amt">659만</span></li>
+          </ul>
+          <a href="#none" class="next" id="mes-day-next"><span class="blind">다음 날짜</span></a>
+        </div>
+      </div>
+    `;
+    const open = loadOpenModule() as OpenApi & {
+      findDateStripNavButtonFresh: (doc: Document, direction: "next" | "prev") => Element | null;
+      findMonthNavButton: (doc: Document, direction: "next" | "prev") => Element | null;
+      getCurrentVisibleYearMonth: (doc: Document) => string | null;
+    };
+    expect(open.getCurrentVisibleYearMonth(document)).toBe("202609");
+    expect(open.findMonthNavButton(document, "next")?.id).toBe("mes-month-next");
+    expect(open.findDateStripNavButtonFresh(document, "next")?.id).toBe("mes-day-next");
+  });
+
+  it("picks day-strip 다음 날짜 over calendar_header 다음달 (a.next that jumps 3 months)", () => {
+    document.body.innerHTML = `
+      <div class="calendar_wrap dep-calendar-strip">
+        <div class="calendar_header">
+          <button class="btn_prev">이전달</button>
+          <em>2026년 8월</em>
+          <a class="next" id="month-next"><span class="blind">다음달</span></a>
+        </div>
+        <div class="strip-row">
+          <a class="prev" id="day-prev"><span class="blind">이전 날짜</span></a>
+          <ul>
+            <li><span class="num">16</span><span class="amt">164만</span></li>
+            <li><span class="num">17</span><span class="amt">269만</span></li>
+            <li><span class="num">18</span><span class="amt">194만</span></li>
+          </ul>
+          <a class="next" id="day-next"><span class="blind">다음 날짜</span></a>
+        </div>
+      </div>
+    `;
+    const open = loadOpenModule() as OpenApi & {
+      findDateStripNavButtonFresh: (doc: Document, direction: "next" | "prev") => Element | null;
+      isMonthPagerNavElement: (el: Element) => boolean;
+      findMonthNavButton: (doc: Document, direction: "next" | "prev") => Element | null;
+    };
+    expect(open.isMonthPagerNavElement(document.getElementById("month-next")!)).toBe(true);
+    expect(open.isMonthPagerNavElement(document.getElementById("day-next")!)).toBe(false);
+    expect(open.findDateStripNavButtonFresh(document, "next")?.id).toBe("day-next");
+    expect(open.findDateStripNavButtonFresh(document, "prev")?.id).toBe("day-prev");
+    expect(open.findMonthNavButton(document, "next")?.id).toBe("month-next");
+  });
+
+  it("yearMonthDelta reports a 3-month jump", () => {
+    const open = loadOpenModule() as OpenApi & {
+      yearMonthDelta: (fromYm: string, toYm: string) => number | null;
+    };
+    expect(open.yearMonthDelta("202608", "202611")).toBe(3);
+    expect(open.yearMonthDelta("202611", "202608")).toBe(-3);
+  });
+
+  it("stops date-strip paging when a next click jumps the month header by 3 months", async () => {
+    document.body.innerHTML = `
+      <div class="calendar_wrap dep-calendar-strip">
+        <div class="calendar_header"><em id="ym">2026년 8월</em></div>
+        <div class="strip-row">
+          <ul id="days">
+            <li><span class="num">1</span><span class="amt">111만</span></li>
+            <li><span class="num">5</span><span class="amt">150만</span></li>
+          </ul>
+          <a class="next" id="fake-day-next"><span class="blind">다음 날짜</span></a>
+        </div>
+      </div>
+    `;
+    document.getElementById("fake-day-next")!.addEventListener("click", () => {
+      document.getElementById("ym")!.textContent = "2026년 11월";
+    });
+
+    const open = loadOpenModule() as OpenApi & {
+      scrapeAllSearchHorizontalCalendarWithPaging: (
+        doc: Document,
+        options: Record<string, unknown>,
+      ) => Promise<Record<string, unknown> | null>;
+      getLastDateStripPagingMeta: () => { reason?: string; clicks?: number } | null;
+    };
+
+    const OriginalMouseEvent = globalThis.MouseEvent;
+    (globalThis as unknown as { MouseEvent: typeof Event }).MouseEvent =
+      class extends Event {} as unknown as typeof Event;
+    try {
+      await open.scrapeAllSearchHorizontalCalendarWithPaging(document, {
+        maxDateStripClicks: 6,
+        anchorYearMonth: "202608",
+        prepareStrip: false,
+        dateStripPostClickMs: 20,
+      });
+    } finally {
+      globalThis.MouseEvent = OriginalMouseEvent;
+    }
+
+    expect(open.getLastDateStripPagingMeta()?.reason).toBe("clicked_month_pager");
+  });
+
+  it("never falls back to ly_wrap month next when price strip exists", () => {
+    document.body.innerHTML = `
+      <div class="ly_wrap">
+        <button class="prev">이전달</button>
+        <button class="next" id="ly-next">다음달</button>
+        <em>2027년 7월</em>
+        <table><tbody><tr><td>1</td><td>2</td></tr></tbody></table>
+      </div>
+      <div class="dep-calendar-strip">
+        <ul>
+          <li><span class="num">16</span><span class="amt">164만</span></li>
+          <li><span class="num">17</span><span class="amt">269만</span></li>
+          <li><span class="num">18</span><span class="amt">194만</span></li>
+        </ul>
+        <a class="next" id="strip-day-next"><span class="blind">다음 날짜</span></a>
+      </div>
+    `;
+    const open = loadOpenModule() as OpenApi & {
+      findMonthNavButton: (doc: Document, direction: "next" | "prev") => Element | null;
+    };
+    const btn = open.findMonthNavButton(document, "next");
+    // 가격 스트립만 있고 월 버튼이 없으면 null — ly-next로 폴백하면 안 됨
+    expect(btn).toBeNull();
+  });
+
+  it("describeCalendarDomState separates ly_wrap YM from price strip header", () => {
+    document.body.innerHTML = `
+      <div class="ly_wrap">
+        <button class="prev">이전달</button>
+        <button class="next">다음달</button>
+        <em>2027년 7월</em>
+        <table><tbody><tr><td>1</td></tr></tbody></table>
+      </div>
+      <div class="calendar_wrap dep-calendar-strip">
+        <div class="calendar_header"><em>2026년 8월</em></div>
+        <ul>
+          <li><span class="num">16</span><span class="amt">164만</span></li>
+          <li><span class="num">17</span><span class="amt">269만</span></li>
+          <li><span class="num">18</span><span class="amt">194만</span></li>
+        </ul>
+      </div>
+    `;
+    const open = loadOpenModule() as OpenApi & {
+      describeCalendarDomState: (doc: Document) => {
+        lyWrapYearMonth: string | null;
+        headerClass: string | null;
+        priceDayCellCount: number;
+      };
+    };
+    const state = open.describeCalendarDomState(document);
+    expect(state.lyWrapYearMonth).toBe("202707");
+    expect(state.priceDayCellCount).toBeGreaterThanOrEqual(3);
+    expect((state.headerClass ?? "").toString()).not.toContain("ly_wrap");
+  });
+
 });

@@ -92,7 +92,9 @@ Rules:
 - Fill schema fields from page content. Use null only when truly absent.
 - Do NOT invent prices or flights not in the text.
 - Do NOT select images or build itinerary — server handles those separately.
-- description: product summary/selling points, not day-by-day schedule.
+- description: product summary/selling points (a short paragraph), not day-by-day schedule. Distinct from one_liner.
+- one_liner: recommend ONE short Korean selling sentence for the product detail hero summary. Compose from overall page content; do NOT copy a long paragraph verbatim. No hype, no invented destinations. Shorter than description.
+- meta_description: SEO meta description in Korean, 1–2 sentences (~80–160 chars). Align with seo_hashtags themes. Do NOT list day-by-day itinerary or raw price figures.
 - price: integer KRW for the adult 1-person TOTAL fare (strip commas). null if absent.
 - Ignore installment quotes: 할부, 무이자, 월 n원, 할부 예상가, 카드사별 무이자. Those are monthly amounts, not the product price.
 - ModeTour (모두투어) "예상가" next to ₩ amount IS the product price when it is NOT an installment (no 할부/월).
@@ -121,6 +123,7 @@ Rules:
 - Create separate events per attraction, meal, flight, hotel check-in, and major move.
 - event.description must preserve full source paragraphs. Do NOT summarize, paraphrase, or shorten.
 - When [DOM itineraryBlocks] are provided below, copy each block's description VERBATIM onto the matching heading event. Prefer those block descriptions over HTML paraphrases. Do not invent text missing from the blocks/HTML.
+- When block imageUrls are listed, put those URLs on the matching event's imageUrls (same heading). Do not move them to other events or the product gallery.
 - Use empty imageUrls array when no valid POI photo exists for an event.
 ${THEME_CHART_PROMPT_RULES}`;
 
@@ -129,7 +132,7 @@ const MAX_BLOCK_ANCHOR_CHARS = 24_000;
 function formatItineraryBlockAnchors(blocks: ItineraryBlock[] | undefined): string {
   if (!blocks?.length) return "";
   const lines: string[] = [
-    "[DOM itineraryBlocks — copy description VERBATIM onto matching events; prefer over HTML paraphrases]",
+    "[DOM itineraryBlocks — copy description VERBATIM onto matching events; attach listed imageUrls to the same heading; prefer over HTML paraphrases]",
   ];
   let used = lines[0].length;
   for (const block of blocks) {
@@ -137,12 +140,14 @@ function formatItineraryBlockAnchors(blocks: ItineraryBlock[] | undefined): stri
     if (!heading) continue;
     const dayLabel = typeof block.day === "number" && block.day > 0 ? `${block.day}일차` : "day?";
     const desc = block.description.trim();
+    const images = (block.imageUrls ?? []).filter(Boolean).slice(0, 8);
     const chunk = [
       `---`,
       `day: ${dayLabel}`,
       `heading: ${heading}`,
       `description:`,
       desc || "(empty)",
+      ...(images.length > 0 ? [`imageUrls:`, ...images.map((u) => `- ${u}`)] : ["imageUrls: (none)"]),
     ].join("\n");
     if (used + chunk.length + 1 > MAX_BLOCK_ANCHOR_CHARS) break;
     lines.push(chunk);

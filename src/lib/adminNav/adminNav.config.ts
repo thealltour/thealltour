@@ -46,7 +46,7 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   notifications: "알림 센터",
   pwa: "앱으로 설치",
   tools_modetour: "모두투어 익스텐션",
-  tools_thealltour_extension: "통합 익스텐션",
+  tools_thealltour_extension: "하나투어 수집기",
 };
 
 const HOME_PRODUCT_VIEWS = new Set<string>([
@@ -263,7 +263,7 @@ export function buildAdminBreadcrumbLabels(
       return [...base, "앱으로 설치"];
     case "tools":
       if (rel.includes("/tools/modetour")) return [...base, "도구", "모두투어 익스텐션"];
-      if (rel.includes("/tools/thealltour-extension")) return [...base, "도구", "통합 익스텐션"];
+      if (rel.includes("/tools/thealltour-extension")) return [...base, "도구", "하나투어 수집기"];
       return [...base, "도구"];
     default:
       return [...base, "대시보드"];

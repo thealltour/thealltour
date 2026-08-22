@@ -41,6 +41,8 @@ function baseParsed(overrides: Partial<ExternalParsedProduct> = {}): ExternalPar
     departure_time: null,
     arrival_time: null,
     seo_hashtags: null,
+    one_liner: null,
+    meta_description: null,
     selling_points_json: {
       corePoints: "1. 5성급 호텔",
       tourism: "관광 본문",
@@ -184,6 +186,19 @@ describe("mapExternalParsedToInsert", () => {
       provider: "hanatour",
     });
     expect(result.meta_title).toBe("시드니 오페라하우스 가족여행");
+  });
+
+  it("maps AI one_liner and meta_description into insert row", () => {
+    const result = mapExternalParsedToInsert({
+      parsed: baseParsed({
+        one_liner: "이강 유람과 상비산이 기다리는 계림 5일",
+        meta_description:
+          "계림·양삭 핵심 명소를 여유롭게 담은 패키지. 직항과 특급호텔로 편안하게 떠나는 중국 남부 여행.",
+      }),
+      provider: "hanatour",
+    });
+    expect(result.one_liner).toBe("이강 유람과 상비산이 기다리는 계림 5일");
+    expect(result.meta_description).toMatch(/계림·양삭/);
   });
 
   it("maps hanatour calendar payload to departure_schedules_json and min price", () => {

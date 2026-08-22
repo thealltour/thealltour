@@ -21,11 +21,18 @@ export const EXTENSION_DISPLAY: Record<
     downloadButtonLabel: "모두투어 익스텐션.zip 다운로드",
   },
   "thealltour-extension": {
-    title: "thealltour_extension",
-    description: "하나투어·모두투어 상세 페이지를 수집해 더올투어 관리자에 AI 임포트합니다.",
-    downloadFileName: "thealltour-extension.zip",
-    downloadButtonLabel: "thealltour_extension.zip 다운로드",
+    title: "thealltour_hanatour_collector",
+    description:
+      "하나투어 상품 상세에서 본문·일정·출발일·이미지를 수집해 Markdown/JSON으로 검증하거나 더올투어 관리자에 AI 임포트합니다.",
+    downloadFileName: "thealltour_hanatour_collector.zip",
+    downloadButtonLabel: "thealltour_hanatour_collector.zip 다운로드",
   },
+};
+
+/** 관리자 다운로드 slug → 소스 폴더 (tools/ 하위) */
+export const EXTENSION_SOURCE_DIR: Record<ExtensionSlug, string> = {
+  modetour: "tools/modetour-extractor-extension",
+  "thealltour-extension": "tools/thealltour_hanatour_collector",
 };
 
 export function isExtensionSlug(value: string): value is ExtensionSlug {

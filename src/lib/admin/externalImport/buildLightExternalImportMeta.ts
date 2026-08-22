@@ -135,6 +135,8 @@ export function buildLightExternalImportMeta(input: {
   return {
     title,
     seo_hashtags: null,
+    one_liner: null,
+    meta_description: null,
     description,
     price,
     duration,

@@ -197,7 +197,7 @@ async function setProgress(percent, label) {
 }
 
 async function inspectActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = await findBestHanatourTab();
   if (!tab?.id || !tab.url) {
     return { ok: false, reason: "no_tab", tab: null, isProductPage: false, isCalendarPage: false };
   }
@@ -216,6 +216,143 @@ async function inspectActiveTab() {
     codes,
   };
 }
+
+/**
+ * 수집기 전용 popup 창이 focused여도, 일반(normal) 브라우저 창의 하나투어 탭을 찾는다.
+ * (default_popup 대신 독립 창을 쓰면 currentWindow가 extension 창이 되어 상품 탭을 못 잡음)
+ */
+async function findBestHanatourTab() {
+  const core = self.HanatourCollectorCore;
+  const isProduct = (url) => Boolean(core?.isHanatourProductPageUrl?.(url));
+  const isCalendar = (url) => isHanatourMajorProductsUrl(url);
+  const isRelevant = (url) => Boolean(url && (isProduct(url) || isCalendar(url)));
+
+  try {
+    const normalWindows = await chrome.windows.getAll({ windowTypes: ["normal"] });
+    normalWindows.sort((a, b) => Number(Boolean(b.focused)) - Number(Boolean(a.focused)));
+    for (const win of normalWindows) {
+      if (win.id == null) continue;
+      const [active] = await chrome.tabs.query({ active: true, windowId: win.id });
+      if (active?.url && isRelevant(active.url)) return active;
+    }
+  } catch (err) {
+    console.warn("[Inspect] normal window 탐색 실패:", err?.message ?? err);
+  }
+
+  try {
+    const tabs = await chrome.tabs.query({ url: ["https://*.hanatour.com/*", "https://hanatour.com/*"] });
+    const product = tabs.find((t) => isProduct(t.url));
+    if (product) return product;
+    const calendar = tabs.find((t) => isCalendar(t.url));
+    if (calendar) return calendar;
+  } catch (err) {
+    console.warn("[Inspect] hanatour 탭 탐색 실패:", err?.message ?? err);
+  }
+
+  return null;
+}
+
+async function detectParentMajorProductsCalendarInfo() {
+  const productTab = await findBestHanatourTab();
+  if (!productTab?.id || !productTab.url) return null;
+
+  const windowTabs =
+    productTab.windowId != null
+      ? await chrome.tabs.query({ windowId: productTab.windowId })
+      : [];
+
+  let parentTab =
+    windowTabs.find(
+      (t) =>
+        t?.id !== productTab.id &&
+        t?.index === productTab.index - 1 &&
+        t?.url?.includes("major-products"),
+    ) ?? windowTabs.find((t) => t?.url?.includes("major-products"));
+
+  const extractCodes = (url) => {
+    if (!url) return [];
+    try {
+      const u = new URL(url);
+      const raw =
+        u.searchParams.get("rprsProdCds") ||
+        u.searchParams.get("selectedRprsProd") ||
+        u.searchParams.get("rprsProdCd");
+      if (!raw) return [];
+      return String(raw)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  };
+
+  const codes = extractCodes(parentTab?.url);
+  const fallbackCodes = extractCodes(productTab.url);
+  return {
+    calendarTabId: parentTab?.id ?? productTab.id,
+    rprsProdCds: codes.length ? codes : fallbackCodes.length ? fallbackCodes : null,
+    productTabId: productTab.id,
+    productUrl: productTab.url,
+  };
+}
+
+const COLLECTOR_WINDOW_KEY = "collectorWindowId";
+
+async function getCollectorWindowId() {
+  try {
+    const stored = await chrome.storage.session.get(COLLECTOR_WINDOW_KEY);
+    return stored?.[COLLECTOR_WINDOW_KEY] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function setCollectorWindowId(id) {
+  try {
+    if (id == null) await chrome.storage.session.remove(COLLECTOR_WINDOW_KEY);
+    else await chrome.storage.session.set({ [COLLECTOR_WINDOW_KEY]: id });
+  } catch {
+    /* ignore */
+  }
+}
+
+async function openCollectorPanel() {
+  const existingId = await getCollectorWindowId();
+  if (existingId != null) {
+    try {
+      await chrome.windows.get(existingId);
+      await chrome.windows.update(existingId, { focused: true });
+      return existingId;
+    } catch {
+      await setCollectorWindowId(null);
+    }
+  }
+
+  const win = await chrome.windows.create({
+    url: chrome.runtime.getURL("popup.html"),
+    type: "popup",
+    width: 400,
+    height: 720,
+    focused: true,
+  });
+  const id = win?.id ?? null;
+  await setCollectorWindowId(id);
+  return id;
+}
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  getCollectorWindowId().then((id) => {
+    if (id === windowId) setCollectorWindowId(null);
+  });
+});
+
+// default_popup을 쓰지 않음: 아이콘 클릭 시 독립 창을 열어 탭 전환에도 UI가 유지되게 한다.
+chrome.action.onClicked.addListener(() => {
+  openCollectorPanel().catch((err) => {
+    console.warn("[CollectorPanel] 열기 실패:", err?.message ?? err);
+  });
+});
 
 const SCRAPE_FILES = [
   "hanatourCollectorCore.js",
@@ -292,8 +429,8 @@ const CALENDAR_DOM_BROWSE_FILES = [
 
 // 백그라운드(비활성) 탭은 크롬이 타이머를 강하게 throttling한다(setTimeout이 실제
 // 요청 시간보다 훨씬 오래 걸릴 수 있음). DOM 월/일 순회는 sleep()을 매우 많이 호출하므로
-// 비활성 탭에서 실행하면 로직상 10~20초면 끝날 작업이 실제로는 분 단위로 늘어나
-// 안전망 deadline(150초)에 조기 도달해버린다. 순회 전 해당 탭/창을 잠깐 활성화하고,
+// 비활성 탭에서 실행하면 로직상 수십 초면 끝날 작업이 실제로는 분 단위로 늘어나
+// 안전망 deadline(300초)에 조기 도달해버린다. 순회 전 해당 탭/창을 잠깐 활성화하고,
 // 종료 후 원래 활성 탭으로 복구한다.
 async function withTabFocused(tabId, fn) {
   let originalActiveTabId = null;
@@ -337,14 +474,18 @@ async function scrapeCalendarFromParentDomInTabRaw(tabId, maxMonths = 12, startY
   });
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
-    func: async (months, startYm) => {
+    func: async (months, startYm, collectorVersion) => {
       const browse = globalThis.HanatourCalendarBrowse?.browseHanatourCalendarMonths;
       if (typeof browse !== "function") {
         console.warn("[DOM Browse] HanatourCalendarBrowse 모듈이 로드되지 않았습니다.");
         return null;
       }
       try {
-        const searchCalendar = await browse(document, { maxMonths: months, startYearMonth: startYm });
+        const searchCalendar = await browse(document, {
+          maxMonths: months,
+          startYearMonth: startYm,
+          collectorVersion,
+        });
         if (!searchCalendar) {
           console.warn("[DOM Browse] browseHanatourCalendarMonths 결과 없음");
           return null;
@@ -364,7 +505,7 @@ async function scrapeCalendarFromParentDomInTabRaw(tabId, maxMonths = 12, startY
         return null;
       }
     },
-    args: [maxMonths, startYearMonth],
+    args: [maxMonths, startYearMonth, chrome.runtime.getManifest().version],
   });
   return result?.result ?? null;
 }
@@ -843,6 +984,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "INSPECT_ACTIVE_TAB") {
     inspectActiveTab()
       .then((info) => sendResponse({ ok: true, ...info }))
+      .catch((err) => sendResponse({ ok: false, error: String(err) }));
+    return true;
+  }
+
+  if (message?.type === "GET_PRODUCT_CONTEXT") {
+    detectParentMajorProductsCalendarInfo()
+      .then((info) => sendResponse({ ok: true, ...(info ?? {}) }))
       .catch((err) => sendResponse({ ok: false, error: String(err) }));
     return true;
   }

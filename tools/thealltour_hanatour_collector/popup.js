@@ -25,6 +25,45 @@ const actionButtons = [runBtn, downloadMdBtn, downloadJsonBtn];
 // 캐싱해두고, 팝업이 다시 열렸을 때(수집은 background에서 이미 끝나 있음) 재수집 없이 바로
 // 다운로드할 수 있게 한다.
 let lastPayload = null;
+/** 같은 수집 결과에 대한 자동 다운로드 중복 방지 (수동 버튼은 항상 허용) */
+let lastAutoDownloadedSignature = null;
+
+function payloadSignature(payload) {
+  if (!payload) return null;
+  const cal = payload.hanatourCalendarPayload?.searchCalendar;
+  const monthKeys = cal && typeof cal === "object" ? Object.keys(cal).sort().join(",") : "";
+  return [
+    payload.product_source_url ?? "",
+    payload.cleanHtmlStructure?.length ?? 0,
+    monthKeys,
+  ].join("|");
+}
+
+function downloadCollectedMarkdown(payload) {
+  const markdown = generateMarkdownReport(payload);
+  downloadFile(markdown, buildExportFileName(payload, "md"), "text/markdown;charset=utf-8");
+}
+
+function downloadCollectedJson(payload) {
+  const exportPayload = stripDebugFromPayload(payload);
+  const json = JSON.stringify(exportPayload, null, 2);
+  downloadFile(json, buildExportFileName(payload, "json"), "application/json;charset=utf-8");
+}
+
+/** 수집 완료 직후 1회 자동 다운로드. 이미 처리한 시그니처면 false. */
+function tryAutoDownloadOnCollectComplete(payload) {
+  const sig = payloadSignature(payload);
+  if (!sig || sig === lastAutoDownloadedSignature) return false;
+  lastAutoDownloadedSignature = sig;
+  try {
+    downloadCollectedMarkdown(payload);
+    return true;
+  } catch (err) {
+    console.warn("[AutoDownload] Markdown 자동 다운로드 실패:", err);
+    lastAutoDownloadedSignature = null;
+    return false;
+  }
+}
 
 function rememberPayloadFromState(state) {
   const payload = state?.result?.payload;
@@ -167,6 +206,22 @@ function generateMarkdownReport(payload) {
 
   const itineraryBlocks = Array.isArray(payload?.itineraryBlocks) ? payload.itineraryBlocks : [];
   const itineraryMeta = payload?._debug?.itineraryExtractMeta ?? null;
+  const sightseeingWithAssets = itineraryBlocks.filter(
+    (b) =>
+      b &&
+      (b.kind === "sightseeing" || b.kind === "other" || !b.kind) &&
+      ((Array.isArray(b.imageUrls) && b.imageUrls.length > 0) ||
+        (typeof b.description === "string" && b.description.trim().length >= 40)),
+  );
+  const sampleBlocks = sightseeingWithAssets.slice(0, 5).map((b) => {
+    const imgs = Array.isArray(b.imageUrls) ? b.imageUrls : [];
+    const desc = typeof b.description === "string" ? b.description.trim() : "";
+    return [
+      `- **${b.day ?? "?"}일차 · ${b.heading ?? "(제목없음)"}**`,
+      `  - 이미지 ${imgs.length}장${imgs[0] ? `: ${imgs[0]}` : ""}`,
+      `  - 설명: ${desc ? desc.slice(0, 120) + (desc.length > 120 ? "…" : "") : "(없음)"}`,
+    ].join("\n");
+  });
   const itineraryDiagLines =
     itineraryBlocks.length === 0
       ? [
@@ -188,8 +243,11 @@ function generateMarkdownReport(payload) {
           "## 2. 상세일정 수집 요약",
           `- **수집된 블록 수:** ${itineraryBlocks.length}개 / **일차 수:** ${payload?._debug?.itineraryDayCount ?? 0}일`,
           itineraryMeta ? `- extractionPath: \`${itineraryMeta.extractionPath ?? "-"}\`` : null,
+          `- **사진·설명 있는 관광 블록:** ${sightseeingWithAssets.length}개`,
+          sampleBlocks.length > 0 ? "### [일정 샘플 (사진·설명)]" : null,
+          ...sampleBlocks,
           "",
-        ].filter(Boolean);
+        ].filter((line) => line != null);
 
   return [
     `# [수집 검증 리포트] ${title}`,
@@ -274,13 +332,17 @@ async function refreshAdminAuth() {
 function renderInspect(info) {
   if (!info?.ok || !info.tab) {
     pageStatus.className = "status warn";
-    pageStatus.textContent = "활성 탭을 확인할 수 없습니다.";
-    setActionButtonsDisabled(true);
+    pageStatus.textContent = lastPayload
+      ? "활성 상품 탭을 확인하지 못했지만, 캐시된 수집 결과는 다운로드할 수 있습니다."
+      : "활성 탭을 확인할 수 없습니다. 하나투어 상품 상세를 연 뒤 다시 아이콘을 눌러 주세요.";
+    if (runBtn) runBtn.disabled = true;
+    if (downloadMdBtn) downloadMdBtn.disabled = !lastPayload;
+    if (downloadJsonBtn) downloadJsonBtn.disabled = !lastPayload;
     return;
   }
 
   const canImport = Boolean(info.isProductPage);
-  const canDownload = Boolean(info.isProductPage || info.isCalendarPage);
+  const canDownload = Boolean(info.isProductPage || info.isCalendarPage || lastPayload);
 
   if (!canDownload) {
     pageStatus.className = "status warn";
@@ -307,48 +369,18 @@ function renderInspect(info) {
   setButtonsState({ canImport, canDownload });
 }
 
-function extractRprsProdCdsFromUrl(url) {
-  if (!url) return [];
-  try {
-    const u = new URL(url);
-    const raw =
-      u.searchParams.get("rprsProdCds") ||
-      u.searchParams.get("selectedRprsProd") ||
-      u.searchParams.get("rprsProdCd");
-    if (!raw) return [];
-    return String(raw)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 async function detectParentMajorProductsCalendarInfo() {
-  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!activeTab?.id || !activeTab?.url) return null;
-
-  const allTabs = await chrome.tabs.query({ currentWindow: true });
-  // 바로 왼쪽 탭 우선 탐색, 실패 시 같은 창에서 major-products 탭 하나라도 있으면 사용
-  let parentTab =
-    allTabs.find((t) => t?.id !== activeTab.id && t?.index === activeTab.index - 1 && t?.url?.includes("major-products")) ??
-    allTabs.find((t) => t?.url?.includes("major-products") ?? false);
-
-  const parentUrl = parentTab?.url ?? null;
-  const codes = extractRprsProdCdsFromUrl(parentUrl) ?? [];
-  const fallbackCodes = extractRprsProdCdsFromUrl(activeTab.url) ?? [];
-
-  console.log("[Popup] parent major-products detect:", {
-    activeUrl: activeTab.url,
-    parentUrl,
-    calendarTabId: parentTab?.id ?? activeTab.id,
-    rprsProdCds: (codes.length ? codes : fallbackCodes.length ? fallbackCodes : null),
+  const res = await send({ type: "GET_PRODUCT_CONTEXT" });
+  if (!res?.ok) return null;
+  if (res.calendarTabId == null && !res.rprsProdCds) return null;
+  console.log("[Popup] parent major-products detect (via background):", {
+    calendarTabId: res.calendarTabId ?? null,
+    rprsProdCds: res.rprsProdCds ?? null,
+    productUrl: res.productUrl ?? null,
   });
-
   return {
-    calendarTabId: parentTab?.id ?? activeTab.id,
-    rprsProdCds: codes.length ? codes : fallbackCodes.length ? fallbackCodes : null,
+    calendarTabId: res.calendarTabId ?? null,
+    rprsProdCds: res.rprsProdCds ?? null,
   };
 }
 
@@ -365,6 +397,16 @@ function renderState(state) {
   progress.classList.toggle("show", Boolean(state.label && state.percent));
   progressLabel.textContent = state.label ?? "";
   progressBar.style.width = `${Math.max(0, Math.min(100, state.percent ?? 0))}%`;
+
+  // 탭 전환으로 팝업이 유지되는 동안에도, 수집 종료 시 disable이 풀려야 한다.
+  const hasPayload = Boolean(lastPayload || state.result?.payload);
+  if (downloadMdBtn) downloadMdBtn.disabled = !hasPayload;
+  if (downloadJsonBtn) downloadJsonBtn.disabled = !hasPayload;
+  if (runBtn) runBtn.disabled = false;
+  send({ type: "INSPECT_ACTIVE_TAB" })
+    .then((info) => renderInspect(info))
+    .catch(() => {});
+
   if (state.error) {
     resultEl.textContent = state.error;
     renderSummary(null);
@@ -373,12 +415,17 @@ function renderState(state) {
   if (state.result?.collectOnly) {
     renderSummary(state.result.summary ?? null);
     const summary = state.result.summary ?? {};
+    const autoDownloaded = tryAutoDownloadOnCollectComplete(lastPayload);
     resultEl.textContent = [
       "수집 완료 (다운로드 준비됨)",
       `본문: ${summary.textLength?.toLocaleString() ?? 0}자`,
       `캘린더: ${summary.calendarDayCount ?? 0}건 / ${summary.calendarMonthCount ?? 0}개월`,
       summary.calendarDayCount === 0 ? "⚠ 캘린더 0건 — 서버 전송 전 searchCalendar를 확인하세요." : null,
-      lastPayload ? "↓ 아래 '지금 이 결과 즉시 다운로드' 버튼을 누르면 재수집 없이 바로 파일로 저장됩니다." : null,
+      autoDownloaded
+        ? "✓ Markdown 자동 다운로드를 실행했습니다. 파일이 안 보이면 아래 수동 버튼을 사용하세요."
+        : lastPayload
+          ? "↓ 자동 다운로드가 안 됐다면 아래 '지금 이 결과 즉시 다운로드' 버튼을 사용하세요."
+          : null,
     ]
       .filter(Boolean)
       .join("\n");
@@ -431,17 +478,18 @@ function renderState(state) {
 }
 
 async function resolvePayloadForDownload() {
-  // 캘린더 DOM 순회 중 탭 포커스 전환으로 팝업이 중간에 닫혔다가 다시 열린 경우에도,
-  // background에는 이미 완료된 수집 결과(payload)가 남아있다. 현재 활성 탭과 같은
-  // 상품에 대한 결과라면 재수집(다시 탭 전환·팝업 재종료 위험) 없이 그걸 그대로 쓴다.
-  if (lastPayload) {
-    try {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const sameUrl = activeTab?.url && lastPayload.product_source_url && activeTab.url === lastPayload.product_source_url;
-      if (sameUrl) return lastPayload;
-    } catch {
-      return lastPayload;
+  // 이미 수집된 payload가 있으면 재수집하지 않는다(탭 포커스/URL 불일치로 인한 재수집 루프 방지).
+  if (lastPayload) return lastPayload;
+  try {
+    const state = await send({ type: "GET_IMPORT_STATE" });
+    const payload = state?.state?.result?.payload;
+    if (payload) {
+      lastPayload = payload;
+      if (quickDownload) quickDownload.hidden = false;
+      return payload;
     }
+  } catch {
+    /* ignore */
   }
   return runCollectFlow();
 }
@@ -500,8 +548,12 @@ downloadMdBtn.addEventListener("click", async () => {
   try {
     const payload = await resolvePayloadForDownload();
     if (!payload) return;
-    const markdown = generateMarkdownReport(payload);
-    downloadFile(markdown, buildExportFileName(payload, "md"), "text/markdown;charset=utf-8");
+    // 수집 완료 IMPORT_STATE 자동 다운로드와 경합하면 중복 저장을 피한다.
+    // 같은 결과를 다시 받으려면 아래 수동 다운로드 버튼을 사용한다.
+    if (payloadSignature(payload) !== lastAutoDownloadedSignature) {
+      downloadCollectedMarkdown(payload);
+      lastAutoDownloadedSignature = payloadSignature(payload);
+    }
     resultEl.textContent =
       "파일이 다운로드되었습니다. AI 크레딧 소모 없이 내용을 검증하세요.\n\n" +
       "체크: .md 하단에 1일차·식사·호텔명이 있는지, searchCalendar에 depDay·adtAmt가 채워졌는지 확인하세요.";
@@ -514,9 +566,7 @@ downloadJsonBtn.addEventListener("click", async () => {
   try {
     const payload = await resolvePayloadForDownload();
     if (!payload) return;
-    const exportPayload = stripDebugFromPayload(payload);
-    const json = JSON.stringify(exportPayload, null, 2);
-    downloadFile(json, buildExportFileName(payload, "json"), "application/json;charset=utf-8");
+    downloadCollectedJson(payload);
     resultEl.textContent =
       "파일이 다운로드되었습니다. AI 크레딧 소모 없이 내용을 검증하세요.\n\n" +
       "체크: hanatourCalendarPayload.searchCalendar 월별 배열과 cleanHtmlStructure 길이를 확인하세요.";
@@ -531,8 +581,7 @@ quickDownloadMdBtn.addEventListener("click", () => {
     return;
   }
   try {
-    const markdown = generateMarkdownReport(lastPayload);
-    downloadFile(markdown, buildExportFileName(lastPayload, "md"), "text/markdown;charset=utf-8");
+    downloadCollectedMarkdown(lastPayload);
     resultEl.textContent = "파일이 다운로드되었습니다. (캐시된 마지막 수집 결과 사용, 재수집 없음)";
   } catch (err) {
     resultEl.textContent = String(err);
@@ -545,9 +594,7 @@ quickDownloadJsonBtn.addEventListener("click", () => {
     return;
   }
   try {
-    const exportPayload = stripDebugFromPayload(lastPayload);
-    const json = JSON.stringify(exportPayload, null, 2);
-    downloadFile(json, buildExportFileName(lastPayload, "json"), "application/json;charset=utf-8");
+    downloadCollectedJson(lastPayload);
     resultEl.textContent = "파일이 다운로드되었습니다. (캐시된 마지막 수집 결과 사용, 재수집 없음)";
   } catch (err) {
     resultEl.textContent = String(err);

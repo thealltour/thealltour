@@ -11,16 +11,12 @@ export default defineConfig({
     include: [
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
-      "tools/hanatour-extractor-extension/src/**/*.test.ts",
-      "tools/thealltour_extension/**/*.test.ts",
       "tools/thealltour_hanatour_collector_tests/**/*.test.ts",
     ],
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "~lib": path.resolve(__dirname, "./tools/hanatour-extractor-extension/src/lib"),
-      "~types": path.resolve(__dirname, "./tools/hanatour-extractor-extension/src/types"),
     },
   },
 });

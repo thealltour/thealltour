@@ -770,6 +770,12 @@ const sellingPointsSchema = z
 export const externalProductMetaSchema = z.object({
   title: nullableString.describe("상품명 원문 그대로. [대괄호], 제목 내 #키워드, 공백·특수문자 제거·요약 금지."),
   seo_hashtags: z.array(z.string()).nullable().describe("SEO 검색 키워드 4~8개 (# 없이)."),
+  one_liner: nullableString.describe(
+    "상세 상단용 한 줄 소개(셀링 카피). 짧은 한국어 문장 1개만. 본문·일정 요지로 추천 작성.",
+  ),
+  meta_description: nullableString.describe(
+    "SEO meta_description. 한국어 1~2문장, 대략 80~160자.",
+  ),
   description: nullableString.describe("상품 요약 및 핵심 셀링 포인트"),
   price: z
     .union([z.number(), z.string(), z.null()])
@@ -1033,7 +1039,9 @@ export function mapExternalParsedToInsert(input: MapExternalParsedInput): Record
     booking_notes: trimOrNull(parsed.booking_notes),
     is_active: true,
     status: parsed.status ?? "AVAILABLE",
+    one_liner: trimOrNull(parsed.one_liner),
     meta_title: resolveMetaTitle(parsed, seoHashtags),
+    meta_description: trimOrNull(parsed.meta_description),
     meta_info: formatAirlineMetaInfo(airlineName, departureFlight),
     departure_flight_name: departureFlight,
     departure_from_airport: trimOrNull(parsed.departure_from_airport),
@@ -1268,6 +1276,8 @@ export function transformCalendarData(
 | `packageCatalog.optionalTours` | `PackageOptionalTourItem[]` | `optional_tours` (text) | `optionalToursToPlainText(catalog)` 폴백 텍스트 |
 | *(AI)* `title` | `ExternalParsedMeta.title` | `title` | `sourceProductTitle` 없을 때만 사용 |
 | *(AI)* `description` | `ExternalParsedMeta.description` | `description` | **NOT NULL** (폴백: "상품 설명을 확인해 주세요.") |
+| *(AI)* `one_liner` | `ExternalParsedMeta.one_liner` | `one_liner` | 상세 상단 한 줄 소개. AI 추천 작성. **NULL 허용** |
+| *(AI)* `meta_description` | `ExternalParsedMeta.meta_description` | `meta_description` | SEO 메타 설명. **NULL 허용** |
 | *(AI)* `price` | `ExternalParsedMeta.price` (Zod int) | `price` | 달력 `minPrice` 있으면 **무시**. **NULL 허용** |
 | *(AI)* `duration` | `ExternalParsedMeta.duration` | `duration`, `overview_duration` | 동일 값 복사. **NULL 허용** |
 | *(AI)* `theme` | `ExternalParsedMeta.theme` | `theme` | **NULL 허용** |
@@ -1319,8 +1329,8 @@ export function transformCalendarData(
 
 ## 부록: import-external INSERT 컬럼 목록
 
-`mapExternalParsedToInsert`가 반환하는 키 (2026-08-20 기준):
+`mapExternalParsedToInsert`가 반환하는 키 (2026-08-21 기준):
 
-`title`, `description`, `image_url`, `images_json`, `category`, `theme`, `price`, `duration`, `overview_duration`, `overview_region`, `included_items`, `excluded_items`, `optional_expenses`, `optional_tours`, `selling_points_json`, `booking_notes`, `is_active`, `status`, `meta_title`, `meta_info`, `departure_flight_name`, `departure_from_airport`, `departure_to_airport`, `departure_from_date`, `departure_from_time`, `departure_to_date`, `departure_to_time`, `arrival_flight_name`, `arrival_from_airport`, `arrival_to_airport`, `arrival_from_date`, `arrival_from_time`, `arrival_to_date`, `arrival_to_time`, `itinerary_v2_json`, `theme_chart_json`, `departure_schedules_json`, `product_source_url`, `package_catalog_json`
+`title`, `description`, `image_url`, `images_json`, `category`, `theme`, `price`, `duration`, `overview_duration`, `overview_region`, `included_items`, `excluded_items`, `optional_expenses`, `optional_tours`, `selling_points_json`, `booking_notes`, `is_active`, `status`, `one_liner`, `meta_title`, `meta_description`, `meta_info`, `departure_flight_name`, `departure_from_airport`, `departure_to_airport`, `departure_from_date`, `departure_from_time`, `departure_to_date`, `departure_to_time`, `arrival_flight_name`, `arrival_from_airport`, `arrival_to_airport`, `arrival_from_date`, `arrival_from_time`, `arrival_to_date`, `arrival_to_time`, `itinerary_v2_json`, `theme_chart_json`, `departure_schedules_json`, `product_source_url`, `package_catalog_json`
 
 > DB에 컬럼이 없으면 `insertProductWithSchemaFallback`이 해당 키를 제거하고 재시도합니다 (`20260627100000` 등 migration 미적용 시 경고 로그).

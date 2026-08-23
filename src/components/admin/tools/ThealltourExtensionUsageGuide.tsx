@@ -19,7 +19,7 @@ const USAGE_STEPS = [
     title: "2. 사전 준비",
     body: [
       "같은 Chrome 브라우저에서 더올투어 관리자(https://www.thealltour.com/theall_manager_only)에 로그인합니다. 서버 전송 시 그 로그인 쿠키로 API를 호출합니다.",
-      "AI 파싱은 서버에서 수행합니다. 기본 모델은 Google Gemini입니다. 운영/로컬 서버에 `GOOGLE_GENERATIVE_AI_API_KEY` 또는 `GEMINI_API_KEY`가 있어야 합니다.",
+      "AI 파싱은 서버에서 수행합니다. 기본 모델은 Google Gemini 3.5 Flash Lite이며, RPD/쿼터·혼잡 오류 시 Gemini 3.1 Flash Lite로 한 번 자동 전환합니다. 운영/로컬 서버에 `GOOGLE_GENERATIVE_AI_API_KEY` 또는 `GEMINI_API_KEY`가 있어야 합니다.",
       "Google 키가 없을 때만 `OPENAI_API_KEY`로 폴백합니다.",
       "로컬에서 `tools/thealltour_hanatour_collector` 폴더를 직접 로드할 때는 `npm run dev`로 API 서버를 켜 둡니다.",
     ].join("\n"),

@@ -10,6 +10,10 @@ vi.mock("ai", () => ({
 
 vi.mock("@/lib/admin/ai/importAiModel", () => ({
   resolveImportLanguageModel: () => "mock-model",
+  withGoogleModelFallback: async (
+    _label: string,
+    run: (model: string) => Promise<unknown>,
+  ) => run("mock-model"),
 }));
 
 import {

@@ -1,7 +1,13 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
+import {
+  isTransientAiError,
+  shouldFallbackToAlternateGoogleModel,
+} from "@/lib/admin/ai/importAiErrors";
 
-export const DEFAULT_GOOGLE_IMPORT_MODEL = "gemini-3.6-flash";
+/** 기본: RPD 여유 있는 Flash Lite. 실패 시 FALLBACK으로 전환 */
+export const DEFAULT_GOOGLE_IMPORT_MODEL = "gemini-3.5-flash-lite";
+export const FALLBACK_GOOGLE_IMPORT_MODEL = "gemini-3.1-flash-lite";
 export const DEFAULT_OPENAI_IMPORT_MODEL = "gpt-4o-mini";
 
 export type ImportAiProvider = "google" | "openai";
@@ -63,6 +69,10 @@ function envModelOverride(): string | null {
   return process.env.BAND_IMPORT_MODEL?.trim() || process.env.IMPORT_AI_MODEL?.trim() || null;
 }
 
+function envFallbackModelOverride(): string | null {
+  return process.env.IMPORT_AI_FALLBACK_MODEL?.trim() || null;
+}
+
 function isOpenAiModelId(modelId: string): boolean {
   return modelId.startsWith("gpt-") || modelId.startsWith("o1") || modelId.startsWith("o3") || modelId.startsWith("o4");
 }
@@ -82,14 +92,89 @@ export function resolveImportModelId(): { provider: ImportAiProvider; modelId: s
   return { provider, modelId };
 }
 
-export function resolveImportLanguageModel() {
+/** Google primary + RPD 폴백 모델 ID (OpenAI면 fallback=null) */
+export function resolveGooglePrimaryAndFallbackModelIds(primaryOverride?: string | null): {
+  primary: string;
+  fallback: string | null;
+} {
+  const override = primaryOverride?.trim() || envModelOverride();
+  const primary =
+    override && isGoogleModelId(override) ? override : DEFAULT_GOOGLE_IMPORT_MODEL;
+  const fallbackOverride = envFallbackModelOverride();
+  const fallbackCandidate =
+    fallbackOverride && isGoogleModelId(fallbackOverride)
+      ? fallbackOverride
+      : FALLBACK_GOOGLE_IMPORT_MODEL;
+  const fallback = fallbackCandidate !== primary ? fallbackCandidate : null;
+  return { primary, fallback };
+}
+
+export function resolveImportLanguageModelForId(modelId: string) {
   requireImportAiKey();
-  const { provider, modelId } = resolveImportModelId();
-  // 호출 실패(쿼터 포함)해도 키·provider를 끄지 않는다. 매 요청마다 env에서 다시 연결한다.
+  const provider = resolveImportAiProvider();
   if (provider === "google") {
     const apiKey = getGoogleGenerativeAiKey();
     if (!apiKey) throw new Error(MISSING_IMPORT_AI_KEY_MESSAGE);
     return createGoogleGenerativeAI({ apiKey })(modelId);
   }
   return openai(modelId);
+}
+
+export function resolveImportLanguageModel() {
+  const { modelId } = resolveImportModelId();
+  return resolveImportLanguageModelForId(modelId);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Google: primary 호출 → (일시 오류 시 같은 모델 1회) → (RPD/쿼터/혼잡 시 fallback 모델 1회)
+ * OpenAI: 일시 오류 시 같은 모델 1회만
+ */
+export async function withGoogleModelFallback<T>(
+  label: string,
+  run: (model: ReturnType<typeof resolveImportLanguageModelForId>) => Promise<T>,
+  options?: { primaryModelId?: string | null },
+): Promise<T> {
+  requireImportAiKey();
+  const provider = resolveImportAiProvider();
+
+  if (provider === "openai") {
+    const model = resolveImportLanguageModelForId(resolveImportModelId().modelId);
+    try {
+      return await run(model);
+    } catch (error) {
+      if (!isTransientAiError(error)) throw error;
+      console.warn(`[ai] ${label} failed (openai), retrying once after 1s:`, error);
+      await sleep(1000);
+      return await run(model);
+    }
+  }
+
+  const { primary, fallback } = resolveGooglePrimaryAndFallbackModelIds(options?.primaryModelId);
+  const primaryModel = resolveImportLanguageModelForId(primary);
+
+  try {
+    return await run(primaryModel);
+  } catch (error) {
+    if (isTransientAiError(error)) {
+      console.warn(`[ai] ${label} failed on ${primary}, retrying same model after 1s:`, error);
+      await sleep(1000);
+      try {
+        return await run(primaryModel);
+      } catch (retryError) {
+        if (!shouldFallbackToAlternateGoogleModel(retryError) || !fallback) throw retryError;
+        console.warn(
+          `[ai] ${label}: ${primary} still failing with capacity/quota, trying ${fallback}`,
+        );
+        return await run(resolveImportLanguageModelForId(fallback));
+      }
+    }
+
+    if (!shouldFallbackToAlternateGoogleModel(error) || !fallback) throw error;
+    console.warn(`[ai] ${label}: ${primary} hit quota/RPD/demand, trying ${fallback}`);
+    return await run(resolveImportLanguageModelForId(fallback));
+  }
 }

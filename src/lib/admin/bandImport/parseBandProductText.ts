@@ -1,7 +1,7 @@
 import "server-only";
 
 import { generateObject } from "ai";
-import { resolveImportLanguageModel, resolveImportModelId } from "@/lib/admin/ai/importAiModel";
+import { withGoogleModelFallback, resolveImportModelId } from "@/lib/admin/ai/importAiModel";
 import { formatQuotaExceededMessage, isAiQuotaError } from "@/lib/admin/ai/importAiErrors";
 import { bandItineraryOnlySchema } from "@/lib/admin/bandImport/bandItineraryOnlySchema";
 import { bandProductMetaSchema } from "@/lib/admin/bandImport/bandProductMetaSchema";
@@ -108,23 +108,27 @@ function buildBandItineraryPrompt(input: ParseBandProductTextInput): string {
 export async function parseBandProductText(
   input: ParseBandProductTextInput,
 ): Promise<BandParsedProduct> {
-  const model = resolveImportLanguageModel();
+  const { object: meta } = await withGoogleModelFallback("parseBandProductMeta", async (model) =>
+    generateObject({
+      model,
+      schema: bandProductMetaSchema,
+      system: META_SYSTEM_PROMPT,
+      prompt: buildBandMetaPrompt(input),
+      maxRetries: 0,
+    }),
+  );
 
-  const { object: meta } = await generateObject({
-    model,
-    schema: bandProductMetaSchema,
-    system: META_SYSTEM_PROMPT,
-    prompt: buildBandMetaPrompt(input),
-    maxRetries: 0,
-  });
-
-  const { object: itinerary } = await generateObject({
-    model,
-    schema: bandItineraryOnlySchema,
-    system: ITINERARY_SYSTEM_PROMPT,
-    prompt: buildBandItineraryPrompt(input),
-    maxRetries: 0,
-  });
+  const { object: itinerary } = await withGoogleModelFallback(
+    "parseBandProductItinerary",
+    async (model) =>
+      generateObject({
+        model,
+        schema: bandItineraryOnlySchema,
+        system: ITINERARY_SYSTEM_PROMPT,
+        prompt: buildBandItineraryPrompt(input),
+        maxRetries: 0,
+      }),
+  );
 
   return mergeBandParsed(meta, itinerary);
 }

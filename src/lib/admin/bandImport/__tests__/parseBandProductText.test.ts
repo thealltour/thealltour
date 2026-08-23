@@ -118,7 +118,7 @@ describe("parseBandProductText", () => {
       ],
     });
     expect(generateObjectMock.mock.calls[0][0].model).toBe(
-      "google:test-google-key:gemini-3.6-flash",
+      "google:test-google-key:gemini-3.5-flash-lite",
     );
     expect(String(generateObjectMock.mock.calls[0][0].system)).toContain("4–8 Korean search keywords");
     expect(String(generateObjectMock.mock.calls[0][0].prompt)).toContain("meta_title:");

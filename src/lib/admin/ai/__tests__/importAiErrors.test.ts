@@ -5,6 +5,7 @@ import {
   formatQuotaExceededMessage,
   isAiQuotaError,
   isTransientAiError,
+  shouldFallbackToAlternateGoogleModel,
 } from "@/lib/admin/ai/importAiErrors";
 
 const QUOTA_ERROR = new Error(
@@ -15,12 +16,24 @@ describe("importAiErrors", () => {
   it("detects Gemini free-tier quota errors", () => {
     expect(isAiQuotaError(QUOTA_ERROR)).toBe(true);
     expect(isTransientAiError(QUOTA_ERROR)).toBe(false);
+    expect(shouldFallbackToAlternateGoogleModel(QUOTA_ERROR)).toBe(true);
     expect(extractAiRetryAfterSeconds(QUOTA_ERROR)).toBe(49);
+  });
+
+  it("treats high demand and rate limits as model-fallback triggers", () => {
+    const highDemand = new Error(
+      "This model is currently experiencing high demand. Spikes in demand are usually temporary.",
+    );
+    expect(shouldFallbackToAlternateGoogleModel(highDemand)).toBe(true);
+    expect(isTransientAiError(highDemand)).toBe(false);
+    expect(shouldFallbackToAlternateGoogleModel(new Error("429 Too Many Requests"))).toBe(true);
+    expect(shouldFallbackToAlternateGoogleModel(new Error("RESOURCE_EXHAUSTED"))).toBe(true);
   });
 
   it("does not treat generic network errors as quota", () => {
     expect(isAiQuotaError(new Error("fetch failed"))).toBe(false);
     expect(isTransientAiError(new Error("fetch failed"))).toBe(true);
+    expect(shouldFallbackToAlternateGoogleModel(new Error("fetch failed"))).toBe(false);
   });
 
   it("tells operators the Google AI connection stays enabled", () => {

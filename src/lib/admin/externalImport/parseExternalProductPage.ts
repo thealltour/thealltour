@@ -1,11 +1,10 @@
 import "server-only";
 
 import { generateObject } from "ai";
-import { resolveImportLanguageModel } from "@/lib/admin/ai/importAiModel";
+import { withGoogleModelFallback } from "@/lib/admin/ai/importAiModel";
 import {
   formatQuotaExceededMessage,
   isAiQuotaError,
-  isTransientAiError,
 } from "@/lib/admin/ai/importAiErrors";
 import {
   externalProductMetaSchema,
@@ -202,25 +201,6 @@ function buildItineraryPrompt(input: ParseExternalProductPageInput): string {
     .join("\n");
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isRetryableAiError(error: unknown): boolean {
-  return isTransientAiError(error);
-}
-
-async function withOneRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (error) {
-    if (isAiQuotaError(error) || !isRetryableAiError(error)) throw error;
-    console.warn(`[import-external] ${label} failed, retrying once after 1s:`, error);
-    await sleep(1000);
-    return await fn();
-  }
-}
-
 export async function parseExternalProductMeta(
   input: ParseExternalProductPageInput,
 ): Promise<ExternalParsedMeta> {
@@ -229,9 +209,9 @@ export async function parseExternalProductMeta(
     throw new Error("메타 추출용 페이지 텍스트가 비어 있습니다.");
   }
 
-  const { object } = await withOneRetry("parseExternalProductMeta", async () =>
+  const { object } = await withGoogleModelFallback("parseExternalProductMeta", async (model) =>
     generateObject({
-      model: resolveImportLanguageModel(),
+      model,
       schema: externalProductMetaSchema,
       system: META_SYSTEM_PROMPT,
       prompt: buildMetaPrompt(input),
@@ -263,9 +243,9 @@ export async function parseExternalItineraryFromHtml(
     return EMPTY_ITINERARY_RESULT;
   }
 
-  const { object } = await withOneRetry("parseExternalItineraryFromHtml", async () =>
+  const { object } = await withGoogleModelFallback("parseExternalItineraryFromHtml", async (model) =>
     generateObject({
-      model: resolveImportLanguageModel(),
+      model,
       schema: externalItineraryOnlySchema,
       system: ITINERARY_HTML_PROMPT,
       prompt: buildItineraryPrompt(input),

@@ -19,6 +19,23 @@ export function isAiQuotaError(error: unknown): boolean {
   );
 }
 
+/** RPD/쿼터/혼잡 — 같은 모델 재시도 대신 대체 Google 모델로 한 번 더 시도 */
+export function shouldFallbackToAlternateGoogleModel(error: unknown): boolean {
+  if (isAiQuotaError(error)) return true;
+  const msg = errorText(error).toLowerCase();
+  return (
+    msg.includes("high demand") ||
+    msg.includes("rate limit") ||
+    msg.includes("rate_limit") ||
+    msg.includes("resource_exhausted") ||
+    msg.includes("resource exhausted") ||
+    msg.includes("too many requests") ||
+    /\b429\b/.test(msg) ||
+    msg.includes("비율 제한") ||
+    msg.includes("ratio limit")
+  );
+}
+
 export function extractAiRetryAfterSeconds(error: unknown): number | null {
   const msg = errorText(error);
   const match = msg.match(/retry in\s+(\d+(?:\.\d+)?)\s*s/i);
@@ -28,9 +45,9 @@ export function extractAiRetryAfterSeconds(error: unknown): number | null {
   return Math.ceil(seconds);
 }
 
-/** 네트워크 등 짧은 재시도만. 쿼터 소진은 Google이 안내한 대기 시간 전에는 재시도하지 않는다. */
+/** 네트워크 등 짧은 재시도만. 쿼터·RPD 폴백 대상은 같은 모델로 재시도하지 않는다. */
 export function isTransientAiError(error: unknown): boolean {
-  if (isAiQuotaError(error)) return false;
+  if (shouldFallbackToAlternateGoogleModel(error)) return false;
   const msg = errorText(error).toLowerCase();
   return (
     msg.includes("timeout") ||

@@ -14,10 +14,13 @@ vi.mock("@ai-sdk/openai", () => ({
 import {
   DEFAULT_GOOGLE_IMPORT_MODEL,
   DEFAULT_OPENAI_IMPORT_MODEL,
+  FALLBACK_GOOGLE_IMPORT_MODEL,
   hasImportAiKey,
+  resolveGooglePrimaryAndFallbackModelIds,
   resolveImportAiProvider,
   resolveImportLanguageModel,
   resolveImportModelId,
+  withGoogleModelFallback,
 } from "@/lib/admin/ai/importAiModel";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -32,6 +35,7 @@ describe("importAiModel", () => {
   it("prefers Google when a Gemini key is set", () => {
     delete process.env.IMPORT_AI_PROVIDER;
     delete process.env.BAND_IMPORT_MODEL;
+    delete process.env.IMPORT_AI_MODEL;
     delete process.env.OPENAI_API_KEY;
     process.env.GEMINI_API_KEY = "gem-key";
 
@@ -41,6 +45,8 @@ describe("importAiModel", () => {
       provider: "google",
       modelId: DEFAULT_GOOGLE_IMPORT_MODEL,
     });
+    expect(DEFAULT_GOOGLE_IMPORT_MODEL).toBe("gemini-3.5-flash-lite");
+    expect(FALLBACK_GOOGLE_IMPORT_MODEL).toBe("gemini-3.1-flash-lite");
     expect(resolveImportLanguageModel()).toBe(`google:gem-key:${DEFAULT_GOOGLE_IMPORT_MODEL}`);
   });
 
@@ -68,13 +74,68 @@ describe("importAiModel", () => {
     expect(resolveImportModelId().modelId).toBe(DEFAULT_GOOGLE_IMPORT_MODEL);
   });
 
-  it("honors gemini model override", () => {
+  it("honors gemini model override for primary only", () => {
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = "g-key";
     process.env.BAND_IMPORT_MODEL = "gemini-3.6-pro";
+    delete process.env.IMPORT_AI_FALLBACK_MODEL;
 
     expect(resolveImportModelId()).toEqual({
       provider: "google",
       modelId: "gemini-3.6-pro",
     });
+    expect(resolveGooglePrimaryAndFallbackModelIds()).toEqual({
+      primary: "gemini-3.6-pro",
+      fallback: FALLBACK_GOOGLE_IMPORT_MODEL,
+    });
+  });
+
+  it("skips fallback when primary equals fallback", () => {
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = "g-key";
+    delete process.env.BAND_IMPORT_MODEL;
+    process.env.IMPORT_AI_MODEL = FALLBACK_GOOGLE_IMPORT_MODEL;
+    delete process.env.IMPORT_AI_FALLBACK_MODEL;
+
+    expect(resolveGooglePrimaryAndFallbackModelIds()).toEqual({
+      primary: FALLBACK_GOOGLE_IMPORT_MODEL,
+      fallback: null,
+    });
+  });
+});
+
+describe("withGoogleModelFallback", () => {
+  it("retries with fallback model on RPD/quota error", async () => {
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = "g-key";
+    delete process.env.BAND_IMPORT_MODEL;
+    delete process.env.IMPORT_AI_MODEL;
+    delete process.env.IMPORT_AI_FALLBACK_MODEL;
+    delete process.env.IMPORT_AI_PROVIDER;
+
+    const run = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("You exceeded your current quota, free_tier limit"))
+      .mockResolvedValueOnce("ok-fallback");
+
+    const result = await withGoogleModelFallback("test", run);
+    expect(result).toBe("ok-fallback");
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(run.mock.calls[0][0]).toBe(`google:g-key:${DEFAULT_GOOGLE_IMPORT_MODEL}`);
+    expect(run.mock.calls[1][0]).toBe(`google:g-key:${FALLBACK_GOOGLE_IMPORT_MODEL}`);
+  });
+
+  it("retries same model once on transient network error", async () => {
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = "g-key";
+    delete process.env.BAND_IMPORT_MODEL;
+    delete process.env.IMPORT_AI_MODEL;
+
+    const run = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("fetch failed"))
+      .mockResolvedValueOnce("ok-retry");
+
+    const result = await withGoogleModelFallback("test-net", run);
+    expect(result).toBe("ok-retry");
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(run.mock.calls[0][0]).toBe(`google:g-key:${DEFAULT_GOOGLE_IMPORT_MODEL}`);
+    expect(run.mock.calls[1][0]).toBe(`google:g-key:${DEFAULT_GOOGLE_IMPORT_MODEL}`);
   });
 });

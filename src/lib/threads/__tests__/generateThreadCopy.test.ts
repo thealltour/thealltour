@@ -50,7 +50,7 @@ describe("generateThreadCopy", () => {
     delete process.env.THREADS_AI_MODEL;
   });
 
-  it("uses TIMEDEAL instructions and gemini-3.6-flash", async () => {
+  it("uses TIMEDEAL instructions and gemini-3.5-flash-lite", async () => {
     generateObjectMock.mockResolvedValue({
       object: {
         mainContent: "발리 4박5일 실속 일정입니다. 왕복항공과 호텔이 포함되어 있고 가격은 상세 기준입니다.",
@@ -68,7 +68,7 @@ describe("generateThreadCopy", () => {
       system: string;
       prompt: string;
     };
-    expect(call.model).toBe("google:g-key:gemini-3.6-flash");
+    expect(call.model).toBe("google:g-key:gemini-3.5-flash-lite");
     expect(call.system).toContain("TIMEDEAL");
     expect(call.system).toContain("긴급성");
     expect(call.system).toContain("올포함");

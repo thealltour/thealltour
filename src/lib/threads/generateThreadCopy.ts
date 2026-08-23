@@ -1,8 +1,11 @@
 import "server-only";
 
 import { generateObject } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { getGoogleGenerativeAiKey } from "@/lib/admin/ai/importAiModel";
+import {
+  DEFAULT_GOOGLE_IMPORT_MODEL,
+  getGoogleGenerativeAiKey,
+  withGoogleModelFallback,
+} from "@/lib/admin/ai/importAiModel";
 import type { BlogPostViewModel } from "@/lib/blog/blogPost.types";
 import {
   threadCopySchema,
@@ -18,7 +21,7 @@ export {
 } from "@/lib/threads/threadCopy.types";
 export type { ThreadCopy, ThreadsMarketingMode } from "@/lib/threads/threadCopy.types";
 
-export const DEFAULT_THREADS_AI_MODEL = "gemini-3.6-flash";
+export const DEFAULT_THREADS_AI_MODEL = DEFAULT_GOOGLE_IMPORT_MODEL;
 
 const MODE_INSTRUCTIONS: Record<ThreadsMarketingMode, string> = {
   TIMEDEAL:
@@ -29,18 +32,8 @@ const MODE_INSTRUCTIONS: Record<ThreadsMarketingMode, string> = {
     "[시의성+현지 독점 경험] 지금 이 시기에만 볼 수 있는 현지 장관·제철 경험을 중심에 두세요. 계절·트렌드를 구체적으로 쓰고 일반 카탈로그 안내는 피하세요.",
 };
 
-function resolveThreadsModelId(): string {
+function resolveThreadsPrimaryModelId(): string {
   return process.env.THREADS_AI_MODEL?.trim() || DEFAULT_THREADS_AI_MODEL;
-}
-
-function resolveThreadsLanguageModel() {
-  const apiKey = getGoogleGenerativeAiKey();
-  if (!apiKey) {
-    throw new Error(
-      "스레드 카피 생성용 Google AI 키가 없습니다. GOOGLE_GENERATIVE_AI_API_KEY(또는 GEMINI_API_KEY)를 설정해 주세요.",
-    );
-  }
-  return createGoogleGenerativeAI({ apiKey })(resolveThreadsModelId());
 }
 
 function buildProductBrief(product: BlogPostViewModel): string {
@@ -96,14 +89,24 @@ export async function generateThreadCopy(
   product: BlogPostViewModel,
   marketingMode: ThreadsMarketingMode,
 ): Promise<ThreadCopy> {
-  const { object } = await generateObject({
-    model: resolveThreadsLanguageModel(),
-    schema: threadCopySchema,
-    system: buildThreadCopySystemPrompt(marketingMode),
-    prompt: ["다음 상품 정보로 Threads 카피를 작성하세요.", "", buildProductBrief(product)].join(
-      "\n",
-    ),
-  });
+  if (!getGoogleGenerativeAiKey()) {
+    throw new Error(
+      "스레드 카피 생성용 Google AI 키가 없습니다. GOOGLE_GENERATIVE_AI_API_KEY(또는 GEMINI_API_KEY)를 설정해 주세요.",
+    );
+  }
+  const { object } = await withGoogleModelFallback(
+    "generateThreadCopy",
+    async (model) =>
+      generateObject({
+        model,
+        schema: threadCopySchema,
+        system: buildThreadCopySystemPrompt(marketingMode),
+        prompt: ["다음 상품 정보로 Threads 카피를 작성하세요.", "", buildProductBrief(product)].join(
+          "\n",
+        ),
+      }),
+    { primaryModelId: resolveThreadsPrimaryModelId() },
+  );
   return object;
 }
 
@@ -128,16 +131,26 @@ export async function generateBlogThreadCopy(
   post: BlogThreadCopyInput,
   marketingMode: ThreadsMarketingMode,
 ): Promise<ThreadCopy> {
-  const { object } = await generateObject({
-    model: resolveThreadsLanguageModel(),
-    schema: threadCopySchema,
-    system: `${buildThreadCopySystemPrompt(marketingMode)}
+  if (!getGoogleGenerativeAiKey()) {
+    throw new Error(
+      "스레드 카피 생성용 Google AI 키가 없습니다. GOOGLE_GENERATIVE_AI_API_KEY(또는 GEMINI_API_KEY)를 설정해 주세요.",
+    );
+  }
+  const { object } = await withGoogleModelFallback(
+    "generateBlogThreadCopy",
+    async (model) =>
+      generateObject({
+        model,
+        schema: threadCopySchema,
+        system: `${buildThreadCopySystemPrompt(marketingMode)}
 
 [블로그 글 추가 규칙]
 - 입력은 여행사 네이버/티스토리 블로그 RSS 글이다. 상품 상세가 아닐 수 있다.
 - 본문에 없는 가격·좌석·쿠폰·일정을 만들지 마.
 - CTA의 targetKeyword는 글 주제와 잘 맞는 짧은 한국어 키워드로.`,
-    prompt: ["다음 블로그 글로 Threads 카피를 작성하세요.", "", buildBlogBrief(post)].join("\n"),
-  });
+        prompt: ["다음 블로그 글로 Threads 카피를 작성하세요.", "", buildBlogBrief(post)].join("\n"),
+      }),
+    { primaryModelId: resolveThreadsPrimaryModelId() },
+  );
   return object;
 }

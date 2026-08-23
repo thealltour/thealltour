@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { generateObject } from "ai";
-import { resolveImportLanguageModel } from "@/lib/admin/ai/importAiModel";
+import { withGoogleModelFallback } from "@/lib/admin/ai/importAiModel";
 import {
   MAX_BAND_IMPORT_VISION_IMAGES,
   type BandImageAssignment,
@@ -92,12 +92,14 @@ export async function classifyBandImportImages(input: {
     });
   }
 
-  const { object } = await generateObject({
-    model: resolveImportLanguageModel(),
-    schema: bandImageAssignmentSchema,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content }],
-  });
+  const { object } = await withGoogleModelFallback("classifyBandImportImages", async (model) =>
+    generateObject({
+      model,
+      schema: bandImageAssignmentSchema,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content }],
+    }),
+  );
 
   return object.assignments;
 }

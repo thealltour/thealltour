@@ -8,6 +8,7 @@ import { grantKakaoSignupWelcomePoints } from "@/lib/auth/grantKakaoSignupWelcom
 import { memberNeedsProfileCompletion } from "@/lib/auth/memberProfileGate";
 import { isKakaoSyncFunnelAcquisition } from "@/lib/analytics/kakaoSyncLandingHit";
 import { resolveOAuthIdentityMatchMode } from "@/lib/auth/oauthIdentityMatch";
+import { sendKakaoSignupAlimtalk } from "@/lib/notifications/kakaoSignupAlimtalk";
 import type { MemberAcquisition } from "@/lib/auth/memberAcquisition";
 import type {
   AuthMode,
@@ -361,6 +362,13 @@ export async function handleOAuthCallback(params: {
       return null;
     });
     kakaoWelcomeGranted = welcomeResult?.granted === true;
+
+    void sendKakaoSignupAlimtalk({
+      phone: member.phone ?? profile.phone,
+      customerName: member.name ?? profile.name,
+    }).catch((err) => {
+      console.error("[memberAuthService] sendKakaoSignupAlimtalk failed", err);
+    });
   }
 
   return {

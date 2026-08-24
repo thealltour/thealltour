@@ -15,3 +15,21 @@ export class SemanticUnsupportedError extends Error {
     this.name = "SemanticUnsupportedError";
   }
 }
+
+export class SemanticTimeoutError extends Error {
+  readonly code = "provider_error" as const;
+
+  constructor(message = "Embedding request timed out") {
+    super(message);
+    this.name = "SemanticTimeoutError";
+  }
+}
+
+export class SemanticProviderError extends Error {
+  readonly code = "provider_error" as const;
+
+  constructor(message = "Embedding provider request failed") {
+    super(message);
+    this.name = "SemanticProviderError";
+  }
+}

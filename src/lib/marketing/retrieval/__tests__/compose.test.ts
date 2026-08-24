@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
 import { executeRetrievalPlan } from "@/lib/marketing/retrieval/executeRetrievalPlan";
 import { runMarketingRetrieval } from "@/lib/marketing/retrieval/runMarketingRetrieval";
 import { buildRetrievalPlan } from "@/lib/marketing/retrieval/planner";
@@ -204,6 +207,32 @@ describe("composeMarketingContext via retrieval plan", () => {
     const adapters = mockAdapters();
     const pkg = await runMarketingRetrieval({ purpose: "create_content", productId: PRODUCT_ID }, adapters, {
       env: { EMBEDDING_PROVIDER: "none" },
+    });
+    expect(pkg.context.customerInsights).not.toBeUndefined();
+    expect(pkg.semantic?.status).toBe("skipped");
+    expect(pkg.semantic?.reason).toBe("provider_not_configured");
+  });
+
+  it("keeps structured retrieval when Mini PC embedding is configured but vector search is not", async () => {
+    const adapters = mockAdapters();
+    const pkg = await runMarketingRetrieval({ purpose: "create_content", productId: PRODUCT_ID }, adapters, {
+      env: {
+        EMBEDDING_PROVIDER: "mini_pc",
+        EMBEDDING_BASE_URL: "http://embedding.test",
+        EMBEDDING_MODEL: "BAAI/bge-m3",
+        EMBEDDING_DIMENSION: "1024",
+      },
+    });
+    expect(pkg.context.customerInsights).not.toBeUndefined();
+    expect(pkg.context.product).toBeNull();
+    expect(pkg.semantic?.status).toBe("skipped");
+    expect(pkg.semantic?.reason).toBe("repository_not_configured");
+  });
+
+  it("keeps structured retrieval when Mini PC config is invalid", async () => {
+    const adapters = mockAdapters();
+    const pkg = await runMarketingRetrieval({ purpose: "create_content", productId: PRODUCT_ID }, adapters, {
+      env: { EMBEDDING_PROVIDER: "mini_pc" },
     });
     expect(pkg.context.customerInsights).not.toBeUndefined();
     expect(pkg.semantic?.status).toBe("skipped");

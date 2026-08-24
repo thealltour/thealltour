@@ -8,6 +8,7 @@ import {
 } from "@/lib/marketing/retrieval/validation";
 import { selectScoredContext } from "@/lib/marketing/scoring/selectScoredContext";
 import { resolveSemanticContextStatus } from "@/lib/marketing/semantic/semanticRetrieve";
+import type { SemanticContextStatus } from "@/lib/marketing/semantic/types";
 
 export async function runMarketingRetrieval(
   request: MarketingRetrievalRequest | MarketingContextRequest,
@@ -35,7 +36,7 @@ export async function runMarketingRetrieval(
     },
     { contextLimit: options?.contextLimit, now: options?.now },
   );
-  const semantic = resolveSemanticContextStatus(options?.env);
+  const semantic = resolveSemanticStatusSafely(options?.env);
   return assembleFromRetrieval(
     {
       purpose: parsed.purpose,
@@ -56,4 +57,14 @@ export async function runMarketingRetrieval(
       semantic,
     },
   );
+}
+
+function resolveSemanticStatusSafely(
+  env?: NodeJS.ProcessEnv | Record<string, string | undefined>,
+): SemanticContextStatus {
+  try {
+    return resolveSemanticContextStatus(env);
+  } catch {
+    return { status: "failed", reason: "provider_error" };
+  }
 }

@@ -1,13 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
 import { ContextValidationError } from "@/lib/marketing/context/errors";
 import {
   HttpEmbeddingProvider,
+  NoneEmbeddingProvider,
   createEmbeddingProvider,
   createVectorMemoryRepository,
   parseSemanticRetrievalRequest,
   semanticRetrieve,
 } from "@/lib/marketing/semantic";
 import type { VectorMemoryRepository } from "@/lib/marketing/semantic/types";
+
+const dummyRepository: VectorMemoryRepository = {
+  searchSimilar: async () => [],
+};
 
 describe("semantic retrieval contract", () => {
   it("validates the request", () => {
@@ -26,23 +34,34 @@ describe("semantic retrieval contract", () => {
     expect(result.status).toBe("skipped");
     expect(result.reason).toBe("provider_not_configured");
     expect(result.matches).toEqual([]);
+    expect(createEmbeddingProvider({ EMBEDDING_PROVIDER: "none" })).toBeInstanceOf(NoneEmbeddingProvider);
   });
 
-  it("does not call a remote Mini PC endpoint in this step", async () => {
+  it("does not call Mini PC when the vector repository is not configured", async () => {
     const result = await semanticRetrieve(
       { query: "다낭" },
-      { env: { EMBEDDING_PROVIDER: "mini_pc", EMBEDDING_HTTP_URL: "http://example.invalid" } },
+      {
+        env: {
+          EMBEDDING_PROVIDER: "mini_pc",
+          EMBEDDING_BASE_URL: "http://embedding.test",
+          EMBEDDING_MODEL: "BAAI/bge-m3",
+          EMBEDDING_DIMENSION: "4",
+        },
+      },
     );
     expect(result.status).toBe("skipped");
-    expect(result.reason).toBe("provider_unsupported");
-    expect(createEmbeddingProvider({ EMBEDDING_PROVIDER: "mini_pc" })).toBeInstanceOf(HttpEmbeddingProvider);
+    expect(result.reason).toBe("repository_not_configured");
+    expect(result.matches).toEqual([]);
+    expect(
+      createEmbeddingProvider({
+        EMBEDDING_PROVIDER: "mini_pc",
+        EMBEDDING_BASE_URL: "http://embedding.test",
+      }),
+    ).toBeInstanceOf(HttpEmbeddingProvider);
   });
 
   it("exposes a vector repository contract without a DB implementation", async () => {
     expect(createVectorMemoryRepository()).toBeNull();
-    const repository: VectorMemoryRepository = {
-      searchSimilar: async () => [],
-    };
     const result = await semanticRetrieve(
       { query: "다낭" },
       {
@@ -51,11 +70,33 @@ describe("semantic retrieval contract", () => {
           embed: async () => [0.1, 0.2],
           embedMany: async (texts) => texts.map(() => [0.1, 0.2]),
         },
-        repository,
+        repository: dummyRepository,
         env: { EMBEDDING_PROVIDER: "http" },
       },
     );
     expect(result.status).toBe("ok");
+    expect(result.matches).toEqual([]);
+  });
+
+  it("records provider_error without faking matches when embed fails", async () => {
+    const result = await semanticRetrieve(
+      { query: "다낭" },
+      {
+        env: { EMBEDDING_PROVIDER: "mini_pc" },
+        repository: dummyRepository,
+        provider: {
+          model: "BAAI/bge-m3",
+          embed: async () => {
+            throw new Error("Mini PC offline");
+          },
+          embedMany: async () => {
+            throw new Error("Mini PC offline");
+          },
+        },
+      },
+    );
+    expect(result.status).toBe("failed");
+    expect(result.reason).toBe("provider_error");
     expect(result.matches).toEqual([]);
   });
 });

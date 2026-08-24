@@ -1,11 +1,19 @@
+import "server-only";
+
 import {
   createEmbeddingProvider,
+  parseEmbeddingConfig,
   readEmbeddingProviderKind,
 } from "@/lib/marketing/semantic/embeddingProvider";
-import { SemanticNotConfiguredError, SemanticUnsupportedError } from "@/lib/marketing/semantic/errors";
+import {
+  SemanticNotConfiguredError,
+  SemanticTimeoutError,
+  SemanticUnsupportedError,
+} from "@/lib/marketing/semantic/errors";
 import { createVectorMemoryRepository } from "@/lib/marketing/semantic/vectorMemoryRepository";
 import type {
   EmbeddingProvider,
+  SemanticContextStatus,
   SemanticRetrievalRequest,
   SemanticRetrievalResult,
   VectorMemoryRepository,
@@ -26,6 +34,19 @@ function failed(reason: NonNullable<SemanticRetrievalResult["reason"]>): Semanti
   return { status: "failed", reason, matches: [] };
 }
 
+function toSemanticFailure(error: unknown): SemanticRetrievalResult {
+  if (error instanceof SemanticNotConfiguredError) {
+    return skipped("provider_not_configured");
+  }
+  if (error instanceof SemanticUnsupportedError) {
+    return skipped("provider_unsupported");
+  }
+  if (error instanceof SemanticTimeoutError) {
+    return failed("provider_error");
+  }
+  return failed("provider_error");
+}
+
 export async function semanticRetrieve(
   request: SemanticRetrievalRequest,
   deps: SemanticRetrieveDeps = {},
@@ -33,13 +54,23 @@ export async function semanticRetrieve(
   const parsed = parseSemanticRetrievalRequest(request);
   const env = deps.env ?? process.env;
   const kind = readEmbeddingProviderKind(env);
-  const provider = deps.provider === undefined ? createEmbeddingProvider(env) : deps.provider;
 
-  if (!provider || kind === "none") {
+  if (kind === "none") {
     return skipped("provider_not_configured");
   }
-  if (kind === "unsupported" || ((kind === "mini_pc" || kind === "http") && deps.provider === undefined)) {
+  if (kind === "unsupported") {
     return skipped("provider_unsupported");
+  }
+
+  let provider: EmbeddingProvider | null;
+  try {
+    provider = deps.provider === undefined ? createEmbeddingProvider(env) : deps.provider;
+  } catch (error) {
+    return toSemanticFailure(error);
+  }
+
+  if (!provider) {
+    return skipped("provider_not_configured");
   }
 
   const repository = deps.repository === undefined ? createVectorMemoryRepository() : deps.repository;
@@ -64,13 +95,7 @@ export async function semanticRetrieve(
       model: provider.model,
     };
   } catch (error) {
-    if (error instanceof SemanticNotConfiguredError) {
-      return skipped("provider_not_configured");
-    }
-    if (error instanceof SemanticUnsupportedError) {
-      return skipped("provider_unsupported");
-    }
-    return failed("provider_error");
+    return toSemanticFailure(error);
   }
 }
 
@@ -82,10 +107,23 @@ export function semanticStatusFromResult(
 
 export function resolveSemanticContextStatus(
   env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
-): { status: "skipped"; reason: NonNullable<SemanticRetrievalResult["reason"]> } {
-  const kind = readEmbeddingProviderKind(env);
-  if (kind === "mini_pc" || kind === "http" || kind === "unsupported") {
-    return { status: "skipped", reason: "provider_unsupported" };
+): SemanticContextStatus {
+  try {
+    const parsed = parseEmbeddingConfig(env);
+    if (parsed.kind === "none") {
+      return { status: "skipped", reason: "provider_not_configured" };
+    }
+    if (parsed.kind === "unsupported") {
+      return { status: "skipped", reason: "provider_unsupported" };
+    }
+    return { status: "skipped", reason: "repository_not_configured" };
+  } catch (error) {
+    if (error instanceof SemanticNotConfiguredError) {
+      return { status: "skipped", reason: "provider_not_configured" };
+    }
+    if (error instanceof SemanticUnsupportedError) {
+      return { status: "skipped", reason: "provider_unsupported" };
+    }
+    return { status: "failed", reason: "provider_error" };
   }
-  return { status: "skipped", reason: "provider_not_configured" };
 }

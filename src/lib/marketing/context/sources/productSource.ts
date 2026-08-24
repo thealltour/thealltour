@@ -51,3 +51,29 @@ export async function fetchProductRow(productId: string): Promise<ProductContext
   }
   return (data as ProductContextRow | null) ?? null;
 }
+
+export type FetchProductRowsInput = {
+  ids?: string[];
+  activeOnly?: boolean;
+  limit: number;
+};
+
+/**
+ * Batch product lookup for memory ingestion. Same column projection as fetchProductRow.
+ * Does not filter by updated_at — that column is not guaranteed on products.
+ */
+export async function fetchProductRows(input: FetchProductRowsInput): Promise<ProductContextRow[]> {
+  const ids = input.ids?.slice(0, input.limit);
+  let query = supabaseAdmin.from("products").select(PRODUCT_CONTEXT_COLUMNS);
+  if (ids && ids.length > 0) {
+    query = query.in("id", ids);
+  }
+  if (input.activeOnly) {
+    query = query.eq("is_active", true);
+  }
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(input.limit);
+  if (error) {
+    throw new Error(`products lookup failed: ${error.message}`);
+  }
+  return (data as ProductContextRow[] | null) ?? [];
+}

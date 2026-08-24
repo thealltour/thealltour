@@ -46,13 +46,26 @@ export {
   getTaxonomyContext,
 } from "@/lib/marketing/context/contextService";
 export {
+  DEFAULT_CONTEXT_LIMIT,
   DEFAULT_RETRIEVAL_LIMIT,
+  MAX_CONTEXT_LIMIT,
   MAX_RETRIEVAL_LIMIT,
   buildRetrievalPlan,
   clampRetrievalLimit,
   parseMarketingRetrievalRequest,
   resolveRetrievalPeriod,
 } from "@/lib/marketing/retrieval";
+export {
+  SCORING_WEIGHTS,
+  rankContextCandidates,
+  scoreContextCandidate,
+  selectScoredContext,
+} from "@/lib/marketing/scoring";
+export {
+  createEmbeddingProvider,
+  parseSemanticRetrievalRequest,
+  semanticRetrieve,
+} from "@/lib/marketing/semantic";
 export type {
   MarketingRetrievalRequest,
   ParsedMarketingRetrievalRequest,

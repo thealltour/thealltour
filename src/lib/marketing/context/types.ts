@@ -247,4 +247,13 @@ export type MarketingContextPackage = {
   };
   sources: ContextSource[];
   generatedAt: string;
+  ranking?: {
+    candidateCount: number;
+    selectedCount: number;
+    contextLimit: number;
+  };
+  semantic?: {
+    status: "skipped" | "ok" | "failed";
+    reason?: string;
+  };
 };

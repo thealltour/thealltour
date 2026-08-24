@@ -26,6 +26,8 @@ export function assembleMarketingContextPackage(input: {
   agendaHistory?: AgendaHistoryItem[] | null;
   sources: ContextSource[];
   generatedAt?: string;
+  ranking?: MarketingContextPackage["ranking"];
+  semantic?: MarketingContextPackage["semantic"];
 }): MarketingContextPackage {
   return {
     request: input.request,
@@ -45,5 +47,7 @@ export function assembleMarketingContextPackage(input: {
     },
     sources: input.sources,
     generatedAt: input.generatedAt ?? new Date().toISOString(),
+    ranking: input.ranking,
+    semantic: input.semantic,
   };
 }

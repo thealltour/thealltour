@@ -88,6 +88,10 @@ function collectSources(results: Array<RetrievalResult<unknown> | null>): Execut
 export function assembleFromRetrieval(
   request: MarketingContextRequest,
   retrieval: ExecutedRetrieval,
+  extras?: {
+    ranking?: MarketingContextPackage["ranking"];
+    semantic?: MarketingContextPackage["semantic"];
+  },
 ): MarketingContextPackage {
   return assembleMarketingContextPackage({
     request,
@@ -102,5 +106,7 @@ export function assembleFromRetrieval(
     agendaHistory: retrieval.agendaHistory,
     sources: retrieval.sources,
     generatedAt: retrieval.retrievedAt,
+    ranking: extras?.ranking,
+    semantic: extras?.semantic,
   });
 }

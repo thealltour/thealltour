@@ -8,7 +8,7 @@ import {
 import { DEFAULT_RETRIEVAL_LIMIT, MAX_RETRIEVAL_LIMIT } from "@/lib/marketing/retrieval/constants";
 
 describe("retrieval filters and limits", () => {
-  it("defaults limit to 20 and clamps 1000 to 100", () => {
+  it("defaults limit to 100 and clamps 1000 to 100", () => {
     expect(clampRetrievalLimit()).toBe(DEFAULT_RETRIEVAL_LIMIT);
     expect(clampRetrievalLimit(1000)).toBe(MAX_RETRIEVAL_LIMIT);
     expect(parseMarketingRetrievalRequest({ purpose: "create_content", limit: 1000 }).limit).toBe(100);

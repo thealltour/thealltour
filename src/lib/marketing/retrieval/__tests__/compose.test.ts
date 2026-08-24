@@ -162,4 +162,51 @@ describe("composeMarketingContext via retrieval plan", () => {
     expect(retrieved.product).toBeNull();
     expect(retrieved.sources.length).toBeGreaterThan(0);
   });
+
+  it("scores candidates and keeps only the context top-K", async () => {
+    const adapters = mockAdapters();
+    const items = Array.from({ length: 25 }, (_, index) => ({
+      id: `content-${index}`,
+      sourceType: "ai_content" as const,
+      sourceId: `content-${index}`,
+      channel: "threads",
+      productId: PRODUCT_ID,
+      title: `item ${index}`,
+      body: null,
+      summary: null,
+      publishedAt: new Date(Date.parse("2026-08-24T00:00:00.000Z") - index * 86_400_000).toISOString(),
+      createdAt: "2026-08-01T00:00:00.000Z",
+      metadata: null,
+      similarityAvailable: false,
+    }));
+    adapters.retrieveContentHistory = vi.fn(async () => emptyResult(items, "content_history", "ai_contents"));
+    const pkg = await runMarketingRetrieval(
+      {
+        purpose: "create_content",
+        productId: PRODUCT_ID,
+        includeProduct: false,
+        includeCustomerInsights: false,
+        includePublications: false,
+        includeMemory: false,
+        includeContentHistory: true,
+      },
+      adapters,
+      { contextLimit: 5, now: new Date("2026-08-24T00:00:00.000Z") },
+    );
+    expect(pkg.context.contentHistory).toHaveLength(5);
+    expect(pkg.ranking?.candidateCount).toBe(25);
+    expect(pkg.ranking?.selectedCount).toBe(5);
+    expect(pkg.ranking?.contextLimit).toBe(5);
+    expect(pkg.context.contentHistory?.[0]?.id).toBe("content-0");
+  });
+
+  it("returns structured context when the semantic provider is not configured", async () => {
+    const adapters = mockAdapters();
+    const pkg = await runMarketingRetrieval({ purpose: "create_content", productId: PRODUCT_ID }, adapters, {
+      env: { EMBEDDING_PROVIDER: "none" },
+    });
+    expect(pkg.context.customerInsights).not.toBeUndefined();
+    expect(pkg.semantic?.status).toBe("skipped");
+    expect(pkg.semantic?.reason).toBe("provider_not_configured");
+  });
 });

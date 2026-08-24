@@ -1,5 +1,7 @@
 export {
+  DEFAULT_CONTEXT_LIMIT,
   DEFAULT_RETRIEVAL_LIMIT,
+  MAX_CONTEXT_LIMIT,
   MAX_RETRIEVAL_LIMIT,
   RETRIEVAL_SOURCE_KEYS,
 } from "@/lib/marketing/retrieval/constants";

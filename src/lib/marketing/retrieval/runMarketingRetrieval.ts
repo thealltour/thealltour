@@ -6,16 +6,36 @@ import {
   parseMarketingRetrievalRequest,
   withComposePeriodDefaults,
 } from "@/lib/marketing/retrieval/validation";
+import { selectScoredContext } from "@/lib/marketing/scoring/selectScoredContext";
+import { resolveSemanticContextStatus } from "@/lib/marketing/semantic/semanticRetrieve";
 
 export async function runMarketingRetrieval(
   request: MarketingRetrievalRequest | MarketingContextRequest,
   adapters: RetrievalAdapters,
-  options?: { injectLookbackDefault?: boolean },
+  options?: {
+    injectLookbackDefault?: boolean;
+    contextLimit?: number;
+    now?: Date;
+    env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  },
 ): Promise<MarketingContextPackage> {
   const prepared = options?.injectLookbackDefault === false ? request : withComposePeriodDefaults(request);
   const parsed = parseMarketingRetrievalRequest(prepared);
   const plan = buildRetrievalPlan(parsed);
   const retrieved = await executeRetrievalPlan(parsed, plan, adapters);
+  const scored = selectScoredContext(
+    retrieved,
+    {
+      purpose: parsed.purpose,
+      canonicalPurpose: parsed.canonicalPurpose,
+      productId: parsed.productId,
+      campaignId: parsed.campaignId,
+      agendaId: parsed.agendaId,
+      channel: parsed.channel,
+    },
+    { contextLimit: options?.contextLimit, now: options?.now },
+  );
+  const semantic = resolveSemanticContextStatus(options?.env);
   return assembleFromRetrieval(
     {
       purpose: parsed.purpose,
@@ -26,6 +46,14 @@ export async function runMarketingRetrieval(
       periodStart: parsed.period?.start ?? parsed.periodStart,
       periodEnd: parsed.period?.end ?? parsed.periodEnd,
     },
-    retrieved,
+    scored.retrieval,
+    {
+      ranking: {
+        candidateCount: scored.candidates.length,
+        selectedCount: scored.selected.length,
+        contextLimit: scored.contextLimit,
+      },
+      semantic,
+    },
   );
 }

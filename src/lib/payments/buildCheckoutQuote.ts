@@ -8,7 +8,11 @@ import {
 } from "@/lib/payments/calculatePaxDiscount";
 import type { ProductOptions, SelectedOptions } from "@/types/product";
 
-export const CHECKOUT_DEPOSIT_AMOUNT = 100_000;
+/** 인당 예약금 (원). 총 예약금 = 인당 × 인원 */
+export const CHECKOUT_DEPOSIT_PER_PERSON = 100_000;
+
+/** @deprecated 이름 호환 — 인당 예약금과 동일 */
+export const CHECKOUT_DEPOSIT_AMOUNT = CHECKOUT_DEPOSIT_PER_PERSON;
 
 export type CheckoutDepartureInput = {
   label: string;
@@ -30,6 +34,8 @@ export type CheckoutQuoteInput = {
   hasPreviousBooking?: boolean;
   /** 보유 쿠폰팩이 있으면 단가·티어의 진실 소스 */
   couponPack?: { tier: DiscountTier; unitAmount: number } | null;
+  /** 인당 예약금 오버라이드 (기본 CHECKOUT_DEPOSIT_PER_PERSON) */
+  depositPerPerson?: number;
 };
 
 export type CheckoutQuoteResult = {
@@ -41,6 +47,9 @@ export type CheckoutQuoteResult = {
   paxDiscountAmount: number;
   discountLabel: string | null;
   discountTier: DiscountTier | null;
+  /** 인당 예약금 */
+  depositPerPerson: number;
+  /** 총 예약금 = 인당 × 인원 */
   depositAmount: number;
   balanceDue: number;
   breakdown: QuoteBreakdownItem[];
@@ -49,6 +58,11 @@ export type CheckoutQuoteResult = {
 
 export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuoteResult {
   const travelerCount = Math.max(1, Math.floor(input.travelerCount ?? 1));
+  const depositPerPerson = Math.max(
+    0,
+    Math.floor(input.depositPerPerson ?? CHECKOUT_DEPOSIT_PER_PERSON),
+  );
+  const depositAmount = depositPerPerson * travelerCount;
   const pointsApplied = normalizePointsUseRequested(input.pointsUse);
   const quote = calcQuote(input.options ?? undefined, input.selectedOptions);
 
@@ -90,7 +104,7 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuoteResu
     paxDiscountAmount = capPaxDiscountAmount({
       quoteTotal,
       rawPaxDiscount: pax.totalDiscount,
-      depositAmount: CHECKOUT_DEPOSIT_AMOUNT,
+      depositAmount,
     });
     discountLabel = pax.label;
     discountTier = pax.tier;
@@ -98,7 +112,7 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuoteResu
 
   const afterPromo = Math.max(0, quoteTotal - paxDiscountAmount);
   const afterPoints = Math.max(0, afterPromo - pointsApplied);
-  const balanceDue = Math.max(0, afterPoints - CHECKOUT_DEPOSIT_AMOUNT);
+  const balanceDue = Math.max(0, afterPoints - depositAmount);
 
   return {
     quoteTotal,
@@ -109,7 +123,8 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuoteResu
     paxDiscountAmount,
     discountLabel,
     discountTier,
-    depositAmount: CHECKOUT_DEPOSIT_AMOUNT,
+    depositPerPerson,
+    depositAmount,
     balanceDue,
     breakdown: quote.breakdown,
     travelerCount,

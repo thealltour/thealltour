@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCheckoutQuote,
-  CHECKOUT_DEPOSIT_AMOUNT,
+  CHECKOUT_DEPOSIT_PER_PERSON,
   validateCheckoutQuote,
 } from "@/lib/payments/buildCheckoutQuote";
+import { resolveCheckoutPayAmounts } from "@/lib/payments/resolveCheckoutPayAmounts";
 
 describe("buildCheckoutQuote", () => {
-  it("computes deposit and balance with departure price", () => {
+  it("computes per-person deposit and balance with departure price", () => {
     const quote = buildCheckoutQuote({
       selectedOptions: {},
       departure: { label: "7/1", inquiryValue: "7/1", price: 500_000 },
@@ -15,11 +16,12 @@ describe("buildCheckoutQuote", () => {
     expect(quote.quoteTotal).toBe(500_000);
     expect(quote.pointsApplied).toBe(30_000);
     expect(quote.paxDiscountAmount).toBe(0);
-    expect(quote.depositAmount).toBe(CHECKOUT_DEPOSIT_AMOUNT);
-    expect(quote.balanceDue).toBe(500_000 - 30_000 - CHECKOUT_DEPOSIT_AMOUNT);
+    expect(quote.depositPerPerson).toBe(CHECKOUT_DEPOSIT_PER_PERSON);
+    expect(quote.depositAmount).toBe(CHECKOUT_DEPOSIT_PER_PERSON);
+    expect(quote.balanceDue).toBe(500_000 - 30_000 - CHECKOUT_DEPOSIT_PER_PERSON);
   });
 
-  it("multiplies quote by travelerCount", () => {
+  it("multiplies quote and deposit by travelerCount", () => {
     const quote = buildCheckoutQuote({
       selectedOptions: {},
       departure: { label: "7/1", inquiryValue: "7/1", price: 500_000 },
@@ -27,6 +29,7 @@ describe("buildCheckoutQuote", () => {
     });
     expect(quote.quoteTotal).toBe(2_000_000);
     expect(quote.travelerCount).toBe(4);
+    expect(quote.depositAmount).toBe(CHECKOUT_DEPOSIT_PER_PERSON * 4);
   });
 
   it("applies WELCOME pax discount for first booking", () => {
@@ -40,7 +43,8 @@ describe("buildCheckoutQuote", () => {
     expect(quote.paxDiscountAmount).toBe(200_000);
     expect(quote.discountTier).toBe("WELCOME");
     expect(quote.discountLabel).toContain("웰컴");
-    expect(quote.balanceDue).toBe(2_000_000 - 200_000 - CHECKOUT_DEPOSIT_AMOUNT);
+    expect(quote.depositAmount).toBe(400_000);
+    expect(quote.balanceDue).toBe(2_000_000 - 200_000 - 400_000);
   });
 
   it("applies RETURNING pax discount when has previous booking", () => {
@@ -79,7 +83,8 @@ describe("buildCheckoutQuote", () => {
     });
     expect(quote.paxDiscountAmount).toBe(100_000);
     expect(quote.pointsApplied).toBe(20_000);
-    expect(quote.balanceDue).toBe(1_000_000 - 100_000 - 20_000 - CHECKOUT_DEPOSIT_AMOUNT);
+    expect(quote.depositAmount).toBe(200_000);
+    expect(quote.balanceDue).toBe(1_000_000 - 100_000 - 20_000 - 200_000);
     expect(validateCheckoutQuote(quote).ok).toBe(true);
   });
 
@@ -115,5 +120,37 @@ describe("buildCheckoutQuote", () => {
     });
     const validation = validateCheckoutQuote(quote);
     expect(validation.ok).toBe(false);
+  });
+});
+
+describe("resolveCheckoutPayAmounts", () => {
+  it("deposit: payAmount is deposit total, remaining is balance", () => {
+    const amounts = resolveCheckoutPayAmounts({
+      paymentType: "deposit",
+      totalTripPrice: 1_000_000,
+      depositTotal: 200_000,
+    });
+    expect(amounts.payAmount).toBe(200_000);
+    expect(amounts.remainingBalance).toBe(800_000);
+  });
+
+  it("full: payAmount is trip total, remaining is 0", () => {
+    const amounts = resolveCheckoutPayAmounts({
+      paymentType: "full",
+      totalTripPrice: 1_000_000,
+      depositTotal: 200_000,
+    });
+    expect(amounts.payAmount).toBe(1_000_000);
+    expect(amounts.remainingBalance).toBe(0);
+  });
+
+  it("caps deposit when higher than trip total", () => {
+    const amounts = resolveCheckoutPayAmounts({
+      paymentType: "deposit",
+      totalTripPrice: 80_000,
+      depositTotal: 100_000,
+    });
+    expect(amounts.payAmount).toBe(80_000);
+    expect(amounts.remainingBalance).toBe(0);
   });
 });

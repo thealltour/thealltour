@@ -6,11 +6,17 @@ import {
   readEmbeddingProviderKind,
 } from "@/lib/marketing/semantic/embeddingProvider";
 import {
+  SemanticFilterUnsupportedError,
   SemanticNotConfiguredError,
+  SemanticRepositoryError,
   SemanticTimeoutError,
   SemanticUnsupportedError,
 } from "@/lib/marketing/semantic/errors";
-import { createVectorMemoryRepository } from "@/lib/marketing/semantic/vectorMemoryRepository";
+import { parseSemanticRetrievalRequest } from "@/lib/marketing/semantic/validateSemanticRequest";
+import {
+  createVectorMemoryRepository,
+  isVectorMemoryRepositoryConfigured,
+} from "@/lib/marketing/semantic/vectorMemoryRepository";
 import type {
   EmbeddingProvider,
   SemanticContextStatus,
@@ -18,7 +24,6 @@ import type {
   SemanticRetrievalResult,
   VectorMemoryRepository,
 } from "@/lib/marketing/semantic/types";
-import { parseSemanticRetrievalRequest } from "@/lib/marketing/semantic/validateSemanticRequest";
 
 export type SemanticRetrieveDeps = {
   provider?: EmbeddingProvider | null;
@@ -38,13 +43,38 @@ function toSemanticFailure(error: unknown): SemanticRetrievalResult {
   if (error instanceof SemanticNotConfiguredError) {
     return skipped("provider_not_configured");
   }
+  if (error instanceof SemanticFilterUnsupportedError) {
+    return skipped("filter_unsupported");
+  }
   if (error instanceof SemanticUnsupportedError) {
     return skipped("provider_unsupported");
   }
   if (error instanceof SemanticTimeoutError) {
     return failed("provider_error");
   }
+  if (error instanceof SemanticRepositoryError) {
+    return failed("repository_error");
+  }
   return failed("provider_error");
+}
+
+function assertSupportedFilters(request: {
+  memoryTypes?: string[];
+  sourceTypes?: string[];
+  productId?: string;
+  campaignId?: string;
+}): void {
+  if (request.productId || request.campaignId) {
+    throw new SemanticFilterUnsupportedError(
+      "productId/campaignId semantic filters are unsupported until ai_memory source conventions exist",
+    );
+  }
+  if ((request.memoryTypes?.length ?? 0) > 1) {
+    throw new SemanticFilterUnsupportedError("memoryTypes does not support multiple values in v1");
+  }
+  if ((request.sourceTypes?.length ?? 0) > 1) {
+    throw new SemanticFilterUnsupportedError("sourceTypes does not support multiple values in v1");
+  }
 }
 
 export async function semanticRetrieve(
@@ -62,6 +92,12 @@ export async function semanticRetrieve(
     return skipped("provider_unsupported");
   }
 
+  try {
+    assertSupportedFilters(parsed);
+  } catch (error) {
+    return toSemanticFailure(error);
+  }
+
   let provider: EmbeddingProvider | null;
   try {
     provider = deps.provider === undefined ? createEmbeddingProvider(env) : deps.provider;
@@ -73,7 +109,14 @@ export async function semanticRetrieve(
     return skipped("provider_not_configured");
   }
 
-  const repository = deps.repository === undefined ? createVectorMemoryRepository() : deps.repository;
+  let repository: VectorMemoryRepository | null;
+  try {
+    repository =
+      deps.repository === undefined ? createVectorMemoryRepository({ env }) : deps.repository;
+  } catch (error) {
+    return toSemanticFailure(error);
+  }
+
   if (!repository) {
     return skipped("repository_not_configured");
   }
@@ -86,8 +129,7 @@ export async function semanticRetrieve(
       minScore: parsed.minScore,
       memoryTypes: parsed.memoryTypes,
       sourceTypes: parsed.sourceTypes,
-      productId: parsed.productId,
-      campaignId: parsed.campaignId,
+      embeddingModel: provider.model,
     });
     return {
       status: "ok",
@@ -115,6 +157,9 @@ export function resolveSemanticContextStatus(
     }
     if (parsed.kind === "unsupported") {
       return { status: "skipped", reason: "provider_unsupported" };
+    }
+    if (!isVectorMemoryRepositoryConfigured(env)) {
+      return { status: "skipped", reason: "repository_not_configured" };
     }
     return { status: "skipped", reason: "repository_not_configured" };
   } catch (error) {

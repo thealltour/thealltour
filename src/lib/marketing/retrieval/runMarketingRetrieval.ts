@@ -7,8 +7,13 @@ import {
   withComposePeriodDefaults,
 } from "@/lib/marketing/retrieval/validation";
 import { selectScoredContext } from "@/lib/marketing/scoring/selectScoredContext";
-import { resolveSemanticContextStatus } from "@/lib/marketing/semantic/semanticRetrieve";
-import type { SemanticContextStatus } from "@/lib/marketing/semantic/types";
+import { MAX_SEMANTIC_LIMIT } from "@/lib/marketing/semantic/validateSemanticRequest";
+import {
+  semanticRetrieve,
+  semanticStatusFromResult,
+  type SemanticRetrieveDeps,
+} from "@/lib/marketing/semantic/semanticRetrieve";
+import type { SemanticContextStatus, SemanticRetrievalRequest } from "@/lib/marketing/semantic/types";
 
 export async function runMarketingRetrieval(
   request: MarketingRetrievalRequest | MarketingContextRequest,
@@ -18,6 +23,9 @@ export async function runMarketingRetrieval(
     contextLimit?: number;
     now?: Date;
     env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+    semanticQuery?: string;
+    semanticRequest?: SemanticRetrievalRequest;
+    semanticDeps?: SemanticRetrieveDeps;
   },
 ): Promise<MarketingContextPackage> {
   const prepared = options?.injectLookbackDefault === false ? request : withComposePeriodDefaults(request);
@@ -36,7 +44,7 @@ export async function runMarketingRetrieval(
     },
     { contextLimit: options?.contextLimit, now: options?.now },
   );
-  const semantic = resolveSemanticStatusSafely(options?.env);
+  const semantic = await resolveSemanticStatusSafely(parsed, options);
   return assembleFromRetrieval(
     {
       purpose: parsed.purpose,
@@ -59,11 +67,27 @@ export async function runMarketingRetrieval(
   );
 }
 
-function resolveSemanticStatusSafely(
-  env?: NodeJS.ProcessEnv | Record<string, string | undefined>,
-): SemanticContextStatus {
+async function resolveSemanticStatusSafely(
+  parsed: { purpose: string; limit: number; memoryType?: string; sourceType?: string },
+  options?: {
+    env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+    semanticQuery?: string;
+    semanticRequest?: SemanticRetrievalRequest;
+    semanticDeps?: SemanticRetrieveDeps;
+  },
+): Promise<SemanticContextStatus> {
   try {
-    return resolveSemanticContextStatus(env);
+    const request = options?.semanticRequest ?? {
+      query: options?.semanticQuery ?? parsed.purpose,
+      limit: Math.min(parsed.limit, MAX_SEMANTIC_LIMIT),
+      memoryTypes: parsed.memoryType ? [parsed.memoryType] : undefined,
+      sourceTypes: parsed.sourceType ? [parsed.sourceType] : undefined,
+    };
+    const result = await semanticRetrieve(request, {
+      env: options?.env,
+      ...options?.semanticDeps,
+    });
+    return semanticStatusFromResult(result);
   } catch {
     return { status: "failed", reason: "provider_error" };
   }

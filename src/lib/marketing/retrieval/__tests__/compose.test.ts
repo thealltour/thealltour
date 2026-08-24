@@ -238,4 +238,57 @@ describe("composeMarketingContext via retrieval plan", () => {
     expect(pkg.semantic?.status).toBe("skipped");
     expect(pkg.semantic?.reason).toBe("provider_not_configured");
   });
+
+  it("keeps structured context when semantic search succeeds", async () => {
+    const adapters = mockAdapters();
+    const pkg = await runMarketingRetrieval({ purpose: "create_content", productId: PRODUCT_ID }, adapters, {
+      env: { EMBEDDING_PROVIDER: "http" },
+      semanticDeps: {
+        provider: {
+          model: "BAAI/bge-m3",
+          embed: async () => [0.1, 0.2, 0.3, 0.4],
+          embedMany: async () => [],
+        },
+        repository: {
+          searchSimilar: async () => [
+            {
+              memoryId: "mem-1",
+              score: 0.8,
+              memory: {
+                id: "mem-1",
+                memoryType: "brand_knowledge",
+                title: null,
+                content: "효도여행",
+                sourceType: null,
+                sourceId: null,
+              },
+              source: { sourceType: "memory", sourceTable: "ai_memory", sourceId: "mem-1" },
+            },
+          ],
+        },
+      },
+    });
+    expect(pkg.context.customerInsights).not.toBeUndefined();
+    expect(pkg.semantic?.status).toBe("ok");
+  });
+
+  it("keeps structured context when semantic search fails", async () => {
+    const adapters = mockAdapters();
+    const pkg = await runMarketingRetrieval({ purpose: "create_content", productId: PRODUCT_ID }, adapters, {
+      env: { EMBEDDING_PROVIDER: "http" },
+      semanticDeps: {
+        provider: {
+          model: "BAAI/bge-m3",
+          embed: async () => {
+            throw new Error("Mini PC offline");
+          },
+          embedMany: async () => [],
+        },
+        repository: { searchSimilar: async () => [] },
+      },
+    });
+    expect(pkg.context.customerInsights).not.toBeUndefined();
+    expect(pkg.semantic?.status).toBe("failed");
+    expect(pkg.semantic?.reason).toBe("provider_error");
+  });
 });

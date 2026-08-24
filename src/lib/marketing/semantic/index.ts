@@ -10,8 +10,10 @@ export type {
   VectorSimilaritySearchParams,
 } from "@/lib/marketing/semantic/types";
 export {
+  SemanticFilterUnsupportedError,
   SemanticNotConfiguredError,
   SemanticProviderError,
+  SemanticRepositoryError,
   SemanticTimeoutError,
   SemanticUnsupportedError,
 } from "@/lib/marketing/semantic/errors";
@@ -40,7 +42,14 @@ export type {
   EmbeddingProviderKind,
   ParsedEmbeddingConfig,
 } from "@/lib/marketing/semantic/embeddingProvider";
-export { createVectorMemoryRepository } from "@/lib/marketing/semantic/vectorMemoryRepository";
+export { createVectorMemoryRepository, isVectorMemoryRepositoryConfigured } from "@/lib/marketing/semantic/vectorMemoryRepository";
+export {
+  MATCH_AI_MEMORY_RPC,
+  SupabaseVectorMemoryRepository,
+  readVectorMemoryRepositoryConfig,
+} from "@/lib/marketing/semantic/supabaseVectorMemoryRepository";
+export type { VectorMemoryRpcClient } from "@/lib/marketing/semantic/supabaseVectorMemoryRepository";
+export { assertQueryEmbedding, serializePgVector } from "@/lib/marketing/semantic/pgVector";
 export {
   DEFAULT_SEMANTIC_LIMIT,
   MAX_SEMANTIC_LIMIT,
@@ -51,3 +60,4 @@ export {
   semanticStatusFromResult,
   resolveSemanticContextStatus,
 } from "@/lib/marketing/semantic/semanticRetrieve";
+export type { SemanticRetrieveDeps } from "@/lib/marketing/semantic/semanticRetrieve";

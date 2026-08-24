@@ -25,6 +25,8 @@ export type SemanticSkipReason =
   | "provider_not_configured"
   | "provider_unsupported"
   | "repository_not_configured"
+  | "repository_error"
+  | "filter_unsupported"
   | "provider_error";
 
 export type SemanticMemoryMatch = {
@@ -51,6 +53,8 @@ export type VectorSimilaritySearchParams = {
   minScore?: number;
   memoryTypes?: string[];
   sourceTypes?: string[];
+  sourceId?: string;
+  embeddingModel?: string;
   productId?: string;
   campaignId?: string;
 };

@@ -33,3 +33,21 @@ export class SemanticProviderError extends Error {
     this.name = "SemanticProviderError";
   }
 }
+
+export class SemanticRepositoryError extends Error {
+  readonly code = "repository_error" as const;
+
+  constructor(message = "Semantic memory repository request failed") {
+    super(message);
+    this.name = "SemanticRepositoryError";
+  }
+}
+
+export class SemanticFilterUnsupportedError extends Error {
+  readonly code = "filter_unsupported" as const;
+
+  constructor(message = "Semantic filter is not supported by match_ai_memory") {
+    super(message);
+    this.name = "SemanticFilterUnsupportedError";
+  }
+}

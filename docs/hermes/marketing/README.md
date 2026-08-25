@@ -59,13 +59,11 @@ Performance Analyst:
 
 > 최근 30일 이 상품의 확인 가능한 성과만 정리해.
 
-## Desktop Agent 생성 순서 (아직 실행하지 말 것)
+## Desktop / Profile 배포
 
-1. thealltour 내부 API가 `127.0.0.1`에서 떠 있는지 확인
-2. MCP `thealltour-marketing` tools/list에 publish tool이 없는지 확인
-3. Bots → New Agent → `docs/hermes/marketing/agents/*.md`의 Name/Title/Description/SOUL
-4. Advanced에서 MCP 서버는 `thealltour-marketing`만, skill matrix대로 tool 범위를 prompt에 명시
-5. Cron은 [cron-plan.md](./cron-plan.md) 체크리스트를 통과하기 전에는 만들지 않음
+Pi에 실제 profile이 있다. 생성 방식과 Bot 목록 조건: [desktop-deployment.md](./desktop-deployment.md).
+
+Cron은 [cron-plan.md](./cron-plan.md) 체크리스트 전에는 만들지 않음.
 
 ## Human Approval
 

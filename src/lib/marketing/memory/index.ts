@@ -54,6 +54,20 @@ export {
   CUSTOMER_INSIGHT_MEMORY_TYPE,
   CUSTOMER_INSIGHT_SOURCE_NAME,
   CUSTOMER_INSIGHT_SOURCE_TYPE,
+  PERFORMANCE_MEMORY_CONFIDENCE_HIGH,
+  PERFORMANCE_MEMORY_CONFIDENCE_LOW,
+  PERFORMANCE_MEMORY_CONFIDENCE_MID,
+  PERFORMANCE_MEMORY_DEFAULT_LIMIT,
+  PERFORMANCE_MEMORY_DEFAULT_LOOKBACK_DAYS,
+  PERFORMANCE_MEMORY_DEFAULT_MIN_EVENT_COUNT,
+  PERFORMANCE_MEMORY_EXPIRES_DAYS,
+  PERFORMANCE_MEMORY_IMPORTANCE_HIGH,
+  PERFORMANCE_MEMORY_IMPORTANCE_LOW,
+  PERFORMANCE_MEMORY_IMPORTANCE_MID,
+  PERFORMANCE_MEMORY_MAX_LIMIT,
+  PERFORMANCE_MEMORY_SOURCE_NAME,
+  PERFORMANCE_MEMORY_SOURCE_TYPE,
+  PERFORMANCE_MEMORY_TYPE,
 } from "@/lib/marketing/memory/constants";
 export { MemoryIngestionError, MemoryValidationError } from "@/lib/marketing/memory/errors";
 export {
@@ -119,5 +133,28 @@ export {
 } from "@/lib/marketing/memory/customerInsightMemoryContent";
 export { parseCustomerInsightMemoryCliArgs } from "@/lib/marketing/memory/customerInsightMemoryCli";
 export type { CustomerInsightMemoryCliArgs } from "@/lib/marketing/memory/customerInsightMemoryCli";
+export {
+  createPerformanceMemorySource,
+  parsePerformanceMemoryLoadParams,
+  PerformanceMemorySource,
+} from "@/lib/marketing/memory/sources/performanceMemorySource";
+export type {
+  ParsedPerformanceMemoryLoadParams,
+  PerformanceMemoryBundle,
+  PerformanceMemoryLoadParams,
+  PerformanceMemorySourceDeps,
+} from "@/lib/marketing/memory/sources/performanceMemorySource";
+export {
+  buildPerformanceMemoryContent,
+  mapPerformanceToMemoryDocument,
+  performanceChannelKey,
+  performanceMemoryConfidence,
+  performanceMemoryExpiresAt,
+  performanceMemoryImportance,
+  performanceMemorySourceId,
+  performanceWindowKey,
+} from "@/lib/marketing/memory/performanceMemoryContent";
+export { parsePerformanceMemoryCliArgs } from "@/lib/marketing/memory/performanceMemoryCli";
+export type { PerformanceMemoryCliArgs } from "@/lib/marketing/memory/performanceMemoryCli";
 export { parseProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";
 export type { ProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";

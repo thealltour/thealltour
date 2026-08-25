@@ -134,16 +134,68 @@ export async function fetchAiContentIdsByProduct(
   limit: number,
   filters?: { campaignId?: string; agendaId?: string },
 ): Promise<string[]> {
+  const links = await fetchAiContentLinksByProductIds([productId], limit, filters);
+  return links.map((link) => link.id);
+}
+
+export type AiContentProductLink = {
+  id: string;
+  productId: string;
+  title: string | null;
+};
+
+export async function fetchAiContentLinksByProductIds(
+  productIds: string[],
+  limit: number,
+  filters?: { campaignId?: string; agendaId?: string },
+): Promise<AiContentProductLink[]> {
+  if (productIds.length === 0) return [];
   let query = supabaseAdmin
     .from("ai_contents")
-    .select("id")
-    .eq("primary_product_id", productId)
+    .select("id, primary_product_id, title")
+    .in("primary_product_id", productIds)
     .limit(limit);
   if (filters?.campaignId) query = query.eq("campaign_id", filters.campaignId);
   if (filters?.agendaId) query = query.eq("agenda_id", filters.agendaId);
   const { data, error } = await query;
   if (error) throw new Error(`ai_contents id lookup failed: ${error.message}`);
-  return (data ?? [])
-    .map((row) => (typeof row.id === "string" ? row.id : null))
-    .filter((id): id is string => Boolean(id));
+  return (data ?? []).flatMap((row) => {
+    const id = typeof row.id === "string" ? row.id : null;
+    const productId = typeof row.primary_product_id === "string" ? row.primary_product_id : null;
+    if (!id || !productId) return [];
+    return [
+      {
+        id,
+        productId,
+        title: typeof row.title === "string" && row.title.trim() !== "" ? row.title.trim() : null,
+      },
+    ];
+  });
+}
+
+export async function fetchProductIdOccurrences(input: {
+  table: "inquiries" | "travel_bookings" | "thread_marketing_posts" | "analytics_events";
+  dateColumn: "created_at" | "published_at" | "occurred_at";
+  productIds: string[];
+  periodStart: string;
+  periodEnd: string;
+  limit?: number;
+}): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (input.productIds.length === 0) return counts;
+  const { data, error } = await supabaseAdmin
+    .from(input.table)
+    .select("product_id")
+    .in("product_id", input.productIds)
+    .gte(input.dateColumn, input.periodStart)
+    .lte(input.dateColumn, input.periodEnd)
+    .limit(input.limit ?? 2000);
+  if (error) throw new Error(`${input.table} lookup failed: ${error.message}`);
+  const allowed = new Set(input.productIds);
+  for (const row of data ?? []) {
+    const productId = typeof row.product_id === "string" ? row.product_id : null;
+    if (!productId || !allowed.has(productId)) continue;
+    counts.set(productId, (counts.get(productId) ?? 0) + 1);
+  }
+  return counts;
 }

@@ -2,8 +2,11 @@
  * Memory ingestion contract.
  *
  * Do not put phone, email, passport, address, password, or token values in
- * MemoryDocument.content. Future source adapters (inquiries, etc.) must store
- * aggregate insights only — never raw customer PII.
+ * MemoryDocument.content. Inquiry/review/performance sources store aggregate
+ * insights only — never raw customer PII.
+ *
+ * ProductMemorySource / ReviewMemorySource / CustomerInsightMemorySource /
+ * PerformanceMemorySource are implemented. Content sources are not in this STEP.
  *
  * `metadata` is runtime-only. public.ai_memory has no metadata column.
  */
@@ -131,6 +134,7 @@ export type DedupeDecision =
  * ProductMemorySource is in sources/productMemorySource.ts.
  * ReviewMemorySource is in sources/reviewMemorySource.ts.
  * CustomerInsightMemorySource is in sources/customerInsightMemorySource.ts.
+ * PerformanceMemorySource is in sources/performanceMemorySource.ts.
  */
 export interface MemoryIngestionSource<P = unknown> {
   readonly name: string;

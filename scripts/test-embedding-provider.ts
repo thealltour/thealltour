@@ -12,6 +12,7 @@
  */
 
 import { createRequire } from "node:module";
+import { loadLocalEnv } from "./loadLocalEnv";
 
 const require = createRequire(import.meta.url);
 const Module = require("module") as {
@@ -28,6 +29,8 @@ Module._resolveFilename = function resolveFilename(
   if (request === "server-only") return serverOnlyStub;
   return originalResolve(request, parent, isMain, options);
 };
+
+loadLocalEnv();
 
 async function main() {
   const { checkEmbeddingHealth, createEmbeddingProvider, HttpEmbeddingProvider, parseEmbeddingConfig } =

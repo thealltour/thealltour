@@ -2,16 +2,15 @@
  * Mini PC embedding + Supabase match_ai_memory smoke test.
  *
  * 실행:
- *   EMBEDDING_PROVIDER=mini_pc \
- *   EMBEDDING_BASE_URL=http://100.70.23.4:8100 \
- *   EMBEDDING_MODEL=BAAI/bge-m3 \
- *   EMBEDDING_DIMENSION=1024 \
  *   npx tsx scripts/test-semantic-retrieval.ts
+ *   npx tsx scripts/test-semantic-retrieval.ts "검색어"
  *
- * INSERT/UPDATE/DELETE 없음. vector 전체와 memory 원문은 출력하지 않습니다.
+ * .env / .env.local을 로드합니다. INSERT/UPDATE/DELETE 없음.
+ * vector 전체와 memory 원문은 출력하지 않습니다.
  */
 
 import { createRequire } from "node:module";
+import { loadLocalEnv } from "./loadLocalEnv";
 
 const require = createRequire(import.meta.url);
 const Module = require("module") as {
@@ -29,6 +28,8 @@ Module._resolveFilename = function resolveFilename(
   return originalResolve(request, parent, isMain, options);
 };
 
+loadLocalEnv();
+
 async function main() {
   const { checkEmbeddingHealth, parseEmbeddingConfig } = await import(
     "../src/lib/marketing/semantic/embeddingProvider"
@@ -39,8 +40,8 @@ async function main() {
   );
 
   const config = parseEmbeddingConfig(process.env);
-  if (config.kind === "none" || config.kind === "unsupported") {
-    console.error("EMBEDDING_PROVIDER must be mini_pc for this smoke test.");
+  if (config.kind !== "mini_pc" && config.kind !== "http") {
+    console.error("EMBEDDING_PROVIDER must be mini_pc (or http) in .env.local for this smoke test.");
     process.exit(1);
   }
 
@@ -54,13 +55,23 @@ async function main() {
   console.log("health model:", health.model);
   console.log("health dimension:", health.dimension);
 
-  const query = "부모님과 함께 가기 좋은 다낭 효도여행";
+  const query = process.argv.slice(2).join(" ").trim() || "부모님과 함께 가기 좋은 다낭 효도여행";
   const result = await semanticRetrieve({ query, limit: 5, minScore: 0 });
   console.log("embed query:", query);
   console.log("semantic status:", result.status);
   if (result.reason) console.log("semantic reason:", result.reason);
   console.log("semantic model:", result.model ?? config.model);
   console.log("match count:", result.matches.length);
+  for (const match of result.matches) {
+    console.log(
+      [
+        `score=${match.score.toFixed(3)}`,
+        `type=${match.memory.memoryType}`,
+        `source=${match.memory.sourceType ?? "-"}:${match.memory.sourceId ?? "-"}`,
+        `title=${match.memory.title ?? "(none)"}`,
+      ].join(" "),
+    );
+  }
   if (result.status === "ok") {
     console.log("zero matches is success:", result.matches.length === 0);
   }

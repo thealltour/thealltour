@@ -130,6 +130,7 @@ export type DedupeDecision =
  * Future source adapters implement this contract.
  * ProductMemorySource is in sources/productMemorySource.ts.
  * ReviewMemorySource is in sources/reviewMemorySource.ts.
+ * CustomerInsightMemorySource is in sources/customerInsightMemorySource.ts.
  */
 export interface MemoryIngestionSource<P = unknown> {
   readonly name: string;

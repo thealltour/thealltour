@@ -6,7 +6,8 @@
  *
  * ProductMemorySource is implemented in productMemorySource.ts.
  * ReviewMemorySource is implemented in reviewMemorySource.ts.
- * Inquiry/Performance/Content sources are not implemented in this STEP.
+ * CustomerInsightMemorySource is implemented in customerInsightMemorySource.ts.
+ * Performance/Content sources are not implemented in this STEP.
  */
 
 export type { MemoryDocument, MemoryIngestionSource } from "@/lib/marketing/memory/types";

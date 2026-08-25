@@ -19,8 +19,70 @@ export type InquiryInsightRow = {
   created_at?: unknown;
 };
 
+/** PII-safe projection: no name, phone, email, address, passport, member_id, IP, token. */
+export const INQUIRY_INSIGHT_COLUMN_LIST = [
+  "content",
+  "product_id",
+  "product_title",
+  "acquisition_channel",
+  "acquisition_source_label",
+  "acquisition_medium",
+  "first_touch",
+  "consultation_status",
+  "booking_status",
+  "created_at",
+] as const;
+
 const MAX_TOP_ITEMS = 5;
 const MAX_QUESTION_LENGTH = 180;
+
+export type CountedLabel = {
+  label: string;
+  count: number;
+};
+
+export function normalizeInquiryQuestion(text: string, maxLength = MAX_QUESTION_LENGTH): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}…` : normalized;
+}
+
+export function countInquiryQuestions(
+  inquiries: InquiryInsightContext[],
+  options?: { limit?: number; maxLength?: number; normalize?: (text: string) => string },
+): CountedLabel[] {
+  const maxLength = options?.maxLength ?? MAX_QUESTION_LENGTH;
+  const limit = options?.limit ?? MAX_TOP_ITEMS;
+  const normalize = options?.normalize ?? ((text: string) => normalizeInquiryQuestion(text, maxLength));
+  const counts = new Map<string, number>();
+  for (const inquiry of inquiries) {
+    const question = normalize(inquiry.content);
+    if (!question) continue;
+    counts.set(question, (counts.get(question) ?? 0) + 1);
+  }
+  return topCounted(counts, limit);
+}
+
+export function countInquiryLabels(
+  inquiries: InquiryInsightContext[],
+  pick: (inquiry: InquiryInsightContext) => string | null,
+  limit = 8,
+): CountedLabel[] {
+  const counts = new Map<string, number>();
+  for (const inquiry of inquiries) {
+    const label = pick(inquiry)?.trim();
+    if (!label) continue;
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return topCounted(counts, limit);
+}
+
+function topCounted(counts: Map<string, number>, limit: number): CountedLabel[] {
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
+    .slice(0, limit)
+    .map(([label, count]) => ({ label, count }));
+}
 
 export function mapInquiryRowToInsight(row: InquiryInsightRow): InquiryInsightContext {
   return {
@@ -52,13 +114,9 @@ export function aggregateCustomerInsights(input: {
     other: 0,
   };
 
-  const questionCounts = new Map<string, number>();
   const concernCounts = new Map<string, number>();
 
   for (const inquiry of input.inquiries) {
-    const question = truncate(inquiry.content);
-    if (question) questionCounts.set(question, (questionCounts.get(question) ?? 0) + 1);
-
     const status = (inquiry.bookingStatus ?? "").toLowerCase();
     if (status === "none" || status === "") conversionSummary.none += 1;
     else if (status === "reserved") conversionSummary.reserved += 1;
@@ -67,7 +125,7 @@ export function aggregateCustomerInsights(input: {
     else conversionSummary.other += 1;
 
     if (status === "canceled") {
-      const concern = question || "canceled_inquiry";
+      const concern = normalizeInquiryQuestion(inquiry.content) || "canceled_inquiry";
       concernCounts.set(concern, (concernCounts.get(concern) ?? 0) + 1);
     }
   }
@@ -77,24 +135,9 @@ export function aggregateCustomerInsights(input: {
     productId: input.productId,
     period: input.period,
     inquiryCount: input.inquiries.length,
-    topQuestions: topKeys(questionCounts, MAX_TOP_ITEMS),
-    topConcerns: topKeys(concernCounts, MAX_TOP_ITEMS),
+    topQuestions: countInquiryQuestions(input.inquiries).map((item) => item.label),
+    topConcerns: topCounted(concernCounts, MAX_TOP_ITEMS).map((item) => item.label),
     conversionSummary,
     reviewSummary: input.reviewSummary ?? null,
   };
-}
-
-function truncate(text: string): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (!normalized) return "";
-  return normalized.length > MAX_QUESTION_LENGTH
-    ? `${normalized.slice(0, MAX_QUESTION_LENGTH)}…`
-    : normalized;
-}
-
-function topKeys(counts: Map<string, number>, limit: number): string[] {
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([key]) => key);
 }

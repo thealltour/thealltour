@@ -40,6 +40,20 @@ export {
   REVIEW_MEMORY_SOURCE_NAME,
   REVIEW_MEMORY_SOURCE_TYPE,
   REVIEW_MEMORY_TYPE,
+  CUSTOMER_INSIGHT_CONFIDENCE_HIGH,
+  CUSTOMER_INSIGHT_CONFIDENCE_LOW,
+  CUSTOMER_INSIGHT_CONFIDENCE_MID,
+  CUSTOMER_INSIGHT_DEFAULT_LIMIT,
+  CUSTOMER_INSIGHT_DEFAULT_LOOKBACK_DAYS,
+  CUSTOMER_INSIGHT_DEFAULT_MIN_INQUIRY_COUNT,
+  CUSTOMER_INSIGHT_EXPIRES_DAYS,
+  CUSTOMER_INSIGHT_IMPORTANCE_HIGH,
+  CUSTOMER_INSIGHT_IMPORTANCE_LOW,
+  CUSTOMER_INSIGHT_IMPORTANCE_MID,
+  CUSTOMER_INSIGHT_MAX_LIMIT,
+  CUSTOMER_INSIGHT_MEMORY_TYPE,
+  CUSTOMER_INSIGHT_SOURCE_NAME,
+  CUSTOMER_INSIGHT_SOURCE_TYPE,
 } from "@/lib/marketing/memory/constants";
 export { MemoryIngestionError, MemoryValidationError } from "@/lib/marketing/memory/errors";
 export {
@@ -83,5 +97,27 @@ export {
   reviewMemoryConfidence,
   reviewMemoryImportance,
 } from "@/lib/marketing/memory/reviewMemoryContent";
+export {
+  createCustomerInsightMemorySource,
+  parseCustomerInsightMemoryLoadParams,
+  CustomerInsightMemorySource,
+} from "@/lib/marketing/memory/sources/customerInsightMemorySource";
+export type {
+  CustomerInsightMemoryBundle,
+  CustomerInsightMemoryLoadParams,
+  CustomerInsightMemorySourceDeps,
+  ParsedCustomerInsightMemoryLoadParams,
+} from "@/lib/marketing/memory/sources/customerInsightMemorySource";
+export {
+  buildCustomerInsightMemoryContent,
+  customerInsightConfidence,
+  customerInsightExpiresAt,
+  customerInsightImportance,
+  customerInsightSourceId,
+  customerInsightWindowKey,
+  mapCustomerInsightToMemoryDocument,
+} from "@/lib/marketing/memory/customerInsightMemoryContent";
+export { parseCustomerInsightMemoryCliArgs } from "@/lib/marketing/memory/customerInsightMemoryCli";
+export type { CustomerInsightMemoryCliArgs } from "@/lib/marketing/memory/customerInsightMemoryCli";
 export { parseProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";
 export type { ProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";

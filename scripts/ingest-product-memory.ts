@@ -4,14 +4,16 @@
  * Default is dry-run (no DB write, no embedding).
  *
  * 실행:
- *   npx tsx scripts/ingest-product-memory.ts --product-id <uuid>
- *   npx tsx scripts/ingest-product-memory.ts --product-id <uuid> --preview
- *   npx tsx scripts/ingest-product-memory.ts --product-id <uuid> --apply
+ *   npx tsx scripts/ingest-product-memory.ts --product-id 실제-uuid
+ *   npx tsx scripts/ingest-product-memory.ts --product-id 실제-uuid --preview
+ *   npx tsx scripts/ingest-product-memory.ts --product-id 실제-uuid --apply
  *
- * --apply 없이 production ai_memory에 INSERT/UPDATE 하지 않습니다.
+ * --apply 없이, 또는 --preview/--dry-run이 있으면 production ai_memory에 INSERT/UPDATE 하지 않습니다.
+ * npx tsx는 Next.js env를 자동 로드하지 않으므로 .env / .env.local을 읽습니다.
  */
 
 import { createRequire } from "node:module";
+import { loadLocalEnv } from "./loadLocalEnv";
 
 const require = createRequire(import.meta.url);
 const Module = require("module") as {
@@ -29,7 +31,13 @@ Module._resolveFilename = function resolveFilename(
   return originalResolve(request, parent, isMain, options);
 };
 
+loadLocalEnv();
+
 async function main() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) {
+    console.error("NEXT_PUBLIC_SUPABASE_URL is missing. Add it to .env.local (tsx does not load Next.js env).");
+    process.exit(1);
+  }
   const { parseProductMemoryCliArgs } = await import("../src/lib/marketing/memory/productMemoryCli");
   const { runProductMemoryIngestion } = await import("../src/lib/marketing/memory/productMemoryIngestionRun");
   const args = parseProductMemoryCliArgs(process.argv.slice(2));

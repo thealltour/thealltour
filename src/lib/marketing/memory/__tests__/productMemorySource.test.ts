@@ -354,7 +354,9 @@ describe("product memory ingestion", () => {
       now: NOW,
       logger: { info() {} },
     });
-    expect(result.inserted).toBe(1);
+    expect(result.inserted).toBe(0);
+    expect(result.plannedInsert).toBe(1);
+    expect(result.dryRun).toBe(true);
     expect(result.results[0]?.reason).toBe("dry_run");
     expect(fixtures.inserted).toHaveLength(0);
     expect(mockProvider.embedMany).not.toHaveBeenCalled();
@@ -369,14 +371,24 @@ describe("parseProductMemoryCliArgs", () => {
       productId: PRODUCT_ID,
       apply: false,
       preview: false,
+      dryRun: true,
     });
   });
 
-  it("enables apply unless dry-run is also present", () => {
-    expect(parseProductMemoryCliArgs(["--product-id", PRODUCT_ID, "--apply", "--preview"])).toMatchObject({
-      apply: true,
+  it("treats --preview and --dry-run as write-blocking even with --apply", () => {
+    expect(parseProductMemoryCliArgs(["--product-id", PRODUCT_ID, "--apply", "--preview"])).toEqual({
+      productId: PRODUCT_ID,
+      apply: false,
       preview: true,
+      dryRun: true,
     });
-    expect(parseProductMemoryCliArgs(["--product-id", PRODUCT_ID, "--apply", "--dry-run"]).apply).toBe(false);
+    expect(parseProductMemoryCliArgs(["--product-id", PRODUCT_ID, "--apply", "--dry-run"])).toMatchObject({
+      apply: false,
+      dryRun: true,
+    });
+    expect(parseProductMemoryCliArgs(["--product-id", PRODUCT_ID, "--apply"])).toMatchObject({
+      apply: true,
+      dryRun: false,
+    });
   });
 });

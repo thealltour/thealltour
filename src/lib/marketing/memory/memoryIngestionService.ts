@@ -15,7 +15,7 @@ import {
 import { decideMemoryWrite } from "@/lib/marketing/memory/dedupe";
 import { MemoryIngestionError, MemoryValidationError } from "@/lib/marketing/memory/errors";
 import { MemoryWriter } from "@/lib/marketing/memory/memoryWriter";
-import { createSupabaseMemoryStore } from "@/lib/marketing/memory/memoryStore";
+import { createDryRunMemoryStore, createSupabaseMemoryStore } from "@/lib/marketing/memory/memoryStore";
 import { hasStableSource, normalizeMemoryDocument } from "@/lib/marketing/memory/normalization";
 import type {
   ExistingMemoryRow,
@@ -39,13 +39,21 @@ const defaultLogger: MemoryIngestionLogger = {
   },
 };
 
-function tally(total: number, elapsedMs: number, results: MemoryWriteResult[]): MemoryIngestionResult {
+function tally(total: number, elapsedMs: number, results: MemoryWriteResult[], dryRun: boolean): MemoryIngestionResult {
+  const plannedInsert = results.filter((item) => item.status === "inserted").length;
+  const plannedUpdate = results.filter((item) => item.status === "updated").length;
+  const plannedSkip = results.filter((item) => item.status === "skipped").length;
+  const failed = results.filter((item) => item.status === "failed").length;
   return {
     total,
-    inserted: results.filter((item) => item.status === "inserted").length,
-    updated: results.filter((item) => item.status === "updated").length,
-    skipped: results.filter((item) => item.status === "skipped").length,
-    failed: results.filter((item) => item.status === "failed").length,
+    inserted: dryRun ? 0 : plannedInsert,
+    updated: dryRun ? 0 : plannedUpdate,
+    skipped: plannedSkip,
+    failed,
+    plannedInsert: dryRun ? plannedInsert : 0,
+    plannedUpdate: dryRun ? plannedUpdate : 0,
+    plannedSkip: dryRun ? plannedSkip : 0,
+    dryRun,
     elapsedMs,
     results,
   };
@@ -143,10 +151,11 @@ export async function ingestMemoryDocuments(
     throw new MemoryValidationError(`documents exceed MEMORY_INGEST_MAX_DOCUMENTS (${MEMORY_INGEST_MAX_DOCUMENTS})`);
   }
 
-  const store = resolveStore(options);
-  if (!store && !dryRun) {
+  const resolved = resolveStore(options);
+  if (!resolved && !dryRun) {
     throw new MemoryIngestionError("Supabase memory store is not configured");
   }
+  const store = dryRun && resolved ? createDryRunMemoryStore(resolved) : resolved;
   const writer = store ? new MemoryWriter(store) : null;
   const provider =
     options.provider !== undefined
@@ -328,7 +337,7 @@ export async function ingestMemoryDocuments(
     }
   }
 
-  const result = tally(options.documents.length, Date.now() - started, results);
+  const result = tally(options.documents.length, Date.now() - started, results, dryRun);
   logger.info("memory_ingestion", {
     source: options.sourceName ?? "documents",
     total: result.total,
@@ -336,8 +345,11 @@ export async function ingestMemoryDocuments(
     updated: result.updated,
     skipped: result.skipped,
     failed: result.failed,
+    plannedInsert: result.plannedInsert,
+    plannedUpdate: result.plannedUpdate,
+    plannedSkip: result.plannedSkip,
     elapsedMs: result.elapsedMs,
-    dryRun,
+    dryRun: result.dryRun,
   });
   return result;
 }

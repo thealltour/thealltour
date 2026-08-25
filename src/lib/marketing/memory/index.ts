@@ -42,7 +42,7 @@ export {
 export { memoryFingerprint } from "@/lib/marketing/memory/memoryFingerprint";
 export { decideMemoryWrite } from "@/lib/marketing/memory/dedupe";
 export { MemoryWriter } from "@/lib/marketing/memory/memoryWriter";
-export { createSupabaseMemoryStore } from "@/lib/marketing/memory/memoryStore";
+export { createDryRunMemoryStore, createSupabaseMemoryStore } from "@/lib/marketing/memory/memoryStore";
 export { ingestMemoryDocuments, ingestMemorySource } from "@/lib/marketing/memory/memoryIngestionService";
 export {
   createProductMemorySource,

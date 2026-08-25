@@ -65,3 +65,17 @@ export function createSupabaseMemoryStore(): MemoryStore {
     },
   };
 }
+
+/** Lookup only. insert/update throw so dry-run cannot write even if a caller forgets a guard. */
+export function createDryRunMemoryStore(inner: MemoryStore): MemoryStore {
+  return {
+    findBySource: (input) => inner.findBySource(input),
+    findSourcelessDuplicate: (input) => inner.findSourcelessDuplicate(input),
+    async insert() {
+      throw new MemoryIngestionError("dry-run forbids ai_memory insert");
+    },
+    async update() {
+      throw new MemoryIngestionError("dry-run forbids ai_memory update");
+    },
+  };
+}

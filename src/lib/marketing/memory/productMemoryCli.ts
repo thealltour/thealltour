@@ -3,8 +3,10 @@ import { MemoryValidationError } from "@/lib/marketing/memory/errors";
 
 export type ProductMemoryCliArgs = {
   productId: string;
+  /** True only when a real write is allowed. */
   apply: boolean;
   preview: boolean;
+  dryRun: boolean;
 };
 
 function readFlagValue(argv: string[], index: number, flag: string): { value: string; consumed: number } {
@@ -59,9 +61,11 @@ export function parseProductMemoryCliArgs(argv: string[]): ProductMemoryCliArgs 
     throw new MemoryValidationError("--product-id is required");
   }
 
+  const allowWrite = apply && !dryRun && !preview;
   return {
     productId,
-    apply: apply && !dryRun,
+    apply: allowWrite,
     preview,
+    dryRun: !allowWrite,
   };
 }

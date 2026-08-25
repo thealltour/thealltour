@@ -60,10 +60,16 @@ export type MemoryWriteResult = {
 
 export type MemoryIngestionResult = {
   total: number;
+  /** Actual ai_memory INSERT count. Always 0 when dryRun. */
   inserted: number;
+  /** Actual ai_memory UPDATE count. Always 0 when dryRun. */
   updated: number;
   skipped: number;
   failed: number;
+  plannedInsert: number;
+  plannedUpdate: number;
+  plannedSkip: number;
+  dryRun: boolean;
   elapsedMs: number;
   results: MemoryWriteResult[];
 };

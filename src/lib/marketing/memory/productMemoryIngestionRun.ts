@@ -1,12 +1,13 @@
 import "server-only";
 
 import { createEmbeddingProvider } from "@/lib/marketing/semantic/embeddingProvider";
+import type { EmbeddingProvider } from "@/lib/marketing/semantic/types";
 import { isVectorMemoryRepositoryConfigured } from "@/lib/marketing/semantic/vectorMemoryRepository";
 import { MemoryIngestionError } from "@/lib/marketing/memory/errors";
 import { ingestMemoryDocuments } from "@/lib/marketing/memory/memoryIngestionService";
 import { normalizeMemoryDocument } from "@/lib/marketing/memory/normalization";
 import { createProductMemorySource } from "@/lib/marketing/memory/sources/productMemorySource";
-import type { MemoryWriteResult } from "@/lib/marketing/memory/types";
+import type { MemoryDocument, MemoryStore, MemoryWriteResult } from "@/lib/marketing/memory/types";
 
 const PREVIEW_CHARS = 500;
 
@@ -14,9 +15,19 @@ export type RunProductMemoryIngestionInput = {
   productId: string;
   apply: boolean;
   preview?: boolean;
+  dryRun?: boolean;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
   log?: (line: string) => void;
+  store?: MemoryStore | null;
+  provider?: EmbeddingProvider | null;
+  loadDocuments?: () => Promise<MemoryDocument[]>;
 };
+
+function resolveDryRun(input: RunProductMemoryIngestionInput): boolean {
+  if (input.preview === true) return true;
+  if (input.dryRun === true) return true;
+  return input.apply !== true;
+}
 
 function assertApplyReady(env: NodeJS.ProcessEnv | Record<string, string | undefined>): void {
   if (!isVectorMemoryRepositoryConfigured(env)) {
@@ -43,11 +54,13 @@ export async function runProductMemoryIngestion(input: RunProductMemoryIngestion
 }> {
   const env = input.env ?? process.env;
   const log = input.log ?? console.log;
-  const dryRun = input.apply !== true;
+  const dryRun = resolveDryRun(input);
   if (!dryRun) assertApplyReady(env);
 
   const source = createProductMemorySource();
-  const documents = await source.load({ productId: input.productId, limit: 1 });
+  const documents = input.loadDocuments
+    ? await input.loadDocuments()
+    : await source.load({ productId: input.productId, limit: 1 });
   if (documents.length === 0) {
     throw new MemoryIngestionError("product not found");
   }
@@ -59,6 +72,8 @@ export async function runProductMemoryIngestion(input: RunProductMemoryIngestion
     sourceName: source.name,
     env,
     logger,
+    store: input.store,
+    provider: input.provider,
   });
 
   for (const document of documents) {
@@ -79,11 +94,20 @@ export async function runProductMemoryIngestion(input: RunProductMemoryIngestion
     }
   }
 
-  log(`inserted: ${result.inserted}`);
-  log(`updated: ${result.updated}`);
-  log(`skipped: ${result.skipped}`);
-  log(`failed: ${result.failed}`);
-  log(`dryRun: ${dryRun}`);
+  if (result.dryRun) {
+    log(`plannedInsert: ${result.plannedInsert}`);
+    log(`plannedUpdate: ${result.plannedUpdate}`);
+    log(`plannedSkip: ${result.plannedSkip}`);
+    log(`failed: ${result.failed}`);
+    log(`inserted: 0`);
+    log(`updated: 0`);
+  } else {
+    log(`inserted: ${result.inserted}`);
+    log(`updated: ${result.updated}`);
+    log(`skipped: ${result.skipped}`);
+    log(`failed: ${result.failed}`);
+  }
+  log(`dryRun: ${result.dryRun}`);
 
-  return { dryRun, ingested: !dryRun, result };
+  return { dryRun: result.dryRun, ingested: !result.dryRun && result.inserted + result.updated > 0, result };
 }

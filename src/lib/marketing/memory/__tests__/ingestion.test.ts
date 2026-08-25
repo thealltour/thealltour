@@ -198,7 +198,10 @@ describe("ingestMemoryDocuments", () => {
 
   it("does not write or embed in dryRun by default", async () => {
     const { result, inserted, updated, provider } = await ingest([document()], { dryRun: true });
-    expect(result.inserted).toBe(1);
+    expect(result.inserted).toBe(0);
+    expect(result.updated).toBe(0);
+    expect(result.plannedInsert).toBe(1);
+    expect(result.dryRun).toBe(true);
     expect(result.results[0]?.reason).toBe("dry_run");
     expect(inserted).toHaveLength(0);
     expect(updated).toHaveLength(0);
@@ -276,6 +279,8 @@ describe("ingestMemoryDocuments", () => {
       updated: 0,
       skipped: 0,
       failed: 0,
+      plannedInsert: 0,
+      dryRun: false,
     });
     expect(logs[0]?.meta).not.toHaveProperty("content");
     expect(logs[0]?.meta).not.toHaveProperty("embedding");

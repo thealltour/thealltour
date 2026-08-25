@@ -68,3 +68,34 @@ export async function fetchAiContentRows(input: {
   }
   return (data as AiContentRow[] | null) ?? [];
 }
+
+export type AiContentHashRow = {
+  id?: unknown;
+  agenda_id?: unknown;
+  campaign_id?: unknown;
+  primary_product_id?: unknown;
+  content_hash?: unknown;
+  normalized_hash?: unknown;
+};
+
+async function fetchAiContentRowByHashColumn(
+  column: "content_hash" | "normalized_hash",
+  hash: string,
+): Promise<AiContentHashRow | null> {
+  if (!hash) return null;
+  const { data, error } = await supabaseAdmin
+    .from("ai_contents")
+    .select("id, agenda_id, campaign_id, primary_product_id, content_hash, normalized_hash")
+    .eq(column, hash)
+    .maybeSingle();
+  if (error) throw new Error(`ai_contents hash lookup failed: ${error.message}`);
+  return (data as AiContentHashRow | null) ?? null;
+}
+
+export async function fetchAiContentRowByContentHash(hash: string): Promise<AiContentHashRow | null> {
+  return fetchAiContentRowByHashColumn("content_hash", hash);
+}
+
+export async function fetchAiContentRowByNormalizedHash(hash: string): Promise<AiContentHashRow | null> {
+  return fetchAiContentRowByHashColumn("normalized_hash", hash);
+}

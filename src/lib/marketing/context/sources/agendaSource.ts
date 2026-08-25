@@ -33,3 +33,14 @@ export async function fetchAiAgendaRowsByIds(ids: string[]): Promise<AiAgendaRow
   if (error) throw new Error(`ai_agendas lookup failed: ${error.message}`);
   return (data as AiAgendaRow[] | null) ?? [];
 }
+
+export async function fetchAiAgendaRowsByKeys(keys: string[]): Promise<AiAgendaRow[]> {
+  const unique = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
+  if (unique.length === 0) return [];
+  const { data, error } = await supabaseAdmin
+    .from("ai_agendas")
+    .select("id, campaign_id, topic, agenda_key, last_used_at, usage_count, created_at")
+    .in("agenda_key", unique);
+  if (error) throw new Error(`ai_agendas lookup failed: ${error.message}`);
+  return (data as AiAgendaRow[] | null) ?? [];
+}

@@ -1,0 +1,21 @@
+# Preview only. Do not merge into ~/.hermes/config.yaml in STEP 2-3.
+
+mcp_servers:
+  thealltour-marketing:
+    url: "http://127.0.0.1:3000/api/internal/marketing/mcp"
+    headers:
+      Authorization: "Bearer ${MARKETING_BOT_INTERNAL_TOKEN}"
+    enabled: false
+    skip_preflight: true
+    timeout: 120
+    trust: untrusted
+    tools:
+      include:
+        - get_marketing_context
+        - search_marketing_memory
+        - build_content_brief
+        - evaluate_governance
+        - prepare_marketing_task
+        - review_generated_content
+      resources: false
+      prompts: false

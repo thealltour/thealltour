@@ -1,6 +1,6 @@
 /**
  * Domain objects: MarketingPost ≠ ExternalPublication ≠ PerformanceSnapshot.
- * Persistence schema is NOT created in STEP 3-1 — types only.
+ * Persistence schema: STEP 3-4 migration `20260825180000_social_persistence_schema.sql`.
  */
 
 import type { SocialChannel, SocialMediaType, SocialProvider } from "@/lib/marketing/social/domain/providers";
@@ -24,7 +24,7 @@ export type MarketingPostRef = {
  * One MarketingPost may yield many ExternalPublications.
  */
 export type ExternalPublicationRef = {
-  /** Future social_publications.id — unset until persistence exists */
+  /** social_publications.id when persisted */
   publicationId?: string | null;
   marketingPostContentId?: string | null;
   provider: SocialProvider;
@@ -32,7 +32,7 @@ export type ExternalPublicationRef = {
   /** Provider-native post id after publish */
   externalPostId?: string | null;
   externalUrl?: string | null;
-  /** Future social_accounts.id */
+  /** social_accounts.id */
   socialAccountId?: string | null;
 };
 
@@ -41,7 +41,7 @@ export type ExternalPublicationRef = {
  * Belongs to publication/account — not directly to MarketingPost.
  */
 export type PerformanceSnapshotRef = {
-  /** Future performance_snapshots.id */
+  /** social_performance_snapshots.id */
   snapshotId?: string | null;
   provider: SocialProvider;
   channel: SocialChannel;
@@ -51,11 +51,16 @@ export type PerformanceSnapshotRef = {
   measuredAt: string;
 };
 
-/** Documented future persistence concepts (no migration in 3-1). */
+/** Persistence concepts (STEP 3-4 tables; names may differ slightly). */
 export const FUTURE_SOCIAL_PERSISTENCE_CONCEPTS = [
   "social_accounts",
+  "social_provider_identities",
+  "social_authorization_grants",
+  "social_credential_references",
+  "social_identity_grant_bindings",
   "social_publications",
-  "performance_snapshots",
+  "social_performance_snapshots",
+  "social_performance_metric_values",
 ] as const;
 
 export type FutureSocialPersistenceConcept = (typeof FUTURE_SOCIAL_PERSISTENCE_CONCEPTS)[number];

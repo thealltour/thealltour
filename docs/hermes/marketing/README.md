@@ -42,15 +42,16 @@ Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity�
 | Performance collection | [performance-collection.md](./performance-collection.md) |
 | SNS integration (STEP 3-1 contracts) | [sns-integration-architecture.md](./sns-integration-architecture.md) |
 | SNS capability matrix (STEP 3-2) | [sns-capability-matrix.md](./sns-capability-matrix.md) |
+| Social accounts & credentials (STEP 3-3) | [social-account-credentials.md](./social-account-credentials.md) |
 | Desktop New Agent | [agents/](./agents/) |
 | Machine contract | `src/lib/marketing/bot/contracts/` |
 | TS config | `src/lib/marketing/bot/organization/` |
 | Social ports | `src/lib/marketing/social/` |
 
-## SNS (STEP 3-1 / 3-2)
+## SNS (STEP 3-1 / 3-2 / 3-3)
 
-PublicationAdapter와 PerformanceCollector를 **분리**한 계약 + 채널별 **공식 API capability matrix**.  
-공식 API 호출·OAuth·credential·migration·게시 **없음**. `SNS_SIDE_EFFECTS_STEP_3_2 = 0`.  
+PublicationAdapter와 PerformanceCollector를 **분리**한 계약 + 채널별 **공식 API capability matrix** + **SocialAccount / AuthorizationGrant / CredentialReference** 계약.  
+공식 API 호출·OAuth·credential 저장·migration·게시 **없음**. `SNS_SIDE_EFFECTS_STEP_3_3 = 0`.  
 `PUBLICATION_FLOW_INACTIVE` 유지.
 
 ## Cron (요약)
@@ -78,6 +79,16 @@ Cron manual:
 hermes -p performance-analyst cron run <job_id>
 hermes -p marketing-manager cron run <job_id>
 ```
+
+## Official SNS (STEP 3)
+
+- [sns-integration-architecture.md](./sns-integration-architecture.md)
+- [sns-capability-matrix.md](./sns-capability-matrix.md)
+- [social-account-credentials.md](./social-account-credentials.md)
+- [social-persistence.md](./social-persistence.md) (STEP 3-4 schema)
+- [social-repository.md](./social-repository.md) (STEP 3-5 repository)
+
+게시 흐름은 비활성 (`PUBLICATION_FLOW_INACTIVE`). SNS side effects = 0.
 
 ## Desktop / Profile 배포
 

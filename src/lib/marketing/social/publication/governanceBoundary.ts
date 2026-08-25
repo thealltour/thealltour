@@ -37,9 +37,18 @@ export type ForbiddenPublicationAdapterCaller =
   (typeof PUBLICATION_ADAPTER_FORBIDDEN_CALLERS)[number];
 
 export const PUBLICATION_FLOW_INACTIVE = true as const;
-/** STEP 3-1/3-2: architecture only — no SNS network writes */
+/** STEP 3-1..3-5: architecture/persistence only — no SNS network writes */
 export const SNS_SIDE_EFFECTS_STEP_3_1 = 0 as const;
 export const SNS_SIDE_EFFECTS_STEP_3_2 = 0 as const;
+export const SNS_SIDE_EFFECTS_STEP_3_3 = 0 as const;
+export const SNS_SIDE_EFFECTS_STEP_3_4 = 0 as const;
+export const SNS_SIDE_EFFECTS_STEP_3_5 = 0 as const;
+
+/**
+ * Future:
+ * Content → Governance → Human Approval → Publication Orchestrator
+ *   → Credential Resolution → Publication Adapter → Official API
+ */
 
 
 export function isAllowedPublicationAdapterCaller(caller: PublicationAdapterCaller): boolean {

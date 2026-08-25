@@ -89,12 +89,14 @@ Official SNS APIs
 
 `assertPerformanceAnalystDoesNotCallCollector` encodes the boundary. Cron 08:30 continues to read internal DB/artifact only.
 
-## 7. STEP 3-1 / 3-2 side effects
+## 7. STEP 3-1 / 3-2 / 3-3 side effects
 
 `SNS_SIDE_EFFECTS_STEP_3_1 = 0`  
-`SNS_SIDE_EFFECTS_STEP_3_2 = 0`
+`SNS_SIDE_EFFECTS_STEP_3_2 = 0`  
+`SNS_SIDE_EFFECTS_STEP_3_3 = 0`
 
 Capability registry (STEP 3-2) uses `supported|unsupported|conditional|unknown` — see [sns-capability-matrix.md](./sns-capability-matrix.md).  
+Account/credential contracts (STEP 3-3) — see [social-account-credentials.md](./social-account-credentials.md).  
 `PUBLICATION_FLOW_INACTIVE` remains true.
 
 ## Related

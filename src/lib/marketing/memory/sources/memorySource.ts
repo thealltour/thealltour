@@ -5,7 +5,8 @@
  * into MemoryDocument.content. Inquiry/review sources must emit aggregate insights only.
  *
  * ProductMemorySource is implemented in productMemorySource.ts.
- * Inquiry/Review/Performance/Content sources are not implemented in this STEP.
+ * ReviewMemorySource is implemented in reviewMemorySource.ts.
+ * Inquiry/Performance/Content sources are not implemented in this STEP.
  */
 
 export type { MemoryDocument, MemoryIngestionSource } from "@/lib/marketing/memory/types";

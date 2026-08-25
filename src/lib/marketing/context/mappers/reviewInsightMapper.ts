@@ -2,14 +2,18 @@ import { asInteger, asNumber, asString, asStringArray } from "@/lib/marketing/co
 import type { ReviewInsightContext } from "@/lib/marketing/context/types";
 
 export type ProductReviewSummaryRow = {
+  product_id?: unknown;
   review_count?: unknown;
   average_rating?: unknown;
+  summary_text?: unknown;
   positive_points?: unknown;
   negative_points?: unknown;
   recommended_for?: unknown;
+  status?: unknown;
 };
 
 export type ReviewJoinRow = {
+  booking_id?: unknown;
   content_good?: unknown;
   content_bad?: unknown;
   content_tip?: unknown;
@@ -32,6 +36,7 @@ export function mapReviewInsight(input: {
   return {
     reviewCount: summaryCount ?? reviewCountFromRows,
     averageRating: asNumber(input.summary?.average_rating) ?? averageFromRows,
+    summaryText: asString(input.summary?.summary_text),
     positivePoints: uniqueStrings([
       ...asStringArray(input.summary?.positive_points),
       ...input.reviews.map((row) => asString(row.content_good)).filter((s): s is string => Boolean(s)),
@@ -55,6 +60,7 @@ export function emptyReviewInsight(): ReviewInsightContext {
   return {
     reviewCount: 0,
     averageRating: null,
+    summaryText: null,
     positivePoints: [],
     negativePoints: [],
     contentTips: [],

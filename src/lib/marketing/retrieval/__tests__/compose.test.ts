@@ -78,6 +78,7 @@ function mockAdapters(): RetrievalAdapters & { calls: string[] } {
         {
           reviewCount: 0,
           averageRating: null,
+          summaryText: null,
           positivePoints: [],
           negativePoints: [],
           contentTips: [],

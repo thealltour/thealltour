@@ -122,6 +122,7 @@ export type BookingInsightContext = {
 export type ReviewInsightContext = {
   reviewCount: number;
   averageRating: number | null;
+  summaryText: string | null;
   positivePoints: string[];
   negativePoints: string[];
   contentTips: string[];

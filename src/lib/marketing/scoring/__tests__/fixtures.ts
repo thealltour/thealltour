@@ -159,6 +159,7 @@ export function reviewInsights(overrides: Partial<ReviewInsightContext> = {}): R
   return {
     reviewCount: 3,
     averageRating: 4.5,
+    summaryText: null,
     positivePoints: [],
     negativePoints: [],
     contentTips: [],

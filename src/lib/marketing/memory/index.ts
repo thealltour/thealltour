@@ -29,6 +29,17 @@ export {
   PRODUCT_MEMORY_SOURCE_NAME,
   PRODUCT_MEMORY_SOURCE_TYPE,
   PRODUCT_MEMORY_TYPE,
+  REVIEW_MEMORY_CONFIDENCE_HIGH,
+  REVIEW_MEMORY_CONFIDENCE_LOW,
+  REVIEW_MEMORY_CONFIDENCE_MID,
+  REVIEW_MEMORY_DEFAULT_LIMIT,
+  REVIEW_MEMORY_IMPORTANCE,
+  REVIEW_MEMORY_IMPORTANCE_ENOUGH,
+  REVIEW_MEMORY_IMPORTANCE_RICH,
+  REVIEW_MEMORY_MAX_LIMIT,
+  REVIEW_MEMORY_SOURCE_NAME,
+  REVIEW_MEMORY_SOURCE_TYPE,
+  REVIEW_MEMORY_TYPE,
 } from "@/lib/marketing/memory/constants";
 export { MemoryIngestionError, MemoryValidationError } from "@/lib/marketing/memory/errors";
 export {
@@ -55,5 +66,22 @@ export type {
   ProductMemorySourceDeps,
 } from "@/lib/marketing/memory/sources/productMemorySource";
 export { buildProductMemoryContent, mapProductContextToMemoryDocument } from "@/lib/marketing/memory/productMemoryContent";
+export {
+  createReviewMemorySource,
+  parseReviewMemoryLoadParams,
+  ReviewMemorySource,
+} from "@/lib/marketing/memory/sources/reviewMemorySource";
+export type {
+  ParsedReviewMemoryLoadParams,
+  ReviewMemoryBundle,
+  ReviewMemoryLoadParams,
+  ReviewMemorySourceDeps,
+} from "@/lib/marketing/memory/sources/reviewMemorySource";
+export {
+  buildReviewMemoryContent,
+  mapReviewInsightToMemoryDocument,
+  reviewMemoryConfidence,
+  reviewMemoryImportance,
+} from "@/lib/marketing/memory/reviewMemoryContent";
 export { parseProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";
 export type { ProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";

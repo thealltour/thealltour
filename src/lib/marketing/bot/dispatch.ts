@@ -4,6 +4,7 @@ import { evaluateGovernanceTool, reviewGeneratedContent } from "@/lib/marketing/
 import { MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 import { getMarketingContextTool } from "@/lib/marketing/bot/getMarketingContextTool";
 import { buildContentBriefTool, prepareMarketingTask } from "@/lib/marketing/bot/prepareMarketingTask";
+import { getPerformanceEvidenceTool } from "@/lib/marketing/bot/getPerformanceEvidenceTool";
 import { searchMarketingMemoryTool } from "@/lib/marketing/bot/searchMarketingMemoryTool";
 import { MARKETING_BOT_TOOL_NAMES, type MarketingBotDeps, type MarketingBotToolName } from "@/lib/marketing/bot/types";
 
@@ -109,6 +110,14 @@ export async function dispatchMarketingBotTool(
           campaignId: asOptionalString(body.campaignId),
           agendaId: asOptionalString(body.agendaId),
           agendaKey: asOptionalString(body.agendaKey),
+        },
+        deps,
+      );
+    case "get_performance_evidence":
+      return getPerformanceEvidenceTool(
+        {
+          productId: asOptionalString(body.productId),
+          channel: asOptionalString(body.channel),
         },
         deps,
       );

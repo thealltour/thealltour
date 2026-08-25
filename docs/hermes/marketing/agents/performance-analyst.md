@@ -12,7 +12,7 @@
 
 ## Allowed MCP tools (prompt)
 
-get_marketing_context, search_marketing_memory
+get_performance_evidence, get_marketing_context, search_marketing_memory
 
 ## Forbidden tools
 

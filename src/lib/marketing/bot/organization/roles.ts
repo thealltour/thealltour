@@ -98,6 +98,7 @@ export const MARKETING_AGENT_ROLE_CONFIGS: Record<MarketingAgentRole, AgentRoleC
     displayName: "Performance Analyst",
     responsibilities: [
       "Read available performance context and memory",
+      "Call get_performance_evidence before summarizing",
       "Summarize observed changes only",
       "Separate raw metrics from inference",
       "Feed the next manager strategy with evidence",

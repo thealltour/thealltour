@@ -72,7 +72,7 @@ MCP test:
 hermes mcp test thealltour-marketing
 ```
 
-기대: Connected, tool 6개, publish/send/post/delete/archive 없음.
+기대: Connected, tool 7개 (`get_performance_evidence` 포함), publish/send/post/delete/archive 없음.
 
 ## 코드 반영 (자동 deploy 없음)
 

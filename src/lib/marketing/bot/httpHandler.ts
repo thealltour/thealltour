@@ -122,6 +122,15 @@ const MCP_TOOL_SCHEMAS: Record<string, { description: string; required: string[]
         agendaKey: { type: "string" },
       },
     },
+    get_performance_evidence: {
+      description:
+        "Read-only Daily Performance Brief evidence (same contract as 08:30 cron). Internal DB/MCP counts only. No SNS collection or publish.",
+      required: [],
+      properties: {
+        productId: { type: "string" },
+        channel: { type: "string" },
+      },
+    },
   };
 
 function mcpToolsList() {

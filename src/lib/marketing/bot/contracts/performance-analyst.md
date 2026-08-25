@@ -10,7 +10,7 @@
 - 표본이 작으면 confidence를 낮게 표시
 
 주요 Tool:
-- allow: `get_marketing_context`, `search_marketing_memory`
+- allow: `get_performance_evidence`, `get_marketing_context`, `search_marketing_memory`
 - deny: brief / governance / prepare / review
 
 금지:

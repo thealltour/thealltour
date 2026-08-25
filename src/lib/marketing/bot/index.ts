@@ -8,6 +8,8 @@ export type {
   EvaluateGovernanceInput,
   GetMarketingContextInput,
   GetMarketingContextResult,
+  GetPerformanceEvidenceInput,
+  GetPerformanceEvidenceResult,
   HumanApprovalHandoff,
   MarketingBotDeps,
   MarketingBotResult,
@@ -23,6 +25,7 @@ export { MARKETING_BOT_RESULT_STATUSES, MARKETING_BOT_TOOL_NAMES } from "@/lib/m
 export { MARKETING_BOT_INTERNAL_TOKEN_ENV, MARKETING_BOT_VERSION } from "@/lib/marketing/bot/constants";
 export { MarketingBotAuthError, MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 export { getMarketingContextTool } from "@/lib/marketing/bot/getMarketingContextTool";
+export { getPerformanceEvidenceTool } from "@/lib/marketing/bot/getPerformanceEvidenceTool";
 export { searchMarketingMemoryTool } from "@/lib/marketing/bot/searchMarketingMemoryTool";
 export { buildContentBriefTool, prepareMarketingTask } from "@/lib/marketing/bot/prepareMarketingTask";
 export { evaluateGovernanceTool, reviewGeneratedContent } from "@/lib/marketing/bot/evaluateGovernanceTool";

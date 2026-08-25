@@ -1,6 +1,6 @@
 # Skill / Tool Matrix
 
-MCP 서버 `thealltour-marketing`은 6개 tool을 모두 노출한다. Hermes Desktop이 Agent identity를 MCP에 넘기지 않으므로 **v1 enforcement는 prompt-level**이다.
+MCP 서버 `thealltour-marketing`은 7개 tool을 모두 노출한다. Hermes Desktop이 Agent identity를 MCP에 넘기지 않으므로 **v1 enforcement는 prompt-level**이다.
 
 향후 `AgentRole → allowedTools`를 server-side에서 검사할 수 있도록 TypeScript source of truth:
 
@@ -24,6 +24,7 @@ MCP 서버 `thealltour-marketing`은 6개 tool을 모두 노출한다. Hermes De
 | evaluate_governance | optional | optional | allow | deny |
 | prepare_marketing_task | allow | deny | deny | deny |
 | review_generated_content | allow | deny | allow | deny |
+| get_performance_evidence | allow | deny | deny | allow |
 
 `prepare_marketing_task`는 Manager 전용.
 

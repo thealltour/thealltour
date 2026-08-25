@@ -15,6 +15,7 @@ import {
   previousSeoulDayPeriod,
   type ConfirmedPerformanceMetric,
   type DailyPerformanceBriefArtifact,
+  MEMORY_RETRIEVAL_FAILED_ITEM,
   PERFORMANCE_BRIEF_ARTIFACT_VERSION,
   PERFORMANCE_BRIEF_TIMEZONE,
 } from "@/lib/marketing/cron/performanceBriefArtifact";
@@ -33,6 +34,19 @@ function pushMetric(
 ): void {
   if (!Number.isFinite(value) || value < 0) return;
   metrics.push({ metricType, value, source });
+}
+
+async function settle<T>(
+  fn: () => Promise<T>,
+  fallback: T,
+  onError: () => void,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    onError();
+    return fallback;
+  }
 }
 
 export async function buildDailyPerformanceBrief(
@@ -64,37 +78,67 @@ export async function buildDailyPerformanceBrief(
   const notableChanges: string[] = [];
 
   const [inquiries, bookings, threadPosts, analyticsEvents, publications, memoryRows] = await Promise.all([
-    fetchInquiryCount({
-      productId: productId ?? undefined,
-      periodStart: period.start,
-      periodEnd: period.end,
-    }),
-    fetchBookingCount({
-      productId: productId ?? undefined,
-      periodStart: period.start,
-      periodEnd: period.end,
-    }),
-    fetchThreadMarketingPostCount({
-      productId: productId ?? undefined,
-      periodStart: period.start,
-      periodEnd: period.end,
-    }),
-    fetchAnalyticsEventCount({
-      productId: productId ?? undefined,
-      periodStart: period.start,
-      periodEnd: period.end,
-    }),
-    fetchAiPublicationRows({
-      channel: channel ?? undefined,
-      periodStart: period.start,
-      periodEnd: period.end,
-      limit: 100,
-    }),
-    fetchAiMemoryRows({
-      memoryType: "performance",
-      excludeExpired: true,
-      limit: 20,
-    }),
+    settle(
+      () =>
+        fetchInquiryCount({
+          productId: productId ?? undefined,
+          periodStart: period.start,
+          periodEnd: period.end,
+        }),
+      0,
+      () => missingItems.push("inquiries retrieval failed (transient)"),
+    ),
+    settle(
+      () =>
+        fetchBookingCount({
+          productId: productId ?? undefined,
+          periodStart: period.start,
+          periodEnd: period.end,
+        }),
+      0,
+      () => missingItems.push("travel_bookings retrieval failed (transient)"),
+    ),
+    settle(
+      () =>
+        fetchThreadMarketingPostCount({
+          productId: productId ?? undefined,
+          periodStart: period.start,
+          periodEnd: period.end,
+        }),
+      0,
+      () => missingItems.push("thread_marketing_posts retrieval failed (transient)"),
+    ),
+    settle(
+      () =>
+        fetchAnalyticsEventCount({
+          productId: productId ?? undefined,
+          periodStart: period.start,
+          periodEnd: period.end,
+        }),
+      0,
+      () => missingItems.push("analytics_events retrieval failed (transient)"),
+    ),
+    settle(
+      () =>
+        fetchAiPublicationRows({
+          channel: channel ?? undefined,
+          periodStart: period.start,
+          periodEnd: period.end,
+          limit: 100,
+        }),
+      [],
+      () => missingItems.push("ai_publications retrieval failed (transient)"),
+    ),
+    settle(
+      () =>
+        fetchAiMemoryRows({
+          memoryType: "performance",
+          excludeExpired: true,
+          limit: 20,
+        }),
+      [],
+      () => missingItems.push(MEMORY_RETRIEVAL_FAILED_ITEM),
+    ),
   ]);
 
   pushMetric(confirmedMetrics, "inquiries", inquiries, "inquiries");
@@ -102,7 +146,10 @@ export async function buildDailyPerformanceBrief(
   pushMetric(confirmedMetrics, "thread_marketing_posts", threadPosts, "thread_marketing_posts");
   pushMetric(confirmedMetrics, "analytics_events", analyticsEvents, "analytics_events");
   pushMetric(confirmedMetrics, "ai_publications", publications.length, "ai_publications");
-  pushMetric(confirmedMetrics, "performance_memory_rows", memoryRows.length, "ai_memory");
+  const memoryFailed = missingItems.includes(MEMORY_RETRIEVAL_FAILED_ITEM);
+  if (!memoryFailed) {
+    pushMetric(confirmedMetrics, "performance_memory_rows", memoryRows.length, "ai_memory");
+  }
 
   if (inquiries > 0) managerEvidence.push(`inquiries=${inquiries} (DB count, no interpretation)`);
   if (bookings > 0) managerEvidence.push(`bookings=${bookings} (DB count, no interpretation)`);
@@ -116,7 +163,7 @@ export async function buildDailyPerformanceBrief(
     }
   }
   if (threadPosts > 0) availableChannels.add("threads");
-  if (memoryRows.length > 0) {
+  if (!memoryFailed && memoryRows.length > 0) {
     managerEvidence.push(`ai_memory performance rows=${memoryRows.length} (titles omitted from brief)`);
   }
 
@@ -124,13 +171,18 @@ export async function buildDailyPerformanceBrief(
     .map((row) => asString(row.id))
     .filter((id): id is string => Boolean(id));
 
-  const feedback = await fetchAiFeedbackRows({
-    channel: channel ?? undefined,
-    publicationIds: publicationIds.length > 0 ? publicationIds : undefined,
-    periodStart: period.start,
-    periodEnd: period.end,
-    limit: 500,
-  });
+  const feedback = await settle(
+    () =>
+      fetchAiFeedbackRows({
+        channel: channel ?? undefined,
+        publicationIds: publicationIds.length > 0 ? publicationIds : undefined,
+        periodStart: period.start,
+        periodEnd: period.end,
+        limit: 500,
+      }),
+    [],
+    () => missingItems.push("ai_feedback retrieval failed (transient)"),
+  );
 
   const feedbackMetrics = sumFeedbackMetrics(feedback);
   if (feedbackMetrics.length === 0) {

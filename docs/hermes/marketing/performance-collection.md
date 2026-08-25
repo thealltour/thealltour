@@ -9,6 +9,7 @@ Existing DB / analytics data
   → PerformanceMemorySource / metric count sources
   → Daily Performance Brief artifact
   → Performance Analyst Cron (08:30) / Manager Cron (09:00)
+  → Interactive Telegram/Desktop handoff via MCP `get_performance_evidence`
 ```
 
 확인에 사용하는 source (존재하는 데이터만):
@@ -28,6 +29,8 @@ Existing DB / analytics data
 - 문의 3건 확인 → 문의 3건
 
 `dataAvailability`: `available` | `partial` | `unavailable`
+
+내부 DB 증거가 있고 SNS metric만 없으면 `partial`이다. Memory 검색 실패는 non-fatal이며 전체 성과를 unavailable로 접지 않는다.
 
 브라우저 자동화를 성과 수집 기본 수단으로 쓰지 않는다.
 

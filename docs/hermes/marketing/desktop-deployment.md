@@ -25,7 +25,11 @@ Desktop Bot 목록에 보이려면 `profile.yaml`에 `ui_meta.hermes-bots` 블�
 | governance-auditor | Governance Auditor |
 | performance-analyst | Performance Analyst |
 
-Gateway는 **stopped** 로 둔다. 마케팅 Agent용 추가 Telegram gateway를 켜지 않는다.
+Gateway는 multiplex 한 프로세스만 쓴다. specialist profile의 `hermes profile list` 가 `stopped` 여도 정상이다. 별도 gateway를 띄우지 않는다.
+
+Telegram Front Door는 **Marketing Manager만** 소유한다. Content Strategist / Governance Auditor / Performance Analyst / `default` / `test1` 에 Telegram credential을 두지 않는다. Desktop New Agent는 launch profile `.env` 를 복사하므로, 새 specialist를 만들 때 Telegram 키가 다시 들어가지 않는지 확인한다.
+
+Desktop **BOTS → Marketing Manager** 창은 profile에 pin된 `Bot Chat` (source `tui`) 이다. Telegram DM은 같은 profile의 **다른 session** (`source=telegram`)으로 저장된다. 두 conversation을 merge하지 않는다. Telegram 기록은 `hermes -p marketing-manager sessions list --source telegram` 또는 Desktop Sessions 목록에서 연다.
 
 ## MCP
 
@@ -36,7 +40,7 @@ Gateway는 **stopped** 로 둔다. 마케팅 Agent용 추가 Telegram gateway를
 - `trust: full` — 우리 localhost MCP. 전역 `~/.hermes/config.yaml`은 `untrusted` 유지
 - Authorization은 env interpolation. SOUL에 token 금지
 
-`hermes mcp test`는 서버가 노출한 6개를 보여 준다. Agent 실행 시의 실제 호출 범위는 `tools.include` + prompt다.
+`hermes mcp test`는 서버가 노출한 7개를 보여 준다. Agent 실행 시의 실제 호출 범위는 `tools.include` + prompt다.
 
 ## Agent-to-Agent
 

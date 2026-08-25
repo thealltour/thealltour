@@ -25,6 +25,7 @@ Marketing Manager
 - `evaluate_governance`
 - `prepare_marketing_task`
 - `review_generated_content`
+- `get_performance_evidence` (08:30 cron과 같은 Daily Performance Brief contract. SNS 수집 없음)
 
 Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity를 받지 않으므로 server ACL은 아직 없다. 표: [skill-matrix.md](./skill-matrix.md)
 

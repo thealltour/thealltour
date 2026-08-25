@@ -8,6 +8,7 @@ export const PERFORMANCE_BRIEF_ARTIFACT_VERSION = 1 as const;
 export const PERFORMANCE_BRIEF_TIMEZONE = "Asia/Seoul" as const;
 
 export const PERFORMANCE_DATA_AVAILABILITY = ["available", "partial", "unavailable"] as const;
+export const MEMORY_RETRIEVAL_FAILED_ITEM = "ai_memory retrieval failed (transient)" as const;
 export type PerformanceDataAvailability = (typeof PERFORMANCE_DATA_AVAILABILITY)[number];
 
 export type ConfirmedPerformanceMetric = {

@@ -55,6 +55,8 @@ describe("marketing department organization", () => {
       expect.arrayContaining(["content_strategist", "governance_auditor", "performance_analyst", "human_owner"]),
     );
     expect(allowedToolsForRole("marketing_manager")).toContain("prepare_marketing_task");
+    expect(allowedToolsForRole("performance_analyst")).toContain("get_performance_evidence");
+    expect(allowedToolsForRole("content_strategist")).not.toContain("get_performance_evidence");
   });
 
   it("attaches department policy and disables auto-publish on every role", () => {

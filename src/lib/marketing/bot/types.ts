@@ -13,6 +13,7 @@ export const MARKETING_BOT_TOOL_NAMES = [
   "evaluate_governance",
   "prepare_marketing_task",
   "review_generated_content",
+  "get_performance_evidence",
 ] as const;
 
 export type MarketingBotToolName = (typeof MARKETING_BOT_TOOL_NAMES)[number];
@@ -142,6 +143,16 @@ export type SearchMarketingMemoryResult = {
   matches: CompactMemoryMatch[];
 };
 
+export type GetPerformanceEvidenceInput = {
+  productId?: string | null;
+  channel?: string | null;
+};
+
+export type GetPerformanceEvidenceResult = import("@/lib/marketing/cron/performanceBriefArtifact").DailyPerformanceBriefArtifact & {
+  contract: "daily-performance-brief-v1";
+  memoryStatus: "ok" | "unavailable";
+};
+
 export type BuildContentBriefInput = {
   productId: string;
   channel: string;
@@ -265,4 +276,9 @@ export type MarketingBotDeps = {
   ) => Promise<import("@/lib/marketing/governance/workflowTypes").GovernanceWorkflowResult>;
   now?: Date;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  buildPerformanceEvidence?: (input: {
+    productId?: string | null;
+    channel?: string | null;
+    now?: Date;
+  }) => Promise<import("@/lib/marketing/cron/performanceBriefArtifact").DailyPerformanceBriefArtifact>;
 };

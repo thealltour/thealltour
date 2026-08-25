@@ -6,7 +6,7 @@
  * insights only — never raw customer PII.
  *
  * ProductMemorySource / ReviewMemorySource / CustomerInsightMemorySource /
- * PerformanceMemorySource are implemented. Content sources are not in this STEP.
+ * PerformanceMemorySource / ContentMemorySource are implemented.
  *
  * `metadata` is runtime-only. public.ai_memory has no metadata column.
  */
@@ -135,6 +135,7 @@ export type DedupeDecision =
  * ReviewMemorySource is in sources/reviewMemorySource.ts.
  * CustomerInsightMemorySource is in sources/customerInsightMemorySource.ts.
  * PerformanceMemorySource is in sources/performanceMemorySource.ts.
+ * ContentMemorySource is in sources/contentMemorySource.ts.
  */
 export interface MemoryIngestionSource<P = unknown> {
   readonly name: string;

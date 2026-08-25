@@ -30,3 +30,11 @@ export function mapAiPublicationRow(row: AiPublicationRow): PublicationContext |
     lastCheckedAt: asString(row.last_checked_at),
   };
 }
+
+/** Application-level: published status, or a real published_at. Failed/deleted rows stay out. */
+export function isPublishedPublication(input: { status: string; publishedAt: string | null }): boolean {
+  const status = input.status.trim().toLowerCase();
+  if (status === "deleted" || status === "failed" || status === "error") return false;
+  if (status === "published") return true;
+  return Boolean(input.publishedAt);
+}

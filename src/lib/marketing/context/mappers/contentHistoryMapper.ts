@@ -19,6 +19,7 @@ export type AiContentRow = {
   title?: unknown;
   body?: unknown;
   hook?: unknown;
+  cta?: unknown;
   created_at?: unknown;
   content_type?: unknown;
   status?: unknown;
@@ -65,6 +66,7 @@ export function mapAiContentToHistory(row: AiContentRow): ContentHistoryItem | n
       status: asString(row.status),
       campaignId: asString(row.campaign_id),
       agendaId: asString(row.agenda_id),
+      cta: asString(row.cta),
     }),
     similarityAvailable: false,
   };

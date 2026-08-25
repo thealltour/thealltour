@@ -12,6 +12,10 @@ export type SiteContentRow = {
   slug?: unknown;
   is_published?: unknown;
   is_active?: unknown;
+  badge?: unknown;
+  main_copy_accent?: unknown;
+  main_copy_tail?: unknown;
+  sub_description?: unknown;
 };
 
 export function mapSiteContentToHistory(
@@ -43,4 +47,19 @@ export function mapSiteContentToHistory(
     },
     similarityAvailable: false,
   };
+}
+
+export function mapHomeHeroRowToHistory(row: SiteContentRow): ContentHistoryItem | null {
+  const titleParts = [asString(row.badge), asString(row.main_copy_accent), asString(row.main_copy_tail)].filter(
+    (part): part is string => Boolean(part),
+  );
+  return mapSiteContentToHistory(
+    {
+      ...row,
+      title: titleParts.join(" ") || row.title,
+      content: asString(row.sub_description) ?? row.content,
+    },
+    "home_hero_content",
+    "home",
+  );
 }

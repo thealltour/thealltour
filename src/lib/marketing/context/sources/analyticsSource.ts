@@ -7,7 +7,7 @@ export async function fetchAiPublicationRows(input: {
   contentId?: string;
   contentIds?: string[];
   status?: string;
-  periodStart: string;
+  periodStart?: string;
   periodEnd?: string;
   limit?: number;
 }): Promise<AiPublicationRow[]> {
@@ -21,11 +21,11 @@ export async function fetchAiPublicationRows(input: {
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(input.limit ?? 200);
 
-  if (input.periodEnd) {
+  if (input.periodStart && input.periodEnd) {
     query = query.or(
       `and(published_at.gte.${input.periodStart},published_at.lte.${input.periodEnd}),and(published_at.is.null,scheduled_at.gte.${input.periodStart},scheduled_at.lte.${input.periodEnd})`,
     );
-  } else {
+  } else if (input.periodStart) {
     query = query.or(`published_at.gte.${input.periodStart},scheduled_at.gte.${input.periodStart}`);
   }
   if (input.channel) query = query.eq("channel", input.channel);

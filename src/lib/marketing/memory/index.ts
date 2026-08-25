@@ -68,6 +68,18 @@ export {
   PERFORMANCE_MEMORY_SOURCE_NAME,
   PERFORMANCE_MEMORY_SOURCE_TYPE,
   PERFORMANCE_MEMORY_TYPE,
+  CONTENT_MEMORY_AI_SOURCE_TYPE,
+  CONTENT_MEMORY_CONFIDENCE,
+  CONTENT_MEMORY_DEFAULT_LIMIT,
+  CONTENT_MEMORY_DEFAULT_LOOKBACK_DAYS,
+  CONTENT_MEMORY_IMPORTANCE_DEFAULT,
+  CONTENT_MEMORY_IMPORTANCE_OLD,
+  CONTENT_MEMORY_IMPORTANCE_RECENT,
+  CONTENT_MEMORY_MAX_BODY_CHARS,
+  CONTENT_MEMORY_MAX_CHARS,
+  CONTENT_MEMORY_MAX_LIMIT,
+  CONTENT_MEMORY_SOURCE_NAME,
+  CONTENT_MEMORY_TYPE,
 } from "@/lib/marketing/memory/constants";
 export { MemoryIngestionError, MemoryValidationError } from "@/lib/marketing/memory/errors";
 export {
@@ -156,5 +168,23 @@ export {
 } from "@/lib/marketing/memory/performanceMemoryContent";
 export { parsePerformanceMemoryCliArgs } from "@/lib/marketing/memory/performanceMemoryCli";
 export type { PerformanceMemoryCliArgs } from "@/lib/marketing/memory/performanceMemoryCli";
+export {
+  createContentMemorySource,
+  parseContentMemoryLoadParams,
+  ContentMemorySource,
+} from "@/lib/marketing/memory/sources/contentMemorySource";
+export type {
+  ContentMemoryBundle,
+  ContentMemoryLoadParams,
+  ContentMemorySourceDeps,
+  ParsedContentMemoryLoadParams,
+} from "@/lib/marketing/memory/sources/contentMemorySource";
+export {
+  buildContentMemoryContent,
+  mapContentToMemoryDocument,
+  stripHtmlToMemoryText,
+} from "@/lib/marketing/memory/contentMemoryContent";
+export { parseContentMemoryCliArgs } from "@/lib/marketing/memory/contentMemoryCli";
+export type { ContentMemoryCliArgs } from "@/lib/marketing/memory/contentMemoryCli";
 export { parseProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";
 export type { ProductMemoryCliArgs } from "@/lib/marketing/memory/productMemoryCli";

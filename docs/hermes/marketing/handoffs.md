@@ -53,4 +53,17 @@ Manager 매핑:
 - observed patterns
 - confidence
 
-TypeScript: `src/lib/marketing/bot/organization/handoffs.ts`
+TypeScript: `src/lib/marketing/bot/organization/handoffs.ts`  
+Envelope / pipeline: `src/lib/marketing/bot/organization/envelope.ts`, `pipeline.ts`  
+Hermes primitive: [runtime-handoff.md](./runtime-handoff.md)  
+Human: [human-approval.md](./human-approval.md)
+
+Provenance on every envelope:
+
+- sourceAgent / targetAgent (Hermes profile id, not a secret)
+- taskType
+- productId / channel / goal
+- contextMemoryRefs
+- governance decision / riskScore / reasonCodes when present
+
+Embedding vector와 raw PII는 envelope에 넣지 않는다.

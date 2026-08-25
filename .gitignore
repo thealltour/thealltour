@@ -86,3 +86,6 @@ tools/thealltour_extension/build
 /sample.hwp
 /sample.hwpx
 /extracted_sample.txt
+
+# marketing cron runtime artifacts (latest brief only; no PII by contract)
+/data/marketing/cron/

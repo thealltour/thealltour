@@ -40,17 +40,14 @@ Gateway는 **stopped** 로 둔다. 마케팅 Agent용 추가 Telegram gateway를
 
 ## Agent-to-Agent
 
-v0.20.4 지원:
+v0.20.4에는 profile A가 profile B를 직접 부르는 native RPC가 없다.
 
-- Bot Chat teammate DM: `hermes -p <agent> chat -c "Bot Chat" --create-if-missing`
-- Kanban이 profile에 작업을 배정
-- `delegate_task`는 **같은 프로세스 subagent**이지 다른 profile이 아님
-
-자동 부서 라우팅 DB는 없다. v1 live 검증은 Manager가 자신의 MCP 도구로 orchestration하는 방식이다.
+실제 사용: application-level `runDepartmentPipeline` + `hermes -p <profile> -z`. 상세: [runtime-handoff.md](./runtime-handoff.md).
 
 ## Cron
 
-이 문서 범위에서 마케팅 Cron을 만들지 않는다. 계획은 [cron-plan.md](./cron-plan.md).
+STEP 2-4.8B에서 task-only Cron이 활성화됐다. 상세·수동 실행·pause/resume: [cron-plan.md](./cron-plan.md).
+성과 수집 범위( SNS 직접 수집 없음 ): [performance-collection.md](./performance-collection.md).
 
 ## test1
 

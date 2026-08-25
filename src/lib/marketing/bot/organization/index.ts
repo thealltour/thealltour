@@ -13,6 +13,15 @@ export {
   isToolAllowedForRole,
 } from "@/lib/marketing/bot/organization/skillMatrix";
 export { DEPARTMENT_COMMON_RULES, DEPARTMENT_FORBIDDEN_ACTIONS } from "@/lib/marketing/bot/organization/policies";
+export {
+  AGENT_IDENTITY_ENFORCEMENT,
+  MAX_AUTO_REVISION_ROUNDS,
+  createHandoffEnvelope,
+  parseHandoffEnvelope,
+  serializeHandoffEnvelope,
+} from "@/lib/marketing/bot/organization/envelope";
+export { HERMES_HANDOFF_CLASSIFICATION, buildHermesOneshotArgv } from "@/lib/marketing/bot/organization/hermesHandoff";
+export { applyPipelineApproval, runDepartmentPipeline } from "@/lib/marketing/bot/organization/pipeline";
 export type {
   ContentDraftRequest,
   ContentStrategistOutput,

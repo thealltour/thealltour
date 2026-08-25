@@ -1,6 +1,6 @@
 # AI Marketing Department v1
 
-더올투어 마케팅을 Hermes Agent 4역할로 조율한다. **이번 문서는 source of truth다. Desktop Agent 생성·Cron 활성화는 하지 않는다.**
+더올투어 마케팅을 Hermes Agent 4역할로 조율한다. Desktop profile은 배포됨. Cron은 STEP 2-4.8B에서 **task-only**로 활성화됐다 (SNS 게시 없음).
 
 ## 조직
 
@@ -36,38 +36,56 @@ Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity�
 | 공통 정책 | [department-policy.md](./department-policy.md) |
 | Prompt A/B | [prompts/](./prompts/) |
 | Handoff | [handoffs.md](./handoffs.md) |
-| Cron 설계 | [cron-plan.md](./cron-plan.md) |
+| Runtime handoff | [runtime-handoff.md](./runtime-handoff.md) |
+| Human Approval | [human-approval.md](./human-approval.md) |
+| Cron (활성) | [cron-plan.md](./cron-plan.md) |
+| Performance collection | [performance-collection.md](./performance-collection.md) |
+| SNS integration (STEP 3-1 contracts) | [sns-integration-architecture.md](./sns-integration-architecture.md) |
+| SNS capability matrix (STEP 3-2) | [sns-capability-matrix.md](./sns-capability-matrix.md) |
 | Desktop New Agent | [agents/](./agents/) |
 | Machine contract | `src/lib/marketing/bot/contracts/` |
 | TS config | `src/lib/marketing/bot/organization/` |
+| Social ports | `src/lib/marketing/social/` |
 
-## 수동 테스트 (Agent 생성 후)
+## SNS (STEP 3-1 / 3-2)
+
+PublicationAdapter와 PerformanceCollector를 **분리**한 계약 + 채널별 **공식 API capability matrix**.  
+공식 API 호출·OAuth·credential·migration·게시 **없음**. `SNS_SIDE_EFFECTS_STEP_3_2 = 0`.  
+`PUBLICATION_FLOW_INACTIVE` 유지.
+
+## Cron (요약)
+
+| 시각 (Asia/Seoul) | Job | Profile |
+|---|---|---|
+| 08:30 | AI Marketing - Daily Performance | performance-analyst |
+| 09:00 | AI Marketing - Daily Plan | marketing-manager |
+
+task-only · no publish · Performance brief artifact handoff · 상세: [cron-plan.md](./cron-plan.md)
+
+## 수동 테스트 (Agent / Cron)
 
 Marketing Manager:
 
 > 스페인/포르투갈 상품으로 오늘 Threads 콘텐츠를 준비해줘. 게시하지 말고 governance 결과까지 보여줘.
 
-Content Strategist:
-
-> 제공된 상품 brief만 근거로 Threads 초안을 작성해. 없는 혜택은 만들지 마.
-
-Governance Auditor:
-
-> 이 초안을 검사하고 ALLOW/REVIEW/BLOCK 및 이유만 보고해.
-
 Performance Analyst:
 
 > 최근 30일 이 상품의 확인 가능한 성과만 정리해.
+
+Cron manual:
+
+```bash
+hermes -p performance-analyst cron run <job_id>
+hermes -p marketing-manager cron run <job_id>
+```
 
 ## Desktop / Profile 배포
 
 Pi에 실제 profile이 있다. 생성 방식과 Bot 목록 조건: [desktop-deployment.md](./desktop-deployment.md).
 
-Cron은 [cron-plan.md](./cron-plan.md) 체크리스트 전에는 만들지 않음.
-
 ## Human Approval
 
-REVIEW는 DB에 저장하지 않는다. Manager가 사용자에게 reason, riskScore, 유사 콘텐츠 요약을 보여주고 멈춘다.
+REVIEW는 DB에 저장하지 않는다. 흐름: [human-approval.md](./human-approval.md). APPROVE여도 SNS 게시는 없다.
 
 ## 게시
 

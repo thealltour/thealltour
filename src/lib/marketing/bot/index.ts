@@ -36,6 +36,9 @@ export {
   MARKETING_AGENT_ROLE_CONFIGS,
   MARKETING_SKILL_MATRIX,
   allowedToolsForRole,
+  AGENT_IDENTITY_ENFORCEMENT,
+  applyPipelineApproval,
+  runDepartmentPipeline,
 } from "@/lib/marketing/bot/organization";
 export type { AgentRoleConfig, MarketingAgentRole } from "@/lib/marketing/bot/organization";
 export { buildBotRunTrace } from "@/lib/marketing/bot/mapBotResult";

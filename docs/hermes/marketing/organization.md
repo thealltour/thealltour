@@ -9,7 +9,7 @@ Marketing Manager
    └── Performance Analyst
 ```
 
-Human Owner만 최종 게시 권한을 가질 수 있다. 현재 게시 tool 자체가 없으므로 모든 Agent의 게시 권한은 **없음**.
+Human Owner만 최종 게시 권한을 가질 수 있다. 현재 게시 tool 자체가 없으므로 모든 Agent의 게시 권한은 **없음**. APPROVE는 게시 가능 상태일 뿐 SNS 실행이 아니다. 런타임 전달: [runtime-handoff.md](./runtime-handoff.md).
 
 ## Marketing Manager
 

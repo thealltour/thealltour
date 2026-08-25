@@ -24,6 +24,7 @@ export type GovernanceReviewResult = {
   reasons: string[];
   revisionHints: string[];
   humanApprovalRequired: boolean;
+  semanticAvailable: boolean;
 };
 
 export type PerformanceBrief = {

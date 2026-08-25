@@ -1,0 +1,128 @@
+import { allowedToolsForRole, MARKETING_SKILL_MATRIX } from "@/lib/marketing/bot/organization/skillMatrix";
+import type { AgentRoleConfig, MarketingAgentRole } from "@/lib/marketing/bot/organization/types";
+import { DEPARTMENT_POLICY_PATH } from "@/lib/marketing/bot/organization/types";
+
+const POLICY = DEPARTMENT_POLICY_PATH;
+
+export const MARKETING_AGENT_ROLE_CONFIGS: Record<MarketingAgentRole, AgentRoleConfig> = {
+  marketing_manager: {
+    id: "marketing_manager",
+    displayName: "Marketing Manager",
+    responsibilities: [
+      "Interpret marketing requests",
+      "Prepare context, memory, and agenda",
+      "Direct Content Strategist",
+      "Confirm governance results",
+      "Handoff REVIEW to a human",
+      "Return BLOCK work for revision",
+      "Stop at publish_ready without posting",
+    ],
+    allowedTools: allowedToolsForRole("marketing_manager"),
+    toolPermissions: MARKETING_SKILL_MATRIX.marketing_manager,
+    forbiddenActions: [
+      "publish",
+      "send",
+      "post",
+      "delete",
+      "archive",
+      "auto_approve",
+      "override_governance",
+      "invent_product_facts",
+      "use_raw_pii",
+    ],
+    handoffTargets: ["content_strategist", "governance_auditor", "performance_analyst", "human_owner"],
+    autoPublishAllowed: false,
+    departmentPolicy: POLICY,
+    contractFile: "src/lib/marketing/bot/contracts/marketing-manager.md",
+    promptFile: "docs/hermes/marketing/prompts/marketing-manager.md",
+  },
+  content_strategist: {
+    id: "content_strategist",
+    displayName: "Content Strategist",
+    responsibilities: [
+      "Draft from the manager brief only",
+      "Fit channel tone and length",
+      "Keep one agenda and angle",
+      "Reduce repeated hooks",
+      "Request governance after drafting",
+    ],
+    allowedTools: allowedToolsForRole("content_strategist"),
+    toolPermissions: MARKETING_SKILL_MATRIX.content_strategist,
+    forbiddenActions: [
+      "publish",
+      "send",
+      "post",
+      "delete",
+      "archive",
+      "auto_approve",
+      "override_governance",
+      "invent_product_facts",
+      "use_raw_pii",
+    ],
+    handoffTargets: ["governance_auditor", "marketing_manager"],
+    autoPublishAllowed: false,
+    departmentPolicy: POLICY,
+    contractFile: "src/lib/marketing/bot/contracts/content-strategist.md",
+    promptFile: "docs/hermes/marketing/prompts/content-strategist.md",
+  },
+  governance_auditor: {
+    id: "governance_auditor",
+    displayName: "Governance Auditor",
+    responsibilities: [
+      "Independently inspect candidates",
+      "Check duplicate, semantic, agenda, and channel signals",
+      "Apply workflow policy",
+      "Return ALLOW, REVIEW, or BLOCK without rewriting copy",
+    ],
+    allowedTools: allowedToolsForRole("governance_auditor"),
+    toolPermissions: MARKETING_SKILL_MATRIX.governance_auditor,
+    forbiddenActions: [
+      "publish",
+      "send",
+      "post",
+      "delete",
+      "archive",
+      "auto_approve",
+      "override_governance",
+      "invent_product_facts",
+      "use_raw_pii",
+    ],
+    handoffTargets: ["marketing_manager", "human_owner"],
+    autoPublishAllowed: false,
+    departmentPolicy: POLICY,
+    contractFile: "src/lib/marketing/bot/contracts/governance-auditor.md",
+    promptFile: "docs/hermes/marketing/prompts/governance-auditor.md",
+  },
+  performance_analyst: {
+    id: "performance_analyst",
+    displayName: "Performance Analyst",
+    responsibilities: [
+      "Read available performance context and memory",
+      "Summarize observed changes only",
+      "Separate raw metrics from inference",
+      "Feed the next manager strategy with evidence",
+    ],
+    allowedTools: allowedToolsForRole("performance_analyst"),
+    toolPermissions: MARKETING_SKILL_MATRIX.performance_analyst,
+    forbiddenActions: [
+      "publish",
+      "send",
+      "post",
+      "delete",
+      "archive",
+      "auto_approve",
+      "override_governance",
+      "invent_product_facts",
+      "use_raw_pii",
+    ],
+    handoffTargets: ["marketing_manager"],
+    autoPublishAllowed: false,
+    departmentPolicy: POLICY,
+    contractFile: "src/lib/marketing/bot/contracts/performance-analyst.md",
+    promptFile: "docs/hermes/marketing/prompts/performance-analyst.md",
+  },
+};
+
+export function marketingAgentRoleConfig(role: MarketingAgentRole): AgentRoleConfig {
+  return MARKETING_AGENT_ROLE_CONFIGS[role];
+}

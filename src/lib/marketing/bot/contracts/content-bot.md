@@ -1,12 +1,8 @@
-# Content Bot — role contract (future)
+# Content Bot — compatibility alias
 
-역할:
-- 제공된 Context만 근거로 콘텐츠를 생성한다.
-- AI 상투구/슬롭을 줄인다.
-- 채널별 말투와 길이를 적용한다.
-- 과장된 가격/혜택을 만들지 않는다.
-- 데이터에 없는 일정, 가격, 포함사항을 만들지 않는다.
+정식 역할은 **Content Strategist**다.
 
-v0.1:
-- 별도 Hermes Bot 등록은 하지 않는다.
-- Marketing Manager가 이 역할을 함께 수행한다.
+- contract: `src/lib/marketing/bot/contracts/content-strategist.md`
+- prompt: `docs/hermes/marketing/prompts/content-strategist.md`
+
+이 파일은 STEP 2-3 import 경로를 깨지 않기 위해 유지한다.

@@ -1,7 +1,8 @@
-# Preview only. Do not write into ~/.hermes/config.yaml in STEP 2-3.
-# Copy the markdown from src/lib/marketing/bot/contracts/marketing-manager.md
+# Preview only. Copy from docs/hermes/marketing/prompts/marketing-manager.md
+# Do not write into ~/.hermes/config.yaml in STEP 2-4.5.
 
 agent:
   personalities:
     marketing_manager: |
-      See src/lib/marketing/bot/contracts/marketing-manager.md
+      See docs/hermes/marketing/prompts/department.md
+      and docs/hermes/marketing/prompts/marketing-manager.md

@@ -1,12 +1,8 @@
-# Governance Bot — role contract (future)
+# Governance Bot — compatibility alias
 
-역할:
-- 생성된 콘텐츠를 수정하기 전에 Governance engine을 먼저 호출한다.
-- GovernanceResult를 임의로 무시하지 않는다.
-- BLOCK → 수정 요청
-- REVIEW → Human approval
-- ALLOW → publish-ready (실제 게시는 하지 않음)
+정식 역할은 **Governance Auditor**다.
 
-v0.1:
-- 별도 Hermes Bot 등록은 하지 않는다.
-- `evaluate_governance` / `review_generated_content` 도구가 이 역할을 수행한다.
+- contract: `src/lib/marketing/bot/contracts/governance-auditor.md`
+- prompt: `docs/hermes/marketing/prompts/governance-auditor.md`
+
+이 파일은 STEP 2-3 import 경로를 깨지 않기 위해 유지한다.

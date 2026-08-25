@@ -1,5 +1,7 @@
 # Marketing Manager Bot — Hermes 적용 미리보기 (STEP 2-3)
 
+이 문서는 STEP 2-3 MCP 미리보다. 조직 source of truth는 [marketing/README.md](./marketing/README.md)다.
+
 이 문서는 **적용하지 않은** 미리보기입니다. Hermes Gateway를 재시작하거나 Bot을 enable 하지 마세요.
 
 확인된 실행 환경 (Raspberry Pi, 2026-08-25):
@@ -10,7 +12,7 @@
 - systemd: `/etc/systemd/system/hermes.service` (Telegram gateway + dashboard 9119)
 - 이 설치에는 `bots/` 레지스트리와 `hermes bot` CLI가 **없음**
 - 외부 함수 등록의 정식 경로는 **MCP** (`hermes mcp add` / `config.yaml` `mcp_servers`)
-- 현재 MCP 서버 수: 0
+- MCP `thealltour-marketing`은 STEP 2-4에서 수동 등록됨 (이 STEP에서는 config를 다시 건드리지 않음)
 - Native Python tool / Hermes core 수정은 하지 않음
 
 thealltour 쪽 구현:
@@ -59,11 +61,11 @@ hermes mcp add thealltour-marketing \
 
 Marketing Manager 페르소나:
 
-- 가벼운 방법: `agent.personalities.marketing_manager`에 `src/lib/marketing/bot/contracts/marketing-manager.md` 내용을 넣는다.
+- 가벼운 방법: `agent.personalities.marketing_manager`에 `docs/hermes/marketing/prompts/marketing-manager.md` 내용을 넣는다.
 - 전역 SOUL.md를 바꾸지 않는 것을 권장한다.
-- 완전 분리: `hermes profile`로 별도 프로필 (이번 STEP에서 생성하지 않음).
+- 부서 4역할: [marketing/README.md](./marketing/README.md). Desktop New Agent는 아직 생성하지 않는다.
 
-Content Bot / Governance Bot은 contract만 준비되어 있다. 별도 Hermes Bot 등록은 하지 않는다.
+Content Strategist / Governance Auditor / Performance Analyst contract는 `src/lib/marketing/bot/contracts/`에 있다. 별도 Hermes Bot 등록은 하지 않는다.
 
 ## 운영 Bot enable 금지
 

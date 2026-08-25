@@ -1,0 +1,56 @@
+# Handoff contracts
+
+## Manager → Content
+
+`ContentDraftRequest`
+
+- productId
+- channel
+- goal
+- agenda
+- brief
+- constraints
+- memory references
+
+Content는 brief에 없는 사실을 채우지 않는다.
+
+## Content → Governance
+
+`GovernanceReviewRequest`
+
+- title
+- body
+- channel
+- productId
+- campaignId?
+- agendaId / agendaKey?
+
+작성자가 `review_generated_content`를 직접 호출하지 않는 것이 기본이다. Manager 또는 Auditor가 호출한다.
+
+## Governance → Manager
+
+`GovernanceReviewResult`
+
+- decision: ALLOW | REVIEW | BLOCK
+- riskScore
+- reasons
+- revisionHints
+- humanApprovalRequired
+
+Manager 매핑:
+
+- BLOCK → Content에 revision
+- REVIEW → Human Owner
+- ALLOW → publish_ready에서 중단, 게시 없음
+
+## Performance → Manager
+
+`PerformanceBrief`
+
+- period
+- product / channel
+- key metrics
+- observed patterns
+- confidence
+
+TypeScript: `src/lib/marketing/bot/organization/handoffs.ts`

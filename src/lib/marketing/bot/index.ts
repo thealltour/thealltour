@@ -30,5 +30,12 @@ export { dispatchMarketingBotTool } from "@/lib/marketing/bot/dispatch";
 export { handleMarketingMcpJsonRpc, handleMarketingToolHttp } from "@/lib/marketing/bot/httpHandler";
 export { parseMarketingBotCliArgs } from "@/lib/marketing/bot/cli";
 export type { MarketingBotCliArgs } from "@/lib/marketing/bot/cli";
-export { MARKETING_BOT_CONTRACT_FILES, MARKETING_BOT_ROLES } from "@/lib/marketing/bot/contracts";
+export { MARKETING_BOT_CONTRACT_FILES, MARKETING_BOT_ROLES, MARKETING_AGENT_CONTRACT_FILES } from "@/lib/marketing/bot/contracts";
+export {
+  MARKETING_AGENT_ROLES,
+  MARKETING_AGENT_ROLE_CONFIGS,
+  MARKETING_SKILL_MATRIX,
+  allowedToolsForRole,
+} from "@/lib/marketing/bot/organization";
+export type { AgentRoleConfig, MarketingAgentRole } from "@/lib/marketing/bot/organization";
 export { buildBotRunTrace } from "@/lib/marketing/bot/mapBotResult";

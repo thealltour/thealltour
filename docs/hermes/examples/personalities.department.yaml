@@ -1,0 +1,19 @@
+# Preview only. Do not write into ~/.hermes/config.yaml in this STEP.
+
+# Desktop New Agent uses per-profile SOUL.md. CLI overlay can use these keys
+# with /personality <name> after a human pastes them.
+
+agent:
+  personalities:
+    marketing_manager: |
+      See docs/hermes/marketing/prompts/department.md
+      and docs/hermes/marketing/prompts/marketing-manager.md
+    content_strategist: |
+      See docs/hermes/marketing/prompts/department.md
+      and docs/hermes/marketing/prompts/content-strategist.md
+    governance_auditor: |
+      See docs/hermes/marketing/prompts/department.md
+      and docs/hermes/marketing/prompts/governance-auditor.md
+    performance_analyst: |
+      See docs/hermes/marketing/prompts/department.md
+      and docs/hermes/marketing/prompts/performance-analyst.md

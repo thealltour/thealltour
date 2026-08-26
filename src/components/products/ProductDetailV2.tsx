@@ -199,7 +199,7 @@ export default function ProductDetailV2({
   overviewModel,
   overviewFallbackUrl = "",
   reviewSummary,
-  portOneEnabled = false,
+  portOneEnabled: _portOneEnabled = false,
 }: ProductDetailV2Props) {
   const resolvedOverview = useMemo(() => {
     if (product != null) return mapProductToOverview(product);
@@ -422,6 +422,19 @@ export default function ProductDetailV2({
 
   useEffect(() => {
     registerScrollToBooking((target = "panel") => {
+      if (target === "checkout") {
+        const el = document.getElementById("product-checkout");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          el.classList.remove("product-booking-highlight");
+          void el.offsetWidth;
+          el.classList.add("product-booking-highlight");
+          return;
+        }
+        // checkout 미노출 시 예약 패널로 폴백
+        target = "panel";
+      }
+
       if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
         const id =
           target === "departure"
@@ -876,8 +889,9 @@ export default function ProductDetailV2({
           </div>
         ) : null}
 
-        {showCalendarBooking && portOneEnabled && (hasCalendarDepartures || hasDepartures || hasOptions) ? (
-          <div className="mt-6">
+        {/* Mock 주문서: PortOne 키 없이도 표시. PG 연결 시 prepare는 submitPayment 어댑터에서 처리 */}
+        {showCalendarBooking && (hasCalendarDepartures || hasDepartures || hasOptions) ? (
+          <div id="product-checkout" className="mt-6 scroll-mt-28">
             <ProductCheckoutSection
               productId={product?.id ?? ""}
               productTitle={title ?? ""}

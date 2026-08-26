@@ -178,7 +178,7 @@ export function HomeProductCard({
       onClick={onNavigate}
       aria-label={`${titleText}, 상세 보기`}
       className={cn(
-        "group flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] sm:rounded-2xl",
+        "group flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] sm:rounded-[var(--radius-lg)]",
         variant === "rail" ? "h-full w-full flex-1" : "h-full",
         CARD_HOVER,
         CARD_TRANSITION,
@@ -305,7 +305,7 @@ export function HomeProductCard({
               <p className="mb-1 inline-flex max-w-full rounded-md bg-[var(--accent)] px-2 py-0.5 text-[0.625rem] font-extrabold leading-tight text-[var(--on-accent)] sm:text-[0.6875rem]">
                 4인 예약 시 총 {teamDiscountFormatted}원 즉시 차감!
               </p>
-              <p className="text-xs leading-tight text-slate-400 tabular-nums line-through sm:text-sm">
+              <p className="text-xs leading-tight text-[var(--text-muted)] tabular-nums line-through sm:text-sm">
                 정가: {teamListFormatted}원 (4인)
               </p>
               <p className="mt-0.5 text-[1.1875rem] font-extrabold leading-tight text-[var(--accent)] tabular-nums sm:text-xl">
@@ -317,10 +317,10 @@ export function HomeProductCard({
             </>
           ) : priceDisplay === "coinBenefit" && coinBenefitMemberPriceFormatted ? (
             <>
-              <p className="text-sm leading-tight text-slate-400 tabular-nums line-through">
+              <p className="text-sm leading-tight text-[var(--text-muted)] tabular-nums line-through">
                 정가 ₩{coinBenefitListPriceFormatted}
               </p>
-              <p className="mt-0.5 text-lg font-extrabold leading-tight text-slate-900 tabular-nums sm:text-xl">
+              <p className="mt-0.5 text-lg font-extrabold leading-tight text-[var(--foreground)] tabular-nums sm:text-xl">
                 회원가 ₩{coinBenefitMemberPriceFormatted}~
               </p>
               {seasonalBandInfo && product.seasonal_price_bands ? (

@@ -25,9 +25,20 @@
  *   이번 정리에서는 값을 바꾸지 않는다.
  */
 :root {
+  /**
+   * Mobile-first spacing / layout policy (PR-UI-01 Foundation)
+   *
+   * - Mobile is the baseline layout.
+   * - Do not derive mobile spacing by simply shrinking desktop values.
+   * - Use the minimum spacing required for readability and touch usability.
+   * - Increase spacing progressively at larger breakpoints only when useful.
+   * - Avoid unnecessary boxed/padded surfaces on narrow mobile screens.
+   *
+   * Brand → Semantic → Component. Do not hardcode brand hex in components.
+   */
   /* THEALL TOUR brand tokens v2.0 — 로고/아이콘 기준 UI 컬러 시스템 */
   --theall-brand-blue: #1e5b8f;
-  --theall-brand-orange: #e0612a;
+  --theall-brand-orange: #ff7a2f;
   --theall-primary-navy: #0f172a;
   --theall-premium-gold: #b8962e;
 
@@ -54,6 +65,9 @@
   --surface: var(--theall-card-bg);
   --surface-muted: var(--theall-card-muted-bg);
   --surface-elevated: #ffffff;
+  /* Inverse surface (hero card, navy panels) — prefer over brand primitive in components */
+  --surface-inverse: var(--theall-primary-navy);
+  --text-on-inverse: #ffffff;
 
   --text-primary: var(--theall-text-primary);
   --text-secondary: var(--theall-text-secondary);
@@ -77,10 +91,10 @@
   --primary-soft: color-mix(in srgb, var(--theall-brand-blue) 9%, transparent);
   --on-primary: #ffffff;
 
-  /* Accent: 강조 CTA·dot (브랜드 오렌지 — primary와 역할 분리, 남용 금지) */
+  /* Accent: 강조 CTA·dot (브랜드 오렌지 #FF7A2F — primary와 역할 분리, 남용 금지) */
   --accent: var(--theall-brand-orange);
-  --accent-hover: #c95524;
-  --accent-active: #b94d20;
+  --accent-hover: color-mix(in srgb, var(--theall-brand-orange) 88%, black);
+  --accent-active: color-mix(in srgb, var(--theall-brand-orange) 78%, black);
   --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 12%, transparent);
   --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
   --on-accent: #ffffff;
@@ -191,7 +205,7 @@
   --tw-text-lg: 1.425rem;    /* 22.8px */
   --tw-text-xl: 1.575rem;    /* 25.2px */
 
-  /* Spacing scale */
+  /* Spacing scale (legacy numbered — keep for compatibility) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -199,6 +213,29 @@
   --space-5: 24px;
   --space-6: 56px; /* Hero vertical padding */
   --space-7: 64px; /* Hero horizontal + section vertical padding */
+
+  /**
+   * Canonical component spacing (4 / 8 / 12 / 16 / 24 / 32 / 48).
+   * Prefer these for new/foundation UI. Large layout spacing uses semantic aliases below.
+   */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-base: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Large layout spacing (semantic aliases — do not shrink these onto mobile by default) */
+  --space-hero-y: var(--space-6);
+  --space-section-y: var(--space-7);
+
+  /* Radius scale (8 / 12 / 16 / 24 / pill) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
 
   /* Public site (navy) text & border set (for dark navy sections) */
   --site-text-primary: #f1f5f9;
@@ -532,10 +569,14 @@
   --primary-soft: color-mix(in srgb, var(--primary) 14%, transparent);
   --on-primary: #0f172a;
 
-  /* Accent: 라이트와 동일 브랜드 톤·hover/active(흰 글자 대비 유지) */
+  /* Inverse surface on dark theme */
+  --surface-inverse: #111827;
+  --text-on-inverse: #ffffff;
+
+  /* Accent: 라이트와 동일 Brand Orange · hover/active 파생(흰 글자 대비 유지) */
   --accent: var(--theall-brand-orange);
-  --accent-hover: #c95524;
-  --accent-active: #b94d20;
+  --accent-hover: color-mix(in srgb, var(--theall-brand-orange) 88%, black);
+  --accent-active: color-mix(in srgb, var(--theall-brand-orange) 78%, black);
   --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
   --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 22%, transparent);
   --on-accent: #ffffff;
@@ -922,9 +963,9 @@ body {
 /* Layout primitives */
 .page-hero {
   background: var(--primary);
-  border-radius: 24px;
-  padding-block: var(--space-6);
-  padding-inline: var(--space-7);
+  border-radius: var(--radius-xl);
+  padding-block: var(--space-hero-y);
+  padding-inline: var(--space-section-y);
   box-shadow: var(--shadow-soft-strong);
   color: var(--on-primary);
 }
@@ -958,9 +999,9 @@ body {
 }
 
 .content-card {
-  background: var(--card);
-  border-radius: 24px;
-  padding: 48px;
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
   box-shadow: var(--shadow-soft);
 }
 
@@ -996,8 +1037,8 @@ body {
 }
 
 .surface-card {
-  border-radius: 1rem;
-  background: var(--card);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
   box-shadow: var(--shadow-soft-strong);
   border: 1px solid var(--border);
 }

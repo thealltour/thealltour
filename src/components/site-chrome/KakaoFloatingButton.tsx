@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @deprecated 모바일 일반 페이지 Floating CTA는 PR-UI-01 Follow-up에서 제거됨.
+ * 카카오 상담은 Header「문의하기」→ MobileConsultSheet에서 제공.
+ * layout에서 마운트하지 않음. 재사용 시 URL 해석 로직만 참고.
+ */
+
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
@@ -57,7 +63,6 @@ export default function KakaoFloatingButton() {
     <div
       className={`fixed right-[max(16px,env(safe-area-inset-right))] ${bottomClass} z-50 flex items-center gap-3 sm:hidden`}
     >
-      {/* 캡슐 형태 카톡 상담 버튼 - 웹 카톡 버튼과 동일한 톤 */}
       <a
         href={
           kakaoChatUrl ??

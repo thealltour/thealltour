@@ -17,7 +17,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 export const solidButtonShadowClasses =
   "shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-soft-strong)]";
 
-/** 높이: sm 36px, md 44px, lg 52px. radius 12px. focus-visible ring 3px --focus-ring. */
+/** 높이: sm 36px, md 44px, lg 52px. radius --radius-md (12px). focus-visible ring 3px --focus-ring. */
 export function buttonVariants(options?: {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -26,7 +26,7 @@ export function buttonVariants(options?: {
   const { variant = "primary", size = "md", className } = options ?? {};
 
   const base =
-    "inline-flex items-center justify-center rounded-xl type-btn transition-all duration-150 " +
+    "inline-flex items-center justify-center rounded-[var(--radius-md)] type-btn transition-all duration-150 " +
     "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] " +
     "disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed " +
     "active:translate-y-px [&_svg]:shrink-0";
@@ -49,9 +49,9 @@ export function buttonVariants(options?: {
         `bg-[var(--secondary)] text-white ${solidButtonShadowClasses} hover:bg-[var(--secondary-hover)] active:opacity-90`;
       break;
     case "kakao":
-      /* 카카오 브랜드 옐로우 기반 솔리드 CTA (primary 오렌지로 대체 금지) */
+      /* 카카오 브랜드 컬러만 별도 — geometry(radius)는 공통 Button System */
       variantClass =
-        `rounded-lg border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] text-[var(--theall-kakao-text)] ${solidButtonShadowClasses} ` +
+        `border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] text-[var(--theall-kakao-text)] ${solidButtonShadowClasses} ` +
         "hover:bg-[var(--theall-kakao-hover-bg)] active:bg-[var(--theall-kakao-active-bg)] " +
         "[&_svg]:text-[var(--theall-kakao-text)]";
       break;

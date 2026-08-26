@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { MobileHeaderDrawer } from "./MobileHeaderDrawer";
+import { MobileConsultSheet } from "./MobileConsultSheet";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
@@ -27,6 +27,7 @@ export type MobileHeaderMenuProps = {
 /**
  * 모바일 2단 헤더: [☰ | 로고 | 문의하기] + (옵션) 고정 검색바
  * 검색 → 탐색(드로어) → 상담(CTA) 동선. CTA는 1개만(오렌지 캡슐).
+ * 문의하기 → MobileConsultSheet(카카오/전화/견적) 단일 진입점.
  */
 export function MobileHeaderMenu({
   primaryNav,
@@ -36,7 +37,7 @@ export function MobileHeaderMenu({
   showHeaderSearchRow = true,
 }: MobileHeaderMenuProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const { openModal } = useConsultModal();
+  const [isConsultSheetOpen, setIsConsultSheetOpen] = useState(false);
 
   useEffect(() => {
     function handleToggle() {
@@ -73,15 +74,12 @@ export function MobileHeaderMenu({
         source: ANALYTICS_SOURCES.consult_cta,
         section: "mobile_header",
         label: "문의하기",
-        href: "/quote",
+        href: null,
         pagePath: typeof window !== "undefined" ? window.location.pathname : null,
         deviceType: inferDeviceType("mobile"),
       }),
     );
-    openModal({
-      productTitle: "패키지/골프 맞춤 상담",
-      sourcePath: typeof window !== "undefined" ? `${window.location.pathname}#mobile-header-consult` : "",
-    });
+    setIsConsultSheetOpen(true);
   }
 
   return (
@@ -112,6 +110,8 @@ export function MobileHeaderMenu({
           <button
             type="button"
             onClick={handleConsultClick}
+            aria-haspopup="dialog"
+            aria-expanded={isConsultSheetOpen}
             className="mobile-header-top-bar__cta glass-cta-edge relative z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
           >
             문의하기
@@ -131,6 +131,11 @@ export function MobileHeaderMenu({
         onClose={closeDrawer}
         session={session}
         searchQuery={searchQuery}
+      />
+
+      <MobileConsultSheet
+        isOpen={isConsultSheetOpen}
+        onClose={() => setIsConsultSheetOpen(false)}
       />
     </>
   );

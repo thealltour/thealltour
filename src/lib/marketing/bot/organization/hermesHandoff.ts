@@ -1,7 +1,7 @@
 import type { HermesMarketingProfileId } from "@/lib/marketing/bot/organization/envelope";
 
 /**
- * Hermes Agent v0.20.4 (installed) handoff primitives.
+ * Hermes Agent v0.20.5 (installed) handoff primitives.
  *
  * There is no native "profile A invokes profile B" RPC.
  * Same-machine delivery uses CLI profile selection. Cross-machine uses `hermes peer dm`.

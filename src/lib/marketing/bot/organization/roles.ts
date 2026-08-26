@@ -16,6 +16,7 @@ export const MARKETING_AGENT_ROLE_CONFIGS: Record<MarketingAgentRole, AgentRoleC
       "Handoff REVIEW to a human",
       "Return BLOCK work for revision",
       "Stop at publish_ready without posting",
+      "Call run_department_orchestration for specialist work; never imitate specialists",
     ],
     allowedTools: allowedToolsForRole("marketing_manager"),
     toolPermissions: MARKETING_SKILL_MATRIX.marketing_manager,

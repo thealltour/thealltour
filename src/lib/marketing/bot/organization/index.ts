@@ -22,6 +22,10 @@ export {
 } from "@/lib/marketing/bot/organization/envelope";
 export { HERMES_HANDOFF_CLASSIFICATION, buildHermesOneshotArgv } from "@/lib/marketing/bot/organization/hermesHandoff";
 export { applyPipelineApproval, runDepartmentPipeline } from "@/lib/marketing/bot/organization/pipeline";
+export { PROJECT_DEPARTMENT_REGISTRY, resolveDepartmentRegistry } from "@/lib/marketing/bot/organization/registry";
+export { routeDepartmentRequest } from "@/lib/marketing/bot/organization/routing";
+export { orchestrateDepartmentTask } from "@/lib/marketing/bot/organization/orchestrate";
+export type { DepartmentOrchestrationResult } from "@/lib/marketing/bot/organization/orchestrate";
 export type {
   ContentDraftRequest,
   ContentStrategistOutput,

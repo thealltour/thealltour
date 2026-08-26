@@ -40,7 +40,7 @@ Desktop **BOTS → Marketing Manager** 창은 profile에 pin된 `Bot Chat` (sour
 - `trust: full` — 우리 localhost MCP. 전역 `~/.hermes/config.yaml`은 `untrusted` 유지
 - Authorization은 env interpolation. SOUL에 token 금지
 
-`hermes mcp test`는 서버가 노출한 7개를 보여 준다. Agent 실행 시의 실제 호출 범위는 `tools.include` + prompt다.
+`hermes mcp test`는 서버가 노출한 8개를 보여 준다. Agent 실행 시의 실제 호출 범위는 `tools.include` + prompt다.
 
 ## Agent-to-Agent
 

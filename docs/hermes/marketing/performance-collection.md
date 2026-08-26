@@ -9,7 +9,9 @@ Existing DB / analytics data
   → PerformanceMemorySource / metric count sources
   → Daily Performance Brief artifact
   → Performance Analyst Cron (08:30) / Manager Cron (09:00)
-  → Interactive Telegram/Desktop handoff via MCP `get_performance_evidence`
+  → Interactive Telegram/Desktop via MCP `run_department_orchestration`
+      → actual performance-analyst profile dispatch
+      → `get_performance_evidence` / Daily Performance Brief contract
 ```
 
 확인에 사용하는 source (존재하는 데이터만):

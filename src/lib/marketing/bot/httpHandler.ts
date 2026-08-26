@@ -131,6 +131,16 @@ const MCP_TOOL_SCHEMAS: Record<string, { description: string; required: string[]
         channel: { type: "string" },
       },
     },
+    run_department_orchestration: {
+      description:
+        "Application-level Marketing Manager orchestration. Actually dispatches allowlisted specialist Hermes profiles, collects evidence, and synthesizes. Does not publish. Ingress-agnostic (Telegram/Desktop).",
+      required: ["userRequest"],
+      properties: {
+        userRequest: { type: "string" },
+        productId: { type: "string" },
+        channel: { type: "string" },
+      },
+    },
   };
 
 function mcpToolsList() {

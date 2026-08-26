@@ -26,6 +26,8 @@ export { MARKETING_BOT_INTERNAL_TOKEN_ENV, MARKETING_BOT_VERSION } from "@/lib/m
 export { MarketingBotAuthError, MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 export { getMarketingContextTool } from "@/lib/marketing/bot/getMarketingContextTool";
 export { getPerformanceEvidenceTool } from "@/lib/marketing/bot/getPerformanceEvidenceTool";
+export { runDepartmentOrchestrationTool } from "@/lib/marketing/bot/runDepartmentOrchestrationTool";
+export { orchestrateDepartmentTask } from "@/lib/marketing/bot/organization/orchestrate";
 export { searchMarketingMemoryTool } from "@/lib/marketing/bot/searchMarketingMemoryTool";
 export { buildContentBriefTool, prepareMarketingTask } from "@/lib/marketing/bot/prepareMarketingTask";
 export { evaluateGovernanceTool, reviewGeneratedContent } from "@/lib/marketing/bot/evaluateGovernanceTool";

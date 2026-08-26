@@ -12,6 +12,7 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       prepare_marketing_task: "allow",
       review_generated_content: "allow",
       get_performance_evidence: "allow",
+      run_department_orchestration: "allow",
     },
     content_strategist: {
       get_marketing_context: "allow",
@@ -21,6 +22,7 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       prepare_marketing_task: "deny",
       review_generated_content: "deny",
       get_performance_evidence: "deny",
+      run_department_orchestration: "deny",
     },
     governance_auditor: {
       get_marketing_context: "optional",
@@ -30,6 +32,7 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       prepare_marketing_task: "deny",
       review_generated_content: "allow",
       get_performance_evidence: "deny",
+      run_department_orchestration: "deny",
     },
     performance_analyst: {
       get_marketing_context: "allow",
@@ -39,6 +42,7 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       prepare_marketing_task: "deny",
       review_generated_content: "deny",
       get_performance_evidence: "allow",
+      run_department_orchestration: "deny",
     },
   };
 

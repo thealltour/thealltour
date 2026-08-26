@@ -5,6 +5,7 @@ import { MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 import { getMarketingContextTool } from "@/lib/marketing/bot/getMarketingContextTool";
 import { buildContentBriefTool, prepareMarketingTask } from "@/lib/marketing/bot/prepareMarketingTask";
 import { getPerformanceEvidenceTool } from "@/lib/marketing/bot/getPerformanceEvidenceTool";
+import { runDepartmentOrchestrationTool } from "@/lib/marketing/bot/runDepartmentOrchestrationTool";
 import { searchMarketingMemoryTool } from "@/lib/marketing/bot/searchMarketingMemoryTool";
 import { MARKETING_BOT_TOOL_NAMES, type MarketingBotDeps, type MarketingBotToolName } from "@/lib/marketing/bot/types";
 
@@ -116,6 +117,15 @@ export async function dispatchMarketingBotTool(
     case "get_performance_evidence":
       return getPerformanceEvidenceTool(
         {
+          productId: asOptionalString(body.productId),
+          channel: asOptionalString(body.channel),
+        },
+        deps,
+      );
+    case "run_department_orchestration":
+      return runDepartmentOrchestrationTool(
+        {
+          userRequest: asOptionalString(body.userRequest) ?? "",
           productId: asOptionalString(body.productId),
           channel: asOptionalString(body.channel),
         },

@@ -14,7 +14,7 @@
 - ALLOW → publish_ready에서 중단
 
 주요 Tool:
-- allow: `prepare_marketing_task`, `get_marketing_context`, `search_marketing_memory`, `build_content_brief`, `review_generated_content`, `get_performance_evidence`
+- allow: `prepare_marketing_task`, `get_marketing_context`, `search_marketing_memory`, `build_content_brief`, `review_generated_content`, `get_performance_evidence`, `run_department_orchestration`
 - optional: `evaluate_governance`
 
 금지:

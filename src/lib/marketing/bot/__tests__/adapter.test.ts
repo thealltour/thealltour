@@ -110,6 +110,7 @@ describe("MCP JSON-RPC adapter", () => {
     expect(names).toContain("prepare_marketing_task");
     expect(names).toContain("review_generated_content");
     expect(names).toContain("get_performance_evidence");
+    expect(names).toContain("run_department_orchestration");
     expect(names.some((name) => /publish|send|post/i.test(name))).toBe(false);
     expect(tools.every((tool) => tool.annotations?.readOnlyHint)).toBe(true);
   });

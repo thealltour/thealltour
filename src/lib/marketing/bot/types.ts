@@ -14,6 +14,7 @@ export const MARKETING_BOT_TOOL_NAMES = [
   "prepare_marketing_task",
   "review_generated_content",
   "get_performance_evidence",
+  "run_department_orchestration",
 ] as const;
 
 export type MarketingBotToolName = (typeof MARKETING_BOT_TOOL_NAMES)[number];
@@ -281,4 +282,9 @@ export type MarketingBotDeps = {
     channel?: string | null;
     now?: Date;
   }) => Promise<import("@/lib/marketing/cron/performanceBriefArtifact").DailyPerformanceBriefArtifact>;
+  hermesRuntime?: import("@/lib/marketing/bot/organization/hermesRuntime").HermesAgentRuntime;
+  readJobsFile?: (absolutePath: string) => string | null;
+  fetchGatewayStatus?: (url: string) => Promise<unknown>;
+  requestDraft?: import("@/lib/marketing/bot/organization/pipeline").DepartmentPipelineDeps["requestDraft"];
+  requestGovernance?: import("@/lib/marketing/bot/organization/pipeline").DepartmentPipelineDeps["requestGovernance"];
 };

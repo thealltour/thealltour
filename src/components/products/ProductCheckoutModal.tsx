@@ -114,6 +114,7 @@ export function ProductCheckoutModal({
     void refreshProfile();
   }, [open, refreshProfile]);
 
+  /** 오픈 시에만 폼 리셋. profile deps면 재조회 시 타이핑 중 값이 날아감 */
   useEffect(() => {
     if (!open) return;
     setErrors({});
@@ -128,15 +129,17 @@ export function ProductCheckoutModal({
       phone: profile?.phone ?? "",
       email: profile?.email ?? "",
     });
-  }, [open, profile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open edge only
+  }, [open]);
 
+  /** 프로필이 늦게 도착해도 비어 있는 칸만 채움 (사용자 입력 유지) */
   useEffect(() => {
     if (!open || !isMember || !profile || editingCustomer) return;
     setForm((prev) => ({
       ...prev,
-      name: profile.name || prev.name,
-      phone: profile.phone || prev.phone,
-      email: profile.email || prev.email,
+      name: prev.name.trim() ? prev.name : profile.name || "",
+      phone: prev.phone.trim() ? prev.phone : profile.phone || "",
+      email: prev.email.trim() ? prev.email : profile.email || "",
     }));
   }, [open, isMember, profile, editingCustomer]);
 
@@ -156,10 +159,16 @@ export function ProductCheckoutModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const missingName = isMember && !hasValue(form.name);
-  const missingPhone = isMember && !hasValue(form.phone);
-  const missingEmail = isMember && !hasValue(form.email);
+  /**
+   * 인라인 입력 노출은 계정(profile) 기준.
+   * form 기준으로 하면 한 글자 입력 즉시 missing=false → 입력창이 사라져 버림.
+   */
+  const missingName = isMember && !hasValue(profile?.name);
+  const missingPhone = isMember && !hasValue(profile?.phone);
+  const missingEmail = isMember && !hasValue(profile?.email);
   const hasAnyMissing = missingName || missingPhone || missingEmail;
+  const formCustomerComplete =
+    hasValue(form.name) && hasValue(form.phone) && hasValue(form.email);
 
   /** 회원 원클릭: 요약 카드. [변경] 시에만 전체 폼. 누락 항목만 인라인 */
   const showMemberSummary = isMember && !editingCustomer;
@@ -571,7 +580,7 @@ export function ProductCheckoutModal({
                   : `₩${payAmount.toLocaleString("ko-KR")}원 결제 진행하기`}
               </button>
               <p className="mt-2 text-center text-[11px] text-slate-400">
-                {isMember && !hasAnyMissing && !editingCustomer
+                {isMember && formCustomerComplete && !editingCustomer
                   ? "내 정보로 바로 결제 · 확정 전 무료 취소 가능"
                   : "확정 전 무료 취소 가능 · 안전한 결제 준비"}
               </p>

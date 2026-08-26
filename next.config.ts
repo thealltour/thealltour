@@ -11,9 +11,9 @@ const contentSecurityPolicy = `
   img-src 'self' data: blob: https:;
   font-src 'self' data: https:;
   style-src 'self' 'unsafe-inline';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://t1.daumcdn.net https://vercel.live;
-  connect-src 'self' https: ws: wss:;
-  frame-src 'self' https://www.youtube.com https://player.vimeo.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://t1.daumcdn.net https://vercel.live https://cdn.portone.io https://*.iamport.kr;
+  connect-src 'self' https: ws: wss: https://api.portone.io https://*.iamport.kr;
+  frame-src 'self' https://www.youtube.com https://player.vimeo.com https://*.portone.io https://*.iamport.kr https://*.toss.im https://*.inicis.com https://*.kcp.co.kr https://*.kakaopay.com https://*.naver.com;
 `
   .replace(/\s{2,}/g, " ")
   .trim();

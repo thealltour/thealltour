@@ -7,6 +7,7 @@ export const PROVIDER_KINDS = [
   "gemini",
   "groq",
   "openrouter",
+  "nvidia",
   "openai-compatible",
   "local",
 ] as const;

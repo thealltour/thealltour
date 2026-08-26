@@ -30,16 +30,85 @@ function cloneModels(mutator?: (model: ModelDefinition) => ModelDefinition): Mod
 describe("ai-runtime registry", () => {
   const registry = createDefaultAiRuntimeRegistry();
 
-  it("looks up Gemini / OpenRouter / Groq providers by id", () => {
+  it("looks up Gemini / OpenRouter / Groq / NVIDIA providers by id", () => {
     expect(registry.getProviderById(AI_PROVIDER_IDS.GEMINI_MAIN)?.kind).toBe("gemini");
     expect(registry.getProviderById(AI_PROVIDER_IDS.OPENROUTER_MAIN)?.kind).toBe("openrouter");
     expect(registry.getProviderById(AI_PROVIDER_IDS.GROQ_MAIN)?.kind).toBe("groq");
+    expect(registry.getProviderById(AI_PROVIDER_IDS.NVIDIA_MAIN)?.kind).toBe("nvidia");
     expect(registry.getProviderById(AI_PROVIDER_IDS.GEMINI_MAIN)?.enabled).toBe(true);
     expect(registry.getProviderById(AI_PROVIDER_IDS.OPENROUTER_MAIN)?.enabled).toBe(true);
-    expect(registry.getProviderById(AI_PROVIDER_IDS.GROQ_MAIN)?.enabled).toBe(true);
+    expect(registry.getProviderById(AI_PROVIDER_IDS.GROQ_MAIN)?.enabled).toBe(false);
+    expect(registry.getProviderById(AI_PROVIDER_IDS.NVIDIA_MAIN)?.enabled).toBe(true);
     expect(registry.getProviderById(AI_PROVIDER_IDS.GEMINI_MAIN)?.credentialRef).toBe(
       "ai-provider/gemini/main",
     );
+    expect(registry.getProviderById(AI_PROVIDER_IDS.NVIDIA_MAIN)?.credentialRef).toBe(
+      "ai-provider/nvidia/main",
+    );
+  });
+
+  it("registers NVIDIA Llama 3.3 70B without raw secrets", () => {
+    const nvidia = registry.getProviderById(AI_PROVIDER_IDS.NVIDIA_MAIN);
+    expect(nvidia?.displayName).toBe("NVIDIA NIM");
+    expect(nvidia).not.toHaveProperty("apiKey");
+    expect(JSON.stringify(nvidia)).not.toMatch(/NVIDIA_API_KEY|nvapi-/i);
+
+    const model = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(model?.providerId).toBe(AI_PROVIDER_IDS.NVIDIA_MAIN);
+    expect(model?.modelId).toBe("meta/llama-3.3-70b-instruct");
+    expect(model?.limits.contextTokens).toBe(131072);
+    expect(model?.limits.rpm).toBeUndefined();
+    expect(model?.economics.freeTierEligible).toBe(true);
+  });
+
+  it("includes NVIDIA for analysis/summarization but not manager_decision", () => {
+    const analysis = registry.listModelsForWorkload("analysis").map((model) => model.id);
+    const summarization = registry.listModelsForWorkload("summarization").map((model) => model.id);
+    const manager = registry.listModelsForWorkload("manager_decision").map((model) => model.id);
+
+    expect(analysis).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(summarization).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(manager).not.toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+  });
+
+  it("keeps Groq registered but disabled and ineligible", () => {
+    const groq = registry.getProviderById(AI_PROVIDER_IDS.GROQ_MAIN);
+    expect(groq).toBeTruthy();
+    expect(groq?.enabled).toBe(false);
+    expect(groq?.metadata?.statusReason).toBe("Hermes provider invocation unavailable");
+    expect(registry.listEnabledProviders().map((provider) => provider.id)).not.toContain(
+      AI_PROVIDER_IDS.GROQ_MAIN,
+    );
+
+    const withGroqModel = createAiRuntimeRegistry({
+      providers: [...DEFAULT_AI_PROVIDERS],
+      models: withAdditionalModels(DEFAULT_AI_MODELS, [
+        {
+          id: "groq-hypothetical",
+          providerId: AI_PROVIDER_IDS.GROQ_MAIN,
+          modelId: "openai/gpt-oss-120b",
+          displayName: "Groq hypothetical",
+          capabilities: {
+            reasoning: 3,
+            writing: 3,
+            extraction: 3,
+            summarization: 3,
+            structuredOutput: true,
+            toolCalling: true,
+          },
+          limits: {},
+          economics: {},
+          routing: {
+            workloadClasses: ["summarization"],
+            basePriority: 50,
+            enabled: true,
+          },
+        },
+      ]),
+    });
+    expect(
+      withGroqModel.findEligibleModels({ workload: "summarization" }).map((model) => model.id),
+    ).not.toContain("groq-hypothetical");
   });
 
   it("looks up Gemini primary/secondary and OpenRouter free models", () => {
@@ -67,10 +136,12 @@ describe("ai-runtime registry", () => {
     const eligible = registry.listModelsForWorkload("content_draft").map((model) => model.id);
     expect(eligible).toContain(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY);
     expect(eligible).toContain(AI_MODEL_IDS.OPENROUTER_FREE);
+    expect(eligible).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
 
     const managerOnly = registry.listModelsForWorkload("manager_decision").map((model) => model.id);
     expect(managerOnly).toContain(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY);
     expect(managerOnly).not.toContain(AI_MODEL_IDS.OPENROUTER_FREE);
+    expect(managerOnly).not.toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
   });
 
   it("filters by structured output and tool calling requirements", () => {
@@ -88,8 +159,12 @@ describe("ai-runtime registry", () => {
   });
 
   it("supports freeOnly filter", () => {
-    const freeOnly = registry.findEligibleModels({ workload: "summarization", freeOnly: true });
-    expect(freeOnly.map((model) => model.id)).toEqual([AI_MODEL_IDS.OPENROUTER_FREE]);
+    const freeOnly = registry
+      .findEligibleModels({ workload: "summarization", freeOnly: true })
+      .map((model) => model.id);
+    expect(freeOnly).toContain(AI_MODEL_IDS.OPENROUTER_FREE);
+    expect(freeOnly).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(freeOnly).not.toContain(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY);
   });
 
   it("excludes models when provider is disabled", () => {

@@ -5,6 +5,7 @@ export const AI_PROVIDER_IDS = {
   GEMINI_MAIN: "gemini-main",
   OPENROUTER_MAIN: "openrouter-main",
   GROQ_MAIN: "groq-main",
+  NVIDIA_MAIN: "nvidia-main",
 } as const;
 
 export type AiProviderRegistryId = (typeof AI_PROVIDER_IDS)[keyof typeof AI_PROVIDER_IDS];
@@ -37,11 +38,23 @@ export const DEFAULT_AI_PROVIDERS: readonly ProviderDefinition[] = [
     id: AI_PROVIDER_IDS.GROQ_MAIN,
     kind: "groq",
     displayName: "Groq",
-    // Entry exists for future models; keep enabled so registry stays usable
-    // even before a key exists. Adapters (later) must still resolve credentials.
-    enabled: true,
+    // Kept in catalog for easy re-enable once Hermes invocation works again.
+    enabled: false,
     credentialRef: "ai-provider/groq/main",
     quotaScope: "account",
-    metadata: { vendor: "groq" },
+    metadata: {
+      vendor: "groq",
+      statusReason: "Hermes provider invocation unavailable",
+    },
+  },
+  {
+    id: AI_PROVIDER_IDS.NVIDIA_MAIN,
+    kind: "nvidia",
+    displayName: "NVIDIA NIM",
+    enabled: true,
+    credentialRef: "ai-provider/nvidia/main",
+    // Hosted NIM keys are typically account-scoped (same pattern as OpenRouter/Groq).
+    quotaScope: "account",
+    metadata: { vendor: "nvidia" },
   },
 ] as const;

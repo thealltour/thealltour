@@ -21,10 +21,19 @@ const DEFAULT_GOLF_HEADLINE =
 const DEFAULT_GOLF_SUBCOPY =
   "선호하는 골프장, 라운딩 횟수, 동행 인원과 예산을 알려주시면, 시즌에 맞는 최적의 골프투어 코스를 추천해 드립니다.";
 
+const MOBILE_PACKAGE_TITLE = "여행상품";
+const MOBILE_PACKAGE_SUBTITLE = "원하는 여행상품을 찾아보세요";
+const MOBILE_GOLF_TITLE = "골프 여행상품";
+const MOBILE_GOLF_SUBTITLE = "원하는 골프상품을 찾아보세요";
+
 type ProductsHeroProps = {
   variant: ProductsHeroVariant;
 };
 
+/**
+ * Desktop: settings 기반 풀 Hero.
+ * Mobile (lg 미만): compact title + 1줄 subtitle — Browse Mode 세로 밀도 개선.
+ */
 export default function ProductsHero({ variant }: ProductsHeroProps) {
   const [settings, setSettings] = useState<SiteSettingsClient | null>(null);
 
@@ -76,18 +85,25 @@ export default function ProductsHero({ variant }: ProductsHeroProps) {
     return DEFAULT_PACKAGE_SUBCOPY;
   }, [settings, variant]);
 
+  const mobileTitle = variant === "golf" ? MOBILE_GOLF_TITLE : MOBILE_PACKAGE_TITLE;
+  const mobileSubtitle = variant === "golf" ? MOBILE_GOLF_SUBTITLE : MOBILE_PACKAGE_SUBTITLE;
+
   return (
-    <section className="space-y-1" aria-labelledby="products-hero-title">
-      <p className="section-label text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wide md:type-small">
+    <section className="space-y-[var(--space-xs)]" aria-labelledby="products-hero-title">
+      <p className="section-label hidden text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] lg:block md:type-small">
         {variant === "golf" ? "THEALL TOUR GOLF" : "THEALL TOUR PACKAGE"}
       </p>
-      <h1 id="products-hero-title" className="section-title type-h2 text-[var(--foreground)] md:type-h1 md:leading-[1.2]">
-        {headline}
+      <h1
+        id="products-hero-title"
+        className="section-title type-h3 font-semibold leading-snug text-[var(--foreground)] lg:type-h2 lg:leading-[1.2] xl:type-h1"
+      >
+        <span className="lg:hidden">{mobileTitle}</span>
+        <span className="hidden lg:inline">{headline}</span>
       </h1>
-      <p className="type-small max-w-2xl leading-relaxed text-[var(--text-muted)] md:type-body">
-        {subcopy}
+      <p className="type-small max-w-2xl text-[var(--text-muted)] lg:leading-relaxed lg:type-body">
+        <span className="lg:hidden">{mobileSubtitle}</span>
+        <span className="hidden lg:inline">{subcopy}</span>
       </p>
     </section>
   );
 }
-

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { MapPin, Palette, Package, ArrowDownUp, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import type { ProductFiltersState, ProductSortId } from "@/lib/productFilters";
-import { PRODUCT_FILTER_KEYS, SORT_OPTIONS } from "@/lib/productFilters";
+import { PRODUCT_FILTER_KEYS, SORT_OPTIONS, SEARCH_SORT_OPTIONS } from "@/lib/productFilters";
 import { cn } from "@/lib/cn";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 
@@ -17,6 +17,8 @@ export type ProductFilterSidebarProps = {
   productLineOptions: string[];
   filters: ProductFiltersState;
   onFilterChange: (next: Partial<ProductFiltersState>) => void;
+  /** Search Mode: relevance 등 검색 정렬 옵션 */
+  searchMode?: boolean;
   /** 데스크톱에서만 보이므로 lg 이상에서 렌더 */
   className?: string;
 };
@@ -188,6 +190,7 @@ export function ProductFilterSidebar({
   productLineOptions,
   filters,
   onFilterChange,
+  searchMode = false,
   className,
 }: ProductFilterSidebarProps) {
   const [expandedRegionIds, setExpandedRegionIds] = useState<Set<string>>(() => new Set());
@@ -358,7 +361,7 @@ export function ProductFilterSidebar({
           )}
 
           <FilterSection legend="정렬" icon={ArrowDownUp}>
-            {SORT_OPTIONS.filter((o) => o.value).map((opt) => (
+            {(searchMode ? SEARCH_SORT_OPTIONS : SORT_OPTIONS).filter((o) => o.value).map((opt) => (
               <FilterOption
                 key={opt.value}
                 label={opt.label}

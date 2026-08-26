@@ -13,6 +13,8 @@ export type SearchPaginationProps = {
   currentPage: number;
   totalPages: number;
   query: SearchFilterState;
+  /** 기본: /search URL. Search Mode(/products)에서는 커스텀 href */
+  buildPageHref?: (page: number) => string;
 };
 
 const MAX_VISIBLE = 7;
@@ -37,7 +39,12 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | "ell
   return pages;
 }
 
-export default function SearchPagination({ currentPage, totalPages, query }: SearchPaginationProps) {
+export default function SearchPagination({
+  currentPage,
+  totalPages,
+  query,
+  buildPageHref,
+}: SearchPaginationProps) {
   const pages = getPageNumbers(currentPage, totalPages);
 
   const trackPagination = (fromPage: number, toPage: number) => {
@@ -55,7 +62,8 @@ export default function SearchPagination({ currentPage, totalPages, query }: Sea
     );
   };
 
-  const hrefForPage = (p: number) => buildSearchUrl({ ...query, page: p });
+  const hrefForPage = (p: number) =>
+    buildPageHref ? buildPageHref(p) : buildSearchUrl({ ...query, page: p });
 
   return (
     <nav

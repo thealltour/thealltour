@@ -29,6 +29,7 @@ export const PRODUCT_FILTER_KEYS = {
 } as const;
 
 export type ProductSortId =
+  | "relevance"
   | "recommended"
   | "price_asc"
   | "price_desc"
@@ -79,7 +80,18 @@ export const SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
   { value: "popular", label: "인기순" },
 ];
 
-const SORT_VALUES: ProductSortId[] = SORT_OPTIONS.map((o) => o.value);
+/** Search Mode 전용 — Browse SORT_OPTIONS와 분리 */
+export const SEARCH_SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
+  { value: "relevance", label: "관련도순" },
+  { value: "latest", label: "최신순" },
+  { value: "price_asc", label: "가격 낮은순" },
+  { value: "price_desc", label: "가격 높은순" },
+];
+
+const SORT_VALUES: ProductSortId[] = [
+  ...SORT_OPTIONS.map((o) => o.value),
+  ...SEARCH_SORT_OPTIONS.map((o) => o.value),
+];
 
 export function parseProductFiltersFromSearchParams(
   params: Record<string, string | string[] | undefined>,

@@ -24,6 +24,15 @@ import {
   resolvePromotionCampaignDisplayLabel,
   resolvePromotionCampaignId,
 } from "@/lib/products/golfCalendarPromotion";
+import { parseProductFiltersFromSearchParams } from "@/lib/productFilters";
+import { searchProductsByParams } from "@/lib/search/searchProducts";
+import { getSearchRecommendations } from "@/lib/search/getSearchRecommendations";
+import {
+  isProductsSearchMode,
+  parseProductsSearchPage,
+  resolveSearchModeSort,
+  toSearchEngineParams,
+} from "@/lib/products/productsSearchMode";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildOgMetadataFromSeoData(getProductsIndexOgPageSeo());
@@ -40,14 +49,16 @@ type ProductsPageProps = {
     collection?: string;
     destination?: string;
     city?: string;
+    page?: string;
   }>;
 };
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const query = (await searchParams) ?? {};
   const searchKeyword = typeof query.q === "string" ? query.q.trim() : "";
+  const isSearchMode = isProductsSearchMode(searchKeyword);
   const tourType = typeof query.tourType === "string" ? query.tourType.trim() : "";
-  const golfPresetActive = isGolfTourType(tourType);
+  const golfPresetActive = isGolfTourType(tourType) && !isSearchMode;
   const listingCtx = await loadProductsListingContext("products_index");
   const {
     products,
@@ -62,7 +73,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   } = listingCtx;
 
   const landingResolved =
-    hasLandingParams(query) ? await resolveLandingParams(query) : null;
+    !isSearchMode && hasLandingParams(query) ? await resolveLandingParams(query) : null;
   const initialFiltersFromServer = landingResolved?.initialFilters ?? null;
   const initialKeywordFromLanding = landingResolved?.initialKeyword ?? "";
 
@@ -76,26 +87,60 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     golfCalendarPromotionLegendLabel = resolvePromotionCampaignDisplayLabel(campaignTaxonomies);
   }
 
+  const parsedFilters = parseProductFiltersFromSearchParams(
+    query as Record<string, string | string[] | undefined>,
+  );
+
+  let searchResult = null;
+  let searchRecommendations = null;
+  if (isSearchMode) {
+    const page = parseProductsSearchPage(query as Record<string, string | string[] | undefined>);
+    const sort = resolveSearchModeSort(parsedFilters.sort);
+    const engineParams = toSearchEngineParams({
+      q: searchKeyword,
+      region: parsedFilters.region,
+      theme: parsedFilters.theme,
+      product_line: parsedFilters.product_line,
+      sort,
+      page,
+    });
+    searchResult = await searchProductsByParams(engineParams);
+    searchRecommendations = await getSearchRecommendations({
+      q: searchKeyword,
+      destination: engineParams.destination,
+      theme: engineParams.theme,
+      product_line: engineParams.product_line,
+      products: searchResult.items,
+    });
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
 
       <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
-        <PageContainer size="wide" className="flex flex-col gap-6">
+        <PageContainer size="wide" className="flex flex-col gap-4 lg:gap-6">
           <NavigationContextHeader
-            items={buildProductsBreadcrumbItems("index", { currentLabel: "여행상품" })}
-            pageTitle="여행상품"
+            items={buildProductsBreadcrumbItems("index", {
+              currentLabel: isSearchMode ? "검색" : "여행상품",
+            })}
+            pageTitle={isSearchMode ? "검색" : "여행상품"}
             fallbackHref={getProductsNavFallbackHref("index")}
             withMarginBottom={false}
           />
-          <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
+          {!isSearchMode ? (
+            <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
+          ) : null}
 
-          {products.length === 0 ? (
+          {products.length === 0 && !isSearchMode ? (
             <section className="rounded-2xl bg-[var(--surface)] p-8 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] type-small text-[var(--text-muted)] sm:rounded-3xl">
               현재 등록된 상품이 없습니다. 관리자 페이지에서 상품을 등록해 주세요.
             </section>
           ) : (
             <ProductsPageContent
+              mode={isSearchMode ? "search" : "browse"}
+              searchResult={searchResult}
+              searchRecommendations={searchRecommendations}
               products={products}
               taxonomyNameMap={taxonomyNameMap}
               regionOptions={categories}
@@ -103,7 +148,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               themeOptions={themes}
               themeTree={themeTree}
               productLineOptions={productLines}
-              initialKeyword={initialKeywordFromLanding || searchKeyword}
+              initialKeyword={isSearchMode ? "" : initialKeywordFromLanding || searchKeyword}
               golfChannelPreset={golfPresetActive}
               presetLabel={golfPresetActive ? "골프/파크골프" : undefined}
               golfCalendarMeta={

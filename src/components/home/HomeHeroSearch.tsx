@@ -12,9 +12,8 @@ import { cn } from "@/lib/cn";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import type { SearchSuggestion } from "@/types/search";
+import { loadRecentSearches, pushRecentSearch } from "@/lib/recentSearches";
 
-const HERO_RECENT_KEY = "hero_recent_searches";
-const MAX_RECENT = 5;
 const DEBOUNCE_MS = 250;
 
 const DEFAULT_PLACEHOLDER =
@@ -30,30 +29,6 @@ type HomeHeroSearchProps = {
   /** hero-mobile: 모바일에서 full width, 라운드·시인성 강화 */
   variant?: "default" | "hero-mobile";
 };
-
-function saveRecentSearch(keyword: string) {
-  if (typeof window === "undefined") return;
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(HERO_RECENT_KEY) || "[]") as string[];
-    const updated = [keyword, ...stored.filter((k) => k !== keyword)].slice(0, MAX_RECENT);
-    window.localStorage.setItem(HERO_RECENT_KEY, JSON.stringify(updated));
-  } catch {
-    // ignore
-  }
-}
-
-function loadRecentSearches(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(HERO_RECENT_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is string => typeof item === "string").slice(0, MAX_RECENT);
-  } catch {
-    return [];
-  }
-}
 
 export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSearchProps) {
   const router = useRouter();
@@ -178,8 +153,7 @@ export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSea
   const handleSearch = useCallback(
     (submitSource: "button" | "enter" | "suggestion") => {
       if (!trimmedQuery) return;
-      saveRecentSearch(trimmedQuery);
-      setRecentSearches(loadRecentSearches());
+      setRecentSearches(pushRecentSearch(trimmedQuery));
       setIsFocused(false);
       setHighlightedIndex(-1);
       setAutoSuggestions([]);
@@ -204,15 +178,14 @@ export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSea
         }),
       );
 
-      router.push(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+      router.push(`/products?q=${encodeURIComponent(trimmedQuery)}`);
     },
     [trimmedQuery, router],
   );
 
   const handleSelectSuggestion = useCallback(
     (item: SearchSuggestion, index: number) => {
-      saveRecentSearch(item.label);
-      setRecentSearches(loadRecentSearches());
+      setRecentSearches(pushRecentSearch(item.label));
       setIsFocused(false);
       setQuery("");
       setHighlightedIndex(-1);
@@ -269,10 +242,9 @@ export function HomeHeroSearch({ placeholder, variant = "default" }: HomeHeroSea
   function handleSelectKeyword(value: string) {
     const trimmed = value.trim();
     if (!trimmed) return;
-    saveRecentSearch(trimmed);
-    setRecentSearches(loadRecentSearches());
+    setRecentSearches(pushRecentSearch(trimmed));
     setIsFocused(false);
-    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+    router.push(`/products?q=${encodeURIComponent(trimmed)}`);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

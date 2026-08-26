@@ -14,11 +14,14 @@ import { cn } from "@/lib/cn";
 export type SearchEmptyProps = {
   /** 현재 검색어 */
   keyword?: string;
-  /** 적용된 필터 요약 */
+  /** 적용된 필터 요약 (destination 필드에 region name을 넣어도 됨) */
   current: SearchFilterState;
+  /** Canonical `/products` 등 — 미지정 시 legacy /search URL */
+  resetHref?: string;
+  onResetFilters?: () => void;
 };
 
-export default function SearchEmpty({ keyword, current }: SearchEmptyProps) {
+export default function SearchEmpty({ keyword, current, resetHref, onResetFilters }: SearchEmptyProps) {
   const router = useRouter();
   const trackedRef = useRef(false);
   const hasFilters = Boolean(current.destination || current.theme || current.product_line);
@@ -40,12 +43,18 @@ export default function SearchEmpty({ keyword, current }: SearchEmptyProps) {
     );
   }, [current.q, current.destination, current.theme, current.product_line]);
 
-  const resetUrl = keyword
-    ? buildSearchUrl(withPageOne(updateSearchQueryParams(current, { destination: "", theme: "", product_line: "" })))
-    : "/search";
+  const resolvedResetUrl =
+    resetHref ??
+    (keyword
+      ? buildSearchUrl(withPageOne(updateSearchQueryParams(current, { destination: "", theme: "", product_line: "" })))
+      : "/products");
 
   const handleReset = () => {
-    router.push(resetUrl);
+    if (onResetFilters) {
+      onResetFilters();
+      return;
+    }
+    router.push(resolvedResetUrl);
   };
 
   return (

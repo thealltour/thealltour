@@ -10,6 +10,7 @@ import HeaderSearchDropdown from "@/components/header/HeaderSearchDropdown";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import { loadRecentSearches, pushRecentSearch as persistRecentSearch } from "@/lib/recentSearches";
 
 type HeaderProductSearchProps = {
   searchQuery?: string;
@@ -45,20 +46,8 @@ export default function HeaderProductSearch({ searchQuery, mode, headerBar = fal
 
   const trimmedQuery = useMemo(() => query.trim(), [query]);
 
-  // 로컬 최근 검색어 로드
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem("thealltour_recent_searches_v1");
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) {
-        const normalized = parsed.filter((item) => typeof item === "string") as string[];
-        setRecentSearches(normalized.slice(0, 10));
-      }
-    } catch {
-      // ignore
-    }
+    setRecentSearches(loadRecentSearches());
   }, []);
 
   // 제품 제안 API
@@ -127,23 +116,11 @@ export default function HeaderProductSearch({ searchQuery, mode, headerBar = fal
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  function pushRecentSearch(value: string) {
-    if (!value.trim()) return;
-    setRecentSearches((prev) => {
-      const filtered = prev.filter((item) => item !== value);
-      const next = [value, ...filtered].slice(0, 10);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("thealltour_recent_searches_v1", JSON.stringify(next));
-      }
-      return next;
-    });
-  }
-
   function performSearch(value: string) {
     const trimmed = value.trim();
     if (!trimmed) return;
     setQuery(trimmed);
-    pushRecentSearch(trimmed);
+    setRecentSearches(persistRecentSearch(trimmed));
     setIsFocused(false);
     router.push(`/products?q=${encodeURIComponent(trimmed)}`);
   }

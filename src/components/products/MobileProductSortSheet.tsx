@@ -11,6 +11,8 @@ export type MobileProductSortSheetProps = {
   onClose: () => void;
   currentSort: ProductSortId;
   onSelect: (sort: ProductSortId) => void;
+  /** 미지정 시 Browse SORT_OPTIONS + 기본순 */
+  options?: { value: ProductSortId; label: string }[];
 };
 
 export function MobileProductSortSheet({
@@ -18,6 +20,7 @@ export function MobileProductSortSheet({
   onClose,
   currentSort,
   onSelect,
+  options,
 }: MobileProductSortSheetProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -29,6 +32,8 @@ export function MobileProductSortSheet({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const sortRows = options ?? [{ value: "" as ProductSortId, label: "기본순" }, ...SORT_OPTIONS];
 
   const content = (
     <div
@@ -53,10 +58,7 @@ export function MobileProductSortSheet({
           <h2 className="type-small font-semibold text-[var(--foreground)]">정렬</h2>
         </div>
         <ul className="py-2">
-          {[
-            { value: "" as ProductSortId, label: "기본순" },
-            ...SORT_OPTIONS,
-          ].map((opt) => (
+          {sortRows.map((opt) => (
             <li key={opt.value === "" ? "sort-default" : opt.value}>
               <button
                 type="button"

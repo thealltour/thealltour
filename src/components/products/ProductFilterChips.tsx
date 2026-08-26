@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ProductFiltersState } from "@/lib/productFilters";
-import { SORT_OPTIONS, getCollectionLabel } from "@/lib/productFilters";
+import { getCollectionLabel } from "@/lib/productFilters";
 import { cn } from "@/lib/cn";
 
 export type ProductFilterChipsProps = {
@@ -12,10 +12,15 @@ export type ProductFilterChipsProps = {
   onRemoveProductLine?: () => void;
   onRemoveKeyword?: () => void;
   onRemoveCollection?: () => void;
-  onRemoveSort: () => void;
+  /** @deprecated sort는 toolbar에서만 표시 — chip 미렌더. 호출부 호환용 optional */
+  onRemoveSort?: () => void;
   className?: string;
 };
 
+/**
+ * 활성 필터 chip.
+ * sort는 ProductListToolbar / SortSheet에서만 노출하므로 여기서 렌더하지 않는다.
+ */
 export function ProductFilterChips({
   filters,
   onRemoveRegion,
@@ -23,7 +28,6 @@ export function ProductFilterChips({
   onRemoveProductLine,
   onRemoveKeyword,
   onRemoveCollection,
-  onRemoveSort,
   className,
 }: ProductFilterChipsProps) {
   const hasRegion = Boolean(filters.region);
@@ -32,11 +36,7 @@ export function ProductFilterChips({
   const hasKeyword = Boolean(filters.q);
   const collectionLabel = getCollectionLabel(filters.collection);
   const hasCollection = Boolean(collectionLabel);
-  const sortLabel = filters.sort
-    ? SORT_OPTIONS.find((o) => o.value === filters.sort)?.label ?? filters.sort
-    : null;
-  const hasSort = Boolean(sortLabel);
-  const hasAny = hasRegion || hasTheme || hasProductLine || hasKeyword || hasCollection || hasSort;
+  const hasAny = hasRegion || hasTheme || hasProductLine || hasKeyword || hasCollection;
 
   if (!hasAny) return null;
 
@@ -99,7 +99,6 @@ export function ProductFilterChips({
           role="listitem"
           className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 type-caption font-semibold text-[var(--foreground)]"
         >
-          {/* 랜딩에서 city로 들어온 경우 "키워드: tokyo"처럼 보일 수 있음. 추후 "도시" 등 라벨 개선 여지 있음 */}
           키워드: {filters.q}
           <button
             type="button"
@@ -122,22 +121,6 @@ export function ProductFilterChips({
             onClick={onRemoveCollection}
             aria-label={`${collectionLabel} 제거`}
             className="rounded-full p-0.5 transition hover:bg-[var(--primary)]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </span>
-      )}
-      {hasSort && (
-        <span
-          role="listitem"
-          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 type-caption font-semibold text-[var(--text-primary)]"
-        >
-          {sortLabel}
-          <button
-            type="button"
-            onClick={onRemoveSort}
-            aria-label={`정렬 제거`}
-            className="rounded-full p-0.5 transition hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           >
             <X className="h-3.5 w-3.5" aria-hidden />
           </button>

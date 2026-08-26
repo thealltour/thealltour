@@ -3,6 +3,7 @@ import { normalizeProduct } from "@/lib/products";
 import {
   deriveDeparturesFromSchedules,
   formatDepartureScheduleChipLabel,
+  formatDepartureScheduleInquiryValue,
   getDepartureSchedulesMinPrice,
   normalizeDepartureSchedulesFromUnknown,
 } from "@/lib/products/normalizeDepartureSchedules";
@@ -55,6 +56,18 @@ describe("formatDepartureScheduleChipLabel", () => {
         price: 890000,
       }),
     ).toBe("7/23(수) · 890,000원");
+  });
+});
+
+describe("formatDepartureScheduleInquiryValue", () => {
+  it("prefers normalized ISO departureDate over display label", () => {
+    expect(
+      formatDepartureScheduleInquiryValue({
+        departureDate: "2026-09-23",
+        label: "09.23",
+        price: 4_499_000,
+      }),
+    ).toBe("2026-09-23 (4,499,000원)");
   });
 });
 

@@ -8,19 +8,23 @@ import {
   MAX_TRAVELER_COUNT,
   MIN_TRAVELER_COUNT,
 } from "@/components/products/ProductQuoteContext";
+import { cn } from "@/lib/cn";
 import { sortOptionGroups } from "@/lib/pricing/calcQuote";
 import {
   hasAnyOptionSelection,
   optionsSelectionHasMultiGroup,
 } from "@/lib/pricing/selectedOptions";
+import type { SelectedDeparture } from "@/lib/products/buildProductInquiryPrefill";
 import {
   formatDepartureScheduleChipLabel,
   formatDepartureScheduleInquiryValue,
+  resolveDepartureScheduleYmd,
 } from "@/lib/products/normalizeDepartureSchedules";
-import { collectProductDepartureDates } from "@/lib/products/productDepartureDates";
-import type { SelectedDeparture } from "@/lib/products/buildProductInquiryPrefill";
-import type { ProductDepartureSchedule, ProductOptions, Product, SelectedOptions } from "@/types/product";
-import { cn } from "@/lib/cn";
+import {
+  collectProductDepartureDates,
+  normalizeProductDepartureDateToYmd,
+} from "@/lib/products/productDepartureDates";
+import type { Product, ProductDepartureSchedule, ProductOptions, SelectedOptions } from "@/types/product";
 
 export type ProductBookingSelectionPanelVariant = "page" | "rail" | "sheet";
 
@@ -46,7 +50,8 @@ type DepartureOption = {
   key: string;
   label: string;
   inquiryValue: string;
-  price?: number | null;
+  ymd: string | null;
+  price: number | null;
   disabled?: boolean;
 };
 
@@ -76,6 +81,7 @@ function buildDepartureOptions(
       key: `schedule-${index}-${schedule.departureDate}`,
       label: formatDepartureScheduleChipLabel(schedule),
       inquiryValue: formatDepartureScheduleInquiryValue(schedule),
+      ymd: resolveDepartureScheduleYmd(schedule),
       price: schedule.price ?? null,
       disabled: schedule.status === "SOLD_OUT",
     }));
@@ -85,6 +91,7 @@ function buildDepartureOptions(
     key: `departure-${index}-${date}`,
     label: date,
     inquiryValue: date,
+    ymd: normalizeProductDepartureDateToYmd(date),
     price: null,
   }));
 }
@@ -274,6 +281,7 @@ export function ProductBookingSelectionPanel({
                           {
                             label: option.label,
                             inquiryValue: option.inquiryValue,
+                            ymd: option.ymd,
                             price: option.price,
                           },
                           option.key,
@@ -312,7 +320,7 @@ export function ProductBookingSelectionPanel({
         </div>
       ) : null}
 
-      {(showDepartureSection || hasOptions) ? (
+      {showDepartureSection || hasOptions ? (
         <hr className={cn("border-[var(--divider)]", compact ? "my-3" : "my-5")} />
       ) : null}
 

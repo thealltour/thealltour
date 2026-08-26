@@ -8,8 +8,8 @@ import {
 } from "@/lib/payments/calculatePaxDiscount";
 import type { ProductOptions, SelectedOptions } from "@/types/product";
 
-/** 인당 예약금 (원). 총 예약금 = 인당 × 인원 */
-export const CHECKOUT_DEPOSIT_PER_PERSON = 100_000;
+/** 인당 예약금 (원). 전 상품 통일 — 총 예약금 = 인당 × 인원 */
+export const CHECKOUT_DEPOSIT_PER_PERSON = 200_000;
 
 /** @deprecated 이름 호환 — 인당 예약금과 동일 */
 export const CHECKOUT_DEPOSIT_AMOUNT = CHECKOUT_DEPOSIT_PER_PERSON;

@@ -28,6 +28,18 @@ describe("normalizeProductDepartureDateToYmd", () => {
     expect(normalizeProductDepartureDateToYmd("07.23", { defaultYear: 2026 })).toBe("2026-07-23");
   });
 
+  it("parses chip labels that append price (without mistaking price digits for year)", () => {
+    expect(normalizeProductDepartureDateToYmd("09.23 · 4,499,000원", { defaultYear: 2026 })).toBe(
+      "2026-09-23",
+    );
+    expect(normalizeProductDepartureDateToYmd("09.23 (4,499,000원)", { defaultYear: 2026 })).toBe(
+      "2026-09-23",
+    );
+    expect(normalizeProductDepartureDateToYmd("09.23 ·4,499,000원", { defaultYear: 2026 })).toBe(
+      "2026-09-23",
+    );
+  });
+
   it("parses Korean YYYY년 M월 D일 and M월 D일 formats", () => {
     expect(normalizeProductDepartureDateToYmd("2026년 7월 23일")).toBe("2026-07-23");
     expect(normalizeProductDepartureDateToYmd("2026년 07월 23일(금)")).toBe("2026-07-23");

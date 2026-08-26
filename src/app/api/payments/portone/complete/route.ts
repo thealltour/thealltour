@@ -1,7 +1,8 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireMemberSession } from "@/lib/apiAuth";
 import { confirmPortOneBookingPayment } from "@/lib/payments/confirmPortOneBookingPayment";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const bodySchema = z.object({
@@ -10,12 +11,13 @@ const bodySchema = z.object({
 
 /**
  * PortOne V2 브라우저 결제 직후 서버 확정.
- * GET api.portone.io/payments/{id} 검증은 confirmPortOneBookingPayment 내부에서 수행.
- * Webhook과 동일 함수를 쓰므로 멱등.
+ * - 회원 예약: 본인 세션만 허용
+ * - 비회원 예약(member_id null): paymentId로 PortOne 검증 후 확정 (로그인 불필요)
+ * Webhook과 동일 confirm 함수를 쓰므로 멱등.
  */
 export async function POST(request: Request) {
-  const auth = await requireMemberSession();
-  if (auth.res) return auth.res;
+  const cookieStore = await cookies();
+  const session = getMemberSessionFromCookies(cookieStore);
 
   let body: z.infer<typeof bodySchema>;
   try {
@@ -42,8 +44,19 @@ export async function POST(request: Request) {
     .eq("id", paymentRow.booking_id)
     .maybeSingle();
 
-  if (!booking || booking.member_id !== auth.session.memberId) {
-    return NextResponse.json({ message: "권한이 없습니다." }, { status: 403 });
+  if (!booking) {
+    return NextResponse.json({ message: "예약을 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  const bookingMemberId =
+    typeof booking.member_id === "string" && booking.member_id.trim()
+      ? booking.member_id.trim()
+      : null;
+
+  if (bookingMemberId) {
+    if (!session || session.memberId !== bookingMemberId) {
+      return NextResponse.json({ message: "권한이 없습니다." }, { status: 403 });
+    }
   }
 
   try {

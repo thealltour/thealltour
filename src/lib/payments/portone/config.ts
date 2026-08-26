@@ -1,9 +1,17 @@
 export function getPortOneStoreId(): string | null {
-  return process.env.PORTONE_STORE_ID?.trim() || null;
+  return (
+    process.env.PORTONE_STORE_ID?.trim() ||
+    process.env.NEXT_PUBLIC_PORTONE_STORE_ID?.trim() ||
+    null
+  );
 }
 
 export function getPortOneChannelKey(): string | null {
-  return process.env.PORTONE_CHANNEL_KEY?.trim() || null;
+  return (
+    process.env.PORTONE_CHANNEL_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY?.trim() ||
+    null
+  );
 }
 
 export function getPortOneApiSecret(): string | null {

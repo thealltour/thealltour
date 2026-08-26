@@ -43,8 +43,8 @@ describe("buildCheckoutQuote", () => {
     expect(quote.paxDiscountAmount).toBe(200_000);
     expect(quote.discountTier).toBe("WELCOME");
     expect(quote.discountLabel).toContain("웰컴");
-    expect(quote.depositAmount).toBe(400_000);
-    expect(quote.balanceDue).toBe(2_000_000 - 200_000 - 400_000);
+    expect(quote.depositAmount).toBe(CHECKOUT_DEPOSIT_PER_PERSON * 4);
+    expect(quote.balanceDue).toBe(2_000_000 - 200_000 - CHECKOUT_DEPOSIT_PER_PERSON * 4);
   });
 
   it("applies RETURNING pax discount when has previous booking", () => {
@@ -62,13 +62,14 @@ describe("buildCheckoutQuote", () => {
   it("caps pax discount so deposit remains payable", () => {
     const quote = buildCheckoutQuote({
       selectedOptions: {},
-      departure: { label: "7/1", inquiryValue: "7/1", price: 150_000 },
+      departure: { label: "7/1", inquiryValue: "7/1", price: 300_000 },
       travelerCount: 1,
       applyPaxDiscount: true,
       hasPreviousBooking: false,
     });
-    // raw 50k, max = 150k - 100k = 50k
+    // raw 50k, max = 300k - 200k(deposit) = 100k → raw 유지
     expect(quote.paxDiscountAmount).toBe(50_000);
+    expect(quote.depositAmount).toBe(CHECKOUT_DEPOSIT_PER_PERSON);
     expect(validateCheckoutQuote(quote).ok).toBe(true);
   });
 
@@ -83,8 +84,10 @@ describe("buildCheckoutQuote", () => {
     });
     expect(quote.paxDiscountAmount).toBe(100_000);
     expect(quote.pointsApplied).toBe(20_000);
-    expect(quote.depositAmount).toBe(200_000);
-    expect(quote.balanceDue).toBe(1_000_000 - 100_000 - 20_000 - 200_000);
+    expect(quote.depositAmount).toBe(CHECKOUT_DEPOSIT_PER_PERSON * 2);
+    expect(quote.balanceDue).toBe(
+      1_000_000 - 100_000 - 20_000 - CHECKOUT_DEPOSIT_PER_PERSON * 2,
+    );
     expect(validateCheckoutQuote(quote).ok).toBe(true);
   });
 

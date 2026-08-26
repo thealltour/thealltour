@@ -61,9 +61,18 @@ function extractMonthDayFromDateText(raw: string): { month: number; day: number 
   return null;
 }
 
+function stripPriceSuffix(value: string): string {
+  return value
+    .replace(/\s*[·•⋅･.\-–—]\s*[\d,]+원.*$/u, "")
+    .replace(/\s*\([\d,]+원\)\s*$/u, "")
+    .replace(/\s+[\d,]+원\s*$/u, "")
+    .trim();
+}
+
 /**
  * 상품 출발일 문자열을 달력·집계용 YYYY-MM-DD로 정규화합니다.
- * ISO, YYYY.MM.DD(요일), 연도 없는 M/D·M.D(요일), 한국식 YYYY년 M월 D일 형식을 지원합니다.
+ * ISO, YYYY.MM.DD(요일), 연도 없는 M/D·M.D(요일), 한국식 YYYY년 M월 D일,
+ * 가격이 붙은 칩 라벨(`09.23 · 4,499,000원`, `09.23 (4,499,000원)`)을 지원합니다.
  */
 export function normalizeProductDepartureDateToYmd(
   raw: string | null | undefined,
@@ -73,36 +82,59 @@ export function normalizeProductDepartureDateToYmd(
   if (!trimmed) return null;
   if (isIsoDateYmd(trimmed)) return trimmed;
 
-  const withoutWeekday = stripWeekdaySuffix(trimmed);
+  const withoutPrice = stripPriceSuffix(trimmed);
+  const withoutWeekday = stripWeekdaySuffix(withoutPrice);
+  const year = options?.defaultYear ?? Number(kstTodayYmd().slice(0, 4));
 
-  const koFullMatch = withoutWeekday.match(/^(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일$/);
+  // 1) 맨 앞 M.D / M/D 를 최우선 추출 — 가격 숫자(4,499,000) 연도 오인 방지
+  const leadingMd = withoutWeekday.match(/^(\d{1,2})[./](\d{1,2})(?!\d)/);
+  if (leadingMd && !/^\d{4}/.test(withoutWeekday)) {
+    const ymd = buildYmd(year, Number(leadingMd[1]), Number(leadingMd[2]));
+    if (ymd) return bumpYearIfStaleDepartureYmd(ymd);
+  }
+
+  const koFullMatch = withoutWeekday.match(/^(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
   if (koFullMatch) {
     const ymd = buildYmd(Number(koFullMatch[1]), Number(koFullMatch[2]), Number(koFullMatch[3]));
     if (ymd) return ymd;
   }
 
-  const koMdMatch = withoutWeekday.match(/^(\d{1,2})\s*월\s*(\d{1,2})\s*일$/);
+  const koMdMatch = withoutWeekday.match(/^(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
   if (koMdMatch) {
-    const year = options?.defaultYear ?? Number(kstTodayYmd().slice(0, 4));
     const ymd = buildYmd(year, Number(koMdMatch[1]), Number(koMdMatch[2]));
     if (ymd) return bumpYearIfStaleDepartureYmd(ymd);
   }
 
-  const fullMatch = withoutWeekday.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  const fullMatch = withoutWeekday.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
   if (fullMatch) {
     const ymd = buildYmd(Number(fullMatch[1]), Number(fullMatch[2]), Number(fullMatch[3]));
     if (ymd) return ymd;
   }
 
-  if (!/\d{4}/.test(withoutWeekday)) {
-    const slashMatch = withoutWeekday.match(/^(\d{1,2})\/(\d{1,2})$/);
-    const dotMatch = withoutWeekday.match(/^(\d{1,2})\.(\d{1,2})$/);
+  // 2) 구분 문자로 자른 앞토큰에서 M.D 재시도
+  const dateCandidate = withoutWeekday.split(/[·•⋅･(\s]/u)[0]?.trim() ?? withoutWeekday;
+  if (!/^\d{4}/.test(dateCandidate)) {
+    const slashMatch = dateCandidate.match(/^(\d{1,2})\/(\d{1,2})/);
+    const dotMatch = dateCandidate.match(/^(\d{1,2})\.(\d{1,2})/);
     const md = slashMatch ?? dotMatch;
     if (md) {
-      const year = options?.defaultYear ?? Number(kstTodayYmd().slice(0, 4));
       const ymd = buildYmd(year, Number(md[1]), Number(md[2]));
       if (ymd) return bumpYearIfStaleDepartureYmd(ymd);
     }
+  }
+
+  // 3) 문자열 어디든 YYYY-MM-DD
+  const embeddedFull = withoutWeekday.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if (embeddedFull) {
+    const ymd = buildYmd(Number(embeddedFull[1]), Number(embeddedFull[2]), Number(embeddedFull[3]));
+    if (ymd) return ymd;
+  }
+
+  // 4) 일반 월·일 추출 폴백
+  const mdFromText = extractMonthDayFromDateText(withoutWeekday);
+  if (mdFromText) {
+    const ymd = buildYmd(year, mdFromText.month, mdFromText.day);
+    if (ymd) return bumpYearIfStaleDepartureYmd(ymd);
   }
 
   return null;

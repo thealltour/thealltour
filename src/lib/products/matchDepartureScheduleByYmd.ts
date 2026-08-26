@@ -1,6 +1,7 @@
 import {
   formatDepartureScheduleChipLabel,
   formatDepartureScheduleInquiryValue,
+  resolveDepartureScheduleYmd,
 } from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
 import type { SelectedDeparture } from "@/lib/products/buildProductInquiryPrefill";
@@ -12,7 +13,7 @@ export function findDepartureScheduleForYmd(
 ): ProductDepartureSchedule | null {
   if (!schedules?.length || !ymd) return null;
   for (const schedule of schedules) {
-    const normalized = normalizeProductDepartureDateToYmd(schedule.departureDate);
+    const normalized = resolveDepartureScheduleYmd(schedule);
     if (normalized === ymd) return schedule;
     if (schedule.departureDate.trim() === ymd) return schedule;
   }
@@ -35,6 +36,7 @@ export function buildSelectedDepartureFromYmd(params: {
       departure: {
         label: formatDepartureScheduleChipLabel(schedule),
         inquiryValue: formatDepartureScheduleInquiryValue(schedule),
+        ymd,
         price: schedule.price ?? null,
       },
     };
@@ -48,6 +50,7 @@ export function buildSelectedDepartureFromYmd(params: {
         departure: {
           label: raw.trim(),
           inquiryValue: raw.trim(),
+          ymd,
           price: null,
         },
       };
@@ -59,6 +62,7 @@ export function buildSelectedDepartureFromYmd(params: {
     departure: {
       label: ymd,
       inquiryValue: ymd,
+      ymd,
       price: null,
     },
   };

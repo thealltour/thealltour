@@ -5,8 +5,7 @@ import { CalendarDays, ChevronUp } from "lucide-react";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { ConnectedProductBookingSelectionPanel } from "@/components/products/ConnectedProductBookingSelectionPanel";
-import { ConnectedProductCheckoutSection } from "@/components/products/ConnectedProductCheckoutSection";
-import type { ProductCheckoutHandle } from "@/components/products/ProductCheckoutSection";
+import { ProductStickyCheckoutRail } from "@/components/products/ProductStickyCheckoutRail";
 import { ProductBookingSheet } from "@/components/products/ProductBookingSheet";
 import {
   useProductQuote,
@@ -173,15 +172,8 @@ export function ProductDetailStickyV2Desktop({
   experimentKey,
   variant,
 }: ProductDetailStickyV2Props) {
-  const {
-    quoteSummary,
-    requiredGroupsMissing,
-    scrollToBooking,
-    selectedDeparture,
-    departureSelectionMissing,
-  } = useProductQuote();
+  const { quoteSummary, selectedDeparture } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
-  const checkoutRef = useRef<ProductCheckoutHandle>(null);
 
   const stickyPrice = useMemo(
     () =>
@@ -222,7 +214,7 @@ export function ProductDetailStickyV2Desktop({
       aria-label="상품 요약"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-2 border-[var(--primary-soft)] bg-white shadow-[var(--shadow-soft-strong)]">
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-5">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5">
           <div>
             <StickyExpectedPriceAmount stickyPrice={stickyPrice} />
             {product && (
@@ -252,49 +244,35 @@ export function ProductDetailStickyV2Desktop({
           ) : null}
           <TrustSignals trust={trust} />
           {!isSoldOut ? (
-            <div className="border-t border-slate-100 pt-3">
-              <ConnectedProductCheckoutSection
-                ref={checkoutRef}
+            <div
+              className="border-t border-slate-100 pt-3"
+              onClickCapture={() => {
+                trackReviewConversionCtaClick(productId, { experimentKey, variant });
+              }}
+            >
+              <ProductStickyCheckoutRail
                 product={product}
                 productTitle={productTitle}
-                variant="rail"
+                kakaoHref={kakaoHref}
+                layout="rail"
               />
             </div>
-          ) : null}
-        </div>
-        <div className="shrink-0 space-y-3 border-t border-slate-100 bg-white p-5 pt-4">
-          <ProductConsultCTA
-            productId={productId}
-            productTitle={productTitle}
-            sourcePath={sourcePath}
-            kakaoHref={kakaoHref}
-            status={status}
-            section="top"
-            requiredGroupsMissing={requiredGroupsMissing}
-            departureSelectionMissing={departureSelectionMissing}
-            scrollToBooking={(target) => scrollToBooking(target ?? "checkout")}
-            isSoldOut={isSoldOut}
-            onPrimaryClick={() => {
-              trackReviewConversionCtaClick(productId, { experimentKey, variant });
-            }}
-            onPay={
-              isSoldOut
-                ? undefined
-                : async () => {
-                    await checkoutRef.current?.requestPay();
-                  }
-            }
-            primaryLabel={isSoldOut ? getProductCtaLabel(status, ctaLabelOptions) : "결제하기"}
-            ctaLabelOptions={ctaLabelOptions}
-            helperText={
-              isSoldOut
-                ? "일정과 요금은 상담을 통해 개별 안내됩니다."
-                : "출발일·옵션을 선택한 뒤 결제하기를 눌러 주세요."
-            }
-          />
-          <div className="border-t border-slate-100 pt-3">
-            <StickyExpectedPriceAmount stickyPrice={stickyPrice} />
-          </div>
+          ) : (
+            <div className="border-t border-slate-100 pt-3">
+              <ProductConsultCTA
+                productId={productId}
+                productTitle={productTitle}
+                sourcePath={sourcePath}
+                kakaoHref={kakaoHref}
+                status={status}
+                section="top"
+                isSoldOut
+                primaryLabel={getProductCtaLabel(status, ctaLabelOptions)}
+                ctaLabelOptions={ctaLabelOptions}
+                helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
+              />
+            </div>
+          )}
         </div>
       </div>
     </aside>
@@ -477,41 +455,55 @@ export function ProductDetailStickyV2Mobile({
           </button>
         ) : null}
         <div className="flex min-h-[44px] items-center gap-3">
-        <ProductConsultCTA
-          productId={productId}
-          productTitle={productTitle}
-          sourcePath={sourcePath}
-          status={status}
-          kakaoHref={kakaoHref}
-          section="sticky"
-          priceFormatted={stickyPrice.digits}
-          stickyPricePrefix={stickyPrice.prefix}
-          stickyPriceSubLabel={
-            stickyMetaLine ||
-            (stickyPrice.mode === "seasonal" ? product?.duration?.trim() : undefined) ||
-            stickyPrice.subLabel
-          }
-          stickyPriceSecondLine={stickyPrice.seasonalSecondLine}
-          stickyShowRangeSuffix={stickyPrice.showTilde}
-          ctaLabelOptions={ctaLabelOptions}
-          requiredGroupsMissing={requiredGroupsMissing}
-          departureSelectionMissing={departureSelectionMissing}
-          scrollToBooking={scrollToBooking}
-          isSoldOut={isSoldOut}
-          compact={compact}
-          primaryLabel={isSoldOut ? undefined : "결제하기"}
-          onPrimaryClick={() => {
-            trackReviewConversionCtaClick(productId, { experimentKey, variant });
-          }}
-          onPay={
-            isSoldOut
-              ? undefined
-              : () => {
-                  setSheetTarget("checkout");
+          {isSoldOut ? (
+            <ProductConsultCTA
+              productId={productId}
+              productTitle={productTitle}
+              sourcePath={sourcePath}
+              status={status}
+              kakaoHref={kakaoHref}
+              section="sticky"
+              priceFormatted={stickyPrice.digits}
+              stickyPricePrefix={stickyPrice.prefix}
+              stickyPriceSubLabel={
+                stickyMetaLine ||
+                (stickyPrice.mode === "seasonal" ? product?.duration?.trim() : undefined) ||
+                stickyPrice.subLabel
+              }
+              stickyPriceSecondLine={stickyPrice.seasonalSecondLine}
+              stickyShowRangeSuffix={stickyPrice.showTilde}
+              ctaLabelOptions={ctaLabelOptions}
+              requiredGroupsMissing={requiredGroupsMissing}
+              departureSelectionMissing={departureSelectionMissing}
+              scrollToBooking={scrollToBooking}
+              isSoldOut
+              compact={compact}
+            />
+          ) : (
+            <div
+              className="flex min-h-[44px] flex-1 items-center gap-2"
+              onClickCapture={() => {
+                trackReviewConversionCtaClick(productId, { experimentKey, variant });
+              }}
+            >
+              <ProductStickyCheckoutRail
+                product={product}
+                productTitle={productTitle}
+                kakaoHref={kakaoHref}
+                layout="bar"
+                onOpenSelection={() => {
+                  setSheetTarget(
+                    departureSelectionMissing
+                      ? "departure"
+                      : requiredGroupsMissing
+                        ? "options"
+                        : "panel",
+                  );
                   setSheetOpen(true);
-                }
-          }
-        />
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
       <ProductBookingSheet
@@ -520,6 +512,7 @@ export function ProductDetailStickyV2Mobile({
         product={product}
         productTitle={productTitle}
         focusTarget={sheetTarget}
+        kakaoHref={kakaoHref}
       />
     </div>
   );

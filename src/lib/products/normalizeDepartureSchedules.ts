@@ -141,10 +141,25 @@ export function formatDepartureScheduleChipLabel(schedule: ProductDepartureSched
   return dateLabel;
 }
 
+/**
+ * 결제·문의용 값. 표시용 label이 아닌 정규화된 departureDate(YYYY-MM-DD 우선)를 사용한다.
+ * label(예: 09.23)만 쓰면 연도 유실·가격 숫자 연도 오인으로 prepare가 실패한다.
+ */
 export function formatDepartureScheduleInquiryValue(schedule: ProductDepartureSchedule): string {
-  const datePart = schedule.label?.trim() || schedule.departureDate.trim();
+  const normalized =
+    normalizeProductDepartureDateToYmd(schedule.departureDate) ||
+    normalizeProductDepartureDateToYmd(schedule.label) ||
+    schedule.departureDate.trim();
   if (schedule.price != null && schedule.price > 0) {
-    return `${datePart} (${schedule.price.toLocaleString("ko-KR")}원)`;
+    return `${normalized} (${schedule.price.toLocaleString("ko-KR")}원)`;
   }
-  return datePart;
+  return normalized;
+}
+
+/** 스케줄에서 결제용 YYYY-MM-DD 추출 */
+export function resolveDepartureScheduleYmd(schedule: ProductDepartureSchedule): string | null {
+  return (
+    normalizeProductDepartureDateToYmd(schedule.departureDate) ||
+    normalizeProductDepartureDateToYmd(schedule.label)
+  );
 }

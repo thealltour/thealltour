@@ -17,8 +17,9 @@ export type ConnectedProductCheckoutSectionProps = {
 };
 
 /**
- * 우측 sticky / 시트용 간편 결제.
- * sticky 주황 「결제하기」는 ref.requestPay()로 PortOne V2에 연결한다.
+ * 우측 sticky / 시트용 PG-agnostic 간편 결제.
+ * sticky 「결제하기」는 ref.requestPay() → submitPayment (PortOne V2).
+ * 신규 UX는 ProductStickyCheckoutRail + ProductCheckoutModal 사용.
  */
 export const ConnectedProductCheckoutSection = forwardRef<
   ProductCheckoutHandle,

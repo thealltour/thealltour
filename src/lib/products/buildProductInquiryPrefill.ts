@@ -4,6 +4,8 @@ import type { SelectedOptions } from "@/types/product";
 export type SelectedDeparture = {
   label: string;
   inquiryValue: string;
+  /** 결제 prepare용 YYYY-MM-DD (가능하면 항상 채움) */
+  ymd?: string | null;
   price?: number | null;
 };
 

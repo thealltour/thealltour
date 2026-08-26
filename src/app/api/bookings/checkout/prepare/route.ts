@@ -1,13 +1,20 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireMemberSession } from "@/lib/apiAuth";
 import { createPendingDepositBooking } from "@/lib/bookings/createPendingDepositBooking";
 import { resolveCheckoutBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
 import { isPortOneEnabled } from "@/lib/payments/portone/config";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { normalizeDepartureSchedulesFromUnknown } from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
 import { findDepartureScheduleForYmd } from "@/lib/products/matchDepartureScheduleByYmd";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+const customerSchema = z.object({
+  name: z.string().trim().min(1, "이름을 입력해 주세요."),
+  phone: z.string().trim().min(8, "연락처를 입력해 주세요."),
+  email: z.string().trim().email("이메일을 확인해 주세요."),
+});
 
 const bodySchema = z.object({
   product_id: z.string().min(1),
@@ -22,18 +29,36 @@ const bodySchema = z.object({
   selected_options: z.record(z.string(), z.union([z.string(), z.array(z.string())])).default({}),
   points_use: z.number().int().min(0).optional(),
   traveler_count: z.number().int().min(1).max(99).optional(),
-  payment_type: z.enum(["deposit", "full"]).optional().default("full"),
+  payment_type: z.enum(["deposit", "full"]).optional().default("deposit"),
+  /** 주문서 예약자 — 회원/비회원 공통 필수 */
+  customer: customerSchema,
 });
 
+function firstZodMessage(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return "요청 형식이 올바르지 않습니다.";
+  if (typeof issue.message === "string" && issue.message && issue.message !== "Required") {
+    return issue.message;
+  }
+  return "요청 형식이 올바르지 않습니다.";
+}
+
+/**
+ * 결제 준비 (회원·비회원 공용).
+ * 세션이 있으면 member_id 연결, 없어도 customer 정보로 예약·결제 준비 가능.
+ */
 export async function POST(request: Request) {
-  const auth = await requireMemberSession();
-  if (auth.res) return auth.res;
+  const cookieStore = await cookies();
+  const session = getMemberSessionFromCookies(cookieStore);
 
   let body: z.infer<typeof bodySchema>;
   try {
     const json = await request.json();
     body = bodySchema.parse(json);
-  } catch {
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ message: firstZodMessage(error) }, { status: 400 });
+    }
     return NextResponse.json({ message: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
@@ -84,21 +109,38 @@ export async function POST(request: Request) {
   try {
     const schedules = normalizeDepartureSchedulesFromUnknown(product.departure_schedules_json);
     const departureYmd =
-      body.departure.ymd?.trim() ||
+      normalizeProductDepartureDateToYmd(body.departure.ymd) ||
       normalizeProductDepartureDateToYmd(body.departure.inquiryValue) ||
-      undefined;
-    const schedule = departureYmd ? findDepartureScheduleForYmd(schedules, departureYmd) : null;
+      normalizeProductDepartureDateToYmd(body.departure.label) ||
+      null;
+
+    if (!departureYmd) {
+      return NextResponse.json(
+        { message: "출발일 형식이 올바르지 않습니다. 달력에서 출발일을 다시 선택해 주세요." },
+        { status: 400 },
+      );
+    }
+
+    const schedule = findDepartureScheduleForYmd(schedules, departureYmd);
     const returnRaw = schedule?.returnDate?.trim();
     const returnDate = returnRaw
-      ? normalizeProductDepartureDateToYmd(returnRaw) ?? returnRaw
-      : departureYmd ?? null;
+      ? normalizeProductDepartureDateToYmd(returnRaw) ?? departureYmd
+      : departureYmd;
 
     const result = await createPendingDepositBooking({
-      memberId: auth.session.memberId,
+      memberId: session?.memberId ?? null,
+      customer: {
+        name: body.customer.name,
+        phone: body.customer.phone,
+        email: body.customer.email,
+      },
       productId: body.product_id,
       productTitle: body.product_title?.trim() || String(product.title ?? "상품"),
       sourcePath: body.source_path?.trim() || `/products/${body.product_id}`,
-      departure: body.departure,
+      departure: {
+        ...body.departure,
+        ymd: departureYmd,
+      },
       selectedOptions: body.selected_options,
       options: (product.options as Record<string, unknown> | null)?.groups
         ? (product.options as import("@/types/product").ProductOptions)
@@ -120,6 +162,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "결제 준비에 실패했습니다.";
+    console.error("[checkout/prepare]", message, error);
     if (message === "PORTONE_NOT_CONFIGURED") {
       return NextResponse.json(
         { message: "결제 서비스가 아직 설정되지 않았습니다. 상담 문의로 예약해 주세요." },

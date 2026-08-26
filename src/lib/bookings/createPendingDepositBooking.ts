@@ -1,8 +1,9 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
-import { resolveCustomerProfileForMember } from "@/lib/bookings/searchBookingCustomers";
 import { memberHasConfirmedBooking } from "@/lib/bookings/memberHasConfirmedBooking";
+import { linkMemberToCustomerProfile } from "@/lib/customerAccountLinks";
+import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
 import {
   buildCheckoutQuote,
   validateCheckoutQuote,
@@ -25,8 +26,17 @@ import type { ProductOptions, SelectedOptions } from "@/types/product";
 import type { CheckoutBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
 import { isGolfCouponBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
 
+export type CheckoutCustomerInput = {
+  name: string;
+  phone: string;
+  email: string;
+};
+
 export type CreatePendingDepositBookingInput = {
-  memberId: string;
+  /** 로그인 회원. 비회원이면 null/미전달 */
+  memberId?: string | null;
+  /** 주문서에 입력된 예약자 정보 (회원 프로필이 비어 있어도 이 값을 우선) */
+  customer: CheckoutCustomerInput;
   productId: string;
   productTitle: string;
   sourcePath: string;
@@ -60,8 +70,71 @@ export type CreatePendingDepositBookingResult = {
 };
 
 function parseDepartureYmd(departure: CheckoutDepartureInput): string | null {
-  if (departure.ymd?.trim()) return departure.ymd.trim();
-  return normalizeProductDepartureDateToYmd(departure.inquiryValue);
+  const candidates = [departure.ymd, departure.inquiryValue, departure.label];
+  for (const raw of candidates) {
+    const normalized = normalizeProductDepartureDateToYmd(raw);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+async function resolveCheckoutCustomer(input: {
+  memberId?: string | null;
+  customer: CheckoutCustomerInput;
+}) {
+  const name = input.customer.name.trim();
+  const phone = input.customer.phone.trim();
+  const email = input.customer.email.trim();
+  if (!name || !phone) {
+    throw new Error("예약자 이름과 연락처를 입력해 주세요.");
+  }
+
+  const profile = await findOrCreateCustomerProfile({
+    name,
+    phone,
+    email: email || undefined,
+    source: "inquiry",
+  });
+  if (!profile) {
+    throw new Error("고객 정보를 저장할 수 없습니다. 연락처를 확인해 주세요.");
+  }
+
+  /** 세션 memberId가 members 테이블에 없으면 FK 위반 → null 처리(게스트 예약) */
+  let memberId: string | null = null;
+  const candidateId = input.memberId?.trim() || null;
+  if (candidateId) {
+    const { data: memberRow, error: memberLookupError } = await supabaseAdmin
+      .from("members")
+      .select("id")
+      .eq("id", candidateId)
+      .maybeSingle();
+    if (memberLookupError) {
+      console.warn(
+        "[createPendingDepositBooking] member lookup failed; booking as guest",
+        candidateId,
+        memberLookupError.message,
+      );
+    } else if (memberRow?.id) {
+      memberId = String(memberRow.id);
+      await linkMemberToCustomerProfile(memberId, profile.id, {
+        linked_by: "self",
+        verified_method: "manual",
+      }).catch(() => null);
+    } else {
+      console.warn(
+        "[createPendingDepositBooking] session memberId not found in members; booking as guest",
+        candidateId,
+      );
+    }
+  }
+
+  return {
+    customer_profile_id: profile.id,
+    member_id: memberId,
+    name: name || profile.name,
+    phone: phone || profile.phone,
+    email: email || profile.email || "",
+  };
 }
 
 export async function createPendingDepositBooking(
@@ -70,30 +143,41 @@ export async function createPendingDepositBooking(
   if (!isPortOneEnabled()) {
     throw new Error("PORTONE_NOT_CONFIGURED");
   }
-  const storeId = process.env.PORTONE_STORE_ID?.trim();
-  const channelKey = process.env.PORTONE_CHANNEL_KEY?.trim();
+  const storeId =
+    process.env.PORTONE_STORE_ID?.trim() ||
+    process.env.NEXT_PUBLIC_PORTONE_STORE_ID?.trim();
+  const channelKey =
+    process.env.PORTONE_CHANNEL_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY?.trim();
   if (!storeId || !channelKey) {
     throw new Error("PORTONE_NOT_CONFIGURED");
   }
 
-  const customer = await resolveCustomerProfileForMember(input.memberId);
+  const customer = await resolveCheckoutCustomer({
+    memberId: input.memberId,
+    customer: input.customer,
+  });
+  const memberId = customer.member_id;
   const benefitMode: CheckoutBenefitMode = input.benefitMode ?? "package_points";
   const isGolfCoupon = isGolfCouponBenefitMode(benefitMode);
 
-  const [{ balance: pointBalance }, hasPreviousBooking] = await Promise.all([
-    fetchMemberPoints(supabaseAdmin, input.memberId),
-    memberHasConfirmedBooking(input.memberId),
-  ]);
+  const [pointBalance, hasPreviousBooking] = memberId
+    ? await Promise.all([
+        fetchMemberPoints(supabaseAdmin, memberId).then((r) => r.balance),
+        memberHasConfirmedBooking(memberId),
+      ])
+    : [0, false];
 
-  const pointsUse = isGolfCoupon ? 0 : input.pointsUse;
+  const pointsUse = isGolfCoupon || !memberId ? 0 : input.pointsUse;
   const preferredTier = recommendCouponPackTier(hasPreviousBooking);
 
-  const availablePack = isGolfCoupon
-    ? await findAvailableCouponPack({
-        userId: input.memberId,
-        preferredTier,
-      })
-    : null;
+  const availablePack =
+    isGolfCoupon && memberId
+      ? await findAvailableCouponPack({
+          userId: memberId,
+          preferredTier,
+        })
+      : null;
 
   const applyPaxDiscount = Boolean(isGolfCoupon && availablePack);
   const couponPackInput = availablePack
@@ -132,7 +216,8 @@ export async function createPendingDepositBooking(
     throw new Error("출발일 형식이 올바르지 않습니다.");
   }
 
-  const returnDate = input.returnDate?.trim() || departureYmd;
+  const returnDate =
+    normalizeProductDepartureDateToYmd(input.returnDate) || departureYmd;
 
   const { data: bookingNumberData, error: bookingNumberError } = await supabaseAdmin.rpc(
     "generate_booking_number",
@@ -189,7 +274,7 @@ export async function createPendingDepositBooking(
     .from("travel_bookings")
     .insert({
       customer_profile_id: customer.customer_profile_id,
-      member_id: input.memberId,
+      member_id: memberId,
       product_id: input.productId,
       product_title: input.productTitle,
       source_path: input.sourcePath,
@@ -214,9 +299,9 @@ export async function createPendingDepositBooking(
 
   const bookingId = String(bookingRow.id);
 
-  if (availablePack && checkoutQuote.paxDiscountAmount > 0) {
+  if (memberId && availablePack && checkoutQuote.paxDiscountAmount > 0) {
     const reserved = await reserveCouponForBooking({
-      userId: input.memberId,
+      userId: memberId,
       bookingId,
       packId: availablePack.id,
       discountAmount: checkoutQuote.paxDiscountAmount,
@@ -273,9 +358,9 @@ export async function createPendingDepositBooking(
     .single();
 
   if (paymentError || !paymentRow) {
-    if (couponPackId) {
+    if (memberId && couponPackId) {
       await releaseCouponReservation({
-        userId: input.memberId,
+        userId: memberId,
         bookingId,
         packId: couponPackId,
       }).catch(() => undefined);
@@ -284,7 +369,8 @@ export async function createPendingDepositBooking(
     throw new Error(paymentError?.message || "결제 준비에 실패했습니다.");
   }
 
-  const orderName = `${input.productTitle} 결제`.slice(0, 80);
+  const typeLabel = paymentType === "full" ? "전액결제" : "예약금";
+  const orderName = `${input.productTitle} (${typeLabel})`.slice(0, 80);
 
   return {
     booking_id: bookingId,

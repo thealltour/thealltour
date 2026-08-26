@@ -25,6 +25,7 @@ export type BookingPaymentPayload = {
   departure: {
     label: string;
     inquiryValue: string;
+    ymd?: string | null;
     price?: number | null;
   };
   paymentType: CheckoutPaymentType;

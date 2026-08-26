@@ -85,7 +85,7 @@ export async function confirmPortOneBookingPayment(
       .from("travel_bookings")
       .update({
         booking_status: "reserved",
-        payment_status: "partial",
+        payment_status: (snapshot?.balanceDue ?? 0) <= 0 ? "paid" : "partial",
         payment_method: "portone",
         payment_paid_amount: expectedAmount,
         payment_confirmed_at: now,

@@ -41,6 +41,11 @@ export type ProductConsultCTAProps = {
   compact?: boolean;
   /** 주 CTA 클릭 시 추가 콜백 (예: 리뷰 전환 계측) */
   onPrimaryClick?: () => void;
+  /**
+   * 전달 시 주 CTA가 상담 모달 대신 이 핸들러를 실행 (PortOne 결제 등).
+   * selectionMissing이면 기존처럼 선택 유도 후 진행.
+   */
+  onPay?: () => void | Promise<void>;
   /** primary 버튼 문구 override (미전달 시 getProductCtaLabel 사용). Desktop Sticky 등 전환 최적화용 */
   primaryLabel?: string;
   /** section "top"에서 버튼 하단 보조 문구 override (미전달 시 기본 문구 사용) */
@@ -90,6 +95,7 @@ export function ProductConsultCTA({
   className = "",
   compact = false,
   onPrimaryClick,
+  onPay,
   primaryLabel: primaryLabelOverride,
   helperText: helperTextOverride,
   stickyPricePrefix,
@@ -131,6 +137,10 @@ export function ProductConsultCTA({
     }
     trackProductCtaClick({ productId, ctaType: "primary", section });
     onPrimaryClick?.();
+    if (onPay) {
+      void onPay();
+      return;
+    }
     const prefill = buildPrefill();
     openModal({
       productId,
@@ -143,6 +153,7 @@ export function ProductConsultCTA({
     productId,
     section,
     onPrimaryClick,
+    onPay,
     productTitle,
     sourcePath,
     openModal,

@@ -35,16 +35,22 @@ export function isValidCheckoutEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
-export function validateCheckoutForm(values: CheckoutFormValues): CheckoutFormErrors {
+export function validateCheckoutForm(
+  values: CheckoutFormValues,
+  options?: { requireCustomer?: boolean },
+): CheckoutFormErrors {
+  const requireCustomer = options?.requireCustomer !== false;
   const errors: CheckoutFormErrors = {};
-  if (!values.name.trim()) {
-    errors.name = "성함을 입력해 주세요.";
-  }
-  if (!isValidCheckoutPhone(values.phone)) {
-    errors.phone = "올바른 휴대폰 번호를 입력해 주세요.";
-  }
-  if (!isValidCheckoutEmail(values.email)) {
-    errors.email = "올바른 이메일을 입력해 주세요.";
+  if (requireCustomer) {
+    if (!values.name.trim()) {
+      errors.name = "성함을 입력해 주세요.";
+    }
+    if (!isValidCheckoutPhone(values.phone)) {
+      errors.phone = "올바른 휴대폰 번호를 입력해 주세요.";
+    }
+    if (!isValidCheckoutEmail(values.email)) {
+      errors.email = "올바른 이메일을 입력해 주세요.";
+    }
   }
   if (!values.agreeTerms) {
     errors.agreeTerms = "여행 표준약관에 동의해 주세요.";

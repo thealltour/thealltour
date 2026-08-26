@@ -39,6 +39,8 @@ export type CreatePendingDepositBookingInput = {
   returnDate?: string | null;
   /** 미전달 시 package_points (쿠폰 미적용) — prepare에서 반드시 판정 */
   benefitMode?: CheckoutBenefitMode;
+  /** deposit=예약금, full=전액. 기본 deposit */
+  paymentType?: "deposit" | "full";
 };
 
 export type CreatePendingDepositBookingResult = {
@@ -140,35 +142,46 @@ export async function createPendingDepositBooking(
   }
 
   const bookingNumber = String(bookingNumberData);
-  const externalPaymentId = `dep-${randomUUID()}`;
+  const paymentType = input.paymentType === "full" ? "full" : "deposit";
+  const externalPaymentId = `${paymentType === "full" ? "full" : "dep"}-${randomUUID()}`;
 
   let couponPackId: string | null = availablePack?.id ?? null;
 
-  const buildSnapshot = (): CheckoutSnapshot => ({
-    productId: input.productId,
-    productTitle: input.productTitle,
-    sourcePath: input.sourcePath,
-    departure: {
-      label: input.departure.label,
-      inquiryValue: input.departure.inquiryValue,
-      ymd: departureYmd,
-      price: input.departure.price ?? null,
-    },
-    selectedOptions: input.selectedOptions,
-    quoteBreakdown: checkoutQuote.breakdown,
-    quoteTotal: checkoutQuote.quoteTotal,
-    pointsUseRequested: checkoutQuote.pointsApplied,
-    paxDiscountAmount: checkoutQuote.paxDiscountAmount,
-    discountTier: checkoutQuote.discountTier,
-    discountLabel: checkoutQuote.discountLabel,
-    benefitMode,
-    isGolfProduct: isGolfCoupon,
-    couponPackId,
-    depositAmount: checkoutQuote.depositAmount,
-    balanceDue: checkoutQuote.balanceDue,
-    travelerCount: checkoutQuote.travelerCount,
-    preparedAt: new Date().toISOString(),
-  });
+  const resolvePayAmounts = () => {
+    const payNowAmount =
+      paymentType === "full" ? checkoutQuote.quoteTotal : checkoutQuote.depositAmount;
+    const balanceDue = paymentType === "full" ? 0 : checkoutQuote.balanceDue;
+    return { payNowAmount, balanceDue };
+  };
+
+  const buildSnapshot = (): CheckoutSnapshot => {
+    const { payNowAmount, balanceDue } = resolvePayAmounts();
+    return {
+      productId: input.productId,
+      productTitle: input.productTitle,
+      sourcePath: input.sourcePath,
+      departure: {
+        label: input.departure.label,
+        inquiryValue: input.departure.inquiryValue,
+        ymd: departureYmd,
+        price: input.departure.price ?? null,
+      },
+      selectedOptions: input.selectedOptions,
+      quoteBreakdown: checkoutQuote.breakdown,
+      quoteTotal: checkoutQuote.quoteTotal,
+      pointsUseRequested: checkoutQuote.pointsApplied,
+      paxDiscountAmount: checkoutQuote.paxDiscountAmount,
+      discountTier: checkoutQuote.discountTier,
+      discountLabel: checkoutQuote.discountLabel,
+      benefitMode,
+      isGolfProduct: isGolfCoupon,
+      couponPackId,
+      depositAmount: paymentType === "full" ? payNowAmount : checkoutQuote.depositAmount,
+      balanceDue,
+      travelerCount: checkoutQuote.travelerCount,
+      preparedAt: new Date().toISOString(),
+    };
+  };
 
   let checkoutSnapshot = buildSnapshot();
 
@@ -243,11 +256,13 @@ export async function createPendingDepositBooking(
     }
   }
 
+  const { payNowAmount } = resolvePayAmounts();
+
   const { data: paymentRow, error: paymentError } = await supabaseAdmin
     .from("booking_payments")
     .insert({
       booking_id: bookingId,
-      amount: checkoutQuote.depositAmount,
+      amount: payNowAmount,
       method: "portone",
       status: "pending",
       external_provider: "portone",
@@ -269,6 +284,8 @@ export async function createPendingDepositBooking(
     throw new Error(paymentError?.message || "결제 준비에 실패했습니다.");
   }
 
+  const orderName = `${input.productTitle} 결제`.slice(0, 80);
+
   return {
     booking_id: bookingId,
     booking_number: bookingNumber,
@@ -279,9 +296,9 @@ export async function createPendingDepositBooking(
       storeId,
       channelKey,
       paymentId: externalPaymentId,
-      orderName: `${input.productTitle} 예약금`.slice(0, 80),
-      totalAmount: checkoutQuote.depositAmount,
-      currency: "CURRENCY_KRW",
+      orderName,
+      totalAmount: payNowAmount,
+      currency: "CURRENCY_KRW" as const,
     },
   };
 }

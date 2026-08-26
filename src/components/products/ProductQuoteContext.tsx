@@ -14,7 +14,7 @@ import type { SelectedOptions } from "@/types/product";
 
 export type { SelectedDeparture };
 
-export type BookingScrollTarget = "panel" | "departure" | "options";
+export type BookingScrollTarget = "panel" | "departure" | "options" | "checkout";
 
 export type PaxDiscountPreview = { label: string; amount: number };
 

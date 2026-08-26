@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { ConnectedProductBookingSelectionPanel } from "@/components/products/ConnectedProductBookingSelectionPanel";
+import { ConnectedProductCheckoutSection } from "@/components/products/ConnectedProductCheckoutSection";
+import type { ProductCheckoutHandle } from "@/components/products/ProductCheckoutSection";
 import { Button } from "@/components/ui/Button";
 import type { BookingScrollTarget } from "@/components/products/ProductQuoteContext";
 import type { Product } from "@/types/product";
@@ -19,6 +21,7 @@ export type ProductBookingSheetProps = {
 function focusSectionId(target: BookingScrollTarget | undefined): string {
   if (target === "departure") return "product-sheet-departure-section";
   if (target === "options") return "product-sheet-options-section";
+  if (target === "checkout") return "product-checkout";
   return "product-booking-sheet";
 }
 
@@ -30,6 +33,8 @@ export function ProductBookingSheet({
   focusTarget = "panel",
 }: ProductBookingSheetProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const checkoutRef = useRef<ProductCheckoutHandle>(null);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -75,7 +80,7 @@ export function ProductBookingSheet({
         >
           <header className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-4 py-3">
             <h2 id="product-booking-sheet-title" className="text-base font-semibold text-[var(--text-primary)]">
-              출발일·옵션 선택
+              예약 · 결제
             </h2>
             <button
               type="button"
@@ -92,10 +97,34 @@ export function ProductBookingSheet({
               product={product}
               productTitle={productTitle}
             />
+            <div className="mt-6 border-t border-[var(--border)] pt-4">
+              <ConnectedProductCheckoutSection
+                ref={checkoutRef}
+                product={product}
+                productTitle={productTitle}
+                variant="rail"
+              />
+            </div>
           </div>
           <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3 safe-bottom">
-            <Button type="button" variant="accent" size="md" className="w-full" onClick={onClose}>
-              확인
+            <Button
+              type="button"
+              variant="accent"
+              size="md"
+              className="w-full"
+              disabled={paying}
+              onClick={() => {
+                void (async () => {
+                  setPaying(true);
+                  try {
+                    await checkoutRef.current?.requestPay();
+                  } finally {
+                    setPaying(false);
+                  }
+                })();
+              }}
+            >
+              {paying ? "처리 중…" : "결제하기"}
             </Button>
           </div>
         </div>

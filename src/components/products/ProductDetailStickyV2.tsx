@@ -5,6 +5,8 @@ import { CalendarDays, ChevronUp } from "lucide-react";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { ConnectedProductBookingSelectionPanel } from "@/components/products/ConnectedProductBookingSelectionPanel";
+import { ConnectedProductCheckoutSection } from "@/components/products/ConnectedProductCheckoutSection";
+import type { ProductCheckoutHandle } from "@/components/products/ProductCheckoutSection";
 import { ProductBookingSheet } from "@/components/products/ProductBookingSheet";
 import {
   useProductQuote,
@@ -179,6 +181,7 @@ export function ProductDetailStickyV2Desktop({
     departureSelectionMissing,
   } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
+  const checkoutRef = useRef<ProductCheckoutHandle>(null);
 
   const stickyPrice = useMemo(
     () =>
@@ -248,6 +251,16 @@ export function ProductDetailStickyV2Desktop({
             </div>
           ) : null}
           <TrustSignals trust={trust} />
+          {!isSoldOut ? (
+            <div className="border-t border-slate-100 pt-3">
+              <ConnectedProductCheckoutSection
+                ref={checkoutRef}
+                product={product}
+                productTitle={productTitle}
+                variant="rail"
+              />
+            </div>
+          ) : null}
         </div>
         <div className="shrink-0 space-y-3 border-t border-slate-100 bg-white p-5 pt-4">
           <ProductConsultCTA
@@ -259,12 +272,25 @@ export function ProductDetailStickyV2Desktop({
             section="top"
             requiredGroupsMissing={requiredGroupsMissing}
             departureSelectionMissing={departureSelectionMissing}
-            scrollToBooking={scrollToBooking}
+            scrollToBooking={(target) => scrollToBooking(target ?? "checkout")}
             isSoldOut={isSoldOut}
-            onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
-            primaryLabel={getProductCtaLabel(status, ctaLabelOptions)}
+            onPrimaryClick={() => {
+              trackReviewConversionCtaClick(productId, { experimentKey, variant });
+            }}
+            onPay={
+              isSoldOut
+                ? undefined
+                : async () => {
+                    await checkoutRef.current?.requestPay();
+                  }
+            }
+            primaryLabel={isSoldOut ? getProductCtaLabel(status, ctaLabelOptions) : "결제하기"}
             ctaLabelOptions={ctaLabelOptions}
-            helperText="일정과 요금은 상담을 통해 개별 안내됩니다."
+            helperText={
+              isSoldOut
+                ? "일정과 요금은 상담을 통해 개별 안내됩니다."
+                : "출발일·옵션을 선택한 뒤 결제하기를 눌러 주세요."
+            }
           />
           <div className="border-t border-slate-100 pt-3">
             <StickyExpectedPriceAmount stickyPrice={stickyPrice} />
@@ -473,7 +499,18 @@ export function ProductDetailStickyV2Mobile({
           scrollToBooking={scrollToBooking}
           isSoldOut={isSoldOut}
           compact={compact}
-          onPrimaryClick={() => trackReviewConversionCtaClick(productId, { experimentKey, variant })}
+          primaryLabel={isSoldOut ? undefined : "결제하기"}
+          onPrimaryClick={() => {
+            trackReviewConversionCtaClick(productId, { experimentKey, variant });
+          }}
+          onPay={
+            isSoldOut
+              ? undefined
+              : () => {
+                  setSheetTarget("checkout");
+                  setSheetOpen(true);
+                }
+          }
         />
         </div>
       </div>

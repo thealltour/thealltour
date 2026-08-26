@@ -1,62 +1,110 @@
 import type { BookingPaymentPayload } from "@/lib/payments/bookingPaymentPayload";
+import { completePortOnePaymentClient } from "@/lib/payments/completePortOnePaymentClient";
 
-export type SubmitPaymentResult = { ok: true } | { ok: false; message: string };
+export type SubmitPaymentResult =
+  | { ok: true; bookingId: string; bookingNumber?: string | null }
+  | { ok: false; message: string; needLogin?: boolean };
 
 /**
- * PG 비의존 결제 진입점.
- *
- * Mock 단계: 콘솔 + 브라우저 alert로 성공 시뮬레이션.
- * PG 확정 후 이 함수 본문만 Toss / PortOne 실호출로 교체하면 된다.
- *
- * --- Toss 연결 지점 (예시) ---
- * // const toss = await loadTossPayments(clientKey);
- * // await toss.requestPayment({ amount: payload.payAmount, orderId: payload.orderId, ... });
- *
- * --- PortOne 연결 지점 ---
- * // return submitPaymentPortOne(payload); // → submitPayment.portone.ts
- *
- * Mock에서는 `/api/bookings/checkout/prepare` 를 호출하지 않는다.
- * 로그인 강제도 Mock에서는 하지 않는다 (REQUIRE_LOGIN_FOR_PAYMENT = false).
+ * 상품상세 간편결제 → PortOne V2 인증결제.
+ * prepare → requestPayment → complete.
  */
-export const REQUIRE_LOGIN_FOR_PAYMENT = false;
+export const REQUIRE_LOGIN_FOR_PAYMENT = true;
+
+type PrepareResponse = {
+  booking_id: string;
+  booking_number?: string;
+  portone: {
+    storeId: string;
+    channelKey: string;
+    paymentId: string;
+    orderName: string;
+    totalAmount: number;
+    currency?: "CURRENCY_KRW";
+  };
+};
 
 export async function submitPayment(
   payload: BookingPaymentPayload,
 ): Promise<SubmitPaymentResult> {
-  // eslint-disable-next-line no-console -- Mock 결제 디버그
-  console.log("[submitPayment:mock]", payload);
-
-  if (typeof window !== "undefined") {
-    const typeLabel = payload.paymentType === "deposit" ? "예약금" : "전액";
-    window.alert(
-      [
-        "[Mock 결제 성공]",
-        `주문번호: ${payload.orderId}`,
-        `상품: ${payload.productName}`,
-        `방식: ${typeLabel}`,
-        `결제금액: ${payload.payAmount.toLocaleString("ko-KR")}원`,
-        payload.remainingBalance > 0
-          ? `잔금: ${payload.remainingBalance.toLocaleString("ko-KR")}원`
-          : null,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    );
+  if (typeof window === "undefined") {
+    return { ok: false, message: "브라우저에서만 결제를 진행할 수 있습니다." };
   }
 
-  return { ok: true };
-}
+  if (!payload.departure?.label || !payload.departure?.inquiryValue) {
+    return { ok: false, message: "출발일을 선택해 주세요." };
+  }
 
-/**
- * PortOne prepare + SDK 호출 스텁.
- * PG 확정 시 submitPayment에서 이 경로로 위임하면 된다.
- * (현재 Mock 경로에서는 호출하지 않음)
- */
-export async function submitPaymentPortOneStub(
-  _payload: BookingPaymentPayload,
-): Promise<SubmitPaymentResult> {
+  const prepareRes = await fetch("/api/bookings/checkout/prepare", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      product_id: payload.productId,
+      product_title: payload.productName,
+      source_path: `/products/${payload.productId}`,
+      departure: {
+        label: payload.departure.label,
+        inquiryValue: payload.departure.inquiryValue,
+        price: payload.departure.price ?? null,
+      },
+      selected_options: payload.selectedOptionsMap ?? {},
+      traveler_count: payload.headcount,
+      payment_type: payload.paymentType,
+    }),
+  });
+
+  const prepareData = (await prepareRes.json().catch(() => ({}))) as PrepareResponse & {
+    message?: string;
+  };
+
+  if (prepareRes.status === 401) {
+    return {
+      ok: false,
+      needLogin: true,
+      message: prepareData.message ?? "로그인이 필요합니다.",
+    };
+  }
+
+  if (!prepareRes.ok || !prepareData.portone?.paymentId) {
+    return {
+      ok: false,
+      message: prepareData.message ?? "결제 준비에 실패했습니다.",
+    };
+  }
+
+  const { portone, booking_id: bookingId } = prepareData;
+  const PortOne = await import("@portone/browser-sdk/v2");
+  const response = await PortOne.requestPayment({
+    storeId: portone.storeId,
+    channelKey: portone.channelKey,
+    paymentId: portone.paymentId,
+    orderName: portone.orderName,
+    totalAmount: portone.totalAmount,
+    currency: portone.currency ?? "CURRENCY_KRW",
+    payMethod: "CARD",
+    redirectUrl: `${window.location.origin}/mypage/bookings/${bookingId}?paid=1`,
+  });
+
+  if (response?.code != null) {
+    return {
+      ok: false,
+      message: response.message ?? "결제가 취소되었습니다.",
+    };
+  }
+
+  const completed = await completePortOnePaymentClient(portone.paymentId);
+  if (!completed.ok) {
+    // 결제는 됐을 수 있으므로 마이페이지로 유도할 bookingId는 반환
+    return {
+      ok: true,
+      bookingId,
+      bookingNumber: prepareData.booking_number,
+    };
+  }
+
   return {
-    ok: false,
-    message: "PortOne 결제는 아직 연결되지 않았습니다. submitPayment Mock을 사용하세요.",
+    ok: true,
+    bookingId: completed.bookingId,
+    bookingNumber: completed.bookingNumber ?? prepareData.booking_number,
   };
 }

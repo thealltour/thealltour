@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageCardSkeleton } from "@/components/mypage/ui/MyPageSkeleton";
 import { PortOneCheckoutButton } from "@/components/payments/PortOneCheckoutButton";
+import { completePortOnePaymentClient } from "@/lib/payments/completePortOnePaymentClient";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import type { CheckoutSnapshot } from "@/types/checkout";
 import type { BookingPaymentRow } from "@/types/travelBooking";
@@ -44,8 +45,13 @@ export default function MyPageBookingDetailClient({
   const [cashReceiptOn, setCashReceiptOn] = useState(true);
   const [portoneParams, setPortoneParams] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
+  const redirectCompleteRef = useRef<string | null>(null);
 
   const depositSuccess = searchParams.get("deposit") === "1";
+  const paidSuccess = searchParams.get("paid") === "1";
+  const balanceSuccess = searchParams.get("balance") === "1";
+  const paymentReturnSuccess = depositSuccess || paidSuccess;
+  const redirectPaymentId = searchParams.get("paymentId")?.trim() || null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,6 +77,27 @@ export default function MyPageBookingDetailClient({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!redirectPaymentId || (!paymentReturnSuccess && !balanceSuccess)) return;
+    if (redirectCompleteRef.current === redirectPaymentId) return;
+    redirectCompleteRef.current = redirectPaymentId;
+    let cancelled = false;
+    void (async () => {
+      const result = await completePortOnePaymentClient(redirectPaymentId);
+      if (cancelled) return;
+      if (!result.ok) {
+        setMessage(
+          result.message ||
+            "결제는 완료됐을 수 있습니다. 잠시 후 예약 상태를 확인해 주세요.",
+        );
+      }
+      await load();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [redirectPaymentId, paymentReturnSuccess, balanceSuccess, load]);
 
   const snapshot = detail?.checkout_snapshot;
   const balanceDue = snapshot?.balanceDue ?? 0;
@@ -118,9 +145,11 @@ export default function MyPageBookingDetailClient({
         </Link>
       </p>
 
-      {depositSuccess ? (
+      {paymentReturnSuccess ? (
         <p className="mb-4 rounded-xl border border-[var(--success)]/30 bg-[var(--success-bg)] px-4 py-3 text-sm text-[var(--success)]">
-          예약금 결제가 접수되었습니다. 잔금 결제 방법을 선택해 주세요.
+          {paidSuccess
+            ? "결제가 접수되었습니다. 예약 내역을 확인해 주세요."
+            : "예약금 결제가 접수되었습니다. 잔금 결제 방법을 선택해 주세요."}
         </p>
       ) : null}
 
@@ -224,7 +253,18 @@ export default function MyPageBookingDetailClient({
                       redirectUrl: `${window.location.origin}/mypage/bookings/${bookingId}?balance=1`,
                     }}
                     className="rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--on-primary)]"
-                    onSuccess={() => void load()}
+                    onSuccess={(paymentId) => {
+                      void (async () => {
+                        const result = await completePortOnePaymentClient(paymentId);
+                        if (!result.ok) {
+                          setMessage(
+                            result.message ||
+                              "결제는 완료됐을 수 있습니다. 화면을 새로고침해 확인해 주세요.",
+                          );
+                        }
+                        await load();
+                      })();
+                    }}
                     onError={(err) => setMessage(err)}
                   >
                     카드·간편결제로 잔금 {formatPriceKR(balanceDue)} 결제

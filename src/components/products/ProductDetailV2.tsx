@@ -7,7 +7,6 @@ import Tag from "@/components/ui/Tag";
 import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
 import AlertCard from "@/components/ui/AlertCard";
 import TrustSignals from "@/components/products/TrustSignals";
-import { ProductCheckoutSection } from "@/components/products/ProductCheckoutSection";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
 import { calculatePaxDiscount } from "@/lib/payments/calculatePaxDiscount";
@@ -118,7 +117,7 @@ export type ProductDetailV2Props = {
   overviewFallbackUrl?: string;
   /** PR6: 리뷰 요약 (있으면 제목 근처에 평점·후기 수 표시) */
   reviewSummary?: { averageRating: number; reviewCount: number } | null;
-  /** PortOne 예약금 결제 UI 노출 여부 (서버에서 isPortOneEnabled() 전달) */
+  /** @deprecated 체크아웃 UI는 상시 노출. 무시됩니다. */
   portOneEnabled?: boolean;
 };
 
@@ -886,23 +885,6 @@ export default function ProductDetailV2({
         {hasPackageCatalogContent(product?.package_catalog_json) ? (
           <div className="mt-6">
             <ProductPackageCatalogSection catalog={product?.package_catalog_json} />
-          </div>
-        ) : null}
-
-        {/* Mock 주문서: PortOne 키 없이도 표시. PG 연결 시 prepare는 submitPayment 어댑터에서 처리 */}
-        {showCalendarBooking && (hasCalendarDepartures || hasDepartures || hasOptions) ? (
-          <div id="product-checkout" className="mt-6 scroll-mt-28">
-            <ProductCheckoutSection
-              productId={product?.id ?? ""}
-              productTitle={title ?? ""}
-              options={hasOptions ? options : undefined}
-              selectedOptions={selectedOptions}
-              selectedDepartureKey={selectedDepartureKey}
-              departureRequired={departureRequiredForBooking}
-              requiredGroupsMissing={requiredGroupsMissing}
-              travelerCount={travelerCount}
-              benefitMode={benefitMode}
-            />
           </div>
         ) : null}
 

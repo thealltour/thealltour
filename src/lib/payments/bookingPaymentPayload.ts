@@ -3,6 +3,8 @@
  * submitPayment 어댑터에 그대로 전달한다.
  */
 
+import type { SelectedOptions } from "@/types/product";
+
 export type CheckoutPaymentType = "deposit" | "full";
 
 export type BookingPaymentOptionItem = {
@@ -18,6 +20,13 @@ export type BookingPaymentPayload = {
   selectedDate: string;
   headcount: number;
   selectedOptions: BookingPaymentOptionItem[];
+  /** prepare API용 원본 선택 맵 */
+  selectedOptionsMap: SelectedOptions;
+  departure: {
+    label: string;
+    inquiryValue: string;
+    price?: number | null;
+  };
   paymentType: CheckoutPaymentType;
   totalTripPrice: number;
   /** 오늘 실제 결제 금액 (예약금 합 또는 전액) */

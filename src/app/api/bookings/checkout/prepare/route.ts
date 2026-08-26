@@ -22,6 +22,7 @@ const bodySchema = z.object({
   selected_options: z.record(z.string(), z.union([z.string(), z.array(z.string())])).default({}),
   points_use: z.number().int().min(0).optional(),
   traveler_count: z.number().int().min(1).max(99).optional(),
+  payment_type: z.enum(["deposit", "full"]).optional().default("full"),
 });
 
 export async function POST(request: Request) {
@@ -107,6 +108,7 @@ export async function POST(request: Request) {
       travelerCount: body.traveler_count,
       returnDate,
       benefitMode,
+      paymentType: body.payment_type,
     });
 
     return NextResponse.json({

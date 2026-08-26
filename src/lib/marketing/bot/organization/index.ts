@@ -24,6 +24,16 @@ export { HERMES_HANDOFF_CLASSIFICATION, buildHermesOneshotArgv } from "@/lib/mar
 export { applyPipelineApproval, runDepartmentPipeline } from "@/lib/marketing/bot/organization/pipeline";
 export { PROJECT_DEPARTMENT_REGISTRY, resolveDepartmentRegistry } from "@/lib/marketing/bot/organization/registry";
 export { routeDepartmentRequest } from "@/lib/marketing/bot/organization/routing";
+export {
+  MARKETING_MCP_SIDE_EFFECT_CLASS,
+  departmentOrchestrationRequired,
+  genericDelegateSatisfiesSpecialistInvocation,
+  governanceClaimAllowed,
+  mcpReadOnlyHint,
+  textClaimsGovernanceResult,
+  containsUnsupportedProductFactClaims,
+  containsFakeAsyncCompletionPromise,
+} from "@/lib/marketing/bot/organization/enforcement";
 export { orchestrateDepartmentTask } from "@/lib/marketing/bot/organization/orchestrate";
 export type { DepartmentOrchestrationResult } from "@/lib/marketing/bot/organization/orchestrate";
 export type {

@@ -1,5 +1,6 @@
 import { MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 import type { HermesMarketingProfileId } from "@/lib/marketing/bot/organization/envelope";
+import { departmentOrchestrationRequired } from "@/lib/marketing/bot/organization/enforcement";
 import {
   DEPARTMENT_ALIASES,
   PROJECT_ALIASES,
@@ -27,6 +28,8 @@ export type DepartmentRoute = {
   requestedAgents: HermesMarketingProfileId[];
   publicationRequested: boolean;
   unknownAgent: boolean;
+  /** True when Manager must call run_department_orchestration (not persona / cronjob / delegate_task). */
+  orchestrationRequired: boolean;
 };
 
 const CRON_RE =
@@ -117,7 +120,7 @@ export function routeDepartmentRequest(userRequest: string): DepartmentRoute {
     if (named === "governance-auditor" && intent === "manager_only") intent = "governance";
   }
 
-  return {
+  const route = {
     project: projectHit.project,
     department: departmentHit.department,
     registry,
@@ -125,5 +128,9 @@ export function routeDepartmentRequest(userRequest: string): DepartmentRoute {
     requestedAgents,
     publicationRequested,
     unknownAgent: false,
+  };
+  return {
+    ...route,
+    orchestrationRequired: departmentOrchestrationRequired(route),
   };
 }

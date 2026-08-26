@@ -13,4 +13,9 @@ export const DEPARTMENT_COMMON_RULES = [
   "ALLOW still does not publish in v1",
   "keep one primary agenda per piece",
   "minimize ungrounded cliché",
+  "department-wide, specialist, performance, and content+governance requests require run_department_orchestration",
+  "generic delegate_task is not a named specialist invocation",
+  "do not promise later delivery without a real async delivery mechanism",
+  "do not claim ALLOW/REVIEW/BLOCK/publish_ready without governance evidence",
+  "multiplex gateway status is authoritative over named-profile Gateway is not running",
 ] as const;

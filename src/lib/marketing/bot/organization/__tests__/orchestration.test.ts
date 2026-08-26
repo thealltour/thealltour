@@ -167,6 +167,7 @@ describe("department orchestration", () => {
       },
     );
     expect(result.intent).toBe("department_status");
+    expect(result.orchestrationRequired).toBe(true);
     expect(result.cron?.jobs.some((job) => job.profile === "performance-analyst" && job.schedule === "30 8 * * *")).toBe(
       true,
     );
@@ -302,9 +303,13 @@ describe("department orchestration", () => {
 
 describe("department routing", () => {
   it("routes explicit analyst naming and department cron language", () => {
-    expect(routeDepartmentRequest("Performance Analyst에게 성과 분석을 요청해").intent).toBe("performance");
-    expect(routeDepartmentRequest("더올투어 마케팅, 오늘 예정된 크론 작업을 팀 전체 기준으로 정리해줘.").intent).toBe(
-      "department_status",
+    const analyst = routeDepartmentRequest("Performance Analyst에게 성과 분석을 요청해");
+    expect(analyst.intent).toBe("performance");
+    expect(analyst.orchestrationRequired).toBe(true);
+    const cron = routeDepartmentRequest(
+      "더올투어 마케팅, 오늘 예정된 크론 작업을 팀 전체 기준으로 정리해줘.",
     );
+    expect(cron.intent).toBe("department_status");
+    expect(cron.orchestrationRequired).toBe(true);
   });
 });

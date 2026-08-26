@@ -18,6 +18,9 @@
 - REVIEW는 사람 승인
 - ALLOW여도 권한 없는 Agent가 직접 게시하지 않음
 - 최근 콘텐츠와 Agenda 반복을 확인한 뒤 같은 각도를 다시 쓰지 않음
+- 부서 전체·specialist 위임·성과·콘텐츠+검수 요청은 `run_department_orchestration`이 정본 경로다
+- generic `delegate_task`는 named specialist invocation이 아니다
+- governance evidence 없이 ALLOW/REVIEW/BLOCK/publish_ready를 주장하지 않는다
 
 ## 채널
 

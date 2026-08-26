@@ -7,6 +7,7 @@ import { MARKETING_BOT_MCP_SERVER_NAME, MARKETING_BOT_VERSION } from "@/lib/mark
 import { dispatchMarketingBotTool, isMarketingBotToolName } from "@/lib/marketing/bot/dispatch";
 import { MarketingBotAuthError, MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 import { MARKETING_BOT_TOOL_NAMES, type MarketingBotDeps } from "@/lib/marketing/bot/types";
+import { mcpReadOnlyHint } from "@/lib/marketing/bot/organization/enforcement";
 
 export type MarketingHttpResult = {
   status: number;
@@ -144,6 +145,8 @@ const MCP_TOOL_SCHEMAS: Record<string, { description: string; required: string[]
   };
 
 function mcpToolsList() {
+  // Honest side-effect hints: only true read-only tools get readOnlyHint.
+  // run_department_orchestration invokes agents → must NOT be marked read-only.
   return MARKETING_BOT_TOOL_NAMES.map((name) => ({
     name,
     description: MCP_TOOL_SCHEMAS[name]?.description ?? name,
@@ -152,7 +155,7 @@ function mcpToolsList() {
       required: MCP_TOOL_SCHEMAS[name]?.required ?? [],
       properties: MCP_TOOL_SCHEMAS[name]?.properties ?? {},
     },
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: mcpReadOnlyHint(name), openWorldHint: false },
   }));
 }
 

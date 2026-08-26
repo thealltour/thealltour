@@ -51,6 +51,8 @@ export type DepartmentOrchestrationResult = {
   project: string;
   department: string;
   intent: string;
+  /** True when this request class requires the orchestration tool (not persona / cronjob / delegate_task). */
+  orchestrationRequired: boolean;
   publicationRequested: boolean;
   publicationFlowInactive: true;
   snsSideEffects: 0;
@@ -158,11 +160,22 @@ function synthesize(input: {
     }
     findings.push(...agent.errors.map((error) => `${agent.agent}: ${error}`));
   }
+  const governanceInvoked =
+    Boolean(input.pipeline?.governance) ||
+    input.agents.some((agent) => agent.agent === "governance-auditor" && agent.actuallyInvoked);
   if (input.pipeline) {
     findings.push(`pipeline status=${input.pipeline.status} next=${input.pipeline.nextAction}`);
     if (input.pipeline.governance) {
       findings.push(`governance=${input.pipeline.governance.decision}`);
     }
+  }
+  const governanceRelevant =
+    input.publicationRequested ||
+    input.intent === "content" ||
+    input.intent === "governance" ||
+    input.intent === "content_and_governance";
+  if (governanceRelevant && !governanceInvoked) {
+    limits.push("거버넌스 검수는 아직 수행되지 않았습니다.");
   }
   if (input.cron) {
     for (const job of input.cron.jobs) {
@@ -183,7 +196,19 @@ function synthesize(input: {
     actions.push("use internal DB evidence; do not invent SNS metrics");
   }
   if (input.pipeline?.status === "approval_pending") actions.push("human_approval");
-  if (input.pipeline?.status === "publish_ready") actions.push("stop_before_publish");
+  if (input.pipeline?.status === "publish_ready" && governanceInvoked) {
+    actions.push("stop_before_publish");
+  }
+  if (!governanceInvoked) {
+    actions.push("do_not_claim_ALLOW_REVIEW_BLOCK_or_publish_ready_without_evidence");
+  }
+  actions.push("complete_in_same_turn_no_fake_async_promise");
+
+  for (const agent of input.agents) {
+    if (agent.errors.some((error) => /timeout|timed out|dispatch_failed/i.test(error))) {
+      limits.push(`${agent.agent} invocation failed or timed out in this request lifecycle`);
+    }
+  }
 
   return {
     requested: input.request.slice(0, 500),
@@ -240,6 +265,7 @@ export async function orchestrateDepartmentTask(
       project: "unknown",
       department: "unknown",
       intent: "routing_failed",
+      orchestrationRequired: false,
       publicationRequested: false,
       publicationFlowInactive: true as const,
       snsSideEffects: 0 as const,
@@ -389,6 +415,7 @@ export async function orchestrateDepartmentTask(
     project: route.project,
     department: route.department,
     intent: route.intent,
+    orchestrationRequired: route.orchestrationRequired,
     publicationRequested: route.publicationRequested,
     publicationFlowInactive: true as const,
     snsSideEffects: 0 as const,

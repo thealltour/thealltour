@@ -103,6 +103,8 @@ export function ProductCheckoutModal({
   const emailRef = useRef<HTMLInputElement>(null);
   const agreeRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /** PortOne UI가 body에 붙을 때 <dialog> top-layer에 가려지지 않도록 결제 중 일시 close */
+  const payingRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -146,6 +148,7 @@ export function ProductCheckoutModal({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
+    if (payingRef.current) return;
     if (open && !dialog.open) dialog.showModal();
     else if (!open && dialog.open) dialog.close();
   }, [open]);
@@ -284,9 +287,20 @@ export function ProductCheckoutModal({
         },
         specialRequest: form.specialRequest.trim() || undefined,
       };
+
+      // showModal() top-layer가 PortOne iframe/오버레이를 가리면 requestPayment가
+      // resolve되지 않아 「결제창 여는 중…」에 고착된다. 결제 UI 직전에 dialog만 닫는다.
+      payingRef.current = true;
+      dialogRef.current?.close();
+
       const result = await submitPayment(payload);
+      payingRef.current = false;
+
       if (!result.ok) {
         setMessage(result.message);
+        if (open && dialogRef.current && !dialogRef.current.open) {
+          dialogRef.current.showModal();
+        }
         return;
       }
       onClose();
@@ -303,7 +317,11 @@ export function ProductCheckoutModal({
         );
       }
     } catch {
+      payingRef.current = false;
       setMessage("결제 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      if (open && dialogRef.current && !dialogRef.current.open) {
+        dialogRef.current.showModal();
+      }
     } finally {
       setSubmitting(false);
     }
@@ -330,7 +348,11 @@ export function ProductCheckoutModal({
       ref={dialogRef}
       aria-labelledby={titleId}
       className="fixed inset-0 z-[70] m-0 h-[100dvh] max-h-[100dvh] w-full max-w-none overflow-hidden bg-transparent p-0 backdrop:bg-black/45"
-      onClose={onClose}
+      onClose={() => {
+        // 결제용 일시 close는 부모 open을 유지해야 PortOne 종료 후 모달을 다시 열 수 있음
+        if (payingRef.current) return;
+        onClose();
+      }}
     >
       <div
         className="flex h-full flex-col justify-end lg:items-center lg:justify-center lg:p-6"

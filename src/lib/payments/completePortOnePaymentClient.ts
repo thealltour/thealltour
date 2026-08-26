@@ -12,6 +12,7 @@ export async function completePortOnePaymentClient(
   const res = await fetch("/api/payments/portone/complete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify({ paymentId }),
   });
   const data = (await res.json().catch(() => ({}))) as {

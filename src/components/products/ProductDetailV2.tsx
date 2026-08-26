@@ -323,15 +323,22 @@ export default function ProductDetailV2({
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/me/points", { cache: "no-store" });
-      if (res.status === 401) {
+      const res = await fetch("/api/me/points", { cache: "no-store", credentials: "include" });
+      if (!res.ok) {
         setMemberLoggedIn(false);
         setHasPreviousBooking(false);
         return;
       }
-      if (!res.ok) return;
+      const data = (await res.json()) as {
+        authenticated?: boolean;
+        hasPreviousBooking?: boolean;
+      };
+      if (data.authenticated === false) {
+        setMemberLoggedIn(false);
+        setHasPreviousBooking(false);
+        return;
+      }
       setMemberLoggedIn(true);
-      const data = (await res.json()) as { hasPreviousBooking?: boolean };
       setHasPreviousBooking(Boolean(data.hasPreviousBooking));
     })();
   }, []);

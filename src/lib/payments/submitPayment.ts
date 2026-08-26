@@ -12,6 +12,13 @@ export type SubmitPaymentResult =
     }
   | { ok: false; message: string; needLogin?: boolean };
 
+export type SubmitPaymentPhase = "prepare" | "widget" | "confirm";
+
+export type SubmitPaymentOptions = {
+  /** UI 단계 표시용 (결제창 열기 / 서버 검증) */
+  onPhase?: (phase: SubmitPaymentPhase) => void;
+};
+
 type PrepareResponse = {
   message?: string;
   booking_id?: string;
@@ -36,10 +43,13 @@ export const REQUIRE_LOGIN_FOR_PAYMENT = false;
 
 export async function submitPayment(
   payload: BookingPaymentPayload,
+  options?: SubmitPaymentOptions,
 ): Promise<SubmitPaymentResult> {
   if (typeof window === "undefined") {
     return { ok: false, message: "브라우저에서만 결제가 가능합니다." };
   }
+
+  options?.onPhase?.("prepare");
 
   const departureYmd =
     resolveCheckoutDepartureYmd({
@@ -120,6 +130,7 @@ export async function submitPayment(
   }
 
   try {
+    options?.onPhase?.("widget");
     const PortOne = await import("@portone/browser-sdk/v2");
     const response = await PortOne.requestPayment({
       storeId,
@@ -134,7 +145,8 @@ export async function submitPayment(
         phoneNumber: payload.customer.phone.replace(/\D/g, ""),
         email: payload.customer.email,
       },
-      redirectUrl: `${window.location.origin}/products/${payload.productId}?payment=return`,
+      // 모바일 등 리다이렉트 시 서버 검증 페이지로 복귀
+      redirectUrl: `${window.location.origin}/payments/portone/return`,
     });
 
     if (response?.code != null) {
@@ -144,6 +156,8 @@ export async function submitPayment(
       };
     }
 
+    // 서버가 PortOne API로 PAID·금액 일치 검증 후 DB 확정
+    options?.onPhase?.("confirm");
     const complete = await completePortOnePaymentClient(portone.paymentId);
     if (!complete.ok) {
       return { ok: false, message: complete.message };

@@ -154,7 +154,13 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
           setPointsUseAmount(0);
           return;
         }
-        const data = (await res.json()) as { balance?: number };
+        const data = (await res.json()) as { authenticated?: boolean; balance?: number };
+        if (data.authenticated === false) {
+          setPointBalance(null);
+          setPointsUseEnabled(false);
+          setPointsUseAmount(0);
+          return;
+        }
         const balance = Number(data.balance ?? 0);
         setPointBalance(balance);
         const defaultAmount = resolveDefaultPointsUseAmount(balance, quoteCtx.quoteSummary?.total ?? null);
@@ -178,7 +184,16 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
           setMemberProfile(null);
           return;
         }
-        const data = (await res.json()) as { name?: string; phone?: string };
+        const data = (await res.json()) as {
+          authenticated?: boolean;
+          name?: string;
+          phone?: string;
+          email?: string;
+        };
+        if (data.authenticated === false) {
+          setMemberProfile(null);
+          return;
+        }
         const name = typeof data.name === "string" ? data.name.trim() : "";
         const phoneRaw = typeof data.phone === "string" ? data.phone.trim() : "";
         const phone = phoneRaw ? formatPhoneInput(phoneRaw) : "";

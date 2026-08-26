@@ -17,7 +17,7 @@ export type MemberCheckoutProfileState = {
 
 /**
  * 간편 결제 모달용 회원 프로필.
- * 401만 guest. 세션이 있으면(200) 프로필 필드가 비어도 member.
+ * /api/me/profile 은 비회원도 200(authenticated:false) — 401 콘솔 노이즈 없음.
  */
 export function useMemberCheckoutProfile(): MemberCheckoutProfileState {
   const [status, setStatus] = useState<"loading" | "guest" | "member">("loading");
@@ -31,24 +31,25 @@ export function useMemberCheckoutProfile(): MemberCheckoutProfileState {
         credentials: "include",
       });
 
-      if (res.status === 401) {
-        setStatus("guest");
-        setProfile(null);
-        return;
-      }
-
       if (!res.ok) {
         console.error("[useMemberCheckoutProfile] profile fetch failed", res.status);
-        // 이미 member였으면 유지. 최초 실패만 guest 폴백.
         setStatus((prev) => (prev === "member" ? "member" : "guest"));
         return;
       }
 
       const data = (await res.json()) as {
+        authenticated?: boolean;
         name?: string;
         phone?: string;
         email?: string;
       };
+
+      if (data.authenticated === false) {
+        setStatus("guest");
+        setProfile(null);
+        return;
+      }
+
       setProfile({
         name: String(data.name ?? "").trim(),
         phone: formatPhoneInput(String(data.phone ?? "")),

@@ -95,6 +95,7 @@ export function ProductCheckoutModal({
   const [errors, setErrors] = useState<CheckoutFormErrors>({});
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [payPhase, setPayPhase] = useState<"idle" | "prepare" | "widget" | "confirm">("idle");
   const [agreeAll, setAgreeAll] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -122,6 +123,7 @@ export function ProductCheckoutModal({
     setErrors({});
     setMessage("");
     setSubmitting(false);
+    setPayPhase("idle");
     setAgreeAll(true);
     setEditingCustomer(false);
     setForm({
@@ -248,6 +250,7 @@ export function ProductCheckoutModal({
     }
 
     setSubmitting(true);
+    setPayPhase("prepare");
     setMessage("");
     try {
       const departureYmd =
@@ -259,6 +262,7 @@ export function ProductCheckoutModal({
       if (!departureYmd) {
         setMessage("출발일 형식이 올바르지 않습니다. 달력에서 출발일을 다시 선택해 주세요.");
         setSubmitting(false);
+        setPayPhase("idle");
         return;
       }
 
@@ -293,11 +297,20 @@ export function ProductCheckoutModal({
       payingRef.current = true;
       dialogRef.current?.close();
 
-      const result = await submitPayment(payload);
+      const result = await submitPayment(payload, {
+        onPhase: (phase) => {
+          setPayPhase(phase);
+          // 위젯 종료 후 서버 검증 구간에는 모달을 다시 열어 중복 조작을 막음
+          if (phase === "confirm" && dialogRef.current && !dialogRef.current.open) {
+            dialogRef.current.showModal();
+          }
+        },
+      });
       payingRef.current = false;
 
       if (!result.ok) {
         setMessage(result.message);
+        setPayPhase("idle");
         if (open && dialogRef.current && !dialogRef.current.open) {
           dialogRef.current.showModal();
         }
@@ -305,19 +318,14 @@ export function ProductCheckoutModal({
       }
       onClose();
       if (typeof window !== "undefined") {
-        const bookingNumber = result.bookingNumber;
-        if (isMember && bookingNumber) {
-          window.location.assign(`/mypage/bookings/${encodeURIComponent(bookingNumber)}`);
-          return;
-        }
-        window.alert(
-          bookingNumber
-            ? `결제가 완료되었습니다.\n예약번호: ${bookingNumber}`
-            : "결제가 완료되었습니다.",
-        );
+        const q = new URLSearchParams();
+        if (result.bookingNumber) q.set("bookingNumber", result.bookingNumber);
+        if (result.bookingId) q.set("bookingId", result.bookingId);
+        window.location.assign(`/order/success?${q.toString()}`);
       }
     } catch {
       payingRef.current = false;
+      setPayPhase("idle");
       setMessage("결제 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
       if (open && dialogRef.current && !dialogRef.current.open) {
         dialogRef.current.showModal();
@@ -598,7 +606,11 @@ export function ProductCheckoutModal({
                 className="inline-flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--on-accent)] shadow-[var(--shadow-soft)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting
-                  ? "결제창 여는 중…"
+                  ? payPhase === "confirm"
+                    ? "결제 확인 중…"
+                    : payPhase === "widget"
+                      ? "결제창 진행 중…"
+                      : "결제창 여는 중…"
                   : `₩${payAmount.toLocaleString("ko-KR")}원 결제 진행하기`}
               </button>
               <p className="mt-2 text-center text-[11px] text-slate-400">

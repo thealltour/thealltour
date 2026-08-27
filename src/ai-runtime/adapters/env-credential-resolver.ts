@@ -16,10 +16,13 @@ export type CreateEnvCredentialResolverOptions = {
 export function createEnvCredentialResolver(
   options: CreateEnvCredentialResolverOptions = {},
 ): CredentialResolver {
-  const env = options.env ?? process.env;
+  // Prefer an explicit env bag (tests). Otherwise read process.env at resolve
+  // time so ensureRuntimeEnv() fills are visible — never capture a stale snapshot.
+  const explicitEnv = options.env;
 
   return {
     async resolve(credentialRef: string): Promise<string> {
+      const env = explicitEnv ?? process.env;
       const ref = credentialRef.trim();
       if (!ref) {
         throw new RuntimeError("AUTH_ERROR", "credentialRef is empty", false);

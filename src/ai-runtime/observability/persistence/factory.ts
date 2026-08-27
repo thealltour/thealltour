@@ -99,6 +99,8 @@ export async function resolveRuntimeObservabilitySink(
 }
 
 let defaultRecorder: RuntimeObservabilityRecorder | null = null;
+/** Flag value observed when defaultRecorder was last built. */
+let defaultRecorderSharedEnabled: boolean | null = null;
 
 export function createDefaultRuntimeObservabilityRecorder(
   options: CreateRuntimeObservabilitySinkOptions = {},
@@ -107,8 +109,11 @@ export function createDefaultRuntimeObservabilityRecorder(
 }
 
 export function getDefaultRuntimeObservabilityRecorder(): RuntimeObservabilityRecorder {
-  if (!defaultRecorder) {
+  const sharedOn = isAiRuntimeSharedObservabilityEnabled();
+  // Recreate when missing, or when shared flag changed after ensureRuntimeEnv.
+  if (!defaultRecorder || defaultRecorderSharedEnabled !== sharedOn) {
     defaultRecorder = createDefaultRuntimeObservabilityRecorder();
+    defaultRecorderSharedEnabled = sharedOn;
   }
   return defaultRecorder;
 }
@@ -117,10 +122,14 @@ export function setDefaultRuntimeObservabilityRecorder(
   recorder: RuntimeObservabilityRecorder | null,
 ): void {
   defaultRecorder = recorder;
+  defaultRecorderSharedEnabled = recorder
+    ? isAiRuntimeSharedObservabilityEnabled()
+    : null;
 }
 
 export function resetDefaultRuntimeObservabilityRecorderForTests(): void {
   defaultRecorder = null;
+  defaultRecorderSharedEnabled = null;
 }
 
 /** Cron/Next startup: resolve Postgres sink when flag enabled. */
@@ -130,5 +139,8 @@ export async function ensureSharedObservabilityRecorder(
   const sink = await resolveRuntimeObservabilitySink(options);
   const recorder = createRuntimeObservabilityRecorder(sink);
   defaultRecorder = recorder;
+  defaultRecorderSharedEnabled = isAiRuntimeSharedObservabilityEnabled(
+    options.env ?? process.env,
+  );
   return recorder;
 }

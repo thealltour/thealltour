@@ -47,28 +47,35 @@ describe("ai-runtime registry", () => {
     );
   });
 
-  it("registers NVIDIA Llama 3.3 70B without raw secrets", () => {
+  it("registers NVIDIA Nemotron 3 Ultra and deprecates Llama 3.3 70B", () => {
     const nvidia = registry.getProviderById(AI_PROVIDER_IDS.NVIDIA_MAIN);
     expect(nvidia?.displayName).toBe("NVIDIA NIM");
     expect(nvidia).not.toHaveProperty("apiKey");
     expect(JSON.stringify(nvidia)).not.toMatch(/NVIDIA_API_KEY|nvapi-/i);
 
-    const model = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    const deprecated = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(deprecated?.providerId).toBe(AI_PROVIDER_IDS.NVIDIA_MAIN);
+    expect(deprecated?.modelId).toBe("meta/llama-3.3-70b-instruct");
+    expect(deprecated?.routing.enabled).toBe(false);
+    expect(deprecated?.metadata?.statusReason).toBe("deprecated_eol_410");
+
+    const model = registry.getModelById(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
     expect(model?.providerId).toBe(AI_PROVIDER_IDS.NVIDIA_MAIN);
-    expect(model?.modelId).toBe("meta/llama-3.3-70b-instruct");
-    expect(model?.limits.contextTokens).toBe(131072);
+    expect(model?.modelId).toBe("nvidia/nemotron-3-ultra-550b-a55b");
+    expect(model?.limits.contextTokens).toBe(1_000_000);
     expect(model?.limits.rpm).toBeUndefined();
     expect(model?.economics.freeTierEligible).toBe(true);
   });
 
-  it("includes NVIDIA for analysis/summarization but not manager_decision", () => {
+  it("includes NVIDIA Nemotron for analysis/summarization but not manager_decision", () => {
     const analysis = registry.listModelsForWorkload("analysis").map((model) => model.id);
     const summarization = registry.listModelsForWorkload("summarization").map((model) => model.id);
     const manager = registry.listModelsForWorkload("manager_decision").map((model) => model.id);
 
-    expect(analysis).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
-    expect(summarization).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
-    expect(manager).not.toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(analysis).toContain(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
+    expect(summarization).toContain(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
+    expect(analysis).not.toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(manager).not.toContain(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
   });
 
   it("keeps Groq registered but disabled and ineligible", () => {
@@ -136,12 +143,12 @@ describe("ai-runtime registry", () => {
     const eligible = registry.listModelsForWorkload("content_draft").map((model) => model.id);
     expect(eligible).toContain(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY);
     expect(eligible).toContain(AI_MODEL_IDS.OPENROUTER_FREE);
-    expect(eligible).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(eligible).toContain(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
 
     const managerOnly = registry.listModelsForWorkload("manager_decision").map((model) => model.id);
     expect(managerOnly).toContain(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY);
     expect(managerOnly).not.toContain(AI_MODEL_IDS.OPENROUTER_FREE);
-    expect(managerOnly).not.toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(managerOnly).not.toContain(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
   });
 
   it("filters by structured output and tool calling requirements", () => {
@@ -163,7 +170,7 @@ describe("ai-runtime registry", () => {
       .findEligibleModels({ workload: "summarization", freeOnly: true })
       .map((model) => model.id);
     expect(freeOnly).toContain(AI_MODEL_IDS.OPENROUTER_FREE);
-    expect(freeOnly).toContain(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(freeOnly).toContain(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
     expect(freeOnly).not.toContain(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY);
   });
 

@@ -5,3 +5,7 @@ export const DEFAULT_RUNTIME_COMPLETION_TIMEOUT_MS = 180_000;
 export const RUNTIME_COMPLETION_POLL_INTERVAL_MS = 25;
 
 export const AI_RUNTIME_MARKETING_CRON_ENABLED_ENV = "AI_RUNTIME_MARKETING_CRON_ENABLED";
+
+/** When true/1 and Supabase is configured, Cron/Runtime write shared observability events. */
+export const AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED_ENV =
+  "AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED";

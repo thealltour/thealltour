@@ -463,7 +463,9 @@ function SchedulerSummarySection({
     <AdminCard className="space-y-4 p-4 md:p-5">
       <div className="space-y-1">
         <h2 className="text-base font-semibold text-[var(--text-primary)]">Scheduler</h2>
-        <p className="text-xs text-[var(--text-secondary)]">Priority queue · in-memory job store</p>
+        <p className="text-xs text-[var(--text-secondary)]">
+          Live (this process) · Priority queue · in-memory job store
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -569,6 +571,156 @@ function RecentJobsSection({
   );
 }
 
+function SharedTelemetrySection({
+  shared,
+}: {
+  shared: NonNullable<RuntimeStatusDto["shared"]>;
+}) {
+  if (!shared.available) {
+    return (
+      <AdminCard className="space-y-2 p-4 md:p-5">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
+          Last 1h Runtime Activity
+        </h2>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Shared telemetry unavailable. Set{" "}
+          <span className="font-mono text-xs">AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED=true</span> after
+          applying the observability migration.
+        </p>
+      </AdminCard>
+    );
+  }
+
+  const { lastHour, providerUsage, recentJobs } = shared;
+
+  return (
+    <AdminCard className="space-y-4 p-4 md:p-5">
+      <div className="space-y-1">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
+          Last 1h Runtime Activity
+        </h2>
+        <p className="text-xs text-[var(--text-secondary)]">
+          Historical / Shared · PostgreSQL (cross-process Cron + Admin)
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <AdminSummaryCard title="Runtime Requests" value={lastHour.requests} />
+        <AdminSummaryCard title="Completed" value={lastHour.completed} />
+        <AdminSummaryCard title="Failed" value={lastHour.failed} />
+        <AdminSummaryCard title="Fallbacks" value={lastHour.fallbacks} />
+        <AdminSummaryCard title="Provider Calls" value={lastHour.providerCalls} />
+      </div>
+
+      {providerUsage.length > 0 ? (
+        <section className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+            Provider Usage
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {providerUsage.map((row) => (
+              <AdminCard key={row.providerId} className="space-y-1 p-3">
+                <p className="text-sm font-medium text-[var(--text-primary)]">{row.displayName}</p>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  requests {row.requests} · tokens{" "}
+                  {row.tokensKnown ? formatTokenCount(row.tokens) : "Unknown"} · errors {row.errors}
+                  {row.usageMissingCount > 0 ? ` · usageMissing ${row.usageMissingCount}` : ""}
+                </p>
+              </AdminCard>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {recentJobs.length === 0 ? (
+        <p className="text-sm text-[var(--text-secondary)]">No shared runtime jobs in the last hour.</p>
+      ) : (
+        <>
+          <section className="hidden overflow-x-auto lg:block">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+              Recent Runtime Jobs
+            </p>
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="border-b border-[var(--border)] bg-[var(--surface-muted)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                <tr>
+                  <th className="px-3 py-2">Time</th>
+                  <th className="px-3 py-2">Source</th>
+                  <th className="px-3 py-2">Agent</th>
+                  <th className="px-3 py-2">Workload</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Provider/Model</th>
+                  <th className="px-3 py-2">Fallback</th>
+                  <th className="px-3 py-2">Correlation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentJobs.map((job, index) => (
+                  <tr
+                    key={`${job.jobId ?? job.requestId ?? "job"}-${index}`}
+                    className="border-b border-[var(--border)] last:border-b-0"
+                  >
+                    <td className="px-3 py-2 text-xs text-[var(--text-secondary)]">
+                      {new Date(job.occurredAt).toLocaleTimeString("ko-KR")}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {job.source ?? "—"}
+                      {job.cronJobId ? (
+                        <span className="block text-[10px] text-[var(--text-muted)]">
+                          {job.cronJobId}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">{job.agentId ?? "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{job.workload ?? "—"}</td>
+                    <td className="px-3 py-2 uppercase">{job.status ?? "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {[job.providerId, job.modelId].filter(Boolean).join(" / ") || "—"}
+                    </td>
+                    <td className="px-3 py-2">{job.fallbackUsed ? "Yes" : "No"}</td>
+                    <td className="px-3 py-2 font-mono text-[10px] text-[var(--text-muted)]">
+                      {job.correlationShort ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <section className="space-y-3 lg:hidden">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+              Recent Runtime Jobs
+            </p>
+            {recentJobs.map((job, index) => (
+              <AdminCard key={`${job.jobId ?? job.requestId ?? "m"}-${index}`} className="space-y-1 p-4">
+                <p className="text-xs text-[var(--text-muted)]">
+                  {job.source === "cron" ? "Marketing Cron" : job.source ?? "Runtime"}
+                  {job.cronJobId ? ` · ${job.cronJobId}` : ""}
+                </p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">
+                  {job.agentId ?? "unknown-agent"}
+                </p>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {job.status ?? "—"}
+                  {job.providerId ? ` · ${job.providerId}` : ""}
+                </p>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Fallback: {job.fallbackUsed ? "Yes" : "No"}
+                  {job.totalTokens != null ? ` · Tokens: ${job.totalTokens}` : ""}
+                </p>
+                {job.correlationShort ? (
+                  <p className="font-mono text-[10px] text-[var(--text-muted)]">
+                    {job.correlationShort}
+                  </p>
+                ) : null}
+              </AdminCard>
+            ))}
+          </section>
+        </>
+      )}
+    </AdminCard>
+  );
+}
+
 export default function AiRuntimeConsole() {
   const [status, setStatus] = useState<RuntimeStatusDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -643,6 +795,8 @@ export default function AiRuntimeConsole() {
                 value={status.summary.activeReservations}
               />
             </section>
+
+            {status.shared ? <SharedTelemetrySection shared={status.shared} /> : null}
 
             {status.scheduler ? (
               <SchedulerSummarySection scheduler={status.scheduler} generatedAt={status.generatedAt} />

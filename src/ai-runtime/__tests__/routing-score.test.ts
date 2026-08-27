@@ -35,7 +35,7 @@ describe("routing score", () => {
   const geminiPrimary = registry.getModelById(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY)!;
   const geminiSecondary = registry.getModelById(AI_MODEL_IDS.GEMINI_FLASH_LITE_SECONDARY)!;
   const openrouter = registry.getModelById(AI_MODEL_IDS.OPENROUTER_FREE)!;
-  const nvidia = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B)!;
+  const nvidia = registry.getModelById(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA)!;
 
   it("ranks quota health green > yellow > red", () => {
     expect(quotaHealthScore("green")).toBeGreaterThan(quotaHealthScore("yellow"));
@@ -106,7 +106,7 @@ describe("routing score", () => {
     const request = sampleRequest({
       routing: {
         preferredProviderIds: [AI_PROVIDER_IDS.NVIDIA_MAIN],
-        preferredModelIds: [AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B],
+        preferredModelIds: [AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA],
       },
     });
     const boosted = scoreCandidate({

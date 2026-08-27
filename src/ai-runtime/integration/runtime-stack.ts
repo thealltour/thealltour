@@ -11,10 +11,15 @@ import { createRuntimeExecutor, type SchedulerRuntimeExecutor } from "@/ai-runti
 import type { UsageLedgerAggregation } from "@/ai-runtime/quota";
 import type { QuotaBroker } from "@/ai-runtime/quota/broker-types";
 import type { RuntimeScheduler } from "@/ai-runtime/scheduler";
+import {
+  getDefaultRuntimeObservabilityRecorder,
+  type RuntimeObservabilityRecorder,
+} from "@/ai-runtime/observability/persistence";
 
 export type CreateRuntimeExecutorStackOptions = {
   env?: CredentialEnvSource;
   now?: () => Date;
+  observability?: RuntimeObservabilityRecorder;
 };
 
 export type RuntimeExecutorStackObservability = {
@@ -42,6 +47,7 @@ export function createRuntimeExecutorStack(
   options: CreateRuntimeExecutorStackOptions = {},
 ): SchedulerRuntimeExecutor {
   const now = options.now ?? (() => new Date());
+  const observability = options.observability ?? getDefaultRuntimeObservabilityRecorder();
   const ledger = createInMemoryUsageLedger({ now });
   const quotaBroker = createInMemoryQuotaBroker({ ledger, now });
   const registry = createDefaultAiRuntimeRegistry();
@@ -52,6 +58,7 @@ export function createRuntimeExecutorStack(
     quotaBroker,
     usageLedger: ledger,
     now,
+    observability,
   });
   const context: ProviderExecutionContext = {
     credentialResolver: createEnvCredentialResolver({ env: options.env }),
@@ -60,6 +67,7 @@ export function createRuntimeExecutorStack(
     router,
     context,
     now,
+    observability,
   });
   lastRuntimeExecutorStackObservability = { scheduler, ledger, quotaBroker };
   return createRuntimeExecutor({ scheduler });

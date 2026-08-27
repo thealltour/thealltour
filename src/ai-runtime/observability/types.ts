@@ -78,8 +78,11 @@ export type RuntimeStatusDto = {
   summary: RuntimeStatusSummaryDto;
   routing?: RuntimeRoutingStatusDto;
   routingPolicies?: RuntimeRoutingPolicyDto[];
+  /** Live queue/running — this process only. */
   scheduler?: RuntimeSchedulerStatusDto;
   providers: RuntimeProviderStatusDto[];
+  /** Shared historical telemetry from PostgreSQL (cross-process). */
+  shared?: import("@/ai-runtime/observability/persistence").SharedRuntimeTelemetryDto;
 };
 
 export type RuntimeRoutingStatusDto = {

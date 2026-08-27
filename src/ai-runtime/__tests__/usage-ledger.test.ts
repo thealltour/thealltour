@@ -200,7 +200,7 @@ describe("usage ledger", () => {
       {
         requestId: "req-timeout",
         providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
-        modelId: AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B,
+        modelId: AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA,
         completedAt: "2026-08-27T03:00:02.000Z",
         startedAt: "2026-08-27T02:59:00.000Z",
       },

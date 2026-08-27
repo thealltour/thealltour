@@ -27,6 +27,7 @@ import type {
   SchedulerRecentJobDto,
   SchedulerSnapshot,
 } from "@/ai-runtime/scheduler/types";
+import type { RuntimeObservabilityRecorder } from "@/ai-runtime/observability/persistence";
 
 export type RuntimeSchedulerDependencies = {
   router: RuntimeRouter;
@@ -35,6 +36,8 @@ export type RuntimeSchedulerDependencies = {
   now?: () => Date;
   maxConcurrentJobs?: number;
   maxAttempts?: number;
+  /** Best-effort shared telemetry — never blocks execution. */
+  observability?: RuntimeObservabilityRecorder;
 };
 
 let jobSequence = 0;
@@ -64,6 +67,23 @@ function toRecentJobDto(job: SchedulerJob): SchedulerRecentJobDto {
   };
 }
 
+function jobObsFields(job: SchedulerJob) {
+  return {
+    jobId: job.id,
+    requestId: job.request.id,
+    correlationId: job.request.metadata?.correlationId,
+    agentId: job.request.agentId,
+    source: job.request.source,
+    workload: job.request.workload,
+    priority: job.request.priority,
+    attemptCount: job.attempts,
+    metadata: {
+      cronJobId: job.request.metadata?.cronJobId,
+      departmentId: job.request.metadata?.departmentId,
+    },
+  };
+}
+
 export class InMemoryRuntimeScheduler implements RuntimeScheduler {
   private readonly router: RuntimeRouter;
   private readonly context: ProviderExecutionContext;
@@ -71,6 +91,7 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
   private readonly nowFn: () => Date;
   private readonly maxConcurrentJobs: number;
   private readonly maxAttempts: number;
+  private readonly observability?: RuntimeObservabilityRecorder;
   private running = 0;
 
   constructor(deps: RuntimeSchedulerDependencies) {
@@ -80,6 +101,7 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
     this.nowFn = deps.now ?? (() => new Date());
     this.maxConcurrentJobs = deps.maxConcurrentJobs ?? MAX_CONCURRENT_RUNTIME_JOBS;
     this.maxAttempts = deps.maxAttempts ?? DEFAULT_MAX_JOB_ATTEMPTS;
+    this.observability = deps.observability;
   }
 
   private now(): Date {
@@ -107,6 +129,11 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
     };
 
     this.store.save(job);
+    this.observability?.jobEnqueued({
+      ...jobObsFields(job),
+      status: "queued",
+      occurredAt: job.queuedAt,
+    });
     return job;
   }
 
@@ -121,6 +148,11 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
     job.status = "cancelled";
     job.completedAt = this.now().toISOString();
     this.store.save(job);
+    this.observability?.jobCancelled({
+      ...jobObsFields(job),
+      status: "cancelled",
+      occurredAt: job.completedAt,
+    });
   }
 
   getJob(jobId: string): SchedulerJob | undefined {
@@ -191,6 +223,11 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
     candidate.attempts += 1;
     this.store.save(candidate);
     this.running += 1;
+    this.observability?.jobStarted({
+      ...jobObsFields(candidate),
+      status: "running",
+      occurredAt: candidate.startedAt,
+    });
     return candidate;
   }
 
@@ -228,7 +265,21 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
         usage: outcome.response.usage,
         latencyMs: outcome.response.latencyMs,
       };
-      return this.finalizeRunning(job);
+      const completed = this.finalizeRunning(job);
+      this.observability?.jobCompleted({
+        ...jobObsFields(completed),
+        status: "completed",
+        providerId: outcome.response.providerId,
+        modelId: outcome.response.modelId,
+        latencyMs: outcome.response.latencyMs,
+        inputTokens: outcome.response.usage.inputTokens,
+        outputTokens: outcome.response.usage.outputTokens,
+        totalTokens: outcome.response.usage.totalTokens,
+        usageMissing: outcome.response.rawMetadata?.usageMissing === true,
+        fallbackUsed: outcome.response.routing?.fallbackUsed,
+        occurredAt: completed.completedAt,
+      });
+      return completed;
     }
 
     const error = outcome.error;
@@ -245,13 +296,34 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
         now,
       });
       job.availableAt = nextAvailable.toISOString();
-      return this.finalizeRunning(job);
+      const deferred = this.finalizeRunning(job);
+      this.observability?.jobDeferred({
+        ...jobObsFields(deferred),
+        status: "queued",
+        errorCode: error.code,
+        retryable: error.retryable,
+        metadata: {
+          ...jobObsFields(deferred).metadata,
+          deferReason: deferred.deferReason,
+          availableAt: deferred.availableAt,
+        },
+        occurredAt: now.toISOString(),
+      });
+      return deferred;
     }
 
     job.status = "failed";
     job.completedAt = now.toISOString();
     job.deferReason = undefined;
-    return this.finalizeRunning(job);
+    const failed = this.finalizeRunning(job);
+    this.observability?.jobFailed({
+      ...jobObsFields(failed),
+      status: "failed",
+      errorCode: error.code,
+      retryable: error.retryable,
+      occurredAt: failed.completedAt,
+    });
+    return failed;
   }
 
   async runNext(): Promise<SchedulerJob | undefined> {

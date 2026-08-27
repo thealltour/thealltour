@@ -1,0 +1,78 @@
+# AI Runtime Shared Observability
+
+STEP 2-5.UI-0.3 — process-local execution with shared historical telemetry.
+
+## Separation of concerns
+
+| Layer | Storage | Purpose |
+|-------|---------|---------|
+| **Execution control** | Process-local in-memory | Scheduler queue, active reservations, Router state, Quota Broker SoT, retry/defer |
+| **Shared telemetry** | PostgreSQL `ai_runtime_observability_events` | Cross-process Admin Console history (Cron → Console) |
+
+Admin Console:
+
+- **Live (this process)** — Running / Active Reservations / local scheduler snapshot
+- **Historical / Shared** — Last 1h activity, provider usage, recent jobs/routes from DB
+
+Cron live `Running` jobs are **not** fake-mirrored into DB as realtime state.
+
+## Feature flag
+
+```bash
+AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED=true
+```
+
+- `true`/`1` + Supabase service role available → Postgres sink
+- otherwise → Noop sink (inference still succeeds)
+
+## What is persisted
+
+Safe scalars only:
+
+- event_type, request/job/correlation ids
+- agent, source, workload, priority
+- provider/model ids
+- status, error_code, retryable
+- fallback_used, attempt_count
+- token counts + usage_missing
+- reservation token estimates
+- latency_ms
+- allow-listed metadata (`cronJobId`, `departmentId`, `deferReason`, `quotaReason`, `actualBackendModel`, `availableAt`, …)
+
+## What is never persisted
+
+- prompts / messages / assistant content
+- raw provider responses / headers
+- API keys / Authorization / credential secrets
+- retrieval document / personal customer content
+
+## Event types (minimum)
+
+`job_enqueued|started|deferred|completed|failed|cancelled`  
+`route_completed|route_failed`  
+`provider_success|provider_error`  
+`reservation_created|reconciled|released|expired`
+
+## Credential / env loading
+
+| Process | Env source |
+|---------|------------|
+| **Next.js server** | `.env` / `.env.local` (Next loads automatically) + `SUPABASE_*` |
+| **Cron (`npx tsx scripts/...`)** | `scripts/loadLocalEnv.ts` — project `.env` / `.env.local`, then `HERMES_HOME/.env` fallback for provider keys |
+| **systemd** | Explicit `Environment=` / `EnvironmentFile=` — do not rely on Hermes home unless configured |
+
+Never store secret values in DB/UI/migrations.
+
+## Retention
+
+Recommended: **30–90 days** append-only cleanup (job not implemented in this STEP).
+
+## Admin access
+
+- Table RLS: `service_role` only; anon/authenticated revoked
+- Read path: `GET /api/admin/ai-runtime/status` with `settings.manage`
+- No browser direct table access
+
+## Persistence failure isolation
+
+Provider success + DB insert failure ⇒ **Runtime response still succeeds**. Telemetry is best-effort.

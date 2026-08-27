@@ -10,6 +10,7 @@ export type {
 
 export {
   buildRuntimeStatus,
+  buildRuntimeStatusWithShared,
   listWorkloadsWithEligibleModels,
   type BuildRuntimeStatusOptions,
 } from "@/ai-runtime/observability/runtime-status";

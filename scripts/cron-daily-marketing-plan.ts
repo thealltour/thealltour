@@ -21,6 +21,7 @@ import {
   createRuntimeExecutorStack,
   peekRuntimeExecutorStackObservability,
 } from "../src/ai-runtime/integration/runtime-stack";
+import { ensureSharedObservabilityRecorder } from "../src/ai-runtime/observability/persistence";
 import { loadLocalEnv } from "./loadLocalEnv";
 import { runDepartmentPipeline } from "../src/lib/marketing/bot/organization/pipeline";
 import type { PerformanceBrief } from "../src/lib/marketing/bot/organization/handoffs";
@@ -158,6 +159,9 @@ async function main() {
   }
 
   const pipelinePerformance = briefToPipelinePerformance(brief);
+  if (useRuntime) {
+    await ensureSharedObservabilityRecorder();
+  }
   const runtimeExecutor = useRuntime ? createRuntimeExecutorStack() : undefined;
 
   const dispatch = createMarketingPlanPipelineDispatch({

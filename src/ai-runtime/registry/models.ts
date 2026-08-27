@@ -7,6 +7,8 @@ export const AI_MODEL_IDS = {
   GEMINI_FLASH_LITE_PRIMARY: "gemini-flash-lite-primary",
   GEMINI_FLASH_LITE_SECONDARY: "gemini-flash-lite-secondary",
   OPENROUTER_FREE: "openrouter-free",
+  NVIDIA_NEMOTRON_3_ULTRA: "nvidia-nemotron-3-ultra",
+  /** @deprecated meta/llama-3.3-70b-instruct EOL (NVIDIA NIM 410) — registry entry disabled */
   NVIDIA_LLAMA_3_3_70B: "nvidia-llama-3.3-70b",
 } as const;
 
@@ -23,7 +25,7 @@ const OPENROUTER_FREE_WORKLOADS = [
 ] as const;
 
 /** Conservative initial set — governance / manager_decision deferred to later Router eval. */
-const NVIDIA_LLAMA_WORKLOADS = [
+const NVIDIA_NIM_WORKLOADS = [
   "classification",
   "extraction",
   "summarization",
@@ -114,9 +116,8 @@ export const DEFAULT_AI_MODELS: readonly ModelDefinition[] = [
     id: AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B,
     providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
     modelId: "meta/llama-3.3-70b-instruct",
-    displayName: "Llama 3.3 70B Instruct (NVIDIA NIM)",
+    displayName: "Llama 3.3 70B Instruct (NVIDIA NIM, deprecated)",
     capabilities: {
-      // Relative to Gemini primary (4) / OpenRouter free (3) — strong general LLM, conservative.
       reasoning: 4,
       writing: 4,
       extraction: 4,
@@ -126,13 +127,42 @@ export const DEFAULT_AI_MODELS: readonly ModelDefinition[] = [
     },
     limits: {
       contextTokens: 131072,
+    },
+    economics: {
+      freeTierEligible: true,
+    },
+    routing: {
+      workloadClasses: [...NVIDIA_NIM_WORKLOADS],
+      basePriority: 70,
+      enabled: false,
+    },
+    metadata: {
+      routingMode: "fixed",
+      statusReason: "deprecated_eol_410",
+    },
+  },
+  {
+    id: AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA,
+    providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
+    modelId: "nvidia/nemotron-3-ultra-550b-a55b",
+    displayName: "Nemotron 3 Ultra (NVIDIA NIM)",
+    capabilities: {
+      reasoning: 4,
+      writing: 4,
+      extraction: 4,
+      summarization: 4,
+      structuredOutput: true,
+      toolCalling: true,
+    },
+    limits: {
+      contextTokens: 1_000_000,
       // rpm/tpm/rpd/tpd intentionally omitted (unknown / account-specific).
     },
     economics: {
       freeTierEligible: true,
     },
     routing: {
-      workloadClasses: [...NVIDIA_LLAMA_WORKLOADS],
+      workloadClasses: [...NVIDIA_NIM_WORKLOADS],
       basePriority: 70,
       enabled: true,
     },

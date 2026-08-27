@@ -40,6 +40,8 @@ export type BuildRuntimeStatusOptions = {
   quotaBroker?: QuotaBroker;
   routingLedger?: RoutingLedger;
   scheduler?: RuntimeScheduler;
+  /** Injected shared telemetry (tests / preloaded). */
+  shared?: import("@/ai-runtime/observability/persistence").SharedRuntimeTelemetryDto;
 };
 
 function toReservationSnapshot(snapshot: QuotaReservationSnapshot): RuntimeReservationSnapshotDto {
@@ -247,7 +249,54 @@ export function buildRuntimeStatus(options: BuildRuntimeStatusOptions = {}): Run
     routingPolicies,
     scheduler,
     providers: providerStatuses,
+    shared: options.shared,
   };
+}
+
+/**
+ * Merges process-local live state with shared PostgreSQL telemetry.
+ * DB unreadability → shared.available=false; never throws.
+ */
+export async function buildRuntimeStatusWithShared(
+  options: BuildRuntimeStatusOptions & {
+    repository?: import("@/ai-runtime/observability/persistence").RuntimeObservabilityRepository | null;
+  } = {},
+): Promise<RuntimeStatusDto> {
+  const now = options.now ?? (() => new Date());
+  let shared = options.shared;
+
+  if (!shared) {
+    try {
+      const { resolveRuntimeObservabilityRepository } = await import(
+        "@/ai-runtime/observability/persistence/repository"
+      );
+      const repo =
+        options.repository === undefined
+          ? await resolveRuntimeObservabilityRepository({ env: options.env as Record<string, string | undefined> | undefined })
+          : options.repository;
+      if (repo) {
+        shared = await repo.loadSharedTelemetry(now());
+      } else {
+        shared = {
+          available: false,
+          lastHour: { requests: 0, completed: 0, failed: 0, fallbacks: 0, providerCalls: 0 },
+          providerUsage: [],
+          recentJobs: [],
+          recentRoutes: [],
+        };
+      }
+    } catch {
+      shared = {
+        available: false,
+        lastHour: { requests: 0, completed: 0, failed: 0, fallbacks: 0, providerCalls: 0 },
+        providerUsage: [],
+        recentJobs: [],
+        recentRoutes: [],
+      };
+    }
+  }
+
+  return buildRuntimeStatus({ ...options, shared });
 }
 
 /** Workloads with at least one eligible enabled model (for display helpers). */

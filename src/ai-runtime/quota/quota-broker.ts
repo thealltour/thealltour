@@ -1,5 +1,9 @@
 import type { ModelDefinition } from "@/ai-runtime/domain/model";
-import type { QuotaCapacity } from "@/ai-runtime/domain/quota";
+import type {
+  QuotaCapacity,
+  QuotaReservationRequest,
+  QuotaReservationResult,
+} from "@/ai-runtime/domain/quota";
 import { RuntimeError } from "@/ai-runtime/domain/error";
 import { createDefaultAiRuntimeRegistry } from "@/ai-runtime/registry/registry";
 import {

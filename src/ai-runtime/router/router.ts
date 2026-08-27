@@ -25,6 +25,8 @@ export type RuntimeRouterDependencies = {
   routingLedger?: RoutingLedger;
   now?: () => Date;
   getAdapter?: (providerId: string) => ReturnType<typeof getProviderAdapter>;
+  /** Best-effort shared telemetry — route_completed / route_failed only. */
+  observability?: import("@/ai-runtime/observability/persistence").RuntimeObservabilityRecorder;
 };
 
 export interface RuntimeRouter {
@@ -116,6 +118,7 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
         ledger: this.deps.usageLedger,
         correlationId,
         startedAt: attemptStartedAt,
+        observability: this.deps.observability,
       });
 
       if (result.kind === "success") {
@@ -146,6 +149,23 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
           attempts.length,
           decision.fallbackUsed,
         );
+        this.deps.observability?.routeCompleted({
+          requestId: request.id,
+          correlationId: request.metadata?.correlationId,
+          agentId: request.agentId,
+          source: request.source,
+          workload: request.workload,
+          priority: request.priority,
+          providerId: decision.selectedProviderId,
+          modelId: decision.selectedModelId,
+          status: "success",
+          attemptCount: attempts.length,
+          fallbackUsed: decision.fallbackUsed,
+          metadata: {
+            cronJobId: request.metadata?.cronJobId,
+            departmentId: request.metadata?.departmentId,
+          },
+        });
         return response;
       }
 
@@ -251,6 +271,27 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
       finalStatus,
       finalErrorCode,
     });
+
+    if (finalStatus === "failed") {
+      this.deps.observability?.routeFailed({
+        requestId: request.id,
+        correlationId: request.metadata?.correlationId,
+        agentId: request.agentId,
+        source: request.source,
+        workload: request.workload,
+        priority: request.priority,
+        providerId: decision.selectedProviderId,
+        modelId: decision.selectedModelId,
+        status: "failed",
+        errorCode: finalErrorCode,
+        attemptCount,
+        fallbackUsed,
+        metadata: {
+          cronJobId: request.metadata?.cronJobId,
+          departmentId: request.metadata?.departmentId,
+        },
+      });
+    }
   }
 }
 

@@ -95,7 +95,7 @@ async function main(): Promise<void> {
 
   const gemini = registry.getModelById(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY)!;
   const openrouter = registry.getModelById(AI_MODEL_IDS.OPENROUTER_FREE)!;
-  const nvidia = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B)!;
+  const nvidia = registry.getModelById(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA)!;
 
   console.log("=== ADAPTER SMOKE ===");
   await adapterSmoke("GEMINI", AI_PROVIDER_IDS.GEMINI_MAIN, gemini.id, createGeminiAdapter(), gemini);

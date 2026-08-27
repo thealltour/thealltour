@@ -52,7 +52,7 @@ describe("ai-runtime adapters", () => {
   const registry = createDefaultAiRuntimeRegistry();
   const geminiModel = registry.getModelById(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY)!;
   const openRouterModel = registry.getModelById(AI_MODEL_IDS.OPENROUTER_FREE)!;
-  const nvidiaModel = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B)!;
+  const nvidiaModel = registry.getModelById(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA)!;
 
   describe("credential resolver", () => {
     it("maps known credentialRef to env candidates", async () => {
@@ -266,7 +266,7 @@ describe("ai-runtime adapters", () => {
       const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
         expect(String(url)).toContain("/chat/completions");
         const body = JSON.parse(String(init?.body));
-        expect(body.model).toBe("meta/llama-3.3-70b-instruct");
+        expect(body.model).toBe("nvidia/nemotron-3-ultra-550b-a55b");
         expect(body.messages.some((m: { role: string }) => m.role === "system")).toBe(true);
         return jsonResponse(
           200,

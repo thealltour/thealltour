@@ -173,7 +173,7 @@ describe("RuntimeExecutor completion", () => {
     const route = vi.fn(async (request: RuntimeRequest): Promise<RuntimeResponse> => ({
       requestId: request.id,
       providerId: "nvidia-main",
-      modelId: "nvidia-llama-3.3-70b",
+      modelId: "nvidia-nemotron-3-ultra",
       content: "once",
       usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
       latencyMs: 1,

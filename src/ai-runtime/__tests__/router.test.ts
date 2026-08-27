@@ -155,7 +155,7 @@ describe("FallbackRuntimeRouter", () => {
         routing: {
           excludedModelIds: [
             AI_MODEL_IDS.GEMINI_FLASH_LITE_SECONDARY,
-            AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B,
+            AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA,
           ],
         },
       }),
@@ -174,7 +174,7 @@ describe("FallbackRuntimeRouter", () => {
   });
 
   it("falls back on retryable provider errors", async () => {
-    const nvidiaModel = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B)!;
+    const nvidiaModel = registry.getModelById(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA)!;
     const openrouterModel = registry.getModelById(AI_MODEL_IDS.OPENROUTER_FREE)!;
 
     const nvidiaGenerate = vi.fn(async () => {
@@ -263,7 +263,7 @@ describe("FallbackRuntimeRouter", () => {
         [AI_PROVIDER_IDS.NVIDIA_MAIN]: {
           providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
           generate: vi.fn(async () =>
-            successResponse(sampleRequest(), AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B, AI_PROVIDER_IDS.NVIDIA_MAIN),
+            successResponse(sampleRequest(), AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA, AI_PROVIDER_IDS.NVIDIA_MAIN),
           ),
         },
       },
@@ -275,7 +275,7 @@ describe("FallbackRuntimeRouter", () => {
         routing: {
           excludedModelIds: [
             AI_MODEL_IDS.GEMINI_FLASH_LITE_SECONDARY,
-            AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B,
+            AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA,
           ],
         },
       }),
@@ -382,7 +382,7 @@ describe("FallbackRuntimeRouter", () => {
         [AI_PROVIDER_IDS.NVIDIA_MAIN]: {
           providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
           generate: vi.fn(async () =>
-            successResponse(sampleRequest(), AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B, AI_PROVIDER_IDS.NVIDIA_MAIN),
+            successResponse(sampleRequest(), AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA, AI_PROVIDER_IDS.NVIDIA_MAIN),
           ),
         },
         [AI_PROVIDER_IDS.OPENROUTER_MAIN]: {
@@ -436,7 +436,7 @@ describe("FallbackRuntimeRouter", () => {
       candidateCount: 3,
       attemptCount: 2,
       selectedProviderId: AI_PROVIDER_IDS.NVIDIA_MAIN,
-      selectedModelId: AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B,
+      selectedModelId: AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA,
       fallbackUsed: true,
       finalStatus: "success",
     });

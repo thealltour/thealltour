@@ -34,7 +34,7 @@ describe("ai-runtime observability", () => {
     expect(status.summary).toEqual({
       enabledProviders: 3,
       disabledProviders: 1,
-      registeredModels: 4,
+      registeredModels: 5,
       adaptersReady: 3,
       activeReservations: 0,
     });

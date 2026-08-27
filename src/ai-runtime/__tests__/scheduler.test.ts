@@ -37,7 +37,7 @@ function successResponse(request: RuntimeRequest): RuntimeResponse {
   return {
     requestId: request.id,
     providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
-    modelId: AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B,
+    modelId: AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA,
     content: "analysis complete",
     usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
     latencyMs: 20,
@@ -45,7 +45,7 @@ function successResponse(request: RuntimeRequest): RuntimeResponse {
       attempts: [
         {
           providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
-          modelId: AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B,
+          modelId: AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA,
           startedAt: new Date(nowMs).toISOString(),
           result: "success",
         },

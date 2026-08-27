@@ -8,6 +8,7 @@ import { executeAndRecord } from "@/ai-runtime/quota/execute-and-record";
 import type { UsageLedger } from "@/ai-runtime/quota/usage-ledger";
 import type { TokenEstimator } from "@/ai-runtime/tokens/types";
 import { checkContextFit, checkOutputLimit } from "@/ai-runtime/tokens/heuristic-estimator";
+import type { RuntimeObservabilityRecorder } from "@/ai-runtime/observability/persistence";
 
 export type CandidateAttemptResult =
   | { kind: "success"; response: Awaited<ReturnType<typeof executeAndRecord>> }
@@ -57,6 +58,7 @@ export async function attemptCandidateExecution(input: {
   ledger: UsageLedger;
   correlationId?: string;
   startedAt: string;
+  observability?: RuntimeObservabilityRecorder;
 }): Promise<CandidateAttemptResult> {
   const estimate = input.estimator.estimate(input.request, input.model);
   const contextFit = checkContextFit(estimate, input.model);
@@ -98,6 +100,22 @@ export async function attemptCandidateExecution(input: {
   }
 
   const reservationId = reservationResult.reservationId;
+  input.observability?.reservationCreated({
+    requestId: input.request.id,
+    correlationId: input.correlationId,
+    agentId: input.request.agentId,
+    source: input.request.source,
+    workload: input.request.workload,
+    priority: input.request.priority,
+    providerId: input.model.providerId,
+    modelId: input.model.id,
+    reservedInputTokens: estimate.estimatedInputTokens,
+    reservedOutputTokens: estimate.estimatedOutputTokens,
+    reservedTotalTokens: estimate.estimatedTotalTokens,
+    metadata: {
+      cronJobId: input.request.metadata?.cronJobId,
+    },
+  });
 
   try {
     const response = await executeAndRecord(input.adapter, input.request, input.model, input.context, {
@@ -113,10 +131,67 @@ export async function attemptCandidateExecution(input: {
       usageMissing: response.rawMetadata?.usageMissing === true,
     });
 
+    input.observability?.reservationReconciled({
+      requestId: input.request.id,
+      correlationId: input.correlationId,
+      providerId: input.model.providerId,
+      modelId: input.model.id,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+      totalTokens: response.usage.totalTokens,
+      usageMissing: response.rawMetadata?.usageMissing === true,
+    });
+
+    input.observability?.providerSuccess({
+      requestId: input.request.id,
+      correlationId: input.correlationId,
+      agentId: input.request.agentId,
+      source: input.request.source,
+      workload: input.request.workload,
+      priority: input.request.priority,
+      providerId: response.providerId,
+      modelId: response.modelId,
+      status: "success",
+      latencyMs: response.latencyMs,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+      totalTokens: response.usage.totalTokens,
+      usageMissing: response.rawMetadata?.usageMissing === true,
+      metadata: {
+        cronJobId: input.request.metadata?.cronJobId,
+        actualBackendModel:
+          typeof response.rawMetadata?.actualBackendModel === "string"
+            ? response.rawMetadata.actualBackendModel
+            : undefined,
+      },
+    });
+
     return { kind: "success", response };
   } catch (error) {
     await input.quotaBroker.release(reservationId, "provider_error");
+    input.observability?.reservationReleased({
+      requestId: input.request.id,
+      correlationId: input.correlationId,
+      providerId: input.model.providerId,
+      modelId: input.model.id,
+      status: "released",
+      metadata: { quotaReason: "provider_error" },
+    });
+
     if (error instanceof RuntimeError) {
+      input.observability?.providerError({
+        requestId: input.request.id,
+        correlationId: input.correlationId,
+        agentId: input.request.agentId,
+        source: input.request.source,
+        workload: input.request.workload,
+        priority: input.request.priority,
+        providerId: input.model.providerId,
+        modelId: input.model.id,
+        status: "error",
+        errorCode: error.code,
+        retryable: error.retryable,
+      });
       return {
         kind: "provider_error",
         error,

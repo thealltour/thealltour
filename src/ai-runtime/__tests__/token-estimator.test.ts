@@ -38,7 +38,7 @@ describe("token estimator", () => {
 
   const estimator = createHeuristicTokenEstimator();
   const registry = createDefaultAiRuntimeRegistry();
-  const nvidiaModel = registry.getModelById(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B)!;
+  const nvidiaModel = registry.getModelById(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA)!;
 
   it("returns non-negative input/output/total where total equals sum", () => {
     const estimate = estimator.estimate(sampleRequest());
@@ -111,7 +111,7 @@ describe("token estimator", () => {
 
   it("includes model/provider ids when model is provided", () => {
     const estimate = estimator.estimate(sampleRequest(), nvidiaModel);
-    expect(estimate.modelId).toBe(AI_MODEL_IDS.NVIDIA_LLAMA_3_3_70B);
+    expect(estimate.modelId).toBe(AI_MODEL_IDS.NVIDIA_NEMOTRON_3_ULTRA);
     expect(estimate.providerId).toBe(AI_PROVIDER_IDS.NVIDIA_MAIN);
   });
 
@@ -122,9 +122,9 @@ describe("token estimator", () => {
     );
     const smallBudget = checkContextFit(small, nvidiaModel);
     expect(smallBudget.fitsContext).toBe(true);
-    expect(smallBudget.contextLimit).toBe(131072);
+    expect(smallBudget.contextLimit).toBe(1_000_000);
 
-    const hugeContent = "가".repeat(400_000);
+    const hugeContent = "가".repeat(4_000_000);
     const huge = estimator.estimate(
       sampleRequest({ messages: [{ role: "user", content: hugeContent }] }),
       nvidiaModel,

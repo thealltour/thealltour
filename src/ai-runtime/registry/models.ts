@@ -95,7 +95,7 @@ export const DEFAULT_AI_MODELS: readonly ModelDefinition[] = [
       writing: 3,
       extraction: 3,
       summarization: 3,
-      structuredOutput: true,
+      structuredOutput: false,
       toolCalling: false,
     },
     limits: {},
@@ -152,7 +152,7 @@ export const DEFAULT_AI_MODELS: readonly ModelDefinition[] = [
       extraction: 4,
       summarization: 4,
       structuredOutput: true,
-      toolCalling: true,
+      toolCalling: false,
     },
     limits: {
       contextTokens: 1_000_000,

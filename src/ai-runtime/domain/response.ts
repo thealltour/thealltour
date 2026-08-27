@@ -1,4 +1,5 @@
 import type { TokenUsage, CostUsage } from "@/ai-runtime/domain/usage";
+import type { RuntimeToolCall } from "@/ai-runtime/domain/tools";
 
 export const RUNTIME_FINISH_REASONS = [
   "stop",
@@ -46,6 +47,8 @@ export interface RuntimeResponse {
   providerId: string;
   modelId: string;
   content: string;
+  /** Present when finishReason is tool_call (Hermes executes tools; Runtime does not). */
+  toolCalls?: RuntimeToolCall[];
   usage: TokenUsage;
   cost?: CostUsage;
   latencyMs: number;

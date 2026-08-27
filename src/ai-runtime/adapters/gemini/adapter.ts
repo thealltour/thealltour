@@ -15,10 +15,15 @@ import {
 import type { ProviderAdapter, ProviderExecutionContext } from "@/ai-runtime/adapters/types";
 import {
   extractGeminiText,
+  extractGeminiToolCalls,
   extractGeminiUsage,
   mapGeminiFinishReason,
   mapRuntimeMessagesToGemini,
+  mapRuntimeToolChoiceToGemini,
+  mapRuntimeToolsToGemini,
+  mapRuntimeResponseFormatToGemini,
 } from "@/ai-runtime/adapters/gemini/mapper";
+import { RuntimeError } from "@/ai-runtime/domain/error";
 
 const GEMINI_BASE =
   process.env.GEMINI_API_BASE_URL?.trim() ||
@@ -44,9 +49,27 @@ export class GeminiAdapter implements ProviderAdapter {
     const startedAt = new Date().toISOString();
     const startedMs = Date.now();
     const body = mapRuntimeMessagesToGemini(request.messages);
-    if (request.expectedOutputTokens != null) {
-      body.generationConfig = { maxOutputTokens: request.expectedOutputTokens };
+    if (request.tools?.length && request.responseFormat) {
+      throw new RuntimeError(
+        "INVALID_REQUEST",
+        "Gemini adapter does not support tools and response_format on the same request",
+        false,
+      );
     }
+    const structured = mapRuntimeResponseFormatToGemini(request.responseFormat);
+    body.generationConfig = {
+      ...(request.expectedOutputTokens != null
+        ? { maxOutputTokens: request.expectedOutputTokens }
+        : {}),
+      ...(structured ?? {}),
+    };
+    if (!body.generationConfig || Object.keys(body.generationConfig).length === 0) {
+      delete body.generationConfig;
+    }
+    const tools = mapRuntimeToolsToGemini(request.tools);
+    if (tools) body.tools = tools;
+    const toolConfig = mapRuntimeToolChoiceToGemini(request.toolChoice);
+    if (toolConfig) body.toolConfig = toolConfig;
 
     const url = `${GEMINI_BASE.replace(/\/$/, "")}/models/${encodeURIComponent(model.modelId)}:generateContent`;
     const fetchImpl = context.fetch ?? fetch;
@@ -68,9 +91,19 @@ export class GeminiAdapter implements ProviderAdapter {
 
     const payload = parseJsonBody(bodyText, [apiKey]);
     const content = extractGeminiText(payload);
+    const toolCalls = extractGeminiToolCalls(payload);
     const usageRaw = extractGeminiUsage(payload);
     const { usage, usageMissing } = usageFromPartial(usageRaw);
-    const candidate = (payload as { candidates?: Array<{ finishReason?: string }> }).candidates?.[0];
+    const candidate = (payload as {
+      candidates?: Array<{
+        finishReason?: string;
+        content?: { parts?: Array<Record<string, unknown>> };
+      }>;
+    }).candidates?.[0];
+    const parts = candidate?.content?.parts ?? [];
+    const finishReason = toolCalls?.length
+      ? ("tool_call" as const)
+      : mapGeminiFinishReason(candidate?.finishReason);
 
     return buildSuccessResponse({
       request: request,
@@ -78,14 +111,21 @@ export class GeminiAdapter implements ProviderAdapter {
       registryModelId: model.id,
       providerModelSlug: model.modelId,
       content,
+      toolCalls,
       usage,
       usageMissing,
       latencyMs: Date.now() - startedMs,
-      finishReason: mapGeminiFinishReason(candidate?.finishReason),
+      finishReason,
       startedAt,
       rateLimit,
       rawMetadata: {
         providerKind: "gemini",
+        toolCallCount: toolCalls?.length ?? 0,
+        responseFormatType: request.responseFormat?.type,
+        schemaPresent: request.responseFormat?.type === "json_schema",
+        geminiFinishReason: candidate?.finishReason,
+        geminiPartCount: parts.length,
+        geminiPartKeys: parts.map((part) => Object.keys(part).sort().join("|")).slice(0, 8),
       },
     });
   }

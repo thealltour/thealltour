@@ -15,9 +15,13 @@ import {
 import type { ProviderAdapter, ProviderExecutionContext } from "@/ai-runtime/adapters/types";
 import {
   extractOpenAiChatContent,
+  extractOpenAiToolCalls,
   extractOpenAiUsage,
   mapOpenAiFinishReason,
   mapRuntimeMessagesToOpenAiChat,
+  mapRuntimeToolChoiceToOpenAi,
+  mapRuntimeToolsToOpenAi,
+  mapRuntimeResponseFormatToOpenAi,
   type OpenAiChatRequestBody,
 } from "@/ai-runtime/adapters/nvidia/mapper";
 
@@ -51,6 +55,12 @@ export class NvidiaAdapter implements ProviderAdapter {
     if (request.expectedOutputTokens != null) {
       body.max_tokens = request.expectedOutputTokens;
     }
+    const tools = mapRuntimeToolsToOpenAi(request.tools);
+    if (tools) body.tools = tools;
+    const toolChoice = mapRuntimeToolChoiceToOpenAi(request.toolChoice);
+    if (toolChoice) body.tool_choice = toolChoice;
+    const responseFormat = mapRuntimeResponseFormatToOpenAi(request.responseFormat);
+    if (responseFormat) body.response_format = responseFormat;
 
     const fetchImpl = context.fetch ?? fetch;
     const { rateLimit, bodyText } = await providerFetchJson({
@@ -71,9 +81,13 @@ export class NvidiaAdapter implements ProviderAdapter {
 
     const payload = parseJsonBody(bodyText, [apiKey]);
     const content = extractOpenAiChatContent(payload);
+    const toolCalls = extractOpenAiToolCalls(payload);
     const usageRaw = extractOpenAiUsage(payload);
     const { usage, usageMissing } = usageFromPartial(usageRaw);
     const choice = (payload as { choices?: Array<{ finish_reason?: string }> }).choices?.[0];
+    const finishReason = toolCalls?.length
+      ? ("tool_call" as const)
+      : mapOpenAiFinishReason(choice?.finish_reason);
 
     return buildSuccessResponse({
       request,
@@ -81,14 +95,18 @@ export class NvidiaAdapter implements ProviderAdapter {
       registryModelId: model.id,
       providerModelSlug: model.modelId,
       content,
+      toolCalls,
       usage,
       usageMissing,
       latencyMs: Date.now() - startedMs,
-      finishReason: mapOpenAiFinishReason(choice?.finish_reason),
+      finishReason,
       startedAt,
       rateLimit,
       rawMetadata: {
         providerKind: "nvidia",
+        toolCallCount: toolCalls?.length ?? 0,
+        responseFormatType: request.responseFormat?.type,
+        schemaPresent: request.responseFormat?.type === "json_schema",
       },
     });
   }

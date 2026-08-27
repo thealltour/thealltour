@@ -8,7 +8,7 @@ import {
 } from "@/ai-runtime/tokens/constants";
 import {
   applySafetyMultiplier,
-  estimateInputTokensFromMessages,
+  estimateInputTokensFromRequest,
   resolveRawOutputTokens,
 } from "@/ai-runtime/tokens/heuristic-estimator";
 
@@ -24,7 +24,7 @@ export class HeuristicTokenEstimator implements TokenEstimator {
   }
 
   estimate(request: RuntimeRequest, model?: ModelDefinition): TokenEstimate {
-    const rawEstimatedInputTokens = estimateInputTokensFromMessages(request.messages ?? []);
+    const rawEstimatedInputTokens = estimateInputTokensFromRequest(request);
     const rawEstimatedOutputTokens = resolveRawOutputTokens(
       request.workload,
       request.expectedOutputTokens,

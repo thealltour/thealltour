@@ -1,9 +1,12 @@
-/** Re-export OpenAI-compatible mappers for NVIDIA NIM chat completions. */
 export {
-  mapRuntimeMessagesToOpenAiChat,
-  mapOpenAiFinishReason,
   extractOpenAiChatContent,
+  extractOpenAiToolCalls,
   extractOpenAiUsage,
+  mapOpenAiFinishReason,
+  mapRuntimeMessagesToOpenAiChat,
+  mapRuntimeToolChoiceToOpenAi,
+  mapRuntimeToolsToOpenAi,
+  mapRuntimeResponseFormatToOpenAi,
   type OpenAiChatMessage,
   type OpenAiChatRequestBody,
 } from "@/ai-runtime/adapters/openrouter/mapper";

@@ -264,6 +264,11 @@ export class InMemoryRuntimeScheduler implements RuntimeScheduler {
         content: outcome.response.content,
         usage: outcome.response.usage,
         latencyMs: outcome.response.latencyMs,
+        finishReason: outcome.response.finishReason,
+        ...(outcome.response.toolCalls?.length
+          ? { toolCalls: outcome.response.toolCalls }
+          : {}),
+        routing: outcome.response.routing,
       };
       const completed = this.finalizeRunning(job);
       this.observability?.jobCompleted({

@@ -5,6 +5,7 @@ import type {
   RuntimeResponse,
   RuntimeRouteAttemptResult,
 } from "@/ai-runtime/domain/response";
+import type { RuntimeToolCall } from "@/ai-runtime/domain/tools";
 import type { TokenUsage } from "@/ai-runtime/domain/usage";
 import { RuntimeError } from "@/ai-runtime/domain/error";
 import type { ProviderRateLimitMetadata } from "@/ai-runtime/adapters/types";
@@ -103,6 +104,7 @@ export function buildSuccessResponse(input: {
   /** Provider slug actually requested. */
   providerModelSlug: string;
   content: string;
+  toolCalls?: RuntimeToolCall[];
   usage: TokenUsage;
   usageMissing: boolean;
   latencyMs: number;
@@ -117,6 +119,7 @@ export function buildSuccessResponse(input: {
     providerId: input.providerId,
     modelId: input.registryModelId,
     content: input.content,
+    ...(input.toolCalls && input.toolCalls.length > 0 ? { toolCalls: input.toolCalls } : {}),
     usage: input.usage,
     cost: undefined,
     latencyMs: input.latencyMs,

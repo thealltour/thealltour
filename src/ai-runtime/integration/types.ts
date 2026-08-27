@@ -3,6 +3,8 @@ import type { RuntimeErrorCode } from "@/ai-runtime/domain/error";
 import type { RuntimeJobStatus } from "@/ai-runtime/domain/job";
 import type { RuntimePriority } from "@/ai-runtime/domain/priority";
 import type { RuntimeRequest, RuntimeMessage, RuntimeRoutingHints } from "@/ai-runtime/domain/request";
+import type { RuntimeToolChoice, RuntimeToolDefinition } from "@/ai-runtime/domain/tools";
+import type { RuntimeResponseFormat } from "@/ai-runtime/domain/structured-output";
 import type { RuntimeResponse } from "@/ai-runtime/domain/response";
 import type { WorkloadClass } from "@/ai-runtime/domain/workload";
 
@@ -16,6 +18,9 @@ export interface RuntimeRequestFactoryInput {
   workload: WorkloadClass;
   priority: RuntimePriority;
   messages: RuntimeMessage[];
+  tools?: RuntimeToolDefinition[];
+  toolChoice?: RuntimeToolChoice;
+  responseFormat?: RuntimeResponseFormat;
 
   /** Organizational trace — preserved when provided by caller. */
   correlationId?: string;

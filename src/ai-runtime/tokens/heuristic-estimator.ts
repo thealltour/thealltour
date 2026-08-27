@@ -1,4 +1,6 @@
-import type { RuntimeMessage } from "@/ai-runtime/domain/request";
+import type { RuntimeMessage, RuntimeRequest } from "@/ai-runtime/domain/request";
+import type { RuntimeToolDefinition } from "@/ai-runtime/domain/tools";
+import type { RuntimeResponseFormat } from "@/ai-runtime/domain/structured-output";
 import type { ModelDefinition } from "@/ai-runtime/domain/model";
 import type { TokenEstimate, TokenBudgetCheck } from "@/ai-runtime/tokens/types";
 import {
@@ -41,6 +43,67 @@ export function estimateMessageTokens(message: RuntimeMessage): number {
 export function estimateInputTokensFromMessages(messages: RuntimeMessage[]): number {
   if (!messages.length) return 0;
   return messages.reduce((sum, message) => sum + estimateMessageTokens(message), 0);
+}
+
+export function estimateToolDefinitionsTokens(tools: RuntimeToolDefinition[] | undefined): number {
+  if (!tools?.length) return 0;
+  let total = 8;
+  for (const tool of tools) {
+    total += 4;
+    total += estimateTextTokens(tool.function.name);
+    if (tool.function.description) total += estimateTextTokens(tool.function.description);
+    if (tool.function.parameters) {
+      try {
+        total += estimateTextTokens(JSON.stringify(tool.function.parameters));
+      } catch {
+        total += 16;
+      }
+    }
+  }
+  return total;
+}
+
+export function estimateMessageTokensWithTools(message: RuntimeMessage): number {
+  let total = estimateMessageTokens(message);
+  if (message.toolCalls?.length) {
+    for (const call of message.toolCalls) {
+      total += 4 + estimateTextTokens(call.function.name) + estimateTextTokens(call.function.arguments || "");
+    }
+  }
+  if (message.toolCallId) total += estimateTextTokens(message.toolCallId);
+  return total;
+}
+
+export function estimateResponseFormatTokens(
+  format: RuntimeResponseFormat | undefined,
+): number {
+  if (!format) return 0;
+  let total = 4;
+  total += estimateTextTokens(format.type);
+  if (format.type === "json_schema") {
+    total += estimateTextTokens(format.name);
+    if (format.description) total += estimateTextTokens(format.description);
+    try {
+      total += estimateTextTokens(JSON.stringify(format.schema));
+    } catch {
+      total += 32;
+    }
+  }
+  return total;
+}
+
+export function estimateInputTokensFromRequest(
+  request: Pick<RuntimeRequest, "messages" | "tools" | "responseFormat">,
+): number {
+  const messageTokens = (request.messages ?? []).reduce(
+    (sum, message) => sum + estimateMessageTokensWithTools(message),
+    0,
+  );
+  return (
+    messageTokens +
+    estimateToolDefinitionsTokens(request.tools) +
+    estimateResponseFormatTokens(request.responseFormat)
+  );
 }
 
 export function resolveRawOutputTokens(

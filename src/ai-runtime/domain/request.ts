@@ -1,6 +1,12 @@
 import type { AgentId, RuntimeRequestSource } from "@/ai-runtime/domain/agent";
 import type { WorkloadClass } from "@/ai-runtime/domain/workload";
 import type { RuntimePriority } from "@/ai-runtime/domain/priority";
+import type {
+  RuntimeToolCall,
+  RuntimeToolChoice,
+  RuntimeToolDefinition,
+} from "@/ai-runtime/domain/tools";
+import type { RuntimeResponseFormat } from "@/ai-runtime/domain/structured-output";
 
 export const RUNTIME_MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 
@@ -8,7 +14,14 @@ export type RuntimeMessageRole = (typeof RUNTIME_MESSAGE_ROLES)[number];
 
 export interface RuntimeMessage {
   role: RuntimeMessageRole;
+  /** Text content; may be empty when assistant emits toolCalls only. */
   content: string;
+  /** Assistant-only: provider-neutral tool invocations for this turn. */
+  toolCalls?: RuntimeToolCall[];
+  /** Tool-only: correlates to a prior assistant toolCalls[].id. */
+  toolCallId?: string;
+  /** Optional tool/function name (OpenAI/Hermes often include it). */
+  name?: string;
 }
 
 /**
@@ -52,6 +65,11 @@ export interface RuntimeRequest {
   workload: WorkloadClass;
   priority: RuntimePriority;
   messages: RuntimeMessage[];
+  /** OpenAI-compatible tool definitions (Hermes MCP/Skills schemas). */
+  tools?: RuntimeToolDefinition[];
+  toolChoice?: RuntimeToolChoice;
+  /** OpenAI-compatible response_format (json_object / json_schema). */
+  responseFormat?: RuntimeResponseFormat;
   expectedOutputTokens?: number;
   deadlineAt?: string;
   routing?: RuntimeRoutingHints;

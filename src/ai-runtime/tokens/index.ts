@@ -44,3 +44,10 @@ export {
 } from "@/ai-runtime/tokens/estimator";
 
 export { compareEstimateToUsage } from "@/ai-runtime/tokens/calibration";
+
+export {
+  estimateInputTokensFromRequest,
+  estimateToolDefinitionsTokens,
+  estimateResponseFormatTokens,
+  estimateMessageTokensWithTools,
+} from "@/ai-runtime/tokens/heuristic-estimator";

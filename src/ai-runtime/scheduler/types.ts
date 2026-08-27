@@ -4,6 +4,8 @@ import type { RuntimeRequest } from "@/ai-runtime/domain/request";
 import type { RuntimePriority } from "@/ai-runtime/domain/priority";
 import type { RuntimeRequestSource } from "@/ai-runtime/domain/agent";
 import type { TokenUsage } from "@/ai-runtime/domain/usage";
+import type { RuntimeFinishReason, RuntimeRoutingResult } from "@/ai-runtime/domain/response";
+import type { RuntimeToolCall } from "@/ai-runtime/domain/tools";
 import type { WorkloadClass } from "@/ai-runtime/domain/workload";
 
 export type SafeDeferReason =
@@ -27,6 +29,9 @@ export type SchedulerJobCompletion = {
   content: string;
   usage: TokenUsage;
   latencyMs: number;
+  finishReason?: RuntimeFinishReason;
+  toolCalls?: RuntimeToolCall[];
+  routing?: RuntimeRoutingResult;
 };
 
 /** Scheduler-extended job envelope (Domain RuntimeJob + safe metadata). */

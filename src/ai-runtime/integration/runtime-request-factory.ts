@@ -57,7 +57,13 @@ export function createRuntimeRequest(
     messages: input.messages.map((message) => ({
       role: message.role,
       content: message.content,
+      ...(message.toolCalls ? { toolCalls: message.toolCalls } : {}),
+      ...(message.toolCallId ? { toolCallId: message.toolCallId } : {}),
+      ...(message.name ? { name: message.name } : {}),
     })),
+    tools: input.tools,
+    toolChoice: input.toolChoice,
+    responseFormat: input.responseFormat,
     expectedOutputTokens: input.expectedOutputTokens,
     deadlineAt: input.deadlineAt,
     routing: input.routing,

@@ -9,3 +9,12 @@ export const AI_RUNTIME_MARKETING_CRON_ENABLED_ENV = "AI_RUNTIME_MARKETING_CRON_
 /** When true/1 and Supabase is configured, Cron/Runtime write shared observability events. */
 export const AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED_ENV =
   "AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED";
+
+/** Bearer token for Hermes → Runtime OpenAI-compatible inference gateway (localhost/LAN only). */
+export const AI_RUNTIME_INFERENCE_GATEWAY_TOKEN_ENV = "AI_RUNTIME_INFERENCE_GATEWAY_TOKEN";
+
+/** Logical model alias Hermes may send; Runtime maps to workload routing. */
+export const HERMES_INFERENCE_ALIAS_AUTO = "theallcloud/auto";
+
+/** Observability tag embedded in correlationId for spike requests. */
+export const HERMES_INFERENCE_INTEGRATION = "hermes-inference-boundary";

@@ -19,7 +19,9 @@ export function schedulerJobToExecutionResult(job: SchedulerJob): RuntimeExecuti
       content: job.completion.content,
       usage: job.completion.usage,
       latencyMs: job.completion.latencyMs,
-      routing: {
+      finishReason: job.completion.finishReason,
+      ...(job.completion.toolCalls?.length ? { toolCalls: job.completion.toolCalls } : {}),
+      routing: job.completion.routing ?? {
         attempts: [],
         fallbackUsed: false,
       },

@@ -4,6 +4,8 @@ export * from "@/ai-runtime/domain/priority";
 export * from "@/ai-runtime/domain/provider";
 export * from "@/ai-runtime/domain/model";
 export * from "@/ai-runtime/domain/request";
+export * from "@/ai-runtime/domain/tools";
+export * from "@/ai-runtime/domain/structured-output";
 export * from "@/ai-runtime/domain/response";
 export * from "@/ai-runtime/domain/usage";
 export * from "@/ai-runtime/domain/quota";

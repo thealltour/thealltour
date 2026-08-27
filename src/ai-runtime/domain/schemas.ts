@@ -9,6 +9,7 @@ import {
   QUOTA_SCOPES,
 } from "@/ai-runtime/domain/provider";
 import { RUNTIME_MESSAGE_ROLES } from "@/ai-runtime/domain/request";
+import { RUNTIME_TOOL_TYPES } from "@/ai-runtime/domain/tools";
 import {
   RUNTIME_FINISH_REASONS,
   RUNTIME_ROUTE_ATTEMPT_RESULTS,
@@ -132,9 +133,51 @@ export const costUsageSchema = z.object({
   currency: z.literal("USD").optional(),
 });
 
+
+export const runtimeResponseFormatSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("json_object") }),
+  z.object({
+    type: z.literal("json_schema"),
+    name: z.string().trim().min(1),
+    description: z.string().optional(),
+    schema: z.record(z.string(), z.unknown()),
+    strict: z.boolean().optional(),
+  }),
+]);
+
+export const runtimeToolCallSchema = z.object({
+  id: nonEmptyId,
+  type: z.enum(RUNTIME_TOOL_TYPES),
+  function: z.object({
+    name: z.string().trim().min(1),
+    arguments: z.string(),
+  }),
+  providerData: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const runtimeToolDefinitionSchema = z.object({
+  type: z.enum(RUNTIME_TOOL_TYPES),
+  function: z.object({
+    name: z.string().trim().min(1),
+    description: z.string().optional(),
+    parameters: z.record(z.string(), z.unknown()).optional(),
+  }),
+});
+
+export const runtimeToolChoiceSchema = z.union([
+  z.enum(["auto", "none", "required"]),
+  z.object({
+    type: z.literal("function"),
+    function: z.object({ name: z.string().trim().min(1) }),
+  }),
+]);
+
 export const runtimeMessageSchema = z.object({
   role: z.enum(RUNTIME_MESSAGE_ROLES),
   content: z.string(),
+  toolCalls: z.array(runtimeToolCallSchema).optional(),
+  toolCallId: z.string().trim().min(1).optional(),
+  name: z.string().trim().min(1).optional(),
 });
 
 export const runtimeRoutingHintsSchema = z.object({
@@ -167,6 +210,9 @@ export const runtimeRequestSchema = z
     workload: z.enum(WORKLOAD_CLASSES),
     priority: z.enum(RUNTIME_PRIORITIES),
     messages: z.array(runtimeMessageSchema).min(1),
+    tools: z.array(runtimeToolDefinitionSchema).optional(),
+    toolChoice: runtimeToolChoiceSchema.optional(),
+    responseFormat: runtimeResponseFormatSchema.optional(),
     expectedOutputTokens: nonNegativeInt.optional(),
     deadlineAt: isoTimestamp.optional(),
     routing: runtimeRoutingHintsSchema.optional(),
@@ -209,6 +255,7 @@ export const runtimeResponseSchema = z.object({
   providerId: nonEmptyId,
   modelId: nonEmptyId,
   content: z.string(),
+  toolCalls: z.array(runtimeToolCallSchema).optional(),
   usage: tokenUsageSchema,
   cost: costUsageSchema.optional(),
   latencyMs: nonNegativeNumber,

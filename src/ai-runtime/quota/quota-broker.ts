@@ -71,7 +71,7 @@ export class InMemoryQuotaBroker implements QuotaBroker {
   }
 
   private validateRequest(request: QuotaReservationRequest): {
-    model: NonNullable<ReturnType<typeof this.registry.getModelById>>;
+    model: ModelDefinition;
   } {
     const model = this.registry.getModelById(request.modelId);
     if (!model) {
@@ -110,7 +110,7 @@ export class InMemoryQuotaBroker implements QuotaBroker {
 
   private buildCapacitySnapshot(
     request: QuotaReservationRequest,
-    model: NonNullable<ReturnType<typeof this.registry.getModelById>>,
+    model: ModelDefinition,
   ): CapacityUsageSnapshot {
     const now = this.now();
     const filter = { providerId: request.providerId, modelId: request.modelId };

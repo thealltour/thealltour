@@ -57,11 +57,36 @@ Safe scalars only:
 
 | Process | Env source |
 |---------|------------|
-| **Next.js server** | `.env` / `.env.local` (Next loads automatically) + `SUPABASE_*` |
-| **Cron (`npx tsx scripts/...`)** | `scripts/loadLocalEnv.ts` — project `.env` / `.env.local`, then `HERMES_HOME/.env` fallback for provider keys |
-| **systemd** | Explicit `Environment=` / `EnvironmentFile=` — do not rely on Hermes home unless configured |
+| **Next.js server** | Next auto-loads `.env` / `.env.local`; then `ensureRuntimeEnv()` (`src/lib/server/loadRuntimeEnv.ts`) fills **missing** keys from `HERMES_HOME/.env` (Admin status + instrumentation) |
+| **Cron (`npx tsx scripts/...`)** | `scripts/loadLocalEnv.ts` — project `.env` / `.env.local`, then `HERMES_HOME/.env` |
+| **Hermes cron wrapper** | `~/.hermes/profiles/marketing-manager/scripts/daily-marketing-plan.sh` exports Runtime flags; credentials via loadLocalEnv |
+| **systemd** | No dedicated marketing unit. Hermes gateway runs cron. Prefer Hermes `.env` reuse over duplicating secrets into unit files |
+| **Vercel** | No `HERMES_HOME` — set `OPENROUTER_API_KEY` / `NVIDIA_API_KEY` / Gemini keys in Vercel project env |
 
 Never store secret values in DB/UI/migrations.
+
+### Provider env candidates
+
+```text
+Gemini      GOOGLE_GENERATIVE_AI_API_KEY | GEMINI_API_KEY | GOOGLE_API_KEY
+OpenRouter  OPENROUTER_API_KEY
+NVIDIA      NVIDIA_API_KEY
+```
+
+### Production flags (hermes-pi)
+
+```bash
+AI_RUNTIME_MARKETING_CRON_ENABLED=true
+AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED=true
+```
+
+Rollback Marketing Cron to Hermes CLI:
+
+```bash
+AI_RUNTIME_MARKETING_CRON_ENABLED=false
+```
+
+Shared observability may remain enabled independently.
 
 ## Retention
 

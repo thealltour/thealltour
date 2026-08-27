@@ -1,6 +1,11 @@
+/**
+ * Cron/tsx entry: load project + Hermes env without Next "server-only" boundary.
+ * Mirrors src/lib/server/loadRuntimeEnv.ts (keep behavior in sync).
+ */
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(SCRIPT_DIR, "..");
@@ -29,8 +34,6 @@ function applyEnvFile(filePath: string): void {
 export function loadLocalEnv(): void {
   applyEnvFile(join(ROOT, ".env"));
   applyEnvFile(join(ROOT, ".env.local"));
-  const hermesHome =
-    process.env.HERMES_HOME?.trim() ||
-    join(process.env.HOME?.trim() || "/home/ysh", ".hermes");
+  const hermesHome = process.env.HERMES_HOME?.trim() || join(homedir(), ".hermes");
   applyEnvFile(join(hermesHome, ".env"));
 }

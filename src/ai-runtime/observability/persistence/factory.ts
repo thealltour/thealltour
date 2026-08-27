@@ -7,6 +7,7 @@ import {
 } from "@/ai-runtime/observability/persistence/recorder";
 import type { RuntimeObservabilitySink } from "@/ai-runtime/observability/persistence/sink";
 import type { ObservabilityDbClient } from "@/ai-runtime/observability/persistence/types";
+import { createObservabilitySupabaseClientFromEnv } from "@/ai-runtime/observability/persistence/supabase-client";
 
 export { AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED_ENV };
 
@@ -45,12 +46,20 @@ export function createRuntimeObservabilitySink(
     });
   }
 
+  const fromEnv = createObservabilitySupabaseClientFromEnv(env);
+  if (fromEnv) {
+    return createPostgresRuntimeObservabilitySink({
+      client: fromEnv,
+      onError: options.onError,
+    });
+  }
+
   return createNoopRuntimeObservabilitySink();
 }
 
 /**
- * Async factory that can load supabaseAdmin when flag is on.
- * Safe for Cron (tsx) and Next.js server — never throws.
+ * Async factory for Cron (tsx) and Next.js — never throws.
+ * Prefer env-based client (works outside Next server-only boundary).
  */
 export async function resolveRuntimeObservabilitySink(
   options: CreateRuntimeObservabilitySinkOptions = {},
@@ -66,6 +75,14 @@ export async function resolveRuntimeObservabilitySink(
     return createPostgresRuntimeObservabilitySink({
       client: options.client,
       onError: options.onError,
+    });
+  }
+
+  const fromEnv = createObservabilitySupabaseClientFromEnv(env);
+  if (fromEnv) {
+    return createPostgresRuntimeObservabilitySink({
+      client: fromEnv,
+      onError: options.onError ?? ((message) => console.warn("[ai-runtime-obs]", message)),
     });
   }
 

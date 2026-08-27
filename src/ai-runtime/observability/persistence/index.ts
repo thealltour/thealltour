@@ -55,3 +55,4 @@ export {
   aggregateRecentRoutes,
   type RuntimeObservabilityRepository,
 } from "@/ai-runtime/observability/persistence/repository";
+export { createObservabilitySupabaseClientFromEnv } from "@/ai-runtime/observability/persistence/supabase-client";

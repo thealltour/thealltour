@@ -330,6 +330,14 @@ export async function resolveRuntimeObservabilityRepository(
     return createPostgresRuntimeObservabilityRepository(options.client);
   }
 
+  const { createObservabilitySupabaseClientFromEnv } = await import(
+    "@/ai-runtime/observability/persistence/supabase-client"
+  );
+  const fromEnv = createObservabilitySupabaseClientFromEnv(env);
+  if (fromEnv) {
+    return createPostgresRuntimeObservabilityRepository(fromEnv);
+  }
+
   try {
     const mod = await import("@/lib/supabaseAdmin");
     return createPostgresRuntimeObservabilityRepository(

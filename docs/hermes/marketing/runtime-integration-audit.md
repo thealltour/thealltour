@@ -328,14 +328,14 @@ Implemented (not wired to Hermes):
 
 ## Phase 1 migration — STEP 2-5.4B (Marketing Cron 09:00)
 
-**Status:** Implemented behind feature flag (default **off**).
+**Status:** Implemented behind feature flag.
 
 | Item | Detail |
 |---|---|
 | Legacy path | `AI_RUNTIME_MARKETING_CRON_ENABLED` unset/false → Hermes CLI `invokeHermesProfile` |
 | Runtime path | flag `true` → `RuntimeRequestFactory` → `RuntimeExecutor.executeAndWait` → Scheduler → Router |
 | Dual execution | **Forbidden** — exactly one path per cron run |
-| Rollback | Set `AI_RUNTIME_MARKETING_CRON_ENABLED=false` (default) |
+| Rollback | Set `AI_RUNTIME_MARKETING_CRON_ENABLED=false` (or unset) in cron wrapper / env |
 | Completion | `awaitCompletion` / `executeAndWait` with 180s timeout (matches Hermes) |
 | Retry ownership | Scheduler/Router only — no Hermes retry, no cron while-loop retry |
 | Correlation | One `correlationId` per 09:00 run; `parentRequestId` chains draft → governance → revision |
@@ -350,6 +350,25 @@ Implemented (not wired to Hermes):
 - `src/lib/marketing/cron/marketingPlanSpecialists.ts`
 - `src/ai-runtime/integration/runtime-executor.ts` (`awaitCompletion`)
 - `src/ai-runtime/integration/runtime-stack.ts`
+
+---
+
+## Phase 1 production activation — STEP 2-5.4B-PROD
+
+**Status:** Production-active on hermes-pi (2026-08-27).
+
+| Item | Detail |
+|---|---|
+| Schedule entry | Hermes `marketing-manager` cron `0 9 * * *` → `daily-marketing-plan.sh` → `npx tsx scripts/cron-daily-marketing-plan.ts` |
+| systemd | No dedicated marketing timer — Hermes gateway multiplex cron |
+| Wrapper flags | `AI_RUNTIME_MARKETING_CRON_ENABLED=true`, `AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED=true` (defaults in wrapper; overridable) |
+| Credential source | Project `.env`/`.env.local` first; missing provider keys filled from `HERMES_HOME/.env` via `ensureRuntimeEnv` / `loadLocalEnv` |
+| Next Admin status | `GET /api/admin/ai-runtime/status` calls `ensureRuntimeEnv()` before credential presence check |
+| Observability DB | `public.ai_runtime_observability_events` (migration `20260827150000`) |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true` (compile-time) |
+| Rollback | Set `AI_RUNTIME_MARKETING_CRON_ENABLED=false` in `~/.hermes/profiles/marketing-manager/scripts/daily-marketing-plan.sh` (or env override) → next 09:00 uses Hermes CLI only |
+
+See also: [runtime-observability.md](./runtime-observability.md)
 
 ---
 

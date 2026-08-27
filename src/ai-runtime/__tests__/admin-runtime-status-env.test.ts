@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import {
-  ensureRuntimeEnv,
-  getRuntimeEnvBag,
+  resolveRuntimeEnv,
   resetRuntimeEnvLoadedForTests,
 } from "@/lib/server/loadRuntimeEnv";
 import { buildRuntimeStatusWithShared } from "@/ai-runtime/observability/runtime-status";
@@ -57,8 +56,8 @@ describe("admin runtime status env path (PROD-F1)", () => {
     }
     process.env.HERMES_HOME = hermes;
 
-    // Same order as GET /api/admin/ai-runtime/status
-    ensureRuntimeEnv({ root });
+    // Same order as GET /api/admin/ai-runtime/status (request-scoped)
+    const env = resolveRuntimeEnv({ root, hermesHome: hermes, syncCompatibility: false });
 
     const now = new Date("2026-08-27T08:00:00.000Z");
     const events: RuntimeObservabilityEvent[] = [
@@ -77,7 +76,7 @@ describe("admin runtime status env path (PROD-F1)", () => {
     const repository = createMemoryRuntimeObservabilityRepository(events);
 
     const status = await buildRuntimeStatusWithShared({
-      env: getRuntimeEnvBag(),
+      env,
       now: () => now,
       repository,
     });

@@ -9,6 +9,7 @@ import {
   probeRuntimeEnvSources,
   resetRuntimeEnvLoadedForTests,
   isSharedObservabilityEnabledFromEnv,
+  resolveRuntimeEnv,
 } from "@/lib/server/loadRuntimeEnv";
 import { buildRuntimeStatus } from "@/ai-runtime/observability/runtime-status";
 import { isAiRuntimeSharedObservabilityEnabled } from "@/ai-runtime/observability/persistence/factory";
@@ -183,7 +184,7 @@ describe("ensureRuntimeEnv HERMES_HOME fallback", () => {
     expect(json).not.toContain("super-secret");
   });
 
-  it("overlay keeps Hermes keys after process.env values are cleared (Next-like)", () => {
+  it("resolveRuntimeEnv bag stays correct when process.env writes are cleared", () => {
     const root = mkdtempSync(join(tmpdir(), "runtime-env-overlay-"));
     const hermes = mkdtempSync(join(tmpdir(), "runtime-env-hermes-overlay-"));
     writeFileSync(join(root, ".env.local"), "AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED=true\n");
@@ -205,19 +206,19 @@ describe("ensureRuntimeEnv HERMES_HOME fallback", () => {
     ]) {
       delete process.env[k];
     }
-    process.env.HERMES_HOME = hermes;
 
-    ensureRuntimeEnv({ root });
-    // Simulate Next process.env not retaining dynamic writes
+    const bag = resolveRuntimeEnv({
+      root,
+      hermesHome: hermes,
+      syncCompatibility: false,
+    });
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.NVIDIA_API_KEY;
     delete process.env.GOOGLE_API_KEY;
 
-    const bag = getRuntimeEnvBag();
     expect(bag.OPENROUTER_API_KEY).toBe("dummy-openrouter-overlay");
     expect(bag.NVIDIA_API_KEY).toBe("dummy-nvidia-overlay");
     expect(bag.GOOGLE_API_KEY).toBe("dummy-gemini-overlay");
-    expect(process.env.OPENROUTER_API_KEY).toBeUndefined();
 
     const status = buildRuntimeStatus({ env: bag });
     const byId = Object.fromEntries(status.providers.map((p) => [p.id, p]));

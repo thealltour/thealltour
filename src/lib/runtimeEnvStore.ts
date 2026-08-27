@@ -1,9 +1,12 @@
 /**
  * Mutable runtime env overlay for values filled after process start
- * (e.g. HERMES_HOME/.env). Next.js may ignore dynamic process.env writes
- * for keys not present in .env* at boot — reads must consult this store.
+ * (e.g. HERMES_HOME/.env). Best-effort compatibility only — Admin status
+ * credential correctness must use resolveRuntimeEnv() request bags, not this Map.
  * Never log secret values from this module.
  */
+
+/** Distinguishes duplicated Next module graphs (instrumentation vs route). */
+export const RUNTIME_ENV_STORE_INSTANCE_ID = `runtime-env-store:${Math.random().toString(36).slice(2, 10)}`;
 
 const overlay = new Map<string, string>();
 
@@ -15,7 +18,7 @@ export function setRuntimeEnvOverlayValue(key: string, value: string): void {
   overlay.set(key, value);
 }
 
-/** Best-effort write to process.env + overlay. Overlay is source of truth for fills. */
+/** Best-effort write to process.env + overlay. Overlay is NOT status SoT. */
 export function fillRuntimeEnvIfMissing(key: string, value: string): void {
   const existing = readRuntimeEnvValue(key);
   if (existing?.trim()) return;
@@ -44,8 +47,8 @@ export function isRuntimeEnvValuePresent(key: string): boolean {
 }
 
 /**
- * Snapshot for credential/status readers. Overlay wins over process.env.
- * Does not include secret material beyond whatever is already in env/overlay.
+ * Snapshot merging process.env + overlay.
+ * Prefer resolveRuntimeEnv() for Admin status credential correctness.
  */
 export function getRuntimeEnvBag(): Record<string, string | undefined> {
   const bag: Record<string, string | undefined> = {};

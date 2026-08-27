@@ -29,4 +29,8 @@ function applyEnvFile(filePath: string): void {
 export function loadLocalEnv(): void {
   applyEnvFile(join(ROOT, ".env"));
   applyEnvFile(join(ROOT, ".env.local"));
+  const hermesHome =
+    process.env.HERMES_HOME?.trim() ||
+    join(process.env.HOME?.trim() || "/home/ysh", ".hermes");
+  applyEnvFile(join(hermesHome, ".env"));
 }

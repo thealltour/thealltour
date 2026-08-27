@@ -39,6 +39,7 @@ Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity�
 | Prompt A/B | [prompts/](./prompts/) |
 | Handoff | [handoffs.md](./handoffs.md) |
 | Runtime handoff | [runtime-handoff.md](./runtime-handoff.md) |
+| Runtime integration audit (STEP 2-5.4A) | [runtime-integration-audit.md](./runtime-integration-audit.md) |
 | Human Approval | [human-approval.md](./human-approval.md) |
 | Cron (활성) | [cron-plan.md](./cron-plan.md) |
 | Performance collection | [performance-collection.md](./performance-collection.md) |

@@ -27,6 +27,8 @@ export interface RuntimeRouteAttempt {
   modelId: string;
   startedAt: string;
   result: RuntimeRouteAttemptResult;
+  /** Safe routing detail (no prompt/secrets). */
+  detail?: string;
 }
 
 export interface RuntimeRoutingResult {

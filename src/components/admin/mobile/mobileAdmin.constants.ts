@@ -42,6 +42,7 @@ export const MOBILE_ADMIN_ALLOWED_PATH_PREFIXES = [
   "/members",
   "/points",
   "/rewards",
+  "/ai-runtime",
 ] as const;
 
 export type MobileAdminNavItem = {
@@ -179,6 +180,14 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
       label: "리뷰",
       description: "목록 · 검토 · 운영 알림",
       href: `${MANAGER_PREFIX}/reviews`,
+    });
+  }
+  if (hasAdminPermission(session, "settings.manage")) {
+    items.push({
+      key: "ai-runtime",
+      label: "AI Runtime",
+      description: "Provider · Adapter · Credential 상태",
+      href: `${MANAGER_PREFIX}/ai-runtime`,
     });
   }
 

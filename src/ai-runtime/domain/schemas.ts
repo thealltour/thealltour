@@ -195,6 +195,7 @@ export const runtimeRouteAttemptSchema = z.object({
   modelId: nonEmptyId,
   startedAt: isoTimestamp,
   result: z.enum(RUNTIME_ROUTE_ATTEMPT_RESULTS),
+  detail: z.string().trim().min(1).optional(),
 });
 
 export const runtimeRoutingResultSchema = z.object({

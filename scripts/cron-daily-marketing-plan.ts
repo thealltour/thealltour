@@ -1,23 +1,36 @@
+#!/usr/bin/env node
 /**
  * Cron script: Daily Marketing Plan (task-only, no SNS publish).
  *
  * Reads latest Performance Brief artifact (safe fallback if missing),
- * then runs application-level runDepartmentPipeline via Hermes profiles.
+ * then runs application-level runDepartmentPipeline via Hermes profiles
+ * or AI Runtime (feature flag).
  *
  *   npx tsx scripts/cron-daily-marketing-plan.ts
+ *
+ * Feature flag (default off):
+ *   AI_RUNTIME_MARKETING_CRON_ENABLED=true
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { extractJsonObject } from "../src/lib/marketing/bot/organization/envelope";
+import { buildRuntimeStatus } from "../src/ai-runtime/observability/runtime-status";
+import { getDefaultRoutingLedger } from "../src/ai-runtime/router";
+import {
+  createRuntimeExecutorStack,
+  peekRuntimeExecutorStackObservability,
+} from "../src/ai-runtime/integration/runtime-stack";
+import { loadLocalEnv } from "./loadLocalEnv";
 import { runDepartmentPipeline } from "../src/lib/marketing/bot/organization/pipeline";
-import type {
-  ContentStrategistOutput,
-  GovernanceReviewResult,
-  PerformanceBrief,
-} from "../src/lib/marketing/bot/organization/handoffs";
+import type { PerformanceBrief } from "../src/lib/marketing/bot/organization/handoffs";
 import type { PerformanceUnavailable } from "../src/lib/marketing/bot/organization/pipeline";
+import {
+  createMarketingCronCorrelationId,
+  createMarketingPlanPipelineDispatch,
+  isAiRuntimeMarketingCronEnabled,
+} from "../src/lib/marketing/cron/marketingCronRuntime";
+import { MARKETING_CRON_HERMES_TIMEOUT_MS } from "../src/lib/marketing/cron/marketingPlanSpecialists";
 import {
   defaultPerformanceBriefAbsolutePath,
   formatDailyPerformanceBriefMarkdown,
@@ -25,9 +38,37 @@ import {
   type DailyPerformanceBriefArtifact,
 } from "../src/lib/marketing/cron/performanceBriefArtifact";
 
+loadLocalEnv();
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
-const HERMES_TIMEOUT_MS = 180_000;
+
+function logOpsRuntimeTelemetry(useRuntime: boolean): void {
+  if (!useRuntime || process.env.AI_RUNTIME_OPS_TELEMETRY?.trim() !== "1") return;
+
+  const observability = peekRuntimeExecutorStackObservability();
+  const status = buildRuntimeStatus({
+    env: process.env,
+    now: () => new Date(),
+    ledger: observability?.ledger,
+    quotaBroker: observability?.quotaBroker,
+    scheduler: observability?.scheduler,
+    routingLedger: getDefaultRoutingLedger(),
+  });
+
+  console.log("## Ops Runtime Telemetry");
+  console.log("");
+  console.log(JSON.stringify({
+    summary: status.summary,
+    scheduler: status.scheduler,
+    routing: status.routing,
+    providers: status.providers.map((provider) => ({
+      id: provider.id,
+      quota: provider.quota,
+    })),
+  }, null, 2));
+  console.log("");
+}
 
 function argValue(argv: string[], name: string): string | undefined {
   const idx = argv.indexOf(name);
@@ -35,63 +76,18 @@ function argValue(argv: string[], name: string): string | undefined {
   return argv[idx + 1];
 }
 
-function invokeProfile(profile: string, prompt: string): string {
+function invokeHermesProfile(profile: string, prompt: string): string {
   const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
     encoding: "utf8",
     env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-    timeout: HERMES_TIMEOUT_MS,
+    timeout: MARKETING_CRON_HERMES_TIMEOUT_MS,
   });
   if (result.status !== 0) {
-    throw new Error(`${profile} exited ${result.status}: ${(result.stderr || result.stdout || "").slice(0, 400)}`);
+    throw new Error(
+      `${profile} exited ${result.status}: ${(result.stderr || result.stdout || "").slice(0, 400)}`,
+    );
   }
   return result.stdout ?? "";
-}
-
-function asDraft(raw: string): ContentStrategistOutput {
-  const value = extractJsonObject(raw) as ContentStrategistOutput;
-  if (!value.body) throw new Error("content-strategist returned no body");
-  return {
-    title: value.title ?? null,
-    body: String(value.body),
-    channel: value.channel || "threads",
-    agenda: value.agenda ?? null,
-    sourceReferences: Array.isArray(value.sourceReferences) ? value.sourceReferences.map(String) : [],
-  };
-}
-
-function asGovernance(raw: string): GovernanceReviewResult {
-  try {
-    const value = extractJsonObject(raw) as Record<string, unknown>;
-    const decision = String(value.decision ?? value.governanceDecision ?? "").toUpperCase();
-    if (decision === "ALLOW" || decision === "REVIEW" || decision === "BLOCK") {
-      return {
-        decision,
-        riskScore: Number(value.riskScore ?? 0),
-        reasons: Array.isArray(value.reasons)
-          ? value.reasons.map(String)
-          : Array.isArray(value.reasonCodes)
-            ? value.reasonCodes.map(String)
-            : [],
-        revisionHints: Array.isArray(value.revisionHints) ? value.revisionHints.map(String) : [],
-        humanApprovalRequired: Boolean(value.humanApprovalRequired) || decision === "REVIEW",
-        semanticAvailable: value.semanticAvailable !== false,
-      };
-    }
-  } catch {
-    // fall through
-  }
-  const decision = /\bBLOCK\b/i.test(raw) ? "BLOCK" : /\bREVIEW\b/i.test(raw) ? "REVIEW" : /\bALLOW\b/i.test(raw) ? "ALLOW" : "";
-  if (decision !== "ALLOW" && decision !== "REVIEW" && decision !== "BLOCK") {
-    throw new Error("governance-auditor returned no ALLOW/REVIEW/BLOCK");
-  }
-  return {
-    decision,
-    riskScore: 0,
-    reasons: [],
-    revisionHints: [],
-    humanApprovalRequired: decision === "REVIEW",
-    semanticAvailable: !/semanticAvailable["']?\s*[:=]\s*false/i.test(raw),
-  };
 }
 
 function briefToPipelinePerformance(
@@ -128,6 +124,9 @@ async function main() {
     process.env.MARKETING_CRON_GOAL ??
     "스페인/포르투갈 패키지 홍보 Threads 콘텐츠 (게시 금지)";
 
+  const useRuntime = isAiRuntimeMarketingCronEnabled();
+  const correlationId = createMarketingCronCorrelationId();
+
   const briefPath = defaultPerformanceBriefAbsolutePath(ROOT);
   const brief = readLatestPerformanceBrief(briefPath);
   const performanceNote =
@@ -141,6 +140,8 @@ async function main() {
   console.log(`- channel: ${channel}`);
   console.log(`- performance handoff: ${brief ? "artifact_read" : "missing_fallback"}`);
   console.log(`- note: ${performanceNote}`);
+  console.log(`- inference_path: ${useRuntime ? "ai-runtime" : "hermes-cli"}`);
+  console.log(`- correlationId: ${correlationId}`);
   console.log(`- sns_side_effect: 0`);
   console.log(`- publish: forbidden`);
   console.log("");
@@ -157,6 +158,15 @@ async function main() {
   }
 
   const pipelinePerformance = briefToPipelinePerformance(brief);
+  const runtimeExecutor = useRuntime ? createRuntimeExecutorStack() : undefined;
+
+  const dispatch = createMarketingPlanPipelineDispatch({
+    useRuntime,
+    correlationId,
+    executor: runtimeExecutor,
+    invokeHermesProfile: useRuntime ? undefined : invokeHermesProfile,
+    completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
+  });
 
   const result = await runDepartmentPipeline(
     {
@@ -174,20 +184,7 @@ async function main() {
     },
     {
       requestPerformance: async () => pipelinePerformance,
-      requestDraft: async (envelope) => {
-        const raw = invokeProfile(
-          "content-strategist",
-          `JSON only. ContentDraftRequest를 근거로 Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마.\n${JSON.stringify(envelope.payload)}\nshape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[]}`,
-        );
-        return asDraft(raw);
-      },
-      requestGovernance: async (envelope) => {
-        const raw = invokeProfile(
-          "governance-auditor",
-          `JSON only. 이 초안을 검사하고 ALLOW/REVIEW/BLOCK만. 게시하지 마. 자동 승인 금지.\n${JSON.stringify(envelope.payload)}\nshape: {"decision":"ALLOW","riskScore":0,"reasons":[],"revisionHints":[],"humanApprovalRequired":false,"semanticAvailable":true}`,
-        );
-        return asGovernance(raw);
-      },
+      ...dispatch,
     },
   );
 
@@ -237,6 +234,8 @@ async function main() {
   console.log("- BLOCK → revision_required (no publish)");
   console.log("");
   console.log("Human Owner: review Hermes cron local output / Desktop job history. No SNS publish button in this STEP.");
+
+  logOpsRuntimeTelemetry(useRuntime);
 }
 
 main().catch((error: unknown) => {

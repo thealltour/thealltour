@@ -42,6 +42,11 @@ export function getProviderAdapter(providerId: string): ProviderAdapter {
   return adapter;
 }
 
+/** Provider IDs with a registered adapter implementation (not a Model Router). */
+export function listRegisteredAdapterProviderIds(): readonly string[] {
+  return [...createDefaultProviderAdapters().keys()];
+}
+
 /** Test helper */
 export function resetProviderAdapterCacheForTests(): void {
   defaultAdapters = null;

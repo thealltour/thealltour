@@ -47,6 +47,10 @@ export function isMobileAdminRouteAllowed(
     return isMobileReviewRelativePathAllowed(path);
   }
 
+  if (path === "/ai-runtime" || path.startsWith("/ai-runtime/")) {
+    return hasAdminPermission(session, "settings.manage");
+  }
+
   if (
     path.startsWith("/review-reports") ||
     path.startsWith("/review-reminders") ||
@@ -75,5 +79,6 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   if (path === "/reviews/moderation") return "리뷰 검토";
   if (path === "/reviews/notifications") return "리뷰 운영 알림";
   if (path.startsWith("/reviews")) return "리뷰";
+  if (path === "/ai-runtime" || path.startsWith("/ai-runtime/")) return "AI Runtime";
   return "관리자";
 }

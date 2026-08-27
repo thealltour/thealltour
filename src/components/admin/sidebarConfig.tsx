@@ -20,6 +20,7 @@ import {
   Puzzle,
   Smartphone,
   Rss,
+  Cpu,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
@@ -176,5 +177,13 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     group: "tools",
     mainKey: "tools_thealltour_extension",
     roles: ["admin", "manager"],
+  },
+  {
+    href: "/theall_manager_only/ai-runtime",
+    label: "AI Runtime",
+    icon: Cpu,
+    group: "tools",
+    mainKey: "tools_ai_runtime",
+    roles: ["admin"],
   },
 ];

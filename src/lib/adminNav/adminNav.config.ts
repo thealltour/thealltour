@@ -25,6 +25,7 @@ export const ADMIN_MENU_MAP = {
   pwa: [] as string[],
   tools_modetour: [] as string[],
   tools_thealltour_extension: [] as string[],
+  tools_ai_runtime: [] as string[],
 } as const;
 
 export type MainMenuKey = keyof typeof ADMIN_MENU_MAP;
@@ -47,6 +48,7 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   pwa: "앱으로 설치",
   tools_modetour: "모두투어 익스텐션",
   tools_thealltour_extension: "하나투어 수집기",
+  tools_ai_runtime: "AI Runtime",
 };
 
 const HOME_PRODUCT_VIEWS = new Set<string>([
@@ -82,6 +84,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel === "/pwa" || rel.startsWith("/pwa/")) return "pwa";
   if (rel.startsWith("/tools/modetour")) return "tools_modetour";
   if (rel.startsWith("/tools/thealltour-extension")) return "tools_thealltour_extension";
+  if (rel.startsWith("/ai-runtime")) return "tools_ai_runtime";
   return null;
 }
 
@@ -265,6 +268,8 @@ export function buildAdminBreadcrumbLabels(
       if (rel.includes("/tools/modetour")) return [...base, "도구", "모두투어 익스텐션"];
       if (rel.includes("/tools/thealltour-extension")) return [...base, "도구", "하나투어 수집기"];
       return [...base, "도구"];
+    case "ai-runtime":
+      return [...base, "도구", "AI Runtime"];
     default:
       return [...base, "대시보드"];
   }

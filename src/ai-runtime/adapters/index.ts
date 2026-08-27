@@ -16,6 +16,7 @@ export { createNvidiaAdapter, NvidiaAdapter } from "@/ai-runtime/adapters/nvidia
 export {
   createDefaultProviderAdapters,
   getProviderAdapter,
+  listRegisteredAdapterProviderIds,
   resetProviderAdapterCacheForTests,
 } from "@/ai-runtime/adapters/resolver";
 

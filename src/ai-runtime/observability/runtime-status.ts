@@ -81,14 +81,33 @@ function toQuotaSnapshot(state: RuntimeQuotaState): RuntimeQuotaSnapshotDto {
   };
 }
 
-function isCredentialConfigured(
+/**
+ * Request-time credential presence from the provided env bag only.
+ * Callers (Admin status route) must pass getRuntimeEnvBag() after ensureRuntimeEnv().
+ */
+export function evaluateCredentialConfigured(
   credentialRef: string | undefined,
   env: CredentialEnvSource,
 ): boolean {
   if (!credentialRef?.trim()) return false;
   const candidates = CREDENTIAL_REF_ENV_CANDIDATES[credentialRef];
   if (!candidates?.length) return false;
-  return candidates.some((name) => Boolean(env[name]?.trim()));
+  return candidates.some((name) => {
+    try {
+      const fromBag = env[name];
+      return typeof fromBag === "string" && Boolean(fromBag.trim());
+    } catch {
+      // Next process.env proxies can throw on some keys
+      return false;
+    }
+  });
+}
+
+function isCredentialConfigured(
+  credentialRef: string | undefined,
+  env: CredentialEnvSource,
+): boolean {
+  return evaluateCredentialConfigured(credentialRef, env);
 }
 
 function adapterReadinessForProvider(
@@ -297,7 +316,16 @@ export async function buildRuntimeStatusWithShared(
     }
   }
 
-  return buildRuntimeStatus({ ...options, shared });
+  // Explicit field forward — never drop `env` via partial spreads / defaults.
+  return buildRuntimeStatus({
+    env: options.env,
+    now: options.now,
+    ledger: options.ledger,
+    quotaBroker: options.quotaBroker,
+    routingLedger: options.routingLedger,
+    scheduler: options.scheduler,
+    shared,
+  });
 }
 
 /** Workloads with at least one eligible enabled model (for display helpers). */

@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 
 import {
   ensureRuntimeEnv,
+  getRuntimeEnvBag,
   resetRuntimeEnvLoadedForTests,
 } from "@/lib/server/loadRuntimeEnv";
 import { buildRuntimeStatusWithShared } from "@/ai-runtime/observability/runtime-status";
@@ -76,7 +77,7 @@ describe("admin runtime status env path (PROD-F1)", () => {
     const repository = createMemoryRuntimeObservabilityRepository(events);
 
     const status = await buildRuntimeStatusWithShared({
-      env: process.env,
+      env: getRuntimeEnvBag(),
       now: () => now,
       repository,
     });

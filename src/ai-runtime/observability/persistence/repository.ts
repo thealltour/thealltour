@@ -321,7 +321,8 @@ export async function resolveRuntimeObservabilityRepository(
   const { isAiRuntimeSharedObservabilityEnabled } = await import(
     "@/ai-runtime/observability/persistence/factory"
   );
-  const env = options.env ?? process.env;
+  const { getRuntimeEnvBag } = await import("@/lib/runtimeEnvStore");
+  const env = options.env ?? getRuntimeEnvBag();
   if (!isAiRuntimeSharedObservabilityEnabled(env)) {
     return null;
   }

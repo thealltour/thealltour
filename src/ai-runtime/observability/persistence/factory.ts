@@ -8,11 +8,12 @@ import {
 import type { RuntimeObservabilitySink } from "@/ai-runtime/observability/persistence/sink";
 import type { ObservabilityDbClient } from "@/ai-runtime/observability/persistence/types";
 import { createObservabilitySupabaseClientFromEnv } from "@/ai-runtime/observability/persistence/supabase-client";
+import { getRuntimeEnvBag } from "@/lib/runtimeEnvStore";
 
 export { AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED_ENV };
 
 export function isAiRuntimeSharedObservabilityEnabled(
-  env: Record<string, string | undefined> = process.env,
+  env: Record<string, string | undefined> = getRuntimeEnvBag(),
 ): boolean {
   const raw = env[AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED_ENV]?.trim().toLowerCase();
   return raw === "true" || raw === "1";
@@ -34,7 +35,7 @@ export function createRuntimeObservabilitySink(
 ): RuntimeObservabilitySink {
   if (options.sink) return options.sink;
 
-  const env = options.env ?? process.env;
+  const env = options.env ?? getRuntimeEnvBag();
   if (!isAiRuntimeSharedObservabilityEnabled(env)) {
     return createNoopRuntimeObservabilitySink();
   }
@@ -66,7 +67,7 @@ export async function resolveRuntimeObservabilitySink(
 ): Promise<RuntimeObservabilitySink> {
   if (options.sink) return options.sink;
 
-  const env = options.env ?? process.env;
+  const env = options.env ?? getRuntimeEnvBag();
   if (!isAiRuntimeSharedObservabilityEnabled(env)) {
     return createNoopRuntimeObservabilitySink();
   }

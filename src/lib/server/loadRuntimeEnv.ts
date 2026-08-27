@@ -1,18 +1,22 @@
 /**
  * Server-only runtime env bootstrap.
- * Fills missing process.env keys from project .env/.env.local and HERMES_HOME/.env.
+ * Fills missing keys from project .env/.env.local and HERMES_HOME/.env into
+ * the runtime env overlay (+ best-effort process.env).
  * Never overwrites non-empty already-set keys. Never logs secret values.
- *
- * IMPORTANT: Do not gate on a one-shot `loaded` flag. Next.js may hot-reload
- * `.env.local` (wiping dynamically injected Hermes keys) or start before flags
- * are present — Admin status / Cron must re-apply missing keys on each call.
  */
 import "server-only";
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  fillRuntimeEnvIfMissing,
+  getRuntimeEnvBag,
+  isRuntimeEnvValuePresent,
+  readRuntimeEnvValue,
+  resetRuntimeEnvOverlayForTests,
+} from "@/lib/runtimeEnvStore";
 
 function applyEnvFile(filePath: string): boolean {
   if (!existsSync(filePath)) return false;
@@ -30,10 +34,7 @@ function applyEnvFile(filePath: string): boolean {
     ) {
       value = value.slice(1, -1);
     }
-    // Fill only when missing or whitespace — never clobber real values.
-    if (!process.env[key]?.trim()) {
-      process.env[key] = value;
-    }
+    fillRuntimeEnvIfMissing(key, value);
   }
   return true;
 }
@@ -47,10 +48,6 @@ function looksLikeProjectRoot(dir: string): boolean {
   );
 }
 
-/**
- * Prefer explicit root, then cwd walk, then module path walk.
- * Avoids fragile cwd-only resolution under some Next worker layouts.
- */
 export function resolveRuntimeProjectRoot(explicit?: string): string {
   if (explicit?.trim()) return explicit.trim();
 
@@ -75,7 +72,7 @@ export function resolveRuntimeProjectRoot(explicit?: string): string {
       dir = parent;
     }
   } catch {
-    // import.meta.url unavailable in some CJS test shims — cwd fallback below
+    // import.meta.url unavailable in some CJS test shims
   }
 
   return process.cwd();
@@ -84,26 +81,23 @@ export function resolveRuntimeProjectRoot(explicit?: string): string {
 export function resolveHermesHome(): string {
   const fromEnv = process.env.HERMES_HOME?.trim();
   if (fromEnv) return fromEnv;
-  return join(homedir(), ".hermes");
+  const home = process.env.HOME?.trim() || homedir();
+  return join(home, ".hermes");
 }
 
 export type EnsureRuntimeEnvOptions = {
-  /** Project root (defaults to resolved project root). */
   root?: string;
-  /** @deprecated No longer skips re-apply; kept for call-site compatibility. */
+  /** @deprecated Kept for call-site compatibility. */
   force?: boolean;
-  /** Include HERMES_HOME/.env fallback (default true). */
   includeHermesEnv?: boolean;
 };
 
 /**
- * Idempotent fill of *missing* keys. Safe to call on every Admin status request.
- * Next.js already loads .env.local at boot — this also re-reads disk so Hermes
- * provider keys and flags added after boot remain visible.
+ * Idempotent fill of *missing* keys into overlay (+ process.env best-effort).
+ * Safe to call on every Admin status request.
  */
 export function ensureRuntimeEnv(options: EnsureRuntimeEnvOptions = {}): void {
   const root = resolveRuntimeProjectRoot(options.root);
-  // Literal basenames — avoids Turbopack treating join(root, dynamic) as a tree glob.
   applyEnvFile(join(root, ".env"));
   applyEnvFile(join(root, ".env.local"));
 
@@ -113,22 +107,81 @@ export function ensureRuntimeEnv(options: EnsureRuntimeEnvOptions = {}): void {
   }
 }
 
-/** Test helper — retained so older tests can reset between cases (no-op gate). */
 export function resetRuntimeEnvLoadedForTests(): void {
-  // Re-apply is always allowed; nothing to reset.
+  resetRuntimeEnvOverlayForTests();
 }
 
-/** Boolean presence only — never returns secret values. */
 export function isRuntimeCredentialEnvPresent(envName: string): boolean {
-  return Boolean(process.env[envName]?.trim());
+  return isRuntimeEnvValuePresent(envName);
 }
 
-/** Call-time flag reader (never import-time snapshot). */
 export function isSharedObservabilityEnabledFromEnv(
-  env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
+  env: Record<string, string | undefined> = getRuntimeEnvBag(),
 ): boolean {
   const raw = env.AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED?.trim().toLowerCase();
   return raw === "true" || raw === "1";
+}
+
+/** Live Next-process diagnostics — booleans + paths only, never secrets. */
+export type RuntimeEnvLiveDiagnostics = {
+  cwd: string;
+  HOME_present: boolean;
+  HERMES_HOME_present: boolean;
+  hermesEnvPathResolved: string;
+  hermesEnvFileExists: boolean;
+  GEMINI_API_KEY_present: boolean;
+  GOOGLE_GENERATIVE_AI_API_KEY_present: boolean;
+  GOOGLE_API_KEY_present: boolean;
+  OPENROUTER_API_KEY_present: boolean;
+  NVIDIA_API_KEY_present: boolean;
+  sharedObservabilityFlagPresent: boolean;
+  sharedObservabilityEnabled: boolean;
+};
+
+export function collectRuntimeEnvDiagnostics(): RuntimeEnvLiveDiagnostics {
+  const hermesEnvPathResolved = join(resolveHermesHome(), ".env");
+  return {
+    cwd: process.cwd(),
+    HOME_present: Boolean((process.env.HOME ?? homedir())?.trim()),
+    HERMES_HOME_present: Boolean(process.env.HERMES_HOME?.trim()),
+    hermesEnvPathResolved,
+    hermesEnvFileExists: existsSync(hermesEnvPathResolved),
+    GEMINI_API_KEY_present: isRuntimeEnvValuePresent("GEMINI_API_KEY"),
+    GOOGLE_GENERATIVE_AI_API_KEY_present: isRuntimeEnvValuePresent(
+      "GOOGLE_GENERATIVE_AI_API_KEY",
+    ),
+    GOOGLE_API_KEY_present: isRuntimeEnvValuePresent("GOOGLE_API_KEY"),
+    OPENROUTER_API_KEY_present: isRuntimeEnvValuePresent("OPENROUTER_API_KEY"),
+    NVIDIA_API_KEY_present: isRuntimeEnvValuePresent("NVIDIA_API_KEY"),
+    sharedObservabilityFlagPresent: Boolean(
+      readRuntimeEnvValue("AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED")?.trim(),
+    ),
+    sharedObservabilityEnabled: isSharedObservabilityEnabledFromEnv(),
+  };
+}
+
+/**
+ * Dev/diagnostic only. Never attach to API JSON responses.
+ * Writes /tmp/ai-runtime-env-diag.json when allowed.
+ */
+export function logRuntimeEnvDiagnostics(tag = "[ai-runtime-env]"): RuntimeEnvLiveDiagnostics {
+  const diagnostics = collectRuntimeEnvDiagnostics();
+  const allow =
+    process.env.NODE_ENV !== "production" ||
+    process.env.AI_RUNTIME_ENV_DIAGNOSTIC === "1";
+  if (allow) {
+    console.info(tag, JSON.stringify(diagnostics));
+    try {
+      writeFileSync(
+        "/tmp/ai-runtime-env-diag.json",
+        `${JSON.stringify(diagnostics, null, 2)}\n`,
+        { encoding: "utf8", mode: 0o600 },
+      );
+    } catch {
+      // ignore write failures
+    }
+  }
+  return diagnostics;
 }
 
 export type RuntimeEnvSourceProbe = {
@@ -144,7 +197,6 @@ export type RuntimeEnvSourceProbe = {
     openrouter: boolean;
     nvidia: boolean;
   };
-  /** cwd / HOME / HERMES_HOME presence only — no secret values */
   process: {
     cwd: string;
     homePresent: boolean;
@@ -152,10 +204,6 @@ export type RuntimeEnvSourceProbe = {
   };
 };
 
-/**
- * Safe diagnostic: file presence + boolean credential/flag state.
- * Uses dummy-safe reads only — never returns raw key material.
- */
 export function probeRuntimeEnvSources(
   options: EnsureRuntimeEnvOptions = {},
 ): RuntimeEnvSourceProbe {
@@ -174,16 +222,16 @@ export function probeRuntimeEnvSources(
     hermesHome,
     hermesEnvFound,
     sharedObservabilityFlagPresent: Boolean(
-      process.env.AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED?.trim(),
+      readRuntimeEnvValue("AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED")?.trim(),
     ),
     sharedObservabilityEnabled: isSharedObservabilityEnabledFromEnv(),
     credentials: {
       gemini:
-        isRuntimeCredentialEnvPresent("GOOGLE_GENERATIVE_AI_API_KEY") ||
-        isRuntimeCredentialEnvPresent("GEMINI_API_KEY") ||
-        isRuntimeCredentialEnvPresent("GOOGLE_API_KEY"),
-      openrouter: isRuntimeCredentialEnvPresent("OPENROUTER_API_KEY"),
-      nvidia: isRuntimeCredentialEnvPresent("NVIDIA_API_KEY"),
+        isRuntimeEnvValuePresent("GOOGLE_GENERATIVE_AI_API_KEY") ||
+        isRuntimeEnvValuePresent("GEMINI_API_KEY") ||
+        isRuntimeEnvValuePresent("GOOGLE_API_KEY"),
+      openrouter: isRuntimeEnvValuePresent("OPENROUTER_API_KEY"),
+      nvidia: isRuntimeEnvValuePresent("NVIDIA_API_KEY"),
     },
     process: {
       cwd: process.cwd(),
@@ -192,3 +240,5 @@ export function probeRuntimeEnvSources(
     },
   };
 }
+
+export { getRuntimeEnvBag };

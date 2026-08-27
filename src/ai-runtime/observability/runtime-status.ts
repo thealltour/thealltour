@@ -21,6 +21,7 @@ import {
 import type { RoutingLedger } from "@/ai-runtime/router/routing-ledger";
 import type { RuntimeScheduler } from "@/ai-runtime/scheduler";
 import type { RuntimeQuotaState } from "@/ai-runtime/quota/types";
+import { getRuntimeEnvBag } from "@/lib/runtimeEnvStore";
 import type {
   AdapterReadiness,
   RuntimeModelStatusDto,
@@ -167,7 +168,7 @@ function toProviderStatus(
  * Uses Registry + Adapter resolver + env presence only — no live API calls.
  */
 export function buildRuntimeStatus(options: BuildRuntimeStatusOptions = {}): RuntimeStatusDto {
-  const env = options.env ?? process.env;
+  const env = options.env ?? getRuntimeEnvBag();
   const now = options.now ?? (() => new Date());
   const ledger = options.ledger ?? getDefaultUsageLedger();
   const quotaBroker = options.quotaBroker ?? getDefaultQuotaBroker(ledger);

@@ -4,25 +4,23 @@ import {
   CREDENTIAL_REF_ENV_CANDIDATES,
   type CredentialEnvSource,
 } from "@/ai-runtime/adapters/credential-resolver";
+import { getRuntimeEnvBag, readRuntimeEnvValue } from "@/lib/runtimeEnvStore";
 
 export type CreateEnvCredentialResolverOptions = {
   env?: CredentialEnvSource;
 };
 
 /**
- * Resolves Registry credentialRef values from process env.
+ * Resolves Registry credentialRef values from process env / runtime overlay.
  * Missing secrets → AUTH_ERROR without embedding any secret material.
  */
 export function createEnvCredentialResolver(
   options: CreateEnvCredentialResolverOptions = {},
 ): CredentialResolver {
-  // Prefer an explicit env bag (tests). Otherwise read process.env at resolve
-  // time so ensureRuntimeEnv() fills are visible — never capture a stale snapshot.
   const explicitEnv = options.env;
 
   return {
     async resolve(credentialRef: string): Promise<string> {
-      const env = explicitEnv ?? process.env;
       const ref = credentialRef.trim();
       if (!ref) {
         throw new RuntimeError("AUTH_ERROR", "credentialRef is empty", false);
@@ -38,7 +36,9 @@ export function createEnvCredentialResolver(
       }
 
       for (const name of candidates) {
-        const value = env[name]?.trim();
+        const value = explicitEnv
+          ? explicitEnv[name]?.trim()
+          : readRuntimeEnvValue(name)?.trim();
         if (value) return value;
       }
 
@@ -49,4 +49,27 @@ export function createEnvCredentialResolver(
       );
     },
   };
+}
+
+/** Call-time presence helpers (no import-time snapshot). */
+export function getOpenRouterCredentialPresence(
+  env: CredentialEnvSource = getRuntimeEnvBag(),
+): boolean {
+  return Boolean(env.OPENROUTER_API_KEY?.trim());
+}
+
+export function getNvidiaCredentialPresence(
+  env: CredentialEnvSource = getRuntimeEnvBag(),
+): boolean {
+  return Boolean(env.NVIDIA_API_KEY?.trim());
+}
+
+export function getGeminiCredentialPresence(
+  env: CredentialEnvSource = getRuntimeEnvBag(),
+): boolean {
+  return Boolean(
+    env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
+      env.GEMINI_API_KEY?.trim() ||
+      env.GOOGLE_API_KEY?.trim(),
+  );
 }

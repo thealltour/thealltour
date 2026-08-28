@@ -61,6 +61,8 @@ export async function POST(request: Request) {
       "Cache-Control": "no-store",
       "X-AI-Runtime-Request-Id": result.routing.requestId,
       "X-AI-Runtime-Alias": result.routing.alias,
+      "X-AI-Runtime-Agent-Id": result.routing.agentId,
+      "X-AI-Runtime-Workload": result.routing.workload,
     };
     if (result.routing.providerId) headers["X-AI-Runtime-Provider"] = result.routing.providerId;
     if (result.routing.modelId) headers["X-AI-Runtime-Model"] = result.routing.modelId;

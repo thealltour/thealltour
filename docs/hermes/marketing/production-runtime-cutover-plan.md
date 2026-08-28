@@ -15,6 +15,57 @@
 
 ---
 
+## C6 update (2026-08-28) — Gateway hardening complete
+
+**C6 verdict: IMPLEMENTATION GO for C7 canary prep** (code + docs only; Production profiles still unchanged).
+
+| C5 blocker | C6 resolution |
+|---|---|
+| `agentId` hardcoded `runtime-spike` | **Removed.** Alias registry maps production aliases → real `agentId`. |
+| Production identity attribution | `thealltour/<profile-id>` aliases + `X-AI-Runtime-Agent-Id` header. |
+| `spikeForceFallback` blast radius | Registry-gated; only `theallcloud/auto-fallback-spike`. Env flag no longer affects production or `theallcloud/auto`. |
+| Workload mapping | Per-alias: `analysis`, `content_draft`, `governance`, `manager_decision`. |
+| Dual fallback risk | `validateHermesRuntimeCutoverConfig()` documents `fallback_providers: []` invariant. |
+| Unknown alias abuse | Allowlist → `INVALID_REQUEST`. |
+
+**Reference:** [runtime-inference-gateway.md](./runtime-inference-gateway.md)  
+**Next:** **STEP 2-5.4C7** — Performance Analyst profile canary (first Production `config.yaml` edit).
+
+### C6.1 deploy verification (2026-08-28)
+
+**Verdict: COMPLETE / PRODUCTION GATEWAY READY**
+
+| Gate | Result |
+|---|---|
+| `npm run build` | PASS (`BUILD_ID=2fujBtd9wGTE-vPNAUG6j`) |
+| HTTP alias smoke 4/4 | PASS — correct `agentId` / workload headers |
+| Auth (401/403/bearer) | PASS |
+| Negative (unknown alias, spike isolation, C4.1 spike fallback) | PASS |
+| Shared observability | PASS — production agents only, no spike mis-attribution |
+| Regression (gateway + router + C1–C4.1 related) | 59/59 PASS |
+| Hermes Production profiles | **UNCHANGED** (still native Gemini) |
+| `thealltour-internal.service` | **RESTORED** — PID 25907, `active (running)`, `:3000` listener under systemd |
+
+**Final restore check (2026-08-28 ~15:03 KST):** manual `next-server` terminated; post-smoke HTTP alias smoke 4/4 PASS; unauthenticated → 401; service remains active.
+
+### C6.2 Marketing Manager 09:00 cron path repair (2026-08-28)
+
+**Verdict: COMPLETE / CRON PATH REPAIRED**
+
+| Item | Detail |
+|---|---|
+| Root cause | `daily-marketing-plan.sh` had `cd /home/ysh/theallcloud`; repo moved to `/home/ysh/thealltour`; `cron-daily-marketing-plan.ts` exists only under thealltour |
+| Repair | `cd /home/ysh/thealltour` (matches 08:30 Analyst wrapper convention) |
+| File changed | `~/.hermes/profiles/marketing-manager/scripts/daily-marketing-plan.sh` line 15 only |
+| Manual one-shot | **PASS** — exit 0, `inference_path: ai-runtime`, no `ERR_MODULE_NOT_FOUND`, no `/home/ysh/theallcloud` reference |
+| Runtime workloads | `content-strategist` / `content_draft`, `governance-auditor` / `governance`; correlationId `marketing-cron:…:cb7fd192`; fallback=false; gemini-main |
+| Publication safety | `PUBLICATION_FLOW_INACTIVE=true`; `sns_side_effect: 0`; `publishActionIncluded: false`; governance ALLOW → publish_ready (no publish) |
+| Scheduled `jobs.json` | **Unchanged** by manual run — `last_status: error` (2026-08-28 09:00 failure) until next scheduled 09:00 |
+| 08:30 Analyst | **Unchanged** — `9e96a94ee72f`, `30 8 * * *`, `no_agent: true`, NON_LLM, wrapper still `cd /home/ysh/thealltour`, `last_status: ok` |
+| C7 impact | None — Hermes Production Bot inference configs unchanged |
+
+---
+
 ## 1. Executive Summary
 
 **C5 overall verdict: PLAN READY / IMPLEMENTATION NO-GO until Gateway identity is production-capable.**
@@ -215,11 +266,11 @@ flowchart TB
 | Script | `daily-marketing-plan.sh` |
 | Intended Runtime path | `AI_RUNTIME_MARKETING_CRON_ENABLED` defaults to **`true`** in the wrapper |
 | Observability flag | `AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED` defaults **`true`** |
-| Last run | 2026-08-28 09:00:32 **`last_status: error`** |
-| Last error | `ERR_MODULE_NOT_FOUND` `/home/ysh/theallcloud/scripts/cron-daily-marketing-plan.ts` |
+| Last run | 2026-08-28 09:00:32 **`last_status: error`** (pre-C6.2; path fixed 2026-08-28 ~15:13 KST) |
+| Last error | `ERR_MODULE_NOT_FOUND` `/home/ysh/theallcloud/scripts/cron-daily-marketing-plan.ts` (historical) |
 | Next run | 2026-08-29 09:00 |
 
-**GAP (ops, out of C5 change scope):** wrapper `cd`s to **theallcloud**, while the 08:30 Analyst wrapper `cd`s to **thealltour**. The 09:00 job did **not** reach the TS Runtime flag path this morning because the entry module was missing. C5 does **not** fix this.
+**C6.2 repair (2026-08-28):** wrapper `cd` corrected to **thealltour**. Manual one-shot PASS (`inference_path: ai-runtime`). Scheduled `last_status` updates only on Hermes cron fire — not faked by manual run.
 
 Interactive Bot cutover is **orthogonal**: even when 09:00 works, it is `--no-agent` + either Hermes oneshot **or** `RuntimeExecutor` inside TS — not Desktop Gateway.
 
@@ -422,7 +473,7 @@ Runtime-side kill switch (optional later): reject non-spike aliases until C6 shi
 | `isPrivateClientAddress` allow-on-missing-header | Defense in depth weaker than bind-localhost |
 | Spike `config.yaml` inline `api_key` | Bad template for Production |
 | Manager Bot Chat pin missing | Harder to prove canonical session for Telegram vs Desktop |
-| 09:00 cron `theallcloud` cwd | Job failing; unrelated to Gateway but masks “Runtime cron healthy” claims |
+| 09:00 cron `theallcloud` cwd | **REPAIRED (C6.2).** Manual one-shot PASS; next scheduled 09:00 confirms `last_status` |
 | Latency / token usage in **HTTP headers** | In DB events when shared sink on; not all in Gateway headers |
 | Error class in headers | Retryable header on failure path only |
 
@@ -436,7 +487,7 @@ Runtime-side kill switch (optional later): reject non-spike aliases until C6 shi
 4. **Production MCP surface > spike** (`run_department_orchestration` untested through Gateway).
 5. **Agent Handoff oneshot coupling** if specialists cut over (still Hermes `-z`, not Runtime-direct).
 6. **Next.js process dependency** after cutover.
-7. **09:00 cron entrypoint path** (theallcloud vs thealltour) — ops GAP, do not fix in C5.
+7. **09:00 cron entrypoint path** — **RESOLVED (C6.2)**; was theallcloud vs thealltour ops GAP
 8. **Manager `chat` pin absent.**
 9. **Structured output on Production Desktop** still UNTESTED (C3/C4).
 10. **Streaming** N/A for this fleet (`enabled: false`).

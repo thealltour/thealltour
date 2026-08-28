@@ -16,10 +16,8 @@ import {
 import { WORKLOAD_FALLBACK_ORDER } from "@/ai-runtime/router/policies";
 import { getDefaultRoutingLedger, type RoutingLedger } from "@/ai-runtime/router/routing-ledger";
 import type { RuntimeRoutingDecision } from "@/ai-runtime/router/types";
-import {
-  RUNTIME_SPIKE_AGENT_ID,
-  SPIKE_FORCE_FALLBACK_DETAIL,
-} from "@/ai-runtime/integration/constants";
+import { isSpikeGatewayAgentId } from "@/ai-runtime/gateway/alias-registry";
+import { SPIKE_FORCE_FALLBACK_DETAIL } from "@/ai-runtime/integration/constants";
 
 export type RuntimeRouterDependencies = {
   registry: AiRuntimeRegistry;
@@ -86,7 +84,7 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
     const skippedProviders = new Set<string>();
     let shortestRetryAfter: number | undefined;
     let spikeForceFallbackPending =
-      request.agentId === RUNTIME_SPIKE_AGENT_ID && request.metadata?.spikeForceFallback === true;
+      isSpikeGatewayAgentId(request.agentId) && request.metadata?.spikeForceFallback === true;
 
     const getAdapter = this.deps.getAdapter ?? getProviderAdapter;
     const fallbackPolicies = WORKLOAD_FALLBACK_ORDER[request.workload];

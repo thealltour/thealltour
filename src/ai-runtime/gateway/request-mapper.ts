@@ -8,14 +8,12 @@ import type {
 } from "@/ai-runtime/domain/tools";
 import type { RuntimeResponseFormat } from "@/ai-runtime/domain/structured-output";
 import { RuntimeError } from "@/ai-runtime/domain/error";
-import type { WorkloadClass } from "@/ai-runtime/domain/workload";
 import {
-  HERMES_INFERENCE_ALIAS_AUTO,
-  HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE,
-  HERMES_INFERENCE_INTEGRATION,
-  AI_RUNTIME_SPIKE_FORCE_FALLBACK_ENV,
-  RUNTIME_SPIKE_AGENT_ID,
-} from "@/ai-runtime/integration/constants";
+  GATEWAY_DEFAULT_ALIAS,
+  resolveGatewayAlias,
+  shouldSpikeForceFallback,
+} from "@/ai-runtime/gateway/alias-registry";
+import { HERMES_INFERENCE_INTEGRATION } from "@/ai-runtime/integration/constants";
 import { createRuntimeRequest } from "@/ai-runtime/integration/runtime-request-factory";
 import type {
   GatewayCompatibilityFlags,
@@ -23,19 +21,19 @@ import type {
   OpenAiCompatMessage,
 } from "@/ai-runtime/gateway/types";
 
-const SPIKE_AGENT_ID = RUNTIME_SPIKE_AGENT_ID;
-
-function isTruthyEnvFlag(value: string | undefined): boolean {
-  const normalized = value?.trim().toLowerCase();
-  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
-}
-
-/** Alias or process env requesting spike-only controlled first-candidate failure. */
-export function shouldSpikeForceFallback(alias: string, env: NodeJS.ProcessEnv = process.env): boolean {
-  const normalized = alias.trim().toLowerCase();
-  if (normalized === HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE) return true;
-  return isTruthyEnvFlag(env[AI_RUNTIME_SPIKE_FORCE_FALLBACK_ENV]);
-}
+export {
+  resolveWorkloadForAlias,
+  shouldSpikeForceFallback,
+  lookupGatewayAlias,
+  resolveGatewayAlias,
+  listGatewayAliasEntries,
+  isProductionGatewayAlias,
+  isSpikeGatewayAlias,
+  HERMES_INFERENCE_ALIAS_MARKETING_MANAGER,
+  HERMES_INFERENCE_ALIAS_CONTENT_STRATEGIST,
+  HERMES_INFERENCE_ALIAS_GOVERNANCE_AUDITOR,
+  HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST,
+} from "@/ai-runtime/gateway/alias-registry";
 
 function flattenContent(content: OpenAiCompatMessage["content"]): string {
   if (content == null) return "";
@@ -206,23 +204,6 @@ export function extractCompatibilityFlags(
   };
 }
 
-export function resolveWorkloadForAlias(model: string | undefined): WorkloadClass {
-  const alias = (model ?? HERMES_INFERENCE_ALIAS_AUTO).trim().toLowerCase();
-  if (alias === HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE) {
-    return "manager_decision";
-  }
-  if (alias === "theallcloud/governance" || alias.includes("governance")) {
-    return "governance";
-  }
-  if (alias === "theallcloud/reasoning" || alias.includes("reasoning")) {
-    return "reasoning";
-  }
-  if (alias === "thealltour/marketing" || alias.includes("marketing") || alias.includes("content")) {
-    return "content_draft";
-  }
-  return "manager_decision";
-}
-
 export function mapOpenAiMessagesToRuntime(messages: OpenAiCompatMessage[]): RuntimeMessage[] {
   const mapped: RuntimeMessage[] = [];
   for (const message of messages) {
@@ -257,6 +238,8 @@ export type MapGatewayRequestResult = {
   request: RuntimeRequest;
   flags: GatewayCompatibilityFlags;
   alias: string;
+  agentId: string;
+  workload: RuntimeRequest["workload"];
 };
 
 /**
@@ -268,7 +251,9 @@ export function mapOpenAiCompatToRuntimeRequest(
   options: { correlationId?: string; conversationId?: string; now?: () => Date } = {},
 ): MapGatewayRequestResult {
   const flags = extractCompatibilityFlags(body);
-  const alias = (body.model ?? HERMES_INFERENCE_ALIAS_AUTO).trim() || HERMES_INFERENCE_ALIAS_AUTO;
+  const rawAlias = body.model?.trim() ? body.model.trim() : GATEWAY_DEFAULT_ALIAS;
+  const aliasEntry = resolveGatewayAlias(rawAlias);
+  const alias = aliasEntry.alias;
   const messages = mapOpenAiMessagesToRuntime(Array.isArray(body.messages) ? body.messages : []);
   if (messages.length === 0) {
     throw new Error("messages must contain at least one non-empty message");
@@ -285,18 +270,19 @@ export function mapOpenAiCompatToRuntimeRequest(
         ? body.max_tokens
         : undefined;
 
+  const agentId = aliasEntry.agentId;
   const correlationId =
     options.correlationId ??
-    `${HERMES_INFERENCE_INTEGRATION}:${SPIKE_AGENT_ID}:${randomUUID().slice(0, 8)}`;
+    `${HERMES_INFERENCE_INTEGRATION}:${agentId}:${randomUUID().slice(0, 8)}`;
 
-  const spikeForceFallback = shouldSpikeForceFallback(alias);
+  const spikeForceFallback = shouldSpikeForceFallback(alias) || undefined;
 
   const request = createRuntimeRequest(
     {
-      agentId: SPIKE_AGENT_ID,
+      agentId,
       source: "system",
-      workload: resolveWorkloadForAlias(alias),
-      priority: "high",
+      workload: aliasEntry.workload,
+      priority: aliasEntry.priority,
       messages,
       tools,
       toolChoice,
@@ -314,5 +300,11 @@ export function mapOpenAiCompatToRuntimeRequest(
     { now: options.now },
   );
 
-  return { request, flags, alias };
+  return {
+    request,
+    flags,
+    alias,
+    agentId,
+    workload: aliasEntry.workload,
+  };
 }

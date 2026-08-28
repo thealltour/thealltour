@@ -64,7 +64,7 @@ describe("STEP 2-5.4C1 Hermes inference gateway", () => {
       shouldSpikeForceFallback(HERMES_INFERENCE_ALIAS_AUTO, {
         AI_RUNTIME_SPIKE_FORCE_FALLBACK: "1",
       }),
-    ).toBe(true);
+    ).toBe(false);
 
     const { request, alias } = mapOpenAiCompatToRuntimeRequest({
       model: HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE,

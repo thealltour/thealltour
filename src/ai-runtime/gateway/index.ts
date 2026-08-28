@@ -15,6 +15,22 @@ export {
   readInferenceGatewayToken,
 } from "@/ai-runtime/gateway/auth";
 export {
+  HERMES_INFERENCE_ALIAS_MARKETING_MANAGER,
+  HERMES_INFERENCE_ALIAS_CONTENT_STRATEGIST,
+  HERMES_INFERENCE_ALIAS_GOVERNANCE_AUDITOR,
+  HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST,
+  listGatewayAliasEntries,
+  lookupGatewayAlias,
+  resolveGatewayAlias,
+  isProductionGatewayAlias,
+  isSpikeGatewayAlias,
+} from "@/ai-runtime/gateway/alias-registry";
+export { validateHermesRuntimeCutoverConfig } from "@/ai-runtime/gateway/cutover-preflight";
+export type {
+  HermesRuntimeCutoverConfigInput,
+  HermesRuntimeCutoverValidationResult,
+} from "@/ai-runtime/gateway/cutover-preflight";
+export {
   mapOpenAiCompatToRuntimeRequest,
   mapOpenAiResponseFormatToRuntime,
   mapOpenAiMessagesToRuntime,

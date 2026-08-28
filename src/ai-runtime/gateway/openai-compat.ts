@@ -27,6 +27,8 @@ export type HandleOpenAiCompatChatCompletionResult =
       routing: {
         requestId: string;
         alias: string;
+        agentId: string;
+        workload: string;
         providerId?: string;
         modelId?: string;
         fallbackUsed?: boolean;
@@ -79,6 +81,8 @@ export async function handleOpenAiCompatChatCompletion(
     const routing = {
       requestId: response.requestId,
       alias: mapped.alias,
+      agentId: mapped.agentId,
+      workload: mapped.workload,
       providerId: response.providerId,
       modelId: response.modelId,
       fallbackUsed: response.routing.fallbackUsed,

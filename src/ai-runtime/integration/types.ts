@@ -31,6 +31,8 @@ export interface RuntimeRequestFactoryInput {
   handoffId?: string;
   cronJobId?: string;
   departmentId?: string;
+  /** Spike-only controlled fallback probe — see RuntimeRequestMetadata.spikeForceFallback. */
+  spikeForceFallback?: boolean;
 
   expectedOutputTokens?: number;
   deadlineAt?: string;

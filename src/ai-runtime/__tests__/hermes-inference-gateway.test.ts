@@ -6,10 +6,12 @@ import {
   extractCompatibilityFlags,
   handleOpenAiCompatChatCompletion,
   HERMES_INFERENCE_ALIAS_AUTO,
+  HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE,
   HERMES_INFERENCE_INTEGRATION,
   mapOpenAiCompatToRuntimeRequest,
   mapRuntimeErrorCodeToHttp,
   resolveWorkloadForAlias,
+  shouldSpikeForceFallback,
 } from "@/ai-runtime/gateway";
 
 function sampleResponse(overrides: Partial<RuntimeResponse> = {}): RuntimeResponse {
@@ -48,7 +50,31 @@ describe("STEP 2-5.4C1 Hermes inference gateway", () => {
     expect(request.source).toBe("system");
     expect(request.workload).toBe("manager_decision");
     expect(request.metadata?.correlationId).toContain(HERMES_INFERENCE_INTEGRATION);
+    expect(request.metadata?.spikeForceFallback).toBeUndefined();
     expect(flags.toolsPresent).toBe(false);
+  });
+
+  it("STEP 2-5.4C4.1: auto-fallback-spike alias sets spikeForceFallback metadata", () => {
+    expect(resolveWorkloadForAlias(HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE)).toBe(
+      "manager_decision",
+    );
+    expect(shouldSpikeForceFallback(HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE)).toBe(true);
+    expect(shouldSpikeForceFallback(HERMES_INFERENCE_ALIAS_AUTO, {})).toBe(false);
+    expect(
+      shouldSpikeForceFallback(HERMES_INFERENCE_ALIAS_AUTO, {
+        AI_RUNTIME_SPIKE_FORCE_FALLBACK: "1",
+      }),
+    ).toBe(true);
+
+    const { request, alias } = mapOpenAiCompatToRuntimeRequest({
+      model: HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE,
+      messages: [{ role: "user", content: "fallback probe" }],
+    });
+    expect(alias).toBe(HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE);
+    expect(request.agentId).toBe("runtime-spike");
+    expect(request.workload).toBe("manager_decision");
+    expect(request.metadata?.spikeForceFallback).toBe(true);
+    expect(request.routing?.allowFallback).toBe(true);
   });
 
   it("preserves tools and sets requiresToolCalling on RuntimeRequest", () => {

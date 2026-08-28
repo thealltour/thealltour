@@ -16,5 +16,24 @@ export const AI_RUNTIME_INFERENCE_GATEWAY_TOKEN_ENV = "AI_RUNTIME_INFERENCE_GATE
 /** Logical model alias Hermes may send; Runtime maps to workload routing. */
 export const HERMES_INFERENCE_ALIAS_AUTO = "theallcloud/auto";
 
+/**
+ * Spike-only alias: same workload as `theallcloud/auto`, but forces the first
+ * Router candidate to fail before provider inference so live fallback is exercised.
+ * Honored only when agentId is runtime-spike (gateway spike path).
+ */
+export const HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE = "theallcloud/auto-fallback-spike";
+
+/**
+ * Optional process env to force the same first-candidate failure for all
+ * runtime-spike gateway requests (Desktop alias is preferred for scoped E2E).
+ */
+export const AI_RUNTIME_SPIKE_FORCE_FALLBACK_ENV = "AI_RUNTIME_SPIKE_FORCE_FALLBACK";
+
+/** Attempt.detail when spike controlled failure skips the first candidate. */
+export const SPIKE_FORCE_FALLBACK_DETAIL = "spike_force_fallback";
+
+/** Agent id used exclusively by the Hermes inference gateway spike. */
+export const RUNTIME_SPIKE_AGENT_ID = "runtime-spike";
+
 /** Observability tag embedded in correlationId for spike requests. */
 export const HERMES_INFERENCE_INTEGRATION = "hermes-inference-boundary";

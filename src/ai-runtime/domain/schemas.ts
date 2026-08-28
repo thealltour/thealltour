@@ -199,6 +199,7 @@ export const runtimeRequestMetadataSchema = z.object({
   cronJobId: z.string().min(1).optional(),
   departmentId: z.string().min(1).optional(),
   correlationId: z.string().min(1).optional(),
+  spikeForceFallback: z.boolean().optional(),
 });
 
 export const runtimeRequestSchema = z

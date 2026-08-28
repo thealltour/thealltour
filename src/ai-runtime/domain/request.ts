@@ -51,6 +51,11 @@ export interface RuntimeRequestMetadata {
   cronJobId?: string;
   departmentId?: string;
   correlationId?: string;
+  /**
+   * Spike-only: when true and agentId is runtime-spike, Router fails the first
+   * candidate before inference (no credential damage). Never set on production agents.
+   */
+  spikeForceFallback?: boolean;
 }
 
 /**

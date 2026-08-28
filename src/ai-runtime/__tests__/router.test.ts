@@ -463,4 +463,91 @@ describe("FallbackRuntimeRouter", () => {
     expect(serialized).not.toContain("Classify");
     expect(serialized).not.toContain("super-secret");
   });
+
+  it("STEP 2-5.4C4.1: spikeForceFallback fails first candidate before inference", async () => {
+    const primary = registry.getModelById(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY)!;
+    const secondary = registry.getModelById(AI_MODEL_IDS.GEMINI_FLASH_LITE_SECONDARY)!;
+    const geminiGenerate = vi.fn(async (request: RuntimeRequest) =>
+      successResponse(request, secondary.id, AI_PROVIDER_IDS.GEMINI_MAIN),
+    );
+
+    const { router } = createRouter({
+      adapters: {
+        [AI_PROVIDER_IDS.GEMINI_MAIN]: {
+          providerId: AI_PROVIDER_IDS.GEMINI_MAIN,
+          generate: geminiGenerate,
+        },
+        [AI_PROVIDER_IDS.OPENROUTER_MAIN]: {
+          providerId: AI_PROVIDER_IDS.OPENROUTER_MAIN,
+          generate: vi.fn(),
+        },
+        [AI_PROVIDER_IDS.NVIDIA_MAIN]: {
+          providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
+          generate: vi.fn(),
+        },
+      },
+    });
+
+    const response = await router.route(
+      sampleRequest({
+        agentId: "runtime-spike",
+        workload: "manager_decision",
+        routing: { allowFallback: true },
+        metadata: { spikeForceFallback: true, correlationId: "hermes-inference-boundary:runtime-spike:test" },
+      }),
+      context,
+    );
+
+    expect(response.routing.fallbackUsed).toBe(true);
+    expect(response.routing.attempts.length).toBeGreaterThanOrEqual(2);
+    expect(response.routing.attempts[0]).toMatchObject({
+      modelId: primary.id,
+      result: "provider_error",
+      detail: "spike_force_fallback",
+    });
+    expect(response.routing.attempts[1]).toMatchObject({
+      modelId: secondary.id,
+      result: "success",
+    });
+    expect(response.modelId).toBe(secondary.id);
+    expect(geminiGenerate).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(response.routing)).not.toContain("Classify this product listing");
+  });
+
+  it("ignores spikeForceFallback for non-spike agents", async () => {
+    const primary = registry.getModelById(AI_MODEL_IDS.GEMINI_FLASH_LITE_PRIMARY)!;
+    const geminiGenerate = vi.fn(async (request: RuntimeRequest) =>
+      successResponse(request, primary.id, AI_PROVIDER_IDS.GEMINI_MAIN),
+    );
+
+    const { router } = createRouter({
+      adapters: {
+        [AI_PROVIDER_IDS.GEMINI_MAIN]: {
+          providerId: AI_PROVIDER_IDS.GEMINI_MAIN,
+          generate: geminiGenerate,
+        },
+        [AI_PROVIDER_IDS.OPENROUTER_MAIN]: {
+          providerId: AI_PROVIDER_IDS.OPENROUTER_MAIN,
+          generate: vi.fn(),
+        },
+        [AI_PROVIDER_IDS.NVIDIA_MAIN]: {
+          providerId: AI_PROVIDER_IDS.NVIDIA_MAIN,
+          generate: vi.fn(),
+        },
+      },
+    });
+
+    const response = await router.route(
+      sampleRequest({
+        agentId: "marketing-manager",
+        workload: "manager_decision",
+        metadata: { spikeForceFallback: true },
+      }),
+      context,
+    );
+
+    expect(response.routing.fallbackUsed).toBe(false);
+    expect(response.modelId).toBe(primary.id);
+    expect(geminiGenerate).toHaveBeenCalledTimes(1);
+  });
 });

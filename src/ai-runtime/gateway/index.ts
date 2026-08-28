@@ -1,7 +1,11 @@
 export {
   HERMES_INFERENCE_ALIAS_AUTO,
+  HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE,
   HERMES_INFERENCE_INTEGRATION,
   AI_RUNTIME_INFERENCE_GATEWAY_TOKEN_ENV,
+  AI_RUNTIME_SPIKE_FORCE_FALLBACK_ENV,
+  RUNTIME_SPIKE_AGENT_ID,
+  SPIKE_FORCE_FALLBACK_DETAIL,
 } from "@/ai-runtime/integration/constants";
 export { handleOpenAiCompatChatCompletion } from "@/ai-runtime/gateway/openai-compat";
 export {
@@ -18,6 +22,7 @@ export {
   mapOpenAiToolChoiceToRuntime,
   resolveWorkloadForAlias,
   extractCompatibilityFlags,
+  shouldSpikeForceFallback,
 } from "@/ai-runtime/gateway/request-mapper";
 export {
   mapRuntimeResponseToOpenAiCompat,

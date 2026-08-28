@@ -11,7 +11,10 @@ import { RuntimeError } from "@/ai-runtime/domain/error";
 import type { WorkloadClass } from "@/ai-runtime/domain/workload";
 import {
   HERMES_INFERENCE_ALIAS_AUTO,
+  HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE,
   HERMES_INFERENCE_INTEGRATION,
+  AI_RUNTIME_SPIKE_FORCE_FALLBACK_ENV,
+  RUNTIME_SPIKE_AGENT_ID,
 } from "@/ai-runtime/integration/constants";
 import { createRuntimeRequest } from "@/ai-runtime/integration/runtime-request-factory";
 import type {
@@ -20,7 +23,19 @@ import type {
   OpenAiCompatMessage,
 } from "@/ai-runtime/gateway/types";
 
-const SPIKE_AGENT_ID = "runtime-spike";
+const SPIKE_AGENT_ID = RUNTIME_SPIKE_AGENT_ID;
+
+function isTruthyEnvFlag(value: string | undefined): boolean {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+/** Alias or process env requesting spike-only controlled first-candidate failure. */
+export function shouldSpikeForceFallback(alias: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  const normalized = alias.trim().toLowerCase();
+  if (normalized === HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE) return true;
+  return isTruthyEnvFlag(env[AI_RUNTIME_SPIKE_FORCE_FALLBACK_ENV]);
+}
 
 function flattenContent(content: OpenAiCompatMessage["content"]): string {
   if (content == null) return "";
@@ -193,13 +208,16 @@ export function extractCompatibilityFlags(
 
 export function resolveWorkloadForAlias(model: string | undefined): WorkloadClass {
   const alias = (model ?? HERMES_INFERENCE_ALIAS_AUTO).trim().toLowerCase();
+  if (alias === HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE) {
+    return "manager_decision";
+  }
   if (alias === "theallcloud/governance" || alias.includes("governance")) {
     return "governance";
   }
   if (alias === "theallcloud/reasoning" || alias.includes("reasoning")) {
     return "reasoning";
   }
-  if (alias === "theallcloud/marketing" || alias.includes("marketing") || alias.includes("content")) {
+  if (alias === "thealltour/marketing" || alias.includes("marketing") || alias.includes("content")) {
     return "content_draft";
   }
   return "manager_decision";
@@ -271,6 +289,8 @@ export function mapOpenAiCompatToRuntimeRequest(
     options.correlationId ??
     `${HERMES_INFERENCE_INTEGRATION}:${SPIKE_AGENT_ID}:${randomUUID().slice(0, 8)}`;
 
+  const spikeForceFallback = shouldSpikeForceFallback(alias);
+
   const request = createRuntimeRequest(
     {
       agentId: SPIKE_AGENT_ID,
@@ -284,6 +304,7 @@ export function mapOpenAiCompatToRuntimeRequest(
       expectedOutputTokens: maxTokens,
       correlationId,
       conversationId: options.conversationId,
+      spikeForceFallback: spikeForceFallback || undefined,
       routing: {
         allowFallback: true,
         requiresStructuredOutput: Boolean(responseFormat) || flags.responseFormatPresent,

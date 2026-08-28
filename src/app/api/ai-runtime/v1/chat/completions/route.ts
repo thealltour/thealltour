@@ -67,6 +67,9 @@ export async function POST(request: Request) {
     if (result.routing.fallbackUsed != null) {
       headers["X-AI-Runtime-Fallback"] = result.routing.fallbackUsed ? "1" : "0";
     }
+    if (result.routing.attemptCount != null) {
+      headers["X-AI-Runtime-Attempt-Count"] = String(result.routing.attemptCount);
+    }
     if (result.routing.toolDefinitionCount != null) {
       headers["X-AI-Runtime-Tool-Defs"] = String(result.routing.toolDefinitionCount);
     }

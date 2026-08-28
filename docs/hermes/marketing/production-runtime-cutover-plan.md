@@ -164,6 +164,107 @@ providers:
 
 **C7 retry readiness:** **GO** (hardening + non-production proof complete; Production profile edit still deferred to C7 Attempt #2)
 
+### C7 Attempt #2 — Performance Analyst canary (2026-08-28) — **KEEP CANARY / 24H OBSERVATION**
+
+**Verdict: IMMEDIATE TESTS PASS — Production cutover active on `performance-analyst` only**
+
+| Gate | Result |
+|---|---|
+| `thealltour-internal.service` | **active / running** (PID 25907) |
+| Production alias HTTP smoke 4/4 | **PASS** |
+| C7.1 preflight (planned + post-write) | **PASS** — `gatewayTokenSource: profile_env` |
+| Backup | `config.yaml.c7a2bak` SHA256 `21f69f58…` (pre-cutover native Gemini) |
+| Post-cutover config SHA256 | `1c81c008…` |
+| Auth probe (`-m thealltour/performance-analyst`) | **PASS** — `C7A2_AUTH_OK` |
+| Canonical Bot Chat `20260825_133423_f2c9b2` | **PASS** — `C7_ANALYST_OK`, session id unchanged |
+| Context continuity | **PASS** — `C7_CONTEXT_OK`, history intact |
+| Production MCP tool loop (`get_performance_evidence`) | **PASS** — `C7_MCP_OK` |
+| Hermes oneshot | **PASS** — `C7_ONESHOT_OK`, exit 0 |
+| Group Chat | **NOT_EXERCISED** — no `hermes group` CLI; Group turns are Desktop/TUI-owned |
+| Runtime observability (last 25m) | **PASS** — 34 events `agent_id=performance-analyst`, `workload=analysis`, **0** `runtime-spike` |
+| Other 3 Production Bots | **UNCHANGED** — native Gemini (checksums verified) |
+| 08:30 NON_LLM routine `9e96a94ee72f` | **UNCHANGED** — not rerun |
+| Rollback triggered | **no** |
+
+**Secret scope (path only):** `~/.hermes/profiles/performance-analyst/.env` — `AI_RUNTIME_INFERENCE_GATEWAY_TOKEN` added (mode `600`). No token literal in `config.yaml` / repo.
+
+**Exact inference diff vs `config.yaml.c7a2bak`:**
+
+```yaml
+model:
+  provider: custom:thealltour-runtime          # was: gemini
+  default: thealltour/performance-analyst      # was: gemini-3.5-flash-lite
+  base_url: http://127.0.0.1:3000/api/ai-runtime/v1   # was: ''
+  api_mode: chat_completions
+fallback_providers: []                         # was: [openrouter, openai]
+providers:                                     # new block
+  thealltour-runtime:
+    key_env: AI_RUNTIME_INFERENCE_GATEWAY_TOKEN
+    base_url: http://127.0.0.1:3000/api/ai-runtime/v1
+    api_mode: chat_completions
+    models:
+      thealltour/performance-analyst:
+        context_length: 128000
+```
+
+**Fallback ownership:** Hermes `fallback_providers: []` ✓ · Runtime `allowFallback=true` (gateway mapper) ✓ · Normal probe completions: `fallback_used=false`, `attempt_count=1` on successful legs; one MCP leg showed transient Runtime provider retry before success (observed in observability, final response OK).
+
+**Observation window:**
+
+| | KST |
+|---|---|
+| Start | **2026-08-28 16:13** |
+| End (minimum) | **2026-08-29 16:13** |
+
+Monitor: canonical Bot Chat, MCP usage, oneshot, Gateway `:3000` health, Runtime error/fallback rate, next 08:30 NON_LLM routine (not inference proof).
+
+**C7 Attempt #2 rollback:** restore `config.yaml.c7a2bak` → verify native Gemini Bot Chat on `20260825_133423_f2c9b2`.
+
+**Do not proceed to Content Strategist** until 24h observation completes.
+
+### C7 FINAL review — 24h observation (2026-08-28 16:17 KST interim)
+
+**Verdict: KEEP OBSERVING — observation window not complete**
+
+| Item | Status |
+|---|---|
+| Review timestamp | **2026-08-28 16:17 KST** (~4 min into window; end **2026-08-29 16:13 KST**) |
+| Canary config | **UNCHANGED** — checksum `1c81c008…`, `custom:thealltour-runtime`, `fallback_providers: []`, profile `.env` mode 600 |
+| Other 3 Bots | **native Gemini** (unchanged) |
+| `thealltour-internal.service` | **active** since 2026-08-28 15:02 KST, PID 25907, no restart in window |
+| Production alias smoke | **PASS** (at cutover + re-check in progress) |
+| Post-canary Hermes errors (`errors.log` ≥16:13) | **0** auth/401 entries |
+| Pre-canary 401s (15:17–15:18) | C7 Attempt #1 only — **outside** observation window |
+
+**Runtime observability (2026-08-28 16:13–16:17 KST only — immediate probe traffic):**
+
+| Metric | Value |
+|---|---|
+| PA events | 30 |
+| Distinct correlation IDs | 4 |
+| `job_completed` / `job_failed` | 3 / 1 (75% — includes MCP transient retry leg) |
+| `runtime-spike` attribution | **0** |
+| Wrong workload | **0** |
+| Post-canary 401/403 (observability) | **0 / 0** |
+| Latency p50 / p95 / max (ms) | 1984 / 2265 / 2265 (n=6) |
+| Tokens in/out (aggregate) | 60596 / 40 |
+
+**Transient retry (MCP probe):** 1× `route_failed` with `fallback_used=true` → recovered (`job_completed` ≥ `job_failed`); **isolated**, no user-visible failure (C7_MCP_OK delivered). No additional retries in window so far.
+
+**Not yet in window:**
+
+| Check | Status |
+|---|---|
+| Canonical Bot Chat ongoing stability | Immediate PASS holds; **full-window soak pending** |
+| 08:30 Analyst `9e96a94ee72f` (2026-08-29) | **PENDING** — next run scheduled |
+| 09:00 Marketing `edfc1815135b` (2026-08-29) | **PENDING** — last run still pre-repair error (2026-08-28 09:00) |
+| Group Chat Desktop probe | **NOT_EXERCISED** (does not block FINAL) |
+| 24h Gateway soak / natural traffic | **INCOMPLETE** |
+
+**Rollback readiness:** `config.yaml.c7a2bak` SHA256 `21f69f58…` — present, not exercised.
+
+**Re-run FINAL review after:** 2026-08-29 **16:13 KST** minimum, including post-08:30/09:00 cron inspection.
+
 ---
 
 ## 1. Executive Summary

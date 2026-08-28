@@ -1,8 +1,8 @@
-import Link from "next/link";
 import {
   SECTION_HEADER_MOBILE_CTA_CLASS,
   HOME_MAIN_SECTION_BLOCK_CLASS,
 } from "@/components/layout/SectionHeader";
+import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { ExploreRailSection } from "@/components/explore/ExploreRailSection";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import { cn } from "@/lib/cn";
@@ -42,14 +42,16 @@ export default function DestinationSection({
       title={title?.trim() || undefined}
       description={description?.trim() || undefined}
       action={
-        <Link
+        <HomeSectionMoreLink
           href="/destinations"
+          section="destination"
+          label="더보기"
           className={SECTION_HEADER_MOBILE_CTA_CLASS}
-          aria-label="인기 여행지 더보기"
+          ariaLabel="인기 여행지 더보기"
         >
           더보기
           <span aria-hidden>→</span>
-        </Link>
+        </HomeSectionMoreLink>
       }
       taxonomyType="destination"
       items={items}

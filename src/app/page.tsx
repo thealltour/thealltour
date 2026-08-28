@@ -11,6 +11,8 @@ import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
 import { getSiteSettings, parseHomeRegionCardIds, parseHomeThemeCardIds } from "@/lib/siteSettings";
 import { getHomeGolfTourProducts, resolveHomeGolfTourMoreHref } from "@/lib/homeGolfTourProducts";
 import { getGolfDepartureCalendarData } from "@/lib/products/getGolfDepartureCalendarProducts";
+import { buildHomeGolfCalendarModel } from "@/lib/products/golfDepartureCalendar";
+import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 import { collectBlogRssPosts, resolveBlogRssUrls } from "@/lib/rss";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/inquiry/HeroQuickConsultButton";
@@ -18,10 +20,9 @@ import HeroSection from "@/components/home/HeroSection";
 import { HomeDeferredSections } from "@/components/home/HomeDeferredSections";
 import { HomeTrustSection } from "@/components/home/HomeTrustSection";
 
-const C_H3 =
-  "\ud504\ub9ac\ubbf8\uc5c4\u0020\ub9de\ucda4\u0020\uc0c1\ub2f4\uc73c\ub85c\u0020\uc5ec\uc815\uc744\u0020\uc124\uacc4\ud569\ub2c8\ub2e4";
+const C_H3 = "원하는 여행상품을 찾지 못하셨나요?";
 const C_P1 =
-  "\uac04\ub2e8\ud55c\u0020\ub0b4\uc6a9\uc744\u0020\ub0a8\uaca8\uc8fc\uc2dc\uba74\u0020\uc804\ub2f4\u0020\uc0c1\ub2f4\uc0ac\uac00\u0020\uc804\ud654\ub85c\u0020\uba3c\uc800\u0020\uc5f0\ub77d\ub4dc\ub824\u002c\u0020\uc77c\uc815\uacfc\u0020\uc608\uc0b0\uc744\u0020\ud568\uaed8\u0020\uc815\ub9ac\ud574\u0020\ub4dc\ub9bd\ub2c8\ub2e4\u002e";
+  "전담 상담사가 일정과 예산에 맞춰 도와드려요. 간단한 내용을 남겨주시면 전화로 먼저 연락드려, 일정과 예산을 함께 정리해 드립니다.";
 const C_B1 =
   "\u00b7\u0020\ud1b5\ud654\uac00\u0020\ud3b8\ud558\uc2e0\u0020\uc2dc\uac04\ub300\ub97c\u0020\uba54\ubaa8\ub85c\u0020\ub0a8\uaca8\uc8fc\uc2dc\uba74\u0020\ucd5c\ub300\ud55c\u0020\ub9de\ucdb0\u0020\uc5f0\ub77d\ub4dc\ub9bd\ub2c8\ub2e4\u002e";
 const C_B2 =
@@ -54,12 +55,21 @@ export default async function Home() {
       getHubDestinations(),
       getHubThemes(),
       getHomeGolfTourProducts(),
-      getGolfDepartureCalendarData(),
+      getGolfDepartureCalendarData().catch(() => null),
       homeBlogPromise,
       getTopRatedPublishedReviews(4),
     ]);
 
   const golfTourMoreHref = await resolveHomeGolfTourMoreHref(golfTourProducts);
+  const golfCalendarHref = golfTourMoreHref?.trim() || buildGolfProductsHref();
+  const golfCalendarModel =
+    golfCalendarData != null
+      ? buildHomeGolfCalendarModel(
+          golfCalendarData.events,
+          golfCalendarHref,
+          golfCalendarData.promotionLegendLabel,
+        )
+      : null;
 
   const curatedSettings = homeCurated.settings;
   const curatedSections = homeCurated.sections;
@@ -103,10 +113,7 @@ export default async function Home() {
                 title: settings.home_golf_tour_section_title,
                 description: settings.home_golf_tour_section_description,
               }}
-              golfCalendar={{
-                events: golfCalendarData.events,
-                promotionLegendLabel: golfCalendarData.promotionLegendLabel,
-              }}
+              golfCalendarModel={golfCalendarModel}
               destinationRail={{
                 items: destinationsForHome,
                 eyebrow: settings.home_region_section_eyebrow,
@@ -123,6 +130,7 @@ export default async function Home() {
               curatedSections={curatedSections}
               homeBlogPosts={homeBlogPosts}
               homeReviews={homeReviews}
+              tourismRegNo={settings.tourism_reg_no}
             />
 
             <HomeTrustSection tourismRegNo={settings.tourism_reg_no} />

@@ -53,7 +53,13 @@ export type AnalyticsEventName =
   | "kakao_oauth_success"
   | "kakao_signup_new"
   | "kakao_login_returning"
-  | "kakao_oauth_failed";
+  | "kakao_oauth_failed"
+  | "home_quick_action_click"
+  | "home_section_more_click"
+  | "home_promo_impression"
+  | "home_promo_click"
+  | "home_promo_dismiss"
+  | "home_golf_schedule_click";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =
@@ -73,7 +79,10 @@ export type AnalyticsSource =
   | "quote_page"
   | "recommended_landing"
   | "deposit_page"
-  | "kakao_sync_auth";
+  | "kakao_sync_auth"
+  | "home_hero"
+  | "home_section"
+  | "home_promo_banner";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {

@@ -56,6 +56,12 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   kakao_signup_new: "kakao_signup_new",
   kakao_login_returning: "kakao_login_returning",
   kakao_oauth_failed: "kakao_oauth_failed",
+  home_quick_action_click: "home_quick_action_click",
+  home_section_more_click: "home_section_more_click",
+  home_promo_impression: "home_promo_impression",
+  home_promo_click: "home_promo_click",
+  home_promo_dismiss: "home_promo_dismiss",
+  home_golf_schedule_click: "home_golf_schedule_click",
 } as const;
 
 /** 소스 상수 (enum 성격) */
@@ -77,4 +83,7 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   recommended_landing: "recommended_landing",
   deposit_page: "deposit_page",
   kakao_sync_auth: "kakao_sync_auth",
+  home_hero: "home_hero",
+  home_section: "home_section",
+  home_promo_banner: "home_promo_banner",
 } as const;

@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import {
+  trackHomePromoClick,
+  trackHomePromoDismiss,
+  trackHomePromoImpression,
+} from "@/lib/analytics/trackHomeEvents";
 
 const DISMISS_STORAGE_KEY = "theall_guest_signup_banner_hide_until";
 const DISMISS_MS = 24 * 60 * 60 * 1000;
@@ -37,6 +42,7 @@ export function GuestSignupPromoBanner({ isLoggedIn }: GuestSignupPromoBannerPro
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
+  const impressedRef = useRef(false);
 
   const isHome = pathname === "/";
 
@@ -56,9 +62,16 @@ export function GuestSignupPromoBanner({ isLoggedIn }: GuestSignupPromoBannerPro
     return () => window.cancelAnimationFrame(id);
   }, [isHome, isLoggedIn]);
 
+  useEffect(() => {
+    if (!visible || !open || impressedRef.current) return;
+    impressedRef.current = true;
+    trackHomePromoImpression();
+  }, [visible, open]);
+
   function handleDismiss(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    trackHomePromoDismiss();
     try {
       localStorage.setItem(DISMISS_STORAGE_KEY, String(Date.now() + DISMISS_MS));
     } catch {
@@ -66,6 +79,10 @@ export function GuestSignupPromoBanner({ isLoggedIn }: GuestSignupPromoBannerPro
     }
     setOpen(false);
     window.setTimeout(() => setVisible(false), 220);
+  }
+
+  function handleBannerClick() {
+    trackHomePromoClick();
   }
 
   if (!visible) return null;
@@ -81,6 +98,7 @@ export function GuestSignupPromoBanner({ isLoggedIn }: GuestSignupPromoBannerPro
       <div className="mx-auto flex h-[34px] max-w-[1280px] items-center gap-2 px-3 md:h-[38px] md:px-6">
         <a
           href={BANNER_HREF}
+          onClick={handleBannerClick}
           className="min-w-0 flex-1 truncate text-center text-xs font-medium tracking-tight text-white/95 hover:underline md:text-sm"
         >
           <span className="mr-1.5 inline-block rounded bg-[#FFE812] px-1.5 py-0.5 text-[10px] font-bold text-[#3C1E1E] md:text-[11px]">

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import * as desiredDeparture from "@/lib/inquiry/desiredDeparture";
 import {
   buildGolfDepartureEvents,
+  buildHomeGolfCalendarModel,
   groupGolfDepartureEventsByDate,
   resolveGolfCalendarInitialDate,
   sortGolfDepartureEventsForList,
@@ -317,5 +318,49 @@ describe("groupGolfDepartureEventsByDate", () => {
     ]);
 
     expect(map.get("2026-08-13")?.map((e) => e.productId)).toEqual(["promo", "normal"]);
+  });
+});
+
+describe("buildHomeGolfCalendarModel", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns null when events empty", () => {
+    expect(buildHomeGolfCalendarModel([], "/products?tourType=golf-park")).toBeNull();
+  });
+
+  it("uses nearest future departure month and counts unique dates", () => {
+    vi.spyOn(desiredDeparture, "kstTodayYmd").mockReturnValue("2026-07-10");
+    const events = buildGolfDepartureEvents([
+      {
+        id: "p1",
+        title: "A",
+        departures: ["2026-08-13", "2026-08-20", "2026-09-01"],
+      } as Product,
+    ]);
+
+    const model = buildHomeGolfCalendarModel(events, "/products?tourType=golf-park");
+    expect(model).not.toBeNull();
+    expect(model!.initialSelectedYmd).toBe("2026-08-13");
+    expect(model!.initialMonthYmd).toBe("2026-08-01");
+    expect(model!.monthAvailableDayCount).toBe(2);
+    expect(model!.totalAvailableDays).toBe(3);
+    expect(model!.href).toBe("/products?tourType=golf-park");
+  });
+
+  it("groups multiple products on same date in eventsByDate", () => {
+    vi.spyOn(desiredDeparture, "kstTodayYmd").mockReturnValue("2026-07-10");
+    const events = buildGolfDepartureEvents([
+      { id: "p1", title: "A", departures: ["2026-08-13"] } as Product,
+      { id: "p2", title: "B", departures: ["2026-08-13"] } as Product,
+    ]);
+
+    const model = buildHomeGolfCalendarModel(events, "/products?tourType=golf-park");
+    expect(model!.eventsByDate["2026-08-13"]).toHaveLength(2);
+    expect(model!.eventsByDate["2026-08-13"]!.map((e) => e.productId).sort()).toEqual([
+      "p1",
+      "p2",
+    ]);
   });
 });

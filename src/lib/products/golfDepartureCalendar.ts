@@ -1,5 +1,6 @@
 import type { Product } from "@/types/product";
-import { ymdToDate } from "@/lib/datePickerUtils";
+import { dateToYmd, ymdToDate } from "@/lib/datePickerUtils";
+import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
 import { filterGolfChannelProducts } from "@/lib/products/golfChannel";
 import {
@@ -29,6 +30,65 @@ export type GolfDepartureCalendarBuildResult = {
   products: Product[];
   promotionLegendLabel: string | null;
 };
+
+/** Home responsive golf calendar — RSC/client 공통 serializable model */
+export type HomeGolfCalendarModel = {
+  /** 표시 월 1일 (YYYY-MM-DD) */
+  initialMonthYmd: string;
+  /** 초기 선택일 (KST today 이후 첫 출발일 등) */
+  initialSelectedYmd: string;
+  /** 전체 unique 출발일 YMD */
+  availableYmds: string[];
+  /** initial month 내 unique 출발일 수 */
+  monthAvailableDayCount: number;
+  /** 전체 unique 출발일 수 */
+  totalAvailableDays: number;
+  eventsByDate: Record<string, GolfDepartureEvent[]>;
+  href: string;
+  promotionLegendLabel: string | null;
+};
+
+const HOME_GOLF_CALENDAR_DEFAULT_HREF = buildGolfProductsHref();
+
+/** Home calendar DTO — events[]에서 Preview/Desktop 공통 model 생성 */
+export function buildHomeGolfCalendarModel(
+  events: GolfDepartureEvent[],
+  href: string = HOME_GOLF_CALENDAR_DEFAULT_HREF,
+  promotionLegendLabel: string | null = null,
+): HomeGolfCalendarModel | null {
+  if (events.length === 0) return null;
+
+  const eventYmds = events.map((event) => event.date);
+  const initialDate = resolveGolfCalendarInitialDate(eventYmds);
+  const initialSelectedYmd = dateToYmd(initialDate);
+  const initialMonthYmd = dateToYmd(
+    new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
+  );
+  if (!initialSelectedYmd || !initialMonthYmd) return null;
+
+  const availableYmds = [...new Set(eventYmds)].sort();
+  const monthPrefix = initialMonthYmd.slice(0, 7);
+  const monthAvailableDayCount = availableYmds.filter((ymd) =>
+    ymd.startsWith(monthPrefix),
+  ).length;
+
+  const grouped = groupGolfDepartureEventsByDate(events);
+  const eventsByDate: Record<string, GolfDepartureEvent[]> = {};
+  for (const [ymd, list] of grouped) {
+    eventsByDate[ymd] = list;
+  }
+
+  return {
+    initialMonthYmd,
+    initialSelectedYmd,
+    availableYmds,
+    monthAvailableDayCount,
+    totalAvailableDays: availableYmds.length,
+    eventsByDate,
+    href: href.trim() || HOME_GOLF_CALENDAR_DEFAULT_HREF,
+    promotionLegendLabel,
+  };
+}
 
 /** 달력 초기 선택일: KST 오늘 이후 첫 출발일, 없으면 가장 가까운 과거 출발일 또는 오늘 */
 export function resolveGolfCalendarInitialDate(eventYmds: string[]): Date {

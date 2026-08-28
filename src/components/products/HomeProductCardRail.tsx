@@ -5,16 +5,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product } from "@/types/product";
 import { cn } from "@/lib/cn";
 import { HomeProductCard } from "@/components/products/HomeProductCard";
+import {
+  HOME_DISCOVERY_RAIL_UL_CLASS,
+  HOME_DISCOVERY_RAIL_UL_COMPACT_CLASS,
+} from "@/lib/homeDiscoveryRail";
 
 const SCROLL_AMOUNT = 320;
 
 const RAIL_ITEM_CLASS = "h-full min-h-0 snap-start";
-
-const RAIL_UL_CLASS_DEFAULT =
-  "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 sm:auto-cols-[280px] lg:auto-cols-[calc((min(100%,1344px)-3*1rem)/4)] [touch-action:pan-x_pan-y]";
-
-const RAIL_UL_CLASS_COMPACT =
-  "grid grid-flow-col auto-cols-[min(82%,320px)] gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 [touch-action:pan-x_pan-y]";
 
 export type HomeProductCardRailProps = {
   products: Product[];
@@ -73,7 +71,7 @@ export function HomeProductCardRail({
 
   if (products.length === 0) return null;
 
-  const railUlClass = edgeInset === "compact" ? RAIL_UL_CLASS_COMPACT : RAIL_UL_CLASS_DEFAULT;
+  const railUlClass = edgeInset === "compact" ? HOME_DISCOVERY_RAIL_UL_COMPACT_CLASS : HOME_DISCOVERY_RAIL_UL_CLASS;
 
   return (
     <div className={cn("relative mx-auto w-full max-w-[1344px] group/scroll", className)}>

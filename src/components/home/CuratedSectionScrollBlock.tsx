@@ -1,6 +1,6 @@
 "use client";
 
-import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
+import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { HomeProductCard } from "@/components/products/HomeProductCard";
 import type { HomeCuratedSectionWithProducts } from "@/types/homeCurated";
 import { cn } from "@/lib/cn";
@@ -14,7 +14,7 @@ export type CuratedSectionScrollBlockProps = {
 
 /**
  * 추천 여행 단일 섹션.
- * /recommended와 동일한 노출 방식: 모바일 가로 스크롤 + 데스크톱 2/3열 그리드.
+ * Mobile: Home Discovery Rail (Golf와 동일 preset) / Desktop: 4-column grid.
  */
 export function CuratedSectionScrollBlock({
   section,
@@ -23,22 +23,34 @@ export function CuratedSectionScrollBlock({
 }: CuratedSectionScrollBlockProps) {
   if (section.products.length === 0) return null;
 
+  const analyticsSection = section.title ?? undefined;
+  const listAriaLabel = section.title ? `${section.title} 상품` : "추천 패키지 상품";
+
   return (
-    <div className={cn("space-y-3 sm:space-y-4", className)}>
+    <div className={cn("space-y-3 md:space-y-4", className)}>
       {showTitle && section.title ? (
         <h3 className="font-card-title text-base font-semibold text-[var(--foreground)] md:text-lg">
           {section.title}
         </h3>
       ) : null}
-      <ProductCardGridSection homeCuratedMobileCompact desktopGridCols={4}>
+
+      <div className="md:hidden">
+        <HomeProductCardRail
+          products={section.products}
+          analyticsSection={analyticsSection}
+          listAriaLabel={listAriaLabel}
+        />
+      </div>
+
+      <div className="mx-auto hidden w-full max-w-[1344px] md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-4">
         {section.products.map((product) => (
           <HomeProductCard
             key={product.id}
             product={product}
-            analyticsSection={section.title ?? undefined}
+            analyticsSection={analyticsSection}
           />
         ))}
-      </ProductCardGridSection>
+      </div>
     </div>
   );
 }

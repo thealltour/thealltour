@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
@@ -6,6 +5,7 @@ import {
   SECTION_HEADER_MOBILE_CTA_CLASS,
   HOME_MAIN_SECTION_BLOCK_CLASS,
 } from "@/components/layout/SectionHeader";
+import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { CuratedSectionScrollBlock } from "@/components/home/CuratedSectionScrollBlock";
 import type {
   HomeCuratedSettings,
@@ -45,18 +45,20 @@ export default function CuratedProductsSection({
           title={settings!.section_title}
           description={settings!.section_description}
           action={
-            <Link
+            <HomeSectionMoreLink
               href="/recommended"
+              section="curated"
+              label="더보기"
               className={SECTION_HEADER_MOBILE_CTA_CLASS}
-              aria-label="THEALL PICKS 더보기"
+              ariaLabel="THEALL PICKS 더보기"
             >
               더보기
               <span aria-hidden>→</span>
-            </Link>
+            </HomeSectionMoreLink>
           }
         />
 
-        <div className="mx-auto flex w-full max-w-[1344px] flex-col gap-4 max-md:gap-5">
+        <div className="mx-auto flex w-full max-w-[1344px] flex-col gap-4">
           {sections.map((sec) => (
             <CuratedSectionScrollBlock
               key={sec.id}
@@ -69,15 +71,5 @@ export default function CuratedProductsSection({
     );
   }
 
-  return (
-    <SectionBlock
-      surface="card"
-      padding="md"
-      className={cn("!px-4 !py-1.5 sm:!px-6 sm:!py-3 md:!px-8 md:!py-4", className)}
-    >
-      <p className="type-small text-[var(--text-muted)]">
-        메인 추천 상품이 없습니다. 관리자 페이지에서 추천 상품을 체크해 주세요.
-      </p>
-    </SectionBlock>
-  );
+  return null;
 }

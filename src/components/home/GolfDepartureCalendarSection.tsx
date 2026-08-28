@@ -133,8 +133,8 @@ export default function GolfDepartureCalendarSection({
         description={description}
       />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-start">
-        <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] sm:p-6">
+      <div className="mt-4 grid gap-4 max-md:mt-3 max-md:gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-start lg:gap-6 lg:mt-6">
+        <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-soft)] sm:p-6">
           <TheallDayPicker
             mode="single"
             month={month}
@@ -160,7 +160,7 @@ export default function GolfDepartureCalendarSection({
               showTwoMonths && "theall-golf-calendar--two-up",
             )}
           />
-          <div className="mt-3 space-y-1.5 text-xs text-[var(--text-muted)]">
+          <div className="mt-2 space-y-1 text-xs text-[var(--text-muted)] max-md:text-[11px]">
             <p className="flex items-center gap-2">
               <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--success)]" aria-hidden />
               출발 가능일이 있는 날짜
@@ -177,22 +177,22 @@ export default function GolfDepartureCalendarSection({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] sm:p-6">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-soft)] sm:p-6">
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
             <CalendarDays className="h-4 w-4 text-[var(--primary)]" aria-hidden />
             {selectedYmd ? formatIsoDateKorean(selectedYmd) ?? selectedYmd : "날짜 선택"}
           </div>
           {selectedEvents.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--text-muted)]">
+            <p className="mt-3 text-sm text-[var(--text-muted)] max-md:mt-2">
               선택한 날짜에 출발하는 골프 상품이 없습니다. 달력에서 표시된 날짜를 선택해 주세요.
             </p>
           ) : (
-            <ul className="mt-4 space-y-3">
+            <ul className="mt-3 space-y-2 max-md:mt-2 max-md:space-y-1.5">
               {selectedEvents.map((event) => (
                 <li key={`${event.productId}-${event.date}`}>
                   <Link
                     href={event.href}
-                    className="flex gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/60 p-3 transition hover:border-[var(--primary)]/40 hover:bg-[var(--primary-soft)]/30 sm:p-4"
+                    className="flex gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/60 p-2.5 transition hover:border-[var(--primary)]/40 hover:bg-[var(--primary-soft)]/30 sm:p-4"
                   >
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--surface-muted)]">
                       <Image

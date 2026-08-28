@@ -5,6 +5,7 @@ import {
   SectionHeader,
   SECTION_HEADER_MORE_LINK_CLASS,
 } from "@/components/layout/SectionHeader";
+import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import type { Review } from "@/types/review";
 
@@ -30,10 +31,16 @@ export function HomeReviewSection({ reviews, className }: HomeReviewSectionProps
         description="실제 여행객들의 생생한 후기를 만나보세요."
         action={
           <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-3 sm:gap-y-1">
-            <Link href="/reviews" className={SECTION_HEADER_MORE_LINK_CLASS} aria-label="여행 후기 더보기">
+            <HomeSectionMoreLink
+              href="/reviews"
+              section="reviews"
+              label="후기 전체 보기"
+              className={SECTION_HEADER_MORE_LINK_CLASS}
+              ariaLabel="여행 후기 더보기"
+            >
               후기 전체 보기
               <span aria-hidden>→</span>
-            </Link>
+            </HomeSectionMoreLink>
             <Link href="/reviews/write" className={SECTION_HEADER_MORE_LINK_CLASS}>
               후기 작성하기
             </Link>

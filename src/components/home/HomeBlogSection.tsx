@@ -1,13 +1,13 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
   SectionHeader,
   SECTION_HEADER_MOBILE_CTA_CLASS,
 } from "@/components/layout/SectionHeader";
+import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { HomeBlogCard } from "@/components/home/HomeBlogCard";
 import type { RssPost } from "@/lib/rss.types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -67,14 +67,16 @@ export function HomeBlogSection({ posts, className }: HomeBlogSectionProps) {
         title="여행 스토리 & 블로그"
         description="공식 블로그에서 전해 드리는 생생한 여행 소식과 추천 코스입니다."
         action={
-          <Link
+          <HomeSectionMoreLink
             href="/blog"
+            section="blog"
+            label="더보기"
             className={SECTION_HEADER_MOBILE_CTA_CLASS}
-            aria-label="블로그 더보기"
+            ariaLabel="블로그 더보기"
           >
             더보기
             <span aria-hidden>→</span>
-          </Link>
+          </HomeSectionMoreLink>
         }
         align="left"
       />

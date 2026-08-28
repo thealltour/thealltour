@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { cn } from "@/lib/cn";
+import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
   SectionHeader,
@@ -8,6 +7,7 @@ import {
 } from "@/components/layout/SectionHeader";
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { buildGolfProductsHref } from "@/lib/products/golfChannel";
+import { cn } from "@/lib/cn";
 import type { Product } from "@/types/product";
 
 export type GolfTourProductsSectionProps = {
@@ -46,14 +46,16 @@ export default function GolfTourProductsSection({
         title={title?.trim() || undefined}
         description={description?.trim() || undefined}
         action={
-          <Link
+          <HomeSectionMoreLink
             href={href}
+            section="golf"
+            label="더보기"
             className={SECTION_HEADER_MOBILE_CTA_CLASS}
-            aria-label="골프투어 상품 더보기"
+            ariaLabel="골프투어 상품 더보기"
           >
             더보기
             <span aria-hidden>→</span>
-          </Link>
+          </HomeSectionMoreLink>
         }
       />
       <HomeProductCardRail

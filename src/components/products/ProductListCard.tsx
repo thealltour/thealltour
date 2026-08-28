@@ -18,6 +18,10 @@ import {
 } from "@/lib/products/productCardSeasonalPriceDisplay";
 import { PRODUCT_CARD_HIGHLIGHT_LABELS } from "@/lib/products/productCardHighlightTag";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
+import {
+  limitProductCardListTags,
+  PRODUCT_CARD_LIST_TAG_MAX,
+} from "@/lib/products/parseMetaTitleAsHashtags";
 import { CAMPAIGN_BADGE_PROMOTION_PALETTE } from "@/lib/productCampaignPresentation";
 
 export type ProductListCardProps = ProductCardProps;
@@ -178,7 +182,7 @@ export default function ProductListCard({
       : metaLine || overviewLine;
 
   /** SEO 메타 타이틀(스페이스 구분) → 상품등록 시 입력한 키워드를 해시태그로 노출 */
-  const seoHashtags = tags.map((t) => t.trim()).filter(Boolean);
+  const displayTags = limitProductCardListTags(tags, PRODUCT_CARD_LIST_TAG_MAX.desktop);
 
   const cardContent = (
     <div className="flex w-full flex-col">
@@ -319,7 +323,7 @@ export default function ProductListCard({
                 type="button"
                 disabled={consultPressed}
                 className={cn(
-                  buttonVariants({ variant: "accent", size: "md" }),
+                  buttonVariants({ variant: "outline", size: "md" }),
                   "w-full",
                   consultPressed && "pointer-events-none",
                 )}
@@ -336,12 +340,12 @@ export default function ProductListCard({
         </div>
       </div>
     </div>
-    {seoHashtags.length > 0 ? (
+    {displayTags.length > 0 ? (
       <div
         className="flex w-full flex-wrap gap-x-2 gap-y-1 border-t border-[var(--border)]/25 px-5 py-2.5"
         aria-label="상품 SEO 키워드"
       >
-        {seoHashtags.map((tag, i) => (
+        {displayTags.map((tag, i) => (
           <span
             key={`${tag}-${i}`}
             className="text-[0.9rem] font-medium leading-snug text-[var(--text-muted)]"

@@ -38,3 +38,25 @@ export function parseMetaTitleAsHashtags(metaTitle?: string): string[] {
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
+
+/** Search List card tag cap — parser order preserved, no ranking engine */
+export const PRODUCT_CARD_LIST_TAG_MAX = {
+  mobile: 2,
+  desktop: 3,
+} as const;
+
+export function limitProductCardListTags(tags: readonly string[], max: number): string[] {
+  const cap = Math.max(0, Math.floor(max));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of tags) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+    if (out.length >= cap) break;
+  }
+  return out;
+}

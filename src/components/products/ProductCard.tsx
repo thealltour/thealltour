@@ -679,8 +679,8 @@ export default function ProductCard({
               tabIndex={0}
               aria-disabled={consultPressed}
               className={cn(
-                buttonVariants({ variant: "accent", size: "sm" }),
-                "inline-flex w-fit !h-7 !px-2.5 !text-xs",
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "inline-flex w-fit !h-9 !min-h-9 !px-3 !text-xs",
                 consultPressed && "pointer-events-none opacity-60",
               )}
               onClick={handleConsult}

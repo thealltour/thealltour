@@ -64,6 +64,106 @@
 | 08:30 Analyst | **Unchanged** — `9e96a94ee72f`, `30 8 * * *`, `no_agent: true`, NON_LLM, wrapper still `cd /home/ysh/thealltour`, `last_status: ok` |
 | C7 impact | None — Hermes Production Bot inference configs unchanged |
 
+### C7 Attempt #1 — Performance Analyst canary (2026-08-28) — **FAILED / ROLLED BACK**
+
+**Verdict: NO-GO — immediate rollback to native Gemini**
+
+| Gate | Result |
+|---|---|
+| Gateway HTTP alias smoke (curl + bearer) | **PASS** — 200 |
+| Hermes canonical Bot Chat (`20260825_133423_f2c9b2`) | **FAIL** — HTTP 401 |
+| Post-rollback native Gemini Bot Chat | **PASS** |
+| Production profile state after rollback | `provider: gemini`, `default: gemini-3.5-flash-lite` |
+
+**Applied config (rolled back; backup `config.yaml.c7bak`):**
+
+```yaml
+model:
+  provider: custom                    # ← root cause branch
+  default: thealltour/performance-analyst
+  base_url: http://127.0.0.1:3000/api/ai-runtime/v1
+  api_mode: chat_completions
+fallback_providers: []
+providers:
+  thealltour-runtime:
+    base_url: http://127.0.0.1:3000/api/ai-runtime/v1
+    api_mode: chat_completions
+    key_env: AI_RUNTIME_INFERENCE_GATEWAY_TOKEN   # ← never read on bare-custom path
+```
+
+**Hermes v0.20.5 root cause (source-audited):**
+
+| Question | Answer |
+|---|---|
+| A. Resolver selected | `_resolve_named_custom_runtime()` **direct-alias branch** — bare `provider: custom` + `model.base_url` (`runtime_provider.py` ~1120–1151) |
+| B. Bearer sent | **`no-key-required` (placeholder)** — not gateway token; classify: **placeholder/no-key** |
+| C. Why `key_env` ignored | Bare-custom loopback path never calls `_getenv(key_env)`; only named provider path (`custom:<name>` → `_get_named_custom_provider`) reads `providers.*.key_env` (~1194) |
+| D. Alias / models map | C7 config lacked `providers.*.models`; `-m` / session reverse-lookup unsupported |
+| E. Primary cause | **Bare `provider: custom` resolver branch** (credential scope alone would not fix without named provider syntax) |
+
+**Env scope at failure:**
+
+| Source | `AI_RUNTIME_INFERENCE_GATEWAY_TOKEN` |
+|---|---|
+| `/home/ysh/thealltour/.env.local` | key present (Node/Next.js only) |
+| `~/.hermes/.env` | absent |
+| `~/.hermes/profiles/performance-analyst/.env` | absent |
+| Hermes `build_profile_secret_scope()` | loads **profile** `<home>/.env` only — project `.env.local` **not** auto-loaded |
+
+Exporting from `.env.local` into shell before Bot Chat **did not** fix 401 because Hermes still resolved bare-custom → `no-key-required`.
+
+**Preflight gap:** `validateHermesRuntimeCutoverConfig()` previously accepted bare `custom` when Node `process.env` had the token — **false GO**.
+
+### C7.1 — Hermes native custom-provider auth hardening (2026-08-28)
+
+**Verdict: HARDENING COMPLETE / C7 RETRY PREREQS MET (non-production proof)**
+
+Production profiles **unchanged** (native Gemini). C7 retry **not executed** in this STEP.
+
+| Deliverable | Result |
+|---|---|
+| Hermes v0.20.5 resolver audit | **CONFIRMED** — see §C7 root-cause table |
+| Canonical config shape derived | **`model.provider: custom:thealltour-runtime`** + `providers.thealltour-runtime` with `key_env`, `base_url`, `api_mode`, `models` |
+| Preflight validator hardened | `cutover-preflight.ts` rejects bare `custom`, inline `api_key`, missing `models` alias, Node-only token |
+| Hermes execution scope probe | `hermes-env-scope.ts` — profile `.env` → `~/.hermes/.env` → process env (keys only, no values) |
+| Non-production Hermes auth proof | **PASS** — `runtime-spike` with `custom:theallcloud-runtime` + `key_env` (no inline `api_key`) |
+| Default model resolution | **PASS** — `hermes -p runtime-spike chat …` → 200, `C71_AUTH_OK` |
+| Explicit `-m` resolution | **PASS** — `hermes -p runtime-spike -m theallcloud/auto chat …` → 200, `C71_M_ALIAS_OK` |
+| Wrong/missing bearer (Gateway) | **PASS** — curl → 401 |
+
+**Canonical Production cutover shape (minimum, Hermes source-aligned):**
+
+```yaml
+model:
+  provider: custom:thealltour-runtime    # NOT bare "custom"
+  default: thealltour/performance-analyst
+  base_url: http://127.0.0.1:3000/api/ai-runtime/v1
+  api_mode: chat_completions
+fallback_providers: []
+providers:
+  thealltour-runtime:
+    base_url: http://127.0.0.1:3000/api/ai-runtime/v1
+    api_mode: chat_completions
+    key_env: AI_RUNTIME_INFERENCE_GATEWAY_TOKEN
+    models:
+      thealltour/performance-analyst:
+        context_length: 128000
+```
+
+**Secret placement (C7.1 non-production proof):** `AI_RUNTIME_INFERENCE_GATEWAY_TOKEN` in `~/.hermes/profiles/runtime-spike/.env` (mode `600`). For Production canary: prefer **`~/.hermes/profiles/performance-analyst/.env`** or `~/.hermes/.env` — **never** literal in `config.yaml` / repo.
+
+**Syntax NOT recognized:** bare `model.provider: custom` (uses direct-alias / no-key path); bare `model.provider: thealltour-runtime` without `custom:` prefix (unless matched via `providerIdentityAliases` — use explicit `custom:thealltour-runtime`).
+
+**C7 retry prerequisites:**
+
+1. Preflight passes canonical shape + Hermes execution scope for `performance-analyst`
+2. `config.yaml.c7bak`-style backup on disk before edit
+3. Gateway `:3000` healthy (C6.1)
+4. Rollback owner + RTO documented
+5. 24h observation plan (deferred until C7 Attempt #2)
+
+**C7 retry readiness:** **GO** (hardening + non-production proof complete; Production profile edit still deferred to C7 Attempt #2)
+
 ---
 
 ## 1. Executive Summary

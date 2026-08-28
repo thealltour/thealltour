@@ -25,11 +25,18 @@ export {
   isProductionGatewayAlias,
   isSpikeGatewayAlias,
 } from "@/ai-runtime/gateway/alias-registry";
-export { validateHermesRuntimeCutoverConfig } from "@/ai-runtime/gateway/cutover-preflight";
+export { validateHermesRuntimeCutoverConfig, isBareCustomProvider } from "@/ai-runtime/gateway/cutover-preflight";
 export type {
   HermesRuntimeCutoverConfigInput,
   HermesRuntimeCutoverValidationResult,
+  HermesRuntimeCutoverValidationOptions,
+  HermesProviderBlock,
 } from "@/ai-runtime/gateway/cutover-preflight";
+export {
+  loadHermesExecutionEnvScope,
+  type HermesExecutionEnvScope,
+  type HermesEnvKeySet,
+} from "@/ai-runtime/gateway/hermes-env-scope";
 export {
   mapOpenAiCompatToRuntimeRequest,
   mapOpenAiResponseFormatToRuntime,

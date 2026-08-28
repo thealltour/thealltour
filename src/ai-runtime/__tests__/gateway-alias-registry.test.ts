@@ -140,7 +140,43 @@ describe("STEP 2-5.4C6 production gateway alias registry", () => {
 });
 
 describe("validateHermesRuntimeCutoverConfig", () => {
-  it("passes a well-formed production cutover config shape", () => {
+  const canonicalProviders = {
+    "thealltour-runtime": {
+      key_env: "AI_RUNTIME_INFERENCE_GATEWAY_TOKEN",
+      base_url: "http://127.0.0.1:3000/api/ai-runtime/v1",
+      api_mode: "chat_completions" as const,
+      models: {
+        [HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST]: { context_length: 128000 },
+      },
+    },
+  };
+
+  const canonicalModel = {
+    provider: "custom:thealltour-runtime",
+    default: HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST,
+    base_url: "http://127.0.0.1:3000/api/ai-runtime/v1",
+    api_mode: "chat_completions" as const,
+  };
+
+  it("passes canonical named-custom production cutover shape with Hermes execution scope", () => {
+    const result = validateHermesRuntimeCutoverConfig(
+      {
+        profileId: "performance-analyst",
+        model: canonicalModel,
+        fallback_providers: [],
+        providers: canonicalProviders,
+      },
+      {
+        env: { AI_RUNTIME_INFERENCE_GATEWAY_TOKEN: "present" },
+        checkHermesExecutionScope: true,
+      },
+    );
+    expect(result.ok).toBe(true);
+    expect(result.namedProviderKey).toBe("thealltour-runtime");
+    expect(result.issues.filter((i) => i.severity === "error")).toHaveLength(0);
+  });
+
+  it("rejects C7 Attempt #1 bare custom provider shape", () => {
     const result = validateHermesRuntimeCutoverConfig(
       {
         profileId: "performance-analyst",
@@ -152,31 +188,70 @@ describe("validateHermesRuntimeCutoverConfig", () => {
         },
         fallback_providers: [],
         providers: {
-          "theallcloud-runtime": {
+          "thealltour-runtime": {
             key_env: "AI_RUNTIME_INFERENCE_GATEWAY_TOKEN",
             base_url: "http://127.0.0.1:3000/api/ai-runtime/v1",
+            api_mode: "chat_completions",
           },
         },
       },
-      { AI_RUNTIME_INFERENCE_GATEWAY_TOKEN: "set" },
+      { env: { AI_RUNTIME_INFERENCE_GATEWAY_TOKEN: "present" }, checkHermesExecutionScope: false },
     );
-    expect(result.ok).toBe(true);
-    expect(result.issues.filter((i) => i.severity === "error")).toHaveLength(0);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((i) => i.code === "hermes_bare_custom_provider_forbidden")).toBe(true);
+  });
+
+  it("flags Node-only token visibility without Hermes execution scope", () => {
+    const result = validateHermesRuntimeCutoverConfig(
+      {
+        profileId: "performance-analyst",
+        model: canonicalModel,
+        fallback_providers: [],
+        providers: canonicalProviders,
+      },
+      {
+        env: { AI_RUNTIME_INFERENCE_GATEWAY_TOKEN: "present" },
+        hermesProcessEnv: {},
+        checkHermesExecutionScope: true,
+        hermesHome: "/nonexistent/hermes-home-for-test",
+      },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((i) => i.code === "gateway_token_not_in_hermes_execution_scope")).toBe(
+      true,
+    );
+    expect(result.issues.some((i) => i.code === "gateway_token_node_only_mismatch")).toBe(true);
   });
 
   it("flags dual fallback ownership", () => {
     const result = validateHermesRuntimeCutoverConfig({
       profileId: "performance-analyst",
-      model: {
-        provider: "custom",
-        default: HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST,
-        base_url: "http://127.0.0.1:3000/api/ai-runtime/v1",
-        api_mode: "chat_completions",
-      },
+      model: canonicalModel,
       fallback_providers: ["openrouter"],
+      providers: canonicalProviders,
     });
     expect(result.ok).toBe(false);
     expect(result.issues.some((i) => i.code === "hermes_fallback_providers_nonempty")).toBe(true);
+  });
+
+  it("rejects inline api_key in providers block", () => {
+    const result = validateHermesRuntimeCutoverConfig({
+      profileId: "performance-analyst",
+      model: canonicalModel,
+      fallback_providers: [],
+      providers: {
+        "thealltour-runtime": {
+          api_key: "inline-secret",
+          base_url: "http://127.0.0.1:3000/api/ai-runtime/v1",
+          api_mode: "chat_completions",
+          models: {
+            [HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST]: {},
+          },
+        },
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((i) => i.code === "hermes_inline_api_key_forbidden")).toBe(true);
   });
 });
 

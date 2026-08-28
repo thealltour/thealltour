@@ -180,8 +180,8 @@ providers:
 | Context continuity | **PASS** — `C7_CONTEXT_OK`, history intact |
 | Production MCP tool loop (`get_performance_evidence`) | **PASS** — `C7_MCP_OK` |
 | Hermes oneshot | **PASS** — `C7_ONESHOT_OK`, exit 0 |
-| Group Chat | **NOT_EXERCISED** — no `hermes group` CLI; Group turns are Desktop/TUI-owned |
-| Runtime observability (last 25m) | **PASS** — 34 events `agent_id=performance-analyst`, `workload=analysis`, **0** `runtime-spike` |
+| Group Chat | See **C7 Group Desktop probe (2026-08-28 16:27 KST)** below |
+| Runtime observability (immediate probes) | **PASS** — events `agent_id=performance-analyst`, `workload=analysis`, **0** `runtime-spike` |
 | Other 3 Production Bots | **UNCHANGED** — native Gemini (checksums verified) |
 | 08:30 NON_LLM routine `9e96a94ee72f` | **UNCHANGED** — not rerun |
 | Rollback triggered | **no** |
@@ -258,8 +258,159 @@ Monitor: canonical Bot Chat, MCP usage, oneshot, Gateway `:3000` health, Runtime
 | Canonical Bot Chat ongoing stability | Immediate PASS holds; **full-window soak pending** |
 | 08:30 Analyst `9e96a94ee72f` (2026-08-29) | **PENDING** — next run scheduled |
 | 09:00 Marketing `edfc1815135b` (2026-08-29) | **PENDING** — last run still pre-repair error (2026-08-28 09:00) |
-| Group Chat Desktop probe | **NOT_EXERCISED** (does not block FINAL) |
+| Group Chat Desktop probe | **PASS (orchestration)** / **Gateway NOT OBSERVED** — see below |
 | 24h Gateway soak / natural traffic | **INCOMPLETE** |
+
+**C7 Group Desktop probe (2026-08-28 16:27 KST)** — `thealltour marketing`, user `@Performance Analyst` turn
+
+| Check | Result |
+|---|---|
+| Group orchestration / UX | **PASS** — Analyst + Manager + Strategist + Auditor turns completed; no Group abort |
+| Runtime Gateway traversed (PA turn) | **NO** — **0** observability events ≥16:25 KST; Hermes log: session `20260826_225600_a8ad31`, `provider=gemini`, direct Gemini API (`API call #1 … provider=gemini`) |
+| Session model restore | Group session retained pre-cutover `gemini-3.5-flash-lite` snapshot — **overrode** profile `custom:thealltour-runtime` for this turn |
+| Observability `agent_id` / `workload` | **N/A** (no Gateway events) |
+| `runtime-spike` attribution | **0** |
+| Other 3 Bots | **native Gemini** (config + log confirmed) |
+| Group membership / storage | **UNCHANGED** — `profile.yaml` revision **25**, 4 members; expected log append only |
+| Secret / prompt / MCP in observability | **Clean** — no events for this turn; allow-list metadata unchanged |
+
+**Group Chat Desktop probe: PASS** (Group stability). **Gateway path for Group turn: NOT OBSERVED** — not a Gateway failure; see **C7.2** for session-model semantics. CLI `-Q` / oneshot / `-m` probes remain authoritative for **fresh-process Gateway wiring**; **Desktop-resumed** Bot/Group sessions are a separate gap until migrated.
+
+### C7.2 Group Session Model Snapshot Finding (2026-08-28)
+
+**STEP:** 2-5.4C7.2 — read-only Hermes v0.20.5 source audit + persisted-state inspection. **No Production config/group/storage mutation.**
+
+#### Observed evidence (Production)
+
+| Surface | Verdict | Detail |
+|---|---|---|
+| Group UX / orchestration | **PASS** | `@Performance Analyst` in `thealltour marketing` (~16:27 KST) completed multi-member turn |
+| Existing Group PA → Runtime Gateway | **NOT OBSERVED / NOT PASSED** | 0 PA observability events ≥16:25 KST; remote gateway log: session `20260826_225600_a8ad31`, `provider=gemini`, native Gemini API |
+| Profile config (post-cutover) | **Gateway-backed** | `custom:thealltour-runtime` + `thealltour/performance-analyst` in `performance-analyst/config.yaml` only |
+
+Classification: **Group orchestration PASS**; **Existing Group member inference pinned to pre-cutover native Gemini snapshot** — not relabeled as Gateway failure.
+
+#### Source root cause (Hermes v0.20.5, git `03537d69`)
+
+Hermes treats **session rows** as durable model/provider snapshots. Profile `config.yaml` is **not** re-consulted on every Desktop/TUI turn when a session carries a pinned override.
+
+| Stage | File / function | Behavior |
+|---|---|---|
+| Persist model route | `tui_gateway/server.py` → `_runtime_model_config()` | Writes `sessions.model`, `billing_provider`, JSON `model_config` (incl. `gateway_runtime`) on API calls and `/model` |
+| Read stored override | `tui_gateway/server.py` → `_stored_session_runtime_overrides()` | Builds `model_override` dict from row `model` + `model_config.provider` or `billing_provider` |
+| Resume (Desktop/TUI) | `tui_gateway/methods_session.py` → `@method("session.resume")` | Loads overrides via `_stored_session_runtime_overrides(found)`; stores on live session record as `model_override` |
+| Agent build | `tui_gateway/server.py` → `_make_agent()` | **Prefers `model_override` over profile config** (L8516–8551) |
+| Per-turn config sync | `tui_gateway/server.py` → `_sync_agent_model_with_config()` | Adopts `config.yaml` model **only when `session["model_override"]` is unset** (L6270–6277) |
+| Group member session | `apps/desktop/.../hermes-bots/plugin.js` → `ensureGroupChatSession()` | `session.resume` by stored sid or title `Group: ${roomId \|\| group}`; else `session.create` |
+| Group member turn | `runGroupChatMemberTurnLeased()` | Re-resumes member session, `prompt.submit` on **runtime** id; model comes from resumed override |
+| CLI resume restore | `cli.py` → `_restore_session_model()` | Restores row snapshot into `self.model` / `self.provider` (unless `-m`) |
+| CLI `-Q --resume` quirk | `cli.py` single-query path (~L21523–21529) | `_resolve_turn_agent_config()` runs **before** `_init_agent()` restore; passes profile model/runtime as **`model_override` arg**, which wins over restored snapshot (`effective_model = model_override or self.model`) |
+
+**CONFIRMED:** Existing Group member sessions use the **TUI gateway resume path** → pinned `model_override` → native Gemini for PA Group session `20260826_225600_a8ad31`.
+
+**CONFIRMED:** C7 Attempt #2 canonical Bot Chat probe used **CLI** `hermes chat --resume … -Q` (no `-m`). Gateway was reached because the `-Q` path supplies **current profile** as explicit `model_override`, not because the stored Bot Chat row already pointed at Gateway.
+
+**INFERRED:** Desktop **Bot Chat** for the same stored session (`20260825_133423_f2c9b2`, `source: tui`) would follow the **same TUI `session.resume` + `model_override` semantics as Group**, not the CLI `-Q` probe — i.e. likely **native Gemini until session model is refreshed**, despite profile cutover.
+
+#### Desktop Bot Chat session snapshot verification (2026-08-28 ~16:43 KST)
+
+Read-only operator turn in existing Performance Analyst **Desktop Bot Chat** (no `/model`, no migration).
+
+| Check | Result |
+|---|---|
+| Session id reused | **YES** — `20260825_133423_f2c9b2` (`agent_session_id` in multiplex gateway log; `state.db` `last_activity_at` 16:43:48 KST; message_count 18) |
+| Platform | **tui** (Desktop → multiplex gateway `~/.hermes/logs/agent.log`) |
+| User prompt (observed) | `현재 상태를 한 문장으로 답해줘.` (16:43:47 KST) |
+| Hermes inference route | **native Gemini snapshot** — `provider=gemini`, `model=gemini-3.5-flash-lite`, `base_url=https://generativelanguage.googleapis.com/v1beta`; `Gemini native client created (chat_completion_stream_request)`; `API call #1 … provider=gemini` |
+| Runtime Gateway observability | **0 events** for `agent_id=performance-analyst` ≥16:40 KST — **no** `workload=analysis` row for this turn |
+| DB row after turn | `model=gemini-3.5-flash-lite`, `billing_provider=gemini` (unchanged) |
+
+**Classification: A — Desktop existing Bot Chat → native Gemini snapshot** (C7.2 inference confirmed; replaces prior INFERRED-only Bot Chat note).
+
+Log source: `~/.hermes/logs/agent.log` lines ~3637–3648 (multiplex TUI gateway). Profile `performance-analyst/logs/agent.log` has **no** 16:43 entry (Desktop routed via gateway host, not local CLI).
+
+#### Bot Chat vs Group
+
+| | Canonical Bot Chat `20260825_133423_f2c9b2` | Group PA `20260826_225600_a8ad31` |
+|---|---|---|
+| Title | `Bot Chat` | `Group: thealltour marketing` |
+| DB `model` | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite` |
+| DB `billing_provider` | `gemini` | `gemini` |
+| DB `model_config` | `null` | `{"model":"gemini-3.5-flash-lite","provider":"gemini"}` |
+| C7 probe path | **CLI `-Q --resume`** → Gateway (not Desktop) | **Desktop Group** → TUI resume → Gemini |
+| Desktop Bot Chat (16:43 KST) | **Desktop TUI resume → Gemini (observed)** | same |
+| Why different at probe time | CLI `-Q` pre-override ordering (see above) | Explicit `model_config.provider` + live `model_override` pin |
+
+Both are **separate hidden/TUI-scoped sessions** under the same profile DB; Group does **not** share the canonical Bot Chat row.
+
+#### Persisted state (read-only, no secrets)
+
+| Session id | Title | model | billing_provider | base_url (billing) | source |
+|---|---|---|---|---|---|
+| `20260825_133423_f2c9b2` | Bot Chat | `gemini-3.5-flash-lite` | `gemini` | `https://generativelanguage.googleapis.com/v1beta` | `tui` |
+| `20260826_225600_a8ad31` | Group: thealltour marketing | `gemini-3.5-flash-lite` | `gemini` | same | `tui` |
+| `20260828_160530_905924` | C7A2 Auth Probe | `thealltour/performance-analyst` | `custom` | `http://127.0.0.1:3000/api/ai-runtime/v1` | `cli` |
+| `20260828_161315_002310` | oneshot | `thealltour/performance-analyst` | `custom` | same | `cli` |
+
+Group room storage (`~/.hermes/profile.yaml`): revision **25**, 4 members unchanged; member→session pointer lives in Desktop `$groupChats` state (not duplicated in YAML excerpt). Production Group storage **not modified** in C7.2.
+
+#### Supported refresh mechanisms (Hermes-native)
+
+| Mechanism | Supported | Preserves Group history | Preserves Group identity | Resets member session only | Destructive | Production-suitable |
+|---|---|---|---|---|---|---|
+| `/model thealltour/performance-analyst --provider custom:thealltour-runtime --session` (in live TUI session) | **Yes** | Yes (transcript) | Yes | Yes (model pin on that session row) | No | **Yes** — preferred if operator can open member session |
+| `_sync_agent_model_with_config` (automatic on turn) | **Yes**, but only when **`model_override` unset** | Yes | Yes | No — in-place adopt | No | **Blocked** for existing Group/Bot rows that already have overrides |
+| `/model … --global` | **Yes** | Yes | Yes | No — changes profile default for **new** sessions | Config write | Partial — does **not** refresh pinned existing sessions |
+| `/model … --once` | **Yes** | Yes | Yes | One turn only | No | Probe/debug only |
+| New Group `roomId` (`mintGroupRoomId()`) + new member `session.create` | **Yes** | **No** for old room transcript in new room | Display name can match; **new room id** | Fresh member sessions | Old room archived/disband | **Yes** as controlled migration (step 3 in policy) |
+| Disband + recreate Group (same display name, new `roomId`) | **Yes** | **No** (new room log) | Name reuse only | All members fresh | High UX impact | Last resort |
+| Delete Production Group / mutate `profile.yaml` room | Desktop supports disband | **No** | **No** | **No** | **Yes** | **Forbidden** during C7 (explicit constraint) |
+| Hermes “model refresh” / “reload session config” command | **No dedicated command found** | — | — | — | — | — |
+
+#### Fresh-session hypothesis
+
+**CONFIRMED (source):** `session.create` without `model` param builds from current profile via `_make_agent()` / deferred build; Group `ensureGroupChatSession()` calls `session.create` only when resume returns **4007** (no row). A **new Group room** (`mintGroupRoomId()`) or **new member session** after 4007 would use post-cutover `custom:thealltour-runtime` + `thealltour/performance-analyst`.
+
+**Not executed in C7.2:** Non-production Desktop Group reproduction (would write `$groupChats` / optional `runtime-spike` profile edits). Deferred to C7.3+ if needed.
+
+#### Future cutover blast radius
+
+If `thealltour marketing` Group member sessions are **never refreshed**:
+
+| Profile cutover order | Individual Bot surfaces | Existing Group member turn |
+|---|---|---|
+| PA (C7, active) | Bot Chat Desktop, Group PA, cron, oneshot paths diverge | **PA Group: native Gemini (observed)** |
+| CS / GA / MM (C8–C10) | Same pattern per profile | **Each member keeps its own pinned session snapshot** until refreshed |
+
+**CONFIRMED:** Four profiles can be Gateway-backed in `config.yaml` while the **same Group** continues calling native Gemini for members whose session rows still snapshot Gemini.
+
+**Other surfaces:**
+
+| Surface | Expected after profile cutover |
+|---|---|
+| `@mention` / Group orchestration | Unchanged — routes to member session; **does not re-resolve model** |
+| `message_agent` | Uses target Bot's session resume/create semantics — **same snapshot rules** |
+| CLI oneshot `-z` | **Fresh session** → current profile (**Gateway** for PA today) |
+| CLI `-Q --resume` | **Profile config wins** (override ordering) — **not representative of Desktop** |
+| Telegram Manager session | Messaging gateway resume — **same `_stored_session_runtime_overrides` family** (INFERRED; same `hermes_state` readers) |
+| Pre-existing TUI/Desktop sessions | Pinned until `/model --session` or new session |
+
+#### Recommended Group migration policy (C7–C10; not implemented in C7.2)
+
+1. **Preferred:** Operator runs `/model thealltour/<alias> --provider custom:thealltour-runtime --session` inside each affected **member hidden session** (or Desktop equivalent model picker scoped to session) after profile cutover — preserves Group history + identity.
+2. **Fallback:** After cutover soak, create **new Group room** (`roomId` mint), archive old room, re-seat members — preserves profile identities, not old room transcript in-place.
+3. **Last resort:** Disband/recreate Production Group — destructive UX; requires explicit approval.
+4. Document per-bot **session id inventory** (`Group: …` titles in `state.db`) at cutover time for audit.
+
+#### C7 FINAL impact (C7.2)
+
+**Classification A (recommended):** C7 can **FINAL PASS with documented Desktop session gap** (Bot Chat **confirmed** + Group **confirmed**), because:
+
+- Profile cutover, auth, MCP, oneshot, and **fresh-process** CLI Gateway paths are **proven**.
+- Observed Desktop Bot Chat + Group behavior matches **designed Hermes session immutability**, not Runtime regression.
+- **Action item:** migrate existing **Bot Chat and Group** member sessions before treating Desktop inference as cutover-complete.
+
+**Not B:** Rollback not warranted — native Gemini Group success is expected under current session semantics.
 
 **Rollback readiness:** `config.yaml.c7a2bak` SHA256 `21f69f58…` — present, not exercised.
 

@@ -252,6 +252,9 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
                       products={related}
                       surface="none"
                       hubLandingLayout
+                      analyticsSource="landing"
+                      analyticsLandingType="theme"
+                      taxonomySlug={trimmedSlug}
                     />
                   </section>
                 ) : null}

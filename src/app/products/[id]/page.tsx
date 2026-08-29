@@ -220,7 +220,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
         <SiteHeader activeTab="products" />
       <div className="min-h-screen page-bg-wash py-6 sm:py-10 md:py-14">
         <PageContainer size="wide">
-          <main className="w-full">
+          <main id="main-content" tabIndex={-1} className="w-full">
             <NavigationContextHeader
               items={buildProductsBreadcrumbItems("product_detail", {
                 currentLabel: product.title,

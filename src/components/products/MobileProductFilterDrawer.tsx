@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, MapPin, Palette, Package, ChevronDown, ChevronRight } from "lucide-react";
 import type { ProductFiltersState } from "@/lib/productFilters";
@@ -8,6 +8,7 @@ import { PRODUCT_FILTER_KEYS } from "@/lib/productFilters";
 import { cn } from "@/lib/cn";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
+import { restoreFocus, trapOverlayTabKey } from "@/lib/a11y/overlayFocus";
 
 /** 트리에서 name에 해당하는 노드까지의 경로(본인 포함) id 목록. 선택 시 자동 펼치기용 */
 function getNodePathIds(tree: RegionTreeNode[], targetName: string): string[] {
@@ -148,6 +149,9 @@ export function MobileProductFilterDrawer({
   });
   const [expandedRegionIds, setExpandedRegionIds] = useState<Set<string>>(() => new Set());
   const [expandedThemeIds, setExpandedThemeIds] = useState<Set<string>>(() => new Set());
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   const useRegionTree = regionTree && regionTree.length > 0;
   const useThemeTree = themeTree && themeTree.length > 0;
@@ -201,11 +205,32 @@ export function MobileProductFilterDrawer({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const frame = requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      const root = dialogRef.current;
+      if (root) trapOverlayTabKey(e, root);
     }
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+      restoreFocus(previousActiveElementRef.current);
+    };
   }, [isOpen, onClose]);
 
   function handleApply() {
@@ -223,10 +248,12 @@ export function MobileProductFilterDrawer({
 
   const content = (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden"
       role="dialog"
       aria-modal="true"
       aria-label="필터"
+      tabIndex={-1}
     >
       <button
         type="button"
@@ -248,9 +275,10 @@ export function MobileProductFilterDrawer({
           </div>
           <button
             type="button"
+            ref={closeButtonRef}
             onClick={onClose}
             aria-label="닫기"
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] transition-colors active:bg-[var(--surface-muted)]"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--text-muted)] transition-colors active:bg-[var(--surface-muted)]"
           >
             <X className="h-5 w-5" aria-hidden />
           </button>

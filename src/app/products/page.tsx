@@ -118,7 +118,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
       <SiteHeader activeTab="products" searchQuery={searchKeyword} golfPresetActive={golfPresetActive} />
 
-      <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
+      <main id="main-content" tabIndex={-1} className="flex w-full flex-col py-6 sm:py-10 md:py-14">
         <PageContainer size="wide" className="flex flex-col gap-4 lg:gap-6">
           <NavigationContextHeader
             items={buildProductsBreadcrumbItems("index", {

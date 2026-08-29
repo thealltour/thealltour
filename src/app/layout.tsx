@@ -133,6 +133,12 @@ export default function RootLayout({
         />
       </head>
       <body className="site-public flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-[color:color-mix(in_oklab,var(--primary)_18%,white)] selection:text-foreground">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-lg focus:bg-[var(--surface)] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-[var(--text-primary)] focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+        >
+          본문으로 건너뛰기
+        </a>
         <FirstTouchInit />
         <KakaoPixel />
         {process.env.NODE_ENV === "development" ? <WebVitalsReporter /> : null}

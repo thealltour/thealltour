@@ -48,8 +48,8 @@ export const metadata = {
     "원하는 여행 스타일, 목적, 분위기 기준으로 상품을 탐색해 보세요. 더올투어가 준비한 테마별 여행·골프·패키지를 만나보실 수 있습니다.",
 };
 
-const PREVIEW_THEMES_COUNT = 4;
-const PREVIEW_PRODUCTS_PER_THEME = 4;
+const PREVIEW_THEMES_COUNT = 2;
+const PREVIEW_PRODUCTS_PER_THEME = 3;
 
 export default async function ThemesHubPage() {
   const [themes, products] = await Promise.all([
@@ -101,7 +101,7 @@ export default async function ThemesHubPage() {
 
       <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
         <PageContainer size="wide" className="flex flex-col gap-8">
-          <LandingHero {...getHubHeroConfig("themes")} className="mb-12" />
+          <LandingHero {...getHubHeroConfig("themes")} className="mb-6 sm:mb-10" />
 
           {hasThemes ? (
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
@@ -136,7 +136,7 @@ export default async function ThemesHubPage() {
                 </section>
 
                 {hasPreviews && (
-                  <section id="recommended-products" aria-labelledby="recommended-products-heading" className="mt-16">
+                  <section id="recommended-products" aria-labelledby="recommended-products-heading" className="mt-12 sm:mt-16">
                     <h2 id="recommended-products-heading" className="sr-only">
                       추천 상품
                     </h2>
@@ -154,6 +154,9 @@ export default async function ThemesHubPage() {
                               products={themeProducts}
                               surface="none"
                               hubLandingLayout
+                              analyticsSource="landing"
+                              analyticsLandingType="theme"
+                              taxonomySlug={theme.slug}
                             />
                           ),
                       )}
@@ -161,7 +164,7 @@ export default async function ThemesHubPage() {
                   </section>
                 )}
 
-                <section id="destinations" aria-labelledby="destinations-heading" className="mt-16">
+                <section id="destinations" aria-labelledby="destinations-heading" className="mt-12 sm:mt-16">
                   <SectionBlock surface="none" padding="md">
                     <SectionHeader
                       titleId="destinations-heading"

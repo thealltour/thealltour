@@ -15,6 +15,7 @@ import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { buildGolfProductsHref, isGolfTourType, GOLF_TOUR_TYPE } from "@/lib/products/golfChannel";
+import { restoreFocus, trapOverlayTabKey } from "@/lib/a11y/overlayFocus";
 
 export const MOBILE_HEADER_NAVIGATION_ID = "mobile-header-navigation";
 
@@ -46,6 +47,9 @@ export function MobileHeaderDrawer({
   const { openAuth } = useAuthModal();
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
   const isHome = pathname === "/";
   const golfHref = buildGolfProductsHref();
@@ -61,11 +65,32 @@ export function MobileHeaderDrawer({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const frame = requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      const root = panelRef.current ?? overlayRef.current;
+      if (root) trapOverlayTabKey(e, root);
     }
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+      restoreFocus(previousFocusedElementRef.current);
+    };
   }, [isOpen, onClose]);
 
   useEffect(() => {
@@ -126,6 +151,7 @@ export function MobileHeaderDrawer({
       onClick={handleOverlayClick}
     >
       <div
+        ref={panelRef}
         className={cn(
           "flex w-full max-w-sm flex-1 flex-col glass-float",
           "ml-0 overflow-hidden",
@@ -135,6 +161,7 @@ export function MobileHeaderDrawer({
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--divider)] px-4">
           <span className="type-small font-semibold text-[var(--foreground)]">메뉴</span>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             aria-label="메뉴 닫기"

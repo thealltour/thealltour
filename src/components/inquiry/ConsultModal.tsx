@@ -6,9 +6,12 @@ import {
   useContext,
   useState,
   useEffect,
+  useId,
+  useRef,
   type FormEvent,
   type ReactNode,
 } from "react";
+import { restoreFocus, trapOverlayTabKey } from "@/lib/a11y/overlayFocus";
 import { Send, X } from "lucide-react";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { trackReviewConversionInquiry } from "@/lib/reviewExperimentTracking";
@@ -111,6 +114,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
   const [memberProfile, setMemberProfile] = useState<{ name: string; phone: string } | null>(null);
   const [memberProfileLoading, setMemberProfileLoading] = useState(false);
   const quoteCtx = useProductQuote();
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   const showGolfBrief = isGolfBriefContext({
     quoteCategory: params.quoteCategory,
@@ -273,6 +280,36 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
     setMemberProfile(null);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const frame = requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        closeModal();
+        return;
+      }
+      const root = dialogRef.current;
+      if (root) trapOverlayTabKey(e, root);
+    }
+
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prevOverflow;
+      restoreFocus(previousActiveElementRef.current);
+    };
+  }, [isOpen, closeModal]);
+
   const showToast = useCallback((kind: "success" | "error", message: string) => {
     setToast({ kind, message });
     setTimeout(() => setToast(null), 2600);
@@ -418,16 +455,31 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
     <ConsultModalContext.Provider value={value}>
       {children}
       {isOpen && (
-        <div className="fixed inset-0 z-[60] bg-[var(--overlay)] backdrop-blur-[2px]">
+        <div
+          className="fixed inset-0 z-[60] bg-[var(--overlay)] backdrop-blur-[2px]"
+          onClick={closeModal}
+          role="presentation"
+        >
           <div className="flex min-h-full items-center justify-center px-4 py-6">
-            <div className="glass-float w-full max-w-md rounded-2xl p-6 text-[var(--text-primary)]">
+            <div
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              tabIndex={-1}
+              className="glass-float w-full max-w-md max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-2xl p-6 text-[var(--text-primary)] safe-bottom"
+              onClick={(e) => e.stopPropagation()}
+            >
               {isSuccess ? (
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm font-semibold tracking-[0.18em] text-[var(--text-muted)]">
                       THEALL QUICK CONSULT
                     </p>
-                    <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl">
+                    <h2
+                      id={titleId}
+                      className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl"
+                    >
                       상담 요청이 접수되었습니다
                     </h2>
                     <p className="mt-2 text-base text-[var(--text-muted)]">
@@ -437,6 +489,7 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                   <InquirySuccessPanel slaMinutes={slaMinutes} kakaoHref={kakaoHref} />
                   <button
                     type="button"
+                    ref={closeButtonRef}
                     onClick={closeModal}
                     className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-base font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)]"
                   >
@@ -450,7 +503,10 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                       <p className="text-sm font-semibold tracking-[0.18em] text-[var(--text-muted)]">
                         THEALL QUICK CONSULT
                       </p>
-                      <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl">
+                      <h2
+                        id={titleId}
+                        className="mt-1 text-xl font-semibold text-[var(--text-primary)] md:text-2xl"
+                      >
                         상담 요청
                       </h2>
                       <p className="mt-1 text-sm text-[var(--text-muted)] md:text-base">
@@ -467,8 +523,9 @@ export function ConsultModalProvider({ children }: { children: ReactNode }) {
                     </div>
                     <button
                       type="button"
+                      ref={closeButtonRef}
                       onClick={closeModal}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] transition-colors duration-150 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] transition-colors duration-150 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
                       aria-label="상담 모달 닫기"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />

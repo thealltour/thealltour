@@ -179,6 +179,8 @@ export type ProductToProductCardOverrides = Partial<
     | "layout"
     | "analyticsSource"
     | "analyticsSection"
+    | "analyticsLandingType"
+    | "taxonomySlug"
     | "onClickDetail"
     | "onClickConsult"
     | "hrefDetail"

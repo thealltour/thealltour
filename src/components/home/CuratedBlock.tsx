@@ -9,6 +9,7 @@ import {
   productToProductCardProps,
 } from "@/lib/productCardProps";
 import { CARD_BASE, CARD_PADDING_RELAXED } from "@/lib/cardTokens";
+import type { ProductCardClickSource } from "@/lib/analytics/trackProductClick";
 
 export type CuratedBlockSurface = "none" | "muted" | "card";
 
@@ -31,6 +32,14 @@ export type CuratedBlockProps = {
    * true: `/recommended` 랜딩 등 — 그리드 카드 호버를 토큰 기반으로 더 또렷하게.
    */
   landingHubProductHoverEmphasis?: boolean;
+  /**
+   * 상품 카드 클릭 계측 source. 미지정 시 기존 home_curated 유지(홈 CuratedBlock).
+   * Region/Theme Hub·Landing에서는 landing을 전달한다.
+   */
+  analyticsSource?: ProductCardClickSource;
+  /** analyticsSource=landing 일 때 region | theme 구분 */
+  analyticsLandingType?: "region" | "theme" | null;
+  taxonomySlug?: string | null;
 };
 
 const SURFACE_CLASS: Record<CuratedBlockSurface, string> = {
@@ -47,11 +56,16 @@ export default function CuratedBlock({
   hubLandingLayout = false,
   featuredLanding = false,
   landingHubProductHoverEmphasis = false,
+  analyticsSource,
+  analyticsLandingType = null,
+  taxonomySlug = null,
 }: CuratedBlockProps) {
   if (!products || products.length === 0) return null;
 
   const useHubRail = hubLandingLayout || featuredLanding;
   const useTightMobileGap = featuredLanding;
+  const resolvedSource: ProductCardClickSource =
+    analyticsSource ?? (featuredLanding ? "landing" : "home_curated");
 
   return (
     <section className={cn("space-y-3 sm:space-y-4", SURFACE_CLASS[surface])}>
@@ -75,8 +89,10 @@ export default function CuratedBlock({
               featuredLanding
                 ? {
                     layout: "related",
-                    analyticsSource: "landing",
+                    analyticsSource: resolvedSource,
                     analyticsSection: title,
+                    analyticsLandingType: analyticsLandingType ?? undefined,
+                    taxonomySlug: taxonomySlug ?? undefined,
                     guideBridgeNarrowCopy: true,
                     experienceSummary: buildProductExperienceSummary(product),
                     selectionHighlightLine: getFeaturedHighlightLine(product),
@@ -85,8 +101,10 @@ export default function CuratedBlock({
                   }
                 : {
                     layout: "grid",
-                    analyticsSource: "home_curated",
+                    analyticsSource: resolvedSource,
                     analyticsSection: title,
+                    analyticsLandingType: analyticsLandingType ?? undefined,
+                    taxonomySlug: taxonomySlug ?? undefined,
                     ...(landingHubProductHoverEmphasis ? { emphasizeLandingHubHover: true } : {}),
                   },
             )}

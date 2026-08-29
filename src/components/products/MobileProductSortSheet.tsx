@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { ProductSortId } from "@/lib/productFilters";
 import { SORT_OPTIONS } from "@/lib/productFilters";
 import { cn } from "@/lib/cn";
+import { getOverlayFocusableElements, restoreFocus, trapOverlayTabKey } from "@/lib/a11y/overlayFocus";
 
 export type MobileProductSortSheetProps = {
   isOpen: boolean;
@@ -22,13 +23,46 @@ export function MobileProductSortSheet({
   onSelect,
   options,
 }: MobileProductSortSheetProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
+
+    previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const frame = requestAnimationFrame(() => {
+      const root = dialogRef.current;
+      if (!root) return;
+      const selected = root.querySelector<HTMLElement>('[aria-current="true"]');
+      if (selected) {
+        selected.focus();
+        return;
+      }
+      const focusables = getOverlayFocusableElements(root);
+      const firstSort = focusables.find((el) => el.getAttribute("data-sort-option") === "true");
+      (firstSort ?? focusables[0])?.focus();
+    });
+
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      const root = dialogRef.current;
+      if (root) trapOverlayTabKey(e, root);
     }
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+      restoreFocus(previousActiveElementRef.current);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -37,10 +71,12 @@ export function MobileProductSortSheet({
 
   const content = (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden"
       role="dialog"
       aria-modal="true"
       aria-label="정렬"
+      tabIndex={-1}
     >
       <button
         type="button"
@@ -58,28 +94,33 @@ export function MobileProductSortSheet({
           <h2 className="type-small font-semibold text-[var(--foreground)]">정렬</h2>
         </div>
         <ul className="py-2">
-          {sortRows.map((opt) => (
-            <li key={opt.value === "" ? "sort-default" : opt.value}>
-              <button
-                type="button"
-                onClick={() => {
-                  onSelect(opt.value);
-                  onClose();
-                }}
-                className={cn(
-                  "flex w-full items-center justify-between px-4 py-3 text-left type-small transition-colors",
-                  currentSort === opt.value
-                    ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
-                    : "text-[var(--text-primary)] active:bg-[var(--surface-muted)]",
-                )}
-              >
-                {opt.label}
-                {currentSort === opt.value ? (
-                  <span className="text-[var(--primary)]" aria-hidden>✓</span>
-                ) : null}
-              </button>
-            </li>
-          ))}
+          {sortRows.map((opt) => {
+            const selected = currentSort === opt.value;
+            return (
+              <li key={opt.value === "" ? "sort-default" : opt.value}>
+                <button
+                  type="button"
+                  data-sort-option="true"
+                  aria-current={selected ? "true" : undefined}
+                  onClick={() => {
+                    onSelect(opt.value);
+                    onClose();
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between px-4 py-3 text-left type-small transition-colors",
+                    selected
+                      ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
+                      : "text-[var(--text-primary)] active:bg-[var(--surface-muted)]",
+                  )}
+                >
+                  {opt.label}
+                  {selected ? (
+                    <span className="text-[var(--primary)]" aria-hidden>✓</span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>

@@ -249,6 +249,9 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
                       products={related}
                       surface="none"
                       hubLandingLayout
+                      analyticsSource="landing"
+                      analyticsLandingType="region"
+                      taxonomySlug={trimmedSlug}
                     />
                   </section>
                 ) : null}

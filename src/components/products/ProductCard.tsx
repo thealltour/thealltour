@@ -76,6 +76,9 @@ export type ProductCardProps = {
   /** 상품 카드 클릭 계측용 (선택). 설정 시 클릭 시 product_card_click 전송 */
   analyticsSource?: "product_list" | "landing" | "home_curated";
   analyticsSection?: string;
+  /** analyticsSource=landing 일 때 region/theme 소스 구분 */
+  analyticsLandingType?: "region" | "theme" | null;
+  taxonomySlug?: string | null;
   /** 계측 시 사용할 상품 ID (analyticsSource 설정 시 권장) */
   productId?: string;
   /** grid | list: 가로 split. related: 상세 하단 세로형 */
@@ -172,6 +175,8 @@ export default function ProductCard({
   reviewCount,
   analyticsSource,
   analyticsSection,
+  analyticsLandingType,
+  taxonomySlug,
   productId,
   layout = "grid",
   maxTags = 2,
@@ -218,20 +223,7 @@ export default function ProductCard({
 
   const campaignPitch = campaignPitchLine?.trim() ?? "";
 
-  const handleConsult = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (status === "SOLD_OUT" && typeof window !== "undefined") {
-      window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
-    }
-    setConsultPressed(true);
-    onClickConsult?.();
-  };
-
-  const handleConsultKey = (e: React.KeyboardEvent) => {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    e.preventDefault();
-    e.stopPropagation();
+  const handleConsult = () => {
     if (status === "SOLD_OUT" && typeof window !== "undefined") {
       window.alert("마감된 상품입니다. 대기 문의를 남겨 주시면 다음 일정 시 안내드립니다.");
     }
@@ -673,28 +665,26 @@ export default function ProductCard({
               />
             </div>
           ) : null}
-          {onClickConsult ? (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-disabled={consultPressed}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "inline-flex w-fit !h-9 !min-h-9 !px-3 !text-xs",
-                consultPressed && "pointer-events-none opacity-60",
-              )}
-              onClick={handleConsult}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleConsultKey(e);
-              }}
-            >
-              {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status, ctaLabelOptions)}
-            </span>
-          ) : null}
         </div>
       </div>
     </div>
   );
+
+  const consultAction =
+    onClickConsult && !isRelatedLayout ? (
+      <button
+        type="button"
+        disabled={consultPressed}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "inline-flex w-fit min-h-11 !px-3 !text-xs",
+          consultPressed && "pointer-events-none opacity-60",
+        )}
+        onClick={handleConsult}
+      >
+        {status === "SOLD_OUT" ? "대기 문의" : getProductCtaLabel(status, ctaLabelOptions)}
+      </button>
+    ) : null;
 
   const cardContent: ReactNode = isRelatedLayout ? relatedCardContent : gridListCardContent;
 
@@ -711,28 +701,62 @@ export default function ProductCard({
       "max-sm:shadow-md max-sm:ring-1 max-sm:ring-[var(--primary)]/20",
   );
 
-  if (hrefDetail) {
-    const handleCardClick = () => {
-      if (analyticsSource && hrefDetail) {
-        const id = productId ?? (hrefDetail.split("/").pop() || "");
-        trackProductCardClick({
-          productId: id,
-          productTitle: title ?? "",
-          href: hrefDetail,
-          source: analyticsSource,
-          section: analyticsSection ?? undefined,
-        });
-      }
-    };
+  const linkFocusClass =
+    "outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
+
+  const handleCardClick = () => {
+    if (analyticsSource && hrefDetail) {
+      const id = productId ?? (hrefDetail.split("/").pop() || "");
+      trackProductCardClick({
+        productId: id,
+        productTitle: title ?? "",
+        href: hrefDetail,
+        source: analyticsSource,
+        section: analyticsSection ?? undefined,
+        landingType: analyticsLandingType ?? undefined,
+        taxonomySlug: taxonomySlug ?? undefined,
+      });
+    }
+  };
+
+  /** consult가 있으면 Link/role=button 자손에 button을 두지 않음 (PR-UI-10B) */
+  if (consultAction) {
+    const imageSpacerClass = isListLayout
+      ? "w-[38%] min-w-[180px] max-w-[280px]"
+      : "w-[42%] min-w-[140px] max-w-[220px]";
     return (
-      <Link
-        href={hrefDetail}
-        className={cn(
-          "block h-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]",
-          className,
+      <Card variant="interactive" className={cn(wrapperClass, "flex-col", className)}>
+        {hrefDetail ? (
+          <Link href={hrefDetail} className={cn("block min-w-0 flex-1", linkFocusClass)} onClick={handleCardClick}>
+            {cardContent}
+          </Link>
+        ) : (
+          <div
+            className={cn("min-w-0 flex-1 cursor-pointer", linkFocusClass)}
+            role="link"
+            tabIndex={0}
+            onClick={onClickDetail}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClickDetail?.();
+              }
+            }}
+          >
+            {cardContent}
+          </div>
         )}
-        onClick={handleCardClick}
-      >
+        <div className="flex w-full shrink-0">
+          <div className={cn("shrink-0", imageSpacerClass)} aria-hidden />
+          <div className="min-w-0 flex-1 px-4 pb-4 pt-0">{consultAction}</div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (hrefDetail) {
+    return (
+      <Link href={hrefDetail} className={cn("block h-full", linkFocusClass, className)} onClick={handleCardClick}>
         <Card variant="interactive" className={wrapperClass}>
           {cardContent}
         </Card>
@@ -743,11 +767,7 @@ export default function ProductCard({
   return (
     <Card
       variant="interactive"
-      className={cn(
-        wrapperClass,
-        "outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2",
-        className,
-      )}
+      className={cn(wrapperClass, linkFocusClass, className)}
       role="button"
       tabIndex={0}
       onClick={onClickDetail}

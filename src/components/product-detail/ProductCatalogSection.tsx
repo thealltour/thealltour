@@ -148,7 +148,7 @@ export default function ProductCatalogSection({
 
   return (
     <section className="space-y-4">
-      <div className="sticky top-[76px] z-20 rounded-xl border border-[var(--border)] bg-[var(--surface)]/98 px-3 py-2.5 backdrop-blur sm:rounded-xl sm:px-3 sm:py-3">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/98 px-3 py-2.5 backdrop-blur sm:rounded-xl sm:px-3 sm:py-3">
         <div className="space-y-1">
           <p className="text-xs leading-snug text-[var(--text-muted)] sm:text-sm">
             총 {keywordFilteredProducts.length}개 · 지역 {regionSummary}

@@ -66,6 +66,15 @@ async function recordKakaoSyncLandingHit(request: NextRequest): Promise<boolean>
 export async function middleware(request: NextRequest, _event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
+  /** MyPage layout이 unauth 시 `/login?next=` 로 정확한 경로를 넘기기 위함 */
+  if (pathname === "/mypage" || pathname.startsWith("/mypage/")) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", `${pathname}${request.nextUrl.search}`);
+    return NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+  }
+
   const golfTarget = resolveKakaoSyncLandingHitTarget(pathname);
   if (golfTarget) {
     const recorded = await recordKakaoSyncLandingHit(request);
@@ -133,6 +142,8 @@ export async function middleware(request: NextRequest, _event: NextFetchEvent) {
 
 export const config = {
   matcher: [
+    "/mypage",
+    "/mypage/:path*",
     "/theall_manager_only",
     "/admin/:path*",
     "/theall_manager_only/:path*",

@@ -32,7 +32,7 @@ const birthYearOptions = Array.from({ length: 100 }, (_, index) => String(new Da
 const birthMonthOptions = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
 
 const fieldClass =
-  "rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]";
+  "rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-base sm:text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--focus-ring)] focus:ring-2 focus:ring-[var(--focus-ring)]";
 
 function getLastDayOfMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();

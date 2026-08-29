@@ -5,6 +5,10 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buttonVariants } from "@/components/ui/Button";
 import { completePortOnePaymentClient } from "@/lib/payments/completePortOnePaymentClient";
+import {
+  trackPaymentReturnFailed,
+  trackPaymentReturnView,
+} from "@/lib/analytics/trackPaymentReturnEvents";
 import { cn } from "@/lib/cn";
 
 type ReturnStatus = "checking" | "failed";
@@ -18,8 +22,16 @@ function PortOneReturnInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ranRef = useRef(false);
+  const viewTrackedRef = useRef(false);
+  const failedTrackedRef = useRef(false);
   const [status, setStatus] = useState<ReturnStatus>("checking");
   const [message, setMessage] = useState("결제 내역을 확인하고 있습니다…");
+
+  useEffect(() => {
+    if (viewTrackedRef.current) return;
+    viewTrackedRef.current = true;
+    trackPaymentReturnView();
+  }, []);
 
   useEffect(() => {
     if (ranRef.current) return;
@@ -30,6 +42,10 @@ function PortOneReturnInner() {
     if (!paymentId) {
       setMessage("결제 식별자를 찾을 수 없습니다. 예약 내역에서 상태를 확인해 주세요.");
       setStatus("failed");
+      if (!failedTrackedRef.current) {
+        failedTrackedRef.current = true;
+        trackPaymentReturnFailed({ reason: "missing_payment_id", hasPaymentId: false });
+      }
       return;
     }
     ranRef.current = true;
@@ -39,6 +55,10 @@ function PortOneReturnInner() {
       if (!result.ok) {
         setMessage(result.message || "결제 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.");
         setStatus("failed");
+        if (!failedTrackedRef.current) {
+          failedTrackedRef.current = true;
+          trackPaymentReturnFailed({ reason: "complete_failed", hasPaymentId: true });
+        }
         return;
       }
       const q = new URLSearchParams();

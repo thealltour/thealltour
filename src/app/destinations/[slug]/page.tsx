@@ -177,6 +177,21 @@ export default async function DestinationLandingPage({ params }: Props) {
             />
           </div>
 
+          {related.length > 0 ? (
+            <section id="recommended-products" className="scroll-mt-28">
+              <CuratedBlock
+                title={`${destination.name} 여행상품`}
+                description={`${destination.name} 지역과 연결된 상품입니다.`}
+                products={related}
+                surface="none"
+                hubLandingLayout
+                analyticsSource="landing"
+                analyticsLandingType="region"
+                taxonomySlug={destination.slug}
+              />
+            </section>
+          ) : null}
+
           {destinationGuides.length > 0 ? (
             <SectionBlock id="guides" surface="none" padding="md" className="scroll-mt-28">
               <SectionHeader
@@ -197,18 +212,6 @@ export default async function DestinationLandingPage({ params }: Props) {
                 </Link>
               </div>
             </SectionBlock>
-          ) : null}
-
-          {related.length > 0 ? (
-            <section id="recommended-products" className="scroll-mt-28">
-              <CuratedBlock
-                title={`${destination.name} 대표 상품`}
-                description={`${destination.name} 지역과 연결된 상품입니다.`}
-                products={related}
-                surface="none"
-                hubLandingLayout
-              />
-            </section>
           ) : null}
 
           {reviewHighlights.length > 0 ? (

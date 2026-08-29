@@ -26,11 +26,11 @@ export function buildTaxonomyDetailNavSections(input: TaxonomyDetailNavInput): S
     out.push({ id: "featured-links", label: "바로가기" });
   }
   out.push({ id: "landing-subnodes", label: "세부 탐색" });
+  if (input.hasRecommended) {
+    out.push({ id: "recommended-products", label: "여행상품" });
+  }
   if (input.hasGuides) {
     out.push({ id: "guides", label: "가이드" });
-  }
-  if (input.hasRecommended) {
-    out.push({ id: "recommended-products", label: "추천 상품" });
   }
   if (input.hasRelatedTaxonomies) {
     out.push({ id: "related-taxonomies", label: "함께 보기" });

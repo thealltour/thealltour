@@ -28,17 +28,18 @@ export function LandingDetailHero({
       imageUrl={src}
       priority
       className={className}
-      contentClassName="max-w-[640px]"
+      contentClassName="max-w-[640px] gap-1.5 sm:gap-2"
+      minHeightClassName="min-h-[180px] sm:min-h-[280px] md:min-h-[380px]"
     >
-      <h1 className="heading-display font-card-title hero-text-shadow-title text-2xl font-semibold text-white sm:text-3xl md:text-4xl">
+      <h1 className="heading-display font-card-title hero-text-shadow-title text-xl font-semibold text-white sm:text-3xl md:text-4xl">
         {title}
       </h1>
       {description ? (
-        <p className="hero-text-shadow-body mt-2 max-w-2xl whitespace-pre-line type-small text-white/95 sm:type-body">
+        <p className="hero-text-shadow-body mt-1.5 max-w-2xl line-clamp-3 whitespace-pre-line type-small text-white/95 sm:mt-2 sm:line-clamp-none sm:type-body">
           {description}
         </p>
       ) : null}
-      {actions ? <div className="mt-5 sm:mt-6">{actions}</div> : null}
+      {actions ? <div className="mt-3 sm:mt-6">{actions}</div> : null}
     </HeroVisual>
   );
 }

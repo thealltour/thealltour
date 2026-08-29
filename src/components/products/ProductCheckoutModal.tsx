@@ -425,7 +425,7 @@ export function ProductCheckoutModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
               aria-label="닫기"
             >
               <X className="h-4 w-4" aria-hidden />

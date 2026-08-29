@@ -23,7 +23,7 @@ export type LandingHeroProps = {
 };
 
 /** 허브 랜딩용 min-height: 상세 랜딩보다 약간 낮게 */
-const HUB_HERO_MIN_HEIGHT = "min-h-[240px] sm:min-h-[300px] md:min-h-[340px]";
+const HUB_HERO_MIN_HEIGHT = "min-h-[160px] sm:min-h-[280px] md:min-h-[340px]";
 
 /**
  * 허브 랜딩 상단 Hero.
@@ -50,7 +50,7 @@ export function LandingHero({
         imageUrl={imageUrl!.trim()}
         priority={imagePriority}
         className={className}
-        contentClassName="max-w-[640px] gap-2"
+        contentClassName="max-w-[640px] gap-1.5 sm:gap-2"
         minHeightClassName={HUB_HERO_MIN_HEIGHT}
       >
         {eyebrow ? (
@@ -60,15 +60,15 @@ export function LandingHero({
           {title}
         </h1>
         {description ? (
-          <p className="hero-text-shadow-body max-w-2xl text-sm text-white/90 sm:text-base">
+          <p className="hero-text-shadow-body max-w-2xl line-clamp-2 text-sm text-white/90 sm:line-clamp-none sm:text-base">
             {description}
           </p>
         ) : null}
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-3 flex flex-wrap gap-2.5 sm:mt-5 sm:gap-3">
           {ctaLabel?.trim() && ctaHref?.trim() ? (
             <Link
               href={ctaHref}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] sm:px-5 sm:py-2.5"
             >
               {ctaLabel}
             </Link>
@@ -77,12 +77,12 @@ export function LandingHero({
             secondaryCtaHref === "/quote" ? (
               <LandingConsultCtaButton
                 label={secondaryCtaLabel}
-                className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/60 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 sm:px-5 sm:py-2.5"
               />
             ) : (
               <Link
                 href={secondaryCtaHref}
-                className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/60 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 sm:px-5 sm:py-2.5"
               >
                 {secondaryCtaLabel}
               </Link>

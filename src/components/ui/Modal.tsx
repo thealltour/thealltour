@@ -1,8 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
+import {
+  getOverlayFocusableElements,
+  restoreFocus,
+  trapOverlayTabKey,
+} from "@/lib/a11y/overlayFocus";
 
 type ModalProps = {
   isOpen: boolean;
@@ -21,7 +26,8 @@ type ModalProps = {
 /**
  * 테마 토큰 기반 공통 모달 레이아웃.
  * - 백드롭: var(--overlay)
- * - 컨테이너: Floating glass (.glass-float), 기존 rounded-2xl 유지
+ * - Escape / backdrop / dialog semantics
+ * - body scroll lock, focus trap, focus return (PR-UI-10A)
  */
 export function Modal({
   isOpen,
@@ -32,13 +38,49 @@ export function Modal({
   className = "",
   "aria-label": ariaLabel,
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+
+    previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const frame = requestAnimationFrame(() => {
+      const root = dialogRef.current;
+      if (!root) return;
+      const autofocus = root.querySelector<HTMLElement>("[autofocus]");
+      if (autofocus) {
+        autofocus.focus();
+        return;
+      }
+      const focusables = getOverlayFocusableElements(root);
+      if (focusables.length > 0) {
+        focusables[0].focus();
+        return;
+      }
+      root.focus();
+    });
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      const root = dialogRef.current;
+      if (root) trapOverlayTabKey(e, root);
+    }
+
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prevOverflow;
+      restoreFocus(previousFocusedElementRef.current);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -53,14 +95,13 @@ export function Modal({
       role="presentation"
     >
       <div
-        className={cn(
-          "glass-float rounded-2xl p-6",
-          className,
-        )}
+        ref={dialogRef}
+        className={cn("glass-float rounded-2xl p-6", className)}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
+        tabIndex={-1}
       >
         {children}
       </div>

@@ -496,6 +496,78 @@ No escalating provider instability after 16:20 KST Aug 28. Successfully recovere
 
 **Next STEP (recommended):** C8 Content Strategist profile cutover **only after** applying the same session-migration discipline (or accepting temporary Desktop Gemini pin for that bot’s old sessions).
 
+### C8 — Content Strategist Production Runtime Gateway Canary — IMMEDIATE PASS (2026-08-30)
+
+**Immediate verdict: TESTS PASS / KEEP CANARY — `content-strategist` profile-level Runtime Gateway cutover active.**  
+**C8 FINAL:** deferred until ≥24h observation.  
+**Session migration:** **deferred** until C8 FINAL (see [session-migration-runbook.md](./session-migration-runbook.md)).
+
+| Gate | Result |
+|---|---|
+| Git baseline | `main` @ `07aaa8c` = `origin/main` (0/0); untracked runbook doc only before C8 docs edit |
+| `thealltour-internal.service` | **active**, PID **25907**, BUILD_ID `O-DJnz3x2yQlyhHJWVvfM`, `:3000` listen |
+| Alias smoke `thealltour/content-strategist` | **HTTP 200** — `agent_id=content-strategist`, `workload=content_draft`, `fallback=0`, not spike |
+| C7 PA regression | Profile + Bot Chat + Group PA sessions still Runtime-backed; checksum `1c81c008…` unchanged |
+| GA / MM isolation | Checksums unchanged (`e33020da…` / `2c3cca45…`); still native Gemini |
+| C6/C7 preflight (post-write) | **PASS** — `namedProviderKey=thealltour-runtime`, `gatewayTokenSource` resolved |
+| Backup | `~/.hermes/profiles/content-strategist/backups/c8-20260830_011218/` + `config.yaml.c8bak` |
+| Pre-cutover config SHA256 | `aa5afb96348f4214…` (native Gemini) |
+| Post-cutover config SHA256 | `3dc57fb29b5a7ad6…` |
+| Fresh Hermes oneshot (`-z`) | **PASS** — user-visible `C8_CS_AUTH_OK`; session `20260830_011310_b81be2` → model `thealltour/content-strategist`, `billing_base_url=…/api/ai-runtime/v1` |
+| Runtime observability | `agent_id=content-strategist`, `workload=content_draft`; transient `INVALID_REQUEST` then **recovered** `job_completed` / `route_completed`; `runtime-spike=0` |
+| Structured-output (Bot live) | **NOT EXERCISED** (C3/runtime evidence stands; no unsupported `response_format` invented) |
+| MCP/tool live loop | **NOT EXERCISED** — Production include list intact (`get_marketing_context`, `search_marketing_memory`, `build_content_brief`, `evaluate_governance`); text oneshot did not require tools |
+| Existing Desktop Bot Chat `20260825_133449_8b118f` | **LEGACY / native Gemini** (expected; not migrated) |
+| Existing Group CS `20260826_225441_d13218` | **LEGACY / native Gemini** (expected; not migrated); Group identity preserved |
+| 09:00 MM cron `edfc1815135b` | **UNCHANGED** — `no_agent=true`; shared Runtime evidence only, **not** C8 Bot proof |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true`; no C8 SNS side effects |
+| Rollback triggered | **no** |
+
+**Secret scope (path only):** `~/.hermes/profiles/content-strategist/.env` — `AI_RUNTIME_INFERENCE_GATEWAY_TOKEN` appended (mode `600`). No token literal in `config.yaml` / repo.
+
+**Exact inference diff vs `config.yaml.c8bak`:**
+
+```yaml
+model:
+  provider: custom:thealltour-runtime          # was: gemini
+  default: thealltour/content-strategist      # was: gemini-3.5-flash-lite
+  base_url: http://127.0.0.1:3000/api/ai-runtime/v1   # was: ''
+  api_mode: chat_completions
+fallback_providers: []                         # was: [openrouter, openai]
+providers:                                     # new block
+  thealltour-runtime:
+    key_env: AI_RUNTIME_INFERENCE_GATEWAY_TOKEN
+    base_url: http://127.0.0.1:3000/api/ai-runtime/v1
+    api_mode: chat_completions
+    models:
+      thealltour/content-strategist:
+        context_length: 128000
+```
+
+**CS session inventory (pre-migration; do not migrate during soak):**
+
+| Session id | Title | Snapshot |
+|---|---|---|
+| `20260825_133449_8b118f` | Bot Chat | gemini / `gemini-3.5-flash-lite` |
+| `20260826_225441_d13218` | Group: thealltour marketing | gemini (active Mixed-mode with PA Gateway) |
+| CLI oneshots (historical) | ContentDraftRequest / Threads drafts | gemini |
+| `20260830_011310_b81be2` | Fresh C8 auth oneshot | **Gateway** (proof only) |
+
+**message_agent / handoff:** Hermes-owned. Existing CS Bot Chat / Group member sessions remain Gemini-pinned until post-FINAL migration. Department/cron specialist invoke via `hermes -p … -z` follows **current profile** → Gateway after C8. Do not replace with Runtime-direct handoff.
+
+**Observation window:**
+
+| | KST |
+|---|---|
+| Start | **2026-08-30 01:13** |
+| End (minimum) | **2026-08-31 01:13** |
+
+Monitor: Gateway `:3000`, `content-strategist` observability (auth errors, route/job fail, retries, fallback, latency, wrong agent/workload, spike), shared Runtime health, publication safety. Low natural Bot traffic expected (legacy Desktop/Group pin).
+
+**C8 rollback:** restore `config.yaml.c8bak` (and remove Gateway token line from profile `.env` if desired) → verify native Gemini fresh `-z`. Do **not** rollback PA or PA migrated sessions.
+
+**Do not start C9 (Governance Auditor)** until C8 FINAL (+ preferably CS session migration per runbook).
+
 ---
 
 ## 1. Executive Summary

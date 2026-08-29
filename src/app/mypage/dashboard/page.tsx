@@ -69,7 +69,11 @@ export default async function MyPageDashboardPage() {
 
         <MyPageStatGrid>
           <MyPageGolfBenefitCard copy={golfBenefitCopy} />
-          <MyPageHeldCouponCard names={couponPacks.heldNames} />
+          <MyPageHeldCouponCard
+            names={couponPacks.heldNames}
+            hasWelcomePack={couponPacks.hasWelcomePack}
+            earliestExpiresAt={couponPacks.earliestExpiresAt}
+          />
         </MyPageStatGrid>
 
         <MyPageCard>

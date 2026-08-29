@@ -97,25 +97,39 @@ export type MemberCouponPackSummary = {
   hasReturningPack: boolean;
   heldNames: string[];
   availableCount: number;
+  /** AVAILABLE/RESERVED 팩 중 가장 빠른 만료일 (없으면 null) */
+  earliestExpiresAt: string | null;
 };
 
 export async function getMemberCouponPackSummary(
   memberId: string,
 ): Promise<MemberCouponPackSummary> {
   if (!memberId) {
-    return { hasWelcomePack: false, hasReturningPack: false, heldNames: [], availableCount: 0 };
+    return {
+      hasWelcomePack: false,
+      hasReturningPack: false,
+      heldNames: [],
+      availableCount: 0,
+      earliestExpiresAt: null,
+    };
   }
 
   const { data, error } = await supabaseAdmin
     .from("member_coupon_packs")
-    .select("tier, status")
+    .select("tier, status, expires_at")
     .eq("user_id", memberId)
     .in("status", ["AVAILABLE", "RESERVED"])
     .limit(50);
 
   if (error) {
     console.error("[getMemberCouponPackSummary]", error.message);
-    return { hasWelcomePack: false, hasReturningPack: false, heldNames: [], availableCount: 0 };
+    return {
+      hasWelcomePack: false,
+      hasReturningPack: false,
+      heldNames: [],
+      availableCount: 0,
+      earliestExpiresAt: null,
+    };
   }
 
   const rows = data ?? [];
@@ -123,11 +137,19 @@ export async function getMemberCouponPackSummary(
   const hasReturningPack = rows.some((r) => r.tier === "RETURNING");
   const availableCount = rows.filter((r) => r.status === "AVAILABLE").length;
 
+  let earliestExpiresAt: string | null = null;
+  for (const row of rows) {
+    const raw = (row as { expires_at?: string | null }).expires_at;
+    if (!raw) continue;
+    if (!earliestExpiresAt || raw < earliestExpiresAt) earliestExpiresAt = raw;
+  }
+
   return {
     hasWelcomePack,
     hasReturningPack,
     heldNames: listHeldCouponPackNames({ hasWelcomePack, hasReturningPack }),
     availableCount,
+    earliestExpiresAt,
   };
 }
 

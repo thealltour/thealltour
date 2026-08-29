@@ -69,7 +69,7 @@ export const kakaoSyncGolfConfig = {
     title: "1인당 5만 원, 팀 전체 무제한 즉시 할인!",
     /** 총무 편의성 어필 — 명시 2줄 (동반자 부담 해소 → 대표 1명 자동 적용) */
     subtitleLines: ["동반자 가입 필요 없이", "대표 1명만 가입해도 팀 전체 할인 자동 적용"],
-    socialProofSuffix: "명이 5만원 무제한 할인 쿠폰을 받아갔어요",
+    socialProofSuffix: "카카오 간편가입으로 바로 혜택 확인",
   },
   benefit: {
     /** 광고·심사 대조용 핵심 혜택명 — 쿠폰 그래픽 바로 아래 초소형 fine print로만 노출(중복 방지) */
@@ -96,7 +96,8 @@ export const kakaoSyncGolfConfig = {
     /** 동반자도 각자 가입해야 하는 것 아니냐는 의심 해소 — 대표/총무 1인 가입으로 충분 */
     tiersNote: "대표 1명 계정으로 예약 인원 전체 할인이 자동 적용됩니다.",
     /** 자격 안내 + 지급 프로세스를 한 줄로 압축 — 티어 박스 아래 초소형 fine print */
-    eligibilityNote: "신규 가입 회원 대상 · 가입 즉시 쿠폰 자동 발급",
+    /** FAQ·티어에서 이미 명확 — Hero fine print는 카카오 조건 강조만 */
+    eligibilityNote: "카카오 신규가입 회원 대상 · 가입 즉시 골프 쿠폰팩 자동 발급",
     /** 쿠폰 티켓 아래 — 스팸·유료·동반자 가입 3대 불안 해소 */
     reassurance: {
       title: "안심 가입 보장",
@@ -115,7 +116,7 @@ export const kakaoSyncGolfConfig = {
   },
   trust: {
     badgesSectionTitle: "더올투어 안심 보장 약속",
-    reviewsHeading: "더올투어 이용 고객들의 생생한 한 줄 후기",
+    reviewsHeading: "함께한 여행자들의 한 줄 후기",
     badges: ["현지 직영 가이드", "노쇼핑·노옵션 원칙", "정식 관광사업등록업체"],
     reviews: [
       {

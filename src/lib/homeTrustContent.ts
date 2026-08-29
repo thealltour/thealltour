@@ -6,12 +6,22 @@ export function normalizeTourismRegNo(value?: string): string | null {
   return trimmed;
 }
 
-/** Early Trust Micro strip — 검증 가능한 정보만 (가짜 수치·로고 없음) */
-export function getHomeTrustMicroItems(tourismRegNo?: string): readonly string[] {
-  const items: string[] = [];
-  if (normalizeTourismRegNo(tourismRegNo)) {
-    items.push("등록 여행사");
-  }
-  items.push("주요 여행사 제휴", "1:1 맞춤 상담");
-  return items;
+export type HomeTrustProofIconId = "registered" | "partner" | "consult";
+
+export type HomeTrustProofItem = {
+  id: HomeTrustProofIconId;
+  /** 390px에서 2줄로 읽히는 핵심 label */
+  lines: readonly [string, string];
+};
+
+/**
+ * Early Trust Proof Strip — Full Trust와 동일한 사실 범위의 요약 3점.
+ * 가짜 수치·과장 표현 없음. tourismRegNo는 표시용이며 3점 노출은 항상 유지.
+ */
+export function getHomeTrustProofItems(_tourismRegNo?: string): readonly HomeTrustProofItem[] {
+  return [
+    { id: "registered", lines: ["정식 등록", "여행사"] },
+    { id: "partner", lines: ["주요 여행사", "공식 제휴"] },
+    { id: "consult", lines: ["전문 상담사", "1:1 배정"] },
+  ] as const;
 }

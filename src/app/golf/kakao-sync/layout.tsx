@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
 import { KakaoSyncGolfFixedCta } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncGolfFixedCta";
 import { KakaoSyncLandingFooter } from "@/components/hardcoded-landings/kakao-sync-golf/KakaoSyncLandingFooter";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { getSiteSettings } from "@/lib/siteSettings";
 
 /** 카카오싱크 하드코딩 랜딩: PC는 500px 중앙 폰 프레임, 모바일은 전폭. CTA는 프레임 하단 고정. */
 export default async function KakaoSyncGolfLayout({ children }: { children: ReactNode }) {
-  const settings = await getSiteSettings();
+  const [settings, cookieStore] = await Promise.all([getSiteSettings(), cookies()]);
+  const session = getMemberSessionFromCookies(cookieStore);
 
   return (
     <div className="flex h-dvh justify-center bg-slate-100">
@@ -28,9 +31,8 @@ export default async function KakaoSyncGolfLayout({ children }: { children: Reac
           {children}
           <KakaoSyncLandingFooter settings={settings} />
         </div>
-        <KakaoSyncGolfFixedCta />
+        <KakaoSyncGolfFixedCta isLoggedIn={Boolean(session)} />
       </div>
     </div>
   );
 }
-

@@ -9,7 +9,7 @@ export default function AuthDivider({ label = "또는" }: AuthDividerProps) {
         <div className="w-full border-t border-[var(--border)]" />
       </div>
       <div className="relative flex justify-center">
-        <span className="bg-[var(--card)] px-3 text-xs font-medium text-[var(--text-muted)]">{label}</span>
+        <span className="bg-[var(--surface-elevated)] px-3 text-xs font-medium text-[var(--text-muted)]">{label}</span>
       </div>
     </div>
   );

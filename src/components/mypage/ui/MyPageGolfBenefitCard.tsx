@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/components/ui/Button";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageNavIcon } from "@/components/mypage/ui/MyPageNavIcon";
 import { buildGolfProductsHref } from "@/lib/products/golfChannel";
+import { trackMembershipBenefitCtaClick } from "@/lib/analytics/trackAuthEvents";
 import type { MemberGolfDiscountCopy } from "@/lib/mypage/memberGolfDiscountCopy";
 
 type MyPageGolfBenefitCardProps = {
@@ -37,15 +40,29 @@ export function MyPageGolfBenefitCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href={allGolfHref}
-          className={cn(buttonVariants({ variant: "primary", size: "sm" }), "inline-flex")}
+          onClick={() =>
+            trackMembershipBenefitCtaClick({
+              label: "골프여행 상품 보기",
+              href: allGolfHref,
+              section: "golf_benefit_card",
+            })
+          }
+          className={cn(buttonVariants({ variant: "primary", size: "sm" }), "inline-flex min-h-11")}
         >
-          골프여행 전체보기
+          골프여행 상품 보기
         </Link>
         <Link
-          href="/#home-golf-tours"
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "inline-flex")}
+          href="/products"
+          onClick={() =>
+            trackMembershipBenefitCtaClick({
+              label: "다른 여행상품 둘러보기",
+              href: "/products",
+              section: "golf_benefit_card",
+            })
+          }
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "inline-flex min-h-11")}
         >
-          추천 골프투어
+          다른 여행상품 둘러보기
         </Link>
       </div>
     </MyPageCard>

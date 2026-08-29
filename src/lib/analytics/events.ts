@@ -62,6 +62,12 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   home_promo_click: "home_promo_click",
   home_promo_dismiss: "home_promo_dismiss",
   home_golf_schedule_click: "home_golf_schedule_click",
+  auth_modal_open: "auth_modal_open",
+  auth_kakao_cta_click: "auth_kakao_cta_click",
+  auth_identifier_continue: "auth_identifier_continue",
+  auth_signup_success: "auth_signup_success",
+  auth_login_success: "auth_login_success",
+  membership_benefit_cta_click: "membership_benefit_cta_click",
 } as const;
 
 /** 소스 상수 (enum 성격) */
@@ -86,4 +92,6 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   home_hero: "home_hero",
   home_section: "home_section",
   home_promo_banner: "home_promo_banner",
+  auth_modal: "auth_modal",
+  mypage_membership: "mypage_membership",
 } as const;

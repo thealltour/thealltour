@@ -59,7 +59,13 @@ export type AnalyticsEventName =
   | "home_promo_impression"
   | "home_promo_click"
   | "home_promo_dismiss"
-  | "home_golf_schedule_click";
+  | "home_golf_schedule_click"
+  | "auth_modal_open"
+  | "auth_kakao_cta_click"
+  | "auth_identifier_continue"
+  | "auth_signup_success"
+  | "auth_login_success"
+  | "membership_benefit_cta_click";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =
@@ -82,7 +88,9 @@ export type AnalyticsSource =
   | "kakao_sync_auth"
   | "home_hero"
   | "home_section"
-  | "home_promo_banner";
+  | "home_promo_banner"
+  | "auth_modal"
+  | "mypage_membership";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {

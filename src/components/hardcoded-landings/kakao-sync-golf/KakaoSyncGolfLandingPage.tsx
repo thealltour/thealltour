@@ -12,7 +12,6 @@ import {
   KAKAO_SYNC_HERO_ACCENT,
   kakaoSyncGolfConfig,
 } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
-import { getKakaoSyncDailySocialProofCount } from "@/lib/hardcodedLandings/kakaoSyncGolf/dailySocialProofCount";
 import type { Product } from "@/types/product";
 
 export type KakaoSyncGolfLandingPageProps = {
@@ -27,7 +26,6 @@ export type KakaoSyncGolfLandingPageProps = {
  */
 export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGolfLandingPageProps) {
   const { hero, benefit, products: productsCopy, faq } = kakaoSyncGolfConfig;
-  const dailySocialProofCount = getKakaoSyncDailySocialProofCount();
 
   return (
     <>
@@ -80,10 +78,9 @@ export function KakaoSyncGolfLandingPage({ products, tourismRegNo }: KakaoSyncGo
                   </span>
                 ))}
               </p>
-              {/* 소셜프루프 — 실 가입 수 조회 없이 KST 날짜 기준 결정론적 값(75~150) */}
+              {/* 비수치형 proof — deterministic fake count 미사용 */}
               <p className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
                 <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                오늘 {dailySocialProofCount}
                 {hero.socialProofSuffix}
               </p>
             </div>

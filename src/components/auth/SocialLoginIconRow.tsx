@@ -26,6 +26,8 @@ type SocialLoginIconRowProps = {
   nextPath?: string;
   mode?: "login" | "link";
   className?: string;
+  /** Kakao 클릭 시 추가 훅 (analytics 등) — OAuth start는 기존 helper 유지 */
+  onKakaoClick?: () => void;
 };
 
 export default function SocialLoginIconRow({
@@ -33,6 +35,7 @@ export default function SocialLoginIconRow({
   nextPath = "/",
   mode = "login",
   className,
+  onKakaoClick,
 }: SocialLoginIconRowProps) {
   if (providers.length === 0) return null;
 
@@ -46,7 +49,10 @@ export default function SocialLoginIconRow({
             type="button"
             aria-label={style.label}
             title={style.label}
-            onClick={() => startOAuthLogin(provider.id, { nextPath, mode })}
+            onClick={() => {
+              if (provider.id === "kakao") onKakaoClick?.();
+              startOAuthLogin(provider.id, { nextPath, mode });
+            }}
             className={cn(
               "flex h-11 w-11 items-center justify-center rounded-full transition",
               style.className,

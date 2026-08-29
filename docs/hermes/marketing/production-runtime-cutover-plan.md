@@ -380,7 +380,7 @@ If `thealltour marketing` Group member sessions are **never refreshed**:
 
 | Profile cutover order | Individual Bot surfaces | Existing Group member turn |
 |---|---|---|
-| PA (C7, active) | Bot Chat Desktop, Group PA, cron, oneshot paths diverge | **PA Group: native Gemini (observed)** |
+| PA (C7, active) | Bot Chat Desktop, Group PA, cron, oneshot paths diverge | **PA Group: Gateway after C7.3** (was native Gemini under session pin) |
 | CS / GA / MM (C8–C10) | Same pattern per profile | **Each member keeps its own pinned session snapshot** until refreshed |
 
 **CONFIRMED:** Four profiles can be Gateway-backed in `config.yaml` while the **same Group** continues calling native Gemini for members whose session rows still snapshot Gemini.
@@ -458,9 +458,9 @@ No escalating provider instability after 16:20 KST Aug 28. Successfully recovere
 
 **Fresh Runtime paths (prior C7 #2 evidence, still valid; profile intact):** auth `C7A2_AUTH_OK`, CLI/oneshot/MCP Gateway proofs, review alias smoke PASS.
 
-**Desktop Bot Chat `20260825_133423_f2c9b2`:** UX **PASS**; → Gateway **NOT MIGRATED / NATIVE GEMINI SNAPSHOT** (C7.2 live test 16:43 KST; row unchanged `gemini-3.5-flash-lite` / msg_count 18).
+**Desktop Bot Chat `20260825_133423_f2c9b2`:** UX **PASS**; → Gateway **MIGRATED in C7.3** (was native Gemini snapshot through C7 FINAL; see C7.3).
 
-**Group `thealltour marketing` / PA `20260826_225600_a8ad31`:** orchestration **PASS**; → Gateway **NOT MIGRATED / NATIVE GEMINI SNAPSHOT**; room revision **25**, 4 members unchanged.
+**Group `thealltour marketing` / PA `20260826_225600_a8ad31`:** orchestration **PASS**; → Gateway **MIGRATED in C7.3**; room membership unchanged (no Group delete/recreate).
 
 **08:30 PA cron `9e96a94ee72f` (2026-08-29):** fired `08:30:55` → finished `08:31:00`; `last_status=ok`; `no_agent=true`; wrapper `daily-performance-brief.sh` → `cd /home/ysh/thealltour`; **NON_LLM regression PASS** (not Gateway inference proof).
 
@@ -472,7 +472,29 @@ No escalating provider instability after 16:20 KST Aug 28. Successfully recovere
 
 **C8 profile cutover:** **NOT STARTED**
 
-**Next STEP (recommended):** **2-5.4C7.3 — Production Session Migration Runbook / Performance Analyst Session Migration** (`/model … --session` for Bot Chat + Group member; preserve history; prove Gateway reachability) before any Content Strategist profile cutover.
+**Next STEP (recommended at time of C7 FINAL):** **2-5.4C7.3 — Production Session Migration** — **completed below**.
+
+### C7.3 — Production Session Migration (Performance Analyst) — PASS (2026-08-30 ~01:00 KST)
+
+**Runbook:** [session-migration-runbook.md](./session-migration-runbook.md)
+
+**C7.3 PASS — Existing Desktop Bot Chat and Group PA member sessions now resume on Runtime Gateway (history preserved). Profile cutover + session snapshots aligned for PA.**
+
+| Item | Result |
+|---|---|
+| Method | Hermes-native `switch_model` + `SessionDB.update_session_model` / `patch_session_model_config` / `update_session_billing_route` (same as `/model … --session`; **no** raw SQL primary path; **no** profile `config.yaml` edit) |
+| Backup | `~/.hermes/profiles/performance-analyst/backups/c73-20260830_003437/` |
+| Bot Chat `20260825_133423_f2c9b2` | DB → Runtime; live Desktop **PASS** 00:54 KST after `hermes.service` restart (`ui_session=a7badd11`); logs: `provider=custom`, `base_url=…/api/ai-runtime/v1`; observability `agent_id=performance-analyst`, `workload=analysis` |
+| Group PA `20260826_225600_a8ad31` | DB → Runtime (msg **23** preserved at migrate); live `@Performance Analyst` **PASS** 00:59 KST (`ui_session=3faf53a7`); same Gateway + observability shape; MCP `…/marketing/mcp` **200** on agent build |
+| Live-sync caveat | In-session `/model` slash worker OK under profile home; multiplex dashboard live sync may fail (`Unknown provider`) because process `HERMES_HOME` is root — **restart dashboard** after DB migrate (see runbook §5) |
+| Profile checksum | **unchanged** `1c81c008…` |
+| Other bots | Still `provider=gemini` |
+| Publication | Inactive (compile-time / prior soak) |
+| C8 | **NOT STARTED** |
+
+**Supersedes C7 FINAL Desktop gap:** Bot Chat + Group PA rows are **no longer** native Gemini snapshots.
+
+**Next STEP (recommended):** C8 Content Strategist profile cutover **only after** applying the same session-migration discipline (or accepting temporary Desktop Gemini pin for that bot’s old sessions).
 
 ---
 

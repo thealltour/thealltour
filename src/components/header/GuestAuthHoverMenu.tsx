@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown, User } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import { cn } from "@/lib/cn";
@@ -16,6 +17,7 @@ const QUICK_LINKS: Array<{ label: string; href: string; requiresAuth?: boolean }
 
 export default function GuestAuthHoverMenu() {
   const { openAuth } = useAuthModal();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -86,7 +88,7 @@ export default function GuestAuthHoverMenu() {
             role="menuitem"
             onClick={() => {
               setIsOpen(false);
-              openAuth({ mode: "login" });
+              openAuth({ mode: "login", next: pathname });
             }}
             className={cn(
               "w-full rounded-full bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--surface)] transition hover:opacity-90",
@@ -100,7 +102,7 @@ export default function GuestAuthHoverMenu() {
             role="menuitem"
             onClick={() => {
               setIsOpen(false);
-              openAuth({ mode: "signup" });
+              openAuth({ mode: "signup", next: pathname });
             }}
             className="mt-3 w-full text-center text-sm font-medium text-[var(--text-primary)] hover:underline"
           >

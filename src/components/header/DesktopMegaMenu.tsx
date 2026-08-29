@@ -8,6 +8,11 @@ import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { DesktopNavItem } from "./DesktopNavItem";
 import { DesktopMegaMenuPanel } from "./DesktopMegaMenuPanel";
 import { cn } from "@/lib/cn";
+import Link from "next/link";
+import { buildGolfProductsHref, isGolfTourType } from "@/lib/products/golfChannel";
+import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
+import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 
 function getNavLinkClass(isActive: boolean) {
   const base =
@@ -38,13 +43,18 @@ function getIsActive(item: HeaderPrimaryNavItem, pathname: string): boolean {
 
 export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavItem[] }) {
   const pathname = usePathname();
+  const [tourTypeParam, setTourTypeParam] = useState<string | null>(null);
   const [openKey, setOpenKey] = useState<HeaderPrimaryNavKey | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const golfHref = buildGolfProductsHref();
+  const golfActive = pathname === "/products" && isGolfTourType(tourTypeParam);
   const items = primaryNav.filter((p) =>
     HEADER_DESKTOP_PRIMARY_NAV_KEYS.includes(p.key as HeaderPrimaryNavKey),
   );
+  const beforeInquiry = items.filter((p) => p.key !== "inquiry");
+  const inquiryItem = items.find((p) => p.key === "inquiry");
 
   const onClose = useCallback(() => setOpenKey(null), []);
 
@@ -68,6 +78,10 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
       if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    setTourTypeParam(new URLSearchParams(window.location.search).get("tourType"));
+  }, [pathname]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -94,8 +108,8 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
       onMouseEnter={cancelClose}
       onMouseLeave={scheduleClose}
     >
-      <nav className="flex shrink-0 items-center gap-x-6 lg:gap-x-7" aria-label="탐색 메뉴">
-        {items.map((item, index) => (
+      <nav className="flex shrink-0 items-center gap-x-5 lg:gap-x-6 xl:gap-x-7" aria-label="탐색 메뉴">
+        {beforeInquiry.map((item, index) => (
           <DesktopNavItem
             key={item.key}
             item={item}
@@ -110,6 +124,42 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
             renderPanelInParent
           />
         ))}
+        <Link
+          href={golfHref}
+          className={getNavLinkClass(golfActive)}
+          onClick={() => {
+            trackClientEvent(
+              createAnalyticsPayload({
+                eventName: ANALYTICS_EVENTS.header_nav_click,
+                source: ANALYTICS_SOURCES.header_desktop_primary,
+                label: "골프",
+                href: golfHref,
+                section: "golf",
+                taxonomyType: null,
+                position: beforeInquiry.length,
+                pagePath: typeof window !== "undefined" ? window.location.pathname : null,
+                deviceType: inferDeviceType("desktop"),
+              }),
+            );
+          }}
+        >
+          골프
+        </Link>
+        {inquiryItem ? (
+          <DesktopNavItem
+            key={inquiryItem.key}
+            item={inquiryItem}
+            positionIndex={beforeInquiry.length + 1}
+            isOpen={openKey === (inquiryItem.key as HeaderPrimaryNavKey)}
+            onOpen={() => setOpenKey(inquiryItem.key as HeaderPrimaryNavKey)}
+            onClose={onClose}
+            scheduleClose={scheduleClose}
+            cancelClose={cancelClose}
+            isActive={getIsActive(inquiryItem, pathname)}
+            getNavLinkClass={getNavLinkClass}
+            renderPanelInParent
+          />
+        ) : null}
       </nav>
       {openKey && (() => {
         const item = items.find((i) => i.key === openKey);

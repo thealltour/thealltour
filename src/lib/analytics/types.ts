@@ -65,7 +65,11 @@ export type AnalyticsEventName =
   | "auth_identifier_continue"
   | "auth_signup_success"
   | "auth_login_success"
-  | "membership_benefit_cta_click";
+  | "membership_benefit_cta_click"
+  | "checkout_open"
+  | "checkout_submit"
+  | "checkout_payment_result"
+  | "order_success_view";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =

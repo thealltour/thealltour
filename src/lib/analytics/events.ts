@@ -68,6 +68,10 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   auth_signup_success: "auth_signup_success",
   auth_login_success: "auth_login_success",
   membership_benefit_cta_click: "membership_benefit_cta_click",
+  checkout_open: "checkout_open",
+  checkout_submit: "checkout_submit",
+  checkout_payment_result: "checkout_payment_result",
+  order_success_view: "order_success_view",
 } as const;
 
 /** 소스 상수 (enum 성격) */

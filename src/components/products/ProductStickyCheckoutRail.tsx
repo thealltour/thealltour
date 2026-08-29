@@ -18,6 +18,10 @@ import { EMPTY_SELECTED_OPTIONS } from "@/lib/pricing/selectedOptions";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import { cn } from "@/lib/cn";
 import type { Product } from "@/types/product";
+import {
+  trackProductCtaClick,
+  trackProductDetailCtaClick,
+} from "@/lib/analytics/trackProductClick";
 
 export type ProductStickyCheckoutRailProps = {
   product?: Product | null;
@@ -26,6 +30,8 @@ export type ProductStickyCheckoutRailProps = {
   /** compact = 모바일 하단바용 짧은 CTA만 */
   layout?: "rail" | "bar";
   onOpenSelection?: () => void;
+  /** sticky_mobile | sidebar — analytics section */
+  analyticsSection?: "sticky_mobile" | "sidebar";
 };
 
 /**
@@ -38,6 +44,7 @@ export function ProductStickyCheckoutRail({
   kakaoHref,
   layout = "rail",
   onOpenSelection,
+  analyticsSection = "sidebar",
 }: ProductStickyCheckoutRailProps) {
   const {
     selectedOptions,
@@ -49,6 +56,7 @@ export function ProductStickyCheckoutRail({
     departureSelectionMissing,
     scrollToBooking,
     setDepartureSelection,
+    paxDiscountPreview,
   } = useProductQuote();
   const { openModal: openConsultModal } = useConsultModal();
 
@@ -61,6 +69,22 @@ export function ProductStickyCheckoutRail({
       : undefined;
   const optionsState = selectedOptions ?? EMPTY_SELECTED_OPTIONS;
   const title = productTitle?.trim() || product?.title || "상품";
+  const depositPerPersonLabel = `예약금 ${(CHECKOUT_DEPOSIT_PER_PERSON / 10_000).toLocaleString("ko-KR")}만원 / 1인`;
+
+  const trackBookingCta = (ctaType: "primary" | "kakao") => {
+    if (!product?.id) return;
+    trackProductDetailCtaClick({
+      productId: product.id,
+      ctaType,
+      section: analyticsSection,
+      hasPrice: true,
+    });
+    trackProductCtaClick({
+      productId: product.id,
+      ctaType,
+      section: "sticky",
+    });
+  };
 
   const resolvedDepartureYmd = useMemo(
     () =>
@@ -125,6 +149,7 @@ export function ProductStickyCheckoutRail({
   );
 
   const openCheckout = () => {
+    trackBookingCta("primary");
     if (!canReserve) {
       if (onOpenSelection) {
         onOpenSelection();
@@ -150,6 +175,7 @@ export function ProductStickyCheckoutRail({
   };
 
   const openKakao = async () => {
+    trackBookingCta("kakao");
     if (kakaoHref && typeof window !== "undefined") {
       window.open(kakaoHref, "_blank", "noopener,noreferrer");
       return;
@@ -162,7 +188,7 @@ export function ProductStickyCheckoutRail({
   };
 
   const reserveLabel = canReserve
-    ? `₩${payAmounts.payAmount.toLocaleString("ko-KR")}원 예약하기`
+    ? `₩${payAmounts.payAmount.toLocaleString("ko-KR")} 예약하기`
     : departureSelectionMissing || !resolvedDepartureYmd
       ? "출발일 선택 후 예약"
       : requiredGroupsMissing
@@ -206,6 +232,7 @@ export function ProductStickyCheckoutRail({
             depositTotal={quotePreview.depositAmount}
             payAmount={payAmounts.payAmount}
             remainingBalance={payAmounts.remainingBalance}
+            paxDiscountPreview={paxDiscountPreview}
           />
         ) : null}
       </>
@@ -236,17 +263,25 @@ export function ProductStickyCheckoutRail({
 
         <dl className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
           <div className="flex justify-between gap-2">
-            <dt>총 여행 금액</dt>
+            <dt>총 여행금액(예상)</dt>
             <dd className="font-medium text-slate-800">
               ₩{formatPriceKR(quotePreview.quoteTotal) ?? "0"}
             </dd>
           </div>
           <div className="mt-1 flex justify-between gap-2">
-            <dt>오늘 결제</dt>
+            <dt>지금 결제</dt>
             <dd className="font-semibold text-[var(--primary)]">
               ₩{formatPriceKR(payAmounts.payAmount) ?? "0"}
             </dd>
           </div>
+          <p className="mt-2 text-[11px] leading-snug text-slate-500">
+            {depositPerPersonLabel} · 기본은 예약금 결제 (전액 결제도 가능)
+          </p>
+          {paxDiscountPreview && paxDiscountPreview.amount > 0 ? (
+            <p className="mt-1 text-[11px] leading-snug text-[var(--success)]">
+              골프 회원 혜택 · 보유 쿠폰팩은 예약 단계에서 확인·적용됩니다
+            </p>
+          ) : null}
         </dl>
 
         <button
@@ -257,6 +292,9 @@ export function ProductStickyCheckoutRail({
         >
           {reserveLabel}
         </button>
+        <p className="text-center text-[11px] leading-snug text-slate-500">
+          출발일·인원을 확인한 뒤 예약금을 결제합니다.
+        </p>
 
         <button
           type="button"
@@ -266,6 +304,9 @@ export function ProductStickyCheckoutRail({
           <KakaoIcon className="h-4 w-4" />
           카톡 상담
         </button>
+        <p className="text-center text-[11px] leading-snug text-slate-500">
+          일정·가격이 궁금하신가요? 카톡으로 상담해 보세요.
+        </p>
 
         <p className="flex items-center justify-center gap-1 text-center text-[11px] leading-relaxed text-slate-500">
           <Lock className="h-3 w-3 shrink-0" aria-hidden />
@@ -289,6 +330,7 @@ export function ProductStickyCheckoutRail({
           depositTotal={quotePreview.depositAmount}
           payAmount={payAmounts.payAmount}
           remainingBalance={payAmounts.remainingBalance}
+          paxDiscountPreview={paxDiscountPreview}
         />
       ) : null}
     </>

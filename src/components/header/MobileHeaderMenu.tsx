@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { MobileHeaderDrawer } from "./MobileHeaderDrawer";
+import { MobileHeaderDrawer, MOBILE_HEADER_NAVIGATION_ID } from "./MobileHeaderDrawer";
 import { MobileConsultSheet } from "./MobileConsultSheet";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
@@ -89,8 +89,10 @@ export function MobileHeaderMenu({
           <button
             type="button"
             aria-label="메뉴 열기"
+            aria-expanded={isDrawerOpen}
+            aria-controls={MOBILE_HEADER_NAVIGATION_ID}
             onClick={openDrawerWithTrack}
-            className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
+            className="relative z-10 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
           >
             <span className="flex flex-col gap-[3px]" aria-hidden>
               <span className="h-[2px] w-4 rounded-full bg-current" />

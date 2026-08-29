@@ -16,6 +16,7 @@ export type UserMenuDropdownProps = {
 
 const MENU_ITEMS: Array<{ label: string; href: string }> = [
   { label: "대시보드", href: "/mypage/dashboard" },
+  { label: "예약내역", href: "/mypage/bookings" },
   { label: "견적문의 내역", href: "/quote" },
   { label: "포인트", href: "/mypage/points" },
   { label: "내 정보", href: "/mypage/profile" },

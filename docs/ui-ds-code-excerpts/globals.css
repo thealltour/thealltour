@@ -1,0 +1,1645 @@
+@import "tailwindcss";
+
+/* `SubHeader` 등에서 `html.dark` 로 토글 — 미디어 쿼리만 쓰면 관리자 다크모드와 불일치 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/**
+ * 디자인 토큰 네이밍 계층 (문서화 전용 — 이번 정리에서 값/이름은 변경하지 않음, alias 전부 유지):
+ *
+ * Layer 1 — Brand primitives: `--theall-*`
+ *   원색값 원본. 컴포넌트에서 직접 쓰지 말고 Layer 2를 거쳐 참조.
+ *
+ * Layer 2 — Semantic role tokens: `--primary`, `--accent`, `--surface*`, `--text-*`, `--border*`, `--success` 등
+ *   신규 컴포넌트가 실제로 사용해야 하는 레이어. `--theall-*`를 역할별로 매핑한 값.
+ *
+ * Layer 3 — Domain-scoped tokens: `--hero-*`, `--header-*`, `--mobile-header-*`,
+ *   `--products-mobile-*`, `--mypage-mobile-*`, `--site-*` 등
+ *   특정 영역(히어로/헤더/모바일 sticky 등) 전용 값. Layer 2를 참조해 구성.
+ *
+ * Legacy admin aliases (`--background`, `--foreground`, `--card`, `--card-muted`, `--brand`,
+ *   `--brand-strong`, `--text`, `--muted` — 아래 "Backwards-compatible aliases" 섹션 및 `.dark` 동일 위치):
+ *   기존 admin 컴포넌트 호환용으로만 유지. 신규 코드에서는 사용하지 말고 Layer 2 토큰을 직접 사용할 것.
+ *
+ * 주의 — 이름 유사도로 혼동하기 쉬운 쌍: `--muted`(레거시 alias → `--text-secondary`를 가리킴)와
+ *   `--text-muted`(Layer 2, 별도 값)는 서로 다른 값이다. 이름 변경은 2단계 이후 검토 대상이며
+ *   이번 정리에서는 값을 바꾸지 않는다.
+ */
+:root {
+  /* THEALL TOUR brand tokens v2.0 — 로고/아이콘 기준 UI 컬러 시스템 */
+  --theall-brand-blue: #1e5b8f;
+  --theall-brand-orange: #e0612a;
+  --theall-primary-navy: #0f172a;
+  --theall-premium-gold: #b8962e;
+
+  /* Kakao official CTA — Button `kakao` variant 및 링크 스타일과 동기화 */
+  --theall-kakao-bg: #fee500;
+  --theall-kakao-text: #111111;
+  --theall-kakao-border: rgba(0, 0, 0, 0.08);
+  --theall-kakao-hover-bg: #fdd835;
+  --theall-kakao-active-bg: #fbc02d;
+
+  /* Base layer: Agoda-like friendly + premium */
+  --theall-page-bg: #fafafa;
+  --theall-card-bg: #ffffff;
+  --theall-card-muted-bg: #f6f7f9;
+  --theall-card-border: #e6e8ee;
+
+  /* 본문: 블루 톤 네이비 (가독 유지) */
+  --theall-text-primary: #0c1929;
+  --theall-text-secondary: #1e3a4a;
+  --theall-text-muted: #4b5563;
+
+  /* Light theme tokens (mapped from brand tokens) */
+  --bg: var(--theall-page-bg);
+  --surface: var(--theall-card-bg);
+  --surface-muted: var(--theall-card-muted-bg);
+  --surface-elevated: #ffffff;
+
+  --text-primary: var(--theall-text-primary);
+  --text-secondary: var(--theall-text-secondary);
+  --text-muted: var(--theall-text-muted);
+  /* 보조 라벨·캡션 — surface-muted 위 작은 글자 대비 우선 */
+  --text-subtle: #6b7280;
+
+  /* 푸터(surface-muted) — 법정·회사 정보: 읽힘 우선 */
+  --footer-text: #4b5563;
+  --footer-text-muted: #6b7280;
+
+  --border: var(--theall-card-border);
+  --border-strong: #d1d6e0;
+  --divider: #eceef3;
+
+  /* Primary: 네비·기본 버튼·링크·가격 강조 (브랜드 블루) */
+  --primary: var(--theall-brand-blue);
+  --primary-hover: color-mix(in srgb, var(--theall-brand-blue) 88%, black);
+  --primary-active: color-mix(in srgb, var(--theall-brand-blue) 78%, black);
+  --primary-bg: color-mix(in srgb, var(--theall-brand-blue) 14%, transparent);
+  --primary-soft: color-mix(in srgb, var(--theall-brand-blue) 9%, transparent);
+  --on-primary: #ffffff;
+
+  /* Accent: 강조 CTA·dot (브랜드 오렌지 — primary와 역할 분리, 남용 금지) */
+  --accent: var(--theall-brand-orange);
+  --accent-hover: #c95524;
+  --accent-active: #b94d20;
+  --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 12%, transparent);
+  --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
+  --on-accent: #ffffff;
+
+  /** 아이콘 dot 확장: 선택/추천/지도 포인트 등 */
+  --dot-indicator: var(--accent);
+
+  /* 프리미엄 골드 포인트 (제한적 사용) */
+  --accent-premium: var(--theall-premium-gold);
+  --accent-premium-soft: rgba(184, 150, 46, 0.12);
+
+  /* Secondary: 헤딩·보조 솔리드 (딥 블루) */
+  --secondary: #0f2f47;
+  --secondary-hover: #0a2438;
+  --secondary-soft: color-mix(in srgb, var(--theall-brand-blue) 8%, transparent);
+
+  /* Focus: 브랜드 블루 기반 */
+  --focus-ring: color-mix(in srgb, var(--theall-brand-blue) 55%, white);
+
+  --success: #16a34a;
+  --success-bg: #e9f9ef;
+  --warning: #d97706;
+  --warning-bg: #fff4db;
+  --danger: #dc2626;
+  --danger-bg: #ffe8e8;
+
+  /* Backwards-compatible aliases for existing admin components (legacy — 신규 코드는 위 semantic 토큰을 직접 사용) */
+  --background: var(--bg);
+  --card: var(--surface);
+  --card-muted: var(--surface-muted);
+  --foreground: var(--text-primary);
+  --text: var(--text-primary);
+  --brand: var(--primary);
+  --brand-strong: var(--primary-hover);
+  --muted: var(--text-secondary);
+
+  --shadow-soft: 0 6px 18px rgba(11, 18, 32, 0.06);
+  --shadow-soft-strong: 0 10px 28px rgba(11, 18, 32, 0.12);
+  --shadow-modal: 0 22px 70px rgba(11, 18, 32, 0.2);
+  --overlay: rgba(11, 18, 32, 0.45);
+  --shadow-color: rgba(11, 18, 32, 0.12);
+
+  /* Soft gradients (light) */
+  --gradient-primary: linear-gradient(135deg, var(--theall-brand-blue) 0%, #0f2f47 100%);
+  --gradient-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--theall-brand-blue) 18%, transparent),
+    color-mix(in srgb, #0f2f47 12%, transparent)
+  );
+
+  /* Chart tokens (light) */
+  --chart-1: var(--theall-brand-blue);
+  --chart-2: var(--theall-brand-orange);
+  --chart-3: #22c55e;
+  --chart-4: #B8962E;
+  --chart-5: #f87171;
+  --chart-grid: #e6e8ee;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: #e6e8ee;
+
+  /* Glass surface (light) — Floating Layer only; Hue unchanged */
+  --glass-surface: rgba(255, 255, 255, 0.86);
+  --glass-border: rgba(15, 23, 42, 0.06);
+  --glass-blur: 12px;
+  --glass-saturate: 180%;
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-highlight-bottom: rgba(255, 255, 255, 0.22);
+  --glass-shadow: 0 4px 20px rgba(11, 18, 32, 0.05);
+  --glass-shadow-up: 0 -4px 20px rgba(11, 18, 32, 0.05);
+  --glass-surface-chrome: rgba(255, 255, 255, 0.65);
+  --glass-surface-on-media: rgba(255, 255, 255, 0.55);
+
+  /* --font-pretendard: next/font/local이 <html>에 주입하는 실제 로드된 웹폰트 변수 (src/lib/fonts.ts) */
+  --font-sans-fallback: var(--font-pretendard), "Pretendard", system-ui, -apple-system, BlinkMacSystemFont,
+    "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
+  --font-mono-fallback: "D2Coding", "Consolas", "Courier New", monospace;
+
+  --font-display-sans: var(--font-pretendard), "Wanted Sans Variable", system-ui, -apple-system,
+    BlinkMacSystemFont, "Pretendard", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, Helvetica,
+    sans-serif;
+
+  /* Typography scale v1.1 (middle-aged readability, premium tone) */
+  --type-h1-size: 2.625rem;     /* 42px */
+  --type-h1-weight: 700;
+  --type-h1-leading: 1.15;
+  --type-h2-size: 1.875rem;     /* 30px */
+  --type-h2-weight: 700;
+  --type-h2-leading: 1.2;
+  --type-h3-size: 1.5rem;       /* 24px */
+  --type-h3-weight: 600;
+  --type-h3-leading: 1.25;
+  --type-body-size: 1.275rem;   /* 20.4px — 17px × 1.2, 40~60대 가독성 */
+  --type-body-weight: 400;
+  --type-body-leading: 1.65;
+  --type-small-size: 1.125rem;  /* 18px — 15px × 1.2 */
+  --type-small-weight: 400;
+  --type-small-leading: 1.6;
+  --type-caption-size: 0.975rem; /* 15.6px — 13px × 1.2 */
+  --type-caption-weight: 400;
+  --type-caption-leading: 1.4;
+  --type-letter-tight: -0.01em;
+  --type-letter-tighter: -0.02em;
+
+  /* Tailwind text-* scale (public site — synced with type tokens) */
+  --tw-text-xs: 0.975rem;    /* 15.6px — badges, legal fine print */
+  --tw-text-sm: 1.125rem;    /* 18px — secondary labels */
+  --tw-text-base: 1.275rem;  /* 20.4px — body */
+  --tw-text-lg: 1.425rem;    /* 22.8px */
+  --tw-text-xl: 1.575rem;    /* 25.2px */
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 56px; /* Hero vertical padding */
+  --space-7: 64px; /* Hero horizontal + section vertical padding */
+
+  /* Public site (navy) text & border set (for dark navy sections) */
+  --site-text-primary: #f1f5f9;
+  --site-text-secondary: #cbd5e1;
+  --site-text-muted: #94a3b8;
+  --site-border: #223046;
+  --site-bg: #0f172a;
+  --site-bg-elevated: #111c2d;
+  --site-bg-section: #162133;
+  --site-bg-mid: #1b2431;
+  --site-accent: var(--accent);
+  /* Hero: theme-aware (light by default) */
+  --hero-bg: var(--theall-page-bg);
+  /* 좌우 세로 베일(.hero-scrim 중앙 gradient stop)에서만 사용 — from/to는 미사용으로 제거됨 */
+  --hero-scrim-veil-mid: rgba(255, 255, 255, 0.22);
+  --hero-text-primary: var(--foreground);
+  --hero-text-secondary: var(--text-muted);
+  --hero-accent: var(--accent);
+  --hero-badge-bg: rgba(0, 0, 0, 0.06);
+  --hero-badge-border: rgba(0, 0, 0, 0.12);
+  --hero-vignette-edge: rgba(255, 255, 255, 0.25);
+  --hero-vignette-soft: transparent;
+  --hero-overlay-warm-start: rgba(255, 248, 240, 0.12);
+  --hero-overlay-warm-end: transparent;
+  /* 모바일 히어로 소프트 배경 (파노라마 없음 · md 미만 전용 레이어) */
+  --hero-mobile-bg-base: #f3f7fb;
+  --hero-mobile-warm-wash: color-mix(in srgb, var(--theall-brand-orange) 4.5%, white);
+  /* Image overlay (mobile card etc.) */
+  --overlay-image-from: rgba(0, 0, 0, 0.28);
+  --overlay-image-via: rgba(0, 0, 0, 0.04);
+  --overlay-accent-gold: rgba(184, 150, 46, 0.16);
+  --overlay-accent-blue: color-mix(in srgb, var(--theall-brand-blue) 22%, transparent);
+  --overlay-accent-blue-subtle: color-mix(in srgb, var(--theall-brand-blue) 16%, transparent);
+  --overlay-accent-green: rgba(34, 197, 94, 0.2);
+
+  /**
+   * Site header — 데스크톱 메인 바 비율 토큰 (모바일 2단 헤더는 --mobile-header-* 사용)
+   */
+  --header-main-height-desktop: 64px;
+  --header-logo-height-mobile: 28px;
+  --header-logo-height-tablet: 32px;
+  --header-logo-height-desktop: 44px;
+  --header-logo-max-height: 48px;
+  --header-logo-wrapper-padding-left: 0px;
+
+  /* 모바일 2단 헤더 (탑바 + 검색) — 전환·탐색 동선 */
+  --mobile-header-top-height: 56px;
+  --mobile-header-search-row-height: 56px;
+  --mobile-header-search-bg: rgba(255, 255, 255, 0.55);
+  --mobile-header-text-strong: #1a1a1a;
+  /**
+   * 상품 탐색: 모바일 SiteHeader(탑바+검색) 바로 아래 sticky 앵커
+   * (safe-area + 탑바 + 검색행 — products 등 검색행 있는 화면 기준)
+   */
+  --products-mobile-stack-top: calc(
+    env(safe-area-inset-top, 0px) + var(--mobile-header-top-height) +
+      var(--mobile-header-search-row-height)
+  );
+  --mobile-back-header-height: 2.75rem;
+  /* 모바일 뒤로 헤더(h-11) 아래에 두는 리스트 툴바 sticky 앵커 */
+  --products-mobile-toolbar-top: calc(
+    var(--products-mobile-stack-top) + var(--mobile-back-header-height)
+  );
+  /** 마이페이지: SiteHeader(탑바+검색) 아래 sticky 네비 앵커 */
+  --mypage-mobile-stack-top: var(--products-mobile-stack-top);
+  --mypage-mobile-nav-top: calc(
+    var(--mypage-mobile-stack-top) + var(--mobile-back-header-height)
+  );
+}
+
+/** 마이페이지 모바일 가로 탭 — 스크롤 가능함을 fade로 암시 */
+.mypage-mobile-nav-mask-right:not(.mypage-mobile-nav-mask-left) {
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 2.5rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 2.5rem), transparent 100%);
+}
+
+.mypage-mobile-nav-mask-left:not(.mypage-mobile-nav-mask-right) {
+  mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 100%);
+}
+
+.mypage-mobile-nav-mask-right.mypage-mobile-nav-mask-left {
+  mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 calc(100% - 2.5rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 2.5rem, #000 calc(100% - 2.5rem), transparent 100%);
+}
+
+/* 헤더 메인 바 (유틸 바 h-10 제외, 데스크톱) */
+.header-main-bar--desktop {
+  height: var(--header-main-height-desktop);
+  min-height: var(--header-main-height-desktop);
+}
+
+/* 헤더 워드마크: 비율 왜곡 없음, 높이는 토큰만 사용 */
+.header-logo-link {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+  padding-left: var(--header-logo-wrapper-padding-left);
+  max-width: 100%;
+}
+/* 투명 PNG 워드마크: 배경 호버는 사각형이 보여 이질적 → 글리프만 살짝 흐리게 */
+.header-logo-link:hover .header-brand-logo-img {
+  opacity: 0.9;
+  transition: opacity 0.15s ease;
+}
+.header-logo-link:focus-visible .header-brand-logo-img {
+  opacity: 1;
+}
+/* 모바일 헤더 바: 로고 가운데 정렬 시 좌우 대칭 (데스크톱은 .header-logo-link 사용) */
+.header-logo-link--touch-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 0%;
+  padding-left: 0;
+  padding-right: 0;
+}
+/* 헤더 워드마크(img) — 높이/폭은 variant 클래스가 주도 */
+.header-brand-logo-img {
+  display: block;
+  width: auto !important;
+  max-height: var(--header-logo-max-height) !important;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: center;
+}
+.header-brand-logo-img--touch {
+  height: var(--header-logo-height-mobile) !important;
+  max-width: min(260px, 72vw);
+}
+@media (min-width: 768px) {
+  .header-brand-logo-img--touch {
+    height: var(--header-logo-height-tablet) !important;
+  }
+}
+.header-brand-logo-img--desktop {
+  height: var(--header-logo-height-desktop) !important;
+  max-width: min(340px, 36vw);
+}
+@media (min-width: 1280px) {
+  .header-brand-logo-img--desktop {
+    max-width: min(360px, 30vw);
+  }
+}
+
+/* 모바일 헤더 스택: 탑바(햄버거·로고·CTA) + 검색바 */
+.mobile-header-stack {
+  width: 100%;
+  background: transparent;
+}
+.mobile-header-top-bar {
+  position: relative;
+  display: flex;
+  height: var(--mobile-header-top-height);
+  min-height: var(--mobile-header-top-height);
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+@media (min-width: 768px) {
+  .mobile-header-top-bar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+.mobile-header-top-bar__cta {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: var(--type-letter-tight);
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.mobile-header-top-bar__cta:hover {
+  background: var(--accent-hover);
+}
+.mobile-header-top-bar__cta:active {
+  background: var(--accent-active);
+}
+.mobile-header-search-row {
+  display: flex;
+  min-height: var(--mobile-header-search-row-height);
+  align-items: center;
+  padding: 8px 12px 10px;
+}
+@media (min-width: 768px) {
+  .mobile-header-search-row {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+/* 모바일 탑바 중앙 로고: 과도 축소 완화 (햄버거·CTA와 간섭 방지 범위 내) */
+.header-brand-logo-img--touch.mobile-header-top-logo {
+  height: 28px !important;
+  max-height: 28px !important;
+  max-width: min(180px, 52vw);
+}
+
+/* iOS safe-area 대응: sticky 헤더가 노치/주소창에 가려지지 않도록 */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.header-safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Hero / card overlay gradients (token-based, no inline rgba in components) */
+/* 왼쪽 텍스트 구역만 밝게, 오른쪽은 이미지 생동감 유지 */
+.hero-scrim {
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0.35) 24%,
+    rgba(255, 255, 255, 0.12) 42%,
+    rgba(255, 255, 255, 0) 60%
+  );
+}
+.dark .hero-scrim {
+  background-image: linear-gradient(
+    to right,
+    rgba(15, 23, 42, 0.68) 0%,
+    rgba(15, 23, 42, 0.36) 24%,
+    rgba(15, 23, 42, 0.1) 42%,
+    rgba(15, 23, 42, 0) 60%
+  );
+}
+.hero-overlay-warm {
+  background-image: linear-gradient(to left, var(--hero-overlay-warm-start) 0%, var(--hero-overlay-warm-end) 50%, transparent 100%);
+}
+.hero-vignette {
+  background-image: radial-gradient(circle at center, transparent 62%, var(--hero-vignette-edge) 100%);
+}
+.hero-vignette-soft {
+  background-image: radial-gradient(circle at top left, var(--hero-vignette-soft) 0%, transparent 60%);
+}
+
+/**
+ * 모바일 홈 히어로: 얇은 warm wash (사진/진한 오버레이 없음).
+ * HeroSection에서 `md:hidden` 래퍼와 함께 사용.
+ */
+.hero-mobile-atmosphere {
+  position: absolute;
+  inset: 0;
+  background-color: var(--hero-mobile-bg-base);
+  background-image: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    var(--hero-mobile-warm-wash) 42%,
+    var(--theall-page-bg) 100%
+  );
+}
+
+.dark .hero-mobile-atmosphere {
+  background-color: #0f172a;
+  background-image: linear-gradient(180deg, #111827 0%, #0f172a 55%, #0c1220 100%);
+}
+
+.hero-text-shadow-title {
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
+}
+.hero-text-shadow-body {
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
+}
+.image-overlay-bottom {
+  background-image: linear-gradient(to top, var(--overlay-image-from) 0%, var(--overlay-image-via) 50%, transparent 100%);
+}
+.overlay-radial-gold {
+  background-image: radial-gradient(circle at top, var(--overlay-accent-gold) 0%, transparent 60%);
+}
+.overlay-radial-blue {
+  background-image: radial-gradient(circle at top, var(--overlay-accent-blue) 0%, transparent 60%);
+}
+.overlay-radial-blue-subtle {
+  background-image: radial-gradient(circle at top, var(--overlay-accent-blue-subtle) 0%, transparent 55%);
+}
+.overlay-radial-green {
+  background-image: radial-gradient(circle at top, var(--overlay-accent-green) 0%, transparent 60%);
+}
+
+.dark {
+  /* Dark theme: 스펙 — bg #0F172A, surface #111827, text #FFF, sub #9CA3AF */
+  --theall-page-bg: #0f172a;
+  --bg: #0f172a;
+  --surface: #111827;
+  --surface-muted: #1f2937;
+  --surface-elevated: #1f2937;
+
+  --theall-text-primary: #ffffff;
+  --theall-text-secondary: #e5e7eb;
+  --theall-text-muted: #9ca3af;
+
+  --text-primary: #ffffff;
+  --text-secondary: #e5e7eb;
+  --text-muted: #9ca3af;
+  /* 다크 배경 위 보조 텍스트 */
+  --text-subtle: #9ca3af;
+
+  /* 푸터(다크 surface-muted) — 읽힘 우선 */
+  --footer-text: #e2e8f0;
+  --footer-text-muted: #cbd5e1;
+
+  --mobile-header-search-bg: rgba(17, 24, 39, 0.55);
+
+  --border: #374151;
+  --border-strong: #4b5563;
+  --divider: #1f2937;
+
+  /* Primary: 다크 배경에서 가독되는 브랜드 블루 톤 */
+  --primary: #5dade2;
+  --primary-hover: #7bc4ed;
+  --primary-active: #4a9fd4;
+  --primary-bg: color-mix(in srgb, var(--primary) 22%, transparent);
+  --primary-soft: color-mix(in srgb, var(--primary) 14%, transparent);
+  --on-primary: #0f172a;
+
+  /* Accent: 라이트와 동일 브랜드 톤·hover/active(흰 글자 대비 유지) */
+  --accent: var(--theall-brand-orange);
+  --accent-hover: #c95524;
+  --accent-active: #b94d20;
+  --accent-soft: color-mix(in srgb, var(--theall-brand-orange) 18%, transparent);
+  --accent-bg: color-mix(in srgb, var(--theall-brand-orange) 22%, transparent);
+  --on-accent: #ffffff;
+  --dot-indicator: var(--accent);
+
+  /* 프리미엄 골드 (다크 모드) */
+  --accent-premium: #c9a83c;
+  --accent-premium-soft: rgba(184, 150, 46, 0.18);
+
+  --secondary: #374151;
+  --secondary-hover: #4b5563;
+  --secondary-soft: rgba(55, 65, 81, 0.35);
+
+  --focus-ring: #7bc4ed;
+
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.16);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.16);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.16);
+
+  /* Backwards-compatible aliases (legacy, :root와 동일 — 상단 네이밍 계층 설명 참고) */
+  --background: var(--bg);
+  --card: var(--surface);
+  --card-muted: var(--surface-muted);
+  --foreground: var(--text-primary);
+  --text: var(--text-primary);
+  --brand: var(--primary);
+  --brand-strong: var(--primary-hover);
+  --muted: var(--text-secondary);
+
+  --shadow-soft: 0 6px 18px rgba(0, 0, 0, 0.28);
+  --shadow-soft-strong: 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-modal: 0 22px 70px rgba(0, 0, 0, 0.55);
+  --overlay: rgba(0, 0, 0, 0.65);
+  --shadow-color: rgba(0, 0, 0, 0.38);
+
+  /* Soft gradients (dark) */
+  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, #0f172a 100%);
+  --gradient-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 20%, transparent),
+    color-mix(in srgb, #111827 40%, transparent)
+  );
+
+  /* Chart tokens (dark) */
+  --chart-1: var(--primary);
+  --chart-2: var(--accent);
+  --chart-3: #22c55e;
+  --chart-4: #B8962E;
+  --chart-5: #f87171;
+  --chart-grid: #2a3a58;
+  --chart-tooltip-bg: #111827;
+  --chart-tooltip-border: #374151;
+
+  /* Glass surface (dark) — Floating Layer only */
+  --glass-surface: rgba(17, 24, 39, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-blur: 12px;
+  --glass-saturate: 180%;
+  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --glass-highlight-bottom: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --glass-shadow-up: 0 -4px 20px rgba(0, 0, 0, 0.35);
+  --glass-surface-chrome: rgba(17, 24, 39, 0.62);
+  --glass-surface-on-media: rgba(17, 24, 39, 0.5);
+
+  /* Hero overlay tokens (dark mode) */
+  --hero-bg: var(--site-bg);
+  --hero-scrim-veil-mid: rgba(15, 23, 42, 0.38);
+  --hero-text-primary: var(--site-text-primary);
+  --hero-text-secondary: var(--site-text-secondary);
+  --hero-accent: var(--site-accent);
+  --hero-badge-bg: rgba(255, 255, 255, 0.08);
+  --hero-badge-border: rgba(255, 255, 255, 0.12);
+  --hero-vignette-edge: rgba(2, 6, 23, 0.48);
+  --hero-vignette-soft: rgba(148, 163, 184, 0.16);
+  --hero-overlay-warm-start: rgba(248, 196, 113, 0.16);
+  --hero-overlay-warm-end: rgba(248, 196, 113, 0.08);
+  --overlay-image-from: rgba(0, 0, 0, 0.5);
+  --overlay-image-via: rgba(0, 0, 0, 0.08);
+}
+
+/* 다크 모드: 관리자 체크박스 배경이 토큰을 따르도록 (accent는 컴포넌트에서 accent-[var(--primary)] 사용) */
+.dark input[type="checkbox"] {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-dot-indicator: var(--dot-indicator);
+  --color-content-primary: var(--theall-text-primary);
+  --color-content-secondary: var(--theall-text-secondary);
+  --color-content-muted: var(--theall-text-muted);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-card: var(--card);
+  --color-card-muted: var(--card-muted);
+  --color-muted: var(--muted);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-footer-text: var(--footer-text);
+  --color-footer-text-muted: var(--footer-text-muted);
+  --color-focus-ring: var(--focus-ring);
+  --color-site-primary: var(--site-text-primary);
+  --color-site-secondary: var(--site-text-secondary);
+  --color-site-muted: var(--site-text-muted);
+  --color-site-border: var(--site-border);
+  --font-sans: var(--font-sans-fallback);
+  --font-display: var(--font-display-sans);
+  --font-mono: var(--font-mono-fallback);
+  --font-size-type-h1: var(--type-h1-size);
+  --font-size-type-h2: var(--type-h2-size);
+  --font-size-type-h3: var(--type-h3-size);
+  --font-size-type-body: var(--type-body-size);
+  --font-size-type-small: var(--type-small-size);
+  --font-size-type-caption: var(--type-caption-size);
+  --font-size-xs: var(--tw-text-xs);
+  --font-size-sm: var(--tw-text-sm);
+  --font-size-base: var(--tw-text-base);
+  --font-size-lg: var(--tw-text-lg);
+  --font-size-xl: var(--tw-text-xl);
+}
+
+@keyframes adminProgress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans-fallback);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-leading);
+  letter-spacing: var(--type-letter-tight);
+}
+
+/**
+ * Admin console: 정보 밀도 유지 — 공개 사이트보다 한 단계 작은 타이포 스케일
+ */
+.site-admin {
+  --type-h1-size: 2.5rem;
+  --type-h2-size: 1.75rem;
+  --type-h3-size: 1.375rem;
+  --type-body-size: 1rem;
+  --type-small-size: 0.875rem;
+  --type-caption-size: 0.75rem;
+  --tw-text-xs: 0.75rem;
+  --tw-text-sm: 0.875rem;
+  --tw-text-base: 1rem;
+  --tw-text-lg: 1.125rem;
+  --tw-text-xl: 1.25rem;
+}
+
+/* 공통 모달/다이얼로그 스타일 — 백드롭·컨테이너 토큰 통일 */
+.modal-backdrop {
+  background: var(--overlay);
+}
+.modal-container {
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 767px) {
+  /* 상품 상세 하단 CTA 여백: 전역 body padding 제거. 상세페이지 본문에만 pb 적용해 viewport 스크롤 시 잘림 방지 */
+
+  /* 모바일 전역 가로 폭 규칙: 과도한 중첩 px-6을 px-4로 통일 */
+  body :where(main, section, article, aside, div)[class~="px-6"] {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* 하드코딩 랜딩: 쿠팡형 px-4 inset (전역 px-6·PageContainer와 별도) */
+  .hardcoded-landing-page .hardcoded-landing-shell,
+  .hardcoded-landing-page [data-landing-shell],
+  .hardcoded-landing-x {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .section-body {
+    padding-inline: 1rem;
+  }
+}
+
+/* Typography scale utilities (Heading: Wanted Sans, Body/UI: Pretendard) */
+.type-h1 {
+  font-family: var(--font-display-sans);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+  letter-spacing: var(--type-letter-tighter);
+}
+.type-h2 {
+  font-family: var(--font-display-sans);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+  letter-spacing: var(--type-letter-tighter);
+}
+.type-h3 {
+  font-family: var(--font-display-sans);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
+  letter-spacing: var(--type-letter-tight);
+}
+.type-body {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-leading);
+  letter-spacing: var(--type-letter-tight);
+}
+.type-small {
+  font-size: var(--type-small-size);
+  font-weight: var(--type-small-weight);
+  line-height: var(--type-small-leading);
+  letter-spacing: var(--type-letter-tight);
+}
+.type-caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-leading);
+  letter-spacing: var(--type-letter-tight);
+}
+
+/* Section title pattern: small label (optional) + Korean title (700, primary) + subcopy (secondary/muted) */
+.section-label {
+  font-size: var(--type-caption-size);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--theall-text-muted);
+}
+.section-title {
+  font-family: var(--font-display-sans);
+  font-weight: 700;
+  color: var(--theall-text-primary);
+  letter-spacing: var(--type-letter-tight);
+}
+.section-title-lg {
+  font-family: var(--font-display-sans);
+  font-size: var(--type-h1-size);
+  font-weight: 700;
+  line-height: var(--type-h1-leading);
+  color: var(--theall-text-primary);
+  letter-spacing: var(--type-letter-tighter);
+}
+
+/* Button / Nav text: 14px, 600 for buttons; 14px, 500 nav, 600 active */
+.type-btn {
+  font-size: var(--type-small-size);
+  font-weight: 600;
+  letter-spacing: var(--type-letter-tight);
+}
+.type-nav {
+  font-size: var(--type-small-size);
+  font-weight: 500;
+  letter-spacing: var(--type-letter-tight);
+}
+.type-nav-active {
+  font-size: var(--type-small-size);
+  font-weight: 600;
+  letter-spacing: var(--type-letter-tight);
+}
+
+.heading-display {
+  font-family: var(--font-display-sans);
+  letter-spacing: var(--type-letter-tight);
+}
+
+.heading-display-hero {
+  font-family: var(--font-display-sans);
+  letter-spacing: var(--type-letter-tighter);
+}
+
+.font-card-title {
+  font-family: var(--font-display-sans);
+  font-weight: 600;
+  letter-spacing: var(--type-letter-tight);
+}
+
+.font-price-strong {
+  font-family: var(--font-sans-fallback);
+  font-weight: 600;
+  letter-spacing: var(--type-letter-tight);
+}
+
+/* 링크: 기본 --primary, hover underline + --primary-hover + 배경 --primary-soft, visited 동일 유지 */
+.link-primary {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.15s ease, text-decoration 0.15s ease, background 0.15s ease;
+}
+.link-primary:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+  background-color: var(--primary-soft);
+  border-radius: 2px;
+  padding-inline: 2px;
+  padding-block: 1px;
+  margin-inline: -2px;
+  margin-block: -1px;
+}
+.link-primary:visited {
+  color: var(--primary);
+}
+.link-primary:active {
+  color: var(--primary-active);
+}
+
+/** 브랜드 dot: 선택 인디케이터·추천 뱃지·지도 포인트 등 — bg-[var(--dot-indicator)] 또는 이 유틸 */
+.brand-dot {
+  background-color: var(--dot-indicator);
+}
+
+/* 홈 섹션 레이아웃: 제목 H2, 설명, 카드 그리드 여백 */
+.section-heading {
+  color: var(--foreground);
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.section-heading:first-child {
+  margin-top: 0;
+}
+.section-description {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.section-grid {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 768px) {
+  .section-grid {
+    gap: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .section-grid {
+    gap: 1.5rem;
+  }
+}
+.page-content {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+@media (min-width: 768px) {
+  .page-content {
+    padding-inline: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .page-content {
+    padding-inline: 2rem;
+  }
+}
+
+/* Layout primitives */
+.page-hero {
+  background: var(--primary);
+  border-radius: 24px;
+  padding-block: var(--space-6);
+  padding-inline: var(--space-7);
+  box-shadow: var(--shadow-soft-strong);
+  color: var(--on-primary);
+}
+
+/*
+ * 콘텐츠 페이지(약관/후기/블로그/견적 등) 공통 배경. 이전에는 20여개 페이지에
+ * `bg-gradient-to-b from-[#f3f8ff] to-white`가 각자 하드코딩돼 있어 하나만
+ * 바꾸려면 전부 찾아 고쳐야 했음. 값 자체는 동일하게 유지하고 토큰화만 함.
+ */
+.page-bg-wash {
+  background-image: linear-gradient(to bottom, #f3f8ff, #ffffff);
+}
+
+/* 히어로는 --primary 위에 올라가므로, 전역 .section-label / .section-title 의 페이지 본문 색이
+   Tailwind text-white 보다 나중에 적용되어 대비가 깨지는 문제를 방지 */
+.page-hero .section-label {
+  color: color-mix(in srgb, var(--on-primary) 72%, transparent);
+}
+.page-hero .section-title {
+  color: var(--on-primary);
+}
+.page-hero .type-small {
+  color: color-mix(in srgb, var(--on-primary) 90%, transparent);
+}
+
+.section-body {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-block: var(--space-7);
+  padding-inline: 1.5rem;
+}
+
+.content-card {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 48px;
+  box-shadow: var(--shadow-soft);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes product-booking-highlight {
+  0% {
+    box-shadow: 0 0 0 2px var(--accent);
+    background-color: var(--accent-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+  }
+}
+
+.product-booking-highlight {
+  animation: product-booking-highlight 1.2s ease-out;
+  border-radius: 0.75rem;
+}
+
+.fade-in-up {
+  animation: fadeInUp 220ms ease-out;
+}
+
+.surface-card {
+  border-radius: 1rem;
+  background: var(--card);
+  box-shadow: var(--shadow-soft-strong);
+  border: 1px solid var(--border);
+}
+
+/**
+ * Public Floating Glass utilities.
+ * Apply only to Z-elevated chrome (header, modal, sheet, hero search shell).
+ * Do not set border-radius here — keep the call site’s rounded-*.
+ * Brand CTA faces (accent / kakao / primary) stay solid.
+ */
+.glass-float {
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--shadow-modal);
+}
+
+.glass-chrome {
+  background: var(--glass-surface-chrome);
+  border-color: var(--glass-border);
+  border-top: 1px solid var(--glass-highlight);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--glass-shadow);
+}
+
+.glass-chrome-bottom {
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--glass-shadow-up);
+}
+
+.glass-on-media {
+  background: var(--glass-surface-on-media);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 var(--glass-highlight-bottom),
+    var(--glass-shadow);
+}
+
+/**
+ * Header CTA edge — solid brand faces (accent/kakao) kept opaque.
+ * Adds a faint top gloss + white hairline ring so header CTAs share the
+ * glass chrome's lighting language. No blur, no color change.
+ */
+.glass-cta-edge {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    var(--shadow-soft);
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+  outline-offset: -1px;
+}
+
+.glass-cta-edge:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    var(--shadow-soft-strong);
+}
+
+.dark .glass-cta-edge {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    var(--shadow-soft);
+  outline: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dark .glass-cta-edge:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    var(--shadow-soft-strong);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-float {
+    background: var(--surface-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--shadow-modal);
+  }
+
+  .glass-chrome {
+    background: var(--surface);
+    border-top-color: var(--border);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass-chrome-bottom {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--glass-shadow-up);
+  }
+
+  .glass-on-media {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--shadow-soft);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-float {
+    background: var(--surface-elevated);
+  }
+
+  .glass-chrome,
+  .glass-chrome-bottom,
+  .glass-on-media {
+    background: var(--surface);
+  }
+}
+
+.kpi-card {
+  position: relative;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  transition: background 150ms ease-out, border-color 150ms ease-out;
+}
+
+.kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--gradient-soft);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+
+.kpi-card:hover::before {
+  opacity: 1;
+}
+
+.btn-admin-primary {
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--on-primary);
+  background: var(--primary);
+  transition-property: background-color, color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.btn-admin-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-admin-primary-gradient {
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--on-primary);
+  background-image: var(--gradient-primary);
+  background-size: 160% 160%;
+  background-position: 0% 50%;
+  transition: background-position 200ms ease-out, color 150ms ease-out;
+}
+
+.btn-admin-primary-gradient:hover {
+  background-position: 100% 50%;
+}
+
+.btn-admin-secondary {
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+  transition-property: background-color, color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.btn-admin-secondary:hover {
+  background: var(--border);
+}
+
+.input-base {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-base:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in_oklab, var(--primary) 15%, transparent);
+}
+
+/* Footer: GlobalSiteFooter — `--footer-text*` 토큰(라이트/다크 공통 정의) */
+.footer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid var(--divider);
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 0.3125rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.footer-pill:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-elevated);
+}
+.footer-pill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* 전화·메일 등 2차 액션 */
+.footer-pill-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.footer-pill-secondary:hover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface));
+  /* primary 링크 대비 유지(밝은 soft 배경 위에서도 읽힘) */
+  color: var(--primary-hover);
+}
+.footer-pill-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* 인스타·약관 등 3차 — surface-muted 위 분리·대비, hover 시 더 옅어지지 않음 */
+.footer-pill-tertiary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--footer-text);
+  padding: 0.25rem 0.5rem;
+  font-size: var(--type-caption-size);
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.footer-pill-tertiary:hover {
+  color: var(--foreground);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--border-strong);
+}
+.dark .footer-pill-tertiary {
+  border-color: color-mix(in srgb, var(--foreground) 14%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+.dark .footer-pill-tertiary:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, var(--surface-muted));
+  border-color: var(--border-strong);
+}
+.footer-pill-tertiary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* 푸터 상담·채널 — 네이버 공식 그린 계열 */
+.footer-pill-naver {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, #03c75a 82%, #000);
+  background: #03c75a;
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--type-caption-size);
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+}
+.footer-pill-naver:hover {
+  background: color-mix(in srgb, #03c75a 86%, #000);
+  border-color: color-mix(in srgb, #03c75a 65%, #000);
+  color: #fff;
+}
+.footer-pill-naver:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.dark .footer-pill-naver {
+  border-color: color-mix(in srgb, #03c75a 55%, transparent);
+  background: #02a84d;
+}
+.dark .footer-pill-naver:hover {
+  background: #03c75a;
+  filter: brightness(1.06);
+  color: #fff;
+}
+
+/* 푸터 상담·채널 — 인스타그램 브랜드 그라데이션 */
+.footer-pill-instagram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, #e1306c 35%, transparent);
+  background: linear-gradient(
+    135deg,
+    #f58529 0%,
+    #dd2a7b 42%,
+    #8134af 72%,
+    #515bd4 100%
+  );
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--type-caption-size);
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+.footer-pill-instagram:hover {
+  filter: brightness(1.07) saturate(1.05);
+  color: #fff;
+}
+.footer-pill-instagram:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.dark .footer-pill-instagram {
+  border-color: color-mix(in srgb, #fff 18%, transparent);
+}
+.dark .footer-pill-instagram:hover {
+  filter: brightness(1.1) saturate(1.08);
+  color: #fff;
+}
+
+/* 상담·채널 그리드: 카카오·네이버·인스타 동일 셀·동일 본문 크기 */
+.footer-pill-channel-equal {
+  box-sizing: border-box;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0 0.625rem;
+  font-size: var(--type-small-size);
+  font-weight: 600;
+  letter-spacing: var(--type-letter-tight);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+/* 모바일(<sm): 푸터 pill 밀도만 축소. sm 이상은 위 기본값 유지 */
+@media (max-width: 639px) {
+  .footer-pill {
+    padding: 0.25rem 0.5rem;
+  }
+  .footer-pill-secondary {
+    padding: 0.3125rem 0.65rem;
+    gap: 0.3rem;
+  }
+  .footer-pill-tertiary {
+    padding: 0.1875rem 0.375rem;
+  }
+  .footer-pill-naver:not(.footer-pill-channel-equal),
+  .footer-pill-instagram:not(.footer-pill-channel-equal) {
+    padding: 0.1875rem 0.375rem;
+  }
+}
+
+/* 타임라인 썸네일 스트립: 가로 스크롤 시 스크롤바 숨김 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 헤더 메가메뉴 패널 등장 애니메이션 */
+@keyframes mega-menu-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mega-menu-panel-enter {
+  animation: mega-menu-panel-enter 0.18s ease-out forwards;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Flyer A4 — 스크린 타이포 + 인쇄/PDF (브로슈어 톤, --primary 연동)           */
+/* A4 기본 타이포; 롱폼은 .flyer-longform-doc-surface 하위에서 별도 스케일 (TYPO-DETAIL) */
+/* -------------------------------------------------------------------------- */
+.flyer-title {
+  font-size: clamp(1.05rem, 2.7vw, 1.3rem);
+  line-height: 1.26;
+}
+.flyer-subtitle {
+  font-size: clamp(0.9375rem, 2.1vw, 1.05rem);
+  line-height: 1.58;
+}
+.flyer-kicker {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.5;
+}
+.flyer-section-title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1.32;
+  letter-spacing: -0.02em;
+}
+.flyer-body {
+  font-size: 1rem;
+  line-height: 1.68;
+}
+.flyer-list {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.flyer-list-compact {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.flyer-brand {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.flyer-footer-info {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.flyer-gallery-empty {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* 롱포맷 문서: PR-FLYER-TYPO-DETAIL — 카드 제목 15px, 본문 14px, 2열 리스트 13px */
+.flyer-longform-doc-surface .flyer-section-title {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 800;
+  line-height: 1.36;
+  letter-spacing: -0.02em;
+}
+.flyer-longform-doc-surface .flyer-section-title--compact {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.36;
+  font-weight: 800;
+}
+.flyer-longform-doc-surface .flyer-body {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.68;
+}
+.flyer-longform-doc-surface .flyer-body--compact {
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.66;
+}
+.flyer-longform-doc-surface .flyer-list,
+.flyer-longform-doc-surface .flyer-list-compact {
+  font-size: 0.875rem;
+  line-height: 1.68;
+}
+.flyer-longform-doc-surface .flyer-list--compact,
+.flyer-longform-doc-surface .flyer-list-compact--sm {
+  font-size: 0.8125rem;
+  line-height: 1.66;
+}
+.flyer-longform-doc-surface .flyer-included-excluded-list {
+  font-size: 0.8125rem; /* 13px — 포함·불포함만 보수적 */
+  line-height: 1.6;
+}
+.flyer-longform-doc-surface .flyer-included-excluded-list.flyer-list--compact,
+.flyer-longform-doc-surface .flyer-included-excluded-list.flyer-list-compact--sm {
+  font-size: 0.75rem; /* 12px compact */
+  line-height: 1.58;
+}
+.flyer-longform-doc-surface .flyer-title {
+  line-height: 1.24;
+}
+.flyer-longform-doc-surface .flyer-subtitle {
+  line-height: 1.6;
+}
+.flyer-longform-doc-surface .flyer-footer .flyer-footer-info,
+.flyer-longform-doc-surface .flyer-footer .flyer-footer-info--compact {
+  font-size: 0.75rem; /* 12px — 푸터 보조 */
+  line-height: 1.65;
+}
+
+.flyer-title--compact {
+  font-size: clamp(1rem, 2.3vw, 1.15rem);
+  line-height: 1.24;
+}
+.flyer-subtitle--compact {
+  font-size: clamp(0.9375rem, 1.9vw, 1rem);
+  line-height: 1.55;
+}
+.flyer-section-title--compact {
+  font-size: 1.0625rem;
+  font-weight: 800;
+  line-height: 1.32;
+}
+.flyer-body--compact {
+  font-size: 0.9375rem;
+  line-height: 1.66;
+}
+.flyer-list--compact {
+  font-size: 0.9375rem;
+  line-height: 1.68;
+}
+.flyer-list-compact--sm {
+  font-size: 0.9375rem;
+  line-height: 1.68;
+}
+.flyer-footer-info--compact {
+  font-size: 0.9375rem;
+  line-height: 1.62;
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  .flyer-print-hide {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 롱포맷 유인물: 세로 문서 전체가 인쇄되도록 높이·overflow 강제 없음 */
+  [data-flyer-document] {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .flyer-longform-preview-root {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  /* 레거시 A4 미리보기(구 빌드 HTML 캐시 등) fallback */
+  [data-flyer-paper] {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .flyer-a4-preview-root {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  .flyer-sheet-inner {
+    padding: 0 !important;
+  }
+}
+
+/* 관리자 모달 인쇄: 미리보기만 보이게 */
+@media print {
+  body.print-flyer-only * {
+    visibility: hidden;
+  }
+  body.print-flyer-only .flyer-longform-preview-root,
+  body.print-flyer-only .flyer-longform-preview-root *,
+  body.print-flyer-only .flyer-a4-preview-root,
+  body.print-flyer-only .flyer-a4-preview-root * {
+    visibility: visible;
+  }
+  body.print-flyer-only .flyer-longform-preview-root,
+  body.print-flyer-only .flyer-a4-preview-root {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    z-index: 99999;
+    display: flex !important;
+    justify-content: center;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+

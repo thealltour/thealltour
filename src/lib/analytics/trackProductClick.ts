@@ -83,6 +83,47 @@ export function trackProductCardClick(params: TrackProductCardClickParams): void
   }
 }
 
+export type TrackProductDetailViewParams = {
+  productId: string;
+  tourType?: string | null;
+  region?: string | null;
+  bookingUxMode?: string | null;
+  benefitMode?: string | null;
+  pagePath?: string;
+};
+
+/**
+ * 상품 상세 진입 view (PR-UI-06). 한 번만 fire하도록 호출측에서 관리.
+ */
+export function trackProductDetailViewSummary(params: TrackProductDetailViewParams): void {
+  try {
+    const pagePath =
+      typeof params.pagePath === "string" && params.pagePath.trim()
+        ? params.pagePath
+        : typeof window !== "undefined"
+          ? window.location.pathname
+          : null;
+    trackClientEvent(
+      createAnalyticsPayload({
+        eventName: ANALYTICS_EVENTS.product_detail_view_summary,
+        source: ANALYTICS_SOURCES.consult_cta,
+        pagePath,
+        productId: params.productId?.trim() || null,
+        section: "product_detail",
+        label: params.tourType ?? null,
+        metadata: {
+          tour_type: params.tourType ?? null,
+          region: params.region ?? null,
+          booking_ux_mode: params.bookingUxMode ?? null,
+          benefit_mode: params.benefitMode ?? null,
+        },
+      }),
+    );
+  } catch {
+    // no-op
+  }
+}
+
 /**
  * 상품 상세 CTA 클릭 시 호출 (PR18). section = top | sticky_mobile | sidebar.
  */

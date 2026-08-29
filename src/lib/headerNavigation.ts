@@ -139,7 +139,7 @@ async function buildGolfRecommendMenuGroup(settings: SiteSettings): Promise<Head
     label: "골프여행 추천",
     labelHref: golfAllHref,
     items: [
-      { key: "golf-all", label: "골프여행 전체 보기", href: golfAllHref },
+      // 전체 골프 진입은 Header 1단(모바일 Drawer / Desktop primary)에서 제공
       ...regionItems,
     ],
   };

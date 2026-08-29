@@ -255,6 +255,7 @@ export function ProductDetailStickyV2Desktop({
                 productTitle={productTitle}
                 kakaoHref={kakaoHref}
                 layout="rail"
+                analyticsSection="sidebar"
               />
             </div>
           ) : (
@@ -491,6 +492,7 @@ export function ProductDetailStickyV2Mobile({
                 productTitle={productTitle}
                 kakaoHref={kakaoHref}
                 layout="bar"
+                analyticsSection="sticky_mobile"
                 onOpenSelection={() => {
                   setSheetTarget(
                     departureSelectionMissing

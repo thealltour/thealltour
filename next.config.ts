@@ -4,7 +4,7 @@ import bundleAnalyzer from "@next/bundle-analyzer";
 const contentSecurityPolicy = `
   default-src 'self';
   base-uri 'self';
-  form-action 'self';
+  form-action 'self' https://mobile.inicis.com;
   object-src 'none';
   frame-ancestors 'self';
   worker-src 'self';

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import Tag from "@/components/ui/Tag";
@@ -20,7 +20,6 @@ import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtag
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { cn } from "@/lib/cn";
 import { mapProductToTimelineModel, getTimelineModelFromSchedule } from "@/lib/products/mapProductToTimelineModel";
-import { ProductFeatureCard } from "@/components/products/ProductFeatureCard";
 import { FlightSummarySection } from "@/components/products/FlightSummarySection";
 import { ProductIncludeExclude } from "@/components/products/ProductIncludeExclude";
 import { ProductSellingPointsSection } from "@/components/products/ProductSellingPointsSection";
@@ -41,14 +40,11 @@ import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
-import { ProductQuickSummaryCard } from "@/components/products/ProductQuickSummaryCard";
 import { ProductHighlightsCard } from "@/components/products/ProductHighlightsCard";
-import { ProductQuickInfoBar } from "@/components/products/ProductQuickInfoBar";
-import { ProductTrustSummary } from "@/components/products/ProductTrustSummary";
-import { ProductHeroBadges } from "@/components/products/ProductHeroBadges";
 import ProductSummaryInfo from "@/components/products/ProductSummaryInfo";
+import { ProductCostSummary } from "@/components/products/ProductCostSummary";
+import { ProductGolfMemberBenefit } from "@/components/products/ProductGolfMemberBenefit";
 import ProductItineraryTimeline from "@/components/products/ProductItineraryTimeline";
-import { buildHeroBadges } from "@/lib/products/buildHeroBadges";
 import {
   getLegacyDayPreviewLabel,
   parseDayContentToSections,
@@ -58,7 +54,6 @@ import { parseThemeTokens } from "@/lib/productTaxonomies";
 import {
   DETAIL_UNIFIED_PRICE_NOTICE_LINES,
   getSeasonalPriceDisplayModel,
-  STICKY_SEASONAL_VOLATILITY_HINT,
 } from "@/lib/products/detailSeasonalPriceDisplay";
 import { getDepartureSchedulesMinPrice } from "@/lib/products/normalizeDepartureSchedules";
 import { collectProductDepartureDates } from "@/lib/products/productDepartureDates";
@@ -68,6 +63,7 @@ import {
   ProductDetailRecommendedAudience,
   SeasonalPriceComparison,
 } from "@/components/products/ProductDetailPriceGuide";
+import { trackProductDetailViewSummary } from "@/lib/analytics/trackProductClick";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -98,7 +94,7 @@ export type ProductDetailV2Props = {
   refundPolicy?: string;
   onConsultClick?: () => void;
   kakaoHref?: string;
-  /** 상담 견적 페이지 링크. productId 등이 있으면 본문 CTA는 모달을 띄우고 이 값은 폼 기본 링크로만 사용 */
+  /** @deprecated unused — Sticky/Header 상담 사용. 전달하지 마세요. */
   consultHref?: string;
   /** 모달 열 때 전달할 상품 정보 (있으면 본문 상담 버튼이 모달 오픈) */
   productId?: string;
@@ -187,7 +183,7 @@ export default function ProductDetailV2({
   refundPolicy = "",
   onConsultClick,
   kakaoHref = "",
-  consultHref = "",
+  consultHref: _consultHref = "",
   productId,
   productTitle,
   sourcePath,
@@ -362,6 +358,19 @@ export default function ProductDetailV2({
     setPaxDiscountPreview(paxDiscountPreview);
   }, [paxDiscountPreview, setPaxDiscountPreview]);
 
+  const detailViewFiredRef = useRef(false);
+  useEffect(() => {
+    if (!productId || detailViewFiredRef.current) return;
+    detailViewFiredRef.current = true;
+    trackProductDetailViewSummary({
+      productId,
+      tourType: product?.category ?? category ?? null,
+      region: product?.theme ?? region ?? null,
+      bookingUxMode: product ? resolveProductBookingUxMode(product) : null,
+      benefitMode,
+    });
+  }, [productId, product, category, region, benefitMode]);
+
   const bookingUxMode = useMemo(
     () => (product ? resolveProductBookingUxMode(product) : "calendar_booking"),
     [product],
@@ -515,97 +524,7 @@ export default function ProductDetailV2({
   const hasSchedule = scheduleDays.length > 0;
   const listClass = "space-y-2 text-base leading-7 text-slate-700";
 
-  /** PR8-1: 메타 정보 바용 날짜 범위. startDate~endDate 단일 표현, 동일일이면 한 번만 */
-  const metaDateRange = useMemo(() => {
-    const from = product?.departure_from_date?.trim();
-    const to = product?.departure_to_date?.trim();
-    if (!from && !to) return "";
-    const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
-    const fmt = (s: string) => {
-      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (!m) return s;
-      const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
-      return `${m[1]}.${m[2]}.${m[3]}(${WEEKDAY[d.getDay()]})`;
-    };
-    if (from && to) {
-      if (from === to) return fmt(from);
-      const start = fmt(from);
-      const mTo = to.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (mTo && from.startsWith(mTo[1])) return `${start} ~ ${mTo[2]}.${mTo[3]}(${WEEKDAY[new Date(parseInt(mTo[1], 10), parseInt(mTo[2], 10) - 1, parseInt(mTo[3], 10)).getDay()]})`;
-      return `${start} ~ ${fmt(to)}`;
-    }
-    return from ? fmt(from) : fmt(to!);
-  }, [product?.departure_from_date, product?.departure_to_date]);
-
-  /** PR8-1: 기간 한 종류만 (3박5일 우선, 중복 제거) */
-  const durationLabel = useMemo(() => {
-    const raw = displayDuration || product?.overview_duration?.trim() || product?.duration?.trim() || "";
-    return raw;
-  }, [displayDuration, product?.overview_duration, product?.duration]);
-
-  /** PR9: 카드 상단 테마 라벨 (중복 없이 1회) */
-  const themeLabel = useMemo(() => {
-    return product?.theme?.trim() || category || "";
-  }, [product?.theme, category]);
-
-  /** PR9: 단일 출발일일 때 "YYYY.MM.DD(요일) 출발" */
-  const departureLabel = useMemo(() => {
-    const from = product?.departure_from_date?.trim();
-    const to = product?.departure_to_date?.trim();
-    if (!from || (to && to !== from)) return "";
-    const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
-    const m = from.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return "";
-    const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
-    return `${m[1]}.${m[2]}.${m[3]}(${WEEKDAY[d.getDay()]}) 출발`;
-  }, [product?.departure_from_date, product?.departure_to_date]);
-
-  /** PR9: 상품 특징 (카드 하단 chips, 최대 4개) */
-  const productHighlights = useMemo(() => {
-    const items: string[] = [];
-    if (product?.point_tourism?.trim()) items.push("핵심 관광 포함");
-    if (!hasOptions) items.push("노옵션");
-    const meta = product?.meta_info?.trim();
-    if (meta && items.length < 3) {
-      const isDuration = /^\d+박?\s*\d*일?\s*$/.test(meta) || /^\d+일\s*$/.test(meta);
-      const shoppingMatch = meta.match(/쇼핑\s*(\d+)\s*회?/i) || meta.match(/(\d+)\s*회\s*쇼핑/i);
-      if (shoppingMatch) items.push(`쇼핑 ${shoppingMatch[1]}회`);
-      else if (!isDuration && meta !== (product?.theme?.trim() || "")) items.push(meta.length > 20 ? `${meta.slice(0, 18)}…` : meta);
-    }
-    return items.slice(0, 4);
-  }, [product?.meta_info, product?.point_tourism, product?.theme, hasOptions]);
-
-  /** PR34: Hero 배지 (모바일, 짧은 키워드만. QuickInfoBar/HighlightsCard와 역할 구분) */
-  const heroBadges = useMemo(
-    () => buildHeroBadges(product, { hasOptions }),
-    [product, hasOptions],
-  );
-
-  /** 포함사항 요약 (줄바꿈 기준 앞 2~3개만 쉼표로 연결, Summary 카드용) */
-  const includedSummary = useMemo(() => {
-    const raw = includedItems?.trim();
-    if (!raw) return undefined;
-    return raw
-      .split("\n")
-      .map((v) => v.trim())
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(", ");
-  }, [includedItems]);
-
-  /** 불포함사항 요약 (포함사항과 동일 규칙) */
-  const excludedSummary = useMemo(() => {
-    const raw = excludedItems?.trim();
-    if (!raw) return undefined;
-    return raw
-      .split("\n")
-      .map((v) => v.trim())
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(", ");
-  }, [excludedItems]);
-
-  /** PR40: 상품 요약 블록 표시 여부 (값이 하나라도 있을 때만) */
+  /** PR40: 사실 정보(기간/출발/항공/호텔)만 — 가격·포함은 별도 블록 */
   const hasSummaryData = useMemo(() => {
     const d = product?.duration ?? duration;
     const dep = product?.departure ?? product?.overview_region;
@@ -613,21 +532,8 @@ export default function ProductDetailV2({
     const hot = product?.hotel ?? product?.overview_accommodation;
     const style = product?.travelStyle ?? product?.theme;
     const minPeople = product?.min_departure_people ?? minDeparturePeople;
-    const pr = typeof product?.price === "number" && product.price > 0 ? product.price : undefined;
-    return Boolean(
-      d ||
-        dep ||
-        air ||
-        hot ||
-        style ||
-        minPeople ||
-        includedSummary ||
-        excludedSummary ||
-        pr ||
-        showSeasonalBandCard ||
-        showDepartureSchedulePrice,
-    );
-  }, [product, duration, minDeparturePeople, includedSummary, excludedSummary, showSeasonalBandCard, showDepartureSchedulePrice]);
+    return Boolean(d || dep || air || hot || style || minPeople);
+  }, [product, duration, minDeparturePeople]);
 
   /** PR22: 핵심 여행 요약 카드용. highlights → tags → themes 순, 최대 5개 */
   const highlightsForCard = useMemo(() => {
@@ -653,26 +559,18 @@ export default function ProductDetailV2({
     [product],
   );
 
-  /** PR29: 핵심 정보 요약 바용 (모바일, 사실 정보만) */
-  const quickInfoBarProps = useMemo(() => {
-    const duration = durationLabel?.trim() || "";
-    const destination = themeLabel?.trim() || "";
-    const hasFlight =
-      product &&
-      (product.departure_from_airport?.trim() ||
-        product.departure_to_airport?.trim() ||
-        product.departure_flight_name?.trim());
-    const flight = hasFlight ? "항공 포함" : "";
-    const hotel = hotelValue?.trim() ? (hotelValue.length > 20 ? `${hotelValue.slice(0, 18)}…` : hotelValue) : "";
-    const status = statusTag != null ? STATUS_LABELS[statusTag] : "";
-    return {
-      durationLabel: duration || undefined,
-      destinationLabel: destination || undefined,
-      flightLabel: flight || undefined,
-      hotelLabel: hotel || undefined,
-      statusLabel: status || undefined,
-    };
-  }, [durationLabel, themeLabel, product, hotelValue, statusTag]);
+  const priceBasisLabel = (priceMeta || "1인 기준").trim() || "1인 기준";
+  const priceVolatilityHint = "출발일에 따라 달라질 수 있어요";
+
+  const openIncludedTab = useCallback(() => {
+    setActiveTab("included");
+    requestAnimationFrame(() => {
+      document.getElementById("product-detail-tabs")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -733,88 +631,64 @@ export default function ProductDetailV2({
                   <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
                     ₩{departureSchedulePriceFormatted}~
                   </p>
-                  {(displayDuration || priceMeta) && (
-                    <p className="mt-1 text-sm text-slate-500">
-                      {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                  <p className="mt-1 text-sm text-slate-500">{STICKY_SEASONAL_VOLATILITY_HINT}</p>
-                  <div className="mt-3 space-y-0.5">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES.map((line) => (
-                      <p key={line} className="text-sm leading-relaxed text-slate-500">
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                  <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
+                  <p className="mt-1 text-sm text-slate-500">
+                    {[priceBasisLabel, priceVolatilityHint].join(" · ")}
+                  </p>
+                  {displayDuration ? (
+                    <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
+                  ) : null}
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
+                  </p>
                 </>
               ) : showSeasonalBandCard ? (
                 <>
                   <p className="text-base font-semibold text-[#0f172a]">대표 출발가 안내</p>
-                  {(displayDuration || priceMeta) && (
-                    <p className="mt-1 text-sm text-slate-500">
-                      {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                  {product?.seasonal_price_bands ? (
-                    <SeasonalPriceComparison bands={product.seasonal_price_bands} />
+                  <p className="mt-1 text-sm text-slate-500">
+                    {[priceBasisLabel, priceVolatilityHint].join(" · ")}
+                  </p>
+                  {displayDuration ? (
+                    <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
                   ) : null}
-                  <div className="mt-3 space-y-0.5">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES.map((line) => (
-                      <p key={line} className="text-sm leading-relaxed text-slate-500">
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                  <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
+                  {product?.seasonal_price_bands ? (
+                    <div className="mt-2">
+                      <SeasonalPriceComparison bands={product.seasonal_price_bands} />
+                    </div>
+                  ) : null}
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
+                  </p>
                 </>
               ) : displayPrice ? (
                 <>
                   <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
                     ₩{displayPrice}~
                   </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {[priceBasisLabel, priceVolatilityHint].join(" · ")}
+                  </p>
+                  {displayDuration ? (
+                    <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
+                  ) : null}
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-price-strong text-xl font-semibold text-slate-600 md:text-2xl">
+                    상담 후 견적 안내
+                  </p>
                   {(displayDuration || priceMeta) && (
                     <p className="mt-1 text-sm text-slate-500">
                       {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
                     </p>
                   )}
-                  <div className="mt-3 space-y-0.5">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES.map((line) => (
-                      <p key={line} className="text-sm leading-relaxed text-slate-500">
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                  <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
+                  </p>
                 </>
-              ) : (
-                <p className="font-price-strong text-xl font-semibold text-slate-600 md:text-2xl">
-                  상담 후 견적 안내
-                </p>
               )}
-              {!showSeasonalBandCard && !showDepartureSchedulePrice && !displayPrice && (displayDuration || priceMeta) && (
-                <p className="mt-1 text-sm text-slate-500">
-                  {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
-                </p>
-              )}
-              {typeof fuelIncluded === "boolean" && (
-                <p className="mt-0.5 text-sm text-slate-500">
-                  {fuelIncluded ? "유류할증료 포함" : "유류할증료 별도"}
-                </p>
-              )}
-              {!(showSeasonalBandCard || showDepartureSchedulePrice || displayPrice) ? (
-                <>
-                  <p className="mt-0.5 text-sm text-slate-500">유류할증료는 상담 시 안내</p>
-                  <div className="mt-3 space-y-0.5">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES.map((line) => (
-                      <p key={line} className="text-sm leading-relaxed text-slate-500">
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                  <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
-                </>
-              ) : null}
             </div>
             {hasOverviewAside ? (
               <div className="min-w-0 space-y-3">
@@ -854,7 +728,6 @@ export default function ProductDetailV2({
           <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
         </div>
 
-        {/* PR40: 상품 핵심 요약 정보 블록 (Hero 바로 아래) */}
         {hasSummaryData && (
           <div className="mt-6">
             <ProductSummaryInfo
@@ -863,14 +736,41 @@ export default function ProductDetailV2({
               airline={formatAirlineLabel(product ?? undefined)}
               hotel={product?.hotel ?? product?.overview_accommodation}
               travelStyle={product?.travelStyle ?? product?.theme}
-              price={product?.price}
-              usePriceHeroGuide={showSeasonalBandCard}
               minDeparturePeople={(product?.min_departure_people ?? minDeparturePeople) || undefined}
-              includedSummary={includedSummary}
-              excludedSummary={excludedSummary}
             />
           </div>
         )}
+
+        {isGolfCoupon ? (
+          <div className="mt-5">
+            <ProductGolfMemberBenefit
+              memberLoggedIn={memberLoggedIn}
+              paxDiscountPreview={paxDiscountPreview}
+            />
+          </div>
+        ) : null}
+
+        <div className="mt-5">
+          <ProductCostSummary
+            includedLines={includedLines}
+            excludedLines={excludedLines}
+            optionalExpenseLines={[...optionalExpenseLines, ...optionalLines]}
+            fuelIncluded={fuelIncluded}
+            onOpenIncludedTab={openIncludedTab}
+          />
+        </div>
+
+        {highlightsForCard.length > 0 ? (
+          <div className="mt-6">
+            <ProductHighlightsCard highlights={highlightsForCard} />
+          </div>
+        ) : null}
+
+        {recommendedAudienceBullets.length > 0 ? (
+          <div className="mt-4">
+            <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
+          </div>
+        ) : null}
 
         {shouldShowProductDescription(product?.description) ||
         shouldShowGolfCourseInfo(product?.golf_course_info) ? (
@@ -895,66 +795,18 @@ export default function ProductDetailV2({
           </div>
         ) : null}
 
-        {/* PR34: 모바일 Hero 직하단 핵심 배지 (인기·노옵션·가이드·테마 등). PR37: Hero 아래 첫 블록 mt-6 */}
-        {heroBadges.length > 0 && (
-          <div className="mt-6 md:hidden">
-            <ProductHeroBadges badges={heroBadges} />
-          </div>
-        )}
-
-        {/* PR33: 모바일 Hero 직하단 신뢰도 정보 바. PR37: 섹션 간격 mt-6 */}
-        <div className="mt-6 md:hidden">
-          <ProductTrustSummary
-            rating={reviewSummary?.averageRating}
-            reviewCount={reviewSummary?.reviewCount}
-            bookingCount={trust?.recentConsultCount}
-            statusLabel={statusTag != null ? STATUS_LABELS[statusTag] : undefined}
-          />
-        </div>
-
-        {/* PR29: 모바일 전용 핵심 정보 요약 바. PR37: 섹션 간격 mt-6 */}
-        {(quickInfoBarProps.durationLabel ||
-          quickInfoBarProps.destinationLabel ||
-          quickInfoBarProps.flightLabel ||
-          quickInfoBarProps.hotelLabel ||
-          quickInfoBarProps.statusLabel) && (
-          <div className="mt-6">
-            <ProductQuickInfoBar {...quickInfoBarProps} />
-          </div>
-        )}
-
-        {/* PR22: 핵심 여행 요약 카드. PR37: 주요 섹션 mt-8 */}
-        {highlightsForCard.length > 0 && (
-          <div className="mt-8">
-            <ProductHighlightsCard highlights={highlightsForCard} />
-          </div>
-        )}
-
-        {/* PR9: 여행 핵심 요약 카드. PR37: 주요 섹션 mt-8 */}
-        <div className="mt-8">
-          <ProductQuickSummaryCard
-            durationLabel={durationLabel || undefined}
-            themeLabel={themeLabel || undefined}
-            departureLabel={departureLabel || undefined}
-            dateRangeLabel={departureLabel ? undefined : (metaDateRange || undefined)}
-            highlightItems={productHighlights}
-          />
-        </div>
-
-        <div className="mt-8 space-y-4">
-          {/* Trust Signals: 데이터 있을 때만 */}
+        <div className="mt-6">
           <TrustSignals trust={trust} />
         </div>
       </section>
 
-      {/* PR42: 상세 일정 타임라인 (itinerary_days 있을 때만, 본문 아래 노출) */}
+      {/* PR42: 상품 핵심 요약 정보 블록 이후 itinerary — 중복 timeline은 Tabs에서도 유지 */}
       {product?.itinerary_days?.length ? (
         <div className="mt-8">
           <ProductItineraryTimeline itinerary={product.itinerary_days} />
         </div>
       ) : null}
 
-      {/* Itinerary Preview: 일정 미리보기 (PR14: Day 카드 클릭 시 해당 Day로 이동) */}
       <ProductItineraryPreview
         timelineModel={timelineModel?.days?.length ? timelineModel : null}
         scheduleDays={scheduleDays}
@@ -964,20 +816,13 @@ export default function ProductDetailV2({
         onPreviewDayClick={handlePreviewDayClick}
       />
 
-      {/* PR24: 여행 특징 카드 (테마 구성비 오버뷰 영역 대체) */}
-      {highlightsForCard.length > 0 && (
-        <ProductFeatureCard features={highlightsForCard} />
-      )}
-
-      {/* 항공 정보 */}
       <FlightSummarySection product={product ?? null} compact embedded />
 
-      {/* PR26: 호텔 안내 카드 */}
       {hotelValue ? <ProductHotelCard hotelName={hotelValue} /> : null}
 
       {/* Tabs */}
-      <section>
-        <Tabs value={activeTab} onChange={(v) => setActiveTab(v as MainTab)} className="mb-4 gap-2">
+      <section id="product-detail-tabs" className="scroll-mt-24">
+        <Tabs value={activeTab} onChange={(v) => setActiveTab(v as MainTab)} className="mb-4 gap-2 overflow-x-auto">
           <TabsTrigger value="schedule">일정 안내</TabsTrigger>
           <TabsTrigger value="included">포함/불포함</TabsTrigger>
           <TabsTrigger value="booking">예약 조건</TabsTrigger>

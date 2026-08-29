@@ -10,6 +10,7 @@ import {
 } from "@/components/products/ProductQuoteContext";
 import { cn } from "@/lib/cn";
 import { sortOptionGroups } from "@/lib/pricing/calcQuote";
+import { CHECKOUT_DEPOSIT_PER_PERSON } from "@/lib/payments/buildCheckoutQuote";
 import {
   hasAnyOptionSelection,
   optionsSelectionHasMultiGroup,
@@ -227,10 +228,14 @@ export function ProductBookingSelectionPanel({
               </span>
             </div>
             <p className="mt-1 text-[11px] font-medium text-[var(--success)]">
-              동반자 가입 불필요 · 대표 1명 예약 시 전체 인원 자동 할인 적용
+              예상 상품가와 별도 · 보유 쿠폰팩은 예약 단계에서 적용
             </p>
           </div>
         ) : null}
+        <p className="mt-3 text-[11px] leading-snug text-slate-500">
+          예약금 {(CHECKOUT_DEPOSIT_PER_PERSON / 10_000).toLocaleString("ko-KR")}만원 / 1인 · 출발일·인원
+          확인 후 결제합니다.
+        </p>
       </div>
     </div>
   );

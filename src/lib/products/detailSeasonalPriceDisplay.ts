@@ -50,8 +50,13 @@ export function getSeasonalHeroPriceLines(model: SeasonalPriceDisplayModel): Sea
   return entries;
 }
 
-/** 상세 가격 카드 공통 안내 (개요 — sticky CTA 마이크로카피와 통합) */
+/** 상세 가격 카드 공통 안내 — compact (의미 유지, 밀도 축소) */
 export const DETAIL_UNIFIED_PRICE_NOTICE_LINES = [
+  "출발일·항공·시점에 따라 달라질 수 있어요. 최종 금액은 일정·인원 기준으로 안내됩니다.",
+] as const;
+
+/** @deprecated Prefer DETAIL_UNIFIED_PRICE_NOTICE_LINES (single compact line) */
+export const DETAIL_PRICE_NOTICE_LEGACY_LINES = [
   "출발일, 항공 좌석 상황 및 예약 시점에 따라 가격이 변동될 수 있습니다.",
   "최종 금액은 일정과 인원 기준으로 안내되며, 포함사항·옵션은 상세 정보에서 확인할 수 있습니다.",
   "정확한 요금과 예약 가능 여부는 상담을 통해 안내드립니다.",

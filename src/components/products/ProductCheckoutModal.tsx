@@ -25,6 +25,11 @@ import { cn } from "@/lib/cn";
 import type { SelectedDeparture } from "@/lib/products/buildProductInquiryPrefill";
 import type { BookingPaymentOptionItem } from "@/lib/payments/bookingPaymentPayload";
 import type { SelectedOptions } from "@/types/product";
+import {
+  trackCheckoutOpen,
+  trackCheckoutPaymentResult,
+  trackCheckoutSubmit,
+} from "@/lib/analytics/trackCheckoutEvents";
 
 export type ProductCheckoutModalProps = {
   open: boolean;
@@ -42,6 +47,8 @@ export type ProductCheckoutModalProps = {
   depositTotal: number;
   payAmount: number;
   remainingBalance: number;
+  /** Sticky와 동일 preview — 표시 전용, 금액 재계산 금지 */
+  paxDiscountPreview?: { label: string; amount: number } | null;
 };
 
 const EMPTY_FORM: CheckoutFormValues = {
@@ -80,6 +87,7 @@ export function ProductCheckoutModal({
   depositTotal,
   payAmount,
   remainingBalance,
+  paxDiscountPreview = null,
 }: ProductCheckoutModalProps) {
   const titleId = useId();
   const { status: authStatus, profile, refresh: refreshProfile } = useMemberCheckoutProfile();
@@ -110,6 +118,21 @@ export function ProductCheckoutModal({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const checkoutOpenTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      checkoutOpenTrackedRef.current = false;
+      return;
+    }
+    if (checkoutOpenTrackedRef.current) return;
+    checkoutOpenTrackedRef.current = true;
+    trackCheckoutOpen({
+      productId,
+      paymentType,
+      travelerCount,
+    });
+  }, [open, productId, paymentType, travelerCount]);
 
   /** 모달 열릴 때마다 최신 회원 정보 재조회 — 로그인 직후 비회원 UI 잔존 방지 */
   useEffect(() => {
@@ -297,6 +320,12 @@ export function ProductCheckoutModal({
       payingRef.current = true;
       dialogRef.current?.close();
 
+      trackCheckoutSubmit({
+        productId,
+        paymentType,
+        travelerCount,
+      });
+
       const result = await submitPayment(payload, {
         onPhase: (phase) => {
           setPayPhase(phase);
@@ -309,6 +338,12 @@ export function ProductCheckoutModal({
       payingRef.current = false;
 
       if (!result.ok) {
+        trackCheckoutPaymentResult({
+          productId,
+          result: "fail",
+          paymentType,
+          travelerCount,
+        });
         setMessage(result.message);
         setPayPhase("idle");
         if (open && dialogRef.current && !dialogRef.current.open) {
@@ -316,6 +351,12 @@ export function ProductCheckoutModal({
         }
         return;
       }
+      trackCheckoutPaymentResult({
+        productId,
+        result: "success",
+        paymentType,
+        travelerCount,
+      });
       onClose();
       if (typeof window !== "undefined") {
         const q = new URLSearchParams();
@@ -397,6 +438,117 @@ export function ProductCheckoutModal({
             noValidate
           >
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4">
+              {/* 1. 예약 내용 확인 */}
+              <section aria-label="예약 내용 확인">
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">예약 내용 확인</h3>
+                <dl className="rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-3 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">출발일</dt>
+                    <dd className="min-w-0 text-right font-medium text-slate-900">
+                      {selectedDeparture?.label?.trim() || "미선택"}
+                    </dd>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">인원</dt>
+                    <dd className="font-medium text-slate-900">{travelerCount}명</dd>
+                  </div>
+                  {optionItems.length > 0 ? (
+                    <div className="mt-2 border-t border-slate-200/80 pt-2">
+                      <dt className="text-xs font-medium text-slate-500">선택 옵션</dt>
+                      <dd className="mt-1.5 space-y-1">
+                        {optionItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-start justify-between gap-2 text-xs text-slate-700"
+                          >
+                            <span className="min-w-0 break-words">{item.name}</span>
+                            {item.price !== 0 ? (
+                              <span className="shrink-0 font-medium text-slate-800">
+                                {item.price > 0 ? "+" : ""}
+                                {item.price.toLocaleString("ko-KR")}원
+                              </span>
+                            ) : null}
+                          </div>
+                        ))}
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </section>
+
+              {/* 2. 결제 금액 */}
+              <section aria-label="결제 금액">
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">결제 금액</h3>
+                <dl className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-slate-500">총 여행금액(예상)</dt>
+                    <dd className="font-semibold text-slate-900">
+                      ₩{formatPriceKR(totalTripPrice) ?? "0"}
+                    </dd>
+                  </div>
+                  <div className="mt-2.5 flex items-baseline justify-between gap-3">
+                    <dt className="font-medium text-slate-800">지금 결제</dt>
+                    <dd className="text-base font-bold text-[var(--primary)]">
+                      ₩{formatPriceKR(payAmount) ?? "0"}
+                    </dd>
+                  </div>
+                  {paymentType === "deposit" && remainingBalance > 0 ? (
+                    <div className="mt-2.5 border-t border-slate-100 pt-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-slate-500">남은 금액</dt>
+                        <dd className="font-medium text-slate-800">
+                          ₩{formatPriceKR(remainingBalance) ?? "0"}
+                        </dd>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                        좌석 확정 후 출발 D-14일 전까지 결제됩니다.
+                      </p>
+                    </div>
+                  ) : null}
+                  {paymentType === "deposit" ? (
+                    <p className="mt-2 text-[11px] leading-snug text-slate-500">
+                      예약금 · {travelerCount}명 기준 ₩{formatPriceKR(depositTotal) ?? "0"}
+                      (1인당 예약금 × 인원)
+                    </p>
+                  ) : null}
+                </dl>
+
+                {paxDiscountPreview && paxDiscountPreview.amount > 0 ? (
+                  <aside
+                    className="mt-2 rounded-xl border border-[var(--success)]/25 bg-[var(--success-bg)] px-3 py-2.5"
+                    aria-label="골프 회원 혜택"
+                  >
+                    <p className="text-xs font-semibold text-[var(--success)]">골프 회원 혜택</p>
+                    <p className="mt-0.5 text-sm font-medium text-slate-800">
+                      {paxDiscountPreview.label}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-snug text-slate-600">
+                      보유 쿠폰팩은 예약 단계에서 확인·적용됩니다. 위 지금 결제 금액에는 아직 반영되지
+                      않을 수 있어요.
+                    </p>
+                  </aside>
+                ) : null}
+
+                <div className="mt-3 space-y-2" role="radiogroup" aria-label="결제 방식">
+                  <p className="text-xs font-medium text-slate-500">결제 방식 선택</p>
+                  <PaymentChoice
+                    selected={paymentType === "deposit"}
+                    onSelect={() => onPaymentTypeChange("deposit")}
+                    title="예약금 결제"
+                    amount={depositTotal}
+                    hint="인당 예약금으로 일정을 먼저 확보해요"
+                  />
+                  <PaymentChoice
+                    selected={paymentType === "full"}
+                    onSelect={() => onPaymentTypeChange("full")}
+                    title="전액 결제"
+                    amount={totalTripPrice}
+                    hint="상품 총액(예상)을 한 번에 결제해요"
+                  />
+                </div>
+              </section>
+
+              {/* 3. 예약자 정보 */}
               <section>
                 {authStatus === "loading" ? (
                   <p className="rounded-xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
@@ -409,12 +561,13 @@ export function ProductCheckoutModal({
                     <p className="mb-2 text-xs font-semibold tracking-wide text-[var(--primary)]">
                       비회원 간편 예약
                     </p>
-                    <h3 className="mb-3 text-sm font-semibold text-slate-900">예약자 정보 입력</h3>
+                    <h3 className="mb-3 text-sm font-semibold text-slate-900">예약자 정보</h3>
                   </>
                 ) : null}
 
                 {showMemberSummary ? (
                   <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-slate-900">예약자 정보</h3>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-2">
@@ -431,7 +584,7 @@ export function ProductCheckoutModal({
                         <button
                           type="button"
                           onClick={() => setEditingCustomer(true)}
-                          className="shrink-0 text-xs font-medium text-[var(--primary)] underline-offset-2 hover:underline"
+                          className="inline-flex min-h-11 shrink-0 items-center text-xs font-medium text-[var(--primary)] underline-offset-2 hover:underline"
                         >
                           변경
                         </button>
@@ -497,7 +650,7 @@ export function ProductCheckoutModal({
                         <button
                           type="button"
                           onClick={restoreMemberProfile}
-                          className="text-xs font-medium text-slate-500 underline-offset-2 hover:underline"
+                          className="inline-flex min-h-11 text-xs font-medium text-slate-500 underline-offset-2 hover:underline"
                         >
                           내 정보로 되돌리기
                         </button>
@@ -539,40 +692,16 @@ export function ProductCheckoutModal({
                 ) : null}
               </section>
 
-              <section>
-                <h3 className="mb-2 text-sm font-semibold text-slate-900">결제 방식</h3>
-                <div className="space-y-2" role="radiogroup" aria-label="결제 방식">
-                  <PaymentChoice
-                    selected={paymentType === "deposit"}
-                    onSelect={() => onPaymentTypeChange("deposit")}
-                    title="예약금 결제"
-                    amount={depositTotal}
-                    hint="인당 20만 원으로 안전하게 좌석 및 일정을 사전 확보하세요."
-                  />
-                  <PaymentChoice
-                    selected={paymentType === "full"}
-                    onSelect={() => onPaymentTypeChange("full")}
-                    title="전액 결제"
-                    amount={totalTripPrice}
-                    hint="상품 총액을 한 번에 결제합니다."
-                  />
-                </div>
-                {paymentType === "deposit" && remainingBalance > 0 ? (
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    * 잔금 ₩{formatPriceKR(remainingBalance) ?? "0"}은 좌석 확정 후 출발 D-14일 전까지
-                    결제됩니다.
-                  </p>
-                ) : null}
-              </section>
-
-              <section>
-                <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
+              {/* 4. 필수 확인 */}
+              <section aria-label="필수 확인">
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">필수 확인</h3>
+                <label className="flex min-h-11 items-start gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
                   <input
                     ref={agreeRef}
                     type="checkbox"
                     checked={agreeAll}
                     onChange={(e) => applyAgreeAll(e.target.checked)}
-                    className="mt-0.5"
+                    className="mt-0.5 h-4 w-4 shrink-0"
                   />
                   <span>
                     <span className="font-medium text-slate-900">
@@ -596,7 +725,14 @@ export function ProductCheckoutModal({
                 ) : null}
               </section>
 
-              {message ? <p className="text-sm text-[var(--danger)]">{message}</p> : null}
+              {message ? (
+                <p
+                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-[var(--danger)]"
+                  role="alert"
+                >
+                  {message}
+                </p>
+              ) : null}
             </div>
 
             <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4 safe-bottom">
@@ -613,10 +749,13 @@ export function ProductCheckoutModal({
                       : "결제창 여는 중…"
                   : `₩${payAmount.toLocaleString("ko-KR")}원 결제 진행하기`}
               </button>
-              <p className="mt-2 text-center text-[11px] text-slate-400">
+              <p className="mt-2 text-center text-[11px] leading-snug text-slate-400">
+                {paymentType === "deposit"
+                  ? "선택한 예약금으로 결제를 진행합니다."
+                  : "선택한 전액으로 결제를 진행합니다."}
                 {isMember && formCustomerComplete && !editingCustomer
-                  ? "내 정보로 바로 결제 · 확정 전 무료 취소 가능"
-                  : "확정 전 무료 취소 가능 · 안전한 결제 준비"}
+                  ? " · 내 정보로 바로 결제"
+                  : null}
               </p>
             </div>
           </form>

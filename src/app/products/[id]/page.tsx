@@ -265,7 +265,6 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                     travelNotes={resolvedTravelNotes}
                     bookingConditions={resolvedBookingConditions}
                     refundPolicy={resolvedRefundPolicy}
-                    consultHref={`/quote?product_id=${encodeURIComponent(product.id)}`}
                     productId={product.id}
                     productTitle={product.title}
                     sourcePath={sourcePath}

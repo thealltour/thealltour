@@ -164,9 +164,10 @@ providers:
 
 **C7 retry readiness:** **GO** (hardening + non-production proof complete; Production profile edit still deferred to C7 Attempt #2)
 
-### C7 Attempt #2 — Performance Analyst canary (2026-08-28) — **KEEP CANARY / 24H OBSERVATION**
+### C7 Attempt #2 — Performance Analyst canary (2026-08-28) — **FINAL PASS (24h complete)**
 
-**Verdict: IMMEDIATE TESTS PASS — Production cutover active on `performance-analyst` only**
+**Immediate verdict (cutover day): TESTS PASS — Production cutover active on `performance-analyst` only**  
+**24h FINAL:** see **C7 FINAL — 24h observation complete** below.
 
 | Gate | Result |
 |---|---|
@@ -220,7 +221,7 @@ Monitor: canonical Bot Chat, MCP usage, oneshot, Gateway `:3000` health, Runtime
 
 **C7 Attempt #2 rollback:** restore `config.yaml.c7a2bak` → verify native Gemini Bot Chat on `20260825_133423_f2c9b2`.
 
-**Do not proceed to Content Strategist** until 24h observation completes.
+**Do not proceed to Content Strategist** until **C7.3 session migration runbook** is complete (C7 FINAL PASS alone is insufficient for Desktop/Group Gateway coverage).
 
 ### C7 FINAL review — 24h observation (2026-08-28 16:17 KST interim)
 
@@ -414,7 +415,64 @@ If `thealltour marketing` Group member sessions are **never refreshed**:
 
 **Rollback readiness:** `config.yaml.c7a2bak` SHA256 `21f69f58…` — present, not exercised.
 
-**Re-run FINAL review after:** 2026-08-29 **16:13 KST** minimum, including post-08:30/09:00 cron inspection.
+### C7 FINAL — 24h observation complete (2026-08-30 ~00:14 KST)
+
+**C7 FINAL PASS — Performance Analyst profile-level Runtime Gateway cutover validated. Legacy Desktop/TUI Bot Chat and Group member sessions remain native Gemini snapshots pending separate session migration.**
+
+| Item | Value |
+|---|---|
+| Observation start | **2026-08-28 16:13 KST** |
+| Minimum end | **2026-08-29 16:13 KST** |
+| Review timestamp | **2026-08-30 00:14 KST** |
+| Elapsed | **~32h** (≥24h) |
+| Git HEAD / origin/main | `b093a4f` (includes C7.2 docs; C7.1 code ancestor `883e046`) |
+| Deployed process | `thealltour-internal.service` **active**, PID **25907**, `NRestarts=0`, up since **2026-08-28 15:02 KST** (no crash loop) |
+| Alias smoke (review) | **HTTP 200** — `x-ai-runtime-agent-id=performance-analyst`, `workload=analysis`, `fallback=0` |
+| Profile checksum | **unchanged** `1c81c008…` — `custom:thealltour-runtime` / `thealltour/performance-analyst` / `fallback_providers: []` |
+| Credential | `.env` mode **600**, token present/non-empty, **0** token literals in tracked docs/src; YAML has MCP `Authorization: Bearer ${…}` ref only |
+| Backup | `config.yaml.c7a2bak` SHA256 `21f69f58…` — present, **not** exercised |
+
+**24h Runtime observability (`agent_id=performance-analyst`, window start → review; exclude review-only smoke for soak narrative):**
+
+| Metric | Soak (28 16:13–16:20 KST probes) | + Review smoke (30 00:15 KST) |
+|---|---|---|
+| Events | 30 | 36 |
+| Distinct correlations | 4 | 5 |
+| `job_completed` / `job_failed` | 3 / 1 | 4 / 1 |
+| `route_completed` / `route_failed` | 3 / 1 | 4 / 1 |
+| Workload | **analysis only** | same |
+| Wrong agent / `runtime-spike` | **0 / 0** | **0 / 0** |
+| Post-cutover Hermes real HTTP 401/403 | **0 / 0** | **0 / 0** |
+| Overnight natural PA Gateway traffic (28 16:20 → 29 16:13) | **0 events** (expected: Desktop/Group pinned to Gemini; 08:30 NON_LLM) | — |
+
+**Retry/fallback (soak):**
+
+| Correlation | Outcome | Notes |
+|---|---|---|
+| `…:fadbe9ad` | `job_completed` | gemini-main primary, `fallback_used=false` |
+| `…:5ec05aee` | `job_completed` | concurrent success |
+| `…:9df4730e` | `job_failed` | nvidia `PROVIDER_ERROR` → gemini `INVALID_REQUEST`; **isolated** immediate-probe leg |
+| `…:c884e48d` | `job_completed` after provider errors | nvidia fail → gemini primary `TIMEOUT` → gemini **secondary** success; `fallback_used=true`, `attempt_count=3` — **recovered**, user-visible `C7_MCP_OK` |
+
+No escalating provider instability after 16:20 KST Aug 28. Successfully recovered / isolated immediate-probe failures are **not** rollback triggers.
+
+**Fresh Runtime paths (prior C7 #2 evidence, still valid; profile intact):** auth `C7A2_AUTH_OK`, CLI/oneshot/MCP Gateway proofs, review alias smoke PASS.
+
+**Desktop Bot Chat `20260825_133423_f2c9b2`:** UX **PASS**; → Gateway **NOT MIGRATED / NATIVE GEMINI SNAPSHOT** (C7.2 live test 16:43 KST; row unchanged `gemini-3.5-flash-lite` / msg_count 18).
+
+**Group `thealltour marketing` / PA `20260826_225600_a8ad31`:** orchestration **PASS**; → Gateway **NOT MIGRATED / NATIVE GEMINI SNAPSHOT**; room revision **25**, 4 members unchanged.
+
+**08:30 PA cron `9e96a94ee72f` (2026-08-29):** fired `08:30:55` → finished `08:31:00`; `last_status=ok`; `no_agent=true`; wrapper `daily-performance-brief.sh` → `cd /home/ysh/thealltour`; **NON_LLM regression PASS** (not Gateway inference proof).
+
+**09:00 MM cron `edfc1815135b` (2026-08-29):** fired `09:00:05` → `09:00:13`; `last_status=ok`; prior Aug 28 `ERR_MODULE_NOT_FOUND` (**theallcloud**) **absent**; wrapper `cd /home/ysh/thealltour`; output: `inference_path: ai-runtime`, `governance: ALLOW`, `sns_side_effect: 0`, `ai_publications: 0`. Informational/regression PASS for shared Runtime infra.
+
+**Other Bots:** marketing-manager / content-strategist / governance-auditor remain `provider=gemini` / `gemini-3.5-flash-lite`. **C8 not started.**
+
+**Publication:** `PUBLICATION_FLOW_INACTIVE = true` (compile-time). No SNS side effects observed on cron outputs.
+
+**C8 profile cutover:** **NOT STARTED**
+
+**Next STEP (recommended):** **2-5.4C7.3 — Production Session Migration Runbook / Performance Analyst Session Migration** (`/model … --session` for Bot Chat + Group member; preserve history; prove Gateway reachability) before any Content Strategist profile cutover.
 
 ---
 

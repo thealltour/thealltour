@@ -1,39 +1,121 @@
 import { supabase } from "@/lib/supabase";
 import { normalizeProduct } from "@/lib/products";
-import { parseThemeTokens, getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
+import {
+  parseThemeTokens,
+  getCampaignTaxonomiesForCard,
+  getActiveTaxonomiesForHeader,
+  getActiveProductLineTaxonomies,
+} from "@/lib/productTaxonomies";
 import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
-import { getProductLineIdByName } from "@/lib/search/getSearchFilterOptions";
+import { PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE } from "@/lib/productFilters";
+import { buildThemeOrFilter } from "@/lib/products/productListingQuery";
 import { DEFAULT_PAGE, SEARCH_PAGE_SIZE } from "@/lib/search/searchQueryParams";
+import {
+  buildDestinationScopeOrFilter,
+  buildSearchKeywordCandidateOrFilter,
+  buildStructuredSearchAxisFilters,
+  buildTextSearchOrFilter,
+  escapeForIlike,
+} from "@/lib/search/searchCandidateFilters";
+import { parseSearchIntent, type ParsedSearchIntent } from "@/lib/search/parseSearchIntent";
+import { resolveDestinationScope, resolveThemeScope } from "@/lib/search/resolveDestinationScope";
+import type {
+  SearchTaxonomyContext,
+  SearchTaxonomyIntent,
+} from "@/lib/search/resolveSearchTaxonomyIntent";
 import type { Product } from "@/types/product";
 import type { SearchProductsParams, SearchProductsResult, SearchSortOption } from "@/types/search";
 import type { SearchFilterOptions } from "@/types/search";
 
 const DEFAULT_SORT: SearchSortOption = "relevance";
-const MAX_LIMIT = 100;
-const RELEVANCE_FETCH_LIMIT = 200;
+/** Relevance path hard caps — Correctness PR must not raise these (01C). */
+export const SEARCH_RELEVANCE_FETCH_LIMIT = 200;
+export const SEARCH_RELEVANCE_RESULT_CAP = 100;
+const RELEVANCE_FETCH_LIMIT = SEARCH_RELEVANCE_FETCH_LIMIT;
+const MAX_LIMIT = SEARCH_RELEVANCE_RESULT_CAP;
 
-/** ilike 패턴 내 % _ \ 이스케이프 (Postgres) */
-function escapeForIlike(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/%/g, "\\%")
-    .replace(/_/g, "\\_");
-}
+export type SearchProductsByParamsOptions = SearchProductsParams & {
+  page?: number;
+  pageSize?: number;
+  /** Injected in tests; production loads active taxonomies internally. */
+  taxonomyContext?: SearchTaxonomyContext;
+};
 
 /**
  * 검색어 relevance 점수: 낮을수록 우선.
- * 1 title 정확 일치, 2 title prefix, 3 title 포함, 4 category/theme 포함, 5 그 외
+ * 1 title exact, 2 title prefix, 3 taxonomy exact (self),
+ * 4 title contains, 5 taxonomy descendant, 6 category/theme text, 7 fallback
  */
-function relevanceScore(product: Product, keyword: string): number {
+export function relevanceScore(
+  product: Product,
+  keyword: string,
+  intent?: SearchTaxonomyIntent | null,
+): number {
   const k = keyword.toLowerCase();
   const t = (product.title ?? "").toLowerCase();
   const c = (product.category ?? "").toLowerCase();
   const th = (product.theme ?? "").toLowerCase();
   if (t === k) return 1;
   if (t.startsWith(k)) return 2;
-  if (t.includes(k)) return 3;
-  if (c.includes(k) || th.includes(k)) return 4;
-  return 5;
+
+  const taxonomyExact = intent ? scoreTaxonomyExact(product, intent) : false;
+  if (taxonomyExact) return 3;
+
+  if (t.includes(k)) return 4;
+
+  const taxonomyDesc = intent ? scoreTaxonomyDescendant(product, intent) : false;
+  if (taxonomyDesc) return 5;
+
+  if (c.includes(k) || th.includes(k)) return 6;
+  return 7;
+}
+
+function scoreTaxonomyExact(product: Product, intent: SearchTaxonomyIntent): boolean {
+  if (intent.destination?.matchedName) {
+    const selfId = intent.destination.ids[0];
+    if (selfId && product.destination_id?.trim() === selfId) return true;
+    const destName = (product.category ?? "").trim();
+    if (destName && destName === intent.destination.matchedName) return true;
+  }
+  if (intent.theme?.matchedName) {
+    const tokens = parseThemeTokens(product.theme);
+    if (tokens.includes(intent.theme.matchedName)) return true;
+  }
+  if (intent.productLine?.ids?.length) {
+    const pl = product.product_line_id?.trim();
+    if (pl && intent.productLine.ids.includes(pl)) return true;
+  }
+  if (intent.golf) {
+    const pl = product.product_line_id?.trim();
+    if (pl && intent.golf.productLineIds.includes(pl)) return true;
+    const cat = (product.category ?? "").trim();
+    if (cat && intent.golf.legacyCategories.includes(cat)) return true;
+  }
+  return false;
+}
+
+function scoreTaxonomyDescendant(product: Product, intent: SearchTaxonomyIntent): boolean {
+  if (intent.destination) {
+    const id = product.destination_id?.trim();
+    const selfId = intent.destination.ids[0];
+    if (id && intent.destination.ids.includes(id) && id !== selfId) return true;
+    const cat = (product.category ?? "").trim();
+    if (
+      cat &&
+      intent.destination.names.includes(cat) &&
+      cat !== intent.destination.matchedName
+    ) {
+      return true;
+    }
+  }
+  if (intent.theme?.names?.length) {
+    const tokens = parseThemeTokens(product.theme);
+    const matched = intent.theme.matchedName;
+    if (tokens.some((tok) => intent.theme!.names.includes(tok) && tok !== matched)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -41,23 +123,119 @@ function relevanceScore(product: Product, keyword: string): number {
  * @deprecated 검색 필터/정렬이 필요하면 searchProductsByParams 사용.
  */
 export async function searchProducts(keyword: string): Promise<Product[]> {
-  const result = await searchProductsByParams({ q: keyword.trim() || undefined, page: 1, pageSize: MAX_LIMIT });
+  const result = await searchProductsByParams({
+    q: keyword.trim() || undefined,
+    page: 1,
+    pageSize: MAX_LIMIT,
+  });
   return result.items;
 }
 
 export type { SearchProductsParams, SearchProductsResult };
 
+async function loadDefaultTaxonomyContext(): Promise<SearchTaxonomyContext> {
+  const [all, productLines] = await Promise.all([
+    getActiveTaxonomiesForHeader(),
+    getActiveProductLineTaxonomies(),
+  ]);
+  return {
+    destinations: all.filter((t) => t.taxonomy_type === "destination"),
+    themes: all.filter((t) => t.taxonomy_type === "theme"),
+    productLines,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyQuery = any;
+
+function applyKeywordParsedFilters(qb: AnyQuery, parsed: ParsedSearchIntent): AnyQuery {
+  let query = qb;
+
+  if (parsed.mode === "text-only") {
+    const textOr = buildTextSearchOrFilter(parsed.remainingText || parsed.rawQuery);
+    if (textOr) query = query.or(textOr);
+    return query;
+  }
+
+  if (parsed.mode === "single") {
+    if (parsed.unassignedProductLine && !parsed.rankingIntent.destination && !parsed.rankingIntent.theme && !parsed.rankingIntent.productLine && !parsed.rankingIntent.golf) {
+      const textOr = buildTextSearchOrFilter(parsed.rawQuery);
+      const parts = [textOr, "product_line_id.is.null"].filter(Boolean);
+      query = query.or(parts.join(","));
+      return query;
+    }
+    const orFilter = buildSearchKeywordCandidateOrFilter(
+      parsed.rawQuery,
+      parsed.rankingIntent,
+    );
+    if (orFilter) query = query.or(orFilter);
+    if (parsed.unassignedProductLine) {
+      query = query.is("product_line_id", null);
+    }
+    return query;
+  }
+
+  // structured: successive .or() = AND of OR-groups
+  const axes = buildStructuredSearchAxisFilters(parsed);
+  if (axes.destinationOr) query = query.or(axes.destinationOr);
+  if (axes.themeOr) query = query.or(axes.themeOr);
+  if (axes.productLineOr) query = query.or(axes.productLineOr);
+  if (axes.golfOr) query = query.or(axes.golfOr);
+  if (axes.remainingTextOr) query = query.or(axes.remainingTextOr);
+  if (axes.unassignedProductLine) {
+    query = query.is("product_line_id", null);
+  }
+  return query;
+}
+
+function applySearchAndFilters(
+  qb: AnyQuery,
+  opts: {
+    parsed: ParsedSearchIntent | null;
+    regionScope: ReturnType<typeof resolveDestinationScope> | null;
+    themeScopeNames: string[] | null;
+    productLineId: string | null;
+    unassignedProductLine: boolean;
+  },
+): AnyQuery {
+  let query = qb;
+
+  if (opts.parsed) {
+    query = applyKeywordParsedFilters(query, opts.parsed);
+  }
+
+  if (opts.regionScope) {
+    const regionOr = buildDestinationScopeOrFilter(opts.regionScope);
+    if (regionOr) {
+      query = query.or(regionOr);
+    }
+  }
+
+  if (opts.themeScopeNames?.length) {
+    const themeOr = buildThemeOrFilter(opts.themeScopeNames);
+    if (themeOr) {
+      query = query.or(themeOr);
+    }
+  }
+
+  if (opts.unassignedProductLine) {
+    query = query.is("product_line_id", null);
+  } else if (opts.productLineId) {
+    query = query.eq("product_line_id", opts.productLineId);
+  }
+
+  return query;
+}
+
 /**
- * params 기반 검색.
- * - q: title/category/theme ilike (relevance 정렬 시 클라이언트에서 우선순위 적용)
- * - destination: category 정확 일치 (.eq)
- * - theme: theme ilike '%value%'
- * - product_line: product_line_id 로 정확 필터 (taxonomy name → id 해석)
- * - sort: relevance | latest | price_asc | price_desc (price는 nulls last)
- * - page / pageSize: 페이지네이션. 미지정 시 page=1, pageSize=SEARCH_PAGE_SIZE
+ * params 기반 검색 (taxonomy-aware + multi-intent Correctness).
+ * - single q: text ilike OR taxonomy scope
+ * - multi-intent: Destination AND Theme AND ProductLine AND Golf AND remainingText
+ * - URL region/theme/product_line: AND with keyword axes
+ * - Relevance still capped at RELEVANCE_FETCH_LIMIT / MAX_LIMIT (01C)
  */
 export async function searchProductsByParams(
-  params: SearchProductsParams & { page?: number; pageSize?: number },
+  params: SearchProductsByParamsOptions,
 ): Promise<SearchProductsResult> {
   const q = params.q?.trim();
   const destination = params.destination?.trim();
@@ -72,46 +250,64 @@ export async function searchProductsByParams(
     return { items: [], totalCount: 0, page: 1, pageSize, totalPages: 0 };
   }
 
-  const productLineId = productLineParam ? await getProductLineIdByName(productLineParam) : null;
-  const campaignTaxonomies = await getCampaignTaxonomiesForCard();
+  const taxonomyContext = params.taxonomyContext ?? (await loadDefaultTaxonomyContext());
+  const parsed = q ? parseSearchIntent(q, taxonomyContext) : null;
+  const rankingIntent = parsed?.rankingIntent ?? {};
 
-  function baseQuery() {
-    let qb = supabase
-      .from("products")
-      .select("*")
-      .eq("is_active", true);
-    if (q) {
-      const escaped = escapeForIlike(q);
-      const pattern = `%${escaped}%`;
-      qb = qb.or(`title.ilike.${pattern},category.ilike.${pattern},theme.ilike.${pattern}`);
+  let regionScope: ReturnType<typeof resolveDestinationScope> | null = null;
+  let matchNone = false;
+  if (destination) {
+    regionScope = resolveDestinationScope(destination, taxonomyContext.destinations);
+    if (regionScope.ids.length === 0 && regionScope.names.length === 0) {
+      matchNone = true;
     }
-    if (destination) qb = qb.eq("category", destination);
-    if (theme) {
-      const escaped = escapeForIlike(theme);
-      qb = qb.ilike("theme", `%${escaped}%`);
-    }
-    if (productLineId) qb = qb.eq("product_line_id", productLineId);
-    return qb;
   }
 
-  /** count만 필요할 때 사용. baseQuery().select() 중복 호출 방지용. */
+  let themeScopeNames: string[] | null = null;
+  if (theme) {
+    themeScopeNames = resolveThemeScope(theme, taxonomyContext.themes).names;
+  }
+
+  let productLineId: string | null = null;
+  let unassignedProductLine = false;
+  if (productLineParam === PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE) {
+    unassignedProductLine = true;
+  } else if (productLineParam) {
+    const found = taxonomyContext.productLines.find(
+      (p) => (p.name ?? "").trim() === productLineParam,
+    );
+    productLineId = found?.id?.trim() ?? null;
+    if (!productLineId) {
+      matchNone = true;
+    }
+  }
+
+  if (matchNone) {
+    return { items: [], totalCount: 0, page: 1, pageSize, totalPages: 0 };
+  }
+
+  const campaignTaxonomies = await getCampaignTaxonomiesForCard();
+
+  const filterOpts = {
+    parsed,
+    regionScope,
+    themeScopeNames,
+    productLineId,
+    unassignedProductLine,
+  };
+
+  function baseQuery() {
+    return applySearchAndFilters(
+      supabase.from("products").select("*").eq("is_active", true),
+      filterOpts,
+    );
+  }
+
   function countQuery() {
-    let qb = supabase
-      .from("products")
-      .select("*", { count: "exact", head: true })
-      .eq("is_active", true);
-    if (q) {
-      const escaped = escapeForIlike(q);
-      const pattern = `%${escaped}%`;
-      qb = qb.or(`title.ilike.${pattern},category.ilike.${pattern},theme.ilike.${pattern}`);
-    }
-    if (destination) qb = qb.eq("category", destination);
-    if (theme) {
-      const escaped = escapeForIlike(theme);
-      qb = qb.ilike("theme", `%${escaped}%`);
-    }
-    if (productLineId) qb = qb.eq("product_line_id", productLineId);
-    return qb;
+    return applySearchAndFilters(
+      supabase.from("products").select("*", { count: "exact", head: true }).eq("is_active", true),
+      filterOpts,
+    );
   }
 
   const useRelevanceSort = sort === "relevance" && q;
@@ -138,11 +334,13 @@ export async function searchProductsByParams(
       console.error("[search] searchProductsByParams error:", error.message);
       return { items: [], totalCount: total, page: safePage, pageSize, totalPages };
     }
-    let products = (data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
+    let products = ((data ?? []) as Record<string, unknown>[]).map((row) =>
+      normalizeProduct(row),
+    );
     products = products
       .sort((a, b) => {
-        const sa = relevanceScore(a, q);
-        const sb = relevanceScore(b, q);
+        const sa = relevanceScore(a, q, rankingIntent);
+        const sb = relevanceScore(b, q, rankingIntent);
         if (sa !== sb) return sa - sb;
         const orderA = a.sort_order ?? 9999;
         const orderB = b.sort_order ?? 9999;
@@ -156,12 +354,19 @@ export async function searchProductsByParams(
       seen.add(p.id);
       return true;
     });
+    products = hydrateProductsWithCampaignCardMeta(products, campaignTaxonomies);
     const totalRelevance = products.length;
     const totalPagesRelevance = Math.max(1, Math.ceil(totalRelevance / pageSize));
     const safePageRelevance = Math.min(Math.max(1, page), totalPagesRelevance);
     const from = (safePageRelevance - 1) * pageSize;
     const items = products.slice(from, from + pageSize);
-    return { items, totalCount: totalRelevance, page: safePageRelevance, pageSize, totalPages: totalPagesRelevance };
+    return {
+      items,
+      totalCount: totalRelevance,
+      page: safePageRelevance,
+      pageSize,
+      totalPages: totalPagesRelevance,
+    };
   }
 
   const { count: totalCount, error: countError } = await countQuery();
@@ -202,7 +407,9 @@ export async function searchProductsByParams(
     console.error("[search] searchProductsByParams error:", error.message);
     return { items: [], totalCount: total, page: safePage, pageSize, totalPages };
   }
-  let products = (data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
+  let products = ((data ?? []) as Record<string, unknown>[]).map((row) =>
+    normalizeProduct(row),
+  );
   products = hydrateProductsWithCampaignCardMeta(products, campaignTaxonomies);
   const seen = new Set<string>();
   products = products.filter((p) => {
@@ -234,3 +441,5 @@ export function deriveSearchFilterOptions(products: Product[]): SearchFilterOpti
     productLines: [],
   };
 }
+
+export { escapeForIlike };

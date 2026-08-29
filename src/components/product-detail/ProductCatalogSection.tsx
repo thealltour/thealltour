@@ -33,6 +33,18 @@ const THEME_ALL_LABEL = "전체";
 type ProductCatalogSectionProps = {
   products: Product[];
   categories: string[];
+  /**
+   * Browse server pagination: taxonomy theme names for chips (not derived from page products).
+   * When omitted, theme chips are inferred from `products` (legacy / related layouts).
+   */
+  themeChipOptions?: string[];
+  /** Authoritative total (Browse getProductsPage.totalCount). Falls back to filtered length. */
+  listTotalCount?: number;
+  /**
+   * When true (Browse DB-paginated), skip client keyword re-filter.
+   * Default: true whenever listTotalCount is provided.
+   */
+  skipClientKeywordFilter?: boolean;
   initialKeyword?: string;
   golfChannelPreset?: boolean;
   presetLabel?: string;
@@ -57,6 +69,9 @@ type ProductCatalogSectionProps = {
 export default function ProductCatalogSection({
   products,
   categories,
+  themeChipOptions,
+  listTotalCount,
+  skipClientKeywordFilter,
   initialKeyword = "",
   golfChannelPreset = false,
   presetLabel,
@@ -73,6 +88,8 @@ export default function ProductCatalogSection({
   const [internalThemeTab, setInternalThemeTab] = useState(THEME_ALL_LABEL);
 
   const isUrlControlled = onCategoryChange != null && onThemeChange != null;
+  const omitKeywordFilter =
+    skipClientKeywordFilter === true || typeof listTotalCount === "number";
   const activeTab: ProductCategoryTabId = isUrlControlled
     ? (initialRegion ?? "all")
     : internalTab;
@@ -97,22 +114,26 @@ export default function ProductCatalogSection({
   }, [baseProducts, activeTab, isUrlControlled]);
 
   const themeTabs = useMemo(() => {
+    if (themeChipOptions?.length) {
+      return Array.from(new Set([THEME_ALL_LABEL, ...themeChipOptions.filter(Boolean)]));
+    }
     const inferred = getThemeTabs(baseProducts, activeTab);
     return Array.from(new Set(inferred));
-  }, [baseProducts, activeTab]);
+  }, [themeChipOptions, baseProducts, activeTab]);
 
   const themeFilteredProducts = useMemo(() => {
     if (isUrlControlled) return filteredProducts;
     return filteredProducts.filter((product) => matchesThemeTab(product, activeThemeTab));
   }, [filteredProducts, activeThemeTab, isUrlControlled]);
 
-  const keywordFilteredProducts = useMemo(
-    () =>
-      (isUrlControlled ? filteredProducts : themeFilteredProducts).filter((product) =>
-        productCatalogMatchesKeyword(product, keyword),
-      ),
-    [isUrlControlled, filteredProducts, themeFilteredProducts, keyword],
-  );
+  const keywordFilteredProducts = useMemo(() => {
+    const pool = isUrlControlled ? filteredProducts : themeFilteredProducts;
+    if (omitKeywordFilter) return pool;
+    return pool.filter((product) => productCatalogMatchesKeyword(product, keyword));
+  }, [isUrlControlled, filteredProducts, themeFilteredProducts, keyword, omitKeywordFilter]);
+
+  const displayTotalCount =
+    typeof listTotalCount === "number" ? listTotalCount : keywordFilteredProducts.length;
 
   const groupedByTheme = useMemo(
     () => groupProductsByTheme(keywordFilteredProducts, themeTabs),
@@ -151,7 +172,7 @@ export default function ProductCatalogSection({
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/98 px-3 py-2.5 backdrop-blur sm:rounded-xl sm:px-3 sm:py-3">
         <div className="space-y-1">
           <p className="text-xs leading-snug text-[var(--text-muted)] sm:text-sm">
-            총 {keywordFilteredProducts.length}개 · 지역 {regionSummary}
+            총 {displayTotalCount}개 · 지역 {regionSummary}
           </p>
           {presetLabel ? (
             <p className="text-xs leading-snug text-[#15803d] sm:text-sm">프리셋: {presetLabel}</p>

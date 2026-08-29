@@ -1,10 +1,10 @@
 /**
- * POST-UI-01A: Browse용 DB-side offset pagination foundation.
+ * POST-UI-01A/01B-1: Browse용 DB-side offset pagination + filter query contract.
  *
- * - `getProducts()` / Search / UI 미연결. 01B에서 `/products` Browse에 연결.
- * - 지원 filter는 DB에 정확히 pushdown 가능한 것만 (destinationId, productLineId).
- * - theme descendant / collection / Golf composite semantics는 DEFER (01B).
+ * - `getProducts()` / Search / UI 미연결. 01B-2에서 `/products` Browse에 연결.
  * - select("*")는 foundation 임시. Listing DTO projection은 01D.
+ * - Browse `q`는 production에서 Search Mode로 분기되므로 여기서 미지원.
+ * - promotion-first는 campaign_card_meta hydration 기반 → DB sort 재현 불가 (01B-2 결정).
  */
 
 import { supabase } from "@/lib/supabase";
@@ -18,22 +18,64 @@ export const PRODUCT_LIST_PAGE_SIZE = 24;
 export const PRODUCT_LIST_PAGE_SIZE_MIN = 1;
 export const PRODUCT_LIST_PAGE_SIZE_MAX = 100;
 
-/**
- * DB에 정확히 pushdown 가능한 filter만.
- * theme / collection / tourType·Golf composite → 01B (type에 넣지 않음 = silent ignore 방지).
- */
-export type ProductListingDbFilters = {
-  destinationId?: string;
-  productLineId?: string;
+export type ProductListingCollectionKind = "recommend" | "popular";
+
+/** Shared with Search — destination FK ids + legacy category names */
+export type ProductListingDestinationScope = {
+  ids: string[];
+  names: string[];
 };
 
-/** Browse listing sort — ProductSortId alias 중 DB 재현 가능한 것만 */
+/**
+ * DB에 pushdown 가능한 filter.
+ * - destinationId: 01A 호환
+ * - destinationIds: 01B-1 호환 ([] → matchNone when no names either)
+ * - destinationScope: ids + names (01B-1.1 legacy category OR)
+ * - collection "new"는 filter가 아니라 sort alias (adapter에서 latest로 변환)
+ */
+export type ProductListingDbFilters = {
+  /** @deprecated Prefer `destinationScope` / `destinationIds`. Still supported for 01A callers. */
+  destinationId?: string;
+  destinationIds?: string[];
+  /** Preferred: self+descendant ids and names for FK OR legacy category */
+  destinationScope?: ProductListingDestinationScope;
+  productLineId?: string;
+  /** `product_line_id IS NULL` — 「패키지여행」semantics */
+  unassignedProductLine?: boolean;
+  /** Theme token names (self + descendants already expanded by adapter) */
+  themeNames?: string[];
+  collection?: {
+    kind: ProductListingCollectionKind;
+    /** Taxonomy-derived campaign display names for OR with boolean flag */
+    campaignNames?: string[];
+  };
+  golfChannel?: {
+    productLineIds: string[];
+    legacyCategories: string[];
+  };
+  /**
+   * Explicit empty match (e.g. region resolved to no destination ids/names).
+   * Repository returns empty page — never full catalog.
+   */
+  matchNone?: boolean;
+};
+
+/** Browse listing sort — DB columns만. UI alias(popular/new)는 resolve에서 매핑. */
 export type ProductListingSort = "recommended" | "latest" | "price_asc" | "price_desc";
+
+/** UI / adapter에서 올 수 있는 sort 입력 (alias 포함) */
+export type ProductListingSortInput =
+  | ProductListingSort
+  | "popular"
+  | "new"
+  | ""
+  | null
+  | undefined;
 
 export type GetProductsPageParams = {
   page?: number;
   pageSize?: number;
-  sort?: ProductListingSort | null;
+  sort?: ProductListingSortInput;
   filters?: ProductListingDbFilters;
 };
 
@@ -56,8 +98,37 @@ export type ProductPageRange = {
   to: number;
 };
 
+export type NormalizedProductListingDbFilters = {
+  matchNone: boolean;
+  destinationScope?: ProductListingDestinationScope;
+  productLineId?: string;
+  unassignedProductLine: boolean;
+  themeNames: string[];
+  collection?: {
+    kind: ProductListingCollectionKind;
+    campaignNames: string[];
+  };
+  golfChannel?: {
+    productLineIds: string[];
+    legacyCategories: string[];
+  };
+};
+
 function isFiniteNumber(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
+}
+
+function uniqueNonEmpty(values: string[] | undefined): string[] {
+  if (!values?.length) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of values) {
+    const v = raw.trim();
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
 }
 
 /** page ≥ 1, pageSize ∈ [MIN, MAX], default 24 */
@@ -101,9 +172,15 @@ export function buildProductPageMeta(input: {
   return { totalCount, page, pageSize, totalPages, hasNextPage };
 }
 
+/**
+ * Sort aliases: popular → recommended, new → latest.
+ * Unknown / empty → recommended.
+ */
 export function resolveProductListingSort(
-  sort: ProductListingSort | null | undefined,
+  sort: ProductListingSortInput,
 ): ProductListingSort {
+  if (sort === "popular") return "recommended";
+  if (sort === "new") return "latest";
   if (sort === "latest" || sort === "price_asc" || sort === "price_desc" || sort === "recommended") {
     return sort;
   }
@@ -144,6 +221,225 @@ export function applyProductListingSort<T extends OrderedQuery>(query: T, sort: 
   }
 }
 
+/** PostgREST `.or()` / filter 값 — 콤마·특수문자 안전용 double-quote */
+export function quotePostgrestValue(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '""')}"`;
+}
+
+/** Postgres regex 특수문자 이스케이프 (theme token boundary match) */
+export function escapeRegexLiteral(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * `parseThemeTokens` delimiter (`/`, `,`, newline, `|`) 경계와 동일한 theme token match.
+ * PostgREST: `theme.match."(^|[,\\n|])TOKEN($|[,\\n|])"`
+ */
+export function buildThemeTokenMatchClause(themeName: string): string | null {
+  const name = themeName.trim();
+  if (!name) return null;
+  const pattern = `(^|[,\\n|])${escapeRegexLiteral(name)}($|[,\\n|])`;
+  return `theme.match.${quotePostgrestValue(pattern)}`;
+}
+
+/** themeNames → OR of token-boundary matches. Empty → null (no filter). */
+export function buildThemeOrFilter(themeNames: string[]): string | null {
+  const names = uniqueNonEmpty(themeNames);
+  if (!names.length) return null;
+  const parts = names
+    .map((n) => buildThemeTokenMatchClause(n))
+    .filter((p): p is string => Boolean(p));
+  return parts.length ? parts.join(",") : null;
+}
+
+/** is_recommend|is_popular OR campaigns_json contains each campaign name */
+export function buildCollectionOrFilter(input: {
+  kind: ProductListingCollectionKind;
+  campaignNames?: string[];
+}): string {
+  const flag = input.kind === "recommend" ? "is_recommend" : "is_popular";
+  const parts: string[] = [`${flag}.eq.true`];
+  for (const name of uniqueNonEmpty(input.campaignNames)) {
+    parts.push(`campaigns_json.cs.{${quotePostgrestValue(name)}}`);
+  }
+  return parts.join(",");
+}
+
+/**
+ * Golf channel OR:
+ * product_line_id IN (...) OR category IN (legacy)
+ */
+export function buildGolfOrFilter(input: {
+  productLineIds?: string[];
+  legacyCategories?: string[];
+}): string | null {
+  const parts: string[] = [];
+  const ids = uniqueNonEmpty(input.productLineIds);
+  const cats = uniqueNonEmpty(input.legacyCategories);
+  if (ids.length) {
+    parts.push(`product_line_id.in.(${ids.map(quotePostgrestValue).join(",")})`);
+  }
+  if (cats.length) {
+    parts.push(`category.in.(${cats.map(quotePostgrestValue).join(",")})`);
+  }
+  return parts.length ? parts.join(",") : null;
+}
+
+/**
+ * Destination scope OR (01B-1.1):
+ * destination_id IN ids OR category IN names (exact; no ilike substring)
+ */
+export function buildDestinationScopeOrFilter(
+  scope: ProductListingDestinationScope | { ids?: string[]; names?: string[] },
+): string | null {
+  const parts: string[] = [];
+  const ids = uniqueNonEmpty(scope.ids);
+  const names = uniqueNonEmpty(scope.names);
+  if (ids.length) {
+    parts.push(`destination_id.in.(${ids.map(quotePostgrestValue).join(",")})`);
+  }
+  if (names.length) {
+    parts.push(`category.in.(${names.map(quotePostgrestValue).join(",")})`);
+  }
+  return parts.length ? parts.join(",") : null;
+}
+
+/**
+ * Normalize listing filters:
+ * - merge destinationId + destinationIds + destinationScope → destinationScope
+ * - empty ids AND empty names → matchNone
+ * - unassignedProductLine clears productLineId
+ * - golfChannel with no ids/categories → matchNone
+ */
+export function normalizeProductListingDbFilters(
+  filters: ProductListingDbFilters | undefined,
+): NormalizedProductListingDbFilters {
+  const raw = filters ?? {};
+  let matchNone = raw.matchNone === true;
+
+  const hasDestinationIdsKey = Object.prototype.hasOwnProperty.call(raw, "destinationIds");
+  const hasDestinationScopeKey = Object.prototype.hasOwnProperty.call(raw, "destinationScope");
+  const fromSingle = raw.destinationId?.trim() ? [raw.destinationId.trim()] : [];
+  const fromArray = hasDestinationIdsKey ? uniqueNonEmpty(raw.destinationIds) : [];
+  const fromScopeIds = hasDestinationScopeKey
+    ? uniqueNonEmpty(raw.destinationScope?.ids)
+    : [];
+  const fromScopeNames = hasDestinationScopeKey
+    ? uniqueNonEmpty(raw.destinationScope?.names)
+    : [];
+
+  const hasAnyDestinationInput =
+    Boolean(fromSingle.length) || hasDestinationIdsKey || hasDestinationScopeKey;
+
+  let destinationScope: ProductListingDestinationScope | undefined;
+  if (hasAnyDestinationInput) {
+    const ids = uniqueNonEmpty([...fromScopeIds, ...fromArray, ...fromSingle]);
+    const names = fromScopeNames;
+    if (ids.length === 0 && names.length === 0) {
+      matchNone = true;
+      destinationScope = undefined;
+    } else {
+      destinationScope = { ids, names };
+    }
+  }
+
+  let unassignedProductLine = raw.unassignedProductLine === true;
+  let productLineId = raw.productLineId?.trim() || undefined;
+  if (unassignedProductLine) {
+    productLineId = undefined;
+  }
+
+  const themeNames = uniqueNonEmpty(raw.themeNames);
+
+  let collection: NormalizedProductListingDbFilters["collection"];
+  if (raw.collection?.kind === "recommend" || raw.collection?.kind === "popular") {
+    collection = {
+      kind: raw.collection.kind,
+      campaignNames: uniqueNonEmpty(raw.collection.campaignNames),
+    };
+  }
+
+  let golfChannel: NormalizedProductListingDbFilters["golfChannel"];
+  if (raw.golfChannel) {
+    const productLineIds = uniqueNonEmpty(raw.golfChannel.productLineIds);
+    const legacyCategories = uniqueNonEmpty(raw.golfChannel.legacyCategories);
+    if (productLineIds.length === 0 && legacyCategories.length === 0) {
+      matchNone = true;
+    } else {
+      golfChannel = { productLineIds, legacyCategories };
+    }
+  }
+
+  return {
+    matchNone,
+    destinationScope,
+    productLineId,
+    unassignedProductLine,
+    themeNames,
+    collection,
+    golfChannel,
+  };
+}
+
+export type ListingFilterQuery = {
+  eq: (column: string, value: unknown) => ListingFilterQuery;
+  in: (column: string, values: string[]) => ListingFilterQuery;
+  is: (column: string, value: null) => ListingFilterQuery;
+  or: (filters: string) => ListingFilterQuery;
+};
+
+/**
+ * Apply normalized filters as AND of groups:
+ * destinationScope OR AND productLine AND theme OR AND collection OR AND golf OR
+ */
+export function applyProductListingDbFilters<T extends ListingFilterQuery>(
+  query: T,
+  filters: NormalizedProductListingDbFilters,
+): T {
+  let q: ListingFilterQuery = query;
+
+  if (filters.destinationScope) {
+    const destOr = buildDestinationScopeOrFilter(filters.destinationScope);
+    if (destOr) {
+      q = q.or(destOr);
+    }
+  }
+
+  if (filters.unassignedProductLine) {
+    q = q.is("product_line_id", null);
+  } else if (filters.productLineId) {
+    q = q.eq("product_line_id", filters.productLineId);
+  }
+
+  const themeOr = buildThemeOrFilter(filters.themeNames);
+  if (themeOr) {
+    q = q.or(themeOr);
+  }
+
+  if (filters.collection) {
+    q = q.or(buildCollectionOrFilter(filters.collection));
+  }
+
+  if (filters.golfChannel) {
+    const golfOr = buildGolfOrFilter(filters.golfChannel);
+    if (golfOr) {
+      q = q.or(golfOr);
+    }
+  }
+
+  return q as T;
+}
+
+function emptyPageResult(
+  page: number,
+  pageSize: number,
+): ProductListingPageResult {
+  return {
+    items: [],
+    ...buildProductPageMeta({ totalCount: 0, page, pageSize }),
+  };
+}
+
 /**
  * DB-side offset pagination for Browse foundation.
  * Does not replace `getProducts()`. Not used by Search.
@@ -154,22 +450,18 @@ export async function getProductsPage(
   const { page, pageSize } = normalizeProductPageInput(params);
   const { from, to } = buildProductPageRange(page, pageSize);
   const sort = resolveProductListingSort(params.sort);
-  const filters = params.filters ?? {};
+  const filters = normalizeProductListingDbFilters(params.filters);
+
+  if (filters.matchNone) {
+    return emptyPageResult(page, pageSize);
+  }
 
   let query = supabase
     .from("products")
     .select("*", { count: "exact" })
     .eq("is_active", true);
 
-  const destinationId = filters.destinationId?.trim();
-  if (destinationId) {
-    query = query.eq("destination_id", destinationId);
-  }
-  const productLineId = filters.productLineId?.trim();
-  if (productLineId) {
-    query = query.eq("product_line_id", productLineId);
-  }
-
+  query = applyProductListingDbFilters(query, filters);
   query = applyProductListingSort(query, sort);
 
   const { data, error, count } = await query.range(from, to);

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import ProductCatalogSection from "@/components/product-detail/ProductCatalogSection";
@@ -11,11 +12,11 @@ import { MobileProductSortSheet } from "@/components/products/MobileProductSortS
 import { ProductListToolbar } from "@/components/products/ProductListToolbar";
 import { ProductsSearchModeResults } from "@/components/products/ProductsSearchModeResults";
 import SearchEmpty from "@/components/search/SearchEmpty";
+import SearchPagination from "@/components/search/SearchPagination";
 import RelatedTaxonomySection from "@/components/search/RelatedTaxonomySection";
 import RelatedProductsSection from "@/components/search/RelatedProductsSection";
 import {
   mergeFiltersIntoSearchParams,
-  applyProductFilters,
   getCollectionLabel,
   PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE,
   SEARCH_SORT_OPTIONS,
@@ -25,29 +26,32 @@ import {
   type ProductSortId,
 } from "@/lib/productFilters";
 import { resolveProductsPageInitialFilters } from "@/lib/products/productsListingPolicy";
-import { sortProductsPromotionFirst } from "@/lib/products/productPromotionSort";
 import {
-  filterGolfChannelProducts,
-  filterGolfProductsByRegionPreset,
-  GOLF_REGION_PRESET_LABELS,
   isGolfProductLineTaxonomy,
   parseGolfRegionPresetId,
+  GOLF_REGION_PRESET_LABELS,
 } from "@/lib/products/golfChannel";
 import type { Product } from "@/types/product";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
-import { getSelfAndDescendantIdsAndNames } from "@/lib/productTaxonomies";
 import type { ProductsPageContentListingConfig } from "@/lib/products/productsPageContentConfig";
 import { buildGolfDepartureEvents } from "@/lib/products/golfDepartureCalendar";
 import type { SearchProductsResult, SearchRecommendations } from "@/types/search";
+import type { ProductListingPageResult } from "@/lib/products/productListingQuery";
 import {
   resolveSearchModeSort,
   toSearchFilterStateForApi,
   buildProductsSearchModeHref,
   SEARCH_MODE_SORT_OPTIONS,
 } from "@/lib/products/productsSearchMode";
+import {
+  buildProductsBrowsePageHref,
+  readBrowseChannelParams,
+} from "@/lib/products/buildProductsBrowseHref";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import { cn } from "@/lib/cn";
+import { solidButtonShadowClasses } from "@/components/ui/Button";
 
 const GolfDepartureCalendarSection = dynamic(
   () => import("@/components/home/GolfDepartureCalendarSection"),
@@ -69,7 +73,13 @@ export type ProductsPageGolfCalendarMeta = {
 export type { ProductsPageContentListingConfig };
 
 export type ProductsPageContentProps = {
+  /**
+   * Browse: current page items from getProductsPage (≤24).
+   * Search: unused for catalog (searchResult.items). Kept for golf calendar page scope.
+   */
   products: Product[];
+  /** Browse server pagination result (authoritative totalCount / pages). */
+  browsePage?: ProductListingPageResult | null;
   taxonomyNameMap?: Record<string, string>;
   regionOptions: string[];
   regionTree?: RegionTreeNode[];
@@ -89,6 +99,7 @@ export type ProductsPageContentProps = {
 
 export function ProductsPageContent({
   products,
+  browsePage = null,
   taxonomyNameMap,
   regionOptions,
   regionTree,
@@ -108,12 +119,8 @@ export function ProductsPageContent({
   const initialFiltersFromServer = listing?.initialFiltersFromServer ?? null;
   const basePath = listing?.basePath ?? "/products";
   const filterContextLabel = listing?.filterContextLabel ?? null;
-  const initialRegionDescendants = listing?.initialRegionDescendants ?? null;
-  const initialThemeDescendantNames = listing?.initialThemeDescendantNames ?? null;
   const cardLayout = listing?.cardLayout ?? "list";
   const mobileListToolbarBelowBackHeader = listing?.mobileListToolbarBelowBackHeader ?? false;
-  const regionTaxonomies = listing?.regionTaxonomies ?? null;
-  const themeTaxonomies = listing?.themeTaxonomies ?? null;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -138,19 +145,11 @@ export function ProductsPageContent({
     return parseGolfRegionPresetId(searchParams.get("golfRegion"));
   }, [golfChannelPreset, searchParams]);
 
-  const baseProducts = useMemo(() => {
-    if (!golfChannelPreset) return products;
-    let list = filterGolfChannelProducts(products, taxonomyNameMap ?? {});
-    if (golfRegionPreset && regionTaxonomies?.length) {
-      list = filterGolfProductsByRegionPreset(
-        list,
-        golfRegionPreset,
-        regionTaxonomies,
-        taxonomyNameMap ?? {},
-      );
-    }
-    return list;
-  }, [products, golfChannelPreset, golfRegionPreset, regionTaxonomies, taxonomyNameMap]);
+  /** Browse: server already filtered/sorted — no client applyProductFilters / promotion-first */
+  const browseProducts = useMemo(() => {
+    if (isSearchMode) return [];
+    return browsePage?.items ?? products;
+  }, [isSearchMode, browsePage?.items, products]);
 
   const effectiveProductLineOptions = useMemo(() => {
     if (golfChannelPreset) {
@@ -163,99 +162,17 @@ export function ProductsPageContent({
     return options;
   }, [productLineOptions, golfChannelPreset]);
 
-  const filterApplyOptions = useMemo(() => {
-    if (isSearchMode) return undefined;
-    const regionName = filters.region?.trim();
-    const themeName = filters.theme?.trim();
-
-    let regionDescendants: { ids: string[]; names: string[] } | undefined;
-    let regionDescendantForName: string | undefined;
-    let themeDescendantNames: string[] | undefined;
-    let themeDescendantForName: string | undefined;
-
-    const useInitialRegion =
-      initialFiltersFromServer?.region &&
-      regionName === initialFiltersFromServer.region.trim() &&
-      initialRegionDescendants &&
-      (initialRegionDescendants.ids.length > 0 || initialRegionDescendants.names.length > 0);
-    if (useInitialRegion && initialRegionDescendants) {
-      regionDescendants = initialRegionDescendants;
-      regionDescendantForName = regionName ?? undefined;
-    } else if (regionTaxonomies?.length && regionName) {
-      const computed = getSelfAndDescendantIdsAndNames(regionTaxonomies, regionName);
-      if (computed.ids.length > 0 || computed.names.length > 0) {
-        regionDescendants = computed;
-        regionDescendantForName = regionName;
-      }
-    }
-
-    const useInitialTheme =
-      initialFiltersFromServer?.theme &&
-      themeName === initialFiltersFromServer.theme.trim() &&
-      initialThemeDescendantNames &&
-      initialThemeDescendantNames.length > 0;
-    if (useInitialTheme && initialThemeDescendantNames) {
-      themeDescendantNames = initialThemeDescendantNames;
-      themeDescendantForName = themeName ?? undefined;
-    } else if (themeTaxonomies?.length && themeName) {
-      const computed = getSelfAndDescendantIdsAndNames(themeTaxonomies, themeName);
-      if (computed.names.length > 0) {
-        themeDescendantNames = computed.names;
-        themeDescendantForName = themeName;
-      }
-    }
-
-    const ccn = listing?.collectionCampaignNames;
-    const hasCollectionCampaigns =
-      ccn && ((ccn.recommend?.length ?? 0) > 0 || (ccn.popular?.length ?? 0) > 0);
-
-    if (!regionDescendants && !themeDescendantNames && !hasCollectionCampaigns) return undefined;
-    return {
-      ...(regionDescendants && regionDescendantForName
-        ? { regionDescendants, regionDescendantForName }
-        : {}),
-      ...(themeDescendantNames && themeDescendantForName
-        ? { themeDescendantNames, themeDescendantForName }
-        : {}),
-      ...(hasCollectionCampaigns && ccn ? { collectionCampaignNames: ccn } : {}),
-    };
-  }, [
-    isSearchMode,
-    filters.region,
-    filters.theme,
-    initialFiltersFromServer,
-    initialRegionDescendants,
-    initialThemeDescendantNames,
-    regionTaxonomies,
-    themeTaxonomies,
-    listing?.collectionCampaignNames,
-  ]);
-
-  const filteredProducts = useMemo(() => {
-    if (isSearchMode) return searchResult?.items ?? [];
-    return sortProductsPromotionFirst(
-      applyProductFilters(baseProducts, filters, taxonomyNameMap, filterApplyOptions),
-    );
-  }, [
-    isSearchMode,
-    searchResult?.items,
-    baseProducts,
-    filters,
-    taxonomyNameMap,
-    filterApplyOptions,
-  ]);
-
   const golfCalendarEvents = useMemo(() => {
     if (!golfChannelPreset || isSearchMode) return [];
     return buildGolfDepartureEvents(
-      filteredProducts,
+      browseProducts,
       taxonomyNameMap ?? {},
       golfCalendarMeta?.promotionCampaignId ?? null,
     );
   }, [
     golfChannelPreset,
     isSearchMode,
-    filteredProducts,
+    browseProducts,
     taxonomyNameMap,
     golfCalendarMeta?.promotionCampaignId,
   ]);
@@ -269,7 +186,7 @@ export function ProductsPageContent({
       }
     }
     const nextParams = mergeFiltersIntoSearchParams(searchParams, merged);
-    // Search Mode pagination reset
+    // Browse + Search: filter/sort change → page 1
     nextParams.delete("page");
     if (isSearchMode && merged.sort === "relevance") {
       nextParams.delete("sort");
@@ -337,12 +254,38 @@ export function ProductsPageContent({
   const searchTotalCount = searchResult?.totalCount ?? 0;
   const searchKeyword = displayFilters.q?.trim() ?? "";
 
+  const browseTotalCount = browsePage?.totalCount ?? 0;
+  const browseTotalPages = browsePage?.totalPages ?? 0;
+  const browseCurrentPage = browsePage?.page ?? 1;
+  const browseOutOfRange =
+    !isSearchMode && browseTotalCount > 0 && browseProducts.length === 0;
+
+  const channelParams = readBrowseChannelParams(searchParams);
+  const buildBrowseHref = (page: number) =>
+    buildProductsBrowsePageHref(
+      {
+        region: displayFilters.region,
+        theme: displayFilters.theme,
+        product_line: displayFilters.product_line,
+        sort: displayFilters.sort,
+        collection: displayFilters.collection,
+        tourType: channelParams.tourType,
+        golfRegion: channelParams.golfRegion,
+      },
+      page,
+      basePath,
+    );
+
   const searchEmptyCurrent = {
     q: displayFilters.q ?? undefined,
     destination: displayFilters.region ?? undefined,
     theme: displayFilters.theme ?? undefined,
     product_line: displayFilters.product_line ?? undefined,
-    sort: resolveSearchModeSort(displayFilters.sort) as "relevance" | "latest" | "price_asc" | "price_desc",
+    sort: resolveSearchModeSort(displayFilters.sort) as
+      | "relevance"
+      | "latest"
+      | "price_asc"
+      | "price_desc",
   };
 
   return (
@@ -365,6 +308,12 @@ export function ProductsPageContent({
           </h2>
           <p className="type-small text-[var(--text-muted)]">총 {searchTotalCount}개 상품</p>
         </div>
+      ) : null}
+
+      {!isSearchMode && browseOutOfRange ? (
+        <p className="type-small text-[var(--text-muted)]" role="status">
+          총 {browseTotalCount}개 상품 · {browseCurrentPage}/{browseTotalPages}페이지
+        </p>
       ) : null}
 
       <div className="flex w-full max-w-full items-start gap-8">
@@ -469,10 +418,35 @@ export function ProductsPageContent({
             />
           ) : null}
 
-          {!isSearchMode ? (
+          {!isSearchMode && browseOutOfRange ? (
+            <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:rounded-3xl">
+              <p className="font-semibold text-[var(--text-primary)]">
+                요청한 페이지에 표시할 상품이 없습니다.
+              </p>
+              <p className="mt-2 text-[var(--text-secondary)]">
+                총 {browseTotalCount}개 상품 · {browseTotalPages}페이지 중 {browseCurrentPage}
+                페이지입니다.
+              </p>
+              <div className="mt-4">
+                <Link
+                  href={buildBrowseHref(1)}
+                  className={cn(
+                    "inline-flex items-center rounded-lg bg-[var(--primary)] px-4 py-2 type-btn font-semibold text-[var(--on-primary)] transition hover:opacity-90",
+                    solidButtonShadowClasses,
+                  )}
+                >
+                  1페이지로 이동
+                </Link>
+              </div>
+            </div>
+          ) : null}
+
+          {!isSearchMode && !browseOutOfRange ? (
             <ProductCatalogSection
-              products={filteredProducts}
+              products={browseProducts}
               categories={regionOptions}
+              themeChipOptions={themeOptions}
+              listTotalCount={browseTotalCount}
               initialKeyword={initialKeyword}
               golfChannelPreset={golfChannelPreset}
               presetLabel={presetLabel}
@@ -485,6 +459,19 @@ export function ProductsPageContent({
               onClearCollection={() => handleFilterChange({ collection: null })}
               cardLayout={cardLayout}
             />
+          ) : null}
+
+          {!isSearchMode && browseTotalPages > 1 ? (
+            <div className="pt-2 pb-1">
+              <SearchPagination
+                currentPage={browseCurrentPage}
+                totalPages={browseTotalPages}
+                query={{}}
+                buildPageHref={buildBrowseHref}
+                trackAnalytics={false}
+                ariaLabel="상품 목록 페이지 이동"
+              />
+            </div>
           ) : null}
 
           {isSearchMode && searchRecommendations ? (

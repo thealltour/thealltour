@@ -10,21 +10,20 @@ import {
   getProductsNavFallbackHref,
 } from "@/components/navigation/breadcrumb-config";
 import { ProductsPageContent } from "@/components/products/ProductsPageContent";
-import { loadProductsListingContext } from "@/lib/products/loadProductsListingContext";
+import { loadProductsListingTaxonomyContext } from "@/lib/products/loadProductsListingContext";
 import {
   resolveLandingParams,
   hasLandingParams,
 } from "@/lib/productFiltersLanding";
 import { getCollectionCampaignNamesForListing } from "@/lib/products/getCollectionCampaignNamesForListing";
-import {
-  isGolfTourType,
-} from "@/lib/products/golfChannel";
+import { isGolfTourType } from "@/lib/products/golfChannel";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import {
   resolvePromotionCampaignDisplayLabel,
   resolvePromotionCampaignId,
 } from "@/lib/products/golfCalendarPromotion";
 import { parseProductFiltersFromSearchParams } from "@/lib/productFilters";
+import { shouldPreferServerInitialFilters } from "@/lib/products/productsListingPolicy";
 import { searchProductsByParams } from "@/lib/search/searchProducts";
 import { getSearchRecommendations } from "@/lib/search/getSearchRecommendations";
 import {
@@ -33,6 +32,12 @@ import {
   resolveSearchModeSort,
   toSearchEngineParams,
 } from "@/lib/products/productsSearchMode";
+import { buildProductListingQueryParams } from "@/lib/products/buildProductListingQueryParams";
+import {
+  getProductsPage,
+  PRODUCT_LIST_PAGE_SIZE,
+  type ProductListingPageResult,
+} from "@/lib/products/productListingQuery";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildOgMetadataFromSeoData(getProductsIndexOgPageSeo());
@@ -50,6 +55,7 @@ type ProductsPageProps = {
     destination?: string;
     city?: string;
     page?: string;
+    golfRegion?: string;
   }>;
 };
 
@@ -58,10 +64,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const searchKeyword = typeof query.q === "string" ? query.q.trim() : "";
   const isSearchMode = isProductsSearchMode(searchKeyword);
   const tourType = typeof query.tourType === "string" ? query.tourType.trim() : "";
+  const golfRegion = typeof query.golfRegion === "string" ? query.golfRegion.trim() : "";
   const golfPresetActive = isGolfTourType(tourType) && !isSearchMode;
-  const listingCtx = await loadProductsListingContext("products_index");
+
+  const listingCtx = await loadProductsListingTaxonomyContext();
   const {
-    products,
     categories,
     themes,
     productLines,
@@ -93,6 +100,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   let searchResult = null;
   let searchRecommendations = null;
+  let browsePage: ProductListingPageResult | null = null;
+
   if (isSearchMode) {
     const page = parseProductsSearchPage(query as Record<string, string | string[] | undefined>);
     const sort = resolveSearchModeSort(parsedFilters.sort);
@@ -112,7 +121,62 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       product_line: engineParams.product_line,
       products: searchResult.items,
     });
+  } else {
+    const page = parseProductsSearchPage(query as Record<string, string | string[] | undefined>);
+    // Mirror ProductsPageContent / productsListingPolicy: landing snapshot only when preferred
+    const preferServer = shouldPreferServerInitialFilters(
+      {
+        get: (name: string) => {
+          const v = (query as Record<string, string | undefined>)[name];
+          return typeof v === "string" ? v : null;
+        },
+        entries: () =>
+          Object.entries(query).filter(
+            (e): e is [string, string] => typeof e[1] === "string",
+          ),
+      },
+      initialFiltersFromServer,
+    );
+    const effective = preferServer && initialFiltersFromServer
+      ? initialFiltersFromServer
+      : parsedFilters;
+
+    const listingParams = buildProductListingQueryParams({
+      filters: {
+        region: effective.region,
+        theme: effective.theme,
+        product_line: effective.product_line,
+        collection: effective.collection,
+        sort: effective.sort,
+        tourType: tourType || null,
+        golfRegion: golfRegion || null,
+        page,
+        pageSize: PRODUCT_LIST_PAGE_SIZE,
+      },
+      taxonomy: {
+        destinations: hubDestinations,
+        themes: hubThemes,
+        productLines: listingCtx.productLineTaxonomies,
+        campaignNamesByCollection: collectionCampaignNames,
+      },
+    });
+
+    browsePage = await getProductsPage(listingParams);
   }
+
+  const showCatalogEmptyShell =
+    !isSearchMode &&
+    browsePage != null &&
+    browsePage.totalCount === 0 &&
+    !hasActiveBrowseFilters({
+      region: parsedFilters.region ?? initialFiltersFromServer?.region,
+      theme: parsedFilters.theme ?? initialFiltersFromServer?.theme,
+      product_line: parsedFilters.product_line ?? initialFiltersFromServer?.product_line,
+      collection: parsedFilters.collection ?? initialFiltersFromServer?.collection,
+      tourType,
+      golfRegion,
+      sort: parsedFilters.sort ?? initialFiltersFromServer?.sort,
+    });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--surface-muted)] to-[var(--surface)] text-[var(--text-primary)]">
@@ -132,7 +196,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
           ) : null}
 
-          {products.length === 0 && !isSearchMode ? (
+          {showCatalogEmptyShell ? (
             <section className="rounded-2xl bg-[var(--surface)] p-8 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] type-small text-[var(--text-muted)] sm:rounded-3xl">
               현재 등록된 상품이 없습니다. 관리자 페이지에서 상품을 등록해 주세요.
             </section>
@@ -141,7 +205,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               mode={isSearchMode ? "search" : "browse"}
               searchResult={searchResult}
               searchRecommendations={searchRecommendations}
-              products={products}
+              browsePage={browsePage}
+              products={browsePage?.items ?? []}
               taxonomyNameMap={taxonomyNameMap}
               regionOptions={categories}
               regionTree={regionTree}
@@ -171,5 +236,25 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </PageContainer>
       </main>
     </div>
+  );
+}
+
+function hasActiveBrowseFilters(input: {
+  region?: string | null;
+  theme?: string | null;
+  product_line?: string | null;
+  collection?: string | null;
+  tourType?: string;
+  golfRegion?: string;
+  sort?: string | null;
+}): boolean {
+  return Boolean(
+    input.region?.trim() ||
+      input.theme?.trim() ||
+      input.product_line?.trim() ||
+      input.collection ||
+      input.tourType?.trim() ||
+      input.golfRegion?.trim() ||
+      input.sort?.trim(),
   );
 }

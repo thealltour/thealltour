@@ -13,16 +13,27 @@ export type SearchPaginationProps = {
   currentPage: number;
   totalPages: number;
   query: SearchFilterState;
-  /** 기본: /search URL. Search Mode(/products)에서는 커스텀 href */
+  /** 기본: /search URL. Search Mode(/products)·Browse에서는 커스텀 href */
   buildPageHref?: (page: number) => string;
+  /** Search pagination click analytics. Browse는 false. */
+  trackAnalytics?: boolean;
+  /** nav aria-label */
+  ariaLabel?: string;
 };
 
 const MAX_VISIBLE = 7;
 
+/** min 44px touch target (mobile-first) */
+const PAGE_CONTROL =
+  "inline-flex h-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-2 type-small";
+
 /**
  * totalPages > 7 이면 1 ... mid-1 mid mid+1 ... last 형태.
  */
-function getPageNumbers(currentPage: number, totalPages: number): (number | "ellipsis")[] {
+export function getSearchPaginationPageNumbers(
+  currentPage: number,
+  totalPages: number,
+): (number | "ellipsis")[] {
   if (totalPages <= MAX_VISIBLE) {
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
@@ -44,10 +55,13 @@ export default function SearchPagination({
   totalPages,
   query,
   buildPageHref,
+  trackAnalytics = true,
+  ariaLabel = "검색 결과 페이지 이동",
 }: SearchPaginationProps) {
-  const pages = getPageNumbers(currentPage, totalPages);
+  const pages = getSearchPaginationPageNumbers(currentPage, totalPages);
 
   const trackPagination = (fromPage: number, toPage: number) => {
+    if (!trackAnalytics) return;
     trackClientEvent(
       createAnalyticsPayload({
         eventName: ANALYTICS_EVENTS.search_pagination_click,
@@ -68,15 +82,17 @@ export default function SearchPagination({
   return (
     <nav
       className="flex flex-wrap items-center justify-center gap-1 sm:gap-2"
-      aria-label="검색 결과 페이지 이동"
+      aria-label={ariaLabel}
     >
       <span className="sr-only">
         총 {totalPages}페이지 중 {currentPage}페이지
       </span>
-      {/* 이전 */}
       {currentPage <= 1 ? (
         <span
-          className="inline-flex h-9 min-w-[2.25rem] cursor-not-allowed items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2 text-[var(--text-muted)]"
+          className={cn(
+            PAGE_CONTROL,
+            "cursor-not-allowed border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]",
+          )}
           aria-disabled="true"
         >
           이전
@@ -84,7 +100,10 @@ export default function SearchPagination({
       ) : (
         <Link
           href={hrefForPage(currentPage - 1)}
-          className="inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 type-small text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
+          className={cn(
+            PAGE_CONTROL,
+            "border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]",
+          )}
           onClick={() => trackPagination(currentPage, currentPage - 1)}
         >
           이전
@@ -102,7 +121,8 @@ export default function SearchPagination({
               {p === currentPage ? (
                 <span
                   className={cn(
-                    "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border-2 border-[var(--primary)] bg-[var(--primary)] px-2 type-small font-semibold text-[var(--on-primary)]",
+                    PAGE_CONTROL,
+                    "border-2 border-[var(--primary)] bg-[var(--primary)] font-semibold text-[var(--on-primary)]",
                     solidButtonShadowClasses,
                   )}
                   aria-current="page"
@@ -113,7 +133,8 @@ export default function SearchPagination({
                 <Link
                   href={hrefForPage(p)}
                   className={cn(
-                    "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 type-small text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]",
+                    PAGE_CONTROL,
+                    "border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]",
                   )}
                   onClick={() => trackPagination(currentPage, p)}
                 >
@@ -125,10 +146,12 @@ export default function SearchPagination({
         )}
       </div>
 
-      {/* 다음 */}
       {currentPage >= totalPages ? (
         <span
-          className="inline-flex h-9 min-w-[2.25rem] cursor-not-allowed items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2 text-[var(--text-muted)]"
+          className={cn(
+            PAGE_CONTROL,
+            "cursor-not-allowed border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]",
+          )}
           aria-disabled="true"
         >
           다음
@@ -136,7 +159,10 @@ export default function SearchPagination({
       ) : (
         <Link
           href={hrefForPage(currentPage + 1)}
-          className="inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 type-small text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
+          className={cn(
+            PAGE_CONTROL,
+            "border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]",
+          )}
           onClick={() => trackPagination(currentPage, currentPage + 1)}
         >
           다음

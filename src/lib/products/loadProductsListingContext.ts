@@ -16,8 +16,7 @@ import type { RegionTreeNode } from "@/types/productTaxonomy";
 
 export type ProductTaxonomyOptionsResult = Awaited<ReturnType<typeof getProductTaxonomyOptions>>;
 
-export type ProductsListingContext = {
-  products: Product[];
+export type ProductsListingTaxonomyContext = {
   hubDestinations: ProductTaxonomy[];
   hubThemes: ProductTaxonomy[];
   productLineTaxonomies: ProductTaxonomy[];
@@ -30,13 +29,16 @@ export type ProductsListingContext = {
   taxonomyNameMap: Record<string, string>;
 };
 
-function finalizeListingContext(
-  products: Product[],
+export type ProductsListingContext = ProductsListingTaxonomyContext & {
+  products: Product[];
+};
+
+function finalizeTaxonomyContext(
   hubDestinations: ProductTaxonomy[],
   hubThemes: ProductTaxonomy[],
   productLineTaxonomies: ProductTaxonomy[],
   taxonomyOptions: ProductTaxonomyOptionsResult,
-): ProductsListingContext {
+): ProductsListingTaxonomyContext {
   const { categories, themes } = taxonomyOptions;
   const productLinesFromTaxonomies = productLineTaxonomies
     .map((item) => item.name.trim())
@@ -44,7 +46,6 @@ function finalizeListingContext(
   const productLines =
     productLinesFromTaxonomies.length > 0 ? productLinesFromTaxonomies : taxonomyOptions.productLines;
   return {
-    products,
     hubDestinations,
     hubThemes,
     productLineTaxonomies,
@@ -60,6 +61,43 @@ function finalizeListingContext(
       ...productLineTaxonomies,
     ]),
   };
+}
+
+function finalizeListingContext(
+  products: Product[],
+  hubDestinations: ProductTaxonomy[],
+  hubThemes: ProductTaxonomy[],
+  productLineTaxonomies: ProductTaxonomy[],
+  taxonomyOptions: ProductTaxonomyOptionsResult,
+): ProductsListingContext {
+  return {
+    products,
+    ...finalizeTaxonomyContext(
+      hubDestinations,
+      hubThemes,
+      productLineTaxonomies,
+      taxonomyOptions,
+    ),
+  };
+}
+
+/**
+ * Browse `/products` index: taxonomy/filter UI only — no `getProducts()` full fetch.
+ * Filter options come from hub taxonomies + product_line taxonomies (not product scan).
+ */
+export async function loadProductsListingTaxonomyContext(): Promise<ProductsListingTaxonomyContext> {
+  const [taxonomyOptions, hubDestinations, hubThemes, productLineTaxonomies] = await Promise.all([
+    getProductTaxonomyOptions([]),
+    getHubDestinations(),
+    getHubThemes(),
+    getActiveProductLineTaxonomies(),
+  ]);
+  return finalizeTaxonomyContext(
+    hubDestinations,
+    hubThemes,
+    productLineTaxonomies,
+    taxonomyOptions,
+  );
 }
 
 export async function loadProductsListingContext(

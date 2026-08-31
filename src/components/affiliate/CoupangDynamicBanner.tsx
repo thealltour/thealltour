@@ -7,22 +7,18 @@ import {
   COUPANG_BANNER_WIDTH,
   COUPANG_GJS_URL,
   getCoupangBannerConfig,
+  getCoupangWidgetIframeSrc,
 } from "@/lib/affiliate/coupangBannerConfig";
 
 declare global {
   interface Window {
     PartnersCoupang?: {
-      G: new (config: {
-        id: number;
-        template: string;
-        trackingCode: string;
-        width: string;
-        height: string;
-        tsource: string;
-      }) => unknown;
+      G: new (config: ReturnType<typeof getCoupangBannerConfig>) => unknown;
     };
   }
 }
+
+const READY_FALLBACK_MS = 2500;
 
 let gJsLoadPromise: Promise<void> | null = null;
 
@@ -63,45 +59,86 @@ function loadCoupangGJs(): Promise<void> {
   return gJsLoadPromise;
 }
 
+function mountHasVisibleBanner(mount: HTMLElement): boolean {
+  const iframe = mount.querySelector("iframe");
+  if (!iframe) return false;
+  const width = iframe.width ? Number(iframe.width) : iframe.clientWidth;
+  const height = iframe.height ? Number(iframe.height) : iframe.clientHeight;
+  return width > 0 && height > 0;
+}
+
 export type CoupangDynamicBannerProps = {
   className?: string;
+  bannerId: number;
 };
 
 /**
  * Coupang Partners dynamic carousel banner (680×140).
- * g.js single-load + per-instance init with cleanup on unmount.
+ * g.js + container mount; widgets.html iframe 폴백.
  */
-export function CoupangDynamicBanner({ className }: CoupangDynamicBannerProps) {
+export function CoupangDynamicBanner({ className, bannerId }: CoupangDynamicBannerProps) {
   const reactId = useId().replace(/:/g, "");
   const instanceId = `coupang-banner-${reactId}`;
-  const outerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const initGenRef = useRef(0);
   const [scale, setScale] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [useIframeFallback, setUseIframeFallback] = useState(false);
 
   useEffect(() => {
-    const outer = outerRef.current;
-    if (!outer) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     const updateScale = () => {
-      const w = outer.clientWidth;
+      const w = container.clientWidth;
       if (!w) return;
-      setScale(Math.min(1, w / COUPANG_BANNER_WIDTH));
+      setScale(w / COUPANG_BANNER_WIDTH);
     };
 
     updateScale();
     const ro = new ResizeObserver(updateScale);
-    ro.observe(outer);
+    ro.observe(container);
     return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
+    if (useIframeFallback) return;
+
     const mount = mountRef.current;
     if (!mount) return;
 
     const gen = ++initGenRef.current;
     let cancelled = false;
+    let readyTimeout: ReturnType<typeof setTimeout> | null = null;
+    let observer: MutationObserver | null = null;
+
+    const markReady = () => {
+      if (cancelled || gen !== initGenRef.current) return;
+      setStatus("ready");
+    };
+
+    const activateIframeFallback = () => {
+      if (cancelled || gen !== initGenRef.current) return;
+      setUseIframeFallback(true);
+      setStatus("ready");
+    };
+
+    const watchForIframe = () => {
+      if (mountHasVisibleBanner(mount)) {
+        markReady();
+        return;
+      }
+
+      observer = new MutationObserver(() => {
+        if (mountHasVisibleBanner(mount)) {
+          observer?.disconnect();
+          observer = null;
+          markReady();
+        }
+      });
+      observer.observe(mount, { childList: true, subtree: true, attributes: true });
+    };
 
     setStatus("loading");
     mount.replaceChildren();
@@ -111,59 +148,86 @@ export function CoupangDynamicBanner({ className }: CoupangDynamicBannerProps) {
         if (cancelled || gen !== initGenRef.current) return;
         const G = window.PartnersCoupang?.G;
         if (!G) {
-          setStatus("error");
+          activateIframeFallback();
           return;
         }
+
         mount.replaceChildren();
-        new G(getCoupangBannerConfig());
-        setStatus("ready");
+        new G({
+          ...getCoupangBannerConfig(bannerId),
+          container: mount,
+          onLoaded: (hasAd) => {
+            if (cancelled || gen !== initGenRef.current) return;
+            if (hasAd) {
+              markReady();
+            }
+          },
+        });
+
+        watchForIframe();
+        readyTimeout = setTimeout(() => {
+          if (mountHasVisibleBanner(mount)) {
+            markReady();
+            return;
+          }
+          activateIframeFallback();
+        }, READY_FALLBACK_MS);
       })
       .catch(() => {
-        if (!cancelled && gen === initGenRef.current) {
-          setStatus("error");
-        }
+        activateIframeFallback();
       });
 
     return () => {
       cancelled = true;
+      if (readyTimeout) clearTimeout(readyTimeout);
+      observer?.disconnect();
       mount.replaceChildren();
     };
-  }, [instanceId]);
-
-  const scaledWidth = COUPANG_BANNER_WIDTH * scale;
-  const scaledHeight = COUPANG_BANNER_HEIGHT * scale;
+  }, [instanceId, useIframeFallback, bannerId]);
 
   return (
     <div
-      ref={outerRef}
-      className={cn("mx-auto w-full max-w-[680px] overflow-x-hidden", className)}
+      ref={containerRef}
+      className={cn("relative w-full overflow-hidden aspect-[680/140]", className)}
       aria-busy={status === "loading"}
+      data-coupang-banner-status={status}
     >
-      <div
-        className="relative mx-auto overflow-hidden"
-        style={{ width: scaledWidth, height: scaledHeight, minHeight: scaledHeight }}
-      >
+      {status === "loading" ? (
+        <div
+          className="absolute inset-0 z-0 bg-[var(--surface-muted)]"
+          aria-hidden
+        />
+      ) : null}
+
+      {useIframeFallback ? (
+        <iframe
+          title="쿠팡 파트너스 여행상품"
+          src={getCoupangWidgetIframeSrc(bannerId)}
+          width={COUPANG_BANNER_WIDTH}
+          height={COUPANG_BANNER_HEIGHT}
+          scrolling="no"
+          frameBorder={0}
+          referrerPolicy="unsafe-url"
+          className="absolute inset-0 z-10 h-full w-full border-0"
+        />
+      ) : (
         <div
           ref={mountRef}
           id={instanceId}
+          data-coupang-banner-id={bannerId}
           data-coupang-banner-mount=""
-          className="absolute top-0 left-0 origin-top-left"
+          className="absolute top-0 left-0 z-10 origin-top-left [&_ins]:!block [&_iframe]:!block"
           style={{
             width: COUPANG_BANNER_WIDTH,
             height: COUPANG_BANNER_HEIGHT,
             transform: `scale(${scale})`,
           }}
         />
-        {status === "loading" ? (
-          <div
-            className="absolute inset-0 rounded-lg bg-[var(--surface-muted)] ring-1 ring-[var(--border)]/60"
-            aria-hidden
-          />
-        ) : null}
-        {status === "error" ? (
-          <p className="sr-only">쿠팡 제휴 배너를 불러오지 못했습니다.</p>
-        ) : null}
-      </div>
+      )}
+
+      {status === "error" ? (
+        <p className="sr-only">쿠팡 제휴 배너를 불러오지 못했습니다.</p>
+      ) : null}
     </div>
   );
 }

@@ -29,7 +29,7 @@ export function LandingDetailHero({
       priority
       className={className}
       contentClassName="max-w-[640px] gap-1.5 sm:gap-2"
-      minHeightClassName="min-h-[180px] sm:min-h-[280px] md:min-h-[380px]"
+      minHeightClassName="min-h-[150px] sm:min-h-[190px] md:min-h-[220px]"
     >
       <h1 className="heading-display font-card-title hero-text-shadow-title text-xl font-semibold text-white sm:text-3xl md:text-4xl">
         {title}

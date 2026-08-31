@@ -28,6 +28,8 @@ import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import { StickySectionNav } from "@/components/navigation/StickySectionNav";
 import { AllProductsBrowseCtaSection } from "@/components/landing/AllProductsBrowseCtaSection";
 import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavSections";
+import { CoupangTravelSection } from "@/components/affiliate/CoupangTravelSection";
+import { shouldShowCoupangBannerForRegionSlug } from "@/lib/affiliate/isDomesticDestinationTaxonomy";
 
 const RELATED_PRODUCTS_LIMIT = 12;
 
@@ -127,6 +129,12 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
       `${landingData.taxonomyName} 지역의 여행·골프·패키지 상품을 소개합니다.`;
     const heroImage = dataWithChildren.hero.imageUrl?.trim() || null;
 
+    const showCoupangBanner = shouldShowCoupangBannerForRegionSlug({
+      slug: trimmedSlug,
+      matchedDestination: parent ?? null,
+      hubDestinations: listing.hubDestinations,
+    });
+
     return (
       <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
         <SiteHeader activeTab="products" />
@@ -143,6 +151,10 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
               description={heroDescription}
               imageUrl={heroImage}
             />
+
+            {showCoupangBanner ? (
+              <CoupangTravelSection compact headingId="region-coupang-travel-heading" />
+            ) : null}
 
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
               <div className="hidden w-72 shrink-0 lg:flex lg:flex-col lg:gap-6">

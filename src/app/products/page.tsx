@@ -38,6 +38,7 @@ import {
   PRODUCT_LIST_PAGE_SIZE,
   type ProductListingPageResult,
 } from "@/lib/products/productListingQuery";
+import { CoupangTravelSection } from "@/components/affiliate/CoupangTravelSection";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildOgMetadataFromSeoData(getProductsIndexOgPageSeo());
@@ -193,7 +194,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             withMarginBottom={false}
           />
           {!isSearchMode ? (
-            <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
+            <>
+              <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
+              <CoupangTravelSection compact />
+            </>
           ) : null}
 
           {showCatalogEmptyShell ? (

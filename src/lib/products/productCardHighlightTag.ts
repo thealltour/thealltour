@@ -1,4 +1,4 @@
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 /** PR-F: 카드 전용 전환 신호 (DB/관리자 필드 없음, 상품 데이터에서 1개만 추론) */
 export type ProductCardHighlightTag =
@@ -23,7 +23,7 @@ const BEST_CHOICE_MIN_REVIEWS = 8;
 /**
  * 우선순위 1개만 반환. 마감(SOLD_OUT) 등은 신호 없음.
  */
-export function pickProductCardHighlightTag(product: Product): ProductCardHighlightTag | undefined {
+export function pickProductCardHighlightTag(product: ProductCardSource): ProductCardHighlightTag | undefined {
   const status = product.status ?? "AVAILABLE";
   if (status === "SOLD_OUT") return undefined;
   if (status === "LIMITED") return "closing_soon";

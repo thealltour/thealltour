@@ -6,8 +6,10 @@ import type { Product } from "@/types/product";
  */
 
 /** `applyProductFilters` 의 `q` 와 `productCatalogMatchesKeyword` 가 공유하는 haystack. */
-export function buildProductsKeywordHaystack(product: Product): string {
-  return [product.title, product.description, product.category, product.theme ?? ""]
+export function buildProductsKeywordHaystack(
+  product: Pick<Product, "title" | "category" | "theme"> & { description?: string },
+): string {
+  return [product.title, product.description ?? "", product.category, product.theme ?? ""]
     .join(" ")
     .toLowerCase();
 }

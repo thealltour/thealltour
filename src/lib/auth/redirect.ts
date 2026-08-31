@@ -15,7 +15,7 @@ export function getAppBaseUrl(): string {
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   const vercel = process.env.VERCEL_URL?.trim();
   if (vercel) return `https://${vercel.replace(/\/$/, "")}`;
-  return "http://localhost:3000";
+  return "http://localhost:4000";
 }
 
 /**

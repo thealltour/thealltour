@@ -1,3 +1,4 @@
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import type { Product } from "@/types/product";
 import type { ProductCardBadge, ProductCardProps, ProductCardStatus } from "@/components/products/ProductCard";
 import { getProductBadges } from "@/lib/productCategory";
@@ -86,7 +87,7 @@ function withCheckFeaturedLine(raw: string): string | undefined {
  * 지역·테마 랜딩 `CuratedBlock` 대표 상품: 카드 하단 선택 이유 1줄.
  * 우선순위: 기간 → 숙박/구성(meta) → 테마 → 카테고리 → 태그 → 인기 폴백.
  */
-export function getFeaturedHighlightLine(product: Product): string | undefined {
+export function getFeaturedHighlightLine(product: ProductCardSource): string | undefined {
   const d = product.overview_duration?.trim() || product.duration?.trim();
   if (d) {
     const w = withCheckFeaturedLine(`${d} 일정`);
@@ -133,12 +134,12 @@ export function getFeaturedHighlightLine(product: Product): string | undefined {
 }
 
 /** @deprecated `getFeaturedHighlightLine`와 동일 — 하위 호환 */
-export function buildCuratedFeaturedSelectionLine(product: Product): string | undefined {
+export function buildCuratedFeaturedSelectionLine(product: ProductCardSource): string | undefined {
   return getFeaturedHighlightLine(product);
 }
 
 /** 가이드 브리지 등: 기간·카테고리·테마로 클릭 맥락 한 줄 */
-export function buildProductExperienceSummary(product: Product): string {
+export function buildProductExperienceSummary(product: ProductCardSource): string {
   const parts: string[] = [];
   const d = product.duration?.trim();
   if (d) parts.push(d);
@@ -156,7 +157,7 @@ export function buildProductExperienceSummary(product: Product): string {
 /**
  * 테마·카테고리 기반 **정보성** 배지 (대표 배지 오버레이에 쓰지 않음).
  */
-export function buildProductCardInfoBadges(product: Product): ProductCardBadge[] {
+export function buildProductCardInfoBadges(product: ProductCardSource): ProductCardBadge[] {
   const themeBadges = getProductBadges(product);
   return themeBadges.map((label) => ({
     type: PRIORITY_BADGES.includes(label) ? "gold" : "muted",
@@ -169,7 +170,7 @@ export function buildProductCardInfoBadges(product: Product): ProductCardBadge[]
 /**
  * @deprecated `buildProductCardInfoBadges` 사용 — 이름이 혼동되기 쉬워 분리됨.
  */
-export function buildProductCardBadges(product: Product): ProductCardBadge[] {
+export function buildProductCardBadges(product: ProductCardSource): ProductCardBadge[] {
   return buildProductCardInfoBadges(product);
 }
 
@@ -267,7 +268,7 @@ export function shouldOmitCampaignPitchForCard(
  * CTR: oneLiner / ratingAvg / reviewCount 는 리스트 카드와 그리드 카드 동일 파이프라인.
  */
 export function productToProductCardProps(
-  product: Product,
+  product: ProductCardSource,
   overrides?: ProductToProductCardOverrides,
 ): Omit<ProductCardProps, "onClickDetail" | "onClickConsult"> &
   Partial<ProductToProductCardOverrides> {

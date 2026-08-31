@@ -20,21 +20,20 @@ import {
   buildRegionTree,
   buildThemeTree,
 } from "@/lib/productTaxonomies";
-import { getProducts } from "@/lib/products";
 import { getPublishedGolfDestinationLandings } from "@/lib/golfLandingLinks";
 import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 
 export const metadata: Metadata = buildOgMetadataFromSeoData(getRecommendedOgPageSeo());
 
 export default async function RecommendedHubPage() {
-  const [{ settings, sections }, products, destinations, hubThemes, golfLandings] = await Promise.all([
-    getHomeCuratedData(),
-    getProducts(),
-    getHubDestinations(),
-    getHubThemes(),
-    getPublishedGolfDestinationLandings(),
-  ]);
-  const taxonomyOptions = await getProductTaxonomyOptions(products);
+  const [{ settings, sections }, destinations, hubThemes, golfLandings, taxonomyOptions] =
+    await Promise.all([
+      getHomeCuratedData(),
+      getHubDestinations(),
+      getHubThemes(),
+      getPublishedGolfDestinationLandings(),
+      getProductTaxonomyOptions([]),
+    ]);
   const { categories, themes, productLines } = taxonomyOptions;
   const regionTree = buildRegionTree(destinations);
   const themeTree = buildThemeTree(hubThemes);

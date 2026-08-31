@@ -12,21 +12,21 @@ import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
 import {
   getHubThemes,
-  parseThemeTokens,
   getHubDestinations,
   getProductTaxonomyOptions,
   buildRegionTree,
   buildThemeTree,
+  parseThemeTokens,
 } from "@/lib/productTaxonomies";
-import { getProducts } from "@/lib/products";
+import { getProductListItems } from "@/lib/products/getProductListItems";
 import { getHubHeroConfig } from "@/lib/landingMetadata";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 
 /** 카드 이미지 미설정 시 해당 테마 상품의 대표 이미지로 채움. name -> image_url */
 function buildThemeFallbackImageMap(
   themes: ProductTaxonomy[],
-  products: Product[],
+  products: Array<Pick<ProductListItem, "image_url" | "theme">>,
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const t of themes) {
@@ -51,34 +51,61 @@ export const metadata = {
 const PREVIEW_THEMES_COUNT = 2;
 const PREVIEW_PRODUCTS_PER_THEME = 3;
 
+/**
+ * Strategy A (top2 fixed): one bounded query per preview theme.
+ * Semantics: exact theme token only — no descendants.
+ */
+async function fetchThemeHubPreviews(
+  themes: ProductTaxonomy[],
+): Promise<Array<{ theme: ProductTaxonomy; products: ProductListItem[] }>> {
+  const top = themes.slice(0, PREVIEW_THEMES_COUNT);
+  return Promise.all(
+    top.map(async (t) => {
+      const products = await getProductListItems({
+        themeTokenExact: t.name,
+        limit: PREVIEW_PRODUCTS_PER_THEME,
+      });
+      return { theme: t, products };
+    }),
+  );
+}
+
+async function fetchThemeRailFallbackPool(
+  themes: ProductTaxonomy[],
+): Promise<ProductListItem[]> {
+  const needing = themes.filter((t) => !t.card_image_url?.trim());
+  if (needing.length === 0) return [];
+  const names = needing.map((t) => t.name.trim()).filter(Boolean);
+  if (!names.length) return [];
+  return getProductListItems({
+    themeNames: names,
+    limit: Math.min(120, Math.max(24, needing.length * 2)),
+  });
+}
+
 export default async function ThemesHubPage() {
-  const [themes, products] = await Promise.all([
-    getHubThemes(),
-    getProducts(),
-  ]);
-  const [taxonomyOptions, destinations] = await Promise.all([
-    getProductTaxonomyOptions(products),
+  const themes = await getHubThemes();
+  const [taxonomyOptions, destinations, themePreviews, fallbackPool] = await Promise.all([
+    getProductTaxonomyOptions([]),
     getHubDestinations(),
+    themes.length > 0
+      ? fetchThemeHubPreviews(themes)
+      : Promise.resolve([] as Array<{ theme: ProductTaxonomy; products: ProductListItem[] }>),
+    themes.length > 0
+      ? fetchThemeRailFallbackPool(themes)
+      : Promise.resolve([] as ProductListItem[]),
   ]);
   const { categories, themes: themeNames, productLines } = taxonomyOptions;
   const regionTree = buildRegionTree(destinations);
   const themeTree = buildThemeTree(themes);
 
   const hasThemes = themes.length > 0;
-  const themeFallbackImages = buildThemeFallbackImageMap(themes, products);
+  const previewProducts = themePreviews.flatMap((p) => p.products);
+  const themeFallbackImages = buildThemeFallbackImageMap(themes, [
+    ...previewProducts,
+    ...fallbackPool,
+  ]);
 
-  const themePreviews = hasThemes
-    ? themes.slice(0, PREVIEW_THEMES_COUNT).map((t) => {
-        const tokens = [t.name.trim().toLowerCase()];
-        const items = products.filter((p) => {
-          const productThemes = parseThemeTokens(p.theme).map((x) =>
-            x.trim().toLowerCase(),
-          );
-          return productThemes.some((pt) => tokens.includes(pt));
-        });
-        return { theme: t, products: items.slice(0, PREVIEW_PRODUCTS_PER_THEME) };
-      })
-    : [];
   const hasPreviews = themePreviews.some((p) => p.products.length > 0);
 
   const themeRailItems = themes.map((t) => {

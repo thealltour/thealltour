@@ -1,13 +1,13 @@
 import CuratedBlock from "@/components/home/CuratedBlock";
 import { cn } from "@/lib/cn";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 /** Hero 직후 추천 상품 허브. 앵커는 히어로 primary CTA와 공유 */
 export const LANDING_RECOMMENDED_PRODUCTS_ANCHOR_ID = "landing-recommended-products";
 
 type LandingRecommendedProductsSectionProps = {
   label: string;
-  products: Product[];
+  products: ProductCardSource[];
   fallbackHref?: string;
   fallbackLabel?: string;
 };

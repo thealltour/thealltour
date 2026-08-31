@@ -1,3 +1,4 @@
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import type { Product } from "@/types/product";
 import { WEEKDAYS_KO as WEEKDAY } from "@/lib/datetime/isoDate";
 
@@ -9,7 +10,7 @@ function formatYmdDisplay(s: string): string {
 }
 
 /** 출발일이 특정 날짜로 고정된 상품 (항공 출발일·departures 등) */
-export function hasProductFixedDeparture(product: Product | null | undefined): boolean {
+export function hasProductFixedDeparture(product: ProductCardSource | null | undefined): boolean {
   if (!product) return false;
   if (product.departure_from_date?.trim()) return true;
   return (product.departures ?? []).some((d) => typeof d === "string" && d.trim() !== "");

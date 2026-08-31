@@ -1,27 +1,27 @@
-import type { Product } from "@/types/product";
 import {
   sortRelatedProducts,
   scoreRelatedProduct,
   MIN_RELATED_SCORE,
+  type RelatedScorableProduct,
 } from "@/lib/products/relatedProductScoring";
 
-export type GetRelatedProductsParams = {
-  currentProduct?: Product | null;
-  allProducts?: Product[];
+export type GetRelatedProductsParams<T extends RelatedScorableProduct = RelatedScorableProduct> = {
+  currentProduct?: RelatedScorableProduct | null;
+  allProducts?: T[];
   limit?: number;
 };
 
 /**
- * PR43: 현재 상품 기준 연관 상품 목록 반환.
+ * PR43 / POST-UI-01D-2B-1: 현재 상품 기준 연관 상품 목록 반환 (sync scoring).
  * - 현재 상품 제외
- * - 관련도(destination_id > theme > category/product_line_id) 순 정렬
- * - score가 MIN_RELATED_SCORE 미만인 상품 제외 후, 부족분은 fallback으로 채움
+ * - 관련도 정렬 + MIN_RELATED_SCORE 매칭 후, 부족분은 동일 sorted universe fallback
+ * Stage-1 output: ordered candidates (caller maps to IDs for listing fetch).
  */
-export function getRelatedProducts({
+export function getRelatedProducts<T extends RelatedScorableProduct>({
   currentProduct,
   allProducts,
   limit = 6,
-}: GetRelatedProductsParams): Product[] {
+}: GetRelatedProductsParams<T>): T[] {
   if (!currentProduct?.id?.trim() || !Array.isArray(allProducts)) {
     return [];
   }
@@ -37,3 +37,5 @@ export function getRelatedProducts({
   const fallback = sorted.filter((p) => !topIds.has(p.id));
   return [...top, ...fallback].slice(0, limit);
 }
+
+export type { RelatedScorableProduct };

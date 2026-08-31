@@ -8,7 +8,10 @@ export function normalizeProductCatalogSearchKeyword(value: string) {
   return value.trim().toLowerCase();
 }
 
-export function productCatalogMatchesKeyword(product: Product, keyword: string) {
+export function productCatalogMatchesKeyword(
+  product: Pick<Product, "title" | "category" | "theme"> & { description?: string },
+  keyword: string,
+) {
   if (!keyword) {
     return true;
   }

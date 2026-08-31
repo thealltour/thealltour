@@ -6,11 +6,15 @@ import { LandingSectionRenderer } from "@/components/landings/LandingSectionRend
 import LandingRecommendedProductsSection from "@/components/landings/sections/LandingRecommendedProductsSection";
 import { LandingViewTracker } from "@/components/landings/LandingViewTracker";
 import { sortLandingSectionsForLayout } from "@/lib/landings/landingSectionLayoutOrder";
-import { getProducts } from "@/lib/products";
-import { filterGolfChannelProducts, buildGolfProductsHref } from "@/lib/products/golfChannel";
-import { getTaxonomyById, getActiveProductLineTaxonomies, buildTaxonomyNameMap } from "@/lib/productTaxonomies";
+import { getProductListItems } from "@/lib/products/getProductListItems";
+import {
+  buildGolfProductsHref,
+  GOLF_PRESET_CATEGORIES,
+  isGolfProductLineTaxonomy,
+} from "@/lib/products/golfChannel";
+import { getTaxonomyById, getActiveProductLineTaxonomies } from "@/lib/productTaxonomies";
 import type { AdminLandingDetail, AdminLandingSection } from "@/types/adminLanding";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 
 const LANDING_DESTINATION_PRODUCTS_LIMIT = 8;
 
@@ -39,33 +43,37 @@ export default async function LandingPageRenderer({
       ? landing.sourceTaxonomyId.trim()
       : null;
 
-  let destinationProducts: Product[] = [];
+  let destinationProducts: ProductListItem[] = [];
   let destinationLabel = landing.title?.trim() || "이 지역";
 
   if (destinationTaxonomyId) {
-    const [products, taxonomy, productLines] = await Promise.all([
-      getProducts(),
+    const [taxonomy, productLines] = await Promise.all([
       getTaxonomyById(destinationTaxonomyId),
       getActiveProductLineTaxonomies(),
     ]);
-    const productLineNameMap = buildTaxonomyNameMap(productLines);
     if (taxonomy?.name?.trim()) {
       destinationLabel = isGolfDestinationLanding
         ? `${taxonomy.name.trim()} 골프투어`
         : taxonomy.name.trim();
     }
 
-    const scoped = products.filter(
-      (p) =>
-        p.is_active !== false &&
-        p.destination_id?.trim() &&
-        p.destination_id.trim() === destinationTaxonomyId,
-    );
+    const golfLineIds = productLines
+      .filter((p) => isGolfProductLineTaxonomy(p))
+      .map((p) => p.id)
+      .filter(Boolean);
 
-    destinationProducts = (isGolfDestinationLanding
-      ? filterGolfChannelProducts(scoped, productLineNameMap)
-      : scoped
-    ).slice(0, LANDING_DESTINATION_PRODUCTS_LIMIT);
+    destinationProducts = await getProductListItems({
+      destinationIdExact: destinationTaxonomyId,
+      limit: LANDING_DESTINATION_PRODUCTS_LIMIT,
+      ...(isGolfDestinationLanding
+        ? {
+            golfChannel: {
+              productLineIds: golfLineIds,
+              legacyCategories: [...GOLF_PRESET_CATEGORIES],
+            },
+          }
+        : {}),
+    });
   }
 
   const showRecommendedProducts = destinationProducts.length > 0;

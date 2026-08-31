@@ -18,7 +18,7 @@ import {
   getHubThemes,
   parseThemeTokens,
 } from "@/lib/productTaxonomies";
-import { getProducts } from "@/lib/products";
+import { getProductListItems } from "@/lib/products/getProductListItems";
 import { loadProductsListingContextForThemeDetail } from "@/lib/products/loadProductsListingContext";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { getThemeLandingHref } from "@/lib/hubLandingLinks";
@@ -32,14 +32,14 @@ import {
 import { HubBrowseCard } from "@/components/landing/HubBrowseCard";
 import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavSections";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 
 const RELATED_PRODUCTS_LIMIT = 12;
 
 /** 카드 이미지 미설정 시 해당 테마 상품 대표 이미지로 채움. */
 function buildThemeFallbackImageMap(
   themes: ProductTaxonomy[],
-  products: Product[],
+  products: Array<Pick<ProductListItem, "image_url" | "theme">>,
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const t of themes) {
@@ -75,11 +75,34 @@ export default async function ThemeLandingPage({ params }: Props) {
   const theme = await getThemeBySlugForPublicLanding(slug);
   if (!theme) notFound();
 
-  const [products, subnodes, allThemes] = await Promise.all([
-    getProducts(),
+  const [related, subnodes, allThemes] = await Promise.all([
+    getProductListItems({
+      themeTokenExact: theme.name,
+      limit: RELATED_PRODUCTS_LIMIT,
+    }),
     getLandingSubnodes("theme", slug),
     getHubThemes(),
   ]);
+
+  const childThemes = allThemes
+    .filter((t) => (t.parent_id ?? "").trim() === theme.id.trim())
+    .sort((a, b) => {
+      const sa = a.sort_order ?? 9999;
+      const sb = b.sort_order ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+    });
+
+  const [detailBatch, childFallbackPool] = await Promise.all([
+    loadProductsListingContextForThemeDetail([], allThemes, theme.id),
+    childThemes.length > 0
+      ? getProductListItems({
+          themeNames: childThemes.map((t) => t.name.trim()).filter(Boolean),
+          limit: Math.min(60, Math.max(12, childThemes.length * 2)),
+        })
+      : Promise.resolve([] as ProductListItem[]),
+  ]);
+
   const {
     categories,
     themes: themeNames,
@@ -88,28 +111,11 @@ export default async function ThemeLandingPage({ params }: Props) {
     themeTree,
     themeGuides,
     reviewHighlights,
-  } = await loadProductsListingContextForThemeDetail(products, allThemes, theme.id);
-
-  const parentId = theme.id.trim();
-  const childThemes = allThemes
-    .filter((t) => (t.parent_id ?? "").trim() === parentId)
-    .sort((a, b) => {
-      const sa = a.sort_order ?? 9999;
-      const sb = b.sort_order ?? 9999;
-      if (sa !== sb) return sa - sb;
-      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
-    });
-  const childFallbackImages = buildThemeFallbackImageMap(childThemes, products);
-
-  const themeNameLower = theme.name.trim().toLowerCase();
-  const related = products
-    .filter((p) => {
-      const tokens = parseThemeTokens(p.theme).map((t) =>
-        t.trim().toLowerCase(),
-      );
-      return tokens.includes(themeNameLower);
-    })
-    .slice(0, RELATED_PRODUCTS_LIMIT);
+  } = detailBatch;
+  const childFallbackImages = buildThemeFallbackImageMap(childThemes, [
+    ...related,
+    ...childFallbackPool,
+  ]);
 
   const heroTitle = theme.landing_title?.trim() || theme.name;
   const heroDescription =

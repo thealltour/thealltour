@@ -1,6 +1,6 @@
 "use client";
 
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
@@ -8,7 +8,7 @@ import { productToProductCardProps } from "@/lib/productCardProps";
 export type RelatedProductsSectionProps = {
   /** 섹션 제목. 결과 있음: "이런 상품도 있어요", 결과 없음: "추천 여행 상품" 등 */
   title?: string;
-  products: Product[];
+  products: ProductCardSource[];
 };
 
 /**

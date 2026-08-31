@@ -7,12 +7,34 @@ import {
   productHasPromotionCampaign,
   resolvePromotionCampaignDisplayLabel,
   resolvePromotionCampaignId,
+  type PromotionCampaignSource,
 } from "@/lib/products/golfCalendarPromotion";
-import { collectProductDepartureDates } from "@/lib/products/productDepartureDates";
+import {
+  collectProductDepartureDates,
+  type ProductDepartureDateSource,
+} from "@/lib/products/productDepartureDates";
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { buildTaxonomyNameMap } from "@/lib/productTaxonomies";
+import {
+  deriveDeparturesFromSchedules,
+  normalizeDepartureSchedulesFromUnknown,
+} from "@/lib/products/normalizeDepartureSchedules";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
+
+/** Minimal product shape for calendar event generation (listing Product is compatible). */
+export type GolfCalendarEventSource = ProductDepartureDateSource &
+  PromotionCampaignSource & {
+    id: string;
+    title: string;
+    price?: number;
+    destination_id?: string | null;
+    category?: string;
+    theme?: string;
+    overview_region?: string | null;
+    image_url?: string;
+    images_json?: string[];
+  };
 
 export type GolfDepartureEvent = {
   date: string;
@@ -49,6 +71,88 @@ export type HomeGolfCalendarModel = {
 };
 
 const HOME_GOLF_CALENDAR_DEFAULT_HREF = buildGolfProductsHref();
+
+/** PostgREST projection for /products Golf calendar universe (not listing DTO). */
+export const GOLF_CALENDAR_PRODUCT_SELECT = [
+  "id",
+  "title",
+  "price",
+  "destination_id",
+  "category",
+  "theme",
+  "overview_region",
+  "image_url",
+  "images_json",
+  "departure_schedules_json",
+  "departure_from_date",
+  "departure_to_date",
+  "campaigns_json",
+  "campaigns",
+].join(",");
+
+function normalizeStringArray(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out = raw
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return out.length > 0 ? out : undefined;
+}
+
+function normalizeImageList(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out = raw
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return out.length > 0 ? out : undefined;
+}
+
+/** DB slim row → calendar event source (no full normalizeProduct). */
+export function mapRowToGolfCalendarEventSource(
+  row: Record<string, unknown>,
+): GolfCalendarEventSource {
+  const departureSchedules =
+    normalizeDepartureSchedulesFromUnknown(row.departure_schedules_json) ?? undefined;
+  const fromSchedules = deriveDeparturesFromSchedules(departureSchedules);
+  const departures =
+    fromSchedules ??
+    normalizeStringArray(row.departures ?? row.departures_json) ??
+    undefined;
+
+  const priceRaw = row.price;
+  let price: number | undefined;
+  if (typeof priceRaw === "number" && Number.isFinite(priceRaw)) {
+    price = priceRaw;
+  } else if (priceRaw != null && priceRaw !== "") {
+    const n = Number(priceRaw);
+    if (Number.isFinite(n)) price = n;
+  }
+
+  return {
+    id: String(row.id ?? ""),
+    title: String(row.title ?? ""),
+    price,
+    destination_id:
+      row.destination_id != null && String(row.destination_id).trim()
+        ? String(row.destination_id)
+        : null,
+    category: row.category != null ? String(row.category) : undefined,
+    theme: typeof row.theme === "string" ? row.theme : undefined,
+    overview_region:
+      typeof row.overview_region === "string" ? row.overview_region : undefined,
+    image_url: typeof row.image_url === "string" ? row.image_url : undefined,
+    images_json: normalizeImageList(row.images_json),
+    departureSchedules,
+    departures,
+    departure_from_date:
+      typeof row.departure_from_date === "string" ? row.departure_from_date : undefined,
+    departure_to_date:
+      typeof row.departure_to_date === "string" ? row.departure_to_date : undefined,
+    campaigns: normalizeStringArray(row.campaigns),
+    campaigns_json: normalizeStringArray(row.campaigns_json ?? row.campaigns),
+  };
+}
 
 /** Home calendar DTO — events[]에서 Preview/Desktop 공통 model 생성 */
 export function buildHomeGolfCalendarModel(
@@ -106,7 +210,7 @@ export function resolveGolfCalendarInitialDate(eventYmds: string[]): Date {
 }
 
 function resolveProductRegionLabel(
-  product: Product,
+  product: GolfCalendarEventSource,
   destinationNameMap: Record<string, string> = {},
 ): string {
   const overview = product.overview_region?.trim();
@@ -120,15 +224,18 @@ function resolveProductRegionLabel(
   return product.category?.trim() || product.theme?.trim() || "";
 }
 
-function resolveProductImageUrl(product: Product): string | undefined {
-  const raw = getPrimaryImageUrl(product)?.trim();
+function resolveProductImageUrl(product: GolfCalendarEventSource): string | undefined {
+  const raw = getPrimaryImageUrl({
+    image_url: product.image_url ?? "",
+    images_json: product.images_json,
+  })?.trim();
   if (!raw) return undefined;
   const normalized = normalizeProductImageUrl(raw);
   return normalized || raw;
 }
 
 export function buildGolfDepartureEvents(
-  products: Product[],
+  products: GolfCalendarEventSource[],
   destinationNameMap: Record<string, string> = {},
   promotionCampaignId: string | null = null,
 ): GolfDepartureEvent[] {

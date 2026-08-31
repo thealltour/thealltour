@@ -2,7 +2,7 @@
  * Hero 검색 자동완성용 추천 아이템 타입.
  */
 
-import type { Product } from "@/types/product";
+import type { ProductListItem, ProductCardSource } from "@/lib/products/productListItem";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 
 export type SearchSuggestionType = "destination" | "theme" | "product";
@@ -37,7 +37,7 @@ export type SearchFilterState = {
 
 /** 검색 결과 한 페이지 응답 */
 export type SearchProductsResult = {
-  items: Product[];
+  items: ProductListItem[];
   totalCount: number;
   page: number;
   pageSize: number;
@@ -46,7 +46,7 @@ export type SearchProductsResult = {
 
 /** GET /api/search 응답 (Load More용) */
 export type SearchApiResponse = {
-  items: Product[];
+  items: ProductListItem[];
   page: number;
   totalPages: number;
 };
@@ -76,7 +76,7 @@ export type SearchRecommendationSectionType = "destination" | "theme" | "product
 export type SearchRecommendations = {
   destinations: ProductTaxonomy[];
   themes: ProductTaxonomy[];
-  products: Product[];
+  products: ProductCardSource[];
 };
 
 /** 검색 추천 생성 시 컨텍스트 (현재 쿼리/필터) */

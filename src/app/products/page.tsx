@@ -38,6 +38,11 @@ import {
   PRODUCT_LIST_PAGE_SIZE,
   type ProductListingPageResult,
 } from "@/lib/products/productListingQuery";
+import {
+  buildGolfCalendarListingFilters,
+  getFilteredGolfDepartureCalendarEvents,
+} from "@/lib/products/getGolfDepartureCalendarProducts";
+import type { GolfDepartureEvent } from "@/lib/products/golfDepartureCalendar";
 import { CoupangTravelSection } from "@/components/affiliate/CoupangTravelSection";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -102,6 +107,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   let searchResult = null;
   let searchRecommendations = null;
   let browsePage: ProductListingPageResult | null = null;
+  let golfCalendarEvents: GolfDepartureEvent[] = [];
 
   if (isSearchMode) {
     const page = parseProductsSearchPage(query as Record<string, string | string[] | undefined>);
@@ -142,6 +148,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       ? initialFiltersFromServer
       : parsedFilters;
 
+    const listingTaxonomy = {
+      destinations: hubDestinations,
+      themes: hubThemes,
+      productLines: listingCtx.productLineTaxonomies,
+      campaignNamesByCollection: collectionCampaignNames,
+    };
+
     const listingParams = buildProductListingQueryParams({
       filters: {
         region: effective.region,
@@ -154,15 +167,32 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         page,
         pageSize: PRODUCT_LIST_PAGE_SIZE,
       },
-      taxonomy: {
-        destinations: hubDestinations,
-        themes: hubThemes,
-        productLines: listingCtx.productLineTaxonomies,
-        campaignNamesByCollection: collectionCampaignNames,
-      },
+      taxonomy: listingTaxonomy,
     });
 
-    browsePage = await getProductsPage(listingParams);
+    const listingPromise = getProductsPage(listingParams);
+
+    const calendarPromise = golfPresetActive
+      ? getFilteredGolfDepartureCalendarEvents({
+          filters: buildGolfCalendarListingFilters({
+            filters: {
+              region: effective.region,
+              theme: effective.theme,
+              product_line: effective.product_line,
+              collection: effective.collection,
+              tourType: tourType || null,
+              golfRegion: golfRegion || null,
+            },
+            taxonomy: listingTaxonomy,
+          }),
+          destinationNameMap: taxonomyNameMap,
+          promotionCampaignId: golfCalendarPromotionCampaignId,
+        })
+      : Promise.resolve([] as GolfDepartureEvent[]);
+
+    const [pageResult, calendarEvents] = await Promise.all([listingPromise, calendarPromise]);
+    browsePage = pageResult;
+    golfCalendarEvents = calendarEvents;
   }
 
   const showCatalogEmptyShell =
@@ -228,6 +258,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     }
                   : undefined
               }
+              golfCalendarEvents={golfPresetActive ? golfCalendarEvents : undefined}
               listing={{
                 initialFiltersFromServer,
                 regionTaxonomies: hubDestinations,

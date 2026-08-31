@@ -2,7 +2,7 @@
  * 상품 카드 **대표 배지** — PR3: `campaign_card_meta`(taxonomy CMS) 우선, 없으면 문자열 레거시.
  */
 
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import type { ProductCardBadge } from "@/components/products/ProductCard";
 import { sortVisibleCampaignCardMeta } from "@/lib/productCampaignSort";
 
@@ -29,7 +29,7 @@ export function getCampaignBadgePriority(label: string): number {
   return PRIORITY_OTHER_BASE;
 }
 
-function collectCampaignLabels(product: Product): string[] {
+function collectCampaignLabels(product: ProductCardSource): string[] {
   const raw = product.campaigns ?? product.campaigns_json ?? [];
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
@@ -78,7 +78,7 @@ export function buildCampaignBadge(label: string): ProductCardBadge {
   };
 }
 
-function appendRecommendPopularFallback(product: Product, labels: string[]): string[] {
+function appendRecommendPopularFallback(product: ProductCardSource, labels: string[]): string[] {
   const next = [...labels];
   const seen = new Set(next.map((l) => campaignKey(l)));
 
@@ -93,7 +93,7 @@ function appendRecommendPopularFallback(product: Product, labels: string[]): str
   return sortCampaignLabelsForDisplay(next);
 }
 
-function buildBadgesFromCampaignCardMeta(product: Product, max: number): ProductCardBadge[] {
+function buildBadgesFromCampaignCardMeta(product: ProductCardSource, max: number): ProductCardBadge[] {
   const meta = product.campaign_card_meta;
   if (!meta?.length) return [];
   const visible = sortVisibleCampaignCardMeta(meta);
@@ -120,7 +120,7 @@ const DEFAULT_CAMPAIGN_BADGE_MAX = 2;
  * - 해석된 메타가 없을 때만 campaigns 문자열 + 레거시 추천/인기/신규 + is_* fallback.
  */
 export function buildCampaignRepresentativeBadges(
-  product: Product,
+  product: ProductCardSource,
   options?: BuildCampaignRepresentativeBadgesOptions,
 ): ProductCardBadge[] {
   const max = Math.max(1, Math.min(2, options?.max ?? DEFAULT_CAMPAIGN_BADGE_MAX));
@@ -149,7 +149,7 @@ export function buildCampaignRepresentativeBadges(
   return labels.slice(0, max).map((label) => buildCampaignBadge(label));
 }
 
-export function getPrimaryRepresentativeCampaignLabel(product: Product): string | undefined {
+export function getPrimaryRepresentativeCampaignLabel(product: ProductCardSource): string | undefined {
   const b = buildCampaignRepresentativeBadges(product, { max: 2 })[0];
   const t = b?.label?.trim();
   return t || undefined;

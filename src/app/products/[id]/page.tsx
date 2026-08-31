@@ -22,8 +22,8 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import AlertCard from "@/components/ui/AlertCard";
 import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
-import { getProductByIdFresh, getProducts } from "@/lib/products";
-import { getRelatedProducts } from "@/lib/products/getRelatedProducts";
+import { getProductByIdFresh } from "@/lib/products";
+import { loadRelatedProductListItems } from "@/lib/products/relatedProductCandidate";
 import { getGuidesByDestinationId } from "@/lib/guides";
 import { getProductReviewStats, getProductReviews } from "@/lib/reviewStats";
 import { isPortOneEnabled } from "@/lib/payments/portone/config";
@@ -193,19 +193,12 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const settings = await getSiteSettings();
   const kakaoHref = settings.kakao_chat_url || settings.kakao_channel_url || "https://pf.kakao.com";
   const sourcePath = `/products/${product.id}`;
-  const [relatedGuides, allProducts] = await Promise.all([
+  const [relatedGuides, relatedProducts] = await Promise.all([
     product.destination_id?.trim()
       ? getGuidesByDestinationId(product.destination_id.trim(), 3)
       : Promise.resolve([]),
-    getProducts(),
+    loadRelatedProductListItems(product, 6),
   ]);
-
-  const relatedProducts = getRelatedProducts({
-    currentProduct: product,
-    allProducts,
-    limit: 6,
-  });
-
   const statusV2 = product.status ?? "AVAILABLE";
   const oneLiner =
     product.one_liner?.trim() ||

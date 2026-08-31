@@ -2,9 +2,9 @@
  * PR3: 상품의 campaigns 토큰(이름 또는 taxonomy id) → 카드 배지용 메타 해석.
  */
 
-import type { Product } from "@/types/product";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { CampaignBadgeTone, ProductCampaignCardMeta } from "@/types/productCampaignCard";
+import type { CampaignHydratableProduct } from "@/lib/products/productListItem";
 import { GOLF_CALENDAR_PROMOTION_CAMPAIGN_SLUG } from "@/lib/products/golfCalendarPromotion";
 
 export type CampaignTaxonomyIndex = {
@@ -113,7 +113,7 @@ function resolveToken(token: string, index: CampaignTaxonomyIndex): ProductCampa
  * 상품 campaigns 배열 순서 유지, 중복 제거(같은 taxonomy id 또는 같은 표시 라벨 키).
  */
 export function resolveProductCampaignCardMeta(
-  product: Product,
+  product: CampaignHydratableProduct,
   index: CampaignTaxonomyIndex,
 ): ProductCampaignCardMeta[] {
   const raw = product.campaigns ?? product.campaigns_json ?? [];
@@ -134,10 +134,10 @@ export function resolveProductCampaignCardMeta(
   return out;
 }
 
-export function hydrateProductsWithCampaignCardMeta(
-  products: Product[],
+export function hydrateProductsWithCampaignCardMeta<T extends CampaignHydratableProduct>(
+  products: T[],
   campaignTaxonomies: ProductTaxonomy[],
-): Product[] {
+): T[] {
   const index = buildCampaignTaxonomyIndex(campaignTaxonomies);
   return products.map((p) => ({
     ...p,
@@ -145,9 +145,9 @@ export function hydrateProductsWithCampaignCardMeta(
   }));
 }
 
-export function hydrateProductWithCampaignCardMeta(
-  product: Product,
+export function hydrateProductWithCampaignCardMeta<T extends CampaignHydratableProduct>(
+  product: T,
   campaignTaxonomies: ProductTaxonomy[],
-): Product {
+): T {
   return hydrateProductsWithCampaignCardMeta([product], campaignTaxonomies)[0]!;
 }

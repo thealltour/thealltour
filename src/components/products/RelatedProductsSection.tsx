@@ -1,6 +1,6 @@
 "use client";
 
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
@@ -11,7 +11,7 @@ export type RelatedProductsSectionProps = {
   /** 설명 문구 1줄 */
   description?: string;
   /** 연관 상품 목록 (현재 상품 제외된 상태로 넘어옴) */
-  products?: Product[];
+  products?: ProductCardSource[];
 };
 
 const DEFAULT_TITLE = "이 상품과 비슷한 여행";

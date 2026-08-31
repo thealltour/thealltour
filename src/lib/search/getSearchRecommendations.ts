@@ -1,4 +1,8 @@
-import type { Product } from "@/types/product";
+import type { ProductListItem, ProductCardSource } from "@/lib/products/productListItem";
+import {
+  mapProductRowToListItem,
+  PRODUCT_LISTING_SELECT,
+} from "@/lib/products/productListItem";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { SearchRecommendations } from "@/types/search";
 import { getHubDestinations, getHubThemes } from "@/lib/productTaxonomies";
@@ -6,7 +10,6 @@ import { parseThemeTokens } from "@/lib/productTaxonomies";
 import { searchProductsByParams } from "@/lib/search/searchProducts";
 import { getHomeCuratedData } from "@/lib/homeCurated";
 import { supabase } from "@/lib/supabase";
-import { normalizeProduct } from "@/lib/products";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 
@@ -47,7 +50,7 @@ export async function getSearchRecommendations(params: {
   destination?: string | null;
   theme?: string | null;
   product_line?: string | null;
-  products?: Product[];
+  products?: ProductListItem[];
 }): Promise<SearchRecommendations> {
   const q = params.q?.trim();
   const currentDestination = normalizeStr(params.destination);
@@ -85,7 +88,7 @@ export async function getSearchRecommendations(params: {
 }
 
 function resolveDestinations(opts: {
-  products: Product[];
+  products: ProductListItem[];
   hubDestinations: ProductTaxonomy[];
   currentDestination: string;
   q?: string;
@@ -119,7 +122,7 @@ function resolveDestinations(opts: {
 }
 
 function resolveThemes(opts: {
-  products: Product[];
+  products: ProductListItem[];
   hubThemes: ProductTaxonomy[];
   currentTheme: string;
   q?: string;
@@ -160,9 +163,9 @@ async function resolveRecommendedProducts(opts: {
   theme?: string | null;
   product_line?: string | null;
   excludeIds: Set<string>;
-}): Promise<Product[]> {
+}): Promise<ProductCardSource[]> {
   const hasCondition = opts.q || opts.destination || opts.theme || opts.product_line;
-  const out: Product[] = [];
+  const out: ProductCardSource[] = [];
 
   if (hasCondition) {
     const result = await searchProductsByParams({
@@ -197,15 +200,15 @@ async function resolveRecommendedProducts(opts: {
 
   const { data } = await supabase
     .from("products")
-    .select("*")
+    .select(PRODUCT_LISTING_SELECT)
     .eq("is_active", true)
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(MAX_PRODUCTS + opts.excludeIds.size);
 
-  const rows = (data ?? []) as Record<string, unknown>[];
+  const rows = (data ?? []) as unknown as Record<string, unknown>[];
   for (const row of rows) {
-    const p = normalizeProduct(row);
+    const p = mapProductRowToListItem(row);
     if (opts.excludeIds.has(p.id)) continue;
     if (out.some((x) => x.id === p.id)) continue;
     out.push(p);

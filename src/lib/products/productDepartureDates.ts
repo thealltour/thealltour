@@ -231,7 +231,7 @@ function addDatesFromText(dates: Set<string>, raw: string | null | undefined): v
 
 function addDatesFromFromToFields(
   dates: Set<string>,
-  product: Product,
+  product: Pick<Product, "departure_from_date" | "departure_to_date">,
   expandDepartureWindow: boolean,
 ): void {
   const fromRaw = product.departure_from_date?.trim();
@@ -268,9 +268,15 @@ function addDatesFromFromToFields(
   }
 }
 
+/** Calendar / PDP rows that expose departure date sources */
+export type ProductDepartureDateSource = Pick<
+  Product,
+  "departureSchedules" | "departures" | "departure_from_date" | "departure_to_date"
+>;
+
 /** 상품 1건의 모든 출발 가능 YMD를 수집합니다. */
 export function collectProductDepartureDates(
-  product: Product,
+  product: ProductDepartureDateSource,
   options?: CollectProductDepartureDatesOptions,
 ): string[] {
   const expandDepartureWindow = options?.expandDepartureWindow ?? false;

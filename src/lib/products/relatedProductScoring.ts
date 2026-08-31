@@ -1,6 +1,22 @@
-import type { Product } from "@/types/product";
 import { parseThemeTokens } from "@/lib/productTaxonomies";
 import { productHasPromotionFromMeta } from "@/lib/products/productPromotionSort";
+import type { ProductCampaignCardMeta } from "@/types/productCampaignCard";
+
+/**
+ * Minimum shape for Related score + promotion sort.
+ * is_popular / is_recommend remain optional for 0-diff (DB may lack columns).
+ */
+export type RelatedScorableProduct = {
+  id: string;
+  destination_id?: string | null;
+  product_line_id?: string | null;
+  category?: string | null;
+  theme?: string | null;
+  created_at?: string | null;
+  campaign_card_meta?: ProductCampaignCardMeta[];
+  is_popular?: boolean;
+  is_recommend?: boolean;
+};
 
 /** PR35: 관련도 점수 가중치. 관련도 우선 정렬용 */
 const SCORE = {
@@ -26,8 +42,8 @@ const SCORE = {
  * 지역 > 테마 > 카테고리/상품라인 > 인기·추천·최신 순.
  */
 export function scoreRelatedProduct(
-  current: Product,
-  candidate: Product,
+  current: RelatedScorableProduct,
+  candidate: RelatedScorableProduct,
   refDate: Date = new Date(),
 ): number {
   let score = 0;
@@ -39,9 +55,9 @@ export function scoreRelatedProduct(
   }
 
   const currentThemes = new Set(
-    parseThemeTokens(current.theme).map((t) => t.toLowerCase()),
+    parseThemeTokens(current.theme ?? undefined).map((t) => t.toLowerCase()),
   );
-  const candidateThemes = parseThemeTokens(candidate.theme).map((t) =>
+  const candidateThemes = parseThemeTokens(candidate.theme ?? undefined).map((t) =>
     t.toLowerCase(),
   );
   if (
@@ -84,12 +100,13 @@ export function scoreRelatedProduct(
 /**
  * PR35: 현재 상품 제외 후 관련도 점수 기준 내림차순 정렬.
  * 동점일 경우 created_at 최신 우선으로 안정 정렬.
+ * (id tie-break 없음 — 기존 behavior 유지)
  */
-export function sortRelatedProducts(
-  current: Product,
-  candidates: Product[],
+export function sortRelatedProducts<T extends RelatedScorableProduct>(
+  current: RelatedScorableProduct,
+  candidates: T[],
   refDate?: Date,
-): Product[] {
+): T[] {
   const currentId = current.id?.trim();
   const filtered = candidates.filter((p) => p.id?.trim() !== currentId);
   const date = refDate ?? new Date();

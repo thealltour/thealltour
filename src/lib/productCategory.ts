@@ -13,7 +13,7 @@ function splitTheme(theme: string | undefined) {
   return parseThemeTokens(theme);
 }
 
-export function getProductBadges(product: Product) {
+export function getProductBadges(product: Pick<Product, "theme">) {
   const values = splitTheme(product.theme);
   const unique = Array.from(new Set(values));
   const prioritized = PRIMARY_BADGE_ORDER.filter((badge) => unique.includes(badge));
@@ -21,12 +21,12 @@ export function getProductBadges(product: Product) {
   return [...prioritized, ...rest].slice(0, 3);
 }
 
-export function matchesProductTab(product: Product, tab: ProductCategoryTabId) {
+export function matchesProductTab(product: Pick<Product, "category">, tab: ProductCategoryTabId) {
   if (tab === "all") return true;
   return normalize(product.category ?? "") === normalize(tab);
 }
 
-export function getThemeTabs(products: Product[], currentCategory: string) {
+export function getThemeTabs(products: Pick<Product, "category" | "theme">[], currentCategory: string) {
   const inCategory =
     currentCategory === "all"
       ? products
@@ -35,12 +35,15 @@ export function getThemeTabs(products: Product[], currentCategory: string) {
   return ["전체", ...themes];
 }
 
-export function matchesThemeTab(product: Product, themeTab: string) {
+export function matchesThemeTab(product: Pick<Product, "theme">, themeTab: string) {
   if (themeTab === "전체") return true;
   return splitTheme(product.theme).includes(themeTab);
 }
 
-export function groupProductsByTheme(products: Product[], themeTabs: string[]) {
+export function groupProductsByTheme<T extends Pick<Product, "id" | "theme">>(
+  products: T[],
+  themeTabs: string[],
+): { theme: string; products: T[] }[] {
   const themeNames = themeTabs.filter((t) => t !== "전체");
   const groups = themeNames
     .map((theme) => ({

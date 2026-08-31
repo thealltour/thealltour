@@ -31,10 +31,10 @@ import {
   parseGolfRegionPresetId,
   GOLF_REGION_PRESET_LABELS,
 } from "@/lib/products/golfChannel";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 import type { ProductsPageContentListingConfig } from "@/lib/products/productsPageContentConfig";
-import { buildGolfDepartureEvents } from "@/lib/products/golfDepartureCalendar";
+import type { GolfDepartureEvent } from "@/lib/products/golfDepartureCalendar";
 import type { SearchProductsResult, SearchRecommendations } from "@/types/search";
 import type { ProductListingPageResult } from "@/lib/products/productListingQuery";
 import {
@@ -74,10 +74,10 @@ export type { ProductsPageContentListingConfig };
 
 export type ProductsPageContentProps = {
   /**
-   * Browse: current page items from getProductsPage (≤24).
-   * Search: unused for catalog (searchResult.items). Kept for golf calendar page scope.
+   * Browse: current page items from getProductsPage (≤24). Listing cards only.
+   * Search: unused for catalog (searchResult.items).
    */
-  products: Product[];
+  products: ProductListItem[];
   /** Browse server pagination result (authoritative totalCount / pages). */
   browsePage?: ProductListingPageResult | null;
   taxonomyNameMap?: Record<string, string>;
@@ -90,6 +90,8 @@ export type ProductsPageContentProps = {
   golfChannelPreset?: boolean;
   presetLabel?: string;
   golfCalendarMeta?: ProductsPageGolfCalendarMeta;
+  /** Server-built filtered Golf calendar universe (not page-24 listing). */
+  golfCalendarEvents?: GolfDepartureEvent[];
   listing?: ProductsPageContentListingConfig;
   /** q 존재 시 Search Mode */
   mode?: "browse" | "search";
@@ -110,6 +112,7 @@ export function ProductsPageContent({
   golfChannelPreset = false,
   presetLabel,
   golfCalendarMeta,
+  golfCalendarEvents = [],
   listing,
   mode = "browse",
   searchResult = null,
@@ -162,20 +165,8 @@ export function ProductsPageContent({
     return options;
   }, [productLineOptions, golfChannelPreset]);
 
-  const golfCalendarEvents = useMemo(() => {
-    if (!golfChannelPreset || isSearchMode) return [];
-    return buildGolfDepartureEvents(
-      browseProducts,
-      taxonomyNameMap ?? {},
-      golfCalendarMeta?.promotionCampaignId ?? null,
-    );
-  }, [
-    golfChannelPreset,
-    isSearchMode,
-    browseProducts,
-    taxonomyNameMap,
-    golfCalendarMeta?.promotionCampaignId,
-  ]);
+  const calendarEvents =
+    golfChannelPreset && !isSearchMode ? golfCalendarEvents : [];
 
   function handleFilterChange(next: Partial<ProductFiltersState>) {
     const merged: ProductFiltersState = { ...displayFilters, ...next };
@@ -292,7 +283,7 @@ export function ProductsPageContent({
     <div className="flex w-full max-w-full flex-col gap-6">
       {golfChannelPreset && !isSearchMode ? (
         <GolfDepartureCalendarSection
-          events={golfCalendarEvents}
+          events={calendarEvents}
           promotionLegendLabel={golfCalendarMeta?.promotionLegendLabel}
           eyebrow="출발일 한눈에"
           title="골프 출발 달력"

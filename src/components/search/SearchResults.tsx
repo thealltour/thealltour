@@ -1,12 +1,12 @@
 "use client";
 
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
 
 export type SearchResultsProps = {
-  products: Product[];
+  products: ProductCardSource[];
 };
 
 /**

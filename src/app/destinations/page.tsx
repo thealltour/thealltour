@@ -10,11 +10,18 @@ import { ExploreRailSection } from "@/components/explore/ExploreRailSection";
 import { StickySectionNav } from "@/components/navigation/StickySectionNav";
 import { HubFilterSidebar } from "@/components/hub/HubFilterSidebar";
 import CuratedBlock from "@/components/home/CuratedBlock";
-import { getHubDestinations, getHubThemes, buildRegionTree, buildThemeTree, getProductTaxonomyOptions } from "@/lib/productTaxonomies";
-import { getProducts } from "@/lib/products";
+import {
+  getHubDestinations,
+  getHubThemes,
+  buildRegionTree,
+  buildThemeTree,
+  getProductTaxonomyOptions,
+} from "@/lib/productTaxonomies";
+import { getProductListItems } from "@/lib/products/getProductListItems";
 import { buildDestinationFallbackImageMap } from "@/lib/landing/buildDestinationFallbackImageMap";
 import { getHubHeroConfig } from "@/lib/landingMetadata";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
+import type { ProductListItem } from "@/lib/products/productListItem";
 
 /** 대표 지역 카드용: 해외(루트+중분류) → 국내(루트+하위지역) 순으로 두 그룹 반환. */
 function orderDestinationsOverseasThenDomestic(
@@ -63,35 +70,64 @@ export const metadata = {
 const PREVIEW_DESTINATIONS_COUNT = 2;
 const PREVIEW_PRODUCTS_PER_DESTINATION = 3;
 
+/**
+ * Strategy A (top2 fixed): one bounded query per preview destination (not open-ended N+1).
+ * Semantics: destination_id exact OR category exact — no descendants.
+ */
+async function fetchDestinationHubPreviews(
+  destinations: ProductTaxonomy[],
+): Promise<Array<{ destination: ProductTaxonomy; products: ProductListItem[] }>> {
+  const top = destinations.slice(0, PREVIEW_DESTINATIONS_COUNT);
+  return Promise.all(
+    top.map(async (d) => {
+      const products = await getProductListItems({
+        destinationSelfExact: { id: d.id, name: d.name },
+        limit: PREVIEW_PRODUCTS_PER_DESTINATION,
+      });
+      return { destination: d, products };
+    }),
+  );
+}
+
+async function fetchDestinationRailFallbackPool(
+  destinations: ProductTaxonomy[],
+): Promise<ProductListItem[]> {
+  const needing = destinations.filter((d) => !d.card_image_url?.trim());
+  if (needing.length === 0) return [];
+  const ids = needing.map((d) => d.id).filter(Boolean);
+  const names = needing.map((d) => d.name.trim()).filter(Boolean);
+  if (ids.length === 0 && names.length === 0) return [];
+  return getProductListItems({
+    destinationScope: { ids, names },
+    limit: Math.min(120, Math.max(24, needing.length * 2)),
+  });
+}
+
 export default async function DestinationsHubPage() {
-  const [destinations, products] = await Promise.all([
-    getHubDestinations(),
-    getProducts(),
-  ]);
-  const [taxonomyOptions, hubThemes] = await Promise.all([
-    getProductTaxonomyOptions(products),
+  const destinations = await getHubDestinations();
+  const [taxonomyOptions, hubThemes, destinationPreviews, fallbackPool] = await Promise.all([
+    getProductTaxonomyOptions([]),
     getHubThemes(),
+    destinations.length > 0
+      ? fetchDestinationHubPreviews(destinations)
+      : Promise.resolve([] as Array<{ destination: ProductTaxonomy; products: ProductListItem[] }>),
+    destinations.length > 0
+      ? fetchDestinationRailFallbackPool(destinations)
+      : Promise.resolve([] as ProductListItem[]),
   ]);
   const { categories, themes, productLines } = taxonomyOptions;
   const regionTree = buildRegionTree(destinations);
   const themeTree = buildThemeTree(hubThemes);
 
   const hasDestinations = destinations.length > 0;
-  const destinationFallbackImages = buildDestinationFallbackImageMap(destinations, products);
+  const previewProducts = destinationPreviews.flatMap((p) => p.products);
+  const destinationFallbackImages = buildDestinationFallbackImageMap(destinations, [
+    ...previewProducts,
+    ...fallbackPool,
+  ]);
   const { overseas: overseasDestinations, domestic: domesticDestinations } =
     orderDestinationsOverseasThenDomestic(destinations);
 
-  const destinationPreviews = hasDestinations
-    ? destinations.slice(0, PREVIEW_DESTINATIONS_COUNT).map((d) => {
-        const items = products.filter((p) => {
-          if (p.destination_id) {
-            return p.destination_id === d.id;
-          }
-          return p.category?.trim().toLowerCase() === d.name.trim().toLowerCase();
-        });
-        return { destination: d, products: items.slice(0, PREVIEW_PRODUCTS_PER_DESTINATION) };
-      })
-    : [];
   const hasPreviews = destinationPreviews.some((p) => p.products.length > 0);
 
   const enrichDestination = (d: ProductTaxonomy) => {

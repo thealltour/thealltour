@@ -2,16 +2,19 @@
  * POST-UI-01A/01B-1: Browse용 DB-side offset pagination + filter query contract.
  *
  * - `getProducts()` / Search / UI 미연결. 01B-2에서 `/products` Browse에 연결.
- * - select("*")는 foundation 임시. Listing DTO projection은 01D.
+ * - Listing DTO projection: PRODUCT_LISTING_SELECT → ProductListItem (01D-1).
  * - Browse `q`는 production에서 Search Mode로 분기되므로 여기서 미지원.
  * - promotion-first는 campaign_card_meta hydration 기반 → DB sort 재현 불가 (01B-2 결정).
  */
 
 import { supabase } from "@/lib/supabase";
-import { normalizeProduct } from "@/lib/products";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
-import type { Product } from "@/types/product";
+import {
+  mapProductRowToListItem,
+  PRODUCT_LISTING_SELECT,
+  type ProductListItem,
+} from "@/lib/products/productListItem";
 
 /** Browse listing 기본 page size — Search `SEARCH_PAGE_SIZE`와 값은 같으나 Search 모듈에 의존하지 않음 */
 export const PRODUCT_LIST_PAGE_SIZE = 24;
@@ -80,7 +83,7 @@ export type GetProductsPageParams = {
 };
 
 export type ProductListingPageResult = {
-  items: Product[];
+  items: ProductListItem[];
   totalCount: number;
   page: number;
   pageSize: number;
@@ -458,7 +461,7 @@ export async function getProductsPage(
 
   let query = supabase
     .from("products")
-    .select("*", { count: "exact" })
+    .select(PRODUCT_LISTING_SELECT, { count: "exact" })
     .eq("is_active", true);
 
   query = applyProductListingDbFilters(query, filters);
@@ -474,10 +477,9 @@ export async function getProductsPage(
   const meta = buildProductPageMeta({ totalCount, page, pageSize });
 
   const campaignTaxonomies = await getCampaignTaxonomiesForCard();
-  const normalized = (data ?? []).map((row) =>
-    normalizeProduct(row as Record<string, unknown>),
-  );
-  const items = hydrateProductsWithCampaignCardMeta(normalized, campaignTaxonomies);
+  const rows = (data ?? []) as unknown as Record<string, unknown>[];
+  const mapped = rows.map((row) => mapProductRowToListItem(row));
+  const items = hydrateProductsWithCampaignCardMeta(mapped, campaignTaxonomies);
 
   return {
     items,

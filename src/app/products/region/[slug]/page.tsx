@@ -31,8 +31,6 @@ import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavS
 import { CoupangTravelSection } from "@/components/affiliate/CoupangTravelSection";
 import { shouldShowCoupangBannerForRegionSlug } from "@/lib/affiliate/isDomesticDestinationTaxonomy";
 
-const RELATED_PRODUCTS_LIMIT = 12;
-
 type RegionLandingProps = {
   params: Promise<{ slug: string }>;
 };
@@ -75,13 +73,12 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
   const name = await getTaxonomyNameBySlug("category", trimmedSlug);
 
   if (landingData && landingData.taxonomyName && landingData.hero?.primaryCtaHref) {
-    const [{ dataWithChildren, listing }, subnodes] = await Promise.all([
+    const [{ dataWithChildren, listing, relatedProducts }, subnodes] = await Promise.all([
       loadProductsRegionLandingPageBundle(trimmedSlug, landingData),
       getLandingSubnodes("destination", trimmedSlug),
     ]);
 
     const {
-      products,
       categories,
       themes,
       productLines,
@@ -97,7 +94,7 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
     );
     const detailBatch = parent
       ? await loadProductsListingContextForDestinationDetail(
-          listing.products,
+          [],
           listing.hubDestinations,
           parent.id,
         )
@@ -106,10 +103,7 @@ export default async function ProductsRegionSlugPage({ params }: RegionLandingPr
     const destinationGuides = detailBatch?.destinationGuides ?? [];
     const reviewHighlights = detailBatch?.reviewHighlights ?? [];
 
-    const nameLower = landingData.taxonomyName.trim().toLowerCase();
-    const related = products
-      .filter((p) => p.category?.trim().toLowerCase() === nameLower)
-      .slice(0, RELATED_PRODUCTS_LIMIT);
+    const related = relatedProducts;
 
     const childList = dataWithChildren.childDestinations ?? [];
     const hubSections = buildTaxonomyDetailNavSections({

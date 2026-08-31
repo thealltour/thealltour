@@ -18,7 +18,7 @@ import {
   getDestinationBySlugForPublicLanding,
   getHubDestinations,
 } from "@/lib/productTaxonomies";
-import { getProducts } from "@/lib/products";
+import { getProductListItems } from "@/lib/products/getProductListItems";
 import { getLandingSubnodes } from "@/lib/landingSubnodes";
 import { buildDestinationFallbackImageMap } from "@/lib/landing/buildDestinationFallbackImageMap";
 import { loadProductsListingContextForDestinationDetail } from "@/lib/products/loadProductsListingContext";
@@ -54,10 +54,33 @@ export default async function DestinationLandingPage({ params }: Props) {
   const destination = await getDestinationBySlugForPublicLanding(slug);
   if (!destination) notFound();
 
-  const [products, subnodes, allDestinations] = await Promise.all([
-    getProducts(),
+  const [related, subnodes, allDestinations] = await Promise.all([
+    getProductListItems({
+      categoryExact: destination.name,
+      limit: RELATED_PRODUCTS_LIMIT,
+    }),
     getLandingSubnodes("destination", slug),
     getHubDestinations(),
+  ]);
+  const childDestinations = allDestinations
+    .filter((d) => (d.parent_id ?? "").trim() === destination.id.trim())
+    .sort((a, b) => {
+      const sa = a.sort_order ?? 9999;
+      const sb = b.sort_order ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
+    });
+  const [detailBatch, childFallbackPool] = await Promise.all([
+    loadProductsListingContextForDestinationDetail([], allDestinations, destination.id),
+    childDestinations.length > 0
+      ? getProductListItems({
+          destinationScope: {
+            ids: childDestinations.map((d) => d.id).filter(Boolean),
+            names: childDestinations.map((d) => d.name.trim()).filter(Boolean),
+          },
+          limit: Math.min(60, Math.max(12, childDestinations.length * 2)),
+        })
+      : Promise.resolve([]),
   ]);
   const {
     categories,
@@ -67,26 +90,11 @@ export default async function DestinationLandingPage({ params }: Props) {
     themeTree,
     destinationGuides,
     reviewHighlights,
-  } = await loadProductsListingContextForDestinationDetail(
-    products,
-    allDestinations,
-    destination.id,
+  } = detailBatch;
+  const childFallbackImages = buildDestinationFallbackImageMap(
+    childDestinations,
+    [...related, ...childFallbackPool],
   );
-  const parentId = destination.id.trim();
-  const childDestinations = allDestinations
-    .filter((d) => (d.parent_id ?? "").trim() === parentId)
-    .sort((a, b) => {
-      const sa = a.sort_order ?? 9999;
-      const sb = b.sort_order ?? 9999;
-      if (sa !== sb) return sa - sb;
-      return (a.name ?? "").localeCompare(b.name ?? "", "ko");
-    });
-  const childFallbackImages = buildDestinationFallbackImageMap(childDestinations, products);
-
-  const nameLower = destination.name.trim().toLowerCase();
-  const related = products
-    .filter((p) => p.category?.trim().toLowerCase() === nameLower)
-    .slice(0, RELATED_PRODUCTS_LIMIT);
 
   const heroTitle = destination.landing_title?.trim() || destination.name;
   const heroDescription =

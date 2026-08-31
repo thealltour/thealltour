@@ -1,5 +1,4 @@
 import { getGuidesByDestinationId, getGuidesByThemeId } from "@/lib/guides";
-import { getProducts } from "@/lib/products";
 import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import {
   buildRegionTree,
@@ -10,7 +9,7 @@ import {
   getHubThemes,
   getProductTaxonomyOptions,
 } from "@/lib/productTaxonomies";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { RegionTreeNode } from "@/types/productTaxonomy";
 
@@ -30,7 +29,8 @@ export type ProductsListingTaxonomyContext = {
 };
 
 export type ProductsListingContext = ProductsListingTaxonomyContext & {
-  products: Product[];
+  /** Hub/landing pages: empty or bounded preview items — never full catalog. */
+  products: ProductListItem[];
 };
 
 function finalizeTaxonomyContext(
@@ -64,7 +64,7 @@ function finalizeTaxonomyContext(
 }
 
 function finalizeListingContext(
-  products: Product[],
+  products: ProductListItem[],
   hubDestinations: ProductTaxonomy[],
   hubThemes: ProductTaxonomy[],
   productLineTaxonomies: ProductTaxonomy[],
@@ -100,42 +100,21 @@ export async function loadProductsListingTaxonomyContext(): Promise<ProductsList
   );
 }
 
+/**
+ * `/products/region|theme/[slug]` listing shell — taxonomy only (01D-2A).
+ * Product cards are fetched via bounded getProductListItems at the page/bundle layer.
+ */
 export async function loadProductsListingContext(
-  variant: "products_index",
-): Promise<ProductsListingContext>;
-/** `/products/region|theme/[slug]` 랜딩 하단 목록: 기존과 동일하게 허브·상품 4-way 병렬 후 taxonomy 옵션 순차 */
-export async function loadProductsListingContext(
-  variant: "product_landing",
-): Promise<ProductsListingContext>;
-export async function loadProductsListingContext(
-  variant: "products_index" | "product_landing",
+  _variant: "products_index" | "product_landing",
 ): Promise<ProductsListingContext> {
-  if (variant === "products_index") {
-    const products = await getProducts();
-    const [taxonomyOptions, hubDestinations, hubThemes, productLineTaxonomies] = await Promise.all([
-      getProductTaxonomyOptions(products),
-      getHubDestinations(),
-      getHubThemes(),
-      getActiveProductLineTaxonomies(),
-    ]);
-    return finalizeListingContext(
-      products,
-      hubDestinations,
-      hubThemes,
-      productLineTaxonomies,
-      taxonomyOptions,
-    );
-  }
-
-  const [hubDestinations, products, hubThemes, productLineTaxonomies] = await Promise.all([
+  const [taxonomyOptions, hubDestinations, hubThemes, productLineTaxonomies] = await Promise.all([
+    getProductTaxonomyOptions([]),
     getHubDestinations(),
-    getProducts(),
     getHubThemes(),
     getActiveProductLineTaxonomies(),
   ]);
-  const taxonomyOptions = await getProductTaxonomyOptions(products);
   return finalizeListingContext(
-    products,
+    [],
     hubDestinations,
     hubThemes,
     productLineTaxonomies,
@@ -148,22 +127,22 @@ export type ProductsDestinationDetailListingBatch = ProductsListingContext & {
   reviewHighlights: Awaited<ReturnType<typeof getTopRatedPublishedReviews>>;
 };
 
-/** `/destinations/[slug]` 두 번째 병렬 묶음 — 호출 순서·병렬 구성 유지 */
+/** `/destinations/[slug]` 두 번째 병렬 묶음 — taxonomy options from hub tables (not product scan). */
 export async function loadProductsListingContextForDestinationDetail(
-  products: Product[],
+  _products: ProductListItem[],
   allDestinations: ProductTaxonomy[],
   destinationId: string,
 ): Promise<ProductsDestinationDetailListingBatch> {
   const [taxonomyOptions, hubThemes, destinationGuides, reviewHighlights, productLineTaxonomies] =
     await Promise.all([
-      getProductTaxonomyOptions(products),
+      getProductTaxonomyOptions([]),
       getHubThemes(),
       getGuidesByDestinationId(destinationId, 4),
       getTopRatedPublishedReviews(4),
       getActiveProductLineTaxonomies(),
     ]);
   const base = finalizeListingContext(
-    products,
+    [],
     allDestinations,
     hubThemes,
     productLineTaxonomies,
@@ -177,22 +156,22 @@ export type ProductsThemeDetailListingBatch = ProductsListingContext & {
   reviewHighlights: Awaited<ReturnType<typeof getTopRatedPublishedReviews>>;
 };
 
-/** `/themes/[slug]` 두 번째 병렬 묶음 — 호출 순서·병렬 구성 유지 */
+/** `/themes/[slug]` 두 번째 병렬 묶음 — taxonomy options from hub tables (not product scan). */
 export async function loadProductsListingContextForThemeDetail(
-  products: Product[],
+  _products: ProductListItem[],
   allThemes: ProductTaxonomy[],
   themeId: string,
 ): Promise<ProductsThemeDetailListingBatch> {
   const [taxonomyOptions, destinations, themeGuides, reviewHighlights, productLineTaxonomies] =
     await Promise.all([
-      getProductTaxonomyOptions(products),
+      getProductTaxonomyOptions([]),
       getHubDestinations(),
       getGuidesByThemeId(themeId, 4),
       getTopRatedPublishedReviews(4),
       getActiveProductLineTaxonomies(),
     ]);
   const base = finalizeListingContext(
-    products,
+    [],
     destinations,
     allThemes,
     productLineTaxonomies,

@@ -6,7 +6,7 @@ import {
 import { getProductThemeOgPageSeo } from "@/lib/products/productRegionThemeOgPageSeo";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTaxonomyNameBySlug, parseThemeTokens } from "@/lib/productTaxonomies";
+import { getTaxonomyNameBySlug } from "@/lib/productTaxonomies";
 import { getProductLandingData } from "@/lib/productLanding";
 import { buildProductsBreadcrumbItems } from "@/components/navigation/breadcrumb-config";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
@@ -28,8 +28,6 @@ import { ReviewHighlightCard } from "@/components/home/ReviewHighlightCard";
 import { StickySectionNav } from "@/components/navigation/StickySectionNav";
 import { AllProductsBrowseCtaSection } from "@/components/landing/AllProductsBrowseCtaSection";
 import { buildTaxonomyDetailNavSections } from "@/lib/landing/taxonomyDetailNavSections";
-
-const RELATED_PRODUCTS_LIMIT = 12;
 
 type ThemeLandingProps = {
   params: Promise<{ slug: string }>;
@@ -73,13 +71,12 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
   const name = await getTaxonomyNameBySlug("theme", trimmedSlug);
 
   if (landingData && landingData.taxonomyName && landingData.hero?.primaryCtaHref) {
-    const [{ dataWithChildren, listing }, subnodes] = await Promise.all([
+    const [{ dataWithChildren, listing, relatedProducts }, subnodes] = await Promise.all([
       loadProductsThemeLandingPageBundle(trimmedSlug, landingData),
       getLandingSubnodes("theme", trimmedSlug),
     ]);
 
     const {
-      products,
       categories,
       themes,
       productLines,
@@ -95,7 +92,7 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
     );
     const detailBatch = parent
       ? await loadProductsListingContextForThemeDetail(
-          listing.products,
+          [],
           listing.hubThemes,
           parent.id,
         )
@@ -104,13 +101,7 @@ export default async function ProductsThemeSlugPage({ params }: ThemeLandingProp
     const themeGuides = detailBatch?.themeGuides ?? [];
     const reviewHighlights = detailBatch?.reviewHighlights ?? [];
 
-    const themeNameLower = landingData.taxonomyName.trim().toLowerCase();
-    const related = products
-      .filter((p) => {
-        const tokens = parseThemeTokens(p.theme).map((x) => x.trim().toLowerCase());
-        return tokens.includes(themeNameLower);
-      })
-      .slice(0, RELATED_PRODUCTS_LIMIT);
+    const related = relatedProducts;
 
     const childList = dataWithChildren.childThemes ?? [];
     const hubSections = buildTaxonomyDetailNavSections({

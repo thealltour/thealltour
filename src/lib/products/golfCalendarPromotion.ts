@@ -36,9 +36,15 @@ export function resolvePromotionCampaignDisplayLabel(
   return null;
 }
 
+/** Calendar / listing rows that can resolve promotion campaign membership */
+export type PromotionCampaignSource = Pick<
+  Product,
+  "campaign_card_meta" | "campaigns" | "campaigns_json"
+>;
+
 /** 상품에 slug=promotion campaign이 적용되었는지 */
 export function productHasPromotionCampaign(
-  product: Product,
+  product: PromotionCampaignSource,
   promotionCampaignId: string | null,
 ): boolean {
   const promotionId = promotionCampaignId?.trim();

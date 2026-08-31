@@ -1,11 +1,12 @@
 import { buildDestinationFallbackImageMap } from "@/lib/landing/buildDestinationFallbackImageMap";
 import { loadProductsListingContext } from "@/lib/products/loadProductsListingContext";
+import { getProductListItems } from "@/lib/products/getProductListItems";
 import {
   getSelfAndDescendantIdsAndNames,
   parseThemeTokens,
 } from "@/lib/productTaxonomies";
 import type { ProductFiltersState } from "@/lib/productFilters";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 import type { ProductLandingData } from "@/types/productLanding";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 import type { ProductsListingContext } from "@/lib/products/loadProductsListingContext";
@@ -13,13 +14,16 @@ import type { ProductsListingContext } from "@/lib/products/loadProductsListingC
 export type ProductsRegionLandingPageBundle = {
   dataWithChildren: ProductLandingData;
   listing: ProductsListingContext;
+  /** category exact — same as /destinations/[slug] related semantics */
+  relatedProducts: ProductListItem[];
   initialFiltersFromServer: ProductFiltersState;
   initialRegionDescendants: { ids: string[]; names: string[] };
 };
 
+const RELATED_PRODUCTS_LIMIT = 12;
+
 /**
- * `/products/region/[slug]` 본문 — 랜딩 분기에서 `getProductLandingData` 성공 후 하위 데이터 묶음.
- * (redirect / 레거시 쿼리 분기는 page에 유지)
+ * `/products/region/[slug]` 본문 — taxonomy shell + bounded related (category exact).
  */
 export async function loadProductsRegionLandingPageBundle(
   trimmedSlug: string,
@@ -27,7 +31,7 @@ export async function loadProductsRegionLandingPageBundle(
 ): Promise<ProductsRegionLandingPageBundle> {
   let dataWithChildren = landingData;
   const listing = await loadProductsListingContext("product_landing");
-  const { products, hubDestinations: allDestinations } = listing;
+  const { hubDestinations: allDestinations } = listing;
 
   const normalizedSlug = trimmedSlug.toLowerCase().replace(/\s+/g, "-");
   const parent = allDestinations.find(
@@ -35,6 +39,12 @@ export async function loadProductsRegionLandingPageBundle(
       (d.slug?.trim().toLowerCase().replace(/\s+/g, "-") === normalizedSlug) ||
       d.name?.trim() === landingData.taxonomyName,
   );
+
+  const relatedProducts = await getProductListItems({
+    categoryExact: landingData.taxonomyName,
+    limit: RELATED_PRODUCTS_LIMIT,
+  });
+
   if (parent) {
     const parentId = parent.id.trim();
     const childDestinations = allDestinations
@@ -45,7 +55,20 @@ export async function loadProductsRegionLandingPageBundle(
         if (sa !== sb) return sa - sb;
         return (a.name ?? "").localeCompare(b.name ?? "", "ko");
       });
-    const fallbackMap = buildDestinationFallbackImageMap(childDestinations, products);
+    const childFallbackPool =
+      childDestinations.length > 0
+        ? await getProductListItems({
+            destinationScope: {
+              ids: childDestinations.map((d) => d.id).filter(Boolean),
+              names: childDestinations.map((d) => d.name.trim()).filter(Boolean),
+            },
+            limit: Math.min(60, Math.max(12, childDestinations.length * 2)),
+          })
+        : [];
+    const fallbackMap = buildDestinationFallbackImageMap(childDestinations, [
+      ...relatedProducts,
+      ...childFallbackPool,
+    ]);
     const childDestinationsWithImages = childDestinations.map((d) => {
       const cardImageUrl =
         d.card_image_url?.trim() ||
@@ -73,6 +96,7 @@ export async function loadProductsRegionLandingPageBundle(
   return {
     dataWithChildren,
     listing,
+    relatedProducts,
     initialFiltersFromServer,
     initialRegionDescendants,
   };
@@ -80,7 +104,7 @@ export async function loadProductsRegionLandingPageBundle(
 
 function buildThemeFallbackImageMap(
   themes: ProductTaxonomy[],
-  products: Product[],
+  products: Array<Pick<ProductListItem, "image_url" | "theme">>,
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const t of themes) {
@@ -99,12 +123,13 @@ function buildThemeFallbackImageMap(
 export type ProductsThemeLandingPageBundle = {
   dataWithChildren: ProductLandingData;
   listing: ProductsListingContext;
+  relatedProducts: ProductListItem[];
   initialFiltersFromServer: ProductFiltersState;
   initialThemeDescendantNames: string[];
 };
 
 /**
- * `/products/theme/[slug]` 본문 — 랜딩 분기에서 `getProductLandingData` 성공 후 하위 데이터 묶음.
+ * `/products/theme/[slug]` 본문 — taxonomy shell + bounded related (exact theme token).
  */
 export async function loadProductsThemeLandingPageBundle(
   trimmedSlug: string,
@@ -112,7 +137,7 @@ export async function loadProductsThemeLandingPageBundle(
 ): Promise<ProductsThemeLandingPageBundle> {
   let dataWithChildren = landingData;
   const listing = await loadProductsListingContext("product_landing");
-  const { products, hubThemes: allThemes } = listing;
+  const { hubThemes: allThemes } = listing;
 
   const normalizedSlug = trimmedSlug.toLowerCase().replace(/\s+/g, "-");
   const parent = allThemes.find(
@@ -120,6 +145,12 @@ export async function loadProductsThemeLandingPageBundle(
       (t.slug?.trim().toLowerCase().replace(/\s+/g, "-") === normalizedSlug) ||
       t.name?.trim() === landingData.taxonomyName,
   );
+
+  const relatedProducts = await getProductListItems({
+    themeTokenExact: landingData.taxonomyName,
+    limit: RELATED_PRODUCTS_LIMIT,
+  });
+
   if (parent) {
     const parentId = parent.id.trim();
     const childThemes = allThemes
@@ -130,7 +161,17 @@ export async function loadProductsThemeLandingPageBundle(
         if (sa !== sb) return sa - sb;
         return (a.name ?? "").localeCompare(b.name ?? "", "ko");
       });
-    const fallbackMap = buildThemeFallbackImageMap(childThemes, products);
+    const childFallbackPool =
+      childThemes.length > 0
+        ? await getProductListItems({
+            themeNames: childThemes.map((t) => t.name.trim()).filter(Boolean),
+            limit: Math.min(60, Math.max(12, childThemes.length * 2)),
+          })
+        : [];
+    const fallbackMap = buildThemeFallbackImageMap(childThemes, [
+      ...relatedProducts,
+      ...childFallbackPool,
+    ]);
     const childThemesWithImages = childThemes.map((t) => {
       const nameKey = t.name.trim().toLowerCase();
       const cardImageUrl =
@@ -158,6 +199,7 @@ export async function loadProductsThemeLandingPageBundle(
   return {
     dataWithChildren,
     listing,
+    relatedProducts,
     initialFiltersFromServer,
     initialThemeDescendantNames,
   };

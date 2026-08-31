@@ -3,7 +3,7 @@
  * PR3: `badge_tone`·taxonomy `description`(badge_description) 데이터 기반, 레거시 라벨 fallback.
  */
 
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import type { CampaignBadgeTone } from "@/types/productCampaignCard";
 import { cn } from "@/lib/cn";
 import { getPrimaryRepresentativeCampaignLabel, normalizeCampaignLabel } from "@/lib/productCampaignBadges";
@@ -87,7 +87,7 @@ function clipCampaignPitch(text: string, max: number): string {
 }
 
 /** 대표 캠페인(visible·priority 1위)의 CMS 설명 1줄 */
-function getPrimaryCampaignPitchFromMeta(product: Product, kind: CampaignCardKind): string | undefined {
+function getPrimaryCampaignPitchFromMeta(product: ProductCardSource, kind: CampaignCardKind): string | undefined {
   if (!shouldShowCampaignPitch(kind)) return undefined;
   const meta = product.campaign_card_meta;
   if (!meta?.length) return undefined;
@@ -99,7 +99,7 @@ function getPrimaryCampaignPitchFromMeta(product: Product, kind: CampaignCardKin
 }
 
 export function buildCampaignPitchLineFromProduct(
-  product: Product,
+  product: ProductCardSource,
   kind: CampaignCardKind,
 ): string | undefined {
   const fromMeta = getPrimaryCampaignPitchFromMeta(product, kind);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 import type { SearchFilterState } from "@/types/search";
 import { buildSearchQueryString } from "@/lib/search/searchQueryParams";
 import SearchResults from "@/components/search/SearchResults";
@@ -13,13 +13,13 @@ import type { SearchApiResponse } from "@/types/search";
 import { cn } from "@/lib/cn";
 
 export type SearchResultsContainerProps = {
-  initialItems: Product[];
+  initialItems: ProductListItem[];
   initialPage: number;
   totalPages: number;
   query: SearchFilterState;
 };
 
-function uniqById(products: Product[]): Product[] {
+function uniqById(products: ProductListItem[]): ProductListItem[] {
   const seen = new Set<string>();
   return products.filter((p) => {
     if (seen.has(p.id)) return false;
@@ -60,7 +60,7 @@ export default function SearchResultsContainer({
   totalPages,
   query,
 }: SearchResultsContainerProps) {
-  const [items, setItems] = useState<Product[]>(initialItems);
+  const [items, setItems] = useState<ProductListItem[]>(initialItems);
   const [page, setPage] = useState(initialPage);
   const [isLoading, setIsLoading] = useState(false);
   const hasMore = page < totalPages;

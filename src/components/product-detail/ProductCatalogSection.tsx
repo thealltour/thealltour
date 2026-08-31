@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import ProductListCard from "@/components/products/ProductListCard";
 import ProductListCardMobile from "@/components/products/ProductListCardMobile";
 import ProductCard from "@/components/products/ProductCard";
@@ -31,7 +31,7 @@ const REGION_ALL_LABEL = "전체";
 const THEME_ALL_LABEL = "전체";
 
 type ProductCatalogSectionProps = {
-  products: Product[];
+  products: ProductCardSource[];
   categories: string[];
   /**
    * Browse server pagination: taxonomy theme names for chips (not derived from page products).
@@ -155,7 +155,7 @@ export default function ProductCatalogSection({
   const searchParams = useSearchParams();
   const { openModal } = useConsultModal();
 
-  function handleProductConsult(product: Product) {
+  function handleProductConsult(product: ProductCardSource) {
     const query = searchParams.toString();
     openModal({
       productId: product.id,

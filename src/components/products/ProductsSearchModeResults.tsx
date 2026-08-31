@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Product } from "@/types/product";
+import type { ProductListItem } from "@/lib/products/productListItem";
 import type { SearchFilterState } from "@/types/search";
 import { buildSearchQueryString } from "@/lib/search/searchQueryParams";
 import SearchPagination from "@/components/search/SearchPagination";
@@ -19,7 +19,7 @@ import { buildProductsSearchModeHref } from "@/lib/products/productsSearchMode";
 import type { ProductFiltersState } from "@/lib/productFilters";
 
 export type ProductsSearchModeResultsProps = {
-  initialItems: Product[];
+  initialItems: ProductListItem[];
   initialPage: number;
   totalPages: number;
   /** /api/search 용 (destination = region name) */
@@ -28,7 +28,7 @@ export type ProductsSearchModeResultsProps = {
   filters: ProductFiltersState;
 };
 
-function uniqById(products: Product[]): Product[] {
+function uniqById(products: ProductListItem[]): ProductListItem[] {
   const seen = new Set<string>();
   return products.filter((p) => {
     if (seen.has(p.id)) return false;
@@ -63,7 +63,7 @@ export function ProductsSearchModeResults({
 }: ProductsSearchModeResultsProps) {
   const router = useRouter();
   const { openModal } = useConsultModal();
-  const [items, setItems] = useState<Product[]>(initialItems);
+  const [items, setItems] = useState<ProductListItem[]>(initialItems);
   const [page, setPage] = useState(initialPage);
   const [isLoading, setIsLoading] = useState(false);
   const hasMore = page < totalPages;

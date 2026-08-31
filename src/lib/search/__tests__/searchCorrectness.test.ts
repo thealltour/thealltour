@@ -22,11 +22,7 @@ import {
   buildStructuredSearchAxisFilters,
   mergeDestinationScopes,
 } from "@/lib/search/searchCandidateFilters";
-import {
-  relevanceScore,
-  SEARCH_RELEVANCE_FETCH_LIMIT,
-  SEARCH_RELEVANCE_RESULT_CAP,
-} from "@/lib/search/searchProducts";
+import { relevanceScore, SEARCH_RELEVANCE_CHUNK_SIZE } from "@/lib/search/searchProducts";
 import { GOLF_PRESET_CATEGORIES } from "@/lib/products/golfChannel";
 import { PACKAGE_TRAVEL_UNASSIGNED_PRODUCT_LINE } from "@/lib/productFilters";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
@@ -288,10 +284,9 @@ describe("relevanceScore", () => {
   });
 });
 
-describe("scale caps unchanged", () => {
-  it("keeps 200 / 100", () => {
-    expect(SEARCH_RELEVANCE_FETCH_LIMIT).toBe(200);
-    expect(SEARCH_RELEVANCE_RESULT_CAP).toBe(100);
+describe("relevance scale contract (01C)", () => {
+  it("chunk size 200, no result cap export", () => {
+    expect(SEARCH_RELEVANCE_CHUNK_SIZE).toBe(200);
   });
 });
 

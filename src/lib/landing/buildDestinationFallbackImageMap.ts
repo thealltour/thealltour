@@ -1,12 +1,13 @@
-import type { Product } from "@/types/product";
+/**
+ * Build destination card fallback images from a bounded ProductListItem pool
+ * (not full catalog). Prefer taxonomy card_image_url at call site.
+ */
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 
-/**
- * 카드 이미지 미설정 시 해당 지역 상품 대표 이미지로 채움. id / 소문자 name → image_url
- */
 export function buildDestinationFallbackImageMap(
   destinations: ProductTaxonomy[],
-  products: Product[],
+  products: Array<Pick<ProductCardSource, "image_url" | "destination_id" | "category">>,
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const d of destinations) {

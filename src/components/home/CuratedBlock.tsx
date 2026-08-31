@@ -1,4 +1,4 @@
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import ProductCard from "@/components/products/ProductCard";
@@ -16,7 +16,7 @@ export type CuratedBlockSurface = "none" | "muted" | "card";
 export type CuratedBlockProps = {
   title: string;
   description: string;
-  products: Product[];
+  products: ProductCardSource[];
   /** 섹션 래퍼 강조. none: 헤더+그리드만, muted/card: 배경/박스 적용 */
   surface?: CuratedBlockSurface;
   /**

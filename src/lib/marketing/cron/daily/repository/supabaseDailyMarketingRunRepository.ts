@@ -46,6 +46,32 @@ export class SupabaseDailyMarketingRunRepository implements DailyMarketingRunRep
     return data ? mapCandidate(asRow(data)) : null;
   }
 
+  async findCandidateByCandidateId(candidateId: string): Promise<CompletedMarketingCandidate | null> {
+    const query = this.client.from("completed_marketing_candidates").select("*") as {
+      eq: (col: string, val: string) => { maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }> };
+    };
+    const { data, error } = await query.eq("candidate_id", candidateId).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? mapCandidate(asRow(data)) : null;
+  }
+
+  async listCandidates(options: { limit?: number; businessDateKst?: string } = {}): Promise<CompletedMarketingCandidate[]> {
+    const limit = options.limit ?? 50;
+    let query = this.client.from("completed_marketing_candidates").select("*") as {
+      eq: (col: string, val: string) => unknown;
+      order: (col: string, opts: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
+    };
+    if (options.businessDateKst) {
+      query = (query as { eq: (col: string, val: string) => typeof query }).eq(
+        "business_date_kst",
+        options.businessDateKst,
+      ) as typeof query;
+    }
+    const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => mapCandidate(asRow(row)));
+  }
+
   async saveRun(run: DailyMarketingRun): Promise<DailyMarketingRun> {
     const existing = await this.findRunByLogicalKey(run.logicalRunKey);
     if (existing?.status === "completed" && existing.completedCandidateId) {

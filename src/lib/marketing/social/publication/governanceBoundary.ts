@@ -45,6 +45,8 @@ export const SNS_SIDE_EFFECTS_STEP_3_4 = 0 as const;
 export const SNS_SIDE_EFFECTS_STEP_3_5 = 0 as const;
 /** STEP 3-7: daily autonomous pipeline — pre-publication candidate only */
 export const SNS_SIDE_EFFECTS_STEP_3_7 = 0 as const;
+/** STEP 3-8: human review queue — business-state records only */
+export const SNS_SIDE_EFFECTS_STEP_3_8 = 0 as const;
 
 /**
  * Future:

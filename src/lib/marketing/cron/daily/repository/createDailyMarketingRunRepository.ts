@@ -3,6 +3,8 @@ import type { CompletedMarketingCandidate, DailyMarketingRun } from "@/lib/marke
 export type DailyMarketingRunRepository = {
   findRunByLogicalKey(logicalRunKey: string): Promise<DailyMarketingRun | null>;
   findCandidateByLogicalKey(logicalRunKey: string): Promise<CompletedMarketingCandidate | null>;
+  findCandidateByCandidateId(candidateId: string): Promise<CompletedMarketingCandidate | null>;
+  listCandidates(options?: { limit?: number; businessDateKst?: string }): Promise<CompletedMarketingCandidate[]>;
   saveRun(run: DailyMarketingRun): Promise<DailyMarketingRun>;
   saveCandidate(candidate: CompletedMarketingCandidate): Promise<CompletedMarketingCandidate>;
 };
@@ -17,6 +19,21 @@ export function createInMemoryDailyMarketingRunRepository(): DailyMarketingRunRe
     },
     async findCandidateByLogicalKey(logicalRunKey) {
       return candidates.get(logicalRunKey) ?? null;
+    },
+    async findCandidateByCandidateId(candidateId) {
+      for (const candidate of candidates.values()) {
+        if (candidate.candidateId === candidateId) return candidate;
+      }
+      return null;
+    },
+    async listCandidates(options = {}) {
+      const limit = options.limit ?? 50;
+      let rows = [...candidates.values()];
+      if (options.businessDateKst) {
+        rows = rows.filter((row) => row.businessDateKst === options.businessDateKst);
+      }
+      rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return rows.slice(0, limit);
     },
     async saveRun(run) {
       const existing = runs.get(run.logicalRunKey);

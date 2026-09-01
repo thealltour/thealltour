@@ -21,6 +21,7 @@ import {
   Smartphone,
   Rss,
   Cpu,
+  ClipboardCheck,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
@@ -184,6 +185,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: Cpu,
     group: "tools",
     mainKey: "tools_ai_runtime",
+    roles: ["admin"],
+  },
+  {
+    href: "/theall_manager_only/marketing-review",
+    label: "AI 마케팅 검토",
+    icon: ClipboardCheck,
+    group: "tools",
+    mainKey: "tools_marketing_review",
     roles: ["admin"],
   },
 ];

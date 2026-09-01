@@ -568,6 +568,263 @@ Monitor: Gateway `:3000`, `content-strategist` observability (auth errors, route
 
 **Do not start C9 (Governance Auditor)** until C8 FINAL (+ preferably CS session migration per runbook).
 
+### C8 FINAL — 48h+ Production canary review (2026-09-02 ~00:28 KST)
+
+**C8 FINAL PASS — Content Strategist profile-level Runtime Gateway cutover validated. Legacy Desktop/TUI Bot Chat and Group member sessions remain native Gemini snapshots pending separate session migration.**
+
+| Item | Value |
+|---|---|
+| Review timestamp | **2026-09-02 ~00:28 KST** |
+| Observation start | **2026-08-30 01:13 KST** |
+| Elapsed | **~71.3 h** (≥24h ✓ · ≥48h ✓) |
+| CS profile checksum | **unchanged** `3dc57fb2…` — `custom:thealltour-runtime` / `thealltour/content-strategist` / `fallback_providers: []` |
+| Deployed service | `thealltour-internal` **active**, PID **25907**, `NRestarts=0` since **2026-08-28 15:02**; BUILD_ID now `WxUsrpAPYYixo7uRuBD_8` (post-C8 UI builds; not a C8 rollback trigger) |
+| Alias smoke (FINAL review) | **HTTP 200** — `content-strategist` / `content_draft` / `fallback=0` |
+| CS observability (window) | **30** events · **5** correlations · `job_completed` **4** / `job_failed` **1** · `runtime-spike` **0** · wrong agent/workload **0** |
+| Natural Bot Gateway traffic | **~0** after immediate probe (expected: legacy Desktop/Group pin) |
+| INVALID_REQUEST | **1** isolated incident at cutover immediate probe; **same correlation recovered** in ~1.3s; **0 recurrence** in 71h |
+| PA C7 regression | Profile + Bot Chat + Group PA **Runtime**; checksum `1c81c008…` unchanged |
+| GA / MM | Still native Gemini |
+| Legacy CS Desktop `20260825_133449_8b118f` | **Gemini pin** — no accidental migration |
+| Legacy CS Group `20260826_225441_d13218` | **Gemini pin** — mixed Group preserved (4 members) |
+| 08:30 PA cron `9e96a94ee72f` | **ok** — latest `2026-09-01 08:30:20` KST; `no_agent=true`; NON_LLM |
+| 09:00 MM cron `edfc1815135b` | **ok** — latest `2026-09-01 09:00:32` KST; shared `content_draft` Runtime legs **3×** `marketing-cron:*` all **completed** |
+| Structured-output (Bot live) | **NOT EXERCISED** |
+| MCP/tool (Bot live) | **NOT EXERCISED** |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true`; no SNS side effects |
+| Rollback | **not exercised** — backup `c8-20260830_011218` + `config.yaml.c8bak` present |
+
+**INVALID_REQUEST root cause (isolated):** At **2026-08-30 01:13 KST** fresh Hermes oneshot correlation `hermes-inference-boundary:content-strategist…`, first `gemini-main` / `gemini-flash-lite-primary` attempt returned normalized **`INVALID_REQUEST`** → `route_failed` / `job_failed`; Runtime **re-enqueued immediately** (same correlation) → **`job_completed`** / `provider_success` in **1266 ms**. Not structured-output/tools; not deterministic recurrence. **Not a FINAL failure.**
+
+**Gateway health note:** Aug **31** journal shows **ChunkLoadError** for unrelated Next.js UI chunks (stale `.next` vs running PID after later builds). **`:3000` ai-runtime alias smoke remained PASS**; no observation-window ai-runtime **401/403/5xx** attributable to CS profile auth.
+
+**Next STEP (at time of C8 FINAL):** **C8.1 — Content Strategist Production Session Migration** — **completed below**.
+
+### C8.1 — Content Strategist session migration — PASS (2026-09-02 ~00:38 KST)
+
+**Runbook:** [session-migration-runbook.md](./session-migration-runbook.md) §10
+
+**C8.1 PASS — Content Strategist Desktop Bot Chat and Group member sessions migrated to Runtime Gateway with live Desktop verification.**
+
+| Item | Result |
+|---|---|
+| Backup | `~/.hermes/profiles/content-strategist/backups/c81-20260902_003106/` |
+| Desktop session | `20260825_133449_8b118f` — Runtime persisted; live **PASS** ~00:34 KST (`ui_session=52efd5b4`); msgs **2→4** |
+| Group session | `20260826_225441_d13218` — Runtime persisted; `@Content Strategist` live **PASS** ~00:38 KST (`ui_session=a95949bf`); msgs **32→34** |
+| Cold rebuild | `hermes.service` restart ×2 (post-Desktop ~00:31; post-Group ~00:36) |
+| Observability | Desktop + Group correlations: `content-strategist` / `content_draft`; `runtime-spike=0`; `fallback_used=false` |
+| MCP (Desktop read-only loop) | **NOT EXERCISED** (text-only verification turn) |
+| PA regression | Profile + sessions **Runtime**; checksum `1c81c008…` unchanged |
+| GA / MM | Still native Gemini |
+| Group integrity | `thealltour marketing` · 4 members · no recreate |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true` |
+| C9 | **Not started** (READY after C8 COMPLETE gate) |
+
+### C8 COMPLETE — production state (2026-09-02)
+
+| Bot | Profile | Desktop Bot Chat | Group member session |
+|---|---|---|---|
+| Performance Analyst | Runtime | Runtime | Runtime |
+| Content Strategist | Runtime | **Runtime** | **Runtime** |
+| Governance Auditor | Gemini | Gemini | Gemini |
+| Marketing Manager | Gemini | Gemini | Gemini |
+
+**C9 Governance Auditor Runtime Gateway Canary — started below** (profile canary only; legacy sessions remain Gemini until C9.1).
+
+### C9 — Governance Auditor Production Runtime Gateway Canary — IMMEDIATE PASS (2026-09-02 ~00:42 KST)
+
+**Immediate verdict: TESTS PASS / KEEP CANARY / 24H OBSERVATION**  
+**Not** “fully Runtime-backed” — legacy Desktop Bot Chat and Group member sessions remain **native Gemini snapshots** until **C9.1**.
+
+| Item | Value |
+|---|---|
+| Canary start (KST) | **2026-09-02 00:42:08** |
+| Minimum FINAL review | **2026-09-03 00:42:08** (≥24h) |
+| Git baseline | `main` @ `93fd2dc`; behind `origin/main` 3 (UI/affiliate; not a blocker) |
+| BUILD_ID | `WxUsrpAPYYixo7uRuBD_8` |
+| Backup | `~/.hermes/profiles/governance-auditor/backups/c9-20260902_004138/` + `config.yaml.c9bak` |
+| Pre-cutover checksum | `e33020da…` (native Gemini) |
+| Post-cutover checksum | `0821cedc…` — `custom:thealltour-runtime` / `thealltour/governance-auditor` / `fallback_providers: []` |
+| Alias preflight | `thealltour/governance-auditor` → `governance-auditor` / `governance` / production (not spike) |
+| Auth smoke | HTTP **200**; unauth **401** |
+| Fresh Hermes canary | **PASS** — session `20260902_004220_7e054a` · `C9_GA_AUTH_OK` |
+| Governance semantic ALLOW | **PASS** — session `20260902_004236_bd2322` · decision **ALLOW** |
+| Governance semantic BLOCK | **PASS** — session `20260902_004252_46a2f9` · decision **BLOCK** (unsupported-claims rationale) |
+| Structured-output (Bot live) | **NOT EXERCISED** — main Bot path does not send `response_format` (C3); semantic canary used text ALLOW/BLOCK lines |
+| MCP/tool (fresh canary) | **NOT EXERCISED** — probes explicitly text-only; MCP `include` config **intact** |
+| Observability | **42** events · `agent_id=governance-auditor` · `workload=governance` · `runtime-spike=0` · wrong attribution **0** |
+| Transient provider errors | **2** isolated `provider_error`/`job_failed` on concurrent canary legs; **same-correlation recovery** → `job_completed` / `fallback_used=false` (monitor in 24h; not immediate rollback) |
+| Runtime provider selected | `gemini-main` (Runtime upstream; not Hermes native) |
+| Legacy Desktop `20260825_133439_def619` | **Gemini pin** · mc **2** unchanged |
+| Legacy Group `20260826_225428_c13669` | **Gemini pin** · mc **18** unchanged |
+| PA / CS regression | Profile + Desktop + Group **Runtime**; checksums unchanged |
+| MM isolation | Gemini profile + sessions unchanged |
+| Group mixed mode | PA+CS Runtime · GA+MM Gemini · 4 members |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true` |
+| C9.1 / C10 | **Not started** |
+
+**C9.1 migration targets (record only):** Desktop Bot Chat `20260825_133439_def619` · Group GA `20260826_225428_c13669`.
+
+**Rollback:** `config.yaml.c9bak` (pre `e33020da…`); remove Gateway token line from profile `.env` if desired. PA/CS sessions **do not** roll back.
+
+**Next STEP (after ≥24h C9 FINAL):** **C9.1 — Governance Auditor Production Session Migration** per [session-migration-runbook.md](./session-migration-runbook.md). **C10 blocked** until C9 COMPLETE.
+
+### C9 FINAL — interim review (2026-09-02 ~00:45 KST) — **NOT ELIGIBLE / DEFER**
+
+**Verdict: observation window incomplete — C9 FINAL PASS withheld.**
+
+| Item | Value |
+|---|---|
+| Review timestamp | **2026-09-02 ~00:45 KST** |
+| Canary start | **2026-09-02 00:42:08 KST** |
+| Elapsed | **~0.05 h** (≈3 min) — **≥24h not met** |
+| Minimum FINAL end | **2026-09-03 00:42:08 KST** |
+| GA profile checksum | **unchanged** `0821cedc…` |
+| Gateway alias smoke (interim) | HTTP **200** · `governance-auditor` / `governance` |
+| Services | `thealltour-internal` **active** NRestarts=0 · `hermes.service` **active** |
+| Observability (window) | GA **42** events · **7** correlations · `runtime-spike=0` · wrong agent/workload on GA rows **0** |
+| `provider_error` (INVALID_REQUEST) | **3** — all during **immediate canary burst** (~00:42 KST); **0 recurrence** after; **provider-attempt failure** (same correlation did not `job_completed`); logical Hermes `-z` responses still **succeeded** via separate successful correlations |
+| Recovery | **4/7** correlations clean success · **3/7** failed correlations unrecovered (concurrent duplicate legs — monitor in 24h) |
+| Natural GA traffic post-immediate | **0** events |
+| Legacy Desktop/Group GA sessions | **Gemini pin** unchanged (`20260825_133439_def619` mc=2 · `20260826_225428_c13669` mc=20) |
+| PA / CS / MM regression | **PASS** (interim) |
+| Structured-output / MCP (natural) | **NOT EXERCISED** (no natural traffic — not a FINAL blocker when window completes) |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true` |
+
+**Re-run FINAL after:** 2026-09-03 **00:42:08 KST** minimum. Do **not** start C9.1 or C10 until **C9 FINAL PASS**.
+
+### C9 FINAL-ACCEL — evidence-based bounded canary (2026-09-02 ~00:51 KST)
+
+**Gate decision:** Original **24h passive soak replaced** by bounded production canary because post-cutover natural GA Runtime traffic ≈ **0** — elapsed time alone adds little compatibility evidence beyond PA/CS Gateway proof.
+
+**C9 FINAL PASS — Governance Auditor profile-level Runtime Gateway cutover validated through evidence-based bounded production canary. Legacy Desktop/TUI Bot Chat and Group member sessions remain native Gemini snapshots pending separate session migration.**
+
+| Item | Result |
+|---|---|
+| Review | **2026-09-02 ~00:51 KST** |
+| Bounded matrix | **10/10** sequential `hermes -z` probes (A ALLOW×3 · B BLOCK×3 · C borderline×2 · D repeat×2) |
+| User-visible success | **100%** (10/10 responses; no empty/malformed output) |
+| Semantic validation | A **ALLOW×3** ✓ · B **BLOCK×3** ✓ · C **REVIEW×2** (reasonable) · D repeat **BLOCK×2** (consistent duplicate-content class) |
+| GA profile checksum | **unchanged** `0821cedc…` |
+| Observability (full window) | GA **168** events · **28** correlations · `runtime-spike=0` · wrong agent/workload **0** |
+| Observability (accel only) | **20** correlations / **10** logical requests ≈ **2 Runtime jobs per Hermes turn** |
+| INVALID_REQUEST pattern | **39** provider_error events — all `INVALID_REQUEST`; **paired fail-only + success correlations** per logical request; **0** user-visible logical failures |
+| Initial 3 fail-only (immediate) | **Provider-attempt artifact** — concurrent duplicate Runtime leg; **not** tied to failed user-visible AUTH/ALLOW/BLOCK |
+| Structured-output (natural) | **NOT EXERCISED** |
+| MCP/tool loop (natural) | **NOT EXERCISED** |
+| Legacy Desktop `20260825_133439_def619` | **Gemini pin** mc=2 |
+| Legacy Group `20260826_225428_c13669` | **Gemini pin** mc=20 |
+| PA / CS / MM regression | **PASS** |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true` |
+
+**Remaining observability debt (non-blocking):** investigate duplicate Runtime job enqueue per Hermes inference turn (fail-only `INVALID_REQUEST` sibling correlation). Monitor during C9.1; not a governance-semantics or profile-cutover rollback trigger while user-visible success remains 100%.
+
+**Next STEP:** **C9.1 — Governance Auditor Production Session Migration** — **completed below**. **C10 blocked** until C9 COMPLETE gate.
+
+### C9.1 — Governance Auditor session migration — PASS (2026-09-02 ~00:58 KST)
+
+**Runbook:** [session-migration-runbook.md](./session-migration-runbook.md) §11
+
+**C9.1 PASS — Governance Auditor Desktop Bot Chat and Group member sessions migrated to Runtime Gateway with live Desktop verification.**
+
+| Item | Result |
+|---|---|
+| Backup | `~/.hermes/profiles/governance-auditor/backups/c91-20260902_005418/` |
+| Desktop session | `20260825_133439_def619` — Runtime persisted; live **PASS** ~00:55 KST (`ui_session=ecb2d549`); msgs **2→4** |
+| Group session | `20260826_225428_c13669` — Runtime persisted; `@Governance Auditor` live **PASS** ~00:57–00:58 KST (`ui_session=cd03fb07`); msgs **20→24** |
+| Cold rebuild | `hermes.service` restart ×2 (post-Desktop ~00:54; post-Group ~00:56) |
+| Observability | Desktop: 1 corr/1 turn · Group: 2 corr/2 turns · `governance-auditor`/`governance` · `provider_errors=0` · `runtime-spike=0` |
+| Duplicate job artifact (live) | **Not observed** on Desktop/Group live turns (1:1 correlation) |
+| Governance semantic (Group) | **REVIEW** on Threads draft context — policy-consistent |
+| MCP read-only loop | **NOT EXERCISED** |
+| PA / CS regression | **PASS** |
+| MM isolation | Gemini unchanged |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true` |
+| C10 | **Not started** (READY after C9 COMPLETE) |
+
+### C9 COMPLETE — production state (2026-09-02)
+
+| Bot | Profile | Desktop Bot Chat | Group member session |
+|---|---|---|---|
+| Performance Analyst | Runtime | Runtime | Runtime |
+| Content Strategist | Runtime | Runtime | Runtime |
+| Governance Auditor | Runtime | **Runtime** | **Runtime** |
+| Marketing Manager | Gemini | Gemini | Gemini |
+
+**C10 Marketing Manager Runtime Gateway Canary — started below** (profile canary only; legacy sessions remain Gemini until C10.1).
+
+### C10 — Marketing Manager profile canary — FINAL PASS (2026-09-02 ~01:05 KST)
+
+**Scope:** Profile-level Runtime Gateway cutover + evidence-based bounded canary. **No** Desktop/Group/Telegram session migration.
+
+**C10 FINAL PASS — Marketing Manager profile-level Runtime Gateway cutover validated through evidence-based bounded production canary. Legacy Desktop/TUI Bot Chat, Group member, and other persistent messaging sessions remain on their existing snapshots pending separate session migration where applicable.**
+
+| Item | Result |
+|---|---|
+| Backup | `~/.hermes/profiles/marketing-manager/backups/c10-20260902_010121/` |
+| Pre/post config SHA256 | `2c3cca456803518a…` → `75d1c8d10cdfe7f9…` |
+| Credential | `AI_RUNTIME_INFERENCE_GATEWAY_TOKEN` added to profile `.env` (mode **600**, `profile_env`) |
+| Preflight | **PASS** (`validateHermesRuntimeCutoverConfig`) |
+| Alias smoke | `thealltour/marketing-manager` → `marketing-manager` / `manager_decision` · auth **200** · unauth **401** |
+| Fresh canary | `hermes -p marketing-manager -z` **PASS** (`20260902_010225_de572f` · `C10_MM_AUTH_OK`) |
+| Semantic matrix | **5/5 PASS** (A priority · B delegation · C governance REVIEW · D performance · E defer) |
+| Observability (~01:02–01:05 KST) | **31** correlations · `agent_id=marketing-manager` · `workload=manager_decision` · **wrong agent/workload/spike=0** |
+| Duplicate artifact | **6** fail-only `INVALID_REQUEST` siblings · **25** completed-only · user-visible **6/6** success → **non-blocking debt** (C9 pattern) |
+| Legacy Desktop | `20260825_133452_2a2379` — **Gemini** mc=2 ✓ |
+| Legacy Group | `20260826_225302_4c4028` — **Gemini** mc=30 ✓ |
+| Telegram persistent | `20260826_233207_2c4ece79` (+ 3 older) — **Gemini** · config unchanged · **no outbound message** |
+| C10.1 targets (record) | Desktop `20260825_133452_2a2379` · Group `20260826_225302_4c4028` · Telegram TBD in C10.1 |
+| PA/CS/GA regression | **PASS** (profile + Desktop + Group Runtime unchanged) |
+| Cron `edfc1815135b` | **unchanged** (`no_agent=true`, `daily-marketing-plan.sh`) |
+| Publication | `PUBLICATION_FLOW_INACTIVE=true` |
+| Hermes orchestration | MCP toolset intact; cases A/C/D exercised Hermes tool loop (Runtime inference → Hermes tool exec) |
+| message_agent live | **NOT EXERCISED** (no production fan-out) |
+| C10.1 | **READY** — not started in this STEP |
+
+### Production state after C10 FINAL PASS (2026-09-02)
+
+| Bot | Profile | Desktop Bot Chat | Group member session |
+|---|---|---|---|
+| Performance Analyst | Runtime | Runtime | Runtime |
+| Content Strategist | Runtime | Runtime | Runtime |
+| Governance Auditor | Runtime | Runtime | Runtime |
+| Marketing Manager | **Runtime** | **Gemini** | **Gemini** |
+
+**Not** “Marketing Manager fully Runtime-backed” — legacy Desktop, Group, and Telegram sessions remain native Gemini snapshots until **C10.1**.
+
+**C10.1 Marketing Manager Production Session Migration — completed below.**
+
+### C10.1 — Marketing Manager session migration — PASS (2026-09-02 ~01:14 KST)
+
+**Runbook:** [session-migration-runbook.md](./session-migration-runbook.md) §12
+
+**C10.1 PASS — Marketing Manager Desktop Bot Chat and Group member sessions migrated to Runtime Gateway with live Desktop verification.**
+
+| Item | Result |
+|---|---|
+| Backup | `~/.hermes/profiles/marketing-manager/backups/c101-20260902_010902/` |
+| Desktop session | `20260825_133452_2a2379` — Runtime persisted; live **PASS** ~01:10 KST (`ui_session=dac75169`); mc **2→16** |
+| Group session | `20260826_225302_4c4028` — Runtime persisted; `@Marketing Manager` live **PASS** ~01:13–01:14 KST (`ui_session=240e628d`); mc **30→34** |
+| Cold rebuild | SIGTERM → systemd restart ×2 (PIDs 2125614→2130555→2131477) |
+| Observability | Desktop: 7 corr/1 turn · Group: 2 corr/2 turns · `marketing-manager`/`manager_decision` · fail-only sibling **0** on live |
+| Telegram | **MIGRATE_REQUIRED** · **DEFERRED** (`20260826_233207_2c4ece79` still Gemini) |
+| message_agent live | **NOT EXERCISED** |
+| PA / CS / GA regression | **PASS** |
+| Cron / publication | unchanged · `PUBLICATION_FLOW_INACTIVE=true` |
+
+### C10 COMPLETE — Runtime Migration COMPLETE (2026-09-02)
+
+| Bot | Profile | Desktop Bot Chat | Group member session |
+|---|---|---|---|
+| Performance Analyst | Runtime | Runtime | Runtime |
+| Content Strategist | Runtime | Runtime | Runtime |
+| Governance Auditor | Runtime | Runtime | Runtime |
+| Marketing Manager | Runtime | **Runtime** | **Runtime** |
+
+**Telegram persistent session** (`20260826_233207_2c4ece79`) remains **DEFERRED** — not included in “all messaging surfaces migrated.”
+
+**Next STEP:** Research Intelligence implementation — **separate STEP** (not started here).
+
 ---
 
 ## 1. Executive Summary

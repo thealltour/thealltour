@@ -4,9 +4,11 @@ import {
   agendaCandidateSchema,
   commercialRelevanceSchema,
   credibilityAssessmentSchema,
+  corroborationAssessmentSchema,
   freshnessMetadataSchema,
   researchBriefSchema,
   researchEvidenceSchema,
+  researchScoreComponentsSchema,
   researchSignalSchema,
   researchSourceSchema,
   travelRelevanceAssessmentSchema,
@@ -277,6 +279,7 @@ export function mapResearchBriefRow(
     summary: asString(row.summary),
     signalIds,
     primarySignalId: asStringOrNull(row.primary_signal_id),
+    clusterId: asStringOrNull(row.cluster_id),
     claims,
     evidence,
     topics: asStringArray(row.topics),
@@ -297,6 +300,9 @@ export function mapResearchBriefRow(
     commercialRelevance: row.commercial_relevance
       ? parseJsonField(row.commercial_relevance, commercialRelevanceSchema, "brief.commercial_relevance")
       : null,
+    corroboration: row.corroboration
+      ? parseJsonField(row.corroboration, corroborationAssessmentSchema, "brief.corroboration")
+      : null,
     risks,
     openQuestions,
     generatedAt: normalizeIsoDatetime(row.generated_at),
@@ -311,6 +317,7 @@ export function toResearchBriefRow(brief: ResearchBrief): Record<string, unknown
     title: brief.title,
     summary: brief.summary,
     primary_signal_id: brief.primarySignalId ?? null,
+    cluster_id: brief.clusterId ?? null,
     claims: brief.claims,
     topics: brief.topics,
     destinations: brief.destinations,
@@ -320,6 +327,7 @@ export function toResearchBriefRow(brief: ResearchBrief): Record<string, unknown
     travel_relevance: brief.travelRelevance,
     public_interest: brief.publicInterest,
     commercial_relevance: brief.commercialRelevance ?? null,
+    corroboration: brief.corroboration ?? null,
     risks: brief.risks,
     open_questions: brief.openQuestions,
     generated_at: brief.generatedAt,
@@ -350,7 +358,18 @@ export function mapAgendaCandidateRow(row: Record<string, unknown>): AgendaCandi
     commercialLinkageScore: asNumberOrNull(row.commercial_linkage_score),
     historicalDuplicationScore: asNumberOrNull(row.historical_duplication_score),
     seasonalityScore: asNumberOrNull(row.seasonality_score),
+    corroborationScore: asNumberOrNull(row.corroboration_score),
     compositeResearchScore: asNumberOrNull(row.composite_research_score) ?? 0,
+    researchScoreComponents: row.research_score_components
+      ? parseJsonField(
+          row.research_score_components,
+          researchScoreComponentsSchema,
+          "candidate.research_score_components",
+        )
+      : null,
+    scoreReasons: Array.isArray(row.score_reasons)
+      ? row.score_reasons.filter((item): item is string => typeof item === "string")
+      : undefined,
     riskFlags,
     supportingEvidenceIds,
     status: asString(row.status),
@@ -372,7 +391,10 @@ export function toAgendaCandidateRow(candidate: AgendaCandidate): Record<string,
     commercial_linkage_score: candidate.commercialLinkageScore ?? null,
     historical_duplication_score: candidate.historicalDuplicationScore ?? null,
     seasonality_score: candidate.seasonalityScore ?? null,
+    corroboration_score: candidate.corroborationScore ?? null,
     composite_research_score: candidate.compositeResearchScore,
+    research_score_components: candidate.researchScoreComponents ?? null,
+    score_reasons: candidate.scoreReasons ?? [],
     risk_flags: candidate.riskFlags,
     supporting_evidence_ids: candidate.supportingEvidenceIds,
     status: candidate.status,

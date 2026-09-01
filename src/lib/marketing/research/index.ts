@@ -6,6 +6,16 @@ export * from "@/lib/marketing/research/collectors";
 export * from "@/lib/marketing/research/collection/runResearchCollectionCycle";
 export { bootstrapResearchSources } from "@/lib/marketing/research/collection/bootstrapSources";
 export * from "@/lib/marketing/research/services/pipeline";
+export { buildSemanticResearchText } from "@/lib/marketing/research/services/semanticText";
+export { runSemanticDedup } from "@/lib/marketing/research/services/semanticDeduplicator";
+export {
+  rankAgendaCandidates,
+} from "@/lib/marketing/research/services/agendaCandidateBuilder";
+export {
+  CALIBRATED_RESEARCH_SCORE_WEIGHTS,
+  buildResearchScoreComponents,
+  computeCompositeResearchScore,
+} from "@/lib/marketing/research/services/scoringPolicy";
 export { scoreFreshness, isStaleFreshness } from "@/lib/marketing/research/services/freshnessScorer";
 export { scoreCredibility } from "@/lib/marketing/research/services/credibilityScorer";
 export {

@@ -139,17 +139,29 @@ Sample signals preserved source URLs and conservative summaries (no fabricated c
 
 ## 10. Known limitations
 
-- Local `supabase start` blocked by legacy migration (`members` schema) — research migration SQL reviewed but **not applied** in this environment
-- Supabase persistence validated via mock-client tests; live DB round-trip pending migration apply
-- No cross-source semantic duplicate clustering yet
-- MM workflow not connected (by design for STEP 3-2)
+- Semantic dedup L3 requires BGE-M3 availability; pipeline degrades to L1/L2 when unavailable
+- Supabase quality-scoring columns require migration `20260902143000_research_quality_scoring.sql` (apply via `supabase db push`)
+- MM workflow not connected (by design — STEP 3-4)
 - English-only sources in MVP
+- Public interest remains heuristic-only (no Trends API)
 
 ---
 
-## 11. Next STEP (3-3)
+## 11. Pipeline integration (STEP 3-3)
 
-- Apply research migration to Supabase (after legacy migration fix or targeted apply)
-- Semantic dedup L3 (BGE-M3 interface)
-- Scoring calibration
-- MM integration hook (after quality stable)
+Collection cycle now runs:
+
+```
+collect → normalize → enrich → L1/L2 dedup → L3 semantic dedup → cluster briefs → ranked AgendaCandidates
+```
+
+- Semantic adapter: `runSemanticDedup()` reuses `@/lib/marketing/semantic/embeddingProvider`
+- Quality report: `npx tsx scripts/research-quality-report.ts`
+- Calibration docs: `research-quality-calibration.md`
+
+---
+
+## 12. Next STEP (3-4)
+
+- Marketing Manager context/MCP consumption path
+- Final agenda selection remains MM-owned

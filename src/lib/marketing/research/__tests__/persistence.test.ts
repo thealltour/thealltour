@@ -16,8 +16,14 @@ const RESEARCH_TABLES = [
   "agenda_candidates",
 ] as const;
 
+const QUALITY_MIGRATION_PATH = resolve(
+  process.cwd(),
+  "supabase/migrations/20260902143000_research_quality_scoring.sql",
+);
+
 describe("research persistence migration", () => {
   const migrationSql = readFileSync(MIGRATION_PATH, "utf8");
+  const qualityMigrationSql = readFileSync(QUALITY_MIGRATION_PATH, "utf8");
 
   it("creates expected tables without credentials", () => {
     for (const table of RESEARCH_TABLES) {
@@ -47,5 +53,13 @@ describe("research persistence migration", () => {
       expect(migrationSql).toContain(`revoke all on public.${table} from anon, authenticated`);
     }
     expect(migrationSql).toContain("service_role_all_research_signals");
+  });
+
+  it("adds quality scoring columns in follow-up migration", () => {
+    expect(qualityMigrationSql).toContain("cluster_id");
+    expect(qualityMigrationSql).toContain("corroboration");
+    expect(qualityMigrationSql).toContain("research_score_components");
+    expect(qualityMigrationSql).toContain("score_reasons");
+    expect(qualityMigrationSql).not.toMatch(/drop table/i);
   });
 });

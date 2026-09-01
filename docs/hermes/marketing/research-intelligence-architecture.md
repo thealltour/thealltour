@@ -139,9 +139,11 @@ Factors: official source type, primary vs secondary evidence, authority level on
 |---|---|
 | L1 | Exact `canonicalUrl` or `externalId` |
 | L2 | `normalizedFingerprint` (title + claim + geography hash) |
-| L3 | Semantic similarity (future — BGE-M3 interface hook only) |
+| L3 | **BGE-M3 semantic similarity** — `runSemanticDedup()` with prefilter + guards (STEP 3-3) |
 
-Duplicates link via `duplicateOfSignalId`; primary signal retains enriched scores.
+Duplicates link via `duplicateOfSignalId`; primary signal retains enriched scores. Same-event clusters produce one **ResearchBrief** with corroboration metadata.
+
+See `research-quality-calibration.md` for threshold policy and false-positive guards.
 
 ---
 
@@ -249,10 +251,9 @@ Implemented:
 | STEP | Focus |
 |---|---|
 | 3-2 | **DONE** — read-only collectors (UK Gov Atom, NYT Travel RSS), Supabase repo, collection cycle. See `research-collectors.md`. |
-| 3-3 | Internal + performance signal ingestion jobs |
-| 3-4 | Semantic dedup L3, clustering |
-| 3-5 | MM context/MCP consumption path |
-| 3-6 | Optional Market Researcher Bot evaluation |
+| 3-3 | **DONE** — L3 semantic dedup (BGE-M3), clustering foundation, corroboration/novelty scoring, calibration. See `research-quality-calibration.md`. |
+| 3-4 | MM context/MCP consumption path |
+| 3-5 | Optional Market Researcher Bot evaluation |
 
 ---
 

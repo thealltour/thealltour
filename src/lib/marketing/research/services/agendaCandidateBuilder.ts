@@ -1,52 +1,62 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  scoreHistoricalDuplication,
+  scoreNovelty,
+} from "@/lib/marketing/research/services/noveltyScorer";
+import {
+  buildScoreReasons,
+  computeCompositeResearchScore,
+  type ResearchScoreComponents,
+} from "@/lib/marketing/research/services/scoringPolicy";
 import type { AgendaCandidate, ResearchBrief } from "@/lib/marketing/research/types/researchBrief";
-
-const RESEARCH_SCORE_WEIGHTS = {
-  freshness: 0.2,
-  credibility: 0.25,
-  travelRelevance: 0.25,
-  publicInterest: 0.15,
-  commercialLinkage: 0.1,
-  seasonality: 0.05,
-} as const;
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+function commercialLinkageScore(brief: ResearchBrief): number {
+  const level = brief.commercialRelevance?.level;
+  if (level === "high") return 0.75;
+  if (level === "medium") return 0.55;
+  if (level === "low") return 0.35;
+  return 0.25;
+}
+
+export function buildResearchScoreComponents(
+  brief: ResearchBrief,
+  priorBriefs: ResearchBrief[] = [],
+): ResearchScoreComponents {
+  const novelty = scoreNovelty({ brief, priorBriefs });
+  const seasonalityScore = brief.topics.some((t) => /season|spring|summer|festival|winter/i.test(t))
+    ? 0.7
+    : 0.4;
+
+  return {
+    freshness: clamp01(brief.freshness.freshnessScore ?? 0.5),
+    credibility: clamp01(brief.credibility.score),
+    travelRelevance: clamp01(brief.travelRelevance.score),
+    publicInterest: clamp01(brief.publicInterest),
+    corroboration: clamp01(brief.corroboration?.score ?? 0.35),
+    novelty: clamp01(novelty.score),
+    seasonality: seasonalityScore,
+    commercial: commercialLinkageScore(brief),
+  };
+}
+
 export function buildAgendaCandidateFromBrief(
   brief: ResearchBrief,
   now: Date = new Date(),
+  priorBriefs: ResearchBrief[] = [],
 ): AgendaCandidate {
-  const freshnessScore = brief.freshness.freshnessScore ?? 0.5;
-  const credibilityScore = brief.credibility.score;
-  const travelRelevanceScore = brief.travelRelevance.score;
-  const publicInterestScore = brief.publicInterest;
-  const commercialLinkageScore =
-    brief.commercialRelevance?.level === "high"
-      ? 0.85
-      : brief.commercialRelevance?.level === "medium"
-        ? 0.6
-        : brief.commercialRelevance?.level === "low"
-          ? 0.35
-          : 0.2;
-  const seasonalityScore = brief.topics.some((t) => /season|spring|summer|festival/i.test(t))
-    ? 0.7
-    : 0.4;
-  const historicalDuplicationScore = 0.5;
-
-  const compositeResearchScore = clamp01(
-    freshnessScore * RESEARCH_SCORE_WEIGHTS.freshness +
-      credibilityScore * RESEARCH_SCORE_WEIGHTS.credibility +
-      travelRelevanceScore * RESEARCH_SCORE_WEIGHTS.travelRelevance +
-      publicInterestScore * RESEARCH_SCORE_WEIGHTS.publicInterest +
-      commercialLinkageScore * RESEARCH_SCORE_WEIGHTS.commercialLinkage +
-      seasonalityScore * RESEARCH_SCORE_WEIGHTS.seasonality,
-  );
+  const components = buildResearchScoreComponents(brief, priorBriefs);
+  const novelty = scoreNovelty({ brief, priorBriefs });
+  const compositeResearchScore = computeCompositeResearchScore(components);
+  const scoreReasons = buildScoreReasons(components);
 
   const riskFlags = [...brief.risks];
-  if (credibilityScore < 0.4) riskFlags.push("low_credibility");
+  if (components.credibility < 0.4) riskFlags.push("low_credibility");
+  if (novelty.penalty >= 0.3) riskFlags.push("topic_repetition");
 
   const timestamp = now.toISOString();
 
@@ -55,14 +65,17 @@ export function buildAgendaCandidateFromBrief(
     researchBriefId: brief.id,
     title: brief.title,
     rationale: brief.summary,
-    freshnessScore,
-    publicInterestScore,
-    travelRelevanceScore,
-    credibilityScore,
-    commercialLinkageScore,
-    historicalDuplicationScore,
-    seasonalityScore,
+    freshnessScore: components.freshness,
+    publicInterestScore: components.publicInterest,
+    travelRelevanceScore: components.travelRelevance,
+    credibilityScore: components.credibility,
+    commercialLinkageScore: components.commercial,
+    historicalDuplicationScore: scoreHistoricalDuplication(novelty),
+    seasonalityScore: components.seasonality,
+    corroborationScore: components.corroboration,
     compositeResearchScore,
+    researchScoreComponents: components,
+    scoreReasons,
     riskFlags,
     supportingEvidenceIds: brief.evidence.map((e) => e.id),
     status: "candidate",
@@ -78,4 +91,13 @@ export function assertAgendaCandidateNotFinalDecision(candidate: AgendaCandidate
       throw new Error(`AgendaCandidate must not include MM decision field: ${key}`);
     }
   }
+}
+
+export function rankAgendaCandidates(candidates: AgendaCandidate[]): AgendaCandidate[] {
+  return [...candidates].sort(
+    (a, b) =>
+      b.compositeResearchScore - a.compositeResearchScore ||
+      (b.corroborationScore ?? 0) - (a.corroborationScore ?? 0) ||
+      b.freshnessScore - a.freshnessScore,
+  );
 }

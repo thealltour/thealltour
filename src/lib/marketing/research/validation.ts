@@ -101,6 +101,24 @@ export const credibilityAssessmentSchema = z.object({
   reasons: z.array(z.string()),
 });
 
+export const corroborationAssessmentSchema = z.object({
+  score: scoreSchema,
+  sourceDiversityCount: z.number().int().min(0),
+  independentSourceCount: z.number().int().min(0),
+  reasons: z.array(z.string()),
+});
+
+export const researchScoreComponentsSchema = z.object({
+  freshness: scoreSchema,
+  credibility: scoreSchema,
+  travelRelevance: scoreSchema,
+  publicInterest: scoreSchema,
+  corroboration: scoreSchema,
+  novelty: scoreSchema,
+  seasonality: scoreSchema,
+  commercial: scoreSchema,
+});
+
 /** ResearchBrief must not carry content-draft fields. */
 export const researchBriefSchema = z
   .object({
@@ -109,6 +127,7 @@ export const researchBriefSchema = z
     summary: z.string().min(1),
     signalIds: z.array(z.string().uuid()).min(1),
     primarySignalId: z.string().uuid().nullable().optional(),
+    clusterId: z.string().uuid().nullable().optional(),
     claims: z.array(z.string()).min(1),
     evidence: z.array(researchEvidenceSchema).min(1),
     topics: z.array(z.string()),
@@ -119,6 +138,7 @@ export const researchBriefSchema = z
     travelRelevance: travelRelevanceAssessmentSchema,
     publicInterest: scoreSchema,
     commercialRelevance: commercialRelevanceSchema.nullable().optional(),
+    corroboration: corroborationAssessmentSchema.nullable().optional(),
     risks: z.array(z.string()),
     openQuestions: z.array(z.string()),
     generatedAt: z.string().datetime(),
@@ -141,7 +161,10 @@ export const agendaCandidateSchema = z
     commercialLinkageScore: scoreSchema.nullable().optional(),
     historicalDuplicationScore: scoreSchema.nullable().optional(),
     seasonalityScore: scoreSchema.nullable().optional(),
+    corroborationScore: scoreSchema.nullable().optional(),
     compositeResearchScore: scoreSchema,
+    researchScoreComponents: researchScoreComponentsSchema.nullable().optional(),
+    scoreReasons: z.array(z.string()).optional(),
     riskFlags: z.array(z.string()),
     supportingEvidenceIds: z.array(z.string()),
     status: z.enum(AGENDA_CANDIDATE_STATUSES),

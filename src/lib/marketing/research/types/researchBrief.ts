@@ -6,6 +6,8 @@ import type {
   TravelRelevanceAssessment,
 } from "@/lib/marketing/research/types/researchSignal";
 import type { ResearchBriefStatus } from "@/lib/marketing/research/types/enums";
+import type { CorroborationAssessment } from "@/lib/marketing/research/services/corroborationScorer";
+import type { ResearchScoreComponents } from "@/lib/marketing/research/services/scoringPolicy";
 
 /** Validated research unit — not a content draft. */
 export type ResearchBrief = {
@@ -15,6 +17,7 @@ export type ResearchBrief = {
 
   signalIds: string[];
   primarySignalId?: string | null;
+  clusterId?: string | null;
 
   claims: string[];
   evidence: ResearchEvidence[];
@@ -28,6 +31,7 @@ export type ResearchBrief = {
   travelRelevance: TravelRelevanceAssessment;
   publicInterest: number;
   commercialRelevance?: CommercialRelevance | null;
+  corroboration?: CorroborationAssessment | null;
 
   risks: string[];
   openQuestions: string[];
@@ -53,8 +57,11 @@ export type AgendaCandidate = {
   commercialLinkageScore?: number | null;
   historicalDuplicationScore?: number | null;
   seasonalityScore?: number | null;
+  corroborationScore?: number | null;
 
   compositeResearchScore: number;
+  researchScoreComponents?: ResearchScoreComponents | null;
+  scoreReasons?: string[];
 
   riskFlags: string[];
   supportingEvidenceIds: string[];

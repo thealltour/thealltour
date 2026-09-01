@@ -36,3 +36,4 @@ export {
   getContentAssignmentById,
   getAssignmentResearchEvidence,
 } from "@/lib/marketing/content/store/contentAssignmentStore";
+export * from "@/lib/marketing/content/governance";

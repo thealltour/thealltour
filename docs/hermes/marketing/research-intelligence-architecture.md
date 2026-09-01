@@ -254,7 +254,8 @@ Implemented:
 | 3-3 | **DONE** — L3 semantic dedup (BGE-M3), clustering foundation, corroboration/novelty scoring, calibration. See `research-quality-calibration.md`. |
 | 3-4 | **DONE** — MM read-only research context via `get_research_context` MCP tool. See below. |
 | 3-5 | **DONE** — MM → CS ContentAssignment / ContentPlan handoff. See below. |
-| 3-6 | Optional Market Researcher Bot evaluation |
+| 3-6 | **DONE** — CS → GA GovernanceReviewRequest / GovernanceDecision handoff. See below. |
+| 3-7 | Optional Market Researcher Bot evaluation |
 
 ---
 

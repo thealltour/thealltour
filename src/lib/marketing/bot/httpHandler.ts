@@ -177,6 +177,22 @@ const MCP_TOOL_SCHEMAS: Record<string, { description: string; required: string[]
         assignmentId: { type: "string" },
       },
     },
+    get_governance_review: {
+      description:
+        "Read-only governance review record lookup by reviewId. Returns bounded request/decision state. No publication.",
+      required: ["reviewId"],
+      properties: {
+        reviewId: { type: "string" },
+      },
+    },
+    get_assignment_governance_status: {
+      description:
+        "Read-only latest governance status for a ContentAssignment. No publication.",
+      required: ["assignmentId"],
+      properties: {
+        assignmentId: { type: "string" },
+      },
+    },
     run_department_orchestration: {
       description:
         "Application-level Marketing Manager orchestration. Actually dispatches allowlisted specialist Hermes profiles, collects evidence, and synthesizes. Does not publish. Ingress-agnostic (Telegram/Desktop).",

@@ -16,6 +16,8 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       create_content_assignment: "allow",
       get_content_assignment: "optional",
       get_assignment_research_evidence: "optional",
+      get_governance_review: "optional",
+      get_assignment_governance_status: "optional",
       run_department_orchestration: "allow",
     },
     content_strategist: {
@@ -30,6 +32,8 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       create_content_assignment: "deny",
       get_content_assignment: "allow",
       get_assignment_research_evidence: "allow",
+      get_governance_review: "allow",
+      get_assignment_governance_status: "allow",
       run_department_orchestration: "deny",
     },
     governance_auditor: {
@@ -44,6 +48,8 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       create_content_assignment: "deny",
       get_content_assignment: "optional",
       get_assignment_research_evidence: "optional",
+      get_governance_review: "allow",
+      get_assignment_governance_status: "allow",
       run_department_orchestration: "deny",
     },
     performance_analyst: {
@@ -58,6 +64,8 @@ export const MARKETING_SKILL_MATRIX: Record<MarketingAgentRole, Record<Marketing
       create_content_assignment: "deny",
       get_content_assignment: "deny",
       get_assignment_research_evidence: "deny",
+      get_governance_review: "deny",
+      get_assignment_governance_status: "deny",
       run_department_orchestration: "deny",
     },
   };

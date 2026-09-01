@@ -18,6 +18,8 @@ export const MARKETING_BOT_TOOL_NAMES = [
   "create_content_assignment",
   "get_content_assignment",
   "get_assignment_research_evidence",
+  "get_governance_review",
+  "get_assignment_governance_status",
   "run_department_orchestration",
 ] as const;
 
@@ -189,6 +191,20 @@ export type GetAssignmentResearchEvidenceInput = {
 export type GetAssignmentResearchEvidenceResult =
   import("@/lib/marketing/content/types").GetAssignmentResearchEvidenceResult;
 
+export type GetGovernanceReviewInput = {
+  reviewId: string;
+};
+
+export type GetGovernanceReviewResult =
+  import("@/lib/marketing/content/governance/types").GetGovernanceReviewResult;
+
+export type GetAssignmentGovernanceStatusInput = {
+  assignmentId: string;
+};
+
+export type GetAssignmentGovernanceStatusResult =
+  import("@/lib/marketing/content/governance/types").GetAssignmentGovernanceStatusResult;
+
 export type BuildContentBriefInput = {
   productId: string;
   channel: string;
@@ -321,6 +337,7 @@ export type MarketingBotDeps = {
     options: import("@/lib/marketing/research/manager/types").GetMarketingManagerResearchContextOptions,
   ) => Promise<import("@/lib/marketing/research/manager/types").MarketingResearchContext>;
   contentAssignmentStore?: import("@/lib/marketing/content/store/contentAssignmentStore").ContentAssignmentStore;
+  governanceReviewStore?: import("@/lib/marketing/content/governance/store/governanceReviewStore").GovernanceReviewStore;
   hermesRuntime?: import("@/lib/marketing/bot/organization/hermesRuntime").HermesAgentRuntime;
   readJobsFile?: (absolutePath: string) => string | null;
   fetchGatewayStatus?: (url: string) => Promise<unknown>;

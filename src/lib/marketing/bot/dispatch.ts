@@ -9,6 +9,8 @@ import { getResearchContextTool } from "@/lib/marketing/bot/getResearchContextTo
 import { createContentAssignmentTool } from "@/lib/marketing/bot/createContentAssignmentTool";
 import { getContentAssignmentTool } from "@/lib/marketing/bot/getContentAssignmentTool";
 import { getAssignmentResearchEvidenceTool } from "@/lib/marketing/bot/getAssignmentResearchEvidenceTool";
+import { getGovernanceReviewTool } from "@/lib/marketing/bot/getGovernanceReviewTool";
+import { getAssignmentGovernanceStatusTool } from "@/lib/marketing/bot/getAssignmentGovernanceStatusTool";
 import { runDepartmentOrchestrationTool } from "@/lib/marketing/bot/runDepartmentOrchestrationTool";
 import { searchMarketingMemoryTool } from "@/lib/marketing/bot/searchMarketingMemoryTool";
 import { MARKETING_BOT_TOOL_NAMES, type MarketingBotDeps, type MarketingBotToolName } from "@/lib/marketing/bot/types";
@@ -194,6 +196,20 @@ export async function dispatchMarketingBotTool(
       );
     case "get_assignment_research_evidence":
       return getAssignmentResearchEvidenceTool(
+        {
+          assignmentId: asOptionalString(body.assignmentId) ?? "",
+        },
+        deps,
+      );
+    case "get_governance_review":
+      return getGovernanceReviewTool(
+        {
+          reviewId: asOptionalString(body.reviewId) ?? "",
+        },
+        deps,
+      );
+    case "get_assignment_governance_status":
+      return getAssignmentGovernanceStatusTool(
         {
           assignmentId: asOptionalString(body.assignmentId) ?? "",
         },

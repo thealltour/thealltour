@@ -28,16 +28,18 @@ MCP:
 
 ## Content → Governance
 
-`GovernanceReviewRequest`
+`StructuredGovernanceReviewRequest` (`governance-review-request-v1`)
 
-- title
-- body
-- channel
-- productId
-- campaignId?
-- agendaId / agendaKey?
+- reviewId, assignmentId, selectedAgendaId
+- draft, contentPlan, claims[], evidenceRefs[]
+- commercialIntent, matchedProductIds, cta, constraints
+- preflightSignals (deterministic unsupported-claim hints)
 
-작성자가 `review_generated_content`를 직접 호출하지 않는 것이 기본이다. Manager 또는 Auditor가 호출한다.
+Governance Auditor returns structured `GovernanceDecision` (`governance-decision-v1`) with ALLOW/REVIEW/BLOCK, requiredRevisions on BLOCK.
+
+MCP read-only: `get_governance_review`, `get_assignment_governance_status`
+
+Legacy slim payload fields (`title`, `body`, `channel`, `productId`, `agendaId`) remain compatible via nested draft/body.
 
 ## Governance → Manager
 

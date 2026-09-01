@@ -6,7 +6,8 @@ import {
   type RuntimeExecutor,
 } from "@/ai-runtime/integration";
 import type { HandoffEnvelope } from "@/lib/marketing/bot/organization/envelope";
-import type { ContentDraftRequest, GovernanceReviewRequest } from "@/lib/marketing/bot/organization/handoffs";
+import type { ContentDraftRequest } from "@/lib/marketing/bot/organization/handoffs";
+import type { StructuredGovernanceReviewRequest } from "@/lib/marketing/content/governance/types";
 import type { DepartmentPipelineDeps } from "@/lib/marketing/bot/organization/pipeline";
 import {
   MARKETING_CRON_JOB_ID,
@@ -95,7 +96,7 @@ export function createMarketingPlanPipelineDispatch(
         const result = await executor.executeAndWait(request, { timeoutMs, now });
         return parseContentStrategistOutput(assertRuntimeContent(result));
       },
-      requestGovernance: async (envelope: HandoffEnvelope<GovernanceReviewRequest>) => {
+      requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
         const request = createCronRuntimeRequest(
           {
             agentId: "governance-auditor",
@@ -127,7 +128,7 @@ export function createMarketingPlanPipelineDispatch(
       const raw = invokeHermes("content-strategist", buildContentDraftPrompt(envelope.payload));
       return parseContentStrategistOutput(raw);
     },
-    requestGovernance: async (envelope: HandoffEnvelope<GovernanceReviewRequest>) => {
+    requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
       const raw = invokeHermes("governance-auditor", buildGovernanceReviewPrompt(envelope.payload));
       return parseGovernanceAuditorOutput(raw);
     },

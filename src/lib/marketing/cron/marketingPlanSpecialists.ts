@@ -16,8 +16,10 @@ export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
   return `JSON only. ContentAssignment/ContentDraftRequest를 근거로 contentPlan + Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마. Do not re-select the manager agenda.\n${JSON.stringify(payload)}\nshape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":null,"assignmentId":null}`;
 }
 
-export function buildGovernanceReviewPrompt(payload: GovernanceReviewRequest): string {
-  return `JSON only. 이 초안을 검사하고 ALLOW/REVIEW/BLOCK만. 게시하지 마. 자동 승인 금지.\n${JSON.stringify(payload)}\nshape: {"decision":"ALLOW","riskScore":0,"reasons":[],"revisionHints":[],"humanApprovalRequired":false,"semanticAvailable":true}`;
+export function buildGovernanceReviewPrompt(
+  payload: GovernanceReviewRequest | import("@/lib/marketing/content/governance/types").StructuredGovernanceReviewRequest,
+): string {
+  return `JSON only. GovernanceReviewRequest with claims/evidence. Compare draft claims to evidenceRefs. Do not rewrite content. Do not publish.\n${JSON.stringify(payload)}\nshape: {"decision":"ALLOW","riskScore":0,"reasons":[],"revisionHints":[],"requiredRevisions":[],"humanApprovalRequired":false,"semanticAvailable":true}`;
 }
 
 export function parseContentStrategistOutput(raw: string): ContentStrategistOutput {

@@ -14,10 +14,15 @@ import {
   createHandoffEnvelope,
   type HandoffEnvelope,
 } from "@/lib/marketing/bot/organization/envelope";
+import {
+  buildGovernanceReviewIdempotencyKey,
+  normalizeGovernanceReviewResult,
+  prepareContentToGovernanceHandoff,
+  recordGovernanceReview,
+} from "@/lib/marketing/content/governance";
 import type {
   ContentDraftRequest,
   ContentStrategistOutput,
-  GovernanceReviewRequest,
   GovernanceReviewResult,
   PerformanceBrief,
 } from "@/lib/marketing/bot/organization/handoffs";
@@ -65,10 +70,13 @@ export type DepartmentPipelineResult = {
 
 export type DepartmentPipelineDeps = {
   requestDraft: (envelope: HandoffEnvelope<ContentDraftRequest>) => Promise<ContentStrategistOutput>;
-  requestGovernance: (envelope: HandoffEnvelope<GovernanceReviewRequest>) => Promise<GovernanceReviewResult>;
+  requestGovernance: (
+    envelope: HandoffEnvelope<import("@/lib/marketing/content/governance/types").StructuredGovernanceReviewRequest>,
+  ) => Promise<GovernanceReviewResult>;
   requestPerformance?: (
     envelope: HandoffEnvelope<{ productId: string; channel: string; lookbackDays: number }>,
   ) => Promise<PerformanceBrief | PerformanceUnavailable>;
+  governanceReviewStore?: import("@/lib/marketing/content/governance/store/governanceReviewStore").GovernanceReviewStore;
 };
 
 function assertClean(value: unknown): void {
@@ -185,7 +193,33 @@ export async function runDepartmentPipeline(
     return draft;
   }
 
-  async function reviewOnce(draft: ContentStrategistOutput): Promise<GovernanceReviewResult> {
+  async function reviewOnce(
+    draft: ContentStrategistOutput,
+    priorRevision: number,
+  ): Promise<GovernanceReviewResult> {
+    const handoff = prepareContentToGovernanceHandoff({
+      draft,
+      assignment: input.contentAssignment,
+      selectedAgenda: input.selectedAgenda,
+      contentPlan: draft.contentPlan ?? input.contentPlanScaffold,
+      productId: input.productId,
+      channel: input.channel,
+      priorRevision,
+    });
+
+    const idempotencyKey = buildGovernanceReviewIdempotencyKey({
+      assignmentId: handoff.request.assignmentId,
+      draftBody: draft.body,
+      priorRevision,
+    });
+
+    recordGovernanceReview({
+      request: handoff.request,
+      decision: null,
+      idempotencyKey,
+      store: deps.governanceReviewStore,
+    });
+
     const env = createHandoffEnvelope({
       sourceAgent: "content-strategist",
       targetAgent: "governance-auditor",
@@ -194,19 +228,21 @@ export async function runDepartmentPipeline(
       channel: input.channel,
       goal: input.goal,
       contextMemoryRefs: input.memoryReferences ?? [],
-      payload: {
-        title: draft.title,
-        body: draft.body,
-        channel: draft.channel,
-        productId: input.productId,
-      } satisfies GovernanceReviewRequest,
+      payload: handoff.request,
     });
     envelopes.push(env);
-    const governance = await deps.requestGovernance(env);
-    assertClean(governance);
-    if (!governance?.decision) {
+    const raw = await deps.requestGovernance(env);
+    assertClean(raw);
+    if (!raw?.decision) {
       throw new MarketingBotValidationError("Governance Auditor returned no decision");
     }
+    const normalized = normalizeGovernanceReviewResult(raw, handoff.request);
+    recordGovernanceReview({
+      request: handoff.request,
+      decision: normalized.structured,
+      idempotencyKey,
+      store: deps.governanceReviewStore,
+    });
     envelopes.push(
       createHandoffEnvelope({
         sourceAgent: "governance-auditor",
@@ -216,10 +252,10 @@ export async function runDepartmentPipeline(
         channel: input.channel,
         goal: input.goal,
         contextMemoryRefs: input.memoryReferences ?? [],
-        payload: governance,
+        payload: normalized.structured,
       }),
     );
-    return governance;
+    return normalized.handoff;
   }
 
   let draft: ContentStrategistOutput;
@@ -241,7 +277,7 @@ export async function runDepartmentPipeline(
 
   let governance: GovernanceReviewResult;
   try {
-    governance = await reviewOnce(draft);
+    governance = await reviewOnce(draft, revisionRounds);
   } catch (error) {
     const message = error instanceof Error ? error.message : "governance_unavailable";
     return {
@@ -265,7 +301,7 @@ export async function runDepartmentPipeline(
     ];
     try {
       draft = await draftOnce(revisionConstraints);
-      governance = await reviewOnce(draft);
+      governance = await reviewOnce(draft, revisionRounds);
     } catch (error) {
       const message = error instanceof Error ? error.message : "revision_handoff_failed";
       return {

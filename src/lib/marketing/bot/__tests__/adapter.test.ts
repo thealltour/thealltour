@@ -114,6 +114,8 @@ describe("MCP JSON-RPC adapter", () => {
     expect(names).toContain("create_content_assignment");
     expect(names).toContain("get_content_assignment");
     expect(names).toContain("get_assignment_research_evidence");
+    expect(names).toContain("get_governance_review");
+    expect(names).toContain("get_assignment_governance_status");
     expect(names).toContain("run_department_orchestration");
     expect(names.some((name) => /publish|send|post/i.test(name))).toBe(false);
     const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool.annotations?.readOnlyHint]));
@@ -123,6 +125,8 @@ describe("MCP JSON-RPC adapter", () => {
     expect(byName.get_research_context).toBe(true);
     expect(byName.get_content_assignment).toBe(true);
     expect(byName.get_assignment_research_evidence).toBe(true);
+    expect(byName.get_governance_review).toBe(true);
+    expect(byName.get_assignment_governance_status).toBe(true);
     expect(byName.create_content_assignment).toBe(false);
     expect(byName.run_department_orchestration).toBe(false);
     expect(byName.prepare_marketing_task).toBe(false);

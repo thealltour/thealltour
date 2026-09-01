@@ -19,8 +19,8 @@
 - ALLOW → publish_ready
 
 주요 Tool:
-- allow: `evaluate_governance`, `review_generated_content`, `search_marketing_memory`
-- optional: `get_marketing_context`
+- allow: `evaluate_governance`, `review_generated_content`, `search_marketing_memory`, `get_governance_review`, `get_assignment_governance_status`
+- optional: `get_marketing_context`, `get_assignment_research_evidence`, `get_content_assignment`
 - deny: `build_content_brief`, `prepare_marketing_task`
 
 금지:

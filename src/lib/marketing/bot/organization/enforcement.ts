@@ -30,6 +30,8 @@ export const MARKETING_MCP_SIDE_EFFECT_CLASS: Record<MarketingBotToolName, McpTo
   create_content_assignment: "internal_execution",
   get_content_assignment: "read_only",
   get_assignment_research_evidence: "read_only",
+  get_governance_review: "read_only",
+  get_assignment_governance_status: "read_only",
   build_content_brief: "internal_execution",
   evaluate_governance: "internal_execution",
   prepare_marketing_task: "internal_execution",

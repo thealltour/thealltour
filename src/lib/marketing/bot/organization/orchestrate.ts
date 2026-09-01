@@ -247,9 +247,10 @@ function specialistPrompt(kind: "performance" | "content" | "governance", payloa
     ].join("\n");
   }
   return [
-    "JSON only. 이 초안을 검사하고 ALLOW/REVIEW/BLOCK만. 게시하지 마. 자동 승인 금지.",
+    "JSON only. Structured GovernanceReviewRequest with claims/evidence. Compare draft claims to evidenceRefs.",
+    "Do not rewrite content. Do not publish. Return ALLOW/REVIEW/BLOCK with requiredRevisions on BLOCK.",
     JSON.stringify(payload),
-    'shape: {"decision":"ALLOW","riskScore":0,"reasons":[],"revisionHints":[],"humanApprovalRequired":false,"semanticAvailable":true}',
+    'shape: {"decision":"ALLOW","riskScore":0,"reasons":[],"revisionHints":[],"requiredRevisions":[],"humanApprovalRequired":false,"semanticAvailable":true}',
   ].join("\n");
 }
 

@@ -132,6 +132,17 @@ const MCP_TOOL_SCHEMAS: Record<string, { description: string; required: string[]
         channel: { type: "string" },
       },
     },
+    get_research_context: {
+      description:
+        "Read-only bounded Research Intelligence context for Marketing Manager agenda decisions. Returns ranked ResearchBrief/AgendaCandidate evidence — not final agenda selection. No embeddings or publication.",
+      required: [],
+      properties: {
+        limit: { type: "number" },
+        lookbackHours: { type: "number" },
+        topic: { type: "string" },
+        destination: { type: "string" },
+      },
+    },
     run_department_orchestration: {
       description:
         "Application-level Marketing Manager orchestration. Actually dispatches allowlisted specialist Hermes profiles, collects evidence, and synthesizes. Does not publish. Ingress-agnostic (Telegram/Desktop).",

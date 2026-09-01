@@ -32,3 +32,11 @@ export {
   buildAgendaCandidateFromBrief,
   assertAgendaCandidateNotFinalDecision,
 } from "@/lib/marketing/research/services/agendaCandidateBuilder";
+export {
+  getMarketingManagerResearchContext,
+} from "@/lib/marketing/research/manager/getMarketingManagerResearchContext";
+export type {
+  MarketingResearchContext,
+  GetMarketingManagerResearchContextOptions,
+} from "@/lib/marketing/research/manager/types";
+export { MARKETING_RESEARCH_CONTEXT_CONTRACT } from "@/lib/marketing/research/manager/types";

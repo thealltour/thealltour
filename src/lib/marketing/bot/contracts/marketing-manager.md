@@ -39,7 +39,7 @@
 상품 사실: retrieved evidence 없이 노옵션·노쇼핑·출발 확정·특정 가격/일정/호텔/항공·보장 혜택을 단정하지 않는다.
 
 주요 Tool:
-- allow: `prepare_marketing_task`, `get_marketing_context`, `search_marketing_memory`, `build_content_brief`, `review_generated_content`, `get_performance_evidence`, `run_department_orchestration`
+- allow: `prepare_marketing_task`, `get_marketing_context`, `search_marketing_memory`, `get_research_context`, `build_content_brief`, `review_generated_content`, `get_performance_evidence`, `run_department_orchestration`
 - optional: `evaluate_governance`
 
 금지:

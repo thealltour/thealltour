@@ -252,7 +252,7 @@ Implemented:
 |---|---|
 | 3-2 | **DONE** — read-only collectors (UK Gov Atom, NYT Travel RSS), Supabase repo, collection cycle. See `research-collectors.md`. |
 | 3-3 | **DONE** — L3 semantic dedup (BGE-M3), clustering foundation, corroboration/novelty scoring, calibration. See `research-quality-calibration.md`. |
-| 3-4 | MM context/MCP consumption path |
+| 3-4 | **DONE** — MM read-only research context via `get_research_context` MCP tool. See below. |
 | 3-5 | Optional Market Researcher Bot evaluation |
 
 ---

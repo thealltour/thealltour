@@ -26,6 +26,7 @@ export const MARKETING_MCP_SIDE_EFFECT_CLASS: Record<MarketingBotToolName, McpTo
   get_marketing_context: "read_only",
   search_marketing_memory: "read_only",
   get_performance_evidence: "read_only",
+  get_research_context: "read_only",
   build_content_brief: "internal_execution",
   evaluate_governance: "internal_execution",
   prepare_marketing_task: "internal_execution",

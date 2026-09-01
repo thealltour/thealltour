@@ -3,17 +3,38 @@
  * Cron script: Daily Marketing Plan (task-only, no SNS publish).
  *
  * Reads latest Performance Brief artifact (safe fallback if missing),
- * then runs application-level runDepartmentPipeline via Hermes profiles
- * or AI Runtime (feature flag).
+ * then runs the integrated daily marketing pipeline (Research → MM → CS → GA)
+ * producing one CompletedMarketingCandidate — no SNS publish.
  *
  *   npx tsx scripts/cron-daily-marketing-plan.ts
  *
  * Feature flag (default off):
  *   AI_RUNTIME_MARKETING_CRON_ENABLED=true
  */
+import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { loadLocalEnv } from "./loadLocalEnv";
+
+const require = createRequire(import.meta.url);
+const Module = require("module") as {
+  _resolveFilename: (request: string, parent: unknown, isMain: boolean, options?: unknown) => string;
+};
+const originalResolve = Module._resolveFilename.bind(Module);
+const serverOnlyStub = require.resolve("./shims/server-only.js");
+Module._resolveFilename = function resolveFilename(
+  request: string,
+  parent: unknown,
+  isMain: boolean,
+  options?: unknown,
+) {
+  if (request === "server-only") return serverOnlyStub;
+  return originalResolve(request, parent, isMain, options);
+};
+
+loadLocalEnv();
 
 import { buildRuntimeStatus } from "../src/ai-runtime/observability/runtime-status";
 import { getDefaultRoutingLedger } from "../src/ai-runtime/router";
@@ -22,12 +43,15 @@ import {
   peekRuntimeExecutorStackObservability,
 } from "../src/ai-runtime/integration/runtime-stack";
 import { ensureSharedObservabilityRecorder } from "../src/ai-runtime/observability/persistence";
-import { loadLocalEnv } from "./loadLocalEnv";
-import { runDepartmentPipeline } from "../src/lib/marketing/bot/organization/pipeline";
-import type { PerformanceBrief } from "../src/lib/marketing/bot/organization/handoffs";
-import type { PerformanceUnavailable } from "../src/lib/marketing/bot/organization/pipeline";
+import { runDailyMarketingPipeline } from "../src/lib/marketing/cron/daily/runDailyMarketingPipeline";
+import { createDailyMarketingRunRepository } from "../src/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
+import { buildLogicalDailyRunKey, formatKstBusinessDate } from "../src/lib/marketing/cron/daily/kstBusinessDate";
+import { DAILY_MARKETING_ROUTINE_ID } from "../src/lib/marketing/cron/daily/types";
+import { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } from "../src/lib/marketing/social/publication/governanceBoundary";
+import type { PerformanceBrief, PerformanceUnavailable } from "../src/lib/marketing/bot/organization/handoffs";
 import {
   createMarketingCronCorrelationId,
+  createMarketingManagerAgendaDispatch,
   createMarketingPlanPipelineDispatch,
   isAiRuntimeMarketingCronEnabled,
 } from "../src/lib/marketing/cron/marketingCronRuntime";
@@ -38,8 +62,6 @@ import {
   readLatestPerformanceBrief,
   type DailyPerformanceBriefArtifact,
 } from "../src/lib/marketing/cron/performanceBriefArtifact";
-
-loadLocalEnv();
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
@@ -127,6 +149,11 @@ async function main() {
 
   const useRuntime = isAiRuntimeMarketingCronEnabled();
   const correlationId = createMarketingCronCorrelationId();
+  const businessDateKst = formatKstBusinessDate();
+  const logicalRunKey = buildLogicalDailyRunKey({
+    routineId: DAILY_MARKETING_ROUTINE_ID,
+    businessDateKst,
+  });
 
   const briefPath = defaultPerformanceBriefAbsolutePath(ROOT);
   const brief = readLatestPerformanceBrief(briefPath);
@@ -139,11 +166,14 @@ async function main() {
   console.log("");
   console.log(`- productId: ${productId}`);
   console.log(`- channel: ${channel}`);
+  console.log(`- businessDateKst: ${businessDateKst}`);
+  console.log(`- logicalRunKey: ${logicalRunKey}`);
   console.log(`- performance handoff: ${brief ? "artifact_read" : "missing_fallback"}`);
   console.log(`- note: ${performanceNote}`);
   console.log(`- inference_path: ${useRuntime ? "ai-runtime" : "hermes-cli"}`);
   console.log(`- correlationId: ${correlationId}`);
-  console.log(`- sns_side_effect: 0`);
+  console.log(`- publication_flow_inactive: ${PUBLICATION_FLOW_INACTIVE}`);
+  console.log(`- sns_side_effect: ${SNS_SIDE_EFFECTS_STEP_3_7}`);
   console.log(`- publish: forbidden`);
   console.log("");
 
@@ -172,41 +202,73 @@ async function main() {
     completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
   });
 
-  const result = await runDepartmentPipeline(
+  const managerDispatch = createMarketingManagerAgendaDispatch({
+    useRuntime,
+    correlationId,
+    executor: runtimeExecutor,
+    invokeHermesProfile: useRuntime ? undefined : invokeHermesProfile,
+    completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
+  });
+
+  const repo = await createDailyMarketingRunRepository();
+
+  const pipelineResult = await runDailyMarketingPipeline(
     {
       productId,
       channel,
       goal,
-      constraints: [
-        "do not invent product facts",
-        "do not publish",
-        "do not create cron jobs",
-        "do not modify production DB",
-        performanceNote,
-      ],
+      businessDateKst,
+      correlationId,
+      performanceNote,
       memoryReferences: brief?.managerEvidence ?? [],
     },
     {
-      requestPerformance: async () => pipelinePerformance,
+      repo,
       ...dispatch,
+      invokeManagerProfile: managerDispatch.invokeManagerProfile,
+      requestPerformance: async () => pipelinePerformance,
     },
   );
 
-  if (result.publishActionIncluded) {
-    throw new Error("publishActionIncluded must be false");
+  const result = pipelineResult.candidate;
+  const run = pipelineResult.run;
+
+  console.log("## Daily Pipeline Result");
+  console.log("");
+  console.log(`- idempotent: ${pipelineResult.idempotent}`);
+  console.log(`- runStatus: ${run.status}`);
+  console.log(`- researchStatus: ${run.researchStatus ?? "none"}`);
+  console.log(`- degraded: ${run.degraded}`);
+  console.log(`- selectedAgendaId: ${run.selectedAgendaId ?? "none"}`);
+  console.log(`- assignmentId: ${run.assignmentId ?? "none"}`);
+  console.log(`- governanceReviewId: ${run.governanceReviewId ?? "none"}`);
+  console.log(`- completedCandidateId: ${run.completedCandidateId ?? "none"}`);
+  console.log(`- failureReason: ${run.failureReason ?? "none"}`);
+  console.log(`- finalStatus: ${result?.status ?? "none"}`);
+  console.log(`- revisionCount: ${run.observability.revisionCount}`);
+  console.log(`- governanceDecision: ${result?.governanceDecision?.decision ?? "none"}`);
+  console.log("");
+
+  if (run.failureReason && !result) {
+    console.log("## Pipeline Stopped Before Candidate");
+    console.log("");
+    console.log(`Human boundary preserved. Reason: ${run.failureReason}`);
+    console.log("");
+    logOpsRuntimeTelemetry(useRuntime);
+    return;
   }
 
-  console.log("## Pipeline Result");
+  if (!result) {
+    throw new Error("expected completed marketing candidate");
+  }
+
+  console.log("## Completed Marketing Candidate");
   console.log("");
+  console.log(`- candidateId: ${result.candidateId}`);
+  console.log(`- contract: ${result.contract}`);
   console.log(`- status: ${result.status}`);
-  console.log(`- nextAction: ${result.nextAction}`);
-  console.log(`- publishActionIncluded: ${result.publishActionIncluded}`);
-  console.log(`- revisionRounds: ${result.revisionRounds}`);
-  console.log(`- performance: ${result.performance && "unavailable" in result.performance ? "unavailable" : "ok"}`);
-  console.log(`- governance: ${result.governance?.decision ?? "none"}`);
-  console.log(`- semanticAvailable: ${result.governance?.semanticAvailable ?? "none"}`);
-  console.log(`- riskScore: ${result.governance?.riskScore ?? "none"}`);
-  console.log(`- failure: ${result.failure ? result.failure.code : "none"}`);
+  console.log(`- assignmentId: ${result.contentAssignment.assignmentId}`);
+  console.log(`- selectedAgenda: ${result.selectedAgenda.title}`);
   console.log("");
 
   if (result.draft?.body) {
@@ -217,27 +279,21 @@ async function main() {
     console.log("");
   }
 
-  if (result.governance) {
+  if (result.governanceDecision) {
     console.log("## Governance");
     console.log("");
-    console.log(JSON.stringify(result.governance, null, 2));
+    console.log(JSON.stringify(result.governanceDecision, null, 2));
     console.log("");
   }
 
-  if (result.approvalHandoff) {
-    console.log("## Human Approval");
-    console.log("");
-    console.log(JSON.stringify(result.approvalHandoff, null, 2));
-    console.log("");
-  }
-
-  console.log("## Final State Mapping");
+  console.log("## Human Review Boundary");
   console.log("");
-  console.log("- ALLOW → publish_ready (no publish)");
-  console.log("- REVIEW → approval_pending (no publish)");
-  console.log("- BLOCK → revision_required (no publish)");
+  console.log("- CompletedMarketingCandidate persisted — NOT ExternalPublication");
+  console.log("- ALLOW → ready_for_human_review (no publish)");
+  console.log("- REVIEW → needs_human_review (no publish)");
+  console.log("- BLOCK → blocked (no publish)");
   console.log("");
-  console.log("Human Owner: review Hermes cron local output / Desktop job history. No SNS publish button in this STEP.");
+  console.log("Human Owner: review persisted candidate / cron output. STEP 3-8 adds proactive presentation.");
 
   logOpsRuntimeTelemetry(useRuntime);
 }

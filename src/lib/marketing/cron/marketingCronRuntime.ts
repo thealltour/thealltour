@@ -18,7 +18,6 @@ import {
   parseContentStrategistOutput,
   parseGovernanceAuditorOutput,
 } from "@/lib/marketing/cron/marketingPlanSpecialists";
-
 export { MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS };
 
 export function isAiRuntimeMarketingCronEnabled(
@@ -131,6 +130,69 @@ export function createMarketingPlanPipelineDispatch(
     requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
       const raw = invokeHermes("governance-auditor", buildGovernanceReviewPrompt(envelope.payload));
       return parseGovernanceAuditorOutput(raw);
+    },
+  };
+}
+
+function assertRuntimeManager(result: Awaited<ReturnType<RuntimeExecutor["executeAndWait"]>>): string {
+  if (result.status !== "completed" || !result.response?.content) {
+    const code = result.error?.code ?? "RUNTIME_ERROR";
+    throw new Error(`marketing-manager runtime failed: ${code}`);
+  }
+  return result.response.content;
+}
+
+export type MarketingManagerAgendaDispatchOptions = MarketingPlanPipelineDispatchOptions;
+
+/**
+ * Builds Marketing Manager agenda selection dispatch for the daily pipeline.
+ * Exactly one of Runtime or Hermes path executes per call — never both.
+ */
+export function createMarketingManagerAgendaDispatch(
+  options: MarketingManagerAgendaDispatchOptions,
+): {
+  invokeManagerProfile: (prompt: string) => Promise<string>;
+} {
+  if (options.useRuntime) {
+    if (!options.executor) {
+      throw new Error("RuntimeExecutor is required when AI Runtime Marketing Cron is enabled");
+    }
+    const executor = options.executor;
+    const now = options.now ?? (() => new Date());
+    const timeoutMs = options.completionTimeoutMs;
+    let lastRequestId: string | undefined;
+
+    return {
+      invokeManagerProfile: async (prompt: string) => {
+        const request = createCronRuntimeRequest(
+          {
+            agentId: "marketing-manager",
+            workload: "manager_decision",
+            priority: "background",
+            messages: [{ role: "user", content: prompt }],
+            correlationId: options.correlationId,
+            parentRequestId: lastRequestId,
+            cronJobId: MARKETING_CRON_JOB_ID,
+            departmentId: MARKETING_DEPARTMENT_ID,
+            routing: { requiresStructuredOutput: true },
+          },
+          { now },
+        );
+        lastRequestId = request.id;
+        const result = await executor.executeAndWait(request, { timeoutMs, now });
+        return assertRuntimeManager(result);
+      },
+    };
+  }
+
+  const invokeHermes = options.invokeHermesProfile;
+  if (!invokeHermes) {
+    throw new Error("Hermes profile invoker is required when AI Runtime Marketing Cron is disabled");
+  }
+
+  return {
+    invokeManagerProfile: async (prompt: string) => {
+      return invokeHermes("marketing-manager", prompt);
     },
   };
 }

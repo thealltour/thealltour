@@ -23,6 +23,8 @@ import { routeDepartmentRequest } from "@/lib/marketing/bot/organization/routing
 import { getPerformanceEvidenceTool } from "@/lib/marketing/bot/getPerformanceEvidenceTool";
 import type { GetPerformanceEvidenceResult, MarketingBotDeps } from "@/lib/marketing/bot/types";
 import { jsonContainsForbiddenBotLeak, stripForbiddenBotData } from "@/lib/marketing/bot/sanitize";
+import { prepareManagerToContentHandoff } from "@/lib/marketing/content/prepareManagerToContentHandoff";
+import type { CreateSelectedAgendaInput } from "@/lib/marketing/content/types";
 import type { HermesMarketingProfileId } from "@/lib/marketing/bot/organization/envelope";
 
 export const DEPARTMENT_ORCHESTRATION_CONTRACT = "department-orchestration-v1" as const;
@@ -69,6 +71,7 @@ export type OrchestrateDepartmentInput = {
   productId?: string | null;
   channel?: string | null;
   depth?: number;
+  selectedAgenda?: CreateSelectedAgendaInput;
 };
 
 export type OrchestrateDepartmentDeps = MarketingBotDeps &
@@ -90,6 +93,8 @@ function asDraft(raw: string): ContentStrategistOutput {
     channel: value.channel || DEFAULT_CHANNEL,
     agenda: value.agenda ?? null,
     sourceReferences: Array.isArray(value.sourceReferences) ? value.sourceReferences.map(String) : [],
+    contentPlan: value.contentPlan ?? null,
+    assignmentId: value.assignmentId ?? null,
   };
 }
 
@@ -235,9 +240,10 @@ function specialistPrompt(kind: "performance" | "content" | "governance", payloa
   }
   if (kind === "content") {
     return [
-      "JSON only. ContentDraftRequest 근거로 초안. 없는 혜택/일정 만들지 마. 게시하지 마.",
+      "JSON only. ContentAssignment/ContentDraftRequest 근거로 contentPlan + 초안. 없는 혜택/일정 만들지 마. 게시하지 마.",
+      "Do not re-select the agenda — use the manager-selected assignment topic.",
       JSON.stringify(payload),
-      'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[]}',
+      'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":null,"assignmentId":null}',
     ].join("\n");
   }
   return [
@@ -388,6 +394,28 @@ export async function orchestrateDepartmentTask(
         channel,
         goal: input.userRequest.slice(0, 400),
         constraints: ["do not invent product facts", "do not publish", "PUBLICATION_FLOW_INACTIVE=true"],
+        ...(input.selectedAgenda
+          ? (() => {
+              const handoff = prepareManagerToContentHandoff(
+                { ...input.selectedAgenda, channel },
+                { now: deps.now },
+              );
+              return {
+                agenda: handoff.selectedAgenda.title,
+                selectedAgenda: handoff.selectedAgenda,
+                contentAssignment: handoff.contentAssignment,
+                contentAssignmentId: handoff.contentAssignment.assignmentId,
+                contentPlanScaffold: handoff.contentPlanScaffold,
+                constraints: [
+                  "do not invent product facts",
+                  "do not publish",
+                  "PUBLICATION_FLOW_INACTIVE=true",
+                  "preserve manager-selected agenda — do not re-select topic",
+                  ...handoff.contentAssignment.constraints,
+                ],
+              };
+            })()
+          : {}),
       },
       {
         requestDraft,

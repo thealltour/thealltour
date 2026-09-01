@@ -11,8 +11,20 @@
 - brief
 - constraints
 - memory references
+- contentAssignmentId / contentAssignment / contentPlanScaffold / selectedAgenda
 
-Content는 brief에 없는 사실을 채우지 않는다.
+Content는 brief/assignment에 없는 사실을 채우지 않는다. Manager-selected agenda를 재선택하지 않는다.
+
+## Manager decision contracts
+
+- `SelectedAgenda` (`selected-agenda-v1`) — MM final agenda decision, separate from `AgendaCandidate`
+- `ContentAssignment` (`content-assignment-v1`) — bounded CS task with evidence/facts
+- `ContentPlan` (`content-plan-v1`) — structured format/angle plan separate from final draft
+
+MCP:
+
+- MM: `create_content_assignment` (deterministic/idempotent business state)
+- CS: `get_content_assignment`, `get_assignment_research_evidence` (read-only)
 
 ## Content → Governance
 

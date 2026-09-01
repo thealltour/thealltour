@@ -13,7 +13,7 @@ export const MARKETING_CRON_JOB_ID = "daily-marketing-plan";
 export const MARKETING_DEPARTMENT_ID = "marketing";
 
 export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
-  return `JSON only. ContentDraftRequest를 근거로 Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마.\n${JSON.stringify(payload)}\nshape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[]}`;
+  return `JSON only. ContentAssignment/ContentDraftRequest를 근거로 contentPlan + Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마. Do not re-select the manager agenda.\n${JSON.stringify(payload)}\nshape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":null,"assignmentId":null}`;
 }
 
 export function buildGovernanceReviewPrompt(payload: GovernanceReviewRequest): string {
@@ -29,6 +29,8 @@ export function parseContentStrategistOutput(raw: string): ContentStrategistOutp
     channel: value.channel || "threads",
     agenda: value.agenda ?? null,
     sourceReferences: Array.isArray(value.sourceReferences) ? value.sourceReferences.map(String) : [],
+    contentPlan: value.contentPlan ?? null,
+    assignmentId: value.assignmentId ?? null,
   };
 }
 

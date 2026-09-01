@@ -6,6 +6,10 @@ export type ContentDraftRequest = {
   brief: unknown;
   constraints: string[];
   memoryReferences: string[];
+  contentAssignmentId?: string | null;
+  contentAssignment?: import("@/lib/marketing/content/types").ContentAssignment | null;
+  contentPlanScaffold?: import("@/lib/marketing/content/types").ContentPlan | null;
+  selectedAgenda?: import("@/lib/marketing/content/types").SelectedAgenda | null;
 };
 
 export type GovernanceReviewRequest = {
@@ -51,6 +55,8 @@ export type ContentStrategistOutput = {
   channel: string;
   agenda: string | null;
   sourceReferences: string[];
+  contentPlan?: import("@/lib/marketing/content/types").ContentPlan | null;
+  assignmentId?: string | null;
 };
 
 export type PerformanceAnalystOutput = {

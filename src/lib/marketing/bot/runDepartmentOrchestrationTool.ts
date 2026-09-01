@@ -8,6 +8,7 @@ export type RunDepartmentOrchestrationInput = {
   userRequest: string;
   productId?: string | null;
   channel?: string | null;
+  selectedAgenda?: import("@/lib/marketing/content/types").CreateSelectedAgendaInput;
 };
 
 export async function runDepartmentOrchestrationTool(
@@ -20,6 +21,7 @@ export async function runDepartmentOrchestrationTool(
       productId: input.productId,
       channel: input.channel,
       depth: 0,
+      selectedAgenda: input.selectedAgenda,
     },
     deps,
   );

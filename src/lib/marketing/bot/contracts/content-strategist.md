@@ -13,9 +13,9 @@
 - 과거 Hook 반복 최소화
 
 주요 Tool:
-- allow: `build_content_brief`, `get_marketing_context`, `search_marketing_memory`
-- optional: `evaluate_governance` (읽기/참고)
-- deny: `prepare_marketing_task`, `review_generated_content`
+- allow: `build_content_brief`, `get_marketing_context`, `search_marketing_memory`, `get_content_assignment`, `get_assignment_research_evidence`
+- optional: `evaluate_governance` (읽기/참고), `get_research_context`
+- deny: `prepare_marketing_task`, `review_generated_content`, `create_content_assignment`, `run_department_orchestration`
 
 금지:
 - Governance override

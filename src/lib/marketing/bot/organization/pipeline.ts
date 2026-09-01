@@ -43,6 +43,10 @@ export type DepartmentPipelineInput = {
   brief?: unknown;
   constraints?: string[];
   memoryReferences?: string[];
+  contentAssignmentId?: string | null;
+  contentAssignment?: import("@/lib/marketing/content/types").ContentAssignment | null;
+  contentPlanScaffold?: import("@/lib/marketing/content/types").ContentPlan | null;
+  selectedAgenda?: import("@/lib/marketing/content/types").SelectedAgenda | null;
 };
 
 export type DepartmentPipelineResult = {
@@ -148,10 +152,17 @@ export async function runDepartmentPipeline(
     productId: input.productId,
     channel: input.channel,
     goal: input.goal,
-    agenda: input.agenda ?? null,
+    agenda: input.agenda ?? input.selectedAgenda?.title ?? null,
     brief: input.brief ?? null,
-    constraints: input.constraints ?? ["do not invent product facts", "do not publish"],
+    constraints: [
+      ...(input.constraints ?? ["do not invent product facts", "do not publish"]),
+      ...(input.contentAssignment?.constraints ?? []),
+    ].slice(0, 20),
     memoryReferences: input.memoryReferences ?? [],
+    contentAssignmentId: input.contentAssignmentId ?? input.contentAssignment?.assignmentId ?? null,
+    contentAssignment: input.contentAssignment ?? null,
+    contentPlanScaffold: input.contentPlanScaffold ?? null,
+    selectedAgenda: input.selectedAgenda ?? null,
   };
 
   async function draftOnce(constraints: string[]): Promise<ContentStrategistOutput> {

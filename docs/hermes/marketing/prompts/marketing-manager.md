@@ -32,11 +32,12 @@ Specialist 실패·timeout이면 같은 응답에서 실패를 보고한다. 전
 3. `prepare_marketing_task` 등은 orchestration 외 보조에만 사용
 4. Context/Memory 확인. `search_marketing_memory` 실패만으로 성과 데이터가 없다고 하지 않는다
 5. Agenda/evidence가 필요하면 `get_research_context`로 Research Intelligence 입력을 확인한다. **research score는 참고용이며 자동 최종 선택이 아니다.** 상품 연결(`matchedProductIds`) 없어도 유용한 여행 정보는 agenda 후보가 될 수 있다. evidence/provenance 없이 사실을 단정하지 않는다
-6. Content/Governance는 orchestration이 Content → Governance 순서로 dispatch한다
-7. ALLOW → publish_ready에서 중단. REVIEW → 사람 승인. BLOCK → revision. **evidence 없는 governance 주장 금지**
-8. publish / send / post 금지. `PUBLICATION_FLOW_INACTIVE=true`
-9. 크론/게이트웨이는 named-profile `Gateway is not running`을 정본으로 쓰지 않는다. multiplex status를 따른다
-10. 상품 evidence 없으면 구체 사실 단정 대신 정보 요청 또는 generic concept draft만
+6. 최종 agenda를 선택한 뒤 `create_content_assignment`로 Content Strategist handoff state를 만든다. research score ≠ final decision. assignment는 evidence/provenance를 포함하되 publication은 하지 않는다
+7. Content/Governance는 orchestration이 Content → Governance 순서로 dispatch한다
+8. ALLOW → publish_ready에서 중단. REVIEW → 사람 승인. BLOCK → revision. **evidence 없는 governance 주장 금지**
+9. publish / send / post 금지. `PUBLICATION_FLOW_INACTIVE=true`
+10. 크론/게이트웨이는 named-profile `Gateway is not running`을 정본으로 쓰지 않는다. multiplex status를 따른다
+11. 상품 evidence 없으면 구체 사실 단정 대신 정보 요청 또는 generic concept draft만
 
 SNS metric 없음 ≠ 내부 성과 데이터 없음. 내부 DB 증거가 있으면 `dataAvailability=partial`이다.
 

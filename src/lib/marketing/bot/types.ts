@@ -15,6 +15,9 @@ export const MARKETING_BOT_TOOL_NAMES = [
   "review_generated_content",
   "get_performance_evidence",
   "get_research_context",
+  "create_content_assignment",
+  "get_content_assignment",
+  "get_assignment_research_evidence",
   "run_department_orchestration",
 ] as const;
 
@@ -165,6 +168,27 @@ export type GetResearchContextInput = {
 export type GetResearchContextResult =
   import("@/lib/marketing/research/manager/types").MarketingResearchContext;
 
+export type CreateContentAssignmentToolInput = import("@/lib/marketing/content/types").CreateSelectedAgendaInput & {
+  channel?: string;
+};
+
+export type CreateContentAssignmentToolResult =
+  import("@/lib/marketing/content/types").ManagerToContentHandoffResult;
+
+export type GetContentAssignmentInput = {
+  assignmentId: string;
+};
+
+export type GetContentAssignmentResult =
+  import("@/lib/marketing/content/types").GetContentAssignmentResult;
+
+export type GetAssignmentResearchEvidenceInput = {
+  assignmentId: string;
+};
+
+export type GetAssignmentResearchEvidenceResult =
+  import("@/lib/marketing/content/types").GetAssignmentResearchEvidenceResult;
+
 export type BuildContentBriefInput = {
   productId: string;
   channel: string;
@@ -296,6 +320,7 @@ export type MarketingBotDeps = {
   getManagerResearchContext?: (
     options: import("@/lib/marketing/research/manager/types").GetMarketingManagerResearchContextOptions,
   ) => Promise<import("@/lib/marketing/research/manager/types").MarketingResearchContext>;
+  contentAssignmentStore?: import("@/lib/marketing/content/store/contentAssignmentStore").ContentAssignmentStore;
   hermesRuntime?: import("@/lib/marketing/bot/organization/hermesRuntime").HermesAgentRuntime;
   readJobsFile?: (absolutePath: string) => string | null;
   fetchGatewayStatus?: (url: string) => Promise<unknown>;

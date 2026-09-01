@@ -143,6 +143,40 @@ const MCP_TOOL_SCHEMAS: Record<string, { description: string; required: string[]
         destination: { type: "string" },
       },
     },
+    create_content_assignment: {
+      description:
+        "Deterministic Marketing Manager → Content Strategist handoff. Creates idempotent SelectedAgenda + ContentAssignment business state. Does not publish or invoke Hermes messaging.",
+      required: ["title", "summary"],
+      properties: {
+        title: { type: "string" },
+        summary: { type: "string" },
+        rationale: { type: "array", items: { type: "string" } },
+        researchBriefId: { type: "string" },
+        agendaCandidateId: { type: "string" },
+        destinations: { type: "array", items: { type: "string" } },
+        topics: { type: "array", items: { type: "string" } },
+        commercialIntent: { type: "string" },
+        matchedProductIds: { type: "array", items: { type: "string" } },
+        channel: { type: "string" },
+        idempotencyKey: { type: "string" },
+      },
+    },
+    get_content_assignment: {
+      description:
+        "Read-only ContentAssignment lookup for Content Strategist. Returns bounded assignment + selected agenda reference. No publication.",
+      required: ["assignmentId"],
+      properties: {
+        assignmentId: { type: "string" },
+      },
+    },
+    get_assignment_research_evidence: {
+      description:
+        "Read-only evidence/facts for a ContentAssignment. Preserves provenance for content production and governance verification.",
+      required: ["assignmentId"],
+      properties: {
+        assignmentId: { type: "string" },
+      },
+    },
     run_department_orchestration: {
       description:
         "Application-level Marketing Manager orchestration. Actually dispatches allowlisted specialist Hermes profiles, collects evidence, and synthesizes. Does not publish. Ingress-agnostic (Telegram/Desktop).",
@@ -151,6 +185,10 @@ const MCP_TOOL_SCHEMAS: Record<string, { description: string; required: string[]
         userRequest: { type: "string" },
         productId: { type: "string" },
         channel: { type: "string" },
+        title: { type: "string" },
+        summary: { type: "string" },
+        agendaCandidateId: { type: "string" },
+        researchBriefId: { type: "string" },
       },
     },
   };

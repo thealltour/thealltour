@@ -2,18 +2,26 @@ import type { DailyPerformanceBriefArtifact } from "@/lib/marketing/cron/perform
 import type { ContentPerformanceSnapshot } from "@/lib/marketing/performance/types";
 import { buildPerformanceAnalystInput } from "@/lib/marketing/performance/integration/performanceAnalystInput";
 import { buildMarketingManagerPerformanceContext } from "@/lib/marketing/performance/integration/marketingManagerPerformanceContext";
+import { isVerificationRecord } from "@/lib/marketing/operations/verification";
 
 export function enrichPerformanceBriefWithManualSnapshots(
   brief: DailyPerformanceBriefArtifact,
   snapshots: ContentPerformanceSnapshot[],
 ): DailyPerformanceBriefArtifact {
-  if (snapshots.length === 0) return brief;
+  const productionSnapshots = snapshots.filter(
+    (snapshot) =>
+      !isVerificationRecord({
+        candidateId: snapshot.candidateId,
+        logicalObservationKey: snapshot.logicalObservationKey,
+      }),
+  );
+  if (productionSnapshots.length === 0) return brief;
 
-  const analyst = buildPerformanceAnalystInput({ snapshots });
-  const mmContext = buildMarketingManagerPerformanceContext(snapshots);
+  const analyst = buildPerformanceAnalystInput({ snapshots: productionSnapshots });
+  const mmContext = buildMarketingManagerPerformanceContext(productionSnapshots);
 
   const confirmedMetrics = [...brief.confirmedMetrics];
-  for (const snapshot of snapshots) {
+  for (const snapshot of productionSnapshots) {
     for (const [metricType, value] of Object.entries(snapshot.metrics)) {
       if (value == null || !Number.isFinite(value)) continue;
       confirmedMetrics.push({
@@ -34,7 +42,11 @@ export function enrichPerformanceBriefWithManualSnapshots(
   ];
 
   const missingItems = [...brief.missingItems];
-  if (snapshots.every((s) => s.collectionStatus !== "success" && s.collectionStatus !== "partial")) {
+  if (
+    productionSnapshots.every(
+      (s) => s.collectionStatus !== "success" && s.collectionStatus !== "partial",
+    )
+  ) {
     missingItems.push("Manual publication metrics unavailable (read-only adapters not live)");
   }
 

@@ -1,6 +1,7 @@
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
 import { createInitialHumanReview, filterQueueItems, toQueueItem } from "@/lib/marketing/review/dto";
+import { isVerificationRecord } from "@/lib/marketing/operations/verification";
 import type { HumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 import {
   assertAllowedTransition,
@@ -88,9 +89,17 @@ export class HumanMarketingReviewService {
       toQueueItem({ candidate, review: reviewByCandidate.get(candidate.candidateId) ?? null }),
     );
     const filtered = filterQueueItems(items, filter, this.now());
+    const productionItems = items.filter(
+      (item) =>
+        !isVerificationRecord({
+          routineId: item.logicalRunKey.split(":")[0] ?? null,
+          candidateId: item.candidateId,
+          logicalRunKey: item.logicalRunKey,
+        }),
+    );
     const todayKst = formatKstBusinessDate(this.now());
-    const todayCandidate = items.find((item) => item.businessDateKst === todayKst) ?? null;
-    const pendingCount = items.filter((item) => item.actionNeeded).length;
+    const todayCandidate = productionItems.find((item) => item.businessDateKst === todayKst) ?? null;
+    const pendingCount = productionItems.filter((item) => item.actionNeeded).length;
     return { items: filtered, todayCandidate, pendingCount };
   }
 

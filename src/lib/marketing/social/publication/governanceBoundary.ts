@@ -49,6 +49,8 @@ export const SNS_SIDE_EFFECTS_STEP_3_7 = 0 as const;
 export const SNS_SIDE_EFFECTS_STEP_3_8 = 0 as const;
 /** STEP 3-9: read-only performance collection — no external writes */
 export const PERFORMANCE_COLLECTION_SIDE_EFFECTS_STEP_3_9 = 0 as const;
+/** STEP 3-10: operations status/trace — read-only observability */
+export const OPERATIONS_EXTERNAL_SIDE_EFFECTS_STEP_3_10 = 0 as const;
 
 /**
  * Future:

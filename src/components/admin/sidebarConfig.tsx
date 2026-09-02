@@ -22,6 +22,7 @@ import {
   Rss,
   Cpu,
   ClipboardCheck,
+  Gauge,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
@@ -193,6 +194,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: ClipboardCheck,
     group: "tools",
     mainKey: "tools_marketing_review",
+    roles: ["admin"],
+  },
+  {
+    href: "/theall_manager_only/marketing-operations",
+    label: "마케팅 운영",
+    icon: Gauge,
+    group: "tools",
+    mainKey: "tools_marketing_operations",
     roles: ["admin"],
   },
 ];

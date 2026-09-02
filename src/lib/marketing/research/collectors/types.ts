@@ -1,5 +1,6 @@
 import type { ResearchSourceType } from "@/lib/marketing/research/types/enums";
 import type { CreateResearchEvidenceInput } from "@/lib/marketing/research/types/researchSignal";
+import type { PerformanceFeedbackLoadResult } from "@/lib/marketing/research/collection/loadPerformanceFeedbackSignals";
 
 /** Raw item from an external collector before domain normalization. */
 export type RawResearchItem = {

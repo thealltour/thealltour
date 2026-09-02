@@ -13,11 +13,11 @@ export async function GET(_request: Request, context: RouteContext) {
   const { candidateId } = await context.params;
   try {
     const service = await createHumanMarketingReviewService();
-    const detail = await service.getHumanReviewDetail(candidateId);
-    if (!detail) {
+    const context = await service.getMorningMarketingReviewContext(candidateId);
+    if (!context) {
       return Response.json({ message: "후보를 찾을 수 없습니다." }, { status: 404 });
     }
-    return Response.json(detail, {
+    return Response.json(context, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

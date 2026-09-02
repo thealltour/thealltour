@@ -7,14 +7,12 @@ export const dynamic = "force-dynamic";
 export default async function AdminMarketingReviewPage() {
   const [unreadNotificationCount, queue] = await Promise.all([
     prepareAdminNotificationsAndGetUnreadCount(),
-    createHumanMarketingReviewService().then((service) => service.listHumanReviewQueue("all")),
+    createHumanMarketingReviewService().then((service) => service.listMorningReviewQueue("all")),
   ]);
 
   return (
     <MarketingReviewPageBody
-      initialItems={queue.items}
-      todayCandidate={queue.todayCandidate}
-      pendingCount={queue.pendingCount}
+      initialSummary={queue}
       unreadNotificationCount={unreadNotificationCount}
     />
   );

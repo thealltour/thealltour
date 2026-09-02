@@ -6,6 +6,14 @@ import {
   type HumanReviewIneligibilityReason,
 } from "@/lib/marketing/review/bootstrap/humanReviewEligibilityError";
 import { filterQueueItems, toQueueItem } from "@/lib/marketing/review/dto";
+import {
+  buildMorningMarketingReviewContext,
+  buildMorningReviewQueueSummary,
+} from "@/lib/marketing/review/morningReview/buildMorningReviewContext";
+import type {
+  MorningMarketingReviewContext,
+  MorningReviewQueueSummary,
+} from "@/lib/marketing/review/morningReview/types";
 import { isVerificationRecord } from "@/lib/marketing/operations/verification";
 import type { HumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 import {
@@ -113,6 +121,44 @@ export class HumanMarketingReviewService {
     if (!candidate) return null;
     const review = await this.deps.reviewRepo.findByCandidateId(candidateId);
     return buildDetail(candidate, review);
+  }
+
+  async getMorningMarketingReviewContext(candidateId: string): Promise<MorningMarketingReviewContext | null> {
+    const detail = await this.getHumanReviewDetail(candidateId);
+    if (!detail) return null;
+
+    let performanceSnapshots: import("@/lib/marketing/performance/types").ContentPerformanceSnapshot[] = [];
+    try {
+      const { createContentPerformanceRepository } = await import(
+        "@/lib/marketing/performance/repository/createContentPerformanceRepository"
+      );
+      const perfRepo = await createContentPerformanceRepository();
+      performanceSnapshots = await perfRepo.findByCandidateId(candidateId);
+    } catch {
+      performanceSnapshots = [];
+    }
+
+    const run = await this.deps.candidateRepo.findRunByLogicalKey(detail.candidate.logicalRunKey);
+
+    return buildMorningMarketingReviewContext({
+      detail,
+      run,
+      performanceSnapshots,
+      now: this.now(),
+    });
+  }
+
+  async listMorningReviewQueue(filter: HumanReviewQueueFilter = "all"): Promise<MorningReviewQueueSummary> {
+    const base = await this.listHumanReviewQueue(filter);
+    const candidates = await this.deps.candidateRepo.listCandidates({ limit: 100 });
+    const candidatesById = new Map(candidates.map((candidate) => [candidate.candidateId, candidate]));
+    return buildMorningReviewQueueSummary({
+      items: base.items,
+      todayCandidate: base.todayCandidate,
+      pendingCount: base.pendingCount,
+      candidatesById,
+      now: this.now(),
+    });
   }
 
   async getOrCreateHumanReview(candidateId: string, reviewedBy: string | null): Promise<HumanMarketingReview> {

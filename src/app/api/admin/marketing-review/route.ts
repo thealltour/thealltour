@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   try {
     const service = await createHumanMarketingReviewService();
-    const result = await service.listHumanReviewQueue(parsed.data);
+    const result = await service.listMorningReviewQueue(parsed.data);
     return Response.json(result, {
       headers: { "Cache-Control": "no-store" },
     });

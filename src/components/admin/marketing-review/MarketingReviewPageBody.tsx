@@ -5,7 +5,12 @@ import { useMemo, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import AdminCard from "@/components/admin/ui/AdminCard";
-import type { HumanReviewQueueFilter, HumanReviewQueueItem } from "@/lib/marketing/review/types";
+import type { HumanReviewQueueFilter } from "@/lib/marketing/review/types";
+import type {
+  MorningReviewQueueRow,
+  MorningReviewQueueSummary,
+  MorningReviewWorkflowState,
+} from "@/lib/marketing/review/morningReview/types";
 import { cn } from "@/lib/cn";
 
 const FILTERS: Array<{ id: HumanReviewQueueFilter; label: string }> = [
@@ -33,47 +38,57 @@ function statusBadge(label: string, tone: "success" | "warning" | "danger" | "mu
   );
 }
 
-function candidateTone(status: HumanReviewQueueItem["candidateStatus"]) {
+function candidateTone(status: MorningReviewQueueRow["candidateStatus"]) {
   if (status === "ready_for_human_review") return "success" as const;
   if (status === "needs_human_review") return "warning" as const;
   if (status === "blocked" || status === "failed") return "danger" as const;
   return "muted" as const;
 }
 
+function workflowTone(state: MorningReviewWorkflowState) {
+  if (state === "missing") return "danger" as const;
+  if (state === "pending" || state === "editing") return "warning" as const;
+  if (state === "approved" || state === "published") return "success" as const;
+  return "muted" as const;
+}
+
+function governanceTone(decision: string | null) {
+  if (decision === "REVIEW") return "warning" as const;
+  if (decision === "BLOCK") return "danger" as const;
+  return "muted" as const;
+}
+
 type Props = {
-  initialItems: HumanReviewQueueItem[];
-  todayCandidate: HumanReviewQueueItem | null;
-  pendingCount: number;
+  initialSummary: MorningReviewQueueSummary;
   unreadNotificationCount: number;
 };
 
-export function MarketingReviewPageBody({
-  initialItems,
-  todayCandidate,
-  pendingCount,
-  unreadNotificationCount,
-}: Props) {
+export function MarketingReviewPageBody({ initialSummary, unreadNotificationCount }: Props) {
   const [filter, setFilter] = useState<HumanReviewQueueFilter>("today");
-  const [items, setItems] = useState(initialItems);
+  const [summary, setSummary] = useState(initialSummary);
+  const { items, todayCandidate, pendingCount } = summary;
 
   const filtered = useMemo(() => {
     if (filter === "all") return items;
-    // client-side re-filter for quick tab switch without refetch
     const todayKst = todayCandidate?.businessDateKst;
     return items.filter((item) => {
       switch (filter) {
         case "today":
           return todayKst ? item.businessDateKst === todayKst : false;
         case "pending":
-          return !item.humanReviewStatus || item.humanReviewStatus === "pending" || item.humanReviewStatus === "editing";
+          return (
+            item.reviewWorkflowState === "pending" ||
+            item.reviewWorkflowState === "editing" ||
+            item.reviewWorkflowState === "missing"
+          );
         case "needs_review":
           return item.candidateStatus === "needs_human_review" || item.governanceDecision === "REVIEW";
         case "approved":
-          return item.humanReviewStatus === "approved_for_manual_publish";
+          return item.reviewWorkflowState === "approved";
         case "deferred":
-          return item.humanReviewStatus === "deferred";
+          return item.reviewWorkflowState === "deferred";
         case "manually_published":
-          return item.humanReviewStatus === "manually_published";
+          return item.reviewWorkflowState === "published";
         case "blocked_failed":
           return item.candidateStatus === "blocked" || item.candidateStatus === "failed";
         default:
@@ -85,8 +100,8 @@ export function MarketingReviewPageBody({
   async function reload() {
     const res = await fetch(`/api/admin/marketing-review?filter=all`, { cache: "no-store" });
     if (!res.ok) return;
-    const data = await res.json();
-    setItems(data.items ?? []);
+    const data = (await res.json()) as MorningReviewQueueSummary;
+    setSummary(data);
   }
 
   return (
@@ -99,13 +114,34 @@ export function MarketingReviewPageBody({
         />
 
         {todayCandidate ? (
-          <AdminCard className="border-emerald-500/30 bg-emerald-500/5 p-4">
+          <AdminCard
+            className={cn(
+              "p-4",
+              todayCandidate.reviewWorkflowState === "missing"
+                ? "border-red-500/30 bg-red-500/5"
+                : "border-emerald-500/30 bg-emerald-500/5",
+            )}
+          >
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm font-semibold text-emerald-800">오늘의 AI 마케팅 작업이 준비되었습니다</p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                  {todayCandidate.title} · 거버넌스 {todayCandidate.governanceDecision ?? "—"} · 후보 {todayCandidate.candidateStatus}
+                <p
+                  className={cn(
+                    "text-sm font-semibold",
+                    todayCandidate.reviewWorkflowState === "missing" ? "text-red-800" : "text-emerald-800",
+                  )}
+                >
+                  {todayCandidate.reviewWorkflowState === "missing"
+                    ? "오늘 후보는 있으나 HumanMarketingReview 레코드가 누락되었습니다"
+                    : "오늘의 AI 마케팅 작업이 준비되었습니다"}
                 </p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  {todayCandidate.title} · {todayCandidate.channel}
+                  {todayCandidate.formatLabel ? ` / ${todayCandidate.formatLabel}` : ""} · 거버넌스{" "}
+                  {todayCandidate.governanceDecision ?? "—"} · {todayCandidate.actionLabel}
+                </p>
+                {todayCandidate.operationalMessage ? (
+                  <p className="mt-1 text-xs text-red-700">{todayCandidate.operationalMessage}</p>
+                ) : null}
               </div>
               <Link
                 href={`/theall_manager_only/marketing-review/${encodeURIComponent(todayCandidate.candidateId)}`}
@@ -122,9 +158,9 @@ export function MarketingReviewPageBody({
         )}
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <AdminSummaryCard label="검토 필요" value={String(pendingCount)} />
-          <AdminSummaryCard label="큐 항목" value={String(items.length)} />
-          <AdminSummaryCard label="오늘 후보" value={todayCandidate ? "1" : "0"} />
+          <AdminSummaryCard title="검토 필요" value={String(pendingCount)} />
+          <AdminSummaryCard title="큐 항목" value={String(items.length)} />
+          <AdminSummaryCard title="오늘 후보" value={todayCandidate ? "1" : "0"} />
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -159,11 +195,11 @@ export function MarketingReviewPageBody({
                 <tr>
                   <th className="px-4 py-3">날짜</th>
                   <th className="px-4 py-3">주제</th>
-                  <th className="px-4 py-3">후보 상태</th>
-                  <th className="px-4 py-3">인간 검토</th>
+                  <th className="px-4 py-3">형식/채널</th>
                   <th className="px-4 py-3">거버넌스</th>
-                  <th className="px-4 py-3">채널</th>
+                  <th className="px-4 py-3">인간 검토</th>
                   <th className="px-4 py-3">액션</th>
+                  <th className="px-4 py-3">열기</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,19 +212,37 @@ export function MarketingReviewPageBody({
                 ) : (
                   filtered.map((item) => (
                     <tr key={item.candidateId} className="border-t border-[var(--border)]">
-                      <td className="px-4 py-3 whitespace-nowrap">{item.businessDateKst}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {item.businessDateKst}
+                        {item.isToday ? (
+                          <span className="ml-2 text-xs text-emerald-700">오늘</span>
+                        ) : null}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="font-medium">{item.title}</div>
                         <div className="mt-1 text-xs text-[var(--text-secondary)]">
-                          {item.productLinked ? "상품 연계" : "정보성/상품 무관"} · rev {item.revisionCount}
-                          {item.degraded ? " · research degraded" : ""}
+                          {item.productLinked ? "상품 연계" : "정보성/상품 무관"}
                           {item.humanEditedAfterGovernance ? " · governance stale" : ""}
+                          {item.operationalIssue ? " · 운영 확인" : ""}
                         </div>
                       </td>
-                      <td className="px-4 py-3">{statusBadge(item.candidateStatus, candidateTone(item.candidateStatus))}</td>
-                      <td className="px-4 py-3">{statusBadge(item.humanReviewStatus ?? "pending", "muted")}</td>
-                      <td className="px-4 py-3">{statusBadge(item.governanceDecision ?? "—", item.governanceDecision === "REVIEW" ? "warning" : "muted")}</td>
-                      <td className="px-4 py-3">{item.channel}</td>
+                      <td className="px-4 py-3">
+                        {item.channel}
+                        {item.formatLabel ? ` / ${item.formatLabel}` : ""}
+                      </td>
+                      <td className="px-4 py-3">
+                        {statusBadge(item.governanceDecision ?? "—", governanceTone(item.governanceDecision))}
+                      </td>
+                      <td className="px-4 py-3">
+                        {statusBadge(item.actionLabel, workflowTone(item.reviewWorkflowState))}
+                      </td>
+                      <td className="px-4 py-3">
+                        {item.actionNeeded ? (
+                          <span className="text-xs font-medium text-amber-800">조치 필요</span>
+                        ) : (
+                          <span className="text-xs text-[var(--text-secondary)]">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <Link
                           href={`/theall_manager_only/marketing-review/${encodeURIComponent(item.candidateId)}`}

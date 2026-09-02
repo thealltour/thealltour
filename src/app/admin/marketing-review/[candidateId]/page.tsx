@@ -10,16 +10,16 @@ type PageProps = { params: Promise<{ candidateId: string }> };
 export default async function AdminMarketingReviewDetailPage({ params }: PageProps) {
   const { candidateId } = await params;
   const service = await createHumanMarketingReviewService();
-  const [unreadNotificationCount, detail] = await Promise.all([
+  const [unreadNotificationCount, context] = await Promise.all([
     prepareAdminNotificationsAndGetUnreadCount(),
-    service.getHumanReviewDetail(candidateId),
+    service.getMorningMarketingReviewContext(candidateId),
   ]);
 
-  if (!detail) notFound();
+  if (!context) notFound();
 
   return (
     <MarketingReviewDetailBody
-      initialDetail={detail}
+      initialContext={context}
       unreadNotificationCount={unreadNotificationCount}
     />
   );

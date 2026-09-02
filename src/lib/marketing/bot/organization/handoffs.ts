@@ -40,6 +40,9 @@ export type PerformanceBrief = {
   confidence: "low" | "medium" | "high";
 };
 
+/** Read-only performance handoff unavailable — distinct from zero metrics or empty data. */
+export type PerformanceUnavailable = { unavailable: true; reason: string };
+
 export type MarketingManagerOutput = {
   status: "draft_ready" | "approval_required" | "revision_required" | "publish_ready";
   task: string;

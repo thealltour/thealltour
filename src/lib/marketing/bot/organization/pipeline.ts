@@ -26,6 +26,7 @@ import type {
   ContentStrategistOutput,
   GovernanceReviewResult,
   PerformanceBrief,
+  PerformanceUnavailable,
 } from "@/lib/marketing/bot/organization/handoffs";
 
 export const DEPARTMENT_PIPELINE_STATUSES = [
@@ -39,7 +40,7 @@ export const DEPARTMENT_PIPELINE_STATUSES = [
 
 export type DepartmentPipelineStatus = (typeof DEPARTMENT_PIPELINE_STATUSES)[number];
 
-export type PerformanceUnavailable = { unavailable: true; reason: string };
+export type { PerformanceUnavailable } from "@/lib/marketing/bot/organization/handoffs";
 
 export type DepartmentPipelineInput = {
   productId: string;

@@ -162,8 +162,8 @@ function candidatesToRows(
       publicInterest: c.publicInterestScore,
       corroboration: c.corroborationScore ?? 0,
       novelty: c.researchScoreComponents?.novelty ?? 0,
-      seasonality: c.seasonalityScore,
-      commercial: c.commercialLinkageScore,
+      seasonality: c.seasonalityScore ?? 0,
+      commercial: c.commercialLinkageScore ?? 0,
       composite: c.compositeResearchScore,
       reasons: c.scoreReasons ?? [],
     };
@@ -259,7 +259,7 @@ async function runSupabaseLiveReplay(): Promise<{
   let bgeHealth: Record<string, unknown> = { ok: false, reason: "not_checked" };
   try {
     const health = await checkEmbeddingHealth(process.env);
-    bgeHealth = { ok: true, ...health };
+    bgeHealth = { ...health };
   } catch (error) {
     bgeHealth = {
       ok: false,

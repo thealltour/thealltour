@@ -9,11 +9,11 @@ export * from "@/lib/marketing/research/services/pipeline";
 export { buildSemanticResearchText } from "@/lib/marketing/research/services/semanticText";
 export { runSemanticDedup } from "@/lib/marketing/research/services/semanticDeduplicator";
 export {
+  buildResearchScoreComponents,
   rankAgendaCandidates,
 } from "@/lib/marketing/research/services/agendaCandidateBuilder";
 export {
   CALIBRATED_RESEARCH_SCORE_WEIGHTS,
-  buildResearchScoreComponents,
   computeCompositeResearchScore,
 } from "@/lib/marketing/research/services/scoringPolicy";
 export { scoreFreshness, isStaleFreshness } from "@/lib/marketing/research/services/freshnessScorer";

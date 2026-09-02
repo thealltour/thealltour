@@ -11,8 +11,7 @@
 import { spawnSync } from "node:child_process";
 import { extractJsonObject } from "../src/lib/marketing/bot/organization/envelope";
 import { runDepartmentPipeline } from "../src/lib/marketing/bot/organization/pipeline";
-import type { ContentStrategistOutput, GovernanceReviewResult, PerformanceBrief } from "../src/lib/marketing/bot/organization/handoffs";
-import type { PerformanceUnavailable } from "../src/lib/marketing/bot/organization/pipeline";
+import type { ContentStrategistOutput, GovernanceReviewResult, PerformanceBrief, PerformanceUnavailable } from "../src/lib/marketing/bot/organization/handoffs";
 
 const PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
 

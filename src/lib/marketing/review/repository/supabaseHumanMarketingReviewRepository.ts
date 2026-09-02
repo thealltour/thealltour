@@ -6,6 +6,7 @@ import type { HumanMarketingReview } from "@/lib/marketing/review/types";
 type DbClient = {
   from: (table: string) => {
     select: (columns?: string) => unknown;
+    insert: (row: unknown) => unknown;
     upsert: (row: unknown, options?: { onConflict?: string }) => unknown;
   };
 };

@@ -171,7 +171,7 @@ export class ManualPublicationPerformanceCollectionService {
     const channel = resolvePlatformChannel(reference.platform) ?? reference.platform;
     const normalizedMetrics =
       hasMetricValues(result.metrics)
-        ? deriveNormalizedPerformanceFeatures(result.metrics, reference.publishedAt, result.observedAt)
+        ? deriveNormalizedPerformanceFeatures(result.metrics, result.observedAt, reference.publishedAt)
         : null;
     const sampleQuality = deriveSampleQuality(result.status, normalizedMetrics?.ageHoursAtObservation ?? null);
 
@@ -201,7 +201,6 @@ export class ManualPublicationPerformanceCollectionService {
         productLinked: (input.candidate.contentAssignment.matchedProductIds ?? []).length > 0,
         sampleQuality,
         reason: result.reason ?? null,
-        normalizedMetrics,
       },
       metrics: hasMetricValues(result.metrics) ? metricsFromCollection(result.metrics) : [],
     });

@@ -73,8 +73,7 @@ async function main() {
   const LATER_KEY = "step-3-9-verification:2026-09-02:obs-2";
   let laterSnapshot = await perfRepo.findByLogicalObservationKey(LATER_KEY);
   if (!laterSnapshot) {
-    laterSnapshot = (
-      await perfRepo.save({
+    laterSnapshot = await perfRepo.save({
         snapshot: {
           collectionId: "pcol_step_3_9_verification_obs2",
           logicalObservationKey: LATER_KEY,
@@ -96,14 +95,12 @@ async function main() {
           productLinked: false,
           sampleQuality: "single_post_sample",
           reason: null,
-          normalizedMetrics: { engagementRate: 0.052, ageHoursAtObservation: 26 },
         },
         metrics: [
           { metricType: "impressions", metricValue: 720 },
           { metricType: "likes", metricValue: 31 },
         ],
-      })
-    ).snapshot;
+      });
   }
 
   const cycle3 = await runResearchCollectionCycle({

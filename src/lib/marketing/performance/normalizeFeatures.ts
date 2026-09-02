@@ -10,7 +10,7 @@ function safeRate(numerator?: number | null, denominator?: number | null): numbe
   return numerator / denominator;
 }
 
-export function computeAgeHoursAtObservation(publishedAt?: string | null, observedAt: string): number | null {
+export function computeAgeHoursAtObservation(observedAt: string, publishedAt?: string | null): number | null {
   const publishedMs = Date.parse(publishedAt ?? "");
   const observedMs = Date.parse(observedAt);
   if (!Number.isFinite(publishedMs) || !Number.isFinite(observedMs)) return null;
@@ -21,8 +21,8 @@ export function computeAgeHoursAtObservation(publishedAt?: string | null, observ
 
 export function deriveNormalizedPerformanceFeatures(
   metrics: PerformanceMetrics,
-  publishedAt?: string | null,
   observedAt: string,
+  publishedAt?: string | null,
 ): NormalizedPerformanceFeatures {
   const impressions = metrics.impressions ?? metrics.reach ?? metrics.views;
   const denominator = impressions ?? metrics.views;
@@ -36,8 +36,21 @@ export function deriveNormalizedPerformanceFeatures(
     shareRate: safeRate(metrics.shares, denominator),
     saveRate: safeRate(metrics.saves, denominator),
     clickRate: safeRate(metrics.clicks, denominator),
-    ageHoursAtObservation: computeAgeHoursAtObservation(publishedAt, observedAt),
+    ageHoursAtObservation: computeAgeHoursAtObservation(observedAt, publishedAt),
   };
+}
+
+/**
+ * Persistence helper: empty/absent metrics → null (not fabricated zero rates).
+ * Actual observed zero values still produce a derived object (rates may be null).
+ */
+export function resolveNormalizedMetricsForPersistence(
+  metrics: PerformanceMetrics,
+  observedAt: string,
+  publishedAt?: string | null,
+): NormalizedPerformanceFeatures | null {
+  if (Object.keys(metrics).length === 0) return null;
+  return deriveNormalizedPerformanceFeatures(metrics, observedAt, publishedAt);
 }
 
 export function deriveSampleQuality(

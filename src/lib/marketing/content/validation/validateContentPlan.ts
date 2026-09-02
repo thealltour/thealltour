@@ -44,7 +44,7 @@ function zodToContractError(
 ): ContentPlanContractError {
   const first = error.issues[0];
   const path = first?.path.join(".") ?? "root";
-  const isOversized = first?.code === "too_big" || first?.code === "too_long";
+  const isOversized = first?.code === "too_big";
   const isWrongType = first?.code === "invalid_type";
 
   return new ContentPlanContractError({

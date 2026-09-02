@@ -146,14 +146,11 @@ export function MarketingOperationsPageBody({
         </div>
       ) : null}
 
-      <AdminSummaryCard
-        title="오늘 전체 상태"
-        value={status.overallStatus.toUpperCase()}
-        description={
-          status.actionRequiredReasons[0] ??
-          "각 단계 메시지를 확인해 실패 지점과 다음 조치를 파악하세요."
-        }
-      />
+      <AdminSummaryCard title="오늘 전체 상태" value={status.overallStatus.toUpperCase()} />
+      <p className="text-sm text-[var(--text-secondary)]">
+        {status.actionRequiredReasons[0] ??
+          "각 단계 메시지를 확인해 실패 지점과 다음 조치를 파악하세요."}
+      </p>
 
       <div className="grid gap-3 md:grid-cols-2">
         <StageRow title="08:30 Performance Analyst" status={status.performanceBrief.status} message={status.performanceBrief.message} />
@@ -166,7 +163,8 @@ export function MarketingOperationsPageBody({
       </div>
 
       {status.actionRequiredReasons.length > 0 ? (
-        <AdminCard title="조치 필요">
+        <AdminCard className="p-4">
+          <h2 className="mb-2 text-base font-semibold">조치 필요</h2>
           <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--text-secondary)]">
             {status.actionRequiredReasons.map((reason) => (
               <li key={reason}>{reason}</li>
@@ -176,7 +174,8 @@ export function MarketingOperationsPageBody({
       ) : null}
 
       {status.incident ? (
-        <AdminCard title="Governance / 인시던트 트리아지">
+        <AdminCard className="p-4">
+          <h2 className="mb-2 text-base font-semibold">Governance / 인시던트 트리아지</h2>
           <dl className="grid gap-2 text-sm md:grid-cols-2">
             <div>
               <dt className="text-[var(--text-secondary)]">incidentClass</dt>
@@ -218,7 +217,8 @@ export function MarketingOperationsPageBody({
         </AdminCard>
       ) : null}
 
-      <AdminCard title="추적 ID">
+      <AdminCard className="p-4">
+        <h2 className="mb-2 text-base font-semibold">추적 ID</h2>
         <dl className="grid gap-2 text-sm md:grid-cols-2">
           {Object.entries(status.trace).map(([key, value]) => (
             <div key={key}>
@@ -241,7 +241,8 @@ export function MarketingOperationsPageBody({
         ) : null}
       </AdminCard>
 
-      <AdminCard title="최근 7일">
+      <AdminCard className="p-4">
+        <h2 className="mb-2 text-base font-semibold">최근 7일</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>

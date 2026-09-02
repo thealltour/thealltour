@@ -60,6 +60,7 @@ export function buildVerificationGovernance(input: {
     unsupportedClaimCount: 0,
     evidenceGapCount: 0,
     malformed: false,
+    revisionNumber: 0,
   };
 }
 

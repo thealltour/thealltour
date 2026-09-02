@@ -34,7 +34,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         channel: parsed.data.draft.channel ?? "threads",
       },
       humanNotes: parsed.data.humanNotes,
-      reviewedBy: auth.session.username ?? auth.session.adminUserId,
+      reviewedBy: auth.session.username ?? auth.session.adminUserId ?? null,
     });
     return Response.json({ review });
   } catch (error) {

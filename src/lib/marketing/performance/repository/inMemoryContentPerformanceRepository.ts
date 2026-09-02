@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { ContentPerformanceRepository, CreateContentPerformanceSnapshotInput } from "@/lib/marketing/performance/repository/contracts";
 import type { ContentPerformanceSnapshot, PerformanceMetrics } from "@/lib/marketing/performance/types";
+import { resolveNormalizedMetricsForPersistence } from "@/lib/marketing/performance/normalizeFeatures";
 
 function metricsToRows(metrics: PerformanceMetrics) {
   const rows: Array<{ metricType: string; metricValue: number; unit?: string | null }> = [];
@@ -45,7 +46,12 @@ function mapSnapshot(
     observedAt: input.snapshot.observedAt,
     dataAvailability: input.snapshot.dataAvailability,
     metrics,
-    normalizedMetrics: input.snapshot.normalizedMetrics ?? null,
+    // Empty metrics → null; observed zeros still derive (rates may be null).
+    normalizedMetrics: resolveNormalizedMetricsForPersistence(
+      metrics,
+      input.snapshot.observedAt,
+      input.snapshot.publishedAt ?? null,
+    ),
     topic: input.snapshot.topic ?? null,
     destinations: input.snapshot.destinations ?? [],
     format: input.snapshot.format ?? null,

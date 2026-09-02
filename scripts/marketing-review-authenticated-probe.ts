@@ -30,10 +30,12 @@ function scanSecrets(payload: unknown) {
   );
 }
 
+type MintVerificationAdminSession = (
+  profile: "bootstrap" | "manager",
+) => Promise<{ cookieHeader: string }>;
+
 async function resolveAuthorizedCookie(
-  mintVerificationAdminSession: Awaited<
-    ReturnType<typeof import("./marketing-review-verification-session")>
-  >["mintVerificationAdminSession"],
+  mintVerificationAdminSession: MintVerificationAdminSession,
 ): Promise<{ cookie: string; mode: "login" | "minted_bootstrap" }> {
   const id = process.env.ADMIN_ID?.trim();
   const password = process.env.ADMIN_PASSWORD?.trim();

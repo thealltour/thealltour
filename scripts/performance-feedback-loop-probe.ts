@@ -25,6 +25,8 @@ Module._resolveFilename = function resolveFilename(
 import { loadLocalEnv } from "./loadLocalEnv";
 loadLocalEnv();
 
+import type { CompletedMarketingCandidate } from "../src/lib/marketing/cron/daily/types";
+
 async function main() {
   const { createInMemoryContentPerformanceRepository } = await import(
     "../src/lib/marketing/performance/repository/inMemoryContentPerformanceRepository"
@@ -143,9 +145,33 @@ async function main() {
       malformed: false,
     },
     revisionHistory: [],
+    provenance: {
+      routineId: "daily-marketing-plan",
+      correlationId: "probe",
+      researchStatus: "ok",
+      governanceReviewId: "gov_probe",
+    },
+    observability: {
+      runId: "run_probe",
+      logicalRunKey: "probe:2026-09-02",
+      businessDateKst: "2026-09-02",
+      correlationId: "probe",
+      researchStatus: "ok",
+      candidateCount: 1,
+      selectedAgendaId: null,
+      assignmentId: "asgn_probe",
+      governanceReviewId: "gov_probe",
+      revisionCount: 0,
+      governanceDecision: "ALLOW",
+      finalCandidateId: "cmc_probe",
+      finalStatus: "ready_for_human_review",
+      startedAt: "2026-09-01T08:00:00.000Z",
+      completedAt: "2026-09-02T08:00:00.000Z",
+      failureReason: null,
+    },
     createdAt: "2026-09-01T08:00:00.000Z",
     updatedAt: "2026-09-02T08:00:00.000Z",
-  };
+  } as unknown as CompletedMarketingCandidate;
 
   const collected = await collectionService.collectPerformanceForManualPublication({
     review,

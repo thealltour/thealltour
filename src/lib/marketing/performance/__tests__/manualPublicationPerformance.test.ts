@@ -287,8 +287,8 @@ describe("STEP 3-9 manual publication performance feedback", () => {
   it("O: normalized rate calculation safe (no divide by zero)", () => {
     const normalized = deriveNormalizedPerformanceFeatures(
       { likes: 10, impressions: 0 },
-      "2026-09-01T12:00:00.000Z",
       "2026-09-01T18:00:00.000Z",
+      "2026-09-01T12:00:00.000Z",
     );
     expect(normalized.engagementRate).toBeNull();
     expect(normalized.ageHoursAtObservation).toBe(6);

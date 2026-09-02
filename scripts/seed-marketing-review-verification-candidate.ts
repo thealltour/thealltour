@@ -27,6 +27,7 @@ Module._resolveFilename = function resolveFilename(
 import { loadLocalEnv } from "./loadLocalEnv";
 loadLocalEnv();
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDailyMarketingRunRepository } from "../src/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import {
   VERIFICATION_PURPOSE,
@@ -34,24 +35,17 @@ import {
   buildVerificationIdentity,
 } from "../src/lib/marketing/review/verification/buildVerificationCandidate";
 
-async function countTable(client: {
-  from: (table: string) => {
-    select: (
-      columns: string,
-      opts: { count: "exact"; head: true },
-    ) => Promise<{ count: number | null; error: { message: string } | null }>;
-  };
-}, table: string): Promise<number> {
+async function countTable(client: SupabaseClient, table: string): Promise<number> {
   const { count, error } = await client.from(table).select("*", { count: "exact", head: true });
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
 
-async function cleanup(client: { from: (t: string) => unknown }) {
+async function cleanup(client: SupabaseClient) {
   const identity = buildVerificationIdentity();
-  const del = (table: string, column: string, value: string) => {
-    const q = client.from(table).delete() as { eq: (c: string, v: string) => Promise<{ error: { message: string } | null }> };
-    return q.eq(column, value);
+  const del = async (table: string, column: string, value: string) => {
+    const { error } = await client.from(table).delete().eq(column, value);
+    if (error) throw new Error(error.message);
   };
   await del("human_marketing_reviews", "candidate_id", identity.candidateId);
   await del("completed_marketing_candidates", "candidate_id", identity.candidateId);

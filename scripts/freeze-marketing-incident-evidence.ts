@@ -53,9 +53,7 @@ async function main() {
   if (assignmentId) {
     const store = getDefaultGovernanceReviewStore();
     if ("listByAssignmentId" in store && typeof store.listByAssignmentId === "function") {
-      governanceReviews = await (store as { listByAssignmentId: (id: string) => Promise<unknown[]> }).listByAssignmentId(
-        assignmentId,
-      );
+      governanceReviews = store.listByAssignmentId(assignmentId);
     }
   }
 

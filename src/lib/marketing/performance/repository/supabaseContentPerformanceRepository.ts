@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { ContentPerformanceRepository, CreateContentPerformanceSnapshotInput } from "@/lib/marketing/performance/repository/contracts";
 import type { ContentPerformanceSnapshot, PerformanceMetrics } from "@/lib/marketing/performance/types";
+import { resolveNormalizedMetricsForPersistence } from "@/lib/marketing/performance/normalizeFeatures";
 
 function asRow(data: unknown): Record<string, unknown> {
   return data as Record<string, unknown>;
@@ -116,6 +117,15 @@ export function createSupabaseContentPerformanceRepository(): ContentPerformance
       const existing = await this.findByLogicalObservationKey(input.snapshot.logicalObservationKey);
       if (existing) return existing;
 
+      const metrics = rowsToMetrics(
+        input.metrics.map((metric) => ({ metric_type: metric.metricType, metric_value: metric.metricValue })),
+      );
+      const normalizedMetrics = resolveNormalizedMetricsForPersistence(
+        metrics,
+        input.snapshot.observedAt,
+        input.snapshot.publishedAt ?? null,
+      );
+
       const { data, error } = await supabaseAdmin
         .from("marketing_content_performance_snapshots")
         .insert({
@@ -141,7 +151,7 @@ export function createSupabaseContentPerformanceRepository(): ContentPerformance
           sample_quality: input.snapshot.sampleQuality ?? null,
           reason: input.snapshot.reason ?? null,
           provider_metadata: {},
-          normalized_metrics: input.snapshot.normalizedMetrics ?? null,
+          normalized_metrics: normalizedMetrics,
         })
         .select("*")
         .single();

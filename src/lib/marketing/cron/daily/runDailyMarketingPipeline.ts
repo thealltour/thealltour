@@ -190,7 +190,10 @@ export async function runDailyMarketingPipeline(
         observability: buildObservability({
           ...existingRun,
           completedCandidateId: existingCandidate.candidateId,
-          finalStatus: existingCandidate.status,
+          metadata: {
+            ...existingRun.metadata,
+            finalStatus: existingCandidate.status,
+          },
         }),
       },
       candidate: existingCandidate,

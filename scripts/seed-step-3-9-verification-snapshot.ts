@@ -83,7 +83,6 @@ async function main() {
       productLinked: false,
       sampleQuality: "single_post_sample",
       reason: null,
-      normalizedMetrics: { engagementRate: 0.045, ageHoursAtObservation: 15 },
     },
     metrics: [
       { metricType: "impressions", metricValue: 600 },

@@ -44,4 +44,5 @@ export type {
   MarketingManagerOutput,
   PerformanceAnalystOutput,
   PerformanceBrief,
+  PerformanceUnavailable,
 } from "@/lib/marketing/bot/organization/handoffs";

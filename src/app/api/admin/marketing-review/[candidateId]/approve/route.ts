@@ -28,7 +28,7 @@ export async function POST(request: Request, context: RouteContext) {
     const review = await service.approveForManualPublish({
       candidateId,
       humanNotes: parsed.data.humanNotes,
-      reviewedBy: auth.session.username ?? auth.session.adminUserId,
+      reviewedBy: auth.session.username ?? auth.session.adminUserId ?? null,
     });
     return Response.json({ review });
   } catch (error) {

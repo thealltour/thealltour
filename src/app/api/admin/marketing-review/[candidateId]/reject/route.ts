@@ -29,7 +29,7 @@ export async function POST(request: Request, context: RouteContext) {
       candidateId,
       rejectionReason: parsed.data.rejectionReason,
       humanNotes: parsed.data.humanNotes,
-      reviewedBy: auth.session.username ?? auth.session.adminUserId,
+      reviewedBy: auth.session.username ?? auth.session.adminUserId ?? null,
     });
     return Response.json({ review });
   } catch (error) {

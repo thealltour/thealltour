@@ -43,10 +43,13 @@ function pipelineDeps(overrides: {
   governance?: () => Promise<never>;
 } = {}) {
   const repo = createInMemoryDailyMarketingRunRepository();
+  const reviewRepo = createInMemoryHumanMarketingReviewRepository();
   return {
     repo,
+    reviewRepo,
     deps: {
       repo,
+      reviewRepo,
       now: NOW,
       contentAssignmentStore: createInMemoryContentAssignmentStore(),
       governanceReviewStore: createInMemoryGovernanceReviewStore(),

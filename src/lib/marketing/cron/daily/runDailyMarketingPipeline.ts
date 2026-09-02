@@ -19,6 +19,8 @@ import {
   type ManagerAgendaResolution,
 } from "@/lib/marketing/cron/daily/resolveMarketingManagerAgenda";
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
+import type { HumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
+import { bootstrapHumanReviewForCandidate } from "@/lib/marketing/review/bootstrap/bootstrapHumanReview";
 import {
   classifyMarketingIncident,
   mapPipelineFailureToReason,
@@ -36,6 +38,7 @@ import {
 
 export type DailyMarketingPipelineDeps = DepartmentPipelineDeps & {
   repo?: DailyMarketingRunRepository;
+  reviewRepo?: HumanMarketingReviewRepository;
   now?: Date;
   getResearchContext?: () => Promise<MarketingResearchContext>;
   selectManagerAgenda?: (context: MarketingResearchContext) => Promise<ManagerAgendaResolution>;
@@ -165,6 +168,15 @@ export async function runDailyMarketingPipeline(
   if (!repo) {
     throw new Error("DailyMarketingRunRepository is required");
   }
+
+  const { createHumanMarketingReviewRepository } = await import(
+    "@/lib/marketing/review/repository/createHumanMarketingReviewRepository"
+  );
+  const reviewRepo =
+    deps.reviewRepo ??
+    (await createHumanMarketingReviewRepository(
+      process.env.VITEST || process.env.NODE_ENV === "test" ? { backend: "memory" } : {},
+    ));
 
   const existingCandidate = await repo.findCandidateByLogicalKey(logicalRunKey);
   const existingRun = await repo.findRunByLogicalKey(logicalRunKey);
@@ -380,12 +392,35 @@ export async function runDailyMarketingPipeline(
     return failRun(repo, run, "PERSISTENCE_FAILED", now);
   }
 
+  let humanReviewBootstrap: Record<string, unknown> = { status: "skipped", candidateId: savedCandidate.candidateId };
+  const bootstrapResult = await bootstrapHumanReviewForCandidate(savedCandidate, {
+    reviewRepo,
+    now: () => now,
+  });
+  humanReviewBootstrap = {
+      status:
+        bootstrapResult.outcome === "created" || bootstrapResult.outcome === "reused"
+          ? "succeeded"
+          : bootstrapResult.outcome === "failed"
+            ? "failed"
+            : "skipped",
+      candidateId: savedCandidate.candidateId,
+      outcome: bootstrapResult.outcome,
+      reviewId: "review" in bootstrapResult ? bootstrapResult.review.reviewId : null,
+      error: bootstrapResult.outcome === "failed" ? bootstrapResult.error : null,
+      reason: bootstrapResult.outcome === "skipped" ? bootstrapResult.reason : null,
+    };
+
   const completedRun: DailyMarketingRun = {
     ...run,
     status: "completed",
     completedAt: now.toISOString(),
     completedCandidateId: savedCandidate.candidateId,
     failureReason: candidate.status === "blocked" ? "GOVERNANCE_BLOCKED" : null,
+    metadata: {
+      ...run.metadata,
+      humanReviewBootstrap,
+    },
     observability: buildObservability({
       ...run,
       completedCandidateId: savedCandidate.candidateId,

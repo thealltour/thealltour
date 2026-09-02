@@ -13,6 +13,7 @@ import {
   createInMemoryDailyMarketingRunRepository,
   resetDefaultDailyMarketingRunRepository,
 } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
+import { createInMemoryHumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 import {
   buildManagerAgendaSelectionPrompt,
   parseManagerAgendaSelection,
@@ -69,14 +70,17 @@ function baseDeps(overrides: {
   const contentAssignmentStore = createInMemoryContentAssignmentStore();
   const governanceReviewStore = createInMemoryGovernanceReviewStore();
 
+  const reviewRepo = createInMemoryHumanMarketingReviewRepository();
   return {
     repo,
+    reviewRepo,
     contentAssignmentStore,
     governanceReviewStore,
     governanceCalls: () => governanceCalls,
     draftCalls: () => draftCalls,
     deps: {
       repo,
+      reviewRepo,
       now: NOW,
       contentAssignmentStore,
       governanceReviewStore,

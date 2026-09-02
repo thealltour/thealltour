@@ -45,6 +45,7 @@ import {
 import { ensureSharedObservabilityRecorder } from "../src/ai-runtime/observability/persistence";
 import { runDailyMarketingPipeline } from "../src/lib/marketing/cron/daily/runDailyMarketingPipeline";
 import { createDailyMarketingRunRepository } from "../src/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
+import { createHumanMarketingReviewRepository } from "../src/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 import { buildLogicalDailyRunKey, formatKstBusinessDate } from "../src/lib/marketing/cron/daily/kstBusinessDate";
 import { DAILY_MARKETING_ROUTINE_ID } from "../src/lib/marketing/cron/daily/types";
 import { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } from "../src/lib/marketing/social/publication/governanceBoundary";
@@ -211,6 +212,7 @@ async function main() {
   });
 
   const repo = await createDailyMarketingRunRepository();
+  const reviewRepo = await createHumanMarketingReviewRepository();
 
   const pipelineResult = await runDailyMarketingPipeline(
     {
@@ -224,6 +226,7 @@ async function main() {
     },
     {
       repo,
+      reviewRepo,
       ...dispatch,
       invokeManagerProfile: managerDispatch.invokeManagerProfile,
       requestPerformance: async () => pipelinePerformance,

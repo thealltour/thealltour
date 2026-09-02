@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { HumanReviewTransitionError, HumanReviewPolicyError } from "@/lib/marketing/review/transitions";
+import { HumanReviewEligibilityError } from "@/lib/marketing/review/bootstrap/humanReviewEligibilityError";
 
 export function humanReviewErrorResponse(error: unknown): NextResponse {
   if (error instanceof HumanReviewTransitionError) {
@@ -7,6 +8,9 @@ export function humanReviewErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof HumanReviewPolicyError) {
     return NextResponse.json({ message: error.message }, { status: 422 });
+  }
+  if (error instanceof HumanReviewEligibilityError) {
+    return NextResponse.json({ message: error.message, reason: error.reason }, { status: 422 });
   }
   const message = error instanceof Error ? error.message : "unknown_error";
   if (message === "candidate_not_found") {

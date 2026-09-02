@@ -1,7 +1,5 @@
-import type {
-  CompletedMarketingCandidate,
-  DailyMarketingRun,
-} from "@/lib/marketing/cron/daily/types";
+import type { CompletedMarketingCandidate, DailyMarketingRun } from "@/lib/marketing/cron/daily/types";
+import { isCandidateEligibleForHumanReview } from "@/lib/marketing/review/bootstrap/eligibility";
 import type { HumanMarketingReview } from "@/lib/marketing/review/types";
 import type {
   DailyMarketingOverallStatus,
@@ -75,7 +73,11 @@ export function buildActionRequiredReasons(input: {
     reasons.push("Governance returned REVIEW; human review required before publication.");
   }
 
-  if (candidate.status === "ready_for_human_review" && (!review || review.status === "pending" || review.status === "editing")) {
+  const eligible = isCandidateEligibleForHumanReview(candidate);
+
+  if (eligible && !review) {
+    reasons.push("HumanMarketingReview bootstrap is missing for an eligible candidate.");
+  } else if (eligible && review && (review.status === "pending" || review.status === "editing")) {
     reasons.push("Candidate is ready for human review.");
   }
 

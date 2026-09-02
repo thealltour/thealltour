@@ -75,11 +75,17 @@ export class SupabaseHumanMarketingReviewRepository implements HumanMarketingRev
       manually_published_at: review.manuallyPublishedAt,
     };
 
-    const upsert = this.client.from("human_marketing_reviews").upsert(row, { onConflict: "candidate_id" }) as {
-      select: (cols: string) => { single: () => Promise<{ data: unknown; error: { message: string } | null }> };
+    const insert = this.client.from("human_marketing_reviews").insert(row) as {
+      select: (cols: string) => { single: () => Promise<{ data: unknown; error: { message: string; code?: string } | null }> };
     };
-    const { data, error } = await upsert.select("*").single();
-    if (error) throw new Error(error.message);
+    const { data, error } = await insert.select("*").single();
+    if (error) {
+      if (error.code === "23505") {
+        const raced = await this.findByCandidateId(review.candidateId);
+        if (raced) return raced;
+      }
+      throw new Error(error.message);
+    }
     return mapReview(asRow(data));
   }
 

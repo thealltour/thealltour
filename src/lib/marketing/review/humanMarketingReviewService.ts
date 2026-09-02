@@ -1,6 +1,11 @@
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
-import { createInitialHumanReview, filterQueueItems, toQueueItem } from "@/lib/marketing/review/dto";
+import { bootstrapHumanReviewForCandidate } from "@/lib/marketing/review/bootstrap/bootstrapHumanReview";
+import {
+  HumanReviewEligibilityError,
+  type HumanReviewIneligibilityReason,
+} from "@/lib/marketing/review/bootstrap/humanReviewEligibilityError";
+import { filterQueueItems, toQueueItem } from "@/lib/marketing/review/dto";
 import { isVerificationRecord } from "@/lib/marketing/operations/verification";
 import type { HumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 import {
@@ -113,12 +118,38 @@ export class HumanMarketingReviewService {
   async getOrCreateHumanReview(candidateId: string, reviewedBy: string | null): Promise<HumanMarketingReview> {
     const existing = await this.deps.reviewRepo.findByCandidateId(candidateId);
     if (existing) return existing;
+
     const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(candidateId);
     if (!candidate) {
       throw new Error("candidate_not_found");
     }
-    const review = createInitialHumanReview(candidate, reviewedBy, this.now());
-    return this.deps.reviewRepo.save(review);
+
+    const result = await bootstrapHumanReviewForCandidate(candidate, {
+      reviewRepo: this.deps.reviewRepo,
+      now: () => this.now(),
+      includeVerification: true,
+    });
+
+    if (result.outcome === "skipped") {
+      throw new HumanReviewEligibilityError({
+        candidateId,
+        reason: result.reason as HumanReviewIneligibilityReason,
+        message: `candidate_not_eligible_for_human_review:${result.reason}`,
+      });
+    }
+    if (result.outcome === "failed") {
+      throw new Error(result.error);
+    }
+
+    const review = result.review;
+    if (reviewedBy && !review.reviewedBy) {
+      return this.deps.reviewRepo.update({
+        ...review,
+        reviewedBy,
+        updatedAt: this.now().toISOString(),
+      });
+    }
+    return review;
   }
 
   private async loadMutableReview(candidateId: string, reviewedBy: string | null): Promise<HumanMarketingReview> {

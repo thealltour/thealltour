@@ -17,9 +17,7 @@ export async function GET(_request: Request, context: RouteContext) {
     if (!detail) {
       return Response.json({ message: "후보를 찾을 수 없습니다." }, { status: 404 });
     }
-    await service.getOrCreateHumanReview(candidateId, auth.session.username ?? auth.session.adminUserId);
-    const refreshed = await service.getHumanReviewDetail(candidateId);
-    return Response.json(refreshed, {
+    return Response.json(detail, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

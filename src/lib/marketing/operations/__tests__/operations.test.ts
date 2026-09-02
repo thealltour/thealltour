@@ -364,6 +364,7 @@ describe("STEP 3-10 marketing operations", () => {
 
     const deps = {
       repo: runRepo,
+      reviewRepo,
       now: NOW,
       contentAssignmentStore,
       governanceReviewStore,

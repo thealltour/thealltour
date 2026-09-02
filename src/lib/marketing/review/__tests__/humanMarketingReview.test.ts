@@ -161,10 +161,13 @@ describe("HumanMarketingReviewService", () => {
     expect(detail?.canApprove).toBe(true);
   });
 
-  it("C: blocked candidate cannot be approved", async () => {
+  it("C: blocked candidate cannot be approved or bootstrapped", async () => {
     const { repo, candidate } = await seedCandidate("blocked");
     const service = createService(repo);
-    await service.getOrCreateHumanReview(candidate.candidateId, "admin");
+    await expect(service.getOrCreateHumanReview(candidate.candidateId, "admin")).rejects.toThrow(
+      /candidate_not_eligible_for_human_review:candidate_status_blocked/,
+    );
+    expect((await service.getHumanReviewDetail(candidate.candidateId))?.review).toBeNull();
     await expect(service.approveForManualPublish({ candidateId: candidate.candidateId, reviewedBy: "admin" })).rejects.toBeInstanceOf(
       HumanReviewPolicyError,
     );

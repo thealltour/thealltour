@@ -10,6 +10,7 @@ import {
 import { createDailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import { readLatestPerformanceBrief } from "@/lib/marketing/cron/performanceBriefArtifact";
 import { createHumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
+import { isCandidateEligibleForHumanReview } from "@/lib/marketing/review/bootstrap/eligibility";
 import { createContentPerformanceRepository } from "@/lib/marketing/performance/repository/createContentPerformanceRepository";
 import { performanceSnapshotExternalId } from "@/lib/marketing/performance/constants";
 import { getMarketingManagerResearchContext } from "@/lib/marketing/research/manager/getMarketingManagerResearchContext";
@@ -251,15 +252,17 @@ export async function getDailyMarketingOperationsStatus(
 
   if (candidate) {
     if (!review) {
-      humanReviewStage = {
-        status: candidate.status === "ready_for_human_review" || candidate.status === "needs_human_review"
-          ? "action_required"
-          : "pending",
-        message:
-          candidate.status === "ready_for_human_review" || candidate.status === "needs_human_review"
-            ? "Candidate exists but no HumanMarketingReview record was created yet."
-            : "Human review not started.",
-      };
+      if (isCandidateEligibleForHumanReview(candidate)) {
+        humanReviewStage = {
+          status: "action_required",
+          message: "Candidate exists but HumanMarketingReview bootstrap record is missing.",
+        };
+      } else {
+        humanReviewStage = {
+          status: "pending",
+          message: "Human review not started.",
+        };
+      }
     } else if (review.status === "manually_published") {
       humanReviewStage = {
         status: "healthy",

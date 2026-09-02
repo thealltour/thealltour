@@ -23,12 +23,13 @@ export function createInitialHumanReview(
   candidate: CompletedMarketingCandidate,
   reviewedBy: string | null,
   now = new Date(),
+  reviewId?: string,
 ): HumanMarketingReview {
   const draft = draftFromContentOutput(candidate.draft);
   const iso = now.toISOString();
   return {
     contract: HUMAN_MARKETING_REVIEW_CONTRACT,
-    reviewId: `hmr_${randomUUID().replace(/-/g, "").slice(0, 16)}`,
+    reviewId: reviewId ?? `hmr_${randomUUID().replace(/-/g, "").slice(0, 16)}`,
     candidateId: candidate.candidateId,
     runId: candidate.runId,
     status: "pending",

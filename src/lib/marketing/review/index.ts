@@ -2,6 +2,7 @@ export * from "@/lib/marketing/review/types";
 export * from "@/lib/marketing/review/transitions";
 export * from "@/lib/marketing/review/dto";
 export * from "@/lib/marketing/review/validation";
+export * from "@/lib/marketing/review/bootstrap";
 export { HumanMarketingReviewService, createHumanMarketingReviewService } from "@/lib/marketing/review/humanMarketingReviewService";
 export {
   createHumanMarketingReviewRepository,

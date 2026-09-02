@@ -15,7 +15,6 @@ function getPagePath(pagePath?: string): string | null {
 
 export type TrackCheckoutOpenParams = {
   productId: string;
-  paymentType?: string | null;
   travelerCount?: number | null;
   pagePath?: string;
 };
@@ -30,7 +29,6 @@ export function trackCheckoutOpen(params: TrackCheckoutOpenParams): void {
         productId: params.productId?.trim() || null,
         section: "checkout_modal",
         metadata: {
-          payment_type: params.paymentType ?? null,
           traveler_count: params.travelerCount ?? null,
         },
       }),
@@ -42,7 +40,6 @@ export function trackCheckoutOpen(params: TrackCheckoutOpenParams): void {
 
 export type TrackCheckoutSubmitParams = {
   productId: string;
-  paymentType?: string | null;
   travelerCount?: number | null;
   pagePath?: string;
 };
@@ -57,7 +54,6 @@ export function trackCheckoutSubmit(params: TrackCheckoutSubmitParams): void {
         productId: params.productId?.trim() || null,
         section: "checkout_modal",
         metadata: {
-          payment_type: params.paymentType ?? null,
           traveler_count: params.travelerCount ?? null,
         },
       }),
@@ -70,7 +66,6 @@ export function trackCheckoutSubmit(params: TrackCheckoutSubmitParams): void {
 export type TrackCheckoutPaymentResultParams = {
   productId: string;
   result: "success" | "fail";
-  paymentType?: string | null;
   travelerCount?: number | null;
   pagePath?: string;
 };
@@ -87,7 +82,6 @@ export function trackCheckoutPaymentResult(params: TrackCheckoutPaymentResultPar
         label: params.result,
         metadata: {
           result: params.result,
-          payment_type: params.paymentType ?? null,
           traveler_count: params.travelerCount ?? null,
         },
       }),

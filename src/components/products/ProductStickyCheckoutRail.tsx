@@ -7,16 +7,10 @@ import { ProductCheckoutModal } from "@/components/products/ProductCheckoutModal
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
-import {
-  buildCheckoutQuote,
-  CHECKOUT_DEPOSIT_PER_PERSON,
-} from "@/lib/payments/buildCheckoutQuote";
-import type { CheckoutPaymentType } from "@/lib/payments/bookingPaymentPayload";
+import { buildCheckoutQuote } from "@/lib/payments/buildCheckoutQuote";
 import { resolveCheckoutDepartureYmd } from "@/lib/payments/resolveCheckoutDepartureYmd";
-import { resolveCheckoutPayAmounts } from "@/lib/payments/resolveCheckoutPayAmounts";
 import { EMPTY_SELECTED_OPTIONS } from "@/lib/pricing/selectedOptions";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
-import { cn } from "@/lib/cn";
 import type { Product } from "@/types/product";
 import {
   trackProductCtaClick,
@@ -60,7 +54,6 @@ export function ProductStickyCheckoutRail({
   } = useProductQuote();
   const { openModal: openConsultModal } = useConsultModal();
 
-  const [paymentType, setPaymentType] = useState<CheckoutPaymentType>("deposit");
   const [modalOpen, setModalOpen] = useState(false);
 
   const options =
@@ -69,7 +62,6 @@ export function ProductStickyCheckoutRail({
       : undefined;
   const optionsState = selectedOptions ?? EMPTY_SELECTED_OPTIONS;
   const title = productTitle?.trim() || product?.title || "상품";
-  const depositPerPersonLabel = `예약금 ${(CHECKOUT_DEPOSIT_PER_PERSON / 10_000).toLocaleString("ko-KR")}만원 / 1인`;
 
   const trackBookingCta = (ctaType: "primary" | "kakao") => {
     if (!product?.id) return;
@@ -117,26 +109,17 @@ export function ProductStickyCheckoutRail({
       pointsUse: 0,
       travelerCount,
       applyPaxDiscount: false,
-      depositPerPerson: CHECKOUT_DEPOSIT_PER_PERSON,
     });
   }, [options, optionsState, departureForCheckout, travelerCount]);
 
-  const payAmounts = useMemo(
-    () =>
-      resolveCheckoutPayAmounts({
-        paymentType,
-        totalTripPrice: quotePreview.quoteTotal,
-        depositTotal: quotePreview.depositAmount,
-      }),
-    [paymentType, quotePreview.quoteTotal, quotePreview.depositAmount],
-  );
+  const totalTripPrice = quotePreview.quoteTotal;
 
   const canReserve =
     Boolean(selectedDepartureKey) &&
     (!departureRequired || Boolean(selectedDeparture)) &&
     !requiredGroupsMissing &&
     Boolean(resolvedDepartureYmd) &&
-    payAmounts.payAmount > 0;
+    totalTripPrice > 0;
 
   const optionItems = useMemo(
     () =>
@@ -164,7 +147,6 @@ export function ProductStickyCheckoutRail({
       );
       return;
     }
-    // sticky에서 예전에 선택한 칩에 ymd가 없으면 복구해 컨텍스트에 반영
     if (selectedDeparture && !selectedDeparture.ymd && resolvedDepartureYmd) {
       setDepartureSelection(
         { ...selectedDeparture, ymd: resolvedDepartureYmd },
@@ -188,7 +170,7 @@ export function ProductStickyCheckoutRail({
   };
 
   const reserveLabel = canReserve
-    ? `₩${payAmounts.payAmount.toLocaleString("ko-KR")} 예약하기`
+    ? `₩${totalTripPrice.toLocaleString("ko-KR")} 예약하기`
     : departureSelectionMissing || !resolvedDepartureYmd
       ? "출발일 선택 후 예약"
       : requiredGroupsMissing
@@ -226,12 +208,7 @@ export function ProductStickyCheckoutRail({
             travelerCount={travelerCount}
             selectedOptions={optionsState}
             optionItems={optionItems}
-            paymentType={paymentType}
-            onPaymentTypeChange={setPaymentType}
-            totalTripPrice={quotePreview.quoteTotal}
-            depositTotal={quotePreview.depositAmount}
-            payAmount={payAmounts.payAmount}
-            remainingBalance={payAmounts.remainingBalance}
+            totalTripPrice={totalTripPrice}
             paxDiscountPreview={paxDiscountPreview}
           />
         ) : null}
@@ -242,40 +219,15 @@ export function ProductStickyCheckoutRail({
   return (
     <>
       <div id="product-checkout" className="space-y-3 scroll-mt-28">
-        <div>
-          <p className="text-xs font-semibold text-slate-700">결제 방식</p>
-          <div className="mt-2 grid grid-cols-1 gap-2">
-            <MiniPayCard
-              selected={paymentType === "deposit"}
-              onSelect={() => setPaymentType("deposit")}
-              title="예약금"
-              badge="추천"
-              amount={quotePreview.depositAmount}
-            />
-            <MiniPayCard
-              selected={paymentType === "full"}
-              onSelect={() => setPaymentType("full")}
-              title="전액"
-              amount={quotePreview.quoteTotal}
-            />
-          </div>
-        </div>
-
         <dl className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
           <div className="flex justify-between gap-2">
-            <dt>총 여행금액(예상)</dt>
-            <dd className="font-medium text-slate-800">
-              ₩{formatPriceKR(quotePreview.quoteTotal) ?? "0"}
-            </dd>
-          </div>
-          <div className="mt-1 flex justify-between gap-2">
-            <dt>지금 결제</dt>
+            <dt>상품 총액</dt>
             <dd className="font-semibold text-[var(--primary)]">
-              ₩{formatPriceKR(payAmounts.payAmount) ?? "0"}
+              ₩{formatPriceKR(totalTripPrice) ?? "0"}
             </dd>
           </div>
           <p className="mt-2 text-[11px] leading-snug text-slate-500">
-            {depositPerPersonLabel} · 기본은 예약금 결제 (전액 결제도 가능)
+            출발일·인원 확인 후 상품 총액을 결제합니다.
           </p>
           {paxDiscountPreview && paxDiscountPreview.amount > 0 ? (
             <p className="mt-1 text-[11px] leading-snug text-[var(--success)]">
@@ -293,7 +245,7 @@ export function ProductStickyCheckoutRail({
           {reserveLabel}
         </button>
         <p className="text-center text-[11px] leading-snug text-slate-500">
-          출발일·인원을 확인한 뒤 예약금을 결제합니다.
+          출발일·인원을 확인한 뒤 결제합니다.
         </p>
 
         <button
@@ -324,62 +276,10 @@ export function ProductStickyCheckoutRail({
           travelerCount={travelerCount}
           selectedOptions={optionsState}
           optionItems={optionItems}
-          paymentType={paymentType}
-          onPaymentTypeChange={setPaymentType}
-          totalTripPrice={quotePreview.quoteTotal}
-          depositTotal={quotePreview.depositAmount}
-          payAmount={payAmounts.payAmount}
-          remainingBalance={payAmounts.remainingBalance}
+          totalTripPrice={totalTripPrice}
           paxDiscountPreview={paxDiscountPreview}
         />
       ) : null}
     </>
-  );
-}
-
-function MiniPayCard({
-  selected,
-  onSelect,
-  title,
-  amount,
-  badge,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  amount: number;
-  badge?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "relative flex items-center justify-between rounded-xl border px-3 py-2.5 text-left transition",
-        selected
-          ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
-          : "border-slate-200 bg-white hover:border-slate-300",
-      )}
-    >
-      <span className="flex items-center gap-2">
-        <span
-          className={cn(
-            "flex h-4 w-4 items-center justify-center rounded-full border",
-            selected ? "border-[var(--primary)]" : "border-slate-300",
-          )}
-        >
-          {selected ? <span className="h-2 w-2 rounded-full bg-[var(--primary)]" /> : null}
-        </span>
-        <span className="text-sm font-semibold text-slate-900">{title}</span>
-        {badge ? (
-          <span className="rounded bg-[var(--primary)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--on-primary)]">
-            {badge}
-          </span>
-        ) : null}
-      </span>
-      <span className="text-sm font-bold text-[var(--primary)]">
-        ₩{formatPriceKR(amount) ?? "0"}
-      </span>
-    </button>
   );
 }

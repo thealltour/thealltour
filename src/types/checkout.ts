@@ -27,7 +27,4 @@ export type CheckoutSnapshot = {
   preparedAt: string;
 };
 
-export type BalancePaymentPreference = "cash_receipt" | "portone";
-
 export const BOOKING_DEPOSIT_REF_TYPE = "BOOKING_DEPOSIT" as const;
-export const BOOKING_BALANCE_REF_TYPE = "BOOKING_BALANCE" as const;

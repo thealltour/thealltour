@@ -47,7 +47,6 @@ export async function POST(request: Request) {
       ok: true,
       alreadyProcessed: result.alreadyProcessed ?? false,
       bookingId: result.bookingId,
-      paymentKind: result.paymentKind,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "webhook failed";

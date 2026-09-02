@@ -73,7 +73,6 @@ export async function POST(request: Request) {
       alreadyProcessed: result.alreadyProcessed ?? false,
       bookingId: result.bookingId ?? booking.id,
       bookingNumber: booking.booking_number ?? null,
-      paymentKind: result.paymentKind,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "결제 확정에 실패했습니다.";

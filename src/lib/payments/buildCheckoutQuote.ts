@@ -8,12 +8,6 @@ import {
 } from "@/lib/payments/calculatePaxDiscount";
 import type { ProductOptions, SelectedOptions } from "@/types/product";
 
-/** 인당 예약금 (원). 전 상품 통일 — 총 예약금 = 인당 × 인원 */
-export const CHECKOUT_DEPOSIT_PER_PERSON = 200_000;
-
-/** @deprecated 이름 호환 — 인당 예약금과 동일 */
-export const CHECKOUT_DEPOSIT_AMOUNT = CHECKOUT_DEPOSIT_PER_PERSON;
-
 export type CheckoutDepartureInput = {
   label: string;
   inquiryValue: string;
@@ -34,8 +28,6 @@ export type CheckoutQuoteInput = {
   hasPreviousBooking?: boolean;
   /** 보유 쿠폰팩이 있으면 단가·티어의 진실 소스 */
   couponPack?: { tier: DiscountTier; unitAmount: number } | null;
-  /** 인당 예약금 오버라이드 (기본 CHECKOUT_DEPOSIT_PER_PERSON) */
-  depositPerPerson?: number;
 };
 
 export type CheckoutQuoteResult = {
@@ -47,22 +39,12 @@ export type CheckoutQuoteResult = {
   paxDiscountAmount: number;
   discountLabel: string | null;
   discountTier: DiscountTier | null;
-  /** 인당 예약금 */
-  depositPerPerson: number;
-  /** 총 예약금 = 인당 × 인원 */
-  depositAmount: number;
-  balanceDue: number;
   breakdown: QuoteBreakdownItem[];
   travelerCount: number;
 };
 
 export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuoteResult {
   const travelerCount = Math.max(1, Math.floor(input.travelerCount ?? 1));
-  const depositPerPerson = Math.max(
-    0,
-    Math.floor(input.depositPerPerson ?? CHECKOUT_DEPOSIT_PER_PERSON),
-  );
-  const depositAmount = depositPerPerson * travelerCount;
   const pointsApplied = normalizePointsUseRequested(input.pointsUse);
   const quote = calcQuote(input.options ?? undefined, input.selectedOptions);
 
@@ -104,15 +86,10 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuoteResu
     paxDiscountAmount = capPaxDiscountAmount({
       quoteTotal,
       rawPaxDiscount: pax.totalDiscount,
-      depositAmount,
     });
     discountLabel = pax.label;
     discountTier = pax.tier;
   }
-
-  const afterPromo = Math.max(0, quoteTotal - paxDiscountAmount);
-  const afterPoints = Math.max(0, afterPromo - pointsApplied);
-  const balanceDue = Math.max(0, afterPoints - depositAmount);
 
   return {
     quoteTotal,
@@ -123,9 +100,6 @@ export function buildCheckoutQuote(input: CheckoutQuoteInput): CheckoutQuoteResu
     paxDiscountAmount,
     discountLabel,
     discountTier,
-    depositPerPerson,
-    depositAmount,
-    balanceDue,
     breakdown: quote.breakdown,
     travelerCount,
   };
@@ -140,9 +114,6 @@ export function validateCheckoutQuote(quote: CheckoutQuoteResult): { ok: true } 
   }
   if (quote.paxDiscountAmount + quote.pointsApplied > quote.quoteTotal) {
     return { ok: false, message: "할인·포인트 합계가 견적 합계를 초과합니다." };
-  }
-  if (quote.depositAmount > quote.quoteTotal - quote.paxDiscountAmount - quote.pointsApplied) {
-    return { ok: false, message: "예약금이 결제 가능 금액보다 큽니다. 상담 문의로 예약해 주세요." };
   }
   return { ok: true };
 }

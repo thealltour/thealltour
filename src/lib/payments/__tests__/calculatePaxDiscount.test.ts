@@ -36,9 +36,8 @@ describe("calculatePaxDiscount history fallback", () => {
 });
 
 describe("capPaxDiscountAmount", () => {
-  it("keeps deposit payable", () => {
-    expect(
-      capPaxDiscountAmount({ quoteTotal: 150_000, rawPaxDiscount: 50_000, depositAmount: 100_000 }),
-    ).toBe(50_000);
+  it("caps discount at quote total", () => {
+    expect(capPaxDiscountAmount({ quoteTotal: 150_000, rawPaxDiscount: 50_000 })).toBe(50_000);
+    expect(capPaxDiscountAmount({ quoteTotal: 40_000, rawPaxDiscount: 50_000 })).toBe(40_000);
   });
 });

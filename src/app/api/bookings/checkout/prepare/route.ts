@@ -29,7 +29,8 @@ const bodySchema = z.object({
   selected_options: z.record(z.string(), z.union([z.string(), z.array(z.string())])).default({}),
   points_use: z.number().int().min(0).optional(),
   traveler_count: z.number().int().min(1).max(99).optional(),
-  payment_type: z.enum(["deposit", "full"]).optional().default("deposit"),
+  /** PortOne paymentId (KG이니시스 40자 제한). 클라이언트가 prepare 직전 생성 */
+  transaction_id: z.string().min(1).max(40).optional(),
   /** 주문서 예약자 — 회원/비회원 공통 필수 */
   customer: customerSchema,
 });
@@ -150,7 +151,7 @@ export async function POST(request: Request) {
       travelerCount: body.traveler_count,
       returnDate,
       benefitMode,
-      paymentType: body.payment_type,
+      transactionId: body.transaction_id,
     });
 
     return NextResponse.json({

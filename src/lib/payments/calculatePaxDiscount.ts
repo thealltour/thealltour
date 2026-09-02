@@ -54,13 +54,12 @@ export function calculatePaxDiscountFromPack(params: {
   };
 }
 
-/** 예약금 유지를 위해 프로모션 할인 상한 캡 (포인트와 무관 — 포인트는 promo 이후에 적용) */
+/** 프로모션 할인 상한 캡 (포인트와 무관 — 포인트는 promo 이후에 적용) */
 export function capPaxDiscountAmount(params: {
   quoteTotal: number;
   rawPaxDiscount: number;
-  depositAmount: number;
 }): number {
-  const { quoteTotal, rawPaxDiscount, depositAmount } = params;
-  const maxDiscount = Math.max(0, quoteTotal - depositAmount);
+  const { quoteTotal, rawPaxDiscount } = params;
+  const maxDiscount = Math.max(0, quoteTotal);
   return Math.min(Math.max(0, rawPaxDiscount), maxDiscount);
 }

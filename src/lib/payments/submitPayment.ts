@@ -1,5 +1,6 @@
 import type { BookingPaymentPayload } from "@/lib/payments/bookingPaymentPayload";
 import { completePortOnePaymentClient } from "@/lib/payments/completePortOnePaymentClient";
+import { createPortOneTransactionId } from "@/lib/payments/portone/createPortOneTransactionId";
 import { resolveCheckoutDepartureYmd } from "@/lib/payments/resolveCheckoutDepartureYmd";
 import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
 
@@ -74,6 +75,7 @@ export async function submitPayment(
   }
 
   let prepareRes: Response;
+  const transactionId = createPortOneTransactionId("full");
   try {
     prepareRes = await fetch("/api/bookings/checkout/prepare", {
       method: "POST",
@@ -83,6 +85,7 @@ export async function submitPayment(
         product_id: payload.productId,
         product_title: payload.productName,
         source_path: `/products/${payload.productId}`,
+        transaction_id: transactionId,
         departure: {
           label: payload.departure.label || departureYmd,
           inquiryValue: payload.departure.inquiryValue || payload.selectedDate || departureYmd,
@@ -91,7 +94,6 @@ export async function submitPayment(
         },
         selected_options: payload.selectedOptionsMap ?? {},
         traveler_count: payload.headcount,
-        payment_type: payload.paymentType,
         customer: {
           name: payload.customer.name,
           phone: payload.customer.phone,
@@ -113,6 +115,12 @@ export async function submitPayment(
   }
 
   const { portone } = prepareData;
+  if (portone.paymentId !== transactionId) {
+    return {
+      ok: false,
+      message: "결제 식별자가 일치하지 않습니다. 다시 시도해 주세요.",
+    };
+  }
   const storeId =
     portone.storeId ||
     process.env.NEXT_PUBLIC_PORTONE_STORE_ID?.trim() ||
@@ -140,6 +148,10 @@ export async function submitPayment(
       totalAmount: portone.totalAmount,
       currency: portone.currency ?? "CURRENCY_KRW",
       payMethod: "CARD",
+      customData: {
+        productId: payload.productId,
+        bookingId: prepareData.booking_id ?? null,
+      },
       customer: {
         fullName: payload.customer.name,
         phoneNumber: payload.customer.phone.replace(/\D/g, ""),

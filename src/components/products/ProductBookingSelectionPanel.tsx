@@ -10,7 +10,7 @@ import {
 } from "@/components/products/ProductQuoteContext";
 import { cn } from "@/lib/cn";
 import { sortOptionGroups } from "@/lib/pricing/calcQuote";
-import { CHECKOUT_DEPOSIT_PER_PERSON } from "@/lib/payments/buildCheckoutQuote";
+import { buildCheckoutQuote } from "@/lib/payments/buildCheckoutQuote";
 import {
   hasAnyOptionSelection,
   optionsSelectionHasMultiGroup,
@@ -233,8 +233,7 @@ export function ProductBookingSelectionPanel({
           </div>
         ) : null}
         <p className="mt-3 text-[11px] leading-snug text-slate-500">
-          예약금 {(CHECKOUT_DEPOSIT_PER_PERSON / 10_000).toLocaleString("ko-KR")}만원 / 1인 · 출발일·인원
-          확인 후 결제합니다.
+          출발일·인원 확인 후 상품 총액을 결제합니다.
         </p>
       </div>
     </div>

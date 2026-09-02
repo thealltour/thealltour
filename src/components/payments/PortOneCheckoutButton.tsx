@@ -10,6 +10,7 @@ export type PortOneCheckoutParams = {
   totalAmount: number;
   currency?: "CURRENCY_KRW";
   redirectUrl?: string;
+  customData?: Record<string, unknown>;
 };
 
 export type PortOneCheckoutButtonProps = {
@@ -45,6 +46,7 @@ export function PortOneCheckoutButton({
         currency: params.currency ?? "CURRENCY_KRW",
         payMethod: "CARD",
         redirectUrl: params.redirectUrl,
+        ...(params.customData ? { customData: params.customData } : {}),
       });
 
       if (response?.code != null) {

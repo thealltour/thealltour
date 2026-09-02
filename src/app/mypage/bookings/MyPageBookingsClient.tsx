@@ -20,7 +20,7 @@ export type BookingRow = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending_deposit: "예약금 대기",
+  pending_deposit: "결제 대기",
   reserved: "예약 확정",
   completed: "여행 완료",
   canceled: "취소",
@@ -84,12 +84,12 @@ export default function MyPageBookingsClient({ items, loading }: MyPageBookingsC
               >
                 상세 보기
               </Link>
-              {row.payment_status === "partial" || row.booking_status === "pending_deposit" ? (
+              {row.booking_status === "pending_deposit" && row.payment_status !== "paid" ? (
                 <Link
                   href={`/mypage/bookings/${encodeURIComponent(row.id)}`}
                   className={cn(buttonVariants({ variant: "primary", size: "sm" }), "inline-flex")}
                 >
-                  {row.payment_status === "partial" ? "잔금 결제하기" : "예약 확인 · 결제"}
+                  결제하기
                 </Link>
               ) : null}
               {row.booking_status === "completed" ? (

@@ -5,8 +5,6 @@
 
 import type { SelectedOptions } from "@/types/product";
 
-export type CheckoutPaymentType = "deposit" | "full";
-
 export type BookingPaymentOptionItem = {
   id: string;
   name: string;
@@ -28,11 +26,9 @@ export type BookingPaymentPayload = {
     ymd?: string | null;
     price?: number | null;
   };
-  paymentType: CheckoutPaymentType;
   totalTripPrice: number;
-  /** 오늘 실제 결제 금액 (예약금 합 또는 전액) */
+  /** 오늘 실제 결제 금액 (상품 총액과 동일) */
   payAmount: number;
-  remainingBalance: number;
   customer: {
     name: string;
     phone: string;

@@ -14,12 +14,8 @@ import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import {
   createOrderId,
   type BookingPaymentPayload,
-  type CheckoutPaymentType,
 } from "@/lib/payments/bookingPaymentPayload";
-import {
-  buildCheckoutQuote,
-  CHECKOUT_DEPOSIT_PER_PERSON,
-} from "@/lib/payments/buildCheckoutQuote";
+import { buildCheckoutQuote } from "@/lib/payments/buildCheckoutQuote";
 import {
   firstCheckoutFormErrorKey,
   formatPhoneInput,
@@ -27,7 +23,6 @@ import {
   type CheckoutFormErrors,
   type CheckoutFormValues,
 } from "@/lib/payments/checkoutFormValidation";
-import { resolveCheckoutPayAmounts } from "@/lib/payments/resolveCheckoutPayAmounts";
 import { submitPayment } from "@/lib/payments/submitPayment";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import type { ProductOptions, SelectedOptions } from "@/types/product";
@@ -41,8 +36,6 @@ export type ProductCheckoutSectionProps = {
   departureRequired: boolean;
   requiredGroupsMissing: boolean;
   travelerCount: number;
-  /** 인당 예약금 오버라이드 (미전달 시 CHECKOUT_DEPOSIT_PER_PERSON = 200,000원) */
-  depositPricePerPerson?: number | null;
   benefitMode?: "golf_coupon" | "package_points";
   /** rail = 우측 sticky CTA용 컴팩트 레이아웃 */
   variant?: "default" | "rail";
@@ -77,7 +70,6 @@ export const ProductCheckoutSection = forwardRef<
     departureRequired,
     requiredGroupsMissing,
     travelerCount,
-    depositPricePerPerson,
     variant = "default",
   },
   ref,
@@ -86,7 +78,6 @@ export const ProductCheckoutSection = forwardRef<
   const { openModal: openConsultModal } = useConsultModal();
   const { selectedDeparture } = useProductQuote();
 
-  const [paymentType, setPaymentType] = useState<CheckoutPaymentType>("deposit");
   const [form, setForm] = useState<CheckoutFormValues>(EMPTY_FORM);
   const [errors, setErrors] = useState<CheckoutFormErrors>({});
   const [message, setMessage] = useState("");
@@ -98,11 +89,6 @@ export const ProductCheckoutSection = forwardRef<
   const agreeTermsRef = useRef<HTMLInputElement>(null);
   const agreePrivacyRef = useRef<HTMLInputElement>(null);
   const agreeRefundRef = useRef<HTMLInputElement>(null);
-
-  const depositPerPerson =
-    typeof depositPricePerPerson === "number" && depositPricePerPerson > 0
-      ? depositPricePerPerson
-      : CHECKOUT_DEPOSIT_PER_PERSON;
 
   const quotePreview = useMemo(() => {
     return buildCheckoutQuote({
@@ -118,26 +104,16 @@ export const ProductCheckoutSection = forwardRef<
       pointsUse: 0,
       travelerCount,
       applyPaxDiscount: false,
-      depositPerPerson,
     });
-  }, [options, selectedOptions, selectedDeparture, travelerCount, depositPerPerson]);
+  }, [options, selectedOptions, selectedDeparture, travelerCount]);
 
-  const payAmounts = useMemo(
-    () =>
-      resolveCheckoutPayAmounts({
-        paymentType,
-        totalTripPrice: quotePreview.quoteTotal,
-        depositTotal: quotePreview.depositAmount,
-      }),
-    [paymentType, quotePreview.quoteTotal, quotePreview.depositAmount],
-  );
+  const totalTripPrice = quotePreview.quoteTotal;
 
   const canCheckout =
     Boolean(selectedDepartureKey) &&
     (!departureRequired || Boolean(selectedDeparture)) &&
     !requiredGroupsMissing &&
-    quotePreview.quoteTotal > 0 &&
-    payAmounts.payAmount > 0;
+    totalTripPrice > 0;
 
   const checkoutBlockedReason = (() => {
     if (requiredGroupsMissing) return "필수 옵션을 모두 선택하면 결제가 가능합니다.";
@@ -145,7 +121,7 @@ export const ProductCheckoutSection = forwardRef<
       return "달력에서 출발일을 선택하면 결제가 가능합니다.";
     }
     if (!selectedDepartureKey) return "출발일을 선택하면 결제가 가능합니다.";
-    if (quotePreview.quoteTotal <= 0 || payAmounts.payAmount <= 0) {
+    if (totalTripPrice <= 0) {
       return "견적 금액을 계산할 수 없습니다. 출발일·옵션을 확인해 주세요.";
     }
     return null;
@@ -196,10 +172,8 @@ export const ProductCheckoutSection = forwardRef<
         inquiryValue: selectedDeparture?.inquiryValue ?? "",
         price: selectedDeparture?.price,
       },
-      paymentType,
-      totalTripPrice: payAmounts.totalTripPrice,
-      payAmount: payAmounts.payAmount,
-      remainingBalance: payAmounts.remainingBalance,
+      totalTripPrice,
+      payAmount: totalTripPrice,
       customer: {
         name: form.name.trim(),
         phone: form.phone.trim(),
@@ -214,8 +188,7 @@ export const ProductCheckoutSection = forwardRef<
     selectedDeparture,
     travelerCount,
     selectedOptions,
-    paymentType,
-    payAmounts,
+    totalTripPrice,
     form.name,
     form.phone,
     form.email,
@@ -287,7 +260,7 @@ export const ProductCheckoutSection = forwardRef<
     }
   };
 
-  const payLabel = `₩${payAmounts.payAmount.toLocaleString("ko-KR")}원 결제하기`;
+  const payLabel = `₩${totalTripPrice.toLocaleString("ko-KR")}원 결제하기`;
 
   return (
     <section
@@ -302,7 +275,7 @@ export const ProductCheckoutSection = forwardRef<
         간편 예약 · 결제
       </h3>
       <p className="mt-1 text-xs text-slate-500">
-        예약금 또는 전액을 선택해 결제 준비를 완료합니다. PG 연동은 어댑터에서 연결됩니다.
+        상품 총액을 결제하여 예약(좌석 및 티타임) 확정을 진행합니다.
       </p>
 
       {checkoutBlockedReason ? (
@@ -316,27 +289,6 @@ export const ProductCheckoutSection = forwardRef<
         className={`mt-4 ${rail ? "space-y-4" : "space-y-5"}`}
         noValidate
       >
-        <fieldset disabled={!canCheckout}>
-          <legend className="text-sm font-semibold text-[#0f172a]">결제 방식</legend>
-          <div className={`mt-2 grid gap-2 ${rail ? "grid-cols-1" : "sm:grid-cols-2"}`}>
-            <PaymentTypeCard
-              selected={paymentType === "deposit"}
-              onSelect={() => setPaymentType("deposit")}
-              title="예약금 결제"
-              badge="추천"
-              description={`인당 20만 원 × 인원으로 좌석·일정을 사전 확보합니다. 결제 완료 후 24시간 내 매니저가 확인 후 잔금 안내를 드립니다.`}
-              amountLabel={formatPriceKR(quotePreview.depositAmount) ?? "—"}
-            />
-            <PaymentTypeCard
-              selected={paymentType === "full"}
-              onSelect={() => setPaymentType("full")}
-              title="전액 결제"
-              description="상품 총액을 한 번에 결제합니다."
-              amountLabel={formatPriceKR(quotePreview.quoteTotal) ?? "—"}
-            />
-          </div>
-        </fieldset>
-
         <fieldset disabled={!canCheckout} className="space-y-3">
           <legend className="text-sm font-semibold text-[#0f172a]">예약자 정보</legend>
 
@@ -476,30 +428,12 @@ export const ProductCheckoutSection = forwardRef<
             <dt className="text-slate-500">인원</dt>
             <dd className="font-medium">{travelerCount}명</dd>
           </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-slate-500">총 여행 금액</dt>
-            <dd className="font-semibold">
-              ₩{formatPriceKR(quotePreview.quoteTotal) ?? "0"}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-slate-500">결제 방식</dt>
-            <dd className="font-medium">
-              {paymentType === "deposit" ? "예약금 결제" : "전액 결제"}
-            </dd>
-          </div>
           <div className="flex justify-between gap-3 border-t border-[var(--border)] pt-2">
-            <dt className="font-semibold text-[#0f172a]">오늘 결제할 금액</dt>
+            <dt className="font-semibold text-[#0f172a]">결제 금액</dt>
             <dd className="text-base font-bold text-[var(--primary)]">
-              ₩{formatPriceKR(payAmounts.payAmount) ?? "0"}
+              ₩{formatPriceKR(totalTripPrice) ?? "0"}
             </dd>
           </div>
-          {paymentType === "deposit" && payAmounts.remainingBalance > 0 ? (
-            <p className="text-xs leading-relaxed text-slate-500">
-              * 잔금 ₩{formatPriceKR(payAmounts.remainingBalance) ?? "0"}은 좌석 확정 후 출발 D-14일
-              전까지 결제됩니다.
-            </p>
-          ) : null}
         </dl>
 
         {message ? <p className="text-sm text-[var(--danger)]">{message}</p> : null}
@@ -530,40 +464,3 @@ export const ProductCheckoutSection = forwardRef<
     </section>
   );
 });
-
-function PaymentTypeCard({
-  selected,
-  onSelect,
-  title,
-  description,
-  amountLabel,
-  badge,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  description: string;
-  amountLabel: string;
-  badge?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`relative rounded-xl border px-3 py-3 text-left transition ${
-        selected
-          ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
-          : "border-[var(--border)] bg-white hover:border-slate-300"
-      }`}
-    >
-      {badge ? (
-        <span className="absolute right-2 top-2 rounded bg-[var(--primary)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--on-primary)]">
-          {badge}
-        </span>
-      ) : null}
-      <span className="block text-sm font-semibold text-[#0f172a]">{title}</span>
-      <span className="mt-1 block text-xs leading-relaxed text-slate-500">{description}</span>
-      <span className="mt-2 block text-sm font-bold text-[var(--primary)]">₩{amountLabel}</span>
-    </button>
-  );
-}

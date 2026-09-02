@@ -8,7 +8,6 @@ import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import {
   createOrderId,
   type BookingPaymentPayload,
-  type CheckoutPaymentType,
 } from "@/lib/payments/bookingPaymentPayload";
 import { resolveCheckoutDepartureYmd } from "@/lib/payments/resolveCheckoutDepartureYmd";
 import {
@@ -40,13 +39,7 @@ export type ProductCheckoutModalProps = {
   travelerCount: number;
   selectedOptions: SelectedOptions;
   optionItems: BookingPaymentOptionItem[];
-  /** 사이드바에서 선택한 결제 방식 — 모달 라디오·CTA 금액과 동기화 */
-  paymentType: CheckoutPaymentType;
-  onPaymentTypeChange: (type: CheckoutPaymentType) => void;
   totalTripPrice: number;
-  depositTotal: number;
-  payAmount: number;
-  remainingBalance: number;
   /** Sticky와 동일 preview — 표시 전용, 금액 재계산 금지 */
   paxDiscountPreview?: { label: string; amount: number } | null;
 };
@@ -81,12 +74,7 @@ export function ProductCheckoutModal({
   travelerCount,
   selectedOptions,
   optionItems,
-  paymentType,
-  onPaymentTypeChange,
   totalTripPrice,
-  depositTotal,
-  payAmount,
-  remainingBalance,
   paxDiscountPreview = null,
 }: ProductCheckoutModalProps) {
   const titleId = useId();
@@ -129,10 +117,9 @@ export function ProductCheckoutModal({
     checkoutOpenTrackedRef.current = true;
     trackCheckoutOpen({
       productId,
-      paymentType,
       travelerCount,
     });
-  }, [open, productId, paymentType, travelerCount]);
+  }, [open, productId, travelerCount]);
 
   /** 모달 열릴 때마다 최신 회원 정보 재조회 — 로그인 직후 비회원 UI 잔존 방지 */
   useEffect(() => {
@@ -303,10 +290,8 @@ export function ProductCheckoutModal({
           ymd: departureYmd,
           price: selectedDeparture?.price,
         },
-        paymentType,
         totalTripPrice,
-        payAmount,
-        remainingBalance,
+        payAmount: totalTripPrice,
         customer: {
           name: form.name.trim(),
           phone: form.phone.trim(),
@@ -322,7 +307,6 @@ export function ProductCheckoutModal({
 
       trackCheckoutSubmit({
         productId,
-        paymentType,
         travelerCount,
       });
 
@@ -341,7 +325,6 @@ export function ProductCheckoutModal({
         trackCheckoutPaymentResult({
           productId,
           result: "fail",
-          paymentType,
           travelerCount,
         });
         setMessage(result.message);
@@ -354,7 +337,6 @@ export function ProductCheckoutModal({
       trackCheckoutPaymentResult({
         productId,
         result: "success",
-        paymentType,
         travelerCount,
       });
       onClose();
@@ -481,37 +463,15 @@ export function ProductCheckoutModal({
                 <h3 className="mb-2 text-sm font-semibold text-slate-900">결제 금액</h3>
                 <dl className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm">
                   <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-slate-500">총 여행금액(예상)</dt>
-                    <dd className="font-semibold text-slate-900">
+                    <dt className="text-slate-500">상품 총액</dt>
+                    <dd className="text-base font-bold text-[var(--primary)]">
                       ₩{formatPriceKR(totalTripPrice) ?? "0"}
                     </dd>
                   </div>
-                  <div className="mt-2.5 flex items-baseline justify-between gap-3">
-                    <dt className="font-medium text-slate-800">지금 결제</dt>
-                    <dd className="text-base font-bold text-[var(--primary)]">
-                      ₩{formatPriceKR(payAmount) ?? "0"}
-                    </dd>
-                  </div>
-                  {paymentType === "deposit" && remainingBalance > 0 ? (
-                    <div className="mt-2.5 border-t border-slate-100 pt-2.5">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <dt className="text-slate-500">남은 금액</dt>
-                        <dd className="font-medium text-slate-800">
-                          ₩{formatPriceKR(remainingBalance) ?? "0"}
-                        </dd>
-                      </div>
-                      <p className="mt-1 text-[11px] leading-snug text-slate-500">
-                        좌석 확정 후 출발 D-14일 전까지 결제됩니다.
-                      </p>
-                    </div>
-                  ) : null}
-                  {paymentType === "deposit" ? (
-                    <p className="mt-2 text-[11px] leading-snug text-slate-500">
-                      예약금 · {travelerCount}명 기준 ₩{formatPriceKR(depositTotal) ?? "0"}
-                      (1인당 예약금 × 인원)
-                    </p>
-                  ) : null}
                 </dl>
+                <p className="mt-2 text-[11px] leading-snug text-slate-500">
+                  상품 총액을 결제하여 예약(좌석 및 티타임) 확정을 진행합니다.
+                </p>
 
                 {paxDiscountPreview && paxDiscountPreview.amount > 0 ? (
                   <aside
@@ -523,29 +483,11 @@ export function ProductCheckoutModal({
                       {paxDiscountPreview.label}
                     </p>
                     <p className="mt-1 text-[11px] leading-snug text-slate-600">
-                      보유 쿠폰팩은 예약 단계에서 확인·적용됩니다. 위 지금 결제 금액에는 아직 반영되지
+                      보유 쿠폰팩은 예약 단계에서 확인·적용됩니다. 위 결제 금액에는 아직 반영되지
                       않을 수 있어요.
                     </p>
                   </aside>
                 ) : null}
-
-                <div className="mt-3 space-y-2" role="radiogroup" aria-label="결제 방식">
-                  <p className="text-xs font-medium text-slate-500">결제 방식 선택</p>
-                  <PaymentChoice
-                    selected={paymentType === "deposit"}
-                    onSelect={() => onPaymentTypeChange("deposit")}
-                    title="예약금 결제"
-                    amount={depositTotal}
-                    hint="인당 예약금으로 일정을 먼저 확보해요"
-                  />
-                  <PaymentChoice
-                    selected={paymentType === "full"}
-                    onSelect={() => onPaymentTypeChange("full")}
-                    title="전액 결제"
-                    amount={totalTripPrice}
-                    hint="상품 총액(예상)을 한 번에 결제해요"
-                  />
-                </div>
               </section>
 
               {/* 3. 예약자 정보 */}
@@ -738,7 +680,7 @@ export function ProductCheckoutModal({
             <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4 safe-bottom">
               <button
                 type="submit"
-                disabled={submitting || payAmount <= 0 || authStatus === "loading"}
+                disabled={submitting || totalTripPrice <= 0 || authStatus === "loading"}
                 className="inline-flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--on-accent)] shadow-[var(--shadow-soft)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting
@@ -747,12 +689,10 @@ export function ProductCheckoutModal({
                     : payPhase === "widget"
                       ? "결제창 진행 중…"
                       : "결제창 여는 중…"
-                  : `₩${payAmount.toLocaleString("ko-KR")}원 결제 진행하기`}
+                  : `₩${totalTripPrice.toLocaleString("ko-KR")}원 결제 진행하기`}
               </button>
               <p className="mt-2 text-center text-[11px] leading-snug text-slate-400">
-                {paymentType === "deposit"
-                  ? "선택한 예약금으로 결제를 진행합니다."
-                  : "선택한 전액으로 결제를 진행합니다."}
+                상품 총액으로 결제를 진행합니다.
                 {isMember && formCustomerComplete && !editingCustomer
                   ? " · 내 정보로 바로 결제"
                   : null}
@@ -808,53 +748,5 @@ function CustomerField({
       />
       {error ? <p className="mt-1 text-xs text-[var(--danger)]">{error}</p> : null}
     </div>
-  );
-}
-
-function PaymentChoice({
-  selected,
-  onSelect,
-  title,
-  amount,
-  hint,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  amount: number;
-  hint: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={cn(
-        "flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition",
-        selected
-          ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
-          : "border-slate-200 bg-white hover:border-slate-300",
-      )}
-    >
-      <span
-        className={cn(
-          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-          selected ? "border-[var(--primary)]" : "border-slate-300",
-        )}
-        aria-hidden
-      >
-        {selected ? <span className="h-2 w-2 rounded-full bg-[var(--primary)]" /> : null}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-semibold text-slate-900">{title}</span>
-          <span className="shrink-0 text-sm font-bold text-[var(--primary)]">
-            ₩{formatPriceKR(amount) ?? "0"}
-          </span>
-        </span>
-        <span className="mt-0.5 block text-xs text-slate-500">{hint}</span>
-      </span>
-    </button>
   );
 }

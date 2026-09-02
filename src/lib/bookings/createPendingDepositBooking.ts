@@ -1,6 +1,5 @@
 import "server-only";
 
-import { randomUUID } from "crypto";
 import { memberHasConfirmedBooking } from "@/lib/bookings/memberHasConfirmedBooking";
 import { linkMemberToCustomerProfile } from "@/lib/customerAccountLinks";
 import { findOrCreateCustomerProfile } from "@/lib/customerProfiles";
@@ -13,6 +12,7 @@ import { findDepartureScheduleForYmd } from "@/lib/products/matchDepartureSchedu
 import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
 import { validateInquiryPointsUse } from "@/lib/inquiry/inquiryPointsUse";
 import { isPortOneEnabled } from "@/lib/payments/portone/config";
+import { resolvePortOneTransactionId } from "@/lib/payments/portone/createPortOneTransactionId";
 import { recommendCouponPackTier } from "@/lib/coupons/couponPacks";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { fetchMemberPoints } from "@/server/services/rewards/memberPoints";
@@ -49,8 +49,8 @@ export type CreatePendingDepositBookingInput = {
   returnDate?: string | null;
   /** 미전달 시 package_points (쿠폰 미적용) — prepare에서 반드시 판정 */
   benefitMode?: CheckoutBenefitMode;
-  /** deposit=예약금, full=전액. 기본 deposit */
-  paymentType?: "deposit" | "full";
+  /** PortOne paymentId (40자 이내). 미전달 시 서버 생성 */
+  transactionId?: string;
 };
 
 export type CreatePendingDepositBookingResult = {
@@ -227,20 +227,13 @@ export async function createPendingDepositBooking(
   }
 
   const bookingNumber = String(bookingNumberData);
-  const paymentType = input.paymentType === "full" ? "full" : "deposit";
-  const externalPaymentId = `${paymentType === "full" ? "full" : "dep"}-${randomUUID()}`;
+  const externalPaymentId = resolvePortOneTransactionId(input.transactionId, "full");
 
   let couponPackId: string | null = availablePack?.id ?? null;
 
-  const resolvePayAmounts = () => {
-    const payNowAmount =
-      paymentType === "full" ? checkoutQuote.quoteTotal : checkoutQuote.depositAmount;
-    const balanceDue = paymentType === "full" ? 0 : checkoutQuote.balanceDue;
-    return { payNowAmount, balanceDue };
-  };
+  const payNowAmount = checkoutQuote.quoteTotal;
 
   const buildSnapshot = (): CheckoutSnapshot => {
-    const { payNowAmount, balanceDue } = resolvePayAmounts();
     return {
       productId: input.productId,
       productTitle: input.productTitle,
@@ -261,8 +254,8 @@ export async function createPendingDepositBooking(
       benefitMode,
       isGolfProduct: isGolfCoupon,
       couponPackId,
-      depositAmount: paymentType === "full" ? payNowAmount : checkoutQuote.depositAmount,
-      balanceDue,
+      depositAmount: 0,
+      balanceDue: 0,
       travelerCount: checkoutQuote.travelerCount,
       preparedAt: new Date().toISOString(),
     };
@@ -341,8 +334,6 @@ export async function createPendingDepositBooking(
     }
   }
 
-  const { payNowAmount } = resolvePayAmounts();
-
   const { data: paymentRow, error: paymentError } = await supabaseAdmin
     .from("booking_payments")
     .insert({
@@ -369,8 +360,7 @@ export async function createPendingDepositBooking(
     throw new Error(paymentError?.message || "결제 준비에 실패했습니다.");
   }
 
-  const typeLabel = paymentType === "full" ? "전액결제" : "예약금";
-  const orderName = `${input.productTitle} (${typeLabel})`.slice(0, 80);
+  const orderName = `${input.productTitle}`.slice(0, 80);
 
   return {
     booking_id: bookingId,

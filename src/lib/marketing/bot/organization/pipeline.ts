@@ -7,6 +7,7 @@ import {
 } from "@/lib/marketing/governance/types";
 import type { HumanApprovalHandoff } from "@/lib/marketing/bot/types";
 import { MarketingBotValidationError } from "@/lib/marketing/bot/errors";
+import { ContentPlanContractError } from "@/lib/marketing/content/validation/contentPlanContractError";
 import { jsonContainsForbiddenBotLeak } from "@/lib/marketing/bot/sanitize";
 import {
   AGENT_IDENTITY_ENFORCEMENT,
@@ -262,7 +263,12 @@ export async function runDepartmentPipeline(
   try {
     draft = await draftOnce(draftRequest.constraints);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "content_unavailable";
+    const message =
+      error instanceof ContentPlanContractError
+        ? error.toPipelineMessage()
+        : error instanceof Error
+          ? error.message
+          : "content_unavailable";
     return {
       status: "handoff_failed",
       publishActionIncluded: false,
@@ -279,7 +285,12 @@ export async function runDepartmentPipeline(
   try {
     governance = await reviewOnce(draft, revisionRounds);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "governance_unavailable";
+    const message =
+      error instanceof ContentPlanContractError
+        ? error.toPipelineMessage()
+        : error instanceof Error
+          ? error.message
+          : "governance_unavailable";
     return {
       status: "handoff_failed",
       publishActionIncluded: false,
@@ -303,7 +314,12 @@ export async function runDepartmentPipeline(
       draft = await draftOnce(revisionConstraints);
       governance = await reviewOnce(draft, revisionRounds);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "revision_handoff_failed";
+      const message =
+        error instanceof ContentPlanContractError
+          ? error.toPipelineMessage()
+          : error instanceof Error
+            ? error.message
+            : "revision_handoff_failed";
       return {
         status: "handoff_failed",
         publishActionIncluded: false,

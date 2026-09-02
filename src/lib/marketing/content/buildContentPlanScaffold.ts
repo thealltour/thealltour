@@ -7,7 +7,7 @@ export function buildContentPlanScaffold(
 ): ContentPlan {
   const topFormat = assignment.formatHints[0];
   const factsToUse = assignment.facts
-    .filter((fact) => fact.confidence !== "low")
+    .filter((fact) => fact.confidence !== "low" && fact.evidenceRefs.length > 0)
     .map((fact) => fact.statement)
     .slice(0, 6);
   const factsToAvoid = assignment.facts

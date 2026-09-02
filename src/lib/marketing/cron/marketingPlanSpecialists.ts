@@ -1,4 +1,6 @@
 import { extractJsonObject } from "@/lib/marketing/bot/organization/envelope";
+import { parseProviderContentPlan } from "@/lib/marketing/content/validation/validateContentPlan";
+import { ContentPlanContractError } from "@/lib/marketing/content/validation/contentPlanContractError";
 import type {
   ContentDraftRequest,
   ContentStrategistOutput,
@@ -25,13 +27,26 @@ export function buildGovernanceReviewPrompt(
 export function parseContentStrategistOutput(raw: string): ContentStrategistOutput {
   const value = extractJsonObject(raw) as ContentStrategistOutput;
   if (!value.body) throw new Error("content-strategist returned no body");
+
+  let contentPlan: ContentStrategistOutput["contentPlan"] = null;
+  if (value.contentPlan != null) {
+    try {
+      contentPlan = parseProviderContentPlan(value.contentPlan);
+    } catch (error) {
+      if (error instanceof ContentPlanContractError) {
+        throw new Error(error.toPipelineMessage());
+      }
+      throw error;
+    }
+  }
+
   return {
     title: value.title ?? null,
     body: String(value.body),
     channel: value.channel || "threads",
     agenda: value.agenda ?? null,
     sourceReferences: Array.isArray(value.sourceReferences) ? value.sourceReferences.map(String) : [],
-    contentPlan: value.contentPlan ?? null,
+    contentPlan,
     assignmentId: value.assignmentId ?? null,
   };
 }

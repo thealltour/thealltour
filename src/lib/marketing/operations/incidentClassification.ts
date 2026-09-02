@@ -129,6 +129,32 @@ export function classifyMarketingIncident(context: MarketingIncidentContext): Ma
   }
 
   // Malformed GA structured output (GA was reached)
+  if (messageIncludes(message, ["content_plan_validation:malformed_model_output"])) {
+    return {
+      incidentClass: "malformed_model_output",
+      recoveryDisposition: "safe_retry",
+      operatorAction: "Retry after confirming Content Strategist structured contentPlan output is valid.",
+      concernSummary: "Content Strategist contentPlan failed canonical schema validation.",
+      revisionAttempted,
+    };
+  }
+
+  if (
+    messageIncludes(message, ["missing_evidence_for_factual_claims"]) ||
+    messageIncludes(message, ["content_plan_validation:invalid_state"])
+  ) {
+    return {
+      incidentClass: "invalid_state",
+      recoveryDisposition: "retry_after_fix",
+      operatorAction:
+        "Fix ContentPlan/evidence propagation or content draft before retry. Do not blind-retry an unfixed contract violation.",
+      concernSummary: messageIncludes(message, ["missing_evidence_for_factual_claims"])
+        ? "Factual claims are present but required evidence references are missing."
+        : "ContentPlan violated canonical contract at the governance boundary.",
+      revisionAttempted,
+    };
+  }
+
   if (messageIncludes(message, ["governance-auditor returned no allow/review/block", "malformed", "no decision"])) {
     return {
       incidentClass: "malformed_model_output",

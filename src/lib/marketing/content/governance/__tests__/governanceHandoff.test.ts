@@ -108,17 +108,91 @@ describe("prepareContentToGovernanceHandoff", () => {
     expect(signals.commercialRisks).not.toContain("missing_product_linkage");
   });
 
-  it("handles contentPlan facts without evidenceRefs (2026-09-02 incident reproduction)", () => {
+  it("legacy internal plan without evidenceRefs field uses assignment provenance when correspondence is safe", () => {
+    const mm = prepareManagerToContentHandoff(
+      {
+        title: "Japan autumn guidance",
+        summary: "Official update for travelers.",
+        evidenceRefs: [mapManagerEvidenceRef(officialEvidence, 0.9)],
+      },
+      { now: NOW },
+    );
+    const { evidenceRefs: _removed, ...scaffoldWithoutRefs } = mm.contentPlanScaffold;
+    const draft: ContentStrategistOutput = {
+      title: "Japan update",
+      body: "Official guidance says autumn travel is easier to plan.",
+      channel: "threads",
+      agenda: "Japan autumn",
+      assignmentId: mm.contentAssignment.assignmentId,
+    };
+    expect(() =>
+      prepareContentToGovernanceHandoff({
+        draft,
+        productId: PRODUCT,
+        channel: "threads",
+        assignment: mm.contentAssignment,
+        selectedAgenda: mm.selectedAgenda,
+        contentPlan: scaffoldWithoutRefs,
+        contentPlanScaffold: mm.contentPlanScaffold,
+      }),
+    ).not.toThrow();
+  });
+
+  it("provider contentPlan facts without evidenceRefs fails at provider contract boundary", () => {
+    const mm = prepareManagerToContentHandoff(
+      {
+        title: "Japan autumn guidance",
+        summary: "Official update for travelers.",
+        evidenceRefs: [mapManagerEvidenceRef(officialEvidence, 0.9)],
+      },
+      { now: NOW },
+    );
     const draft: ContentStrategistOutput = {
       title: "Japan update",
       body: "Official guidance says autumn travel is easier to plan.",
       channel: "threads",
       agenda: "Japan autumn",
       contentPlan: {
+        assignmentId: mm.contentAssignment.assignmentId,
         factsToUse: ["Autumn travel planning is easier per official guidance."],
-        recommendedFormats: undefined as unknown as [],
-        ctaStrategy: null,
-        evidenceRefs: undefined as unknown as [],
+      } as ContentStrategistOutput["contentPlan"],
+      assignmentId: mm.contentAssignment.assignmentId,
+    };
+    expect(() =>
+      prepareContentToGovernanceHandoff({
+        draft,
+        productId: PRODUCT,
+        channel: "threads",
+        assignment: mm.contentAssignment,
+        selectedAgenda: mm.selectedAgenda,
+        contentPlan: draft.contentPlan as NonNullable<ContentStrategistOutput["contentPlan"]>,
+      }),
+    ).toThrow(/evidence_refs_absent|malformed_model_output|content_plan_validation/);
+  });
+
+  it("fails closed when factual claims lack any evidence provenance", () => {
+    const draft: ContentStrategistOutput = {
+      title: "Japan update",
+      body: "Official guidance says autumn travel planning is easier to plan with verified sources.",
+      channel: "threads",
+      agenda: "Japan autumn",
+      contentPlan: {
+        contract: "content-plan-v1",
+        assignmentId: "ca_test",
+        recommendedFormats: [],
+        primaryAngle: "angle",
+        keyMessage: "message",
+        targetAudience: "audience",
+        hook: "hook",
+        outline: [],
+        factsToUse: ["Autumn travel planning is easier per official guidance."],
+        factsToAvoid: [],
+        ctaStrategy: "info",
+        productLinkageStrategy: "none",
+        evidenceRefs: [],
+        requiredAssets: [],
+        riskNotes: [],
+        draftInstructions: [],
       },
       assignmentId: "ca_test",
     };
@@ -129,18 +203,31 @@ describe("prepareContentToGovernanceHandoff", () => {
         channel: "threads",
         assignment: {
           assignmentId: "ca_test",
+          contract: "content-assignment-v1",
+          createdAt: NOW.toISOString(),
           selectedAgendaId: "sa_test",
-          topic: "Japan",
+          selectedAgendaTitle: "Japan",
           objective: "inform",
-          facts: undefined as unknown as [],
-          evidenceRefs: [],
-          constraints: [],
+          topic: "Japan",
+          audience: null,
+          destinations: [],
+          facts: [],
           commercialIntent: "informational",
           matchedProductIds: [],
+          constraints: [],
           formatHints: [],
+          requiredOutputs: ["text_draft"],
+          deadline: null,
+          evidenceRefs: [],
+          riskNotes: [],
+          provenance: {
+            selectedAgendaId: "sa_test",
+            createdBy: "marketing-manager-handoff",
+            idempotencyKey: "k",
+          },
         },
       }),
-    ).not.toThrow();
+    ).toThrow(/missing_evidence_for_factual_claims|content_plan_validation/);
   });
 });
 
@@ -214,6 +301,7 @@ describe("deterministic claim signals", () => {
       draft,
       assignment: mm.contentAssignment,
       selectedAgenda: mm.selectedAgenda,
+      contentPlanScaffold: mm.contentPlanScaffold,
       productId: PRODUCT,
       channel: "threads",
     });
@@ -241,6 +329,7 @@ describe("normalizeGovernanceReviewResult", () => {
     const { request } = prepareContentToGovernanceHandoff({
       draft,
       assignment: mm.contentAssignment,
+      contentPlanScaffold: mm.contentPlanScaffold,
       productId: PRODUCT,
       channel: "threads",
     });
@@ -254,8 +343,11 @@ describe("normalizeGovernanceReviewResult", () => {
   });
 
   it("fails closed to REVIEW on malformed GA response", () => {
+    const mm = prepareManagerToContentHandoff({ title: "Topic", summary: "Summary" }, { now: NOW });
     const { request } = prepareContentToGovernanceHandoff({
       draft: { body: "Hello", channel: "threads", agenda: null, sourceReferences: [] },
+      assignment: mm.contentAssignment,
+      contentPlanScaffold: mm.contentPlanScaffold,
       productId: PRODUCT,
       channel: "threads",
     });
@@ -288,6 +380,7 @@ describe("governance review store", () => {
     const { request } = prepareContentToGovernanceHandoff({
       draft,
       assignment: mm.contentAssignment,
+      contentPlanScaffold: mm.contentPlanScaffold,
       productId: PRODUCT,
       channel: "threads",
     });
@@ -364,9 +457,20 @@ describe("pipeline governance integration", () => {
   });
 
   it("does not auto-revise on REVIEW", async () => {
+    const mm = prepareManagerToContentHandoff(
+      { title: "Info note", summary: "Short update.", commercialIntent: "informational" },
+      { now: NOW },
+    );
     let drafts = 0;
     const result = await runDepartmentPipeline(
-      { productId: PRODUCT, channel: "threads", goal: "daily" },
+      {
+        productId: PRODUCT,
+        channel: "threads",
+        goal: "daily",
+        selectedAgenda: mm.selectedAgenda,
+        contentAssignment: mm.contentAssignment,
+        contentPlanScaffold: mm.contentPlanScaffold,
+      },
       {
         requestDraft: async () => {
           drafts += 1;

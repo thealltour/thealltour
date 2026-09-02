@@ -131,6 +131,7 @@ export type PrepareContentToGovernanceHandoffInput = {
   assignment?: ContentAssignment | null;
   selectedAgenda?: SelectedAgenda | null;
   contentPlan?: ContentPlan | null;
+  contentPlanScaffold?: ContentPlan | null;
   productId: string;
   channel: string;
   priorRevision?: number;

@@ -9,6 +9,13 @@ import type {
   StructuredGovernanceReviewRequest,
 } from "@/lib/marketing/content/governance/types";
 import { GOVERNANCE_REVIEW_REQUEST_CONTRACT } from "@/lib/marketing/content/governance/types";
+import {
+  resolveContentPlanForGovernance,
+  resolveEvidenceForGovernance,
+  type ContentPlanValidationSource,
+} from "@/lib/marketing/content/validation/validateContentPlan";
+import { ContentPlanContractError } from "@/lib/marketing/content/validation/contentPlanContractError";
+import type { AssignmentEvidenceRef, ContentPlan } from "@/lib/marketing/content/types";
 
 export function buildGovernanceReviewIdempotencyKey(input: {
   assignmentId: string | null;
@@ -19,13 +26,56 @@ export function buildGovernanceReviewIdempotencyKey(input: {
   return createHash("sha256").update(seed).digest("hex").slice(0, 32);
 }
 
+function resolveValidationSource(input: PrepareContentToGovernanceHandoffInput): ContentPlanValidationSource {
+  if (input.draft.contentPlan) {
+    return (input.priorRevision ?? 0) > 0 ? "revision" : "provider_output";
+  }
+  if (input.contentPlan && input.contentPlanScaffold && input.contentPlan === input.contentPlanScaffold) {
+    return "internal_scaffold";
+  }
+  if (input.contentPlan) {
+    return "internal_scaffold";
+  }
+  return "internal_scaffold";
+}
+
+function resolveValidatedContentPlan(input: PrepareContentToGovernanceHandoffInput): {
+  contentPlan: ContentPlan | null;
+  evidenceRefs: AssignmentEvidenceRef[];
+} {
+  const assignment = input.assignment ?? null;
+  const effectivePlan = input.contentPlan ?? input.draft.contentPlan ?? input.contentPlanScaffold ?? null;
+
+  if (!effectivePlan) {
+    const evidenceRefs = (assignment?.evidenceRefs ?? []).slice(0, 12);
+    if (evidenceRefs.length === 0 && (assignment?.facts ?? []).some((fact) => fact.statement.trim().length >= 8)) {
+      throw new ContentPlanContractError({
+        incidentClass: "invalid_state",
+        validationIssue: "missing_evidence_for_factual_claims",
+        source: "internal_scaffold",
+        message:
+          "Factual claims are present but no valid evidence references were available from assignment or contentPlan",
+      });
+    }
+    return { contentPlan: null, evidenceRefs };
+  }
+
+  const source = resolveValidationSource(input);
+  const contentPlan = resolveContentPlanForGovernance({
+    draft: input.draft,
+    assignment,
+    effectivePlan,
+    source,
+  });
+  return { contentPlan, evidenceRefs: contentPlan.evidenceRefs };
+}
+
 export function prepareContentToGovernanceHandoff(
   input: PrepareContentToGovernanceHandoffInput,
 ): ContentToGovernanceHandoffResult {
   const now = input.now ?? new Date();
   const assignment = input.assignment ?? null;
   const selectedAgenda = input.selectedAgenda ?? null;
-  const contentPlan = input.contentPlan ?? input.draft.contentPlan ?? null;
   const assignmentId = input.draft.assignmentId ?? assignment?.assignmentId ?? null;
   const selectedAgendaId = selectedAgenda?.id ?? assignment?.selectedAgendaId ?? null;
 
@@ -34,6 +84,18 @@ export function prepareContentToGovernanceHandoff(
   }
 
   const priorRevision = input.priorRevision ?? 0;
+
+  let contentPlan: ContentPlan | null;
+  let evidenceRefs: AssignmentEvidenceRef[];
+  try {
+    ({ contentPlan, evidenceRefs } = resolveValidatedContentPlan(input));
+  } catch (error) {
+    if (error instanceof ContentPlanContractError) {
+      throw new Error(error.toPipelineMessage());
+    }
+    throw error;
+  }
+
   const idempotencyKey = buildGovernanceReviewIdempotencyKey({
     assignmentId,
     draftBody: input.draft.body,
@@ -41,7 +103,6 @@ export function prepareContentToGovernanceHandoff(
   });
   const reviewId = `gr_${idempotencyKey.slice(0, 24)}`;
 
-  const evidenceRefs = (assignment?.evidenceRefs ?? contentPlan?.evidenceRefs ?? []).slice(0, 12);
   const claims = extractGovernanceClaims({
     draft: input.draft,
     contentPlan,

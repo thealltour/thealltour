@@ -1,6 +1,7 @@
 import { PUBLICATION_FLOW_INACTIVE } from "@/lib/marketing/social/publication/governanceBoundary";
 import { MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 import { extractJsonObject } from "@/lib/marketing/bot/organization/envelope";
+import { parseContentStrategistOutput } from "@/lib/marketing/cron/marketingPlanSpecialists";
 import type {
   ContentStrategistOutput,
   GovernanceReviewResult,
@@ -85,17 +86,7 @@ const DEFAULT_PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
 const DEFAULT_CHANNEL = "threads";
 
 function asDraft(raw: string): ContentStrategistOutput {
-  const value = extractJsonObject(raw) as ContentStrategistOutput;
-  if (!value?.body) throw new MarketingBotValidationError("Content Strategist returned no body");
-  return {
-    title: value.title ?? null,
-    body: String(value.body),
-    channel: value.channel || DEFAULT_CHANNEL,
-    agenda: value.agenda ?? null,
-    sourceReferences: Array.isArray(value.sourceReferences) ? value.sourceReferences.map(String) : [],
-    contentPlan: value.contentPlan ?? null,
-    assignmentId: value.assignmentId ?? null,
-  };
+  return parseContentStrategistOutput(raw);
 }
 
 function asGovernance(raw: string): GovernanceReviewResult {

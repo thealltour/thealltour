@@ -20,6 +20,12 @@ import type {
   ResearchSignal,
 } from "@/lib/marketing/research/types/researchSignal";
 import { ResearchValidationError } from "@/lib/marketing/research/repository/errors";
+import { CLAIM_SOURCES, type ClaimSource } from "@/lib/marketing/research/types/enums";
+
+function sanitizeClaimSource(value: unknown): ClaimSource | null {
+  if (typeof value !== "string") return null;
+  return (CLAIM_SOURCES as readonly string[]).includes(value) ? (value as ClaimSource) : null;
+}
 
 function asString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -160,7 +166,7 @@ export function mapResearchSignalRow(
     title: asString(row.title),
     summary: asString(row.summary),
     claim: asStringOrNull(row.claim),
-    claimSource: asStringOrNull(row.claim_source),
+    claimSource: sanitizeClaimSource(row.claim_source),
     evidence: evidenceRows,
     canonicalUrl: asStringOrNull(row.canonical_url),
     externalId: asStringOrNull(row.external_id),

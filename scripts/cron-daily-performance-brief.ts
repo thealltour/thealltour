@@ -57,13 +57,27 @@ async function main() {
   } = await import("../src/lib/marketing/cron/performanceBriefArtifact");
 
   const brief = await buildDailyPerformanceBrief({ productId, channel });
-  const path = defaultPerformanceBriefAbsolutePath(ROOT);
-  writeLatestPerformanceBrief(brief, path);
 
-  console.log(formatDailyPerformanceBriefMarkdown(brief));
+  const { createContentPerformanceRepository } = await import(
+    "../src/lib/marketing/performance/repository/createContentPerformanceRepository"
+  );
+  const { enrichPerformanceBriefWithManualSnapshots } = await import(
+    "../src/lib/marketing/performance/integration/enrichPerformanceBrief"
+  );
+  const perfRepo = await createContentPerformanceRepository();
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const manualSnapshots = await perfRepo.listRecent({ since, limit: 20 });
+  const enrichedBrief = enrichPerformanceBriefWithManualSnapshots(brief, manualSnapshots);
+
+  const path = defaultPerformanceBriefAbsolutePath(ROOT);
+  writeLatestPerformanceBrief(enrichedBrief, path);
+
+  console.log(formatDailyPerformanceBriefMarkdown(enrichedBrief));
   console.log(`artifact: ${path}`);
-  console.log(`dataAvailability: ${brief.dataAvailability}`);
+  console.log(`dataAvailability: ${enrichedBrief.dataAvailability}`);
+  console.log(`manualPerformanceSnapshots: ${manualSnapshots.length}`);
   console.log("sns_side_effect: 0");
+  console.log("performance_collection_side_effect: 0");
   console.log("db_write: none (artifact file only; no ai_memory INSERT)");
 }
 

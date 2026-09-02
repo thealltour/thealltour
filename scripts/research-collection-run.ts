@@ -59,8 +59,15 @@ async function main(): Promise<void> {
   const repo = await createResearchRepository({
     backend: useSupabase ? "supabase" : "memory",
   });
+  const { createContentPerformanceRepository } = await import(
+    "@/lib/marketing/performance/repository/createContentPerformanceRepository"
+  );
+  const performanceRepo = await createContentPerformanceRepository({
+    backend: useSupabase ? "supabase" : "memory",
+  });
   const result = await runResearchCollectionCycle({
     repo,
+    performanceRepo,
     maxItemsPerCollector: 15,
     env: {
       ...process.env,

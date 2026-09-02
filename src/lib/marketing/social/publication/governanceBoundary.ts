@@ -47,6 +47,8 @@ export const SNS_SIDE_EFFECTS_STEP_3_5 = 0 as const;
 export const SNS_SIDE_EFFECTS_STEP_3_7 = 0 as const;
 /** STEP 3-8: human review queue — business-state records only */
 export const SNS_SIDE_EFFECTS_STEP_3_8 = 0 as const;
+/** STEP 3-9: read-only performance collection — no external writes */
+export const PERFORMANCE_COLLECTION_SIDE_EFFECTS_STEP_3_9 = 0 as const;
 
 /**
  * Future:

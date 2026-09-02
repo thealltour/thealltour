@@ -21,6 +21,9 @@ import type { ResearchRepository } from "@/lib/marketing/research/repository/con
 import { runResearchPipeline } from "@/lib/marketing/research/services/pipeline";
 import type { RawResearchSignalInput } from "@/lib/marketing/research/types/researchSignal";
 import { ResearchHttpError } from "@/lib/marketing/research/collectors/httpClient";
+import { loadPerformanceFeedbackSignals } from "@/lib/marketing/research/collection/loadPerformanceFeedbackSignals";
+import type { PerformanceFeedbackLoadResult } from "@/lib/marketing/research/collection/loadPerformanceFeedbackSignals";
+import type { ContentPerformanceRepository } from "@/lib/marketing/performance/repository/contracts";
 
 const COLLECTOR_SOURCE_ID: Record<string, string> = {
   [UK_GOV_TRAVEL_COLLECTOR_ID]: MVP_RESEARCH_SOURCES[0]!.id,
@@ -30,6 +33,8 @@ const COLLECTOR_SOURCE_ID: Record<string, string> = {
 export type RunResearchCollectionCycleInput = {
   repo: ResearchRepository;
   collectors?: ResearchCollector[];
+  performanceRepo?: ContentPerformanceRepository;
+  performanceLookbackHours?: number;
   now?: Date;
   maxItemsPerCollector?: number;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
@@ -143,6 +148,11 @@ export async function runResearchCollectionCycle(
   const collectors = input.collectors ?? createDefaultResearchCollectors();
   const collectorResults: CollectorRunResult[] = [];
   const allRawSignals: RawResearchSignalInput[] = [];
+  let performanceFeedback: PerformanceFeedbackLoadResult = {
+    status: "empty",
+    signals: [],
+    snapshotsLoaded: 0,
+  };
 
   for (const collector of collectors) {
     if (!isCollectorEnabled(collector.collectorId, env)) {
@@ -183,6 +193,57 @@ export async function runResearchCollectionCycle(
       rejected: result.itemsRejected,
       status: result.status,
       errors: result.errors,
+    });
+  }
+
+  const lookbackHours = input.performanceLookbackHours ?? 24 * 14;
+  const performanceSince = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000).toISOString();
+  if (input.performanceRepo) {
+    performanceFeedback = await loadPerformanceFeedbackSignals({
+      repo: input.repo,
+      performanceRepo: input.performanceRepo,
+      since: performanceSince,
+      now,
+    });
+    if (performanceFeedback.signals.length > 0) {
+      allRawSignals.push(...performanceFeedback.signals);
+      collectorResults.push({
+        collectorId: "performance-feedback",
+        sourceId: "44444444-4444-4444-8444-444444444444",
+        startedAt: now.toISOString(),
+        completedAt: new Date().toISOString(),
+        status: performanceFeedback.status === "degraded" ? "partial" : "success",
+        itemsObserved: performanceFeedback.snapshotsLoaded,
+        itemsAccepted: performanceFeedback.signals.length,
+        itemsRejected: 0,
+        duplicates: 0,
+        errors:
+          performanceFeedback.status === "degraded" && performanceFeedback.reason
+            ? [{ code: "performance_feedback_degraded", message: performanceFeedback.reason }]
+            : [],
+      });
+    } else if (performanceFeedback.status === "degraded") {
+      collectorResults.push({
+        collectorId: "performance-feedback",
+        sourceId: "44444444-4444-4444-8444-444444444444",
+        startedAt: now.toISOString(),
+        completedAt: new Date().toISOString(),
+        status: "partial",
+        itemsObserved: 0,
+        itemsAccepted: 0,
+        itemsRejected: 0,
+        duplicates: 0,
+        errors: [{ code: "performance_feedback_degraded", message: performanceFeedback.reason ?? "unknown" }],
+      });
+    }
+
+    logResearchEvent({
+      cycleId,
+      phase: "performance_feedback",
+      status: performanceFeedback.status,
+      snapshotsLoaded: performanceFeedback.snapshotsLoaded,
+      signalsAccepted: performanceFeedback.signals.length,
+      reason: performanceFeedback.reason ?? null,
     });
   }
 
@@ -232,6 +293,8 @@ export async function runResearchCollectionCycle(
       duplicates: pipeline.duplicates.length,
       briefs: pipeline.briefs.length,
       agendaCandidates: pipeline.agendaCandidates.length,
+      performanceSnapshots: performanceFeedback.snapshotsLoaded,
+      performanceFeedbackStatus: input.performanceRepo ? performanceFeedback.status : undefined,
     },
   };
 }

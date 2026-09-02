@@ -62,5 +62,7 @@ export type ResearchCollectionCycleResult = {
     duplicates: number;
     briefs: number;
     agendaCandidates: number;
+    performanceSnapshots?: number;
+    performanceFeedbackStatus?: PerformanceFeedbackLoadResult["status"];
   };
 };

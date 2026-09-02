@@ -70,7 +70,13 @@ export function extractGovernanceClaims(input: {
   };
 
   for (const fact of input.contentPlan?.factsToUse ?? []) {
-    add(claimFromText(fact, "content_plan", input.contentPlan?.evidenceRefs.map((ref) => ref.evidenceId) ?? []));
+    add(
+      claimFromText(
+        fact,
+        "content_plan",
+        input.contentPlan?.evidenceRefs?.map((ref) => ref.evidenceId) ?? [],
+      ),
+    );
   }
 
   for (const sentence of scanDraftSentences(input.draft.body)) {

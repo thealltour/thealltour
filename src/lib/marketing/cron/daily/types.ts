@@ -19,6 +19,8 @@ export type DailyMarketingFailureReason =
   | "ASSIGNMENT_FAILED"
   | "CONTENT_STRATEGIST_FAILED"
   | "GOVERNANCE_FAILED"
+  | "GOVERNANCE_TECHNICAL_FAILURE"
+  | "GOVERNANCE_REVIEW_REQUIRED"
   | "GOVERNANCE_BLOCKED"
   | "PERSISTENCE_FAILED"
   | "RUNTIME_PROVIDER_FAILED";
@@ -101,6 +103,8 @@ export type DailyMarketingPipelineInput = {
   businessDateKst?: string;
   correlationId?: string;
   executionAttempt?: number;
+  /** Operator recovery rerun — preserves prior failed run in metadata.incidentHistory. */
+  recoveryMode?: boolean;
   performanceNote?: string;
   memoryReferences?: string[];
 };

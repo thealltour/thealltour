@@ -20,6 +20,11 @@ import {
 } from "@/lib/marketing/cron/daily/resolveMarketingManagerAgenda";
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import {
+  classifyMarketingIncident,
+  mapPipelineFailureToReason,
+} from "@/lib/marketing/operations/incidentClassification";
+import { snapshotFailedRunForIncidentHistory } from "@/lib/marketing/operations/buildIncidentTriage";
+import {
   DAILY_MARKETING_RUN_CONTRACT,
   DAILY_MARKETING_ROUTINE_ID,
   type DailyMarketingFailureReason,
@@ -91,21 +96,54 @@ function baseRun(input: {
   };
 }
 
+type PipelineFailureMeta = {
+  code: string;
+  message: string;
+};
+
 async function failRun(
   repo: DailyMarketingRunRepository,
   run: DailyMarketingRun,
   reason: DailyMarketingFailureReason,
   now: Date,
+  extras?: {
+    pipelineFailure?: PipelineFailureMeta | null;
+    revisionCount?: number;
+    governanceObserved?: boolean;
+  },
 ): Promise<DailyMarketingPipelineResult> {
+  const revisionCount = extras?.revisionCount ?? Number(run.metadata.revisionCount ?? run.observability.revisionCount ?? 0);
+  const incident = classifyMarketingIncident({
+    failureReason: reason,
+    pipelineFailureCode: extras?.pipelineFailure?.code ?? null,
+    pipelineFailureMessage: extras?.pipelineFailure?.message ?? null,
+    revisionCount,
+    governanceReviewId: run.governanceReviewId,
+    runtimeGovernanceObserved: extras?.governanceObserved,
+  });
+
   const failed: DailyMarketingRun = {
     ...run,
     status: reason === "MANAGER_DEFERRED" || reason === "RESEARCH_EMPTY" ? "deferred" : "failed",
     failureReason: reason,
     completedAt: now.toISOString(),
+    metadata: {
+      ...run.metadata,
+      revisionCount,
+      pipelineFailure: extras?.pipelineFailure ?? run.metadata.pipelineFailure ?? null,
+      incident: {
+        incidentClass: incident.incidentClass,
+        recoveryDisposition: incident.recoveryDisposition,
+        concernSummary: incident.concernSummary,
+        revisionAttempted: incident.revisionAttempted,
+        operatorAction: incident.operatorAction,
+      },
+    },
     observability: buildObservability({
       ...run,
       failureReason: reason,
       completedAt: now.toISOString(),
+      metadata: { ...run.metadata, revisionCount },
     }),
   };
   await repo.saveRun(failed);
@@ -147,13 +185,37 @@ export async function runDailyMarketingPipeline(
     };
   }
 
+  const incidentHistory: Record<string, unknown>[] = [];
+  let executionAttempt = input.executionAttempt ?? 1;
+  if (existingRun?.status === "failed" && input.recoveryMode) {
+    incidentHistory.push(
+      ...((Array.isArray(existingRun.metadata.incidentHistory)
+        ? existingRun.metadata.incidentHistory
+        : []) as Record<string, unknown>[]),
+      snapshotFailedRunForIncidentHistory(existingRun),
+    );
+    if (!input.executionAttempt) {
+      executionAttempt = (existingRun.executionAttempt ?? 1) + 1;
+    }
+  }
+
   let run = baseRun({
     logicalRunKey,
     businessDateKst,
     correlationId,
-    executionAttempt: input.executionAttempt ?? 1,
+    executionAttempt,
     now,
   });
+  if (incidentHistory.length > 0) {
+    run = {
+      ...run,
+      metadata: {
+        ...run.metadata,
+        incidentHistory,
+        recoveryFromRunId: existingRun?.runId ?? null,
+      },
+    };
+  }
   run = await repo.saveRun(run);
 
   let research: MarketingResearchContext;
@@ -271,10 +333,21 @@ export async function runDailyMarketingPipeline(
   }
 
   if (pipeline.failure?.code === "content_unavailable") {
-    return failRun(repo, run, "CONTENT_STRATEGIST_FAILED", now);
+    return failRun(repo, run, "CONTENT_STRATEGIST_FAILED", now, {
+      pipelineFailure: pipeline.failure,
+    });
   }
-  if (pipeline.failure?.code === "governance_unavailable") {
-    return failRun(repo, run, "GOVERNANCE_FAILED", now);
+  if (pipeline.failure?.code === "governance_unavailable" || pipeline.failure?.code === "handoff_failed") {
+    const reason = mapPipelineFailureToReason({
+      pipelineFailureCode: pipeline.failure.code,
+      pipelineFailureMessage: pipeline.failure.message,
+    });
+    const governanceObserved = governanceEnvelopes.length > 0;
+    return failRun(repo, run, reason, now, {
+      pipelineFailure: pipeline.failure,
+      revisionCount: pipeline.revisionRounds,
+      governanceObserved,
+    });
   }
   if (!pipeline.draft) {
     return failRun(repo, run, "CONTENT_STRATEGIST_FAILED", now);

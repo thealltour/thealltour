@@ -45,7 +45,7 @@ export function evaluateDeterministicClaimSignals(input: {
   const evidenceRefs = input.assignment?.evidenceRefs ?? input.contentPlan?.evidenceRefs ?? [];
   const allowedFactTexts = new Set<string>([
     ...(input.contentPlan?.factsToUse ?? []),
-    ...(input.assignment?.facts.map((fact) => fact.statement) ?? []),
+    ...(input.assignment?.facts?.map((fact) => fact.statement) ?? []),
   ]);
 
   const claims = extractGovernanceClaims({

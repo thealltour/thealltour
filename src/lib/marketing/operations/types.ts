@@ -1,5 +1,8 @@
 export const DAILY_MARKETING_OPERATING_CYCLE_CONTRACT = "daily-marketing-operating-cycle-v1" as const;
 
+import type { MarketingIncidentTriage } from "@/lib/marketing/operations/buildIncidentTriage";
+export type { MarketingIncidentTriage };
+
 export type OperationsStageStatus =
   | "healthy"
   | "degraded"
@@ -57,6 +60,7 @@ export type DailyMarketingOperatingCycle = {
   actionRequiredReasons: string[];
   observedAt: string;
   trace: MarketingOperationsTrace;
+  incident: MarketingIncidentTriage | null;
 };
 
 export type MarketingOperationsTrace = {

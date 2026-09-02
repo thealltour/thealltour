@@ -107,6 +107,41 @@ describe("prepareContentToGovernanceHandoff", () => {
     expect(mm.contentAssignment.matchedProductIds).toHaveLength(0);
     expect(signals.commercialRisks).not.toContain("missing_product_linkage");
   });
+
+  it("handles contentPlan facts without evidenceRefs (2026-09-02 incident reproduction)", () => {
+    const draft: ContentStrategistOutput = {
+      title: "Japan update",
+      body: "Official guidance says autumn travel is easier to plan.",
+      channel: "threads",
+      agenda: "Japan autumn",
+      contentPlan: {
+        factsToUse: ["Autumn travel planning is easier per official guidance."],
+        recommendedFormats: undefined as unknown as [],
+        ctaStrategy: null,
+        evidenceRefs: undefined as unknown as [],
+      },
+      assignmentId: "ca_test",
+    };
+    expect(() =>
+      prepareContentToGovernanceHandoff({
+        draft,
+        productId: PRODUCT,
+        channel: "threads",
+        assignment: {
+          assignmentId: "ca_test",
+          selectedAgendaId: "sa_test",
+          topic: "Japan",
+          objective: "inform",
+          facts: undefined as unknown as [],
+          evidenceRefs: [],
+          constraints: [],
+          commercialIntent: "informational",
+          matchedProductIds: [],
+          formatHints: [],
+        },
+      }),
+    ).not.toThrow();
+  });
 });
 
 describe("deterministic claim signals", () => {

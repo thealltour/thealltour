@@ -62,6 +62,7 @@ async function main() {
           candidate: status.candidate,
           humanReview: status.humanReview,
           feedback: status.feedback,
+          incident: status.incident,
           actionRequiredReasons: status.actionRequiredReasons,
           trace: status.trace,
         },

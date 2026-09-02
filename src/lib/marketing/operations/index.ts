@@ -11,6 +11,16 @@ export {
 } from "@/lib/marketing/operations/degradedDependencyMatrix";
 export { buildMarketingOperationsTrace } from "@/lib/marketing/operations/buildOperationsTrace";
 export {
+  buildMarketingIncidentTriage,
+  snapshotFailedRunForIncidentHistory,
+} from "@/lib/marketing/operations/buildIncidentTriage";
+export {
+  classifyMarketingIncident,
+  mapPipelineFailureToReason,
+  type MarketingIncidentClass,
+  type RecoveryDisposition,
+} from "@/lib/marketing/operations/incidentClassification";
+export {
   buildActionRequiredReasons,
   classifyOverallStatus,
   isBeforeMarketingRunDue,

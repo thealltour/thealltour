@@ -371,6 +371,28 @@ describe("runDailyMarketingPipeline", () => {
     expect(result.run.failureReason).toBe("RUNTIME_PROVIDER_FAILED");
   });
 
+  it("R2: governance technical failure persists pipelineFailure + incident metadata", async () => {
+    const { deps } = baseDeps({
+      governance: async () => {
+        throw new Error("governance-auditor runtime failed: RUNTIME_ERROR");
+      },
+    });
+    const result = await runDailyMarketingPipeline(
+      { productId: PRODUCT, channel: "threads", businessDateKst: BUSINESS_DATE },
+      deps,
+    );
+    expect(result.run.failureReason).toBe("GOVERNANCE_TECHNICAL_FAILURE");
+    expect(result.run.metadata.pipelineFailure).toMatchObject({
+      code: "governance_unavailable",
+      message: "governance-auditor runtime failed: RUNTIME_ERROR",
+    });
+    expect(result.run.metadata.incident).toMatchObject({
+      incidentClass: "provider_transient",
+      recoveryDisposition: "safe_retry",
+      revisionAttempted: false,
+    });
+  });
+
   it("S/T: publication safety boundary unchanged", () => {
     expect(PUBLICATION_FLOW_INACTIVE).toBe(true);
     expect(SNS_SIDE_EFFECTS_STEP_3_7).toBe(0);

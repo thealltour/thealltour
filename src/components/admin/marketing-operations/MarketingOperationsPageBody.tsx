@@ -175,6 +175,49 @@ export function MarketingOperationsPageBody({
         </AdminCard>
       ) : null}
 
+      {status.incident ? (
+        <AdminCard title="Governance / 인시던트 트리아지">
+          <dl className="grid gap-2 text-sm md:grid-cols-2">
+            <div>
+              <dt className="text-[var(--text-secondary)]">incidentClass</dt>
+              <dd className="font-mono text-xs">{status.incident.incidentClass}</dd>
+            </div>
+            <div>
+              <dt className="text-[var(--text-secondary)]">recoveryDisposition</dt>
+              <dd className="font-mono text-xs">{status.incident.recoveryDisposition}</dd>
+            </div>
+            <div>
+              <dt className="text-[var(--text-secondary)]">governanceDecision</dt>
+              <dd className="font-mono text-xs">{status.incident.governanceDecision ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-[var(--text-secondary)]">revisionAttempted</dt>
+              <dd className="font-mono text-xs">{status.incident.revisionAttempted ? "yes" : "no"}</dd>
+            </div>
+            <div className="md:col-span-2">
+              <dt className="text-[var(--text-secondary)]">concernSummary</dt>
+              <dd>{status.incident.concernSummary}</dd>
+            </div>
+            <div className="md:col-span-2">
+              <dt className="text-[var(--text-secondary)]">recommendedOperatorAction</dt>
+              <dd>{status.incident.recommendedOperatorAction}</dd>
+            </div>
+            {status.incident.revisionOutcome ? (
+              <div>
+                <dt className="text-[var(--text-secondary)]">revisionOutcome</dt>
+                <dd className="font-mono text-xs">{status.incident.revisionOutcome}</dd>
+              </div>
+            ) : null}
+            {status.incident.priorIncidentCount > 0 ? (
+              <div>
+                <dt className="text-[var(--text-secondary)]">priorIncidentCount</dt>
+                <dd className="font-mono text-xs">{status.incident.priorIncidentCount}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </AdminCard>
+      ) : null}
+
       <AdminCard title="추적 ID">
         <dl className="grid gap-2 text-sm md:grid-cols-2">
           {Object.entries(status.trace).map(([key, value]) => (

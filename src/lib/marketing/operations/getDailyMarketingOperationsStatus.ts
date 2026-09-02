@@ -14,6 +14,7 @@ import { createContentPerformanceRepository } from "@/lib/marketing/performance/
 import { performanceSnapshotExternalId } from "@/lib/marketing/performance/constants";
 import { getMarketingManagerResearchContext } from "@/lib/marketing/research/manager/getMarketingManagerResearchContext";
 import { createResearchRepository } from "@/lib/marketing/research/repository/createResearchRepository";
+import { buildMarketingIncidentTriage } from "@/lib/marketing/operations/buildIncidentTriage";
 import { buildMarketingOperationsTrace } from "@/lib/marketing/operations/buildOperationsTrace";
 import {
   buildActionRequiredReasons,
@@ -342,6 +343,13 @@ export async function getDailyMarketingOperationsStatus(
       .filter((id): id is string => Boolean(id)),
   });
 
+  const incident = buildMarketingIncidentTriage(run, candidate);
+  if (incident && run?.status === "failed" && incident.recoveryDisposition === "human_action_required") {
+    actionRequiredReasons.push(incident.recommendedOperatorAction);
+  } else if (incident && run?.status === "failed" && incident.incidentClass === "business_rule_block") {
+    actionRequiredReasons.push(incident.recommendedOperatorAction);
+  }
+
   return {
     contract: DAILY_MARKETING_OPERATING_CYCLE_CONTRACT,
     businessDateKst,
@@ -384,6 +392,7 @@ export async function getDailyMarketingOperationsStatus(
     actionRequiredReasons,
     observedAt,
     trace,
+    incident,
   };
 }
 

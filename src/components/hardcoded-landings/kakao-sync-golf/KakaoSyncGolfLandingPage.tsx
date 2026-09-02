@@ -12,10 +12,10 @@ import {
   KAKAO_SYNC_HERO_ACCENT,
   kakaoSyncGolfConfig,
 } from "@/lib/hardcodedLandings/kakaoSyncGolf/config";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 export type KakaoSyncGolfLandingPageProps = {
-  products: Product[];
+  products: ProductCardSource[];
   tourismRegNo?: string;
 };
 

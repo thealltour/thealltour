@@ -8,10 +8,10 @@ import {
 import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 import { cn } from "@/lib/cn";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 export type GolfTourProductsSectionProps = {
-  products: Product[];
+  products: ProductCardSource[];
   moreHref?: string;
   eyebrow?: string | null;
   title?: string | null;

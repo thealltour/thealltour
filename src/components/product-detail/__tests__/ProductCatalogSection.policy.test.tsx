@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductCatalogSection from "@/components/product-detail/ProductCatalogSection";
 import type { Product } from "@/types/product";
@@ -22,6 +23,11 @@ vi.mock("@/components/inquiry/ConsultModal", () => ({
   useConsultModal: () => ({ openModal: vi.fn() }),
 }));
 
+const CATALOG_SOURCE = readFileSync(
+  resolve(process.cwd(), "src/components/product-detail/ProductCatalogSection.tsx"),
+  "utf8",
+);
+
 function prod(o: Partial<Product> = {}): Product {
   return {
     id: o.id ?? "1",
@@ -39,38 +45,61 @@ describe("ProductCatalogSection policy", () => {
     vi.restoreAllMocks();
   });
 
-  it("URL-controlled: 내부 지역 탭 필터 없이 baseProducts 그대로", () => {
+  it("Browse paginated: server total count summary without client region tab filter", () => {
     render(
       <ProductCatalogSection
         products={[prod({ id: "a", category: "일본" }), prod({ id: "b", category: "미국" })]}
-        categories={["일본", "미국"]}
-        onCategoryChange={vi.fn()}
-        onThemeChange={vi.fn()}
+        listTotalCount={2}
+        initialRegion="일본"
+      />,
+    );
+    expect(screen.getByText(/총 2개 · 지역 일본/)).toBeInTheDocument();
+  });
+
+  it("does not render full region or theme taxonomy chip rows in body", () => {
+    render(
+      <ProductCatalogSection
+        products={[prod({ id: "a", category: "일본" }), prod({ id: "b", category: "미국" })]}
+        themeChipOptions={["골프", "힐링"]}
+        listTotalCount={2}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "일본" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "미국" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "골프" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "힐링" })).not.toBeInTheDocument();
+    expect(CATALOG_SOURCE).not.toMatch(/categoryTabs\.map/);
+    expect(CATALOG_SOURCE).not.toMatch(/themeTabs\.map/);
+  });
+
+  it("legacy client mode: initialRegion filters products without taxonomy chips", () => {
+    render(
+      <ProductCatalogSection
+        products={[prod({ id: "a", category: "일본" }), prod({ id: "b", category: "미국" })]}
+        initialRegion="일본"
+      />,
+    );
+    expect(screen.getByText(/총 1개 · 지역 일본/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "미국" })).not.toBeInTheDocument();
+  });
+
+  it("Browse paginated: skip client keyword re-filter when listTotalCount provided", () => {
+    render(
+      <ProductCatalogSection
+        products={[prod({ id: "a", title: "제주 골프" }), prod({ id: "b", title: "오사카" })]}
+        listTotalCount={2}
+        initialKeyword="제주"
       />,
     );
     expect(screen.getByText(/총 2개/)).toBeInTheDocument();
   });
 
-  it("내부 탭 모드: 지역 칩으로 건수 축소", async () => {
-    const user = userEvent.setup();
-    render(
-      <ProductCatalogSection
-        products={[prod({ id: "a", category: "일본" }), prod({ id: "b", category: "미국" })]}
-        categories={["일본", "미국"]}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: "일본" }));
-    expect(screen.getByText(/총 1개/)).toBeInTheDocument();
-  });
-
-  it("URL-controlled 에서도 catalog keyword 로 한 번 더 필터", () => {
+  it("non-browse: client keyword filter still applies", () => {
     render(
       <ProductCatalogSection
         products={[prod({ id: "a", title: "제주 골프" }), prod({ id: "b", title: "오사카" })]}
-        categories={["일본"]}
         initialKeyword="제주"
-        onCategoryChange={vi.fn()}
-        onThemeChange={vi.fn()}
       />,
     );
     expect(screen.getByText(/총 1개/)).toBeInTheDocument();
@@ -80,12 +109,9 @@ describe("ProductCatalogSection policy", () => {
     render(
       <ProductCatalogSection
         products={[prod({ title: "only" })]}
-        categories={["일본"]}
         initialKeyword="nomatch"
         initialRegion="일본"
         onResetFilters={vi.fn()}
-        onCategoryChange={vi.fn()}
-        onThemeChange={vi.fn()}
       />,
     );
     expect(screen.getByRole("button", { name: "필터 초기화" })).toBeInTheDocument();
@@ -93,7 +119,7 @@ describe("ProductCatalogSection policy", () => {
 
   it("list 레이아웃: productToProductCardProps 에 campaignBadgeMax: 2", () => {
     const spy = vi.spyOn(productCardProps, "productToProductCardProps");
-    render(<ProductCatalogSection products={[prod({ id: "x" })]} categories={["일본"]} cardLayout="list" />);
+    render(<ProductCatalogSection products={[prod({ id: "x" })]} cardLayout="list" />);
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({ id: "x" }),
       expect.objectContaining({ campaignBadgeMax: 2 }),
@@ -102,7 +128,7 @@ describe("ProductCatalogSection policy", () => {
 
   it("related 레이아웃: layout related + landing_catalog", () => {
     const spy = vi.spyOn(productCardProps, "productToProductCardProps");
-    render(<ProductCatalogSection products={[prod({ id: "x" })]} categories={["일본"]} cardLayout="related" />);
+    render(<ProductCatalogSection products={[prod({ id: "x" })]} cardLayout="related" />);
     expect(spy).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ layout: "related", analyticsSection: "landing_catalog" }),

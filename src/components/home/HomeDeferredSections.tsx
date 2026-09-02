@@ -9,7 +9,7 @@ import type { HomeCuratedSettings, HomeCuratedSectionWithProducts } from "@/type
 
 import type { Review } from "@/types/review";
 
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 import type { ProductTaxonomy } from "@/types/productTaxonomy";
 
@@ -135,7 +135,7 @@ export type HomeDeferredRailProps = {
 
 export type HomeDeferredGolfTourProps = {
 
-  products: Product[];
+  products: ProductCardSource[];
 
   moreHref?: string;
 

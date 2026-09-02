@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { getProducts } from "@/lib/products";
+import { assertDevRoutesEnabled } from "@/lib/dev/assertDevRoutesEnabled";
+import {
+  getProductsPage,
+  PRODUCT_LIST_PAGE_SIZE_MAX,
+} from "@/lib/products/productListingQuery";
 import DevProductCardV2Grid from "@/components/dev/DevProductCardV2Grid";
 
 export default async function DevProductsPage() {
-  const products = await getProducts();
+  assertDevRoutesEnabled();
+
+  const { items } = await getProductsPage({
+    page: 1,
+    pageSize: PRODUCT_LIST_PAGE_SIZE_MAX,
+  });
 
   return (
     <div className="min-h-screen page-bg-wash px-6 py-10">
@@ -16,7 +25,7 @@ export default async function DevProductsPage() {
             ← 상품 목록(기존 UI)
           </Link>
         </div>
-        <DevProductCardV2Grid products={products} />
+        <DevProductCardV2Grid products={items} />
       </main>
     </div>
   );

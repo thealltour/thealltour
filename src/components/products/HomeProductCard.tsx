@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
 import { Star } from "lucide-react";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import type { ProductCardStatus } from "@/components/products/ProductCard";
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
@@ -36,7 +36,7 @@ import {
 } from "@/lib/products/productCardHighlightTag";
 
 export type HomeProductCardProps = {
-  product: Product;
+  product: ProductCardSource;
   /** 미지정 시 `/products/[id]` */
   href?: string;
   className?: string;
@@ -55,7 +55,7 @@ function formatReviewCount(n: number): string {
 }
 
 /** one_liner 없을 때만 보조 한 줄 (ProductCard meta와 유사 역할) */
-function buildSubMetaLine(product: Product): string {
+function buildSubMetaLine(product: ProductCardSource): string {
   const meta = product.meta_info?.trim();
   if (meta) return meta.length > 52 ? `${meta.slice(0, 49)}…` : meta;
   const dur = product.duration?.trim();

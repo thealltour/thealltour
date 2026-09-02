@@ -1,9 +1,13 @@
 import { supabase } from "@/lib/supabase";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cacheTags";
-import { normalizeProduct } from "@/lib/products";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
+import {
+  mapProductRowToListItem,
+  PRODUCT_LISTING_SELECT,
+  type ProductListItem,
+} from "@/lib/products/productListItem";
 import type {
   HomeCuratedSettings,
   HomeCuratedSection,
@@ -91,18 +95,17 @@ async function getHomeCuratedDataUncached(): Promise<HomeCuratedData> {
     const productIds = [...new Set(spRows.map((r) => String(r.product_id)))];
     const { data: productRows, error: productsError } = await supabase
       .from("products")
-      .select("*")
+      .select(PRODUCT_LISTING_SELECT)
       .in("id", productIds)
       .eq("is_active", true);
 
-    const productMap = new Map<string, ReturnType<typeof normalizeProduct>>();
+    const productMap = new Map<string, ProductListItem>();
     if (!productsError && productRows?.length) {
-      for (const row of productRows) {
-        const p = normalizeProduct(row as Record<string, unknown>);
-        productMap.set(p.id, p);
-      }
+      const listItems = (productRows as unknown as Record<string, unknown>[]).map((row) =>
+        mapProductRowToListItem(row),
+      );
       const campaignTax = await getCampaignTaxonomiesForCard();
-      const hydrated = hydrateProductsWithCampaignCardMeta([...productMap.values()], campaignTax);
+      const hydrated = hydrateProductsWithCampaignCardMeta(listItems, campaignTax);
       for (const p of hydrated) {
         productMap.set(p.id, p);
       }
@@ -121,7 +124,7 @@ async function getHomeCuratedDataUncached(): Promise<HomeCuratedData> {
       const order = sectionProductsBySection.get(sec.id) ?? [];
       const products = order
         .map((o) => productMap.get(o.product_id))
-        .filter((p): p is NonNullable<typeof p> => p != null)
+        .filter((p): p is ProductListItem => p != null)
         .slice(0, sec.max_items);
       return { ...sec, products };
     });

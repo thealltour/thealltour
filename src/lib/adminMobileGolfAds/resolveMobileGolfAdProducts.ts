@@ -6,11 +6,11 @@ import { normalizeProduct } from "@/lib/products";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 const MAX_PRODUCTS = 20;
 
-async function fetchProductsByIds(orderedIds: string[]): Promise<Product[]> {
+async function fetchProductsByIds(orderedIds: string[]): Promise<ProductCardSource[]> {
   const uniqueIds = [...new Set(orderedIds.map((id) => id.trim()).filter(Boolean))].slice(
     0,
     MAX_PRODUCTS,
@@ -25,7 +25,7 @@ async function fetchProductsByIds(orderedIds: string[]): Promise<Product[]> {
 
   if (error || !productRows?.length) return [];
 
-  const productMap = new Map<string, Product>();
+  const productMap = new Map<string, ProductCardSource>();
   for (const row of productRows) {
     const p = normalizeProduct(row as Record<string, unknown>);
     productMap.set(p.id, p);
@@ -39,13 +39,13 @@ async function fetchProductsByIds(orderedIds: string[]): Promise<Product[]> {
 
   return uniqueIds
     .map((id) => productMap.get(id))
-    .filter((p): p is Product => p != null);
+    .filter((p): p is ProductCardSource => p != null);
 }
 
 export async function resolveProductsForGolfProductRail(
   source: "home_default" | "custom",
   productIds: string[],
-): Promise<Product[]> {
+): Promise<ProductCardSource[]> {
   if (source === "home_default") {
     return getHomeGolfTourProducts();
   }
@@ -54,9 +54,9 @@ export async function resolveProductsForGolfProductRail(
 
 export async function resolveAllMobileGolfAdProducts(
   bodyDoc: MobileGolfAdBodyDoc,
-): Promise<Map<string, Product>> {
+): Promise<Map<string, ProductCardSource>> {
   const rails = collectGolfProductRailNodes(bodyDoc);
-  const map = new Map<string, Product>();
+  const map = new Map<string, ProductCardSource>();
 
   for (const rail of rails) {
     const products = await resolveProductsForGolfProductRail(

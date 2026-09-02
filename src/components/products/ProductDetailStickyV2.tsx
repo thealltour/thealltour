@@ -421,7 +421,7 @@ export function ProductDetailStickyV2Mobile({
         paddingRight: "max(12px, env(safe-area-inset-right, 0px))",
       }}
     >
-      <div className="mx-auto flex w-full max-w-[100%] flex-col gap-2">
+      <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-2 overflow-hidden">
         {showBookingSheetTrigger ? (
           <button
             type="button"
@@ -431,17 +431,17 @@ export function ProductDetailStickyV2Mobile({
               setSheetOpen(true);
             }}
             className={cn(
-              "flex min-h-12 w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium",
+              "flex min-h-12 w-full min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-xl px-3 py-2.5 text-left text-sm font-medium",
               departureSelectionMissing || requiredGroupsMissing
                 ? "border-2 border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--warning)]"
                 : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]",
             )}
           >
             <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1 truncate">{bookingSummaryLabel}</span>
+            <span className="min-w-0 flex-1 truncate text-left">{bookingSummaryLabel}</span>
             <span
               className={cn(
-                "shrink-0 text-sm font-semibold",
+                "max-w-[4.5rem] shrink-0 truncate text-right text-sm font-semibold sm:max-w-none",
                 departureSelectionMissing || requiredGroupsMissing
                   ? "text-[var(--accent)]"
                   : "text-[var(--primary)]",
@@ -455,7 +455,7 @@ export function ProductDetailStickyV2Mobile({
             />
           </button>
         ) : null}
-        <div className="flex min-h-[44px] items-center gap-3">
+        <div className="flex min-h-[44px] w-full min-w-0 max-w-full items-center gap-2 overflow-hidden">
           {isSoldOut ? (
             <ProductConsultCTA
               productId={productId}
@@ -482,7 +482,7 @@ export function ProductDetailStickyV2Mobile({
             />
           ) : (
             <div
-              className="flex min-h-[44px] flex-1 items-center gap-2"
+              className="flex min-h-[44px] min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden"
               onClickCapture={() => {
                 trackReviewConversionCtaClick(productId, { experimentKey, variant });
               }}

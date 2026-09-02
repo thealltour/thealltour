@@ -1,3 +1,4 @@
+import type { ProductListItem } from "@/lib/products/productListItem";
 import type { Product } from "@/types/product";
 
 export type HomeCuratedSettings = {
@@ -48,7 +49,7 @@ export type SectionProductMappingRow = HomeCuratedSectionProduct & {
 };
 
 export type HomeCuratedSectionWithProducts = HomeCuratedSection & {
-  products: Product[];
+  products: ProductListItem[];
 };
 
 export type HomeCuratedData = {

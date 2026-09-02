@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import { cn } from "@/lib/cn";
 import { HomeProductCard } from "@/components/products/HomeProductCard";
 import {
@@ -15,7 +15,7 @@ const SCROLL_AMOUNT = 320;
 const RAIL_ITEM_CLASS = "h-full min-h-0 snap-start";
 
 export type HomeProductCardRailProps = {
-  products: Product[];
+  products: ProductCardSource[];
   /** 홈 큐레이션 카드 클릭 계측 section */
   analyticsSection?: string;
   listAriaLabel?: string;

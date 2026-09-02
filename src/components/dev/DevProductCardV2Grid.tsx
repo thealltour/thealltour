@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import ProductCard from "@/components/products/ProductCard";
 import { productToProductCardProps } from "@/lib/productCardProps";
 
 type DevProductCardV2GridProps = {
-  products: Product[];
+  products: ProductCardSource[];
 };
 
 export default function DevProductCardV2Grid({ products }: DevProductCardV2GridProps) {

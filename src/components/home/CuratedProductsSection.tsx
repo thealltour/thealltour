@@ -7,6 +7,7 @@ import {
 } from "@/components/layout/SectionHeader";
 import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { CuratedSectionScrollBlock } from "@/components/home/CuratedSectionScrollBlock";
+import { resolveHomeCuratedSectionTitle } from "@/lib/homeCuratedSectionTitle";
 import type {
   HomeCuratedSettings,
   HomeCuratedSectionWithProducts,
@@ -34,6 +35,8 @@ export default function CuratedProductsSection({
   const hasMultipleSections = sections.length >= 2;
 
   if (isActive) {
+    const headerTitle = resolveHomeCuratedSectionTitle(settings!, sections);
+
     return (
       <SectionBlock
         surface="none"
@@ -42,8 +45,8 @@ export default function CuratedProductsSection({
       >
         <SectionHeader
           eyebrow={settings!.section_label?.trim() || undefined}
-          title={settings!.section_title}
-          description={settings!.section_description}
+          title={headerTitle}
+          description={settings!.section_description?.trim() || undefined}
           action={
             <HomeSectionMoreLink
               href="/recommended"

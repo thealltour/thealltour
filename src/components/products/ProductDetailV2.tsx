@@ -6,6 +6,8 @@ import { Icon } from "@/components/ui/Icon";
 import Tag from "@/components/ui/Tag";
 import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
 import AlertCard from "@/components/ui/AlertCard";
+import { CollapsibleNoticeLines } from "@/components/products/CollapsibleNoticeLines";
+import { AutolinkPlainText } from "@/lib/products/autolinkPlainText";
 import TrustSignals from "@/components/products/TrustSignals";
 import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { ENABLE_PRODUCT_OPTIONS } from "@/config/featureFlags";
@@ -934,7 +936,9 @@ export default function ProductDetailV2({
                   {bookingConditionLines.map((line, i) => (
                     <li key={`cond-${i}`} className="flex items-start gap-3">
                       <Icon name="check" decorative size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-                      <span className="text-base leading-7 text-slate-700 whitespace-normal">{line}</span>
+                      <span className="min-w-0 flex-1 break-words text-base leading-7 text-slate-700 [overflow-wrap:anywhere] whitespace-normal">
+                        <AutolinkPlainText text={line} />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -942,11 +946,7 @@ export default function ProductDetailV2({
             ) : null}
             {bookingLines.length > 0 ? (
               <AlertCard variant="info" title="예약 시 유의사항">
-                <ul className="mt-2 space-y-1">
-                  {bookingLines.map((line, i) => (
-                    <li key={i}>{line}</li>
-                  ))}
-                </ul>
+                <CollapsibleNoticeLines lines={bookingLines} listClassName="space-y-1" />
               </AlertCard>
             ) : null}
           </div>
@@ -956,11 +956,7 @@ export default function ProductDetailV2({
           <div>
             {travelLines.length > 0 ? (
               <AlertCard variant="info" title="여행 시 유의사항">
-                <ul className="mt-2 space-y-2 leading-[1.7]">
-                  {travelLines.map((line, i) => (
-                    <li key={i}>{line}</li>
-                  ))}
-                </ul>
+                <CollapsibleNoticeLines lines={travelLines} />
               </AlertCard>
             ) : (
               <AlertCard variant="neutral" title="여행 시 유의사항">
@@ -976,11 +972,7 @@ export default function ProductDetailV2({
           <div>
             {refundLines.length > 0 ? (
               <AlertCard variant="neutral" title="환불/취소 규정">
-                <ul className="mt-2 space-y-2 text-base leading-[1.7] text-slate-700">
-                  {refundLines.map((line, i) => (
-                    <li key={i}>{line}</li>
-                  ))}
-                </ul>
+                <CollapsibleNoticeLines lines={refundLines} />
               </AlertCard>
             ) : (
               <AlertCard variant="info" title="환불 규정">

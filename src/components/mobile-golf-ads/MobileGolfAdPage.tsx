@@ -10,12 +10,12 @@ import {
   buildKakaoSyncAuthStartHref,
   trackKakaoSyncCtaClick,
 } from "@/lib/analytics/trackKakaoSyncFunnel";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 export type MobileGolfAdPageProps = {
   landing: MobileGolfAdLanding;
-  productsById?: Map<string, Product>;
-  homeGolfProducts?: Product[];
+  productsById?: Map<string, ProductCardSource>;
+  homeGolfProducts?: ProductCardSource[];
   /** 미리보기 모드 — 트래커 비활성화 */
   previewMode?: boolean;
 };

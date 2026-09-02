@@ -96,6 +96,29 @@ export function filterGolfChannelProducts(
   return products.filter((product) => isGolfChannelProduct(product, taxonomyNameMap));
 }
 
+/** Active product_line taxonomies that qualify as golf channel (Browse/Home DB filter). */
+export function collectGolfProductLineIds(
+  productLines: Array<Pick<ProductTaxonomy, "id" | "name" | "slug">>,
+): string[] {
+  const ids: string[] = [];
+  for (const line of productLines) {
+    if (!isGolfProductLineTaxonomy(line)) continue;
+    const id = line.id?.trim();
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+/** Home/Browse golf channel DB OR filter input. */
+export function buildHomeGolfChannelDbFilter(
+  productLines: Array<Pick<ProductTaxonomy, "id" | "name" | "slug">>,
+): { productLineIds: string[]; legacyCategories: readonly string[] } {
+  return {
+    productLineIds: collectGolfProductLineIds(productLines),
+    legacyCategories: GOLF_PRESET_CATEGORIES,
+  };
+}
+
 export function collectDestinationIdsAndNamesForRoots(
   nodes: ProductTaxonomy[],
   rootNames: readonly string[],

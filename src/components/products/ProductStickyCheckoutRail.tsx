@@ -180,22 +180,21 @@ export function ProductStickyCheckoutRail({
   if (layout === "bar") {
     return (
       <>
-        <div className="flex min-h-[44px] flex-1 items-center gap-2">
+        <div className="flex min-h-[44px] w-full min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden">
           <button
             type="button"
             onClick={openCheckout}
-            className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--on-accent)] shadow-[var(--shadow-soft)]"
+            className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--on-accent)] shadow-[var(--shadow-soft)] sm:px-4"
           >
-            {reserveLabel}
+            <span className="block min-w-0 truncate">{reserveLabel}</span>
           </button>
           <button
             type="button"
             onClick={() => void openKakao()}
-            className="inline-flex min-h-[48px] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] px-3 text-xs font-semibold text-[var(--theall-kakao-text)]"
+            className="inline-flex h-12 w-12 min-h-12 min-w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] p-0 text-[var(--theall-kakao-text)]"
             aria-label="카톡 상담"
           >
-            <KakaoIcon className="h-4 w-4" />
-            카톡
+            <KakaoIcon className="h-5 w-5 shrink-0" aria-hidden />
           </button>
         </div>
         {product?.id ? (

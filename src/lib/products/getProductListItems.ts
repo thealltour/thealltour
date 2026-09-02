@@ -26,7 +26,7 @@ export type ProductListItemsOrder = "catalog";
 export type GetProductListItemsParams = {
   /** Required positive limit (preview / landing caps). */
   limit: number;
-  /** Default: catalog order matching getProductsCached. */
+  /** Default: catalog order (sort_order ASC, created_at DESC). */
   order?: ProductListItemsOrder;
   /**
    * Hub destination preview: destination_id === id OR category equals name (case-insensitive).

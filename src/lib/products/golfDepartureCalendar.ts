@@ -29,6 +29,7 @@ export type GolfCalendarEventSource = ProductDepartureDateSource &
     title: string;
     price?: number;
     destination_id?: string | null;
+    product_line_id?: string | null;
     category?: string;
     theme?: string;
     overview_region?: string | null;
@@ -78,6 +79,7 @@ export const GOLF_CALENDAR_PRODUCT_SELECT = [
   "title",
   "price",
   "destination_id",
+  "product_line_id",
   "category",
   "theme",
   "overview_region",
@@ -87,8 +89,19 @@ export const GOLF_CALENDAR_PRODUCT_SELECT = [
   "departure_from_date",
   "departure_to_date",
   "campaigns_json",
-  "campaigns",
 ].join(",");
+
+/** Heavy PDP fields excluded from calendar projection. */
+export const GOLF_CALENDAR_EXCLUDED_HEAVY_COLUMNS = [
+  "description",
+  "itinerary",
+  "itinerary_v2_json",
+  "package_catalog_json",
+  "golf_courses_json",
+  "selling_points_json",
+  "options",
+  "notes",
+] as const;
 
 function normalizeStringArray(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
@@ -137,6 +150,10 @@ export function mapRowToGolfCalendarEventSource(
       row.destination_id != null && String(row.destination_id).trim()
         ? String(row.destination_id)
         : null,
+    product_line_id:
+      row.product_line_id != null && String(row.product_line_id).trim()
+        ? String(row.product_line_id)
+        : null,
     category: row.category != null ? String(row.category) : undefined,
     theme: typeof row.theme === "string" ? row.theme : undefined,
     overview_region:
@@ -149,7 +166,7 @@ export function mapRowToGolfCalendarEventSource(
       typeof row.departure_from_date === "string" ? row.departure_from_date : undefined,
     departure_to_date:
       typeof row.departure_to_date === "string" ? row.departure_to_date : undefined,
-    campaigns: normalizeStringArray(row.campaigns),
+    campaigns: normalizeStringArray(row.campaigns_json ?? row.campaigns),
     campaigns_json: normalizeStringArray(row.campaigns_json ?? row.campaigns),
   };
 }

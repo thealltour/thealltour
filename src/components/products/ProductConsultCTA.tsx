@@ -298,17 +298,14 @@ export function ProductConsultCTA({
             {kakaoToast}
           </p>
         ) : null}
-        <div className="flex h-11 w-full min-w-0 items-center gap-3 sm:gap-4">
-          <div
-            className="flex shrink-0 flex-col justify-center"
-            style={{ minWidth: "6.5rem", maxWidth: "10rem" }}
-          >
+        <div className="flex h-11 w-full min-w-0 max-w-full items-center gap-2 overflow-hidden sm:gap-4">
+          <div className="flex min-w-0 max-w-[6.5rem] shrink-0 flex-col justify-center sm:max-w-[10rem]">
             {priceFormatted != null && priceFormatted !== "" ? (
               <>
-                <span className="font-price-strong text-[1.0625rem] font-bold leading-tight text-[var(--primary)]">
+                <span className="font-price-strong truncate text-[1.0625rem] font-bold leading-tight text-[var(--primary)]">
                   {stickyPricePrefix ?? ""}₩{priceFormatted}{stickyShowRangeSuffix ? "~" : ""}
                 </span>
-                <span className="mt-0.5 block text-[0.6875rem] leading-snug text-slate-600 break-words">
+                <span className="mt-0.5 block truncate text-[0.6875rem] leading-snug text-slate-600">
                   {stickyPriceSubLabel ?? "1인 기준"}
                 </span>
                 {stickyPriceSecondLine ? (
@@ -326,7 +323,7 @@ export function ProductConsultCTA({
               variant="accent"
               size="md"
               onClick={handlePrimary}
-              className="h-11 min-h-11 flex-1 min-w-0 whitespace-nowrap"
+              className="h-11 min-h-11 min-w-0 flex-1 truncate whitespace-nowrap"
             >
               {isSoldOut ? "대기" : stickyPrimaryLabel}
             </Button>

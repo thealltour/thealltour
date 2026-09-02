@@ -58,7 +58,9 @@ export default function AlertCard({
           {title ? (
             <h3 className="mb-1.5 text-sm font-semibold text-[var(--foreground)]">{title}</h3>
           ) : null}
-          <div className="text-sm leading-[1.7] text-[var(--text-muted)]">{children}</div>
+          <div className="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-sm leading-[1.7] text-[var(--text-muted)]">
+            {children}
+          </div>
         </div>
       </div>
     </div>

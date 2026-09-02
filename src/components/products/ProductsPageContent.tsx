@@ -435,7 +435,6 @@ export function ProductsPageContent({
           {!isSearchMode && !browseOutOfRange ? (
             <ProductCatalogSection
               products={browseProducts}
-              categories={regionOptions}
               themeChipOptions={themeOptions}
               listTotalCount={browseTotalCount}
               initialKeyword={initialKeyword}
@@ -443,8 +442,6 @@ export function ProductsPageContent({
               presetLabel={presetLabel}
               initialRegion={filters.region}
               initialTheme={filters.theme}
-              onCategoryChange={(region) => handleFilterChange({ region: region ?? null })}
-              onThemeChange={(theme) => handleFilterChange({ theme: theme ?? null })}
               onResetFilters={handleResetFilters}
               initialCollection={filters.collection}
               onClearCollection={() => handleFilterChange({ collection: null })}

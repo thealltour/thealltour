@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProductDetailV2 from "@/components/products/ProductDetailV2";
+import { assertDevRoutesEnabled } from "@/lib/dev/assertDevRoutesEnabled";
 import { getProductById } from "@/lib/products";
 import { getSiteSettings } from "@/lib/siteSettings";
 import { resolveProductNoticesForDetailPage } from "@/lib/noticeTemplates";
@@ -16,6 +17,8 @@ function formatPrice(price?: number): string | null {
 }
 
 export default async function DevProductDetailPage({ params }: DevProductDetailPageProps) {
+  assertDevRoutesEnabled();
+
   const { id } = await params;
   const product = await getProductById(id);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ProductCardSource } from "@/lib/products/productListItem";
@@ -17,7 +17,6 @@ import {
   groupProductsByTheme,
   matchesThemeTab,
   matchesProductTab,
-  type ProductCategoryTabId,
 } from "@/lib/productCategory";
 import {
   normalizeProductCatalogSearchKeyword,
@@ -25,17 +24,14 @@ import {
 } from "@/lib/products/productCatalogKeyword";
 import { getCollectionLabel } from "@/lib/productFilters";
 
-/** 지역 칩 첫 항목 라벨 (내부 탭 id는 `all`) */
-const REGION_ALL_LABEL = "전체";
 /** 테마 칩 전체 (matchesThemeTab / getThemeTabs 와 동일) */
 const THEME_ALL_LABEL = "전체";
 
 type ProductCatalogSectionProps = {
   products: ProductCardSource[];
-  categories: string[];
   /**
-   * Browse server pagination: taxonomy theme names for chips (not derived from page products).
-   * When omitted, theme chips are inferred from `products` (legacy / related layouts).
+   * Browse server pagination: taxonomy theme names for grouping (not derived from page products).
+   * When omitted, theme groups are inferred from `products` (legacy / related layouts).
    */
   themeChipOptions?: string[];
   /** Authoritative total (Browse getProductsPage.totalCount). Falls back to filtered length. */
@@ -52,10 +48,6 @@ type ProductCatalogSectionProps = {
   initialRegion?: string | null;
   /** URL 연동 시 초기 테마 */
   initialTheme?: string | null;
-  /** URL 연동 시 지역 변경 콜백 */
-  onCategoryChange?: (region: string | null) => void;
-  /** URL 연동 시 테마 변경 콜백 */
-  onThemeChange?: (theme: string | null) => void;
   /** URL 연동 시 초기 컬렉션 */
   initialCollection?: string | null;
   /** URL 연동 시 컬렉션 해제 콜백 */
@@ -68,69 +60,54 @@ type ProductCatalogSectionProps = {
 
 export default function ProductCatalogSection({
   products,
-  categories,
   themeChipOptions,
   listTotalCount,
   skipClientKeywordFilter,
   initialKeyword = "",
-  golfChannelPreset = false,
   presetLabel,
   initialRegion,
   initialTheme,
-  onCategoryChange,
-  onThemeChange,
   initialCollection,
   onClearCollection,
   onResetFilters,
   cardLayout = "list",
 }: ProductCatalogSectionProps) {
-  const [internalTab, setInternalTab] = useState<ProductCategoryTabId>("all");
-  const [internalThemeTab, setInternalThemeTab] = useState(THEME_ALL_LABEL);
-
-  const isUrlControlled = onCategoryChange != null && onThemeChange != null;
-  const omitKeywordFilter =
-    skipClientKeywordFilter === true || typeof listTotalCount === "number";
-  const activeTab: ProductCategoryTabId = isUrlControlled
-    ? (initialRegion ?? "all")
-    : internalTab;
-  const activeThemeTab = isUrlControlled ? (initialTheme ?? THEME_ALL_LABEL) : internalThemeTab;
-
-  useEffect(() => {
-    if (!isUrlControlled) return;
-    setInternalTab(initialRegion ?? "all");
-    setInternalThemeTab(initialTheme ?? THEME_ALL_LABEL);
-  }, [isUrlControlled, initialRegion, initialTheme]);
+  const isBrowsePaginated = typeof listTotalCount === "number";
+  const omitKeywordFilter = skipClientKeywordFilter === true || isBrowsePaginated;
 
   const keyword = useMemo(
     () => normalizeProductCatalogSearchKeyword(initialKeyword),
     [initialKeyword],
   );
   const baseProducts = useMemo(() => products, [products]);
-  const categoryTabs = useMemo(() => [REGION_ALL_LABEL, ...categories], [categories]);
 
   const filteredProducts = useMemo(() => {
-    if (isUrlControlled) return baseProducts;
-    return baseProducts.filter((product) => matchesProductTab(product, activeTab));
-  }, [baseProducts, activeTab, isUrlControlled]);
+    if (isBrowsePaginated) return baseProducts;
+    const regionTab = initialRegion ?? "all";
+    return baseProducts.filter((product) => matchesProductTab(product, regionTab));
+  }, [baseProducts, initialRegion, isBrowsePaginated]);
 
   const themeTabs = useMemo(() => {
     if (themeChipOptions?.length) {
       return Array.from(new Set([THEME_ALL_LABEL, ...themeChipOptions.filter(Boolean)]));
     }
-    const inferred = getThemeTabs(baseProducts, activeTab);
+    const regionTab = initialRegion ?? "all";
+    const inferred = getThemeTabs(baseProducts, regionTab);
     return Array.from(new Set(inferred));
-  }, [themeChipOptions, baseProducts, activeTab]);
+  }, [themeChipOptions, baseProducts, initialRegion]);
 
   const themeFilteredProducts = useMemo(() => {
-    if (isUrlControlled) return filteredProducts;
-    return filteredProducts.filter((product) => matchesThemeTab(product, activeThemeTab));
-  }, [filteredProducts, activeThemeTab, isUrlControlled]);
+    if (isBrowsePaginated) return filteredProducts;
+    return filteredProducts.filter((product) =>
+      matchesThemeTab(product, initialTheme ?? THEME_ALL_LABEL),
+    );
+  }, [filteredProducts, initialTheme, isBrowsePaginated]);
 
   const keywordFilteredProducts = useMemo(() => {
-    const pool = isUrlControlled ? filteredProducts : themeFilteredProducts;
+    const pool = isBrowsePaginated ? filteredProducts : themeFilteredProducts;
     if (omitKeywordFilter) return pool;
     return pool.filter((product) => productCatalogMatchesKeyword(product, keyword));
-  }, [isUrlControlled, filteredProducts, themeFilteredProducts, keyword, omitKeywordFilter]);
+  }, [isBrowsePaginated, filteredProducts, themeFilteredProducts, keyword, omitKeywordFilter]);
 
   const displayTotalCount =
     typeof listTotalCount === "number" ? listTotalCount : keywordFilteredProducts.length;
@@ -164,79 +141,21 @@ export default function ProductCatalogSection({
     });
   }
 
-  const regionSummary = activeTab === "all" ? REGION_ALL_LABEL : activeTab;
+  const regionSummary = initialRegion ?? "전체";
   const collectionLabel = getCollectionLabel(initialCollection ?? null);
+
+  const summaryParts = [`총 ${displayTotalCount}개`, `지역 ${regionSummary}`];
+  if (presetLabel) summaryParts.push(`프리셋: ${presetLabel}`);
+  if (keyword) summaryParts.push(`검색어: ${initialKeyword}`);
+  if (collectionLabel) summaryParts.push(`컬렉션: ${collectionLabel}`);
 
   return (
     <section className="space-y-4">
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/98 px-3 py-2.5 backdrop-blur sm:rounded-xl sm:px-3 sm:py-3">
-        <div className="space-y-1">
-          <p className="text-xs leading-snug text-[var(--text-muted)] sm:text-sm">
-            총 {displayTotalCount}개 · 지역 {regionSummary}
-          </p>
-          {presetLabel ? (
-            <p className="text-xs leading-snug text-[#15803d] sm:text-sm">프리셋: {presetLabel}</p>
-          ) : null}
-          {keyword ? (
-            <p className="text-xs leading-snug text-[var(--primary)] sm:text-sm">
-              검색어: {initialKeyword}
-            </p>
-          ) : null}
-          {collectionLabel ? (
-            <p className="text-xs leading-snug text-[var(--text-secondary)] sm:text-sm">
-              컬렉션: {collectionLabel}
-            </p>
-          ) : null}
-        </div>
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          {categoryTabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => {
-                if (isUrlControlled && onCategoryChange) {
-                  onCategoryChange(tab === REGION_ALL_LABEL ? null : tab);
-                  return;
-                }
-                setInternalTab(tab === REGION_ALL_LABEL ? "all" : tab);
-                setInternalThemeTab(THEME_ALL_LABEL);
-              }}
-              className={`min-h-[32px] rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                (tab === REGION_ALL_LABEL ? "all" : tab) === activeTab
-                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                  : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+      <p className="text-xs leading-snug text-[var(--text-muted)] sm:text-sm">
+        {summaryParts.join(" · ")}
+      </p>
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {themeTabs.map((tab) => (
-            <button
-              key={`theme-${tab}`}
-              type="button"
-              onClick={() => {
-                if (isUrlControlled && onThemeChange) {
-                  onThemeChange(tab === THEME_ALL_LABEL ? null : tab);
-                  return;
-                }
-                setInternalThemeTab(tab);
-              }}
-              className={`min-h-[28px] rounded-full px-2.5 py-1 text-xs font-semibold transition sm:min-h-[32px] sm:px-3 sm:py-1.5 sm:text-sm ${
-                activeThemeTab === tab
-                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                  : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div key={`${activeTab}-${activeThemeTab}`} className="fade-in-up space-y-5">
+      <div key={`${initialRegion ?? "all"}-${initialTheme ?? THEME_ALL_LABEL}`} className="fade-in-up space-y-5">
         {keywordFilteredProducts.length === 0 ? (
           <div className="rounded-2xl bg-[var(--surface)] p-8 type-small text-[var(--text-muted)] shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] sm:rounded-3xl">
             {(initialRegion ||
@@ -291,7 +210,7 @@ export default function ProductCatalogSection({
             ) : keyword ? (
               "검색 조건에 맞는 상품이 없습니다."
             ) : (
-              "표시할 상품이 없습니다. 지역·테마 칩을 바꿔 보세요."
+              "표시할 상품이 없습니다. 필터를 조정해 보세요."
             )}
           </div>
         ) : (

@@ -18,7 +18,7 @@ const GUIDE_BRIDGE_SELECTION_MAX = 40;
  * 가이드 브리지 related 카드: 가격 아래 1줄 클릭 맥락 (메타·숙소·태그·테마·카테고리·기간 순).
  * 데이터가 없으면 undefined (렌더 생략).
  */
-export function buildGuideBridgeSelectionLine(product: Product): string | undefined {
+export function buildGuideBridgeSelectionLine(product: ProductCardSource): string | undefined {
   const withCheck = (raw: string) => {
     const t = raw.replace(/\s+/g, " ").trim();
     if (t.length < 2) return undefined;

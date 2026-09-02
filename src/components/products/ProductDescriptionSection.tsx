@@ -3,10 +3,14 @@
 import { useMemo, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import type { GolfCourseInfoItem } from "@/types/product";
+import {
+  collapsedPreview,
+  needsDescriptionCollapse,
+} from "@/lib/products/collapsiblePlainText";
 
 const PLACEHOLDER_DESCRIPTION = "상품 설명을 확인해 주세요.";
-const COLLAPSE_LINE_LIMIT = 12;
-const COLLAPSE_CHAR_LIMIT = 800;
+
+export { needsDescriptionCollapse } from "@/lib/products/collapsiblePlainText";
 
 export function shouldShowProductDescription(description: string | null | undefined): boolean {
   const trimmed = description?.trim() ?? "";
@@ -15,18 +19,6 @@ export function shouldShowProductDescription(description: string | null | undefi
 
 export function shouldShowGolfCourseInfo(golfCourseInfo: string | null | undefined): boolean {
   return (golfCourseInfo?.trim() ?? "").length > 0;
-}
-
-export function needsDescriptionCollapse(text: string): boolean {
-  const normalized = text.replace(/\r\n/g, "\n");
-  return normalized.split("\n").length > COLLAPSE_LINE_LIMIT || normalized.length > COLLAPSE_CHAR_LIMIT;
-}
-
-function collapsedPreview(text: string): string {
-  const normalized = text.replace(/\r\n/g, "\n");
-  const lines = normalized.split("\n").slice(0, COLLAPSE_LINE_LIMIT).join("\n");
-  const clipped = lines.length > COLLAPSE_CHAR_LIMIT ? lines.slice(0, COLLAPSE_CHAR_LIMIT) : lines;
-  return clipped.trimEnd();
 }
 
 function CollapsiblePlainText({ text, expandLabel }: { text: string; expandLabel: string }) {

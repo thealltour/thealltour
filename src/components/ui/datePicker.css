@@ -509,3 +509,102 @@
   }
 }
 
+/* Home Golf teaser — clipped preview window (weekday row + 1 week row) */
+.theall-golf-calendar-preview-window {
+  position: relative;
+  overflow: hidden;
+  max-height: var(--home-golf-calendar-preview-height, 3.85rem);
+}
+
+.theall-golf-calendar-preview-caption {
+  width: 100%;
+}
+
+.theall-golf-calendar-preview-nav {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--rdp-nav_button-width, 2rem);
+  height: var(--rdp-nav-height, 2.5rem);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.theall-golf-calendar-preview-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0 0.15rem;
+}
+
+.theall-golf-calendar-preview-more span {
+  display: block;
+  border-radius: 9999px;
+  background: var(--text-muted);
+}
+
+.theall-golf-calendar-preview-more span:nth-child(1) {
+  width: 5px;
+  height: 5px;
+  opacity: 0.5;
+}
+
+.theall-golf-calendar-preview-more span:nth-child(2) {
+  width: 4px;
+  height: 4px;
+  opacity: 0.38;
+}
+
+.theall-golf-calendar-preview-more span:nth-child(3) {
+  width: 3px;
+  height: 3px;
+  opacity: 0.28;
+}
+
+/* Home preview only — not Products interactive calendar */
+.theall-golf-calendar--preview .rdp-month_caption,
+.theall-golf-calendar--preview .rdp-button_previous,
+.theall-golf-calendar--preview .rdp-button_next,
+.theall-golf-calendar--preview .rdp-nav {
+  display: none !important;
+}
+
+.theall-golf-calendar--preview .rdp-day_button {
+  cursor: default;
+  pointer-events: none;
+  transition: none;
+}
+
+.theall-golf-calendar--preview .rdp-day_button:hover:not(:disabled),
+.theall-golf-calendar--preview .rdp-day_button:active:not(:disabled),
+.theall-golf-calendar--preview .rdp-day_button:focus-visible {
+  background: transparent;
+  outline: none;
+  box-shadow: none;
+}
+
+.theall-golf-calendar--preview .rdp-today:not(.rdp-selected) .rdp-day_button {
+  border-color: transparent;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.theall-golf-calendar--preview .rdp-selected .rdp-day_button {
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.theall-golf-calendar--preview .rdp-selected .rdp-promotion-day-label {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.theall-golf-calendar--preview .rdp-selected .rdp-promotion-star {
+  opacity: 0.55;
+}
+

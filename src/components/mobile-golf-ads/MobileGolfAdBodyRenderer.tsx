@@ -10,12 +10,12 @@ import type {
 } from "@/lib/adminMobileGolfAds/bodyDoc";
 import { isBoldMarked, resolveMobileGolfAdTextMarkStyle } from "@/lib/adminMobileGolfAds/markStyles";
 import { resolveRailProducts } from "@/lib/adminMobileGolfAds/resolveRailProducts";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 
 export type MobileGolfAdBodyRendererProps = {
   bodyDoc: MobileGolfAdBodyDoc;
-  productsById?: Map<string, Product>;
-  homeGolfProducts?: Product[];
+  productsById?: Map<string, ProductCardSource>;
+  homeGolfProducts?: ProductCardSource[];
   className?: string;
 };
 
@@ -51,8 +51,8 @@ function renderParagraph(block: Extract<MobileGolfAdBodyBlockNode, { type: "para
 function renderGolfProductRail(
   block: MobileGolfAdGolfProductRailNode,
   index: number,
-  productsById: Map<string, Product>,
-  homeGolfProducts: Product[],
+  productsById: Map<string, ProductCardSource>,
+  homeGolfProducts: ProductCardSource[],
 ) {
   const products = resolveRailProducts(
     block.attrs.source,
@@ -95,7 +95,7 @@ export function MobileGolfAdBodyRenderer({
   homeGolfProducts = [],
   className,
 }: MobileGolfAdBodyRendererProps) {
-  const productMap = productsById ?? new Map<string, Product>();
+  const productMap = productsById ?? new Map<string, ProductCardSource>();
 
   return (
     <div className={`w-full px-4 py-5 ${className ?? ""}`}>

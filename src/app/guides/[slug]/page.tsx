@@ -11,7 +11,7 @@ import {
   getGuideNotionViewUrl,
   getAdjacentPublishedGuidesBySlug,
 } from "@/lib/guides";
-import { getProducts, getGuideBridgeRecommendations } from "@/lib/products";
+import { getGuideBridgeRecommendations } from "@/lib/products";
 import { getTaxonomyById } from "@/lib/productTaxonomies";
 import { GuideCardGrid } from "@/components/guides/GuideCardGrid";
 import { GuideBridgeHeroCtas } from "@/components/guides/GuideBridgeHeroCtas";
@@ -24,7 +24,7 @@ import {
   buildProductExperienceSummary,
   productToProductCardProps,
 } from "@/lib/productCardProps";
-import type { Product } from "@/types/product";
+import type { ProductCardSource } from "@/lib/products/productListItem";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { getGuideSeoData } from "@/lib/guides/getGuideSeoData";
@@ -66,8 +66,6 @@ export default async function GuideDetailPage({ params }: Props) {
   const guide = await getGuideBySlug(slug);
   if (!guide) notFound();
 
-  const allProducts = await getProducts();
-
   const [bridgeRec, relatedGuides, destinationTax, themeTax, adjacent] = await Promise.all([
     getGuideBridgeRecommendations(guide, { totalLimit: 12 }),
     getRelatedGuidesForBlogBridge(guide, 4),
@@ -89,7 +87,7 @@ export default async function GuideDetailPage({ params }: Props) {
   const topPicks =
     bridgeRec.primary.length > 0 ? bridgeRec.primary : bridgeRec.all.slice(0, 3);
 
-  const morePicks: Product[] = [];
+  const morePicks: ProductCardSource[] = [];
   const usedIds = new Set(topPicks.map((p) => p.id));
   if (bridgeRec.primary.length > 0) {
     for (const p of bridgeRec.secondary) {

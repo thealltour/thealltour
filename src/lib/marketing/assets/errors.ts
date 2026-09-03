@@ -50,3 +50,40 @@ export class MarketingAssetExportError extends Error {
     this.name = "MarketingAssetExportError";
   }
 }
+
+export class CardNewsNotApplicableError extends Error {
+  readonly code = "cardnews_not_applicable" as const;
+  readonly reason: "cardnews_disabled" | "no_cards";
+
+  constructor(reason: "cardnews_disabled" | "no_cards") {
+    super(
+      reason === "cardnews_disabled"
+        ? "CardNews is not enabled on this MediaBrief"
+        : "CardNews is enabled but the brief contains no cards",
+    );
+    this.name = "CardNewsNotApplicableError";
+    this.reason = reason;
+  }
+}
+
+export class CardNewsRenderOverflowError extends Error {
+  readonly code = "cardnews_render_overflow" as const;
+  readonly cardId: string;
+  readonly field: "headline" | "body";
+
+  constructor(input: { cardId: string; field: "headline" | "body"; message: string }) {
+    super(input.message);
+    this.name = "CardNewsRenderOverflowError";
+    this.cardId = input.cardId;
+    this.field = input.field;
+  }
+}
+
+export class CardNewsVisualError extends Error {
+  readonly code = "cardnews_visual" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "CardNewsVisualError";
+  }
+}

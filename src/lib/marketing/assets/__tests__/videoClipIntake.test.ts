@@ -26,6 +26,7 @@ import { buildCompleteClipIntake, inspectVideoClipIntake } from "@/lib/marketing
 import { intakeVideoClipsFromPackage } from "@/lib/marketing/assets/video/intake/orchestrate";
 import { persistVideoClipIntake } from "@/lib/marketing/assets/video/intake/persist";
 import {
+  FFPROBE_INCOMING_VIDEO_ARGS_PREFIX,
   createFfprobeIncomingVideoProbe,
   parseFfprobeVideoJson,
   type IncomingVideoMetadata,
@@ -222,6 +223,92 @@ describe("ffprobe video JSON parsing", () => {
         }),
       ),
     ).toThrow(VideoClipError);
+  });
+
+  it("A: accepts one H.264 playback video plus AAC audio", () => {
+    const parsed = parseFfprobeVideoJson(
+      JSON.stringify({
+        streams: [
+          { codec_type: "video", codec_name: "h264", width: 480, height: 848, disposition: { attached_pic: 0 } },
+          { codec_type: "audio", codec_name: "aac" },
+        ],
+        format: { duration: "5.042" },
+      }),
+    );
+    expect(parsed).toMatchObject({ codecName: "h264", width: 480, height: 848, hasAudio: true, sourceDurationMs: 5042 });
+  });
+
+  it("B: ignores an attached_pic MJPEG stream and selects the H.264 playback video", () => {
+    const parsed = parseFfprobeVideoJson(
+      JSON.stringify({
+        streams: [
+          { codec_type: "video", codec_name: "h264", width: 480, height: 848, avg_frame_rate: "30/1", disposition: { attached_pic: 0 } },
+          { codec_type: "video", codec_name: "mjpeg", width: 480, height: 848, disposition: { attached_pic: 1 } },
+        ],
+        format: { duration: "5.042" },
+      }),
+    );
+    expect(parsed).toMatchObject({
+      codecName: "h264",
+      width: 480,
+      height: 848,
+      frameRate: "30/1",
+      hasAudio: false,
+    });
+  });
+
+  it("C: accepts H.264 playback plus attached_pic cover art plus audio", () => {
+    const parsed = parseFfprobeVideoJson(
+      JSON.stringify({
+        streams: [
+          { codec_type: "video", codec_name: "h264", width: 480, height: 848, disposition: { attached_pic: 0 } },
+          { codec_type: "audio", codec_name: "aac" },
+          { codec_type: "video", codec_name: "mjpeg", width: 480, height: 848, disposition: { attached_pic: 1 } },
+        ],
+        format: { duration: "5.042" },
+      }),
+    );
+    expect(parsed.codecName).toBe("h264");
+    expect(parsed.hasAudio).toBe(true);
+  });
+
+  it("D: still rejects two non-attached playback video streams", () => {
+    expect(() =>
+      parseFfprobeVideoJson(
+        JSON.stringify({
+          streams: [
+            { codec_type: "video", codec_name: "h264", width: 480, height: 848, disposition: { attached_pic: 0 } },
+            { codec_type: "video", codec_name: "h264", width: 720, height: 1280, disposition: { attached_pic: 0 } },
+          ],
+          format: { duration: "1" },
+        }),
+      ),
+    ).toThrow(/exactly one video stream/);
+  });
+
+  it("E: rejects a file that has only attached_pic video and no playback video", () => {
+    expect(() =>
+      parseFfprobeVideoJson(
+        JSON.stringify({
+          streams: [
+            { codec_type: "video", codec_name: "mjpeg", width: 480, height: 848, disposition: { attached_pic: 1 } },
+            { codec_type: "audio", codec_name: "aac" },
+          ],
+          format: { duration: "1" },
+        }),
+      ),
+    ).toThrow(/no video stream/);
+  });
+
+  it("F: treats missing attached_pic as a non-attached ordinary playback stream", () => {
+    const parsed = parseFfprobeVideoJson(
+      JSON.stringify({
+        streams: [{ codec_type: "video", codec_name: "h264", width: 720, height: 1280 }],
+        format: { duration: "3.762" },
+      }),
+    );
+    expect(parsed).toMatchObject({ codecName: "h264", width: 720, height: 1280, sourceDurationMs: 3762 });
+    expect(FFPROBE_INCOMING_VIDEO_ARGS_PREFIX.join(" ")).toContain("stream_disposition=attached_pic");
   });
 });
 

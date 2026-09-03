@@ -35,7 +35,7 @@ export const FFPROBE_INCOMING_VIDEO_ARGS_PREFIX = [
   "-v",
   "error",
   "-show_entries",
-  "format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate",
+  "format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate:stream_disposition=attached_pic",
   "-of",
   "json",
 ] as const;
@@ -75,7 +75,7 @@ export function parseFfprobeVideoJson(stdout: string): IncomingVideoMetadata {
     throw new VideoClipError("invalid_clip_metadata", "Incoming clip has no streams");
   }
 
-  const videoStreams = streams.filter((stream) => isRecord(stream) && stream.codec_type === "video");
+  const videoStreams = streams.filter(isPlaybackVideoStream);
   if (videoStreams.length === 0) {
     throw new VideoClipError("invalid_clip_metadata", "Incoming clip has no video stream");
   }
@@ -150,6 +150,22 @@ export function createFfprobeIncomingVideoProbe(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+/**
+ * Cover-art / thumbnail streams are codec_type=video with disposition.attached_pic=1.
+ * Missing disposition or missing attached_pic is treated as 0 (a playback stream).
+ * Codec name is not used as a heuristic.
+ */
+export function isAttachedPictureStream(stream: Record<string, unknown>): boolean {
+  const disposition = stream.disposition;
+  if (!isRecord(disposition)) return false;
+  const attached = disposition.attached_pic;
+  return attached === 1 || attached === "1" || attached === true;
+}
+
+export function isPlaybackVideoStream(stream: unknown): stream is Record<string, unknown> {
+  return isRecord(stream) && stream.codec_type === "video" && !isAttachedPictureStream(stream);
 }
 
 function parsePositiveInt(value: unknown): number | null {

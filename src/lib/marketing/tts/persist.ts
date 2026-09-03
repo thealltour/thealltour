@@ -30,6 +30,7 @@ export type TtsGenerationArtifact = {
   generatedAt: string;
   requestId: string;
   segmentId: string | null;
+  text: string | null;
   format: "wav";
   mediaType: "audio/wav";
   sampleRate: number | null;
@@ -39,7 +40,10 @@ export type TtsGenerationArtifact = {
   timelineAuthoritative: false;
 };
 
-export function buildTtsGenerationArtifact(result: TtsAudioResult): TtsGenerationArtifact {
+export function buildTtsGenerationArtifact(
+  result: TtsAudioResult,
+  extras: { text?: string | null } = {},
+): TtsGenerationArtifact {
   const artifact: TtsGenerationArtifact = {
     contract: TTS_GENERATION_ARTIFACT_CONTRACT,
     profileId: result.profileId,
@@ -51,6 +55,7 @@ export function buildTtsGenerationArtifact(result: TtsAudioResult): TtsGeneratio
     generatedAt: result.generatedAt,
     requestId: result.requestId,
     segmentId: result.segmentId,
+    text: extras.text ?? null,
     format: "wav",
     mediaType: "audio/wav",
     sampleRate: result.sampleRate,
@@ -71,6 +76,7 @@ export function persistTtsGeneration(input: {
   relativeAudioPath?: string;
   relativeMetadataPath?: string;
   createdAt?: string;
+  text?: string | null;
 }): {
   audio: ReturnType<typeof writePackageArtifact>;
   metadata: ReturnType<typeof writePackageArtifact>;
@@ -78,7 +84,7 @@ export function persistTtsGeneration(input: {
   const createdAt = input.createdAt ?? input.result.generatedAt;
   const relativeAudioPath = input.relativeAudioPath ?? TTS_NARRATION_WAV_RELATIVE_PATH;
   const relativeMetadataPath = input.relativeMetadataPath ?? TTS_GENERATION_JSON_RELATIVE_PATH;
-  const generation = buildTtsGenerationArtifact(input.result);
+  const generation = buildTtsGenerationArtifact(input.result, { text: input.text ?? null });
 
   const audio = writePackageArtifact({
     packageRoot: input.packageRoot,
@@ -99,6 +105,19 @@ export function persistTtsGeneration(input: {
     audioSha256: input.result.sha256,
   });
   return { audio, metadata };
+}
+
+export function parsePersistedTtsGeneration(bytes: Buffer): {
+  sha256: string;
+  provider: string;
+  profileId: string;
+  modelRef: string | null;
+  voiceRef: string | null;
+  format: string;
+  segmentId: string | null;
+  text: string | null;
+} | null {
+  return readPersistedGeneration(bytes);
 }
 
 function persistGenerationMetadata(input: {
@@ -156,6 +175,7 @@ function readPersistedGeneration(bytes: Buffer): {
   voiceRef: string | null;
   format: string;
   segmentId: string | null;
+  text: string | null;
 } | null {
   try {
     const parsed: unknown = JSON.parse(bytes.toString("utf8"));
@@ -172,6 +192,7 @@ function readPersistedGeneration(bytes: Buffer): {
       voiceRef: nullableString(record.voiceRef),
       format: record.format,
       segmentId: nullableString(record.segmentId),
+      text: nullableString(record.text),
     };
   } catch {
     return null;

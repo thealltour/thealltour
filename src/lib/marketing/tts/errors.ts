@@ -9,6 +9,11 @@ export const TTS_ERROR_CODES = [
   "unsupported_voice",
   "generation_failed",
   "malformed_provider_response",
+  "duration_probe_unavailable",
+  "duration_probe_failed",
+  "duration_probe_timeout",
+  "invalid_duration",
+  "incomplete_narration",
 ] as const;
 
 export type TtsErrorCode = (typeof TTS_ERROR_CODES)[number];

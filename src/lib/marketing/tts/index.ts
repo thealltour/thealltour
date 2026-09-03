@@ -53,5 +53,43 @@ export {
   ttsSegmentAudioRelativePath,
   buildTtsGenerationArtifact,
   persistTtsGeneration,
+  parsePersistedTtsGeneration,
 } from "@/lib/marketing/tts/persist";
+export {
+  TTS_AUTHORITATIVE_CLOCK,
+  DEFAULT_FFPROBE_TIMEOUT_MS,
+  durationSecondsToMs,
+  parseFfprobeDurationJson,
+  type AudioDurationProbe,
+  type PersistedWavDuration,
+} from "@/lib/marketing/tts/duration/probe";
+export { createFfprobeDurationProbe } from "@/lib/marketing/tts/duration/ffprobe";
+export {
+  AUDIO_MASTER_TIMELINE_CONTRACT,
+  TTS_INTER_SEGMENT_PAUSE_MS,
+  TTS_TRAILING_PAUSE_MS,
+  TTS_TIMELINE_RELATIVE_PATH,
+  TTS_MAX_NARRATION_SEGMENTS,
+  audioMasterTimelineSchema,
+  type AudioMasterTimeline,
+  type AudioMasterTimelineSegment,
+} from "@/lib/marketing/tts/timeline/contracts";
+export {
+  ttsOrderedSegmentStem,
+  ttsOrderedSegmentAudioRelativePath,
+  ttsOrderedSegmentGenerationRelativePath,
+} from "@/lib/marketing/tts/timeline/paths";
+export { buildAudioMasterTimeline } from "@/lib/marketing/tts/timeline/build";
+export { persistAudioMasterTimeline } from "@/lib/marketing/tts/timeline/persist";
+export {
+  generateNarrationMasterTimeline,
+  type NarrationSegmentInput,
+  type GenerateNarrationMasterTimelineResult,
+} from "@/lib/marketing/tts/timeline/orchestrate";
+export {
+  TTS_A6_VERIFICATION_CANDIDATE_ID,
+  createA6VerificationSegments,
+  parseGenerateNarrationTimelineArgs,
+  runGenerateNarrationTimelineCommand,
+} from "@/lib/marketing/tts/timeline/cli";
 export { parseTestMarketingTtsArgs, runTestMarketingTtsCommand } from "@/lib/marketing/tts/cli";

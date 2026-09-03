@@ -95,7 +95,7 @@ function jsonResponse(body: unknown, status: number): Response {
 }
 
 function wavResponse(buffer: Buffer, status = 200): Response {
-  return new Response(buffer, {
+  return new Response(Uint8Array.from(buffer), {
     status,
     headers: {
       "Content-Type": "audio/mpeg",

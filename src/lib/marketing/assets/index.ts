@@ -36,6 +36,9 @@ export {
   VideoClipError,
   VIDEO_CLIP_ERROR_CODES,
   type VideoClipErrorCode,
+  VideoPreviewError,
+  VIDEO_PREVIEW_ERROR_CODES,
+  type VideoPreviewErrorCode,
 } from "@/lib/marketing/assets/errors";
 export {
   MARKETING_ASSET_GENERATED_DIRECTORIES,
@@ -51,10 +54,10 @@ export {
   isPathInside,
   ensurePackageLayout,
 } from "@/lib/marketing/assets/paths";
-export { sha256Buffer, byteSize, stableJsonBytes } from "@/lib/marketing/assets/hashing";
-export { atomicWriteFile } from "@/lib/marketing/assets/atomicWrite";
+export { sha256Buffer, sha256FileSync, byteSize, stableJsonBytes } from "@/lib/marketing/assets/hashing";
+export { atomicWriteFile, atomicPublishFile } from "@/lib/marketing/assets/atomicWrite";
 export { parseMediaBrief, parseMarketingAssetManifest } from "@/lib/marketing/assets/parse";
-export { writePackageArtifact, describePlannedArtifact, assertPackageArtifactWritable } from "@/lib/marketing/assets/writeArtifact";
+export { writePackageArtifact, writePackageArtifactFromFile, describePlannedArtifact, assertPackageArtifactWritable } from "@/lib/marketing/assets/writeArtifact";
 export { buildMediaBriefFromCandidate } from "@/lib/marketing/assets/buildMediaBriefFromCandidate";
 export {
   exportMarketingCandidatePackage,
@@ -95,7 +98,7 @@ export {
   aiVideoShotPromptRelativePath,
 } from "@/lib/marketing/assets/video/paths";
 export { AI_VIDEO_NEGATIVE_CONSTRAINTS, composeAiVideoShotPrompt } from "@/lib/marketing/assets/video/prompts";
-export { buildAiVideoShotList, matchNarrationToTimeline, parseAiVideoShotList } from "@/lib/marketing/assets/video/map";
+export { buildAiVideoShotList, matchNarrationToTimeline, parseAiVideoShotList, assertShotListMatchesTimeline } from "@/lib/marketing/assets/video/map";
 export { persistAiVideoShotPack, planAiVideoShotArtifacts } from "@/lib/marketing/assets/video/persist";
 export { generateAiVideoShotPack, readMediaBriefFromPackage } from "@/lib/marketing/assets/video/orchestrate";
 export { createA8VerificationBrief, AI_VIDEO_VERIFICATION_CANDIDATE_ID } from "@/lib/marketing/assets/video/fixture";
@@ -132,3 +135,24 @@ export {
   parseIntakeMarketingVideoClipsArgs,
   runIntakeMarketingVideoClipsCommand,
 } from "@/lib/marketing/assets/video/intake/cli";
+export {
+  VIDEO_PREVIEW_COMPOSITION_CONTRACT,
+  VIDEO_PREVIEW_RELATIVE_PATH,
+  VIDEO_PREVIEW_COMPOSITION_RELATIVE_PATH,
+  videoPreviewCompositionSchema,
+  type VideoPreviewComposition,
+} from "@/lib/marketing/assets/video/preview/contracts";
+export {
+  VIDEO_PREVIEW_PROFILE,
+  VIDEO_PREVIEW_DURATION_QA_TOLERANCE_MS,
+  VIDEO_PREVIEW_GAP_POLICY,
+  VIDEO_PREVIEW_SUBTITLE_MODE,
+  msToFfmpegSeconds,
+} from "@/lib/marketing/assets/video/preview/profile";
+export { buildPreviewFilterComplex, buildPreviewFfmpegArgs } from "@/lib/marketing/assets/video/preview/graph";
+export { inspectVideoPreviewReadiness } from "@/lib/marketing/assets/video/preview/readiness";
+export { composeVideoPreviewFromPackage, createFfmpegRunner } from "@/lib/marketing/assets/video/preview/orchestrate";
+export {
+  parseComposeMarketingVideoPreviewArgs,
+  runComposeMarketingVideoPreviewCommand,
+} from "@/lib/marketing/assets/video/preview/cli";

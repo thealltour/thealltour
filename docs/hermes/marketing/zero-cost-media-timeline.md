@@ -45,6 +45,8 @@ reel/prompts/shot-0001.txt
 reel/prompts/shot-0002.txt
 reel/incoming/
 reel/clip-intake.json
+reel/preview/preview.mp4
+reel/preview/composition.json
 ```
 
 `reel/timeline.json` is the timing source for SRT (A-7) and visual shot planning (A-8).
@@ -94,6 +96,30 @@ reel/incoming/shot-0002.mp4
 Target timing remains `shot-list.json` / `timeline.json`. `sourceDurationMs` from ffprobe is validation metadata only and never replaces target duration. A clip shorter than the target is rejected. A longer clip is accepted with `trimRequired=true` for later A-10. Source clip audio may exist but is not authoritative; A-10 will compose against the canonical narration track.
 
 `reel/clip-intake.json` is written only when every required shot has exactly one valid clip.
+
+## Preview composition (A-10)
+
+```
+timeline.json
+    ├── narration WAV timing
+    ├── subtitles.srt
+    └── shot-list.json
+           ↓
+    clip-intake.json
+           ↓
+    FFmpeg preview composer
+           ↓
+    reel/preview/preview.mp4
+    reel/preview/composition.json
+```
+
+A-10 is a **review/editing preview**, never an auto-published final. CapCut/manual polish and Human Review publication remain outside this step. `reel/final/` is unused.
+
+Incoming originals stay immutable. Source clip audio is ignored. Narration comes from A-6 WAVs placed at timeline `startMs` / `durationMs`. Target timing remains the A-6/A-8 clock; a longer incoming clip is trimmed only inside the preview graph. A 250ms visual gap uses `gapPolicy=hold_previous_frame` (freeze the previous last frame). Narration gaps are silence. Subtitles are muxed as `subtitleMode=soft_track` (`mov_text`); `reel/subtitles.srt` stays the canonical editable artifact and is never burned in.
+
+Output ffprobe is QA only. Rendered frame boundaries may quantize by one preview frame (`ceil(1000/30)` ms at 30fps). Measured container duration is never written back to timeline, shot-list, or SRT.
+
+If `reel/clip-intake.json` is missing, A-10 returns a structured not-ready state and does not render.
 
 ## Partial failure
 

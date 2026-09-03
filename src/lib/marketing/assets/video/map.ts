@@ -142,7 +142,7 @@ function assertShotIdentity(shotList: AiVideoShotList): void {
   }
 }
 
-function assertShotListMatchesTimeline(shotList: AiVideoShotList, timeline: AudioMasterTimeline): void {
+export function assertShotListMatchesTimeline(shotList: AiVideoShotList, timeline: AudioMasterTimeline): void {
   if (shotList.shots.length !== timeline.segments.length) {
     throw new VideoShotError("invalid_shot_list", "Shot count must match the timeline segment count");
   }

@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
 
-import { atomicWriteFile } from "@/lib/marketing/assets/atomicWrite";
+import { atomicPublishFile, atomicWriteFile } from "@/lib/marketing/assets/atomicWrite";
 import type { MarketingAssetArtifact, MarketingAssetArtifactKind, MarketingAssetArtifactOrigin } from "@/lib/marketing/assets/contracts";
 import { MarketingAssetConflictError } from "@/lib/marketing/assets/errors";
-import { byteSize, sha256Buffer } from "@/lib/marketing/assets/hashing";
+import { byteSize, sha256Buffer, sha256FileSync } from "@/lib/marketing/assets/hashing";
 import { resolvePackageArtifactPath } from "@/lib/marketing/assets/paths";
 
 export type PlannedPackageArtifact = {
@@ -77,5 +77,58 @@ export function writePackageArtifact(input: {
   }
 
   atomicWriteFile(absolutePath, input.planned.content);
+  return { status: "created", artifact };
+}
+
+export function writePackageArtifactFromFile(input: {
+  packageRoot: string;
+  createdAt: string;
+  sourceAbsolutePath: string;
+  planned: Omit<PlannedPackageArtifact, "content"> & { sha256: string; byteSize: number };
+}): { status: ArtifactWriteStatus; artifact: MarketingAssetArtifact } {
+  const absolutePath = resolvePackageArtifactPath({
+    packageRoot: input.packageRoot,
+    relativePath: input.planned.relativePath,
+  });
+  const artifact: MarketingAssetArtifact = {
+    artifactId: artifactIdFor(input.planned.relativePath),
+    kind: input.planned.kind,
+    relativePath: input.planned.relativePath,
+    mediaType: input.planned.mediaType,
+    byteSize: input.planned.byteSize,
+    sha256: input.planned.sha256,
+    createdAt: input.createdAt,
+    origin: input.planned.origin,
+    version: input.planned.version ?? 1,
+  };
+
+  if (existsSync(absolutePath)) {
+    const existingSha256 = sha256FileSync(absolutePath);
+    if (existingSha256 !== input.planned.sha256) {
+      throw new MarketingAssetConflictError({
+        relativePath: input.planned.relativePath,
+        existingSha256,
+        incomingSha256: input.planned.sha256,
+      });
+    }
+    if (existsSync(input.sourceAbsolutePath) && input.sourceAbsolutePath !== absolutePath) {
+      try {
+        unlinkSync(input.sourceAbsolutePath);
+      } catch {
+        // ignore leftover temp cleanup
+      }
+    }
+    return { status: "reused", artifact: { ...artifact, byteSize: statSync(absolutePath).size } };
+  }
+
+  const sourceSha256 = sha256FileSync(input.sourceAbsolutePath);
+  if (sourceSha256 !== input.planned.sha256) {
+    throw new MarketingAssetConflictError({
+      relativePath: input.planned.relativePath,
+      existingSha256: sourceSha256,
+      incomingSha256: input.planned.sha256,
+    });
+  }
+  atomicPublishFile(input.sourceAbsolutePath, absolutePath);
   return { status: "created", artifact };
 }

@@ -128,3 +128,34 @@ export class VideoClipError extends Error {
     this.code = code;
   }
 }
+
+export const VIDEO_PREVIEW_ERROR_CODES = [
+  "clip_intake_missing",
+  "clip_intake_invalid",
+  "timeline_missing",
+  "shot_list_missing",
+  "subtitles_missing",
+  "inconsistent_package",
+  "stale_source",
+  "source_hash_mismatch",
+  "source_size_mismatch",
+  "narration_hash_mismatch",
+  "stale_subtitles",
+  "ffmpeg_unavailable",
+  "ffmpeg_failed",
+  "ffmpeg_timeout",
+  "preview_qa_failed",
+  "preview_orphan",
+] as const;
+
+export type VideoPreviewErrorCode = (typeof VIDEO_PREVIEW_ERROR_CODES)[number];
+
+export class VideoPreviewError extends Error {
+  readonly name = "VideoPreviewError";
+  readonly code: VideoPreviewErrorCode;
+
+  constructor(code: VideoPreviewErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}

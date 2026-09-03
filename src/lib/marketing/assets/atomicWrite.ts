@@ -37,3 +37,9 @@ export function atomicWriteFile(absolutePath: string, content: Buffer | string, 
     throw error;
   }
 }
+
+/** Rename a completed temp file onto a canonical path without reading it into memory. */
+export function atomicPublishFile(sourceAbsolutePath: string, destAbsolutePath: string): void {
+  mkdirSync(dirname(destAbsolutePath), { recursive: true });
+  renameSync(sourceAbsolutePath, destAbsolutePath);
+}

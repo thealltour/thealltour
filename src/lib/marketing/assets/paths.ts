@@ -16,6 +16,7 @@ export const MARKETING_ASSET_PACKAGE_DIRECTORIES = [
   "reel/incoming",
   "reel/audio",
   "reel/audio/segments",
+  "reel/preview",
   "reel/final",
   MARKETING_ASSET_HUMAN_EDITED_DIRECTORY,
   MARKETING_ASSET_PUBLISHED_DIRECTORY,

@@ -5,6 +5,7 @@ import {
   COUPANG_SECTION_MAX_WIDTH_CLASS,
   COUPANG_TRAVEL_BANNER_IDS,
 } from "@/lib/affiliate/coupangBannerConfig";
+import { ENABLE_COUPANG_PARTNERS_BANNER } from "@/config/featureFlags";
 
 export type CoupangTravelSectionProps = {
   className?: string;
@@ -64,6 +65,8 @@ export function CoupangTravelSection({
   hideHeader = false,
   headingId = "coupang-travel-heading",
 }: CoupangTravelSectionProps) {
+  if (!ENABLE_COUPANG_PARTNERS_BANNER) return null;
+
   if (hideHeader) {
     return (
       <div className={cn("space-y-2 sm:space-y-2.5", className)}>

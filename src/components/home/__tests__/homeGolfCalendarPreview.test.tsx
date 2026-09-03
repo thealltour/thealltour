@@ -1,12 +1,19 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeGolfCalendar } from "@/components/home/HomeGolfCalendar";
 import { HomeGolfCalendarPreview } from "@/components/home/HomeGolfCalendarPreview";
 import type { HomeGolfCalendarModel } from "@/lib/products/golfDepartureCalendar";
 import * as trackHomeEvents from "@/lib/analytics/trackHomeEvents";
+
+vi.mock("next/image", () => ({
+  default: ({ alt, src }: { alt: string; src: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={alt} src={typeof src === "string" ? src : ""} />
+  ),
+}));
 
 vi.mock("@/components/ui/TheallDayPicker", () => ({
   TheallDayPicker: (props: Record<string, unknown>) => (
@@ -15,6 +22,7 @@ vi.mock("@/components/ui/TheallDayPicker", () => ({
       data-mode={props.mode}
       data-has-on-select={props.onSelect != null ? "true" : "false"}
       data-has-selected={props.selected != null ? "true" : "false"}
+      data-number-of-months={String(props.numberOfMonths ?? 1)}
       className={typeof props.className === "string" ? props.className : undefined}
     />
   ),
@@ -34,8 +42,6 @@ const DATE_PICKER_CSS = readFileSync(
   resolve(process.cwd(), "src/components/ui/datePicker.css"),
   "utf8",
 );
-
-const DESKTOP_FILE = resolve(process.cwd(), "src/components/home/HomeGolfCalendarDesktop.tsx");
 
 function buildModel(overrides: Partial<HomeGolfCalendarModel> = {}): HomeGolfCalendarModel {
   return {
@@ -65,37 +71,85 @@ function getFooterLink() {
   return footer;
 }
 
-function walkSourceFiles(dir: string, visit: (content: string, file: string) => void) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = resolve(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === ".next" || entry.name === "__tests__") continue;
-      walkSourceFiles(full, visit);
-      continue;
-    }
-    if (!/\.(tsx|ts|jsx|js)$/.test(entry.name)) continue;
-    if (/\.(test|spec)\.(tsx|ts|jsx|js)$/.test(entry.name)) continue;
-    visit(readFileSync(full, "utf8"), full);
-  }
+function mockMatchMedia(matches: boolean) {
+  const listeners = new Set<() => void>();
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_: string, listener: () => void) => {
+        listeners.add(listener);
+      },
+      removeEventListener: (_: string, listener: () => void) => {
+        listeners.delete(listener);
+      },
+      dispatchEvent: vi.fn(),
+    })),
+  });
+  return listeners;
 }
 
-describe("HomeGolfCalendar preview funnel", () => {
+describe("HomeGolfCalendar responsive split", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("HomeGolfCalendar renders Preview only (no viewport router)", () => {
-    expect(HOME_GOLF_CALENDAR_SOURCE).not.toMatch(/matchMedia|pending|HomeGolfCalendarDesktop/);
-    expect(HOME_GOLF_CALENDAR_SOURCE).toContain("HomeGolfCalendarPreview");
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it("HomeGolfCalendarDesktop has zero callers outside its own file", () => {
-    let importCount = 0;
-    walkSourceFiles(resolve(process.cwd(), "src"), (content, file) => {
-      if (file === DESKTOP_FILE) return;
-      if (content.includes("HomeGolfCalendarDesktop")) importCount += 1;
+  it("HomeGolfCalendar source routes Preview vs Desktop with pending hydration", () => {
+    expect(HOME_GOLF_CALENDAR_SOURCE).toContain("HomeGolfCalendarPreview");
+    expect(HOME_GOLF_CALENDAR_SOURCE).toContain("HomeGolfCalendarDesktop");
+    expect(HOME_GOLF_CALENDAR_SOURCE).toMatch(/matchMedia/);
+    expect(HOME_GOLF_CALENDAR_SOURCE).toMatch(/pending/);
+    expect(HOME_GOLF_CALENDAR_SOURCE).toMatch(/min-width:\s*768px/);
+  });
+
+  it("mobile viewport renders Preview teaser after resolve", async () => {
+    mockMatchMedia(false);
+    render(<HomeGolfCalendar model={buildModel()} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("home-golf-calendar-pending")).not.toBeInTheDocument();
     });
-    expect(importCount).toBe(0);
+
+    expect(screen.getByLabelText("골프 출발 일정 미리보기")).toBeInTheDocument();
+    expect(getStretchLink()).toBeInTheDocument();
+    const picker = screen.getByTestId("mock-day-picker");
+    expect(picker).toHaveAttribute("data-has-on-select", "false");
+  });
+
+  it("desktop viewport renders interactive Desktop calendar after resolve", async () => {
+    mockMatchMedia(true);
+    render(<HomeGolfCalendar model={buildModel()} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("home-golf-calendar-pending")).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("골프 출발 일정")).toBeInTheDocument();
+    expect(screen.queryByLabelText("골프 출발 일정 미리보기")).not.toBeInTheDocument();
+
+    const picker = screen.getByTestId("mock-day-picker");
+    expect(picker).toHaveAttribute("data-has-on-select", "true");
+    expect(picker).toHaveAttribute("data-has-selected", "true");
+  });
+
+  it("pending skeleton markup is present in router source", () => {
+    expect(HOME_GOLF_CALENDAR_SOURCE).toContain("home-golf-calendar-pending");
+    expect(HOME_GOLF_CALENDAR_SOURCE).toContain("animate-pulse");
+  });
+});
+
+describe("HomeGolfCalendarPreview funnel", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("stretch link href matches model.href and records overlay analytics once", async () => {
@@ -154,12 +208,6 @@ describe("HomeGolfCalendar preview funnel", () => {
 
     expect(overlay).not.toContainElement(footerLink);
     expect(overlay.querySelector('[data-testid="mock-day-picker"]')).toBeNull();
-  });
-
-  it("HomeGolfCalendar entry always delegates to Preview", () => {
-    render(<HomeGolfCalendar model={buildModel()} />);
-    expect(screen.getByTestId("mock-day-picker")).toBeInTheDocument();
-    expect(getStretchLink()).toBeInTheDocument();
   });
 
   it("preview CSS contract: clip window, ellipsis affordance, preview class, hidden caption, no hover cue", () => {

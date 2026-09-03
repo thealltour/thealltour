@@ -4,6 +4,7 @@ import { CoupangTravelSection } from "@/components/affiliate/CoupangTravelSectio
 import {
   COUPANG_SECTION_MAX_WIDTH_CLASS,
 } from "@/lib/affiliate/coupangBannerConfig";
+import { ENABLE_COUPANG_PARTNERS_BANNER } from "@/config/featureFlags";
 import { cn } from "@/lib/cn";
 
 export type HomeCoupangTravelSectionProps = {
@@ -12,6 +13,8 @@ export type HomeCoupangTravelSectionProps = {
 
 /** 홈 Theme → Reviews 사이 쿠팡 파트너스 여행상품 섹션 */
 export function HomeCoupangTravelSection({ className }: HomeCoupangTravelSectionProps) {
+  if (!ENABLE_COUPANG_PARTNERS_BANNER) return null;
+
   return (
     <SectionBlock
       id="home-coupang-travel"

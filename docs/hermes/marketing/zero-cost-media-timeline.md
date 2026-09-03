@@ -43,6 +43,8 @@ reel/shot-list.json
 reel/video-prompts.md
 reel/prompts/shot-0001.txt
 reel/prompts/shot-0002.txt
+reel/incoming/
+reel/clip-intake.json
 ```
 
 `reel/timeline.json` is the timing source for SRT (A-7) and visual shot planning (A-8).
@@ -69,6 +71,29 @@ Both subtitles and visual planning share the same master timing authority (`reel
 A-8 does not generate images or video and performs no network call. Prompts are for manual use in ChatGPT image/video tools, consumer AI video platforms, CapCut, and later A-9 clip intake.
 
 Generated visuals must contain no text, captions, subtitles, logos, or watermarks. All on-screen words belong in `reel/subtitles.srt`. Timing remains owned by the A-6 timeline.
+
+## Clip intake (A-9)
+
+```
+reel/incoming/
+    = human/external-tool drop zone
+
+reel/clip-intake.json
+    = deterministic validated snapshot
+```
+
+A-9 is the trust boundary: external/manual AI clips become pipeline metadata only after validation. Expected filenames:
+
+```
+reel/incoming/shot-0001.mp4
+reel/incoming/shot-0002.mp4
+```
+
+`.mov`, `.webm`, and `.mkv` are also accepted. The filename stem must equal `shotId` exactly. The pipeline never edits, transcodes, trims, renames, or overwrites files in `reel/incoming/`.
+
+Target timing remains `shot-list.json` / `timeline.json`. `sourceDurationMs` from ffprobe is validation metadata only and never replaces target duration. A clip shorter than the target is rejected. A longer clip is accepted with `trimRequired=true` for later A-10. Source clip audio may exist but is not authoritative; A-10 will compose against the canonical narration track.
+
+`reel/clip-intake.json` is written only when every required shot has exactly one valid clip.
 
 ## Partial failure
 

@@ -30,6 +30,7 @@ export const MARKETING_ASSET_ARTIFACT_ORIGINS = [
   "cardnews_render",
   "tts_generation",
   "video_shot_planning",
+  "video_clip_intake",
   "human_edit",
   "published",
 ] as const;

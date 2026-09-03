@@ -105,3 +105,26 @@ export class VideoShotError extends Error {
     this.code = code;
   }
 }
+
+export const VIDEO_CLIP_ERROR_CODES = [
+  "shot_list_missing",
+  "unsupported_shot_list",
+  "invalid_shot_list",
+  "clip_probe_unavailable",
+  "clip_probe_failed",
+  "clip_probe_timeout",
+  "invalid_clip_metadata",
+  "incoming_rejected",
+] as const;
+
+export type VideoClipErrorCode = (typeof VIDEO_CLIP_ERROR_CODES)[number];
+
+export class VideoClipError extends Error {
+  readonly name = "VideoClipError";
+  readonly code: VideoClipErrorCode;
+
+  constructor(code: VideoClipErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}

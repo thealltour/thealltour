@@ -33,6 +33,9 @@ export {
   VideoShotError,
   VIDEO_SHOT_ERROR_CODES,
   type VideoShotErrorCode,
+  VideoClipError,
+  VIDEO_CLIP_ERROR_CODES,
+  type VideoClipErrorCode,
 } from "@/lib/marketing/assets/errors";
 export {
   MARKETING_ASSET_GENERATED_DIRECTORIES,
@@ -100,3 +103,32 @@ export {
   parseGenerateMarketingVideoShotsArgs,
   runGenerateMarketingVideoShotsCommand,
 } from "@/lib/marketing/assets/video/cli";
+export {
+  VIDEO_CLIP_INTAKE_CONTRACT,
+  VIDEO_CLIP_INTAKE_RELATIVE_PATH,
+  AI_VIDEO_INCOMING_DIRECTORY,
+  videoClipIntakeSchema,
+  type VideoClipIntake,
+  type VideoClipIntakeClip,
+} from "@/lib/marketing/assets/video/intake/contracts";
+export {
+  isPortraitNearNineSixteen,
+  AI_VIDEO_ASPECT_RATIO_MAX_RELATIVE_ERROR_PERCENT,
+} from "@/lib/marketing/assets/video/intake/aspect";
+export {
+  parseFfprobeVideoJson,
+  createFfprobeIncomingVideoProbe,
+  type IncomingVideoProbe,
+  type IncomingVideoMetadata,
+} from "@/lib/marketing/assets/video/intake/probe";
+export {
+  parseIncomingShotFileName,
+  assertSafeIncomingFileName,
+  resolveIncomingClipAbsolutePath,
+} from "@/lib/marketing/assets/video/intake/incoming";
+export { inspectVideoClipIntake, readAiVideoShotListFromPackage } from "@/lib/marketing/assets/video/intake/inspect";
+export { intakeVideoClipsFromPackage } from "@/lib/marketing/assets/video/intake/orchestrate";
+export {
+  parseIntakeMarketingVideoClipsArgs,
+  runIntakeMarketingVideoClipsCommand,
+} from "@/lib/marketing/assets/video/intake/cli";

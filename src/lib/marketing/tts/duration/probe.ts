@@ -1,10 +1,9 @@
 import { TtsError } from "@/lib/marketing/tts/errors";
 
+export { DEFAULT_FFPROBE_BINARY, DEFAULT_FFPROBE_TIMEOUT_MS } from "@/lib/marketing/assets/ffprobe/exec";
+
 export const TTS_AUTHORITATIVE_CLOCK = "persisted_wav_ffprobe" as const;
 export type TtsAuthoritativeClock = typeof TTS_AUTHORITATIVE_CLOCK;
-
-export const DEFAULT_FFPROBE_TIMEOUT_MS = 10_000;
-export const DEFAULT_FFPROBE_BINARY = "ffprobe";
 
 export type PersistedWavDuration = {
   durationMs: number;

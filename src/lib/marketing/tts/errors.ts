@@ -14,6 +14,9 @@ export const TTS_ERROR_CODES = [
   "duration_probe_timeout",
   "invalid_duration",
   "incomplete_narration",
+  "timeline_missing",
+  "unsupported_timeline",
+  "invalid_timeline",
 ] as const;
 
 export type TtsErrorCode = (typeof TTS_ERROR_CODES)[number];

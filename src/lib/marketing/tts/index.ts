@@ -93,3 +93,20 @@ export {
   runGenerateNarrationTimelineCommand,
 } from "@/lib/marketing/tts/timeline/cli";
 export { parseTestMarketingTtsArgs, runTestMarketingTtsCommand } from "@/lib/marketing/tts/cli";
+export { formatSrtTimestamp } from "@/lib/marketing/tts/subtitles/format";
+export {
+  TTS_SUBTITLES_RELATIVE_PATH,
+  TTS_SUBTITLES_MEDIA_TYPE,
+  normalizeSrtText,
+  renderSrtFromTimeline,
+} from "@/lib/marketing/tts/subtitles/render";
+export { persistSubtitlesSrt } from "@/lib/marketing/tts/subtitles/persist";
+export { parseAudioMasterTimeline, assertTimelineReadyForSubtitles } from "@/lib/marketing/tts/subtitles/validate";
+export {
+  generateSubtitlesFromTimelinePackage,
+  readAudioMasterTimelineFromPackage,
+} from "@/lib/marketing/tts/subtitles/orchestrate";
+export {
+  parseGenerateMarketingSubtitlesArgs,
+  runGenerateMarketingSubtitlesCommand,
+} from "@/lib/marketing/tts/subtitles/cli";

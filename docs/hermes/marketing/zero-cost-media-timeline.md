@@ -38,9 +38,18 @@ reel/audio/segment-0001.generation.json
 reel/audio/segment-0002.wav
 reel/audio/segment-0002.generation.json
 reel/timeline.json
+reel/subtitles.srt
 ```
 
-`reel/timeline.json` is the timing source for future SRT (A-7) and visual shot planning (A-8).
+`reel/timeline.json` is the timing source for SRT (A-7) and visual shot planning (A-8).
+
+## Subtitles (A-7)
+
+`reel/subtitles.srt` is a deterministic projection of `reel/timeline.json`.
+
+The subtitle layer never probes audio and never asks the TTS provider for timing. Cue start/end are `segment.startMs` / `segment.endMs` only. The 250ms narration pause is a natural gap between cues, not a subtitle.
+
+This SRT is an input to later CapCut/manual editing, A-8 visual shot/prompt planning, and future preview/video assembly.
 
 ## Partial failure
 

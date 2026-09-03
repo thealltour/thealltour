@@ -195,6 +195,8 @@ describe("atomic writes, hashes, idempotency", () => {
     expect(MARKETING_ASSET_GENERATED_DIRECTORIES).not.toContain(MARKETING_ASSET_PUBLISHED_DIRECTORY);
     expect(existsSync(join(packageRoot, "reel/prompts"))).toBe(true);
     expect(existsSync(join(packageRoot, "reel/incoming"))).toBe(true);
+    expect(existsSync(join(packageRoot, "reel/audio"))).toBe(true);
+    expect(existsSync(join(packageRoot, "reel/audio/segments"))).toBe(true);
     expect(existsSync(join(packageRoot, "reel/final"))).toBe(true);
     writeFileSync(join(packageRoot, "human-edited", "note.txt"), "human");
     writeFileSync(join(packageRoot, "copy", "post.txt"), "generated");

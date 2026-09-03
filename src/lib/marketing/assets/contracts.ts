@@ -28,6 +28,7 @@ export const MARKETING_ASSET_ARTIFACT_ORIGINS = [
   "media_brief",
   "candidate_copy",
   "cardnews_render",
+  "tts_generation",
   "human_edit",
   "published",
 ] as const;

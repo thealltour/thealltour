@@ -47,7 +47,7 @@ Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity�
 | SNS integration (STEP 3-1 contracts) | [sns-integration-architecture.md](./sns-integration-architecture.md) |
 | SNS capability matrix (STEP 3-2) | [sns-capability-matrix.md](./sns-capability-matrix.md) |
 | Social accounts & credentials (STEP 3-3) | [social-account-credentials.md](./social-account-credentials.md) |
-| Zero-cost media timeline / SRT (A-6 / A-7) | [zero-cost-media-timeline.md](./zero-cost-media-timeline.md) |
+| Zero-cost media timeline / SRT / shots (A-6 / A-7 / A-8) | [zero-cost-media-timeline.md](./zero-cost-media-timeline.md) |
 | Desktop New Agent | [agents/](./agents/) |
 | Machine contract | `src/lib/marketing/bot/contracts/` |
 | TS config | `src/lib/marketing/bot/organization/` |

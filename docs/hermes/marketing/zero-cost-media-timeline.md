@@ -39,6 +39,10 @@ reel/audio/segment-0002.wav
 reel/audio/segment-0002.generation.json
 reel/timeline.json
 reel/subtitles.srt
+reel/shot-list.json
+reel/video-prompts.md
+reel/prompts/shot-0001.txt
+reel/prompts/shot-0002.txt
 ```
 
 `reel/timeline.json` is the timing source for SRT (A-7) and visual shot planning (A-8).
@@ -50,6 +54,21 @@ reel/subtitles.srt
 The subtitle layer never probes audio and never asks the TTS provider for timing. Cue start/end are `segment.startMs` / `segment.endMs` only. The 250ms narration pause is a natural gap between cues, not a subtitle.
 
 This SRT is an input to later CapCut/manual editing, A-8 visual shot/prompt planning, and future preview/video assembly.
+
+## Visual shots (A-8)
+
+```
+timeline.json
+    ├── subtitles.srt
+    └── shot-list.json
+            └── video prompt pack
+```
+
+Both subtitles and visual planning share the same master timing authority (`reel/timeline.json`). A-8 copies `startMs` / `endMs` / `durationMs` from each matched timeline segment. One narration segment is one primary visual shot. The 250ms narration pause is not folded into either shot.
+
+A-8 does not generate images or video and performs no network call. Prompts are for manual use in ChatGPT image/video tools, consumer AI video platforms, CapCut, and later A-9 clip intake.
+
+Generated visuals must contain no text, captions, subtitles, logos, or watermarks. All on-screen words belong in `reel/subtitles.srt`. Timing remains owned by the A-6 timeline.
 
 ## Partial failure
 

@@ -30,6 +30,9 @@ export {
   CardNewsNotApplicableError,
   CardNewsRenderOverflowError,
   CardNewsVisualError,
+  VideoShotError,
+  VIDEO_SHOT_ERROR_CODES,
+  type VideoShotErrorCode,
 } from "@/lib/marketing/assets/errors";
 export {
   MARKETING_ASSET_GENERATED_DIRECTORIES,
@@ -74,3 +77,26 @@ export {
   parseRenderMarketingCardNewsArgs,
   runRenderMarketingCardNewsCommand,
 } from "@/lib/marketing/assets/cardnews/cli";
+export {
+  AI_VIDEO_SHOT_LIST_CONTRACT,
+  AI_VIDEO_ASPECT_RATIO,
+  AI_VIDEO_TIMING_SOURCE,
+  aiVideoShotListSchema,
+  type AiVideoShot,
+  type AiVideoShotList,
+} from "@/lib/marketing/assets/video/contracts";
+export {
+  MEDIA_BRIEF_RELATIVE_PATH,
+  AI_VIDEO_SHOT_LIST_RELATIVE_PATH,
+  AI_VIDEO_PROMPT_PACK_RELATIVE_PATH,
+  aiVideoShotPromptRelativePath,
+} from "@/lib/marketing/assets/video/paths";
+export { AI_VIDEO_NEGATIVE_CONSTRAINTS, composeAiVideoShotPrompt } from "@/lib/marketing/assets/video/prompts";
+export { buildAiVideoShotList, matchNarrationToTimeline, parseAiVideoShotList } from "@/lib/marketing/assets/video/map";
+export { persistAiVideoShotPack, planAiVideoShotArtifacts } from "@/lib/marketing/assets/video/persist";
+export { generateAiVideoShotPack, readMediaBriefFromPackage } from "@/lib/marketing/assets/video/orchestrate";
+export { createA8VerificationBrief, AI_VIDEO_VERIFICATION_CANDIDATE_ID } from "@/lib/marketing/assets/video/fixture";
+export {
+  parseGenerateMarketingVideoShotsArgs,
+  runGenerateMarketingVideoShotsCommand,
+} from "@/lib/marketing/assets/video/cli";

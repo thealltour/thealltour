@@ -87,3 +87,21 @@ export class CardNewsVisualError extends Error {
     this.name = "CardNewsVisualError";
   }
 }
+
+export const VIDEO_SHOT_ERROR_CODES = [
+  "media_brief_missing",
+  "narration_mismatch",
+  "invalid_shot_list",
+] as const;
+
+export type VideoShotErrorCode = (typeof VIDEO_SHOT_ERROR_CODES)[number];
+
+export class VideoShotError extends Error {
+  readonly name = "VideoShotError";
+  readonly code: VideoShotErrorCode;
+
+  constructor(code: VideoShotErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}

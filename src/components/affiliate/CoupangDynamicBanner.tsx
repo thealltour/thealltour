@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import {
   COUPANG_BANNER_HEIGHT,
@@ -77,14 +77,19 @@ export type CoupangDynamicBannerProps = {
  * g.js + container mount; widgets.html iframe 폴백.
  */
 export function CoupangDynamicBanner({ className, bannerId }: CoupangDynamicBannerProps) {
-  const reactId = useId().replace(/:/g, "");
-  const instanceId = `coupang-banner-${reactId}`;
+  const instanceId = `coupang-banner-${bannerId}`;
   const containerRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const initGenRef = useRef(0);
   const [scale, setScale] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [useIframeFallback, setUseIframeFallback] = useState(false);
+  /** 제3자 위젯은 클라이언트 마운트 후에만 삽입 — SSR useId/DOM 불일치 방지 */
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -103,7 +108,7 @@ export function CoupangDynamicBanner({ className, bannerId }: CoupangDynamicBann
   }, []);
 
   useEffect(() => {
-    if (useIframeFallback) return;
+    if (!mounted || useIframeFallback) return;
 
     const mount = mountRef.current;
     if (!mount) return;
@@ -183,7 +188,7 @@ export function CoupangDynamicBanner({ className, bannerId }: CoupangDynamicBann
       observer?.disconnect();
       mount.replaceChildren();
     };
-  }, [instanceId, useIframeFallback, bannerId]);
+  }, [mounted, instanceId, useIframeFallback, bannerId]);
 
   return (
     <div
@@ -192,14 +197,14 @@ export function CoupangDynamicBanner({ className, bannerId }: CoupangDynamicBann
       aria-busy={status === "loading"}
       data-coupang-banner-status={status}
     >
-      {status === "loading" ? (
+      {status === "loading" || !mounted ? (
         <div
           className="absolute inset-0 z-0 bg-[var(--surface-muted)]"
           aria-hidden
         />
       ) : null}
 
-      {useIframeFallback ? (
+      {!mounted ? null : useIframeFallback ? (
         <iframe
           title="쿠팡 파트너스 여행상품"
           src={getCoupangWidgetIframeSrc(bannerId)}

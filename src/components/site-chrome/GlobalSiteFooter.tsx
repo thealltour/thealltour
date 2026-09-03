@@ -238,6 +238,37 @@ export default function GlobalSiteFooter() {
           </div>
         </div>
 
+        {/* 공정위 중개사업자 관리기준 — 민원·환불 책임 고지 */}
+        <div
+          className="border-b border-[var(--divider)] py-3 sm:py-4"
+          role="note"
+          aria-label="중개사업자 민원 및 환불 책임 고지"
+        >
+          <p className="text-xs font-semibold text-[var(--foreground)] sm:text-sm">
+            중개사업자의 민원 및 환불 책임 고지
+          </p>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--footer-text-muted)] sm:text-[13px]">
+            더올투어 유한회사는 모든 거래에 대한 책임과 배송, 교환, 환불, 민원등의 처리는
+            더올투어 유한회사에서 진행합니다.
+            <br />
+            자세한 문의는 담당자 Email:{" "}
+            <a
+              href={`mailto:${mainEmail}`}
+              className="underline-offset-2 hover:underline"
+            >
+              {mainEmail}
+            </a>
+            , 유선:{" "}
+            <a
+              href="tel:010-2534-7454"
+              className="tabular-nums underline-offset-2 hover:underline"
+            >
+              010-2534-7454
+            </a>{" "}
+            으로 가능합니다.
+          </p>
+        </div>
+
         {/* 하단: 정책 + 저작권 */}
         <div className="flex flex-col gap-2 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-2 sm:gap-3 sm:py-4 md:py-5">
           <nav

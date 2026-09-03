@@ -41,6 +41,20 @@ export function KakaoSyncLandingFooter({ settings }: { settings: KakaoSyncLandin
           <p className="type-caption leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">
             {address}
           </p>
+          <div
+            className="mt-1 max-w-xl text-left"
+            role="note"
+            aria-label="중개사업자 민원 및 환불 책임 고지"
+          >
+            <p className="text-[12px] font-semibold text-[var(--foreground)]">
+              중개사업자의 민원 및 환불 책임 고지
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">
+              더올투어 유한회사는 모든 거래에 대한 책임과 배송, 교환, 환불, 민원등의 처리는
+              더올투어 유한회사에서 진행합니다. 자세한 문의는 담당자 Email:
+              thealltour@gmail.com, 유선: 010-2534-7454 으로 가능합니다.
+            </p>
+          </div>
           <nav className="flex gap-3" aria-label="약관 및 정책">
             <Link href="/terms" className={cn("footer-pill-tertiary", focusRing)}>
               이용약관

@@ -13,6 +13,11 @@ import {
 } from "@/lib/marketing/cron/daily/kstBusinessDate";
 import { buildCompletedCandidate } from "@/lib/marketing/cron/daily/mapPipelineResult";
 import {
+  applyResearchIdentityCooldown,
+  collectRecentResearchIdentities,
+  DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
+} from "@/lib/marketing/cron/daily/researchIdentityCooldown";
+import {
   buildManagerAgendaSelectionPrompt,
   parseManagerAgendaSelection,
   resolveResearchPrecondition,
@@ -247,11 +252,32 @@ export async function runDailyMarketingPipeline(
     return failRun(repo, { ...run, researchStatus: "unavailable" }, "RESEARCH_UNAVAILABLE", now);
   }
 
+  const recentCandidates = await repo.listCandidates({ limit: 64 });
+  const cooledIdentities = collectRecentResearchIdentities(
+    recentCandidates,
+    businessDateKst,
+    DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
+  );
+  const cooldownApplied = applyResearchIdentityCooldown(research, cooledIdentities);
+  research = cooldownApplied.context;
+
   run = {
     ...run,
     researchStatus: research.status,
-    metadata: { ...run.metadata, candidateCount: research.agendaCandidates.length },
-    observability: buildObservability({ ...run, researchStatus: research.status, metadata: { candidateCount: research.agendaCandidates.length } }),
+    metadata: {
+      ...run.metadata,
+      candidateCount: research.agendaCandidates.length,
+      researchIdentityCooldown: {
+        days: DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
+        excludedAgendaCandidateIds: cooldownApplied.excludedAgendaCandidateIds,
+        excludedBriefIds: cooldownApplied.excludedBriefIds,
+      },
+    },
+    observability: buildObservability({
+      ...run,
+      researchStatus: research.status,
+      metadata: { candidateCount: research.agendaCandidates.length },
+    }),
   };
 
   const precondition = resolveResearchPrecondition(research);

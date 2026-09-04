@@ -19,7 +19,7 @@ const PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
 
 const draft: ContentStrategistOutput = {
   title: "스페인 포르투갈 안내",
-  body: "상품 페이지 기준 일정입니다.",
+  body: "캠페인 초안.",
   channel: "threads",
   agenda: "iberia-core",
   sourceReferences: [`product:${PRODUCT}`],

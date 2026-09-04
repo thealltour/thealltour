@@ -359,6 +359,142 @@ describe("normalizeGovernanceReviewResult", () => {
     expect(normalized.structured.decision).toBe("REVIEW");
     expect(normalized.structured.malformed).toBe(true);
   });
+
+  function baseRequest() {
+    const mm = prepareManagerToContentHandoff(
+      {
+        title: "Scotland note",
+        summary: "Travel update.",
+        evidenceRefs: [mapManagerEvidenceRef(officialEvidence, 0.9)],
+      },
+      { now: NOW },
+    );
+    const { request } = prepareContentToGovernanceHandoff({
+      draft: {
+        body: "Official guidance says autumn travel is easier to plan.",
+        channel: "threads",
+        agenda: mm.selectedAgenda.title,
+        sourceReferences: ["evidence:ev-official"],
+      },
+      assignment: mm.contentAssignment,
+      contentPlanScaffold: mm.contentPlanScaffold,
+      productId: PRODUCT,
+      channel: "threads",
+    });
+    return request;
+  }
+
+  it("ALLOW + no gaps -> ALLOW", () => {
+    const request = {
+      ...baseRequest(),
+      preflightSignals: {
+        unsupportedClaims: [],
+        factualRisks: [],
+        evidenceGaps: [],
+        commercialRisks: [],
+        staleEvidenceIds: [],
+        suggestedConcerns: [],
+      },
+    };
+    const normalized = normalizeGovernanceReviewResult(allow({ riskScore: 0 }), request, NOW);
+    expect(normalized.structured.decision).toBe("ALLOW");
+    expect(normalized.structured.riskScore).toBe(0);
+    expect(normalized.structured.reasons).not.toContain("FACTUAL_GROUNDING_REQUIRES_HUMAN_REVIEW");
+  });
+
+  it("ALLOW + unsupported claim -> REVIEW with grounding reason", () => {
+    const request = {
+      ...baseRequest(),
+      preflightSignals: {
+        unsupportedClaims: ["claim_1"],
+        factualRisks: [],
+        evidenceGaps: [],
+        commercialRisks: [],
+        staleEvidenceIds: [],
+        suggestedConcerns: [],
+      },
+    };
+    const normalized = normalizeGovernanceReviewResult(allow({ riskScore: 0 }), request, NOW);
+    expect(normalized.structured.decision).toBe("REVIEW");
+    expect(normalized.handoff.decision).toBe("REVIEW");
+    expect(normalized.structured.humanApprovalRequired).toBe(true);
+    expect(normalized.structured.reasons).toContain("FACTUAL_GROUNDING_REQUIRES_HUMAN_REVIEW");
+    expect(normalized.structured.riskScore).toBe(0);
+  });
+
+  it("ALLOW + evidence gap -> REVIEW", () => {
+    const request = {
+      ...baseRequest(),
+      preflightSignals: {
+        unsupportedClaims: [],
+        factualRisks: [],
+        evidenceGaps: ["Missing source for schedule claim"],
+        commercialRisks: [],
+        staleEvidenceIds: [],
+        suggestedConcerns: [],
+      },
+    };
+    const normalized = normalizeGovernanceReviewResult(allow({ riskScore: 0 }), request, NOW);
+    expect(normalized.structured.decision).toBe("REVIEW");
+    expect(normalized.structured.reasons[0]).toBe("FACTUAL_GROUNDING_REQUIRES_HUMAN_REVIEW");
+  });
+
+  it("REVIEW remains REVIEW", () => {
+    const request = {
+      ...baseRequest(),
+      preflightSignals: {
+        unsupportedClaims: ["claim_1"],
+        factualRisks: [],
+        evidenceGaps: [],
+        commercialRisks: [],
+        staleEvidenceIds: [],
+        suggestedConcerns: [],
+      },
+    };
+    const normalized = normalizeGovernanceReviewResult(
+      allow({ decision: "REVIEW", humanApprovalRequired: true, reasons: ["EXISTING_REVIEW"] }),
+      request,
+      NOW,
+    );
+    expect(normalized.structured.decision).toBe("REVIEW");
+    expect(normalized.structured.reasons).toContain("EXISTING_REVIEW");
+    expect(normalized.structured.reasons).not.toContain("FACTUAL_GROUNDING_REQUIRES_HUMAN_REVIEW");
+  });
+
+  it("BLOCK remains BLOCK", () => {
+    const request = {
+      ...baseRequest(),
+      preflightSignals: {
+        unsupportedClaims: ["claim_1"],
+        factualRisks: ["policy"],
+        evidenceGaps: ["gap"],
+        commercialRisks: [],
+        staleEvidenceIds: [],
+        suggestedConcerns: ["fix it"],
+      },
+    };
+    const normalized = normalizeGovernanceReviewResult(
+      allow({ decision: "BLOCK", riskScore: 0.9, reasons: ["POLICY_BLOCK"] }),
+      request,
+      NOW,
+    );
+    expect(normalized.structured.decision).toBe("BLOCK");
+    expect(normalized.structured.reasons).toContain("POLICY_BLOCK");
+    expect(normalized.structured.reasons).not.toContain("FACTUAL_GROUNDING_REQUIRES_HUMAN_REVIEW");
+  });
+
+  it("policy risk / malformed behavior unchanged", () => {
+    const request = baseRequest();
+    const normalized = normalizeGovernanceReviewResult(
+      { decision: "WEIRD" as "ALLOW", riskScore: 0.1, reasons: [], revisionHints: [], humanApprovalRequired: false, semanticAvailable: true },
+      request,
+      NOW,
+    );
+    expect(normalized.structured.decision).toBe("REVIEW");
+    expect(normalized.structured.malformed).toBe(true);
+    expect(normalized.structured.policyRisks).toContain("governance_response_malformed");
+    expect(normalized.structured.riskScore).toBeGreaterThanOrEqual(0.75);
+  });
 });
 
 describe("governance review store", () => {

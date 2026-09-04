@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { buildAssignmentFacts, weakEvidenceRiskNotes } from "@/lib/marketing/content/evidence";
 import { recommendContentFormats } from "@/lib/marketing/content/recommendContentFormats";
+import { buildStablePrefixedId } from "@/lib/marketing/content/stablePrefixedId";
 import type {
   ContentAssignment,
   CreateContentAssignmentInput,
@@ -45,7 +46,7 @@ export function createContentAssignment(input: CreateContentAssignmentInput): Co
 
   return {
     contract: CONTENT_ASSIGNMENT_CONTRACT,
-    assignmentId: `ca_${idempotencyKey.slice(0, 24)}`,
+    assignmentId: buildStablePrefixedId("ca", idempotencyKey),
     createdAt: now.toISOString(),
     selectedAgendaId: selectedAgenda.id,
     selectedAgendaTitle: selectedAgenda.title,

@@ -192,7 +192,7 @@ describe("department orchestration", () => {
                 profile,
                 JSON.stringify({
                   title: "초안",
-                  body: "상품 페이지 기준 일정입니다.",
+                  body: "캠페인 초안.",
                   channel: "threads",
                   agenda: null,
                   sourceReferences: [],

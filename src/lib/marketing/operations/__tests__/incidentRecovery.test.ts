@@ -57,7 +57,7 @@ function pipelineDeps(overrides: {
       invokeManagerProfile: async () => managerSelectJson(),
       requestDraft: async () => ({
         title: "Japan autumn update",
-        body: "Official guidance says autumn travel planning is easier.",
+        body: "Official guidance changed for autumn travelers.",
         channel: "threads",
         agenda: "Japan autumn travel update",
         sourceReferences: ["evidence:ev-official"],

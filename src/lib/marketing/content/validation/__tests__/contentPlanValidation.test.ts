@@ -56,7 +56,7 @@ const evidenceRefPayload = {
 function baseDraft(overrides: Partial<ContentStrategistOutput> = {}): ContentStrategistOutput {
   return {
     title: "Japan update",
-    body: "Official guidance says autumn travel planning is easier.",
+    body: "Japan autumn travel guidance updated.",
     channel: "threads",
     agenda: "Japan autumn",
     sourceReferences: ["evidence:ev-official"],

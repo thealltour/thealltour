@@ -230,7 +230,7 @@ describe("pipeline preserves assignment without re-selecting agenda", () => {
     let capturedAgenda: string | null = null;
     const draft: ContentStrategistOutput = {
       title: "Scotland trend",
-      body: "Draft grounded in assignment.",
+      body: "Travel lifestyle angle.",
       channel: "threads",
       agenda: handoff.selectedAgenda.title,
       sourceReferences: ["evidence:ev-official"],

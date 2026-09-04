@@ -1,7 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 
+import { buildStablePrefixedId } from "@/lib/marketing/content/stablePrefixedId";
 import type { CreateSelectedAgendaInput, SelectedAgenda } from "@/lib/marketing/content/types";
 import { SELECTED_AGENDA_CONTRACT } from "@/lib/marketing/content/types";
+
+/** Deterministic default for productless informational travel content. */
+export const DEFAULT_INFORMATIONAL_TRAVEL_AUDIENCE =
+  "Korean travelers considering overseas travel";
 
 function resolveCommercialIntent(
   input: CreateSelectedAgendaInput,
@@ -9,6 +14,16 @@ function resolveCommercialIntent(
   if (input.commercialIntent) return input.commercialIntent;
   if ((input.matchedProductIds?.length ?? 0) > 0) return "mixed";
   return "informational";
+}
+
+function resolveAudienceHint(
+  input: CreateSelectedAgendaInput,
+  commercialIntent: SelectedAgenda["commercialIntent"],
+): string | null {
+  const explicit = input.audienceHint?.trim() || null;
+  if (explicit) return explicit;
+  if (commercialIntent === "informational") return DEFAULT_INFORMATIONAL_TRAVEL_AUDIENCE;
+  return null;
 }
 
 export function buildSelectedAgendaIdempotencyKey(input: CreateSelectedAgendaInput): string {
@@ -30,10 +45,11 @@ export function createSelectedAgenda(input: CreateSelectedAgendaInput): Selected
   if (!summary) throw new Error("selected_agenda_summary_required");
 
   const idempotencyKey = buildSelectedAgendaIdempotencyKey(input);
+  const commercialIntent = resolveCommercialIntent(input);
 
   return {
     contract: SELECTED_AGENDA_CONTRACT,
-    id: `sa_${idempotencyKey.slice(0, 24)}`,
+    id: buildStablePrefixedId("sa", idempotencyKey),
     decidedAt: now.toISOString(),
     title,
     summary,
@@ -42,8 +58,8 @@ export function createSelectedAgenda(input: CreateSelectedAgendaInput): Selected
     topics: (input.topics ?? []).slice(0, 8),
     entities: (input.entities ?? []).slice(0, 12),
     contentObjective: input.contentObjective?.trim() || "inform_travelers",
-    audienceHint: input.audienceHint?.trim() || null,
-    commercialIntent: resolveCommercialIntent(input),
+    audienceHint: resolveAudienceHint(input, commercialIntent),
+    commercialIntent,
     matchedProductIds: (input.matchedProductIds ?? []).slice(0, 8),
     evidenceRefs: (input.evidenceRefs ?? []).slice(0, 12),
     constraints: (input.constraints ?? []).slice(0, 12),

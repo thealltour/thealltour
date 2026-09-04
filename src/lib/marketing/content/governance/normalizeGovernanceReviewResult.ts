@@ -34,16 +34,40 @@ export function normalizeGovernanceReviewResult(
     }
   }
 
+  const evidenceGaps = preflight.evidenceGaps;
+  const reasons = malformed
+    ? ["MALFORMED_GA_RESPONSE"]
+    : (raw.reasons ?? []).map(String).slice(0, 16);
+
+  // Factual grounding floor: ALLOW with grounding gaps must become REVIEW (never auto-BLOCK).
+  let finalDecision = decision;
+  let finalReasons = reasons;
+  let humanApprovalRequired = malformed
+    ? true
+    : Boolean(raw.humanApprovalRequired) || decision === "REVIEW";
+
+  if (
+    !malformed &&
+    finalDecision === "ALLOW" &&
+    (unsupportedClaims.length > 0 || evidenceGaps.length > 0)
+  ) {
+    finalDecision = "REVIEW";
+    humanApprovalRequired = true;
+    if (!finalReasons.includes("FACTUAL_GROUNDING_REQUIRES_HUMAN_REVIEW")) {
+      finalReasons = ["FACTUAL_GROUNDING_REQUIRES_HUMAN_REVIEW", ...finalReasons].slice(0, 16);
+    }
+  }
+
   const structured: StructuredGovernanceDecision = {
     contract: GOVERNANCE_DECISION_CONTRACT,
     reviewId: request.reviewId,
     assignmentId: request.assignmentId,
     decidedAt: now.toISOString(),
-    decision,
-    reasons: malformed ? ["MALFORMED_GA_RESPONSE"] : (raw.reasons ?? []).map(String).slice(0, 16),
+    decision: finalDecision,
+    reasons: finalReasons,
     unsupportedClaims,
     factualRisks: preflight.factualRisks,
-    evidenceGaps: preflight.evidenceGaps,
+    evidenceGaps,
     commercialRisks: preflight.commercialRisks,
     policyRisks: malformed ? ["governance_response_malformed"] : [],
     requiredRevisions,
@@ -52,18 +76,18 @@ export function normalizeGovernanceReviewResult(
       .map((ref) => ref.evidenceId)
       .slice(0, 12),
     riskScore: malformed ? Math.max(raw.riskScore ?? 0, 0.75) : (raw.riskScore ?? 0),
-    humanApprovalRequired: malformed ? true : Boolean(raw.humanApprovalRequired) || decision === "REVIEW",
+    humanApprovalRequired,
     semanticAvailable: raw.semanticAvailable !== false,
-    revisionHints: decision === "BLOCK" ? requiredRevisions : (raw.revisionHints ?? []),
+    revisionHints: finalDecision === "BLOCK" ? requiredRevisions : (raw.revisionHints ?? []),
     claimCount: request.claims.length,
     unsupportedClaimCount: unsupportedClaims.length,
-    evidenceGapCount: preflight.evidenceGaps.length,
+    evidenceGapCount: evidenceGaps.length,
     revisionNumber: request.priorRevision,
     malformed,
   };
 
   const handoff: GovernanceReviewResult = {
-    decision,
+    decision: finalDecision,
     riskScore: structured.riskScore,
     reasons: structured.reasons,
     revisionHints: structured.revisionHints,

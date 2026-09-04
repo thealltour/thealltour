@@ -41,7 +41,7 @@ const LOGICAL_KEY = buildLogicalDailyRunKey({
 
 const draft: ContentStrategistOutput = {
   title: "Japan autumn update",
-  body: "Official guidance says autumn travel planning is easier.",
+  body: "Official guidance changed for autumn travelers.",
   channel: "threads",
   agenda: "Japan autumn travel update",
   sourceReferences: ["evidence:ev-official"],
@@ -186,7 +186,17 @@ describe("runDailyMarketingPipeline", () => {
   });
 
   it("E: productless agenda survives full pipeline", async () => {
-    const { deps } = baseDeps({ managerJson: productlessManagerJson() });
+    const { deps } = baseDeps({
+      managerJson: productlessManagerJson(),
+      draft: async () => ({
+        title: "Autumn rail pass trends",
+        // Short body avoids inventing unsupported factual claims without evidence.
+        body: "Noted.",
+        channel: "threads",
+        agenda: "Autumn rail pass trends in Europe",
+        sourceReferences: [],
+      }),
+    });
     const result = await runDailyMarketingPipeline(
       { productId: PRODUCT, channel: "threads", businessDateKst: BUSINESS_DATE },
       deps,
@@ -414,5 +424,31 @@ describe("runDailyMarketingPipeline", () => {
     const prompt = buildManagerAgendaSelectionPrompt(context);
     expect(prompt).toContain("do NOT auto-select rank #1");
     expect(prompt).not.toMatch(/"embedding"/);
+  });
+
+  it("exact research identity cooldown excludes yesterday's agenda and defers when none remain", async () => {
+    const { deps, repo } = baseDeps();
+    const prior = await runDailyMarketingPipeline(
+      { productId: PRODUCT, channel: "threads", businessDateKst: "2026-09-01" },
+      { ...deps, now: new Date("2026-08-31T15:00:00.000Z") },
+    );
+    expect(prior.candidate?.selectedAgenda.provenance.agendaCandidateId).toBe("ac-japan-autumn");
+    expect(prior.run.status).toBe("completed");
+
+    const today = await runDailyMarketingPipeline(
+      { productId: PRODUCT, channel: "threads", businessDateKst: BUSINESS_DATE },
+      deps,
+    );
+    expect(today.run.status).toBe("deferred");
+    expect(today.run.failureReason).toBe("RESEARCH_EMPTY");
+    expect(today.candidate).toBeNull();
+    const cooldownMeta = today.run.metadata.researchIdentityCooldown as {
+      excludedAgendaCandidateIds?: string[];
+    };
+    expect(cooldownMeta.excludedAgendaCandidateIds).toContain("ac-japan-autumn");
+    // Prior candidate remains untouched in history.
+    expect((await repo.listCandidates({ limit: 10 })).some((c) => c.businessDateKst === "2026-09-01")).toBe(
+      true,
+    );
   });
 });

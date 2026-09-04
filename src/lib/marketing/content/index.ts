@@ -20,11 +20,12 @@ export {
   CONTENT_PLAN_CONTRACT,
   SELECTED_AGENDA_CONTRACT,
 } from "@/lib/marketing/content/types";
-export { createSelectedAgenda, buildSelectedAgendaIdempotencyKey } from "@/lib/marketing/content/createSelectedAgenda";
+export { createSelectedAgenda, buildSelectedAgendaIdempotencyKey, DEFAULT_INFORMATIONAL_TRAVEL_AUDIENCE } from "@/lib/marketing/content/createSelectedAgenda";
 export { createContentAssignment, buildContentAssignmentIdempotencyKey } from "@/lib/marketing/content/createContentAssignment";
 export { buildContentPlanScaffold } from "@/lib/marketing/content/buildContentPlanScaffold";
 export { recommendContentFormats } from "@/lib/marketing/content/recommendContentFormats";
-export { mapManagerEvidenceRef, buildAssignmentFacts, weakEvidenceRiskNotes } from "@/lib/marketing/content/evidence";
+export { mapManagerEvidenceRef, buildAssignmentFacts, normalizeFactStatement, weakEvidenceRiskNotes } from "@/lib/marketing/content/evidence";
+export { buildStablePrefixedId } from "@/lib/marketing/content/stablePrefixedId";
 export {
   prepareManagerToContentHandoff,
   enrichSelectedAgendaInputFromResearch,

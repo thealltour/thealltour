@@ -140,7 +140,7 @@ describe("STEP 2-4.8C-1 enforcement", () => {
                 profile,
                 JSON.stringify({
                   title: "t",
-                  body: "generic concept only",
+                  body: "concept",
                   channel: "threads",
                   agenda: null,
                   sourceReferences: [],

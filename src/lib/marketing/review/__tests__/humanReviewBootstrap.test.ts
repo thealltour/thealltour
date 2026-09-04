@@ -34,7 +34,7 @@ const LOGICAL_KEY = buildLogicalDailyRunKey({
 
 const draft: ContentStrategistOutput = {
   title: "Japan autumn update",
-  body: "Official guidance says autumn travel planning is easier.",
+  body: "Official guidance changed.",
   channel: "threads",
   agenda: "Japan autumn travel update",
   sourceReferences: ["evidence:ev-official"],

@@ -20,9 +20,18 @@ function isStaleEvidence(ref: AssignmentEvidenceRef, now: Date): boolean {
   return now.getTime() - new Date(anchor).getTime() > STALE_MS;
 }
 
+function normalizeClaimMatchText(text: string): string {
+  return text
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[.!?…]+$/u, "")
+    .toLowerCase();
+}
+
 function hasEvidenceForClaimType(
   claim: GovernanceClaim,
   evidenceRefs: AssignmentEvidenceRef[],
+  allowedFactTexts: Set<string> = new Set(),
 ): boolean {
   if (claim.evidenceRefs.length > 0) return true;
   if (claim.claimType === "opinion") return true;
@@ -32,7 +41,30 @@ function hasEvidenceForClaimType(
   if (claim.claimType === "visa_entry" || claim.claimType === "safety") {
     return evidenceRefs.some((ref) => ref.isOfficial);
   }
-  return evidenceRefs.some((ref) => ref.excerpt && claim.text.includes(ref.excerpt.slice(0, 40)));
+  const claimNorm = normalizeClaimMatchText(claim.text);
+  if (!claimNorm) return false;
+
+  for (const allowed of allowedFactTexts) {
+    const allowedNorm = normalizeClaimMatchText(allowed);
+    if (!allowedNorm) continue;
+    if (
+      claimNorm === allowedNorm ||
+      claimNorm.includes(allowedNorm) ||
+      allowedNorm.includes(claimNorm)
+    ) {
+      return true;
+    }
+  }
+
+  return evidenceRefs.some((ref) => {
+    if (!ref.excerpt?.trim()) return false;
+    const excerptNorm = normalizeClaimMatchText(ref.excerpt);
+    if (!excerptNorm) return false;
+    return (
+      claimNorm.includes(excerptNorm.slice(0, 40)) ||
+      excerptNorm.includes(claimNorm.slice(0, Math.min(40, claimNorm.length)))
+    );
+  });
 }
 
 export function evaluateDeterministicClaimSignals(input: {
@@ -66,7 +98,7 @@ export function evaluateDeterministicClaimSignals(input: {
   }
 
   for (const claim of claims) {
-    if (!hasEvidenceForClaimType(claim, evidenceRefs)) {
+    if (!hasEvidenceForClaimType(claim, evidenceRefs, allowedFactTexts)) {
       unsupportedClaims.push(claim.claimId);
       evidenceGaps.push(claim.text.slice(0, 120));
       if (claim.claimType === "price") {

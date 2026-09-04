@@ -3,8 +3,8 @@
  * Cron script: Daily Marketing Plan (task-only, no SNS publish).
  *
  * Reads latest Performance Brief artifact (safe fallback if missing),
- * then runs the integrated daily marketing pipeline (Research → MM → CS → GA)
- * producing one CompletedMarketingCandidate — no SNS publish.
+ * then runs the daily agenda-slate job (Research → cooldown → human-gated slate).
+ * Production (CS/GA/candidate) does NOT start until a later human selection step.
  *
  *   npx tsx scripts/cron-daily-marketing-plan.ts
  *
@@ -43,17 +43,15 @@ import {
   peekRuntimeExecutorStackObservability,
 } from "../src/ai-runtime/integration/runtime-stack";
 import { ensureSharedObservabilityRecorder } from "../src/ai-runtime/observability/persistence";
-import { runDailyMarketingPipeline } from "../src/lib/marketing/cron/daily/runDailyMarketingPipeline";
+import { runDailyMarketingAgendaSlate } from "../src/lib/marketing/cron/daily/runDailyMarketingAgendaSlate";
 import { createDailyMarketingRunRepository } from "../src/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
-import { createHumanMarketingReviewRepository } from "../src/lib/marketing/review/repository/createHumanMarketingReviewRepository";
+import { createDailyAgendaSlateRepository } from "../src/lib/marketing/cron/daily/repository/createDailyAgendaSlateRepository";
 import { buildLogicalDailyRunKey, formatKstBusinessDate } from "../src/lib/marketing/cron/daily/kstBusinessDate";
 import { DAILY_MARKETING_ROUTINE_ID } from "../src/lib/marketing/cron/daily/types";
 import { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } from "../src/lib/marketing/social/publication/governanceBoundary";
-import type { PerformanceBrief, PerformanceUnavailable } from "../src/lib/marketing/bot/organization/handoffs";
 import {
   createMarketingCronCorrelationId,
   createMarketingManagerAgendaDispatch,
-  createMarketingPlanPipelineDispatch,
   isAiRuntimeMarketingCronEnabled,
 } from "../src/lib/marketing/cron/marketingCronRuntime";
 import { MARKETING_CRON_HERMES_TIMEOUT_MS } from "../src/lib/marketing/cron/marketingPlanSpecialists";
@@ -61,8 +59,18 @@ import {
   defaultPerformanceBriefAbsolutePath,
   formatDailyPerformanceBriefMarkdown,
   readLatestPerformanceBrief,
-  type DailyPerformanceBriefArtifact,
 } from "../src/lib/marketing/cron/performanceBriefArtifact";
+function invokeHermesProfile(profile: string, prompt: string): string {
+  const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
+    encoding: "utf8",
+    env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
+    timeout: MARKETING_CRON_HERMES_TIMEOUT_MS,
+  });
+  if (result.status !== 0) {
+    throw new Error(`${profile} exited ${result.status}: ${(result.stderr || result.stdout || "").slice(0, 400)}`);
+  }
+  return result.stdout ?? "";
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
@@ -98,45 +106,6 @@ function argValue(argv: string[], name: string): string | undefined {
   const idx = argv.indexOf(name);
   if (idx < 0) return undefined;
   return argv[idx + 1];
-}
-
-function invokeHermesProfile(profile: string, prompt: string): string {
-  const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-    encoding: "utf8",
-    env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-    timeout: MARKETING_CRON_HERMES_TIMEOUT_MS,
-  });
-  if (result.status !== 0) {
-    throw new Error(
-      `${profile} exited ${result.status}: ${(result.stderr || result.stdout || "").slice(0, 400)}`,
-    );
-  }
-  return result.stdout ?? "";
-}
-
-function briefToPipelinePerformance(
-  brief: DailyPerformanceBriefArtifact | null,
-): PerformanceBrief | PerformanceUnavailable {
-  if (!brief) {
-    return { unavailable: true, reason: "latest_performance_brief_missing" };
-  }
-  if (brief.dataAvailability === "unavailable") {
-    return { unavailable: true, reason: "performance_data_unavailable" };
-  }
-  const keyMetrics = brief.confirmedMetrics
-    .filter((item) => item.value > 0)
-    .map((item) => ({ metricType: item.metricType, value: item.value }));
-  if (keyMetrics.length === 0) {
-    return { unavailable: true, reason: "no_positive_confirmed_metrics" };
-  }
-  return {
-    period: brief.period,
-    productId: brief.productId,
-    channel: brief.channel,
-    keyMetrics,
-    observedPatterns: [...brief.managerEvidence, ...brief.notableChanges],
-    confidence: brief.dataAvailability === "available" ? "medium" : "low",
-  };
 }
 
 async function main() {
@@ -189,20 +158,11 @@ async function main() {
     console.log("");
   }
 
-  const pipelinePerformance = briefToPipelinePerformance(brief);
   if (useRuntime) {
     await ensureSharedObservabilityRecorder();
   }
+
   const runtimeExecutor = useRuntime ? createRuntimeExecutorStack() : undefined;
-
-  const dispatch = createMarketingPlanPipelineDispatch({
-    useRuntime,
-    correlationId,
-    executor: runtimeExecutor,
-    invokeHermesProfile: useRuntime ? undefined : invokeHermesProfile,
-    completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
-  });
-
   const managerDispatch = createMarketingManagerAgendaDispatch({
     useRuntime,
     correlationId,
@@ -212,9 +172,9 @@ async function main() {
   });
 
   const repo = await createDailyMarketingRunRepository();
-  const reviewRepo = await createHumanMarketingReviewRepository();
+  const slateRepo = await createDailyAgendaSlateRepository();
 
-  const pipelineResult = await runDailyMarketingPipeline(
+  const pipelineResult = await runDailyMarketingAgendaSlate(
     {
       productId,
       channel,
@@ -226,77 +186,63 @@ async function main() {
     },
     {
       repo,
-      reviewRepo,
-      ...dispatch,
+      slateRepo,
       invokeManagerProfile: managerDispatch.invokeManagerProfile,
-      requestPerformance: async () => pipelinePerformance,
     },
   );
 
-  const result = pipelineResult.candidate;
+  const slate = pipelineResult.slate ?? null;
   const run = pipelineResult.run;
 
-  console.log("## Daily Pipeline Result");
+  console.log("## Daily Agenda Slate Result");
   console.log("");
   console.log(`- idempotent: ${pipelineResult.idempotent}`);
   console.log(`- runStatus: ${run.status}`);
   console.log(`- researchStatus: ${run.researchStatus ?? "none"}`);
   console.log(`- degraded: ${run.degraded}`);
-  console.log(`- selectedAgendaId: ${run.selectedAgendaId ?? "none"}`);
-  console.log(`- assignmentId: ${run.assignmentId ?? "none"}`);
-  console.log(`- governanceReviewId: ${run.governanceReviewId ?? "none"}`);
+  console.log(`- mode: ${String(run.metadata?.mode ?? "agenda_slate")}`);
+  console.log(`- agendaSlateId: ${slate?.slateId ?? run.metadata?.agendaSlateId ?? "none"}`);
+  console.log(`- slateStatus: ${slate?.status ?? "none"}`);
+  console.log(`- slateSize: ${slate?.candidates.length ?? 0}`);
+  console.log(`- curationMode: ${slate?.curation.mode ?? run.metadata?.curationMode ?? "none"}`);
   console.log(`- completedCandidateId: ${run.completedCandidateId ?? "none"}`);
   console.log(`- failureReason: ${run.failureReason ?? "none"}`);
-  console.log(`- finalStatus: ${result?.status ?? "none"}`);
-  console.log(`- revisionCount: ${run.observability.revisionCount}`);
-  console.log(`- governanceDecision: ${result?.governanceDecision?.decision ?? "none"}`);
   console.log("");
 
-  if (run.failureReason && !result) {
-    console.log("## Pipeline Stopped Before Candidate");
+  if (run.failureReason && !slate) {
+    console.log("## Slate Stopped");
     console.log("");
     console.log(`Human boundary preserved. Reason: ${run.failureReason}`);
+    console.log("No Content Strategy / draft / governance / Human Review bootstrap ran.");
     console.log("");
     logOpsRuntimeTelemetry(useRuntime);
     return;
   }
 
-  if (!result) {
-    throw new Error("expected completed marketing candidate");
+  if (!slate) {
+    throw new Error("expected daily agenda slate");
   }
 
-  console.log("## Completed Marketing Candidate");
-  console.log("");
-  console.log(`- candidateId: ${result.candidateId}`);
-  console.log(`- contract: ${result.contract}`);
-  console.log(`- status: ${result.status}`);
-  console.log(`- assignmentId: ${result.contentAssignment.assignmentId}`);
-  console.log(`- selectedAgenda: ${result.selectedAgenda.title}`);
-  console.log("");
-
-  if (result.draft?.body) {
-    console.log("## Draft Candidate");
-    console.log("");
-    if (result.draft.title) console.log(`title: ${result.draft.title}`);
-    console.log(result.draft.body);
-    console.log("");
+  if (pipelineResult.candidate) {
+    throw new Error("slate-only cron must not create a CompletedMarketingCandidate");
   }
 
-  if (result.governanceDecision) {
-    console.log("## Governance");
-    console.log("");
-    console.log(JSON.stringify(result.governanceDecision, null, 2));
-    console.log("");
+  console.log("## Agenda Slate Candidates");
+  console.log("");
+  for (const [index, item] of slate.candidates.entries()) {
+    console.log(
+      `${index + 1}. [${item.state}/${item.origin}] ${item.title} (score=${item.score ?? "n/a"}; ac=${item.agendaCandidateId ?? "none"})`,
+    );
   }
+  console.log("");
 
-  console.log("## Human Review Boundary");
+  console.log("## Human Selection Boundary");
   console.log("");
-  console.log("- CompletedMarketingCandidate persisted — NOT ExternalPublication");
-  console.log("- ALLOW → ready_for_human_review (no publish)");
-  console.log("- REVIEW → needs_human_review (no publish)");
-  console.log("- BLOCK → blocked (no publish)");
+  console.log("- DailyAgendaSlate persisted — production NOT started");
+  console.log("- No Content Strategy / Draft / Governance / HumanReview bootstrap");
+  console.log("- Downstream production starts only after human SELECTED_TODAY + durable production request");
+  console.log("- publish: forbidden");
   console.log("");
-  console.log("Human Owner: review persisted candidate / cron output. STEP 3-8 adds proactive presentation.");
 
   logOpsRuntimeTelemetry(useRuntime);
 }

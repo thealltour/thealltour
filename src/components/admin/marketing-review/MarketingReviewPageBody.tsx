@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import { AgendaSlatePanel } from "@/components/admin/marketing-review/AgendaSlatePanel";
 import type { HumanReviewQueueFilter } from "@/lib/marketing/review/types";
 import type {
   MorningReviewQueueRow,
@@ -156,6 +157,8 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
             오늘(KST) 생성된 CompletedMarketingCandidate가 아직 없습니다.
           </AdminCard>
         )}
+
+        <AgendaSlatePanel />
 
         <div className="grid gap-3 sm:grid-cols-3">
           <AdminSummaryCard title="검토 필요" value={String(pendingCount)} />

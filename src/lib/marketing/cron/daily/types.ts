@@ -8,7 +8,9 @@ export type DailyMarketingRunStatus =
   | "completed"
   | "failed"
   | "deferred"
-  | "skipped_idempotent";
+  | "skipped_idempotent"
+  /** Agenda slate persisted; awaiting human selection (no production candidate). */
+  | "slate_ready";
 
 export type DailyMarketingFailureReason =
   | "RESEARCH_EMPTY"
@@ -103,6 +105,12 @@ export type DailyMarketingPipelineInput = {
   businessDateKst?: string;
   correlationId?: string;
   executionAttempt?: number;
+  /**
+   * Optional override for multi-selection production identity.
+   * Default remains historical `daily-marketing-plan:YYYY-MM-DD`.
+   * Per-agenda keys use `daily-marketing-production:<date>:<hash>`.
+   */
+  logicalRunKey?: string;
   /** Operator recovery rerun — preserves prior failed run in metadata.incidentHistory. */
   recoveryMode?: boolean;
   performanceNote?: string;
@@ -113,4 +121,6 @@ export type DailyMarketingPipelineResult = {
   idempotent: boolean;
   run: DailyMarketingRun;
   candidate: CompletedMarketingCandidate | null;
+  /** Present when the daily job stops at the human-gated agenda slate. */
+  slate?: import("@/lib/marketing/cron/daily/agendaSlate/types").DailyAgendaSlate | null;
 };

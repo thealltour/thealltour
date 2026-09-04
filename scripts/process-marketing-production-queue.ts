@@ -50,7 +50,14 @@ import {
   createMarketingPlanPipelineDispatch,
   isAiRuntimeMarketingCronEnabled,
 } from "../src/lib/marketing/cron/marketingCronRuntime";
-import { MARKETING_CRON_HERMES_TIMEOUT_MS } from "../src/lib/marketing/cron/marketingPlanSpecialists";
+import {
+  MARKETING_CRON_HERMES_TIMEOUT_MS,
+  MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+} from "../src/lib/marketing/cron/marketingPlanSpecialists";
+import {
+  assertHermesSpawnSyncSuccess,
+  resolveMarketingCronHermesTimeoutMs,
+} from "../src/lib/marketing/cron/hermesSpawnFailure";
 import { createRuntimeExecutorStack } from "../src/ai-runtime/integration/runtime-stack";
 import { ensureSharedObservabilityRecorder } from "../src/ai-runtime/observability/persistence";
 import { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } from "../src/lib/marketing/social/publication/governanceBoundary";
@@ -68,15 +75,16 @@ function hasFlag(argv: string[], name: string): boolean {
 }
 
 function invokeHermesProfile(profile: string, prompt: string): string {
+  const timeoutMs = resolveMarketingCronHermesTimeoutMs(
+    process.env,
+    MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+  );
   const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
     encoding: "utf8",
     env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-    timeout: MARKETING_CRON_HERMES_TIMEOUT_MS,
+    timeout: timeoutMs,
   });
-  if (result.status !== 0) {
-    throw new Error(`${profile} exited ${result.status}: ${(result.stderr || result.stdout || "").slice(0, 400)}`);
-  }
-  return result.stdout ?? "";
+  return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
 }
 
 async function main() {

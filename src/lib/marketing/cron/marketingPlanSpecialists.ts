@@ -7,9 +7,16 @@ import type {
   GovernanceReviewRequest,
   GovernanceReviewResult,
 } from "@/lib/marketing/bot/organization/handoffs";
+import { resolveMarketingCronHermesTimeoutMs } from "@/lib/marketing/cron/hermesSpawnFailure";
 
-/** Hermes oneshot timeout for Marketing Cron specialist profiles. */
-export const MARKETING_CRON_HERMES_TIMEOUT_MS = 180_000;
+/** Default Hermes oneshot timeout for Marketing Cron specialist profiles. */
+export const MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT = 180_000;
+
+/** Resolved Hermes oneshot timeout (env MARKETING_CRON_HERMES_TIMEOUT_MS or default 180s). */
+export const MARKETING_CRON_HERMES_TIMEOUT_MS = resolveMarketingCronHermesTimeoutMs(
+  process.env,
+  MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+);
 
 export const MARKETING_CRON_JOB_ID = "daily-marketing-plan";
 export const MARKETING_DEPARTMENT_ID = "marketing";

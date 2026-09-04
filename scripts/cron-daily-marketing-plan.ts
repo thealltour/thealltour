@@ -59,22 +59,30 @@ import {
   createMarketingManagerAgendaDispatch,
   isAiRuntimeMarketingCronEnabled,
 } from "../src/lib/marketing/cron/marketingCronRuntime";
-import { MARKETING_CRON_HERMES_TIMEOUT_MS } from "../src/lib/marketing/cron/marketingPlanSpecialists";
+import {
+  MARKETING_CRON_HERMES_TIMEOUT_MS,
+  MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+} from "../src/lib/marketing/cron/marketingPlanSpecialists";
+import {
+  assertHermesSpawnSyncSuccess,
+  resolveMarketingCronHermesTimeoutMs,
+} from "../src/lib/marketing/cron/hermesSpawnFailure";
 import {
   defaultPerformanceBriefAbsolutePath,
   formatDailyPerformanceBriefMarkdown,
   readLatestPerformanceBrief,
 } from "../src/lib/marketing/cron/performanceBriefArtifact";
 function invokeHermesProfile(profile: string, prompt: string): string {
+  const timeoutMs = resolveMarketingCronHermesTimeoutMs(
+    process.env,
+    MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+  );
   const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
     encoding: "utf8",
     env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-    timeout: MARKETING_CRON_HERMES_TIMEOUT_MS,
+    timeout: timeoutMs,
   });
-  if (result.status !== 0) {
-    throw new Error(`${profile} exited ${result.status}: ${(result.stderr || result.stdout || "").slice(0, 400)}`);
-  }
-  return result.stdout ?? "";
+  return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
 }
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");

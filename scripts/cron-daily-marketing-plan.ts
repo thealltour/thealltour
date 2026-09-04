@@ -8,6 +8,10 @@
  *
  *   npx tsx scripts/cron-daily-marketing-plan.ts
  *
+ * Manual acceptance only (optional):
+ *   npx tsx scripts/cron-daily-marketing-plan.ts \
+ *     --acceptance-run-key daily-marketing-plan:acceptance:2026-09-04:agenda-v1
+ *
  * Feature flag (default off):
  *   AI_RUNTIME_MARKETING_CRON_ENABLED=true
  */
@@ -47,6 +51,7 @@ import { runDailyMarketingAgendaSlate } from "../src/lib/marketing/cron/daily/ru
 import { createDailyMarketingRunRepository } from "../src/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import { createDailyAgendaSlateRepository } from "../src/lib/marketing/cron/daily/repository/createDailyAgendaSlateRepository";
 import { buildLogicalDailyRunKey, formatKstBusinessDate } from "../src/lib/marketing/cron/daily/kstBusinessDate";
+import { assertAcceptanceLogicalRunKey } from "../src/lib/marketing/cron/daily/acceptanceLogicalRunKey";
 import { DAILY_MARKETING_ROUTINE_ID } from "../src/lib/marketing/cron/daily/types";
 import { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } from "../src/lib/marketing/social/publication/governanceBoundary";
 import {
@@ -120,10 +125,16 @@ async function main() {
   const useRuntime = isAiRuntimeMarketingCronEnabled();
   const correlationId = createMarketingCronCorrelationId();
   const businessDateKst = formatKstBusinessDate();
-  const logicalRunKey = buildLogicalDailyRunKey({
-    routineId: DAILY_MARKETING_ROUTINE_ID,
-    businessDateKst,
-  });
+  const acceptanceRunKeyRaw = argValue(argv, "--acceptance-run-key");
+  const acceptanceLogicalRunKey = acceptanceRunKeyRaw
+    ? assertAcceptanceLogicalRunKey(acceptanceRunKeyRaw)
+    : undefined;
+  const logicalRunKey =
+    acceptanceLogicalRunKey ??
+    buildLogicalDailyRunKey({
+      routineId: DAILY_MARKETING_ROUTINE_ID,
+      businessDateKst,
+    });
 
   const briefPath = defaultPerformanceBriefAbsolutePath(ROOT);
   const brief = readLatestPerformanceBrief(briefPath);
@@ -138,6 +149,9 @@ async function main() {
   console.log(`- channel: ${channel}`);
   console.log(`- businessDateKst: ${businessDateKst}`);
   console.log(`- logicalRunKey: ${logicalRunKey}`);
+  console.log(
+    `- acceptanceRunKeyOverride: ${acceptanceLogicalRunKey ? "yes" : "no"}`,
+  );
   console.log(`- performance handoff: ${brief ? "artifact_read" : "missing_fallback"}`);
   console.log(`- note: ${performanceNote}`);
   console.log(`- inference_path: ${useRuntime ? "ai-runtime" : "hermes-cli"}`);
@@ -180,6 +194,7 @@ async function main() {
       channel,
       goal,
       businessDateKst,
+      ...(acceptanceLogicalRunKey ? { logicalRunKey: acceptanceLogicalRunKey } : {}),
       correlationId,
       performanceNote,
       memoryReferences: brief?.managerEvidence ?? [],

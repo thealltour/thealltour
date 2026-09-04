@@ -12,10 +12,8 @@
  */
 import { randomUUID } from "node:crypto";
 
-import {
-  buildLogicalDailyRunKey,
-  formatKstBusinessDate,
-} from "@/lib/marketing/cron/daily/kstBusinessDate";
+import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
+import { resolveAgendaSlateLogicalRunKey } from "@/lib/marketing/cron/daily/acceptanceLogicalRunKey";
 import {
   applyResearchIdentityCooldown,
   collectRecentResearchIdentities,
@@ -238,9 +236,9 @@ export async function runDailyMarketingAgendaSlate(
 ): Promise<DailyMarketingPipelineResult> {
   const now = deps.now ?? new Date();
   const businessDateKst = input.businessDateKst ?? formatKstBusinessDate(now);
-  const logicalRunKey = buildLogicalDailyRunKey({
-    routineId: DAILY_MARKETING_ROUTINE_ID,
+  const logicalRunKey = resolveAgendaSlateLogicalRunKey({
     businessDateKst,
+    logicalRunKey: input.logicalRunKey,
   });
   const correlationId =
     input.correlationId ?? `daily-marketing-slate:${businessDateKst}:${randomUUID().slice(0, 8)}`;

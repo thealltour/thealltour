@@ -1,6 +1,11 @@
 export * from "@/lib/marketing/cron/daily/types";
 export { formatKstBusinessDate, buildLogicalDailyRunKey } from "@/lib/marketing/cron/daily/kstBusinessDate";
 export {
+  ACCEPTANCE_LOGICAL_RUN_KEY_PREFIX,
+  assertAcceptanceLogicalRunKey,
+  resolveAgendaSlateLogicalRunKey,
+} from "@/lib/marketing/cron/daily/acceptanceLogicalRunKey";
+export {
   buildManagerAgendaSelectionPrompt,
   parseManagerAgendaSelection,
   resolveResearchPrecondition,

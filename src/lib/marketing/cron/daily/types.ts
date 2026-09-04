@@ -106,9 +106,11 @@ export type DailyMarketingPipelineInput = {
   correlationId?: string;
   executionAttempt?: number;
   /**
-   * Optional override for multi-selection production identity.
-   * Default remains historical `daily-marketing-plan:YYYY-MM-DD`.
-   * Per-agenda keys use `daily-marketing-production:<date>:<hash>`.
+   * Optional logicalRunKey override.
+   * - Production selection: per-agenda `daily-marketing-production:<date>:<hash>`
+   *   (default remains historical `daily-marketing-plan:YYYY-MM-DD` when unset).
+   * - Agenda slate acceptance only: validated `daily-marketing-plan:acceptance:...`
+   *   via CLI `--acceptance-run-key` (never env-gated).
    */
   logicalRunKey?: string;
   /** Operator recovery rerun — preserves prior failed run in metadata.incidentHistory. */

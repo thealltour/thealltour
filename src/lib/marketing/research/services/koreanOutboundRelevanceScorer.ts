@@ -5,11 +5,16 @@
 
 import type { ResearchSignalType } from "@/lib/marketing/research/types/enums";
 import type { ResearchSourceRoleWeights } from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
+import {
+  classifyTravelDirection,
+  type TravelDirection,
+} from "@/lib/marketing/research/services/travelDirection";
 
 export type KoreanOutboundRelevanceAssessment = {
   score: number;
   reasons: string[];
   demandBand: "high" | "medium" | "low" | "unknown";
+  travelDirection: TravelDirection;
 };
 
 const HIGH_DEMAND_DESTINATION_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
@@ -168,6 +173,30 @@ export function scoreKoreanOutboundRelevance(input: {
     reasons.push("safety_evidence_not_agenda_seed");
   }
 
+  const travelDirection = classifyTravelDirection({
+    title: input.title,
+    summary: input.summary,
+    destinations: input.destinations,
+    topics: input.topics,
+  });
+  reasons.push(`travelDirection_${travelDirection}`);
+
+  // Agenda-seed only: demote non-outbound intents. Do not delete research rows.
+  if (travelDirection === "inbound") {
+    score = Math.min(score, 0.22) * 0.55;
+    reasons.push("inbound_demoted_for_agenda_seed");
+  } else if (travelDirection === "domestic") {
+    score = Math.min(score, 0.24) * 0.5;
+    reasons.push("domestic_demoted_for_agenda_seed");
+  } else if (travelDirection === "industry_b2b") {
+    score = Math.min(score, 0.26) * 0.55;
+    reasons.push("industry_b2b_demoted_for_agenda_seed");
+  } else if (travelDirection === "unknown" && band === "unknown") {
+    // Korean language / market source alone must not look like outbound proof.
+    score = Math.min(score, 0.34);
+    reasons.push("unknown_direction_conservative");
+  }
+
   score = clamp01(score);
-  return { score, reasons: reasons.slice(0, 8), demandBand: band };
+  return { score, reasons: reasons.slice(0, 10), demandBand: band, travelDirection };
 }

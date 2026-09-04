@@ -231,7 +231,7 @@ export async function getMarketingManagerResearchContext(
   try {
     rawCandidates = await repo.findRecentAgendaCandidates({
       since,
-      limit: Math.max(limit * 3, 30),
+      limit: Math.max(limit * 6, 60),
     });
   } catch (error) {
     return emptyContext({
@@ -266,37 +266,35 @@ export async function getMarketingManagerResearchContext(
     const sourceRole = aggregateEvidenceSourceRoleWeights(evidenceSources);
     seedByCandidateId.set(candidate.id, sourceRole.agendaSeedWeight);
 
-    if (candidate.koreanOutboundRelevanceScore == null) {
+    {
       const signalTypes = await resolveSignalTypes(repo, brief);
+      const components = candidate.researchScoreComponents ?? {
+        freshness: candidate.freshnessScore,
+        credibility: candidate.credibilityScore,
+        travelRelevance: candidate.travelRelevanceScore,
+        publicInterest: candidate.publicInterestScore,
+        corroboration: candidate.corroborationScore ?? 0.35,
+        novelty: 0.5,
+        seasonality: candidate.seasonalityScore ?? 0.4,
+        commercial: candidate.commercialLinkageScore ?? 0.25,
+      };
       const korean = resolveKoreanOutboundForBrief({
         brief,
-        components: candidate.researchScoreComponents ?? {
-          freshness: candidate.freshnessScore,
-          credibility: candidate.credibilityScore,
-          travelRelevance: candidate.travelRelevanceScore,
-          publicInterest: candidate.publicInterestScore,
-          corroboration: candidate.corroborationScore ?? 0.35,
-          novelty: 0.5,
-          seasonality: candidate.seasonalityScore ?? 0.4,
-          commercial: candidate.commercialLinkageScore ?? 0.25,
-        },
+        components,
         signalTypes,
         sourceRole,
       });
+      const baseReasons = (candidate.scoreReasons ?? []).filter((r) => !r.startsWith("koreanOutbound_"));
       enriched.push({
         ...candidate,
         koreanOutboundRelevanceScore: korean.score,
-        scoreReasons: [...(candidate.scoreReasons ?? []), ...korean.reasons.map((r) => `koreanOutbound_${r}`)].slice(0, 10),
+        scoreReasons: [...baseReasons, ...korean.reasons.map((r) => `koreanOutbound_${r}`)].slice(0, 12),
         riskFlags:
           korean.score < 0.15 && !candidate.riskFlags.includes("low_korean_outbound_relevance")
             ? [...candidate.riskFlags, "low_korean_outbound_relevance"]
-            : candidate.riskFlags,
-        researchScoreComponents: candidate.researchScoreComponents
-          ? { ...candidate.researchScoreComponents, koreanOutbound: korean.score }
-          : candidate.researchScoreComponents,
+            : candidate.riskFlags.filter((r) => r !== "low_korean_outbound_relevance" || korean.score < 0.15),
+        researchScoreComponents: { ...components, koreanOutbound: korean.score },
       });
-    } else {
-      enriched.push(candidate);
     }
   }
 

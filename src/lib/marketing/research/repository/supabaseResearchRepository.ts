@@ -369,6 +369,8 @@ export class SupabaseResearchRepository implements ResearchRepository {
       .from("agenda_candidates")
       .select("*")
       .gte("created_at", input.since)
+      // Prefer quality over unstable created_at ties (same-batch ingest).
+      .order("composite_research_score", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(input.limit ?? 100);
     if (error) throwDb(error, "findRecentAgendaCandidates failed");

@@ -215,8 +215,12 @@ export function buildManagerAgendaSlateCurationPrompt(
     "Each item needs a concise human-readable rationale (1-3 bullets).",
     "Productless high-value travel topics are valid.",
     "Input is compact curation candidates only (full briefs omitted; one evidence excerpt each).",
+    "Prefer Korean OUTBOUND traveler topics over inbound/domestic/industry-B2B-only items.",
+    "Copy agendaCandidateId/researchBriefId EXACTLY from input.agendaCandidates.",
+    "Do NOT echo the empty schema example. Do NOT return an empty items array when candidates exist.",
+    "Title/summary may be omitted when IDs are valid; IDs are mandatory and must resolve to the pool.",
     JSON.stringify(payload),
-    'shape: {"decision":"curate|defer_all","items":[{"agendaCandidateId":null,"researchBriefId":null,"title":"","summary":"","rationale":[],"freshnessWhyNow":"","koreanTravelerRelevance":"","practicalTravelValue":"","theAllTourBusinessRelevance":"","contentPotential":"","recommendedFormats":["threads_text"],"recommendedChannel":"threads"}],"managerMessage":null,"deferReason":null}',
+    'shape: {"decision":"curate","items":[{"agendaCandidateId":"<from input>","researchBriefId":"<from input>","title":"<optional>","summary":"<optional>","rationale":["..."],"freshnessWhyNow":"...","koreanTravelerRelevance":"...","practicalTravelValue":"...","theAllTourBusinessRelevance":"...","contentPotential":"...","recommendedFormats":["threads_text"],"recommendedChannel":"threads"}],"managerMessage":null,"deferReason":null}',
   ].join("\n");
 }
 
@@ -259,29 +263,33 @@ export function parseManagerAgendaSlateCuration(
   for (const row of rawItems) {
     if (!row || typeof row !== "object") continue;
     const record = row as Record<string, unknown>;
-    const title = String(record.title ?? "").trim();
-    const summary = String(record.summary ?? "").trim();
-    if (!title || !summary) continue;
 
-    const agendaCandidateId = record.agendaCandidateId ? String(record.agendaCandidateId) : null;
-    const researchBriefId = record.researchBriefId ? String(record.researchBriefId) : null;
-    const identityKey = agendaCandidateId ?? researchBriefId ?? title.toLowerCase();
-    if (seen.has(identityKey)) continue;
-    seen.add(identityKey);
+    const agendaCandidateId = record.agendaCandidateId ? String(record.agendaCandidateId).trim() : null;
+    const researchBriefId = record.researchBriefId ? String(record.researchBriefId).trim() : null;
 
-    // Prefer known research identities when provided.
+    // Accept only identities that resolve to the supplied pool (no fabricated IDs).
     const known =
       (agendaCandidateId &&
         context.agendaCandidates.find((c) => c.agendaCandidateId === agendaCandidateId)) ||
       (researchBriefId &&
         context.agendaCandidates.find((c) => c.researchBriefId === researchBriefId)) ||
       null;
+    if (!known) continue;
+
+    const identityKey = known.agendaCandidateId || known.researchBriefId;
+    if (seen.has(identityKey)) continue;
+    seen.add(identityKey);
+
+    // Hydrate title/summary from pool when the model omits them (v3 zero-item failure mode).
+    const title = String(record.title ?? "").trim() || known.title.trim();
+    const summary = String(record.summary ?? "").trim() || known.summary.trim();
+    if (!title || !summary) continue;
 
     items.push({
-      agendaCandidateId: known?.agendaCandidateId ?? agendaCandidateId,
-      researchBriefId: known?.researchBriefId ?? researchBriefId ?? known?.researchBriefId ?? null,
-      title: known?.title ?? title,
-      summary: known?.summary ?? summary,
+      agendaCandidateId: known.agendaCandidateId,
+      researchBriefId: known.researchBriefId,
+      title,
+      summary,
       rationale: asStringArray(record.rationale, 6),
       freshnessWhyNow: asOptionalString(record.freshnessWhyNow),
       koreanTravelerRelevance: asOptionalString(record.koreanTravelerRelevance),

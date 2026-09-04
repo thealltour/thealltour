@@ -45,6 +45,8 @@ export {
   scoreKoreanOutboundRelevance,
   detectKoreanOutboundDemandBand,
 } from "@/lib/marketing/research/services/koreanOutboundRelevanceScorer";
+export { classifyTravelDirection } from "@/lib/marketing/research/services/travelDirection";
+export type { TravelDirection } from "@/lib/marketing/research/services/travelDirection";
 export {
   resolveSourceRoleWeights,
   aggregateEvidenceSourceRoleWeights,

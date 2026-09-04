@@ -255,6 +255,77 @@ function finalizeSlate(input: {
  * Research context must already have Validation Hardening cooldown applied.
  * Deferred pins are NOT subject to organic exact-item cooldown (human override).
  */
+
+function sourceKeyForCandidate(candidate: CompactManagerAgendaCandidate): string {
+  const ev = candidate.evidence?.[0];
+  return (ev?.sourceName || ev?.sourceId || "unknown").toLowerCase();
+}
+
+function topicFamilyKey(candidate: CompactManagerAgendaCandidate): string {
+  const dest = (candidate.destinations ?? []).find(
+    (d) => d && d.length > 2 && !/^\d/.test(d) && !/^(ai|mou)$/i.test(d),
+  );
+  if (dest) return dest.toLowerCase();
+  const topic = (candidate.topics ?? []).find((t) => t && t.toLowerCase() !== "travel");
+  return (topic ?? "general").toLowerCase();
+}
+
+/**
+ * Preserve pre-MM pool ranking (already outbound-aware) with light diversity:
+ * avoid >2 from one source and prefer multiple topic/destination families.
+ */
+function pickDiverseOrganicCandidates(
+  ranked: CompactManagerAgendaCandidate[],
+  targetCount: number,
+  blockedIdentityKeys: Set<string>,
+): CompactManagerAgendaCandidate[] {
+  const picked: CompactManagerAgendaCandidate[] = [];
+  const sourceCount = new Map<string, number>();
+  const familyCount = new Map<string, number>();
+
+  const blocked = (candidate: CompactManagerAgendaCandidate) => {
+    const ac = candidate.agendaCandidateId ? `ac:${candidate.agendaCandidateId}` : null;
+    const rb = candidate.researchBriefId ? `rb:${candidate.researchBriefId}` : null;
+    if (ac && blockedIdentityKeys.has(ac)) return true;
+    if (rb && blockedIdentityKeys.has(rb)) return true;
+    const articleIds = canonicalArticleIdsForCandidate(candidate);
+    return articleIds.some((id) => blockedIdentityKeys.has(`art:${id}`));
+  };
+
+  const alreadyPicked = (candidate: CompactManagerAgendaCandidate) =>
+    picked.some(
+      (p) =>
+        p.agendaCandidateId === candidate.agendaCandidateId ||
+        p.researchBriefId === candidate.researchBriefId,
+    );
+
+  const eligibleOutbound = ranked.filter(
+    (c) => !blocked(c) && (c.koreanOutboundRelevanceScore ?? 0) >= 0.28,
+  );
+  const canFillWithoutLowOutbound = eligibleOutbound.length >= targetCount;
+
+  for (const pass of [1, 2] as const) {
+    for (const candidate of ranked) {
+      if (picked.length >= targetCount) break;
+      if (blocked(candidate) || alreadyPicked(candidate)) continue;
+      const sk = sourceKeyForCandidate(candidate);
+      const fk = topicFamilyKey(candidate);
+      const lowOutbound = (candidate.koreanOutboundRelevanceScore ?? 0) < 0.28;
+      if (pass === 1) {
+        if (lowOutbound) continue;
+        if ((sourceCount.get(sk) ?? 0) >= 2) continue;
+        if ((familyCount.get(fk) ?? 0) >= 1 && picked.length >= 2) continue;
+      } else if (canFillWithoutLowOutbound && lowOutbound) {
+        continue;
+      }
+      picked.push(candidate);
+      sourceCount.set(sk, (sourceCount.get(sk) ?? 0) + 1);
+      familyCount.set(fk, (familyCount.get(fk) ?? 0) + 1);
+    }
+  }
+  return picked;
+}
+
 export function buildDailyAgendaSlate(input: {
   research: MarketingResearchContext;
   logicalRunKey: string;
@@ -284,41 +355,33 @@ export function buildDailyAgendaSlate(input: {
     }
   }
 
-  const organicSorted = [...input.research.agendaCandidates].sort(
-    (a, b) => (b.totalResearchScore ?? 0) - (a.totalResearchScore ?? 0),
+  // Research context is already ranked via computeAgendaPoolRankScore — do not resort by legacy total.
+  const organicPicked = pickDiverseOrganicCandidates(
+    input.research.agendaCandidates,
+    Math.max(0, targetSize - carryover.length),
+    carryoverIdentityKeys,
   );
 
-  const organic: AgendaSlateCandidate[] = [];
-  for (const candidate of organicSorted) {
-    if (organic.length + carryover.length >= targetSize) break;
-    const ac = candidate.agendaCandidateId ? `ac:${candidate.agendaCandidateId}` : null;
-    const rb = candidate.researchBriefId ? `rb:${candidate.researchBriefId}` : null;
-    if (ac && carryoverIdentityKeys.has(ac)) continue;
-    if (rb && carryoverIdentityKeys.has(rb)) continue;
-    const articleIds = canonicalArticleIdsForCandidate(candidate);
-    if (articleIds.some((id) => carryoverIdentityKeys.has(`art:${id}`))) continue;
-
-    organic.push(
-      mapResearchCandidateToSlateItem(candidate, {
-        businessDateKst: input.businessDateKst,
-        channel,
-        origin: "organic_research",
-        rationale: [
-          "결정론적 폴백: 연구 점수·신선도 기반 후보",
-          ...(candidate.scoreReasons ?? []).slice(0, 3),
-        ],
-        editorial: {
-          koreanTravelerRelevance: "한국 해외여행 관심 독자 기준 후보",
-          practicalTravelValue: candidate.travelRelevanceScore != null ? "여행 실무 관련성 점수 참고" : null,
-          theAllTourBusinessRelevance:
-            (candidate.matchedProductIds?.length ?? 0) > 0
-              ? "상품 연계 신호 있음"
-              : "정보성 주제(상품 무관 가능)",
-          contentPotential: "Threads 등 단기 포맷 적합 후보",
-        },
-      }),
-    );
-  }
+  const organic: AgendaSlateCandidate[] = organicPicked.map((candidate) =>
+    mapResearchCandidateToSlateItem(candidate, {
+      businessDateKst: input.businessDateKst,
+      channel,
+      origin: "organic_research",
+      rationale: [
+        "결정론적 폴백: outbound-aware pool 순위·다양성 기반 후보",
+        ...(candidate.scoreReasons ?? []).slice(0, 3),
+      ],
+      editorial: {
+        koreanTravelerRelevance: "한국 해외여행 관심 독자 기준 후보",
+        practicalTravelValue: candidate.travelRelevanceScore != null ? "여행 실무 관련성 점수 참고" : null,
+        theAllTourBusinessRelevance:
+          (candidate.matchedProductIds?.length ?? 0) > 0
+            ? "상품 연계 신호 있음"
+            : "정보성 주제(상품 무관 가능)",
+        contentPotential: "Threads 등 단기 포맷 적합 후보",
+      },
+    }),
+  );
 
   return finalizeSlate({
     logicalRunKey: input.logicalRunKey,

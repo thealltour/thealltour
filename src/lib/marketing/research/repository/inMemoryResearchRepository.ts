@@ -128,7 +128,11 @@ export class InMemoryResearchRepository implements ResearchRepository {
     const sinceMs = new Date(input.since).getTime();
     return [...this.candidates.values()]
       .filter((c) => new Date(c.createdAt).getTime() >= sinceMs)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .sort(
+        (a, b) =>
+          b.compositeResearchScore - a.compositeResearchScore ||
+          b.createdAt.localeCompare(a.createdAt),
+      )
       .slice(0, input.limit ?? 100);
   }
 }

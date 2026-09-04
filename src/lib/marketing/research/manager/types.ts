@@ -63,6 +63,7 @@ export type CompactManagerAgendaCandidate = {
   seasonalityScore: number;
   corroborationScore: number;
   noveltyScore: number;
+  koreanOutboundRelevanceScore: number;
   totalResearchScore: number;
   researchScoreComponents: ResearchScoreComponents | null;
   scoreReasons: string[];

@@ -42,6 +42,7 @@ export const agendaCandidate: CompactManagerAgendaCandidate = {
   seasonalityScore: 0.75,
   corroborationScore: 0.6,
   noveltyScore: 0.5,
+  koreanOutboundRelevanceScore: 0.7,
   totalResearchScore: 0.72,
   researchScoreComponents: null,
   scoreReasons: ["official source"],

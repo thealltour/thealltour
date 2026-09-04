@@ -44,6 +44,7 @@ function mockContext(overrides: Partial<MarketingResearchContext> = {}): Marketi
         seasonalityScore: 0.4,
         corroborationScore: 0.35,
         noveltyScore: 1,
+        koreanOutboundRelevanceScore: 0.55,
         totalResearchScore: 0.82,
         researchScoreComponents: {
           freshness: 0.9,

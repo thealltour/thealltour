@@ -131,6 +131,7 @@ function gleneaglesResearchContext(): MarketingResearchContext {
         seasonalityScore: 0.6,
         corroborationScore: 0.5,
         noveltyScore: 0.4,
+        koreanOutboundRelevanceScore: 0.5,
         totalResearchScore: 0.7,
         researchScoreComponents: null,
         scoreReasons: ["travel interest"],

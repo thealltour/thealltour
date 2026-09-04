@@ -3,7 +3,11 @@ import "server-only";
 import { truncateBotText } from "@/lib/marketing/bot/sanitize";
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
 import { createResearchRepository } from "@/lib/marketing/research/repository/createResearchRepository";
-import { rankAgendaCandidates } from "@/lib/marketing/research/services/agendaCandidateBuilder";
+import {
+  rankAgendaCandidates,
+  resolveKoreanOutboundForBrief,
+} from "@/lib/marketing/research/services/agendaCandidateBuilder";
+import { aggregateEvidenceSourceRoleWeights } from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
 import { isStaleFreshness } from "@/lib/marketing/research/services/freshnessScorer";
 import type {
   CompactManagerAgendaCandidate,
@@ -146,6 +150,8 @@ function buildCompactCandidate(
     seasonalityScore: candidate.seasonalityScore ?? 0,
     corroborationScore: candidate.corroborationScore ?? 0,
     noveltyScore: components?.novelty ?? 0,
+    koreanOutboundRelevanceScore:
+      candidate.koreanOutboundRelevanceScore ?? components?.koreanOutbound ?? 0,
     totalResearchScore: candidate.compositeResearchScore,
     researchScoreComponents: components ?? null,
     scoreReasons: candidate.scoreReasons ?? [],
@@ -238,7 +244,63 @@ export async function getMarketingManagerResearchContext(
     });
   }
 
-  const ranked = rankAgendaCandidates(rawCandidates);
+  const sourceCache = new Map<string, ResearchSource | null>();
+  const enriched: AgendaCandidate[] = [];
+  const seedByCandidateId = new Map<string, number>();
+
+  for (const candidate of rawCandidates) {
+    const brief = await repo.findBriefById(candidate.researchBriefId);
+    if (!brief) {
+      enriched.push(candidate);
+      continue;
+    }
+    const evidenceSources: Array<ResearchSource | null> = [];
+    for (const item of brief.evidence.slice(0, 8)) {
+      let source = sourceCache.get(item.sourceId);
+      if (source === undefined) {
+        source = await repo.getSourceById(item.sourceId);
+        sourceCache.set(item.sourceId, source);
+      }
+      evidenceSources.push(source);
+    }
+    const sourceRole = aggregateEvidenceSourceRoleWeights(evidenceSources);
+    seedByCandidateId.set(candidate.id, sourceRole.agendaSeedWeight);
+
+    if (candidate.koreanOutboundRelevanceScore == null) {
+      const signalTypes = await resolveSignalTypes(repo, brief);
+      const korean = resolveKoreanOutboundForBrief({
+        brief,
+        components: candidate.researchScoreComponents ?? {
+          freshness: candidate.freshnessScore,
+          credibility: candidate.credibilityScore,
+          travelRelevance: candidate.travelRelevanceScore,
+          publicInterest: candidate.publicInterestScore,
+          corroboration: candidate.corroborationScore ?? 0.35,
+          novelty: 0.5,
+          seasonality: candidate.seasonalityScore ?? 0.4,
+          commercial: candidate.commercialLinkageScore ?? 0.25,
+        },
+        signalTypes,
+        sourceRole,
+      });
+      enriched.push({
+        ...candidate,
+        koreanOutboundRelevanceScore: korean.score,
+        scoreReasons: [...(candidate.scoreReasons ?? []), ...korean.reasons.map((r) => `koreanOutbound_${r}`)].slice(0, 10),
+        riskFlags:
+          korean.score < 0.15 && !candidate.riskFlags.includes("low_korean_outbound_relevance")
+            ? [...candidate.riskFlags, "low_korean_outbound_relevance"]
+            : candidate.riskFlags,
+        researchScoreComponents: candidate.researchScoreComponents
+          ? { ...candidate.researchScoreComponents, koreanOutbound: korean.score }
+          : candidate.researchScoreComponents,
+      });
+    } else {
+      enriched.push(candidate);
+    }
+  }
+
+  const ranked = rankAgendaCandidates(enriched, { agendaSeedWeightByCandidateId: seedByCandidateId });
   let staleExcludedCount = 0;
   let duplicateExcludedCount = 0;
   const seenBriefIds = new Set<string>();
@@ -279,8 +341,7 @@ export async function getMarketingManagerResearchContext(
     if (eligible.length >= limit) break;
   }
 
-  const sourceCache = new Map<string, ResearchSource | null>();
-  const briefs: CompactManagerResearchBrief[] = [];
+    const briefs: CompactManagerResearchBrief[] = [];
   const agendaCandidates: CompactManagerAgendaCandidate[] = [];
 
   for (const candidate of eligible) {

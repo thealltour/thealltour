@@ -180,7 +180,7 @@ async function seedRepo() {
 }
 
 describe("Marketing Manager research context service", () => {
-  it("returns official high-quality research in bounded Top-N order", async () => {
+  it("returns bounded Top-N with Korean-outbound soft ranking while keeping official evidence", async () => {
     const { repo, officialBrief, productlessBrief } = await seedRepo();
     const context = await getMarketingManagerResearchContext(
       { limit: 5 },
@@ -189,11 +189,14 @@ describe("Marketing Manager research context service", () => {
 
     expect(context.status).toBe("ok");
     expect(context.agendaCandidates.length).toBeGreaterThan(0);
-    expect(context.agendaCandidates[0]!.researchBriefId).toBe(officialBrief.id);
-    expect(context.agendaCandidates[0]!.credibilityScore).toBeGreaterThan(0.85);
-    expect(
-      context.agendaCandidates.some((c) => c.researchBriefId === productlessBrief.id),
-    ).toBe(true);
+    // Grand Canyon (KR FIT safety) may outrank FCDO Indonesia as an agenda seed,
+    // but official FCDO evidence must remain available in the pool.
+    const ids = context.agendaCandidates.map((c) => c.researchBriefId);
+    expect(ids).toContain(productlessBrief.id);
+    expect(ids).toContain(officialBrief.id);
+    const official = context.agendaCandidates.find((c) => c.researchBriefId === officialBrief.id)!;
+    expect(official.credibilityScore).toBeGreaterThan(0.85);
+    expect(typeof context.agendaCandidates[0]!.koreanOutboundRelevanceScore).toBe("number");
   });
 
   it("keeps productless high-relevance candidate in context", async () => {

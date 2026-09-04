@@ -6,10 +6,17 @@ import {
 } from "@/lib/marketing/research/services/noveltyScorer";
 import {
   buildScoreReasons,
+  computeAgendaPoolRankScore,
   computeCompositeResearchScore,
   type ResearchScoreComponents,
 } from "@/lib/marketing/research/services/scoringPolicy";
+import { scoreKoreanOutboundRelevance } from "@/lib/marketing/research/services/koreanOutboundRelevanceScorer";
+import {
+  aggregateEvidenceSourceRoleWeights,
+  type ResearchSourceRoleWeights,
+} from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
 import type { AgendaCandidate, ResearchBrief } from "@/lib/marketing/research/types/researchBrief";
+import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -44,19 +51,54 @@ export function buildResearchScoreComponents(
   };
 }
 
+export function resolveKoreanOutboundForBrief(input: {
+  brief: ResearchBrief;
+  components: ResearchScoreComponents;
+  signalTypes?: string[];
+  sourceRole?: ResearchSourceRoleWeights | null;
+}): { score: number; reasons: string[] } {
+  const assessment = scoreKoreanOutboundRelevance({
+    title: input.brief.title,
+    summary: input.brief.summary,
+    destinations: input.brief.destinations,
+    topics: input.brief.topics,
+    signalTypes: input.signalTypes,
+    seasonalityScore: input.components.seasonality,
+    commercialLinkageScore: input.components.commercial,
+    matchedProductIds: input.brief.commercialRelevance?.matchedProductIds ?? [],
+    sourceRole: input.sourceRole ?? null,
+  });
+  return { score: assessment.score, reasons: assessment.reasons };
+}
+
 export function buildAgendaCandidateFromBrief(
   brief: ResearchBrief,
   now: Date = new Date(),
   priorBriefs: ResearchBrief[] = [],
+  options: {
+    signalTypes?: string[];
+    evidenceSources?: Array<ResearchSource | null | undefined>;
+  } = {},
 ): AgendaCandidate {
   const components = buildResearchScoreComponents(brief, priorBriefs);
   const novelty = scoreNovelty({ brief, priorBriefs });
   const compositeResearchScore = computeCompositeResearchScore(components);
-  const scoreReasons = buildScoreReasons(components);
+  const sourceRole = aggregateEvidenceSourceRoleWeights(options.evidenceSources ?? []);
+  const korean = resolveKoreanOutboundForBrief({
+    brief,
+    components,
+    signalTypes: options.signalTypes,
+    sourceRole,
+  });
+  const scoreReasons = [
+    ...buildScoreReasons(components),
+    ...korean.reasons.map((r) => `koreanOutbound_${r}`),
+  ].slice(0, 10);
 
   const riskFlags = [...brief.risks];
   if (components.credibility < 0.4) riskFlags.push("low_credibility");
   if (novelty.penalty >= 0.3) riskFlags.push("topic_repetition");
+  if (korean.score < 0.15) riskFlags.push("low_korean_outbound_relevance");
 
   const timestamp = now.toISOString();
 
@@ -73,8 +115,9 @@ export function buildAgendaCandidateFromBrief(
     historicalDuplicationScore: scoreHistoricalDuplication(novelty),
     seasonalityScore: components.seasonality,
     corroborationScore: components.corroboration,
+    koreanOutboundRelevanceScore: korean.score,
     compositeResearchScore,
-    researchScoreComponents: components,
+    researchScoreComponents: { ...components, koreanOutbound: korean.score },
     scoreReasons,
     riskFlags,
     supportingEvidenceIds: brief.evidence.map((e) => e.id),
@@ -93,11 +136,32 @@ export function assertAgendaCandidateNotFinalDecision(candidate: AgendaCandidate
   }
 }
 
-export function rankAgendaCandidates(candidates: AgendaCandidate[]): AgendaCandidate[] {
-  return [...candidates].sort(
-    (a, b) =>
+export function agendaPoolRankScoreForCandidate(
+  candidate: AgendaCandidate,
+  agendaSeedWeight = 0.5,
+): number {
+  return computeAgendaPoolRankScore({
+    compositeResearchScore: candidate.compositeResearchScore,
+    koreanOutboundRelevanceScore: candidate.koreanOutboundRelevanceScore ?? 0.35,
+    agendaSeedWeight,
+  });
+}
+
+export function rankAgendaCandidates(
+  candidates: AgendaCandidate[],
+  options: { agendaSeedWeightByCandidateId?: Map<string, number> } = {},
+): AgendaCandidate[] {
+  return [...candidates].sort((a, b) => {
+    const seedA = options.agendaSeedWeightByCandidateId?.get(a.id) ?? 0.5;
+    const seedB = options.agendaSeedWeightByCandidateId?.get(b.id) ?? 0.5;
+    const rankA = agendaPoolRankScoreForCandidate(a, seedA);
+    const rankB = agendaPoolRankScoreForCandidate(b, seedB);
+    return (
+      rankB - rankA ||
+      (b.koreanOutboundRelevanceScore ?? 0) - (a.koreanOutboundRelevanceScore ?? 0) ||
       b.compositeResearchScore - a.compositeResearchScore ||
       (b.corroborationScore ?? 0) - (a.corroborationScore ?? 0) ||
-      b.freshnessScore - a.freshnessScore,
-  );
+      b.freshnessScore - a.freshnessScore
+    );
+  });
 }

@@ -313,9 +313,9 @@ describe("semantic dedup L3 and scoring calibration", () => {
         signalFixture({
           id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb9",
           title: "Old package promo",
-          summary: "Low interest package promo.",
+          summary: "Low interest package promo for a niche route.",
           signalType: "internal_product",
-          destinations: ["spain"],
+          destinations: ["south-sudan"],
           commercialRelevance: { level: "high", matchedProductIds: ["prod-1"], confidence: 0.9 },
           freshness: { observedAt: "2026-09-02T00:00:00.000Z", freshnessScore: 0.2 },
           travelRelevance: { score: 0.4, reasons: [] },
@@ -332,7 +332,9 @@ describe("semantic dedup L3 and scoring calibration", () => {
     ]);
 
     expect(ranked[0]!.title).toContain("Kenya");
-    expect(ranked[0]!.compositeResearchScore).toBeGreaterThan(ranked[1]!.compositeResearchScore);
+    expect(ranked[0]!.koreanOutboundRelevanceScore ?? 0).toBeGreaterThan(
+      ranked[1]!.koreanOutboundRelevanceScore ?? 0,
+    );
   });
 
   it("applies duplicate novelty penalty within cycle", () => {

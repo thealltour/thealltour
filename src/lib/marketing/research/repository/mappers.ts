@@ -352,6 +352,14 @@ export function mapAgendaCandidateRow(row: Record<string, unknown>): AgendaCandi
     ? row.risk_flags.filter((item): item is string => typeof item === "string")
     : [];
 
+  const researchScoreComponents = row.research_score_components
+    ? parseJsonField(
+        row.research_score_components,
+        researchScoreComponentsSchema,
+        "candidate.research_score_components",
+      )
+    : null;
+
   return agendaCandidateSchema.parse({
     id: asString(row.id),
     researchBriefId: asString(row.research_brief_id),
@@ -365,14 +373,9 @@ export function mapAgendaCandidateRow(row: Record<string, unknown>): AgendaCandi
     historicalDuplicationScore: asNumberOrNull(row.historical_duplication_score),
     seasonalityScore: asNumberOrNull(row.seasonality_score),
     corroborationScore: asNumberOrNull(row.corroboration_score),
+    koreanOutboundRelevanceScore: researchScoreComponents?.koreanOutbound ?? null,
     compositeResearchScore: asNumberOrNull(row.composite_research_score) ?? 0,
-    researchScoreComponents: row.research_score_components
-      ? parseJsonField(
-          row.research_score_components,
-          researchScoreComponentsSchema,
-          "candidate.research_score_components",
-        )
-      : null,
+    researchScoreComponents,
     scoreReasons: Array.isArray(row.score_reasons)
       ? row.score_reasons.filter((item): item is string => typeof item === "string")
       : undefined,
@@ -399,7 +402,12 @@ export function toAgendaCandidateRow(candidate: AgendaCandidate): Record<string,
     seasonality_score: candidate.seasonalityScore ?? null,
     corroboration_score: candidate.corroborationScore ?? null,
     composite_research_score: candidate.compositeResearchScore,
-    research_score_components: candidate.researchScoreComponents ?? null,
+    research_score_components: (() => {
+      const base = candidate.researchScoreComponents;
+      if (!base) return null;
+      if (candidate.koreanOutboundRelevanceScore == null) return base;
+      return { ...base, koreanOutbound: candidate.koreanOutboundRelevanceScore };
+    })(),
     score_reasons: candidate.scoreReasons ?? [],
     risk_flags: candidate.riskFlags,
     supporting_evidence_ids: candidate.supportingEvidenceIds,

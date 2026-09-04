@@ -58,6 +58,7 @@ export type CompactCurationCandidate = {
   travelRelevanceScore: number;
   publicInterestScore: number;
   commercialRelevanceScore: number;
+  koreanOutboundRelevanceScore: number;
   researchScoreComponents: ResearchScoreComponents | null;
   scoreReasons: string[];
   riskFlags: string[];
@@ -136,6 +137,7 @@ export function compactAgendaCandidateForCuration(
     travelRelevanceScore: candidate.travelRelevanceScore,
     publicInterestScore: candidate.publicInterestScore,
     commercialRelevanceScore: candidate.commercialRelevanceScore,
+    koreanOutboundRelevanceScore: candidate.koreanOutboundRelevanceScore ?? 0,
     researchScoreComponents: candidate.researchScoreComponents,
     scoreReasons: (candidate.scoreReasons ?? []).slice(0, 4),
     riskFlags: (candidate.riskFlags ?? []).slice(0, 6),

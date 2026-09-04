@@ -15,6 +15,12 @@ export const PERFORMANCE_MEMORY_SOURCE: Omit<ResearchSource, "createdAt" | "upda
   metadata: {
     adapter: "performance_signal",
     advisoryOnly: true,
+    portfolio: {
+      role: "performance_memory",
+      agendaSeedWeight: 0.35,
+      evidenceAuthorityWeight: 0.4,
+      koreanMarketWeight: 0.7,
+    },
   },
 };
 

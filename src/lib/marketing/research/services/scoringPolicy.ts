@@ -15,7 +15,10 @@ export const CALIBRATED_RESEARCH_SCORE_WEIGHTS = {
 
 export type ResearchScoreComponentKey = keyof typeof CALIBRATED_RESEARCH_SCORE_WEIGHTS;
 
-export type ResearchScoreComponents = Record<ResearchScoreComponentKey, number>;
+export type ResearchScoreComponents = Record<ResearchScoreComponentKey, number> & {
+  /** Optional; not part of CALIBRATED_RESEARCH_SCORE_WEIGHTS. */
+  koreanOutbound?: number;
+};
 
 export function computeCompositeResearchScore(components: ResearchScoreComponents): number {
   const weights = CALIBRATED_RESEARCH_SCORE_WEIGHTS;
@@ -39,4 +42,24 @@ export function buildScoreReasons(components: ResearchScoreComponents): string[]
     reasons.push(`${key}_${value.toFixed(2)}`);
   }
   return reasons;
+}
+
+/** Soft pool-ranking blend. Does not mutate composite research quality score. */
+export function computeAgendaPoolRankScore(input: {
+  compositeResearchScore: number;
+  koreanOutboundRelevanceScore: number;
+  agendaSeedWeight?: number;
+}): number {
+  const quality = Math.max(0, Math.min(1, input.compositeResearchScore));
+  const outbound = Math.max(0, Math.min(1, input.koreanOutboundRelevanceScore));
+  const seed = Math.max(0, Math.min(1, input.agendaSeedWeight ?? 0.5));
+  // Weak seed sources (e.g. FCDO) contribute less as agenda heads even when credible.
+  const seedAdjustedOutbound = outbound * (0.55 + 0.45 * seed);
+  let score = quality * 0.42 + seedAdjustedOutbound * 0.58;
+  if (outbound < 0.15) {
+    score *= 0.35; // soft demotion, not hard delete
+  } else if (outbound < 0.28) {
+    score *= 0.7;
+  }
+  return Math.max(0, Math.min(1, score));
 }

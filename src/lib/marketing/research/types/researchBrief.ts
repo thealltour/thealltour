@@ -58,6 +58,8 @@ export type AgendaCandidate = {
   historicalDuplicationScore?: number | null;
   seasonalityScore?: number | null;
   corroborationScore?: number | null;
+  /** Explicit KR outbound relevance — not travelRelevanceScore. */
+  koreanOutboundRelevanceScore?: number | null;
 
   compositeResearchScore: number;
   researchScoreComponents?: ResearchScoreComponents | null;

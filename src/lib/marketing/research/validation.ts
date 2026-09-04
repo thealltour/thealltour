@@ -117,6 +117,8 @@ export const researchScoreComponentsSchema = z.object({
   novelty: scoreSchema,
   seasonality: scoreSchema,
   commercial: scoreSchema,
+  /** Persisted beside weighted components; ignored by composite weight sum. */
+  koreanOutbound: scoreSchema.optional(),
 });
 
 /** ResearchBrief must not carry content-draft fields. */
@@ -162,6 +164,7 @@ export const agendaCandidateSchema = z
     historicalDuplicationScore: scoreSchema.nullable().optional(),
     seasonalityScore: scoreSchema.nullable().optional(),
     corroborationScore: scoreSchema.nullable().optional(),
+    koreanOutboundRelevanceScore: scoreSchema.nullable().optional(),
     compositeResearchScore: scoreSchema,
     researchScoreComponents: researchScoreComponentsSchema.nullable().optional(),
     scoreReasons: z.array(z.string()).optional(),

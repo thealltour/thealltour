@@ -40,3 +40,15 @@ export type {
   GetMarketingManagerResearchContextOptions,
 } from "@/lib/marketing/research/manager/types";
 export { MARKETING_RESEARCH_CONTEXT_CONTRACT } from "@/lib/marketing/research/manager/types";
+
+export {
+  scoreKoreanOutboundRelevance,
+  detectKoreanOutboundDemandBand,
+} from "@/lib/marketing/research/services/koreanOutboundRelevanceScorer";
+export {
+  resolveSourceRoleWeights,
+  aggregateEvidenceSourceRoleWeights,
+  buildSourcePortfolioMetadata,
+} from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
+export { computeAgendaPoolRankScore } from "@/lib/marketing/research/services/scoringPolicy";
+export { DEFERRED_RESEARCH_SOURCES_V1 } from "@/lib/marketing/research/collectors/config";

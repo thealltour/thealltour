@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { bootstrapResearchSources } from "@/lib/marketing/research/collection/bootstrapSources";
 import {
-  MVP_RESEARCH_SOURCES,
+  NYT_TRAVEL_SOURCE_ID,
+  TRAVELDAILY_SOURCE_ID,
+  TRAVELTIMES_SOURCE_ID,
+  TRAVIE_SOURCE_ID,
+  UK_GOV_TRAVEL_SOURCE_ID,
+  VIETNAM_TRAVEL_SOURCE_ID,
   isCollectorEnabled,
   isResearchCollectionEnabled,
 } from "@/lib/marketing/research/collectors/config";
@@ -26,8 +31,12 @@ import type { PerformanceFeedbackLoadResult } from "@/lib/marketing/research/col
 import type { ContentPerformanceRepository } from "@/lib/marketing/performance/repository/contracts";
 
 const COLLECTOR_SOURCE_ID: Record<string, string> = {
-  [UK_GOV_TRAVEL_COLLECTOR_ID]: MVP_RESEARCH_SOURCES[0]!.id,
-  [NYT_TRAVEL_COLLECTOR_ID]: MVP_RESEARCH_SOURCES[1]!.id,
+  [UK_GOV_TRAVEL_COLLECTOR_ID]: UK_GOV_TRAVEL_SOURCE_ID,
+  [NYT_TRAVEL_COLLECTOR_ID]: NYT_TRAVEL_SOURCE_ID,
+  "traveltimes-rss": TRAVELTIMES_SOURCE_ID,
+  "travie-rss": TRAVIE_SOURCE_ID,
+  "traveldaily-rss": TRAVELDAILY_SOURCE_ID,
+  "vietnam-travel-rss": VIETNAM_TRAVEL_SOURCE_ID,
 };
 
 export type RunResearchCollectionCycleInput = {

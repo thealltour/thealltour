@@ -13,11 +13,15 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const businessDateKst = url.searchParams.get("businessDateKst") ?? undefined;
     const service = await createAgendaSlateService();
-    const slate = await service.getTodaySlate(businessDateKst);
+    const [slate, productionRequests] = await Promise.all([
+      service.getTodaySlate(businessDateKst),
+      service.listProductionRequests(businessDateKst),
+    ]);
     const selectedTodayCount =
       slate?.candidates.filter((c) => c.state === "SELECTED_TODAY").length ?? 0;
     return Response.json({
       slate,
+      productionRequests,
       selectedTodayCount,
       maxSelectedToday: MAX_SELECTED_TODAY,
     });

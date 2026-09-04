@@ -32,6 +32,7 @@ export class AgendaSlateServiceError extends Error {
 
 export type AgendaSlateService = {
   getTodaySlate(businessDateKst?: string): Promise<DailyAgendaSlate | null>;
+  listProductionRequests(businessDateKst?: string): Promise<MarketingProductionRequest[]>;
   applyAction(input: {
     slateItemId: string;
     action: AgendaSlateAction;
@@ -40,6 +41,7 @@ export type AgendaSlateService = {
   requestProductionForSelected(input?: {
     businessDateKst?: string;
     slateItemIds?: string[];
+    productId?: string | null;
   }): Promise<{
     slate: DailyAgendaSlate;
     requests: MarketingProductionRequest[];
@@ -73,6 +75,13 @@ export async function createAgendaSlateService(deps: {
       businessDateKst: date,
     });
     return slateRepo.findByLogicalKey(logicalRunKey);
+  }
+
+  async function listProductionRequests(
+    businessDateKst?: string,
+  ): Promise<MarketingProductionRequest[]> {
+    const date = businessDateKst ?? formatKstBusinessDate(now);
+    return productionRequestRepo.listByBusinessDate(date);
   }
 
   async function applyAction(input: {
@@ -113,6 +122,7 @@ export async function createAgendaSlateService(deps: {
   async function requestProductionForSelected(input: {
     businessDateKst?: string;
     slateItemIds?: string[];
+    productId?: string | null;
   } = {}): Promise<{
     slate: DailyAgendaSlate;
     requests: MarketingProductionRequest[];
@@ -150,7 +160,12 @@ export async function createAgendaSlateService(deps: {
     const requests: MarketingProductionRequest[] = [];
     let createdCount = 0;
     for (const candidate of selected) {
-      const queued = buildQueuedProductionRequest({ slate, candidate, now });
+      const queued = buildQueuedProductionRequest({
+        slate,
+        candidate,
+        now,
+        productId: input.productId,
+      });
       const result = await productionRequestRepo.enqueue(queued);
       requests.push(result.request);
       if (result.created) createdCount += 1;
@@ -161,6 +176,7 @@ export async function createAgendaSlateService(deps: {
 
   return {
     getTodaySlate,
+    listProductionRequests,
     applyAction,
     requestProductionForSelected,
   };

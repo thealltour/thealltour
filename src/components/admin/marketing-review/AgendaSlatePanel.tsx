@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import type {
   AgendaSlateAction,
@@ -8,10 +9,12 @@ import type {
   DailyAgendaSlate,
 } from "@/lib/marketing/cron/daily/agendaSlate/types";
 import { MAX_SELECTED_TODAY } from "@/lib/marketing/cron/daily/agendaSlate/types";
+import type { MarketingProductionRequest } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
 import { cn } from "@/lib/cn";
 
 type SlateApiResponse = {
   slate: DailyAgendaSlate | null;
+  productionRequests?: MarketingProductionRequest[];
   selectedTodayCount: number;
   maxSelectedToday: number;
   message?: string;
@@ -31,6 +34,21 @@ function stateLabel(state: AgendaSlateCandidate["state"]): string {
   }
 }
 
+function productionStatusLabel(status: MarketingProductionRequest["status"]): string {
+  switch (status) {
+    case "QUEUED":
+      return "제작 대기(QUEUED)";
+    case "RUNNING":
+      return "제작 중(RUNNING)";
+    case "COMPLETED":
+      return "제작 완료(COMPLETED)";
+    case "FAILED":
+      return "제작 실패(FAILED)";
+    default:
+      return status;
+  }
+}
+
 function sourceLabel(item: AgendaSlateCandidate): string {
   const first = item.evidenceSummary[0];
   if (first?.sourceName) return first.sourceName;
@@ -40,10 +58,11 @@ function sourceLabel(item: AgendaSlateCandidate): string {
 
 function CandidateCard(props: {
   item: AgendaSlateCandidate;
+  productionRequest?: MarketingProductionRequest | null;
   busy: boolean;
   onAction: (action: AgendaSlateAction) => void;
 }) {
-  const { item, busy, onAction } = props;
+  const { item, productionRequest, busy, onAction } = props;
   const ed = item.editorial;
 
   return (
@@ -75,6 +94,33 @@ function CandidateCard(props: {
           <div className="mt-0.5">출처 {sourceLabel(item)}</div>
         </div>
       </div>
+
+      {productionRequest ? (
+        <div className="rounded border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+          <div className="font-medium text-[var(--text-primary)]">
+            제작 요청: {productionStatusLabel(productionRequest.status)}
+          </div>
+          {productionRequest.status === "COMPLETED" && productionRequest.completedCandidateId ? (
+            <p className="mt-1">
+              후보{" "}
+              <Link
+                href={`/theall_manager_only/marketing-review/${encodeURIComponent(productionRequest.completedCandidateId)}`}
+                className="text-[var(--primary)] underline-offset-2 hover:underline"
+              >
+                {productionRequest.completedCandidateId}
+              </Link>
+            </p>
+          ) : null}
+          {productionRequest.status === "FAILED" ? (
+            <p className="mt-1 text-red-700">
+              {productionRequest.lastError ?? productionRequest.errorMessage ?? "제작 실패"}
+            </p>
+          ) : null}
+          {productionRequest.status === "QUEUED" || productionRequest.status === "RUNNING" ? (
+            <p className="mt-1">Pi 워커가 순차 처리합니다. 선택만으로 제작이 시작되지 않습니다.</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <dl className="grid gap-2 text-xs text-[var(--text-secondary)] sm:grid-cols-2">
         <div>
@@ -154,10 +200,19 @@ function CandidateCard(props: {
 
 export function AgendaSlatePanel() {
   const [slate, setSlate] = useState<DailyAgendaSlate | null>(null);
+  const [productionRequests, setProductionRequests] = useState<MarketingProductionRequest[]>([]);
   const [selectedTodayCount, setSelectedTodayCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const requestBySlateItemId = useMemo(() => {
+    const map = new Map<string, MarketingProductionRequest>();
+    for (const req of productionRequests) {
+      map.set(req.slateItemId, req);
+    }
+    return map;
+  }, [productionRequests]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -168,9 +223,11 @@ export function AgendaSlatePanel() {
       if (!res.ok) {
         setMessage(data.message ?? "슬레이트 로드 실패");
         setSlate(null);
+        setProductionRequests([]);
         return;
       }
       setSlate(data.slate);
+      setProductionRequests(data.productionRequests ?? []);
       setSelectedTodayCount(data.selectedTodayCount ?? 0);
     } catch {
       setMessage("슬레이트 로드 실패");
@@ -275,6 +332,19 @@ export function AgendaSlatePanel() {
         <p className="border-b border-[var(--border)] px-4 py-2 text-xs text-amber-900">{message}</p>
       ) : null}
 
+      {productionRequests.length > 0 ? (
+        <div className="border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--text-secondary)]">
+          제작 요청{" "}
+          {(["QUEUED", "RUNNING", "COMPLETED", "FAILED"] as const)
+            .map((status) => {
+              const count = productionRequests.filter((r) => r.status === status).length;
+              return count > 0 ? `${status} ${count}` : null;
+            })
+            .filter(Boolean)
+            .join(" · ")}
+        </div>
+      ) : null}
+
       {loading ? (
         <p className="px-4 py-6 text-sm text-[var(--text-secondary)]">불러오는 중…</p>
       ) : !slate ? (
@@ -291,6 +361,7 @@ export function AgendaSlatePanel() {
             <CandidateCard
               key={item.slateItemId}
               item={item}
+              productionRequest={requestBySlateItemId.get(item.slateItemId) ?? null}
               busy={busy}
               onAction={(action) => void runAction(item.slateItemId, action)}
             />

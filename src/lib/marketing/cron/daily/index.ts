@@ -67,5 +67,21 @@ export {
   createMarketingProductionRequestRepository,
   createInMemoryMarketingProductionRequestRepository,
   resetDefaultMarketingProductionRequestRepository,
+  buildQueuedProductionRequest,
 } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
 export { createAgendaSlateService } from "@/lib/marketing/cron/daily/agendaSlate/agendaSlateService";
+export {
+  processMarketingProductionQueue,
+  buildProductionExecutionInput,
+  createDefaultProductionExecutor,
+  defaultProductionWorkerId,
+  ensureHumanReviewBoundaryForCandidate,
+} from "@/lib/marketing/cron/daily/agendaSlate/processMarketingProductionQueue";
+export {
+  DEFAULT_PRODUCTION_REQUEST_STALE_AFTER_MS,
+  DEFAULT_PRODUCTION_WORKER_MAX_BATCH,
+  sanitizeProductionWorkerError,
+  resolveProductionStaleAfterMs,
+} from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
+export type { MarketingProductionRequest } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
+export { ownershipFromClaim } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";

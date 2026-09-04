@@ -100,6 +100,16 @@ npx next dev --hostname 127.0.0.1 --port 3000
 
 source와 Hermes config는 이 runtime STEP에서 지우지 않는다. DB migration 없음.
 
+## Related: marketing production queue worker
+
+Durable `QUEUED` production requests are processed by a separate one-shot systemd timer (not Hermes cron). See:
+
+- `docs/hermes/marketing/agenda-production-queue-worker.md`
+- `deploy/systemd/thealltour-marketing-production-queue.service`
+- `deploy/systemd/thealltour-marketing-production-queue.timer`
+
+Do not enable those units until G-7 acceptance is authorized.
+
 ## 확인 포인트
 
 - `ss -ltnp`에서 `127.0.0.1:3000` ( `0.0.0.0:3000` / `[::]:3000` 이면 실패 )

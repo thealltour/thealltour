@@ -1,0 +1,24 @@
+[Unit]
+Description=TheAllTour Marketing Production Queue Worker (one-shot)
+Documentation=docs/hermes/marketing/agenda-production-queue-worker.md
+After=network-online.target thealltour-internal.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ysh
+Group=ysh
+WorkingDirectory=/home/ysh/thealltour
+Environment=NODE_ENV=production
+Environment=PATH=/home/ysh/.hermes/node/bin:/usr/bin:/bin
+# Secrets come from WorkingDirectory/.env.local — do not embed in this unit.
+ExecStart=/home/ysh/.hermes/node/bin/npx tsx scripts/process-marketing-production-queue.ts --max-batch 3
+# Prevent overlapping executions when a previous run is still active.
+# Prefer timer AccuracySec + Persistent=false; also use systemd locking via RemainAfterExit=no.
+Nice=10
+TimeoutStartSec=1800
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

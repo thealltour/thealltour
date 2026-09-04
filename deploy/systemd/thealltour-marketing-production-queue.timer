@@ -1,0 +1,15 @@
+[Unit]
+Description=Run TheAllTour marketing production queue worker periodically
+Documentation=docs/hermes/marketing/agenda-production-queue-worker.md
+Requires=thealltour-marketing-production-queue.service
+
+[Timer]
+# Roughly once per minute. Oneshot service + no parallel starts.
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=15s
+Persistent=false
+Unit=thealltour-marketing-production-queue.service
+
+[Install]
+WantedBy=timers.target

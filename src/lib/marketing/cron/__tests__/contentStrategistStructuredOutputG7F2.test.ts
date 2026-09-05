@@ -175,7 +175,7 @@ describe("G7-F2 Content Strategist structured-output reliability", () => {
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 
-  it("10: evidence_refs_empty does not format-retry", async () => {
+  it("10: evidence_refs_empty does not format-retry (grounding-retry instead)", async () => {
     const badSemantic = JSON.stringify({
       ...validDraftObject,
       contentPlan: {
@@ -187,8 +187,11 @@ describe("G7-F2 Content Strategist structured-output reliability", () => {
     const invoke = vi.fn().mockReturnValue(badSemantic);
     await expect(
       requestContentStrategistDraftWithFormatRetry({ payload: draftPayload(), invoke }),
-    ).rejects.toThrow(/evidence_refs_empty/);
-    expect(invoke).toHaveBeenCalledTimes(1);
+    ).rejects.toThrow(/evidence_refs_empty|evidenceRefs is explicitly empty/);
+    // G7-F5: one grounding repair, not format repair
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(String(invoke.mock.calls[1]?.[0])).toContain("grounding contract");
+    expect(String(invoke.mock.calls[1]?.[0])).not.toContain("INVALID JSON/format");
   });
 
   it("11: G7-F1 hydrated evidence survives format retry", async () => {
@@ -216,7 +219,7 @@ describe("G7-F2 Content Strategist structured-output reliability", () => {
         evidenceRefs: [],
       },
     });
-    expect(() => parseContentStrategistOutput(fabricated)).toThrow(/evidence_refs_empty/);
+    expect(() => parseContentStrategistOutput(fabricated)).toThrow(/evidence_refs_empty|evidenceRefs is explicitly empty/);
   });
 
   it("dispatch hermes path retries format once then surfaces pipeline message", async () => {

@@ -17,6 +17,7 @@ import {
   parseGovernanceAuditorOutput,
   requestContentStrategistDraftWithFormatRetry,
   isContentStrategistFormatError,
+  isContentStrategistRuntimeError,
 } from "@/lib/marketing/cron/marketingPlanSpecialists";
 export { MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS };
 
@@ -102,7 +103,7 @@ export function createMarketingPlanPipelineDispatch(
           });
           return output;
         } catch (error) {
-          if (isContentStrategistFormatError(error)) {
+          if (isContentStrategistFormatError(error) || isContentStrategistRuntimeError(error)) {
             throw new Error(error.toPipelineMessage());
           }
           throw error;
@@ -144,7 +145,7 @@ export function createMarketingPlanPipelineDispatch(
         });
         return output;
       } catch (error) {
-        if (isContentStrategistFormatError(error)) {
+        if (isContentStrategistFormatError(error) || isContentStrategistRuntimeError(error)) {
           throw new Error(error.toPipelineMessage());
         }
         throw error;

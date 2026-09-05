@@ -537,7 +537,7 @@ describe("STEP 3-12 ContentPlan contract — provenance semantics", () => {
 
   it("malformed vs valid raw provider structured output", () => {
     expect(() => parseContentStrategistOutput(JSON.stringify({ body: "ok", contentPlan: { bad: true } }))).toThrow(
-      /content_plan_validation|content-strategist/,
+      ContentPlanContractError,
     );
 
     const parsed = parseContentStrategistOutput(

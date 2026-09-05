@@ -2,6 +2,11 @@ import { hostname } from "node:os";
 
 import type { DailyMarketingPipelineDeps } from "@/lib/marketing/cron/daily/runDailyMarketingProductionPipeline";
 import { runDailyMarketingProductionFromSelection } from "@/lib/marketing/cron/daily/runDailyMarketingProductionFromSelection";
+import {
+  hydrateProductionResearchContext,
+  ProductionResearchHydrationError,
+  type HydratedProductionResearchContext,
+} from "@/lib/marketing/cron/daily/agendaSlate/hydrateProductionResearchContext";
 import type { MarketingProductionRequest } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
 import {
   DEFAULT_PRODUCTION_WORKER_MAX_BATCH,
@@ -11,6 +16,7 @@ import type { MarketingProductionRequestRepository } from "@/lib/marketing/cron/
 import { ownershipFromClaim } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import type { CompletedMarketingCandidate, DailyMarketingPipelineResult } from "@/lib/marketing/cron/daily/types";
+import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
 import { bootstrapHumanReviewForCandidate } from "@/lib/marketing/review/bootstrap/bootstrapHumanReview";
 import type { HumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 
@@ -292,6 +298,7 @@ export async function processMarketingProductionQueue(input: {
 export function buildProductionExecutionInput(
   request: MarketingProductionRequest,
   defaults: { productId: string; channel?: string },
+  hydrated?: HydratedProductionResearchContext | null,
 ) {
   const productId =
     (typeof request.metadata.productId === "string" && request.metadata.productId.trim()) ||
@@ -318,22 +325,42 @@ export function buildProductionExecutionInput(
     canonicalArticleIds,
     managerRationale: request.selection.rationale,
     usePerSelectionLogicalRunKey: true,
+    // Canonical research is hydrated at execution time from durable selection IDs.
+    researchCandidate: hydrated?.researchCandidate ?? null,
+    researchBrief: hydrated?.researchBrief ?? null,
   };
 }
 
 /**
  * Wire real FromSelection for CLI — still Human Review bounded (no publish).
+ * Hydrates AgendaCandidate + ResearchBrief (+ evidence) before handoff.
  */
 export function createDefaultProductionExecutor(deps: {
   pipelineDeps: DailyMarketingPipelineDeps;
   productId: string;
   channel?: string;
+  researchRepo?: ResearchRepository;
 }): (request: MarketingProductionRequest) => Promise<DailyMarketingPipelineResult> {
   return async (request) => {
-    const input = buildProductionExecutionInput(request, {
-      productId: deps.productId,
-      channel: deps.channel,
-    });
+    let hydrated: HydratedProductionResearchContext;
+    try {
+      hydrated = await hydrateProductionResearchContext(request, {
+        repo: deps.researchRepo,
+      });
+    } catch (error) {
+      if (error instanceof ProductionResearchHydrationError) {
+        throw new Error(error.toPipelineMessage());
+      }
+      throw error;
+    }
+    const input = buildProductionExecutionInput(
+      request,
+      {
+        productId: deps.productId,
+        channel: deps.channel,
+      },
+      hydrated,
+    );
     return runDailyMarketingProductionFromSelection(input, deps.pipelineDeps);
   };
 }

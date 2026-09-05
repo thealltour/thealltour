@@ -83,6 +83,11 @@ export {
   ensureHumanReviewBoundaryForCandidate,
 } from "@/lib/marketing/cron/daily/agendaSlate/processMarketingProductionQueue";
 export {
+  hydrateProductionResearchContext,
+  ProductionResearchHydrationError,
+} from "@/lib/marketing/cron/daily/agendaSlate/hydrateProductionResearchContext";
+export type { HydratedProductionResearchContext } from "@/lib/marketing/cron/daily/agendaSlate/hydrateProductionResearchContext";
+export {
   DEFAULT_PRODUCTION_REQUEST_STALE_AFTER_MS,
   DEFAULT_PRODUCTION_WORKER_MAX_BATCH,
   sanitizeProductionWorkerError,

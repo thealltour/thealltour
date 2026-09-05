@@ -11,3 +11,10 @@ export const ENABLE_PRODUCT_OPTIONS = true;
  * - true: 기존 배너·고지 노출
  */
 export const ENABLE_COUPANG_PARTNERS_BANNER = false;
+
+/**
+ * 자유여행 Planner MVP
+ * - false: /planner 404, 홈·상품상세 진입점 비표시
+ * - true: Planner 진입 route·CTA 노출
+ */
+export const ENABLE_FREE_TRAVEL_PLANNER = true;

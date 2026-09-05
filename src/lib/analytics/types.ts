@@ -71,7 +71,9 @@ export type AnalyticsEventName =
   | "checkout_payment_result"
   | "order_success_view"
   | "payment_return_view"
-  | "payment_return_failed";
+  | "payment_return_failed"
+  | "planner_landing_view"
+  | "planner_started";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =
@@ -97,7 +99,8 @@ export type AnalyticsSource =
   | "home_promo_banner"
   | "auth_modal"
   | "mypage_membership"
-  | "payment_return";
+  | "payment_return"
+  | "planner";
 
 /** 공통 payload — 모든 필드 선택, 호출 측에서 필요한 것만 채움 */
 export type AnalyticsPayload = {

@@ -42,6 +42,7 @@ import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { getPrimaryImageUrl } from "@/lib/products/images";
 import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
+import { ProductPlannerCta } from "@/components/products/ProductPlannerCta";
 import { ProductHighlightsCard } from "@/components/products/ProductHighlightsCard";
 import ProductSummaryInfo from "@/components/products/ProductSummaryInfo";
 import { ProductCostSummary } from "@/components/products/ProductCostSummary";
@@ -817,6 +818,8 @@ export default function ProductDetailV2({
         onViewFullItinerary={() => setActiveTab("schedule")}
         onPreviewDayClick={handlePreviewDayClick}
       />
+
+      {productId ? <ProductPlannerCta productId={productId} className="mt-6" /> : null}
 
       <FlightSummarySection product={product ?? null} compact embedded />
 

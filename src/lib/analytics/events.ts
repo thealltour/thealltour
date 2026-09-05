@@ -74,6 +74,8 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   order_success_view: "order_success_view",
   payment_return_view: "payment_return_view",
   payment_return_failed: "payment_return_failed",
+  planner_landing_view: "planner_landing_view",
+  planner_started: "planner_started",
 } as const;
 
 /** 소스 상수 (enum 성격) */
@@ -101,4 +103,5 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   auth_modal: "auth_modal",
   mypage_membership: "mypage_membership",
   payment_return: "payment_return",
+  planner: "planner",
 } as const;

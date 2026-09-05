@@ -1,19 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
-import { Flag, Gem, LayoutGrid, Users, Waves } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { trackHomeQuickActionClick } from "@/lib/analytics/trackHomeEvents";
-import type { HomeHeroQuickAction } from "@/lib/homeHeroQuickActions";
-
-const QUICK_ACTION_ICONS: Record<HomeHeroQuickAction["id"], LucideIcon> = {
-  golf: Flag,
-  healing: Waves,
-  family: Users,
-  luxury: Gem,
-  all: LayoutGrid,
-};
+import {
+  HOME_HERO_QUICK_ACTION_ICONS,
+  type HomeHeroQuickAction,
+} from "@/lib/homeHeroQuickActions";
 
 const ICON_SIZE = 22;
 const ICON_STROKE = 1.75;
@@ -29,7 +22,7 @@ export type HomeQuickActionProps = {
  * 홈 히어로 모바일 Quick Action — icon top / label bottom, equal-weight entry.
  */
 export function HomeQuickAction({ action, position, className }: HomeQuickActionProps) {
-  const Icon = QUICK_ACTION_ICONS[action.id];
+  const Icon = HOME_HERO_QUICK_ACTION_ICONS[action.id];
 
   return (
     <Link

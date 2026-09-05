@@ -22,3 +22,14 @@ export function buildDisabledMatcher(min?: string, max?: string): Matcher | Matc
   if (matchers.length === 1) return matchers[0];
   return matchers;
 }
+
+/** Planner keepOpenAfterStart: first click may mirror from===to; treat as incomplete. */
+export function isDateRangeSelectionComplete(
+  from: string,
+  to: string,
+  keepOpenAfterStart: boolean,
+): boolean {
+  if (!from || !to) return false;
+  if (keepOpenAfterStart && from === to) return false;
+  return true;
+}

@@ -93,6 +93,7 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   planner_map_loaded: "planner_map_loaded",
   planner_routes_loaded: "planner_routes_loaded",
   planner_routes_failed: "planner_routes_failed",
+  planner_summary_edit_clicked: "planner_summary_edit_clicked",
 } as const;
 
 /** 소스 상수 (enum 성격) */

@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { trackPlannerSavedPlanOpened } from "@/lib/analytics/trackPlannerEvents";
+import { formatIsoDateDot } from "@/lib/planner/dates";
 import type { SavedPlannerListItem } from "@/lib/planner/savedPlanDto";
 
-function formatDateRange(startDate: string, endDate: string): string {
-  const fmt = (ymd: string) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
-    if (!m) return ymd;
-    return `${m[1]}.${m[2]}.${m[3]}`;
-  };
-  return `${fmt(startDate)} - ${fmt(endDate)}`;
+function formatDateRange(plan: SavedPlannerListItem): string {
+  if (plan.dateMode === "flexible" || !plan.startDate || !plan.endDate) {
+    return `${plan.days}일 · 날짜 미정`;
+  }
+  const start = formatIsoDateDot(plan.startDate);
+  const end = formatIsoDateDot(plan.endDate);
+  const endShort = end.length >= 10 ? end.slice(5) : end;
+  return `${start} - ${endShort}`;
 }
 
 function formatUpdatedAt(iso: string): string {
@@ -49,9 +51,7 @@ export function PlannerSavedPlanCard({ plan }: PlannerSavedPlanCardProps) {
             {plan.destination}
             {plan.days > 0 ? ` · ${plan.days}일 일정` : null}
           </p>
-          <p className="type-caption text-[var(--text-muted)]">
-            {formatDateRange(plan.startDate, plan.endDate)}
-          </p>
+          <p className="type-caption text-[var(--text-muted)]">{formatDateRange(plan)}</p>
           <p className="type-caption text-[var(--text-muted)]">
             {[plan.travelersSummary, plan.styleSummary].filter(Boolean).join(" · ")}
           </p>

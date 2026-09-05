@@ -13,12 +13,17 @@ import type { PlannerDraftInput } from "@/types/planner";
 function sampleDraft(): PlannerDraftInput {
   return {
     ...createEmptyPlannerDraftInput("오사카"),
-    dates: { startDate: "2026-10-01", endDate: "2026-10-03" },
+    dates: {
+      mode: "fixed",
+      startDate: "2026-10-01",
+      endDate: "2026-10-03",
+      durationDays: 3,
+    },
     travelers: { adults: 2, children: 0 },
     companionType: "couple",
     interests: ["food", "sightseeing"],
     pace: "balanced",
-    budget: { amount: null, scope: "per_person", currency: "KRW" },
+    budget: { style: null, amount: null, scope: "per_person", currency: "KRW" },
     additionalRequest: "",
   };
 }

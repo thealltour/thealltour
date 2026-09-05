@@ -159,11 +159,14 @@ export async function enrichPlannerSession(params: {
     }
   }
 
-  const weather = await fetchPlannerWeatherSummary({
-    destination,
-    startDate: params.plan.tripOverview.startDate,
-    endDate: params.plan.tripOverview.endDate,
-  });
+  const weather =
+    params.plan.tripOverview.startDate == null || params.plan.tripOverview.endDate == null
+      ? { availability: "date_not_set" as const, days: [] }
+      : await fetchPlannerWeatherSummary({
+          destination,
+          startDate: params.plan.tripOverview.startDate,
+          endDate: params.plan.tripOverview.endDate,
+        });
 
   const routeResult = await resolvePlannerRoutes({
     sessionId: params.sessionId,
@@ -193,6 +196,8 @@ export async function enrichPlannerSession(params: {
   let message: string | null = null;
   if (partialFailure) {
     message = "일부 장소 정보를 확인하지 못했습니다.";
+  } else if (weather.availability === "date_not_set") {
+    message = "여행 날짜를 정하면 최신 날씨를 확인할 수 있어요.";
   } else if (weather.availability === "too_early") {
     message = "여행일이 가까워지면 최신 날씨를 확인할 수 있어요.";
   }

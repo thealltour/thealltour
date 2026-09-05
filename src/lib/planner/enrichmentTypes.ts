@@ -18,7 +18,11 @@ export type PlannerPlaceEnrichmentItem = {
   place: PlannerResolvedPlace;
 };
 
-export type PlannerWeatherAvailability = "forecast" | "too_early" | "unavailable";
+export type PlannerWeatherAvailability =
+  | "forecast"
+  | "too_early"
+  | "unavailable"
+  | "date_not_set";
 
 export type PlannerWeatherDay = {
   date: string;

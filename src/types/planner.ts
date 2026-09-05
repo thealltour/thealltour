@@ -24,18 +24,33 @@ export type PlannerPace = "relaxed" | "balanced" | "packed";
 
 export type PlannerBudgetScope = "per_person" | "total";
 
+export type PlannerDateMode = "fixed" | "flexible";
+
+export type PlannerBudgetStyle = "budget" | "standard" | "premium";
+
+export type PlannerDraftDates = {
+  mode: PlannerDateMode;
+  startDate: string | null;
+  endDate: string | null;
+  durationDays: number;
+};
+
 export type PlannerDraftInput = {
   destination: { text: string };
-  dates: { startDate: string; endDate: string };
+  dates: PlannerDraftDates;
   travelers: { adults: number; children: number };
   companionType: PlannerCompanionType;
   interests: PlannerInterest[];
+  /** Style / mood preferences (optional free text). */
+  themeRequest: string;
   pace: PlannerPace;
   budget: {
+    style: PlannerBudgetStyle | null;
     amount: number | null;
     scope: PlannerBudgetScope;
     currency: "KRW";
   };
+  /** Concrete must-keep requirements. */
   additionalRequest: string;
 };
 
@@ -55,3 +70,19 @@ export type PlannerSession = {
 };
 
 export type PlannerWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type PlannerSummaryEditSection =
+  | "destination"
+  | "dates"
+  | "companions"
+  | "themes"
+  | "budget"
+  | "request";
+
+export type PlannerGenerationFailureCategory =
+  | "input_invalid"
+  | "provider_failed"
+  | "schema_invalid"
+  | "invariant_failed"
+  | "persist_failed"
+  | "result_navigation_failed";

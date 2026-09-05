@@ -14,12 +14,22 @@ const generateBodySchema = z
 function validDraft() {
   return {
     ...createEmptyPlannerDraftInput("오사카"),
-    dates: { startDate: "2026-10-01", endDate: "2026-10-03" },
+    dates: {
+      mode: "fixed" as const,
+      startDate: "2026-10-01",
+      endDate: "2026-10-03",
+      durationDays: 3,
+    },
     travelers: { adults: 2, children: 0 },
     companionType: "couple" as const,
     interests: ["food"] as const,
     pace: "balanced" as const,
-    budget: { amount: null, scope: "per_person" as const, currency: "KRW" as const },
+    budget: {
+      style: null,
+      amount: null,
+      scope: "per_person" as const,
+      currency: "KRW" as const,
+    },
     additionalRequest: "",
   };
 }

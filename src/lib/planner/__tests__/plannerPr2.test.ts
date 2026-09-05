@@ -13,12 +13,22 @@ import type { PlannerSession } from "@/types/planner";
 function validDraft() {
   return {
     ...createEmptyPlannerDraftInput("오사카"),
-    dates: { startDate: "2026-10-01", endDate: "2026-10-05" },
+    dates: {
+      mode: "fixed" as const,
+      startDate: "2026-10-01",
+      endDate: "2026-10-05",
+      durationDays: 5,
+    },
     travelers: { adults: 2, children: 1 },
     companionType: "family" as const,
     interests: ["food", "sightseeing"] as const,
     pace: "balanced" as const,
-    budget: { amount: 1_500_000, scope: "per_person" as const, currency: "KRW" as const },
+    budget: {
+      style: null,
+      amount: 1_500_000,
+      scope: "per_person" as const,
+      currency: "KRW" as const,
+    },
     additionalRequest: "천천히 다니고 싶어요",
   };
 }
@@ -32,7 +42,12 @@ describe("plannerDraftInputSchema", () => {
 
   it("rejects endDate before startDate", () => {
     const draft = validDraft();
-    draft.dates = { startDate: "2026-10-05", endDate: "2026-10-01" };
+    draft.dates = {
+      mode: "fixed",
+      startDate: "2026-10-05",
+      endDate: "2026-10-01",
+      durationDays: 3,
+    };
     expect(plannerDraftInputSchema.safeParse(draft).success).toBe(false);
   });
 
@@ -54,7 +69,7 @@ describe("plannerDraftInputSchema", () => {
 
   it("rejects negative budget", () => {
     const draft = validDraft();
-    draft.budget = { amount: -1, scope: "total", currency: "KRW" };
+    draft.budget = { style: null, amount: -1, scope: "total", currency: "KRW" };
     expect(plannerDraftInputSchema.safeParse(draft).success).toBe(false);
   });
 

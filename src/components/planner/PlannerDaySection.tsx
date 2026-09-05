@@ -39,7 +39,8 @@ const ROUTE_MODE_LABEL: Record<PlannerRouteEnrichment["mode"], string> = {
   other: "이동",
 };
 
-function formatDateKo(ymd: string): string {
+function formatDateKo(ymd: string | null | undefined): string | null {
+  if (!ymd) return null;
   const [y, m, d] = ymd.split("-");
   if (!y || !m || !d) return ymd;
   return `${y}.${m}.${d}`;
@@ -91,7 +92,8 @@ export function PlannerDaySection({
     <section className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
       <header className="space-y-1">
         <p className="type-caption font-semibold tracking-wide text-[var(--text-muted)]">
-          DAY {day.day} · {formatDateKo(day.date)}
+          DAY {day.day}
+          {formatDateKo(day.date) ? ` · ${formatDateKo(day.date)}` : ""}
           {weatherText ? ` · ${weatherText}` : ""}
         </p>
         <h2 className="type-h3 text-[var(--foreground)]">{day.title}</h2>

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { PlannerDraftInput } from "@/types/planner";
+import { draftTripDurationDays, isIsoDateYmd } from "@/lib/planner/dates";
 
 export const PLANNER_ITEM_TYPES = [
   "attraction",
@@ -53,7 +54,8 @@ export const plannerPlanItemSchema = z
 export const plannerPlanDaySchema = z
   .object({
     day: z.number().int().min(1).max(30),
-    date: isoDateSchema,
+    /** Fixed trips use YYYY-MM-DD; flexible trips must be null (no fake calendar dates). */
+    date: isoDateSchema.nullable(),
     title: z.string().trim().min(1).max(80),
     summary: z.string().trim().min(1).max(240),
     items: z.array(plannerPlanItemSchema).min(1).max(10),
@@ -84,8 +86,8 @@ export const plannerPlanSchema = z
       .strict(),
     tripOverview: z
       .object({
-        startDate: isoDateSchema,
-        endDate: isoDateSchema,
+        startDate: isoDateSchema.nullable(),
+        endDate: isoDateSchema.nullable(),
         nights: z.number().int().min(0).max(60),
         days: z.number().int().min(1).max(30),
         travelersSummary: z.string().trim().min(1).max(120),
@@ -128,11 +130,10 @@ export class PlannerPlanInvariantError extends Error {
   }
 }
 
-/** Validate AI plan against draft dates/day continuity after zod parse. */
-export function assertGeneratedPlanMatchesDraft(
-  plan: PlannerPlan,
-  draft: PlannerDraftInput,
-): void {
+function assertFixedPlanMatchesDraft(plan: PlannerPlan, draft: PlannerDraftInput): void {
+  if (!isIsoDateYmd(draft.dates.startDate) || !isIsoDateYmd(draft.dates.endDate)) {
+    throw new PlannerPlanInvariantError("fixed draft requires startDate and endDate");
+  }
   const expectedDays = expectedTripDays(draft.dates.startDate, draft.dates.endDate);
   if (plan.days.length !== expectedDays) {
     throw new PlannerPlanInvariantError(
@@ -170,9 +171,63 @@ export function assertGeneratedPlanMatchesDraft(
   }
 }
 
+function assertFlexiblePlanMatchesDraft(plan: PlannerPlan, draft: PlannerDraftInput): void {
+  const expectedDays = draft.dates.durationDays;
+  if (plan.days.length !== expectedDays) {
+    throw new PlannerPlanInvariantError(
+      `day count mismatch: expected ${expectedDays}, got ${plan.days.length}`,
+    );
+  }
+  if (plan.tripOverview.days !== expectedDays) {
+    throw new PlannerPlanInvariantError(
+      `tripOverview.days mismatch: expected ${expectedDays}, got ${plan.tripOverview.days}`,
+    );
+  }
+  if (plan.tripOverview.nights !== Math.max(0, expectedDays - 1)) {
+    throw new PlannerPlanInvariantError(
+      `tripOverview.nights mismatch: expected ${expectedDays - 1}, got ${plan.tripOverview.nights}`,
+    );
+  }
+  if (plan.tripOverview.startDate != null || plan.tripOverview.endDate != null) {
+    throw new PlannerPlanInvariantError("flexible tripOverview dates must be null");
+  }
+
+  for (let i = 0; i < plan.days.length; i += 1) {
+    const day = plan.days[i]!;
+    if (day.day !== i + 1) {
+      throw new PlannerPlanInvariantError(`day index mismatch at ${i}: expected ${i + 1}`);
+    }
+    if (day.date != null) {
+      throw new PlannerPlanInvariantError(
+        `flexible day.date must be null at day ${day.day}, got ${day.date}`,
+      );
+    }
+  }
+}
+
+/** Validate AI plan against draft dates/day continuity after zod parse. */
+export function assertGeneratedPlanMatchesDraft(
+  plan: PlannerPlan,
+  draft: PlannerDraftInput,
+): void {
+  const expected = draftTripDurationDays(draft);
+  if (plan.days.length !== expected) {
+    throw new PlannerPlanInvariantError(
+      `day count mismatch: expected ${expected}, got ${plan.days.length}`,
+    );
+  }
+
+  if (draft.dates.mode === "flexible") {
+    assertFlexiblePlanMatchesDraft(plan, draft);
+    return;
+  }
+  assertFixedPlanMatchesDraft(plan, draft);
+}
+
 /**
  * Extra checks for AI edit: destination must not jump to another city;
  * date/day invariants still enforced via assertGeneratedPlanMatchesDraft.
+ * Duration / date mode changes via AI edit are out of scope.
  */
 export function assertEditedPlanMatchesContext(
   plan: PlannerPlan,
@@ -182,5 +237,16 @@ export function assertEditedPlanMatchesContext(
   assertGeneratedPlanMatchesDraft(plan, draft);
   if (plan.destination.name.trim() !== previousPlan.destination.name.trim()) {
     throw new PlannerPlanInvariantError("destination name must stay unchanged during edit");
+  }
+  if (plan.tripOverview.days !== previousPlan.tripOverview.days) {
+    throw new PlannerPlanInvariantError("trip duration must stay unchanged during edit");
+  }
+  if (plan.days.length !== previousPlan.days.length) {
+    throw new PlannerPlanInvariantError("day count must stay unchanged during edit");
+  }
+  const prevFlexible = previousPlan.tripOverview.startDate == null;
+  const nextFlexible = plan.tripOverview.startDate == null;
+  if (prevFlexible !== nextFlexible) {
+    throw new PlannerPlanInvariantError("date mode must stay unchanged during edit");
   }
 }

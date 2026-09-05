@@ -6,7 +6,7 @@ import type {
 
 export type RoutePairCandidate = {
   day: number;
-  date: string;
+  date: string | null;
   fromOrder: number;
   toOrder: number;
   from: { lat: number; lng: number };
@@ -85,10 +85,15 @@ export function buildConsecutiveRoutePairs(params: {
 
       const mode = mapAiTravelModeToRouteMode(fromItem.travelToNext?.mode ?? null);
       let googleTravelMode = toGoogleTravelMode(mode);
-      const departureTimeIso = buildDepartureIso(day.date, fromItem.time);
+      const departureTimeIso = day.date
+        ? buildDepartureIso(day.date, fromItem.time)
+        : null;
 
-      // Transit without usable departure → skip provider (AI fallback)
-      if (googleTravelMode === "TRANSIT" && !departureTimeIso) {
+      // Transit needs a real calendar date + departure; flexible dates → AI fallback
+      if (
+        googleTravelMode === "TRANSIT" &&
+        (!day.date || !departureTimeIso)
+      ) {
         googleTravelMode = null;
       }
 

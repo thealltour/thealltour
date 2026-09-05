@@ -89,8 +89,15 @@ export function PlannerResultView({
         />
       </div>
 
+      {enrichment?.weather.availability === "date_not_set" ? (
+        <p className="type-caption text-[var(--text-muted)]">
+          여행 날짜를 정하면 최신 날씨를 확인할 수 있어요.
+        </p>
+      ) : null}
+
       {enrichment?.weather.availability === "too_early" ||
-      enrichment?.message?.includes("날씨") ? (
+      (enrichment?.message?.includes("날씨") &&
+        enrichment?.weather.availability !== "date_not_set") ? (
         <p className="type-caption text-[var(--text-muted)]">
           여행일이 가까워지면 최신 날씨를 확인할 수 있어요.
         </p>
@@ -120,12 +127,12 @@ export function PlannerResultView({
         </p>
         {plan.days.map((day) => (
           <PlannerDaySection
-            key={`${day.day}-${day.date}-${day.title}`}
+            key={`${day.day}-${day.date ?? "flex"}-${day.title}`}
             day={day}
             sessionId={sessionId}
             placeByOrder={placesByDay.get(day.day)}
             routeByFromOrder={routesByDay.get(day.day)}
-            weatherDay={weatherByDate.get(day.date)}
+            weatherDay={day.date ? weatherByDate.get(day.date) : undefined}
           />
         ))}
       </div>

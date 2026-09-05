@@ -5,7 +5,12 @@ import type { DateRange } from "react-day-picker";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatIsoDateKorean } from "@/lib/inquiry/desiredDeparture";
-import { buildDisabledMatcher, dateToYmd, ymdToDate } from "@/lib/datePickerUtils";
+import {
+  buildDisabledMatcher,
+  dateToYmd,
+  isDateRangeSelectionComplete,
+  ymdToDate,
+} from "@/lib/datePickerUtils";
 import { TheallDayPicker } from "@/components/ui/TheallDayPicker";
 import "react-day-picker/style.css";
 import "./datePicker.css";
@@ -22,6 +27,12 @@ export type DateRangePickerProps = {
   triggerClassName?: string;
   "aria-label"?: string;
   size?: "default" | "compact";
+  /**
+   * Planner UX: keep the popover open after selecting only the start date.
+   * react-day-picker range mode may set from===to on the first click; treat that as incomplete.
+   * Default false preserves product/admin picker behavior.
+   */
+  keepOpenAfterStart?: boolean;
 };
 
 function formatRangeLabel(from: string, to: string, placeholder: string): string {
@@ -43,6 +54,7 @@ export function DateRangePicker({
   triggerClassName,
   "aria-label": ariaLabel,
   size = "default",
+  keepOpenAfterStart = false,
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
@@ -76,9 +88,25 @@ export function DateRangePicker({
   }, [open]);
 
   function handleSelect(range: DateRange | undefined) {
-    if (!range) return;
-    const nextFrom = range.from ? dateToYmd(range.from) : "";
-    const nextTo = range.to ? dateToYmd(range.to) : "";
+    if (!range?.from) {
+      onChange("", "");
+      return;
+    }
+    const nextFrom = dateToYmd(range.from) ?? "";
+    let nextTo = range.to ? dateToYmd(range.to) ?? "" : "";
+
+    if (keepOpenAfterStart) {
+      // First click often mirrors from→to; keep calendar open until a real end date.
+      if (nextTo && nextFrom === nextTo && !to) {
+        nextTo = "";
+      }
+      onChange(nextFrom, nextTo);
+      if (isDateRangeSelectionComplete(nextFrom, nextTo, true)) {
+        setOpen(false);
+      }
+      return;
+    }
+
     onChange(nextFrom, nextTo);
     if (range.from && range.to) setOpen(false);
   }

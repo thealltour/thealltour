@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  PLANNER_DURATION_DAYS_MAX,
+  PLANNER_DURATION_DAYS_MIN,
+  computeDurationDays,
+  isIsoDateYmd,
+} from "@/lib/planner/dates";
 
 export const PLANNER_SESSION_STATUSES = ["draft", "generated", "saved"] as const;
 
@@ -25,6 +31,10 @@ export const PLANNER_INTERESTS = [
 export const PLANNER_PACES = ["relaxed", "balanced", "packed"] as const;
 
 export const PLANNER_BUDGET_SCOPES = ["per_person", "total"] as const;
+
+export const PLANNER_DATE_MODES = ["fixed", "flexible"] as const;
+
+export const PLANNER_BUDGET_STYLES = ["budget", "standard", "premium"] as const;
 
 export const plannerSessionStatusSchema = z.enum(PLANNER_SESSION_STATUSES);
 
@@ -71,25 +81,82 @@ export const plannerPaceSchema = z.enum(PLANNER_PACES);
 
 export const plannerBudgetScopeSchema = z.enum(PLANNER_BUDGET_SCOPES);
 
+export const plannerDateModeSchema = z.enum(PLANNER_DATE_MODES);
+
+export const plannerBudgetStyleSchema = z.enum(PLANNER_BUDGET_STYLES);
+
+const durationDaysSchema = z
+  .number()
+  .int("여행 일수는 정수여야 합니다.")
+  .min(PLANNER_DURATION_DAYS_MIN, `여행 일수는 ${PLANNER_DURATION_DAYS_MIN}일 이상이어야 합니다.`)
+  .max(PLANNER_DURATION_DAYS_MAX, `여행 일수는 ${PLANNER_DURATION_DAYS_MAX}일 이하로 입력해 주세요.`);
+
+export const plannerDraftDatesSchema = z
+  .object({
+    mode: plannerDateModeSchema,
+    startDate: isoDateSchema.nullable(),
+    endDate: isoDateSchema.nullable(),
+    durationDays: durationDaysSchema,
+  })
+  .superRefine((dates, ctx) => {
+    if (dates.mode === "fixed") {
+      if (!dates.startDate) {
+        ctx.addIssue({
+          code: "custom",
+          message: "출발일을 선택해 주세요.",
+          path: ["startDate"],
+        });
+      }
+      if (!dates.endDate) {
+        ctx.addIssue({
+          code: "custom",
+          message: "귀국일을 선택해 주세요.",
+          path: ["endDate"],
+        });
+      }
+      if (dates.startDate && dates.endDate && dates.endDate < dates.startDate) {
+        ctx.addIssue({
+          code: "custom",
+          message: "귀국일은 출발일 이후여야 합니다.",
+          path: ["endDate"],
+        });
+      }
+      if (dates.startDate && dates.endDate && dates.endDate >= dates.startDate) {
+        const expected = computeDurationDays(dates.startDate, dates.endDate);
+        if (expected != null && dates.durationDays !== expected) {
+          ctx.addIssue({
+            code: "custom",
+            message: "여행 일수가 선택한 기간과 맞지 않습니다.",
+            path: ["durationDays"],
+          });
+        }
+        if (expected != null && (expected < PLANNER_DURATION_DAYS_MIN || expected > PLANNER_DURATION_DAYS_MAX)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `여행 기간은 ${PLANNER_DURATION_DAYS_MIN}~${PLANNER_DURATION_DAYS_MAX}일로 선택해 주세요.`,
+            path: ["endDate"],
+          });
+        }
+      }
+      return;
+    }
+
+    // flexible
+    if (dates.startDate != null || dates.endDate != null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "날짜 미정 모드에서는 출발·귀국일을 비워 주세요.",
+        path: ["startDate"],
+      });
+    }
+  });
+
 export const plannerDraftInputSchema = z
   .object({
     destination: z.object({
       text: plannerDestinationTextSchema,
     }),
-    dates: z
-      .object({
-        startDate: isoDateSchema,
-        endDate: isoDateSchema,
-      })
-      .superRefine((dates, ctx) => {
-        if (dates.endDate < dates.startDate) {
-          ctx.addIssue({
-            code: "custom",
-            message: "귀국일은 출발일 이후여야 합니다.",
-            path: ["endDate"],
-          });
-        }
-      }),
+    dates: plannerDraftDatesSchema,
     travelers: z.object({
       adults: z
         .number()
@@ -108,8 +175,13 @@ export const plannerDraftInputSchema = z
       .min(1, "여행 취향을 1개 이상 선택해 주세요.")
       .max(PLANNER_INTERESTS.length)
       .transform((items) => Array.from(new Set(items))),
+    themeRequest: z
+      .string()
+      .trim()
+      .max(1000, "여행 분위기 요청은 1000자 이내로 입력해 주세요."),
     pace: plannerPaceSchema,
     budget: z.object({
+      style: plannerBudgetStyleSchema.nullable(),
       amount: z
         .number()
         .finite()
@@ -134,8 +206,10 @@ export const plannerDraftInputProgressSchema = z
       text: z.string().trim().max(120),
     }),
     dates: z.object({
-      startDate: z.string().trim(),
-      endDate: z.string().trim(),
+      mode: plannerDateModeSchema,
+      startDate: z.union([isoDateSchema, z.literal(""), z.null()]),
+      endDate: z.union([isoDateSchema, z.literal(""), z.null()]),
+      durationDays: z.number().int().min(1).max(PLANNER_DURATION_DAYS_MAX),
     }),
     travelers: z.object({
       adults: z.number().int().min(1).max(20),
@@ -143,15 +217,25 @@ export const plannerDraftInputProgressSchema = z
     }),
     companionType: plannerCompanionTypeSchema,
     interests: z.array(plannerInterestSchema).max(PLANNER_INTERESTS.length),
+    themeRequest: z.string().trim().max(1000),
     pace: plannerPaceSchema,
     budget: z.object({
+      style: plannerBudgetStyleSchema.nullable(),
       amount: z.number().finite().nonnegative().nullable(),
       scope: plannerBudgetScopeSchema,
       currency: z.literal("KRW"),
     }),
     additionalRequest: z.string().trim().max(1000),
   })
-  .strict();
+  .strict()
+  .transform((input) => ({
+    ...input,
+    dates: {
+      ...input.dates,
+      startDate: input.dates.startDate === "" ? null : input.dates.startDate,
+      endDate: input.dates.endDate === "" ? null : input.dates.endDate,
+    },
+  }));
 
 export const createPlannerSessionBodySchema = z
   .object({
@@ -195,14 +279,27 @@ export function validatePlannerStep(
     return r.success ? null : (r.error.issues[0]?.message ?? "목적지를 확인해 주세요.");
   }
   if (step === 2) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dates.startDate)) {
+    if (input.dates.mode === "flexible") {
+      if (
+        input.dates.durationDays < PLANNER_DURATION_DAYS_MIN ||
+        input.dates.durationDays > PLANNER_DURATION_DAYS_MAX
+      ) {
+        return `여행 일수는 ${PLANNER_DURATION_DAYS_MIN}~${PLANNER_DURATION_DAYS_MAX}일로 선택해 주세요.`;
+      }
+      return null;
+    }
+    if (!isIsoDateYmd(input.dates.startDate)) {
       return "출발일을 선택해 주세요.";
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dates.endDate)) {
+    if (!isIsoDateYmd(input.dates.endDate)) {
       return "귀국일을 선택해 주세요.";
     }
     if (input.dates.endDate < input.dates.startDate) {
       return "귀국일은 출발일 이후여야 합니다.";
+    }
+    const days = computeDurationDays(input.dates.startDate, input.dates.endDate);
+    if (days == null || days < PLANNER_DURATION_DAYS_MIN || days > PLANNER_DURATION_DAYS_MAX) {
+      return `여행 기간은 ${PLANNER_DURATION_DAYS_MIN}~${PLANNER_DURATION_DAYS_MAX}일로 선택해 주세요.`;
     }
     return null;
   }
@@ -214,6 +311,9 @@ export function validatePlannerStep(
   }
   if (step === 4) {
     if (input.interests.length < 1) return "여행 취향을 1개 이상 선택해 주세요.";
+    if (input.themeRequest.length > 1000) {
+      return "여행 분위기 요청은 1000자 이내로 입력해 주세요.";
+    }
     return null;
   }
   if (step === 5) {

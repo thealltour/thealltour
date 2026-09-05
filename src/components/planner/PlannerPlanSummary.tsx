@@ -1,10 +1,21 @@
 "use client";
 
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
+import { formatIsoDateDot } from "@/lib/planner/dates";
 
 type PlannerPlanSummaryProps = {
   plan: PlannerPlan;
 };
+
+function formatTripPeriod(plan: PlannerPlan): string {
+  const { tripOverview } = plan;
+  const nights = tripOverview.nights;
+  const days = tripOverview.days;
+  if (tripOverview.startDate == null || tripOverview.endDate == null) {
+    return `${days}일 여행 · 날짜 미정`;
+  }
+  return `${formatIsoDateDot(tripOverview.startDate)} - ${formatIsoDateDot(tripOverview.endDate)} (${nights}박 ${days}일)`;
+}
 
 export function PlannerPlanSummary({ plan }: PlannerPlanSummaryProps) {
   const { tripOverview, destination } = plan;
@@ -19,10 +30,7 @@ export function PlannerPlanSummary({ plan }: PlannerPlanSummaryProps) {
       </div>
       <p className="type-body leading-relaxed text-[var(--text-secondary)]">{plan.summary}</p>
       <dl className="grid grid-cols-1 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:grid-cols-2">
-        <SummaryItem
-          label="여행 기간"
-          value={`${tripOverview.startDate} ~ ${tripOverview.endDate} (${tripOverview.nights}박 ${tripOverview.days}일)`}
-        />
+        <SummaryItem label="여행 기간" value={formatTripPeriod(plan)} />
         <SummaryItem label="인원" value={tripOverview.travelersSummary} />
         <SummaryItem label="스타일" value={tripOverview.styleSummary} />
       </dl>

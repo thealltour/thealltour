@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
 import { decidePlannerClaim } from "@/lib/planner/claimDecision";
+import { normalizePlannerDraftInput } from "@/lib/planner/normalizeDraftInput";
 import { plannerPlanSchema, type PlannerPlan } from "@/lib/planner/planSchemas";
 import {
   projectSavedPlannerListItem,
@@ -11,9 +12,9 @@ import {
   type SavedPlannerListItem,
 } from "@/lib/planner/savedPlanDto";
 import type { PlannerDraftInput, PlannerSession, PlannerSessionStatus } from "@/types/planner";
-import { PLANNER_COMPANION_TYPES, PLANNER_INTERESTS, PLANNER_PACES } from "@/lib/planner/schemas";
 
 export type { SavedPlannerListItem };
+export { normalizePlannerDraftInput };
 
 type PlannerSessionRow = {
   id: string;
@@ -26,90 +27,6 @@ type PlannerSessionRow = {
   created_at: string;
   updated_at: string;
 };
-
-function asInterest(value: unknown): PlannerDraftInput["interests"][number] | null {
-  return typeof value === "string" && (PLANNER_INTERESTS as readonly string[]).includes(value)
-    ? (value as PlannerDraftInput["interests"][number])
-    : null;
-}
-
-function asCompanion(value: unknown): PlannerDraftInput["companionType"] | null {
-  return typeof value === "string" && (PLANNER_COMPANION_TYPES as readonly string[]).includes(value)
-    ? (value as PlannerDraftInput["companionType"])
-    : null;
-}
-
-function asPace(value: unknown): PlannerDraftInput["pace"] | null {
-  return typeof value === "string" && (PLANNER_PACES as readonly string[]).includes(value)
-    ? (value as PlannerDraftInput["pace"])
-    : null;
-}
-
-/** Normalize PR-1 string destination and partial drafts into PlannerDraftInput. */
-export function normalizePlannerDraftInput(raw: unknown): PlannerDraftInput {
-  const base = createEmptyPlannerDraftInput();
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return base;
-  const o = raw as Record<string, unknown>;
-
-  if (typeof o.destination === "string" && o.destination.trim()) {
-    base.destination = { text: o.destination.trim() };
-  } else if (o.destination && typeof o.destination === "object" && !Array.isArray(o.destination)) {
-    const text = (o.destination as { text?: unknown }).text;
-    if (typeof text === "string") base.destination = { text: text.trim() };
-  }
-
-  if (o.dates && typeof o.dates === "object" && !Array.isArray(o.dates)) {
-    const d = o.dates as { startDate?: unknown; endDate?: unknown };
-    base.dates = {
-      startDate: typeof d.startDate === "string" ? d.startDate.trim() : "",
-      endDate: typeof d.endDate === "string" ? d.endDate.trim() : "",
-    };
-  }
-
-  if (o.travelers && typeof o.travelers === "object" && !Array.isArray(o.travelers)) {
-    const t = o.travelers as { adults?: unknown; children?: unknown };
-    const adults = typeof t.adults === "number" && Number.isFinite(t.adults) ? Math.trunc(t.adults) : 2;
-    const children =
-      typeof t.children === "number" && Number.isFinite(t.children) ? Math.trunc(t.children) : 0;
-    base.travelers = {
-      adults: Math.min(20, Math.max(1, adults)),
-      children: Math.min(20, Math.max(0, children)),
-    };
-  }
-
-  const companion = asCompanion(o.companionType);
-  if (companion) base.companionType = companion;
-
-  if (Array.isArray(o.interests)) {
-    const next: PlannerDraftInput["interests"] = [];
-    for (const item of o.interests) {
-      const interest = asInterest(item);
-      if (interest && !next.includes(interest)) next.push(interest);
-    }
-    base.interests = next;
-  }
-
-  const pace = asPace(o.pace);
-  if (pace) base.pace = pace;
-
-  if (o.budget && typeof o.budget === "object" && !Array.isArray(o.budget)) {
-    const b = o.budget as { amount?: unknown; scope?: unknown; currency?: unknown };
-    const amount =
-      b.amount === null
-        ? null
-        : typeof b.amount === "number" && Number.isFinite(b.amount) && b.amount >= 0
-          ? b.amount
-          : null;
-    const scope = b.scope === "total" || b.scope === "per_person" ? b.scope : "per_person";
-    base.budget = { amount, scope, currency: "KRW" };
-  }
-
-  if (typeof o.additionalRequest === "string") {
-    base.additionalRequest = o.additionalRequest.trim().slice(0, 1000);
-  }
-
-  return base;
-}
 
 function mapRow(row: PlannerSessionRow): PlannerSession {
   let plan: PlannerPlan | null = null;

@@ -1,13 +1,15 @@
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
 import { plannerPlanSchema } from "@/lib/planner/planSchemas";
+import type { PlannerDateMode } from "@/types/planner";
 
 /** Client-safe Saved Plan card DTO — never includes anonymous_key / member_id. */
 export type SavedPlannerListItem = {
   id: string;
   title: string;
   destination: string;
-  startDate: string;
-  endDate: string;
+  dateMode: PlannerDateMode;
+  startDate: string | null;
+  endDate: string | null;
   days: number;
   travelersSummary: string;
   styleSummary: string;
@@ -33,12 +35,18 @@ export function projectSavedPlannerListItem(params: {
   if (!parsed.success) return null;
 
   const plan: PlannerPlan = parsed.data;
+  const startDate = plan.tripOverview.startDate;
+  const endDate = plan.tripOverview.endDate;
+  const dateMode: PlannerDateMode =
+    startDate == null || endDate == null ? "flexible" : "fixed";
+
   return {
     id,
     title: plan.title,
     destination: plan.destination.name,
-    startDate: plan.tripOverview.startDate,
-    endDate: plan.tripOverview.endDate,
+    dateMode,
+    startDate,
+    endDate,
     days: plan.tripOverview.days,
     travelersSummary: plan.tripOverview.travelersSummary,
     styleSummary: plan.tripOverview.styleSummary,

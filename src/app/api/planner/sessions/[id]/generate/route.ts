@@ -10,8 +10,11 @@ import {
 } from "@/lib/planner/repository";
 import {
   generatePlannerPlan,
+  getPlannerFailureCategory,
+  PlannerGenerateError,
   toClientGenerationErrorMessage,
 } from "@/lib/planner/generatePlan";
+import type { PlannerGenerationFailureCategory } from "@/types/planner";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +44,21 @@ function toPublicPlanPayload(session: {
     plan: session.plan,
     updatedAt: session.updatedAt,
   };
+}
+
+function logGenerateFailure(params: {
+  sessionId: string;
+  failureCategory: PlannerGenerationFailureCategory;
+  durationMs: number;
+  provider?: string;
+}) {
+  console.error("[planner/generate]", {
+    sessionId: params.sessionId,
+    failureCategory: params.failureCategory,
+    provider: params.provider ?? "google",
+    durationMs: params.durationMs,
+    ok: false,
+  });
 }
 
 /**
@@ -95,8 +113,17 @@ export async function POST(request: Request, context: RouteContext) {
 
   const draftParsed = plannerDraftInputSchema.safeParse(session!.input);
   if (!draftParsed.success) {
+    logGenerateFailure({
+      sessionId: session!.id,
+      failureCategory: "input_invalid",
+      durationMs: 0,
+    });
     return NextResponse.json(
-      { message: "여행 조건이 아직 완료되지 않았습니다.", code: "incomplete_draft" },
+      {
+        message: "여행 조건이 아직 완료되지 않았습니다.",
+        code: "incomplete_draft",
+        failureCategory: "input_invalid" satisfies PlannerGenerationFailureCategory,
+      },
       { status: 400 },
     );
   }
@@ -104,11 +131,48 @@ export async function POST(request: Request, context: RouteContext) {
   const startedAt = Date.now();
   try {
     const plan = await generatePlannerPlan(draftParsed.data);
-    const saved = await saveGeneratedPlannerPlan({ id: session!.id, plan });
+    let saved;
+    try {
+      saved = await saveGeneratedPlannerPlan({ id: session!.id, plan });
+    } catch {
+      logGenerateFailure({
+        sessionId: session!.id,
+        failureCategory: "persist_failed",
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        {
+          message: toClientGenerationErrorMessage(
+            new PlannerGenerateError("unknown", "persist failed", "persist_failed"),
+          ),
+          code: "generation_failed",
+          failureCategory: "persist_failed" satisfies PlannerGenerationFailureCategory,
+        },
+        { status: 502 },
+      );
+    }
+
+    if (!saved.plan) {
+      logGenerateFailure({
+        sessionId: session!.id,
+        failureCategory: "result_navigation_failed",
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        {
+          message: toClientGenerationErrorMessage(null),
+          code: "generation_failed",
+          failureCategory: "result_navigation_failed" satisfies PlannerGenerationFailureCategory,
+        },
+        { status: 502 },
+      );
+    }
+
     console.info("[planner/generate]", {
       sessionId: session!.id,
       durationMs: Date.now() - startedAt,
       dayCount: plan.days.length,
+      dateMode: draftParsed.data.dates.mode,
       ok: true,
     });
     return NextResponse.json({
@@ -116,16 +180,17 @@ export async function POST(request: Request, context: RouteContext) {
       reused: false,
     });
   } catch (err) {
-    console.error("[planner/generate]", {
+    const failureCategory = getPlannerFailureCategory(err);
+    logGenerateFailure({
       sessionId: session!.id,
+      failureCategory,
       durationMs: Date.now() - startedAt,
-      ok: false,
-      category: err instanceof Error ? err.name : "unknown",
     });
     return NextResponse.json(
       {
         message: toClientGenerationErrorMessage(err),
         code: "generation_failed",
+        failureCategory,
       },
       { status: 502 },
     );

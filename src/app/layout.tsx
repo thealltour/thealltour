@@ -16,7 +16,7 @@ import SiteToastProvider from "@/components/site-chrome/SiteToastProvider";
 import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 import { KakaoPixel } from "@/components/site-chrome/KakaoPixel";
-import { TRAVELPAYOUTS_LOADER_SCRIPT } from "@/lib/affiliate/travelPayoutsConfig";
+import { TRAVELPAYOUTS_SCRIPT_SRC } from "@/lib/affiliate/travelPayoutsConfig";
 
 const siteUrl = getSiteBaseUrl();
 const gaId = process.env.NEXT_PUBLIC_GA_ID?.trim();
@@ -90,12 +90,13 @@ export default function RootLayout({
   return (
     <html lang="ko" className={pretendard.variable}>
       <head>
-        {/* TravelPayouts 가입 검증 — HEAD 최상단 로더 (제공 스니펫과 동일 동작) */}
+        {/* TravelPayouts Drive 검증 — HEAD 최상단, HTML에 src 직접 노출 */}
         <script
+          async
           id="travelpayouts-loader"
           data-cmp-ab="2"
           data-no-defer="1"
-          dangerouslySetInnerHTML={{ __html: TRAVELPAYOUTS_LOADER_SCRIPT }}
+          src={TRAVELPAYOUTS_SCRIPT_SRC}
         />
         {/* 파비콘: metadata 외에 표준 경로 직접 링크 (일부 환경·캐시 호환) */}
         <link rel="icon" href="/favicon.ico" sizes="any" />

@@ -36,6 +36,20 @@ export const plannerAnonymousKeySchema = z
   .max(128)
   .regex(/^[A-Za-z0-9_-]+$/, "invalid anonymousKey");
 
+/** Natural-language plan edit instruction (client → edit API). */
+export const plannerEditInstructionSchema = z
+  .string()
+  .trim()
+  .min(2, "수정 요청을 조금 더 구체적으로 적어 주세요.")
+  .max(1000, "수정 요청은 1000자 이내로 입력해 주세요.");
+
+export const plannerEditBodySchema = z
+  .object({
+    instruction: plannerEditInstructionSchema,
+    anonymousKey: plannerAnonymousKeySchema.optional(),
+  })
+  .strict();
+
 export const plannerDestinationTextSchema = z
   .string()
   .trim()

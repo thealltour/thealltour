@@ -82,7 +82,10 @@ export type AnalyticsEventName =
   | "planner_kakao_login_started"
   | "planner_saved"
   | "planner_saved_list_viewed"
-  | "planner_saved_plan_opened";
+  | "planner_saved_plan_opened"
+  | "planner_edit_started"
+  | "planner_edit_succeeded"
+  | "planner_edit_failed";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =

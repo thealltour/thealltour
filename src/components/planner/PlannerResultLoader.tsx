@@ -154,6 +154,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       sourceProductId={sourceProductId}
       isSaved={isSaved}
       onSaved={() => setIsSaved(true)}
+      onPlanUpdated={setPlan}
     />
   );
 }

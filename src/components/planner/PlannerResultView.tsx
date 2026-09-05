@@ -2,6 +2,7 @@
 
 import AlertCard from "@/components/ui/AlertCard";
 import { PlannerDaySection } from "@/components/planner/PlannerDaySection";
+import { PlannerEditPanel } from "@/components/planner/PlannerEditPanel";
 import { PlannerPlanSummary } from "@/components/planner/PlannerPlanSummary";
 import { PlannerSavePanel } from "@/components/planner/PlannerSavePanel";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
@@ -12,6 +13,7 @@ type PlannerResultViewProps = {
   sourceProductId: string | null;
   isSaved: boolean;
   onSaved: () => void;
+  onPlanUpdated: (plan: PlannerPlan) => void;
 };
 
 export function PlannerResultView({
@@ -20,18 +22,28 @@ export function PlannerResultView({
   sourceProductId,
   isSaved,
   onSaved,
+  onPlanUpdated,
 }: PlannerResultViewProps) {
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8 px-4 py-8 sm:px-0 sm:py-12">
       <PlannerPlanSummary plan={plan} />
 
-      <PlannerSavePanel
-        sessionId={sessionId}
-        destination={plan.destination.name}
-        sourceProductId={sourceProductId}
-        isSaved={isSaved}
-        onSaved={onSaved}
-      />
+      <div className="space-y-3">
+        <PlannerSavePanel
+          sessionId={sessionId}
+          destination={plan.destination.name}
+          sourceProductId={sourceProductId}
+          isSaved={isSaved}
+          onSaved={onSaved}
+        />
+        <PlannerEditPanel
+          sessionId={sessionId}
+          destination={plan.destination.name}
+          sourceProductId={sourceProductId}
+          status={isSaved ? "saved" : "generated"}
+          onPlanUpdated={onPlanUpdated}
+        />
+      </div>
 
       <AlertCard variant="neutral" title="AI 초안 안내">
         <p className="type-small text-[var(--text-secondary)]">
@@ -46,7 +58,7 @@ export function PlannerResultView({
           이동시간은 예상치이며 실제 교통상황에 따라 달라질 수 있습니다.
         </p>
         {plan.days.map((day) => (
-          <PlannerDaySection key={day.day} day={day} />
+          <PlannerDaySection key={`${day.day}-${day.date}-${day.title}`} day={day} />
         ))}
       </div>
 

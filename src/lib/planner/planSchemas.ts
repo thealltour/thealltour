@@ -169,3 +169,18 @@ export function assertGeneratedPlanMatchesDraft(
     }
   }
 }
+
+/**
+ * Extra checks for AI edit: destination must not jump to another city;
+ * date/day invariants still enforced via assertGeneratedPlanMatchesDraft.
+ */
+export function assertEditedPlanMatchesContext(
+  plan: PlannerPlan,
+  draft: PlannerDraftInput,
+  previousPlan: PlannerPlan,
+): void {
+  assertGeneratedPlanMatchesDraft(plan, draft);
+  if (plan.destination.name.trim() !== previousPlan.destination.name.trim()) {
+    throw new PlannerPlanInvariantError("destination name must stay unchanged during edit");
+  }
+}

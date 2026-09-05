@@ -214,3 +214,58 @@ export function trackPlannerSavedPlanOpened(params: {
     },
   });
 }
+
+type EditMetaBase = {
+  sessionId: string;
+  destination?: string | null;
+  sourceProductId?: string | null;
+  instructionLength: number;
+  status: "generated" | "saved";
+};
+
+function editBaseMetadata(params: EditMetaBase) {
+  return {
+    sessionId: params.sessionId,
+    destination: params.destination?.trim().slice(0, 120) || null,
+    instructionLength: params.instructionLength,
+    status: params.status,
+  };
+}
+
+export function trackPlannerEditStarted(params: EditMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_edit_started,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_edit",
+    label: "planner_edit_started",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: editBaseMetadata(params),
+  });
+}
+
+export function trackPlannerEditSucceeded(
+  params: EditMetaBase & { dayCount: number },
+): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_edit_succeeded,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_edit",
+    label: "planner_edit_succeeded",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      ...editBaseMetadata(params),
+      dayCount: params.dayCount,
+    },
+  });
+}
+
+export function trackPlannerEditFailed(params: EditMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_edit_failed,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_edit",
+    label: "planner_edit_failed",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: editBaseMetadata(params),
+  });
+}

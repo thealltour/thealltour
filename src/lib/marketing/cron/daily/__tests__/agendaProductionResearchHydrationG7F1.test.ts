@@ -1,6 +1,6 @@
-vi.mock("server-only", () => ({}));
+import { describe, expect, it, vi } from "vitest";
 
-import { describe, expect, it } from "vitest";
+vi.mock("server-only", () => ({}));
 
 import {
   buildProductionExecutionInput,
@@ -80,7 +80,7 @@ async function seedVietnamCanonicalResearch() {
       id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb01",
       primarySignalId: signal.id,
       signalIds: [signal.id],
-      clusterType: "event",
+      clusterType: "destination_group",
       createdAt: NOW.toISOString(),
       updatedAt: NOW.toISOString(),
     },

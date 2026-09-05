@@ -4,8 +4,16 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
 import { decidePlannerClaim } from "@/lib/planner/claimDecision";
 import { plannerPlanSchema, type PlannerPlan } from "@/lib/planner/planSchemas";
+import {
+  projectSavedPlannerListItem,
+  SAVED_PLANNER_LIST_DEFAULT_LIMIT,
+  SAVED_PLANNER_LIST_MAX_LIMIT,
+  type SavedPlannerListItem,
+} from "@/lib/planner/savedPlanDto";
 import type { PlannerDraftInput, PlannerSession, PlannerSessionStatus } from "@/types/planner";
 import { PLANNER_COMPANION_TYPES, PLANNER_INTERESTS, PLANNER_PACES } from "@/lib/planner/schemas";
+
+export type { SavedPlannerListItem };
 
 type PlannerSessionRow = {
   id: string;
@@ -343,4 +351,50 @@ export async function claimPlannerSessionForMember(params: {
     return { ok: false, reason: "forbidden" };
   }
   return { ok: false, reason: "conflict" };
+}
+
+/**
+ * List saved plans for a member (server-only). memberId must come from cookie auth.
+ * Malformed plan_json rows are skipped so one bad row cannot 500 the list.
+ */
+export async function listSavedPlannerSessionsForMember(params: {
+  memberId: string;
+  limit?: number;
+}): Promise<SavedPlannerListItem[]> {
+  const memberId = params.memberId.trim();
+  if (!memberId) return [];
+
+  const limit = Math.min(
+    Math.max(params.limit ?? SAVED_PLANNER_LIST_DEFAULT_LIMIT, 1),
+    SAVED_PLANNER_LIST_MAX_LIMIT,
+  );
+
+  const { data, error } = await supabaseAdmin
+    .from("planner_sessions")
+    .select("id, plan_json, source_product_id, updated_at")
+    .eq("member_id", memberId)
+    .eq("status", "saved")
+    .not("plan_json", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[planner] listSavedPlannerSessionsForMember:", error.message);
+    throw new Error("Failed to list saved planner sessions");
+  }
+
+  const items: SavedPlannerListItem[] = [];
+  for (const row of data ?? []) {
+    const projected = projectSavedPlannerListItem({
+      id: String((row as { id?: unknown }).id ?? ""),
+      planJson: (row as { plan_json?: unknown }).plan_json,
+      updatedAt: String((row as { updated_at?: unknown }).updated_at ?? ""),
+      sourceProductId:
+        typeof (row as { source_product_id?: unknown }).source_product_id === "string"
+          ? (row as { source_product_id: string }).source_product_id
+          : null,
+    });
+    if (projected) items.push(projected);
+  }
+  return items;
 }

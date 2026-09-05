@@ -184,3 +184,33 @@ export function trackPlannerSaved(
     },
   });
 }
+
+export function trackPlannerSavedListViewed(params: { savedPlanCount: number }): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_saved_list_viewed,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_saved_list",
+    label: "planner_saved_list_viewed",
+    metadata: {
+      savedPlanCount: params.savedPlanCount,
+    },
+  });
+}
+
+export function trackPlannerSavedPlanOpened(params: {
+  sessionId: string;
+  destination?: string | null;
+  sourceProductId?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_saved_plan_opened,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_saved_list",
+    label: "planner_saved_plan_opened",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+    },
+  });
+}

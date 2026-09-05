@@ -80,7 +80,9 @@ export type AnalyticsEventName =
   | "planner_generation_failed"
   | "planner_save_clicked"
   | "planner_kakao_login_started"
-  | "planner_saved";
+  | "planner_saved"
+  | "planner_saved_list_viewed"
+  | "planner_saved_plan_opened";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import MemberLogoutButton from "@/components/auth/MemberLogoutButton";
 import { cn } from "@/lib/cn";
+import { getMemberAccountNavItems } from "@/lib/planner/memberAccountNav";
 
 export type UserMenuDropdownProps = {
   userName?: string | null;
@@ -14,14 +15,6 @@ export type UserMenuDropdownProps = {
   logoutButton?: React.ReactNode;
 };
 
-const MENU_ITEMS: Array<{ label: string; href: string }> = [
-  { label: "대시보드", href: "/mypage/dashboard" },
-  { label: "예약내역", href: "/mypage/bookings" },
-  { label: "견적문의 내역", href: "/quote" },
-  { label: "포인트", href: "/mypage/points" },
-  { label: "내 정보", href: "/mypage/profile" },
-];
-
 export default function UserMenuDropdown({
   userName = null,
   points = null,
@@ -30,6 +23,7 @@ export default function UserMenuDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const menuItems = getMemberAccountNavItems();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -101,7 +95,7 @@ export default function UserMenuDropdown({
             </div>
           )}
 
-          {MENU_ITEMS.map((item) => (
+          {menuItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}

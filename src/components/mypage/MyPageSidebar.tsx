@@ -2,43 +2,50 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MyPageNavIcon, resolveMyPageNavIconKey } from "@/components/mypage/ui/MyPageNavIcon";
 import type { MyPageMemberSummary } from "@/lib/mypage/memberSummary";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
+import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 import { cn } from "@/lib/cn";
 
-const MENU_GROUPS = [
-  {
-    label: "요약",
-    items: [{ href: "/mypage/dashboard", label: "대시보드" }],
-  },
-  {
-    label: "포인트·리워드",
-    items: [
-      { href: "/mypage/points", label: "포인트" },
-      { href: "/mypage/points/request", label: "적립 요청" },
-      { href: "/mypage/rewards", label: "리워드 교환" },
-      { href: "/mypage/redemptions", label: "교환 내역" },
-    ],
-  },
-  {
-    label: "활동",
-    items: [
-      { href: "/mypage/bookings", label: "내 예약" },
-      { href: "/mypage/reviews", label: "리뷰 관리" },
-      { href: "/mypage/notifications", label: "알림" },
-    ],
-  },
-  {
-    label: "계정",
-    items: [{ href: "/mypage/profile", label: "회원정보" }],
-  },
-] as const;
+type MenuItem = { href: string; label: string };
 
-type MenuItem = (typeof MENU_GROUPS)[number]["items"][number];
+function buildMenuGroups(): Array<{ label: string; items: MenuItem[] }> {
+  const activityItems: MenuItem[] = [
+    { href: "/mypage/bookings", label: "내 예약" },
+    { href: "/mypage/reviews", label: "리뷰 관리" },
+    { href: "/mypage/notifications", label: "알림" },
+  ];
+  if (ENABLE_FREE_TRAVEL_PLANNER) {
+    activityItems.splice(1, 0, { href: PLANNER_SAVED_LIST_PATH, label: "내 여행 플랜" });
+  }
 
-const ALL_MENU_ITEMS: MenuItem[] = MENU_GROUPS.flatMap((group) => [...group.items]);
+  return [
+    {
+      label: "요약",
+      items: [{ href: "/mypage/dashboard", label: "대시보드" }],
+    },
+    {
+      label: "포인트·리워드",
+      items: [
+        { href: "/mypage/points", label: "포인트" },
+        { href: "/mypage/points/request", label: "적립 요청" },
+        { href: "/mypage/rewards", label: "리워드 교환" },
+        { href: "/mypage/redemptions", label: "교환 내역" },
+      ],
+    },
+    {
+      label: "활동",
+      items: activityItems,
+    },
+    {
+      label: "계정",
+      items: [{ href: "/mypage/profile", label: "회원정보" }],
+    },
+  ];
+}
 
 type MyPageSidebarProps = {
   showMobileBack?: boolean;
@@ -66,6 +73,11 @@ export default function MyPageSidebar({ showMobileBack = false, memberSummary }:
     right: false,
     overflow: false,
   });
+  const menuGroups = useMemo(() => buildMenuGroups(), []);
+  const allMenuItems = useMemo(
+    () => menuGroups.flatMap((group) => group.items),
+    [menuGroups],
+  );
 
   const updateScrollHints = useCallback(() => {
     const el = scrollRef.current;
@@ -178,7 +190,7 @@ export default function MyPageSidebar({ showMobileBack = false, memberSummary }:
               scrollHints.overflow && scrollHints.left && "mypage-mobile-nav-mask-left",
             )}
           >
-            {ALL_MENU_ITEMS.map((item) => {
+            {allMenuItems.map((item) => {
               const active = isActive(pathname, item.href);
               return (
                 <Link
@@ -207,7 +219,7 @@ export default function MyPageSidebar({ showMobileBack = false, memberSummary }:
       {/* 데스크톱: 세로 그룹 네비 */}
       <nav aria-label="마이페이지 메뉴" className="hidden lg:flex lg:flex-col lg:gap-5">
         {profileCard}
-        {MENU_GROUPS.map((group) => (
+        {menuGroups.map((group) => (
           <div key={group.label} className="space-y-1">
             <p className="type-caption px-1 font-semibold uppercase tracking-wide text-[var(--text-muted)]">
               {group.label}

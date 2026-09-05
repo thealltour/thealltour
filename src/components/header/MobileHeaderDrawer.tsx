@@ -16,6 +16,8 @@ import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import { buildGolfProductsHref, isGolfTourType, GOLF_TOUR_TYPE } from "@/lib/products/golfChannel";
 import { restoreFocus, trapOverlayTabKey } from "@/lib/a11y/overlayFocus";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
+import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 
 export const MOBILE_HEADER_NAVIGATION_ID = "mobile-header-navigation";
 
@@ -201,6 +203,18 @@ export function MobileHeaderDrawer({
                 >
                   예약내역
                 </Link>
+                {ENABLE_FREE_TRAVEL_PLANNER ? (
+                  <Link
+                    href={PLANNER_SAVED_LIST_PATH}
+                    onClick={() => {
+                      trackDirectNav("내 여행 플랜", PLANNER_SAVED_LIST_PATH, "account");
+                      onClose();
+                    }}
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-transparent px-4 py-3 type-small font-semibold text-[var(--foreground)] active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                  >
+                    내 여행 플랜
+                  </Link>
+                ) : null}
               </div>
             ) : (
               <div className="flex flex-col gap-2">

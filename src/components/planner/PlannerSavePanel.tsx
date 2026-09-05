@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { startOAuthLogin } from "@/lib/auth/oauthStart";
@@ -14,6 +15,7 @@ import {
   postPlannerSessionSave,
 } from "@/lib/planner/saveClient";
 import { clearPlannerSaveIntent, setPlannerSaveIntent } from "@/lib/planner/saveIntent";
+import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 
 type PlannerSavePanelProps = {
   sessionId: string;
@@ -96,11 +98,17 @@ export function PlannerSavePanel({
 
   if (isSaved) {
     return (
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 space-y-2">
         <p className="type-body font-medium text-[var(--foreground)]">✓ 저장됨</p>
-        <p className="mt-1 type-caption text-[var(--text-muted)]">
+        <p className="type-caption text-[var(--text-muted)]">
           같은 계정으로 로그인하면 다른 기기에서도 이 플랜을 볼 수 있어요.
         </p>
+        <Link
+          href={PLANNER_SAVED_LIST_PATH}
+          className="inline-flex type-small font-medium text-[var(--primary)] underline-offset-2 hover:underline"
+        >
+          내 여행 플랜 보기
+        </Link>
       </div>
     );
   }

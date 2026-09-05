@@ -43,10 +43,68 @@ function claimFromText(
   };
 }
 
+const URL_MASK_RE = /https?:\/\/[^\s<>\[\]()]+|www\.[^\s<>\[\]()]+/gi;
+
+function unmaskClaimPlaceholders(text: string, masks: string[]): string {
+  return text.replace(/\u0000URL(\d+)\u0000/g, (_, idx: string) => masks[Number(idx)] ?? "");
+}
+
+/**
+ * Split draft body into claim sentences without breaking decimal numbers.
+ * Terminators: `.` `!` `?` and newlines (same as the legacy splitter).
+ * Decimal points between digits (69.9%, 1,234.56, 2.5) are preserved.
+ * http(s)/www URLs are masked so domain dots are not treated as terminators.
+ */
+export function splitClaimSentences(body: string): string[] {
+  if (!body) return [];
+
+  const masks: string[] = [];
+  const masked = body.replace(URL_MASK_RE, (match) => {
+    const token = `\u0000URL${masks.length}\u0000`;
+    masks.push(match);
+    return token;
+  });
+
+  const sentences: string[] = [];
+  let current = "";
+
+  const flush = () => {
+    const trimmed = current.trim();
+    if (trimmed) sentences.push(unmaskClaimPlaceholders(trimmed, masks));
+    current = "";
+  };
+
+  for (let i = 0; i < masked.length; i += 1) {
+    const ch = masked[i]!;
+    if (ch === "\n") {
+      flush();
+      continue;
+    }
+    if (ch === "!" || ch === "?") {
+      flush();
+      continue;
+    }
+    if (ch === ".") {
+      const prev = masked[i - 1];
+      const next = masked[i + 1];
+      // Keep decimal points: 69.9%, 3.14, 1,234.56, LTX 2.5
+      if (prev && next && /\d/.test(prev) && /\d/.test(next)) {
+        current += ch;
+        continue;
+      }
+      flush();
+      continue;
+    }
+    current += ch;
+  }
+  flush();
+  return sentences;
+}
+
 function scanDraftSentences(body: string): GovernanceClaim[] {
   const claims: GovernanceClaim[] = [];
   const seen = new Set<string>();
-  for (const sentence of body.split(/[.!?\n]+/)) {
+  for (const sentence of splitClaimSentences(body)) {
     const claim = claimFromText(sentence, "draft_scan");
     if (!claim || seen.has(claim.claimId)) continue;
     seen.add(claim.claimId);

@@ -15,7 +15,11 @@ export {
   GOVERNANCE_DECISION_CONTRACT,
   GOVERNANCE_REVIEW_REQUEST_CONTRACT,
 } from "@/lib/marketing/content/governance/types";
-export { extractGovernanceClaims, detectCsAddedClaims } from "@/lib/marketing/content/governance/extractClaims";
+export {
+  extractGovernanceClaims,
+  detectCsAddedClaims,
+  splitClaimSentences,
+} from "@/lib/marketing/content/governance/extractClaims";
 export { evaluateDeterministicClaimSignals } from "@/lib/marketing/content/governance/evaluateDeterministicClaimSignals";
 export {
   prepareContentToGovernanceHandoff,

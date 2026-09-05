@@ -7,6 +7,7 @@ import {
 } from "@/lib/marketing/governance/types";
 import type { HumanApprovalHandoff } from "@/lib/marketing/bot/types";
 import { MarketingBotValidationError } from "@/lib/marketing/bot/errors";
+import { isContentStrategistFormatError } from "@/lib/marketing/cron/marketingPlanSpecialists";
 import { ContentPlanContractError } from "@/lib/marketing/content/validation/contentPlanContractError";
 import { jsonContainsForbiddenBotLeak } from "@/lib/marketing/bot/sanitize";
 import {
@@ -267,6 +268,8 @@ export async function runDepartmentPipeline(
     const message =
       error instanceof ContentPlanContractError
         ? error.toPipelineMessage()
+        : isContentStrategistFormatError(error)
+          ? error.toPipelineMessage()
         : error instanceof Error
           ? error.message
           : "content_unavailable";

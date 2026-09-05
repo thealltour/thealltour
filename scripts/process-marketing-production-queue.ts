@@ -9,6 +9,10 @@
  *
  * Do NOT point this at production requests you do not intend to produce.
  * Prefer --dry-run first.
+ *
+ * NOTE: All app imports are dynamic and run AFTER the server-only stub is
+ * installed. G7-F1 hydration pulls `import "server-only"` into the executor
+ * graph; hoisted static imports would bypass the stub.
  */
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
@@ -33,35 +37,6 @@ Module._resolveFilename = function resolveFilename(
 
 loadLocalEnv();
 
-import {
-  createDefaultProductionExecutor,
-  defaultProductionWorkerId,
-  processMarketingProductionQueue,
-} from "../src/lib/marketing/cron/daily/agendaSlate/processMarketingProductionQueue";
-import {
-  DEFAULT_PRODUCTION_REQUEST_STALE_AFTER_MS,
-  DEFAULT_PRODUCTION_WORKER_MAX_BATCH,
-} from "../src/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
-import { createMarketingProductionRequestRepository } from "../src/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
-import { createDailyMarketingRunRepository } from "../src/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
-import { createHumanMarketingReviewRepository } from "../src/lib/marketing/review/repository/createHumanMarketingReviewRepository";
-import {
-  createMarketingCronCorrelationId,
-  createMarketingPlanPipelineDispatch,
-  isAiRuntimeMarketingCronEnabled,
-} from "../src/lib/marketing/cron/marketingCronRuntime";
-import {
-  MARKETING_CRON_HERMES_TIMEOUT_MS,
-  MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
-} from "../src/lib/marketing/cron/marketingPlanSpecialists";
-import {
-  assertHermesSpawnSyncSuccess,
-  resolveMarketingCronHermesTimeoutMs,
-} from "../src/lib/marketing/cron/hermesSpawnFailure";
-import { createRuntimeExecutorStack } from "../src/ai-runtime/integration/runtime-stack";
-import { ensureSharedObservabilityRecorder } from "../src/ai-runtime/observability/persistence";
-import { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } from "../src/lib/marketing/social/publication/governanceBoundary";
-
 const DEFAULT_PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
 
 function argValue(argv: string[], name: string): string | undefined {
@@ -74,20 +49,58 @@ function hasFlag(argv: string[], name: string): boolean {
   return argv.includes(name);
 }
 
-function invokeHermesProfile(profile: string, prompt: string): string {
-  const timeoutMs = resolveMarketingCronHermesTimeoutMs(
-    process.env,
-    MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
-  );
-  const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-    encoding: "utf8",
-    env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-    timeout: timeoutMs,
-  });
-  return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
-}
-
 async function main() {
+  const {
+    createDefaultProductionExecutor,
+    defaultProductionWorkerId,
+    processMarketingProductionQueue,
+  } = await import("../src/lib/marketing/cron/daily/agendaSlate/processMarketingProductionQueue");
+  const {
+    DEFAULT_PRODUCTION_REQUEST_STALE_AFTER_MS,
+    DEFAULT_PRODUCTION_WORKER_MAX_BATCH,
+  } = await import("../src/lib/marketing/cron/daily/agendaSlate/productionRequestTypes");
+  const { createMarketingProductionRequestRepository } = await import(
+    "../src/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository"
+  );
+  const { createDailyMarketingRunRepository } = await import(
+    "../src/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository"
+  );
+  const { createHumanMarketingReviewRepository } = await import(
+    "../src/lib/marketing/review/repository/createHumanMarketingReviewRepository"
+  );
+  const {
+    createMarketingCronCorrelationId,
+    createMarketingPlanPipelineDispatch,
+    isAiRuntimeMarketingCronEnabled,
+  } = await import("../src/lib/marketing/cron/marketingCronRuntime");
+  const {
+    MARKETING_CRON_HERMES_TIMEOUT_MS,
+    MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+  } = await import("../src/lib/marketing/cron/marketingPlanSpecialists");
+  const { assertHermesSpawnSyncSuccess, resolveMarketingCronHermesTimeoutMs } = await import(
+    "../src/lib/marketing/cron/hermesSpawnFailure"
+  );
+  const { createRuntimeExecutorStack } = await import("../src/ai-runtime/integration/runtime-stack");
+  const { ensureSharedObservabilityRecorder } = await import(
+    "../src/ai-runtime/observability/persistence"
+  );
+  const { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } = await import(
+    "../src/lib/marketing/social/publication/governanceBoundary"
+  );
+
+  function invokeHermesProfile(profile: string, prompt: string): string {
+    const timeoutMs = resolveMarketingCronHermesTimeoutMs(
+      process.env,
+      MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+    );
+    const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
+      encoding: "utf8",
+      env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
+      timeout: timeoutMs,
+    });
+    return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
+  }
+
   const argv = process.argv.slice(2);
   const dryRun = hasFlag(argv, "--dry-run") || hasFlag(argv, "--inspect");
   const maxBatchRaw = Number(argValue(argv, "--max-batch") ?? DEFAULT_PRODUCTION_WORKER_MAX_BATCH);

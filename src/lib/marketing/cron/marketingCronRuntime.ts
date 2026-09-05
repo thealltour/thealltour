@@ -13,10 +13,10 @@ import {
   MARKETING_CRON_JOB_ID,
   MARKETING_DEPARTMENT_ID,
   MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS,
-  buildContentDraftPrompt,
   buildGovernanceReviewPrompt,
-  parseContentStrategistOutput,
   parseGovernanceAuditorOutput,
+  requestContentStrategistDraftWithFormatRetry,
+  isContentStrategistFormatError,
 } from "@/lib/marketing/cron/marketingPlanSpecialists";
 export { MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS };
 
@@ -77,23 +77,36 @@ export function createMarketingPlanPipelineDispatch(
 
     return {
       requestDraft: async (envelope: HandoffEnvelope<ContentDraftRequest>) => {
-        const request = createCronRuntimeRequest(
-          {
-            agentId: "content-strategist",
-            workload: "content_draft",
-            priority: "background",
-            messages: [{ role: "user", content: buildContentDraftPrompt(envelope.payload) }],
-            correlationId: options.correlationId,
-            parentRequestId: lastRequestId,
-            cronJobId: MARKETING_CRON_JOB_ID,
-            departmentId: MARKETING_DEPARTMENT_ID,
-            routing: { requiresStructuredOutput: true },
-          },
-          { now },
-        );
-        lastRequestId = request.id;
-        const result = await executor.executeAndWait(request, { timeoutMs, now });
-        return parseContentStrategistOutput(assertRuntimeContent(result));
+        try {
+          const { output } = await requestContentStrategistDraftWithFormatRetry({
+            payload: envelope.payload,
+            invoke: async (prompt) => {
+              const request = createCronRuntimeRequest(
+                {
+                  agentId: "content-strategist",
+                  workload: "content_draft",
+                  priority: "background",
+                  messages: [{ role: "user", content: prompt }],
+                  correlationId: options.correlationId,
+                  parentRequestId: lastRequestId,
+                  cronJobId: MARKETING_CRON_JOB_ID,
+                  departmentId: MARKETING_DEPARTMENT_ID,
+                  routing: { requiresStructuredOutput: true },
+                },
+                { now },
+              );
+              lastRequestId = request.id;
+              const result = await executor.executeAndWait(request, { timeoutMs, now });
+              return assertRuntimeContent(result);
+            },
+          });
+          return output;
+        } catch (error) {
+          if (isContentStrategistFormatError(error)) {
+            throw new Error(error.toPipelineMessage());
+          }
+          throw error;
+        }
       },
       requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
         const request = createCronRuntimeRequest(
@@ -124,8 +137,18 @@ export function createMarketingPlanPipelineDispatch(
 
   return {
     requestDraft: async (envelope: HandoffEnvelope<ContentDraftRequest>) => {
-      const raw = invokeHermes("content-strategist", buildContentDraftPrompt(envelope.payload));
-      return parseContentStrategistOutput(raw);
+      try {
+        const { output } = await requestContentStrategistDraftWithFormatRetry({
+          payload: envelope.payload,
+          invoke: (prompt) => invokeHermes("content-strategist", prompt),
+        });
+        return output;
+      } catch (error) {
+        if (isContentStrategistFormatError(error)) {
+          throw new Error(error.toPipelineMessage());
+        }
+        throw error;
+      }
     },
     requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
       const raw = invokeHermes("governance-auditor", buildGovernanceReviewPrompt(envelope.payload));

@@ -7,19 +7,14 @@ import { ChevronDown, User } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import { cn } from "@/lib/cn";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
-
-const QUICK_LINKS: Array<{ label: string; href: string; requiresAuth?: boolean }> = [
-  { label: "대시보드", href: "/mypage/dashboard", requiresAuth: true },
-  { label: "견적문의 내역", href: "/quote", requiresAuth: true },
-  { label: "포인트", href: "/mypage/points", requiresAuth: true },
-  { label: "마이페이지", href: "/mypage/dashboard", requiresAuth: true },
-];
+import { getGuestAccountQuickLinks } from "@/lib/planner/memberAccountNav";
 
 export default function GuestAuthHoverMenu() {
   const { openAuth } = useAuthModal();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const quickLinks = getGuestAccountQuickLinks();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -112,7 +107,7 @@ export default function GuestAuthHoverMenu() {
           <div className="my-3 border-t border-[var(--divider)]" aria-hidden />
 
           <ul className="space-y-1">
-            {QUICK_LINKS.map((item) => (
+            {quickLinks.map((item) => (
               <li key={item.label}>
                 {item.requiresAuth ? (
                   <button

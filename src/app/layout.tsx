@@ -16,7 +16,7 @@ import SiteToastProvider from "@/components/site-chrome/SiteToastProvider";
 import { WebVitalsReporter } from "@/components/site-chrome/WebVitalsReporter";
 import { FirstTouchInit } from "@/components/site-chrome/FirstTouchInit";
 import { KakaoPixel } from "@/components/site-chrome/KakaoPixel";
-import { TRAVELPAYOUTS_SCRIPT_SRC } from "@/lib/affiliate/travelPayoutsConfig";
+import { TRAVELPAYOUTS_LOADER_SCRIPT } from "@/lib/affiliate/travelPayoutsConfig";
 
 const siteUrl = getSiteBaseUrl();
 const gaId = process.env.NEXT_PUBLIC_GA_ID?.trim();
@@ -90,14 +90,13 @@ export default function RootLayout({
   return (
     <html lang="ko" className={pretendard.variable}>
       <head>
-        {/* TravelPayouts Drive 검증 — HEAD 최상단, HTML에 src 직접 노출 */}
-        <script
-          async
-          id="travelpayouts-loader"
-          data-cmp-ab="2"
-          data-no-defer="1"
-          src={TRAVELPAYOUTS_SCRIPT_SRC}
-        />
+        {/* TravelPayouts Drive — HEAD 최상단, beforeInteractive로 다른 스크립트보다 먼저 */}
+        <Script id="travelpayouts-loader" strategy="beforeInteractive" data-cmp-ab="2" data-no-defer="1">
+          {TRAVELPAYOUTS_LOADER_SCRIPT}
+        </Script>
+        {/* 크롤러/검증용: HTML에 emrldtp 호스트 문자열 노출 */}
+        <link rel="preconnect" href="https://emrldtp.com" />
+        <link rel="dns-prefetch" href="https://emrldtp.com" />
         {/* 파비콘: metadata 외에 표준 경로 직접 링크 (일부 환경·캐시 호환) */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href={THEALL_FAVICON_32_SRC} />

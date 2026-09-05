@@ -74,6 +74,22 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   order_success_view: "order_success_view",
   payment_return_view: "payment_return_view",
   payment_return_failed: "payment_return_failed",
+  planner_landing_view: "planner_landing_view",
+  planner_started: "planner_started",
+  planner_input_completed: "planner_input_completed",
+  planner_generation_started: "planner_generation_started",
+  planner_plan_generated: "planner_plan_generated",
+  planner_generation_failed: "planner_generation_failed",
+  planner_save_clicked: "planner_save_clicked",
+  planner_kakao_login_started: "planner_kakao_login_started",
+  planner_saved: "planner_saved",
+  planner_saved_list_viewed: "planner_saved_list_viewed",
+  planner_saved_plan_opened: "planner_saved_plan_opened",
+  planner_edit_started: "planner_edit_started",
+  planner_edit_succeeded: "planner_edit_succeeded",
+  planner_edit_failed: "planner_edit_failed",
+  planner_enrichment_loaded: "planner_enrichment_loaded",
+  planner_enrichment_failed: "planner_enrichment_failed",
 } as const;
 
 /** 소스 상수 (enum 성격) */
@@ -101,4 +117,5 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   auth_modal: "auth_modal",
   mypage_membership: "mypage_membership",
   payment_return: "payment_return",
+  planner: "planner",
 } as const;

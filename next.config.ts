@@ -10,10 +10,10 @@ const contentSecurityPolicy = `
   worker-src 'self';
   img-src 'self' data: blob: https:;
   font-src 'self' data: https:;
-  style-src 'self' 'unsafe-inline';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://t1.daumcdn.net https://vercel.live https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://ads-partners.coupang.com;
+  style-src 'self' 'unsafe-inline' https://emrldtp.com https://*.emrldtp.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://t1.daumcdn.net https://vercel.live https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://ads-partners.coupang.com https://emrldtp.com https://*.emrldtp.com https://www.travelpayouts.com https://*.travelpayouts.com;
   connect-src 'self' https: ws: wss: https://api.portone.io https://*.iamport.kr https://*.iamport.co;
-  frame-src 'self' https://www.youtube.com https://player.vimeo.com https://*.portone.io https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://checkout-service.prod.iamport.co https://*.toss.im https://*.inicis.com https://*.kcp.co.kr https://*.kakaopay.com https://*.naver.com https://ads-partners.coupang.com;
+  frame-src 'self' https://www.youtube.com https://player.vimeo.com https://*.portone.io https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://checkout-service.prod.iamport.co https://*.toss.im https://*.inicis.com https://*.kcp.co.kr https://*.kakaopay.com https://*.naver.com https://ads-partners.coupang.com https://emrldtp.com https://*.emrldtp.com https://*.travelpayouts.com;
 `
   .replace(/\s{2,}/g, " ")
   .trim();

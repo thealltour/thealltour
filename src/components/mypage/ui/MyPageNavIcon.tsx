@@ -3,6 +3,7 @@ import {
   CalendarCheck,
   Gift,
   LayoutDashboard,
+  Map,
   MessageSquare,
   Star,
   User,
@@ -10,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 
 export type MyPageNavIconKey =
   | "dashboard"
@@ -18,6 +20,7 @@ export type MyPageNavIconKey =
   | "rewards"
   | "redemptions"
   | "bookings"
+  | "planner"
   | "reviews"
   | "notifications"
   | "profile";
@@ -29,6 +32,7 @@ const ICON_MAP: Record<MyPageNavIconKey, LucideIcon> = {
   rewards: Gift,
   redemptions: Gift,
   bookings: CalendarCheck,
+  planner: Map,
   reviews: Star,
   notifications: Bell,
   profile: User,
@@ -41,6 +45,7 @@ const HREF_TO_KEY: Record<string, MyPageNavIconKey> = {
   "/mypage/rewards": "rewards",
   "/mypage/redemptions": "redemptions",
   "/mypage/bookings": "bookings",
+  [PLANNER_SAVED_LIST_PATH]: "planner",
   "/mypage/reviews": "reviews",
   "/mypage/notifications": "notifications",
   "/mypage/profile": "profile",

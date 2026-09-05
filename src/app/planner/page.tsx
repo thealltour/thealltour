@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { PlannerEntry } from "@/components/planner/PlannerEntry";
+import { PlannerWizard } from "@/components/planner/PlannerWizard";
 import { assertFreeTravelPlannerEnabled } from "@/lib/planner/assertPlannerEnabled";
 import { buildOgBrandFallbackMetadata } from "@/lib/seo/buildOgPageMetadata";
 
@@ -23,10 +23,10 @@ export default function PlannerPage() {
     <>
       <SiteHeader />
       <div className="min-h-screen page-bg-wash">
-        <PageContainer size="reading" className="pb-16 pt-2 sm:pt-4">
+        <PageContainer size="reading" className="pb-4 pt-2 sm:pt-4">
           <main id="main-content" tabIndex={-1}>
             <Suspense fallback={<div className="min-h-[12rem]" aria-hidden />}>
-              <PlannerEntry />
+              <PlannerWizard />
             </Suspense>
           </main>
         </PageContainer>

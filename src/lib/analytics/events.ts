@@ -76,6 +76,7 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   payment_return_failed: "payment_return_failed",
   planner_landing_view: "planner_landing_view",
   planner_started: "planner_started",
+  planner_input_completed: "planner_input_completed",
 } as const;
 
 /** 소스 상수 (enum 성격) */

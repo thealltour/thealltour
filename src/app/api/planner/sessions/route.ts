@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
+import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
 import { createPlannerSessionBodySchema } from "@/lib/planner/schemas";
 import {
   createPlannerSession,
@@ -35,7 +36,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Intentionally ignore any client-supplied memberId (strict schema strips unknown keys).
   const { anonymousKey, destination, sourceProductId } = parsed.data;
 
   const cookieStore = await cookies();
@@ -43,13 +43,14 @@ export async function POST(request: Request) {
   const memberId = memberSession?.memberId ?? null;
 
   const resolvedProductId = await resolvePlannerSourceProductId(sourceProductId ?? null);
+  const input = createEmptyPlannerDraftInput(destination);
 
   try {
     const session = await createPlannerSession({
       anonymousKey,
       memberId,
       sourceProductId: resolvedProductId,
-      input: { destination },
+      input,
       status: "draft",
     });
 
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
         id: session.id,
         status: session.status,
         sourceProductId: session.sourceProductId,
-        destination: session.input.destination ?? destination,
+        destination: session.input.destination.text,
+        input: session.input,
         createdAt: session.createdAt,
       },
     });

@@ -21,7 +21,7 @@ const enrichBodySchema = z
 
 /**
  * POST /api/planner/sessions/[id]/enrich
- * Places + Weather reality layer. Never blocks core AI plan availability.
+ * Places + Weather + Routes reality layer. Never blocks core AI plan availability.
  */
 export async function POST(request: Request, context: RouteContext) {
   if (!ENABLE_FREE_TRAVEL_PLANNER) {
@@ -89,6 +89,7 @@ export async function POST(request: Request, context: RouteContext) {
         enrichment: {
           planFingerprint: "",
           places: [],
+          routes: [],
           weather: { availability: "unavailable", days: [] },
           partialFailure: true,
           message: "일부 장소 정보를 확인하지 못했습니다.",

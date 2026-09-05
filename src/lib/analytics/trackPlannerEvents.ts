@@ -303,3 +303,51 @@ export function trackPlannerEnrichmentFailed(params: { sessionId: string }): voi
     },
   });
 }
+
+export function trackPlannerMapLoaded(params: {
+  sessionId: string;
+  dayNumber: number;
+  mappedPlaceCount: number;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_map_loaded,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_map",
+    label: "planner_map_loaded",
+    metadata: {
+      sessionId: params.sessionId,
+      dayNumber: params.dayNumber,
+      mappedPlaceCount: params.mappedPlaceCount,
+    },
+  });
+}
+
+export function trackPlannerRoutesLoaded(params: {
+  sessionId: string;
+  resolvedRouteCount: number;
+  fallbackRouteCount: number;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_routes_loaded,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_routes",
+    label: "planner_routes_loaded",
+    metadata: {
+      sessionId: params.sessionId,
+      resolvedRouteCount: params.resolvedRouteCount,
+      fallbackRouteCount: params.fallbackRouteCount,
+    },
+  });
+}
+
+export function trackPlannerRoutesFailed(params: { sessionId: string }): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_routes_failed,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_routes",
+    label: "planner_routes_failed",
+    metadata: {
+      sessionId: params.sessionId,
+    },
+  });
+}

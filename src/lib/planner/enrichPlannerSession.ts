@@ -19,6 +19,7 @@ import {
 } from "@/lib/planner/placesQuery";
 import { mapWithConcurrency, PlacesProviderError, searchPlacesText } from "@/lib/planner/placesClient";
 import { fetchPlannerWeatherSummary } from "@/lib/planner/plannerWeather";
+import { resolvePlannerRoutes } from "@/lib/planner/resolvePlannerRoutes";
 
 export const PLANNER_PLACE_RESOLVE_MAX = 40;
 export const PLANNER_PLACE_CONCURRENCY = 4;
@@ -104,7 +105,6 @@ export async function enrichPlannerSession(params: {
     const capped = work.slice(0, PLANNER_PLACE_RESOLVE_MAX);
     const uniqueKeys = [...new Set(capped.map((w) => w.dedupeKey))];
     const resolvedByKey = new Map<string, PlannerResolvedPlace>();
-
     const uniqueWork = uniqueKeys.map((key) => capped.find((w) => w.dedupeKey === key)!);
 
     const uniqueResults = await mapWithConcurrency(
@@ -165,16 +165,27 @@ export async function enrichPlannerSession(params: {
     endDate: params.plan.tripOverview.endDate,
   });
 
+  const routeResult = await resolvePlannerRoutes({
+    sessionId: params.sessionId,
+    plan: params.plan,
+    planFingerprint,
+    places,
+  });
+  if (routeResult.partialFailure) partialFailure = true;
+
   const resolvedPlaceCount = places.filter((p) => p.place.status === "resolved").length;
   const ambiguousPlaceCount = places.filter((p) => p.place.status === "ambiguous").length;
   const unresolvedPlaceCount = places.filter((p) => p.place.status === "unresolved").length;
+  const resolvedRouteCount = routeResult.routes.filter((r) => r.status === "resolved").length;
 
   console.info("[planner] enrich", {
     sessionId: params.sessionId,
     placeRequestCount,
+    routesRequestCount: routeResult.requestCount,
     resolvedPlaceCount,
     ambiguousPlaceCount,
     unresolvedPlaceCount,
+    resolvedRouteCount,
     weatherAvailability: weather.availability,
     partialFailure,
   });
@@ -189,6 +200,7 @@ export async function enrichPlannerSession(params: {
   return {
     planFingerprint,
     places,
+    routes: routeResult.routes,
     weather,
     partialFailure,
     message,

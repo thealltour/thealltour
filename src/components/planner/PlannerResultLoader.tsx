@@ -12,6 +12,8 @@ import {
 import {
   trackPlannerEnrichmentFailed,
   trackPlannerEnrichmentLoaded,
+  trackPlannerRoutesFailed,
+  trackPlannerRoutesLoaded,
   trackPlannerSaved,
 } from "@/lib/analytics/trackPlannerEvents";
 import { getOrCreatePlannerAnonymousKey } from "@/lib/planner/anonymousKey";
@@ -71,6 +73,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       if (!enrichTracked.current) {
         enrichTracked.current = true;
         const places = data.enrichment.places;
+        const routes = data.enrichment.routes ?? [];
         trackPlannerEnrichmentLoaded({
           sessionId,
           resolvedPlaceCount: places.filter((p) => p.place.status === "resolved").length,
@@ -78,6 +81,17 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
           unresolvedPlaceCount: places.filter((p) => p.place.status === "unresolved").length,
           weatherAvailability: data.enrichment.weather.availability,
         });
+        const resolvedRouteCount = routes.filter((r) => r.status === "resolved").length;
+        const fallbackRouteCount = routes.filter((r) => r.status !== "resolved").length;
+        if (routes.length > 0 && resolvedRouteCount === 0 && fallbackRouteCount > 0) {
+          trackPlannerRoutesFailed({ sessionId });
+        } else {
+          trackPlannerRoutesLoaded({
+            sessionId,
+            resolvedRouteCount,
+            fallbackRouteCount,
+          });
+        }
       }
     } catch {
       trackPlannerEnrichmentFailed({ sessionId });

@@ -87,7 +87,10 @@ export type AnalyticsEventName =
   | "planner_edit_succeeded"
   | "planner_edit_failed"
   | "planner_enrichment_loaded"
-  | "planner_enrichment_failed";
+  | "planner_enrichment_failed"
+  | "planner_map_loaded"
+  | "planner_routes_loaded"
+  | "planner_routes_failed";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =

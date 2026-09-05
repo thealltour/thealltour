@@ -8,6 +8,7 @@ import { PlannerSavePanel } from "@/components/planner/PlannerSavePanel";
 import type {
   PlannerEnrichmentDto,
   PlannerPlaceEnrichmentItem,
+  PlannerRouteEnrichment,
   PlannerWeatherDay,
 } from "@/lib/planner/enrichmentTypes";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
@@ -42,6 +43,20 @@ export function PlannerResultView({
         map.set(item.dayNumber, dayMap);
       }
       dayMap.set(item.itemOrder, item);
+    }
+    return map;
+  }, [enrichment]);
+
+  const routesByDay = useMemo(() => {
+    const map = new Map<number, Map<number, PlannerRouteEnrichment>>();
+    if (!enrichment?.routes) return map;
+    for (const route of enrichment.routes) {
+      let dayMap = map.get(route.day);
+      if (!dayMap) {
+        dayMap = new Map();
+        map.set(route.day, dayMap);
+      }
+      dayMap.set(route.fromOrder, route);
     }
     return map;
   }, [enrichment]);
@@ -101,13 +116,15 @@ export function PlannerResultView({
       <div className="space-y-5">
         <h2 className="type-h3 text-[var(--foreground)]">일자별 일정</h2>
         <p className="type-caption text-[var(--text-muted)]">
-          이동시간은 예상치이며 실제 교통상황에 따라 달라질 수 있습니다.
+          이동시간은 교통상황에 따라 달라질 수 있습니다.
         </p>
         {plan.days.map((day) => (
           <PlannerDaySection
             key={`${day.day}-${day.date}-${day.title}`}
             day={day}
+            sessionId={sessionId}
             placeByOrder={placesByDay.get(day.day)}
+            routeByFromOrder={routesByDay.get(day.day)}
             weatherDay={weatherByDate.get(day.date)}
           />
         ))}

@@ -22,10 +22,17 @@ import type { ResearchBrief } from "@/lib/marketing/research/types/researchBrief
 import type { AgendaCandidate } from "@/lib/marketing/research/types/researchBrief";
 import type { ResearchEvidence } from "@/lib/marketing/research/types/researchSignal";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
+import {
+  diversifyCompactCurationCandidates,
+  diversityDiagnosticsForCompactCandidates,
+} from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";
 
-const DEFAULT_LIMIT = 10;
+/** MM curation input window — larger than slate size so diversification has room. */
+const DEFAULT_LIMIT = 18;
 const DEFAULT_LOOKBACK_HOURS = 168;
-const MAX_LIMIT = 15;
+const MAX_LIMIT = 28;
+const PRE_DIVERSIFY_MULTIPLIER = 6;
+const PRE_DIVERSIFY_MIN = 120;
 const EVIDENCE_EXCERPT_MAX = 280;
 
 export type MarketingManagerResearchContextDeps = {
@@ -231,7 +238,7 @@ export async function getMarketingManagerResearchContext(
   try {
     rawCandidates = await repo.findRecentAgendaCandidates({
       since,
-      limit: Math.max(limit * 6, 60),
+      limit: Math.max(limit * 10, 180),
     });
   } catch (error) {
     return emptyContext({
@@ -302,7 +309,15 @@ export async function getMarketingManagerResearchContext(
   let staleExcludedCount = 0;
   let duplicateExcludedCount = 0;
   const seenBriefIds = new Set<string>();
+  const seenTitleKeys = new Set<string>();
   const eligible: AgendaCandidate[] = [];
+
+  const titleDedupeKey = (title: string): string =>
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9\uac00-\ud7a3]+/g, " ")
+      .trim()
+      .slice(0, 96);
 
   for (const candidate of ranked) {
     if (candidate.status === "rejected" || candidate.status === "expired") {
@@ -314,6 +329,11 @@ export async function getMarketingManagerResearchContext(
       continue;
     }
     if (seenBriefIds.has(candidate.researchBriefId)) {
+      duplicateExcludedCount += 1;
+      continue;
+    }
+    const titleKey = titleDedupeKey(candidate.title ?? "");
+    if (titleKey && seenTitleKeys.has(titleKey)) {
       duplicateExcludedCount += 1;
       continue;
     }
@@ -335,21 +355,33 @@ export async function getMarketingManagerResearchContext(
     }
 
     seenBriefIds.add(candidate.researchBriefId);
+    if (titleKey) seenTitleKeys.add(titleKey);
     eligible.push(candidate);
-    if (eligible.length >= limit) break;
+    const preDiversifyCap = Math.max(limit * PRE_DIVERSIFY_MULTIPLIER, PRE_DIVERSIFY_MIN);
+    if (eligible.length >= preDiversifyCap) break;
   }
 
-    const briefs: CompactManagerResearchBrief[] = [];
-  const agendaCandidates: CompactManagerAgendaCandidate[] = [];
+  const preDiversifyBriefs: CompactManagerResearchBrief[] = [];
+  const preDiversifyCandidates: CompactManagerAgendaCandidate[] = [];
 
   for (const candidate of eligible) {
     const briefRow = await repo.findBriefById(candidate.researchBriefId);
     if (!briefRow) continue;
     const compactBrief = await buildCompactBrief(briefRow, repo, sourceCache);
-    briefs.push(compactBrief);
-    agendaCandidates.push(buildCompactCandidate(candidate, compactBrief));
+    preDiversifyBriefs.push(compactBrief);
+    preDiversifyCandidates.push(buildCompactCandidate(candidate, compactBrief));
   }
 
+  // STEP R-4: diversify AFTER outbound-aware ranking, BEFORE MM curation input.
+  const agendaCandidates = diversifyCompactCurationCandidates(preDiversifyCandidates, {
+    limit,
+  });
+  const briefById = new Map(preDiversifyBriefs.map((b) => [b.researchBriefId, b]));
+  const briefs = agendaCandidates
+    .map((c) => briefById.get(c.researchBriefId))
+    .filter((b): b is CompactManagerResearchBrief => b != null);
+
+  const diversity = diversityDiagnosticsForCompactCandidates(agendaCandidates);
   const hasData = agendaCandidates.length > 0;
   let status: MarketingResearchContextStatus = "ok";
   const notes: string[] = [];
@@ -360,6 +392,13 @@ export async function getMarketingManagerResearchContext(
   } else if (!semanticOk) {
     status = "degraded";
     notes.push("semantic_infrastructure_unavailable_persisted_research_returned");
+  }
+
+  if (hasData) {
+    notes.push("curation_pool_diversified_r4");
+    notes.push(
+      `curation_pool_diversity:sources=${diversity.uniqueSourceCount};families=${diversity.uniqueDestinationFamilyCount};maxPerSource=${diversity.maxCandidatesPerSource};maxPerFamily=${diversity.maxCandidatesPerDestinationFamily};preWindow=${preDiversifyCandidates.length}`,
+    );
   }
 
   return {

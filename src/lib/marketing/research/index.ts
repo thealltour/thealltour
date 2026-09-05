@@ -54,3 +54,14 @@ export {
 } from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
 export { computeAgendaPoolRankScore } from "@/lib/marketing/research/services/scoringPolicy";
 export { DEFERRED_RESEARCH_SOURCES_V1 } from "@/lib/marketing/research/collectors/config";
+export {
+  diversifyAgendaCandidatesForCuration,
+  diversifyCompactCurationCandidates,
+  destinationTopicFamilyKey,
+  isCredibleForCurationDiversity,
+  diversityDiagnosticsForCompactCandidates,
+  computeCurationPoolDiversityDiagnostics,
+  CURATION_CREDIBLE_OUTBOUND_FLOOR,
+  CURATION_DIVERSITY_MAX_PER_SOURCE,
+  CURATION_DIVERSITY_MAX_PER_FAMILY,
+} from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";

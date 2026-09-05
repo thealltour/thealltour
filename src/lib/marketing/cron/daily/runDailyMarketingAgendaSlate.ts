@@ -32,7 +32,10 @@ import {
 } from "@/lib/marketing/cron/daily/agendaSlate/buildDailyAgendaSlate";
 import {
   buildManagerAgendaSlateCurationPrompt,
-  parseManagerAgendaSlateCuration,
+  buildManagerAgendaSlateFormatRepairPrompt,
+  isManagerFormatParseFailure,
+  parseManagerAgendaSlateCurationDetailed,
+  type ManagerCurationParseDiagnostics,
 } from "@/lib/marketing/cron/daily/agendaSlate/curateManagerAgendaSlate";
 import { resolveAgendaSlateTargetSize } from "@/lib/marketing/cron/daily/agendaSlate/config";
 import type { DailyAgendaSlate } from "@/lib/marketing/cron/daily/agendaSlate/types";
@@ -198,26 +201,76 @@ async function curateOrFallbackSlate(input: {
         mode: "deterministic_fallback",
         managerMessage: "manager_profile_not_invoked",
       },
+      metadataExtras: {
+        managerCuration: {
+          managerAttemptCount: 0,
+          firstAttemptFailureClass: null,
+          finalParseMode: "fallback",
+          extractMode: null,
+          stdoutLength: 0,
+          parsedRawItemCount: 0,
+          validatedItemCount: 0,
+          formatRetryUsed: false,
+        } satisfies ManagerCurationParseDiagnostics,
+      },
     });
   }
 
   try {
     const prompt = buildManagerAgendaSlateCurationPrompt(input.research, input.targetSize);
-    const raw = await input.invokeManagerProfile(prompt);
-    const parsed = parseManagerAgendaSlateCuration(raw, input.research, input.targetSize);
-    if (parsed.outcome === "curated") {
+    const raw1 = await input.invokeManagerProfile(prompt);
+    let detailed = parseManagerAgendaSlateCurationDetailed(raw1, input.research, input.targetSize);
+    let managerAttemptCount = 1;
+    let firstAttemptFailureClass = detailed.diagnostics.failureClass;
+    let formatRetryUsed = false;
+
+    // Exactly one bounded format-repair retry for JSON/format parse failure only.
+    if (isManagerFormatParseFailure(detailed.result)) {
+      formatRetryUsed = true;
+      managerAttemptCount = 2;
+      const repairPrompt = buildManagerAgendaSlateFormatRepairPrompt(
+        input.research,
+        input.targetSize,
+        detailed.diagnostics.failureClass,
+      );
+      const raw2 = await input.invokeManagerProfile(repairPrompt);
+      detailed = parseManagerAgendaSlateCurationDetailed(raw2, input.research, input.targetSize);
+    }
+
+    const curationDiagnostics: ManagerCurationParseDiagnostics = {
+      managerAttemptCount,
+      firstAttemptFailureClass: formatRetryUsed ? firstAttemptFailureClass : null,
+      finalParseMode: null,
+      extractMode: detailed.diagnostics.extractMode,
+      stdoutLength: detailed.diagnostics.stdoutLength,
+      parsedRawItemCount: detailed.diagnostics.parsedRawItemCount,
+      validatedItemCount: detailed.diagnostics.validatedItemCount,
+      formatRetryUsed,
+    };
+
+    if (detailed.result.outcome === "curated") {
+      curationDiagnostics.finalParseMode = formatRetryUsed
+        ? "format_retry"
+        : detailed.diagnostics.extractMode;
       return buildDailyAgendaSlateFromManagerCuration({
         ...baseArgs,
-        curatedItems: parsed.items,
-        managerMessage: parsed.managerMessage,
+        curatedItems: detailed.result.items,
+        managerMessage: detailed.result.managerMessage,
+        metadataExtras: { managerCuration: curationDiagnostics },
       });
+    }
+
+    curationDiagnostics.finalParseMode = "fallback";
+    if (!formatRetryUsed && detailed.diagnostics.failureClass) {
+      curationDiagnostics.firstAttemptFailureClass = detailed.diagnostics.failureClass;
     }
     return buildDailyAgendaSlate({
       ...baseArgs,
       curation: {
         mode: "deterministic_fallback",
-        managerMessage: `manager_${parsed.outcome}:${parsed.message}`,
+        managerMessage: `manager_${detailed.result.outcome}:${detailed.result.message}`,
       },
+      metadataExtras: { managerCuration: curationDiagnostics },
     });
   } catch (error) {
     return buildDailyAgendaSlate({
@@ -225,6 +278,18 @@ async function curateOrFallbackSlate(input: {
       curation: {
         mode: "deterministic_fallback",
         managerMessage: `manager_curation_error:${error instanceof Error ? error.message : "unknown"}`,
+      },
+      metadataExtras: {
+        managerCuration: {
+          managerAttemptCount: 1,
+          firstAttemptFailureClass: null,
+          finalParseMode: "fallback",
+          extractMode: null,
+          stdoutLength: 0,
+          parsedRawItemCount: 0,
+          validatedItemCount: 0,
+          formatRetryUsed: false,
+        } satisfies ManagerCurationParseDiagnostics,
       },
     });
   }

@@ -1,4 +1,8 @@
-import { extractJsonObject } from "@/lib/marketing/bot/organization/envelope";
+import {
+  extractJsonObjectResult,
+  type JsonExtractFailureClass,
+  type JsonExtractMode,
+} from "@/lib/marketing/bot/organization/envelope";
 import { resolveAgendaSlateTargetSize } from "@/lib/marketing/cron/daily/agendaSlate/config";
 import type {
   CompactManagerAgendaCandidate,
@@ -31,9 +35,32 @@ export type ManagerSlateCurationResult =
   | { outcome: "defer_all"; message: string }
   | { outcome: "invalid"; message: string };
 
+export type ManagerCurationFinalParseMode =
+  | JsonExtractMode
+  | "format_retry"
+  | "fallback";
+
+export type ManagerCurationParseDiagnostics = {
+  managerAttemptCount: number;
+  firstAttemptFailureClass: JsonExtractFailureClass | null;
+  finalParseMode: ManagerCurationFinalParseMode | null;
+  extractMode: JsonExtractMode | null;
+  stdoutLength: number;
+  parsedRawItemCount: number;
+  validatedItemCount: number;
+  formatRetryUsed: boolean;
+};
+
+export const MANAGER_SLATE_JSON_PARSE_FAILED = "manager_slate_json_parse_failed";
+
+export function isManagerFormatParseFailure(result: ManagerSlateCurationResult): boolean {
+  return result.outcome === "invalid" && result.message === MANAGER_SLATE_JSON_PARSE_FAILED;
+}
+
 const SUMMARY_CHAR_LIMIT = 320;
 const EXCERPT_CHAR_LIMIT = 280;
-const MAX_CANDIDATES_IN_PROMPT = 12;
+/** Must cover the diversified MM input window (see getMarketingManagerResearchContext DEFAULT_LIMIT). */
+const MAX_CANDIDATES_IN_PROMPT = 20;
 
 export type CompactCurationEvidence = {
   evidenceId: string;
@@ -216,6 +243,11 @@ export function buildManagerAgendaSlateCurationPrompt(
     "Productless high-value travel topics are valid.",
     "Input is compact curation candidates only (full briefs omitted; one evidence excerpt each).",
     "Prefer Korean OUTBOUND traveler topics over inbound/domestic/industry-B2B-only items.",
+    "Prioritize Korean outbound traveler usefulness over source familiarity.",
+    "Select a varied slate — avoid six variations of one destination or one source when the pool permits.",
+    "Prefer at least 3 destination/topic families when the supplied pool permits.",
+    "Avoid more than 2 selections from one source when credible alternatives exist.",
+    "Do not sacrifice factual usefulness merely to satisfy diversity.",
     "Copy agendaCandidateId/researchBriefId EXACTLY from input.agendaCandidates.",
     "Do NOT echo the empty schema example. Do NOT return an empty items array when candidates exist.",
     "Title/summary may be omitted when IDs are valid; IDs are mandatory and must resolve to the pool.",
@@ -235,23 +267,71 @@ function asOptionalString(value: unknown): string | null {
   return text || null;
 }
 
-export function parseManagerAgendaSlateCuration(
+/** Compact format-correction prompt — same pool contract, JSON only. */
+export function buildManagerAgendaSlateFormatRepairPrompt(
+  context: MarketingResearchContext,
+  targetSize = 6,
+  firstFailureClass?: string | null,
+): string {
+  const size = resolveAgendaSlateTargetSize(targetSize);
+  const payload = buildCompactManagerSlateCurationPayload(context, size);
+  return [
+    "JSON only. Your previous Marketing Manager slate response was INVALID JSON/format.",
+    firstFailureClass ? `Failure class: ${firstFailureClass}.` : "Failure class: manager_slate_json_parse_failed.",
+    "Return ONE valid JSON object only. No markdown fences. No prose before or after.",
+    `Select ${size} distinct candidates from input.agendaCandidates (allowed range 5-8).`,
+    "Copy agendaCandidateId/researchBriefId EXACTLY from input. Do NOT invent IDs.",
+    "Title/summary may be omitted when IDs resolve. Do NOT draft content.",
+    JSON.stringify(payload),
+    'shape: {"decision":"curate","items":[{"agendaCandidateId":"<from input>","researchBriefId":"<from input>","rationale":["..."],"recommendedFormats":["threads_text"],"recommendedChannel":"threads"}],"managerMessage":null,"deferReason":null}',
+  ].join("\n");
+}
+
+export function parseManagerAgendaSlateCurationDetailed(
   raw: string,
   context: MarketingResearchContext,
   targetSize = 6,
-): ManagerSlateCurationResult {
-  let value: Record<string, unknown>;
-  try {
-    value = extractJsonObject(raw) as Record<string, unknown>;
-  } catch {
-    return { outcome: "invalid", message: "manager_slate_json_parse_failed" };
+): {
+  result: ManagerSlateCurationResult;
+  diagnostics: Omit<
+    ManagerCurationParseDiagnostics,
+    "managerAttemptCount" | "firstAttemptFailureClass" | "formatRetryUsed" | "finalParseMode"
+  > & {
+    extractMode: JsonExtractMode | null;
+    failureClass: JsonExtractFailureClass | null;
+  };
+} {
+  const stdoutLength = Buffer.byteLength(String(raw ?? ""), "utf8");
+  const extracted = extractJsonObjectResult(raw);
+
+  if (!extracted.ok) {
+    return {
+      result: { outcome: "invalid", message: MANAGER_SLATE_JSON_PARSE_FAILED },
+      diagnostics: {
+        extractMode: null,
+        failureClass: extracted.failureClass,
+        stdoutLength,
+        parsedRawItemCount: 0,
+        validatedItemCount: 0,
+      },
+    };
   }
 
+  const value = extracted.value as Record<string, unknown>;
   const decision = String(value.decision ?? "curate").toLowerCase();
   if (decision === "defer_all" || decision === "defer") {
     return {
-      outcome: "defer_all",
-      message: String(value.deferReason ?? value.managerMessage ?? "manager_deferred_slate"),
+      result: {
+        outcome: "defer_all",
+        message: String(value.deferReason ?? value.managerMessage ?? "manager_deferred_slate"),
+      },
+      diagnostics: {
+        extractMode: extracted.mode,
+        failureClass: null,
+        stdoutLength,
+        parsedRawItemCount: 0,
+        validatedItemCount: 0,
+      },
     };
   }
 
@@ -303,12 +383,38 @@ export function parseManagerAgendaSlateCuration(
   }
 
   if (items.length < 5) {
-    return { outcome: "invalid", message: `manager_slate_too_small:${items.length}` };
+    return {
+      result: { outcome: "invalid", message: `manager_slate_too_small:${items.length}` },
+      diagnostics: {
+        extractMode: extracted.mode,
+        failureClass: null,
+        stdoutLength,
+        parsedRawItemCount: rawItems.length,
+        validatedItemCount: items.length,
+      },
+    };
   }
 
   return {
-    outcome: "curated",
-    items: items.slice(0, size),
-    managerMessage: asOptionalString(value.managerMessage),
+    result: {
+      outcome: "curated",
+      items: items.slice(0, size),
+      managerMessage: asOptionalString(value.managerMessage),
+    },
+    diagnostics: {
+      extractMode: extracted.mode,
+      failureClass: null,
+      stdoutLength,
+      parsedRawItemCount: rawItems.length,
+      validatedItemCount: items.length,
+    },
   };
+}
+
+export function parseManagerAgendaSlateCuration(
+  raw: string,
+  context: MarketingResearchContext,
+  targetSize = 6,
+): ManagerSlateCurationResult {
+  return parseManagerAgendaSlateCurationDetailed(raw, context, targetSize).result;
 }

@@ -65,11 +65,183 @@ export function parseHandoffEnvelope<T>(raw: string): HandoffEnvelope<T> {
   return createHandoffEnvelope(value);
 }
 
-export function extractJsonObject(text: string): unknown {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end <= start) {
-    throw new MarketingBotValidationError("No JSON object in agent output");
+export type JsonExtractMode = "whole_json" | "fenced_json" | "balanced_object";
+
+export type JsonExtractFailureClass =
+  | "empty_output"
+  | "fenced_json"
+  | "multiple_json_objects"
+  | "truncated_json"
+  | "malformed_json"
+  | "prose_wrapped_json"
+  | "unknown";
+
+export type JsonExtractSuccess = {
+  ok: true;
+  value: unknown;
+  mode: JsonExtractMode;
+};
+
+export type JsonExtractFailure = {
+  ok: false;
+  failureClass: JsonExtractFailureClass;
+  message: string;
+};
+
+export type JsonExtractResult = JsonExtractSuccess | JsonExtractFailure;
+
+function tryParseObject(text: string): unknown | null {
+  try {
+    const value = JSON.parse(text) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    return value;
+  } catch {
+    return null;
   }
-  return JSON.parse(text.slice(start, end + 1));
+}
+
+/** Scan one balanced `{...}` starting at `start`, respecting JSON strings. Returns end index or -1 if truncated. */
+export function scanBalancedJsonObjectEnd(text: string, start: number): number {
+  if (text[start] !== "{") return -1;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i]!;
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+export function findTopLevelJsonObjects(text: string): string[] {
+  const objects: string[] = [];
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] !== "{") {
+      i += 1;
+      continue;
+    }
+    const end = scanBalancedJsonObjectEnd(text, i);
+    if (end < 0) break;
+    objects.push(text.slice(i, end + 1));
+    i = end + 1;
+  }
+  return objects;
+}
+
+function stripMarkdownFencePayload(text: string): { payload: string; wasFenced: boolean } {
+  const trimmed = text.trim();
+  const whole = /^```(?:json)?\s*\r?\n?([\s\S]*?)\r?\n?```$/i.exec(trimmed);
+  if (whole?.[1] != null) {
+    return { payload: whole[1].trim(), wasFenced: true };
+  }
+  const embedded = /```(?:json)?\s*\r?\n?([\s\S]*?)\r?\n?```/i.exec(trimmed);
+  if (embedded?.[1] != null) {
+    return { payload: embedded[1].trim(), wasFenced: true };
+  }
+  return { payload: trimmed, wasFenced: false };
+}
+
+function looksTruncatedJson(text: string): boolean {
+  const start = text.indexOf("{");
+  if (start < 0) return false;
+  return scanBalancedJsonObjectEnd(text, start) < 0;
+}
+
+/**
+ * Deterministic JSON object extraction for LLM outputs.
+ * Supports bare JSON, markdown fences, and short prose around exactly one object.
+ * Rejects ambiguous multiple top-level objects and truncated/malformed JSON.
+ */
+export function extractJsonObjectResult(text: string): JsonExtractResult {
+  const raw = String(text ?? "");
+  if (!raw.trim()) {
+    return { ok: false, failureClass: "empty_output", message: "empty_agent_output" };
+  }
+
+  const whole = tryParseObject(raw.trim());
+  if (whole) {
+    return { ok: true, value: whole, mode: "whole_json" };
+  }
+
+  const { payload, wasFenced } = stripMarkdownFencePayload(raw);
+  if (wasFenced) {
+    const fencedWhole = tryParseObject(payload);
+    if (fencedWhole) {
+      return { ok: true, value: fencedWhole, mode: "fenced_json" };
+    }
+    const fencedObjects = findTopLevelJsonObjects(payload);
+    if (fencedObjects.length > 1) {
+      return {
+        ok: false,
+        failureClass: "multiple_json_objects",
+        message: "ambiguous_multiple_json_objects",
+      };
+    }
+    if (fencedObjects.length === 1) {
+      const parsed = tryParseObject(fencedObjects[0]!);
+      if (parsed) return { ok: true, value: parsed, mode: "fenced_json" };
+      return { ok: false, failureClass: "malformed_json", message: "fenced_json_malformed" };
+    }
+    if (looksTruncatedJson(payload)) {
+      return { ok: false, failureClass: "truncated_json", message: "fenced_json_truncated" };
+    }
+    return { ok: false, failureClass: "fenced_json", message: "fenced_json_unparseable" };
+  }
+
+  const objects = findTopLevelJsonObjects(raw);
+  if (objects.length > 1) {
+    return {
+      ok: false,
+      failureClass: "multiple_json_objects",
+      message: "ambiguous_multiple_json_objects",
+    };
+  }
+  if (objects.length === 1) {
+    const parsed = tryParseObject(objects[0]!);
+    if (parsed) {
+      const mode: JsonExtractMode =
+        raw.trim() === objects[0]!.trim() ? "whole_json" : "balanced_object";
+      // If there was non-JSON prose around a single object, treat as balanced_object.
+      return { ok: true, value: parsed, mode: mode === "whole_json" ? "whole_json" : "balanced_object" };
+    }
+    return { ok: false, failureClass: "malformed_json", message: "balanced_object_malformed" };
+  }
+
+  if (looksTruncatedJson(raw)) {
+    return { ok: false, failureClass: "truncated_json", message: "truncated_json" };
+  }
+  if (raw.includes("{") || raw.includes("}")) {
+    // Had braces but could not isolate a valid object — likely prose-wrapped junk.
+    return { ok: false, failureClass: "prose_wrapped_json", message: "prose_wrapped_unparseable" };
+  }
+  return { ok: false, failureClass: "malformed_json", message: "no_json_object" };
+}
+
+export function extractJsonObject(text: string): unknown {
+  const result = extractJsonObjectResult(text);
+  if (!result.ok) {
+    throw new MarketingBotValidationError(`No JSON object in agent output:${result.failureClass}`);
+  }
+  return result.value;
 }

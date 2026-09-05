@@ -21,6 +21,14 @@ import {
 import type { MarketingResearchContext } from "@/lib/marketing/research/manager/types";
 import type { CompactManagerAgendaCandidate } from "@/lib/marketing/research/manager/types";
 import { DAILY_MARKETING_ROUTINE_ID } from "@/lib/marketing/cron/daily/types";
+import {
+  diversifyCompactCurationCandidates,
+  diversityDiagnosticsForCompactCandidates,
+} from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";
+import {
+  repairManagerSlateDiversity,
+  type ManagerSelectionOrigin,
+} from "@/lib/marketing/cron/daily/agendaSlate/repairManagerSlateDiversity";
 
 function stableSlateItemId(input: {
   businessDateKst: string;
@@ -256,33 +264,15 @@ function finalizeSlate(input: {
  * Deferred pins are NOT subject to organic exact-item cooldown (human override).
  */
 
-function sourceKeyForCandidate(candidate: CompactManagerAgendaCandidate): string {
-  const ev = candidate.evidence?.[0];
-  return (ev?.sourceName || ev?.sourceId || "unknown").toLowerCase();
-}
-
-function topicFamilyKey(candidate: CompactManagerAgendaCandidate): string {
-  const dest = (candidate.destinations ?? []).find(
-    (d) => d && d.length > 2 && !/^\d/.test(d) && !/^(ai|mou)$/i.test(d),
-  );
-  if (dest) return dest.toLowerCase();
-  const topic = (candidate.topics ?? []).find((t) => t && t.toLowerCase() !== "travel");
-  return (topic ?? "general").toLowerCase();
-}
-
 /**
- * Preserve pre-MM pool ranking (already outbound-aware) with light diversity:
- * avoid >2 from one source and prefer multiple topic/destination families.
+ * Shared R-4 diversification (same helper as MM input pool) after outbound-aware ranking.
+ * Soft source/destination caps apply only while credible alternatives remain.
  */
 function pickDiverseOrganicCandidates(
   ranked: CompactManagerAgendaCandidate[],
   targetCount: number,
   blockedIdentityKeys: Set<string>,
 ): CompactManagerAgendaCandidate[] {
-  const picked: CompactManagerAgendaCandidate[] = [];
-  const sourceCount = new Map<string, number>();
-  const familyCount = new Map<string, number>();
-
   const blocked = (candidate: CompactManagerAgendaCandidate) => {
     const ac = candidate.agendaCandidateId ? `ac:${candidate.agendaCandidateId}` : null;
     const rb = candidate.researchBriefId ? `rb:${candidate.researchBriefId}` : null;
@@ -292,38 +282,8 @@ function pickDiverseOrganicCandidates(
     return articleIds.some((id) => blockedIdentityKeys.has(`art:${id}`));
   };
 
-  const alreadyPicked = (candidate: CompactManagerAgendaCandidate) =>
-    picked.some(
-      (p) =>
-        p.agendaCandidateId === candidate.agendaCandidateId ||
-        p.researchBriefId === candidate.researchBriefId,
-    );
-
-  const eligibleOutbound = ranked.filter(
-    (c) => !blocked(c) && (c.koreanOutboundRelevanceScore ?? 0) >= 0.28,
-  );
-  const canFillWithoutLowOutbound = eligibleOutbound.length >= targetCount;
-
-  for (const pass of [1, 2] as const) {
-    for (const candidate of ranked) {
-      if (picked.length >= targetCount) break;
-      if (blocked(candidate) || alreadyPicked(candidate)) continue;
-      const sk = sourceKeyForCandidate(candidate);
-      const fk = topicFamilyKey(candidate);
-      const lowOutbound = (candidate.koreanOutboundRelevanceScore ?? 0) < 0.28;
-      if (pass === 1) {
-        if (lowOutbound) continue;
-        if ((sourceCount.get(sk) ?? 0) >= 2) continue;
-        if ((familyCount.get(fk) ?? 0) >= 1 && picked.length >= 2) continue;
-      } else if (canFillWithoutLowOutbound && lowOutbound) {
-        continue;
-      }
-      picked.push(candidate);
-      sourceCount.set(sk, (sourceCount.get(sk) ?? 0) + 1);
-      familyCount.set(fk, (familyCount.get(fk) ?? 0) + 1);
-    }
-  }
-  return picked;
+  const available = ranked.filter((c) => !blocked(c));
+  return diversifyCompactCurationCandidates(available, { limit: targetCount });
 }
 
 export function buildDailyAgendaSlate(input: {
@@ -338,6 +298,7 @@ export function buildDailyAgendaSlate(input: {
   cooldown?: DailyAgendaSlate["cooldown"];
   curation?: DailyAgendaSlate["curation"];
   now?: Date;
+  metadataExtras?: Record<string, unknown>;
 }): DailyAgendaSlate {
   const now = input.now ?? new Date();
   const targetSize = resolveAgendaSlateTargetSize(input.targetSize);
@@ -383,6 +344,8 @@ export function buildDailyAgendaSlate(input: {
     }),
   );
 
+  const diversity = diversityDiagnosticsForCompactCandidates(organicPicked);
+
   return finalizeSlate({
     logicalRunKey: input.logicalRunKey,
     businessDateKst: input.businessDateKst,
@@ -399,6 +362,9 @@ export function buildDailyAgendaSlate(input: {
     now,
     metadata: {
       fallback: (input.curation?.mode ?? "deterministic_fallback") === "deterministic_fallback",
+      slateDiversity: diversity,
+      mmInputDiversity: diversityDiagnosticsForCompactCandidates(input.research.agendaCandidates),
+      ...(input.metadataExtras ?? {}),
     },
   });
 }
@@ -417,6 +383,7 @@ export function buildDailyAgendaSlateFromManagerCuration(input: {
   deferredCarryover?: AgendaSlateCandidate[];
   cooldown?: DailyAgendaSlate["cooldown"];
   now?: Date;
+  metadataExtras?: Record<string, unknown>;
 }): DailyAgendaSlate {
   const now = input.now ?? new Date();
   const targetSize = resolveAgendaSlateTargetSize(input.targetSize);
@@ -434,9 +401,12 @@ export function buildDailyAgendaSlateFromManagerCuration(input: {
     }
   }
 
-  const curated: AgendaSlateCandidate[] = [];
+  const selectedPairs: Array<{
+    item: ManagerSlateCurationItem;
+    match: CompactManagerAgendaCandidate;
+  }> = [];
   for (const item of input.curatedItems) {
-    if (curated.length + carryover.length >= targetSize) break;
+    if (selectedPairs.length + carryover.length >= targetSize) break;
     const match = findResearchMatch(input.research, item);
     if (!match) continue;
     const articleIds = canonicalArticleIdsForCandidate(match);
@@ -446,27 +416,69 @@ export function buildDailyAgendaSlateFromManagerCuration(input: {
       canonicalArticleIds: articleIds,
     });
     if (keys.some((k) => carryoverIdentityKeys.has(k))) continue;
+    selectedPairs.push({ item, match });
+  }
 
-    curated.push(
-      mapResearchCandidateToSlateItem(match, {
-        businessDateKst: input.businessDateKst,
-        channel,
-        origin: "organic_research",
-        summary: item.summary,
-        rationale: item.rationale.length > 0 ? item.rationale : ["Marketing Manager 추천"],
-        recommendedFormats: item.recommendedFormats.length
+  const organicTarget = Math.max(0, targetSize - carryover.length);
+  const repaired = repairManagerSlateDiversity({
+    selected: selectedPairs,
+    mmPool: input.research.agendaCandidates,
+    targetSize: organicTarget,
+  });
+
+  const curated: AgendaSlateCandidate[] = [];
+  const selectionOrigins: Record<string, ManagerSelectionOrigin> = {};
+
+  for (const sel of repaired.selections) {
+    if (curated.length + carryover.length >= targetSize) break;
+    const isRepair = sel.selectionOrigin === "manager_diversity_repair";
+    const item = sel.curatedItem;
+    const slateItem = mapResearchCandidateToSlateItem(sel.match, {
+      businessDateKst: input.businessDateKst,
+      channel,
+      origin: "organic_research",
+      summary: item?.summary ?? sel.match.summary,
+      rationale: isRepair
+        ? [
+            "결정론적 diversity repair: MM 과밀(source/family) 선택을 입력 풀 대안으로 교체",
+            sel.repair
+              ? `violated=${sel.repair.violatedCap}; replaced=${sel.repair.removed.agendaCandidateId}`
+              : "manager_diversity_repair",
+            ...(sel.match.scoreReasons ?? []).slice(0, 2),
+          ]
+        : item && item.rationale.length > 0
+          ? item.rationale
+          : ["Marketing Manager 추천"],
+      recommendedFormats:
+        !isRepair && item && item.recommendedFormats.length
           ? item.recommendedFormats
           : ["threads_text"],
-        recommendedChannel: item.recommendedChannel ?? channel,
-        editorial: {
-          freshnessWhyNow: item.freshnessWhyNow,
-          koreanTravelerRelevance: item.koreanTravelerRelevance,
-          practicalTravelValue: item.practicalTravelValue,
-          theAllTourBusinessRelevance: item.theAllTourBusinessRelevance,
-          contentPotential: item.contentPotential,
-        },
-      }),
-    );
+      recommendedChannel: (!isRepair && item?.recommendedChannel) || channel,
+      editorial: isRepair
+        ? {
+            freshnessWhyNow:
+              sel.match.freshnessScore != null && sel.match.freshnessScore >= 0.7
+                ? "최근 관측된 신선도 신호가 높음"
+                : "관측 기반 신선도 참고",
+            koreanTravelerRelevance: "한국 해외여행 관심 독자 기준 후보 (diversity repair)",
+            practicalTravelValue:
+              sel.match.travelRelevanceScore != null ? "여행 실무 관련성 점수 참고" : null,
+            theAllTourBusinessRelevance:
+              (sel.match.matchedProductIds?.length ?? 0) > 0
+                ? "상품 연계 신호 있음"
+                : "정보성 주제(상품 무관 가능)",
+            contentPotential: "Threads 등 단기 포맷 적합 후보",
+          }
+        : {
+            freshnessWhyNow: item?.freshnessWhyNow ?? null,
+            koreanTravelerRelevance: item?.koreanTravelerRelevance ?? null,
+            practicalTravelValue: item?.practicalTravelValue ?? null,
+            theAllTourBusinessRelevance: item?.theAllTourBusinessRelevance ?? null,
+            contentPotential: item?.contentPotential ?? null,
+          },
+    });
+    selectionOrigins[slateItem.slateItemId] = sel.selectionOrigin;
+    curated.push(slateItem);
   }
 
   // If MM returned too few after identity filtering, top up deterministically.
@@ -509,7 +521,21 @@ export function buildDailyAgendaSlateFromManagerCuration(input: {
       managerMessage: input.managerMessage ?? null,
     },
     now,
-    metadata: { fallback: false },
+    metadata: {
+      fallback: false,
+      selectionOrigins,
+      diversityRepair: repaired.diagnostics,
+      slateDiversity: {
+        uniqueSourceCount: repaired.diagnostics.uniqueSourceCount,
+        uniqueDestinationFamilyCount: repaired.diagnostics.uniqueDestinationFamilyCount,
+        maxCandidatesPerSource: repaired.diagnostics.maxCandidatesPerSource,
+        maxCandidatesPerDestinationFamily: repaired.diagnostics.maxCandidatesPerDestinationFamily,
+        sourceCounts: repaired.diagnostics.sourceCounts,
+        familyCounts: repaired.diagnostics.familyCounts,
+      },
+      mmInputDiversity: diversityDiagnosticsForCompactCandidates(input.research.agendaCandidates),
+      ...(input.metadataExtras ?? {}),
+    },
   });
 }
 

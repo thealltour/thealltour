@@ -2,6 +2,8 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
+import { decidePlannerClaim } from "@/lib/planner/claimDecision";
+import { plannerPlanSchema, type PlannerPlan } from "@/lib/planner/planSchemas";
 import type { PlannerDraftInput, PlannerSession, PlannerSessionStatus } from "@/types/planner";
 import { PLANNER_COMPANION_TYPES, PLANNER_INTERESTS, PLANNER_PACES } from "@/lib/planner/schemas";
 
@@ -102,13 +104,18 @@ export function normalizePlannerDraftInput(raw: unknown): PlannerDraftInput {
 }
 
 function mapRow(row: PlannerSessionRow): PlannerSession {
+  let plan: PlannerPlan | null = null;
+  if (row.plan_json != null) {
+    const parsed = plannerPlanSchema.safeParse(row.plan_json);
+    plan = parsed.success ? parsed.data : null;
+  }
   return {
     id: row.id,
     anonymousKey: row.anonymous_key,
     memberId: row.member_id,
     status: row.status as PlannerSessionStatus,
     input: normalizePlannerDraftInput(row.input_json),
-    plan: row.plan_json ?? null,
+    plan,
     sourceProductId: row.source_product_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -212,4 +219,128 @@ export async function updatePlannerSessionInput(params: {
   }
 
   return mapRow(data as PlannerSessionRow);
+}
+
+export async function saveGeneratedPlannerPlan(params: {
+  id: string;
+  plan: PlannerPlan;
+}): Promise<PlannerSession> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("planner_sessions")
+    .update({
+      plan_json: params.plan,
+      status: "generated",
+      updated_at: now,
+    })
+    .eq("id", params.id)
+    .select(
+      "id, anonymous_key, member_id, status, input_json, plan_json, source_product_id, created_at, updated_at",
+    )
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "planner_sessions save plan failed");
+  }
+
+  return mapRow(data as PlannerSessionRow);
+}
+
+export type ClaimPlannerSessionResult =
+  | { ok: true; session: PlannerSession; claimed: boolean }
+  | { ok: false; reason: "not_found" | "conflict" | "forbidden" | "invalid_status" };
+
+/**
+ * Atomic anonymous → member ownership transfer (or mark generated→saved for same member).
+ * Does not mutate input_json / plan_json.
+ */
+export async function claimPlannerSessionForMember(params: {
+  id: string;
+  memberId: string;
+  anonymousKey: string;
+}): Promise<ClaimPlannerSessionResult> {
+  const memberId = params.memberId.trim();
+  const anonymousKey = params.anonymousKey.trim();
+  const id = params.id.trim();
+  if (!memberId || !anonymousKey || !id) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const existing = await getPlannerSessionById(id);
+  if (!existing) return { ok: false, reason: "not_found" };
+
+  const decision = decidePlannerClaim({
+    session: existing,
+    memberId,
+    anonymousKey,
+  });
+
+  if (decision.action === "reject") {
+    return { ok: false, reason: decision.reason };
+  }
+
+  if (decision.action === "idempotent_saved") {
+    return { ok: true, session: existing, claimed: false };
+  }
+
+  if (decision.action === "mark_saved_for_owner") {
+    const now = new Date().toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("planner_sessions")
+      .update({ status: "saved", updated_at: now })
+      .eq("id", id)
+      .eq("member_id", memberId)
+      .eq("status", "generated")
+      .select(
+        "id, anonymous_key, member_id, status, input_json, plan_json, source_product_id, created_at, updated_at",
+      )
+      .maybeSingle();
+    if (error) {
+      console.error("[planner] claimPlannerSessionForMember (member mark saved):", error.message);
+      return { ok: false, reason: "conflict" };
+    }
+    if (data) return { ok: true, session: mapRow(data as PlannerSessionRow), claimed: false };
+    const refreshed = await getPlannerSessionById(id);
+    if (refreshed?.memberId === memberId && refreshed.status === "saved") {
+      return { ok: true, session: refreshed, claimed: false };
+    }
+    return { ok: false, reason: "conflict" };
+  }
+
+  // claim_anonymous — atomic conditional update
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("planner_sessions")
+    .update({
+      member_id: memberId,
+      status: "saved",
+      updated_at: now,
+    })
+    .eq("id", id)
+    .is("member_id", null)
+    .eq("anonymous_key", anonymousKey)
+    .eq("status", "generated")
+    .select(
+      "id, anonymous_key, member_id, status, input_json, plan_json, source_product_id, created_at, updated_at",
+    )
+    .maybeSingle();
+
+  if (error) {
+    console.error("[planner] claimPlannerSessionForMember:", error.message);
+    return { ok: false, reason: "conflict" };
+  }
+
+  if (data) {
+    return { ok: true, session: mapRow(data as PlannerSessionRow), claimed: true };
+  }
+
+  const raced = await getPlannerSessionById(id);
+  if (!raced) return { ok: false, reason: "not_found" };
+  if (raced.memberId === memberId && raced.status === "saved") {
+    return { ok: true, session: raced, claimed: false };
+  }
+  if (raced.memberId && raced.memberId !== memberId) {
+    return { ok: false, reason: "forbidden" };
+  }
+  return { ok: false, reason: "conflict" };
 }

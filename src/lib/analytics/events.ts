@@ -77,6 +77,12 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   planner_landing_view: "planner_landing_view",
   planner_started: "planner_started",
   planner_input_completed: "planner_input_completed",
+  planner_generation_started: "planner_generation_started",
+  planner_plan_generated: "planner_plan_generated",
+  planner_generation_failed: "planner_generation_failed",
+  planner_save_clicked: "planner_save_clicked",
+  planner_kakao_login_started: "planner_kakao_login_started",
+  planner_saved: "planner_saved",
 } as const;
 
 /** 소스 상수 (enum 성격) */

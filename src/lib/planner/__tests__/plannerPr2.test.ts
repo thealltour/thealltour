@@ -156,6 +156,17 @@ describe("assertPlannerSessionOwnership", () => {
     ).toBe(true);
   });
 
+  it("allows member owner even when anonymousKey differs (cross-device)", () => {
+    const session = { ...base, memberId: "11111111-1111-4111-8111-111111111111", status: "saved" as const };
+    expect(
+      assertPlannerSessionOwnership({
+        session,
+        anonymousKey: "other-device-key",
+        cookieMemberId: "11111111-1111-4111-8111-111111111111",
+      }).ok,
+    ).toBe(true);
+  });
+
   it("denies member mismatch", () => {
     const session = { ...base, memberId: "11111111-1111-4111-8111-111111111111" };
     const r = assertPlannerSessionOwnership({

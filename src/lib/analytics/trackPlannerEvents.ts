@@ -69,3 +69,118 @@ export function trackPlannerInputCompleted(params: {
     },
   });
 }
+
+type GenerationMetaBase = {
+  sessionId: string;
+  input: PlannerDraftInput;
+  sourceProductId?: string | null;
+};
+
+function generationBaseMetadata(params: GenerationMetaBase) {
+  const { input } = params;
+  return {
+    sessionId: params.sessionId,
+    destination: input.destination.text.trim().slice(0, 120),
+    tripDurationDays: tripDurationDays(input.dates.startDate, input.dates.endDate),
+    companionType: input.companionType as PlannerCompanionType,
+    pace: input.pace as PlannerPace,
+    interestCount: input.interests.length,
+  };
+}
+
+export function trackPlannerGenerationStarted(params: GenerationMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_generation_started,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_generation",
+    label: "planner_generation_started",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: generationBaseMetadata(params),
+  });
+}
+
+export function trackPlannerPlanGenerated(
+  params: GenerationMetaBase & { dayCount: number; totalItemCount: number },
+): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_plan_generated,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_generation",
+    label: "planner_plan_generated",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      ...generationBaseMetadata(params),
+      dayCount: params.dayCount,
+      totalItemCount: params.totalItemCount,
+    },
+  });
+}
+
+export function trackPlannerGenerationFailed(params: GenerationMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_generation_failed,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_generation",
+    label: "planner_generation_failed",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: generationBaseMetadata(params),
+  });
+}
+
+type SaveMetaBase = {
+  sessionId: string;
+  destination?: string | null;
+  sourceProductId?: string | null;
+};
+
+export function trackPlannerSaveClicked(
+  params: SaveMetaBase & { wasAlreadyLoggedIn: boolean },
+): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_save_clicked,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_save",
+    label: "planner_save_clicked",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+      wasAlreadyLoggedIn: params.wasAlreadyLoggedIn,
+    },
+  });
+}
+
+export function trackPlannerKakaoLoginStarted(params: SaveMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_kakao_login_started,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_save",
+    label: "planner_kakao_login_started",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+    },
+  });
+}
+
+export function trackPlannerSaved(
+  params: SaveMetaBase & {
+    wasAlreadyLoggedIn: boolean;
+    saveMethod: "kakao" | "existing_member";
+  },
+): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_saved,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_save",
+    label: "planner_saved",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+      wasAlreadyLoggedIn: params.wasAlreadyLoggedIn,
+      saveMethod: params.saveMethod,
+    },
+  });
+}

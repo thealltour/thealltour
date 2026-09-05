@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AlertCard from "@/components/ui/AlertCard";
 import { Button } from "@/components/ui/Button";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
@@ -9,6 +9,7 @@ import { FilterChip } from "@/components/ui/FilterChip";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { PlannerGenerationView } from "@/components/planner/PlannerGenerationView";
 import { PlannerWizardProgress } from "@/components/planner/PlannerWizardProgress";
 import { TravelerCounter } from "@/components/planner/TravelerCounter";
 import { dateToYmd } from "@/lib/datePickerUtils";
@@ -24,8 +25,11 @@ import {
 } from "@/lib/planner/constants";
 import { validatePlannerStep } from "@/lib/planner/schemas";
 import {
+  trackPlannerGenerationFailed,
+  trackPlannerGenerationStarted,
   trackPlannerInputCompleted,
   trackPlannerLandingView,
+  trackPlannerPlanGenerated,
   trackPlannerStarted,
 } from "@/lib/analytics/trackPlannerEvents";
 import type {
@@ -64,6 +68,7 @@ function paceLabel(value: PlannerPace): string {
 }
 
 export function PlannerWizard() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const sourceProductIdRaw = searchParams.get("sourceProductId");
   const sourceProductId =
@@ -87,7 +92,7 @@ export function PlannerWizard() {
     sourceProductId,
   );
   const [error, setError] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(false);
+  const [phase, setPhase] = useState<"wizard" | "generating" | "failed">("wizard");
   const [budgetUndecided, setBudgetUndecided] = useState(true);
   const [isPending, startTransition] = useTransition();
 
@@ -194,6 +199,62 @@ export function PlannerWizard() {
     setStep((prev) => Math.max(1, prev - 1) as PlannerWizardStep);
   }
 
+  async function runGenerate(activeSessionId: string, activeDraft: PlannerDraftInput) {
+    const key = anonymousKey || getOrCreatePlannerAnonymousKey();
+    trackPlannerGenerationStarted({
+      sessionId: activeSessionId,
+      input: activeDraft,
+      sourceProductId: resolvedSourceProductId,
+    });
+    setPhase("generating");
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `/api/planner/sessions/${encodeURIComponent(activeSessionId)}/generate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ anonymousKey: key }),
+        },
+      );
+      const data = (await res.json().catch(() => null)) as {
+        message?: string;
+        session?: { plan?: { days?: Array<{ items?: unknown[] }> } };
+      } | null;
+
+      if (!res.ok) {
+        trackPlannerGenerationFailed({
+          sessionId: activeSessionId,
+          input: activeDraft,
+          sourceProductId: resolvedSourceProductId,
+        });
+        setError(data?.message ?? "여행 플랜을 만드는 중 문제가 발생했습니다.");
+        setPhase("failed");
+        return;
+      }
+
+      const days = data?.session?.plan?.days ?? [];
+      const totalItemCount = days.reduce((sum, d) => sum + (d.items?.length ?? 0), 0);
+      trackPlannerPlanGenerated({
+        sessionId: activeSessionId,
+        input: activeDraft,
+        sourceProductId: resolvedSourceProductId,
+        dayCount: days.length,
+        totalItemCount,
+      });
+      router.push(`/planner/${encodeURIComponent(activeSessionId)}`);
+    } catch {
+      trackPlannerGenerationFailed({
+        sessionId: activeSessionId,
+        input: activeDraft,
+        sourceProductId: resolvedSourceProductId,
+      });
+      setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      setPhase("failed");
+    }
+  }
+
   function handleFinalize() {
     setError(null);
     const stepError = validatePlannerStep(7, draft);
@@ -210,7 +271,14 @@ export function PlannerWizard() {
         input: draft,
         sourceProductId: resolvedSourceProductId,
       });
-      setCompleted(true);
+      await runGenerate(sessionId, draft);
+    });
+  }
+
+  function handleRetryGenerate() {
+    if (!sessionId) return;
+    startTransition(async () => {
+      await runGenerate(sessionId, draft);
     });
   }
 
@@ -224,14 +292,41 @@ export function PlannerWizard() {
     });
   }
 
-  if (completed) {
+  if (phase === "generating") {
+    return <PlannerGenerationView destination={draft.destination.text} />;
+  }
+
+  if (phase === "failed") {
     return (
-      <div className="mx-auto w-full max-w-lg space-y-6 px-4 py-8 sm:px-0 sm:py-12">
-        <AlertCard variant="info" title="여행 조건이 저장되었습니다">
+      <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-10 sm:px-0">
+        <AlertCard variant="warning" title="플랜 생성에 실패했습니다">
           <p className="type-body text-[var(--text-secondary)]">
-            여행 플랜 생성 기능은 다음 단계에서 연결됩니다.
+            {error ?? "여행 플랜을 만드는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."}
           </p>
         </AlertCard>
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          loading={isPending}
+          onClick={handleRetryGenerate}
+        >
+          다시 시도
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          disabled={isPending}
+          onClick={() => {
+            setPhase("wizard");
+            setError(null);
+          }}
+        >
+          조건 다시 확인
+        </Button>
       </div>
     );
   }

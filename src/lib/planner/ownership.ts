@@ -5,14 +5,14 @@ export type PlannerOwnershipResult =
   | { ok: false; status: 403 | 404; message: string };
 
 /**
- * Authorization for planner_sessions updates.
+ * Authorization for planner_sessions.
+ * - member-linked session: cookie memberId must match member_id (anonymousKey ignored)
  * - anonymous session: anonymousKey must match
- * - member-linked session: cookie memberId must match member_id
- * Client-supplied memberId is never trusted (not accepted in body).
+ * Client-supplied memberId is never trusted.
  */
 export function assertPlannerSessionOwnership(params: {
   session: PlannerSession | null;
-  anonymousKey: string;
+  anonymousKey?: string | null;
   cookieMemberId: string | null;
 }): PlannerOwnershipResult {
   const { session, anonymousKey, cookieMemberId } = params;
@@ -22,17 +22,13 @@ export function assertPlannerSessionOwnership(params: {
 
   if (session.memberId) {
     if (!cookieMemberId || cookieMemberId !== session.memberId) {
-      return { ok: false, status: 403, message: "Not allowed to update this planner session." };
-    }
-    // Also require anonymousKey continuity for the same browser flow.
-    if (session.anonymousKey !== anonymousKey) {
-      return { ok: false, status: 403, message: "Not allowed to update this planner session." };
+      return { ok: false, status: 403, message: "Not allowed to access this planner session." };
     }
     return { ok: true };
   }
 
-  if (session.anonymousKey !== anonymousKey) {
-    return { ok: false, status: 403, message: "Not allowed to update this planner session." };
+  if (!anonymousKey || session.anonymousKey !== anonymousKey) {
+    return { ok: false, status: 403, message: "Not allowed to access this planner session." };
   }
   return { ok: true };
 }

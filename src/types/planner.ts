@@ -1,3 +1,5 @@
+import type { PlannerPlan } from "@/lib/planner/planSchemas";
+
 export type PlannerSessionStatus = "draft" | "generated" | "saved";
 
 export type PlannerCompanionType =
@@ -46,7 +48,7 @@ export type PlannerSession = {
   memberId: string | null;
   status: PlannerSessionStatus;
   input: PlannerDraftInput;
-  plan: unknown | null;
+  plan: PlannerPlan | null;
   sourceProductId: string | null;
   createdAt: string;
   updatedAt: string;

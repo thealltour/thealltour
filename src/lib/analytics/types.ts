@@ -74,7 +74,13 @@ export type AnalyticsEventName =
   | "payment_return_failed"
   | "planner_landing_view"
   | "planner_started"
-  | "planner_input_completed";
+  | "planner_input_completed"
+  | "planner_generation_started"
+  | "planner_plan_generated"
+  | "planner_generation_failed"
+  | "planner_save_clicked"
+  | "planner_kakao_login_started"
+  | "planner_saved";
 
 /** 발생 소스 구분용 상수 성격 */
 export type AnalyticsSource =

@@ -9,8 +9,13 @@ import {
   fetchPlannerMemberAuthenticated,
   postPlannerSessionSave,
 } from "@/lib/planner/saveClient";
-import { trackPlannerSaved } from "@/lib/analytics/trackPlannerEvents";
+import {
+  trackPlannerEnrichmentFailed,
+  trackPlannerEnrichmentLoaded,
+  trackPlannerSaved,
+} from "@/lib/analytics/trackPlannerEvents";
 import { getOrCreatePlannerAnonymousKey } from "@/lib/planner/anonymousKey";
+import type { PlannerEnrichmentDto } from "@/lib/planner/enrichmentTypes";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
 import {
   clearPlannerSaveIntent,
@@ -29,6 +34,11 @@ type ReadResponse = {
   };
 };
 
+type EnrichResponse = {
+  enrichment?: PlannerEnrichmentDto;
+  message?: string;
+};
+
 type PlannerResultLoaderProps = {
   sessionId: string;
 };
@@ -37,9 +47,42 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
   const [plan, setPlan] = useState<PlannerPlan | null>(null);
   const [sourceProductId, setSourceProductId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [enrichment, setEnrichment] = useState<PlannerEnrichmentDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const autoSaveAttempted = useRef(false);
+  const enrichTracked = useRef(false);
+
+  const loadEnrichment = useCallback(async () => {
+    try {
+      const anonymousKey = getOrCreatePlannerAnonymousKey();
+      const res = await fetch(`/api/planner/sessions/${encodeURIComponent(sessionId)}/enrich`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ anonymousKey }),
+      });
+      const data = (await res.json().catch(() => null)) as EnrichResponse | null;
+      if (!res.ok || !data?.enrichment) {
+        trackPlannerEnrichmentFailed({ sessionId });
+        return;
+      }
+      setEnrichment(data.enrichment);
+      if (!enrichTracked.current) {
+        enrichTracked.current = true;
+        const places = data.enrichment.places;
+        trackPlannerEnrichmentLoaded({
+          sessionId,
+          resolvedPlaceCount: places.filter((p) => p.place.status === "resolved").length,
+          ambiguousPlaceCount: places.filter((p) => p.place.status === "ambiguous").length,
+          unresolvedPlaceCount: places.filter((p) => p.place.status === "unresolved").length,
+          weatherAvailability: data.enrichment.weather.availability,
+        });
+      }
+    } catch {
+      trackPlannerEnrichmentFailed({ sessionId });
+    }
+  }, [sessionId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,7 +123,12 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
     void load();
   }, [load]);
 
-  // After Kakao OAuth return: auto-claim only when explicit save intent matches.
+  // Enrich after plan is visible (does not block first paint)
+  useEffect(() => {
+    if (loading || !plan) return;
+    void loadEnrichment();
+  }, [loading, plan, loadEnrichment]);
+
   useEffect(() => {
     if (loading || !plan || isSaved || autoSaveAttempted.current) return;
 
@@ -107,9 +155,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
           saveMethod: "kakao",
         });
         setIsSaved(true);
-        return;
       }
-      // Keep intent for retry; surface soft error via reload path if needed
     })();
 
     return () => {
@@ -153,8 +199,14 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       sessionId={sessionId}
       sourceProductId={sourceProductId}
       isSaved={isSaved}
+      enrichment={enrichment}
       onSaved={() => setIsSaved(true)}
-      onPlanUpdated={setPlan}
+      onPlanUpdated={(next) => {
+        setPlan(next);
+        setEnrichment(null);
+        enrichTracked.current = false;
+        void loadEnrichment();
+      }}
     />
   );
 }

@@ -88,6 +88,8 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   planner_edit_started: "planner_edit_started",
   planner_edit_succeeded: "planner_edit_succeeded",
   planner_edit_failed: "planner_edit_failed",
+  planner_enrichment_loaded: "planner_enrichment_loaded",
+  planner_enrichment_failed: "planner_enrichment_failed",
 } as const;
 
 /** 소스 상수 (enum 성격) */

@@ -269,3 +269,37 @@ export function trackPlannerEditFailed(params: EditMetaBase): void {
     metadata: editBaseMetadata(params),
   });
 }
+
+export function trackPlannerEnrichmentLoaded(params: {
+  sessionId: string;
+  resolvedPlaceCount: number;
+  ambiguousPlaceCount: number;
+  unresolvedPlaceCount: number;
+  weatherAvailability: string;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_enrichment_loaded,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_enrichment",
+    label: "planner_enrichment_loaded",
+    metadata: {
+      sessionId: params.sessionId,
+      resolvedPlaceCount: params.resolvedPlaceCount,
+      ambiguousPlaceCount: params.ambiguousPlaceCount,
+      unresolvedPlaceCount: params.unresolvedPlaceCount,
+      weatherAvailability: params.weatherAvailability,
+    },
+  });
+}
+
+export function trackPlannerEnrichmentFailed(params: { sessionId: string }): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_enrichment_failed,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_enrichment",
+    label: "planner_enrichment_failed",
+    metadata: {
+      sessionId: params.sessionId,
+    },
+  });
+}

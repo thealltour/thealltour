@@ -96,3 +96,28 @@ export type {
   ResearchBriefEmbeddingTextInput,
   UpsertMarketingSemanticEmbeddingInput,
 } from "@/lib/marketing/semantic/entityEmbeddings";
+
+/** Controlled semantic indexing (STEP E-2). Manual/CLI only — no Agenda wiring. */
+export {
+  DEFAULT_MARKETING_SEMANTIC_INDEXING_MAX_BATCH,
+  assertMarketingSemanticSchemaReady,
+  createSemanticIndexingRuntime,
+  hydrateSemanticEntityForIndexing,
+  indexSemanticEntitiesBatch,
+  indexSemanticEntity,
+  isMarketingSemanticSchemaMissingError,
+  resolveMarketingSemanticIndexingConfig,
+} from "@/lib/marketing/semantic/indexing";
+export type {
+  CreateSemanticIndexingRuntimeOptions,
+  HydratedSemanticEntity,
+  IndexSemanticEntitiesBatchInput,
+  IndexSemanticEntityDeps,
+  IndexSemanticEntityInput,
+  MarketingSemanticIndexingConfig,
+  SemanticEntityHydrationDeps,
+  SemanticEntityHydrationResult,
+  SemanticIndexResult,
+  SemanticIndexStatus,
+  SemanticIndexingRuntime,
+} from "@/lib/marketing/semantic/indexing";

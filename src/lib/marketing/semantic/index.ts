@@ -61,3 +61,38 @@ export {
   resolveSemanticContextStatus,
 } from "@/lib/marketing/semantic/semanticRetrieve";
 export type { SemanticRetrieveDeps } from "@/lib/marketing/semantic/semanticRetrieve";
+
+/** Entity embedding store foundation (STEP E-1). Dormant — no Agenda wiring. */
+export {
+  DEFAULT_MARKETING_SEMANTIC_EMBEDDING_REVISION,
+  MARKETING_SEMANTIC_ENTITY_TYPES,
+  MARKETING_SEMANTIC_SOURCE_TEXT_VERSION,
+  MarketingSemanticValidationError,
+  buildAgendaCandidateCanonicalText,
+  buildAgendaCandidateContentHash,
+  buildCompletedMarketingCandidateCanonicalText,
+  buildCompletedMarketingCandidateContentHash,
+  buildResearchBriefCanonicalText,
+  buildResearchBriefContentHash,
+  createInMemoryMarketingSemanticEmbeddingRepository,
+  createMarketingSemanticEmbeddingRepository,
+  hashMarketingSemanticSourceText,
+  isMarketingSemanticEmbeddingRepositoryConfigured,
+  isMarketingSemanticEntityType,
+  marketingSemanticCosineSimilarity,
+  validateMarketingSemanticEmbeddingRecord,
+  validateUpsertMarketingSemanticEmbeddingInput,
+} from "@/lib/marketing/semantic/entityEmbeddings";
+export type {
+  AgendaCandidateEmbeddingTextInput,
+  CompletedMarketingCandidateEmbeddingTextInput,
+  GetMarketingSemanticEmbeddingParams,
+  ListMarketingSemanticEmbeddingsByEntityIdsParams,
+  MarketingSemanticEmbeddingRecord,
+  MarketingSemanticEmbeddingRepository,
+  MarketingSemanticEntityType,
+  MarketingSemanticSimilarityMatch,
+  MarketingSemanticSimilaritySearchParams,
+  ResearchBriefEmbeddingTextInput,
+  UpsertMarketingSemanticEmbeddingInput,
+} from "@/lib/marketing/semantic/entityEmbeddings";

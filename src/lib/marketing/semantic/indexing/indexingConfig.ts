@@ -39,10 +39,13 @@ export function resolveMarketingSemanticIndexingConfig(
     env.MARKETING_SEMANTIC_SOURCE_TEXT_VERSION?.trim() ||
     MARKETING_SEMANTIC_SOURCE_TEXT_VERSION;
 
-  const maxBatchRaw = Number(env.MARKETING_SEMANTIC_INDEX_MAX_BATCH?.trim() || "");
-  const maxBatchSize = Number.isFinite(maxBatchRaw)
-    ? Math.min(Math.max(1, Math.trunc(maxBatchRaw)), DEFAULT_MARKETING_SEMANTIC_INDEXING_MAX_BATCH)
-    : DEFAULT_MARKETING_SEMANTIC_INDEXING_MAX_BATCH;
+  // Unset/blank must keep the default — Number("") === 0 is finite and must not collapse to 1.
+  const maxBatchEnv = env.MARKETING_SEMANTIC_INDEX_MAX_BATCH?.trim();
+  const maxBatchRaw = maxBatchEnv ? Number(maxBatchEnv) : Number.NaN;
+  const maxBatchSize =
+    Number.isFinite(maxBatchRaw) && maxBatchRaw > 0
+      ? Math.min(Math.max(1, Math.trunc(maxBatchRaw)), DEFAULT_MARKETING_SEMANTIC_INDEXING_MAX_BATCH)
+      : DEFAULT_MARKETING_SEMANTIC_INDEXING_MAX_BATCH;
 
   return {
     model,

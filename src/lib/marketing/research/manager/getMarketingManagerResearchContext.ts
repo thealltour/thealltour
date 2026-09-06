@@ -26,6 +26,7 @@ import {
   diversifyCompactCurationCandidates,
   diversityDiagnosticsForCompactCandidates,
 } from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";
+import { isVerificationResearchArtifact } from "@/lib/marketing/research/manager/isVerificationResearchArtifact";
 
 /** MM curation input window — larger than slate size so diversification has room. */
 const DEFAULT_LIMIT = 18;
@@ -308,9 +309,11 @@ export async function getMarketingManagerResearchContext(
   const ranked = rankAgendaCandidates(enriched, { agendaSeedWeightByCandidateId: seedByCandidateId });
   let staleExcludedCount = 0;
   let duplicateExcludedCount = 0;
+  let verificationExcludedCount = 0;
   const seenBriefIds = new Set<string>();
   const seenTitleKeys = new Set<string>();
   const eligible: AgendaCandidate[] = [];
+  const signalCache = new Map<string, Awaited<ReturnType<ResearchRepository["findSignalById"]>>>();
 
   const titleDedupeKey = (title: string): string =>
     title
@@ -347,6 +350,26 @@ export async function getMarketingManagerResearchContext(
       staleExcludedCount += 1;
       continue;
     }
+
+    // STEP E-4G: exclude verification/test artifacts from production curation pool.
+    let primarySignal = null;
+    const primarySignalId = brief.primarySignalId ?? brief.signalIds[0] ?? null;
+    if (primarySignalId) {
+      if (!signalCache.has(primarySignalId)) {
+        signalCache.set(primarySignalId, await repo.findSignalById(primarySignalId));
+      }
+      primarySignal = signalCache.get(primarySignalId) ?? null;
+    }
+    if (
+      isVerificationResearchArtifact({
+        title: candidate.title ?? brief.title,
+        signal: primarySignal,
+      })
+    ) {
+      verificationExcludedCount += 1;
+      continue;
+    }
+
     if (!matchesFilter(brief.destinations, options.destination)) {
       continue;
     }
@@ -399,6 +422,9 @@ export async function getMarketingManagerResearchContext(
     notes.push(
       `curation_pool_diversity:sources=${diversity.uniqueSourceCount};families=${diversity.uniqueDestinationFamilyCount};maxPerSource=${diversity.maxCandidatesPerSource};maxPerFamily=${diversity.maxCandidatesPerDestinationFamily};preWindow=${preDiversifyCandidates.length}`,
     );
+  }
+  if (verificationExcludedCount > 0) {
+    notes.push(`verification_fixture_excluded:${verificationExcludedCount}`);
   }
 
   return {

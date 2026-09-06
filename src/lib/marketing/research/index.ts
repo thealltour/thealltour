@@ -35,6 +35,11 @@ export {
 export {
   getMarketingManagerResearchContext,
 } from "@/lib/marketing/research/manager/getMarketingManagerResearchContext";
+export {
+  hasVerificationBracketTitleMarker,
+  isVerificationResearchArtifact,
+  verificationInputFromResearchSignal,
+} from "@/lib/marketing/research/manager/isVerificationResearchArtifact";
 export type {
   MarketingResearchContext,
   GetMarketingManagerResearchContextOptions,

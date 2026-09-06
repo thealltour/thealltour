@@ -45,6 +45,10 @@ import {
 } from "@/lib/marketing/cron/daily/repository/createDailyAgendaSlateRepository";
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import type { MarketingResearchContext } from "@/lib/marketing/research/manager/types";
+import {
+  runSemanticSoftDemotion,
+  type SemanticSoftDemotionDeps,
+} from "@/lib/marketing/cron/daily/semanticSoftDemotion";
 import { classifyMarketingIncident } from "@/lib/marketing/operations/incidentClassification";
 import {
   DAILY_MARKETING_RUN_CONTRACT,
@@ -64,6 +68,11 @@ export type DailyAgendaSlatePipelineDeps = {
   /** One MM reasoning pass returning a multi-candidate slate curation. */
   invokeManagerProfile?: (prompt: string) => Promise<string> | string;
   slateTargetSize?: number;
+  /**
+   * STEP E-4: optional semantic soft-demotion deps (durable embeddings only).
+   * When omitted, loads Supabase store if configured; never calls Mini PC.
+   */
+  semanticSoftDemotion?: SemanticSoftDemotionDeps;
 };
 
 function buildObservability(run: Partial<DailyMarketingRun>): DailyMarketingRunObservability {
@@ -410,6 +419,72 @@ export async function runDailyMarketingAgendaSlate(
   const cooldownApplied = applyResearchIdentityCooldown(research, cooledIdentities);
   research = cooldownApplied.context;
 
+  // STEP E-4: semantic + deterministic composite soft demotion (never hard-rejects).
+  // Uses durable ResearchBrief embeddings only — no Mini PC call on the 09:00 path.
+  let semanticSoftDemotionMeta: Record<string, unknown> | null = null;
+  try {
+    const semanticResult = await runSemanticSoftDemotion(research, {
+      ...(deps.semanticSoftDemotion ?? {}),
+      // In unit tests without explicit deps, skip remote store (preserve prior behavior).
+      ...(process.env.VITEST || process.env.NODE_ENV === "test"
+        ? {
+            embeddingRepo:
+              deps.semanticSoftDemotion?.embeddingRepo === undefined &&
+              !deps.semanticSoftDemotion?.embeddingsByBriefId
+                ? null
+                : deps.semanticSoftDemotion?.embeddingRepo,
+          }
+        : {}),
+    });
+    research = semanticResult.context;
+    semanticSoftDemotionMeta = {
+      mode: semanticResult.mode,
+      semanticAvailable: semanticResult.report.semanticAvailable,
+      degraded: semanticResult.report.degraded,
+      degradeReason: semanticResult.report.degradeReason,
+      embeddingsLoaded: semanticResult.report.embeddingsLoaded,
+      embeddingAvailableCount: semanticResult.report.embeddingAvailableCount,
+      comparedCount: semanticResult.report.comparedCount,
+      demotedCount: semanticResult.report.demotedCount,
+      hypotheticalDemotedCount: semanticResult.report.hypotheticalDemotedCount,
+      appliedDemotedCount: semanticResult.report.appliedDemotedCount,
+      model: semanticResult.report.model,
+      revision: semanticResult.report.revision,
+      sourceTextVersion: semanticResult.report.sourceTextVersion,
+      decisions: semanticResult.report.decisions
+        .filter((d) => d.demotionAmount > 0 || d.semanticSimilarity != null)
+        .slice(0, 24)
+        .map((d) => ({
+          agendaCandidateId: d.agendaCandidateId,
+          researchBriefId: d.researchBriefId,
+          semanticAvailable: d.semanticAvailable,
+          semanticSimilarity: d.semanticSimilarity,
+          comparedResearchBriefId: d.comparedResearchBriefId,
+          semanticBand: d.semanticBand,
+          contentCorroborators: d.contentCorroborators,
+          contextSignals: d.contextSignals,
+          deterministicExactSignals: d.deterministicExactSignals,
+          duplicateSignals: d.duplicateSignals,
+          demotionAmount: d.demotionAmount,
+          demotionReason: d.demotionReason,
+        })),
+      moved: semanticResult.moved.slice(0, 24),
+    };
+  } catch (error) {
+    // Soft demotion must never block slate generation.
+    semanticSoftDemotionMeta = {
+      mode: "shadow",
+      semanticAvailable: false,
+      degraded: true,
+      degradeReason: error instanceof Error ? error.message : "semantic_soft_demotion_failed",
+      demotedCount: 0,
+      hypotheticalDemotedCount: 0,
+      appliedDemotedCount: 0,
+      embeddingAvailableCount: 0,
+      comparedCount: 0,
+    };
+  }
+
   run = {
     ...run,
     researchStatus: research.status,
@@ -423,6 +498,7 @@ export async function runDailyMarketingAgendaSlate(
         excludedBriefIds: cooldownApplied.excludedBriefIds,
         rejectedExcludedAgendaCandidateIds: rejected.agendaCandidateIds,
       },
+      semanticSoftDemotion: semanticSoftDemotionMeta,
     },
     observability: buildObservability({
       ...run,

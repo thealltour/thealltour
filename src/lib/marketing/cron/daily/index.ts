@@ -16,6 +16,24 @@ export {
   DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
 } from "@/lib/marketing/cron/daily/researchIdentityCooldown";
 export {
+  applySemanticDemotion,
+  computeSemanticDemotion,
+  runSemanticSoftDemotion,
+  resolveSemanticBand,
+  resolveMarketingSemanticDemotionMode,
+  DEFAULT_MARKETING_SEMANTIC_DEMOTION_MODE,
+  SEMANTIC_BAND_DIAGNOSTIC_MAX,
+  SEMANTIC_BAND_NEAR_DUPLICATE_MAX,
+  SEMANTIC_BAND_SAME_TOPIC_MAX,
+  SEMANTIC_BAND_STRONG_MIN,
+} from "@/lib/marketing/cron/daily/semanticSoftDemotion";
+export type {
+  MarketingSemanticDemotionMode,
+  SemanticDemotionDecision,
+  SemanticSoftDemotionDeps,
+  SemanticSoftDemotionReport,
+} from "@/lib/marketing/cron/daily/semanticSoftDemotion";
+export {
   runDailyMarketingPipeline,
   runDailyMarketingProductionPipeline,
   runDailyMarketingAgendaSlate,

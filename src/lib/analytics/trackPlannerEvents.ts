@@ -372,3 +372,56 @@ export function trackPlannerRoutesFailed(params: { sessionId: string }): void {
     },
   });
 }
+
+type AffiliateMetaBase = {
+  sessionId: string;
+  providerId: string;
+  category: string;
+  placement: string;
+  destination?: string | null;
+  sourceProductId?: string | null;
+  dayNumber?: number | null;
+  itemOrder?: number | null;
+  trackingToken?: string | null;
+};
+
+export function trackAffiliateImpression(params: AffiliateMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.affiliate_impression,
+    source: ANALYTICS_SOURCES.planner,
+    section: "affiliate",
+    label: "affiliate_impression",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      providerId: params.providerId,
+      category: params.category,
+      placement: params.placement,
+      destination: params.destination?.trim().slice(0, 120) || null,
+      dayNumber: params.dayNumber ?? null,
+      itemOrder: params.itemOrder ?? null,
+      trackingToken: params.trackingToken ?? null,
+    },
+  });
+}
+
+export function trackAffiliateClicked(params: AffiliateMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.affiliate_clicked,
+    source: ANALYTICS_SOURCES.planner,
+    section: "affiliate",
+    label: "affiliate_clicked",
+    productId: params.sourceProductId?.trim() || null,
+    href: `/r/affiliate/${encodeURIComponent(params.trackingToken ?? "")}`,
+    metadata: {
+      sessionId: params.sessionId,
+      providerId: params.providerId,
+      category: params.category,
+      placement: params.placement,
+      destination: params.destination?.trim().slice(0, 120) || null,
+      dayNumber: params.dayNumber ?? null,
+      itemOrder: params.itemOrder ?? null,
+      trackingToken: params.trackingToken ?? null,
+    },
+  });
+}

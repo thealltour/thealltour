@@ -18,3 +18,11 @@ export const ENABLE_COUPANG_PARTNERS_BANNER = false;
  * - true: Planner 진입 route·CTA 노출
  */
 export const ENABLE_FREE_TRAVEL_PLANNER = true;
+
+/**
+ * Planner Affiliate Router v0
+ * - false: affiliate offers API/UI 비활성 (기본)
+ * - true: Result monetization slots + click attribution 활성
+ * Provider 실연동(PR-9+) 전까지 production에서는 false 유지 권장.
+ */
+export const ENABLE_PLANNER_AFFILIATE_ROUTER = false;

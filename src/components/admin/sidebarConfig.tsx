@@ -204,4 +204,12 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     mainKey: "tools_marketing_operations",
     roles: ["admin"],
   },
+  {
+    href: "/theall_manager_only/trend-inbox",
+    label: "Trend Inbox",
+    icon: ClipboardCheck,
+    group: "tools",
+    mainKey: "tools_trend_inbox",
+    roles: ["admin"],
+  },
 ];

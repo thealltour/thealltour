@@ -73,6 +73,11 @@ export type DailyAgendaSlatePipelineDeps = {
    * When omitted, loads Supabase store if configured; never calls Mini PC.
    */
   semanticSoftDemotion?: SemanticSoftDemotionDeps;
+  /**
+   * T-8: Trend staging → Research → semantic coverage preflight.
+   * Failures never block Agenda. Omit to run default preflight; set null to skip.
+   */
+  trendPreflight?: import("@/lib/marketing/trends/preflight/runTrendAgendaPreflight").TrendAgendaPreflightDeps | null;
 };
 
 function buildObservability(run: Partial<DailyMarketingRun>): DailyMarketingRunObservability {
@@ -382,6 +387,68 @@ export async function runDailyMarketingAgendaSlate(
   });
   run = await repo.saveRun(run);
 
+  // T-8: Meta trend preflight (best-effort). Never blocks Agenda.
+  // Unit tests skip unless deps.trendPreflight is explicitly provided.
+  let trendPreflightMeta: Record<string, unknown> | null = null;
+  const inTest = Boolean(process.env.VITEST || process.env.NODE_ENV === "test");
+  const shouldRunTrendPreflight =
+    deps.trendPreflight !== null && (!inTest || deps.trendPreflight !== undefined);
+  if (shouldRunTrendPreflight) {
+    try {
+      const { runTrendAgendaPreflight } = await import(
+        "@/lib/marketing/trends/preflight/runTrendAgendaPreflight"
+      );
+      const preflight = await runTrendAgendaPreflight({
+        ...(deps.trendPreflight ?? {}),
+        runRepo: deps.trendPreflight?.runRepo ?? repo,
+        now,
+        skipSemanticEnsure:
+          deps.trendPreflight?.skipSemanticEnsure ?? inTest,
+      });
+      trendPreflightMeta = {
+        trendAdaptation: preflight.trendAdaptation,
+        semanticCoverage: {
+          eligibleCount: preflight.semanticCoverage.eligibleCount,
+          availableCount: preflight.semanticCoverage.availableCount,
+          indexedCount: preflight.semanticCoverage.indexedCount,
+          failedCount: preflight.semanticCoverage.failedCount,
+          coverageRatio: preflight.semanticCoverage.coverageRatio,
+          degradeReason: preflight.semanticCoverage.degradeReason,
+          failureReasons: preflight.semanticCoverage.failureReasons.slice(0, 12),
+        },
+        editorial: preflight.editorial,
+      };
+    } catch (error) {
+      trendPreflightMeta = {
+        degradeReason: error instanceof Error ? error.message : "trend_preflight_failed",
+        trendAdaptation: {
+          availableTrendCount: 0,
+          adaptedTrendCount: 0,
+          failedCount: 0,
+          researchBriefIds: [],
+          degradeReason: "trend_preflight_failed",
+        },
+        semanticCoverage: {
+          eligibleCount: 0,
+          availableCount: 0,
+          indexedCount: 0,
+          failedCount: 0,
+          coverageRatio: 1,
+          degradeReason: "trend_preflight_failed",
+        },
+        editorial: {
+          mode: "shadow",
+          availableTrendCount: 0,
+          adaptedTrendCount: 0,
+          editorialSignalCount: 0,
+          hypotheticalAppliedCount: 0,
+          appliedCount: 0,
+          degradeReason: "trend_preflight_failed",
+        },
+      };
+    }
+  }
+
   let research: MarketingResearchContext;
   try {
     if (deps.getResearchContext) {
@@ -394,6 +461,56 @@ export async function runDailyMarketingAgendaSlate(
     }
   } catch {
     return failRun(repo, { ...run, researchStatus: "unavailable" }, "RESEARCH_UNAVAILABLE", now);
+  }
+
+  // T-7 live: attach trend editorial signals to MM compact candidates (scoreReasons only).
+  // shadow/off: leave production ranking/content unchanged.
+  try {
+    const editorialMode =
+      (trendPreflightMeta?.editorial as { mode?: string } | undefined)?.mode ?? "shadow";
+    if (editorialMode === "live") {
+      const { createResearchRepository } = await import(
+        "@/lib/marketing/research/repository/createResearchRepository"
+      );
+      const {
+        buildTrendEditorialPlans,
+        applyTrendEditorialToCompactCandidates,
+      } = await import("@/lib/marketing/trends/editorial/trendEditorialPlanning");
+      const researchRepo = await createResearchRepository();
+      const briefs = [];
+      for (const c of research.agendaCandidates.slice(0, 28)) {
+        const brief = await researchRepo.findBriefById(c.researchBriefId);
+        if (brief?.editorialIntelligence || brief?.trendContext) briefs.push(brief);
+      }
+      const plan = buildTrendEditorialPlans({
+        briefs,
+        mode: "live",
+        availableTrendCount: Number(
+          (trendPreflightMeta?.trendAdaptation as { availableTrendCount?: number } | undefined)
+            ?.availableTrendCount ?? 0,
+        ),
+        adaptedTrendCount: Number(
+          (trendPreflightMeta?.trendAdaptation as { adaptedTrendCount?: number } | undefined)
+            ?.adaptedTrendCount ?? 0,
+        ),
+      });
+      research = {
+        ...research,
+        agendaCandidates: applyTrendEditorialToCompactCandidates(
+          research.agendaCandidates,
+          plan.plansByBriefId,
+          "live",
+        ),
+      };
+      if (trendPreflightMeta && typeof trendPreflightMeta === "object") {
+        trendPreflightMeta = {
+          ...trendPreflightMeta,
+          editorial: plan.diagnostics,
+        };
+      }
+    }
+  } catch {
+    // Live editorial overlay must never block Agenda.
   }
 
   const recentCandidates = await repo.listCandidates({ limit: 64 });
@@ -499,6 +616,7 @@ export async function runDailyMarketingAgendaSlate(
         rejectedExcludedAgendaCandidateIds: rejected.agendaCandidateIds,
       },
       semanticSoftDemotion: semanticSoftDemotionMeta,
+      trendPreflight: trendPreflightMeta,
     },
     observability: buildObservability({
       ...run,

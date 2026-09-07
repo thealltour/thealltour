@@ -8,8 +8,11 @@ export const MARKETING_SEMANTIC_ENTITY_TYPES = [
 
 export type MarketingSemanticEntityType = (typeof MARKETING_SEMANTIC_ENTITY_TYPES)[number];
 
-/** Canonical source-text contract version for embedding input. */
-export const MARKETING_SEMANTIC_SOURCE_TEXT_VERSION = "v1" as const;
+/** Canonical source-text contract version for embedding input.
+ * v2: includes editorial/trend semantic fields (hooks, angles, audience) when present.
+ * Opaque IDs, raw_context, payload JSON, model scores remain excluded.
+ */
+export const MARKETING_SEMANTIC_SOURCE_TEXT_VERSION = "v2" as const;
 
 /**
  * Default embedding pipeline revision identity.
@@ -74,6 +77,14 @@ export type ResearchBriefEmbeddingTextInput = {
   topics?: string[];
   claims?: string[];
   practicalImplications?: string[];
+  /** Editorial semantics only — no raw_context / scores / opaque IDs. */
+  trendType?: string | null;
+  contentAngles?: string[];
+  hookSignals?: string[];
+  audiencePainPoints?: string[];
+  audienceQuestions?: string[];
+  personaHints?: string[];
+  formatSignals?: string[];
 };
 
 /** Inputs for agenda_candidate / slate-item style editorial text. */

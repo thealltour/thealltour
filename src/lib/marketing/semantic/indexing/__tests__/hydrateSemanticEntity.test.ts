@@ -68,7 +68,7 @@ describe("hydrateSemanticEntityForIndexing", () => {
     if (result.status !== "ok") return;
     expect(result.entity.canonicalText).toContain("title:Title");
     expect(result.entity.contentHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(result.entity.sourceTextVersion).toBe("v1");
+    expect(result.entity.sourceTextVersion).toBe(MARKETING_SEMANTIC_SOURCE_TEXT_VERSION);
   });
 
   it("returns not_found for missing agenda_candidate", async () => {
@@ -77,7 +77,7 @@ describe("hydrateSemanticEntityForIndexing", () => {
       {
         researchRepo: createInMemoryResearchRepository(),
         runRepo: createInMemoryDailyMarketingRunRepository(),
-        sourceTextVersion: "v1",
+        sourceTextVersion: MARKETING_SEMANTIC_SOURCE_TEXT_VERSION,
       },
     );
     expect(result).toEqual(
@@ -94,7 +94,7 @@ describe("hydrateSemanticEntityForIndexing", () => {
       {
         researchRepo,
         runRepo: createInMemoryDailyMarketingRunRepository(),
-        sourceTextVersion: "v1",
+        sourceTextVersion: MARKETING_SEMANTIC_SOURCE_TEXT_VERSION,
       },
     );
     expect(result.status).toBe("ok");

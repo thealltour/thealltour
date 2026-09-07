@@ -39,7 +39,8 @@ function joinCanonical(parts: Array<string | null | undefined>): string {
 
 /**
  * Deterministic research_brief embedding text.
- * Excludes ids, timestamps, status, raw evidence blobs/URLs.
+ * Excludes ids, timestamps, status, raw evidence blobs/URLs,
+ * raw_context, opaque IDs, payload JSON, and model scores.
  */
 export function buildResearchBriefCanonicalText(input: ResearchBriefEmbeddingTextInput): string {
   return joinCanonical([
@@ -49,6 +50,13 @@ export function buildResearchBriefCanonicalText(input: ResearchBriefEmbeddingTex
     normalizeList("topics", input.topics),
     normalizeList("claims", input.claims, 8),
     normalizeList("practical", input.practicalImplications, 6),
+    normalizeLine("trendType", input.trendType),
+    normalizeList("angles", input.contentAngles, 8),
+    normalizeList("hooks", input.hookSignals, 8),
+    normalizeList("pain", input.audiencePainPoints, 6),
+    normalizeList("questions", input.audienceQuestions, 6),
+    normalizeList("personas", input.personaHints, 6),
+    normalizeList("formats", input.formatSignals, 6),
   ]);
 }
 

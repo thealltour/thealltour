@@ -314,6 +314,9 @@ export function mapResearchBriefRow(
     generatedAt: normalizeIsoDatetime(row.generated_at),
     validUntil: row.valid_until ? normalizeIsoDatetime(row.valid_until) : null,
     status: asString(row.status),
+    editorialIntelligence: row.editorial_intelligence ?? null,
+    trendContext: row.trend_context ?? null,
+    marketRelevanceSignals: row.market_relevance_signals ?? null,
   }) as ResearchBrief;
 }
 
@@ -339,6 +342,9 @@ export function toResearchBriefRow(brief: ResearchBrief): Record<string, unknown
     generated_at: brief.generatedAt,
     valid_until: brief.validUntil ?? null,
     status: brief.status,
+    editorial_intelligence: brief.editorialIntelligence ?? null,
+    trend_context: brief.trendContext ?? null,
+    market_relevance_signals: brief.marketRelevanceSignals ?? null,
     updated_at: new Date().toISOString(),
   };
 }

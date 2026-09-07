@@ -33,6 +33,7 @@ function fromResearchBrief(
   brief: ResearchBrief,
   sourceTextVersion: string,
 ): HydratedSemanticEntity {
+  const editorial = brief.editorialIntelligence;
   const built = buildResearchBriefContentHash({
     title: brief.title,
     summary: brief.summary,
@@ -42,6 +43,13 @@ function fromResearchBrief(
     practicalImplications: brief.openQuestions?.length
       ? brief.openQuestions
       : brief.risks?.slice(0, 4),
+    trendType: brief.trendContext?.trendType ?? null,
+    contentAngles: editorial?.contentAngles,
+    hookSignals: editorial?.hookSignals,
+    audiencePainPoints: editorial?.audiencePainPoints,
+    audienceQuestions: editorial?.audienceQuestions,
+    personaHints: editorial?.personaHints,
+    formatSignals: editorial?.formatSignals,
   });
   return {
     entityType: "research_brief",

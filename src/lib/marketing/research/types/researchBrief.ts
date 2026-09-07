@@ -8,6 +8,11 @@ import type {
 import type { ResearchBriefStatus } from "@/lib/marketing/research/types/enums";
 import type { CorroborationAssessment } from "@/lib/marketing/research/services/corroborationScorer";
 import type { ResearchScoreComponents } from "@/lib/marketing/research/services/scoringPolicy";
+import type {
+  ResearchBriefEditorialIntelligence,
+  ResearchBriefMarketRelevanceSignals,
+  ResearchBriefTrendContext,
+} from "@/lib/marketing/research/types/editorialIntelligence";
 
 /** Validated research unit — not a content draft. */
 export type ResearchBrief = {
@@ -40,6 +45,13 @@ export type ResearchBrief = {
   validUntil?: string | null;
 
   status: ResearchBriefStatus;
+
+  /** B — Editorial intelligence (separated from facts/evidence). */
+  editorialIntelligence?: ResearchBriefEditorialIntelligence | null;
+  /** A/D — Trend discovery context / provenance diagnostics. */
+  trendContext?: ResearchBriefTrendContext | null;
+  /** Market relevance input features — not koreanTravelerRelevance. */
+  marketRelevanceSignals?: ResearchBriefMarketRelevanceSignals | null;
 };
 
 export type AgendaCandidate = {

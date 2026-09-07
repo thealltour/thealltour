@@ -122,6 +122,36 @@ export const researchScoreComponentsSchema = z.object({
 });
 
 /** ResearchBrief must not carry content-draft fields. */
+export const researchBriefEditorialIntelligenceSchema = z.object({
+  hookSignals: z.array(z.string()),
+  formatSignals: z.array(z.string()),
+  audiencePainPoints: z.array(z.string()),
+  audienceQuestions: z.array(z.string()),
+  personaHints: z.array(z.string()),
+  contentAngles: z.array(z.string()),
+});
+
+export const researchBriefTrendContextSchema = z.object({
+  provider: z.literal("meta_ai"),
+  observationId: z.string().min(1),
+  providerRunId: z.string().min(1),
+  trendType: z.string().min(1),
+  trendSignalStatus: z.string().min(1),
+  window: z.object({ start: z.string(), end: z.string() }),
+  providerClusterHint: z.string().nullable().optional(),
+  clusterLabel: z.string().nullable().optional(),
+  verticalTags: z.array(z.string()),
+  provenanceLevels: z.array(z.enum(["L1", "L2", "L3"])),
+});
+
+export const researchBriefMarketRelevanceSignalsSchema = z.object({
+  originMarket: z.literal("KR"),
+  travelDirection: z.literal("outbound"),
+  providerMarketRelevanceScore: scoreSchema,
+  observedBasis: z.array(z.string()),
+  inferredBasis: z.array(z.string()),
+});
+
 export const researchBriefSchema = z
   .object({
     id: z.string().uuid(),
@@ -146,6 +176,9 @@ export const researchBriefSchema = z
     generatedAt: z.string().datetime(),
     validUntil: z.string().datetime().nullable().optional(),
     status: z.enum(RESEARCH_BRIEF_STATUSES),
+    editorialIntelligence: researchBriefEditorialIntelligenceSchema.nullable().optional(),
+    trendContext: researchBriefTrendContextSchema.nullable().optional(),
+    marketRelevanceSignals: researchBriefMarketRelevanceSignalsSchema.nullable().optional(),
   })
   .strict();
 

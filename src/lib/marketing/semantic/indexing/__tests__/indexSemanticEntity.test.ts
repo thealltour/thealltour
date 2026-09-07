@@ -423,7 +423,7 @@ describe("STEP E-2 controlled semantic indexing", () => {
       entityId: "rb_danang",
       model: MODEL,
       revision: "1",
-      sourceTextVersion: "v1",
+      sourceTextVersion: MARKETING_SEMANTIC_SOURCE_TEXT_VERSION,
     });
     expect(primary).not.toBeNull();
 
@@ -445,7 +445,7 @@ describe("STEP E-2 controlled semantic indexing", () => {
       entityId: "rb_danang",
       model: MODEL,
       revision: "2",
-      sourceTextVersion: "v1",
+      sourceTextVersion: MARKETING_SEMANTIC_SOURCE_TEXT_VERSION,
     });
     expect(rev2).not.toBeNull();
     expect(rev2!.id).not.toBe(primary!.id);
@@ -453,14 +453,14 @@ describe("STEP E-2 controlled semantic indexing", () => {
     // Different sourceTextVersion also coexists
     const textAlt: IndexSemanticEntityDeps = {
       ...deps,
-      config: makeConfig({ sourceTextVersion: "v2" }),
+      config: makeConfig({ sourceTextVersion: "v3" }),
     };
     const textResult = await indexSemanticEntity(
       { entityType: "research_brief", entityId: "rb_danang" },
       textAlt,
     );
     expect(textResult.status).toBe("indexed");
-    expect(textResult.sourceTextVersion).toBe("v2");
+    expect(textResult.sourceTextVersion).toBe("v3");
     expect(provider.embedCalls).toBe(3);
   });
 

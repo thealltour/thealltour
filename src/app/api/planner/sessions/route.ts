@@ -36,14 +36,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const { anonymousKey, destination, sourceProductId } = parsed.data;
+  const { anonymousKey, origin, destination, sourceProductId } = parsed.data;
 
   const cookieStore = await cookies();
   const memberSession = getMemberSessionFromCookies(cookieStore);
   const memberId = memberSession?.memberId ?? null;
 
   const resolvedProductId = await resolvePlannerSourceProductId(sourceProductId ?? null);
-  const input = createEmptyPlannerDraftInput(destination);
+  const input = createEmptyPlannerDraftInput(destination, origin);
 
   try {
     const session = await createPlannerSession({
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
         id: session.id,
         status: session.status,
         sourceProductId: session.sourceProductId,
+        origin: session.input.origin.text,
         destination: session.input.destination.text,
         input: session.input,
         createdAt: session.createdAt,

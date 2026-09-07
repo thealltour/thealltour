@@ -66,6 +66,12 @@ export const plannerDestinationTextSchema = z
   .min(1, "목적지를 입력해 주세요.")
   .max(120, "목적지는 120자 이내로 입력해 주세요.");
 
+export const plannerOriginTextSchema = z
+  .string()
+  .trim()
+  .min(1, "출발지를 입력해 주세요.")
+  .max(120, "출발지는 120자 이내로 입력해 주세요.");
+
 /** @deprecated use plannerDestinationTextSchema — kept for POST body */
 export const plannerDestinationSchema = plannerDestinationTextSchema;
 
@@ -153,6 +159,9 @@ export const plannerDraftDatesSchema = z
 
 export const plannerDraftInputSchema = z
   .object({
+    origin: z.object({
+      text: plannerOriginTextSchema,
+    }),
     destination: z.object({
       text: plannerDestinationTextSchema,
     }),
@@ -202,6 +211,12 @@ export type PlannerDraftInputParsed = z.infer<typeof plannerDraftInputSchema>;
 /** Intermediate draft — structure-valid fields; empties allowed until finalize. */
 export const plannerDraftInputProgressSchema = z
   .object({
+    origin: z
+      .object({
+        text: z.string().trim().max(120),
+      })
+      .optional()
+      .default({ text: "" }),
     destination: z.object({
       text: z.string().trim().max(120),
     }),
@@ -230,6 +245,7 @@ export const plannerDraftInputProgressSchema = z
   .strict()
   .transform((input) => ({
     ...input,
+    origin: input.origin ?? { text: "" },
     dates: {
       ...input.dates,
       startDate: input.dates.startDate === "" ? null : input.dates.startDate,
@@ -240,6 +256,7 @@ export const plannerDraftInputProgressSchema = z
 export const createPlannerSessionBodySchema = z
   .object({
     anonymousKey: plannerAnonymousKeySchema,
+    origin: plannerOriginTextSchema,
     destination: plannerDestinationTextSchema,
     sourceProductId: z.string().uuid().nullable().optional(),
   })
@@ -275,8 +292,15 @@ export function validatePlannerStep(
   input: z.infer<typeof plannerDraftInputProgressSchema>,
 ): string | null {
   if (step === 1) {
-    const r = plannerDestinationTextSchema.safeParse(input.destination.text);
-    return r.success ? null : (r.error.issues[0]?.message ?? "목적지를 확인해 주세요.");
+    const originText = input.origin?.text ?? "";
+    const originResult = plannerOriginTextSchema.safeParse(originText);
+    if (!originResult.success) {
+      return originResult.error.issues[0]?.message ?? "출발지를 확인해 주세요.";
+    }
+    const destResult = plannerDestinationTextSchema.safeParse(input.destination.text);
+    return destResult.success
+      ? null
+      : (destResult.error.issues[0]?.message ?? "목적지를 확인해 주세요.");
   }
   if (step === 2) {
     if (input.dates.mode === "flexible") {

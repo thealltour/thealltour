@@ -2,8 +2,8 @@ import type { AffiliateProviderDefinition } from "@/lib/affiliate/planner/types"
 
 /**
  * Static provider catalog foundation.
- * All production entries are enabled:false until PR-9+ real integrations.
- * Do not invent capabilities as true without evidence.
+ * Airalo/WeGoTrip adapters exist (PR-9C) but stay enabled:false until live
+ * feed/API + Partner Links verification. Do not invent capabilities.
  */
 export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] = [
   {
@@ -14,17 +14,21 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed"],
     supportedPlacements: ["planner_summary"],
     priority: 80,
+    network: "travelpayouts",
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {
     id: "aviasales",
     displayName: "Aviasales",
     categories: ["flight"],
-    enabled: false,
+    // PR-9E: enabled after full live Data API → Partner Links acceptance (서울→SEL, 오사카→OSA).
+    enabled: true,
     supportedDateModes: ["fixed"],
     supportedPlacements: ["planner_summary"],
     priority: 70,
-    capabilities: { deepLink: false, search: false, api: false, widget: false },
+    network: "travelpayouts",
+    // Data API + aviasales.com search URL → Partner Links (docs-confirmed).
+    capabilities: { deepLink: true, search: false, api: true, widget: false },
   },
   {
     id: "klook",
@@ -34,6 +38,7 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed", "flexible"],
     supportedPlacements: ["day_item", "transport", "planner_summary"],
     priority: 60,
+    network: "travelpayouts",
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {
@@ -44,6 +49,7 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed", "flexible"],
     supportedPlacements: ["day_item"],
     priority: 55,
+    network: "travelpayouts",
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {
@@ -54,6 +60,7 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed", "flexible"],
     supportedPlacements: ["day_item"],
     priority: 50,
+    network: "travelpayouts",
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {
@@ -64,6 +71,7 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed", "flexible"],
     supportedPlacements: ["preparation"],
     priority: 65,
+    network: "travelpayouts",
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {
@@ -74,7 +82,21 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed", "flexible"],
     supportedPlacements: ["preparation"],
     priority: 60,
-    capabilities: { deepLink: false, search: false, api: false, widget: false },
+    network: "travelpayouts",
+    // Feed-based deep links — not a REST API.
+    capabilities: { deepLink: true, search: false, api: false, widget: false },
+  },
+  {
+    id: "wegotrip",
+    displayName: "WeGoTrip",
+    categories: ["activity"],
+    enabled: false,
+    supportedDateModes: ["fixed", "flexible"],
+    // day_item only — summary loop is flight/hotel; no planner_summary for MVP.
+    supportedPlacements: ["day_item"],
+    priority: 58,
+    network: "travelpayouts",
+    capabilities: { deepLink: true, search: true, api: true, widget: false },
   },
   {
     id: "kiwitaxi",
@@ -84,6 +106,7 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed"],
     supportedPlacements: ["transport"],
     priority: 45,
+    network: "travelpayouts",
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {

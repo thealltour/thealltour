@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AffiliateProviderAdapter } from "@/lib/affiliate/planner/adapters/types";
 import { AFFILIATE_DISCLOSURE_KO, affiliateCtaLabel, affiliateDefaultTitle } from "@/lib/affiliate/planner/copy";
+import { resolveAffiliateDestination } from "@/lib/affiliate/planner/destinationResolver";
 import { itemTypeToAffiliateCategory } from "@/lib/affiliate/planner/eligibility";
 import { persistAffiliateOfferToken } from "@/lib/affiliate/planner/offerRepository";
 import type { AffiliateDestinationOverride } from "@/lib/affiliate/planner/providerConfig";
@@ -10,9 +11,11 @@ import {
   getProductionAffiliateProviderDefinitions,
   getProductionDestinationOverrides,
 } from "@/lib/affiliate/planner/registry";
+import { resolveAviasalesLocationIata } from "@/lib/affiliate/planner/providers/aviasales/aviasalesDestinationResolver";
 import { routeAffiliateOffer } from "@/lib/affiliate/planner/router";
 import type {
   AffiliateCategory,
+  AffiliateFlightOrigin,
   AffiliateOffer,
   AffiliatePlacement,
   AffiliateProviderDefinition,
@@ -34,6 +37,8 @@ export type BuildAffiliateOffersDeps = {
   adapters?: Map<string, AffiliateProviderAdapter>;
   overrides?: AffiliateDestinationOverride[];
   persist?: typeof persistAffiliateOfferToken;
+  resolveDestination?: typeof resolveAffiliateDestination;
+  resolveOriginIata?: typeof resolveAviasalesLocationIata;
 };
 
 /**
@@ -52,17 +57,28 @@ export async function buildAffiliateOffersForSession(params: {
   const adapters = params.deps?.adapters ?? getProductionAffiliateAdapters();
   const overrides = params.deps?.overrides ?? getProductionDestinationOverrides();
   const persist = params.deps?.persist ?? persistAffiliateOfferToken;
+  const resolveDestination = params.deps?.resolveDestination ?? resolveAffiliateDestination;
+  const resolveOriginIata = params.deps?.resolveOriginIata ?? resolveAviasalesLocationIata;
 
   const draft = normalizePlannerDraftInput(params.input);
   const destinationText =
     draft?.destination.text?.trim() || params.plan.destination.name || "";
 
+  const destination = await resolveDestination({
+    destinationText,
+    plan: params.plan,
+    input: draft,
+  });
+
+  const flightOrigin = await resolveFlightOriginOnce({
+    draft,
+    providers,
+    resolveOriginIata,
+  });
+
   const baseContext = {
     plannerSessionId: params.sessionId,
-    destination: {
-      text: destinationText,
-      countryCode: null as string | null,
-    },
+    destination,
     dates: draft?.dates ?? {
       mode: params.plan.tripOverview.startDate ? ("fixed" as const) : ("flexible" as const),
       startDate: params.plan.tripOverview.startDate,
@@ -74,6 +90,7 @@ export async function buildAffiliateOffersForSession(params: {
     interests: draft?.interests ?? [],
     pace: draft?.pace ?? "balanced",
     sourceProductId: params.sourceProductId,
+    flightOrigin,
   };
 
   const summary: AffiliateOffer[] = [];
@@ -90,7 +107,7 @@ export async function buildAffiliateOffersForSession(params: {
       overrides,
       persist,
       sessionId: params.sessionId,
-      destination: destinationText,
+      destination: destination.text,
       sourceProductId: params.sourceProductId,
     });
     if (offer) summary.push(offer);
@@ -99,7 +116,6 @@ export async function buildAffiliateOffersForSession(params: {
   const preparation: AffiliateOffer[] = [];
   for (const category of PREPARATION_CATEGORIES) {
     if (preparation.length >= PREPARATION_MAX) break;
-    // eSIM: at most one total (category loop already one per category)
     const offer = await routeAndPersist({
       context: {
         ...baseContext,
@@ -111,7 +127,7 @@ export async function buildAffiliateOffersForSession(params: {
       overrides,
       persist,
       sessionId: params.sessionId,
-      destination: destinationText,
+      destination: destination.text,
       sourceProductId: params.sourceProductId,
     });
     if (offer) preparation.push(offer);
@@ -139,7 +155,7 @@ export async function buildAffiliateOffersForSession(params: {
         overrides,
         persist,
         sessionId: params.sessionId,
-        destination: destinationText,
+        destination: destination.text,
         sourceProductId: params.sourceProductId,
       });
       if (offer) dayOffers.push(offer);
@@ -158,6 +174,33 @@ export async function buildAffiliateOffersForSession(params: {
   };
 }
 
+/**
+ * Resolve draft.origin.text → flightOrigin once when any enabled flight provider needs it.
+ * Failure → null (no flight offer only; WeGoTrip/Airalo unaffected).
+ * Never invent Seoul/ICN/SEL/locale/IP defaults.
+ */
+async function resolveFlightOriginOnce(params: {
+  draft: PlannerDraftInput | null;
+  providers: AffiliateProviderDefinition[];
+  resolveOriginIata: typeof resolveAviasalesLocationIata;
+}): Promise<AffiliateFlightOrigin | null> {
+  const originText = params.draft?.origin?.text?.trim() ?? "";
+  if (!originText) return null;
+
+  const needsFlightOrigin = params.providers.some(
+    (p) => p.enabled && p.categories.includes("flight"),
+  );
+  if (!needsFlightOrigin) return null;
+
+  try {
+    const resolved = await params.resolveOriginIata({ locationText: originText });
+    if (!resolved?.iata) return null;
+    return { text: originText, iata: resolved.iata };
+  } catch {
+    return null;
+  }
+}
+
 async function routeAndPersist(params: {
   context: AffiliateRoutingContext;
   providers: AffiliateProviderDefinition[];
@@ -168,7 +211,7 @@ async function routeAndPersist(params: {
   destination: string;
   sourceProductId: string | null;
 }): Promise<AffiliateOffer | null> {
-  const { offer } = routeAffiliateOffer({
+  const { offer } = await routeAffiliateOffer({
     context: params.context,
     providers: params.providers,
     adapters: params.adapters,
@@ -176,7 +219,6 @@ async function routeAndPersist(params: {
   });
   if (!offer) return null;
 
-  // Ensure title/cta defaults if adapter omitted
   const build = {
     ...offer,
     title: offer.title || affiliateDefaultTitle(offer.category, offer.destinationLabel),
@@ -192,7 +234,7 @@ async function routeAndPersist(params: {
 }
 
 /** Pure helper for tests — route without DB. */
-export function routePlacementOffer(params: {
+export async function routePlacementOffer(params: {
   context: AffiliateRoutingContext;
   providers: AffiliateProviderDefinition[];
   adapters: Map<string, AffiliateProviderAdapter>;

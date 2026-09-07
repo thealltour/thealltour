@@ -4,8 +4,10 @@ import {
   affiliateDefaultTitle,
 } from "@/lib/affiliate/planner/copy";
 import type {
+  AffiliateOfferBuild,
   AffiliateProviderDefinition,
   AffiliateProviderId,
+  AffiliateRoutingContext,
 } from "@/lib/affiliate/planner/types";
 
 /** Test-only fixtures — never register in production registry. */
@@ -24,6 +26,7 @@ export function createFakeAffiliateDefinition(
       "transport",
     ],
     priority: overrides.priority ?? 50,
+    network: overrides.network,
     capabilities: overrides.capabilities ?? {
       deepLink: true,
       search: false,
@@ -40,26 +43,38 @@ export function createFakeAffiliateAdapter(params: {
   providerId: AffiliateProviderId;
   eligible?: boolean;
   failBuild?: boolean;
+  throwBuild?: boolean;
+  async?: boolean;
   targetUrl?: string;
+  onBuild?: () => void;
 }): AffiliateProviderAdapter {
+  const buildSync = (context: AffiliateRoutingContext): AffiliateOfferBuild | null => {
+    params.onBuild?.();
+    if (params.throwBuild) throw new Error("build boom");
+    if (params.failBuild) return null;
+    const title = affiliateDefaultTitle(context.category, context.destination.text);
+    return {
+      providerId: params.providerId,
+      category: context.category,
+      placement: context.placement,
+      title,
+      description: null,
+      ctaLabel: affiliateCtaLabel(context.category),
+      destinationLabel: context.destination.text,
+      targetUrl: params.targetUrl ?? "https://example.com/offer",
+      dayNumber: context.dayNumber ?? null,
+      itemOrder: context.itemOrder ?? null,
+    };
+  };
+
   return {
     providerId: params.providerId,
     isEligible: () => params.eligible !== false,
     buildOffer: (context) => {
-      if (params.failBuild) return null;
-      const title = affiliateDefaultTitle(context.category, context.destination.text);
-      return {
-        providerId: params.providerId,
-        category: context.category,
-        placement: context.placement,
-        title,
-        description: null,
-        ctaLabel: affiliateCtaLabel(context.category),
-        destinationLabel: context.destination.text,
-        targetUrl: params.targetUrl ?? "https://example.com/offer",
-        dayNumber: context.dayNumber ?? null,
-        itemOrder: context.itemOrder ?? null,
-      };
+      if (params.async) {
+        return Promise.resolve().then(() => buildSync(context));
+      }
+      return buildSync(context);
     },
   };
 }

@@ -20,9 +20,18 @@ export const ENABLE_COUPANG_PARTNERS_BANNER = false;
 export const ENABLE_FREE_TRAVEL_PLANNER = true;
 
 /**
- * Planner Affiliate Router v0
+ * Planner Affiliate Router v0 — MASTER kill switch (committed default).
  * - false: affiliate offers API/UI 비활성 (기본)
  * - true: Result monetization slots + click attribution 활성
- * Provider 실연동(PR-9+) 전까지 production에서는 false 유지 권장.
+ *
+ * Production canary: keep committed false until an intentional canary deploy.
+ * Runtime override (server): ENABLE_PLANNER_AFFILIATE_ROUTER=true|false env.
+ * Percent canary is separate — see PLANNER_AFFILIATE_ROLLOUT_PERCENT.
  */
 export const ENABLE_PLANNER_AFFILIATE_ROUTER = false;
+
+/**
+ * Committed default for percent canary (0 = nobody).
+ * Runtime: PLANNER_AFFILIATE_ROLLOUT_PERCENT (integer 0–100). Invalid → 0.
+ */
+export const PLANNER_AFFILIATE_ROLLOUT_PERCENT_DEFAULT = 0;

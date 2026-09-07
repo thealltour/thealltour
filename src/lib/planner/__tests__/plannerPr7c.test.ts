@@ -30,7 +30,7 @@ import type { PlannerPlaceEnrichmentItem as PlaceItem } from "@/lib/planner/enri
 
 function fixedDraft(overrides?: Partial<PlannerDraftInput>): PlannerDraftInput {
   return {
-    ...createEmptyPlannerDraftInput("오사카"),
+    ...createEmptyPlannerDraftInput("오사카", "서울"),
     dates: {
       mode: "fixed",
       startDate: "2026-10-01",
@@ -188,6 +188,18 @@ describe("PR-7C dates / draft schema", () => {
     expect(normalized.dates.durationDays).toBe(5);
     expect(normalized.themeRequest).toBe("");
     expect(normalized.budget.style).toBeNull();
+    expect(normalized.origin).toEqual({ text: "" });
+  });
+
+  it("1b. parses legacy draft without origin and ignores client iata", () => {
+    const normalized = normalizePlannerDraftInput({
+      destination: { text: "오사카" },
+      origin: { text: "서울", iata: "ICN", countryCode: "KR" },
+    });
+    expect(normalized.origin).toEqual({ text: "서울" });
+    expect(
+      normalizePlannerDraftInput({ destination: "도쿄" }).origin,
+    ).toEqual({ text: "" });
   });
 
   it("2. accepts fixed date schema", () => {

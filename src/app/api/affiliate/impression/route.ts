@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  ENABLE_FREE_TRAVEL_PLANNER,
-  ENABLE_PLANNER_AFFILIATE_ROUTER,
-} from "@/config/featureFlags";
+import { isPlannerAffiliateMasterEnabled } from "@/config/affiliateRollout";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import {
   getAffiliateOfferTokenById,
   recordAffiliateEvent,
@@ -20,9 +18,10 @@ const bodySchema = z
 /**
  * POST /api/affiliate/impression
  * Deduped by unique index on tracking_token for impression events.
+ * Gated by MASTER only (not percent) — impressions only fire for issued offers.
  */
 export async function POST(request: Request) {
-  if (!ENABLE_FREE_TRAVEL_PLANNER || !ENABLE_PLANNER_AFFILIATE_ROUTER) {
+  if (!ENABLE_FREE_TRAVEL_PLANNER || !isPlannerAffiliateMasterEnabled()) {
     return NextResponse.json({ message: "Not found." }, { status: 404 });
   }
 

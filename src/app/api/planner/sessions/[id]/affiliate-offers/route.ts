@@ -2,14 +2,17 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
-  ENABLE_FREE_TRAVEL_PLANNER,
-  ENABLE_PLANNER_AFFILIATE_ROUTER,
-} from "@/config/featureFlags";
+  isPlannerAffiliateEnabledForKey,
+  isPlannerAffiliateMasterEnabled,
+  resolveAffiliateRolloutIdentity,
+} from "@/config/affiliateRollout";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { buildAffiliateOffersForSession } from "@/lib/affiliate/planner/buildOffersForSession";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { assertPlannerSessionOwnership } from "@/lib/planner/ownership";
 import { plannerAnonymousKeySchema } from "@/lib/planner/schemas";
 import { getPlannerSessionById } from "@/lib/planner/repository";
+import type { PlannerAffiliateOffersDto } from "@/lib/affiliate/planner/types";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +24,26 @@ const bodySchema = z
   })
   .strict();
 
+const EMPTY_OFFERS: PlannerAffiliateOffersDto = {
+  summary: [],
+  preparation: [],
+  days: {},
+  disclosure: null,
+};
+
 /**
  * POST /api/planner/sessions/[id]/affiliate-offers
  * Server-side routing only. Soft-fails empty on error; never blocks Result.
+ *
+ * Gate order: MASTER → percent bucket → build (no network when excluded).
+ *
+ * Excluded canary response: **empty DTO 200** (not 404).
+ * Reason: PlannerAffiliateOffers treats !res.ok as silent no-op (no user-visible
+ * error either way), but when master=true a high exclude rate would inflate 404
+ * metrics. Empty DTO matches soft-fail / no-offer paths and stays quiet.
  */
 export async function POST(request: Request, context: RouteContext) {
-  if (!ENABLE_FREE_TRAVEL_PLANNER || !ENABLE_PLANNER_AFFILIATE_ROUTER) {
+  if (!ENABLE_FREE_TRAVEL_PLANNER || !isPlannerAffiliateMasterEnabled()) {
     return NextResponse.json({ message: "Affiliate router is disabled." }, { status: 404 });
   }
 
@@ -71,13 +88,14 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  // Percent gate AFTER master, BEFORE build — excluded never hits providers.
+  const identity = resolveAffiliateRolloutIdentity(session!);
+  if (!isPlannerAffiliateEnabledForKey(identity.key)) {
+    return NextResponse.json({ offers: EMPTY_OFFERS }, { status: 200 });
+  }
+
   if (!session!.plan) {
-    return NextResponse.json(
-      {
-        offers: { summary: [], preparation: [], days: {}, disclosure: null },
-      },
-      { status: 200 },
-    );
+    return NextResponse.json({ offers: EMPTY_OFFERS }, { status: 200 });
   }
 
   try {
@@ -89,12 +107,13 @@ export async function POST(request: Request, context: RouteContext) {
     });
     return NextResponse.json({ offers });
   } catch {
-    console.info("[affiliate] offers API failed", { sessionId: session!.id });
-    return NextResponse.json(
-      {
-        offers: { summary: [], preparation: [], days: {}, disclosure: null },
-      },
-      { status: 200 },
+    const { logAffiliateOfferBuildFailed } = await import(
+      "@/lib/affiliate/planner/affiliateOfferBuildFailed"
     );
+    logAffiliateOfferBuildFailed({
+      sessionId: session!.id,
+      reason: "unexpected",
+    });
+    return NextResponse.json({ offers: EMPTY_OFFERS }, { status: 200 });
   }
 }

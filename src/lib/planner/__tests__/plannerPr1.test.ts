@@ -15,9 +15,11 @@ describe("planner schemas", () => {
   it("accepts valid create body", () => {
     const parsed = createPlannerSessionBodySchema.parse({
       anonymousKey: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      origin: "서울",
       destination: "오사카",
       sourceProductId: "550e8400-e29b-41d4-a716-446655440000",
     });
+    expect(parsed.origin).toBe("서울");
     expect(parsed.destination).toBe("오사카");
   });
 
@@ -29,6 +31,7 @@ describe("planner schemas", () => {
   it("strips client-supplied memberId (cannot spoof)", () => {
     const result = createPlannerSessionBodySchema.safeParse({
       anonymousKey: "anon-key-12345678",
+      origin: "서울",
       destination: "제주",
       memberId: "22222222-2222-2222-2222-222222222222",
     });
@@ -38,9 +41,11 @@ describe("planner schemas", () => {
   it("allows null sourceProductId", () => {
     const parsed = createPlannerSessionBodySchema.parse({
       anonymousKey: "anon-key-12345678",
+      origin: "부산",
       destination: "다낭",
       sourceProductId: null,
     });
+    expect(parsed.origin).toBe("부산");
     expect(parsed.sourceProductId).toBeNull();
   });
 });

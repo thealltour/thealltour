@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { ENABLE_PLANNER_AFFILIATE_ROUTER } from "@/config/featureFlags";
+import {
+  getPlannerAffiliateRolloutPercent,
+  isPlannerAffiliateMasterEnabled,
+} from "@/config/affiliateRollout";
+import {
+  ENABLE_PLANNER_AFFILIATE_ROUTER,
+  PLANNER_AFFILIATE_ROLLOUT_PERCENT_DEFAULT,
+} from "@/config/featureFlags";
 import { z } from "zod";
 import { plannerAnonymousKeySchema } from "@/lib/planner/schemas";
 
@@ -16,8 +23,12 @@ const impressionBodySchema = z
   .strict();
 
 describe("affiliate API contracts", () => {
-  it("flag gates affiliate router", () => {
+  it("flag gates affiliate router; percent default 0", () => {
     expect(typeof ENABLE_PLANNER_AFFILIATE_ROUTER).toBe("boolean");
+    expect(ENABLE_PLANNER_AFFILIATE_ROUTER).toBe(false);
+    expect(PLANNER_AFFILIATE_ROLLOUT_PERCENT_DEFAULT).toBe(0);
+    expect(isPlannerAffiliateMasterEnabled({})).toBe(false);
+    expect(getPlannerAffiliateRolloutPercent({})).toBe(0);
   });
 
   it("offers body accepts anonymousKey only", () => {

@@ -12,7 +12,7 @@ import type { PlannerDraftInput } from "@/types/planner";
 
 function sampleDraft(): PlannerDraftInput {
   return {
-    ...createEmptyPlannerDraftInput("오사카"),
+    ...createEmptyPlannerDraftInput("오사카", "서울"),
     dates: {
       mode: "fixed",
       startDate: "2026-10-01",

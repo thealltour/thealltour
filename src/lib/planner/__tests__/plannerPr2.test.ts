@@ -12,7 +12,7 @@ import type { PlannerSession } from "@/types/planner";
 
 function validDraft() {
   return {
-    ...createEmptyPlannerDraftInput("오사카"),
+    ...createEmptyPlannerDraftInput("오사카", "서울"),
     dates: {
       mode: "fixed" as const,
       startDate: "2026-10-01",
@@ -87,13 +87,21 @@ describe("plannerDraftInputSchema", () => {
 });
 
 describe("validatePlannerStep", () => {
+  it("requires origin and destination on step 1", () => {
+    const missingOrigin = createEmptyPlannerDraftInput("제주", "");
+    expect(validatePlannerStep(1, missingOrigin)).toMatch(/출발지/);
+    const missingDest = createEmptyPlannerDraftInput("", "서울");
+    expect(validatePlannerStep(1, missingDest)).toMatch(/목적지/);
+    expect(validatePlannerStep(1, createEmptyPlannerDraftInput("제주", "서울"))).toBeNull();
+  });
+
   it("requires interests on step 4", () => {
-    const draft = createEmptyPlannerDraftInput("제주");
+    const draft = createEmptyPlannerDraftInput("제주", "서울");
     expect(validatePlannerStep(4, draft)).toMatch(/취향/);
   });
 
   it("allows empty additionalRequest on step 6", () => {
-    const draft = createEmptyPlannerDraftInput("제주");
+    const draft = createEmptyPlannerDraftInput("제주", "서울");
     expect(validatePlannerStep(6, draft)).toBeNull();
   });
 });
@@ -208,9 +216,11 @@ describe("create session + analytics", () => {
   it("keeps sourceProductId on create body", () => {
     const parsed = createPlannerSessionBodySchema.parse({
       anonymousKey: "anon-key-12345678",
+      origin: "서울",
       destination: "파리",
       sourceProductId: "550e8400-e29b-41d4-a716-446655440000",
     });
+    expect(parsed.origin).toBe("서울");
     expect(parsed.sourceProductId).toBe("550e8400-e29b-41d4-a716-446655440000");
   });
 

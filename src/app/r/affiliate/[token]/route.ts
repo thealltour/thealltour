@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  ENABLE_FREE_TRAVEL_PLANNER,
-  ENABLE_PLANNER_AFFILIATE_ROUTER,
-} from "@/config/featureFlags";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import {
   getAffiliateOfferTokenById,
   recordAffiliateEvent,
@@ -18,12 +15,15 @@ const tokenSchema = z.string().uuid();
  * GET /r/affiliate/[token]
  * Authoritative click attribution + 302 to server-stored https target.
  * Never accepts client-supplied redirect URLs.
+ *
+ * PR-9G: NO percent/rollout gate. Issued tokens stay valid after percent changes.
+ * MASTER kill switch does NOT break existing redirect tokens (offers issuance only).
  */
 export async function GET(
   _request: Request,
   context: { params: Promise<{ token: string }> },
 ) {
-  if (!ENABLE_FREE_TRAVEL_PLANNER || !ENABLE_PLANNER_AFFILIATE_ROUTER) {
+  if (!ENABLE_FREE_TRAVEL_PLANNER) {
     return NextResponse.json({ message: "Not found." }, { status: 404 });
   }
 

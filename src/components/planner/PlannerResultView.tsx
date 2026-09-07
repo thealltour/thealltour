@@ -26,6 +26,7 @@ type PlannerResultViewProps = {
   sourceProductId: string | null;
   isSaved: boolean;
   enrichment: PlannerEnrichmentDto | null;
+  originText?: string | null;
   onSaved: () => void;
   onPlanUpdated: (plan: PlannerPlan) => void;
 };
@@ -36,6 +37,7 @@ export function PlannerResultView({
   sourceProductId,
   isSaved,
   enrichment,
+  originText,
   onSaved,
   onPlanUpdated,
 }: PlannerResultViewProps) {
@@ -78,7 +80,7 @@ export function PlannerResultView({
     <PlannerAffiliateOffersProvider sessionId={sessionId} sourceProductId={sourceProductId}>
       {(affiliateOffers) => (
         <div className="mx-auto w-full max-w-2xl space-y-8 px-4 py-8 sm:px-0 sm:py-12">
-          <PlannerPlanSummary plan={plan} />
+          <PlannerPlanSummary plan={plan} originText={originText} />
 
           <PlannerAffiliateSummarySlot
             offers={affiliateOffers}

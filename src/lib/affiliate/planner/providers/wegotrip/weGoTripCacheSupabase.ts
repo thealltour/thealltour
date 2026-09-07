@@ -1,0 +1,63 @@
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import type { WeGoTripCacheStore } from "@/lib/affiliate/planner/providers/wegotrip/weGoTripCache";
+
+export const supabaseWeGoTripCache: WeGoTripCacheStore = {
+  async readFresh(cacheKey) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("wegotrip_api_cache")
+        .select("payload_json")
+        .eq("cache_key", cacheKey)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.payload_json as never;
+    } catch {
+      return null;
+    }
+  },
+  async readStale(cacheKey) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("wegotrip_api_cache")
+        .select("payload_json")
+        .eq("cache_key", cacheKey)
+        .order("fetched_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.payload_json as never;
+    } catch {
+      return null;
+    }
+  },
+  async write(cacheKey, kind, payload, ttlMs) {
+    try {
+      const { error } = await supabaseAdmin.from("wegotrip_api_cache").upsert(
+        {
+          cache_key: cacheKey,
+          kind,
+          payload_json: payload,
+          fetched_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + ttlMs).toISOString(),
+        },
+        { onConflict: "cache_key" },
+      );
+      if (error) {
+        console.info("[wegotrip] cache_write_failed", {
+          providerId: "wegotrip",
+          operation: "cache_write",
+          errorCode: "db_error",
+        });
+      }
+    } catch {
+      console.info("[wegotrip] cache_write_failed", {
+        providerId: "wegotrip",
+        operation: "cache_write",
+        errorCode: "db_exception",
+      });
+    }
+  },
+};

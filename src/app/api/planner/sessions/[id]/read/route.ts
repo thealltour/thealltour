@@ -71,6 +71,7 @@ export async function POST(request: Request, context: RouteContext) {
       status: session!.status,
       sourceProductId: session!.sourceProductId,
       input: {
+        origin: session!.input.origin,
         destination: session!.input.destination,
         dates: session!.input.dates,
         travelers: session!.input.travelers,

@@ -9,20 +9,29 @@ describe("POST /api/planner/sessions body contract", () => {
   it("does not accept memberId in request body", () => {
     const spoof = createPlannerSessionBodySchema.safeParse({
       anonymousKey: "client-anon-abcdefgh",
+      origin: "서울",
       destination: "도쿄",
       memberId: "spoofed-member-id-uuid-0001",
     });
     expect(spoof.success).toBe(false);
   });
 
-  it("requires anonymousKey and destination only", () => {
+  it("requires anonymousKey, origin, and destination", () => {
+    const missingOrigin = createPlannerSessionBodySchema.safeParse({
+      anonymousKey: "client-anon-abcdefgh",
+      destination: "도쿄",
+    });
+    expect(missingOrigin.success).toBe(false);
+
     const ok = createPlannerSessionBodySchema.safeParse({
       anonymousKey: "client-anon-abcdefgh",
+      origin: "서울",
       destination: "도쿄",
     });
     expect(ok.success).toBe(true);
     if (ok.success) {
       expect("memberId" in ok.data).toBe(false);
+      expect(ok.data.origin).toBe("서울");
     }
   });
 });

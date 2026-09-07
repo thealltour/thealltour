@@ -57,6 +57,17 @@ export function normalizePlannerDraftInput(raw: unknown): PlannerDraftInput {
     if (typeof text === "string") base.destination = { text: text.trim() };
   }
 
+  // Origin text only — ignore client-supplied iata/countryCode (not canonical).
+  if (typeof o.origin === "string") {
+    base.origin = { text: o.origin.trim().slice(0, 120) };
+  } else if (o.origin && typeof o.origin === "object" && !Array.isArray(o.origin)) {
+    const text = (o.origin as { text?: unknown }).text;
+    if (typeof text === "string") base.origin = { text: text.trim().slice(0, 120) };
+  } else if (o.origin == null) {
+    // Legacy drafts without origin parse with empty text.
+    base.origin = { text: "" };
+  }
+
   if (o.dates && typeof o.dates === "object" && !Array.isArray(o.dates)) {
     const d = o.dates as {
       mode?: unknown;

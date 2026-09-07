@@ -13,7 +13,7 @@ const generateBodySchema = z
 
 function validDraft() {
   return {
-    ...createEmptyPlannerDraftInput("오사카"),
+    ...createEmptyPlannerDraftInput("오사카", "서울"),
     dates: {
       mode: "fixed" as const,
       startDate: "2026-10-01",

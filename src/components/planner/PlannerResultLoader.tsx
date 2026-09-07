@@ -33,6 +33,10 @@ type ReadResponse = {
     sourceProductId?: string | null;
     isSaved?: boolean;
     isOwner?: boolean;
+    input?: {
+      origin?: { text?: string } | null;
+      destination?: { text?: string };
+    };
   };
 };
 
@@ -47,6 +51,7 @@ type PlannerResultLoaderProps = {
 
 export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
   const [plan, setPlan] = useState<PlannerPlan | null>(null);
+  const [originText, setOriginText] = useState<string | null>(null);
   const [sourceProductId, setSourceProductId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [enrichment, setEnrichment] = useState<PlannerEnrichmentDto | null>(null);
@@ -123,6 +128,8 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
         return;
       }
       setPlan(data!.session!.plan);
+      const rawOrigin = data!.session!.input?.origin?.text?.trim() || "";
+      setOriginText(rawOrigin || null);
       setSourceProductId(data!.session!.sourceProductId ?? null);
       setIsSaved(Boolean(data!.session!.isSaved) || status === "saved");
     } catch {
@@ -214,6 +221,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       sourceProductId={sourceProductId}
       isSaved={isSaved}
       enrichment={enrichment}
+      originText={originText}
       onSaved={() => setIsSaved(true)}
       onPlanUpdated={(next) => {
         setPlan(next);

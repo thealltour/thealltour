@@ -18,6 +18,10 @@ type TokenRow = {
   day_number: number | null;
   item_order: number | null;
   expires_at: string;
+  provider_sub_id: string | null;
+  affiliate_network: string | null;
+  affiliate_campaign_id: string | null;
+  source_url_host: string | null;
 };
 
 export async function persistAffiliateOfferToken(params: {
@@ -42,6 +46,10 @@ export async function persistAffiliateOfferToken(params: {
       source_product_id: params.sourceProductId,
       day_number: build.dayNumber ?? null,
       item_order: build.itemOrder ?? null,
+      provider_sub_id: build.providerSubId ?? null,
+      affiliate_network: build.affiliateNetwork ?? null,
+      affiliate_campaign_id: build.affiliateCampaignId ?? null,
+      source_url_host: build.sourceUrlHost ?? null,
     })
     .select(
       "id, provider_id, category, placement, title, description, cta_label, destination, day_number, item_order",
@@ -92,7 +100,7 @@ export async function getAffiliateOfferTokenById(
   const { data, error } = await supabaseAdmin
     .from("affiliate_offer_tokens")
     .select(
-      "id, planner_session_id, provider_id, category, placement, target_url, title, description, cta_label, destination, source_product_id, day_number, item_order, expires_at",
+      "id, planner_session_id, provider_id, category, placement, target_url, title, description, cta_label, destination, source_product_id, day_number, item_order, expires_at, provider_sub_id, affiliate_network, affiliate_campaign_id, source_url_host",
     )
     .eq("id", token)
     .maybeSingle();
@@ -129,7 +137,6 @@ export async function recordAffiliateEvent(params: {
   });
 
   if (error) {
-    // Unique impression dedupe
     if (params.eventType === "impression" && error.code === "23505") {
       return { ok: true, duplicate: true };
     }

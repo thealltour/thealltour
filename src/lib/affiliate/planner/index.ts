@@ -10,6 +10,7 @@ export type {
 export { routeAffiliateOffer, isSafeHttpsUrl } from "@/lib/affiliate/planner/router";
 export { checkStaticEligibility, itemTypeToAffiliateCategory } from "@/lib/affiliate/planner/eligibility";
 export { rankAffiliateProviders } from "@/lib/affiliate/planner/ranking";
+export { resolveAffiliateDestination, extractIsoCountryCode } from "@/lib/affiliate/planner/destinationResolver";
 export {
   getProductionAffiliateAdapters,
   getProductionAffiliateProviderDefinitions,

@@ -125,7 +125,7 @@ export const PLANNER_BUDGET_SLIDER_STEP = 100_000;
 export const PLANNER_WIZARD_STEP_COUNT = 7;
 
 export const PLANNER_WIZARD_TITLES: Record<number, string> = {
-  1: "어디로 떠나고 싶으세요?",
+  1: "출발지와 목적지를 알려주세요",
   2: "언제 떠나시나요?",
   3: "누구와 함께 가시나요?",
   4: "어떤 여행을 원하세요?",
@@ -139,8 +139,12 @@ export {
   PLANNER_DURATION_DAYS_MAX,
 };
 
-export function createEmptyPlannerDraftInput(destinationText = ""): PlannerDraftInput {
+export function createEmptyPlannerDraftInput(
+  destinationText = "",
+  originText = "",
+): PlannerDraftInput {
   return {
+    origin: { text: originText.trim() },
     destination: { text: destinationText.trim() },
     dates: {
       mode: "fixed",

@@ -35,7 +35,14 @@ export type PlannerDraftDates = {
   durationDays: number;
 };
 
+/** Natural-language departure; IATA is resolved server-side — never trust client iata. */
+export type PlannerDraftOrigin = {
+  text: string;
+};
+
 export type PlannerDraftInput = {
+  /** Departure city/region text. Source of truth for flight origin resolution. */
+  origin: PlannerDraftOrigin;
   destination: { text: string };
   dates: PlannerDraftDates;
   travelers: { adults: number; children: number };

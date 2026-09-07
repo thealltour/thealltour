@@ -54,6 +54,7 @@ export function trackPlannerInputCompleted(params: {
     metadata: {
       sessionId: params.sessionId,
       destination: input.destination.text.trim().slice(0, 120),
+      hasOrigin: Boolean(input.origin?.text?.trim()),
       tripDurationDays: draftTripDurationDays(input),
       dateMode: input.dates.mode,
       adultCount: input.travelers.adults,

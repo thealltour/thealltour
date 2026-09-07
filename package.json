@@ -48,6 +48,7 @@
     "ai": "^7.0.4",
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.4.0",
+    "fast-xml-parser": "^5.11.1",
     "html-to-image": "^1.11.13",
     "hwpx-js": "^0.1.2",
     "jose": "^6.2.2",

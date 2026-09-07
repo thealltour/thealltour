@@ -34,12 +34,15 @@ export const AFFILIATE_PROVIDER_IDS = [
   "tiqets",
   "yesim",
   "airalo",
+  "wegotrip",
   "kiwitaxi",
   "toss_shopping",
   "coupang",
 ] as const;
 
 export type AffiliateProviderId = (typeof AFFILIATE_PROVIDER_IDS)[number];
+
+export type AffiliateNetwork = "travelpayouts";
 
 /** Higher number = higher priority. Ties break by providerId lexical ascending. */
 export type AffiliateProviderDefinition = {
@@ -53,6 +56,8 @@ export type AffiliateProviderDefinition = {
   supportedPlacements: AffiliatePlacement[];
   /** Higher = preferred. */
   priority: number;
+  /** Optional network tag for future adapters (PR-9B+). */
+  network?: AffiliateNetwork;
   capabilities: {
     deepLink: boolean;
     search: boolean;
@@ -63,7 +68,12 @@ export type AffiliateProviderDefinition = {
 
 export type AffiliateDestination = {
   text: string;
+  /** ISO 3166-1 alpha-2 when reliably known; never inferred from display names. */
   countryCode: string | null;
+  /** Provider-neutral city codes when resolved (future). */
+  cityCode?: string | null;
+  iataCityCode?: string | null;
+  iataAirportCodes?: string[];
 };
 
 export type AffiliateRoutingDates = {
@@ -71,6 +81,16 @@ export type AffiliateRoutingDates = {
   startDate: string | null;
   endDate: string | null;
   durationDays: number;
+};
+
+/**
+ * Optional flight departure foundation (PR-9D).
+ * Never invent Seoul/ICN/locale/IP defaults — pass null until Planner supplies origin.
+ */
+export type AffiliateFlightOrigin = {
+  text: string;
+  /** Validated 3-letter IATA; required for Aviasales price calls. */
+  iata: string;
 };
 
 export type AffiliateRoutingContext = {
@@ -89,6 +109,11 @@ export type AffiliateRoutingContext = {
   placeId?: string | null;
   placeName?: string | null;
   sourceProductId?: string | null;
+  /**
+   * Explicit departure origin for flight providers.
+   * Resolved once from draft.origin text in buildAffiliateOffersForSession.
+   */
+  flightOrigin?: AffiliateFlightOrigin | null;
 };
 
 /** Client-safe offer — never includes target URL or provider secrets. */
@@ -121,6 +146,12 @@ export type AffiliateOfferBuild = {
   targetUrl: string;
   dayNumber?: number | null;
   itemOrder?: number | null;
+  /** Opaque network SubID (e.g. Travelpayouts) — not the internal tracking token. */
+  providerSubId?: string | null;
+  affiliateNetwork?: AffiliateNetwork | null;
+  affiliateCampaignId?: string | null;
+  /** Hostname only of pre-affiliate brand URL. */
+  sourceUrlHost?: string | null;
 };
 
 export type AffiliateRoutingDecision = {

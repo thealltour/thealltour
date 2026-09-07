@@ -5,6 +5,8 @@ import { formatIsoDateDot } from "@/lib/planner/dates";
 
 type PlannerPlanSummaryProps = {
   plan: PlannerPlan;
+  /** Natural-language origin text when present; legacy plans omit. */
+  originText?: string | null;
 };
 
 function formatTripPeriod(plan: PlannerPlan): string {
@@ -17,13 +19,17 @@ function formatTripPeriod(plan: PlannerPlan): string {
   return `${formatIsoDateDot(tripOverview.startDate)} - ${formatIsoDateDot(tripOverview.endDate)} (${nights}박 ${days}일)`;
 }
 
-export function PlannerPlanSummary({ plan }: PlannerPlanSummaryProps) {
+export function PlannerPlanSummary({ plan, originText }: PlannerPlanSummaryProps) {
   const { tripOverview, destination } = plan;
+  const origin = originText?.trim() || "";
+  const routeLabel = origin
+    ? `${origin} → ${destination.name}`
+    : destination.name;
   return (
     <header className="space-y-3">
       <div className="space-y-1">
         <p className="type-caption font-semibold tracking-wide text-[var(--text-muted)]">
-          {destination.name}
+          {routeLabel}
           {destination.country ? ` · ${destination.country}` : ""}
         </p>
         <h1 className="heading-display type-h1 text-[var(--foreground)]">{plan.title}</h1>

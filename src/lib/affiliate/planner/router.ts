@@ -17,12 +17,12 @@ export type RouteAffiliateOfferParams = {
 };
 
 /**
- * Deterministic Router v0:
- * eligibility → priority rank → adapter build with fallback → single best offer.
+ * Deterministic Router v0 (async-capable buildOffer):
+ * eligibility → priority rank → await adapter build with fallback → single best offer.
  */
-export function routeAffiliateOffer(
+export async function routeAffiliateOffer(
   params: RouteAffiliateOfferParams,
-): { offer: AffiliateOfferBuild | null; decision: AffiliateRoutingDecision } {
+): Promise<{ offer: AffiliateOfferBuild | null; decision: AffiliateRoutingDecision }> {
   const { context, providers, adapters, overrides = [] } = params;
   const rejectedReasons: AffiliateRoutingDecision["rejectedReasons"] = [];
   const eligible: AffiliateProviderDefinition[] = [];
@@ -59,7 +59,7 @@ export function routeAffiliateOffer(
   for (const def of ranked) {
     const adapter = adapters.get(def.id)!;
     try {
-      const built = adapter.buildOffer(context);
+      const built = await Promise.resolve(adapter.buildOffer(context));
       if (!built || !isSafeHttpsUrl(built.targetUrl)) {
         rejectedReasons.push({ providerId: def.id, reason: "offer_build_failed" });
         continue;

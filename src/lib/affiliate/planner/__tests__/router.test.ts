@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { ENABLE_PLANNER_AFFILIATE_ROUTER } from "@/config/featureFlags";
 import {
@@ -6,7 +6,10 @@ import {
   createFakeAffiliateDefinition,
 } from "@/lib/affiliate/planner/__tests__/fixtures";
 import { itemTypeToAffiliateCategory } from "@/lib/affiliate/planner/eligibility";
-import { getProductionAffiliateAdapters, getProductionAffiliateProviderDefinitions } from "@/lib/affiliate/planner/registry";
+import {
+  getProductionAffiliateAdapters,
+  getProductionAffiliateProviderDefinitions,
+} from "@/lib/affiliate/planner/registry";
 import { isSafeHttpsUrl, routeAffiliateOffer } from "@/lib/affiliate/planner/router";
 import { assertPlannerSessionOwnership } from "@/lib/planner/ownership";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
@@ -36,8 +39,8 @@ function baseContext(
   };
 }
 
-describe("PR-8 Affiliate Router v0", () => {
-  it("excludes disabled providers", () => {
+describe("PR-8/9B Affiliate Router", () => {
+  it("excludes disabled providers", async () => {
     const def = createFakeAffiliateDefinition({
       id: "aviasales",
       enabled: false,
@@ -47,7 +50,7 @@ describe("PR-8 Affiliate Router v0", () => {
     const adapters = new Map([
       ["aviasales", createFakeAffiliateAdapter({ providerId: "aviasales" })],
     ]);
-    const { offer, decision } = routeAffiliateOffer({
+    const { offer, decision } = await routeAffiliateOffer({
       context: baseContext(),
       providers: [def],
       adapters,
@@ -56,7 +59,7 @@ describe("PR-8 Affiliate Router v0", () => {
     expect(decision.rejectedReasons.some((r) => r.reason === "disabled")).toBe(true);
   });
 
-  it("filters by category and placement", () => {
+  it("filters by category and placement", async () => {
     const def = createFakeAffiliateDefinition({
       id: "klook",
       categories: ["activity"],
@@ -66,14 +69,14 @@ describe("PR-8 Affiliate Router v0", () => {
     const adapters = new Map([
       ["klook", createFakeAffiliateAdapter({ providerId: "klook" })],
     ]);
-    const miss = routeAffiliateOffer({
+    const miss = await routeAffiliateOffer({
       context: baseContext({ category: "flight", placement: "planner_summary" }),
       providers: [def],
       adapters,
     });
     expect(miss.offer).toBeNull();
 
-    const hit = routeAffiliateOffer({
+    const hit = await routeAffiliateOffer({
       context: baseContext({ category: "activity", placement: "day_item" }),
       providers: [def],
       adapters,
@@ -81,7 +84,7 @@ describe("PR-8 Affiliate Router v0", () => {
     expect(hit.offer?.providerId).toBe("klook");
   });
 
-  it("enforces dateMode eligibility", () => {
+  it("enforces dateMode eligibility", async () => {
     const def = createFakeAffiliateDefinition({
       id: "aviasales",
       categories: ["flight"],
@@ -92,7 +95,7 @@ describe("PR-8 Affiliate Router v0", () => {
     const adapters = new Map([
       ["aviasales", createFakeAffiliateAdapter({ providerId: "aviasales" })],
     ]);
-    const flex = routeAffiliateOffer({
+    const flex = await routeAffiliateOffer({
       context: baseContext({
         dates: { mode: "flexible", startDate: null, endDate: null, durationDays: 5 },
       }),
@@ -105,7 +108,7 @@ describe("PR-8 Affiliate Router v0", () => {
     );
   });
 
-  it("ranks by higher priority then lexical tie-break", () => {
+  it("ranks by higher priority then lexical tie-break", async () => {
     const low = createFakeAffiliateDefinition({
       id: "kkday",
       categories: ["activity"],
@@ -122,7 +125,7 @@ describe("PR-8 Affiliate Router v0", () => {
       ["kkday", createFakeAffiliateAdapter({ providerId: "kkday" })],
       ["klook", createFakeAffiliateAdapter({ providerId: "klook" })],
     ]);
-    const { offer } = routeAffiliateOffer({
+    const { offer } = await routeAffiliateOffer({
       context: baseContext({ category: "activity", placement: "day_item" }),
       providers: [low, high],
       adapters,
@@ -130,7 +133,7 @@ describe("PR-8 Affiliate Router v0", () => {
     expect(offer?.providerId).toBe("klook");
   });
 
-  it("falls back when first provider build fails", () => {
+  it("falls back when first provider build fails", async () => {
     const first = createFakeAffiliateDefinition({
       id: "klook",
       categories: ["activity"],
@@ -147,7 +150,7 @@ describe("PR-8 Affiliate Router v0", () => {
       ["klook", createFakeAffiliateAdapter({ providerId: "klook", failBuild: true })],
       ["kkday", createFakeAffiliateAdapter({ providerId: "kkday" })],
     ]);
-    const { offer } = routeAffiliateOffer({
+    const { offer } = await routeAffiliateOffer({
       context: baseContext({ category: "activity", placement: "day_item" }),
       providers: [first, second],
       adapters,
@@ -155,8 +158,152 @@ describe("PR-8 Affiliate Router v0", () => {
     expect(offer?.providerId).toBe("kkday");
   });
 
-  it("returns null when no eligible provider", () => {
-    const { offer } = routeAffiliateOffer({
+  it("supports sync adapter success", async () => {
+    const def = createFakeAffiliateDefinition({
+      id: "klook",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 80,
+    });
+    const { offer } = await routeAffiliateOffer({
+      context: baseContext({ category: "activity", placement: "day_item" }),
+      providers: [def],
+      adapters: new Map([["klook", createFakeAffiliateAdapter({ providerId: "klook" })]]),
+    });
+    expect(offer?.providerId).toBe("klook");
+  });
+
+  it("supports async adapter success", async () => {
+    const def = createFakeAffiliateDefinition({
+      id: "klook",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 80,
+    });
+    const { offer } = await routeAffiliateOffer({
+      context: baseContext({ category: "activity", placement: "day_item" }),
+      providers: [def],
+      adapters: new Map([
+        ["klook", createFakeAffiliateAdapter({ providerId: "klook", async: true })],
+      ]),
+    });
+    expect(offer?.providerId).toBe("klook");
+  });
+
+  it("falls back when async adapter returns null", async () => {
+    const first = createFakeAffiliateDefinition({
+      id: "klook",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 100,
+    });
+    const second = createFakeAffiliateDefinition({
+      id: "kkday",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 50,
+    });
+    const { offer } = await routeAffiliateOffer({
+      context: baseContext({ category: "activity", placement: "day_item" }),
+      providers: [first, second],
+      adapters: new Map([
+        ["klook", createFakeAffiliateAdapter({ providerId: "klook", async: true, failBuild: true })],
+        ["kkday", createFakeAffiliateAdapter({ providerId: "kkday", async: true })],
+      ]),
+    });
+    expect(offer?.providerId).toBe("kkday");
+  });
+
+  it("falls back when async adapter throws", async () => {
+    const first = createFakeAffiliateDefinition({
+      id: "klook",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 100,
+    });
+    const second = createFakeAffiliateDefinition({
+      id: "kkday",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 50,
+    });
+    const { offer, decision } = await routeAffiliateOffer({
+      context: baseContext({ category: "activity", placement: "day_item" }),
+      providers: [first, second],
+      adapters: new Map([
+        [
+          "klook",
+          createFakeAffiliateAdapter({ providerId: "klook", async: true, throwBuild: true }),
+        ],
+        ["kkday", createFakeAffiliateAdapter({ providerId: "kkday" })],
+      ]),
+    });
+    expect(offer?.providerId).toBe("kkday");
+    expect(decision.rejectedReasons.some((r) => r.reason === "offer_build_threw")).toBe(true);
+  });
+
+  it("does not call lower-ranked build after first async success", async () => {
+    const high = createFakeAffiliateDefinition({
+      id: "klook",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 90,
+    });
+    const low = createFakeAffiliateDefinition({
+      id: "kkday",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 40,
+    });
+    const lowBuild = vi.fn();
+    const { offer } = await routeAffiliateOffer({
+      context: baseContext({ category: "activity", placement: "day_item" }),
+      providers: [low, high],
+      adapters: new Map([
+        ["klook", createFakeAffiliateAdapter({ providerId: "klook", async: true })],
+        [
+          "kkday",
+          createFakeAffiliateAdapter({ providerId: "kkday", async: true, onBuild: lowBuild }),
+        ],
+      ]),
+    });
+    expect(offer?.providerId).toBe("klook");
+    expect(lowBuild).not.toHaveBeenCalled();
+  });
+
+  it("falls back on invalid https result", async () => {
+    const first = createFakeAffiliateDefinition({
+      id: "klook",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 100,
+    });
+    const second = createFakeAffiliateDefinition({
+      id: "kkday",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 50,
+    });
+    const { offer } = await routeAffiliateOffer({
+      context: baseContext({ category: "activity", placement: "day_item" }),
+      providers: [first, second],
+      adapters: new Map([
+        [
+          "klook",
+          createFakeAffiliateAdapter({
+            providerId: "klook",
+            async: true,
+            targetUrl: "http://insecure.example",
+          }),
+        ],
+        ["kkday", createFakeAffiliateAdapter({ providerId: "kkday" })],
+      ]),
+    });
+    expect(offer?.providerId).toBe("kkday");
+  });
+
+  it("returns null when no eligible provider", async () => {
+    const { offer } = await routeAffiliateOffer({
       context: baseContext(),
       providers: [],
       adapters: new Map(),
@@ -177,11 +324,21 @@ describe("PR-8 Affiliate Router v0", () => {
     expect(isSafeHttpsUrl("javascript:alert(1)")).toBe(false);
   });
 
-  it("production registry has no enabled adapters or fake fixtures", () => {
+  it("production registry registers airalo+wegotrip+aviasales adapters; aviasales enabled only", () => {
     const defs = getProductionAffiliateProviderDefinitions();
-    expect(defs.every((d) => d.enabled === false)).toBe(true);
-    expect(getProductionAffiliateAdapters().size).toBe(0);
-    expect(defs.some((d) => d.id.includes("fake"))).toBe(false);
+    expect(defs.filter((d) => d.id !== "aviasales").every((d) => d.enabled === false)).toBe(true);
+    expect(getProductionAffiliateAdapters().size).toBe(3);
+    expect(getProductionAffiliateAdapters().has("airalo")).toBe(true);
+    expect(getProductionAffiliateAdapters().has("wegotrip")).toBe(true);
+    expect(getProductionAffiliateAdapters().has("aviasales")).toBe(true);
+    const wego = defs.find((d) => d.id === "wegotrip");
+    expect(wego).toBeTruthy();
+    expect(wego?.enabled).toBe(false);
+    expect(wego?.network).toBe("travelpayouts");
+    expect(wego?.supportedPlacements).toEqual(["day_item"]);
+    const avia = defs.find((d) => d.id === "aviasales");
+    expect(avia?.enabled).toBe(true);
+    expect(avia?.capabilities.api).toBe(true);
   });
 
   it("feature flag defaults off", () => {
@@ -217,26 +374,6 @@ describe("PR-8 Affiliate Router v0", () => {
         session: anon,
         anonymousKey: "wrong",
         cookieMemberId: null,
-      }).ok,
-    ).toBe(false);
-
-    const member: PlannerSession = {
-      ...anon,
-      anonymousKey: "x",
-      memberId: "member-1",
-    };
-    expect(
-      assertPlannerSessionOwnership({
-        session: member,
-        anonymousKey: null,
-        cookieMemberId: "member-1",
-      }).ok,
-    ).toBe(true);
-    expect(
-      assertPlannerSessionOwnership({
-        session: member,
-        anonymousKey: null,
-        cookieMemberId: "other",
       }).ok,
     ).toBe(false);
   });

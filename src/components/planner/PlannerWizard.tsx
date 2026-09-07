@@ -151,6 +151,7 @@ export function PlannerWizard() {
       ? sourceProductIdRaw.trim()
       : null;
 
+  const originId = useId();
   const destinationId = useId();
   const budgetId = useId();
   const budgetSliderId = useId();
@@ -222,6 +223,7 @@ export function PlannerWizard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             anonymousKey: key,
+            origin: draft.origin.text,
             destination: draft.destination.text,
             sourceProductId,
           }),
@@ -230,6 +232,7 @@ export function PlannerWizard() {
           message?: string;
           session?: {
             id: string;
+            origin?: string;
             destination?: string;
             sourceProductId?: string | null;
             input?: PlannerDraftInput;
@@ -243,6 +246,7 @@ export function PlannerWizard() {
 
         const nextDraft = data.session.input ?? {
           ...draft,
+          origin: { text: data.session.origin ?? draft.origin.text },
           destination: { text: data.session.destination ?? draft.destination.text },
         };
         setDraft(nextDraft);
@@ -534,7 +538,7 @@ export function PlannerWizard() {
             준비까지 힘들 필요는 없으니까.
           </h1>
           <p className="type-body leading-relaxed text-[var(--text-muted)]">
-            가고 싶은 곳과 여행 조건을 알려주시면 더올투어가 자유여행 계획을 함께
+            출발지와 가고 싶은 곳, 여행 조건을 알려주시면 더올투어가 자유여행 계획을 함께
             만들어드립니다.
           </p>
         </header>
@@ -572,10 +576,29 @@ export function PlannerWizard() {
           noValidate
         >
           <FormField
-            id={destinationId}
-            label={PLANNER_WIZARD_TITLES[1]}
+            id={originId}
+            label="어디서 출발하세요?"
             required
-            error={error ?? undefined}
+          >
+            <Input
+              id={originId}
+              name="origin"
+              value={draft.origin.text}
+              onChange={(ev) => {
+                patchDraft({ origin: { text: ev.target.value } });
+                if (error) setError(null);
+              }}
+              placeholder="예: 서울, 부산, 인천"
+              autoComplete="off"
+              maxLength={120}
+              error={Boolean(error)}
+              disabled={isPending}
+            />
+          </FormField>
+          <FormField
+            id={destinationId}
+            label="어디로 떠나고 싶으세요?"
+            required
           >
             <Input
               id={destinationId}
@@ -995,8 +1018,12 @@ export function PlannerWizard() {
           </p>
           <dl className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
             <SummaryEditRow
-              label="여행지"
-              value={draft.destination.text}
+              label="출발·도착"
+              value={
+                draft.origin.text.trim()
+                  ? `${draft.origin.text.trim()} → ${draft.destination.text}`
+                  : draft.destination.text
+              }
               onEdit={() => openSummaryEdit("destination")}
               disabled={isPending}
             />

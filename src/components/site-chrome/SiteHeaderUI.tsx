@@ -11,7 +11,8 @@ import { MobileHeaderMenu } from "@/components/header/MobileHeaderMenu";
 import { HeaderBrandLogo } from "@/components/header/HeaderBrandLogo";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GuestSignupPromoBanner } from "@/components/site-chrome/GuestSignupPromoBanner";
-import { HEADER_DESKTOP_PRIMARY_NAV_KEYS, HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF, HEADER_UTILITY_GUIDES_ENABLED } from "@/components/header/headerNav.constants";
+import { HEADER_PRIMARY_NAV_ITEMS, HEADER_PRIMARY_NAV_DEFAULT_HREF, HEADER_UTILITY_GUIDES_ENABLED } from "@/components/header/headerNav.constants";
+import { withPlannerNavigation } from "@/lib/planner/entryNavigation";
 import type { HeaderPrimaryNavKey } from "@/components/header/headerNav.constants";
 import type { HeaderNavigationData, HeaderPrimaryNavItem, HeaderUtilityTab } from "@/components/header/headerNav.types";
 import { cn } from "@/lib/cn";
@@ -67,9 +68,9 @@ export default function SiteHeaderUI({
   const pathname = usePathname();
   /** 모바일/태블릿 헤더 검색행: 홈에서만 숨겨 히어로 검색과 중복 제거 */
   const isHomePath = pathname === "/";
-  const primaryNavRaw = headerNavigationData?.primaryNav?.length
+  const primaryNavRaw = withPlannerNavigation(headerNavigationData?.primaryNav?.length
     ? headerNavigationData.primaryNav
-    : getFallbackPrimaryNav();
+    : getFallbackPrimaryNav());
   const primaryNav = HEADER_UTILITY_GUIDES_ENABLED
     ? primaryNavRaw
     : primaryNavRaw.filter((item) => item.key !== "guides");
@@ -107,7 +108,7 @@ export default function SiteHeaderUI({
         </div>
 
         {/* 메인 헤더바: 높이·로고 비율은 globals --header-* 토큰 (데스크톱 64px / 로고 높이·max는 토큰 참고) */}
-        <div className="header-main-bar--desktop flex items-center gap-x-5 lg:gap-x-6 xl:gap-x-7">
+        <div className="grid min-h-[var(--header-main-height-desktop)] grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-2 2xl:flex 2xl:gap-x-7 2xl:py-0">
           <Link
             href="/"
             className="header-logo-link shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
@@ -116,7 +117,9 @@ export default function SiteHeaderUI({
             <HeaderBrandLogo variant="desktop" priority />
           </Link>
 
-          <DesktopMegaMenu primaryNav={primaryNav} />
+          <div className="order-3 col-span-2 flex justify-center 2xl:order-none">
+            <DesktopMegaMenu primaryNav={primaryNav} />
+          </div>
 
           <div className="flex flex-1 justify-end items-center gap-x-4">
             <HeaderExpandSearch searchQuery={searchQuery} />

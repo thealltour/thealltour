@@ -5,6 +5,8 @@
 
 /** 이벤트명 — 헤더·메가메뉴·검색·CTA·상품 카드 클릭 계측 */
 export type AnalyticsEventName =
+  | "planner_entry_click"
+  | "home_travel_entry_click"
   | "header_nav_click"
   | "mega_menu_open"
   | "mega_menu_click"

@@ -4,8 +4,10 @@ import { getHomeHeroQuickActions } from "@/lib/homeHeroQuickActions";
 /**
  * 모바일 홈 히어로 검색창 하단 — 테마·전체상품·(옵션)플래너 빠른 탐색.
  */
-export function HomeQuickKeywords() {
-  const actions = getHomeHeroQuickActions();
+export function HomeQuickKeywords({ pairedEntriesVisible = false }: { pairedEntriesVisible?: boolean }) {
+  const actions = getHomeHeroQuickActions().filter(
+    (action) => !pairedEntriesVisible || (action.id !== "golf" && action.id !== "planner"),
+  );
 
   return (
     <nav

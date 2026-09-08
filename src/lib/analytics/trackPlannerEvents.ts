@@ -12,6 +12,22 @@ import type {
   PlannerSummaryEditSection,
 } from "@/types/planner";
 
+export type PlannerEntrySource = "home_hero" | "destinations_hero" | "themes_hero";
+
+export function trackPlannerEntryClick(params: {
+  source: PlannerEntrySource;
+  variant: "paired" | "compact" | "card";
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_entry_click,
+    source: ANALYTICS_SOURCES.planner,
+    section: params.source,
+    label: "여행플래너",
+    href: "/planner",
+    metadata: { variant: params.variant },
+  });
+}
+
 export function trackPlannerLandingView(): void {
   trackClientAnalytics({
     eventName: ANALYTICS_EVENTS.planner_landing_view,

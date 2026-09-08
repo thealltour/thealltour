@@ -18,6 +18,7 @@ import { buildGolfProductsHref, isGolfTourType, GOLF_TOUR_TYPE } from "@/lib/pro
 import { restoreFocus, trapOverlayTabKey } from "@/lib/a11y/overlayFocus";
 import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
+import { isPlannerPath } from "@/lib/planner/entryNavigation";
 
 export const MOBILE_HEADER_NAVIGATION_ID = "mobile-header-navigation";
 
@@ -57,6 +58,7 @@ export function MobileHeaderDrawer({
   const golfHref = buildGolfProductsHref();
   const accordionItems = primaryNav.filter((item) => ACCORDION_KEYS.has(item.key));
   const inquiryItem = primaryNav.find((item) => item.key === "inquiry");
+  const plannerItem = ENABLE_FREE_TRAVEL_PLANNER ? primaryNav.find((item) => item.key === "planner") : undefined;
   const golfChannelActive = pathname === "/products" && isGolfTourType(tourTypeParam);
   const productsActive = pathname === "/products" && !golfChannelActive;
 
@@ -273,6 +275,19 @@ export function MobileHeaderDrawer({
             >
               골프 여행
             </Link>
+            {plannerItem?.href ? (
+              <Link
+                href={plannerItem.href}
+                aria-current={isPlannerPath(pathname) ? "page" : undefined}
+                className={cn(directLinkClass, isPlannerPath(pathname) && "bg-[var(--primary-soft)] text-[var(--primary)]")}
+                onClick={() => {
+                  trackDirectNav(plannerItem.label, plannerItem.href!, "planner");
+                  onClose();
+                }}
+              >
+                {plannerItem.label}
+              </Link>
+            ) : null}
           </div>
 
           <div className="flex-1 px-0">

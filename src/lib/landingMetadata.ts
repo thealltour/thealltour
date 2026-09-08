@@ -62,6 +62,7 @@ export const HUB_HERO_DESTINATIONS_IMAGE = "/images/hub/hub-hero-destinations.pn
 export const HUB_HERO_THEMES_IMAGE = "/images/hub/hub-hero-themes.png";
 
 export type HubHeroConfig = {
+  /** Legacy hub image asset; ignored when LandingHero variant="editorial". */
   imageUrl: string;
   eyebrow: string;
   title: string;
@@ -73,8 +74,8 @@ export type HubHeroConfig = {
 };
 
 /**
- * 허브별 이미지형 LandingHero에 넣을 기본 설정.
- * 향후 관리자에서 허브별 hero를 관리할 때 이 반환값을 덮어쓰면 됨.
+ * Hub LandingHero copy/CTA defaults (destinations / themes).
+ * Hubs render with variant="editorial"; imageUrl is unused there but kept for compatibility.
  */
 export function getHubHeroConfig(hub: "destinations" | "themes"): HubHeroConfig {
   if (hub === "destinations") {

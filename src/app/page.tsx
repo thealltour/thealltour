@@ -99,7 +99,11 @@ export default async function Home() {
 
       <div className="min-h-screen bg-[var(--theall-page-bg)] text-[var(--foreground)]">
         <main id="main-content" tabIndex={-1} className="flex w-full min-w-0 max-w-full flex-col pb-6 sm:pb-10 md:pb-14">
-          <HeroSection heroBanners={topBanners} hero={hero} />
+          <HeroSection
+            heroBanners={topBanners}
+            hero={hero}
+            golfEntryHref={golfTourProducts.length > 0 || golfCalendarModel ? "#home-golf-explore" : buildGolfProductsHref()}
+          />
 
           <PageContainer
             size="wide"

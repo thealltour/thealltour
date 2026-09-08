@@ -5,6 +5,9 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { HeroRecommendedLinks } from "@/components/home/HeroRecommendedLinks";
 import { HomeHeroSearch } from "@/components/home/HomeHeroSearch";
 import { HomeQuickKeywords } from "@/components/home/HomeQuickKeywords";
+import { HomeTravelEntries } from "@/components/home/HomeTravelEntries";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
+import { buildGolfProductsHref } from "@/lib/products/golfChannel";
 import type { HomeBanner } from "@/types/homeBanner";
 import { cn } from "@/lib/cn";
 import { HeroPanoramaSlideshowClient } from "@/components/home/HeroPanoramaSlideshowClient";
@@ -53,6 +56,7 @@ function MobileHeroHeadline({ hero }: { hero: HeroResolvedContent }): ReactNode 
 }
 
 export type HeroSectionProps = {
+  golfEntryHref?: string;
   /**
    * 활성 배너 전부 (`getHomeBanners` 정렬 순). 0장이면 배경 없음, 1장이면 단일, 2장+ fade 슬라이드.
    */
@@ -71,7 +75,7 @@ export type HeroSectionProps = {
  * md+: 파노라마 배경 — `heroBanners`를 sort_order 순으로 fade 슬라이드(2장 이상 시).
  * 태블릿(md~lg-1): `mobile_image_url ?? image_url`, 데스크톱(lg+): `image_url`.
  */
-export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps) {
+export default function HeroSection({ heroBanners = [], hero, golfEntryHref = buildGolfProductsHref() }: HeroSectionProps) {
   const hasBanners = heroBanners.length > 0;
   const firstBanner = heroBanners[0] ?? null;
 
@@ -194,8 +198,13 @@ export default function HeroSection({ heroBanners = [], hero }: HeroSectionProps
                         variant="hero-mobile"
                       />
                     </div>
+                    {ENABLE_FREE_TRAVEL_PLANNER ? (
+                      <div className="relative z-0 mt-2">
+                        <HomeTravelEntries golfHref={golfEntryHref} />
+                      </div>
+                    ) : null}
                     <div className="relative z-0">
-                      <HomeQuickKeywords />
+                      <HomeQuickKeywords pairedEntriesVisible={ENABLE_FREE_TRAVEL_PLANNER} />
                     </div>
                     <p className="hidden pt-1 type-caption text-[var(--hero-text-secondary)]/80 lg:block">
                       {hero.recommended_text ? (

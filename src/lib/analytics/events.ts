@@ -7,6 +7,8 @@ import type { AnalyticsEventName, AnalyticsSource } from "./types";
 
 /** 이벤트명 상수 */
 export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = {
+  planner_entry_click: "planner_entry_click",
+  home_travel_entry_click: "home_travel_entry_click",
   header_nav_click: "header_nav_click",
   mega_menu_open: "mega_menu_open",
   mega_menu_click: "mega_menu_click",

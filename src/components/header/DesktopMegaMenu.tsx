@@ -13,6 +13,7 @@ import { buildGolfProductsHref, isGolfTourType } from "@/lib/products/golfChanne
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
 import { createAnalyticsPayload, inferDeviceType } from "@/lib/analytics/payload";
 import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
+import { isPlannerPath } from "@/lib/planner/entryNavigation";
 
 function getNavLinkClass(isActive: boolean) {
   const base =
@@ -35,6 +36,7 @@ function getIsActive(item: HeaderPrimaryNavItem, pathname: string): boolean {
   if (key === "recommended") return pathname === "/recommended";
   if (key === "region") return pathname === "/destinations" || pathname.startsWith("/destinations/");
   if (key === "theme") return pathname === "/themes" || pathname.startsWith("/themes/");
+  if (key === "planner") return isPlannerPath(pathname);
   if (key === "inquiry") return pathname === "/quote";
   if (key === "guides") return pathname.startsWith("/guides");
   if (key === "support") return pathname.startsWith("/support");
@@ -53,8 +55,9 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
   const items = primaryNav.filter((p) =>
     HEADER_DESKTOP_PRIMARY_NAV_KEYS.includes(p.key as HeaderPrimaryNavKey),
   );
-  const beforeInquiry = items.filter((p) => p.key !== "inquiry");
-  const inquiryItem = items.find((p) => p.key === "inquiry");
+  const beforeInquiry = items.filter((p) => p.key !== "inquiry" && p.key !== "planner");
+  const afterGolf = [items.find((p) => p.key === "planner"), items.find((p) => p.key === "inquiry")]
+    .filter((item): item is HeaderPrimaryNavItem => Boolean(item));
 
   const onClose = useCallback(() => setOpenKey(null), []);
 
@@ -128,6 +131,7 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
           href={golfHref}
           className={getNavLinkClass(golfActive)}
           onClick={() => {
+            onClose();
             trackClientEvent(
               createAnalyticsPayload({
                 eventName: ANALYTICS_EVENTS.header_nav_click,
@@ -145,21 +149,21 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
         >
           골프
         </Link>
-        {inquiryItem ? (
+        {afterGolf.map((item, index) => (
           <DesktopNavItem
-            key={inquiryItem.key}
-            item={inquiryItem}
-            positionIndex={beforeInquiry.length + 1}
-            isOpen={openKey === (inquiryItem.key as HeaderPrimaryNavKey)}
-            onOpen={() => setOpenKey(inquiryItem.key as HeaderPrimaryNavKey)}
+            key={item.key}
+            item={item}
+            positionIndex={beforeInquiry.length + 1 + index}
+            isOpen={openKey === (item.key as HeaderPrimaryNavKey)}
+            onOpen={() => setOpenKey(item.key as HeaderPrimaryNavKey)}
             onClose={onClose}
             scheduleClose={scheduleClose}
             cancelClose={cancelClose}
-            isActive={getIsActive(inquiryItem, pathname)}
+            isActive={getIsActive(item, pathname)}
             getNavLinkClass={getNavLinkClass}
             renderPanelInParent
           />
-        ) : null}
+        ))}
       </nav>
       {openKey && (() => {
         const item = items.find((i) => i.key === openKey);

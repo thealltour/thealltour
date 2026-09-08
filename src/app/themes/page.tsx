@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { cn } from "@/lib/cn";
 import { solidButtonShadowClasses } from "@/components/ui/Button";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
@@ -128,7 +129,12 @@ export default async function ThemesHubPage() {
 
       <main className="flex w-full flex-col py-6 sm:py-10 md:py-14">
         <PageContainer size="wide" className="flex flex-col gap-8">
-          <LandingHero {...getHubHeroConfig("themes")} className="mb-6 sm:mb-10" />
+          <LandingHero
+            {...getHubHeroConfig("themes")}
+            variant="editorial"
+            plannerEntry={ENABLE_FREE_TRAVEL_PLANNER ? { source: "themes_hero" } : undefined}
+            className="mb-6 sm:mb-10"
+          />
 
           {hasThemes ? (
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start">

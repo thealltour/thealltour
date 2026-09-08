@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import Link from "next/link";
 
 import { cn } from "@/lib/cn";
 
@@ -207,6 +208,12 @@ export function HomeDeferredSections({
 
     <>
 
+      {golfTour.products.length > 0 || golfCalendarModel ? (
+        <section id="home-golf-explore" aria-label="골프여행 찾기" className="scroll-mt-48 space-y-5 md:space-y-8">
+          <nav aria-label="골프여행 탐색 방법" className="flex flex-wrap gap-2 px-4 pt-3 md:pt-6">
+            {golfTour.products.length > 0 ? <Link href="#home-golf-tours" className="inline-flex min-h-11 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">추천상품으로 찾기</Link> : null}
+            {golfCalendarModel ? <Link href="#home-golf-dates" className="inline-flex min-h-11 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">출발 날짜로 찾기</Link> : null}
+          </nav>
       <GolfTourProductsSection
 
         products={golfTour.products}
@@ -223,8 +230,13 @@ export function HomeDeferredSections({
 
       {golfCalendarModel ? (
 
-        <HomeGolfCalendar model={golfCalendarModel} className="-mt-1 max-md:mb-0 md:-mt-2" />
+        <div id="home-golf-dates" className="scroll-mt-48">
+          <HomeGolfCalendar model={golfCalendarModel} className="-mt-1 max-md:mb-0 md:-mt-2" />
+        </div>
 
+      ) : null}
+
+        </section>
       ) : null}
 
       <HomeTrustMicro tourismRegNo={tourismRegNo} />

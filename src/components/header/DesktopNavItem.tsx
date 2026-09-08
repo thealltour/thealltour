@@ -67,7 +67,11 @@ export function DesktopNavItem({
       <Link
         href={item.href}
         className={getNavLinkClass(isActive)}
+        aria-current={isActive ? "page" : undefined}
+        onMouseEnter={onClose}
+        onFocus={onClose}
         onClick={() => {
+          onClose();
           const payload = createAnalyticsPayload({
             eventName: ANALYTICS_EVENTS.header_nav_click,
             source: ANALYTICS_SOURCES.header_desktop_primary,

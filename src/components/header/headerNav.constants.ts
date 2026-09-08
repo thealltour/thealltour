@@ -8,6 +8,7 @@ export const HEADER_PRIMARY_NAV_KEYS = [
   "recommended",
   "region",
   "theme",
+  "planner",
   "inquiry",
   "guides",
   "support",
@@ -20,6 +21,7 @@ export const HEADER_PRIMARY_NAV_ITEMS: ReadonlyArray<{ key: HeaderPrimaryNavKey;
   { key: "recommended", label: "여행추천" },
   { key: "region", label: "지역별 여행" },
   { key: "theme", label: "테마별 여행" },
+  { key: "planner", label: "여행플래너" },
   { key: "inquiry", label: "맞춤/단체문의" },
   { key: "guides", label: "여행가이드" },
   { key: "support", label: "고객센터" },
@@ -37,6 +39,7 @@ export const HEADER_PRIMARY_NAV_DEFAULT_HREF: Record<HeaderPrimaryNavKey, string
   recommended: "/recommended",
   region: "/destinations",
   theme: "/themes",
+  planner: "/planner",
   inquiry: "/quote",
   guides: "/guides",
   support: "/support",
@@ -47,6 +50,7 @@ export const HEADER_DESKTOP_PRIMARY_NAV_KEYS: readonly HeaderPrimaryNavKey[] = [
   "recommended",
   "region",
   "theme",
+  "planner",
   "inquiry",
 ];
 

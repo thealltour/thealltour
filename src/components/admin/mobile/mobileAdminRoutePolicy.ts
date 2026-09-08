@@ -51,6 +51,18 @@ export function isMobileAdminRouteAllowed(
     return hasAdminPermission(session, "settings.manage");
   }
 
+  if (path === "/trend-inbox" || path.startsWith("/trend-inbox/")) {
+    return hasAdminPermission(session, "settings.manage");
+  }
+
+  if (path === "/marketing-review" || path.startsWith("/marketing-review/")) {
+    return hasAdminPermission(session, "settings.manage");
+  }
+
+  if (path === "/marketing-operations" || path.startsWith("/marketing-operations/")) {
+    return hasAdminPermission(session, "settings.manage");
+  }
+
   if (
     path.startsWith("/review-reports") ||
     path.startsWith("/review-reminders") ||
@@ -72,6 +84,9 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   if (path === "/inquiries" || path.startsWith("/inquiries/")) return "문의·상담";
   if (path === "/bookings" || path.startsWith("/bookings/")) return "예약 관리";
   if (path === "/sms") return "SMS 센터";
+  if (path === "/trend-inbox" || path.startsWith("/trend-inbox/")) return "Trend Inbox";
+  if (path === "/marketing-review" || path.startsWith("/marketing-review/")) return "아젠다 · 마케팅 리뷰";
+  if (path === "/marketing-operations" || path.startsWith("/marketing-operations/")) return "마케팅 운영";
   if (path.startsWith("/members") || path.startsWith("/points") || path.startsWith("/rewards")) {
     return "회원·리워드";
   }

@@ -158,12 +158,12 @@ function CandidateCard(props: {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button
           type="button"
           disabled={busy || item.state === "SELECTED_TODAY"}
           onClick={() => onAction("select_today")}
-          className="rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-1.5 text-xs font-medium text-emerald-800 disabled:opacity-50"
+          className="min-h-11 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-2 text-sm font-medium text-emerald-800 disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
         >
           오늘 제작
         </button>
@@ -171,7 +171,7 @@ function CandidateCard(props: {
           type="button"
           disabled={busy || item.state === "DEFERRED"}
           onClick={() => onAction("defer")}
-          className="rounded-lg border border-amber-600/40 bg-amber-600/10 px-3 py-1.5 text-xs font-medium text-amber-900 disabled:opacity-50"
+          className="min-h-11 rounded-lg border border-amber-600/40 bg-amber-600/10 px-3 py-2 text-sm font-medium text-amber-900 disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
         >
           내일
         </button>
@@ -179,7 +179,7 @@ function CandidateCard(props: {
           type="button"
           disabled={busy || item.state === "REJECTED"}
           onClick={() => onAction("reject")}
-          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] disabled:opacity-50"
+          className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
         >
           제외
         </button>
@@ -188,7 +188,7 @@ function CandidateCard(props: {
             type="button"
             disabled={busy}
             onClick={() => onAction("reset_available")}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] disabled:opacity-50"
+            className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
           >
             대기로
           </button>
@@ -305,7 +305,7 @@ export function AgendaSlatePanel() {
             선택만으로는 제작이 시작되지 않습니다. 연구 점수만으로 설명하지 않습니다.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <span className="text-xs font-medium text-[var(--text-secondary)]">
             selected {selectedTodayCount} / {MAX_SELECTED_TODAY}
           </span>
@@ -313,7 +313,7 @@ export function AgendaSlatePanel() {
             type="button"
             disabled={busy || selectedTodayCount < 1}
             onClick={() => void requestProduction()}
-            className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            className="min-h-11 w-full rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-50 sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
           >
             선택한 {selectedTodayCount}개 제작 요청
           </button>
@@ -321,7 +321,7 @@ export function AgendaSlatePanel() {
             type="button"
             disabled={busy || loading}
             onClick={() => void load()}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)]"
+            className="min-h-11 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)] sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
           >
             새로고침
           </button>

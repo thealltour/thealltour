@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   CalendarDays,
+  ClipboardList,
   Home,
   LayoutGrid,
   MessageSquare,
   MessagesSquare,
+  Sparkles,
   Star,
-  Users,
 } from "lucide-react";
 import {
   ADMIN_PWA_HUB_HREF,
@@ -39,9 +40,9 @@ function isNavItemActive(pathname: string, href: string): boolean {
 const PRIMARY_ICONS = {
   home: Home,
   inquiry: MessageSquare,
-  users: Users,
+  trend: Sparkles,
+  agenda: ClipboardList,
   bell: Bell,
-  sms: MessagesSquare,
 } as const;
 
 function hubIcon(key: string) {
@@ -53,9 +54,15 @@ function hubIcon(key: string) {
     case "hub":
       return LayoutGrid;
     case "team-chat":
+    case "sms":
       return MessagesSquare;
     case "inquiry-dashboard":
       return MessageSquare;
+    case "trend-inbox":
+      return Sparkles;
+    case "marketing-review":
+    case "marketing-operations":
+      return ClipboardList;
     default:
       return Home;
   }

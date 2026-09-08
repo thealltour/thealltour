@@ -11,16 +11,20 @@ function redact(message: string): string {
   return message.replace(/(api[_-]?key|token|secret|service[_-]?role)=[^\s]+/gi, "[redacted]");
 }
 
-/** GET — recent ingest history for Trend Inbox. */
+/** GET — recent staging history (new/ingested/discarded) for Trend Inbox. */
 export async function GET() {
   const auth = await requireAdminPermission("settings.manage");
   if (!auth.ok) return auth.res;
 
   try {
     const repo = await createTravelTrendsStagingRepository();
-    const recent = await repo.listRecentIngested(20);
+    const [recent, pendingNewCount] = await Promise.all([
+      repo.listRecentStaging(20),
+      repo.countNewTrendObservations(),
+    ]);
     return Response.json(
       {
+        pendingNewCount,
         recent: recent.map((r) => ({
           id: r.id,
           provider: r.provider,
@@ -28,8 +32,10 @@ export async function GET() {
           trendType: r.trendType,
           topic: r.payload.topic,
           status: r.status,
+          createdAt: r.createdAt,
           observedAt: r.observedAt,
           ingestedAt: r.ingestedAt,
+          discardedAt: r.discardedAt,
           clusterLabel: r.clusterLabel,
         })),
       },

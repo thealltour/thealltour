@@ -4,7 +4,7 @@
 const DEFAULT_ICON = "/theall_manager_only/icon-192.png";
 const DEFAULT_URL = "/theall_manager_only/notifications";
 const OFFLINE_URL = "/theall_manager_only/offline.html";
-const STATIC_CACHE = "admin-pwa-static-v1";
+const STATIC_CACHE = "admin-pwa-static-v2";
 const PRECACHE_URLS = [
   OFFLINE_URL,
   DEFAULT_ICON,

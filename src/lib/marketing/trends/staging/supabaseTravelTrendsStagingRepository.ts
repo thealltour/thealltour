@@ -133,4 +133,23 @@ export class SupabaseTravelTrendsStagingRepository implements TravelTrendsStagin
     if (error) throw new Error(error.message ?? "listRecentIngested failed");
     return (data ?? []).map((row: Record<string, unknown>) => mapTravelTrendStagingRow(row));
   }
+
+  async listRecentStaging(limit = 20): Promise<TravelTrendStagingRow[]> {
+    const { data, error } = await this.client
+      .from("travel_trends_staging")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(Math.max(1, Math.min(100, limit)));
+    if (error) throw new Error(error.message ?? "listRecentStaging failed");
+    return (data ?? []).map((row: Record<string, unknown>) => mapTravelTrendStagingRow(row));
+  }
+
+  async countNewTrendObservations(): Promise<number> {
+    const { count, error } = await this.client
+      .from("travel_trends_staging")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "new");
+    if (error) throw new Error(error.message ?? "countNewTrendObservations failed");
+    return typeof count === "number" ? count : 0;
+  }
 }

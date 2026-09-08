@@ -12,27 +12,38 @@ function session(partial: Partial<AdminSessionPermissions>): AdminSessionPermiss
 }
 
 describe("getMobileNavKeysForSession", () => {
-  it("includes sms instead of reviews for inquiries.manage", () => {
+  it("includes trend and agenda for settings.manage, not members/sms", () => {
     const keys = getMobileNavKeysForSession(
       session({
         permissions: [
           "dashboard.view",
+          "settings.manage",
           "inquiries.manage",
           "notifications.view",
+          "members.manage",
         ],
       }),
     );
-    expect(keys).toContain("sms");
-    expect(keys).not.toContain("reviews");
+    expect(keys).toEqual([
+      "dashboard",
+      "trend_inbox",
+      "marketing_review",
+      "inquiries",
+      "notifications",
+    ]);
+    expect(keys).not.toContain("sms");
+    expect(keys).not.toContain("members");
   });
 
-  it("does not include sms without inquiries.manage", () => {
+  it("omits trend/agenda without settings.manage", () => {
     const keys = getMobileNavKeysForSession(
       session({
-        permissions: ["dashboard.view", "reviews.ops", "notifications.view"],
+        permissions: ["dashboard.view", "inquiries.manage", "notifications.view"],
       }),
     );
+    expect(keys).toEqual(["dashboard", "inquiries", "notifications"]);
+    expect(keys).not.toContain("trend_inbox");
+    expect(keys).not.toContain("marketing_review");
     expect(keys).not.toContain("sms");
-    expect(keys).not.toContain("reviews");
   });
 });

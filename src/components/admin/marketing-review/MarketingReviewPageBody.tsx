@@ -106,13 +106,15 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] px-4 py-8 text-[var(--text-primary)] md:px-8">
-      <main className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="min-h-screen bg-[var(--bg)] px-3 py-4 text-[var(--text-primary)] sm:px-4 sm:py-8 md:px-8">
+      <main className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
         <AdminHeader
           title="AI 마케팅 검토"
           description="09:00 자율 파이프라인이 생성한 CompletedMarketingCandidate를 검토합니다. 승인은 수동 게시 준비만 의미하며 자동 SNS 게시는 없습니다."
           unreadNotificationCount={unreadNotificationCount}
         />
+
+        <AgendaSlatePanel />
 
         {todayCandidate ? (
           <AdminCard
@@ -146,7 +148,7 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
               </div>
               <Link
                 href={`/theall_manager_only/marketing-review/${encodeURIComponent(todayCandidate.candidateId)}`}
-                className="inline-flex min-h-[40px] items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white md:w-auto md:min-h-[40px]"
               >
                 검토 열기
               </Link>
@@ -157,8 +159,6 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
             오늘(KST) 생성된 CompletedMarketingCandidate가 아직 없습니다.
           </AdminCard>
         )}
-
-        <AgendaSlatePanel />
 
         <div className="grid gap-3 sm:grid-cols-3">
           <AdminSummaryCard title="검토 필요" value={String(pendingCount)} />
@@ -173,7 +173,7 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
               type="button"
               onClick={() => setFilter(item.id)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-sm",
+                "min-h-10 rounded-full border px-3 py-1.5 text-sm",
                 filter === item.id
                   ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
                   : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]",
@@ -185,7 +185,7 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
           <button
             type="button"
             onClick={() => void reload()}
-            className="rounded-full border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)]"
+            className="min-h-10 rounded-full border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)]"
           >
             새로고침
           </button>
@@ -193,7 +193,7 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
 
         <AdminCard className="overflow-hidden p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-[40rem] text-sm md:min-w-full">
               <thead className="bg-[var(--surface-muted)] text-left text-[var(--text-secondary)]">
                 <tr>
                   <th className="px-4 py-3">날짜</th>

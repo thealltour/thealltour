@@ -19,9 +19,9 @@ export const ADMIN_PWA_HUB_REL = "/pwa";
 /** 메뉴/정책 키 (표시·로깅용) */
 export const MOBILE_ADMIN_MENU_KEYS = {
   DASHBOARD: "dashboard",
+  TREND_INBOX: "trend_inbox",
+  MARKETING_REVIEW: "marketing_review",
   INQUIRIES: "inquiries",
-  MEMBERS: "members",
-  SMS: "sms",
   NOTIFICATIONS: "notifications",
 } as const;
 
@@ -30,19 +30,22 @@ export type MobileAdminMenuKey = (typeof MOBILE_ADMIN_MENU_KEYS)[keyof typeof MO
 /** 정책상 허용되는 메뉴 키 집합 */
 export const MOBILE_ADMIN_ALLOWED_MENU_KEYS: readonly MobileAdminMenuKey[] = [
   MOBILE_ADMIN_MENU_KEYS.DASHBOARD,
+  MOBILE_ADMIN_MENU_KEYS.TREND_INBOX,
+  MOBILE_ADMIN_MENU_KEYS.MARKETING_REVIEW,
   MOBILE_ADMIN_MENU_KEYS.INQUIRIES,
-  MOBILE_ADMIN_MENU_KEYS.MEMBERS,
-  MOBILE_ADMIN_MENU_KEYS.SMS,
   MOBILE_ADMIN_MENU_KEYS.NOTIFICATIONS,
 ] as const;
 
-/** 알림·회원·포인트 등 추가 허용 접두 */
+/** 알림·회원·포인트·트렌드·아젠다 등 추가 허용 접두 */
 export const MOBILE_ADMIN_ALLOWED_PATH_PREFIXES = [
   "/notifications",
   "/members",
   "/points",
   "/rewards",
   "/ai-runtime",
+  "/trend-inbox",
+  "/marketing-review",
+  "/marketing-operations",
 ] as const;
 
 export type MobileAdminNavItem = {
@@ -50,12 +53,12 @@ export type MobileAdminNavItem = {
   label: string;
   href: string;
   /** lucide icon name 대신 컴포넌트는 BottomNav에서 매핑 */
-  icon: "home" | "inquiry" | "users" | "bell" | "sms";
+  icon: "home" | "inquiry" | "trend" | "agenda" | "bell";
 };
 
 const MANAGER_PREFIX = "/theall_manager_only";
 
-/** 하단 탭 — 홈·문의·회원·SMS·알림 (admin 기본) */
+/** 하단 탭 — 홈·트렌드·아젠다·문의·알림 */
 export const MOBILE_ADMIN_PRIMARY_NAV: readonly MobileAdminNavItem[] = [
   {
     key: MOBILE_ADMIN_MENU_KEYS.DASHBOARD,
@@ -64,22 +67,22 @@ export const MOBILE_ADMIN_PRIMARY_NAV: readonly MobileAdminNavItem[] = [
     icon: "home",
   },
   {
+    key: MOBILE_ADMIN_MENU_KEYS.TREND_INBOX,
+    label: "트렌드",
+    href: `${MANAGER_PREFIX}/trend-inbox`,
+    icon: "trend",
+  },
+  {
+    key: MOBILE_ADMIN_MENU_KEYS.MARKETING_REVIEW,
+    label: "아젠다",
+    href: `${MANAGER_PREFIX}/marketing-review`,
+    icon: "agenda",
+  },
+  {
     key: MOBILE_ADMIN_MENU_KEYS.INQUIRIES,
     label: "문의",
     href: `${MANAGER_PREFIX}/inquiries`,
     icon: "inquiry",
-  },
-  {
-    key: MOBILE_ADMIN_MENU_KEYS.MEMBERS,
-    label: "회원",
-    href: `${MANAGER_PREFIX}/members`,
-    icon: "users",
-  },
-  {
-    key: MOBILE_ADMIN_MENU_KEYS.SMS,
-    label: "SMS",
-    href: `${MANAGER_PREFIX}/sms`,
-    icon: "sms",
   },
   {
     key: MOBILE_ADMIN_MENU_KEYS.NOTIFICATIONS,
@@ -126,6 +129,32 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
       href: `${MANAGER_PREFIX}?tab=kakao_sync`,
     });
   }
+  if (hasAdminPermission(session, "settings.manage")) {
+    items.push({
+      key: "trend-inbox",
+      label: "Trend Inbox",
+      description: "Meta TrendSignal 검증 · 스테이징 인입",
+      href: `${MANAGER_PREFIX}/trend-inbox`,
+    });
+    items.push({
+      key: "marketing-review",
+      label: "아젠다 · 마케팅 리뷰",
+      description: "09:00 Agenda 승인 · 후보 검토",
+      href: `${MANAGER_PREFIX}/marketing-review`,
+    });
+    items.push({
+      key: "marketing-operations",
+      label: "마케팅 운영",
+      description: "일일 파이프라인 상태",
+      href: `${MANAGER_PREFIX}/marketing-operations`,
+    });
+    items.push({
+      key: "ai-runtime",
+      label: "AI Runtime",
+      description: "Provider · Adapter · Credential 상태",
+      href: `${MANAGER_PREFIX}/ai-runtime`,
+    });
+  }
   if (hasAdminPermission(session, "inquiries.manage")) {
     items.push({
       key: "inquiries",
@@ -158,14 +187,6 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
     description: "관리자 간 실시간 메시지",
     href: `${MANAGER_PREFIX}/pwa?openChat=1`,
   });
-  if (hasAdminPermission(session, "members.manage")) {
-    items.push({
-      key: "members",
-      label: "회원",
-      description: "회원 목록 · 상세",
-      href: `${MANAGER_PREFIX}/members`,
-    });
-  }
   if (hasAdminPermission(session, "notifications.view")) {
     items.push({
       key: "notifications",
@@ -180,14 +201,6 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
       label: "리뷰",
       description: "목록 · 검토 · 운영 알림",
       href: `${MANAGER_PREFIX}/reviews`,
-    });
-  }
-  if (hasAdminPermission(session, "settings.manage")) {
-    items.push({
-      key: "ai-runtime",
-      label: "AI Runtime",
-      description: "Provider · Adapter · Credential 상태",
-      href: `${MANAGER_PREFIX}/ai-runtime`,
     });
   }
 

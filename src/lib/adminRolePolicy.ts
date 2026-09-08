@@ -183,14 +183,21 @@ export function getDefaultLandingPathForRole(role: AdminRole): string {
   }
 }
 
-export type MobileNavKey = "dashboard" | "inquiries" | "members" | "sms" | "notifications";
+export type MobileNavKey =
+  | "dashboard"
+  | "trend_inbox"
+  | "marketing_review"
+  | "inquiries"
+  | "notifications";
 
 export function getMobileNavKeysForSession(session: AdminSessionPermissions): MobileNavKey[] {
   const keys: MobileNavKey[] = [];
   if (hasAdminPermission(session, "dashboard.view")) keys.push("dashboard");
+  if (hasAdminPermission(session, "settings.manage")) {
+    keys.push("trend_inbox");
+    keys.push("marketing_review");
+  }
   if (hasAdminPermission(session, "inquiries.manage")) keys.push("inquiries");
-  if (hasAdminPermission(session, "members.manage")) keys.push("members");
-  if (hasAdminPermission(session, "inquiries.manage")) keys.push("sms");
   if (hasAdminPermission(session, "notifications.view")) keys.push("notifications");
   return keys;
 }
@@ -198,8 +205,8 @@ export function getMobileNavKeysForSession(session: AdminSessionPermissions): Mo
 /** @deprecated getMobileNavKeysForSession 사용 */
 export function getMobileNavKeysForRole(role: AdminRole): MobileNavKey[] {
   if (role === "viewer") return ["dashboard", "notifications"];
-  if (role === "manager") return ["dashboard", "inquiries", "sms", "notifications"];
-  return ["dashboard", "inquiries", "members", "sms", "notifications"];
+  if (role === "manager") return ["dashboard", "inquiries", "notifications"];
+  return ["dashboard", "trend_inbox", "marketing_review", "inquiries", "notifications"];
 }
 
 /** sidebar 항목별 필요 권한 */

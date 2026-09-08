@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Home, MessageSquare, MessagesSquare, Users } from "lucide-react";
+import { Bell, ClipboardList, Home, MessageSquare, Sparkles } from "lucide-react";
 import { getMobileAdminNavForSession } from "@/components/admin/mobile/mobileAdmin.constants";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
 import { getAdminConsoleRelativePath } from "@/lib/adminConsolePaths";
@@ -11,9 +11,9 @@ import { useAdminNotificationsRealtime } from "@/hooks/useAdminNotificationsReal
 const ICONS = {
   home: Home,
   inquiry: MessageSquare,
-  users: Users,
+  trend: Sparkles,
+  agenda: ClipboardList,
   bell: Bell,
-  sms: MessagesSquare,
 } as const;
 
 function isNavItemActive(pathname: string, href: string): boolean {

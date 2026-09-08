@@ -118,6 +118,16 @@ export class InMemoryTravelTrendsStagingRepository implements TravelTrendsStagin
       .slice(0, Math.max(1, limit));
   }
 
+  async listRecentStaging(limit = 20): Promise<TravelTrendStagingRow[]> {
+    return [...this.rows.values()]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, Math.max(1, limit));
+  }
+
+  async countNewTrendObservations(): Promise<number> {
+    return [...this.rows.values()].filter((r) => r.status === "new").length;
+  }
+
   /** Test helper */
   seed(payload: TrendSignalPayloadV1): TravelTrendStagingRow {
     const insert = toTravelTrendStagingInsertRow(payload);

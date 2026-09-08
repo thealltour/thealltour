@@ -49,4 +49,7 @@ export interface TravelTrendsStagingRepository {
     observationId: string,
   ): Promise<TravelTrendStagingRow | null>;
   listRecentIngested(limit?: number): Promise<TravelTrendStagingRow[]>;
+  /** Recent staging rows of any status (new/ingested/discarded), newest created first. */
+  listRecentStaging(limit?: number): Promise<TravelTrendStagingRow[]>;
+  countNewTrendObservations(): Promise<number>;
 }

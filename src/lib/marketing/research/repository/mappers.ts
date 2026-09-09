@@ -287,7 +287,11 @@ export function mapResearchBriefRow(
     primarySignalId: asStringOrNull(row.primary_signal_id),
     clusterId: asStringOrNull(row.cluster_id),
     claims,
-    evidence,
+    evidence: evidence.map((item) => ({
+      ...item,
+      publishedAt: item.publishedAt ? normalizeIsoDatetime(item.publishedAt) : null,
+      observedAt: normalizeIsoDatetime(item.observedAt),
+    })),
     topics: asStringArray(row.topics),
     destinations: asStringArray(row.destinations),
     entities: asStringArray(row.entities),

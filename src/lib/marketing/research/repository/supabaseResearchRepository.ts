@@ -376,6 +376,24 @@ export class SupabaseResearchRepository implements ResearchRepository {
     if (error) throwDb(error, "findRecentAgendaCandidates failed");
     return asRows(data).map(mapAgendaCandidateRow);
   }
+
+  async deleteAgendaCandidateById(id: string): Promise<void> {
+    const { error } = await this.client.from("agenda_candidates").delete().eq("id", id);
+    if (error) throwDb(error, "deleteAgendaCandidateById failed");
+  }
+
+  async deleteBriefById(id: string): Promise<void> {
+    await this.client.from("research_brief_signals").delete().eq("brief_id", id);
+    const { error } = await this.client.from("research_briefs").delete().eq("id", id);
+    if (error) throwDb(error, "deleteBriefById failed");
+  }
+
+  async deleteSignalById(id: string): Promise<void> {
+    await this.client.from("research_evidence").delete().eq("signal_id", id);
+    await this.client.from("research_brief_signals").delete().eq("signal_id", id);
+    const { error } = await this.client.from("research_signals").delete().eq("id", id);
+    if (error) throwDb(error, "deleteSignalById failed");
+  }
 }
 
 function asString(value: unknown, fallback = ""): string {

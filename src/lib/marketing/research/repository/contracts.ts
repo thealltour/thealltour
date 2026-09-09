@@ -16,18 +16,24 @@ export interface ResearchSignalRepository {
   findEligibleSignals(input?: { limit?: number }): Promise<ResearchSignal[]>;
   findSignalsByTopic(topic: string, limit?: number): Promise<ResearchSignal[]>;
   findSignalsByDestination(destination: string, limit?: number): Promise<ResearchSignal[]>;
+  /** Best-effort delete for trend persist rollback (orphans). */
+  deleteSignalById?(id: string): Promise<void>;
 }
 
 export interface ResearchBriefRepository {
   upsertBrief(brief: ResearchBrief): Promise<ResearchBrief>;
   findBriefById(id: string): Promise<ResearchBrief | null>;
   findActiveBriefs(limit?: number): Promise<ResearchBrief[]>;
+  /** Best-effort delete for trend persist rollback (orphans). */
+  deleteBriefById?(id: string): Promise<void>;
 }
 
 export interface AgendaCandidateRepository {
   upsertAgendaCandidate(candidate: AgendaCandidate): Promise<AgendaCandidate>;
   findAgendaCandidateById(id: string): Promise<AgendaCandidate | null>;
   findRecentAgendaCandidates(input: { since: string; limit?: number }): Promise<AgendaCandidate[]>;
+  /** Best-effort delete for trend persist rollback (orphans). */
+  deleteAgendaCandidateById?(id: string): Promise<void>;
 }
 
 export type ResearchRepository = ResearchSourceRegistry &

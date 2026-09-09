@@ -135,6 +135,18 @@ export class InMemoryResearchRepository implements ResearchRepository {
       )
       .slice(0, input.limit ?? 100);
   }
+
+  async deleteAgendaCandidateById(id: string): Promise<void> {
+    this.candidates.delete(id);
+  }
+
+  async deleteBriefById(id: string): Promise<void> {
+    this.briefs.delete(id);
+  }
+
+  async deleteSignalById(id: string): Promise<void> {
+    this.signals.delete(id);
+  }
 }
 
 function mergeEvidence(existing: ResearchEvidence[], incoming: ResearchEvidence[]): ResearchEvidence[] {

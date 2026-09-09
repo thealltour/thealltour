@@ -4,6 +4,7 @@ import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PlannerWizard } from "@/components/planner/PlannerWizard";
 import { assertFreeTravelPlannerEnabled } from "@/lib/planner/assertPlannerEnabled";
+import { isPlannerQaModeEnabled } from "@/lib/planner/qaMode";
 import { buildOgBrandFallbackMetadata } from "@/lib/seo/buildOgPageMetadata";
 
 export const metadata: Metadata = buildOgBrandFallbackMetadata({
@@ -18,6 +19,7 @@ export const metadata: Metadata = buildOgBrandFallbackMetadata({
 
 export default function PlannerPage() {
   assertFreeTravelPlannerEnabled();
+  const qaEnabled = isPlannerQaModeEnabled();
 
   return (
     <>
@@ -26,7 +28,7 @@ export default function PlannerPage() {
         <PageContainer size="reading" className="pb-4 pt-2 sm:pt-4">
           <main id="main-content" tabIndex={-1}>
             <Suspense fallback={<div className="min-h-[12rem]" aria-hidden />}>
-              <PlannerWizard />
+              <PlannerWizard qaEnabled={qaEnabled} />
             </Suspense>
           </main>
         </PageContainer>

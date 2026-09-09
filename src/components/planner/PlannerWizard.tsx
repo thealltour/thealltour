@@ -20,6 +20,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { PlannerGenerationView } from "@/components/planner/PlannerGenerationView";
+import { PlannerQaPanel } from "@/components/planner/PlannerQaPanel";
 import { PlannerWizardProgress } from "@/components/planner/PlannerWizardProgress";
 import { TravelerCounter } from "@/components/planner/TravelerCounter";
 import { dateToYmd } from "@/lib/datePickerUtils";
@@ -47,6 +48,11 @@ import {
   computeDurationDays,
   formatPlannerDatesSummary,
 } from "@/lib/planner/dates";
+import {
+  getPlannerQaPreset,
+  type PlannerQaPresetId,
+} from "@/lib/planner/qaPresets";
+import { canArriveAtPlannerStep } from "@/lib/planner/qaStepSafety";
 import { validatePlannerStep } from "@/lib/planner/schemas";
 import {
   trackPlannerGenerationFailed,
@@ -142,7 +148,13 @@ function summarySectionToStep(section: PlannerSummaryEditSection): PlannerWizard
 
 type BudgetUiMode = "undecided" | PlannerBudgetStyle | "custom";
 
-export function PlannerWizard() {
+function budgetUiModeFromDraft(d: PlannerDraftInput): BudgetUiMode {
+  if (d.budget.amount != null) return "custom";
+  if (d.budget.style) return d.budget.style;
+  return "undecided";
+}
+
+export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sourceProductIdRaw = searchParams.get("sourceProductId");
@@ -150,6 +162,7 @@ export function PlannerWizard() {
     sourceProductIdRaw && /^[0-9a-f-]{36}$/i.test(sourceProductIdRaw.trim())
       ? sourceProductIdRaw.trim()
       : null;
+  const showQaPanel = qaEnabled && searchParams.get("qa") === "1";
 
   const originId = useId();
   const destinationId = useId();
@@ -177,32 +190,115 @@ export function PlannerWizard() {
   const [customDurationOpen, setCustomDurationOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const generateLockRef = useRef(false);
+  const [qaPresetId, setQaPresetId] = useState<PlannerQaPresetId>("osaka-fixed");
+  const [qaError, setQaError] = useState<string | null>(null);
+  const [qaBusy, setQaBusy] = useState(false);
 
   useEffect(() => {
+    if (showQaPanel) return;
     trackPlannerLandingView();
-  }, []);
+  }, [showQaPanel]);
 
   function patchDraft(patch: Partial<PlannerDraftInput>) {
     setDraft((prev) => ({ ...prev, ...patch }));
   }
 
-  async function persistDraft(nextDraft: PlannerDraftInput, finalize = false): Promise<boolean> {
-    if (!sessionId || !anonymousKey) return false;
-    const res = await fetch(`/api/planner/sessions/${encodeURIComponent(sessionId)}`, {
+  function applyDraftLocal(nextDraft: PlannerDraftInput) {
+    setDraft(nextDraft);
+    setBudgetUiMode(budgetUiModeFromDraft(nextDraft));
+    setCustomDurationOpen(
+      nextDraft.dates.mode === "flexible" && nextDraft.dates.durationDays > 7,
+    );
+    setEditingFromSummary(false);
+  }
+
+  async function persistDraftToSession(
+    activeSessionId: string,
+    nextDraft: PlannerDraftInput,
+    finalize = false,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
+    const key = anonymousKey || getOrCreatePlannerAnonymousKey();
+    const res = await fetch(`/api/planner/sessions/${encodeURIComponent(activeSessionId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        anonymousKey,
+        anonymousKey: key,
         input: nextDraft,
         finalize,
       }),
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { message?: string } | null;
-      setError(data?.message ?? "저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      return {
+        ok: false,
+        message: data?.message ?? "저장에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      };
+    }
+    return { ok: true };
+  }
+
+  async function persistDraft(nextDraft: PlannerDraftInput, finalize = false): Promise<boolean> {
+    if (!sessionId || !anonymousKey) return false;
+    const result = await persistDraftToSession(sessionId, nextDraft, finalize);
+    if (!result.ok) {
+      setError(result.message);
       return false;
     }
     return true;
+  }
+
+  async function createSessionWithDraft(
+    nextDraft: PlannerDraftInput,
+  ): Promise<{ id: string; draft: PlannerDraftInput } | { error: string }> {
+    const key = anonymousKey || getOrCreatePlannerAnonymousKey();
+    const res = await fetch("/api/planner/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        anonymousKey: key,
+        origin: nextDraft.origin.text,
+        destination: nextDraft.destination.text,
+        sourceProductId,
+      }),
+    });
+    const data = (await res.json().catch(() => null)) as {
+      message?: string;
+      session?: {
+        id: string;
+        origin?: string;
+        destination?: string;
+        sourceProductId?: string | null;
+        input?: PlannerDraftInput;
+      };
+    } | null;
+
+    if (!res.ok || !data?.session?.id) {
+      return {
+        error: data?.message ?? "여행을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      };
+    }
+
+    const merged: PlannerDraftInput = {
+      ...nextDraft,
+      origin: nextDraft.origin,
+      destination: nextDraft.destination,
+    };
+
+    setSessionId(data.session.id);
+    setResolvedSourceProductId(data.session.sourceProductId ?? sourceProductId);
+    applyDraftLocal(merged);
+
+    if (!showQaPanel) {
+      trackPlannerStarted({
+        sessionId: data.session.id,
+        destination: merged.destination.text,
+        sourceProductId: data.session.sourceProductId ?? sourceProductId,
+      });
+    }
+
+    const patched = await persistDraftToSession(data.session.id, merged, false);
+    if (!patched.ok) return { error: patched.message };
+    return { id: data.session.id, draft: merged };
   }
 
   function handleStart(e: React.FormEvent) {
@@ -216,47 +312,11 @@ export function PlannerWizard() {
 
     startTransition(async () => {
       try {
-        const key = anonymousKey || getOrCreatePlannerAnonymousKey();
-
-        const res = await fetch("/api/planner/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            anonymousKey: key,
-            origin: draft.origin.text,
-            destination: draft.destination.text,
-            sourceProductId,
-          }),
-        });
-        const data = (await res.json().catch(() => null)) as {
-          message?: string;
-          session?: {
-            id: string;
-            origin?: string;
-            destination?: string;
-            sourceProductId?: string | null;
-            input?: PlannerDraftInput;
-          };
-        } | null;
-
-        if (!res.ok || !data?.session?.id) {
-          setError(data?.message ?? "여행을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        const created = await createSessionWithDraft(draft);
+        if ("error" in created) {
+          setError(created.error);
           return;
         }
-
-        const nextDraft = data.session.input ?? {
-          ...draft,
-          origin: { text: data.session.origin ?? draft.origin.text },
-          destination: { text: data.session.destination ?? draft.destination.text },
-        };
-        setDraft(nextDraft);
-        setSessionId(data.session.id);
-        setResolvedSourceProductId(data.session.sourceProductId ?? sourceProductId);
-        trackPlannerStarted({
-          sessionId: data.session.id,
-          destination: nextDraft.destination.text,
-          sourceProductId: data.session.sourceProductId ?? sourceProductId,
-        });
         if (editingFromSummary) {
           setEditingFromSummary(false);
           setStep(7);
@@ -304,11 +364,13 @@ export function PlannerWizard() {
     generateLockRef.current = true;
 
     const key = anonymousKey || getOrCreatePlannerAnonymousKey();
-    trackPlannerGenerationStarted({
-      sessionId: activeSessionId,
-      input: activeDraft,
-      sourceProductId: resolvedSourceProductId,
-    });
+    if (!showQaPanel) {
+      trackPlannerGenerationStarted({
+        sessionId: activeSessionId,
+        input: activeDraft,
+        sourceProductId: resolvedSourceProductId,
+      });
+    }
     setPhase("generating");
     setError(null);
 
@@ -328,14 +390,16 @@ export function PlannerWizard() {
       } | null;
 
       if (!res.ok || !data?.session?.plan) {
-        trackPlannerGenerationFailed({
-          sessionId: activeSessionId,
-          input: activeDraft,
-          sourceProductId: resolvedSourceProductId,
-          failureCategory:
-            data?.failureCategory ??
-            (!res.ok ? undefined : "result_navigation_failed"),
-        });
+        if (!showQaPanel) {
+          trackPlannerGenerationFailed({
+            sessionId: activeSessionId,
+            input: activeDraft,
+            sourceProductId: resolvedSourceProductId,
+            failureCategory:
+              data?.failureCategory ??
+              (!res.ok ? undefined : "result_navigation_failed"),
+          });
+        }
         setError(
           data?.message ??
             "여행 플랜을 만드는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
@@ -346,21 +410,25 @@ export function PlannerWizard() {
 
       const days = data.session.plan.days ?? [];
       const totalItemCount = days.reduce((sum, d) => sum + (d.items?.length ?? 0), 0);
-      trackPlannerPlanGenerated({
-        sessionId: activeSessionId,
-        input: activeDraft,
-        sourceProductId: resolvedSourceProductId,
-        dayCount: days.length,
-        totalItemCount,
-      });
+      if (!showQaPanel) {
+        trackPlannerPlanGenerated({
+          sessionId: activeSessionId,
+          input: activeDraft,
+          sourceProductId: resolvedSourceProductId,
+          dayCount: days.length,
+          totalItemCount,
+        });
+      }
       router.push(`/planner/${encodeURIComponent(activeSessionId)}`);
     } catch {
-      trackPlannerGenerationFailed({
-        sessionId: activeSessionId,
-        input: activeDraft,
-        sourceProductId: resolvedSourceProductId,
-        failureCategory: "result_navigation_failed",
-      });
+      if (!showQaPanel) {
+        trackPlannerGenerationFailed({
+          sessionId: activeSessionId,
+          input: activeDraft,
+          sourceProductId: resolvedSourceProductId,
+          failureCategory: "result_navigation_failed",
+        });
+      }
       setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
       setPhase("failed");
     } finally {
@@ -380,11 +448,13 @@ export function PlannerWizard() {
     startTransition(async () => {
       const ok = await persistDraft(draft, true);
       if (!ok || !sessionId) return;
-      trackPlannerInputCompleted({
-        sessionId,
-        input: draft,
-        sourceProductId: resolvedSourceProductId,
-      });
+      if (!showQaPanel) {
+        trackPlannerInputCompleted({
+          sessionId,
+          input: draft,
+          sourceProductId: resolvedSourceProductId,
+        });
+      }
       await runGenerate(sessionId, draft);
     });
   }
@@ -397,12 +467,183 @@ export function PlannerWizard() {
   }
 
   function openSummaryEdit(section: PlannerSummaryEditSection) {
-    if (sessionId) {
+    if (sessionId && !showQaPanel) {
       trackPlannerSummaryEditClicked({ sessionId, section });
     }
     setEditingFromSummary(true);
     setError(null);
     setStep(summarySectionToStep(section));
+  }
+
+  async function ensureSessionForQaDraft(
+    nextDraft: PlannerDraftInput,
+  ): Promise<{ id: string; draft: PlannerDraftInput } | { error: string }> {
+    if (sessionId) {
+      const patched = await persistDraftToSession(sessionId, nextDraft, false);
+      if (!patched.ok) {
+        return { error: `QA draft 저장 실패: ${patched.message}` };
+      }
+      applyDraftLocal(nextDraft);
+      return { id: sessionId, draft: nextDraft };
+    }
+    const created = await createSessionWithDraft(nextDraft);
+    if ("error" in created) {
+      return { error: `QA 세션 생성 실패: ${created.error}` };
+    }
+    return created;
+  }
+
+  function qaApplyPreset() {
+    setQaError(null);
+    const preset = getPlannerQaPreset(qaPresetId);
+    applyDraftLocal(preset.draft);
+    if (!sessionId) return;
+    setQaBusy(true);
+    startTransition(async () => {
+      try {
+        const patched = await persistDraftToSession(sessionId, preset.draft, false);
+        if (!patched.ok) {
+          setQaError(`QA draft 저장 실패: ${patched.message}`);
+        }
+      } catch {
+        setQaError("QA draft 저장 실패: 네트워크 오류");
+      } finally {
+        setQaBusy(false);
+      }
+    });
+  }
+
+  function qaCreateSession() {
+    setQaError(null);
+    setQaBusy(true);
+    const preset = getPlannerQaPreset(qaPresetId);
+    startTransition(async () => {
+      try {
+        applyDraftLocal(preset.draft);
+        const ensured = await ensureSessionForQaDraft(preset.draft);
+        if ("error" in ensured) {
+          setQaError(ensured.error);
+          return;
+        }
+        setStep(1);
+      } catch {
+        setQaError("QA 세션 생성 실패: 네트워크 오류");
+      } finally {
+        setQaBusy(false);
+      }
+    });
+  }
+
+  function qaJumpToStep(target: PlannerWizardStep) {
+    setQaError(null);
+    setQaBusy(true);
+    startTransition(async () => {
+      try {
+        let nextDraft = draft;
+        if (!canArriveAtPlannerStep(nextDraft, target)) {
+          nextDraft = getPlannerQaPreset(qaPresetId).draft;
+          applyDraftLocal(nextDraft);
+        }
+        if (target > 1 || sessionId) {
+          if (!canArriveAtPlannerStep(nextDraft, target)) {
+            setQaError("QA step 이동 실패: preset draft가 target step 요건을 만족하지 않습니다.");
+            return;
+          }
+          if (target > 1 && !sessionId) {
+            const ensured = await ensureSessionForQaDraft(nextDraft);
+            if ("error" in ensured) {
+              setQaError(ensured.error);
+              return;
+            }
+            nextDraft = ensured.draft;
+          } else if (sessionId) {
+            const patched = await persistDraftToSession(sessionId, nextDraft, false);
+            if (!patched.ok) {
+              setQaError(`QA draft 저장 실패: ${patched.message}`);
+              return;
+            }
+          }
+        }
+        setEditingFromSummary(false);
+        setPhase("wizard");
+        setStep(target);
+      } catch {
+        setQaError("QA step 이동 실패: 네트워크 오류");
+      } finally {
+        setQaBusy(false);
+      }
+    });
+  }
+
+  function qaReadySummary() {
+    setQaError(null);
+    setQaBusy(true);
+    const preset = getPlannerQaPreset(qaPresetId);
+    startTransition(async () => {
+      try {
+        applyDraftLocal(preset.draft);
+        if (!canArriveAtPlannerStep(preset.draft, 7)) {
+          setQaError("QA 완성 직전 실패: preset이 step 7 valid가 아닙니다.");
+          return;
+        }
+        const ensured = await ensureSessionForQaDraft(preset.draft);
+        if ("error" in ensured) {
+          setQaError(ensured.error);
+          return;
+        }
+        setEditingFromSummary(false);
+        setPhase("wizard");
+        setStep(7);
+      } catch {
+        setQaError("QA 완성 직전 실패: 네트워크 오류");
+      } finally {
+        setQaBusy(false);
+      }
+    });
+  }
+
+  function qaGenerateNow() {
+    if (generateLockRef.current) return;
+    setQaError(null);
+    setQaBusy(true);
+    const preset = getPlannerQaPreset(qaPresetId);
+    startTransition(async () => {
+      try {
+        applyDraftLocal(preset.draft);
+        if (validatePlannerStep(7, preset.draft) != null) {
+          setQaError("QA generate 실패: preset이 finalize valid가 아닙니다.");
+          return;
+        }
+        const ensured = await ensureSessionForQaDraft(preset.draft);
+        if ("error" in ensured) {
+          setQaError(ensured.error);
+          return;
+        }
+        const finalized = await persistDraftToSession(ensured.id, ensured.draft, true);
+        if (!finalized.ok) {
+          setQaError(`QA generate 실패: ${finalized.message}`);
+          return;
+        }
+        await runGenerate(ensured.id, ensured.draft);
+      } catch {
+        setQaError("QA generate 실패: 네트워크 오류");
+      } finally {
+        setQaBusy(false);
+      }
+    });
+  }
+
+  function qaReset() {
+    setQaError(null);
+    setStep(1);
+    applyDraftLocal(createEmptyPlannerDraftInput());
+    setSessionId(null);
+    setPhase("wizard");
+    setError(null);
+    setEditingFromSummary(false);
+    setBudgetUiMode("undecided");
+    setCustomDurationOpen(false);
+    setResolvedSourceProductId(sourceProductId);
   }
 
   function toggleInterest(value: PlannerInterest) {
@@ -530,6 +771,25 @@ export function PlannerWizard() {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-5 px-4 pb-28 pt-6 sm:px-0 sm:pb-12 sm:pt-10">
+      {showQaPanel ? (
+        <PlannerQaPanel
+          step={step}
+          sessionId={sessionId}
+          phase={phase}
+          draft={draft}
+          presetId={qaPresetId}
+          busy={qaBusy || isPending}
+          error={qaError}
+          onPresetIdChange={setQaPresetId}
+          onApplyPreset={qaApplyPreset}
+          onCreateSession={qaCreateSession}
+          onJumpStep={qaJumpToStep}
+          onReadySummary={qaReadySummary}
+          onGenerate={qaGenerateNow}
+          onReset={qaReset}
+        />
+      ) : null}
+
       {step === 1 && !editingFromSummary ? (
         <header className="space-y-3 text-center sm:text-left">
           <h1 className="heading-display type-h1 text-[var(--foreground)]">

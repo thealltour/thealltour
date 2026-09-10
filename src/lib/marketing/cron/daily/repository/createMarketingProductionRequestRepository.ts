@@ -42,6 +42,14 @@ export type MarketingProductionRequestRepository = {
   claimNext(input: ClaimProductionRequestInput): Promise<MarketingProductionRequest | null>;
   /** Insert-once by logical_run_key; returns existing on conflict (idempotent). */
   enqueue(request: MarketingProductionRequest): Promise<{ request: MarketingProductionRequest; created: boolean }>;
+  /**
+   * Re-open a FAILED request as QUEUED for another worker attempt.
+   * COMPLETED cannot be requeued. Same logical_run_key is preserved.
+   */
+  requeueFailed(input: {
+    logicalRunKey: string;
+    now?: Date;
+  }): Promise<MarketingProductionRequest>;
   update(request: MarketingProductionRequest): Promise<MarketingProductionRequest>;
   /**
    * Conditional COMPLETED — requires current claim ownership (claimToken + attemptCount).
@@ -66,6 +74,49 @@ export type MarketingProductionRequestRepository = {
 
 export function createProductionRequestId(logicalRunKey: string): string {
   return `mpr_${createHash("sha256").update(logicalRunKey).digest("hex").slice(0, 24)}`;
+}
+
+/** Reset a FAILED request payload fields for another queue claim. */
+export function buildRequeuedFailedRequest(
+  existing: MarketingProductionRequest,
+  now: Date = new Date(),
+): MarketingProductionRequest {
+  if (existing.status !== "FAILED") {
+    throw new Error(`REQUEUE_REQUIRES_FAILED:${existing.status}`);
+  }
+  const iso = now.toISOString();
+  const priorFailures = Array.isArray(existing.metadata.failureHistory)
+    ? (existing.metadata.failureHistory as unknown[])
+    : [];
+  return normalizeProductionRequest({
+    ...existing,
+    status: "QUEUED",
+    updatedAt: iso,
+    claimedAt: null,
+    startedAt: null,
+    completedAt: null,
+    failedAt: null,
+    attemptCount: 0,
+    claimToken: null,
+    lastError: null,
+    errorMessage: null,
+    workerId: null,
+    completedCandidateId: null,
+    metadata: {
+      ...existing.metadata,
+      requeuedAt: iso,
+      requeueCount: Number(existing.metadata.requeueCount ?? 0) + 1,
+      failureHistory: [
+        ...priorFailures,
+        {
+          failedAt: existing.failedAt,
+          lastError: existing.lastError,
+          workerId: existing.workerId,
+          attemptCount: existing.attemptCount,
+        },
+      ].slice(-8),
+    },
+  });
 }
 
 export function buildQueuedProductionRequest(input: {
@@ -248,6 +299,14 @@ export function createInMemoryMarketingProductionRequestRepository(): MarketingP
       const existing = get(request.logicalRunKey);
       if (existing) return { request: existing, created: false };
       return { request: set(normalizeProductionRequest(request)), created: true };
+    },
+    async requeueFailed(input) {
+      const existing = get(input.logicalRunKey);
+      if (!existing) throw new Error(`production request not found: ${input.logicalRunKey}`);
+      if (existing.status !== "FAILED") {
+        throw new Error(`REQUEUE_REQUIRES_FAILED:${existing.status}`);
+      }
+      return set(buildRequeuedFailedRequest(existing, input.now ?? new Date()));
     },
     async update(request) {
       if (!byKey.has(request.logicalRunKey)) {

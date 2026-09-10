@@ -3,6 +3,7 @@ import {
   applyAgendaSlateAction,
   AgendaSlateActionError,
   listSelectedToday,
+  reconcileSelectedTodayWithTerminalRequests,
 } from "@/lib/marketing/cron/daily/agendaSlate/agendaSlateActions";
 import type { AgendaSlateAction, DailyAgendaSlate } from "@/lib/marketing/cron/daily/agendaSlate/types";
 import { MAX_SELECTED_TODAY } from "@/lib/marketing/cron/daily/agendaSlate/types";
@@ -46,6 +47,17 @@ export type AgendaSlateService = {
     slate: DailyAgendaSlate;
     requests: MarketingProductionRequest[];
     createdCount: number;
+  }>;
+  /** Drop SELECTED_TODAY for items whose production request is COMPLETED/FAILED. */
+  reconcileTerminalSelections(businessDateKst?: string): Promise<DailyAgendaSlate | null>;
+  /** Re-open a FAILED production request as QUEUED (same logical_run_key). */
+  retryFailedProduction(input: {
+    slateItemId?: string;
+    logicalRunKey?: string;
+    businessDateKst?: string;
+  }): Promise<{
+    slate: DailyAgendaSlate | null;
+    request: MarketingProductionRequest;
   }>;
 };
 
@@ -174,10 +186,94 @@ export async function createAgendaSlateService(deps: {
     return { slate, requests, createdCount };
   }
 
+  async function reconcileTerminalSelections(
+    businessDateKst?: string,
+  ): Promise<DailyAgendaSlate | null> {
+    const date = businessDateKst ?? formatKstBusinessDate(now);
+    const slate = await getTodaySlate(date);
+    if (!slate) return null;
+    const requests = await productionRequestRepo.listByBusinessDate(date);
+    const terminalSlateItemIds = new Set(
+      requests
+        .filter((r) => r.status === "COMPLETED" || r.status === "FAILED")
+        .map((r) => r.slateItemId),
+    );
+    if (terminalSlateItemIds.size === 0) return slate;
+    const { slate: next, releasedCount } = reconcileSelectedTodayWithTerminalRequests({
+      slate,
+      terminalSlateItemIds,
+      expectedBusinessDateKst: date,
+      now,
+    });
+    if (releasedCount === 0) return slate;
+    return slateRepo.updateSlate(next);
+  }
+
+  async function retryFailedProduction(input: {
+    slateItemId?: string;
+    logicalRunKey?: string;
+    businessDateKst?: string;
+  }): Promise<{
+    slate: DailyAgendaSlate | null;
+    request: MarketingProductionRequest;
+  }> {
+    const date = input.businessDateKst ?? formatKstBusinessDate(now);
+    const logicalRunKey = input.logicalRunKey?.trim() || null;
+    const slateItemId = input.slateItemId?.trim() || null;
+    if (!logicalRunKey && !slateItemId) {
+      throw new AgendaSlateServiceError(
+        "slateItemId or logicalRunKey required",
+        "INVALID_PAYLOAD",
+        400,
+      );
+    }
+
+    let existing: MarketingProductionRequest | null = null;
+    if (logicalRunKey) {
+      existing = await productionRequestRepo.findByLogicalKey(logicalRunKey);
+    } else if (slateItemId) {
+      const rows = await productionRequestRepo.listByBusinessDate(date);
+      existing = rows.find((r) => r.slateItemId === slateItemId) ?? null;
+    }
+    if (!existing) {
+      throw new AgendaSlateServiceError(
+        "production request not found",
+        "PRODUCTION_REQUEST_NOT_FOUND",
+        404,
+      );
+    }
+    if (existing.status !== "FAILED") {
+      throw new AgendaSlateServiceError(
+        `retry requires FAILED status (got ${existing.status})`,
+        "REQUEUE_REQUIRES_FAILED",
+        409,
+      );
+    }
+
+    let request: MarketingProductionRequest;
+    try {
+      request = await productionRequestRepo.requeueFailed({
+        logicalRunKey: existing.logicalRunKey,
+        now,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.startsWith("REQUEUE_REQUIRES_FAILED:")) {
+        throw new AgendaSlateServiceError(message, "REQUEUE_REQUIRES_FAILED", 409);
+      }
+      throw error;
+    }
+
+    const slate = await reconcileTerminalSelections(date);
+    return { slate, request };
+  }
+
   return {
     getTodaySlate,
     listProductionRequests,
     applyAction,
     requestProductionForSelected,
+    reconcileTerminalSelections,
+    retryFailedProduction,
   };
 }

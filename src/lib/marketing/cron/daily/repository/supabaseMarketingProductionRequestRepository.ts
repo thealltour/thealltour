@@ -5,6 +5,7 @@ import type {
   FinalizeOwnership,
   MarketingProductionRequestRepository,
 } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
+import { buildRequeuedFailedRequest } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
 import type {
   FinalizeProductionRequestResult,
   MarketingProductionRequest,
@@ -197,6 +198,19 @@ export class SupabaseMarketingProductionRequestRepository
       throw new Error(error.message);
     }
     return { request: mapRequest(asRow(data)), created: true };
+  }
+
+  async requeueFailed(input: {
+    logicalRunKey: string;
+    now?: Date;
+  }): Promise<MarketingProductionRequest> {
+    const existing = await this.findByLogicalKey(input.logicalRunKey);
+    if (!existing) throw new Error(`production request not found: ${input.logicalRunKey}`);
+    if (existing.status !== "FAILED") {
+      throw new Error(`REQUEUE_REQUIRES_FAILED:${existing.status}`);
+    }
+    const requeued = buildRequeuedFailedRequest(existing, input.now ?? new Date());
+    return this.update(requeued);
   }
 
   async update(request: MarketingProductionRequest): Promise<MarketingProductionRequest> {

@@ -7,6 +7,7 @@ import {
   ProductionResearchHydrationError,
   type HydratedProductionResearchContext,
 } from "@/lib/marketing/cron/daily/agendaSlate/hydrateProductionResearchContext";
+import { applyAgendaSlateAction } from "@/lib/marketing/cron/daily/agendaSlate/agendaSlateActions";
 import type { MarketingProductionRequest } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
 import {
   DEFAULT_PRODUCTION_WORKER_MAX_BATCH,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
 import type { MarketingProductionRequestRepository } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
 import { ownershipFromClaim } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
+import type { DailyAgendaSlateRepository } from "@/lib/marketing/cron/daily/repository/createDailyAgendaSlateRepository";
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
 import type { CompletedMarketingCandidate, DailyMarketingPipelineResult } from "@/lib/marketing/cron/daily/types";
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
@@ -71,6 +73,8 @@ export type ProductionQueueWorkerDeps = {
   productionRequestRepo: MarketingProductionRequestRepository;
   runRepo: DailyMarketingRunRepository;
   reviewRepo: HumanMarketingReviewRepository;
+  /** When set, terminal COMPLETED/FAILED releases SELECTED_TODAY on the slate item. */
+  slateRepo?: DailyAgendaSlateRepository;
   /** Injected production runner — tests pass a stub; CLI wires real FromSelection. */
   executeProduction: (request: MarketingProductionRequest) => Promise<DailyMarketingPipelineResult>;
   now?: Date;
@@ -79,6 +83,31 @@ export type ProductionQueueWorkerDeps = {
   staleAfterMs?: number;
   productId?: string;
 };
+
+async function releaseSlateSelectionAfterTerminal(input: {
+  slateRepo?: DailyAgendaSlateRepository;
+  businessDateKst: string;
+  slateItemId: string;
+  now: Date;
+}): Promise<void> {
+  if (!input.slateRepo) return;
+  const slate = await input.slateRepo.findByBusinessDate(input.businessDateKst);
+  if (!slate) return;
+  const item = slate.candidates.find((c) => c.slateItemId === input.slateItemId);
+  if (!item || item.state !== "SELECTED_TODAY") return;
+  try {
+    const next = applyAgendaSlateAction({
+      slate,
+      slateItemId: input.slateItemId,
+      action: "reset_available",
+      expectedBusinessDateKst: input.businessDateKst,
+      now: input.now,
+    });
+    await input.slateRepo.updateSlate(next);
+  } catch {
+    // Selection release is best-effort; production terminal status already persisted.
+  }
+}
 
 export function defaultProductionWorkerId(env: NodeJS.ProcessEnv = process.env): string {
   const configured = env.MARKETING_PRODUCTION_WORKER_ID?.trim();
@@ -148,6 +177,15 @@ export async function processMarketingProductionQueue(input: {
     }
 
     const ownership = ownershipFromClaim(claimed);
+    const releaseSelectionIfTerminal = async (ok: boolean) => {
+      if (!ok) return;
+      await releaseSlateSelectionAfterTerminal({
+        slateRepo: input.deps.slateRepo,
+        businessDateKst: claimed.businessDateKst,
+        slateItemId: claimed.slateItemId,
+        now,
+      });
+    };
 
     try {
       // Prefer durable candidate barrier before invoking AI (crash recovery).
@@ -167,6 +205,7 @@ export async function processMarketingProductionQueue(input: {
             ownership,
             now,
           });
+          await releaseSelectionIfTerminal(failed.ok);
           processed.push({
             logicalRunKey: claimed.logicalRunKey,
             slateItemId: claimed.slateItemId,
@@ -186,6 +225,7 @@ export async function processMarketingProductionQueue(input: {
           ownership,
           now,
         });
+        await releaseSelectionIfTerminal(completed.ok);
         processed.push({
           logicalRunKey: claimed.logicalRunKey,
           slateItemId: claimed.slateItemId,
@@ -226,6 +266,7 @@ export async function processMarketingProductionQueue(input: {
           ownership,
           now,
         });
+        await releaseSelectionIfTerminal(failed.ok);
         processed.push({
           logicalRunKey: claimed.logicalRunKey,
           slateItemId: claimed.slateItemId,
@@ -251,6 +292,7 @@ export async function processMarketingProductionQueue(input: {
           ownership,
           now,
         });
+        await releaseSelectionIfTerminal(failed.ok);
         processed.push({
           logicalRunKey: claimed.logicalRunKey,
           slateItemId: claimed.slateItemId,
@@ -270,6 +312,7 @@ export async function processMarketingProductionQueue(input: {
         ownership,
         now,
       });
+      await releaseSelectionIfTerminal(completed.ok);
       processed.push({
         logicalRunKey: claimed.logicalRunKey,
         slateItemId: claimed.slateItemId,
@@ -287,6 +330,7 @@ export async function processMarketingProductionQueue(input: {
         ownership,
         now,
       });
+      await releaseSelectionIfTerminal(failed.ok);
       processed.push({
         logicalRunKey: claimed.logicalRunKey,
         slateItemId: claimed.slateItemId,
@@ -337,6 +381,8 @@ export function buildProductionExecutionInput(
     canonicalArticleIds,
     managerRationale: request.selection.rationale,
     usePerSelectionLogicalRunKey: true,
+    recoveryMode:
+      Number(request.metadata.requeueCount ?? 0) > 0 || Boolean(request.metadata.requeuedAt),
     // Canonical research is hydrated at execution time from durable selection IDs.
     researchCandidate: hydrated?.researchCandidate ?? null,
     researchBrief: hydrated?.researchBrief ?? null,

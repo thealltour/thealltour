@@ -141,6 +141,10 @@ async function main() {
     backend ? { backend } : {},
   );
   const runRepo = await createDailyMarketingRunRepository(backend ? { backend } : {});
+  const { createDailyAgendaSlateRepository } = await import(
+    "../src/lib/marketing/cron/daily/repository/createDailyAgendaSlateRepository"
+  );
+  const slateRepo = await createDailyAgendaSlateRepository(backend ? { backend } : {});
 
   if (dryRun) {
     const result = await processMarketingProductionQueue({
@@ -151,6 +155,7 @@ async function main() {
       deps: {
         productionRequestRepo,
         runRepo,
+        slateRepo,
         reviewRepo: await createHumanMarketingReviewRepository(backend ? { backend } : {}),
         executeProduction: async () => {
           throw new Error("dry-run must not execute production");
@@ -201,6 +206,7 @@ async function main() {
     deps: {
       productionRequestRepo,
       runRepo,
+      slateRepo,
       reviewRepo,
       executeProduction,
     },

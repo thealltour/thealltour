@@ -140,6 +140,33 @@ export function listSelectedToday(slate: DailyAgendaSlate): AgendaSlateCandidate
   return slate.candidates.filter((c) => c.state === "SELECTED_TODAY");
 }
 
+/**
+ * Release SELECTED_TODAY slots whose production request already reached a terminal
+ * status so the selected N/3 counter stays accurate after COMPLETED/FAILED.
+ */
+export function reconcileSelectedTodayWithTerminalRequests(input: {
+  slate: DailyAgendaSlate;
+  terminalSlateItemIds: ReadonlySet<string>;
+  expectedBusinessDateKst?: string;
+  now?: Date;
+}): { slate: DailyAgendaSlate; releasedCount: number } {
+  let next = input.slate;
+  let releasedCount = 0;
+  for (const candidate of input.slate.candidates) {
+    if (candidate.state !== "SELECTED_TODAY") continue;
+    if (!input.terminalSlateItemIds.has(candidate.slateItemId)) continue;
+    next = applyAgendaSlateAction({
+      slate: next,
+      slateItemId: candidate.slateItemId,
+      action: "reset_available",
+      expectedBusinessDateKst: input.expectedBusinessDateKst,
+      now: input.now,
+    });
+    releasedCount += 1;
+  }
+  return { slate: next, releasedCount };
+}
+
 /** Stable research identity seed for production logicalRunKey hashing. */
 export function researchIdentitySeedForCandidate(item: {
   agendaCandidateId?: string | null;

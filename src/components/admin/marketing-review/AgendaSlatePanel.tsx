@@ -135,8 +135,9 @@ function CandidateCard(props: {
   productionRequest?: MarketingProductionRequest | null;
   busy: boolean;
   onAction: (action: AgendaSlateAction) => void;
+  onRetryProduction?: () => void;
 }) {
-  const { item, productionRequest, busy, onAction } = props;
+  const { item, productionRequest, busy, onAction, onRetryProduction } = props;
   const ed = item.editorial;
   const pr = productionRequest;
 
@@ -227,6 +228,18 @@ function CandidateCard(props: {
             <p className="mt-2 font-medium">
               오류: {pr.lastError ?? pr.errorMessage ?? "알 수 없는 실패"}
             </p>
+          ) : null}
+          {pr.status === "FAILED" && onRetryProduction ? (
+            <div className="mt-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onRetryProduction()}
+                className="min-h-11 rounded-lg border border-red-700/50 bg-red-700/10 px-3 py-2 text-sm font-medium text-red-950 disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+              >
+                재시도 (대기열 재등록)
+              </button>
+            </div>
           ) : null}
           {pr.status === "QUEUED" ? (
             <p className="mt-2">
@@ -453,6 +466,40 @@ export function AgendaSlatePanel() {
     }
   }
 
+  async function retryFailedProduction(slateItemId: string) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/marketing-review/agenda-slate/retry-production", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slateItemId }),
+      });
+      const data = (await res.json()) as {
+        message?: string;
+        request?: MarketingProductionRequest;
+        slate?: DailyAgendaSlate | null;
+        selectedTodayCount?: number;
+      };
+      if (!res.ok) {
+        setMessage(data.message ?? "재시도 등록 실패");
+        return;
+      }
+      if (data.slate) setSlate(data.slate);
+      if (typeof data.selectedTodayCount === "number") {
+        setSelectedTodayCount(data.selectedTodayCount);
+      }
+      setMessage(
+        "실패 요청을 Pi 대기열(QUEUED)에 다시 등록했습니다. 워커가 수락하면 RUNNING으로 바뀝니다.",
+      );
+      await load({ silent: true });
+    } catch {
+      setMessage("재시도 등록 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <AdminCard className="overflow-hidden p-0">
       <div className="flex flex-col gap-2 border-b border-[var(--border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -511,6 +558,7 @@ export function AgendaSlatePanel() {
               productionRequest={requestBySlateItemId.get(item.slateItemId) ?? null}
               busy={busy}
               onAction={(action) => void runAction(item.slateItemId, action)}
+              onRetryProduction={() => void retryFailedProduction(item.slateItemId)}
             />
           ))}
         </>

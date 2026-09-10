@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const businessDateKst = url.searchParams.get("businessDateKst") ?? undefined;
     const service = await createAgendaSlateService();
     const [slate, productionRequests] = await Promise.all([
-      service.getTodaySlate(businessDateKst),
+      service.reconcileTerminalSelections(businessDateKst),
       service.listProductionRequests(businessDateKst),
     ]);
     const selectedTodayCount =

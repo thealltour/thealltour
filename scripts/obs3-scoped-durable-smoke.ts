@@ -29,7 +29,7 @@ const FORBIDDEN_RE =
   /api[_-]?key|password|secret|authorization|bearer|sk-|prompt_text|full_prompt|model_response|chain_of_thought|evidence_body/i;
 
 async function main() {
-  const { isMarketingTraceEnabled, resolveMarketingTraceRecorder } = await import(
+  const { isMarketingTraceEnabled } = await import(
     "@/lib/marketing/observability/persistence/factory"
   );
   const { createObservabilitySupabaseClientFromEnv } = await import(
@@ -64,14 +64,9 @@ async function main() {
   });
   const readRepo = createMarketingTraceReadRepository(store);
 
-  // Also prove factory path resolves durable (not noop) when gate on.
-  const factoryRecorder = resolveMarketingTraceRecorder();
-  const factoryProbe = factoryRecorder.startTrace({
-    traceType: "marketing_production",
-    correlation: { productionRequestId: `${FIXTURE_PR}-factory-probe` },
-  });
-  // Noop would invent ids but never persist — we only use explicit durable recorder for assertions.
-  void factoryProbe;
+  // NOTE: Do not call the production factory recorder's startTrace as a side probe.
+  // When MARKETING_TRACE_ENABLED=true that persists a durable RUNNING row with no endTrace
+  // (OBS-4 production acceptance found orphan probes from an earlier smoke helper).
 
   const { traceId, trace } = recorder.startTrace({
     traceType: "marketing_production",
@@ -114,13 +109,15 @@ async function main() {
       traceId,
       parentSpanId: root.spanId,
       name,
-      kind: name.includes("validator") || name.includes("requirements") || name.includes("evidence")
-        ? "deterministic"
-        : name.includes("human")
-          ? "human_boundary"
-          : name.includes("production")
-            ? "orchestration"
-            : "agent",
+      kind: name.includes("validator")
+        ? "validation"
+        : name.includes("requirements") || name.includes("evidence")
+          ? "deterministic"
+          : name.includes("human")
+            ? "human_boundary"
+            : name.includes("production")
+              ? "orchestration"
+              : "agent",
       stage: stage as never,
       actorType: actorType as never,
       actorId,

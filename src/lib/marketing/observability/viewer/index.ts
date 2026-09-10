@@ -13,9 +13,7 @@ export {
   type DetailRow,
 } from "@/lib/marketing/observability/viewer/detailsGroups";
 export {
-  marketingTraceToOtlpDocument,
-  marketingSpanToViewerOtlpSpan,
-  VIEWER_OTLP_ATTR,
-  type ViewerOtlpDocument,
-  type ViewerOtlpSpan,
-} from "@/lib/marketing/observability/viewer/otlpDocument";
+  marketingSpanKindDisplay,
+  type MarketingSpanKindDisplay,
+  type MarketingKindVisualBucket,
+} from "@/lib/marketing/observability/viewer/spanKindDisplay";

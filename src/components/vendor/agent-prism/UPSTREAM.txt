@@ -11,3 +11,5 @@ Local policy (OBS-4):
 - DetailsView / TraceViewer / TraceList are present in the vendor tree for provenance
   but excluded from TypeScript compilation (npm 0.0.9 lacks newer DetailsView APIs such as
   RunErrorEntry; TheAllTour also supplies its own sanitized details panel).
+- shared.ts SPAN_CATEGORY_CONFIG labels remapped for TheAllTour marketing kinds
+  (AGENT / ORCHESTRATION / DETERMINISTIC / VALIDATION / HUMAN BOUNDARY / TOOL).

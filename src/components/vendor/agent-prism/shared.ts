@@ -74,12 +74,14 @@ export const SPAN_CATEGORY_CONFIG: Record<
     icon: Wrench,
   },
   agent_invocation: {
-    label: "AGENT INVOCATION",
+    // TheAllTour OBS-4: show AGENT (not AGENT INVOCATION) for marketing.agent spans
+    label: "AGENT",
     theme: "indigo",
     icon: Bot,
   },
   chain_operation: {
-    label: "CHAIN",
+    // TheAllTour OBS-4: orchestration → ORCHESTRATION
+    label: "ORCHESTRATION",
     theme: "teal",
     icon: Link,
   },
@@ -99,17 +101,20 @@ export const SPAN_CATEGORY_CONFIG: Record<
     icon: Plus,
   },
   span: {
-    label: "SPAN",
+    // TheAllTour OBS-4: deterministic staff → DETERMINISTIC
+    label: "DETERMINISTIC",
     theme: "cyan",
     icon: MoveHorizontal,
   },
   event: {
-    label: "EVENT",
+    // TheAllTour OBS-4: validation → VALIDATION
+    label: "VALIDATION",
     theme: "emerald",
     icon: CircleDot,
   },
   guardrail: {
-    label: "GUARDRAIL",
+    // TheAllTour OBS-4: human_boundary → HUMAN BOUNDARY
+    label: "HUMAN BOUNDARY",
     theme: "red",
     icon: ShieldCheck,
   },

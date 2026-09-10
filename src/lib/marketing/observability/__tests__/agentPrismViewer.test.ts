@@ -19,6 +19,7 @@ import {
   VIEWER_OTLP_ATTR,
 } from "@/lib/marketing/observability/viewer/otlpDocument";
 import { marketingTraceToAgentPrismSpans } from "@/lib/marketing/observability/viewer/agentPrismBridge";
+import { marketingSpanKindDisplay } from "@/lib/marketing/observability/viewer/spanKindDisplay";
 import { MARKETING_ATTR } from "@/lib/marketing/observability/attributes";
 
 function span(partial: Partial<MarketingSpan> & Pick<MarketingSpan, "name" | "stage" | "kind">): MarketingSpan {
@@ -241,6 +242,89 @@ describe("OBS-4 AgentPrism viewer adapters", () => {
     expect(isValidTraceId("0".repeat(32))).toBe(false);
     expect(isValidTraceId(createMarketingTraceId())).toBe(true);
     expect(marketingSpanDisplayName("marketing.human_review_boundary")).toBe("Human Review");
+  });
+
+  it("maps TheAllTour span kinds to distinct semantic badges", () => {
+    expect(marketingSpanKindDisplay("agent").label).toBe("AGENT");
+    expect(marketingSpanKindDisplay("orchestration").label).toBe("ORCHESTRATION");
+    expect(marketingSpanKindDisplay("deterministic").label).toBe("DETERMINISTIC");
+    expect(marketingSpanKindDisplay("validation").label).toBe("VALIDATION");
+    expect(marketingSpanKindDisplay("human_boundary").label).toBe("HUMAN BOUNDARY");
+    expect(marketingSpanKindDisplay("tool").label).toBe("TOOL");
+
+    const traceId = createMarketingTraceId();
+    const root = span({
+      traceId,
+      name: "marketing.production",
+      kind: "orchestration",
+      stage: "production_request",
+    });
+    const human = span({
+      traceId,
+      parentSpanId: root.spanId,
+      name: "marketing.human_review_boundary",
+      kind: "human_boundary",
+      stage: "human_review",
+      actorType: "human",
+    });
+    const validator = span({
+      traceId,
+      parentSpanId: root.spanId,
+      name: "marketing.completeness_validator",
+      kind: "validation",
+      stage: "completeness_validator",
+      actorType: "typescript_staff",
+    });
+    const tree = marketingTraceToAgentPrismSpans({
+      contract: MARKETING_TRACE_CONTRACT,
+      traceId,
+      traceType: "marketing_production",
+      status: "completed",
+      startedAt: root.startedAt,
+      endedAt: human.endedAt,
+      spans: [root, human, validator],
+    });
+    const flat: Array<{ title: string; type: string; metadata?: Record<string, unknown> }> = [];
+    const walk = (nodes: typeof tree) => {
+      for (const n of nodes) {
+        flat.push(n);
+        if (n.children) walk(n.children);
+      }
+    };
+    walk(tree);
+    const humanNode = flat.find((n) => String(n.title).includes("Human Review"));
+    const valNode = flat.find((n) => String(n.title).includes("Completeness"));
+    expect(humanNode?.type).toBe("guardrail");
+    expect(humanNode?.metadata?.marketingKindLabel).toBe("HUMAN BOUNDARY");
+    expect(valNode?.type).toBe("event");
+    expect(valNode?.metadata?.marketingKindLabel).toBe("VALIDATION");
+    expect(humanNode?.type).not.toBe("agent_invocation");
+    expect(valNode?.type).not.toBe("tool_execution");
+  });
+
+  it("documents that start-only durable probes leave RUNNING orphans", async () => {
+    const { createInMemoryMarketingTraceStore } = await import(
+      "@/lib/marketing/observability/persistence/inMemoryStore"
+    );
+    const { createPersistentMarketingTraceRecorder } = await import(
+      "@/lib/marketing/observability/persistence/persistentRecorder"
+    );
+    const store = createInMemoryMarketingTraceStore();
+    const recorder = createPersistentMarketingTraceRecorder({ store });
+    const { traceId } = recorder.startTrace({
+      traceType: "marketing_production",
+      correlation: { productionRequestId: "factory-probe-regression" },
+    });
+    await recorder.flush();
+    const row = await store.getTraceRow(traceId);
+    expect(row?.status).toBe("running");
+    expect(row?.ended_at).toBeNull();
+    // Smoke must not create such orphans — assert helper source no longer startTraces via factory probe.
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const smoke = readFileSync(join(process.cwd(), "scripts/obs3-scoped-durable-smoke.ts"), "utf8");
+    expect(smoke).not.toMatch(/productionRequestId:\s*`\$\{FIXTURE_PR\}-factory/);
+    expect(smoke).not.toMatch(/resolveMarketingTraceRecorder\(\)[\s\S]{0,80}?\.startTrace\(/);
   });
 
   it("preserves raw span name in OTLP attributes for display mapping", () => {

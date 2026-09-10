@@ -1,5 +1,5 @@
 import { openTelemetrySpanAdapter } from "@evilmartians/agent-prism-data";
-import type { TraceRecord, TraceSpan } from "@evilmartians/agent-prism-types";
+import type { TraceRecord, TraceSpan, TraceSpanCategory } from "@evilmartians/agent-prism-types";
 
 import type { MarketingSpan, MarketingTrace } from "@/lib/marketing/observability/types";
 import { presentBusinessStatus } from "@/lib/marketing/observability/viewer/businessStatus";
@@ -8,6 +8,7 @@ import {
   type ViewerOtlpDocument,
 } from "@/lib/marketing/observability/viewer/otlpDocument";
 import { marketingTraceStatusLabel } from "@/lib/marketing/observability/viewer/displayLabels";
+import { marketingSpanKindDisplay } from "@/lib/marketing/observability/viewer/spanKindDisplay";
 
 /**
  * UI boundary: MarketingTrace → AgentPrism TraceSpan tree.
@@ -30,12 +31,19 @@ export function marketingTraceToAgentPrismSpans(
       marketing?.status ?? null,
       marketing?.otelStatusCode ?? null,
     );
+    const kindDisplay = marketingSpanKindDisplay(marketing?.kind ?? "internal");
     return {
       ...node,
       // Never surface IO even if adapter filled from attributes.
       input: undefined,
       output: undefined,
       status: presented.visual,
+      type: kindDisplay.visualBucket as TraceSpanCategory,
+      metadata: {
+        ...(node.metadata ?? {}),
+        marketingKind: marketing?.kind ?? null,
+        marketingKindLabel: kindDisplay.label,
+      },
       children: node.children?.map(remap),
     };
   };

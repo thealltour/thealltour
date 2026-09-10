@@ -71,7 +71,7 @@ function mapKind(kind: MarketingSpanKind): ViewerOtlpSpan["kind"] {
   }
 }
 
-/** OpenInference span.kind → AgentPrism category. */
+/** OpenInference span.kind — distinct buckets for TheAllTour kinds (not collapsed to AGENT/TOOL). */
 function openInferenceKind(kind: MarketingSpanKind): string {
   switch (kind) {
     case "agent":
@@ -81,10 +81,11 @@ function openInferenceKind(kind: MarketingSpanKind): string {
     case "orchestration":
       return "CHAIN";
     case "deterministic":
+      return "CHAIN";
     case "validation":
-      return "TOOL";
+      return "GUARDRAIL";
     case "human_boundary":
-      return "AGENT";
+      return "GUARDRAIL";
     default:
       return "CHAIN";
   }

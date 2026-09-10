@@ -8,6 +8,7 @@ import { flattenSpans } from "@evilmartians/agent-prism-data";
 import { TreeView } from "@/components/vendor/agent-prism/TreeView";
 import "@/components/vendor/agent-prism/theme/theme.css";
 
+import { MarketingObservabilityAnalyticsPanel } from "@/components/admin/marketing-observability/MarketingObservabilityAnalyticsPanel";
 import { MarketingSpanDetailsPanel } from "@/components/admin/marketing-observability/MarketingSpanDetailsPanel";
 import { useMarketingTraceLive } from "@/hooks/useMarketingTraceLive";
 import type {
@@ -32,7 +33,10 @@ type Props = {
   initialTraces: MarketingTraceListItemDto[];
 };
 
+type PageTab = "analytics" | "runs";
+
 export function MarketingObservabilityPageBody({ initialTraces }: Props) {
+  const [tab, setTab] = useState<PageTab>("analytics");
   const [selectedId, setSelectedId] = useState<string | null>(initialTraces[0]?.traceId ?? null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +47,7 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
   const { traces, detail, setDetail, connectionState, resync } = useMarketingTraceLive({
     initialTraces,
     selectedTraceId: selectedId,
+    enabled: tab === "runs",
   });
 
   const hasRunning = useMemo(
@@ -137,67 +142,96 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ConnectionBadge state={connectionState} />
-          <button
-            type="button"
-            onClick={() => void resync().catch(() => undefined)}
-            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:bg-[var(--surface-muted)]"
-          >
-            목록 새로고침
-          </button>
+          {tab === "runs" ? <ConnectionBadge state={connectionState} /> : null}
+          {tab === "runs" ? (
+            <button
+              type="button"
+              onClick={() => void resync().catch(() => undefined)}
+              className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:bg-[var(--surface-muted)]"
+            >
+              목록 새로고침
+            </button>
+          ) : null}
         </div>
       </header>
 
-      <div className="min-h-[36rem] flex-1 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface)]">
-        <div className="hidden h-full min-h-[36rem] lg:block">
-          <PanelGroup direction="horizontal" className="h-full min-h-[36rem]">
-            <Panel defaultSize={22} minSize={16} maxSize={36} className="min-h-0">
-              <RecentRunsList
-                traces={traces}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                nowMs={nowMs}
-              />
-            </Panel>
-            <PanelResizeHandle className="w-1 bg-[var(--border)]" />
-            <Panel defaultSize={48} minSize={30} className="min-h-0">
-              <TreePane
-                loading={loadingDetail && detail?.trace.traceId !== selectedId}
-                error={error}
-                tree={tree}
-                selectedSpan={selectedSpan}
-                setSelectedSpan={setSelectedSpan}
-                expandedSpansIds={expandedSpansIds}
-                setExpandedSpansIds={setExpandedSpansIds}
-              />
-            </Panel>
-            <PanelResizeHandle className="w-1 bg-[var(--border)]" />
-            <Panel defaultSize={30} minSize={22} maxSize={45} className="min-h-0">
-              <MarketingSpanDetailsPanel span={selectedMarketingSpan} trace={trace} className="h-full border-0" />
-            </Panel>
-          </PanelGroup>
-        </div>
-
-        <div className="flex h-full min-h-[36rem] flex-col gap-3 overflow-auto p-3 lg:hidden">
-          <RecentRunsList
-            traces={traces}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            nowMs={nowMs}
-            compact
-          />
-          <TreePane
-            loading={loadingDetail && detail?.trace.traceId !== selectedId}
-            error={error}
-            tree={tree}
-            selectedSpan={selectedSpan}
-            setSelectedSpan={setSelectedSpan}
-            expandedSpansIds={expandedSpansIds}
-            setExpandedSpansIds={setExpandedSpansIds}
-          />
-          <MarketingSpanDetailsPanel span={selectedMarketingSpan} trace={trace} className="min-h-64" />
-        </div>
+      <div className="flex gap-1 border-b border-[var(--border)]">
+        {(
+          [
+            { id: "analytics" as const, label: "Analytics" },
+            { id: "runs" as const, label: "Runs" },
+          ] as const
+        ).map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setTab(item.id)}
+            className={cn(
+              "border-b-2 px-3 py-2 text-sm font-medium",
+              tab === item.id
+                ? "border-[var(--text)] text-[var(--text)]"
+                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text)]",
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
+
+      {tab === "analytics" ? (
+        <MarketingObservabilityAnalyticsPanel className="rounded border border-[var(--border)] bg-[var(--surface)] p-4" />
+      ) : (
+        <div className="min-h-[36rem] flex-1 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface)]">
+          <div className="hidden h-full min-h-[36rem] lg:block">
+            <PanelGroup direction="horizontal" className="h-full min-h-[36rem]">
+              <Panel defaultSize={22} minSize={16} maxSize={36} className="min-h-0">
+                <RecentRunsList
+                  traces={traces}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  nowMs={nowMs}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-[var(--border)]" />
+              <Panel defaultSize={48} minSize={30} className="min-h-0">
+                <TreePane
+                  loading={loadingDetail && detail?.trace.traceId !== selectedId}
+                  error={error}
+                  tree={tree}
+                  selectedSpan={selectedSpan}
+                  setSelectedSpan={setSelectedSpan}
+                  expandedSpansIds={expandedSpansIds}
+                  setExpandedSpansIds={setExpandedSpansIds}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-[var(--border)]" />
+              <Panel defaultSize={30} minSize={22} maxSize={45} className="min-h-0">
+                <MarketingSpanDetailsPanel span={selectedMarketingSpan} trace={trace} className="h-full border-0" />
+              </Panel>
+            </PanelGroup>
+          </div>
+
+          <div className="flex h-full min-h-[36rem] flex-col gap-3 overflow-auto p-3 lg:hidden">
+            <RecentRunsList
+              traces={traces}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              nowMs={nowMs}
+              compact
+            />
+            <TreePane
+              loading={loadingDetail && detail?.trace.traceId !== selectedId}
+              error={error}
+              tree={tree}
+              selectedSpan={selectedSpan}
+              setSelectedSpan={setSelectedSpan}
+              expandedSpansIds={expandedSpansIds}
+              setExpandedSpansIds={setExpandedSpansIds}
+            />
+            <MarketingSpanDetailsPanel span={selectedMarketingSpan} trace={trace} className="min-h-64" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

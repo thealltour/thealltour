@@ -122,3 +122,36 @@ Read-only historical viewer + OBS-5 live layer. Details panel is TheAllTour-owne
 | Admin UI | same `/theall_manager_only/marketing-observability` |
 
 Security: reuse `requireAdminPermission("settings.manage")`. Never expose service-role to the browser. Never open anon/authenticated SELECT on observability tables for convenience. DB remains source of truth; reconnect resyncs via REST.
+
+## OBS-6 Quality / Bottleneck Analytics
+
+| Piece | Location |
+|-------|----------|
+| Aggregate (pure) | `viewer/analytics/aggregate.ts` |
+| API | `GET /api/admin/marketing-observability/analytics?range=24h\|7d\|30d` |
+| UI | Analytics tab on AI 조직 관제 |
+
+### Metric definitions
+
+| Metric | Definition |
+|--------|------------|
+| Completion Rate | `completed / terminal` where terminal ∈ {completed, failed, partial} |
+| Technical Failure Rate | traces with `status=failed` **or** any span `otel ERROR` / `status=error`, over terminal. **Excludes** `revision_required`, GA `BLOCK`/`REVIEW`, Human REVIEW |
+| First-pass Completeness | traces whose Completeness attempt #1 is pass / (traces with ≥1 completeness span) |
+| Destination coverage | `sum(covered) / sum(required)` only where both arrays were recorded |
+| Stage Time % | stage duration sum / sum of bottleneck stage durations (MM…Human Review). Orchestration root + nested `other`/tool stages excluded |
+| Evidence available=0 vs missing | attribute key present with 0 ≠ key absent (N/A / excluded from avg) |
+| Observed trace token usage | `gen_ai.usage.*` on spans only — **not** AI Runtime ledger |
+
+Fixture exclusion: any trace/span with `marketing.fixture` (or `.kind`) is excluded from analytics (still visible in Runs viewer).
+
+### Organization decision guide (not an auto-recommender)
+
+- Sustained high CS duration / revision rate → consider splitting CS responsibilities
+- Repeated evidence usable=0 / source-reference failures → consider Evidence Editor Bot promotion
+- Growing channel quality skew (when `marketing.channel` is present) → consider Channel Producer
+- High GA REVIEW/BLOCK with low technical failures → policy/grounding content issue, not infra
+
+### Scale note
+
+Current: DB range filter + application aggregate (cap 2000 traces). If volume grows: SQL aggregates / daily rollup / materialized view — not in this step.

@@ -11,6 +11,7 @@ import "@/components/vendor/agent-prism/theme/theme.css";
 import { MarketingObservabilityAnalyticsPanel } from "@/components/admin/marketing-observability/MarketingObservabilityAnalyticsPanel";
 import { MarketingOrganizationGraphPanel } from "@/components/admin/marketing-observability/MarketingOrganizationGraphPanel";
 import { MarketingSpanDetailsPanel } from "@/components/admin/marketing-observability/MarketingSpanDetailsPanel";
+import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import { useMarketingTraceLive } from "@/hooks/useMarketingTraceLive";
 import type {
   MarketingTraceDetailDto,
@@ -135,11 +136,11 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-secondary)]">
-            AI 마케팅
+            AI Marketing Team
           </p>
-          <h1 className="text-xl font-semibold text-[var(--text)]">AI 조직 관제</h1>
+          <h1 className="text-xl font-semibold text-[var(--text)]">조직 관제</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Marketing workflow trace (read-only · AgentPrism · live)
+            조직 토폴로지 + 실행 overlay (읽기 전용)
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -157,6 +158,8 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
           ) : null}
         </div>
       </header>
+
+      <MarketingTeamSubnav />
 
       <div className="flex gap-1 border-b border-[var(--border)]">
         {(

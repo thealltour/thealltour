@@ -47,6 +47,10 @@ export function isMobileAdminRouteAllowed(
     return isMobileReviewRelativePathAllowed(path);
   }
 
+  if (path === "/ai-marketing" || path.startsWith("/ai-marketing/")) {
+    return hasAdminPermission(session, "settings.manage");
+  }
+
   if (path === "/ai-runtime" || path.startsWith("/ai-runtime/")) {
     return hasAdminPermission(session, "settings.manage");
   }
@@ -82,15 +86,16 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   const path = relativePath === "" ? "/" : relativePath;
   if (path === "/") return "대시보드";
   if (path === "/pwa") return "앱 · 메뉴";
+  if (path === "/ai-marketing" || path.startsWith("/ai-marketing/")) return "AI Marketing · 오늘";
   if (path === "/landings" || path.startsWith("/landings/")) return "검색/유입 랜딩 관리";
   if (path === "/inquiries/dashboard") return "문의 대시보드";
   if (path === "/inquiries" || path.startsWith("/inquiries/")) return "문의·상담";
   if (path === "/bookings" || path.startsWith("/bookings/")) return "예약 관리";
   if (path === "/sms") return "SMS 센터";
-  if (path === "/trend-inbox" || path.startsWith("/trend-inbox/")) return "Trend Inbox";
-  if (path === "/marketing-review" || path.startsWith("/marketing-review/")) return "아젠다 · 마케팅 리뷰";
-  if (path === "/marketing-operations" || path.startsWith("/marketing-operations/")) return "마케팅 운영";
-  if (path === "/marketing-observability" || path.startsWith("/marketing-observability/")) return "AI 조직 관제";
+  if (path === "/trend-inbox" || path.startsWith("/trend-inbox/")) return "트렌드 인입";
+  if (path === "/marketing-review" || path.startsWith("/marketing-review/")) return "제작·검토";
+  if (path === "/marketing-operations" || path.startsWith("/marketing-operations/")) return "오늘 운영";
+  if (path === "/marketing-observability" || path.startsWith("/marketing-observability/")) return "조직 관제";
   if (path.startsWith("/members") || path.startsWith("/points") || path.startsWith("/rewards")) {
     return "회원·리워드";
   }
@@ -98,6 +103,6 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   if (path === "/reviews/moderation") return "리뷰 검토";
   if (path === "/reviews/notifications") return "리뷰 운영 알림";
   if (path.startsWith("/reviews")) return "리뷰";
-  if (path === "/ai-runtime" || path.startsWith("/ai-runtime/")) return "AI Runtime";
+  if (path === "/ai-runtime" || path.startsWith("/ai-runtime/")) return "모델·쿼터";
   return "관리자";
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/MarketingReviewAssetsPanel";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
@@ -96,13 +97,21 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
       <main className="mx-auto w-full max-w-5xl space-y-6">
         <AdminHeader
           title={context.agenda.title}
-          description={`${context.identity.businessDateKst} · ${context.identity.candidateId} · CompletedMarketingCandidate (게시 전)`}
+          description={`${context.identity.businessDateKst} · ${context.identity.candidateId} · 게시 전 후보`}
           unreadNotificationCount={unreadNotificationCount}
         />
+
+        <MarketingTeamSubnav />
 
         <div className="flex flex-wrap gap-3 text-sm">
           <Link href="/theall_manager_only/marketing-review" className="text-[var(--primary)] underline-offset-2 hover:underline">
             ← 검토 큐
+          </Link>
+          <Link
+            href="/theall_manager_only/marketing-observability"
+            className="text-[var(--primary)] underline-offset-2 hover:underline"
+          >
+            조직 관제에서 실행 보기
           </Link>
           <span className="text-[var(--text-secondary)]">후보 {context.identity.candidateStatus}</span>
           <span className="text-[var(--text-secondary)]">인간 {context.humanAction.label}</span>

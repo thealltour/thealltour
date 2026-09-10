@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import type { RuntimeQuotaSnapshotDto, RuntimeReservationSnapshotDto, RuntimeRoutingPolicyDto, RuntimeRoutingStatusDto, RuntimeSchedulerStatusDto, RuntimeStatusDto } from "@/ai-runtime/observability/types";
@@ -753,7 +754,10 @@ export default function AiRuntimeConsole() {
     <div className="min-h-screen bg-[var(--bg)] px-4 py-8 text-[var(--text-primary)] sm:px-6 md:px-10 md:py-10">
       <main className="mx-auto w-full max-w-6xl space-y-6">
         <header className="space-y-2">
-          <h1 className="text-2xl font-semibold">AI Runtime</h1>
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-secondary)]">
+            AI Marketing Team
+          </p>
+          <h1 className="text-2xl font-semibold">모델·쿼터</h1>
           <p className="max-w-3xl text-sm text-[var(--text-secondary)]">
             Registry, Adapter, Credential 상태와 Usage Ledger 기반 quota snapshot을 확인합니다.
             Provider live 호출은 이 화면에서 수행하지 않으며, capacity unknown 시 health는 UNKNOWN으로
@@ -765,6 +769,8 @@ export default function AiRuntimeConsole() {
             </p>
           ) : null}
         </header>
+
+        <MarketingTeamSubnav />
 
         {loading ? (
           <AdminCard className="p-6 text-sm text-[var(--text-secondary)]">불러오는 중…</AdminCard>

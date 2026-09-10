@@ -125,6 +125,17 @@ function ProductionPipelineBanner(props: {
       <div className="opacity-80">
         버튼은 대기열 등록만 합니다. hermes-pi 워커(약 1분 주기)가 수락하면 RUNNING → COMPLETED/FAILED로
         바뀝니다.
+        {counts.running > 0 || counts.failed > 0 ? (
+          <>
+            {" "}
+            <Link
+              href="/theall_manager_only/marketing-observability"
+              className="font-medium underline-offset-2 hover:underline"
+            >
+              조직 관제에서 실행 보기 →
+            </Link>
+          </>
+        ) : null}
       </div>
     </div>
   );

@@ -43,6 +43,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     ops: true,
     catalog: true,
+    ai_marketing: true,
     content: true,
     tools: true,
   });

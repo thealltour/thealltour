@@ -25,6 +25,7 @@ export const ADMIN_MENU_MAP = {
   pwa: [] as string[],
   tools_modetour: [] as string[],
   tools_thealltour_extension: [] as string[],
+  tools_ai_marketing: [] as string[],
   tools_ai_runtime: [] as string[],
   tools_marketing_review: [] as string[],
   tools_marketing_operations: [] as string[],
@@ -52,11 +53,12 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   pwa: "앱으로 설치",
   tools_modetour: "모두투어 익스텐션",
   tools_thealltour_extension: "하나투어 수집기",
-  tools_ai_runtime: "AI Runtime",
-  tools_marketing_review: "AI 마케팅 검토",
-  tools_marketing_operations: "마케팅 운영",
-  tools_marketing_observability: "AI 조직 관제",
-  tools_trend_inbox: "Trend Inbox",
+  tools_ai_marketing: "오늘",
+  tools_ai_runtime: "모델·쿼터",
+  tools_marketing_review: "제작·검토",
+  tools_marketing_operations: "오늘 운영",
+  tools_marketing_observability: "조직 관제",
+  tools_trend_inbox: "트렌드 인입",
 };
 
 const HOME_PRODUCT_VIEWS = new Set<string>([
@@ -92,6 +94,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel === "/pwa" || rel.startsWith("/pwa/")) return "pwa";
   if (rel.startsWith("/tools/modetour")) return "tools_modetour";
   if (rel.startsWith("/tools/thealltour-extension")) return "tools_thealltour_extension";
+  if (rel.startsWith("/ai-marketing")) return "tools_ai_marketing";
   if (rel.startsWith("/ai-runtime")) return "tools_ai_runtime";
   if (rel.startsWith("/marketing-operations")) return "tools_marketing_operations";
   if (rel.startsWith("/marketing-observability")) return "tools_marketing_observability";
@@ -280,14 +283,18 @@ export function buildAdminBreadcrumbLabels(
       if (rel.includes("/tools/modetour")) return [...base, "도구", "모두투어 익스텐션"];
       if (rel.includes("/tools/thealltour-extension")) return [...base, "도구", "하나투어 수집기"];
       return [...base, "도구"];
+    case "ai-marketing":
+      return [...base, "AI Marketing Team", "오늘"];
     case "ai-runtime":
-      return [...base, "도구", "AI Runtime"];
+      return [...base, "AI Marketing Team", "모델·쿼터"];
     case "marketing-review":
-      return [...base, "도구", "AI 마케팅 검토"];
+      return [...base, "AI Marketing Team", "제작·검토"];
     case "marketing-operations":
-      return [...base, "도구", "마케팅 운영"];
+      return [...base, "AI Marketing Team", "오늘 운영"];
+    case "marketing-observability":
+      return [...base, "AI Marketing Team", "조직 관제"];
     case "trend-inbox":
-      return [...base, "도구", "Trend Inbox"];
+      return [...base, "AI Marketing Team", "트렌드 인입"];
     default:
       return [...base, "대시보드"];
   }

@@ -42,6 +42,7 @@ export const MOBILE_ADMIN_ALLOWED_PATH_PREFIXES = [
   "/members",
   "/points",
   "/rewards",
+  "/ai-marketing",
   "/ai-runtime",
   "/trend-inbox",
   "/marketing-review",
@@ -132,26 +133,38 @@ export function getTabletAdminHubMenus(session: AdminSessionPermissions): Tablet
   }
   if (hasAdminPermission(session, "settings.manage")) {
     items.push({
+      key: "ai-marketing",
+      label: "AI Marketing · 오늘",
+      description: "오늘 할 일 · 팀 허브",
+      href: `${MANAGER_PREFIX}/ai-marketing`,
+    });
+    items.push({
       key: "trend-inbox",
-      label: "Trend Inbox",
+      label: "트렌드 인입",
       description: "Meta TrendSignal 검증 · 스테이징 인입",
       href: `${MANAGER_PREFIX}/trend-inbox`,
     });
     items.push({
       key: "marketing-review",
-      label: "아젠다 · 마케팅 리뷰",
-      description: "09:00 Agenda 승인 · 후보 검토",
+      label: "제작·검토",
+      description: "아젠다 승인 · 후보 검토",
       href: `${MANAGER_PREFIX}/marketing-review`,
     });
     items.push({
       key: "marketing-operations",
-      label: "마케팅 운영",
+      label: "오늘 운영",
       description: "일일 파이프라인 상태",
       href: `${MANAGER_PREFIX}/marketing-operations`,
     });
     items.push({
+      key: "marketing-observability",
+      label: "조직 관제",
+      description: "조직도 · Analytics · Runs",
+      href: `${MANAGER_PREFIX}/marketing-observability`,
+    });
+    items.push({
       key: "ai-runtime",
-      label: "AI Runtime",
+      label: "모델·쿼터",
       description: "Provider · Adapter · Credential 상태",
       href: `${MANAGER_PREFIX}/ai-runtime`,
     });

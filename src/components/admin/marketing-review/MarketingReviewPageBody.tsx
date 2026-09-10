@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import { AgendaSlatePanel } from "@/components/admin/marketing-review/AgendaSlatePanel";
@@ -109,10 +110,12 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
     <div className="min-h-screen bg-[var(--bg)] px-3 py-4 text-[var(--text-primary)] sm:px-4 sm:py-8 md:px-8">
       <main className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
         <AdminHeader
-          title="AI 마케팅 검토"
-          description="09:00 자율 파이프라인이 생성한 CompletedMarketingCandidate를 검토합니다. 승인은 수동 게시 준비만 의미하며 자동 SNS 게시는 없습니다."
+          title="제작·검토"
+          description="09:00 자율 파이프라인이 생성한 후보를 검토합니다. 승인은 수동 게시 준비만 의미하며 자동 SNS 게시는 없습니다."
           unreadNotificationCount={unreadNotificationCount}
         />
+
+        <MarketingTeamSubnav />
 
         <AgendaSlatePanel />
 

@@ -5,24 +5,38 @@ import {
   getRecentDailyMarketingOperationsSummaries,
 } from "@/lib/marketing/operations";
 import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
+import type {
+  DailyMarketingOperatingCycle,
+  MarketingOperationsSummary,
+} from "@/lib/marketing/operations/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminMarketingOperationsPage() {
   const businessDateKst = formatKstBusinessDate();
-  const [unreadNotificationCount, status, recent] = await Promise.all([
-    prepareAdminNotificationsAndGetUnreadCount(),
-    getDailyMarketingOperationsStatus({ businessDateKst }),
-    getRecentDailyMarketingOperationsSummaries(7),
-  ]);
+  await prepareAdminNotificationsAndGetUnreadCount().catch(() => undefined);
 
-  void unreadNotificationCount;
+  let initialStatus: DailyMarketingOperatingCycle | null = null;
+  let initialRecent: MarketingOperationsSummary[] = [];
+  let loadError: string | null = null;
+
+  try {
+    const [status, recent] = await Promise.all([
+      getDailyMarketingOperationsStatus({ businessDateKst }),
+      getRecentDailyMarketingOperationsSummaries(7),
+    ]);
+    initialStatus = status;
+    initialRecent = recent;
+  } catch (err) {
+    loadError = err instanceof Error ? err.message : "운영 상태를 불러오지 못했습니다.";
+  }
 
   return (
     <MarketingOperationsPageBody
-      initialStatus={status}
-      initialRecent={recent}
+      initialStatus={initialStatus}
+      initialRecent={initialRecent}
       businessDateKst={businessDateKst}
+      initialLoadError={loadError}
     />
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import { cn } from "@/lib/cn";
 
@@ -191,15 +192,11 @@ export function TrendInboxPageBody() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-4 sm:py-6">
       <header className="space-y-2">
-        <p className="text-sm text-[var(--text-secondary)]">
-          <Link href="/theall_manager_only/marketing-operations" className="underline-offset-2 hover:underline">
-            마케팅 운영
-          </Link>
-          {" / "}
-          Trend Inbox
+        <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-secondary)]">
+          AI Marketing Team
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Trend Inbox</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">트렌드 인입</h1>
           <span className="inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-800">
             대기 NEW {pendingNewCount}건
           </span>
@@ -209,6 +206,8 @@ export function TrendInboxPageBody() {
           접근하지 않습니다.
         </p>
       </header>
+
+      <MarketingTeamSubnav />
 
       <AdminCard>
         <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
@@ -314,12 +313,18 @@ export function TrendInboxPageBody() {
               ))}
             </ul>
             {ingestResult.counts.accepted > 0 ? (
-              <p className="mt-3 text-sm text-[var(--text-secondary)]">
+              <p className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--text-secondary)]">
                 <Link
                   href="/theall_manager_only/marketing-review"
                   className="font-medium underline-offset-2 hover:underline"
                 >
-                  내일 아젠다 확인 →
+                  제작·검토(아젠다) →
+                </Link>
+                <Link
+                  href="/theall_manager_only/ai-marketing"
+                  className="font-medium underline-offset-2 hover:underline"
+                >
+                  오늘 허브 →
                 </Link>
               </p>
             ) : null}

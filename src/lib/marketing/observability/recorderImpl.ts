@@ -93,7 +93,24 @@ export function createInMemoryMarketingTraceRecorder(): InMemoryMarketingTraceRe
     endTrace(input: EndTraceInput) {
       const existing = traces.get(input.traceId);
       if (!existing) return;
-      traces.set(input.traceId, finishTrace(existing, { status: input.status, endedAt: input.endedAt }));
+      let next = finishTrace(existing, { status: input.status, endedAt: input.endedAt });
+      if (input.correlation) {
+        next = {
+          ...next,
+          productionRequestId: input.correlation.productionRequestId ?? next.productionRequestId,
+          logicalRunKey: input.correlation.logicalRunKey ?? next.logicalRunKey,
+          agendaSlateId: input.correlation.agendaSlateId ?? next.agendaSlateId,
+          agendaCandidateId: input.correlation.agendaCandidateId ?? next.agendaCandidateId,
+          assignmentId: input.correlation.assignmentId ?? next.assignmentId,
+          candidateId: input.correlation.candidateId ?? next.candidateId,
+          reviewId: input.correlation.reviewId ?? next.reviewId,
+          runId: input.correlation.runId ?? next.runId,
+          correlationId: input.correlation.correlationId ?? next.correlationId,
+          researchBriefId: input.correlation.researchBriefId ?? next.researchBriefId,
+          governanceReviewId: input.correlation.governanceReviewId ?? next.governanceReviewId,
+        };
+      }
+      traces.set(input.traceId, next);
       syncTraceSpans(input.traceId);
     },
 

@@ -44,10 +44,8 @@ import {
 import { MARKETING_ATTR, pickMarketingAttributes } from "@/lib/marketing/observability/attributes";
 import { truncateSummary } from "@/lib/marketing/observability/privacy";
 import type { MarketingTraceRecorder } from "@/lib/marketing/observability/recorder";
-import {
-  createNoopMarketingTraceRecorder,
-  safeRecorder,
-} from "@/lib/marketing/observability/recorderImpl";
+import { safeRecorder } from "@/lib/marketing/observability/recorderImpl";
+import { resolveMarketingTraceRecorder } from "@/lib/marketing/observability/persistence/factory";
 import {
   attributesForEvidencePack,
   attributesForRequirements,
@@ -331,7 +329,7 @@ export async function runDailyMarketingProductionPipeline(
 
   let handoff: ManagerToContentHandoffResult;
   let productionTraceContext: MarketingTraceActiveContext | null = null;
-  const recorder = safeRecorder(deps.traceRecorder ?? createNoopMarketingTraceRecorder());
+  const recorder = safeRecorder(deps.traceRecorder ?? resolveMarketingTraceRecorder());
   try {
     const started = recorder.startTrace({
       traceType: "marketing_production",
@@ -504,14 +502,33 @@ export async function runDailyMarketingProductionPipeline(
     },
   );
 
-  if (productionTraceContext) {
+  const productionTraceStatus =
+    pipeline.failure || pipeline.status === "handoff_failed"
+      ? ("failed" as const)
+      : pipeline.status === "revision_required"
+        ? ("partial" as const)
+        : ("completed" as const);
+  const productionTraceCorrelationBase = {
+    productionRequestId: deps.productionRequestId ?? null,
+    logicalRunKey,
+    agendaSlateId: deps.agendaSlateId ?? null,
+    agendaCandidateId: handoff.selectedAgenda.id,
+    assignmentId: handoff.contentAssignment.assignmentId,
+    runId: run.runId,
+    correlationId: run.correlationId,
+  };
+
+  const closeProductionTrace = (
+    correlation?: {
+      candidateId?: string | null;
+      reviewId?: string | null;
+      governanceReviewId?: string | null;
+    },
+    statusOverride?: "completed" | "failed" | "partial",
+  ) => {
+    if (!productionTraceContext) return;
+    const status = statusOverride ?? productionTraceStatus;
     try {
-      const status =
-        pipeline.failure || pipeline.status === "handoff_failed"
-          ? "failed"
-          : pipeline.status === "revision_required"
-            ? "partial"
-            : "completed";
       productionTraceContext.recorder.endSpan({
         traceId: productionTraceContext.traceId,
         spanId: productionTraceContext.rootSpanId,
@@ -521,10 +538,18 @@ export async function runDailyMarketingProductionPipeline(
       productionTraceContext.recorder.endTrace({
         traceId: productionTraceContext.traceId,
         status,
+        correlation: {
+          ...productionTraceCorrelationBase,
+          ...correlation,
+        },
       });
     } catch {
       /* never fail production on trace close */
     }
+  };
+
+  if (productionTraceStatus === "failed") {
+    closeProductionTrace();
   }
 
   const governanceEnvelopes = pipeline.envelopes.filter(
@@ -537,11 +562,13 @@ export async function runDailyMarketingProductionPipeline(
   }
 
   if (pipeline.failure?.code === "content_unavailable") {
+    if (productionTraceStatus !== "failed") closeProductionTrace();
     return failRun(repo, run, "CONTENT_STRATEGIST_FAILED", now, {
       pipelineFailure: pipeline.failure,
     });
   }
   if (pipeline.failure?.code === "governance_unavailable" || pipeline.failure?.code === "handoff_failed") {
+    if (productionTraceStatus !== "failed") closeProductionTrace();
     const reason = mapPipelineFailureToReason({
       pipelineFailureCode: pipeline.failure.code,
       pipelineFailureMessage: pipeline.failure.message,
@@ -554,6 +581,7 @@ export async function runDailyMarketingProductionPipeline(
     });
   }
   if (!pipeline.draft) {
+    if (productionTraceStatus !== "failed") closeProductionTrace();
     return failRun(repo, run, "CONTENT_STRATEGIST_FAILED", now);
   }
 
@@ -574,6 +602,7 @@ export async function runDailyMarketingProductionPipeline(
   });
 
   if (jsonContainsForbiddenBotLeak(candidate)) {
+    closeProductionTrace(undefined, "failed");
     return failRun(repo, run, "PERSISTENCE_FAILED", now);
   }
 
@@ -581,6 +610,7 @@ export async function runDailyMarketingProductionPipeline(
   try {
     savedCandidate = await repo.saveCandidate(candidate);
   } catch {
+    closeProductionTrace(undefined, "failed");
     return failRun(repo, run, "PERSISTENCE_FAILED", now);
   }
 
@@ -589,6 +619,7 @@ export async function runDailyMarketingProductionPipeline(
     reviewRepo,
     now: () => now,
   });
+  const reviewId = "review" in bootstrapResult ? bootstrapResult.review.reviewId : null;
   humanReviewBootstrap = {
       status:
         bootstrapResult.outcome === "created" || bootstrapResult.outcome === "reused"
@@ -598,10 +629,16 @@ export async function runDailyMarketingProductionPipeline(
             : "skipped",
       candidateId: savedCandidate.candidateId,
       outcome: bootstrapResult.outcome,
-      reviewId: "review" in bootstrapResult ? bootstrapResult.review.reviewId : null,
+      reviewId,
       error: bootstrapResult.outcome === "failed" ? bootstrapResult.error : null,
       reason: bootstrapResult.outcome === "skipped" ? bootstrapResult.reason : null,
     };
+
+  closeProductionTrace({
+    candidateId: savedCandidate.candidateId,
+    reviewId,
+    governanceReviewId: lastStructuredGovernance?.reviewId ?? run.governanceReviewId ?? null,
+  });
 
   const completedRun: DailyMarketingRun = {
     ...run,

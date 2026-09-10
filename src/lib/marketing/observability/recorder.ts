@@ -58,6 +58,8 @@ export type EndTraceInput = {
   status: MarketingTraceStatus;
   endedAt?: string;
   attributes?: MarketingSpanAttributes;
+  /** Soft correlation attach (candidate/HMR may arrive after startTrace). */
+  correlation?: MarketingTraceCorrelation;
 };
 
 /**

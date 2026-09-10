@@ -39,9 +39,11 @@ export {
   FORBIDDEN_ATTRIBUTE_KEY_PATTERNS,
   MAX_ATTRIBUTE_STRING_LENGTH,
   MAX_ERROR_MESSAGE_LENGTH,
+  MAX_ATTRIBUTES_JSON_BYTES,
   isForbiddenAttributeKey,
   sanitizeAttributeString,
   sanitizeSpanAttributes,
+  sanitizeAttributesForPersistence,
   sanitizeSpanErrorMessage,
   truncateSummary,
 } from "@/lib/marketing/observability/privacy";
@@ -110,3 +112,26 @@ export {
   attributesForHumanBoundary,
   humanBoundaryHandoffStatus,
 } from "@/lib/marketing/observability/stageAttributes";
+
+export {
+  MARKETING_OBS_TRACES_TABLE,
+  MARKETING_OBS_SPANS_TABLE,
+  MARKETING_OBS_SCHEMA_VERSION,
+  isTerminalSpanStatus,
+  isTerminalTraceStatus,
+  createInMemoryMarketingTraceStore,
+  createSupabaseMarketingTraceStore,
+  createMarketingTraceReadRepository,
+  createPersistentMarketingTraceRecorder,
+  MARKETING_TRACE_ENABLED_ENV,
+  isMarketingTraceEnabled,
+  resolveMarketingTraceRecorder,
+  resolveMarketingTraceRecorderAsync,
+  createTestDurableMarketingTraceStack,
+  type MarketingTraceRow,
+  type MarketingSpanRow,
+  type MarketingTraceStore,
+  type MarketingObsDbClient,
+  type MarketingTraceReadRepository,
+  type PersistentMarketingTraceRecorder,
+} from "@/lib/marketing/observability/persistence";

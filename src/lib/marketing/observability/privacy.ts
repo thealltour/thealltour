@@ -46,6 +46,8 @@ export const FORBIDDEN_ATTRIBUTE_KEY_PATTERNS: RegExp[] = [
 export const MAX_ATTRIBUTE_STRING_LENGTH = 400;
 export const MAX_ERROR_MESSAGE_LENGTH = 400;
 export const MAX_SUMMARY_LENGTH = 240;
+/** Soft upper bound for persisted attributes JSON (bytes of UTF-8). */
+export const MAX_ATTRIBUTES_JSON_BYTES = 16_384;
 
 export function isForbiddenAttributeKey(key: string): boolean {
   return FORBIDDEN_ATTRIBUTE_KEY_PATTERNS.some((re) => re.test(key));
@@ -92,4 +94,44 @@ export function sanitizeSpanAttributes(
   }
 
   return { attributes: out, rejectedKeys };
+}
+
+/**
+ * Persistence-boundary sanitizer: forbid keys, sanitize strings, enforce JSON size.
+ * On overflow, drop largest string/array values until under budget (never throws).
+ */
+export function sanitizeAttributesForPersistence(
+  attributes: MarketingSpanAttributes,
+  maxBytes = MAX_ATTRIBUTES_JSON_BYTES,
+): { attributes: MarketingSpanAttributes; rejectedKeys: string[]; truncated: boolean } {
+  const { attributes: cleaned, rejectedKeys } = sanitizeSpanAttributes(attributes);
+  let truncated = false;
+  let current = { ...cleaned };
+
+  const sizeOf = (attrs: MarketingSpanAttributes) =>
+    Buffer.byteLength(JSON.stringify(attrs), "utf8");
+
+  while (sizeOf(current) > maxBytes) {
+    truncated = true;
+    const entries = Object.entries(current).sort(
+      (a, b) => JSON.stringify(b[1]).length - JSON.stringify(a[1]).length,
+    );
+    const drop = entries[0];
+    if (!drop) break;
+    delete current[drop[0]];
+    rejectedKeys.push(drop[0]);
+  }
+
+  if (truncated) {
+    current = {
+      ...current,
+      "marketing.privacy.attributes_truncated": true,
+    };
+    if (sizeOf(current) > maxBytes) {
+      // Last resort: empty object + diagnostic flag only
+      current = { "marketing.privacy.attributes_truncated": true };
+    }
+  }
+
+  return { attributes: current, rejectedKeys, truncated };
 }

@@ -10,7 +10,7 @@ import {
   MARKETING_AGENT_ROLES,
 } from "@/lib/marketing/bot/organization/types";
 import { MARKETING_AGENT_ROLE_CONFIGS } from "@/lib/marketing/bot/organization/roles";
-import { MARKETING_SKILL_MATRIX, allowedToolsForRole } from "@/lib/marketing/bot/organization/skillMatrix";
+import { MARKETING_SKILL_MATRIX, allowedToolsForRole, desktopExposedToolsForRole } from "@/lib/marketing/bot/organization/skillMatrix";
 import { DEPARTMENT_FORBIDDEN_ACTIONS } from "@/lib/marketing/bot/organization/policies";
 
 describe("marketing department organization", () => {
@@ -59,6 +59,44 @@ describe("marketing department organization", () => {
     expect(allowedToolsForRole("performance_analyst")).not.toContain("run_department_orchestration");
     expect(allowedToolsForRole("performance_analyst")).toContain("get_performance_evidence");
     expect(allowedToolsForRole("content_strategist")).not.toContain("get_performance_evidence");
+  });
+
+  it("exposes Desktop MCP include as allow ∪ optional (never deny)", () => {
+    expect(desktopExposedToolsForRole("content_strategist")).toEqual(
+      expect.arrayContaining([
+        "get_content_assignment",
+        "get_assignment_research_evidence",
+        "get_governance_review",
+        "get_assignment_governance_status",
+      ]),
+    );
+    expect(desktopExposedToolsForRole("content_strategist")).not.toContain("prepare_marketing_task");
+    expect(desktopExposedToolsForRole("content_strategist")).not.toContain("create_content_assignment");
+    expect(desktopExposedToolsForRole("marketing_manager")).toEqual(
+      expect.arrayContaining(["get_research_context", "create_content_assignment", "run_department_orchestration"]),
+    );
+    expect(desktopExposedToolsForRole("governance_auditor")).toEqual(
+      expect.arrayContaining(["get_governance_review", "get_assignment_governance_status"]),
+    );
+    expect(desktopExposedToolsForRole("performance_analyst")).toContain("get_research_context");
+    expect(desktopExposedToolsForRole("performance_analyst")).not.toContain("evaluate_governance");
+
+    for (const role of MARKETING_AGENT_ROLES) {
+      for (const tool of desktopExposedToolsForRole(role)) {
+        expect(MARKETING_SKILL_MATRIX[role][tool]).not.toBe("deny");
+      }
+      for (const tool of MARKETING_BOT_TOOL_NAMES) {
+        if (MARKETING_SKILL_MATRIX[role][tool] === "deny") {
+          expect(desktopExposedToolsForRole(role)).not.toContain(tool);
+        }
+      }
+    }
+  });
+
+  it("keeps Core 4 only — no PREPARE specialist roles in registry", () => {
+    expect(MARKETING_AGENT_ROLES).toHaveLength(4);
+    expect(MARKETING_AGENT_ROLES).not.toContain("channel_producer");
+    expect(MARKETING_AGENT_ROLES).not.toContain("creative_director");
   });
 
   it("attaches department policy and disables auto-publish on every role", () => {

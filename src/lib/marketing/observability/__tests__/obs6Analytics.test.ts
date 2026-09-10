@@ -287,6 +287,33 @@ describe("OBS-6 aggregate acceptance", () => {
     expect(dto.overview.totalRuns).toBe(1);
   });
 
+  it("excludes empty RUNNING envelopes from analytics without hard-coded probe names", () => {
+    const orphan = createMarketingTraceId();
+    const real = createMarketingTraceId();
+    const dto = aggregateMarketingObservabilityAnalytics({
+      range: "7d",
+      startAt: "a",
+      endAt: "b",
+      traces: [
+        trace({ traceId: orphan, status: "running", endedAt: null, durationMs: null }),
+        trace({ traceId: real, status: "completed" }),
+      ],
+      spans: [
+        span({
+          spanId: createMarketingSpanId(),
+          traceId: real,
+          stage: "marketing_manager",
+          name: "marketing.manager",
+        }),
+      ],
+      nowMs,
+    });
+    expect(dto.excludedEmptyRunningTraceCount).toBe(1);
+    expect(dto.includedTraceCount).toBe(1);
+    expect(dto.overview.running).toBe(0);
+    expect(dto.overview.staleRunning).toBe(0);
+  });
+
   it("Case E — nested tool spans do not inflate CS duration contribution", () => {
     const tid = createMarketingTraceId();
     const dto = aggregateMarketingObservabilityAnalytics({

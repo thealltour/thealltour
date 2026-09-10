@@ -63,6 +63,8 @@ export type MarketingObservabilityAnalyticsDto = {
   /** Traces after fixture exclusion. */
   includedTraceCount: number;
   excludedFixtureTraceCount: number;
+  /** RUNNING with zero spans — excluded from analytics denominators (generic). */
+  excludedEmptyRunningTraceCount: number;
   overview: {
     totalRuns: number;
     completed: number;

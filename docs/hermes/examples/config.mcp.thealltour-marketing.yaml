@@ -1,14 +1,21 @@
-# Preview only. Do not merge into ~/.hermes/config.yaml in STEP 2-3.
+# Preview / reference — thealltour-marketing MCP include by role
 
+Source of truth: `src/lib/marketing/bot/organization/skillMatrix.ts` → `desktopExposedToolsForRole`.
+Live profiles: `~/.hermes/profiles/<role>/config.yaml` under `mcp_servers.thealltour-marketing.tools.include`.
+
+Do not copy a single global 6-tool include into all agents.
+
+```yaml
+# marketing-manager (allow ∪ optional)
 mcp_servers:
   thealltour-marketing:
     url: "http://127.0.0.1:3000/api/internal/marketing/mcp"
     headers:
       Authorization: "Bearer ${MARKETING_BOT_INTERNAL_TOKEN}"
-    enabled: false
+    enabled: true
     skip_preflight: true
     timeout: 120
-    trust: untrusted
+    trust: full
     tools:
       include:
         - get_marketing_context
@@ -17,5 +24,28 @@ mcp_servers:
         - evaluate_governance
         - prepare_marketing_task
         - review_generated_content
+        - get_performance_evidence
+        - get_research_context
+        - create_content_assignment
+        - get_content_assignment
+        - get_assignment_research_evidence
+        - get_governance_review
+        - get_assignment_governance_status
+        - run_department_orchestration
       resources: false
       prompts: false
+
+# content-strategist
+# include: get_marketing_context, search_marketing_memory, build_content_brief,
+#   evaluate_governance, get_research_context, get_content_assignment,
+#   get_assignment_research_evidence, get_governance_review, get_assignment_governance_status
+
+# governance-auditor
+# include: get_marketing_context, search_marketing_memory, evaluate_governance,
+#   review_generated_content, get_research_context, get_content_assignment,
+#   get_assignment_research_evidence, get_governance_review, get_assignment_governance_status
+
+# performance-analyst
+# include: get_marketing_context, search_marketing_memory, get_performance_evidence,
+#   get_research_context
+```

@@ -116,9 +116,12 @@ export function MarketingObservabilityAnalyticsPanel({ className }: Props) {
           <QualitySection data={data} />
           <ReliabilitySection data={data} />
           <DecisionSignalsSection data={data} />
-          {data.excludedFixtureTraceCount > 0 ? (
+          {data.excludedFixtureTraceCount > 0 || data.excludedEmptyRunningTraceCount > 0 ? (
             <p className="text-xs text-[var(--text-secondary)]">
-              fixture/smoke traces excluded: {data.excludedFixtureTraceCount}
+              analytics exclusions — fixture: {data.excludedFixtureTraceCount}
+              {data.excludedEmptyRunningTraceCount > 0
+                ? ` · empty running: ${data.excludedEmptyRunningTraceCount}`
+                : ""}
             </p>
           ) : null}
         </>

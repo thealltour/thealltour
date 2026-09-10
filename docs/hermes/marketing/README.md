@@ -1,6 +1,6 @@
-# AI Marketing Department v1
+# AI Marketing Department — Org v2.1 (LOCKED)
 
-더올투어 마케팅을 Hermes Agent 4역할로 조율한다. Desktop profile은 배포됨. Cron은 STEP 2-4.8B에서 **task-only**로 활성화됐다 (SNS 게시 없음).
+더올투어 마케팅을 Hermes Agent **Core 4**로 조율한다. Desktop profile은 배포됨. Cron은 task-only (SNS 게시 없음). 조직 계약: [organization.md](./organization.md).
 
 ## 조직
 
@@ -13,11 +13,17 @@ Marketing Manager
    └── Performance Analyst
 ```
 
+PREPARE (비활성): Channel Producer, Creative Director.
+Staff (Bot 아님): Research Intelligence, Requirements, Evidence Pack, Completeness, Media Pipeline, …
+
 작성자가 자기 글을 최종 승인하지 않는다. 검사는 Governance Auditor가 독립 수행한다.
 
 ## MCP
 
-서버 `thealltour-marketing` (publish/send/post 없음):
+서버 `thealltour-marketing` — **14 tools** (publish/send/post 없음).
+역할별 Desktop include = skillMatrix allow ∪ optional — [skill-matrix.md](./skill-matrix.md).
+
+주요 tools:
 
 - `get_marketing_context`
 - `search_marketing_memory`
@@ -26,6 +32,7 @@ Marketing Manager
 - `prepare_marketing_task`
 - `review_generated_content`
 - `get_performance_evidence` (08:30 cron과 같은 Daily Performance Brief contract. SNS 수집 없음)
+- `get_research_context` / `create_content_assignment` / assignment & governance reads
 - `run_department_orchestration` (실제 specialist profile dispatch + evidence + Manager synthesis. 게시 없음)
 
 Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity를 받지 않으므로 server ACL은 아직 없다. 표: [skill-matrix.md](./skill-matrix.md)
@@ -55,8 +62,8 @@ Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity�
 
 ## SNS (STEP 3-1 / 3-2 / 3-3)
 
-PublicationAdapter와 PerformanceCollector를 **분리**한 계약 + 채널별 **공식 API capability matrix** + **SocialAccount / AuthorizationGrant / CredentialReference** 계약.  
-공식 API 호출·OAuth·credential 저장·migration·게시 **없음**. `SNS_SIDE_EFFECTS_STEP_3_3 = 0`.  
+PublicationAdapter와 PerformanceCollector를 **분리**한 계약 + 채널별 **공식 API capability matrix** + **SocialAccount / AuthorizationGrant / CredentialReference** 계약.
+공식 API 호출·OAuth·credential 저장·migration·게시 **없음**. `SNS_SIDE_EFFECTS_STEP_3_3 = 0`.
 `PUBLICATION_FLOW_INACTIVE` 유지.
 
 ## Cron (요약)

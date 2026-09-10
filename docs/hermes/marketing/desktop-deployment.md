@@ -36,11 +36,11 @@ Desktop **BOTS → Marketing Manager** 창은 profile에 pin된 `Bot Chat` (sour
 각 profile `config.yaml`의 `mcp_servers.thealltour-marketing`:
 
 - url: `http://127.0.0.1:3000/api/internal/marketing/mcp`
-- `tools.include`: skill matrix allowlist
+- `tools.include`: skill matrix **allow ∪ optional** per role (`desktopExposedToolsForRole`)
 - `trust: full` — 우리 localhost MCP. 전역 `~/.hermes/config.yaml`은 `untrusted` 유지
 - Authorization은 env interpolation. SOUL에 token 금지
 
-`hermes mcp test`는 서버가 노출한 8개를 보여 준다. Agent 실행 시의 실제 호출 범위는 `tools.include` + prompt다.
+`hermes mcp test`는 서버가 노출한 **14개** tool을 보여 준다. Agent 실행 시의 실제 호출 범위는 profile `tools.include` + prompt다. Production queue oneshot은 handoff payload를 사용하므로 MCP `get_*` 없이도 spine이 동작한다 (intentional).
 
 ## Agent-to-Agent
 
@@ -57,18 +57,21 @@ STEP 2-4.8B에서 task-only Cron이 활성화됐다. 상세·수동 실행·paus
 
 Ops-only. `runDepartmentPipeline` / Agenda queue와 **커플링하지 않는다**. Collaborative UX만.
 
-| Room | Members | Purpose |
-|---|---|---|
-| `theallcloud marketing leadership` | MM, CS, GA, PA | Org-wide collaboration |
-| `content review` | CS, GA | Revision / expression / evidence conflicts |
-| `performance strategy` | MM, CS, PA | Feed performance into next strategy |
+| Room | Members | Lead | Purpose | Status |
+|---|---|---|---|---|
+| Marketing Leadership | MM, CS, GA, PA | MM | strategy / escalation | docs lock |
+| Content Review | CS, GA | GA | draft quality discussion (**not** approval SoT) | docs lock |
+| Performance Strategy | MM, CS, PA | PA | learning loop | docs lock |
+| Creative Production | MM, CS, (+CD/CP) | — | concept collab | PREPARE — do not create yet |
 
-절차:
+Org v2.1: Group rooms are **not** required for production. Create only when ops needs collaborative UX.
+Existing legacy room `thealltour marketing` may remain until intentional migrate.
 
-1. Desktop에서 위 3개 group room을 만든다.
+절차 (when creating):
+
+1. Desktop에서 Leadership / Content Review / Performance Strategy를 만든다.
 2. 멤버십이 표와 일치하는지 확인한다.
-3. 기존 `thealltour marketing` room은 검증 전까지 유지한다. 이후 membership을 의도적으로 migrate한다.
-4. `message_agent`로 production spine을 재작성하지 않는다.
+3. `message_agent`로 production spine을 재작성하지 않는다.
 
 Rollback: 새 room만 disband. pipeline 코드 변경 없음.
 

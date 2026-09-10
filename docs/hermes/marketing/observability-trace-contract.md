@@ -155,3 +155,9 @@ Fixture exclusion: any trace/span with `marketing.fixture` (or `.kind`) is exclu
 ### Scale note
 
 Current: DB range filter + application aggregate (cap 2000 traces). If volume grows: SQL aggregates / daily rollup / materialized view — not in this step.
+
+Empty RUNNING envelopes (zero spans) are excluded from analytics denominators generically (not by fixture name). Runs viewer still shows them with STALE display. DB rows are not deleted.
+
+## OBS-7 readiness (Organization Overview Graph)
+
+Org v2.1 topology is locked in `docs/hermes/marketing/organization.md`. OBS-7 should overlay live MarketingSpan status onto Core 4 + shared staff nodes without activating PREPARE Agents as execution nodes.

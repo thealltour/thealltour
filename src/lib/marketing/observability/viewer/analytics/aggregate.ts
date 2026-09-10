@@ -23,7 +23,9 @@ export const ANALYTICS_BOTTLENECK_STAGES = [
   { stage: "human_review", label: "Human Review Boundary" },
 ] as const;
 
-const BOTTLENECK_STAGE_SET = new Set(ANALYTICS_BOTTLENECK_STAGES.map((s) => s.stage));
+const BOTTLENECK_STAGE_SET: Set<string> = new Set(
+  ANALYTICS_BOTTLENECK_STAGES.map((s) => s.stage),
+);
 
 function attrString(attrs: Record<string, unknown>, key: string): string | null {
   const v = attrs[key];
@@ -116,6 +118,7 @@ export function aggregateMarketingObservabilityAnalytics(input: {
   }
 
   let excludedFixtureTraceCount = 0;
+  let excludedEmptyRunningTraceCount = 0;
   const productionTraces: AnalyticsTraceInput[] = [];
   for (const trace of input.traces) {
     const spans = spansByTrace.get(trace.traceId) ?? [];
@@ -124,6 +127,12 @@ export function aggregateMarketingObservabilityAnalytics(input: {
       spans.some((s) => attributesIndicateFixture(s.attributes));
     if (fixture) {
       excludedFixtureTraceCount += 1;
+      continue;
+    }
+    // Generic hygiene: RUNNING with zero spans is not a production spine sample
+    // (e.g. start-only probes). Do not hard-code fixture names; STALE UI remains separate.
+    if (trace.status === "running" && spans.length === 0) {
+      excludedEmptyRunningTraceCount += 1;
       continue;
     }
     productionTraces.push(trace);
@@ -511,6 +520,7 @@ export function aggregateMarketingObservabilityAnalytics(input: {
     endAt: input.endAt,
     includedTraceCount: productionTraces.length,
     excludedFixtureTraceCount,
+    excludedEmptyRunningTraceCount,
     overview: {
       totalRuns: productionTraces.length,
       completed,

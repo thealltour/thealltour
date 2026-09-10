@@ -12,7 +12,13 @@
 
 ## Allowed MCP tools (prompt)
 
-get_marketing_context, search_marketing_memory, build_content_brief, get_content_assignment, get_assignment_research_evidence. evaluate_governance optional.
+get_marketing_context, search_marketing_memory, build_content_brief,
+get_content_assignment, get_assignment_research_evidence,
+get_governance_review, get_assignment_governance_status.
+optional: evaluate_governance, get_research_context.
+
+Desktop `tools.include` must match `desktopExposedToolsForRole("content_strategist")`.
+Production oneshot uses handoff JSON and does not require MCP gets.
 
 ## Forbidden tools
 

@@ -19,6 +19,8 @@ export type MarketingObsDbQuery = {
     options?: { onConflict?: string },
   ): MarketingObsDbQuery;
   eq(column: string, value: unknown): MarketingObsDbQuery;
+  gte(column: string, value: unknown): MarketingObsDbQuery;
+  lt(column: string, value: unknown): MarketingObsDbQuery;
   in(column: string, values: unknown[]): MarketingObsDbQuery;
   order(column: string, options?: { ascending?: boolean }): MarketingObsDbQuery;
   limit(count: number): MarketingObsDbQuery;

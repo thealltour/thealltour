@@ -74,6 +74,17 @@ export function allowedToolsForRole(role: MarketingAgentRole): MarketingBotToolN
   return MARKETING_BOT_TOOL_NAMES.filter((tool) => MARKETING_SKILL_MATRIX[role][tool] === "allow");
 }
 
+/**
+ * Desktop Hermes `tools.include` should expose allow ∪ optional (never deny).
+ * Production queue oneshots use handoff payloads and do not require these MCP gets.
+ */
+export function desktopExposedToolsForRole(role: MarketingAgentRole): MarketingBotToolName[] {
+  return MARKETING_BOT_TOOL_NAMES.filter((tool) => {
+    const permission = MARKETING_SKILL_MATRIX[role][tool];
+    return permission === "allow" || permission === "optional";
+  });
+}
+
 export function isToolAllowedForRole(role: MarketingAgentRole, tool: MarketingBotToolName): boolean {
   const permission = MARKETING_SKILL_MATRIX[role][tool];
   return permission === "allow" || permission === "optional";

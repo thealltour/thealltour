@@ -270,3 +270,33 @@ export {
   planShortVideoBriefArtifact,
   persistShortVideoBrief,
 } from "@/lib/marketing/assets/shortVideoBrief/persist";
+
+// SV-4 — Shortform Source Resolver (resolve ≠ pick ≠ ingest; search only)
+export {
+  SHORTFORM_SOURCE_RESOLUTION_CONTRACT,
+  type ShortformSourceCandidate,
+  type ShortformSceneSourceResolution,
+  type ShortformSourceResolutionPlan,
+  type ShortformSourceCandidateOrigin,
+  type ShortformFactualMatch,
+} from "@/lib/marketing/assets/shortform/resolver/contracts";
+export {
+  SHORTFORM_RESOLVER_PROVIDER_RAW_LIMIT,
+  SHORTFORM_RESOLVER_FINAL_CANDIDATE_LIMIT,
+  SHORTFORM_RESOLVER_AUTO_PICK_MIN_SCORE,
+  SHORTFORM_RESOLVER_REVIEW_MIN_SCORE,
+  SHORTFORM_PIXABAY_SEARCH_CACHE_TTL_MS,
+} from "@/lib/marketing/assets/shortform/resolver/constants";
+export { resolveSceneSources } from "@/lib/marketing/assets/shortform/resolver/resolveScene";
+export { resolveShortVideoSources } from "@/lib/marketing/assets/shortform/resolver/resolveBrief";
+export { createShortformResolverProviders } from "@/lib/marketing/assets/shortform/resolver/createProviders";
+export { SHORTFORM_SOURCE_RESOLUTION_RELATIVE_PATH } from "@/lib/marketing/assets/shortform/resolver/paths";
+export {
+  planShortformSourceResolutionArtifact,
+  persistShortformSourceResolution,
+} from "@/lib/marketing/assets/shortform/resolver/persist";
+export {
+  createMemorySourceSearchCache,
+  createFileSourceSearchCache,
+} from "@/lib/marketing/assets/shortform/resolver/searchCache";
+export type { ShortformSourceProvider } from "@/lib/marketing/assets/shortform/resolver/provider";

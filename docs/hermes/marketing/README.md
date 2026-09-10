@@ -58,6 +58,7 @@ Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity�
 | Shortform storage / retention / pressure policy (SV-1) | [shortform-asset-storage-policy-v1.md](./shortform-asset-storage-policy-v1.md) |
 | Shortform Global Source Catalog (SV-2) | [shortform-source-catalog-v1.md](./shortform-source-catalog-v1.md) |
 | ShortVideoBrief (SV-3) | [short-video-brief-v1.md](./short-video-brief-v1.md) |
+| Shortform Source Resolver (SV-4) | [shortform-source-resolver-v1.md](./shortform-source-resolver-v1.md) |
 | Desktop New Agent | [agents/](./agents/) |
 | Machine contract | `src/lib/marketing/bot/contracts/` |
 | TS config | `src/lib/marketing/bot/organization/` |

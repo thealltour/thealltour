@@ -71,9 +71,15 @@ async function seedCandidate(status: "ready_for_human_review" | "needs_human_rev
       selectedAgenda: handoff.selectedAgenda,
       contentAssignment: handoff.contentAssignment,
       contentPlanScaffold: handoff.contentPlanScaffold,
+      deliverableRequirements: handoff.deliverableRequirements,
+      evidencePack: handoff.evidencePack,
     },
     {
-      requestDraft: async () => ({ ...draft, assignmentId: handoff.contentAssignment.assignmentId }),
+      requestDraft: async () => ({
+        ...draft,
+        assignmentId: handoff.contentAssignment.assignmentId,
+        contentPlan: handoff.contentPlanScaffold,
+      }),
       requestGovernance: async () =>
         allow(
           status === "needs_human_review"
@@ -353,7 +359,11 @@ describe("STEP 3-13 Human Review bootstrap", () => {
         governanceReviewStore: createInMemoryGovernanceReviewStore(),
         getResearchContext: async () => buildResearchContext(),
         invokeManagerProfile: async () => managerSelectJson(),
-        requestDraft: async () => ({ ...draft, assignmentId: null }),
+        requestDraft: async (envelope) => ({
+          ...draft,
+          assignmentId: envelope.payload.contentAssignmentId ?? null,
+          contentPlan: envelope.payload.contentPlanScaffold ?? null,
+        }),
         requestGovernance: async () => allow(),
         requestPerformance: async () => ({ unavailable: true as const, reason: "test" }),
       },

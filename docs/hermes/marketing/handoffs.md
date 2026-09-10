@@ -12,21 +12,31 @@
 - constraints
 - memory references
 - contentAssignmentId / contentAssignment / contentPlanScaffold / selectedAgenda
+- `deliverableRequirements` (`content-deliverable-requirements-v1`) — structural CS contract
+- `evidencePack` (`evidence-pack-v1`) — deterministic locked facts for draft
 
-Content는 brief/assignment에 없는 사실을 채우지 않는다. Manager-selected agenda를 재선택하지 않는다.
+Content는 brief/assignment/Evidence Pack에 없는 사실을 채우지 않는다. Manager-selected agenda를 재선택하지 않는다. destination/section completeness의 최종 pass/fail은 Completeness Validator가 소유한다.
 
 ## Manager decision contracts
 
 - `SelectedAgenda` (`selected-agenda-v1`) — MM final agenda decision, separate from `AgendaCandidate`
 - `ContentAssignment` (`content-assignment-v1`) — bounded CS task with evidence/facts
 - `ContentPlan` (`content-plan-v1`) — structured format/angle plan separate from final draft
+- `ContentDeliverableRequirements` (`content-deliverable-requirements-v1`) — requiredDestinations / sections / outputs
+- `EvidencePack` (`evidence-pack-v1`) — ephemeral handoff pack (no DB migration)
 
 MCP:
 
 - MM: `create_content_assignment` (deterministic/idempotent business state)
 - CS: `get_content_assignment`, `get_assignment_research_evidence` (read-only)
 
-## Content → Governance
+## Content → Completeness → Governance
+
+CS draft는 Completeness Validator를 거친 뒤에만 GA로 간다.
+
+- structural miss → `revision: completeness:…` (shared `MAX_AUTO_REVISION_ROUNDS=1`) 또는 `revision_required`
+- structural miss는 Human REVIEW/`approval_pending`이 아니다
+- factual pack이 있으면 cited `contentPlan.evidenceRefs`를 visible `sourceReferences`로 project
 
 `StructuredGovernanceReviewRequest` (`governance-review-request-v1`)
 
@@ -35,7 +45,7 @@ MCP:
 - commercialIntent, matchedProductIds, cta, constraints
 - preflightSignals (deterministic unsupported-claim hints)
 
-Governance Auditor returns structured `GovernanceDecision` (`governance-decision-v1`) with ALLOW/REVIEW/BLOCK, requiredRevisions on BLOCK.
+Governance Auditor returns structured `GovernanceDecision` (`governance-decision-v1`) with ALLOW/REVIEW/BLOCK, requiredRevisions on BLOCK. GA는 destination/section/output completeness를 재심판하지 않는다.
 
 MCP read-only: `get_governance_review`, `get_assignment_governance_status`
 

@@ -7,6 +7,7 @@ import {
 import { parseProviderContentPlan } from "@/lib/marketing/content/validation/validateContentPlan";
 import { ContentPlanContractError } from "@/lib/marketing/content/validation/contentPlanContractError";
 import type { AssignmentEvidenceRef } from "@/lib/marketing/content/types";
+import { allowedEvidenceIdsFromPack } from "@/lib/marketing/content/evidencePack";
 import type {
   ContentDraftRequest,
   ContentStrategistOutput,
@@ -211,6 +212,11 @@ function buildDiagnostics(partial: {
 export function collectSuppliedEvidenceRefs(
   payload: ContentDraftRequest,
 ): AssignmentEvidenceRef[] {
+  if (payload.evidencePack) {
+    const allowed = new Set(allowedEvidenceIdsFromPack(payload.evidencePack));
+    return payload.evidencePack.availableEvidenceRefs.filter((ref) => allowed.has(ref.evidenceId));
+  }
+
   const pools = [
     payload.contentAssignment?.evidenceRefs,
     payload.contentPlanScaffold?.evidenceRefs,
@@ -239,6 +245,41 @@ function formatAvailableEvidenceSection(refs: AssignmentEvidenceRef[]): string {
   ].join("\n");
 }
 
+function formatDeliverableRequirementsSection(
+  requirements: ContentDraftRequest["deliverableRequirements"],
+): string | null {
+  if (!requirements) return null;
+  return [
+    "DELIVERABLE_REQUIREMENTS (structural — cover every requiredDestination; Completeness Validator owns pass/fail):",
+    `- requiredDestinations (${requirements.requiredDestinationCount}): ${
+      requirements.requiredDestinations.length
+        ? requirements.requiredDestinations.join(", ")
+        : "(none)"
+    }`,
+    `- requiredSections: ${
+      requirements.requiredSections.length ? requirements.requiredSections.join(" | ") : "(none)"
+    }`,
+    `- requiredOutputKinds: ${requirements.requiredOutputKinds.join(", ")}`,
+    `- primaryFormatHint: ${requirements.primaryFormatHint ?? "null"}`,
+    `- requireSourceReferencesWhenFactual: ${requirements.requireSourceReferencesWhenFactual}`,
+  ].join("\n");
+}
+
+function formatEvidencePackSection(pack: ContentDraftRequest["evidencePack"]): string | null {
+  if (!pack) return null;
+  const allowed = pack.items.filter((item) => item.allowedForDraft);
+  return [
+    "EVIDENCE_PACK (locked; do not invent facts beyond allowed items):",
+    ...allowed.map(
+      (item) =>
+        `- ${item.factId}: ${item.statement.slice(0, 160)} [refs: ${item.evidenceRefIds.join(", ") || "none"}]`,
+    ),
+    allowed.length === 0 ? "- (no allowedForDraft items)" : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 const CONTENT_DRAFT_SHAPE =
   'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"]},"assignmentId":null}';
 
@@ -248,17 +289,23 @@ const GROUNDING_RULES = [
   "- If factsToUse contains factual claims, evidenceRefs MUST be a non-empty array of supplied evidence IDs (or full objects copied from contentAssignment.evidenceRefs for those IDs).",
   "- Use ONLY IDs listed in AVAILABLE_EVIDENCE_REFS. Never invent evidence IDs.",
   "- If a factual claim cannot be grounded in supplied evidence, remove/rewrite that claim rather than fabricate evidence.",
+  "- Do not open-ended discover evidence beyond EVIDENCE_PACK / AVAILABLE_EVIDENCE_REFS.",
+  "- Structural completeness (destinations/sections/outputs) is enforced by Completeness Validator — cover every requiredDestination in title/body/contentPlan.",
 ].join("\n");
 
 export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
   const supplied = collectSuppliedEvidenceRefs(payload);
   return [
     "JSON only. ContentAssignment/ContentDraftRequest를 근거로 contentPlan + Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마. Do not re-select the manager agenda.",
+    formatDeliverableRequirementsSection(payload.deliverableRequirements),
+    formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),
     GROUNDING_RULES,
     JSON.stringify(payload),
     CONTENT_DRAFT_SHAPE,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -275,11 +322,15 @@ export function buildContentDraftFormatRepairPrompt(
     "Return ONE valid JSON object only. No markdown fences. No prose before or after.",
     "Use only the provided ContentAssignment evidence; do not invent evidence IDs or facts.",
     "Do not re-select the manager agenda. Do not publish. Do not create cron jobs.",
+    formatDeliverableRequirementsSection(payload.deliverableRequirements),
+    formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),
     GROUNDING_RULES,
     JSON.stringify(payload),
     CONTENT_DRAFT_SHAPE,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -298,11 +349,15 @@ export function buildContentDraftGroundingRepairPrompt(
     "Set contentPlan.evidenceRefs using ONLY the supplied allowed evidence IDs below (string IDs or full objects from contentAssignment.evidenceRefs).",
     "Do not invent evidence IDs. If a factual claim cannot be supported, remove or rewrite that claim.",
     "No markdown fences. No prose before or after.",
+    formatDeliverableRequirementsSection(payload.deliverableRequirements),
+    formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),
     GROUNDING_RULES,
     JSON.stringify(payload),
     CONTENT_DRAFT_SHAPE,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function buildGovernanceReviewPrompt(

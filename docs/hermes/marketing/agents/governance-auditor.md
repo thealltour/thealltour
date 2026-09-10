@@ -4,7 +4,7 @@
 
 - **Name:** `governance-auditor`
 - **Title:** Governance Auditor
-- **Description:** 초안 독립 검수. ALLOW/REVIEW/BLOCK만 보고. 문장 미학 교정 아님.
+- **Description:** 초안 독립 검수. ALLOW/REVIEW/BLOCK만 보고. 문장 미학 교정 아님. destination/section structural completeness는 Completeness Validator 소유.
 
 ## Suggested SOUL.md
 

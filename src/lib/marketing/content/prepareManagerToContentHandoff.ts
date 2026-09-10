@@ -1,7 +1,16 @@
 import { buildContentPlanScaffold } from "@/lib/marketing/content/buildContentPlanScaffold";
+import {
+  buildDeliverableRequirements,
+  isCompletenessContractEnabled,
+  isEvidencePackEnabled,
+} from "@/lib/marketing/content/buildDeliverableRequirements";
 import { createContentAssignment } from "@/lib/marketing/content/createContentAssignment";
 import { createSelectedAgenda } from "@/lib/marketing/content/createSelectedAgenda";
 import { mapManagerEvidenceRef } from "@/lib/marketing/content/evidence";
+import {
+  buildEvidencePack,
+  packHasAllowedFactualItems,
+} from "@/lib/marketing/content/evidencePack";
 import {
   getDefaultContentAssignmentStore,
   type ContentAssignmentStore,
@@ -58,6 +67,38 @@ export function enrichSelectedAgendaInputFromResearch(
   };
 }
 
+function attachOrgV2Staff(
+  selectedAgenda: ManagerToContentHandoffResult["selectedAgenda"],
+  contentAssignment: ManagerToContentHandoffResult["contentAssignment"],
+  contentPlanScaffold: ManagerToContentHandoffResult["contentPlanScaffold"],
+  now?: Date,
+): ManagerToContentHandoffResult {
+  const evidencePack = isEvidencePackEnabled()
+    ? buildEvidencePack({ assignment: contentAssignment, selectedAgenda, now })
+    : null;
+
+  const deliverableRequirements = isCompletenessContractEnabled()
+    ? buildDeliverableRequirements({
+        assignment: contentAssignment,
+        selectedAgenda,
+        contentPlanScaffold,
+        requireSourceReferencesWhenFactual: packHasAllowedFactualItems(evidencePack),
+      })
+    : null;
+
+  const assignmentWithReqs = deliverableRequirements
+    ? { ...contentAssignment, deliverableRequirements }
+    : contentAssignment;
+
+  return {
+    selectedAgenda,
+    contentAssignment: assignmentWithReqs,
+    contentPlanScaffold,
+    deliverableRequirements,
+    evidencePack,
+  };
+}
+
 export function prepareManagerToContentHandoff(
   input: PrepareManagerToContentHandoffInput,
   deps: { store?: ContentAssignmentStore; now?: Date } = {},
@@ -69,11 +110,8 @@ export function prepareManagerToContentHandoff(
 
   const existing = store.findByIdempotencyKey(idempotencyKey);
   if (existing) {
-    return {
-      selectedAgenda: existing.selectedAgenda,
-      contentAssignment: existing.assignment,
-      contentPlanScaffold: buildContentPlanScaffold(existing.assignment, existing.selectedAgenda),
-    };
+    const contentPlanScaffold = buildContentPlanScaffold(existing.assignment, existing.selectedAgenda);
+    return attachOrgV2Staff(existing.selectedAgenda, existing.assignment, contentPlanScaffold, deps.now);
   }
 
   const contentAssignment = createContentAssignment({
@@ -84,11 +122,18 @@ export function prepareManagerToContentHandoff(
   });
   const contentPlanScaffold = buildContentPlanScaffold(contentAssignment, selectedAgenda);
 
+  const result = attachOrgV2Staff(
+    selectedAgenda,
+    contentAssignment,
+    contentPlanScaffold,
+    deps.now ?? input.now,
+  );
+
   store.save({
-    assignment: contentAssignment,
+    assignment: result.contentAssignment,
     selectedAgenda,
     idempotencyKey,
   });
 
-  return { selectedAgenda, contentAssignment, contentPlanScaffold };
+  return result;
 }

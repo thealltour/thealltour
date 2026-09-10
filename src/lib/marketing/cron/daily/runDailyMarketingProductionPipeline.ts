@@ -4,6 +4,7 @@ import { jsonContainsForbiddenBotLeak } from "@/lib/marketing/bot/sanitize";
 import { runDepartmentPipeline, type DepartmentPipelineDeps } from "@/lib/marketing/bot/organization/pipeline";
 import type { PerformanceBrief, PerformanceUnavailable } from "@/lib/marketing/bot/organization/handoffs";
 import { prepareManagerToContentHandoff } from "@/lib/marketing/content/prepareManagerToContentHandoff";
+import type { ManagerToContentHandoffResult } from "@/lib/marketing/content/types";
 import { getDefaultGovernanceReviewStore } from "@/lib/marketing/content/governance";
 import type { StructuredGovernanceDecision } from "@/lib/marketing/content/governance/types";
 import type { MarketingResearchContext } from "@/lib/marketing/research/manager/types";
@@ -40,6 +41,19 @@ import {
   type DailyMarketingRun,
   type DailyMarketingRunObservability,
 } from "@/lib/marketing/cron/daily/types";
+import { MARKETING_ATTR, pickMarketingAttributes } from "@/lib/marketing/observability/attributes";
+import { truncateSummary } from "@/lib/marketing/observability/privacy";
+import type { MarketingTraceRecorder } from "@/lib/marketing/observability/recorder";
+import {
+  createNoopMarketingTraceRecorder,
+  safeRecorder,
+} from "@/lib/marketing/observability/recorderImpl";
+import {
+  attributesForEvidencePack,
+  attributesForRequirements,
+} from "@/lib/marketing/observability/stageAttributes";
+import type { MarketingTraceActiveContext } from "@/lib/marketing/observability/withSpan";
+import { withMarketingSpan } from "@/lib/marketing/observability/withSpan";
 
 export type DailyMarketingPipelineDeps = DepartmentPipelineDeps & {
   repo?: DailyMarketingRunRepository;
@@ -51,6 +65,10 @@ export type DailyMarketingPipelineDeps = DepartmentPipelineDeps & {
   requestPerformance?: () => Promise<PerformanceBrief | PerformanceUnavailable>;
   contentAssignmentStore?: import("@/lib/marketing/content/store/contentAssignmentStore").ContentAssignmentStore;
   governanceReviewStore?: import("@/lib/marketing/content/governance/store/governanceReviewStore").GovernanceReviewStore;
+  /** OBS-2 — optional in-memory/noop recorder; default no-op via department pipeline. */
+  traceRecorder?: MarketingTraceRecorder | null;
+  productionRequestId?: string | null;
+  agendaSlateId?: string | null;
 };
 
 function buildObservability(run: Partial<DailyMarketingRun>): DailyMarketingRunObservability {
@@ -311,19 +329,120 @@ export async function runDailyMarketingProductionPipeline(
     return failRun(repo, run, resolution.reason, now);
   }
 
-  let handoff;
+  let handoff: ManagerToContentHandoffResult;
+  let productionTraceContext: MarketingTraceActiveContext | null = null;
+  const recorder = safeRecorder(deps.traceRecorder ?? createNoopMarketingTraceRecorder());
   try {
-    handoff = prepareManagerToContentHandoff(
-      {
-        ...resolution.input,
-        channel: input.channel,
-        researchCandidate: resolution.researchCandidate,
-        researchBrief: resolution.researchBrief,
-        idempotencyKey: logicalRunKey,
+    const started = recorder.startTrace({
+      traceType: "marketing_production",
+      correlation: {
+        productionRequestId: deps.productionRequestId ?? null,
+        logicalRunKey,
+        agendaSlateId: deps.agendaSlateId ?? null,
+        correlationId: run.correlationId,
+        runId: run.runId,
       },
-      { store: deps.contentAssignmentStore, now },
+    });
+    const rootSpanId = recorder.startSpan({
+      traceId: started.traceId,
+      name: "marketing.production",
+      kind: "orchestration",
+      stage: "production_request",
+      actorType: "system",
+      attributes: pickMarketingAttributes({
+        [MARKETING_ATTR.LOGICAL_RUN_KEY]: logicalRunKey,
+        [MARKETING_ATTR.PRODUCTION_REQUEST_ID]: deps.productionRequestId ?? "",
+        [MARKETING_ATTR.CHANNEL]: input.channel,
+      }),
+    }).spanId;
+    productionTraceContext = { recorder, traceId: started.traceId, rootSpanId };
+
+    handoff = await withMarketingSpan(
+      recorder,
+      {
+        traceId: started.traceId,
+        parentSpanId: rootSpanId,
+        name: "marketing.manager",
+        kind: "agent",
+        stage: "marketing_manager",
+        actorType: "hermes_bot",
+        actorId: "marketing-manager",
+      },
+      async () =>
+        prepareManagerToContentHandoff(
+          {
+            ...resolution.input,
+            channel: input.channel,
+            researchCandidate: resolution.researchCandidate,
+            researchBrief: resolution.researchBrief,
+            idempotencyKey: logicalRunKey,
+          },
+          { store: deps.contentAssignmentStore, now },
+        ),
+      (result) => ({
+        status: "ok" as const,
+        attributes: pickMarketingAttributes({
+          [MARKETING_ATTR.ASSIGNMENT_ID]: result.contentAssignment.assignmentId,
+          [MARKETING_ATTR.SELECTED_AGENDA_ID]: result.selectedAgenda.id,
+          [MARKETING_ATTR.ASSIGNMENT_SUMMARY]: truncateSummary(result.selectedAgenda.title),
+          [MARKETING_ATTR.REQ_DESTINATION_REQUIRED]:
+            result.deliverableRequirements?.requiredDestinations ?? [],
+        }),
+      }),
+    );
+
+    await withMarketingSpan(
+      recorder,
+      {
+        traceId: started.traceId,
+        parentSpanId: rootSpanId,
+        name: "marketing.deliverable_requirements",
+        kind: "deterministic",
+        stage: "deliverable_requirements",
+        actorType: "typescript_staff",
+        actorId: "deliverable_requirements",
+      },
+      async () => undefined,
+      () => ({
+        status: handoff.deliverableRequirements ? ("ok" as const) : ("skipped" as const),
+        attributes: attributesForRequirements(handoff.deliverableRequirements),
+      }),
+    );
+
+    await withMarketingSpan(
+      recorder,
+      {
+        traceId: started.traceId,
+        parentSpanId: rootSpanId,
+        name: "marketing.evidence_pack",
+        kind: "deterministic",
+        stage: "evidence_pack",
+        actorType: "typescript_staff",
+        actorId: "evidence_pack",
+      },
+      async () => undefined,
+      () => ({
+        status: handoff.evidencePack ? ("ok" as const) : ("skipped" as const),
+        attributes: attributesForEvidencePack(handoff.evidencePack),
+      }),
     );
   } catch {
+    if (productionTraceContext) {
+      try {
+        productionTraceContext.recorder.endSpan({
+          traceId: productionTraceContext.traceId,
+          spanId: productionTraceContext.rootSpanId,
+          status: "error",
+          otelStatusCode: "ERROR",
+        });
+        productionTraceContext.recorder.endTrace({
+          traceId: productionTraceContext.traceId,
+          status: "failed",
+        });
+      } catch {
+        /* ignore */
+      }
+    }
     return failRun(repo, run, "ASSIGNMENT_FAILED", now);
   }
 
@@ -358,13 +477,55 @@ export async function runDailyMarketingProductionPipeline(
       contentAssignment: handoff.contentAssignment,
       contentAssignmentId: handoff.contentAssignment.assignmentId,
       contentPlanScaffold: handoff.contentPlanScaffold,
+      deliverableRequirements: handoff.deliverableRequirements,
+      evidencePack: handoff.evidencePack,
     },
     {
       ...deps,
       governanceReviewStore: deps.governanceReviewStore ?? getDefaultGovernanceReviewStore(),
       requestPerformance: deps.requestPerformance,
+      trace: productionTraceContext
+        ? {
+            recorder: productionTraceContext.recorder,
+            context: productionTraceContext,
+            correlation: {
+              productionRequestId: deps.productionRequestId ?? null,
+              logicalRunKey,
+              agendaSlateId: deps.agendaSlateId ?? null,
+              assignmentId: handoff.contentAssignment.assignmentId,
+              runId: run.runId,
+              correlationId: run.correlationId,
+            },
+            emitHandoffObservationSpans: false,
+          }
+        : deps.traceRecorder
+          ? { recorder: deps.traceRecorder, emitHandoffObservationSpans: true }
+          : null,
     },
   );
+
+  if (productionTraceContext) {
+    try {
+      const status =
+        pipeline.failure || pipeline.status === "handoff_failed"
+          ? "failed"
+          : pipeline.status === "revision_required"
+            ? "partial"
+            : "completed";
+      productionTraceContext.recorder.endSpan({
+        traceId: productionTraceContext.traceId,
+        spanId: productionTraceContext.rootSpanId,
+        status: status === "failed" ? "error" : "ok",
+        otelStatusCode: status === "failed" ? "ERROR" : "OK",
+      });
+      productionTraceContext.recorder.endTrace({
+        traceId: productionTraceContext.traceId,
+        status,
+      });
+    } catch {
+      /* never fail production on trace close */
+    }
+  }
 
   const governanceEnvelopes = pipeline.envelopes.filter(
     (envelope) => envelope.sourceAgent === "governance-auditor" && envelope.targetAgent === "marketing-manager",

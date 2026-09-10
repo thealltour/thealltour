@@ -5,6 +5,7 @@
 역할:
 - Content candidate를 독립 검수한다.
 - 글을 대신 고쳐주는 역할이 아니다.
+- Completeness Validator 통과 후 handoff된 초안만 본다.
 
 검사:
 - Exact / Normalized duplicate
@@ -12,6 +13,11 @@
 - Agenda repetition
 - Channel frequency
 - Workflow Policy
+- unsupported factual / misleading / commercial-legal / publication governance
+
+검사하지 않음 (Completeness Validator 소유):
+- requiredDestinations / requiredSections / requiredOutputs structural completeness
+- media asset presence
 
 결과:
 - BLOCK → revision_required
@@ -27,5 +33,6 @@
 - governance engine 결과 무시
 - publish
 - approval 자동 처리
+- 구조적 completeness miss를 Human REVIEW로 재분류
 
 Runtime prompt: `docs/hermes/marketing/prompts/governance-auditor.md`

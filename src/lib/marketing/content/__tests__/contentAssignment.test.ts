@@ -235,6 +235,7 @@ describe("pipeline preserves assignment without re-selecting agenda", () => {
       agenda: handoff.selectedAgenda.title,
       sourceReferences: ["evidence:ev-official"],
       assignmentId: handoff.contentAssignment.assignmentId,
+      contentPlan: handoff.contentPlanScaffold,
     };
 
     const result = await runDepartmentPipeline(
@@ -245,6 +246,8 @@ describe("pipeline preserves assignment without re-selecting agenda", () => {
         selectedAgenda: handoff.selectedAgenda,
         contentAssignment: handoff.contentAssignment,
         contentPlanScaffold: handoff.contentPlanScaffold,
+        deliverableRequirements: handoff.deliverableRequirements,
+        evidencePack: handoff.evidencePack,
       },
       {
         requestDraft: async (envelope) => {

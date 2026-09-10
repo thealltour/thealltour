@@ -10,6 +10,8 @@ export type ContentDraftRequest = {
   contentAssignment?: import("@/lib/marketing/content/types").ContentAssignment | null;
   contentPlanScaffold?: import("@/lib/marketing/content/types").ContentPlan | null;
   selectedAgenda?: import("@/lib/marketing/content/types").SelectedAgenda | null;
+  deliverableRequirements?: import("@/lib/marketing/content/types").ContentDeliverableRequirements | null;
+  evidencePack?: import("@/lib/marketing/content/types").EvidencePack | null;
 };
 
 export type GovernanceReviewRequest = {

@@ -398,6 +398,8 @@ export async function orchestrateDepartmentTask(
                 contentAssignment: handoff.contentAssignment,
                 contentAssignmentId: handoff.contentAssignment.assignmentId,
                 contentPlanScaffold: handoff.contentPlanScaffold,
+                deliverableRequirements: handoff.deliverableRequirements,
+                evidencePack: handoff.evidencePack,
                 constraints: [
                   "do not invent product facts",
                   "do not publish",

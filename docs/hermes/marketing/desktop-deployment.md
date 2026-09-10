@@ -53,6 +53,27 @@ v0.20.4에는 profile A가 profile B를 직접 부르는 native RPC가 없다.
 STEP 2-4.8B에서 task-only Cron이 활성화됐다. 상세·수동 실행·pause/resume: [cron-plan.md](./cron-plan.md).
 성과 수집 범위( SNS 직접 수집 없음 ): [performance-collection.md](./performance-collection.md).
 
+## Hermes Desktop group topology (ops)
+
+Ops-only. `runDepartmentPipeline` / Agenda queue와 **커플링하지 않는다**. Collaborative UX만.
+
+| Room | Members | Purpose |
+|---|---|---|
+| `theallcloud marketing leadership` | MM, CS, GA, PA | Org-wide collaboration |
+| `content review` | CS, GA | Revision / expression / evidence conflicts |
+| `performance strategy` | MM, CS, PA | Feed performance into next strategy |
+
+절차:
+
+1. Desktop에서 위 3개 group room을 만든다.
+2. 멤버십이 표와 일치하는지 확인한다.
+3. 기존 `thealltour marketing` room은 검증 전까지 유지한다. 이후 membership을 의도적으로 migrate한다.
+4. `message_agent`로 production spine을 재작성하지 않는다.
+
+Rollback: 새 room만 disband. pipeline 코드 변경 없음.
+
+조직 개요: [organization.md](./organization.md).
+
 ## test1
 
 참고용 profile. 자동 삭제하지 않는다. 필요하면 Desktop에서 수동 삭제.

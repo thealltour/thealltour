@@ -606,6 +606,8 @@ describe("pipeline governance integration", () => {
         selectedAgenda: mm.selectedAgenda,
         contentAssignment: mm.contentAssignment,
         contentPlanScaffold: mm.contentPlanScaffold,
+        deliverableRequirements: mm.deliverableRequirements,
+        evidencePack: mm.evidencePack,
       },
       {
         requestDraft: async () => {
@@ -615,6 +617,7 @@ describe("pipeline governance integration", () => {
             channel: "threads",
             agenda: null,
             sourceReferences: [],
+            contentPlan: mm.contentPlanScaffold,
           };
         },
         requestGovernance: async () =>

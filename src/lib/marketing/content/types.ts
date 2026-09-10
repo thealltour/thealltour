@@ -1,6 +1,8 @@
 export const SELECTED_AGENDA_CONTRACT = "selected-agenda-v1" as const;
 export const CONTENT_ASSIGNMENT_CONTRACT = "content-assignment-v1" as const;
 export const CONTENT_PLAN_CONTRACT = "content-plan-v1" as const;
+export const CONTENT_DELIVERABLE_REQUIREMENTS_CONTRACT = "content-deliverable-requirements-v1" as const;
+export const EVIDENCE_PACK_CONTRACT = "evidence-pack-v1" as const;
 
 export type CommercialIntent = "informational" | "commercial" | "mixed";
 
@@ -73,6 +75,20 @@ export type ContentAssignmentProvenance = {
   idempotencyKey: string;
 };
 
+export type ContentDeliverableOutputKind = "content_plan" | "text_draft";
+
+/** Structural CS delivery contract — fail = revise, not Human REVIEW. */
+export type ContentDeliverableRequirements = {
+  contract: typeof CONTENT_DELIVERABLE_REQUIREMENTS_CONTRACT;
+  assignmentId: string;
+  requiredDestinations: string[];
+  requiredDestinationCount: number;
+  requiredSections: string[];
+  requiredOutputKinds: ContentDeliverableOutputKind[];
+  primaryFormatHint: ContentFormatKind | null;
+  requireSourceReferencesWhenFactual: boolean;
+};
+
 export type ContentAssignment = {
   contract: typeof CONTENT_ASSIGNMENT_CONTRACT;
   assignmentId: string;
@@ -93,6 +109,8 @@ export type ContentAssignment = {
   evidenceRefs: AssignmentEvidenceRef[];
   riskNotes: string[];
   provenance: ContentAssignmentProvenance;
+  /** Populated by Org v2 handoff when completeness contract enabled. */
+  deliverableRequirements?: ContentDeliverableRequirements | null;
 };
 
 export type ContentPlan = {
@@ -112,6 +130,28 @@ export type ContentPlan = {
   requiredAssets: string[];
   riskNotes: string[];
   draftInstructions: string[];
+};
+
+export type EvidenceFreshnessHint = "fresh" | "aging" | "stale" | "unknown";
+
+export type EvidencePackItem = {
+  factId: string;
+  statement: string;
+  evidenceRefIds: string[];
+  sourceSummary: string | null;
+  freshnessHint: EvidenceFreshnessHint;
+  supportedDestinations: string[];
+  supportedTopics: string[];
+  allowedForDraft: boolean;
+  locked: true;
+};
+
+export type EvidencePack = {
+  contract: typeof EVIDENCE_PACK_CONTRACT;
+  assignmentId: string;
+  items: EvidencePackItem[];
+  availableEvidenceRefs: AssignmentEvidenceRef[];
+  builtAt: string;
 };
 
 export type CreateSelectedAgendaInput = {
@@ -148,6 +188,8 @@ export type ManagerToContentHandoffResult = {
   selectedAgenda: SelectedAgenda;
   contentAssignment: ContentAssignment;
   contentPlanScaffold: ContentPlan;
+  deliverableRequirements: ContentDeliverableRequirements | null;
+  evidencePack: EvidencePack | null;
 };
 
 export type GetContentAssignmentResult =

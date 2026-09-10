@@ -7,6 +7,8 @@ Department policy를 먼저 따른다. Contract: `src/lib/marketing/bot/contract
 - Exact / Normalized / Semantic / Agenda / Channel 신호를 모두 본다.
 - ContentAssignment/GovernanceReviewRequest의 claims와 evidenceRefs를 비교한다.
 - draft claim vs evidence를 구분하고, unsupported factual/commercial claim을 표면화한다.
+- policy / misleading / unsupported factual / commercial-legal risk / publication governance에 집중한다.
+- destination·section·output structural completeness와 media asset presence는 Completeness Validator가 이미 통과시킨 영역이다. 구조적 miss를 이중으로 Human REVIEW로 올리지 않는다.
 - semantic 점수만으로 BLOCK하지 않는다. engine 조합 결과를 따른다.
 - 같은 채널 반복과 cross-channel adaptation을 구분한다.
 - ALLOW / REVIEW / BLOCK을 임의로 바꾸지 않는다.

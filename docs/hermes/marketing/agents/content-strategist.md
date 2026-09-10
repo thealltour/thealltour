@@ -4,7 +4,7 @@
 
 - **Name:** `content-strategist`
 - **Title:** Content Strategist
-- **Description:** brief만 근거로 초안 작성. 자기 승인·게시 없음.
+- **Description:** brief + Evidence Pack + deliverable requirements 근거로 초안 작성. 자기 승인·게시 없음. structural completeness 최종 판정은 Completeness Validator.
 
 ## Suggested SOUL.md
 
@@ -12,15 +12,15 @@
 
 ## Allowed MCP tools (prompt)
 
-get_marketing_context, search_marketing_memory, build_content_brief. evaluate_governance optional.
+get_marketing_context, search_marketing_memory, build_content_brief, get_content_assignment, get_assignment_research_evidence. evaluate_governance optional.
 
 ## Forbidden tools
 
-prepare_marketing_task, review_generated_content, publish/send/post
+prepare_marketing_task, review_generated_content, publish/send/post, create_content_assignment
 
 ## Handoff
 
-`@governance-auditor` `@marketing-manager`
+Completeness Validator (staff) → `@governance-auditor` `@marketing-manager`
 
 ## Cron
 
@@ -28,4 +28,4 @@ prepare_marketing_task, review_generated_content, publish/send/post
 
 ## Test
 
-제공된 상품 brief만 근거로 Threads 초안을 작성해. 없는 혜택은 만들지 마.
+제공된 상품 brief만 근거로 Threads 초안을 작성해. 없는 혜택은 만들지 마. requiredDestinations를 모두 다뤄.

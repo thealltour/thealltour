@@ -167,6 +167,45 @@ describe("SV-2 global source catalog", () => {
     expect(usages).toHaveLength(1);
   });
 
+  it("setScenePick replaces another source for the same scene", async () => {
+    const repo = createInMemoryMarketingMediaSourceCatalogRepository();
+    const a = await repo.registerExternalSource({
+      sourceKind: "pexels",
+      provider: "pexels",
+      providerAssetId: "111",
+      sourcePageUrl: "https://www.pexels.com/video/111/",
+      rightsKind: "provider_license",
+    });
+    const b = await repo.registerExternalSource({
+      sourceKind: "pexels",
+      provider: "pexels",
+      providerAssetId: "222",
+      sourcePageUrl: "https://www.pexels.com/video/222/",
+      rightsKind: "provider_license",
+    });
+    await repo.setScenePick({
+      sourceId: a.id,
+      candidateId: "cmc_replace",
+      sceneKey: "scene-001",
+    });
+    const replaced = await repo.setScenePick({
+      sourceId: b.id,
+      candidateId: "cmc_replace",
+      sceneKey: "scene-001",
+    });
+    expect(replaced.sourceId).toBe(b.id);
+    const usages = await repo.listUsagesForCandidate("cmc_replace");
+    expect(usages).toHaveLength(1);
+    expect(usages[0]!.sourceId).toBe(b.id);
+
+    const again = await repo.setScenePick({
+      sourceId: b.id,
+      candidateId: "cmc_replace",
+      sceneKey: "scene-001",
+    });
+    expect(again.id).toBe(replaced.id);
+  });
+
   it("keeps own/partner compatible with SV-1 local_master never-delete", async () => {
     const repo = createInMemoryMarketingMediaSourceCatalogRepository();
     const partner = await repo.registerSource({

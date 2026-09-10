@@ -300,3 +300,11 @@ export {
   createFileSourceSearchCache,
 } from "@/lib/marketing/assets/shortform/resolver/searchCache";
 export type { ShortformSourceProvider } from "@/lib/marketing/assets/shortform/resolver/provider";
+
+// SV-5 — Human Source Review / Explicit Pick (no binary ingest)
+export {
+  resolveShortformSourcesForReview,
+  pickShortformSourceForReview,
+  ShortformSourceReviewError,
+} from "@/lib/marketing/assets/shortform/review/service";
+export type { ShortformSourcesResolveDto } from "@/lib/marketing/assets/shortform/review/dto";

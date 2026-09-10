@@ -1,0 +1,360 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import AdminCard from "@/components/admin/ui/AdminCard";
+
+type CandidateDto = {
+  candidateKey: string;
+  selectionToken: string;
+  origin: string;
+  provider: string | null;
+  providerAssetId: string | null;
+  mediaType: string;
+  sourcePageUrl: string | null;
+  previewUrl: string | null;
+  creatorName: string | null;
+  rightsKind: string;
+  licenseName: string | null;
+  score: number;
+  factualMatch: string;
+  factualMatchLabel: string;
+  autoPickEligible: boolean;
+  reviewRequired: boolean;
+  photoMotion: boolean;
+  generatedPlan: boolean;
+  pickBlockedReason: string | null;
+};
+
+type SceneDto = {
+  sceneId: string;
+  order: number;
+  purpose: string;
+  narrationPreview: string | null;
+  visualSubject: string;
+  factualVisualRequired: boolean;
+  mediaPreference: string;
+  status: string;
+  reason: string;
+  recommended: CandidateDto | null;
+  candidates: CandidateDto[];
+  providerAttempts: Array<{ providerId: string; status: string; candidateCount: number; label: string }>;
+  existingPick: {
+    sourceId: string;
+    provider: string | null;
+    providerAssetId: string | null;
+    originLabel: string;
+  } | null;
+};
+
+type ResolveDto = {
+  candidateId: string;
+  businessDateKst: string;
+  scenes: SceneDto[];
+  catalogAvailable: boolean;
+  message?: string;
+  code?: string;
+};
+
+function originLabel(origin: string): string {
+  switch (origin) {
+    case "internal_catalog":
+      return "내부 카탈로그";
+    case "pexels":
+      return "Pexels";
+    case "pixabay":
+      return "Pixabay";
+    case "photo_motion":
+      return "사진 모션";
+    case "generated_video_plan":
+      return "AI B-roll 계획";
+    default:
+      return origin;
+  }
+}
+
+function CandidatePreview({ candidate }: { candidate: CandidateDto }) {
+  if (candidate.generatedPlan) {
+    return (
+      <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+        실사/스톡 후보를 찾지 못했습니다. AI B-roll 생성 가능 (실행은 아직 불가)
+      </div>
+    );
+  }
+  if (candidate.previewUrl && candidate.mediaType === "video") {
+    return (
+      <video
+        className="max-h-40 w-full rounded-md bg-black object-contain"
+        src={candidate.previewUrl}
+        poster={candidate.previewUrl}
+        controls
+        preload="metadata"
+      />
+    );
+  }
+  if (candidate.previewUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={candidate.previewUrl}
+        alt=""
+        className="max-h-40 w-full rounded-md object-cover"
+      />
+    );
+  }
+  return (
+    <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+      미리보기 없음 — 소스 페이지를 확인하세요.
+    </div>
+  );
+}
+
+function CandidateCard(props: {
+  candidate: CandidateDto;
+  busy: boolean;
+  onPick: (candidate: CandidateDto) => void;
+  isRecommended?: boolean;
+}) {
+  const { candidate, busy, onPick, isRecommended } = props;
+  const blocked = Boolean(candidate.pickBlockedReason);
+  return (
+    <div className="space-y-2 rounded-lg border border-[var(--border)] p-3">
+      {isRecommended ? (
+        <div className="text-xs font-medium text-[var(--text-secondary)]">추천 소스</div>
+      ) : null}
+      <CandidatePreview candidate={candidate} />
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">{originLabel(candidate.origin)}</span>
+        {candidate.photoMotion ? (
+          <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-xs">사진 모션 사용 가능</span>
+        ) : null}
+        {candidate.reviewRequired ? (
+          <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-xs">확인 필요</span>
+        ) : null}
+      </div>
+      <div className="text-xs text-[var(--text-secondary)]">
+        {candidate.creatorName ?? "작성자 미상"}
+        {candidate.providerAssetId ? ` · ${candidate.providerAssetId}` : ""}
+      </div>
+      <div className="text-xs text-[var(--text-secondary)]">
+        Score {candidate.score.toFixed(2)} · {candidate.factualMatchLabel}
+        {candidate.licenseName ? ` · ${candidate.licenseName}` : ""}
+        {candidate.rightsKind === "unknown" ? " · 사용권 확인 필요" : ""}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {!candidate.generatedPlan ? (
+          <button
+            type="button"
+            disabled={busy || blocked}
+            onClick={() => onPick(candidate)}
+            className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            이 장면에 사용
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="rounded-lg bg-[var(--surface-muted)] px-3 py-1.5 text-sm text-[var(--text-secondary)]"
+          >
+            생성 (준비 중)
+          </button>
+        )}
+        {candidate.sourcePageUrl ? (
+          <a
+            href={candidate.sourcePageUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
+          >
+            소스 페이지 열기
+          </a>
+        ) : null}
+      </div>
+      {candidate.pickBlockedReason ? (
+        <p className="text-xs text-[var(--danger, #b91c1c)]">{candidate.pickBlockedReason}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function MarketingReviewShortformSourcesPanel(props: { candidateId: string }) {
+  const { candidateId } = props;
+  const [data, setData] = useState<ResolveDto | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
+
+  const resolve = useCallback(async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/shortform/sources/resolve`,
+        { method: "POST", cache: "no-store" },
+      );
+      const json = (await res.json()) as ResolveDto;
+      if (!res.ok) {
+        setData(null);
+        setMessage(json.message ?? "소스 검색에 실패했습니다.");
+        return;
+      }
+      setData(json);
+      if (!json.catalogAvailable) {
+        setMessage("카탈로그 DB가 아직 준비되지 않았습니다. 검색은 가능하지만 선택 저장은 불가할 수 있습니다.");
+      }
+    } catch {
+      setData(null);
+      setMessage("소스 검색에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }, [candidateId]);
+
+  async function pick(sceneId: string, candidate: CandidateDto) {
+    setBusyKey(`${sceneId}:${candidate.candidateKey}`);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/shortform/sources/pick`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sceneId,
+            selectionToken: candidate.selectionToken,
+          }),
+        },
+      );
+      const json = (await res.json()) as { message?: string; ok?: boolean };
+      if (!res.ok) {
+        setMessage(json.message ?? "선택에 실패했습니다.");
+        return;
+      }
+      setMessage(json.message ?? "선택했습니다.");
+      await resolve();
+    } catch {
+      setMessage("선택에 실패했습니다.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  return (
+    <AdminCard className="space-y-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-base font-semibold">Shortform Sources</h2>
+          <p className="text-xs text-[var(--text-secondary)]">
+            검색 → 미리보기 → 명시적 선택만 지원합니다. 자동 선택·다운로드·AI 생성은 하지 않습니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void resolve()}
+          className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {loading ? "검색 중…" : data ? "다시 검색" : "소스 검색"}
+        </button>
+      </div>
+
+      {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
+
+      {!data && !loading ? (
+        <p className="text-sm text-[var(--text-secondary)]">
+          ShortVideoBrief가 있는 후보에서 장면별 소스를 검색·선택할 수 있습니다.
+        </p>
+      ) : null}
+
+      {data?.scenes.map((scene) => {
+        const showAlts = expandedScenes[scene.sceneId] ?? false;
+        const alternatives = scene.candidates.filter(
+          (c) => c.candidateKey !== scene.recommended?.candidateKey,
+        );
+        return (
+          <div key={scene.sceneId} className="space-y-3 border-t border-[var(--border)] pt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-semibold">
+                Scene {scene.order} / {data.scenes.length}
+              </h3>
+              {scene.factualVisualRequired ? (
+                <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-xs font-medium">
+                  실제 장소 확인 필요
+                </span>
+              ) : null}
+              {scene.existingPick ? (
+                <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-xs">
+                  ✓ 선택됨 · {scene.existingPick.originLabel}
+                </span>
+              ) : null}
+            </div>
+            <div className="space-y-1 text-sm">
+              <div>목적: {scene.purpose || "—"}</div>
+              {scene.narrationPreview ? <div>Narration refs: {scene.narrationPreview}</div> : null}
+              <div>Visual: {scene.visualSubject}</div>
+              <div className="text-xs text-[var(--text-secondary)]">
+                {scene.mediaPreference.toUpperCase()} preferred
+                {scene.factualVisualRequired ? " · AI Generated 불가" : ""}
+              </div>
+            </div>
+
+            {scene.providerAttempts.length > 0 ? (
+              <div className="flex flex-wrap gap-2 text-xs text-[var(--text-secondary)]">
+                {scene.providerAttempts.map((attempt) => (
+                  <span key={attempt.providerId} className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5">
+                    {attempt.providerId} · {attempt.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            {scene.status === "generation_fallback_available" && !scene.factualVisualRequired ? (
+              <p className="text-xs text-[var(--text-secondary)]">
+                실사/스톡 후보를 찾지 못했습니다. AI B-roll 생성 가능 (실행은 아직 불가)
+              </p>
+            ) : null}
+
+            {scene.recommended ? (
+              <CandidateCard
+                candidate={scene.recommended}
+                isRecommended
+                busy={busyKey === `${scene.sceneId}:${scene.recommended.candidateKey}`}
+                onPick={(c) => void pick(scene.sceneId, c)}
+              />
+            ) : (
+              <p className="text-sm text-[var(--text-secondary)]">추천 후보 없음 ({scene.reason})</p>
+            )}
+
+            {alternatives.length > 0 ? (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  className="text-sm underline"
+                  onClick={() =>
+                    setExpandedScenes((prev) => ({
+                      ...prev,
+                      [scene.sceneId]: !showAlts,
+                    }))
+                  }
+                >
+                  {showAlts ? "다른 후보 접기" : `다른 후보 ${alternatives.length}개 보기`}
+                </button>
+                {showAlts
+                  ? alternatives.map((candidate) => (
+                      <CandidateCard
+                        key={candidate.candidateKey}
+                        candidate={candidate}
+                        busy={busyKey === `${scene.sceneId}:${candidate.candidateKey}`}
+                        onPick={(c) => void pick(scene.sceneId, c)}
+                      />
+                    ))
+                  : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </AdminCard>
+  );
+}

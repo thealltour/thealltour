@@ -200,6 +200,31 @@ export class InMemoryMarketingMediaSourceCatalogRepository
     return cloneUsage(usage);
   }
 
+  async setScenePick(
+    input: RecordMarketingMediaSourcePickInput,
+  ): Promise<MarketingMediaSourceUsageRecord> {
+    const sourceId = assertBusinessId(input.sourceId, "sourceId");
+    const candidateId = assertBusinessId(input.candidateId, "candidateId");
+    const sceneKey = assertOptionalBusinessId(input.sceneKey ?? null, "sceneKey");
+
+    const existingForScene = [...this.#usages.values()].filter(
+      (u) => u.candidateId === candidateId && (u.sceneKey ?? null) === sceneKey,
+    );
+    if (
+      existingForScene.length === 1 &&
+      existingForScene[0]!.sourceId === sourceId
+    ) {
+      return cloneUsage(existingForScene[0]!);
+    }
+
+    for (const usage of existingForScene) {
+      this.#usages.delete(usage.id);
+      this.#pickKeys.delete(pickKey(usage.sourceId, usage.candidateId, usage.sceneKey));
+    }
+
+    return this.recordPick(input);
+  }
+
   async listUsagesForCandidate(candidateId: string): Promise<MarketingMediaSourceUsageRecord[]> {
     const id = assertBusinessId(candidateId, "candidateId");
     return [...this.#usages.values()]

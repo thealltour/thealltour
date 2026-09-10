@@ -6,6 +6,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/MarketingReviewAssetsPanel";
+import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketing-review/MarketingReviewShortformSourcesPanel";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/dto";
 
@@ -295,6 +296,8 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         </AdminCard>
 
         <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />
+
+        <MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} />
 
         <AdminCard className="space-y-3 p-4">
           <h2 className="text-base font-semibold">3. 왜 오늘 이 콘텐츠인가</h2>

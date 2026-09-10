@@ -67,6 +67,12 @@ type DbClient = {
         };
       };
     };
+    delete: () => {
+      eq: (column: string, value: unknown) => {
+        eq: (column: string, value: unknown) => ThenableQuery<unknown>;
+        is: (column: string, value: null) => ThenableQuery<unknown>;
+      };
+    };
     select: (columns?: string) => FilterBuilder;
   };
 };
@@ -401,6 +407,35 @@ export class SupabaseMarketingMediaSourceCatalogRepository
       throw new MarketingSourceCatalogError(`recordPick failed: ${error.message}`);
     }
     return mapUsageRow(data);
+  }
+
+  async setScenePick(
+    input: RecordMarketingMediaSourcePickInput,
+  ): Promise<MarketingMediaSourceUsageRecord> {
+    const sourceId = assertBusinessId(input.sourceId, "sourceId");
+    const candidateId = assertBusinessId(input.candidateId, "candidateId");
+    const sceneKey = assertOptionalBusinessId(input.sceneKey ?? null, "sceneKey");
+
+    const existing = (await this.listUsagesForCandidate(candidateId)).filter(
+      (u) => (u.sceneKey ?? null) === sceneKey,
+    );
+    if (existing.length === 1 && existing[0]!.sourceId === sourceId) {
+      return existing[0]!;
+    }
+
+    let deleteQuery = this.client.from(MARKETING_MEDIA_SOURCE_USAGES_TABLE).delete().eq(
+      "candidate_id",
+      candidateId,
+    );
+    const { error: deleteError } =
+      sceneKey == null
+        ? await deleteQuery.is("scene_key", null)
+        : await deleteQuery.eq("scene_key", sceneKey);
+    if (deleteError) {
+      throw new MarketingSourceCatalogError(`setScenePick clear failed: ${deleteError.message}`);
+    }
+
+    return this.recordPick(input);
   }
 
   async listUsagesForCandidate(candidateId: string): Promise<MarketingMediaSourceUsageRecord[]> {

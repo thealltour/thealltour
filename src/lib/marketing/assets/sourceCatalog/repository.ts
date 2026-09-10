@@ -40,6 +40,13 @@ export interface MarketingMediaSourceCatalogRepository {
   /** Records a PICK. Does not change storageClass / disposition / ingest state. */
   recordPick(input: RecordMarketingMediaSourcePickInput): Promise<MarketingMediaSourceUsageRecord>;
 
+  /**
+   * Replace PICK for a scene: clear existing usages for (candidateId, sceneKey), then recordPick.
+   * Same source+scene is idempotent (returns existing without delete churn when already sole pick).
+   * No migration required — uses DELETE + INSERT under existing unique index.
+   */
+  setScenePick(input: RecordMarketingMediaSourcePickInput): Promise<MarketingMediaSourceUsageRecord>;
+
   listUsagesForCandidate(candidateId: string): Promise<MarketingMediaSourceUsageRecord[]>;
 
   listUsagesForSource(sourceId: string): Promise<MarketingMediaSourceUsageRecord[]>;

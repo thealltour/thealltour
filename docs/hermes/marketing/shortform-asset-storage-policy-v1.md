@@ -22,9 +22,11 @@ Production artifacts stay under the **candidate HDD package**:
 
 SV-1 does **not** replace this with a Global Asset Library.
 
-## 2. Global Source Catalog is deferred to SV-2
+## 2. Global Source Catalog (SV-2)
 
-External stock catalog rows (Pexels/Pixabay/…), remote-ref persistence, and picker APIs are **out of scope** for SV-1.
+Identity / provenance / PICK catalog is documented in
+[shortform-source-catalog-v1.md](./shortform-source-catalog-v1.md).
+SV-1 does **not** implement the catalog; Candidate Package remains production SoT.
 
 ## 3. PICK ≠ INGEST
 

@@ -56,6 +56,7 @@ Agent별 권한은 현재 **prompt-level**이다. MCP 서버가 Agent identity�
 | Social accounts & credentials (STEP 3-3) | [social-account-credentials.md](./social-account-credentials.md) |
 | Zero-cost media timeline / SRT / shots / intake / preview (A-6–A-10) | [zero-cost-media-timeline.md](./zero-cost-media-timeline.md) |
 | Shortform storage / retention / pressure policy (SV-1) | [shortform-asset-storage-policy-v1.md](./shortform-asset-storage-policy-v1.md) |
+| Shortform Global Source Catalog (SV-2) | [shortform-source-catalog-v1.md](./shortform-source-catalog-v1.md) |
 | Desktop New Agent | [agents/](./agents/) |
 | Machine contract | `src/lib/marketing/bot/contracts/` |
 | TS config | `src/lib/marketing/bot/organization/` |

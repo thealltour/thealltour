@@ -205,3 +205,36 @@ export {
   type AutoDeleteEligibility,
 } from "@/lib/marketing/assets/shortform/storagePolicy";
 export { readFilesystemCapacity } from "@/lib/marketing/assets/shortform/capacity";
+
+// SV-2 — Global Source Catalog (identity/provenance/PICK; not a binary archive)
+export {
+  MARKETING_MEDIA_SOURCE_CATALOG_CONTRACT,
+  MARKETING_MEDIA_SOURCE_STATUSES,
+  MARKETING_MEDIA_RIGHTS_KINDS,
+  MARKETING_MEDIA_TYPES,
+  MARKETING_MEDIA_ORIENTATIONS,
+  type MarketingMediaSourceStatus,
+  type MarketingMediaRightsKind,
+  type MarketingMediaType,
+  type MarketingMediaOrientation,
+  type MarketingMediaSourceRecord,
+  type MarketingMediaSourceUsageRecord,
+  type RegisterMarketingMediaSourceInput,
+  type RegisterExternalMarketingMediaSourceInput,
+  type UpdateMarketingMediaSourceInput,
+  type RecordMarketingMediaSourcePickInput,
+  type ListMarketingMediaSourcesFilter,
+} from "@/lib/marketing/assets/sourceCatalog/types";
+export { MarketingSourceCatalogError } from "@/lib/marketing/assets/sourceCatalog/errors";
+export type { MarketingMediaSourceCatalogRepository } from "@/lib/marketing/assets/sourceCatalog/repository";
+export {
+  createMarketingMediaSourceCatalogRepository,
+  createInMemoryMarketingMediaSourceCatalogRepository,
+  isMarketingMediaSourceCatalogRepositoryConfigured,
+} from "@/lib/marketing/assets/sourceCatalog/createSourceCatalogRepository";
+export { marketingMediaSourceToAutoDeleteInput } from "@/lib/marketing/assets/sourceCatalog/policyBridge";
+export {
+  validateRegisterMarketingMediaSourceInput,
+  validateRegisterExternalMarketingMediaSourceInput,
+  rightsKindImpliesCommercialClearance,
+} from "@/lib/marketing/assets/sourceCatalog/validation";

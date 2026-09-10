@@ -87,9 +87,9 @@ Missing Supabase URL/service-role key also falls back to Noop.
 - Writes are fire-and-forget + serialized; failures → sanitized `console.warn` only (no recursive obs spans)
 - Parent span self-FK omitted so start/end ordering cannot break inserts
 
-### Realtime compatibility (future OBS-4+)
+### Realtime compatibility (OBS-5)
 
-Row `INSERT` (span start) and `UPDATE` (span end) are standard PostgREST/Realtime-compatible shapes. This step does **not** enable Realtime publication or UI subscription. Prefer Supabase Realtime later — do not add a custom WebSocket server.
+Row `INSERT`/`UPDATE` shapes remain Realtime-compatible, but tables stay **service_role only** (no browser Realtime with elevated keys). OBS-5 uses an authenticated **admin REST incremental poll** behind `MarketingTraceLiveTransport` (swap-ready for Realtime/SSE later). Do not add a custom WebSocket server.
 
 ### Retention (OBS-6+)
 
@@ -110,4 +110,15 @@ Service-role only RLS. No anon/authenticated policies. Never expose the service-
 | Vendored UI | `src/components/vendor/agent-prism/` @ commit `53a9078b533b` |
 | npm pin | `@evilmartians/agent-prism-data@0.0.9`, `…-types@0.0.9` |
 
-Read-only historical viewer. No Realtime. Details panel is TheAllTour-owned (no AgentPrism In/Out/Raw tabs).
+Read-only historical viewer + OBS-5 live layer. Details panel is TheAllTour-owned (no AgentPrism In/Out/Raw tabs).
+
+## OBS-5 Live Observability
+
+| Piece | Location |
+|-------|----------|
+| Transport abstraction | `viewer/live/` (`MarketingTraceLiveTransport`) |
+| Default transport | Incremental polling via existing admin REST (path C) |
+| UI hook | `src/hooks/useMarketingTraceLive.ts` |
+| Admin UI | same `/theall_manager_only/marketing-observability` |
+
+Security: reuse `requireAdminPermission("settings.manage")`. Never expose service-role to the browser. Never open anon/authenticated SELECT on observability tables for convenience. DB remains source of truth; reconnect resyncs via REST.

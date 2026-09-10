@@ -17,3 +17,20 @@ export {
   type MarketingSpanKindDisplay,
   type MarketingKindVisualBucket,
 } from "@/lib/marketing/observability/viewer/spanKindDisplay";
+export {
+  applyLiveDelta,
+  assessStaleRunning,
+  computeLiveDurationMs,
+  createPollingMarketingTraceLiveTransport,
+  formatLiveDurationMs,
+  marketingTraceStatusDisplayLabel,
+  mergeTraceDetail,
+  mergeTraceList,
+  upsertSpanDto,
+  upsertTraceListItem,
+  DEFAULT_STALE_RUNNING_MS,
+  type MarketingTraceLiveConnectionState,
+  type MarketingTraceLiveDelta,
+  type MarketingTraceLiveTransport,
+  type StaleRunningAssessment,
+} from "@/lib/marketing/observability/viewer/live";

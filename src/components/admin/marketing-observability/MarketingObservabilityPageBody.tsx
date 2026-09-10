@@ -9,17 +9,23 @@ import { TreeView } from "@/components/vendor/agent-prism/TreeView";
 import "@/components/vendor/agent-prism/theme/theme.css";
 
 import { MarketingSpanDetailsPanel } from "@/components/admin/marketing-observability/MarketingSpanDetailsPanel";
+import { useMarketingTraceLive } from "@/hooks/useMarketingTraceLive";
 import type {
   MarketingTraceDetailDto,
   MarketingTraceListItemDto,
 } from "@/lib/marketing/observability/viewer/dto";
 import { dtoToMarketingTrace } from "@/lib/marketing/observability/viewer/dto";
 import {
-  formatDurationMs,
   marketingTraceToAgentPrismSpans,
   shortId,
 } from "@/lib/marketing/observability/viewer/agentPrismBridge";
-import { marketingTraceStatusLabel } from "@/lib/marketing/observability/viewer/displayLabels";
+import {
+  assessStaleRunning,
+  computeLiveDurationMs,
+  formatLiveDurationMs,
+  marketingTraceStatusDisplayLabel,
+  type MarketingTraceLiveConnectionState,
+} from "@/lib/marketing/observability/viewer/live";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -27,15 +33,33 @@ type Props = {
 };
 
 export function MarketingObservabilityPageBody({ initialTraces }: Props) {
-  const [traces, setTraces] = useState(initialTraces);
   const [selectedId, setSelectedId] = useState<string | null>(initialTraces[0]?.traceId ?? null);
-  const [detail, setDetail] = useState<MarketingTraceDetailDto | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedSpan, setSelectedSpan] = useState<TraceSpan | undefined>();
   const [expandedSpansIds, setExpandedSpansIds] = useState<string[]>([]);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const loadDetail = useCallback(async (traceId: string) => {
+  const { traces, detail, setDetail, connectionState, resync } = useMarketingTraceLive({
+    initialTraces,
+    selectedTraceId: selectedId,
+  });
+
+  const hasRunning = useMemo(
+    () =>
+      traces.some((t) => t.status === "running") ||
+      detail?.trace.status === "running" ||
+      (detail?.spans.some((s) => s.status === "running") ?? false),
+    [traces, detail],
+  );
+
+  useEffect(() => {
+    if (!hasRunning) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 200);
+    return () => window.clearInterval(id);
+  }, [hasRunning]);
+
+  const loadDetailInitial = useCallback(async (traceId: string) => {
     setLoadingDetail(true);
     setError(null);
     setSelectedSpan(undefined);
@@ -55,25 +79,13 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
     } finally {
       setLoadingDetail(false);
     }
-  }, []);
+  }, [setDetail]);
 
+  // First paint / selection change: REST load once; live transport continues silent merges.
   useEffect(() => {
     if (!selectedId) return;
-    void loadDetail(selectedId);
-  }, [selectedId, loadDetail]);
-
-  const refreshList = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/marketing-observability/traces?limit=30", {
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-      const body = (await res.json()) as { traces: MarketingTraceListItemDto[] };
-      setTraces(body.traces ?? []);
-    } catch {
-      /* keep existing list */
-    }
-  }, []);
+    void loadDetailInitial(selectedId);
+  }, [selectedId, loadDetailInitial]);
 
   const { trace, spans, tree } = useMemo(() => {
     if (!detail) return { trace: null, spans: [], tree: [] as TraceSpan[] };
@@ -90,13 +102,26 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
     return spans.find((s) => s.spanId === selectedSpan.id) ?? null;
   }, [selectedSpan, spans]);
 
+  // Preserve selection + expand new spans without full tree flicker reset.
   useEffect(() => {
     if (!tree.length) {
       setExpandedSpansIds([]);
+      setSelectedSpan(undefined);
       return;
     }
-    setExpandedSpansIds(flattenSpans(tree).map((s) => s.id));
-    setSelectedSpan(tree[0]);
+    const flat = flattenSpans(tree);
+    const allIds = flat.map((s) => s.id);
+    setExpandedSpansIds((prev) => {
+      if (prev.length === 0) return allIds;
+      const known = new Set(prev);
+      const keep = prev.filter((id) => allIds.includes(id));
+      const added = allIds.filter((id) => !known.has(id));
+      return [...keep, ...added];
+    });
+    setSelectedSpan((prev) => {
+      if (!prev) return tree[0];
+      return flat.find((s) => s.id === prev.id) ?? tree[0];
+    });
   }, [tree]);
 
   return (
@@ -108,16 +133,19 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
           </p>
           <h1 className="text-xl font-semibold text-[var(--text)]">AI 조직 관제</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            저장된 Marketing workflow trace (read-only · AgentPrism Tree)
+            Marketing workflow trace (read-only · AgentPrism · live)
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void refreshList()}
-          className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:bg-[var(--surface-muted)]"
-        >
-          목록 새로고침
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ConnectionBadge state={connectionState} />
+          <button
+            type="button"
+            onClick={() => void resync().catch(() => undefined)}
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:bg-[var(--surface-muted)]"
+          >
+            목록 새로고침
+          </button>
+        </div>
       </header>
 
       <div className="min-h-[36rem] flex-1 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface)]">
@@ -128,12 +156,13 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
                 traces={traces}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
+                nowMs={nowMs}
               />
             </Panel>
             <PanelResizeHandle className="w-1 bg-[var(--border)]" />
             <Panel defaultSize={48} minSize={30} className="min-h-0">
               <TreePane
-                loading={loadingDetail}
+                loading={loadingDetail && detail?.trace.traceId !== selectedId}
                 error={error}
                 tree={tree}
                 selectedSpan={selectedSpan}
@@ -154,10 +183,11 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
             traces={traces}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            nowMs={nowMs}
             compact
           />
           <TreePane
-            loading={loadingDetail}
+            loading={loadingDetail && detail?.trace.traceId !== selectedId}
             error={error}
             tree={tree}
             selectedSpan={selectedSpan}
@@ -172,15 +202,45 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
   );
 }
 
+function ConnectionBadge({ state }: { state: MarketingTraceLiveConnectionState }) {
+  const label =
+    state === "live"
+      ? "Live"
+      : state === "connecting"
+        ? "Connecting"
+        : state === "reconnecting"
+          ? "Reconnecting"
+          : "Offline";
+  const tone =
+    state === "live"
+      ? "border-emerald-600/40 text-emerald-800 dark:text-emerald-300"
+      : state === "offline"
+        ? "border-red-600/40 text-red-800 dark:text-red-300"
+        : "border-[var(--border)] text-[var(--text-secondary)]";
+  return (
+    <span
+      className={cn(
+        "rounded border bg-[var(--surface)] px-2.5 py-1 text-xs font-medium tracking-wide",
+        tone,
+      )}
+      title="Realtime transport status (DB remains source of truth)"
+    >
+      {label}
+    </span>
+  );
+}
+
 function RecentRunsList({
   traces,
   selectedId,
   onSelect,
+  nowMs,
   compact,
 }: {
   traces: MarketingTraceListItemDto[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  nowMs: number;
   compact?: boolean;
 }) {
   return (
@@ -198,6 +258,15 @@ function RecentRunsList({
             const timeLabel = Number.isFinite(started.getTime())
               ? started.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
               : "—";
+            const stale = assessStaleRunning({
+              status: t.status,
+              startedAt: t.startedAt,
+              endedAt: t.endedAt,
+              nowMs,
+            });
+            const duration = formatLiveDurationMs(
+              computeLiveDurationMs(t.startedAt, t.endedAt, nowMs) ?? t.durationMs,
+            );
             return (
               <li key={t.traceId}>
                 <button
@@ -210,13 +279,20 @@ function RecentRunsList({
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-[var(--text)]">{timeLabel}</span>
-                    <span className="text-xs text-[var(--text-secondary)]">
-                      {formatDurationMs(t.durationMs)}
-                    </span>
+                    <span className="text-xs text-[var(--text-secondary)]">{duration}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-semibold tracking-wide text-[var(--text)]">
-                      {marketingTraceStatusLabel(t.status)}
+                    <span
+                      className={cn(
+                        "font-semibold tracking-wide",
+                        stale.isStale ? "text-amber-800 dark:text-amber-300" : "text-[var(--text)]",
+                      )}
+                      title={stale.isStale ? stale.label ?? undefined : undefined}
+                    >
+                      {marketingTraceStatusDisplayLabel(t.status, stale)}
+                      {stale.isStale ? (
+                        <span className="ml-1 font-normal opacity-80">· {stale.label}</span>
+                      ) : null}
                     </span>
                     <span className="truncate text-[var(--text-secondary)]">
                       {t.productionRequestId ? shortId(t.productionRequestId, 12) : shortId(t.traceId, 8)}

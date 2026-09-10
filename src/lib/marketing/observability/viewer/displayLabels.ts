@@ -14,9 +14,16 @@ const SPAN_NAME_LABELS: Record<string, string> = {
   "marketing.performance_analyst": "Performance Analyst",
 };
 
+/** Spans that participate in Org v2 revision loops — always show attempt #N. */
+const REVISION_ATTEMPT_LABEL_NAMES = new Set([
+  "marketing.content_strategist",
+  "marketing.completeness_validator",
+]);
+
 export function marketingSpanDisplayName(name: string, attempt?: number | null): string {
   const base = SPAN_NAME_LABELS[name] ?? name;
-  if (typeof attempt === "number" && attempt > 1) {
+  if (typeof attempt !== "number" || attempt < 1) return base;
+  if (attempt > 1 || REVISION_ATTEMPT_LABEL_NAMES.has(name)) {
     return `${base} #${attempt}`;
   }
   return base;

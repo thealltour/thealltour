@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/MarketingReviewAssetsPanel";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/dto";
 
@@ -283,6 +284,8 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
             초안 저장
           </button>
         </AdminCard>
+
+        <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />
 
         <AdminCard className="space-y-3 p-4">
           <h2 className="text-base font-semibold">3. 왜 오늘 이 콘텐츠인가</h2>

@@ -66,6 +66,20 @@ export {
   type ExportMarketingCandidatePackageResult,
 } from "@/lib/marketing/assets/exportMarketingCandidatePackage";
 export {
+  inspectMarketingAssetPackage,
+  readMarketingAssetPackageFile,
+  type MarketingAssetPackageInspectStatus,
+  type MarketingAssetPackageInspection,
+  type MarketingAssetPackageFileRead,
+} from "@/lib/marketing/assets/inspectMarketingAssetPackage";
+export { marketingAssetErrorResponse } from "@/lib/marketing/assets/assetApiErrors";
+export {
+  inspectCandidateAssetPackage,
+  exportCandidateAssetPackage,
+  readCandidateAssetPackageFile,
+  loadCompletedMarketingCandidateForAssets,
+} from "@/lib/marketing/assets/candidateAssetPackageService";
+export {
   parseExportMarketingCandidateAssetsArgs,
   runExportMarketingCandidateAssetsCommand,
 } from "@/lib/marketing/assets/exportCommand";

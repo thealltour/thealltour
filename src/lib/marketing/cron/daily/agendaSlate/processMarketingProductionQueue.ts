@@ -208,9 +208,21 @@ export async function processMarketingProductionQueue(input: {
       const candidateId = candidate?.candidateId ?? result.run.completedCandidateId ?? null;
 
       if (!candidateId || !candidate) {
+        const pipelineDetail =
+          typeof result.run.metadata?.pipelineFailure === "object" &&
+          result.run.metadata.pipelineFailure &&
+          "message" in (result.run.metadata.pipelineFailure as object)
+            ? String(
+                (result.run.metadata.pipelineFailure as { message?: unknown }).message ?? "",
+              ).trim()
+            : "";
+        const failureCode = result.run.failureReason ?? "production_returned_no_candidate";
+        const error = pipelineDetail
+          ? `${failureCode}: ${pipelineDetail}`.slice(0, 400)
+          : failureCode;
         const failed = await repo.markFailed({
           logicalRunKey: claimed.logicalRunKey,
-          error: result.run.failureReason ?? "production_returned_no_candidate",
+          error,
           ownership,
           now,
         });
@@ -220,7 +232,7 @@ export async function processMarketingProductionQueue(input: {
           outcome: failed.ok ? "failed" : "ownership_lost",
           status: failed.request?.status ?? claimed.status,
           completedCandidateId: null,
-          lastError: failed.request?.lastError ?? "production_returned_no_candidate",
+          lastError: failed.request?.lastError ?? error,
           idempotent: false,
         });
         continue;

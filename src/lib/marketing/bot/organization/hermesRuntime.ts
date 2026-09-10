@@ -6,6 +6,7 @@ import type { HermesMarketingProfileId } from "@/lib/marketing/bot/organization/
 import { buildHermesOneshotArgv } from "@/lib/marketing/bot/organization/hermesHandoff";
 import { assertAllowlistedHermesProfile } from "@/lib/marketing/bot/organization/registry";
 import { stripForbiddenBotData } from "@/lib/marketing/bot/sanitize";
+import { resolveHermesExecutable } from "@/lib/marketing/cron/resolveHermesExecutable";
 
 export const DEFAULT_HERMES_INVOKE_TIMEOUT_MS = 90_000;
 export const MAX_SPECIALIST_DISPATCHES_PER_REQUEST = 4;
@@ -66,7 +67,7 @@ export function invokeHermesOneshot(input: HermesAgentRuntimeInvokeInput): Promi
   const profile = assertAllowlistedHermesProfile(input.profile);
   const timeoutMs = input.timeoutMs ?? DEFAULT_HERMES_INVOKE_TIMEOUT_MS;
   const argv = buildHermesOneshotArgv(profile, input.prompt);
-  const command = process.env.HERMES_BIN?.trim() || "hermes";
+  const command = resolveHermesExecutable(process.env);
   const args = argv.slice(1);
   const startedAt = new Date().toISOString();
   const executionId = randomUUID();

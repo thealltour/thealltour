@@ -83,6 +83,11 @@ Repo artifacts:
 - `deploy/systemd/thealltour-marketing-production-queue.service`
 - `deploy/systemd/thealltour-marketing-production-queue.timer`
 
+**PATH requirement:** the oneshot unit must include `/home/ysh/.local/bin` (or set
+`HERMES_BIN`) so Content Strategist / Governance can spawn the Hermes CLI.
+Without it, production fails as `CONTENT_STRATEGIST_FAILED` /
+`spawnSync hermes ENOENT`.
+
 Install later (acceptance), after review:
 
 ```bash
@@ -94,6 +99,13 @@ sudo systemctl daemon-reload
 ```
 
 Secrets stay in `/home/ysh/thealltour/.env.local` (same pattern as `thealltour-internal.service`).
+
+### Align with daily plan AI Runtime (optional)
+
+`profiles/marketing-manager/scripts/daily-marketing-plan.sh` forces
+`AI_RUNTIME_MARKETING_CRON_ENABLED=true`. The production queue worker does **not**
+— it only reads `.env.local`. If that flag is unset, the worker uses Hermes CLI
+specialists (and therefore needs a resolvable `hermes` binary).
 
 ## Migration order (before real acceptance)
 

@@ -80,6 +80,9 @@ async function main() {
   const { assertHermesSpawnSyncSuccess, resolveMarketingCronHermesTimeoutMs } = await import(
     "../src/lib/marketing/cron/hermesSpawnFailure"
   );
+  const { resolveHermesExecutable } = await import(
+    "../src/lib/marketing/cron/resolveHermesExecutable"
+  );
   const { createRuntimeExecutorStack } = await import("../src/ai-runtime/integration/runtime-stack");
   const { ensureSharedObservabilityRecorder } = await import(
     "../src/ai-runtime/observability/persistence"
@@ -93,11 +96,16 @@ async function main() {
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-      encoding: "utf8",
-      env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-      timeout: timeoutMs,
-    });
+    const hermesBin = resolveHermesExecutable(process.env);
+    const result = spawnSync(
+      hermesBin,
+      ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt],
+      {
+        encoding: "utf8",
+        env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
+        timeout: timeoutMs,
+      },
+    );
     return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
   }
 

@@ -38,6 +38,23 @@ import type { TrendSignalPayloadV1 } from "@/lib/marketing/trends/types";
 /** Deterministic Meta AI research source id (valid UUID, not a secret). */
 export const META_AI_TREND_SOURCE_ID = "a1000000-0000-4000-8000-000000000001";
 
+/**
+ * Meta trend freshness horizon for Research MM eligibility.
+ * Observation `window.end` is NOT an expiration — next-day 09:00 editorial use
+ * requires TTL that survives overnight (observedAt + 72h).
+ */
+export const META_TREND_FRESHNESS_TTL_HOURS = 72;
+const META_TREND_FRESHNESS_TTL_MS = META_TREND_FRESHNESS_TTL_HOURS * 60 * 60 * 1000;
+
+/** Research freshness expiresAt from Meta observedAt (UTC Z), not window.end. */
+export function resolveMetaTrendExpiresAt(observedAtUtcZ: string): string {
+  const ms = Date.parse(observedAtUtcZ);
+  if (!Number.isFinite(ms)) {
+    throw new Error(`invalid meta trend observedAt for TTL: ${observedAtUtcZ.slice(0, 48)}`);
+  }
+  return new Date(ms + META_TREND_FRESHNESS_TTL_MS).toISOString();
+}
+
 export type AdaptedTrendLayers = {
   /** A — Trend Discovery */
   discovery: {
@@ -197,6 +214,8 @@ export function adaptTrendSignalToResearch(
   const observedAt = toResearchUtcDatetime(payload.observed_at);
   const publishedAt = toResearchUtcDatetimeOrNull(payload.published_at ?? null);
   const window = layers.discovery.window;
+  // window.end = observation window boundary only; freshness TTL is independent.
+  const expiresAt = resolveMetaTrendExpiresAt(observedAt);
 
   const l1 = payload.provenance.find((p) => p.level === "L1");
   const l1Url = l1 && l1.level === "L1" && typeof l1.url === "string" ? l1.url : null;
@@ -243,7 +262,7 @@ export function adaptTrendSignalToResearch(
     externalId: payload.observation_id,
     publishedAt,
     observedAt,
-    expiresAt: window.end,
+    expiresAt,
     geography: ["KR"],
     destinations: payload.destinations ?? [],
     topics: [payload.trend_type, ...payload.vertical_tags].slice(0, 12),
@@ -251,8 +270,8 @@ export function adaptTrendSignalToResearch(
     freshness: {
       publishedAt,
       observedAt,
-      expiresAt: window.end,
-      halfLifeHours: 72,
+      expiresAt,
+      halfLifeHours: META_TREND_FRESHNESS_TTL_HOURS,
       freshnessScore: 0.7,
     },
     credibility: {
@@ -309,7 +328,7 @@ export function adaptTrendSignalToResearch(
       "Requires internal corroboration before publication claims",
     ],
     generatedAt: iso,
-    validUntil: window.end,
+    validUntil: expiresAt,
     status: "active",
     editorialIntelligence: layers.editorial,
     trendContext: {

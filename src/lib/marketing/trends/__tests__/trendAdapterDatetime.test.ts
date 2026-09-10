@@ -63,7 +63,9 @@ describe("TrendSourceAdapter datetime canonicalization", () => {
   it("normalizes +09:00 observed_at / window / provenance to internal UTC Z", () => {
     const adapted = adaptTrendSignalToResearch(offsetPayload("obs_offset_norm_001"));
     expect(adapted.signal.observedAt).toBe("2026-09-08T08:00:00.000Z");
-    expect(adapted.signal.expiresAt).toBe("2026-09-08T08:00:00.000Z");
+    expect(adapted.signal.expiresAt).toBe("2026-09-11T08:00:00.000Z");
+    expect(adapted.signal.expiresAt).not.toBe(adapted.layers.discovery.window.end);
+    expect(adapted.brief.freshness.expiresAt).toBe("2026-09-11T08:00:00.000Z");
     expect(adapted.layers.discovery.window.start).toBe("2026-09-05T08:00:00.000Z");
     expect(adapted.layers.discovery.window.end).toBe("2026-09-08T08:00:00.000Z");
     expect(adapted.brief.trendContext?.window.start).toBe("2026-09-05T08:00:00.000Z");

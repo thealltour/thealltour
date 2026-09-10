@@ -62,6 +62,7 @@ function hubIcon(key: string) {
       return Sparkles;
     case "marketing-review":
     case "marketing-operations":
+    case "marketing-observability":
       return ClipboardList;
     default:
       return Home;

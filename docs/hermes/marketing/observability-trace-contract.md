@@ -98,3 +98,16 @@ No auto-delete cron in OBS-3. Observe growth of completed traces, `attributes` j
 ### Security
 
 Service-role only RLS. No anon/authenticated policies. Never expose the service-role key to the browser.
+
+## OBS-4 AgentPrism Trace Viewer
+
+| Piece | Location |
+|-------|----------|
+| Admin UI | `/theall_manager_only/marketing-observability` |
+| Read API | `/api/admin/marketing-observability/traces` |
+| OTLP adapter | `src/lib/marketing/observability/viewer/otlpDocument.ts` (no AgentPrism import) |
+| AgentPrism bridge | `viewer/agentPrismBridge.ts` (UI boundary) |
+| Vendored UI | `src/components/vendor/agent-prism/` @ commit `53a9078b533b` |
+| npm pin | `@evilmartians/agent-prism-data@0.0.9`, `…-types@0.0.9` |
+
+Read-only historical viewer. No Realtime. Details panel is TheAllTour-owned (no AgentPrism In/Out/Raw tabs).

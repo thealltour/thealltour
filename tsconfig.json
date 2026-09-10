@@ -30,5 +30,24 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "tools", "docs"]
+  "exclude": [
+    "node_modules",
+    "tools",
+    "docs",
+    "src/components/vendor/agent-prism/DetailsView",
+    "src/components/vendor/agent-prism/TraceViewer",
+    "src/components/vendor/agent-prism/TraceList",
+    "src/components/vendor/agent-prism/Button.tsx",
+    "src/components/vendor/agent-prism/CollapseAndExpandControls.tsx",
+    "src/components/vendor/agent-prism/CollapsibleSection.tsx",
+    "src/components/vendor/agent-prism/CopyButton.tsx",
+    "src/components/vendor/agent-prism/ErrorCountBadge.tsx",
+    "src/components/vendor/agent-prism/ErrorStatusCircle.tsx",
+    "src/components/vendor/agent-prism/IconButton.tsx",
+    "src/components/vendor/agent-prism/SearchInput.tsx",
+    "src/components/vendor/agent-prism/TabSelector.tsx",
+    "src/components/vendor/agent-prism/Tabs.tsx",
+    "src/components/vendor/agent-prism/TextInput.tsx",
+    "src/components/vendor/agent-prism/TimestampBadge.tsx"
+  ]
 }

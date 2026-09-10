@@ -24,6 +24,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  transpilePackages: [
+    "@evilmartians/agent-prism-data",
+    "@evilmartians/agent-prism-types",
+  ],
   outputFileTracingIncludes: {
     "/api/admin/tools/extensions/**/*": ["./public/extension-builds/**/*"],
   },

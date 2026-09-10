@@ -28,6 +28,7 @@ export const ADMIN_MENU_MAP = {
   tools_ai_runtime: [] as string[],
   tools_marketing_review: [] as string[],
   tools_marketing_operations: [] as string[],
+  tools_marketing_observability: [] as string[],
   tools_trend_inbox: [] as string[],
 } as const;
 
@@ -54,6 +55,7 @@ export const MAIN_MENU_TITLE: Record<MainMenuKey, string> = {
   tools_ai_runtime: "AI Runtime",
   tools_marketing_review: "AI 마케팅 검토",
   tools_marketing_operations: "마케팅 운영",
+  tools_marketing_observability: "AI 조직 관제",
   tools_trend_inbox: "Trend Inbox",
 };
 
@@ -92,6 +94,7 @@ export function inferMainMenuKey(pathname: string, searchParamsView: string | nu
   if (rel.startsWith("/tools/thealltour-extension")) return "tools_thealltour_extension";
   if (rel.startsWith("/ai-runtime")) return "tools_ai_runtime";
   if (rel.startsWith("/marketing-operations")) return "tools_marketing_operations";
+  if (rel.startsWith("/marketing-observability")) return "tools_marketing_observability";
   if (rel.startsWith("/trend-inbox")) return "tools_trend_inbox";
   if (rel.startsWith("/marketing-review")) return "tools_marketing_review";
   return null;

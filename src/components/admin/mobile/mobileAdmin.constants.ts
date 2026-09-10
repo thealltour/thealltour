@@ -46,6 +46,7 @@ export const MOBILE_ADMIN_ALLOWED_PATH_PREFIXES = [
   "/trend-inbox",
   "/marketing-review",
   "/marketing-operations",
+  "/marketing-observability",
 ] as const;
 
 export type MobileAdminNavItem = {

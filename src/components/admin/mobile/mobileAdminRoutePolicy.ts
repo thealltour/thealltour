@@ -62,6 +62,9 @@ export function isMobileAdminRouteAllowed(
   if (path === "/marketing-operations" || path.startsWith("/marketing-operations/")) {
     return hasAdminPermission(session, "settings.manage");
   }
+  if (path === "/marketing-observability" || path.startsWith("/marketing-observability/")) {
+    return hasAdminPermission(session, "settings.manage");
+  }
 
   if (
     path.startsWith("/review-reports") ||
@@ -87,6 +90,7 @@ export function getMobileAdminShellTitle(relativePath: string | null): string {
   if (path === "/trend-inbox" || path.startsWith("/trend-inbox/")) return "Trend Inbox";
   if (path === "/marketing-review" || path.startsWith("/marketing-review/")) return "아젠다 · 마케팅 리뷰";
   if (path === "/marketing-operations" || path.startsWith("/marketing-operations/")) return "마케팅 운영";
+  if (path === "/marketing-observability" || path.startsWith("/marketing-observability/")) return "AI 조직 관제";
   if (path.startsWith("/members") || path.startsWith("/points") || path.startsWith("/rewards")) {
     return "회원·리워드";
   }

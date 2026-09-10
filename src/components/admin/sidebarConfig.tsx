@@ -23,6 +23,7 @@ import {
   Cpu,
   ClipboardCheck,
   Gauge,
+  Network,
 } from "lucide-react";
 
 export const SIDEBAR_GROUPS = [
@@ -202,6 +203,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: Gauge,
     group: "tools",
     mainKey: "tools_marketing_operations",
+    roles: ["admin"],
+  },
+  {
+    href: "/theall_manager_only/marketing-observability",
+    label: "AI 조직 관제",
+    icon: Network,
+    group: "tools",
+    mainKey: "tools_marketing_observability",
     roles: ["admin"],
   },
   {

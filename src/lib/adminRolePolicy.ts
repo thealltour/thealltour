@@ -54,6 +54,7 @@ const API_PATH_PERMISSIONS: Array<{ prefix: string; permission: AdminPermissionK
   { prefix: "/api/admin/ai-runtime", permission: "settings.manage" },
   { prefix: "/api/admin/marketing-review", permission: "settings.manage" },
   { prefix: "/api/admin/marketing-operations", permission: "settings.manage" },
+  { prefix: "/api/admin/marketing-observability", permission: "settings.manage" },
   { prefix: "/api/admin/trend-intake", permission: "settings.manage" },
   { prefix: "/api/admin/chat", permission: "dashboard.view" },
 ];
@@ -97,7 +98,7 @@ const CONSOLE_PATH_RULES: Array<{
   { test: (r) => r.startsWith("/notices"), anyOf: ["notices.manage"] },
   { test: (r) => r.startsWith("/notifications"), anyOf: ["notifications.view"] },
   { test: (r) => r.startsWith("/tools"), anyOf: ["tools.view"] },
-  { test: (r) => r.startsWith("/ai-runtime") || r.startsWith("/marketing-review") || r.startsWith("/marketing-operations") || r.startsWith("/trend-inbox"), anyOf: ["settings.manage"] },
+  { test: (r) => r.startsWith("/ai-runtime") || r.startsWith("/marketing-review") || r.startsWith("/marketing-operations") || r.startsWith("/marketing-observability") || r.startsWith("/trend-inbox"), anyOf: ["settings.manage"] },
   { test: (r) => r.startsWith("/settings"), anyOf: ["settings.manage", "admin_users.manage"] },
   { test: (r) => r === "/login", anyOf: ["dashboard.view"] },
 ];
@@ -230,6 +231,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, AdminPermissionKey[]> = {
   tools_ai_runtime: ["settings.manage"],
   tools_marketing_review: ["settings.manage"],
   tools_marketing_operations: ["settings.manage"],
+  tools_marketing_observability: ["settings.manage"],
   tools_trend_inbox: ["settings.manage"],
   settings: ["settings.manage", "admin_users.manage"],
 };

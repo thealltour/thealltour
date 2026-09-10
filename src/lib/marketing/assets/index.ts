@@ -339,3 +339,29 @@ export {
   isEphemeralCleanupEligibleAfterReady,
   SHORTFORM_RENDER_CLEANUP_ORDERING_STEPS,
 } from "@/lib/marketing/assets/shortform/renderJob/cleanupOrdering";
+
+// SV-7 — Mini-PC shortform worker runtime (no media execution)
+export {
+  loadShortformVideoWorkerConfig,
+  defaultShortformWorkerId,
+  DEFAULT_SHORTFORM_WORKER_MAX_JOBS_PER_RUN,
+  SHORTFORM_WORKER_CONCURRENCY,
+  SHORTFORM_WORKER_LEASE_RENEWAL_SUPPORTED,
+} from "@/lib/marketing/assets/shortform/worker/config";
+export {
+  processShortformVideoRenderQueue,
+  type ShortformWorkerRunResult,
+} from "@/lib/marketing/assets/shortform/worker/processQueue";
+export {
+  createDefaultShortformVideoRenderExecutor,
+  DisabledShortformVideoRenderExecutor,
+  UnreadyProductionShortformVideoRenderExecutor,
+  type ShortformVideoRenderExecutor,
+} from "@/lib/marketing/assets/shortform/worker/executor";
+export { FakeShortformVideoRenderExecutor } from "@/lib/marketing/assets/shortform/worker/fakeExecutor";
+export {
+  resolveShortformWorkspaceRoot,
+  assertSafeShortformJobId,
+  createShortformJobWorkspace,
+} from "@/lib/marketing/assets/shortform/worker/workspace";
+export { buildShortformWorkerHealthReport } from "@/lib/marketing/assets/shortform/worker/health";

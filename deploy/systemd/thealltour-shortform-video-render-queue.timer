@@ -1,0 +1,16 @@
+[Unit]
+Description=Run TheAllTour shortform video render queue worker periodically (Mini-PC)
+Documentation=docs/hermes/marketing/shortform-video-worker-v1.md
+Requires=thealltour-shortform-video-render-queue.service
+
+[Timer]
+# Queue polling — jobs may enqueue after Human Pick at any time.
+# Oneshot service + Persistent=false avoids pile-up; disabled worker is no-op.
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=15s
+Persistent=false
+Unit=thealltour-shortform-video-render-queue.service
+
+[Install]
+WantedBy=timers.target

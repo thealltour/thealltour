@@ -1,9 +1,7 @@
 import "server-only";
 
-import {
-  runExportMarketingCandidateAssetsCommand,
-  type ExportMarketingCandidatePackageResult,
-} from "@/lib/marketing/assets/exportCommand";
+import { runExportMarketingCandidateAssetsCommand } from "@/lib/marketing/assets/exportCommand";
+import type { ExportMarketingCandidatePackageResult } from "@/lib/marketing/assets/exportMarketingCandidatePackage";
 import {
   inspectMarketingAssetPackage,
   readMarketingAssetPackageFile,

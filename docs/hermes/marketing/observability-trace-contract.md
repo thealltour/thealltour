@@ -158,6 +158,12 @@ Current: DB range filter + application aggregate (cap 2000 traces). If volume gr
 
 Empty RUNNING envelopes (zero spans) are excluded from analytics denominators generically (not by fixture name). Runs viewer still shows them with STALE display. DB rows are not deleted.
 
-## OBS-7 readiness (Organization Overview Graph)
+## OBS-7 Organization Overview Graph
 
-Org v2.1 topology is locked in `docs/hermes/marketing/organization.md`. OBS-7 should overlay live MarketingSpan status onto Core 4 + shared staff nodes without activating PREPARE Agents as execution nodes.
+| Piece | Location |
+|-------|----------|
+| Topology SoT | `viewer/organization/topology.ts` (Org v2.1 lock) |
+| Execution overlay | `viewer/organization/overlay.ts` |
+| UI | Organization tab — `@xyflow/react` read-only graph |
+
+Layers: organization topology + MarketingSpan overlay. PREPARE roles render as PLANNED only when toggled. AgentPrism remains forensic detail in Runs tab.

@@ -9,6 +9,7 @@ import { TreeView } from "@/components/vendor/agent-prism/TreeView";
 import "@/components/vendor/agent-prism/theme/theme.css";
 
 import { MarketingObservabilityAnalyticsPanel } from "@/components/admin/marketing-observability/MarketingObservabilityAnalyticsPanel";
+import { MarketingOrganizationGraphPanel } from "@/components/admin/marketing-observability/MarketingOrganizationGraphPanel";
 import { MarketingSpanDetailsPanel } from "@/components/admin/marketing-observability/MarketingSpanDetailsPanel";
 import { useMarketingTraceLive } from "@/hooks/useMarketingTraceLive";
 import type {
@@ -33,10 +34,10 @@ type Props = {
   initialTraces: MarketingTraceListItemDto[];
 };
 
-type PageTab = "analytics" | "runs";
+type PageTab = "organization" | "analytics" | "runs";
 
 export function MarketingObservabilityPageBody({ initialTraces }: Props) {
-  const [tab, setTab] = useState<PageTab>("analytics");
+  const [tab, setTab] = useState<PageTab>("organization");
   const [selectedId, setSelectedId] = useState<string | null>(initialTraces[0]?.traceId ?? null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
   const { traces, detail, setDetail, connectionState, resync } = useMarketingTraceLive({
     initialTraces,
     selectedTraceId: selectedId,
-    enabled: tab === "runs",
+    enabled: tab === "runs" || tab === "organization",
   });
 
   const hasRunning = useMemo(
@@ -142,7 +143,9 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {tab === "runs" ? <ConnectionBadge state={connectionState} /> : null}
+          {tab === "runs" || tab === "organization" ? (
+            <ConnectionBadge state={connectionState} />
+          ) : null}
           {tab === "runs" ? (
             <button
               type="button"
@@ -158,6 +161,7 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
       <div className="flex gap-1 border-b border-[var(--border)]">
         {(
           [
+            { id: "organization" as const, label: "Organization" },
             { id: "analytics" as const, label: "Analytics" },
             { id: "runs" as const, label: "Runs" },
           ] as const
@@ -178,7 +182,17 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
         ))}
       </div>
 
-      {tab === "analytics" ? (
+      {tab === "organization" ? (
+        <MarketingOrganizationGraphPanel
+          className="rounded border border-[var(--border)] bg-[var(--surface)] p-4"
+          traces={traces}
+          selectedTraceId={selectedId}
+          onSelectTrace={setSelectedId}
+          detail={detail}
+          connectionState={connectionState}
+          onOpenRunsTab={() => setTab("runs")}
+        />
+      ) : tab === "analytics" ? (
         <MarketingObservabilityAnalyticsPanel className="rounded border border-[var(--border)] bg-[var(--surface)] p-4" />
       ) : (
         <div className="min-h-[36rem] flex-1 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface)]">

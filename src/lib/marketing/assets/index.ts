@@ -308,3 +308,34 @@ export {
   ShortformSourceReviewError,
 } from "@/lib/marketing/assets/shortform/review/service";
 export type { ShortformSourcesResolveDto } from "@/lib/marketing/assets/shortform/review/dto";
+
+// SV-6 — Durable Shortform VideoRenderJob (orchestration only; no worker/media execution)
+export {
+  SHORTFORM_VIDEO_RENDER_JOB_CONTRACT,
+  SHORTFORM_VIDEO_RENDER_PROFILE_V1,
+  SHORTFORM_VIDEO_RENDER_JOB_STATUSES,
+  DEFAULT_SHORTFORM_VIDEO_RENDER_MAX_ATTEMPTS,
+  DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS,
+  type ShortformVideoRenderJob,
+  type ShortformVideoRenderJobStatus,
+  type ShortformVideoRenderInputSnapshot,
+} from "@/lib/marketing/assets/shortform/renderJob/contracts";
+export {
+  validateShortformRenderEnqueueInput,
+  assertShortformRenderEnqueueInput,
+} from "@/lib/marketing/assets/shortform/renderJob/validateEnqueue";
+export {
+  enqueueShortformVideoRenderJob,
+  createInMemoryShortformVideoRenderJobRepository,
+  ownershipFromShortformRenderClaim,
+} from "@/lib/marketing/assets/shortform/renderJob/inMemoryRepository";
+export {
+  createShortformVideoRenderJobRepository,
+  isShortformVideoRenderJobRepositoryConfigured,
+} from "@/lib/marketing/assets/shortform/renderJob/createRepository";
+export type { ShortformVideoRenderJobRepository } from "@/lib/marketing/assets/shortform/renderJob/repository";
+export { ShortformVideoRenderJobError } from "@/lib/marketing/assets/shortform/renderJob/errors";
+export {
+  isEphemeralCleanupEligibleAfterReady,
+  SHORTFORM_RENDER_CLEANUP_ORDERING_STEPS,
+} from "@/lib/marketing/assets/shortform/renderJob/cleanupOrdering";

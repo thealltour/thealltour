@@ -170,3 +170,38 @@ export {
   parseComposeMarketingVideoPreviewArgs,
   runComposeMarketingVideoPreviewCommand,
 } from "@/lib/marketing/assets/video/preview/cli";
+
+// SV-1 — shortform storage / retention / pressure policy (no delete executor)
+export {
+  SHORTFORM_STORAGE_POLICY_CONTRACT,
+  SHORTFORM_RETENTION_POLICY_CONTRACT,
+  SHORTFORM_RETENTION_POLICY_V1,
+  SHORTFORM_PI_STORAGE_PRESSURE_THRESHOLDS_V1,
+  SHORTFORM_WORKER_STORAGE_POLICY_V1,
+  SHORTFORM_WORKER_WORKSPACE_DEFAULT_PATH,
+  SHORTFORM_BULK_MEDIA_TMP_PROHIBITED,
+  SHORTFORM_ASSET_ARCHITECTURE_V1,
+  SHORTFORM_STORAGE_CLASSES,
+  MARKETING_MEDIA_SOURCE_KINDS,
+  SHORTFORM_ASSET_DISPOSITIONS,
+  ShortformStoragePolicyError,
+  defaultStorageClassForSource,
+  defaultDispositionForSource,
+  impliesPermanentLocalBinary,
+  isAutoDeleteEligible,
+  evaluateStoragePressure,
+  evaluateShortformWorkerStorage,
+  assertValidFilesystemCapacityStats,
+  type ShortformStorageClass,
+  type MarketingMediaSourceKind,
+  type ShortformAssetDisposition,
+  type StoragePressureLevel,
+  type StoragePressureDecision,
+  type FilesystemCapacityStats,
+  type ShortformWorkerStorageStatus,
+  type ShortformWorkerStorageDecision,
+  type ShortformWorkerStorageStats,
+  type AutoDeleteEligibilityInput,
+  type AutoDeleteEligibility,
+} from "@/lib/marketing/assets/shortform/storagePolicy";
+export { readFilesystemCapacity } from "@/lib/marketing/assets/shortform/capacity";

@@ -32,6 +32,7 @@ export const MARKETING_ASSET_ARTIFACT_ORIGINS = [
   "video_shot_planning",
   "video_clip_intake",
   "video_preview_composition",
+  "short_video_brief",
   "human_edit",
   "published",
 ] as const;

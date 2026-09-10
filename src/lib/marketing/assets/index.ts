@@ -238,3 +238,35 @@ export {
   validateRegisterExternalMarketingMediaSourceInput,
   rightsKindImpliesCommercialClearance,
 } from "@/lib/marketing/assets/sourceCatalog/validation";
+
+// SV-3 — ShortVideoBrief (resolver input; does not replace MediaBrief / Shot List)
+export {
+  SHORT_VIDEO_BRIEF_CONTRACT,
+  SHORT_VIDEO_BRIEF_ASPECT_RATIO,
+  SHORT_VIDEO_DURATION_PRESETS,
+  SHORT_VIDEO_DURATION_PRESET_MS,
+  SHORT_VIDEO_DURATION_DEFAULT_PRESET,
+  SHORT_VIDEO_MEDIA_PREFERENCES,
+  type ShortVideoBrief,
+  type ShortVideoSceneRequirement,
+  type ShortVideoSceneVisual,
+  type ShortVideoDurationPreset,
+  type ShortVideoMediaPreference,
+} from "@/lib/marketing/assets/shortVideoBrief/contracts";
+export { SHORT_VIDEO_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/shortVideoBrief/paths";
+export { buildShortVideoBrief, inferFactualVisualRequired } from "@/lib/marketing/assets/shortVideoBrief/buildShortVideoBrief";
+export { parseShortVideoBrief, assertShortVideoBriefInvariants } from "@/lib/marketing/assets/shortVideoBrief/validate";
+export {
+  selectDurationPreset,
+  nearestDurationPreset,
+  durationPresetMs,
+  splitDurationAcrossScenes,
+} from "@/lib/marketing/assets/shortVideoBrief/duration";
+export {
+  isShortVideoBriefGenerationApplicable,
+  productionRequestMentionsShortVideoConcept,
+} from "@/lib/marketing/assets/shortVideoBrief/gating";
+export {
+  planShortVideoBriefArtifact,
+  persistShortVideoBrief,
+} from "@/lib/marketing/assets/shortVideoBrief/persist";

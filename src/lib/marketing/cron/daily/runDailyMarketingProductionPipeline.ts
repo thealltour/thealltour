@@ -204,18 +204,53 @@ export async function runDailyMarketingProductionPipeline(
   const existingCandidate = await repo.findCandidateByLogicalKey(logicalRunKey);
   const existingRun = await repo.findRunByLogicalKey(logicalRunKey);
   if (existingCandidate && existingRun?.status === "completed") {
+    // CG-3: idempotent early-return must still reconcile CG-2 shortform bridge.
+    let shortformBridge: Record<string, unknown> = { status: "skipped" };
+    try {
+      const { reconcileDailyShortformBridgeForCandidate } = await import(
+        "@/lib/marketing/assets/shortform/reconcileDailyShortformBridge"
+      );
+      const bridgeResult = await reconcileDailyShortformBridgeForCandidate({
+        candidate: existingCandidate,
+        now,
+      });
+      shortformBridge = {
+        status: bridgeResult.outcome,
+        shortformIntended: bridgeResult.shortformIntended,
+        reason: bridgeResult.reason,
+        sceneCount: bridgeResult.sceneCount ?? null,
+        sourceResolutionPersisted: bridgeResult.sourceResolutionPersisted ?? false,
+        error: bridgeResult.error ?? null,
+        holderCandidateId: bridgeResult.holderCandidateId ?? null,
+        reconciled: true,
+      };
+    } catch (error) {
+      shortformBridge = {
+        status: "brief_failed",
+        shortformIntended: false,
+        reason: "reconcile_exception",
+        error: error instanceof Error ? error.message.slice(0, 400) : String(error).slice(0, 400),
+        reconciled: true,
+      };
+    }
+
     return {
       idempotent: true,
       run: {
         ...existingRun,
         status: "skipped_idempotent",
         completedCandidateId: existingCandidate.candidateId,
+        metadata: {
+          ...existingRun.metadata,
+          shortformBridge,
+        },
         observability: buildObservability({
           ...existingRun,
           completedCandidateId: existingCandidate.candidateId,
           metadata: {
             ...existingRun.metadata,
             finalStatus: existingCandidate.status,
+            shortformBridge,
           },
         }),
       },

@@ -24,6 +24,7 @@ import {
   isCandidateBlocked,
   isCandidateDiagnosticsOnly,
 } from "@/lib/marketing/review/transitions";
+import { assertShortformReadyForManualPublish } from "@/lib/marketing/review/assertShortformReadyForManualPublish";
 import type {
   HumanMarketingReview,
   HumanReviewDetail,
@@ -32,11 +33,16 @@ import type {
   HumanReviewQueueItem,
   ManualPublicationRecord,
 } from "@/lib/marketing/review/types";
+import type { ShortformVideoRenderJobRepository } from "@/lib/marketing/assets/shortform/renderJob/repository";
+import type { MarketingMediaSourceCatalogRepository } from "@/lib/marketing/assets/sourceCatalog/repository";
 
 export type HumanMarketingReviewServiceDeps = {
   candidateRepo: DailyMarketingRunRepository;
   reviewRepo: HumanMarketingReviewRepository;
   now?: () => Date;
+  /** Optional injections for CG-3 shortform approval gate (tests). */
+  shortformCatalog?: MarketingMediaSourceCatalogRepository;
+  shortformJobRepository?: ShortformVideoRenderJobRepository;
 };
 
 function buildDetail(
@@ -252,6 +258,13 @@ export class HumanMarketingReviewService {
     const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(input.candidateId);
     if (!candidate) throw new Error("candidate_not_found");
     assertCandidateApprovable(candidate.status);
+    await assertShortformReadyForManualPublish({
+      candidateId: input.candidateId,
+      candidate,
+      catalog: this.deps.shortformCatalog,
+      jobRepository: this.deps.shortformJobRepository,
+      repository: this.deps.candidateRepo,
+    });
 
     const review = await this.loadMutableReview(input.candidateId, input.reviewedBy);
     assertAllowedTransition(review.status, "approved_for_manual_publish");
@@ -368,5 +381,11 @@ export async function createHumanMarketingReviewService(
   );
   const candidateRepo = deps.candidateRepo ?? (await createDailyMarketingRunRepository());
   const reviewRepo = deps.reviewRepo ?? (await createHumanMarketingReviewRepository());
-  return new HumanMarketingReviewService({ candidateRepo, reviewRepo, now: deps.now });
+  return new HumanMarketingReviewService({
+    candidateRepo,
+    reviewRepo,
+    now: deps.now,
+    shortformCatalog: deps.shortformCatalog,
+    shortformJobRepository: deps.shortformJobRepository,
+  });
 }

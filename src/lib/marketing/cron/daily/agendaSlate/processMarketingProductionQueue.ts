@@ -193,6 +193,19 @@ export async function processMarketingProductionQueue(input: {
         claimed.logicalRunKey,
       );
       if (existingCandidate) {
+        // CG-3: crash-recovery / existing candidate must still reconcile CG-2 bridge.
+        try {
+          const { reconcileDailyShortformBridgeForCandidate } = await import(
+            "@/lib/marketing/assets/shortform/reconcileDailyShortformBridge"
+          );
+          await reconcileDailyShortformBridgeForCandidate({
+            candidate: existingCandidate,
+            now,
+          });
+        } catch {
+          /* best-effort; must not block production completion */
+        }
+
         const boundary = await ensureHumanReviewBoundaryForCandidate(
           existingCandidate,
           input.deps.reviewRepo,

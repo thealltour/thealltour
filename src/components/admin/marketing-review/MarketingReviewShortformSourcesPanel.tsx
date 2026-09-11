@@ -55,6 +55,59 @@ type ResolveDto = {
   code?: string;
 };
 
+type RenderStatusDto = {
+  candidateId: string;
+  shortformIntended: boolean;
+  uiStatus: string;
+  renderReady: boolean;
+  reason: string;
+  requiredSceneCount: number;
+  pickedSceneCount: number;
+  message?: string;
+  job: {
+    jobId: string;
+    status: string;
+    attemptCount: number;
+    maxAttempts: number;
+    errorCode: string | null;
+    errorSummary: string | null;
+    outputArtifactPath: string | null;
+    updatedAt: string;
+    completedAt: string | null;
+  } | null;
+  finalArtifact: {
+    relativePath: string;
+    exists: boolean;
+    previewPath: string | null;
+  };
+};
+
+function renderStatusLabel(status: string): string {
+  switch (status) {
+    case "not_shortform":
+      return "숏폼 비대상";
+    case "not_render_ready":
+      return "렌더 대기 (PICK 필요)";
+    case "queued":
+      return "QUEUED";
+    case "running":
+      return "RUNNING";
+    case "ready":
+      return "READY";
+    case "failed":
+      return "FAILED";
+    case "cancelled":
+      return "CANCELLED";
+    default:
+      return status;
+  }
+}
+
+function finalFileUrl(candidateId: string, relativePath: string, disposition: "inline" | "attachment") {
+  const params = new URLSearchParams({ path: relativePath, disposition });
+  return `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/assets/file?${params.toString()}`;
+}
+
 function originLabel(origin: string): string {
   switch (origin) {
     case "internal_catalog":
@@ -180,10 +233,25 @@ function CandidateCard(props: {
 export function MarketingReviewShortformSourcesPanel(props: { candidateId: string }) {
   const { candidateId } = props;
   const [data, setData] = useState<ResolveDto | null>(null);
+  const [renderStatus, setRenderStatus] = useState<RenderStatusDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [requeueBusy, setRequeueBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
+
+  const loadRenderStatus = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/shortform/render`,
+        { cache: "no-store" },
+      );
+      const json = (await res.json()) as RenderStatusDto;
+      if (res.ok) setRenderStatus(json);
+    } catch {
+      /* non-fatal */
+    }
+  }, [candidateId]);
 
   const resolve = useCallback(async (opts?: { forceRefresh?: boolean }) => {
     setLoading(true);
@@ -208,13 +276,14 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
       if (!json.catalogAvailable) {
         setMessage("카탈로그 DB가 아직 준비되지 않았습니다. 검색은 가능하지만 선택 저장은 불가할 수 있습니다.");
       }
+      await loadRenderStatus();
     } catch {
       setData(null);
       setMessage("소스 검색에 실패했습니다.");
     } finally {
       setLoading(false);
     }
-  }, [candidateId]);
+  }, [candidateId, loadRenderStatus]);
 
   const autoResolved = useRef(false);
   useEffect(() => {
@@ -238,17 +307,55 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
           }),
         },
       );
-      const json = (await res.json()) as { message?: string; ok?: boolean };
+      const json = (await res.json()) as {
+        message?: string;
+        ok?: boolean;
+        renderEnqueue?: { enqueued?: boolean; created?: boolean; status?: string | null; reason?: string };
+      };
       if (!res.ok) {
         setMessage(json.message ?? "선택에 실패했습니다.");
         return;
       }
-      setMessage(json.message ?? "선택했습니다.");
-      await resolve();
+      const enqueueNote = json.renderEnqueue?.enqueued
+        ? json.renderEnqueue.created
+          ? ` · 렌더 작업 등록 (${json.renderEnqueue.status ?? "QUEUED"})`
+          : ` · 렌더 작업 유지 (${json.renderEnqueue.status ?? "기존"})`
+        : json.renderEnqueue?.reason
+          ? ` · 렌더: ${json.renderEnqueue.reason}`
+          : "";
+      setMessage((json.message ?? "선택했습니다.") + enqueueNote);
+      await resolve({ forceRefresh: false });
+      await loadRenderStatus();
     } catch {
       setMessage("선택에 실패했습니다.");
     } finally {
       setBusyKey(null);
+    }
+  }
+
+  async function requeueFailed() {
+    setRequeueBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/shortform/render`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "requeue" }),
+        },
+      );
+      const json = (await res.json()) as { message?: string; ok?: boolean };
+      if (!res.ok) {
+        setMessage(json.message ?? "재시도에 실패했습니다.");
+        return;
+      }
+      setMessage(json.message ?? "렌더를 다시 대기열에 넣었습니다.");
+      await loadRenderStatus();
+    } catch {
+      setMessage("재시도에 실패했습니다.");
+    } finally {
+      setRequeueBusy(false);
     }
   }
 
@@ -273,6 +380,65 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
       </div>
 
       {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
+
+      {renderStatus?.shortformIntended ? (
+        <div className="space-y-2 rounded-lg border border-[var(--border)] p-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="font-medium">렌더 상태:</span>{" "}
+              {renderStatusLabel(renderStatus.uiStatus)}
+              {renderStatus.job ? (
+                <span className="text-xs text-[var(--text-secondary)]">
+                  {" "}
+                  · 시도 {renderStatus.job.attemptCount}/{renderStatus.job.maxAttempts}
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="text-xs underline"
+              onClick={() => void loadRenderStatus()}
+            >
+              상태 새로고침
+            </button>
+          </div>
+          <p className="text-xs text-[var(--text-secondary)]">
+            PICK {renderStatus.pickedSceneCount}/{renderStatus.requiredSceneCount}
+            {renderStatus.renderReady ? " · 렌더 준비 완료" : " · 모든 장면 PICK 후 자동 큐잉"}
+          </p>
+          {renderStatus.uiStatus === "failed" ? (
+            <div className="space-y-2">
+              <p className="text-xs text-[var(--danger,#b91c1c)]">
+                {renderStatus.job?.errorSummary ?? renderStatus.job?.errorCode ?? "렌더 실패"}
+              </p>
+              <button
+                type="button"
+                disabled={requeueBusy}
+                onClick={() => void requeueFailed()}
+                className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-50"
+              >
+                {requeueBusy ? "재시도 중…" : "실패 작업 재시도 (requeue)"}
+              </button>
+            </div>
+          ) : null}
+          {renderStatus.uiStatus === "ready" && renderStatus.finalArtifact.exists && renderStatus.finalArtifact.previewPath ? (
+            <div className="space-y-2">
+              <video
+                className="max-h-72 w-full rounded-md bg-black object-contain"
+                src={finalFileUrl(candidateId, renderStatus.finalArtifact.previewPath, "inline")}
+                controls
+                preload="metadata"
+              />
+              <a
+                href={finalFileUrl(candidateId, renderStatus.finalArtifact.previewPath, "attachment")}
+                className="text-xs text-[var(--primary)] underline-offset-2 hover:underline"
+              >
+                shortform.mp4 다운로드
+              </a>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {!data && !loading ? (
         <p className="text-sm text-[var(--text-secondary)]">

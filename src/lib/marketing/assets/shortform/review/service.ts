@@ -291,6 +291,10 @@ export type PickShortformSourceForReviewInput = {
   selectionToken: string;
   catalog?: MarketingMediaSourceCatalogRepository;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  /** Injected for tests — skips production job repository. */
+  jobRepository?: import("@/lib/marketing/assets/shortform/renderJob/repository").ShortformVideoRenderJobRepository;
+  /** When false, skip CG-3 auto-enqueue (tests that only assert PICK). Default true. */
+  autoEnqueueRender?: boolean;
 };
 
 export type PickShortformSourceForReviewResult = {
@@ -303,6 +307,13 @@ export type PickShortformSourceForReviewResult = {
   provider: string | null;
   providerAssetId: string | null;
   replaced: boolean;
+  renderEnqueue?: {
+    enqueued: boolean;
+    created: boolean;
+    status: string | null;
+    jobId: string | null;
+    reason: string;
+  };
 };
 
 export async function pickShortformSourceForReview(
@@ -379,6 +390,18 @@ export async function pickShortformSourceForReview(
       if (!existing) {
         throw new ShortformSourceReviewError("소스를 찾을 수 없습니다.", "SOURCE_NOT_FOUND", 404);
       }
+      // Persist pick-time factualMatch/origin for CG-3 render-ready evaluation.
+      await catalog.updateSource({
+        id: existing.id,
+        metadata: {
+          ...existing.metadata,
+          pickOrigin: payload.origin,
+          factualMatch: payload.factualMatch,
+          candidateKey: payload.candidateKey,
+          score: payload.score,
+          previewUrl: payload.previewUrl,
+        },
+      });
       sourceId = existing.id;
       storageClass = existing.storageClass;
       provider = existing.provider;
@@ -444,7 +467,7 @@ export async function pickShortformSourceForReview(
       sceneKey: input.sceneId,
     });
 
-    return {
+    const pickResult: PickShortformSourceForReviewResult = {
       usageId: usage.id,
       sourceId: usage.sourceId,
       sceneId: input.sceneId,
@@ -457,6 +480,39 @@ export async function pickShortformSourceForReview(
         previousUsages.length > 0 &&
         !(previousUsages.length === 1 && previousUsages[0]!.sourceId === sourceId),
     };
+
+    if (input.autoEnqueueRender === false) {
+      return pickResult;
+    }
+
+    try {
+      const { maybeEnqueueShortformRenderAfterPick } = await import(
+        "@/lib/marketing/assets/shortform/renderReady"
+      );
+      const enqueueResult = await maybeEnqueueShortformRenderAfterPick({
+        candidateId: input.candidateId,
+        catalog,
+        jobRepository: input.jobRepository,
+        env: input.env,
+      });
+      pickResult.renderEnqueue = {
+        enqueued: enqueueResult.enqueued,
+        created: enqueueResult.created,
+        status: enqueueResult.job?.status ?? null,
+        jobId: enqueueResult.job?.jobId ?? null,
+        reason: enqueueResult.skippedReason ?? enqueueResult.evaluation.reason,
+      };
+    } catch (error) {
+      pickResult.renderEnqueue = {
+        enqueued: false,
+        created: false,
+        status: null,
+        jobId: null,
+        reason: error instanceof Error ? error.message.slice(0, 200) : "enqueue_failed",
+      };
+    }
+
+    return pickResult;
   } catch (error) {
     if (error instanceof ShortformSourceReviewError) throw error;
     wrapCatalogError(error);

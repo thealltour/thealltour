@@ -281,6 +281,12 @@ export type {
   ShortformCommitmentDecision,
 } from "@/lib/marketing/assets/shortform/dailyShortformBridge";
 export {
+  evaluateShortformRenderReady,
+  isShortformRenderReady,
+  maybeEnqueueShortformRenderAfterPick,
+} from "@/lib/marketing/assets/shortform/renderReady";
+export { reconcileDailyShortformBridgeForCandidate } from "@/lib/marketing/assets/shortform/reconcileDailyShortformBridge";
+export {
   planShortVideoBriefArtifact,
   persistShortVideoBrief,
 } from "@/lib/marketing/assets/shortVideoBrief/persist";

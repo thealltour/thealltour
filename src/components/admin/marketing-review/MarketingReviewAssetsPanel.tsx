@@ -118,6 +118,13 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
 
   const imageArtifacts =
     assets?.artifacts.filter((item) => item.mediaType.startsWith("image/")) ?? [];
+  const videoArtifacts =
+    assets?.artifacts.filter(
+      (item) =>
+        item.mediaType.startsWith("video/") ||
+        item.relativePath.endsWith(".mp4") ||
+        item.relativePath === "reel/final/shortform.mp4",
+    ) ?? [];
 
   return (
     <AdminCard className="space-y-3 p-4">
@@ -190,6 +197,33 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
             </div>
           ) : null}
 
+          {videoArtifacts.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+              {videoArtifacts.map((item) => (
+                <div
+                  key={item.artifactId}
+                  className="overflow-hidden rounded-lg border border-[var(--border)]"
+                >
+                  <video
+                    className="max-h-56 w-full bg-black object-contain"
+                    src={fileUrl(candidateId, item.relativePath, "inline")}
+                    controls
+                    preload="metadata"
+                  />
+                  <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs text-[var(--text-secondary)]">
+                    <span className="font-mono">{item.relativePath}</span>
+                    <a
+                      href={fileUrl(candidateId, item.relativePath, "attachment")}
+                      className="text-[var(--primary)] underline-offset-2 hover:underline"
+                    >
+                      다운로드
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
             {assets.artifacts.map((item) => (
               <li
@@ -204,6 +238,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
                 </div>
                 <div className="flex gap-2">
                   {item.mediaType.startsWith("image/") ||
+                  item.mediaType.startsWith("video/") ||
                   item.mediaType.startsWith("text/") ||
                   item.mediaType === "application/json" ? (
                     <a

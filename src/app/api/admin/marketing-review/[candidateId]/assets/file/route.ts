@@ -11,6 +11,7 @@ type RouteContext = { params: Promise<{ candidateId: string }> };
 
 function defaultDisposition(mediaType: string): "inline" | "attachment" {
   if (mediaType.startsWith("image/")) return "inline";
+  if (mediaType.startsWith("video/")) return "inline";
   if (mediaType.startsWith("text/")) return "inline";
   if (mediaType === "application/json") return "inline";
   return "attachment";

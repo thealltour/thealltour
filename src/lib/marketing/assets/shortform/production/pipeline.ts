@@ -15,7 +15,7 @@ import {
   type PreparedNarration,
 } from "@/lib/marketing/assets/shortform/production/narration";
 import {
-  resolveShortformNarrationPlanForJob,
+  resolveShortformNarrationPlanViaTransport,
   type ResolvedShortformNarrationPlan,
 } from "@/lib/marketing/assets/shortform/production/resolveNarration";
 import {
@@ -27,28 +27,28 @@ import {
   validateFinalShortformMp4,
   workspaceFinalizedMp4Path,
 } from "@/lib/marketing/assets/shortform/production/finalize";
-import { persistShortformFinalArtifact } from "@/lib/marketing/assets/shortform/production/persistFinal";
 import { SHORTFORM_OUTPUT_PROFILE_V1 } from "@/lib/marketing/assets/shortform/production/paths";
 import { TRAVEL_SHORT_INFO_V1_ID } from "@/lib/marketing/assets/shortform/production/remotion/TravelShortInfoV1";
 import type { ShortformJobWorkspace } from "@/lib/marketing/assets/shortform/worker/workspace";
 import type { TtsProvider } from "@/lib/marketing/tts/provider";
 import { runFfmpeg } from "@/lib/marketing/assets/ffmpeg/exec";
 import { runFfprobeJson } from "@/lib/marketing/assets/ffprobe/exec";
+import type { MarketingAssetTransport } from "@/lib/marketing/assets/transport/contracts";
+import { MarketingAssetTransportError } from "@/lib/marketing/assets/transport/errors";
 
 export type ShortformProductionPipelineDeps = {
   catalog: MarketingMediaSourceCatalogRepository;
+  transport: MarketingAssetTransport;
   materializer?: ShortformSourceMaterializer;
   tts: TtsProvider;
   remotion: ShortformRemotionRenderer;
-  resolvePackageRoot: (job: ShortformVideoRenderJob) => string;
   /**
-   * Optional override for tests. Production must resolve MediaBrief narration via package.
+   * Optional override for tests. Production resolves MediaBrief narration via transport.
    * Returning a plan with placeholder/dummy text is forbidden in production path.
    */
   resolveNarrationPlan?: (input: {
     job: ShortformVideoRenderJob;
-    packageRoot: string;
-  }) => ResolvedShortformNarrationPlan;
+  }) => ResolvedShortformNarrationPlan | Promise<ResolvedShortformNarrationPlan>;
   runFfmpegImpl?: typeof runFfmpeg;
   runFfprobeImpl?: typeof runFfprobeJson;
   skipFfprobeValidation?: boolean;
@@ -66,6 +66,7 @@ function msToFrames(ms: number, fps = SHORTFORM_OUTPUT_PROFILE_V1.fps): number {
 
 /**
  * Staged production pipeline (no OBS spans in SV-8A).
+ * Candidate briefs, internal sources, and final persist go through MarketingAssetTransport.
  */
 export async function runShortformProductionPipeline(input: {
   job: ShortformVideoRenderJob;
@@ -79,9 +80,9 @@ export async function runShortformProductionPipeline(input: {
   mkdirSync(workspace.renderDir, { recursive: true });
   mkdirSync(workspace.outputDir, { recursive: true });
 
-  // --- loadJobInputs / resolvePickedSources / materializeSources ---
   const materializer =
-    deps.materializer ?? createShortformSourceMaterializerRouter();
+    deps.materializer ??
+    createShortformSourceMaterializerRouter({ transport: deps.transport });
   const materialized: MaterializedSceneSource[] = [];
   for (const pick of job.inputSnapshot.scenePicks) {
     if (signal.aborted) {
@@ -111,11 +112,15 @@ export async function runShortformProductionPipeline(input: {
     );
   }
 
-  // --- prepareNarration (MediaBrief SoT — no placeholder) ---
-  const packageRootEarly = deps.resolvePackageRoot(job);
+  // Narration: transport-aware MediaBrief / ShortVideoBrief (no Mini-PC MARKETING_ASSET_ROOT).
   const narrationPlan =
-    deps.resolveNarrationPlan?.({ job, packageRoot: packageRootEarly }) ??
-    resolveShortformNarrationPlanForJob({ packageRoot: packageRootEarly, job });
+    (await deps.resolveNarrationPlan?.({ job })) ??
+    (await resolveShortformNarrationPlanViaTransport({
+      transport: deps.transport,
+      job,
+      signal,
+    }));
+
   const narration = await prepareShortformNarration({
     workspace,
     tts: deps.tts,
@@ -126,7 +131,6 @@ export async function runShortformProductionPipeline(input: {
     signal,
   });
 
-  // --- buildCompositionInput / renderRemotion ---
   const sceneDurationMs = Math.max(
     3000,
     Math.floor(18_000 / Math.max(1, materialized.length)),
@@ -152,7 +156,6 @@ export async function runShortformProductionPipeline(input: {
     signal,
   });
 
-  // --- finalizeVideo ---
   const workspaceFinal = workspaceFinalizedMp4Path(workspace.outputDir);
   await finalizeShortformVideo({
     remotionOutputAbsolutePath: remotionOut,
@@ -172,17 +175,23 @@ export async function runShortformProductionPipeline(input: {
     });
   }
 
-  // --- persistFinalArtifact (durable before READY) ---
-  const packageRoot = packageRootEarly;
-  const persisted = persistShortformFinalArtifact({
-    packageRoot,
-    workspaceFinalAbsolutePath: workspaceFinal,
-  });
-
-  return {
-    outputArtifactPath: persisted.relativePath,
-    materialized,
-    narration,
-  };
+  try {
+    const persisted = await deps.transport.persistShortformFinal({
+      candidateId: job.candidateId,
+      businessDateKst: job.businessDateKst,
+      workspaceFinalAbsolutePath: workspaceFinal,
+      signal,
+    });
+    return {
+      outputArtifactPath: persisted.relativePath,
+      materialized,
+      narration,
+    };
+  } catch (error) {
+    if (error instanceof MarketingAssetTransportError) {
+      throw new ShortformProductionError(error.message, error.code);
+    }
+    if (error instanceof ShortformProductionError) throw error;
+    throw error;
+  }
 }
-

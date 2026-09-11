@@ -27,6 +27,9 @@ import { MEDIA_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/video/paths";
 import { SHORT_VIDEO_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/shortVideoBrief/paths";
 import { createFakeShortformTtsProvider } from "@/lib/marketing/assets/shortform/production/narration";
 import { ProductionShortformVideoRenderExecutor } from "@/lib/marketing/assets/shortform/production/productionExecutor";
+import { createLocalMarketingAssetTransport } from "@/lib/marketing/assets/transport/localTransport";
+import type { MarketingMediaSourceCatalogRepository } from "@/lib/marketing/assets/sourceCatalog/repository";
+import { resolvePackageDirectory } from "@/lib/marketing/assets/paths";
 
 
 const tempRoots: string[] = [];
@@ -75,6 +78,25 @@ function tempDir(prefix: string) {
   return dir;
 }
 
+function localTransport(
+  catalog: MarketingMediaSourceCatalogRepository,
+  assetRoot: string,
+) {
+  return createLocalMarketingAssetTransport({
+    catalog,
+    env: { MARKETING_ASSET_ROOT: assetRoot },
+  });
+}
+
+function localMaterializer(
+  catalog: MarketingMediaSourceCatalogRepository,
+  assetRoot: string,
+) {
+  return createShortformSourceMaterializerRouter({
+    transport: localTransport(catalog, assetRoot),
+  });
+}
+
 describe("SV-8A materialization + download safety", () => {
   it("selects portrait-friendly renditions deterministically", () => {
     const picked = selectShortformRendition([
@@ -105,9 +127,7 @@ describe("SV-8A materialization + download safety", () => {
       workspaceRoot,
       jobId: "svr_internal",
     });
-    const materializer = createShortformSourceMaterializerRouter({
-      env: { MARKETING_ASSET_ROOT: assetRoot },
-    });
+    const materializer = localMaterializer(catalog, assetRoot);
     const out = await materializer.materialize({
       sceneId: "scene-001",
       source,
@@ -174,9 +194,7 @@ describe("SV-8A materialization + download safety", () => {
       workspaceRoot: tempDir("ws3"),
       jobId: "svr_unk",
     });
-    const materializer = createShortformSourceMaterializerRouter({
-      env: { MARKETING_ASSET_ROOT: tempDir("assets3") },
-    });
+    const materializer = localMaterializer(catalog, tempDir("assets3"));
     await expect(
       materializer.materialize({
         sceneId: "scene-001",
@@ -198,9 +216,7 @@ describe("SV-8A materialization + download safety", () => {
       workspaceRoot: tempDir("ws-gen"),
       jobId: "svr_gen",
     });
-    const materializer = createShortformSourceMaterializerRouter({
-      env: { MARKETING_ASSET_ROOT: tempDir("assets-gen") },
-    });
+    const materializer = localMaterializer(catalog, tempDir("assets-gen"));
     await expect(
       materializer.materialize({
         sceneId: "scene-001",
@@ -232,9 +248,7 @@ describe("SV-8A materialization + download safety", () => {
       workspaceRoot: tempDir("pm-ws"),
       jobId: "svr_pm",
     });
-    const out = await createShortformSourceMaterializerRouter({
-      env: { MARKETING_ASSET_ROOT: assetRoot },
-    }).materialize({
+    const out = await localMaterializer(catalog, assetRoot).materialize({
       sceneId: "scene-001",
       source,
       origin: "photo_motion",
@@ -276,7 +290,11 @@ describe("SV-8A durable persist", () => {
 describe("SV-8A executor end-to-end with fakes", () => {
   it("returns package-relative outputArtifactPath after durable persist", async () => {
     const assetRoot = tempDir("e2e-assets");
-    const packageRoot = join(assetRoot, "pkg");
+    const packageRoot = resolvePackageDirectory({
+      assetRoot,
+      businessDateKst: "2026-09-11",
+      candidateId: "cmc_e2e",
+    });
     mkdirSync(join(packageRoot, "reel", "final"), { recursive: true });
     seedNarrationPackage(packageRoot, "scene-001");
     const workspaceRoot = tempDir("e2e-ws");
@@ -326,11 +344,9 @@ describe("SV-8A executor end-to-end with fakes", () => {
     const executor = createTestProductionShortformVideoRenderExecutor({
       catalog,
       env: { MARKETING_ASSET_ROOT: assetRoot },
+      transport: localTransport(catalog, assetRoot),
       pipelineOverrides: {
-        materializer: createShortformSourceMaterializerRouter({
-          env: { MARKETING_ASSET_ROOT: assetRoot },
-        }),
-        resolvePackageRoot: () => packageRoot,
+        materializer: localMaterializer(catalog, assetRoot),
         runFfmpegImpl: async ({ args }) => {
           const out = args[args.length - 1]!;
           writeFileSync(out, Buffer.from("final-mp4-bytes"));
@@ -359,7 +375,11 @@ describe("SV-8A executor end-to-end with fakes", () => {
 
   it("passes MediaBrief narrationText to TTS (no Scene N placeholder)", async () => {
     const assetRoot = tempDir("narr-assets");
-    const packageRoot = join(assetRoot, "pkg");
+    const packageRoot = resolvePackageDirectory({
+      assetRoot,
+      businessDateKst: "2026-09-11",
+      candidateId: "cmc_narr",
+    });
     mkdirSync(join(packageRoot, "reel", "final"), { recursive: true });
     const { mediaBrief } = seedNarrationPackage(packageRoot, "scene-001");
     const expected = mediaBrief.formats.shortform.narrationSegments[0]!.narrationText;
@@ -410,6 +430,7 @@ describe("SV-8A executor end-to-end with fakes", () => {
     const executor = new ProductionShortformVideoRenderExecutor({
       catalog,
       env: { MARKETING_ASSET_ROOT: assetRoot },
+      transport: localTransport(catalog, assetRoot),
       relaxReadinessForTests: true,
       remotion: {
         async render(input) {
@@ -426,10 +447,7 @@ describe("SV-8A executor end-to-end with fakes", () => {
         },
       },
       pipelineOverrides: {
-        materializer: createShortformSourceMaterializerRouter({
-          env: { MARKETING_ASSET_ROOT: assetRoot },
-        }),
-        resolvePackageRoot: () => packageRoot,
+        materializer: localMaterializer(catalog, assetRoot),
         runFfmpegImpl: async ({ args }) => {
           writeFileSync(args[args.length - 1]!, Buffer.from("final"));
         },
@@ -452,7 +470,11 @@ describe("SV-8A executor end-to-end with fakes", () => {
 
   it("missing narration ref fails before TTS/Remotion", async () => {
     const assetRoot = tempDir("miss-assets");
-    const packageRoot = join(assetRoot, "pkg");
+    const packageRoot = resolvePackageDirectory({
+      assetRoot,
+      businessDateKst: "2026-09-11",
+      candidateId: "cmc_miss",
+    });
     mkdirSync(join(packageRoot, "reel", "final"), { recursive: true });
     const mediaBrief = createA8VerificationBrief();
     const shortVideoBrief = buildShortVideoBrief({ mediaBrief, destinations: ["다낭"] });
@@ -525,6 +547,7 @@ describe("SV-8A executor end-to-end with fakes", () => {
     const executor = new ProductionShortformVideoRenderExecutor({
       catalog,
       env: { MARKETING_ASSET_ROOT: assetRoot },
+      transport: localTransport(catalog, assetRoot),
       relaxReadinessForTests: true,
       remotion: {
         async render(input) {
@@ -541,10 +564,7 @@ describe("SV-8A executor end-to-end with fakes", () => {
         },
       },
       pipelineOverrides: {
-        materializer: createShortformSourceMaterializerRouter({
-          env: { MARKETING_ASSET_ROOT: assetRoot },
-        }),
-        resolvePackageRoot: () => packageRoot,
+        materializer: localMaterializer(catalog, assetRoot),
         skipFfprobeValidation: true,
       },
     });
@@ -564,7 +584,11 @@ describe("SV-8A executor end-to-end with fakes", () => {
 
   it("abort during execute returns failure without READY path", async () => {
     const assetRoot = tempDir("abort-assets");
-    const packageRoot = join(assetRoot, "pkg");
+    const packageRoot = resolvePackageDirectory({
+      assetRoot,
+      businessDateKst: "2026-09-11",
+      candidateId: "cmc_abort",
+    });
     mkdirSync(join(packageRoot, "reel", "final"), { recursive: true });
     const catalog = createInMemoryMarketingMediaSourceCatalogRepository();
     mkdirSync(join(assetRoot, "source/own"), { recursive: true });
@@ -612,11 +636,9 @@ describe("SV-8A executor end-to-end with fakes", () => {
     const executor = createTestProductionShortformVideoRenderExecutor({
       catalog,
       env: { MARKETING_ASSET_ROOT: assetRoot },
+      transport: localTransport(catalog, assetRoot),
       pipelineOverrides: {
-        materializer: createShortformSourceMaterializerRouter({
-          env: { MARKETING_ASSET_ROOT: assetRoot },
-        }),
-        resolvePackageRoot: () => packageRoot,
+        materializer: localMaterializer(catalog, assetRoot),
         skipFfprobeValidation: true,
       },
     });

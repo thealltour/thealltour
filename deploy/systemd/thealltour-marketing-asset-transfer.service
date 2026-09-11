@@ -1,0 +1,23 @@
+[Unit]
+Description=TheAllTour Marketing Asset Transfer API (Hermes-Pi, private)
+Documentation=docs/hermes/marketing/shortform-asset-transfer-v1.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ysh
+Group=ysh
+WorkingDirectory=/home/ysh/thealltour
+Environment=NODE_ENV=production
+Environment=PATH=/home/ysh/.local/bin:/home/ysh/.hermes/node/bin:/usr/bin:/bin
+Environment=HERMES_HOME=/home/ysh/.hermes
+# Secrets from WorkingDirectory/.env.local — never embed tokens in this unit.
+# Bind via MARKETING_ASSET_TRANSFER_BIND_HOST / PORT (default 127.0.0.1:3101).
+ExecStart=/home/ysh/.hermes/node/bin/npx tsx scripts/serve-marketing-asset-transfer.ts
+Restart=on-failure
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

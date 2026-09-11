@@ -380,3 +380,22 @@ export {
   SHORTFORM_OUTPUT_PROFILE_V1,
 } from "@/lib/marketing/assets/shortform/production/paths";
 export { createShortformSourceMaterializerRouter } from "@/lib/marketing/assets/shortform/production/materialize";
+
+// SV-8B2 — Private marketing asset transport (Pi Asset Transfer API)
+export {
+  MARKETING_ASSET_TRANSPORT_MODE_ENV,
+  MARKETING_ASSET_TRANSFER_TOKEN_ENV,
+  MARKETING_ASSET_TRANSFER_BASE_URL_ENV,
+  MARKETING_ASSET_TRANSFER_BIND_HOST_ENV,
+  MARKETING_ASSET_TRANSFER_PORT_ENV,
+  MARKETING_ASSET_TRANSFER_LIMITS,
+  SHORTFORM_FINAL_TRANSFER_RELATIVE_PATH,
+  CANDIDATE_PACKAGE_ARTIFACT_KINDS,
+  parseMarketingAssetTransportMode,
+  type MarketingAssetTransport,
+  type MarketingAssetTransportMode,
+  type CandidatePackageArtifactKind,
+} from "@/lib/marketing/assets/transport/contracts";
+export { createMarketingAssetTransport } from "@/lib/marketing/assets/transport/createTransport";
+export { createLocalMarketingAssetTransport } from "@/lib/marketing/assets/transport/localTransport";
+export { createHttpMarketingAssetTransport } from "@/lib/marketing/assets/transport/httpTransport";

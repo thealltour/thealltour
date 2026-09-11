@@ -2,7 +2,6 @@ import "server-only";
 
 import type { MarketingMediaSourceCatalogRepository } from "@/lib/marketing/assets/sourceCatalog/repository";
 import type { ShortformVideoRenderJob } from "@/lib/marketing/assets/shortform/renderJob/contracts";
-import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
 import {
   probeShortformProductionReadiness,
   type ShortformProductionReadiness,
@@ -24,12 +23,14 @@ import {
 } from "@/lib/marketing/assets/shortform/production/remotion/render";
 import { createFakeShortformTtsProvider } from "@/lib/marketing/assets/shortform/production/narration";
 import { createVoiceStudioTtsProvider } from "@/lib/marketing/tts/voiceStudio/adapter";
-import { resolvePackageDirectory } from "@/lib/marketing/assets/paths";
-import { resolveMarketingAssetRoot } from "@/lib/marketing/assets/config";
+import { createMarketingAssetTransport } from "@/lib/marketing/assets/transport/createTransport";
+import type { MarketingAssetTransport } from "@/lib/marketing/assets/transport/contracts";
+import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
 
 export type ProductionShortformVideoRenderExecutorOptions = {
   catalog: MarketingMediaSourceCatalogRepository;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  transport?: MarketingAssetTransport;
   tts?: TtsProvider;
   remotion?: ShortformRemotionRenderer;
   pipelineOverrides?: Partial<ShortformProductionPipelineDeps>;
@@ -42,13 +43,14 @@ export type ProductionShortformVideoRenderExecutorOptions = {
 };
 
 /**
- * SV-8A production executor. Fail-closed via isReady().
- * Does not auto-claim; worker still owns claim/markReady.
+ * SV-8A/SV-8B2 production executor. Fail-closed via isReady().
+ * All Pi-resident package I/O goes through MarketingAssetTransport.
  */
 export class ProductionShortformVideoRenderExecutor implements ShortformVideoRenderExecutor {
   readonly kind = "production" as const;
   readonly #catalog: MarketingMediaSourceCatalogRepository;
   readonly #env: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  readonly #transport: MarketingAssetTransport;
   readonly #tts: TtsProvider;
   readonly #remotion: ShortformRemotionRenderer;
   readonly #pipelineOverrides: Partial<ShortformProductionPipelineDeps>;
@@ -58,11 +60,18 @@ export class ProductionShortformVideoRenderExecutor implements ShortformVideoRen
   constructor(options: ProductionShortformVideoRenderExecutorOptions) {
     this.#catalog = options.catalog;
     this.#env = options.env ?? process.env;
+    this.#transport =
+      options.transport ??
+      createMarketingAssetTransport({ catalog: options.catalog, env: this.#env });
     this.#tts = options.tts ?? createVoiceStudioTtsProvider(this.#env);
     this.#remotion = options.remotion ?? new ProductionShortformRemotionRenderer();
     this.#pipelineOverrides = options.pipelineOverrides ?? {};
     this.#relaxReadinessForTests = Boolean(options.relaxReadinessForTests);
     this.#readinessOverride = options.readinessOverride ?? null;
+  }
+
+  get transportMode(): MarketingAssetTransport["mode"] {
+    return this.#transport.mode;
   }
 
   probeReadiness(): ShortformProductionReadiness {
@@ -76,7 +85,15 @@ export class ProductionShortformVideoRenderExecutor implements ShortformVideoRen
         ...probed,
         ready: true,
         reason: "test_relaxed_ready",
-        checks: { ...probed.checks, ffmpeg: true, ffprobe: true, voiceStudioConfig: true },
+        checks: {
+          ...probed.checks,
+          ffmpeg: true,
+          ffprobe: true,
+          voiceStudioConfig: true,
+          marketingAssetRoot: true,
+          transferBaseUrl: true,
+          transferToken: true,
+        },
       };
     }
     return probed;
@@ -112,16 +129,9 @@ export class ProductionShortformVideoRenderExecutor implements ShortformVideoRen
           catalog: this.#catalog,
           tts: this.#tts,
           remotion: this.#remotion,
-          resolvePackageRoot: (job) => {
-            const assetRoot = resolveMarketingAssetRoot({ env: this.#env });
-            return resolvePackageDirectory({
-              assetRoot,
-              businessDateKst: job.businessDateKst,
-              candidateId: job.candidateId,
-            });
-          },
           skipFfprobeValidation: this.#relaxReadinessForTests,
           ...this.#pipelineOverrides,
+          transport: this.#pipelineOverrides.transport ?? this.#transport,
         },
       });
       return {
@@ -145,11 +155,13 @@ export class ProductionShortformVideoRenderExecutor implements ShortformVideoRen
 export function createTestProductionShortformVideoRenderExecutor(input: {
   catalog: MarketingMediaSourceCatalogRepository;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  transport?: MarketingAssetTransport;
   pipelineOverrides?: Partial<ShortformProductionPipelineDeps>;
 }): ProductionShortformVideoRenderExecutor {
   return new ProductionShortformVideoRenderExecutor({
     catalog: input.catalog,
     env: input.env,
+    transport: input.transport,
     tts: createFakeShortformTtsProvider(),
     remotion: new FakeShortformRemotionRenderer(),
     relaxReadinessForTests: true,

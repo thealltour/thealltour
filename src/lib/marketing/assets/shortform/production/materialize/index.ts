@@ -1,9 +1,8 @@
 import "server-only";
 
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 
-import { resolveMarketingAssetRoot } from "@/lib/marketing/assets/config";
 import { assertPathInside, assertSafeRelativeArtifactPath } from "@/lib/marketing/assets/paths";
 import type { MarketingMediaSourceRecord } from "@/lib/marketing/assets/sourceCatalog/types";
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
@@ -14,6 +13,8 @@ import {
 } from "@/lib/marketing/assets/shortform/production/paths";
 import { selectShortformRendition } from "@/lib/marketing/assets/shortform/production/materialize/rendition";
 import type { ShortformJobWorkspace } from "@/lib/marketing/assets/shortform/worker/workspace";
+import type { MarketingAssetTransport } from "@/lib/marketing/assets/transport/contracts";
+import { MarketingAssetTransportError } from "@/lib/marketing/assets/transport/errors";
 
 export type MaterializedSceneSource = {
   sceneId: string;
@@ -51,39 +52,38 @@ function extensionForSource(source: MarketingMediaSourceRecord, fallback: string
   return fallback;
 }
 
-export function createInternalSourceMaterializer(input?: {
-  env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+export function createInternalSourceMaterializer(input: {
+  transport: MarketingAssetTransport;
 }): ShortformSourceMaterializer {
   return {
-    async materialize({ sceneId, source, origin, workspace }) {
-      if (!source.managedRelativePath) {
-        throw new ShortformProductionError(
-          "internal source missing managedRelativePath",
-          "INTERNAL_PATH_MISSING",
-        );
-      }
-      const relative = assertSafeRelativeArtifactPath(source.managedRelativePath);
-      const assetRoot = resolveMarketingAssetRoot({ env: input?.env });
-      const absolute = assertPathInside(assetRoot, join(assetRoot, relative), "managedSource");
-      if (!existsSync(absolute)) {
-        throw new ShortformProductionError("managed source file missing", "INTERNAL_SOURCE_MISSING");
-      }
-      const dest = join(
-        workspace.sourceDir,
-        `${sceneId}${extname(absolute) || extensionForSource(source, ".mp4")}`,
-      );
+    async materialize({ sceneId, source, origin, workspace, signal }) {
+      const preferredExt =
+        (source.managedRelativePath ? extname(source.managedRelativePath) : "") ||
+        extensionForSource(source, ".mp4");
+      const dest = join(workspace.sourceDir, `${sceneId}${preferredExt}`);
       mkdirSync(workspace.sourceDir, { recursive: true });
-      copyFileSync(absolute, dest);
-      return {
-        sceneId,
-        sourceId: source.id,
-        origin,
-        mediaKind:
-          origin === "photo_motion" || source.mediaType === "image" ? "photo_motion" : "video",
-        absolutePath: dest,
-        provider: source.provider,
-        providerAssetId: source.providerAssetId,
-      };
+      try {
+        const materialized = await input.transport.materializeManagedSource({
+          sourceId: source.id,
+          destinationAbsolutePath: dest,
+          signal,
+        });
+        return {
+          sceneId,
+          sourceId: source.id,
+          origin,
+          mediaKind:
+            origin === "photo_motion" || source.mediaType === "image" ? "photo_motion" : "video",
+          absolutePath: materialized.absolutePath,
+          provider: source.provider,
+          providerAssetId: source.providerAssetId,
+        };
+      } catch (error) {
+        if (error instanceof MarketingAssetTransportError) {
+          throw new ShortformProductionError(error.message, error.code);
+        }
+        throw error;
+      }
     },
   };
 }
@@ -192,19 +192,19 @@ export function createPixabaySourceMaterializer(
   };
 }
 
-export function createShortformSourceMaterializerRouter(input?: {
-  env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+export function createShortformSourceMaterializerRouter(input: {
+  transport: MarketingAssetTransport;
   fetchImpl?: typeof fetch;
   resolveFreshDownloadUrl?: ExternalMaterializerDeps["resolveFreshDownloadUrl"];
 }): ShortformSourceMaterializer {
-  const internal = createInternalSourceMaterializer({ env: input?.env });
+  const internal = createInternalSourceMaterializer({ transport: input.transport });
   const pexels = createPexelsSourceMaterializer({
-    fetchImpl: input?.fetchImpl,
-    resolveFreshDownloadUrl: input?.resolveFreshDownloadUrl,
+    fetchImpl: input.fetchImpl,
+    resolveFreshDownloadUrl: input.resolveFreshDownloadUrl,
   });
   const pixabay = createPixabaySourceMaterializer({
-    fetchImpl: input?.fetchImpl,
-    resolveFreshDownloadUrl: input?.resolveFreshDownloadUrl,
+    fetchImpl: input.fetchImpl,
+    resolveFreshDownloadUrl: input.resolveFreshDownloadUrl,
   });
 
   return {
@@ -216,6 +216,7 @@ export function createShortformSourceMaterializerRouter(input?: {
           "JOB_NOT_RENDERABLE_YET",
         );
       }
+      // Catalog may expose managedRelativePath metadata; bytes always via transport (local or HTTP).
       if (source.managedRelativePath) {
         return internal.materialize(args);
       }

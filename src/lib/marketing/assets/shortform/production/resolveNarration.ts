@@ -13,6 +13,8 @@ import type { ShortformVideoRenderJob } from "@/lib/marketing/assets/shortform/r
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
 import type { ShortformNarrationSegmentInput } from "@/lib/marketing/assets/shortform/production/narration";
 import { resolveTtsProfile } from "@/lib/marketing/tts/profiles";
+import type { MarketingAssetTransport } from "@/lib/marketing/assets/transport/contracts";
+import { MarketingAssetTransportError } from "@/lib/marketing/assets/transport/errors";
 
 const DEFAULT_VOICE_PROFILE_ID = "standard-ko-development";
 
@@ -146,4 +148,41 @@ export function resolveShortformNarrationPlanForJob(input: {
     input.shortVideoBrief ?? readShortVideoBriefForShortformProduction(input.packageRoot);
   const sceneIds = input.job.inputSnapshot.scenePicks.map((p) => p.sceneId);
   return resolveShortformNarrationPlan({ mediaBrief, shortVideoBrief, sceneIds });
+}
+
+/**
+ * Transport-aware narration resolution (local FS or Pi Asset Transfer HTTP).
+ * Mini-PC HTTP mode must not require MARKETING_ASSET_ROOT.
+ */
+export async function resolveShortformNarrationPlanViaTransport(input: {
+  transport: MarketingAssetTransport;
+  job: ShortformVideoRenderJob;
+  signal?: AbortSignal;
+}): Promise<ResolvedShortformNarrationPlan> {
+  try {
+    const mediaArtifact = await input.transport.readCandidatePackageArtifact({
+      candidateId: input.job.candidateId,
+      businessDateKst: input.job.businessDateKst,
+      artifactKind: "media-brief",
+      signal: input.signal,
+    });
+    const shortArtifact = await input.transport.readCandidatePackageArtifact({
+      candidateId: input.job.candidateId,
+      businessDateKst: input.job.businessDateKst,
+      artifactKind: "short-video-brief",
+      signal: input.signal,
+    });
+    const mediaBrief = parseMediaBrief(JSON.parse(mediaArtifact.bytes.toString("utf8")) as unknown);
+    const shortVideoBrief = parseShortVideoBrief(
+      JSON.parse(shortArtifact.bytes.toString("utf8")) as unknown,
+    );
+    const sceneIds = input.job.inputSnapshot.scenePicks.map((p) => p.sceneId);
+    return resolveShortformNarrationPlan({ mediaBrief, shortVideoBrief, sceneIds });
+  } catch (error) {
+    if (error instanceof ShortformProductionError) throw error;
+    if (error instanceof MarketingAssetTransportError) {
+      throw new ShortformProductionError(error.message, error.code);
+    }
+    throw error;
+  }
 }

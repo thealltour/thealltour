@@ -10,7 +10,9 @@ export function resolveMarketingAssetRoot(options: {
   explicitRoot?: string | null;
   env?: MarketingAssetEnv;
 } = {}): string {
-  const raw = options.explicitRoot?.trim() || options.env?.[MARKETING_ASSET_ROOT_ENV]?.trim() || "";
+  // Prefer explicit env bag (tests); otherwise fall back to process.env for tsx/Next runtime.
+  const envBag = options.env ?? process.env;
+  const raw = options.explicitRoot?.trim() || envBag[MARKETING_ASSET_ROOT_ENV]?.trim() || "";
   if (!raw) {
     throw new MarketingAssetConfigError(
       "MARKETING_ASSET_ROOT is required for marketing asset export. Set an absolute filesystem path (production: /mnt/HDD2TB/marketing-assets) or pass --root.",

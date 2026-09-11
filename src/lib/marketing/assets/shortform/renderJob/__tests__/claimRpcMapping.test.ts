@@ -111,6 +111,17 @@ describe("SV-8C4-B lease safety invariant", () => {
     expect(DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS).toBe(45 * 60 * 1000);
   });
 
+
+  it("SQL claim RPC default lease matches app 45m", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20260911140000_shortform_render_claim_lease_default_45m.sql"),
+      "utf8",
+    );
+    expect(sql).toMatch(/p_lease_ms bigint default 2700000/);
+    expect(sql).toMatch(/coalesce\(p_lease_ms, 2700000\)/);
+    expect(DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS).toBe(2_700_000);
+  });
+
   it("canonical unit keeps TimeoutStartSec below lease and WorkingDirectory canonical", () => {
     const unitPath = join(
       process.cwd(),

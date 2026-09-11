@@ -87,7 +87,7 @@ Postgres `claim_shortform_video_render_job`:
 - requires `attempt_count < max_attempts` (default 3)
 - sets RUNNING, claim token, lease, increments attempt
 
-Stale lease reclaim follows the marketing production queue pattern (default lease 30m).
+Stale lease reclaim: default lease **45m / 2700000ms** (app + SQL RPC aligned; must exceed systemd `TimeoutStartSec=1800`).
 
 ## Completion invariant
 

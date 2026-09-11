@@ -70,7 +70,8 @@ Health is read-only: no claim, no mutation, no secrets.
 - concurrency = 1
 - `SHORTFORM_WORKER_MAX_JOBS_PER_RUN` default **1**
 - no automatic `requeueFailed()` — explicit/manual retry only
-- lease = 30m; **no lease renewal/heartbeat in SV-7** (oneshot + timer; stale reclaim recovers)
+- lease = **45m** (`DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS=2700000`); **no lease renewal/heartbeat** (oneshot + timer; stale reclaim recovers)
+- systemd `TimeoutStartSec=1800` (30m) — must stay **below** lease (15m margin)
 - SIGTERM/SIGINT → AbortSignal; leave RUNNING for lease reclaim if needed
 
 ## Systemd (artifacts only)
@@ -99,4 +100,41 @@ Plus existing server-side Supabase service-role vars for repository access (neve
 
 ## Migrations
 
-SV-2 / SV-6 remain unapplied. No SV-7 lease-renewal migration (not required for oneshot + 30m lease).
+Lease default SQL/RPC aligned to 45m in `20260911140000_shortform_render_claim_lease_default_45m.sql`. No lease-renewal migration.
+
+## Production operating policy (SV-8C4-E)
+
+Canonical Mini-PC units: `deploy/systemd/thealltour-shortform-video-render-queue.{service,timer}`.
+
+| Item | Policy |
+|------|--------|
+| Timer cadence | `OnBootSec=2min`, `OnUnitActiveSec=1min`, `AccuracySec=15s`, `Persistent=false` |
+| Service | `Type=oneshot`, `TimeoutStartSec=1800`, `Nice=15` |
+| Max jobs / run | default **1** (`SHORTFORM_WORKER_MAX_JOBS_PER_RUN`) |
+| Lease | **2700000ms (45m)** — 15m greater than worker hard timeout |
+| Empty queue | clean exit 0 / `skippedReason=empty_queue` |
+| READY job | never claimable |
+| Success workspace | ephemeral cleaned **after** durable READY |
+| Failed workspace | retained (evidence retention; no sweeper in this path) |
+| Stale RUNNING | reclaimable after lease expiry if attempts remain |
+| Auto retry | **none** — operator `requeueFailed(logicalRunKey)` only |
+| Publication | out of scope for the worker |
+
+### Failure / recovery
+
+| Case | Behavior |
+|------|----------|
+| TTS/render/upload failure | `markFailed` → `FAILED`; no automatic requeue |
+| Operator retry | `requeueFailed` → same durable row → `QUEUED` (clears claim/output/error; resets attempt_count) |
+| Process crash / SIGTERM | leave `RUNNING`; reclaim after lease expiry |
+| maxAttempts | default **3**; claim requires `attempt_count < max_attempts` |
+| Existing durable final on retry | requeue clears `output_artifact_path`; pipeline re-renders and **overwrites** package final via atomic write (no skip-if-exists shortcut) |
+
+### Boot (when timer permanently enabled)
+
+- Timer is `WantedBy=timers.target` → starts on boot after enable
+- First fire ≈ `OnBootSec=2min` after boot
+- Service has `After=`/`Wants=network-online.target` (Tailscale/Pi transfer reachability soft-dependent)
+- No hard `Requires=` on VoiceStudio; if VoiceStudio or Asset Transfer is down, the claimed job fails safely to `FAILED` (no unrelated row mutation)
+- Enable gate: persistent `.env.local` `SHORTFORM_VIDEO_WORKER_ENABLED=true` for permanent operation (temporary systemd drop-in is canary-only)
+

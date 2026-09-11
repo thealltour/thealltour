@@ -1,8 +1,8 @@
 import "server-only";
 
-import { copyFileSync, existsSync, mkdirSync, symlinkSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, extname, isAbsolute, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import { isPathInside } from "@/lib/marketing/assets/paths";
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
@@ -37,8 +37,10 @@ function absoluteFromMediaSrc(mediaSrc: string): string {
  * Bare absolute paths become origin-relative HTTP (404).
  * file:// is rejected by the compositor download client.
  *
- * Local workspace media must be staged into bundle publicDir and referenced via
- * staticFile()-compatible relative paths (served as http by Remotion).
+ * Local workspace media must be staged as REGULAR FILES into bundle publicDir
+ * and referenced via staticFile()-compatible relative paths.
+ * Symlinks are not used: Remotion webpack/static serving does not reliably
+ * materialize symlink targets into the bundle public tree.
  */
 export function assertLocalMediaInsideAllowedRoot(input: {
   mediaSrc: string;
@@ -65,12 +67,31 @@ function safePublicRelativeName(sceneId: string, absolutePath: string): string {
   return `media/${safeScene}${safeExt}`;
 }
 
-function linkOrCopy(absoluteSource: string, destination: string): void {
-  mkdirSync(dirname(destination), { recursive: true });
+/** Idempotent: replace any prior symlink/file, then copy bytes as a regular file. */
+export function materializeRegularPublicMediaFile(input: {
+  absoluteSource: string;
+  destination: string;
+}): void {
+  mkdirSync(dirname(input.destination), { recursive: true });
   try {
-    symlinkSync(absoluteSource, destination);
+    lstatSync(input.destination);
+    rmSync(input.destination, { force: true });
   } catch {
-    copyFileSync(absoluteSource, destination);
+    /* destination absent */
+  }
+  copyFileSync(input.absoluteSource, input.destination);
+  const st = lstatSync(input.destination);
+  if (st.isSymbolicLink()) {
+    throw new ShortformProductionError(
+      "staged Remotion media must be a regular file",
+      "REMOTION_MEDIA_STAGING_FAILED",
+    );
+  }
+  if (!st.isFile()) {
+    throw new ShortformProductionError(
+      "staged Remotion media must be a regular file",
+      "REMOTION_MEDIA_STAGING_FAILED",
+    );
   }
 }
 
@@ -105,7 +126,7 @@ export function stageTravelShortInfoMediaForRemotion(input: {
         "REMOTION_MEDIA_SRC_FORBIDDEN",
       );
     }
-    linkOrCopy(absolute, destination);
+    materializeRegularPublicMediaFile({ absoluteSource: absolute, destination });
     return { ...scene, mediaSrc: relative };
   });
 
@@ -116,9 +137,4 @@ export function resolveAllowedShortformMediaRoot(
   env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
 ): string {
   return resolveShortformWorkspaceRoot(env.SHORTFORM_WORKER_WORKSPACE_PATH);
-}
-
-/** Test helper: absolute local path → file URL (not used for OffthreadVideo serving). */
-export function toFileUrlForLocalAbsolutePath(absolutePath: string): string {
-  return pathToFileURL(resolve(absolutePath)).href;
 }

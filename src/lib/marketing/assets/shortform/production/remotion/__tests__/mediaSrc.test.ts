@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -8,11 +16,12 @@ import { ShortformProductionError } from "@/lib/marketing/assets/shortform/produ
 import {
   assertLocalMediaInsideAllowedRoot,
   isRemoteOrDataRemotionMediaSrc,
+  materializeRegularPublicMediaFile,
   stageTravelShortInfoMediaForRemotion,
 } from "@/lib/marketing/assets/shortform/production/remotion/mediaSrc";
 
 function tempRoots() {
-  const root = mkdtempSync(join(tmpdir(), "sv8c3d5-"));
+  const root = mkdtempSync(join(tmpdir(), "sv8c3d7-"));
   const jobDir = join(root, "jobs", "svr_test");
   const sourceDir = join(jobDir, "source");
   const publicDir = join(jobDir, "render", "remotion-public");
@@ -21,11 +30,11 @@ function tempRoots() {
   return { root, jobDir, sourceDir, publicDir };
 }
 
-describe("Remotion local media staging (SV-8C3-D5)", () => {
-  it("maps absolute workspace media into publicDir-relative src (not raw absolute / not localhost absolute)", () => {
+describe("Remotion regular-file staging (SV-8C3-D7)", () => {
+  it("stages absolute workspace media as a regular file (not a symlink)", () => {
     const { jobDir, sourceDir, publicDir } = tempRoots();
     const absolute = join(sourceDir, "scene-001.mp4");
-    writeFileSync(absolute, Buffer.from("video-bytes"));
+    writeFileSync(absolute, Buffer.from("video-bytes-d7"));
     const staged = stageTravelShortInfoMediaForRemotion({
       props: {
         scenes: [
@@ -41,14 +50,30 @@ describe("Remotion local media staging (SV-8C3-D5)", () => {
       allowedRoot: jobDir,
     });
     expect(staged.scenes[0]!.mediaSrc).toBe("media/scene-001.mp4");
-    expect(staged.scenes[0]!.mediaSrc.startsWith("/")).toBe(false);
-    expect(staged.scenes[0]!.mediaSrc).not.toMatch(/^https?:\/\//);
-    expect(staged.scenes[0]!.mediaSrc).not.toContain(jobDir);
-    expect(existsSync(join(publicDir, "media/scene-001.mp4"))).toBe(true);
-    expect(readFileSync(join(publicDir, "media/scene-001.mp4"))).toEqual(Buffer.from("video-bytes"));
+    const dest = join(publicDir, "media/scene-001.mp4");
+    const st = lstatSync(dest);
+    expect(st.isSymbolicLink()).toBe(false);
+    expect(st.isFile()).toBe(true);
+    expect(readFileSync(dest)).toEqual(Buffer.from("video-bytes-d7"));
+    expect(st.size).toBe(absolute.length && Buffer.from("video-bytes-d7").byteLength);
   });
 
-  it("does not put raw absolute filesystem path into browser media reference", () => {
+  it("replaces a leftover symlink with a regular file copy", () => {
+    const { jobDir, sourceDir, publicDir } = tempRoots();
+    const absolute = join(sourceDir, "scene-002.mp4");
+    writeFileSync(absolute, Buffer.from("real-bytes"));
+    const dest = join(publicDir, "media/scene-002.mp4");
+    mkdirSync(join(publicDir, "media"), { recursive: true });
+    symlinkSync(absolute, dest);
+    expect(lstatSync(dest).isSymbolicLink()).toBe(true);
+    materializeRegularPublicMediaFile({ absoluteSource: absolute, destination: dest });
+    const st = lstatSync(dest);
+    expect(st.isSymbolicLink()).toBe(false);
+    expect(st.isFile()).toBe(true);
+    expect(readFileSync(dest)).toEqual(Buffer.from("real-bytes"));
+  });
+
+  it("does not expose raw absolute path in browser mediaSrc", () => {
     const { jobDir, sourceDir, publicDir } = tempRoots();
     const absolute = join(sourceDir, "clip.mp4");
     writeFileSync(absolute, Buffer.from("x"));
@@ -70,11 +95,12 @@ describe("Remotion local media staging (SV-8C3-D5)", () => {
     expect(ref.includes("/home/")).toBe(false);
     expect(ref.includes(absolute)).toBe(false);
     expect(ref.startsWith("file:")).toBe(false);
+    expect(ref.startsWith("/")).toBe(false);
   });
 
   it("rejects local paths outside allowed workspace root", () => {
     const { jobDir, publicDir } = tempRoots();
-    const outside = join(tmpdir(), `sv8c3d5-out-${Date.now()}.mp4`);
+    const outside = join(tmpdir(), `sv8c3d7-out-${Date.now()}.mp4`);
     writeFileSync(outside, Buffer.from("x"));
     expect(() =>
       stageTravelShortInfoMediaForRemotion({
@@ -116,5 +142,6 @@ describe("Remotion local media staging (SV-8C3-D5)", () => {
     });
     expect(staged.scenes[0]!.mediaSrc).toBe(remote);
     expect(isRemoteOrDataRemotionMediaSrc(remote)).toBe(true);
+    expect(existsSync(join(publicDir, "media"))).toBe(false);
   });
 });

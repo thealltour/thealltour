@@ -35,8 +35,8 @@ export class FakeShortformRemotionRenderer implements ShortformRemotionRenderer 
 
 /**
  * Production Remotion renderer (bundler + renderMedia).
- * Local workspace media is staged into publicDir so OffthreadVideo receives http(s)
- * URLs via staticFile(), not bare absolute paths or file://.
+ * Local workspace media is copied as regular files into publicDir; Remotion copies
+ * that tree into the webpack bundle so OffthreadVideo can fetch http(s) via staticFile().
  */
 export class ProductionShortformRemotionRenderer implements ShortformRemotionRenderer {
   async render(input: ShortformRemotionRenderInput) {
@@ -60,7 +60,7 @@ export class ProductionShortformRemotionRenderer implements ShortformRemotionRen
       const serveUrl = await bundle({
         entryPoint: entry,
         publicDir,
-        symlinkPublicDir: true,
+        symlinkPublicDir: false,
       });
       const composition = await selectComposition({
         serveUrl,

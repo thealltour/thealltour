@@ -21,12 +21,21 @@ export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 export type PublicationRequest = {
   provider: SocialProvider;
   channel: SocialChannel;
-  /** Must already be past Human Approval in a future orchestrator */
+  /** Must already be past Human Approval in the marketing orchestrator */
   marketingPost: MarketingPostRef;
-  /** Future: social_accounts.id — never a raw token */
+  /** social_accounts.id — never a raw token */
   socialAccountId?: string | null;
   idempotencyKey?: string | null;
   mediaTypes?: SocialMediaType[];
+  /** Optional public image URL for IMAGE posts (Threads first adapter) */
+  imageUrl?: string | null;
+  /** Opaque human approval evidence ref persisted on SocialPublication */
+  humanApprovalRef?: string | null;
+};
+
+/** Adapter-only runtime — credentials must not appear on SocialPublication rows */
+export type PublicationAdapterRuntime = {
+  credential: import("@/lib/marketing/social/domain/credentials").ResolvedAdapterCredential;
 };
 
 export type PublicationError = {
@@ -43,8 +52,8 @@ export type PublicationResult = {
   externalPostId?: string | null;
   externalUrl?: string | null;
   error?: PublicationError | null;
-  /** Always false in STEP 3-1; adapters must not invent success */
-  sideEffectPerformed: false;
+  /** true only when a remote provider write actually occurred */
+  sideEffectPerformed: boolean;
 };
 
 /**
@@ -55,7 +64,10 @@ export type PublicationAdapter = {
   readonly kind: "publication_adapter";
   readonly provider: SocialProvider;
   readonly channel: SocialChannel;
-  publish(request: PublicationRequest): Promise<PublicationResult>;
+  publish(
+    request: PublicationRequest,
+    runtime?: PublicationAdapterRuntime,
+  ): Promise<PublicationResult>;
   getStatus?(externalPostId: string): Promise<PublicationStatus>;
 };
 

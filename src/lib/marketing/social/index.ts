@@ -84,7 +84,12 @@ export type {
   CredentialReference,
   CredentialLifecycleHint,
   CredentialStore,
+  ResolvedAdapterCredential,
 } from "@/lib/marketing/social/domain/credentials";
+export {
+  createFailClosedCredentialStore,
+  createInMemoryCredentialStore,
+} from "@/lib/marketing/social/domain/inMemoryCredentialStore";
 
 export { evaluatePublicationEligibility } from "@/lib/marketing/social/eligibility/evaluatePublicationEligibility";
 export type {
@@ -109,6 +114,7 @@ export type {
   PublicationResult,
   PublicationError,
   PublicationAdapter,
+  PublicationAdapterRuntime,
 } from "@/lib/marketing/social/publication/types";
 
 export {
@@ -128,6 +134,39 @@ export type {
   PublicationAdapterCaller,
   ForbiddenPublicationAdapterCaller,
 } from "@/lib/marketing/social/publication/governanceBoundary";
+
+export {
+  DEFAULT_MARKETING_PUBLICATION_SIDE_EFFECTS,
+  isMarketingPublicationSideEffectAllowed,
+  assertMarketingPublicationSideEffectAllowed,
+} from "@/lib/marketing/social/publication/sideEffectGate";
+export type {
+  MarketingPublicationSideEffectAllowlist,
+  MarketingPublicationSideEffectContext,
+} from "@/lib/marketing/social/publication/sideEffectGate";
+
+export {
+  buildMarketingPublicationIdempotencyKey,
+  buildHumanApprovalRef,
+} from "@/lib/marketing/social/publication/idempotency";
+export { createMarketingPublicationOrchestrator } from "@/lib/marketing/social/publication/orchestrator";
+export type {
+  MarketingPublicationOrchestrator,
+  PrepareMarketingPublicationInput,
+  PrepareMarketingPublicationResult,
+  ExecuteMarketingPublicationInput,
+  ExecuteMarketingPublicationResult,
+  LoadApprovedHumanReview,
+} from "@/lib/marketing/social/publication/orchestrator";
+export {
+  MarketingPublicationError,
+  MARKETING_PUBLICATION_ERROR_CODES,
+} from "@/lib/marketing/social/publication/errors";
+
+export {
+  createThreadsMarketingPublicationAdapter,
+  THREADS_MARKETING_ADAPTER_NOT_ADMIN_ROUTE,
+} from "@/lib/marketing/social/providers/threads/threadsMarketingAdapter";
 
 export { assertPerformanceCollectorSurface } from "@/lib/marketing/social/performance/types";
 export type {

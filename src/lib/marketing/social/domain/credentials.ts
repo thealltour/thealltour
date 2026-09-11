@@ -26,14 +26,21 @@ export type CredentialLifecycleHint = {
 };
 
 /**
- * Future secure credential backend — interface only.
- * Implementations must not log or return raw secrets to marketing domain callers
- * except through tightly scoped adapter runtime (never prompts / MCP / memory).
+ * Adapter-scoped credential material. Never persist onto SocialPublication or logs.
+ * Keys are provider-specific (e.g. accessToken, userId for Threads).
+ */
+export type ResolvedAdapterCredential = {
+  kind: "adapter_credential";
+  material: Readonly<Record<string, string>>;
+};
+
+/**
+ * Secure credential backend boundary.
+ * Implementations must not log raw secrets; only PublicationAdapter runtime may read material.
  */
 export type CredentialStore = {
   readonly kind: "credential_store";
-  /** Resolve opaque reference for adapter use only — STEP 3-3 does not implement */
-  resolve?(ref: CredentialReference): Promise<never>;
+  resolve(ref: CredentialReference): Promise<ResolvedAdapterCredential>;
   rotate?(ref: CredentialReference): Promise<CredentialReference>;
   revoke?(ref: CredentialReference): Promise<void>;
 };

@@ -10,6 +10,12 @@ import {
 import { upsertThreadMarketingPost } from "@/lib/threads/threadMarketingStore";
 import { publishToThreads, ThreadsClientError } from "@/lib/threads/threadsClient";
 
+/**
+ * Legacy admin blog Threads publish.
+ * NOT the canonical marketing publication path (HumanMarketingReview →
+ * PublicationOrchestrator → Threads marketing adapter).
+ */
+
 type PublishBody = {
   draftContent?: string;
   imageUrl?: string;

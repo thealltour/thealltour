@@ -59,17 +59,30 @@ export const OPERATIONS_EXTERNAL_SIDE_EFFECTS_STEP_3_10 = 0 as const;
  */
 
 
-export function isAllowedPublicationAdapterCaller(caller: PublicationAdapterCaller): boolean {
-  if (PUBLICATION_FLOW_INACTIVE) return false;
-  return caller === PUBLICATION_ORCHESTRATOR_CALLER;
+/**
+ * @param options.sideEffectsExplicitlyAllowed — only the marketing PublicationOrchestrator
+ *   may set this after the narrow side-effect allowlist passes. Does not flip the global
+ *   PUBLICATION_FLOW_INACTIVE constant.
+ */
+export function isAllowedPublicationAdapterCaller(
+  caller: PublicationAdapterCaller,
+  options?: { sideEffectsExplicitlyAllowed?: boolean },
+): boolean {
+  if (caller !== PUBLICATION_ORCHESTRATOR_CALLER) return false;
+  if (PUBLICATION_FLOW_INACTIVE && !options?.sideEffectsExplicitlyAllowed) return false;
+  return true;
 }
 
-export function assertCanInvokePublicationAdapter(caller: PublicationAdapterCaller): void {
-  if (!isAllowedPublicationAdapterCaller(caller)) {
+export function assertCanInvokePublicationAdapter(
+  caller: PublicationAdapterCaller,
+  options?: { sideEffectsExplicitlyAllowed?: boolean },
+): void {
+  if (!isAllowedPublicationAdapterCaller(caller, options)) {
     throw new Error(
       `PublicationAdapter invocation denied for caller=${caller}. ` +
         `Required path: Content → Governance → Human Approval → Publication Orchestrator. ` +
-        `STEP 3-1 keeps publication flow inactive (SNS side effects = 0).`,
+        `PUBLICATION_FLOW_INACTIVE=${PUBLICATION_FLOW_INACTIVE}; ` +
+        `sideEffectsExplicitlyAllowed=${Boolean(options?.sideEffectsExplicitlyAllowed)}.`,
     );
   }
 }

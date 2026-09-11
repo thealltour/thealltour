@@ -5,6 +5,14 @@ const THREADS_GRAPH_BASE = "https://graph.threads.net/v1.0";
 export type PublishToThreadsInput = {
   text: string;
   imageUrl?: string;
+  /**
+   * Optional adapter-injected auth for marketing PublicationAdapter path.
+   * When set, skips env/DB token resolution (admin routes continue using requireThreadsConfig).
+   */
+  auth?: {
+    accessToken: string;
+    userId: string;
+  };
 };
 
 export type PublishToThreadsResult = {
@@ -330,7 +338,11 @@ export async function publishToThreads(input: PublishToThreadsInput): Promise<Pu
     throw new ThreadsClientError("게시할 본문이 비어 있습니다.", 400);
   }
 
-  const { accessToken, userId } = await requireThreadsConfig();
+  const auth =
+    input.auth?.accessToken?.trim() && input.auth?.userId?.trim()
+      ? { accessToken: input.auth.accessToken.trim(), userId: input.auth.userId.trim() }
+      : await requireThreadsConfig();
+  const { accessToken, userId } = auth;
   const imageUrl = input.imageUrl?.trim();
   const mediaType = imageUrl ? "IMAGE" : "TEXT";
 

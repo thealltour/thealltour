@@ -3,7 +3,7 @@
  * Real provider modules belong under providers/<vendor>/ in later steps.
  */
 
-import type { PublicationAdapter, PublicationRequest, PublicationResult } from "@/lib/marketing/social/publication/types";
+import type { PublicationAdapter, PublicationAdapterRuntime, PublicationRequest, PublicationResult } from "@/lib/marketing/social/publication/types";
 import type { PerformanceCollector, DateRange, AccountPerformance, PublicationPerformance } from "@/lib/marketing/social/performance/types";
 import type { SocialChannel, SocialProvider } from "@/lib/marketing/social/domain/providers";
 import { CHANNEL_PROVIDER } from "@/lib/marketing/social/domain/providers";
@@ -16,8 +16,12 @@ export function createUnsupportedPublicationAdapter(
     kind: "publication_adapter",
     provider,
     channel,
-    async publish(request: PublicationRequest): Promise<PublicationResult> {
+    async publish(
+      request: PublicationRequest,
+      _runtime?: PublicationAdapterRuntime,
+    ): Promise<PublicationResult> {
       void request;
+      void _runtime;
       return {
         status: "unsupported",
         provider,

@@ -4,6 +4,13 @@ import { captureServerException } from "@/lib/observability";
 import { upsertThreadMarketingPost } from "@/lib/threads/threadMarketingStore";
 import { publishToThreads, ThreadsClientError } from "@/lib/threads/threadsClient";
 
+/**
+ * Legacy admin product Threads publish.
+ * NOT the canonical marketing publication path (HumanMarketingReview →
+ * PublicationOrchestrator → Threads marketing adapter). Do not route marketing
+ * candidate publication through this endpoint.
+ */
+
 type PublishBody = {
   draftContent?: string;
   imageUrl?: string;

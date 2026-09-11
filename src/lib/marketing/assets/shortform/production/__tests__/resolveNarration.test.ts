@@ -7,6 +7,8 @@ import {
   resolveShortformNarrationPlan,
 } from "@/lib/marketing/assets/shortform/production/resolveNarration";
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
+import { buildTtsGenerationRequest } from "@/lib/marketing/tts/provider";
+import { TtsError } from "@/lib/marketing/tts/errors";
 
 function enabledBrief(): MediaBrief {
   return createA8VerificationBrief();
@@ -113,5 +115,82 @@ describe("SV-8A narration resolution (MediaBrief SoT)", () => {
     });
     expect(plan.segments[0]!.text).toBe("TTS 본문입니다.");
     expect(plan.segments[0]!.subtitleText).toBe("자막 본문입니다.");
+  });
+
+  it("SV-8C3-D1: preserves full enabled TtsProfile so generation request is not rejected", () => {
+    const mediaBrief = enabledBrief();
+    const shortVideoBrief = buildShortVideoBrief({ mediaBrief, destinations: ["다낭"] });
+    const plan = resolveShortformNarrationPlan({
+      mediaBrief,
+      shortVideoBrief,
+      sceneIds: [shortVideoBrief.scenes[0]!.sceneId],
+    });
+    const profile = plan.segments[0]!.profile;
+    expect(profile.profileId).toBe("standard-ko-development");
+    expect(profile.enabled).toBe(true);
+    expect(profile.provider).toBe("voicestudio");
+    expect(profile.language).toBe("ko");
+    expect(profile.locale).toBe("ko-KR");
+    // Downstream gate must accept this profile (the live failure mode was missing enabled).
+    expect(() =>
+      buildTtsGenerationRequest({
+        requestId: "sv8c3d1-enabled",
+        profile,
+        text: plan.segments[0]!.text,
+      }),
+    ).not.toThrow();
+  });
+
+  it("SV-8C3-D1: disabled canonical profile remains rejected at resolve", () => {
+    const mediaBrief = enabledBrief();
+    mediaBrief.formats.shortform.voiceProfileId = "owner-clone-development";
+    const shortVideoBrief = buildShortVideoBrief({ mediaBrief, destinations: ["다낭"] });
+    expect(() =>
+      resolveShortformNarrationPlan({
+        mediaBrief,
+        shortVideoBrief,
+        sceneIds: [shortVideoBrief.scenes[0]!.sceneId],
+      }),
+    ).toThrow(TtsError);
+    try {
+      resolveShortformNarrationPlan({
+        mediaBrief,
+        shortVideoBrief,
+        sceneIds: [shortVideoBrief.scenes[0]!.sceneId],
+      });
+    } catch (error) {
+      expect(error).toBeInstanceOf(TtsError);
+      expect((error as TtsError).code).toBe("disabled_profile");
+    }
+  });
+
+  it("SV-8C3-D1: partial profile without enabled still fails generation safety gate", () => {
+    expect(() =>
+      buildTtsGenerationRequest({
+        requestId: "sv8c3d1-partial",
+        profile: {
+          provider: "voicestudio",
+          profileId: "standard-ko-development",
+          modelRef: "tts-1",
+          voiceRef: "default",
+        } as never,
+        text: "여행은 여유롭게 준비할수록 편해집니다.",
+      }),
+    ).toThrow(TtsError);
+    try {
+      buildTtsGenerationRequest({
+        requestId: "sv8c3d1-partial",
+        profile: {
+          provider: "voicestudio",
+          profileId: "standard-ko-development",
+          modelRef: "tts-1",
+          voiceRef: "default",
+        } as never,
+        text: "여행은 여유롭게 준비할수록 편해집니다.",
+      });
+    } catch (error) {
+      expect((error as TtsError).code).toBe("disabled_profile");
+      expect((error as TtsError).message).toMatch(/standard-ko-development/);
+    }
   });
 });

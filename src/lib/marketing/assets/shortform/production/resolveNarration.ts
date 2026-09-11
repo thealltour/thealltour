@@ -12,6 +12,7 @@ import { parseShortVideoBrief } from "@/lib/marketing/assets/shortVideoBrief/val
 import type { ShortformVideoRenderJob } from "@/lib/marketing/assets/shortform/renderJob/contracts";
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
 import type { ShortformNarrationSegmentInput } from "@/lib/marketing/assets/shortform/production/narration";
+import type { TtsProfile } from "@/lib/marketing/tts/contracts";
 import { resolveTtsProfile } from "@/lib/marketing/tts/profiles";
 import type { MarketingAssetTransport } from "@/lib/marketing/assets/transport/contracts";
 import { MarketingAssetTransportError } from "@/lib/marketing/assets/transport/errors";
@@ -57,14 +58,15 @@ function indexNarrationSegments(mediaBrief: MediaBrief): Map<string, ShortformNa
   return map;
 }
 
-function ttsProfileFields(voiceProfileId: string | null): ShortformNarrationSegmentInput["profile"] {
-  const profile = resolveTtsProfile(voiceProfileId?.trim() || DEFAULT_VOICE_PROFILE_ID);
-  return {
-    provider: "voicestudio",
-    profileId: profile.profileId,
-    modelRef: profile.modelRef ?? "tts-1",
-    voiceRef: profile.voiceRef ?? "default",
-  };
+/**
+ * Resolve the canonical TtsProfile for shortform narration.
+ * Must return the full profile (including enabled) — stripping fields caused
+ * buildTtsGenerationRequest to treat missing enabled as disabled (SV-8C3-D).
+ */
+export function resolveShortformNarrationTtsProfile(
+  voiceProfileId: string | null | undefined,
+): TtsProfile {
+  return resolveTtsProfile(voiceProfileId?.trim() || DEFAULT_VOICE_PROFILE_ID);
 }
 
 /**
@@ -80,7 +82,7 @@ export function resolveShortformNarrationPlan(input: {
 }): ResolvedShortformNarrationPlan {
   const byId = indexNarrationSegments(input.mediaBrief);
   const scenesById = new Map(input.shortVideoBrief.scenes.map((s) => [s.sceneId, s]));
-  const profile = ttsProfileFields(
+  const profile = resolveShortformNarrationTtsProfile(
     input.shortVideoBrief.narration.voiceProfileId ??
       input.mediaBrief.formats.shortform.voiceProfileId,
   );

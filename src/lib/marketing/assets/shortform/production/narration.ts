@@ -3,6 +3,7 @@ import "server-only";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import type { TtsProfile } from "@/lib/marketing/tts/contracts";
 import type { TtsProvider } from "@/lib/marketing/tts/provider";
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
 import type { ShortformJobWorkspace } from "@/lib/marketing/assets/shortform/worker/workspace";
@@ -15,12 +16,8 @@ export type ShortformNarrationSegmentInput = {
   text: string;
   /** MediaBrief.subtitleText (fallback narrationText) — baked Remotion captions. */
   subtitleText: string;
-  profile: {
-    provider: "voicestudio";
-    profileId: string;
-    modelRef: string;
-    voiceRef: string;
-  };
+  /** Canonical TtsProfile — must preserve enabled so generation safety gates still work. */
+  profile: TtsProfile;
 };
 
 export type PreparedNarration = {
@@ -67,7 +64,7 @@ export async function prepareShortformNarration(input: {
     }
     const result = await input.tts.generate({
       requestId: `${input.requestIdPrefix}:${segment.segmentId}:${index}`,
-      profile: segment.profile as never,
+      profile: segment.profile,
       text: segment.text,
       segmentId: segment.segmentId,
     });

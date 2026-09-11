@@ -12,14 +12,15 @@ import { assertNoRawCredentialMaterial } from "@/lib/marketing/social/domain/cre
 export type InMemoryCredentialMaterial = Readonly<Record<string, string>>;
 
 /**
- * Fail-closed production placeholder until a real secure store is wired.
+ * Explicit fail-closed store (tests / callers that must never resolve).
+ * Production marketing path should use createRuntimeEnvCredentialStore instead.
  */
 export function createFailClosedCredentialStore(): CredentialStore {
   return {
     kind: "credential_store",
     async resolve(): Promise<ResolvedAdapterCredential> {
       throw new Error(
-        "CredentialStore.resolve is fail-closed: production secure store is not configured (PUB-2).",
+        "CredentialStore.resolve is fail-closed: no credential backend configured for this caller.",
       );
     },
   };

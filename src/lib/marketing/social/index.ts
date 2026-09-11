@@ -90,6 +90,17 @@ export {
   createFailClosedCredentialStore,
   createInMemoryCredentialStore,
 } from "@/lib/marketing/social/domain/inMemoryCredentialStore";
+export {
+  THREADS_MARKETING_CANARY_STORE_HANDLE,
+  THREADS_MARKETING_CANARY_STORE_KIND,
+  THREADS_MARKETING_RUNTIME_SECRET_ENV_NAMES,
+  THREADS_OAUTH_APP_ENV_NAMES,
+  THREADS_MARKETING_CANARY_REQUIRED_PERMISSIONS,
+  createRuntimeEnvCredentialStore,
+  createThreadsMarketingCanaryCredentialReference,
+  assertThreadsCredentialMatchesAccount,
+  inspectThreadsMarketingRuntimeSecrets,
+} from "@/lib/marketing/social/domain/runtimeEnvCredentialStore";
 
 export { evaluatePublicationEligibility } from "@/lib/marketing/social/eligibility/evaluatePublicationEligibility";
 export type {
@@ -167,6 +178,14 @@ export {
   createThreadsMarketingPublicationAdapter,
   THREADS_MARKETING_ADAPTER_NOT_ADMIN_ROUTE,
 } from "@/lib/marketing/social/providers/threads/threadsMarketingAdapter";
+export {
+  ensureThreadsMarketingCanaryAccount,
+  THREADS_PROVIDER_IDENTITY_KIND,
+} from "@/lib/marketing/social/providers/threads/threadsCanaryBinding";
+export type {
+  EnsureThreadsMarketingCanaryAccountInput,
+  EnsureThreadsMarketingCanaryAccountResult,
+} from "@/lib/marketing/social/providers/threads/threadsCanaryBinding";
 
 export { assertPerformanceCollectorSurface } from "@/lib/marketing/social/performance/types";
 export type {

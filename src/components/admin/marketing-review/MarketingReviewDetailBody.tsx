@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -9,6 +9,16 @@ import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/
 import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketing-review/MarketingReviewShortformSourcesPanel";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/dto";
+
+type SocialAccountOption = {
+  id: string;
+  channel: string;
+  provider: string;
+  displayName: string | null;
+  externalIdentityId: string;
+  status: string;
+  label: string;
+};
 
 type Props = {
   initialContext: MorningMarketingReviewContext;
@@ -40,8 +50,50 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
   const [manualUrl, setManualUrl] = useState("");
   const [manualPostId, setManualPostId] = useState("");
   const [manualSocialAccountId, setManualSocialAccountId] = useState("");
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccountOption[]>([]);
+  const [socialAccountsError, setSocialAccountsError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/marketing-review/social-accounts", {
+          cache: "no-store",
+        });
+        const data = (await res.json()) as { accounts?: SocialAccountOption[]; message?: string };
+        if (!res.ok) {
+          if (!cancelled) {
+            setSocialAccounts([]);
+            setSocialAccountsError(data.message ?? "계정을 불러오지 못했습니다.");
+          }
+          return;
+        }
+        if (!cancelled) {
+          setSocialAccounts(data.accounts ?? []);
+          setSocialAccountsError(null);
+          const preferred =
+            (data.accounts ?? []).find((a) => a.channel === (context.draft.channel || "threads")) ??
+            (data.accounts ?? [])[0];
+          if (preferred && !manualSocialAccountId) {
+            setManualSocialAccountId(preferred.id);
+            if (!manualPlatform) setManualPlatform(preferred.channel);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setSocialAccounts([]);
+          setSocialAccountsError("계정을 불러오지 못했습니다.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Load once for this review page; do not re-bind on every draft channel keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidate.candidateId]);
 
   async function reloadContext() {
     const res = await fetch(`/api/admin/marketing-review/${encodeURIComponent(candidate.candidateId)}`, {
@@ -206,12 +258,35 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
                 published로 연결됩니다.
               </p>
               <div className="grid gap-3 md:grid-cols-2">
-                <input
-                  value={manualSocialAccountId}
-                  onChange={(e) => setManualSocialAccountId(e.target.value)}
-                  placeholder="socialAccountId (uuid)"
-                  className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm md:col-span-2"
-                />
+                <label className="block text-sm md:col-span-2">
+                  <span className="mb-1 block text-[var(--text-secondary)]">게시 계정</span>
+                  <select
+                    value={manualSocialAccountId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setManualSocialAccountId(nextId);
+                      const selected = socialAccounts.find((a) => a.id === nextId);
+                      if (selected) setManualPlatform(selected.channel);
+                    }}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                  >
+                    <option value="">계정을 선택하세요</option>
+                    {socialAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.label}
+                      </option>
+                    ))}
+                  </select>
+                  {socialAccountsError ? (
+                    <span className="mt-1 block text-xs text-[var(--danger,#b91c1c)]">
+                      {socialAccountsError}
+                    </span>
+                  ) : socialAccounts.length === 0 ? (
+                    <span className="mt-1 block text-xs text-[var(--text-secondary)]">
+                      연결된 SocialAccount가 없습니다. 먼저 Threads canary 바인딩을 확인하세요.
+                    </span>
+                  ) : null}
+                </label>
                 <input
                   value={manualPlatform}
                   onChange={(e) => setManualPlatform(e.target.value)}

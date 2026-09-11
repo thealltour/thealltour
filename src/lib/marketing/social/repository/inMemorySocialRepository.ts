@@ -312,6 +312,26 @@ export class InMemorySocialRepository implements SocialRepository {
     return this.accounts.get(id) ?? null;
   }
 
+  async listSocialAccounts(input: {
+    channel?: SocialChannel;
+    status?: SocialAccountStatus | SocialAccountStatus[];
+    limit?: number;
+  } = {}): Promise<SocialAccount[]> {
+    const statuses = input.status
+      ? Array.isArray(input.status)
+        ? input.status
+        : [input.status]
+      : null;
+    const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+    return [...this.accounts.values()]
+      .filter((account) => {
+        if (input.channel && account.channel !== input.channel) return false;
+        if (statuses && !statuses.includes(account.status)) return false;
+        return true;
+      })
+      .slice(0, limit);
+  }
+
   async findSocialAccount(input: {
     provider: SocialProvider;
     channel: SocialChannel;

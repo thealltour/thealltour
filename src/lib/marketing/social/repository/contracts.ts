@@ -169,6 +169,12 @@ export type SocialRepository = {
 
   registerSocialAccount(input: RegisterSocialAccountInput): Promise<SocialAccount>;
   getSocialAccountById(id: string): Promise<SocialAccount | null>;
+  /** Safe list for Admin selectors — never includes credential material. */
+  listSocialAccounts(input?: {
+    channel?: SocialChannel;
+    status?: SocialAccountStatus | SocialAccountStatus[];
+    limit?: number;
+  }): Promise<SocialAccount[]>;
   findSocialAccount(input: {
     provider: SocialProvider;
     channel: SocialChannel;

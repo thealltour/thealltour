@@ -322,6 +322,17 @@ describe("social repository STEP 3-5", () => {
     expect(listed.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("lists social accounts for admin selectors without credential fields", async () => {
+    const { repo, account } = await seedConnectedThreadsAccount();
+    const listed = await repo.listSocialAccounts({ status: "connected", limit: 10 });
+    expect(listed.some((row) => row.id === account.id)).toBe(true);
+    const row = listed.find((r) => r.id === account.id)!;
+    expect(row.channel).toBe("threads");
+    expect(row.externalIdentityId).toBeTruthy();
+    expect(row).not.toHaveProperty("credentialRef");
+    expect(JSON.stringify(row)).not.toMatch(/token|secret|password/i);
+  });
+
   it("keeps publication flow inactive and returns safe account projections", async () => {
     expect(PUBLICATION_FLOW_INACTIVE).toBe(true);
     expect(SNS_SIDE_EFFECTS_STEP_3_5).toBe(0);

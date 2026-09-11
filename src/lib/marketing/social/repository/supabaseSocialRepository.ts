@@ -350,6 +350,23 @@ export class SupabaseSocialRepository implements SocialRepository {
     return data ? mapSocialAccountRow(asRow(data)) : null;
   }
 
+  async listSocialAccounts(input: {
+    channel?: SocialChannel;
+    status?: SocialAccountStatus | SocialAccountStatus[];
+    limit?: number;
+  } = {}): Promise<SocialAccount[]> {
+    let query = this.client.from("social_accounts").select("*").order("created_at", { ascending: false });
+    if (input.channel) query = query.eq("channel", input.channel);
+    if (input.status) {
+      const statuses = Array.isArray(input.status) ? input.status : [input.status];
+      query = query.in("status", statuses);
+    }
+    const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+    const { data, error } = await query.limit(limit);
+    if (error) throwDb(error, "listSocialAccounts failed");
+    return asRows(data).map(mapSocialAccountRow);
+  }
+
   async findSocialAccount(input: {
     provider: SocialProvider;
     channel: SocialChannel;

@@ -34,6 +34,7 @@ export const MARKETING_ASSET_ARTIFACT_ORIGINS = [
   "video_preview_composition",
   "short_video_brief",
   "shortform_source_resolution",
+  "shortform_video_render",
   "human_edit",
   "published",
 ] as const;

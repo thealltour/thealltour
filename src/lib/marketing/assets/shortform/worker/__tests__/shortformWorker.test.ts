@@ -166,7 +166,7 @@ describe("SV-7 worker gates", () => {
   it("production default executor is unready (no claim without SV-8)", () => {
     const executor = createDefaultShortformVideoRenderExecutor({ executionMode: "production" });
     expect(executor.isReady()).toBe(false);
-    expect(executor.readinessReason()).toMatch(/sv8/i);
+    expect(executor.readinessReason()).toMatch(/not_wired|not_ready/i);
   });
 
   it("blocks claim when storage decision disallows new jobs", async () => {

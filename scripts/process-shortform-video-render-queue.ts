@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Mini-PC oneshot shortform VideoRenderJob worker (SV-7 runtime).
+ * Mini-PC oneshot shortform VideoRenderJob worker (SV-7 runtime + SV-8A production executor wiring).
  *
- * Does NOT download stock, run Remotion/FFmpeg/VoiceStudio, or install systemd.
- * Production media execution is SV-8.
+ * Does NOT install systemd, apply migrations, or run live provider/TTS smoke (SV-8B/C).
+ * Production executor isReady() remains fail-closed without ffmpeg/ffprobe/workspace/config.
  *
  *   npm run marketing:shortform-worker
  *   npm run marketing:shortform-worker:health
@@ -54,9 +54,6 @@ async function main() {
   const { loadShortformVideoWorkerConfig } = await import(
     "@/lib/marketing/assets/shortform/worker/config"
   );
-  const { createDefaultShortformVideoRenderExecutor } = await import(
-    "@/lib/marketing/assets/shortform/worker/executor"
-  );
   const { buildShortformWorkerHealthReport } = await import(
     "@/lib/marketing/assets/shortform/worker/health"
   );
@@ -80,10 +77,30 @@ async function main() {
     config = { ...config, maxJobsPerRun: Math.min(Math.trunc(maxJobsRaw), 3) };
   }
 
-  // Production CLI never constructs Fake executor.
-  const executor = createDefaultShortformVideoRenderExecutor({
-    executionMode: config.executionMode,
-  });
+  const backend = argValue(argv, "--backend") === "memory" ? "memory" : undefined;
+
+  // Production CLI: wire Production executor (still fail-closed via isReady/ffmpeg).
+  // Fake executor is never constructed here.
+  let executor;
+  if (config.executionMode === "production") {
+    const { createMarketingMediaSourceCatalogRepository } = await import(
+      "@/lib/marketing/assets/sourceCatalog/createSourceCatalogRepository"
+    );
+    const { ProductionShortformVideoRenderExecutor } = await import(
+      "@/lib/marketing/assets/shortform/production/productionExecutor"
+    );
+    const catalog = await createMarketingMediaSourceCatalogRepository(
+      backend ? { backend: "memory" } : {},
+    );
+    executor = new ProductionShortformVideoRenderExecutor({ catalog });
+  } else {
+    const { createDefaultShortformVideoRenderExecutor } = await import(
+      "@/lib/marketing/assets/shortform/worker/executor"
+    );
+    executor = createDefaultShortformVideoRenderExecutor({
+      executionMode: config.executionMode,
+    });
+  }
 
   if (healthOnly) {
     const report = await buildShortformWorkerHealthReport({ config, executor });
@@ -99,7 +116,6 @@ async function main() {
   process.once("SIGTERM", () => onSignal("SIGTERM"));
   process.once("SIGINT", () => onSignal("SIGINT"));
 
-  const backend = argValue(argv, "--backend") === "memory" ? "memory" : undefined;
   const repository = await createShortformVideoRenderJobRepository(
     backend ? { backend: "memory" } : {},
   );

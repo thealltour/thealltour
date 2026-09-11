@@ -45,8 +45,9 @@ export class DisabledShortformVideoRenderExecutor implements ShortformVideoRende
 }
 
 /**
- * SV-7 placeholder for future ProductionShortformVideoRenderExecutor (SV-8).
- * Always unready so production never claims without media execution.
+ * SV-7/8 sync default for CLI without catalog wiring.
+ * Prefer ProductionShortformVideoRenderExecutor from production/ when claiming.
+ * Unready keeps fail-closed if ffmpeg/env incomplete and caller uses this default.
  */
 export class UnreadyProductionShortformVideoRenderExecutor
   implements ShortformVideoRenderExecutor
@@ -58,14 +59,14 @@ export class UnreadyProductionShortformVideoRenderExecutor
   }
 
   readinessReason(): string {
-    return "production_executor_requires_sv8";
+    return "production_executor_not_wired_or_not_ready";
   }
 
   async execute(): Promise<ShortformRenderExecutionResult> {
     return {
       ok: false,
-      errorCode: "EXECUTOR_NOT_IMPLEMENTED",
-      error: new Error("production_executor_requires_sv8"),
+      errorCode: "EXECUTOR_NOT_READY",
+      error: new Error("production_executor_not_wired_or_not_ready"),
     };
   }
 }

@@ -365,3 +365,18 @@ export {
   createShortformJobWorkspace,
 } from "@/lib/marketing/assets/shortform/worker/workspace";
 export { buildShortformWorkerHealthReport } from "@/lib/marketing/assets/shortform/worker/health";
+
+// SV-8A — Production shortform media executor (code only; Mini-PC deploy = SV-8B)
+export {
+  ProductionShortformVideoRenderExecutor,
+  createTestProductionShortformVideoRenderExecutor,
+} from "@/lib/marketing/assets/shortform/production/productionExecutor";
+export {
+  probeShortformProductionReadiness,
+  type ShortformProductionReadiness,
+} from "@/lib/marketing/assets/shortform/production/readiness";
+export {
+  SHORTFORM_FINAL_RELATIVE_PATH,
+  SHORTFORM_OUTPUT_PROFILE_V1,
+} from "@/lib/marketing/assets/shortform/production/paths";
+export { createShortformSourceMaterializerRouter } from "@/lib/marketing/assets/shortform/production/materialize";

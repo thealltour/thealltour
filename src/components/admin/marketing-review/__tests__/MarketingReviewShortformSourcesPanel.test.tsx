@@ -109,11 +109,12 @@ describe("MarketingReviewShortformSourcesPanel", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<MarketingReviewShortformSourcesPanel candidateId="cmc_ui" />);
-    fireEvent.click(screen.getByRole("button", { name: "소스 검색" }));
 
+    // CG-2: panel auto-loads durable/live resolution on mount (no manual create/resolve required).
     await waitFor(() => {
       expect(screen.getByText(/Scene 1 \/ 1/)).toBeTruthy();
     });
+    expect(screen.getByRole("button", { name: "다시 검색" })).toBeTruthy();
     expect(screen.getByText("실제 장소 확인 필요")).toBeTruthy();
     expect(screen.getByText(/pexels · 연결 안 됨/)).toBeTruthy();
     expect(screen.getByText("추천 소스")).toBeTruthy();
@@ -124,5 +125,10 @@ describe("MarketingReviewShortformSourcesPanel", () => {
 
     // Resolve must not auto-pick
     expect(fetchMock.mock.calls.every((c) => !String(c[0]).includes("/pick"))).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(
+        (c) => String(c[0]).includes("/resolve") && String((c[1] as RequestInit)?.body ?? "").includes('"forceRefresh":false'),
+      ),
+    ).toBe(true);
   });
 });

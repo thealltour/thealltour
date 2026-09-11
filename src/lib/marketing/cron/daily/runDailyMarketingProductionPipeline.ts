@@ -634,6 +634,34 @@ export async function runDailyMarketingProductionPipeline(
       reason: bootstrapResult.outcome === "skipped" ? bootstrapResult.reason : null,
     };
 
+  // CG-2: best-effort shortform brief + source resolution (no PICK / no RenderJob / no publish).
+  let shortformBridge: Record<string, unknown> = { status: "skipped" };
+  try {
+    const { maybeGenerateShortformBriefAndResolve } = await import(
+      "@/lib/marketing/assets/shortform/dailyShortformBridge"
+    );
+    const bridgeResult = await maybeGenerateShortformBriefAndResolve({
+      candidate: savedCandidate,
+      now,
+    });
+    shortformBridge = {
+      status: bridgeResult.outcome,
+      shortformIntended: bridgeResult.shortformIntended,
+      reason: bridgeResult.reason,
+      sceneCount: bridgeResult.sceneCount ?? null,
+      sourceResolutionPersisted: bridgeResult.sourceResolutionPersisted ?? false,
+      error: bridgeResult.error ?? null,
+      holderCandidateId: bridgeResult.holderCandidateId ?? null,
+    };
+  } catch (error) {
+    shortformBridge = {
+      status: "brief_failed",
+      shortformIntended: false,
+      reason: "bridge_exception",
+      error: error instanceof Error ? error.message.slice(0, 400) : String(error).slice(0, 400),
+    };
+  }
+
   closeProductionTrace({
     candidateId: savedCandidate.candidateId,
     reviewId,
@@ -649,6 +677,7 @@ export async function runDailyMarketingProductionPipeline(
     metadata: {
       ...run.metadata,
       humanReviewBootstrap,
+      shortformBridge,
     },
     observability: buildObservability({
       ...run,

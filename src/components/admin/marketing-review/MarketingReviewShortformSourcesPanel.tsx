@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
 
 type CandidateDto = {
@@ -185,13 +185,18 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
   const [message, setMessage] = useState<string | null>(null);
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
 
-  const resolve = useCallback(async () => {
+  const resolve = useCallback(async (opts?: { forceRefresh?: boolean }) => {
     setLoading(true);
     setMessage(null);
     try {
       const res = await fetch(
         `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/shortform/sources/resolve`,
-        { method: "POST", cache: "no-store" },
+        {
+          method: "POST",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ forceRefresh: opts?.forceRefresh === true }),
+        },
       );
       const json = (await res.json()) as ResolveDto;
       if (!res.ok) {
@@ -210,6 +215,13 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
       setLoading(false);
     }
   }, [candidateId]);
+
+  const autoResolved = useRef(false);
+  useEffect(() => {
+    if (autoResolved.current) return;
+    autoResolved.current = true;
+    void resolve({ forceRefresh: false });
+  }, [resolve]);
 
   async function pick(sceneId: string, candidate: CandidateDto) {
     setBusyKey(`${sceneId}:${candidate.candidateKey}`);
@@ -246,13 +258,14 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
         <div>
           <h2 className="text-base font-semibold">Shortform Sources</h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            검색 → 미리보기 → 명시적 선택만 지원합니다. 자동 선택·다운로드·AI 생성은 하지 않습니다.
+            일일 생산 파이프라인이 ShortVideoBrief·소스 검색을 준비합니다. 자동 선택은 하지 않으며, 장면별
+            명시적 PICK만 지원합니다.
           </p>
         </div>
         <button
           type="button"
           disabled={loading}
-          onClick={() => void resolve()}
+          onClick={() => void resolve({ forceRefresh: true })}
           className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
         >
           {loading ? "검색 중…" : data ? "다시 검색" : "소스 검색"}
@@ -263,7 +276,8 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
 
       {!data && !loading ? (
         <p className="text-sm text-[var(--text-secondary)]">
-          ShortVideoBrief가 있는 후보에서 장면별 소스를 검색·선택할 수 있습니다.
+          ShortVideoBrief가 준비되면 장면별 소스 옵션이 자동으로 표시됩니다. Brief가 없으면 이 후보는
+          shortform 비대상이거나 아직 생성 중입니다.
         </p>
       ) : null}
 

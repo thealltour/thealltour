@@ -17,6 +17,12 @@ import { SHORT_VIDEO_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/shortVid
 import { parseShortVideoBrief } from "@/lib/marketing/assets/shortVideoBrief/validate";
 import type { ShortVideoBrief } from "@/lib/marketing/assets/shortVideoBrief/contracts";
 import { createShortformResolverProviders } from "@/lib/marketing/assets/shortform/resolver/createProviders";
+import {
+  SHORTFORM_SOURCE_RESOLUTION_CONTRACT,
+  type ShortformSourceResolutionPlan,
+} from "@/lib/marketing/assets/shortform/resolver/contracts";
+import { persistShortformSourceResolution } from "@/lib/marketing/assets/shortform/resolver/persist";
+import { SHORTFORM_SOURCE_RESOLUTION_RELATIVE_PATH } from "@/lib/marketing/assets/shortform/resolver/paths";
 import { resolveShortVideoSources } from "@/lib/marketing/assets/shortform/resolver/resolveBrief";
 import {
   toResolveDto,
@@ -137,7 +143,40 @@ export type ResolveShortformSourcesForReviewInput = {
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
   /** Injected for tests — skips HDD brief read when provided. */
   brief?: ShortVideoBrief;
+  /**
+   * When false (default), reuse durable package resolution if present.
+   * When true, re-run providers (Admin “다시 검색”).
+   */
+  forceRefresh?: boolean;
+  /** Package root override for tests. */
+  packageRoot?: string | null;
 };
+
+function tryParsePersistedSourceResolution(raw: unknown): ShortformSourceResolutionPlan | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const record = raw as Record<string, unknown>;
+  if (record.contract !== SHORTFORM_SOURCE_RESOLUTION_CONTRACT) return null;
+  if (typeof record.candidateId !== "string" || !record.candidateId.trim()) return null;
+  if (typeof record.businessDateKst !== "string" || !record.businessDateKst.trim()) return null;
+  if (!Array.isArray(record.scenes)) return null;
+  if (typeof record.createdAt !== "string" || !record.createdAt.trim()) return null;
+  return raw as ShortformSourceResolutionPlan;
+}
+
+async function loadPersistedSourceResolution(
+  candidateId: string,
+): Promise<ShortformSourceResolutionPlan | null> {
+  try {
+    const result = await readCandidateAssetPackageFile({
+      candidateId,
+      relativePath: SHORTFORM_SOURCE_RESOLUTION_RELATIVE_PATH,
+    });
+    if (!result.ok) return null;
+    return tryParsePersistedSourceResolution(JSON.parse(result.file.bytes.toString("utf8")));
+  } catch {
+    return null;
+  }
+}
 
 export async function resolveShortformSourcesForReview(
   input: ResolveShortformSourcesForReviewInput,
@@ -190,6 +229,19 @@ export async function resolveShortformSourcesForReview(
     }
   }
 
+  if (!input.forceRefresh) {
+    const persisted = await loadPersistedSourceResolution(input.candidateId);
+    if (persisted && persisted.candidateId === input.candidateId) {
+      return toResolveDto({
+        plan: persisted,
+        brief,
+        usages,
+        sourceLookup,
+        catalogAvailable,
+      });
+    }
+  }
+
   const providers = createShortformResolverProviders({
     catalog,
     env: input.env,
@@ -199,6 +251,30 @@ export async function resolveShortformSourcesForReview(
     brief,
     providers,
   });
+
+  // Best-effort durable persist so Admin reload can reuse without live providers.
+  try {
+    let packageRoot = input.packageRoot?.trim() || null;
+    if (!packageRoot) {
+      const briefFile = await readCandidateAssetPackageFile({
+        candidateId: input.candidateId,
+        relativePath: SHORT_VIDEO_BRIEF_RELATIVE_PATH,
+      });
+      if (briefFile.ok) {
+        // absolutePath ends with context/short-video-brief.json → package root is two levels up.
+        packageRoot = briefFile.file.absolutePath.replace(/[/\\][^/\\]+[/\\][^/\\]+$/, "");
+      }
+    }
+    if (packageRoot) {
+      persistShortformSourceResolution({
+        packageRoot,
+        plan,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  } catch {
+    /* review still succeeds without durable write */
+  }
 
   return toResolveDto({
     plan,

@@ -2,8 +2,10 @@ import type { MediaBrief } from "@/lib/marketing/assets/contracts";
 import type { MarketingProductionRequest } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
 
 /**
- * Explicit generation gate only — never auto-wire into production queues.
- * ShortVideoBrief requires enabled shortform + at least one narration segment.
+ * Explicit generation gate for ShortVideoBrief.
+ * CG-2 may auto-wire through maybeGenerateShortformBriefAndResolve after candidate save
+ * when short_video_concept is committed under the daily quota policy.
+ * Still never auto-PICK or enqueue RenderJob.
  */
 export function isShortVideoBriefGenerationApplicable(mediaBrief: MediaBrief): boolean {
   return (

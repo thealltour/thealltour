@@ -267,6 +267,20 @@ export {
   productionRequestMentionsShortVideoConcept,
 } from "@/lib/marketing/assets/shortVideoBrief/gating";
 export {
+  DAILY_SHORTFORM_COMMITMENT_CONTRACT,
+  DAILY_SHORTFORM_COMMITMENT_RELATIVE_PATH,
+  MAX_DAILY_SHORTFORM_COMMITMENTS,
+  decideDailyShortformCommitment,
+  findDailyShortformCommitmentHolder,
+  maybeGenerateShortformBriefAndResolve,
+  resolveCandidatePackageRoot,
+} from "@/lib/marketing/assets/shortform/dailyShortformBridge";
+export type {
+  DailyShortformBridgeResult,
+  DailyShortformCommitment,
+  ShortformCommitmentDecision,
+} from "@/lib/marketing/assets/shortform/dailyShortformBridge";
+export {
   planShortVideoBriefArtifact,
   persistShortVideoBrief,
 } from "@/lib/marketing/assets/shortVideoBrief/persist";

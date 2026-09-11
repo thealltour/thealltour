@@ -1,11 +1,15 @@
 import "server-only";
 
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
 import { SHORTFORM_OUTPUT_PROFILE_V1 } from "@/lib/marketing/assets/shortform/production/paths";
 import type { TravelShortInfoV1Props } from "@/lib/marketing/assets/shortform/production/remotion/TravelShortInfoV1";
+import {
+  resolveAllowedShortformMediaRoot,
+  stageTravelShortInfoMediaForRemotion,
+} from "@/lib/marketing/assets/shortform/production/remotion/mediaSrc";
 
 export type ShortformRemotionRenderInput = {
   compositionId: "TravelShortInfoV1";
@@ -31,7 +35,8 @@ export class FakeShortformRemotionRenderer implements ShortformRemotionRenderer 
 
 /**
  * Production Remotion renderer (bundler + renderMedia).
- * Capability-gated: callers should only use when remotion packages + chrome available.
+ * Local workspace media is staged into publicDir so OffthreadVideo receives http(s)
+ * URLs via staticFile(), not bare absolute paths or file://.
  */
 export class ProductionShortformRemotionRenderer implements ShortformRemotionRenderer {
   async render(input: ShortformRemotionRenderInput) {
@@ -45,18 +50,29 @@ export class ProductionShortformRemotionRenderer implements ShortformRemotionRen
         process.cwd(),
         "src/lib/marketing/assets/shortform/production/remotion/entry.tsx",
       );
-      const serveUrl = await bundle({ entryPoint: entry });
+      const publicDir = join(dirname(input.outputAbsolutePath), "remotion-public");
+      mkdirSync(publicDir, { recursive: true });
+      const stagedProps = stageTravelShortInfoMediaForRemotion({
+        props: input.props,
+        publicDir,
+        allowedRoot: resolveAllowedShortformMediaRoot(),
+      });
+      const serveUrl = await bundle({
+        entryPoint: entry,
+        publicDir,
+        symlinkPublicDir: true,
+      });
       const composition = await selectComposition({
         serveUrl,
         id: input.compositionId,
-        inputProps: input.props as unknown as Record<string, unknown>,
+        inputProps: stagedProps as unknown as Record<string, unknown>,
       });
       await renderMedia({
         composition,
         serveUrl,
         codec: "h264",
         outputLocation: input.outputAbsolutePath,
-        inputProps: input.props as unknown as Record<string, unknown>,
+        inputProps: stagedProps as unknown as Record<string, unknown>,
         chromiumOptions: {},
         timeoutInMilliseconds: 180_000,
       });

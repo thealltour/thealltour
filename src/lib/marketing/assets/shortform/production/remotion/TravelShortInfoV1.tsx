@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+import { AbsoluteFill, Img, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
 
 export type TravelShortInfoScene = {
   sceneId: string;
@@ -21,6 +21,20 @@ export type TravelShortInfoV1Props = {
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
+
+function resolveCompositionMediaSrc(src: string): string {
+  if (
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("data:") ||
+    src.startsWith("blob:")
+  ) {
+    return src;
+  }
+  // publicDir-relative path staged by ProductionShortformRemotionRenderer
+  return staticFile(src);
+}
+
 
 function PhotoMotionLayer({ src }: { src: string }) {
   const frame = useCurrentFrame();
@@ -97,9 +111,9 @@ export const TravelShortInfoV1: React.FC<TravelShortInfoV1Props> = ({ scenes, ct
         return (
           <Sequence key={scene.sceneId} from={start} durationInFrames={scene.durationFrames}>
             {scene.mediaKind === "photo_motion" || scene.mediaKind === "image" ? (
-              <PhotoMotionLayer src={scene.mediaSrc} />
+              <PhotoMotionLayer src={resolveCompositionMediaSrc(scene.mediaSrc)} />
             ) : (
-              <VideoLayer src={scene.mediaSrc} />
+              <VideoLayer src={resolveCompositionMediaSrc(scene.mediaSrc)} />
             )}
             {scene.subtitle ? <SubtitleOverlay text={scene.subtitle} /> : null}
           </Sequence>

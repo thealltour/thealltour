@@ -1,75 +1,124 @@
 import "server-only";
 
-import { isAbsolute, resolve } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, symlinkSync } from "node:fs";
+import { dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { isPathInside } from "@/lib/marketing/assets/paths";
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
+import type { TravelShortInfoV1Props } from "@/lib/marketing/assets/shortform/production/remotion/TravelShortInfoV1";
+import { resolveShortformWorkspaceRoot } from "@/lib/marketing/assets/shortform/worker/workspace";
 
 const REMOTE_OR_DATA_PREFIXES = ["http://", "https://", "data:", "blob:"] as const;
 
-function hasAllowedRemoteOrDataPrefix(value: string): boolean {
+export function isRemoteOrDataRemotionMediaSrc(value: string): boolean {
   return REMOTE_OR_DATA_PREFIXES.some((prefix) => value.startsWith(prefix));
 }
 
-function fileUrlToAbsolutePath(fileUrl: string): string {
-  try {
-    return resolve(fileURLToPath(fileUrl));
-  } catch {
-    throw new ShortformProductionError("invalid file URL mediaSrc", "REMOTION_MEDIA_SRC_INVALID");
-  }
-}
-
-/**
- * Convert a materialized local filesystem path into a Remotion-consumable media src.
- *
- * Remotion's getAbsoluteSrc() treats bare absolute paths as origin-relative HTTP paths
- * (e.g. http://localhost:3002/home/...), which 404. Local assets must use file:// URLs.
- *
- * Security: only paths inside allowedRoot may become file:// references.
- * Remote http(s)/data/blob URLs pass through unchanged.
- */
-export function toRemotionConsumableMediaSrc(input: {
-  mediaSrc: string;
-  allowedRoot: string;
-}): string {
-  const raw = input.mediaSrc?.trim() ?? "";
-  if (!raw) {
-    throw new ShortformProductionError("mediaSrc is required", "REMOTION_MEDIA_SRC_INVALID");
-  }
-  const allowedRoot = resolve(input.allowedRoot);
-  if (!allowedRoot) {
-    throw new ShortformProductionError("allowedRoot is required", "REMOTION_MEDIA_SRC_INVALID");
-  }
-
-  if (hasAllowedRemoteOrDataPrefix(raw)) {
-    return raw;
-  }
-
-  if (raw.startsWith("file:")) {
-    const absolute = fileUrlToAbsolutePath(raw);
-    if (!isPathInside(allowedRoot, absolute)) {
-      throw new ShortformProductionError(
-        "local mediaSrc escapes allowed workspace root",
-        "REMOTION_MEDIA_SRC_FORBIDDEN",
-      );
+function absoluteFromMediaSrc(mediaSrc: string): string {
+  if (mediaSrc.startsWith("file:")) {
+    try {
+      return resolve(fileURLToPath(mediaSrc));
+    } catch {
+      throw new ShortformProductionError("invalid file URL mediaSrc", "REMOTION_MEDIA_SRC_INVALID");
     }
-    return pathToFileURL(absolute).href;
   }
-
-  if (!isAbsolute(raw)) {
+  if (!isAbsolute(mediaSrc)) {
     throw new ShortformProductionError(
-      "relative mediaSrc is not supported for Remotion render",
+      "relative mediaSrc requires Remotion publicDir staging first",
       "REMOTION_MEDIA_SRC_INVALID",
     );
   }
+  return resolve(mediaSrc);
+}
 
-  const absolute = resolve(raw);
+/**
+ * Remotion OffthreadVideo compositor downloads only http(s) URLs.
+ * Bare absolute paths become origin-relative HTTP (404).
+ * file:// is rejected by the compositor download client.
+ *
+ * Local workspace media must be staged into bundle publicDir and referenced via
+ * staticFile()-compatible relative paths (served as http by Remotion).
+ */
+export function assertLocalMediaInsideAllowedRoot(input: {
+  mediaSrc: string;
+  allowedRoot: string;
+}): string {
+  const absolute = absoluteFromMediaSrc(input.mediaSrc.trim());
+  const allowedRoot = resolve(input.allowedRoot);
   if (!isPathInside(allowedRoot, absolute)) {
     throw new ShortformProductionError(
       "local mediaSrc escapes allowed workspace root",
       "REMOTION_MEDIA_SRC_FORBIDDEN",
     );
   }
-  return pathToFileURL(absolute).href;
+  if (!existsSync(absolute)) {
+    throw new ShortformProductionError("local mediaSrc file missing", "REMOTION_MEDIA_SRC_MISSING");
+  }
+  return absolute;
+}
+
+function safePublicRelativeName(sceneId: string, absolutePath: string): string {
+  const ext = extname(absolutePath).toLowerCase() || ".mp4";
+  const safeExt = /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : ".mp4";
+  const safeScene = sceneId.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 64) || "scene";
+  return `media/${safeScene}${safeExt}`;
+}
+
+function linkOrCopy(absoluteSource: string, destination: string): void {
+  mkdirSync(dirname(destination), { recursive: true });
+  try {
+    symlinkSync(absoluteSource, destination);
+  } catch {
+    copyFileSync(absoluteSource, destination);
+  }
+}
+
+/**
+ * Stage local scene media into a Remotion publicDir and rewrite props:
+ * - remote/data URLs unchanged
+ * - local absolute/file paths → public-relative path (for staticFile())
+ */
+export function stageTravelShortInfoMediaForRemotion(input: {
+  props: TravelShortInfoV1Props;
+  publicDir: string;
+  allowedRoot: string;
+}): TravelShortInfoV1Props {
+  const publicDir = resolve(input.publicDir);
+  mkdirSync(publicDir, { recursive: true });
+  const allowedRoot = resolve(input.allowedRoot);
+
+  const scenes = input.props.scenes.map((scene) => {
+    const raw = scene.mediaSrc?.trim() ?? "";
+    if (!raw) {
+      throw new ShortformProductionError("mediaSrc is required", "REMOTION_MEDIA_SRC_INVALID");
+    }
+    if (isRemoteOrDataRemotionMediaSrc(raw)) {
+      return scene;
+    }
+    const absolute = assertLocalMediaInsideAllowedRoot({ mediaSrc: raw, allowedRoot });
+    const relative = safePublicRelativeName(scene.sceneId, absolute);
+    const destination = join(publicDir, relative);
+    if (!isPathInside(publicDir, destination)) {
+      throw new ShortformProductionError(
+        "staged media path escapes publicDir",
+        "REMOTION_MEDIA_SRC_FORBIDDEN",
+      );
+    }
+    linkOrCopy(absolute, destination);
+    return { ...scene, mediaSrc: relative };
+  });
+
+  return { ...input.props, scenes };
+}
+
+export function resolveAllowedShortformMediaRoot(
+  env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
+): string {
+  return resolveShortformWorkspaceRoot(env.SHORTFORM_WORKER_WORKSPACE_PATH);
+}
+
+/** Test helper: absolute local path → file URL (not used for OffthreadVideo serving). */
+export function toFileUrlForLocalAbsolutePath(absolutePath: string): string {
+  return pathToFileURL(resolve(absolutePath)).href;
 }

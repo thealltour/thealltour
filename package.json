@@ -13,6 +13,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check:canonical-paths": "npx tsx scripts/check-canonical-paths.ts",
     "marketing:shortform-worker": "npx tsx scripts/process-shortform-video-render-queue.ts",
     "marketing:shortform-worker:health": "npx tsx scripts/process-shortform-video-render-queue.ts --health",
     "lighthouse": "npx lighthouse http://localhost:4000 --output=html --output-path=./lighthouse-report.html --preset=perf --form-factor=mobile --throttling.cpuSlowdownMultiplier=4 --chrome-flags=\"--headless\"",

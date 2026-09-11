@@ -54,10 +54,10 @@
 
 | Item | Detail |
 |---|---|
-| Root cause | `daily-marketing-plan.sh` had `cd /home/ysh/theallcloud`; repo moved to `/home/ysh/thealltour`; `cron-daily-marketing-plan.ts` exists only under thealltour |
+| Root cause | `daily-marketing-plan.sh` had `cd /home/ysh/theallcloud`; repo moved to `/home/ysh/thealltour`; `cron-daily-marketing-plan.ts` exists only under thealltour | <!-- canonical-path-documented-forbidden -->
 | Repair | `cd /home/ysh/thealltour` (matches 08:30 Analyst wrapper convention) |
 | File changed | `~/.hermes/profiles/marketing-manager/scripts/daily-marketing-plan.sh` line 15 only |
-| Manual one-shot | **PASS** — exit 0, `inference_path: ai-runtime`, no `ERR_MODULE_NOT_FOUND`, no `/home/ysh/theallcloud` reference |
+| Manual one-shot | **PASS** — exit 0, `inference_path: ai-runtime`, no `ERR_MODULE_NOT_FOUND`, no `/home/ysh/theallcloud` reference | <!-- canonical-path-documented-forbidden -->
 | Runtime workloads | `content-strategist` / `content_draft`, `governance-auditor` / `governance`; correlationId `marketing-cron:…:cb7fd192`; fallback=false; gemini-main |
 | Publication safety | `PUBLICATION_FLOW_INACTIVE=true`; `sns_side_effect: 0`; `publishActionIncluded: false`; governance ALLOW → publish_ready (no publish) |
 | Scheduled `jobs.json` | **Unchanged** by manual run — `last_status: error` (2026-08-28 09:00 failure) until next scheduled 09:00 |
@@ -1012,7 +1012,7 @@ flowchart TB
 | 3. `@mention` | **Yes** in Group | Yes | Group log 2026-08-26 |
 | 4. `message_agent` | **Possible**; live tool dump **UNKNOWN** this STEP | Yes if used | Official Bot Chat-only tool |
 | 5. Hermes Routine/Cron | Manager 09:00, Analyst 08:30 | **No** (`no_agent: true`) | Script bodies; see below |
-| 6. Shell/script | Cron wrappers | Indirect | Manager wrapper `cd /home/ysh/theallcloud` |
+| 6. Shell/script | Cron wrappers | Indirect | Manager wrapper `cd /home/ysh/theallcloud` | <!-- canonical-path-documented-forbidden -->
 | 7. TheAllTour application | MCP + pipeline | Oneshot specialists | Not Gateway |
 | 8. Legacy `hermes -p … -z` | **Yes** | **Yes** | `hermesHandoff.ts` / `hermesRuntime.ts` / tests |
 | 9. Runtime direct invocation | Cron flag path + spike Gateway | Spike / cron specialists **not** via Bot Chat | Interactive Production Bots: **not** on Gateway |
@@ -1028,7 +1028,7 @@ flowchart TB
 | Intended Runtime path | `AI_RUNTIME_MARKETING_CRON_ENABLED` defaults to **`true`** in the wrapper |
 | Observability flag | `AI_RUNTIME_SHARED_OBSERVABILITY_ENABLED` defaults **`true`** |
 | Last run | 2026-08-28 09:00:32 **`last_status: error`** (pre-C6.2; path fixed 2026-08-28 ~15:13 KST) |
-| Last error | `ERR_MODULE_NOT_FOUND` `/home/ysh/theallcloud/scripts/cron-daily-marketing-plan.ts` (historical) |
+| Last error | `ERR_MODULE_NOT_FOUND` `/home/ysh/theallcloud/scripts/cron-daily-marketing-plan.ts` (historical) | <!-- canonical-path-documented-forbidden -->
 | Next run | 2026-08-29 09:00 |
 
 **C6.2 repair (2026-08-28):** wrapper `cd` corrected to **thealltour**. Manual one-shot PASS (`inference_path: ai-runtime`). Scheduled `last_status` updates only on Hermes cron fire — not faked by manual run.

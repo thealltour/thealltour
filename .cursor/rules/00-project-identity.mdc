@@ -1,0 +1,53 @@
+---
+description: Canonical repository identity and legacy naming rules
+alwaysApply: true
+---
+
+# Project identity (canonical paths)
+
+## Canonical repository
+
+Always treat this path as the application repository root / checkout / working directory:
+
+`/home/ysh/thealltour`
+
+Never use these as repository root, checkout, `WorkingDirectory`, deployment source, or app cwd:
+
+- `/home/ysh/theallcloud` <!-- canonical-path-documented-forbidden -->
+- `~/theallcloud` <!-- canonical-path-documented-forbidden -->
+
+Default generated commands, systemd units, and ops docs to `/home/ysh/thealltour` unless a subsystem documents a different path.
+
+## Path vs legacy identifier
+
+| Kind | Rule |
+|------|------|
+| Filesystem / repository path | Use `thealltour` (`/home/ysh/thealltour`) |
+| Legacy logical identifier | May remain `theallcloud` — do **not** global-replace |
+
+Keep unless explicitly instructed to change:
+
+- `ORCHESTRATION_PROJECT_ID="theallcloud"`
+- MCP server id `theallcloud-marketing`
+- Other documented compatibility aliases (e.g. gateway `theallcloud/auto`)
+
+## Other canonical paths (do not swap with app repo)
+
+- Marketing asset root (Hermes-Pi): `/mnt/HDD2TB/marketing-assets`
+- Mini-PC shortform workspace: `/home/ysh/.cache/thealltour-shortform/`
+- Embedding repo: `/home/ysh/thealltour-ai-inference`
+
+## Mandatory preflight
+
+Before repository work, verify:
+
+```bash
+pwd
+git rev-parse --show-toplevel
+```
+
+Expected root: `/home/ysh/thealltour`
+
+If another root is detected, **stop and report** — do not silently adapt paths.
+
+Executable guard: `npm run check:canonical-paths`

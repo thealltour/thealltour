@@ -151,7 +151,7 @@ Does **not** replace production pipeline, handoff state, Human Review, or approv
 | `ORCHESTRATION_PROJECT_ID=theallcloud` | intentional app/orchestration id |
 | MCP `thealltour-marketing` | intentional |
 | `PROJECT_DEPARTMENT_REGISTRY.thealltour.marketing` | intentional |
-| `/home/ysh/theallcloud` | stale stub — do not use for org work |
+| `/home/ysh/theallcloud` | stale stub — do not use for org work | <!-- canonical-path-documented-forbidden -->
 
 ## OBS-7 readiness (Organization Overview Graph)
 

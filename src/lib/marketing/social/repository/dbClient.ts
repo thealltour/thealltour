@@ -14,6 +14,7 @@ export type SocialDbQuery = {
     options?: { onConflict?: string },
   ): SocialDbQuery;
   eq(column: string, value: unknown): SocialDbQuery;
+  in(column: string, values: readonly unknown[]): SocialDbQuery;
   is(column: string, value: null): SocialDbQuery;
   gte(column: string, value: string): SocialDbQuery;
   lte(column: string, value: string): SocialDbQuery;

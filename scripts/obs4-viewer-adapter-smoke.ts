@@ -8,7 +8,12 @@ const Module = require("module") as {
   _resolveFilename: (request: string, parent: unknown, isMain: boolean, options?: unknown) => string;
 };
 const originalResolve = Module._resolveFilename.bind(Module);
-Module._resolveFilename = function (request, parent, isMain, options) {
+Module._resolveFilename = function resolveFilename(
+  request: string,
+  parent: unknown,
+  isMain: boolean,
+  options?: unknown,
+) {
   if (request === "server-only") return require.resolve("./shims/server-only.js");
   return originalResolve(request, parent, isMain, options);
 };

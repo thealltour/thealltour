@@ -34,6 +34,7 @@
     "node_modules",
     "tools",
     "docs",
+    "scripts",
     "src/components/vendor/agent-prism/DetailsView",
     "src/components/vendor/agent-prism/TraceViewer",
     "src/components/vendor/agent-prism/TraceList",

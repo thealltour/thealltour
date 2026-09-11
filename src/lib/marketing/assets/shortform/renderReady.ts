@@ -170,7 +170,7 @@ function originFromSource(source: MarketingMediaSourceRecord): string {
   if (
     source.sourceKind === "own" ||
     source.sourceKind === "partner" ||
-    source.storageClass === "managed_local"
+    source.storageClass === "local_master"
   ) {
     return "internal_catalog";
   }

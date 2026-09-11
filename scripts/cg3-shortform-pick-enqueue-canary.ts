@@ -9,10 +9,17 @@ import { createHash } from "node:crypto";
 import { pipeline } from "node:stream/promises";
 
 const require = createRequire(import.meta.url);
-const Module = require("module");
+const Module = require("module") as {
+  _resolveFilename: (request: string, parent: unknown, isMain: boolean, options?: unknown) => string;
+};
 const originalResolve = Module._resolveFilename.bind(Module);
 const serverOnlyStub = require.resolve("./shims/server-only.js");
-Module._resolveFilename = function (request, parent, isMain, options) {
+Module._resolveFilename = function resolveFilename(
+  request: string,
+  parent: unknown,
+  isMain: boolean,
+  options?: unknown,
+) {
   if (request === "server-only") return serverOnlyStub;
   return originalResolve(request, parent, isMain, options);
 };
@@ -28,12 +35,14 @@ const MANAGED_RELATIVE_PATH = "source/own/cg3-pick-enqueue-canary.mp4";
 const SOURCE_FIXTURE = "/mnt/HDD2TB/marketing-assets/source/own/sv8c3a-first-e2e.mp4";
 const VISUAL_SUBJECT = "travel lifestyle city walk";
 
-async function sha256File(path) {
+async function sha256File(path: string) {
   const hash = createHash("sha256");
   await pipeline(createReadStream(path), hash);
   return hash.digest("hex");
 }
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 async function main() {
   const { prepareManagerToContentHandoff } = await import("@/lib/marketing/content/prepareManagerToContentHandoff");
@@ -119,7 +128,8 @@ async function main() {
     startedAt: now.toISOString(), completedAt: now.toISOString(), status: "completed",
     researchStatus: "ok", selectedAgendaId: handoff.selectedAgenda.id,
     assignmentId: handoff.contentAssignment.assignmentId, governanceReviewId: governance.reviewId,
-    completedCandidateId: CANDIDATE_ID, failureReason: null, metadata: { purpose: PURPOSE }, observability,
+    completedCandidateId: CANDIDATE_ID, failureReason: null, degraded: false,
+    metadata: { purpose: PURPOSE }, observability,
   };
 
   const repo = await createDailyMarketingRunRepository({ backend: "supabase" });

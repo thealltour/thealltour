@@ -1,6 +1,5 @@
 [Unit]
 Description=Run TheAllTour shortform video render queue worker periodically (Mini-PC)
-Documentation=docs/hermes/marketing/shortform-video-worker-v1.md
 Requires=thealltour-shortform-video-render-queue.service
 
 [Timer]

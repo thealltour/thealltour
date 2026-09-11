@@ -110,7 +110,7 @@ describe("PUB-3 Threads credential store + account binding", () => {
         provider: "meta",
         channel: "threads",
         socialAccountId: "sa_1",
-        marketingPost: { body: "hello canary" },
+        marketingPost: { channel: "threads", body: "hello canary" },
       },
       { credential },
     );

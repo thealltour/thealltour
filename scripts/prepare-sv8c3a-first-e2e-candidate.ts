@@ -223,7 +223,7 @@ async function main() {
     await repo.saveCandidate(candidate as never);
   }
 
-  const assetRoot = resolveMarketingAssetRoot({ env: process.env, required: true });
+  const assetRoot = resolveMarketingAssetRoot({ env: process.env });
   const packageRoot = resolvePackageDirectory({
     assetRoot,
     businessDateKst: BUSINESS_DATE,
@@ -358,7 +358,7 @@ async function main() {
       null;
     if (!internal) {
       throw new Error(
-        `no internal_catalog candidate for ${scene.sceneId}; attempted=${JSON.stringify(scene.attemptedSources)}`,
+        `no internal_catalog candidate for ${scene.sceneId}; attempted=${JSON.stringify(scene.providerAttempts)}`,
       );
     }
     const picked = await pickShortformSourceForReview({

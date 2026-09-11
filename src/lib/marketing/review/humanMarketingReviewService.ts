@@ -75,7 +75,8 @@ function buildDetail(
       !diagnosticsOnly &&
       humanStatus !== "rejected" &&
       humanStatus !== "manually_published",
-    canMarkManuallyPublished: humanStatus === "approved_for_manual_publish",
+    canMarkManuallyPublished:
+      humanStatus === "approved_for_manual_publish" || humanStatus === "manually_published",
     governanceStale,
     diagnosticsOnly,
   };
@@ -320,6 +321,24 @@ export class HumanMarketingReviewService {
     reviewedBy: string | null;
   }): Promise<HumanMarketingReview> {
     const review = await this.loadMutableReview(input.candidateId, input.reviewedBy);
+    // Idempotent re-record: already manually_published may update metadata only.
+    if (review.status === "manually_published") {
+      const updated: HumanMarketingReview = {
+        ...review,
+        manualPublication: {
+          ...review.manualPublication,
+          ...input.manualPublication,
+        },
+        humanNotes: input.humanNotes ?? review.humanNotes,
+        reviewedBy: input.reviewedBy ?? review.reviewedBy,
+        manuallyPublishedAt:
+          input.manualPublication.publishedAt ??
+          review.manuallyPublishedAt ??
+          this.now().toISOString(),
+        updatedAt: this.now().toISOString(),
+      };
+      return this.deps.reviewRepo.update(updated);
+    }
     if (review.status !== "approved_for_manual_publish") {
       throw new Error("must_be_approved_before_manual_publication_record");
     }

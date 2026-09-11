@@ -38,6 +38,22 @@ export const markManuallyPublishedSchema = z.object({
   humanNotes: z.string().max(4_000).nullable().optional(),
 });
 
+/** PUB-4: canonical SocialPublication bridge (no credentials). */
+export const recordManualMarketingPublicationSchema = z
+  .object({
+    socialAccountId: z.string().uuid(),
+    humanReviewId: z.string().min(1).max(128).optional(),
+    channel: z.string().min(1).max(64).optional(),
+    externalPostId: z.string().min(3).max(256).optional(),
+    externalUrl: z.string().url().max(2_000).optional(),
+    publishedAt: z.string().datetime(),
+    notes: z.string().max(4_000).optional(),
+    humanNotes: z.string().max(4_000).nullable().optional(),
+  })
+  .refine((value) => Boolean(value.externalPostId?.trim() || value.externalUrl?.trim()), {
+    message: "externalPostId_or_externalUrl_required",
+  });
+
 export const queueFilterSchema = z.enum([
   "all",
   "pending",

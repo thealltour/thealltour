@@ -571,6 +571,7 @@ export class InMemorySocialRepository implements SocialRepository {
       externalPostId: string | null;
       externalUrl: string | null;
       publishedAt: string | null;
+      humanApprovalRef: string | null;
       providerStatusMetadata: Record<string, unknown>;
     }>,
   ): Promise<SocialPublicationRow> {
@@ -582,6 +583,8 @@ export class InMemorySocialRepository implements SocialRepository {
       externalPostId: patch?.externalPostId !== undefined ? patch.externalPostId : row.externalPostId,
       externalUrl: patch?.externalUrl !== undefined ? patch.externalUrl : row.externalUrl,
       publishedAt: patch?.publishedAt !== undefined ? patch.publishedAt : row.publishedAt,
+      humanApprovalRef:
+        patch?.humanApprovalRef !== undefined ? patch.humanApprovalRef : row.humanApprovalRef,
       providerStatusMetadata:
         patch?.providerStatusMetadata !== undefined
           ? patch.providerStatusMetadata

@@ -38,6 +38,8 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
   const [rejectionReason, setRejectionReason] = useState("");
   const [manualPlatform, setManualPlatform] = useState("");
   const [manualUrl, setManualUrl] = useState("");
+  const [manualPostId, setManualPostId] = useState("");
+  const [manualSocialAccountId, setManualSocialAccountId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -200,38 +202,53 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           {detail.canMarkManuallyPublished ? (
             <div className="space-y-3 border-t border-[var(--border)] pt-4">
               <p className="text-sm text-[var(--text-secondary)]">
-                실제로 외부에 직접 게시한 뒤, 아래 기록만 남깁니다. 자동 검증/게시 API 호출 없음.
+                실제로 외부에 직접 게시한 뒤, 아래 기록만 남깁니다. 자동 게시 API 호출 없음 · SocialPublication
+                published로 연결됩니다.
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 <input
+                  value={manualSocialAccountId}
+                  onChange={(e) => setManualSocialAccountId(e.target.value)}
+                  placeholder="socialAccountId (uuid)"
+                  className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm md:col-span-2"
+                />
+                <input
                   value={manualPlatform}
                   onChange={(e) => setManualPlatform(e.target.value)}
-                  placeholder="platform (threads)"
+                  placeholder="channel (threads)"
+                  className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                />
+                <input
+                  value={manualPostId}
+                  onChange={(e) => setManualPostId(e.target.value)}
+                  placeholder="external post id"
                   className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
                 />
                 <input
                   value={manualUrl}
                   onChange={(e) => setManualUrl(e.target.value)}
                   placeholder="external URL"
-                  className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                  className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm md:col-span-2"
                 />
               </div>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !manualSocialAccountId.trim() || (!manualUrl.trim() && !manualPostId.trim())}
                 onClick={() =>
-                  void run("mark-manually-published", {
-                    manualPublication: {
-                      platform: manualPlatform || context.draft.channel,
-                      externalUrl: manualUrl || undefined,
-                      notes: humanNotes || undefined,
-                    },
+                  void run("manual-publication", {
+                    socialAccountId: manualSocialAccountId.trim(),
+                    channel: manualPlatform || context.draft.channel,
+                    externalUrl: manualUrl.trim() || undefined,
+                    externalPostId: manualPostId.trim() || undefined,
+                    publishedAt: new Date().toISOString(),
+                    notes: humanNotes || undefined,
                     humanNotes: humanNotes || null,
+                    humanReviewId: review?.reviewId,
                   })
                 }
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm"
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
-                Mark as manually published
+                Record manual publication
               </button>
             </div>
           ) : null}

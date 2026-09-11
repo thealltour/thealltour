@@ -159,6 +159,8 @@ export type {
 export {
   buildMarketingPublicationIdempotencyKey,
   buildHumanApprovalRef,
+  buildManualMarketingPublicationIdempotencyKey,
+  normalizeExternalPublicationUrl,
 } from "@/lib/marketing/social/publication/idempotency";
 export { createMarketingPublicationOrchestrator } from "@/lib/marketing/social/publication/orchestrator";
 export type {
@@ -173,6 +175,18 @@ export {
   MarketingPublicationError,
   MARKETING_PUBLICATION_ERROR_CODES,
 } from "@/lib/marketing/social/publication/errors";
+export {
+  createManualMarketingPublicationBridge,
+  isManualSocialPublication,
+  mapPlatformToSocialChannel,
+  MANUAL_PUBLICATION_METHOD,
+} from "@/lib/marketing/social/publication/manualPublicationBridge";
+export type {
+  RecordManualMarketingPublicationInput,
+  RecordManualMarketingPublicationResult,
+  ManualPublicationProvenance,
+  ManualMarketingPublicationBridge,
+} from "@/lib/marketing/social/publication/manualPublicationBridge";
 
 export {
   createThreadsMarketingPublicationAdapter,

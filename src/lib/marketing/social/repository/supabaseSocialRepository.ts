@@ -629,6 +629,7 @@ export class SupabaseSocialRepository implements SocialRepository {
       externalPostId: string | null;
       externalUrl: string | null;
       publishedAt: string | null;
+      humanApprovalRef: string | null;
       providerStatusMetadata: Record<string, unknown>;
     }>,
   ): Promise<SocialPublicationRow> {
@@ -639,6 +640,7 @@ export class SupabaseSocialRepository implements SocialRepository {
     if (patch?.externalPostId !== undefined) update.external_post_id = patch.externalPostId;
     if (patch?.externalUrl !== undefined) update.external_url = patch.externalUrl;
     if (patch?.publishedAt !== undefined) update.published_at = patch.publishedAt;
+    if (patch?.humanApprovalRef !== undefined) update.human_approval_ref = patch.humanApprovalRef;
     if (patch?.providerStatusMetadata !== undefined) {
       update.provider_status_metadata = patch.providerStatusMetadata;
     }

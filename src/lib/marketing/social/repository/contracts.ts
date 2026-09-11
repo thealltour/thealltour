@@ -203,6 +203,7 @@ export type SocialRepository = {
       externalPostId: string | null;
       externalUrl: string | null;
       publishedAt: string | null;
+      humanApprovalRef: string | null;
       providerStatusMetadata: Record<string, unknown>;
     }>,
   ): Promise<SocialPublicationRow>;

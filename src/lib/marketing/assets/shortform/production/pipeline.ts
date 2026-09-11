@@ -29,6 +29,7 @@ import {
 } from "@/lib/marketing/assets/shortform/production/finalize";
 import { SHORTFORM_OUTPUT_PROFILE_V1 } from "@/lib/marketing/assets/shortform/production/paths";
 import { TRAVEL_SHORT_INFO_V1_ID } from "@/lib/marketing/assets/shortform/production/remotion/TravelShortInfoV1";
+import { toRemotionConsumableMediaSrc } from "@/lib/marketing/assets/shortform/production/remotion/mediaSrc";
 import type { ShortformJobWorkspace } from "@/lib/marketing/assets/shortform/worker/workspace";
 import type { TtsProvider } from "@/lib/marketing/tts/provider";
 import { runFfmpeg } from "@/lib/marketing/assets/ffmpeg/exec";
@@ -142,7 +143,10 @@ export async function runShortformProductionPipeline(input: {
         sceneId: m.sceneId,
         durationFrames: msToFrames(sceneDurationMs),
         mediaKind: m.mediaKind,
-        mediaSrc: m.absolutePath,
+        mediaSrc: toRemotionConsumableMediaSrc({
+          mediaSrc: m.absolutePath,
+          allowedRoot: workspace.jobDir,
+        }),
         subtitle: lines.length > 0 ? lines.join(" ") : null,
       };
     }),

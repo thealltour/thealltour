@@ -17,6 +17,7 @@ Environment=PATH=/usr/local/bin:/usr/bin:/bin
 ExecStart=/usr/bin/npx tsx scripts/process-shortform-video-render-queue.ts
 # Below BGE-M3 / VoiceStudio priority so shared Mini-PC stays responsive.
 Nice=15
+# Must stay below DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS (45m) so reclaim cannot race a live worker.
 TimeoutStartSec=1800
 KillMode=mixed
 KillSignal=SIGTERM

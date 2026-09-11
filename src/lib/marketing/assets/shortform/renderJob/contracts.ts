@@ -17,7 +17,12 @@ export const SHORTFORM_VIDEO_RENDER_JOB_STATUSES = [
 export type ShortformVideoRenderJobStatus = (typeof SHORTFORM_VIDEO_RENDER_JOB_STATUSES)[number];
 
 export const DEFAULT_SHORTFORM_VIDEO_RENDER_MAX_ATTEMPTS = 3;
-export const DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS = 30 * 60 * 1000;
+/**
+ * Claim lease must outlive systemd oneshot TimeoutStartSec (1800s) so a
+ * legitimately running worker cannot be reclaimed before forced termination.
+ * TimeoutStartSec=1800 < lease 2700s (45m); no lease renewal in SV-8C4.
+ */
+export const DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS = 45 * 60 * 1000;
 export const MAX_SHORTFORM_VIDEO_RENDER_ERROR_SUMMARY_LENGTH = 400;
 export const MAX_SHORTFORM_VIDEO_RENDER_ERROR_CODE_LENGTH = 64;
 

@@ -38,6 +38,51 @@ function asRow(data: unknown): Record<string, unknown> {
   return data as Record<string, unknown>;
 }
 
+
+/**
+ * PostgREST may surface a SQL NULL composite RETURNS row as a truthy object whose
+ * identity columns are null. Those must not become String(null) === "null" phantom jobs.
+ */
+export function mapClaimShortformVideoRenderJobRpcData(
+  data: unknown,
+): ShortformVideoRenderJob | null {
+  if (data == null) return null;
+  if (typeof data !== "object" || Array.isArray(data)) {
+    throw new ShortformVideoRenderJobError("malformed claim RPC payload", "MALFORMED_CLAIM_ROW");
+  }
+  const row = data as Record<string, unknown>;
+  const id = row.id;
+  const jobId = row.job_id;
+  const logicalRunKey = row.logical_run_key;
+  const status = row.status;
+  const claimToken = row.claim_token;
+
+  // Empty-queue / no-row sentinel from PostgREST null composite.
+  if (id == null && jobId == null && logicalRunKey == null && status == null) {
+    return null;
+  }
+
+  if (
+    id == null ||
+    jobId == null ||
+    logicalRunKey == null ||
+    status == null ||
+    claimToken == null ||
+    typeof jobId !== "string" ||
+    typeof logicalRunKey !== "string" ||
+    typeof status !== "string" ||
+    typeof claimToken !== "string" ||
+    !jobId.trim() ||
+    !logicalRunKey.trim() ||
+    jobId === "null" ||
+    logicalRunKey === "null"
+  ) {
+    throw new ShortformVideoRenderJobError("malformed claim RPC row", "MALFORMED_CLAIM_ROW");
+  }
+
+  return mapJobRow(data);
+}
+
 function mapJobRow(value: unknown): ShortformVideoRenderJob {
   const row = asRow(value);
   return normalizeShortformVideoRenderJob({
@@ -218,8 +263,7 @@ export class SupabaseShortformVideoRenderJobRepository
       p_now: (input.now ?? new Date()).toISOString(),
     });
     if (error) throw new ShortformVideoRenderJobError(error.message, "CLAIM_FAILED");
-    if (!data) return null;
-    return mapJobRow(data);
+    return mapClaimShortformVideoRenderJobRpcData(data);
   }
 
   async markReady(input: {

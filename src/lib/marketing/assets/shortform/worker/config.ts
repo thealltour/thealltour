@@ -15,7 +15,7 @@ export type ShortformVideoExecutionMode = (typeof SHORTFORM_VIDEO_EXECUTION_MODE
 export const DEFAULT_SHORTFORM_WORKER_MAX_JOBS_PER_RUN = 1;
 export const SHORTFORM_WORKER_CONCURRENCY = 1 as const;
 
-/** Lease renewal is intentionally unsupported in SV-7 (oneshot + 30m lease). */
+/** Lease renewal unsupported; default lease (45m) must exceed systemd TimeoutStartSec (30m). */
 export const SHORTFORM_WORKER_LEASE_RENEWAL_SUPPORTED = false as const;
 
 export type ShortformVideoWorkerConfig = {

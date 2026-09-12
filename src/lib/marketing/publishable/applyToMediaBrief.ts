@@ -1,5 +1,7 @@
 /**
  * Apply publishable Threads + shortform narration onto a MediaBrief.
+ * Blog/Band/Kakao remain package-level copy artifacts (not MediaBrief formats)
+ * to avoid bloating media-brief-v1.
  */
 
 import type { MediaBrief, ShortformNarrationSegment } from "@/lib/marketing/assets/contracts";

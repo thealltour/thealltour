@@ -253,6 +253,46 @@ export async function processMarketingProductionQueue(input: {
       }
 
       const result = await input.deps.executeProduction(claimed);
+      const researchSkip =
+        result.run.failureReason === "AUDIENCE_CONTENT_RESEARCH_SKIPPED" ||
+        result.run.metadata?.productionOutcome === "audience_content_research_skip" ||
+        result.audienceContentResearchBrief?.researchVerdict === "SKIP";
+
+      if (researchSkip) {
+        const nowIso = now.toISOString();
+        const completed = await repo.update({
+          ...claimed,
+          status: "COMPLETED",
+          completedAt: nowIso,
+          failedAt: null,
+          lastError: null,
+          errorMessage: null,
+          completedCandidateId: null,
+          updatedAt: nowIso,
+          metadata: {
+            ...claimed.metadata,
+            productionOutcome: "audience_content_research_skip",
+            audienceContentResearchBrief:
+              result.audienceContentResearchBrief ??
+              claimed.metadata.audienceContentResearchBrief ??
+              null,
+            researchVerdict: result.audienceContentResearchBrief?.researchVerdict ?? "SKIP",
+            researchSkipReasons: result.audienceContentResearchBrief?.verdictReasons ?? [],
+          },
+        });
+        await releaseSelectionIfTerminal(true);
+        processed.push({
+          logicalRunKey: claimed.logicalRunKey,
+          slateItemId: claimed.slateItemId,
+          outcome: "completed",
+          status: completed.status,
+          completedCandidateId: null,
+          lastError: null,
+          idempotent: Boolean(result.idempotent),
+        });
+        continue;
+      }
+
       const candidate =
         result.candidate ??
         (result.run.completedCandidateId
@@ -432,6 +472,13 @@ export function createDefaultProductionExecutor(deps: {
       },
       hydrated,
     );
-    return runDailyMarketingProductionFromSelection(input, deps.pipelineDeps);
+    return runDailyMarketingProductionFromSelection(input, {
+      ...deps.pipelineDeps,
+      productionRequestId: request.requestId,
+      productionRequestRepo:
+        deps.pipelineDeps.productionRequestRepo ??
+        // Prefer injecting repo via pipelineDeps; queue worker always has one.
+        undefined,
+    });
   };
 }

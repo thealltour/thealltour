@@ -67,6 +67,11 @@ export type DailyMarketingPipelineDeps = DepartmentPipelineDeps & {
   traceRecorder?: MarketingTraceRecorder | null;
   productionRequestId?: string | null;
   agendaSlateId?: string | null;
+  /** RA-1B durability — MarketingProductionRequest.metadata */
+  productionRequestRepo?: import("@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository").MarketingProductionRequestRepository | null;
+  /** Optional ACRB LLM synthesis; when omitted, deterministic partial research is used. */
+  invokeAudienceResearch?: ((prompt: string) => Promise<string> | string) | null;
+  forceAudienceResearchRegenerate?: boolean;
 };
 
 function buildObservability(run: Partial<DailyMarketingRun>): DailyMarketingRunObservability {
@@ -490,6 +495,186 @@ export async function runDailyMarketingProductionPipeline(
     }),
   };
 
+  // RA-1B — Audience & Content Research (durable on production request before CS).
+  let audienceContentResearchBrief: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null =
+    null;
+  const productionRequestRepo = deps.productionRequestRepo ?? null;
+  if (productionRequestRepo) {
+    try {
+      const { ensureAudienceContentResearch } = await import(
+        "@/lib/marketing/audienceResearch/ensureAudienceContentResearch"
+      );
+      const { createResearchRepository } = await import(
+        "@/lib/marketing/research/repository/createResearchRepository"
+      );
+      const acrbStartedAt = Date.now();
+      const researchRepo = await createResearchRepository().catch(() => null);
+      const recentCandidates = await repo.listCandidates({ limit: 30 }).catch(() => []);
+      const runEnsure = () =>
+        ensureAudienceContentResearch({
+          handoff,
+          logicalRunKey,
+          productionRequestRepo,
+          compactBrief: resolution.researchBrief,
+          compactCandidate: resolution.researchCandidate,
+          forceRegenerate: Boolean(deps.forceAudienceResearchRegenerate),
+          invoke: deps.invokeAudienceResearch ?? null,
+          now,
+          loadFullResearchBrief: researchRepo
+            ? (id) => researchRepo.findBriefById(id)
+            : undefined,
+          listRecentCandidateTitles: async () =>
+            recentCandidates.map((c) => ({
+              id: c.candidateId,
+              title: c.selectedAgenda.title,
+            })),
+          cooledIdentity: false,
+          semanticAvailable: true,
+        });
+
+      const acrbResult =
+        productionTraceContext
+          ? await withMarketingSpan(
+              productionTraceContext.recorder,
+              {
+                traceId: productionTraceContext.traceId,
+                parentSpanId: productionTraceContext.rootSpanId,
+                name: "marketing.audience_content_research",
+                kind: "deterministic",
+                stage: "audience_content_research",
+                actorType: "typescript_staff",
+                actorId: "audience-content-research",
+              },
+              runEnsure,
+              (result) => ({
+                status: "ok" as const,
+                attributes: pickMarketingAttributes({
+                  [MARKETING_ATTR.RESEARCH_BRIEF_ID]: result.brief.id,
+                  [MARKETING_ATTR.SELECTED_AGENDA_ID]: result.brief.selectedAgendaId,
+                  [MARKETING_ATTR.ASSIGNMENT_ID]: result.brief.assignmentId,
+                  [MARKETING_ATTR.ACRB_VERDICT]: result.brief.researchVerdict,
+                  [MARKETING_ATTR.ACRB_STATUS]: result.brief.researchStatus,
+                  [MARKETING_ATTR.ACRB_ANGLE_COUNT]: result.brief.contentAngles.length,
+                  [MARKETING_ATTR.ACRB_REUSED]: result.reused,
+                  [MARKETING_ATTR.ACRB_EXTERNAL_USED]: Boolean(
+                    result.brief.provenance.externalResearchUsed,
+                  ),
+                  [MARKETING_ATTR.ACRB_SEARCH_PROVIDER]:
+                    result.brief.provenance.searchProvider ?? "none",
+                  [MARKETING_ATTR.ACRB_QUERY_COUNT]: result.brief.provenance.queryCount,
+                  [MARKETING_ATTR.ACRB_RESULT_COUNT]:
+                    result.brief.provenance.externalResultCount ?? 0,
+                  [MARKETING_ATTR.ACRB_FETCHED_DOCUMENT_COUNT]:
+                    result.brief.provenance.fetchedDocumentCount ?? 0,
+                  [MARKETING_ATTR.ACRB_OFFICIAL_SOURCE_COUNT]:
+                    result.brief.provenance.officialSourceCount ?? 0,
+                  [MARKETING_ATTR.ACRB_SOCIAL_SOURCE_COUNT]:
+                    result.brief.provenance.socialCommunitySourceCount ?? 0,
+                  [MARKETING_ATTR.ACRB_FETCHED_BYTES]:
+                    result.brief.provenance.totalFetchedBytes ?? 0,
+                  [MARKETING_ATTR.ACRB_EXTERNAL_RUNTIME_MS]:
+                    result.brief.provenance.externalResearchRuntimeMs ?? 0,
+                  [MARKETING_ATTR.ACRB_SYNTHESIS_MODE]: result.brief.provenance.synthesisMode,
+                  [MARKETING_ATTR.RESULT_SUMMARY]: truncateSummary(
+                    `${result.brief.researchVerdict}:${result.brief.recommendedAngleId ?? "none"}`,
+                  ),
+                }),
+              }),
+            )
+          : await runEnsure();
+      audienceContentResearchBrief = acrbResult.brief;
+      run = {
+        ...run,
+        metadata: {
+          ...run.metadata,
+          audienceContentResearch: {
+            id: acrbResult.brief.id,
+            verdict: acrbResult.brief.researchVerdict,
+            status: acrbResult.brief.researchStatus,
+            reused: acrbResult.reused,
+            runtimeMs: Date.now() - acrbStartedAt,
+            angleCount: acrbResult.brief.contentAngles.length,
+            recommendedAngleId: acrbResult.brief.recommendedAngleId,
+            externalResearchUsed: Boolean(acrbResult.brief.provenance.externalResearchUsed),
+            searchProvider: acrbResult.brief.provenance.searchProvider ?? null,
+            queryCount: acrbResult.brief.provenance.queryCount,
+            resultCount: acrbResult.brief.provenance.externalResultCount ?? 0,
+            fetchedDocumentCount: acrbResult.brief.provenance.fetchedDocumentCount ?? 0,
+            officialSourceCount: acrbResult.brief.provenance.officialSourceCount ?? 0,
+            socialCommunitySourceCount:
+              acrbResult.brief.provenance.socialCommunitySourceCount ?? 0,
+            totalFetchedBytes: acrbResult.brief.provenance.totalFetchedBytes ?? 0,
+            externalResearchRuntimeMs:
+              acrbResult.brief.provenance.externalResearchRuntimeMs ?? 0,
+            synthesisMode: acrbResult.brief.provenance.synthesisMode,
+          },
+        },
+      };
+
+      if (acrbResult.brief.researchVerdict === "SKIP") {
+        const skippedRun: DailyMarketingRun = {
+          ...run,
+          status: "deferred",
+          completedAt: now.toISOString(),
+          failureReason: "AUDIENCE_CONTENT_RESEARCH_SKIPPED",
+          metadata: {
+            ...run.metadata,
+            productionOutcome: "audience_content_research_skip",
+            audienceContentResearchBrief: acrbResult.brief,
+          },
+          observability: buildObservability({
+            ...run,
+            completedAt: now.toISOString(),
+            failureReason: "AUDIENCE_CONTENT_RESEARCH_SKIPPED",
+          }),
+        };
+        await repo.saveRun(skippedRun);
+        if (productionTraceContext) {
+          try {
+            productionTraceContext.recorder.endSpan({
+              traceId: productionTraceContext.traceId,
+              spanId: productionTraceContext.rootSpanId,
+              status: "ok",
+              otelStatusCode: "OK",
+            });
+            productionTraceContext.recorder.endTrace({
+              traceId: productionTraceContext.traceId,
+              status: "partial",
+              correlation: {
+                productionRequestId: deps.productionRequestId ?? null,
+                logicalRunKey,
+                agendaSlateId: deps.agendaSlateId ?? null,
+                assignmentId: handoff.contentAssignment.assignmentId,
+                runId: skippedRun.runId,
+                correlationId: skippedRun.correlationId,
+              },
+            });
+          } catch {
+            /* ignore */
+          }
+        }
+        return {
+          idempotent: false,
+          run: skippedRun,
+          candidate: null,
+          audienceContentResearchBrief: acrbResult.brief,
+        };
+      }
+    } catch (error) {
+      // Research failure must not invent content — degrade to caution path only if we can continue without ACRB.
+      // Prefer fail-soft: continue CS with null ACRB only when durability store missing mid-flight;
+      // if ensure threw after assignment, keep going without brief but mark limitation in metadata.
+      run = {
+        ...run,
+        metadata: {
+          ...run.metadata,
+          audienceContentResearchError:
+            error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240),
+        },
+      };
+    }
+  }
+
   const goal =
     input.goal ??
     `Daily marketing candidate for ${handoff.selectedAgenda.title} (publish forbidden)`;
@@ -512,6 +697,8 @@ export async function runDailyMarketingProductionPipeline(
       contentPlanScaffold: handoff.contentPlanScaffold,
       deliverableRequirements: handoff.deliverableRequirements,
       evidencePack: handoff.evidencePack,
+      audienceContentResearchBrief,
+      brief: audienceContentResearchBrief,
     },
     {
       ...deps,
@@ -634,6 +821,7 @@ export async function runDailyMarketingProductionPipeline(
     pipeline,
     governance: lastStructuredGovernance,
     now,
+    audienceContentResearchBrief,
   });
 
   if (jsonContainsForbiddenBotLeak(candidate)) {
@@ -678,6 +866,7 @@ export async function runDailyMarketingProductionPipeline(
     const bridgeResult = await maybeGenerateShortformBriefAndResolve({
       candidate: savedCandidate,
       now,
+      audienceContentResearchBrief,
     });
     shortformBridge = {
       status: bridgeResult.outcome,
@@ -727,5 +916,10 @@ export async function runDailyMarketingProductionPipeline(
   };
   await repo.saveRun(completedRun);
 
-  return { idempotent: false, run: completedRun, candidate: savedCandidate };
+  return {
+    idempotent: false,
+    run: completedRun,
+    candidate: savedCandidate,
+    audienceContentResearchBrief,
+  };
 }

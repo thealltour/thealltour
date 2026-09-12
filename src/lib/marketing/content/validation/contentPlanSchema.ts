@@ -40,6 +40,12 @@ export const contentPlanCanonicalSchema = z.object({
   contract: z.literal(CONTENT_PLAN_CONTRACT),
   assignmentId: boundedString(128),
   recommendedFormats: z.array(contentFormatRecommendationSchema).max(CONTENT_PLAN_MAX_FORMATS),
+  targetChannels: z
+    .array(
+      z.enum(["threads", "shortform", "naver_blog", "naver_band", "kakao_channel"]),
+    )
+    .max(8)
+    .optional(),
   primaryAngle: boundedString(CONTENT_PLAN_MAX_STRING),
   keyMessage: boundedString(CONTENT_PLAN_MAX_STRING),
   targetAudience: boundedString(CONTENT_PLAN_MAX_SHORT),
@@ -64,6 +70,12 @@ export const contentPlanProviderSchema = z
     contract: z.literal(CONTENT_PLAN_CONTRACT).optional(),
     assignmentId: boundedString(128),
     recommendedFormats: z.array(contentFormatRecommendationSchema).max(CONTENT_PLAN_MAX_FORMATS).optional(),
+    targetChannels: z
+      .array(
+        z.enum(["threads", "shortform", "naver_blog", "naver_band", "kakao_channel"]),
+      )
+      .max(8)
+      .optional(),
     primaryAngle: boundedString(CONTENT_PLAN_MAX_STRING).optional(),
     keyMessage: boundedString(CONTENT_PLAN_MAX_STRING).optional(),
     targetAudience: boundedString(CONTENT_PLAN_MAX_SHORT).optional(),

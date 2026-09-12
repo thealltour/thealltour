@@ -3,7 +3,13 @@ export type ContentDraftRequest = {
   channel: string;
   goal: string;
   agenda: string | null;
+  /**
+   * Prefer `audienceContentResearchBrief` (RA-1B).
+   * Legacy `brief` may mirror ACRB for older callers.
+   */
   brief: unknown;
+  /** Post-selection Audience & Content Research Brief — not pre-selection ResearchBrief. */
+  audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
   constraints: string[];
   memoryReferences: string[];
   contentAssignmentId?: string | null;

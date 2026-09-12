@@ -281,7 +281,7 @@ function formatEvidencePackSection(pack: ContentDraftRequest["evidencePack"]): s
 }
 
 const CONTENT_DRAFT_SHAPE =
-  'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"]},"assignmentId":null}';
+  'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"],"targetChannels":["threads","shortform"],"primaryAngle":"","keyMessage":""},"assignmentId":null}';
 
 const GROUNDING_RULES = [
   "Grounding rules:",
@@ -295,8 +295,28 @@ const GROUNDING_RULES = [
 
 export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
   const supplied = collectSuppliedEvidenceRefs(payload);
+  const acrb = payload.audienceContentResearchBrief;
+  const recommendedAngle = acrb
+    ? acrb.contentAngles.find((a) => a.angleId === acrb.recommendedAngleId) ?? acrb.contentAngles[0]
+    : null;
   return [
     "JSON only. ContentAssignment/ContentDraftRequest를 근거로 contentPlan + Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마. Do not re-select the manager agenda.",
+    acrb
+      ? [
+          "AudienceContentResearchBrief (RA-1) is already done — confirm/override recommended angle, set keyMessage/formats/tone/targetChannels.",
+          "Do NOT repeat broad research. Do NOT invent facts. inference/hypothesis must not become hard factual copy.",
+          "Persist contentPlan.targetChannels using ACRB.channelFit + searchIntent + commercialIntent + format suitability.",
+          "Baseline usually includes threads+shortform. Add naver_blog for deep planning/search questions, naver_band for community/family discussion, kakao_channel for consultation/offer when fit supports it.",
+          "Do NOT select every channel by default.",
+          `Recommended angle: ${recommendedAngle?.angle ?? acrb.recommendedAngleId ?? "none"} / verdict=${acrb.researchVerdict}`,
+          `channelFit: ${JSON.stringify(recommendedAngle?.channelFit ?? null)}`,
+          `searchIntent: ${acrb.searchIntent.primaryIntent}; questions=${acrb.searchIntent.questions
+            .slice(0, 4)
+            .map((q) => q.text)
+            .join(" | ")}`,
+          `Limitations: ${acrb.limitations.slice(0, 5).join(" | ")}`,
+        ].join(" ")
+      : null,
     formatDeliverableRequirementsSection(payload.deliverableRequirements),
     formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),

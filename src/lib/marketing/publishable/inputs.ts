@@ -4,14 +4,38 @@
 
 import { createHash } from "node:crypto";
 
+import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import type { HumanReviewDraft } from "@/lib/marketing/review/types";
+import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
+import { resolveTargetPublishableChannels } from "@/lib/marketing/publishable/selectTargetChannels";
 
 export type PublishableComposerFact = {
   statement: string;
   confidence: "high" | "medium" | "low" | string;
   evidenceRefIds: string[];
   usable: boolean;
+  epistemicType?: "verified_fact" | "observed_signal" | "inference" | "hypothesis" | string;
+};
+
+export type PublishableResearchContext = {
+  researchBriefId: string | null;
+  selectedAngleId: string | null;
+  selectedAngle: string | null;
+  selectedAngleTension: string | null;
+  selectedAngleRationale: string | null;
+  audiencePrimary: string[];
+  motivations: string[];
+  anxieties: string[];
+  objections: string[];
+  decisionTriggers: string[];
+  searchIntentPrimary: string | null;
+  searchQuestions: string[];
+  contentGaps: string[];
+  channelFit: Record<string, number> | null;
+  researchVerdict: string | null;
+  limitations: string[];
+  findingHints: Array<{ text: string; type: string }>;
 };
 
 export type PublishableComposerInput = {
@@ -30,6 +54,8 @@ export type PublishableComposerInput = {
   governanceDecision: string | null;
   sourceRevision: string;
   evidenceRefIds: string[];
+  research: PublishableResearchContext | null;
+  targetChannels: PublishableChannel[];
 };
 
 function normalizeStatement(text: string): string {
@@ -43,6 +69,7 @@ function normalizeStatement(text: string): string {
 export function computePublishableSourceRevision(
   candidate: CompletedMarketingCandidate,
   humanDraft?: HumanReviewDraft | null,
+  acrb?: AudienceContentResearchBrief | null,
 ): string {
   const payload = {
     candidateId: candidate.candidateId,
@@ -50,22 +77,63 @@ export function computePublishableSourceRevision(
     draftTitle: candidate.draft.title ?? null,
     planKey: candidate.contentPlan?.keyMessage ?? null,
     planHook: candidate.contentPlan?.hook ?? null,
+    planChannels: candidate.contentPlan?.targetChannels ?? null,
     facts: candidate.contentAssignment.facts.map((f) => [f.factId, f.statement, f.confidence]),
     unsupported: candidate.governanceDecision?.unsupportedClaims ?? [],
     decision: candidate.governanceDecision?.decision ?? null,
     humanBody: humanDraft?.body ?? null,
     humanTitle: humanDraft?.title ?? null,
+    acrbId: acrb?.id ?? candidate.audienceContentResearchRef?.researchBriefId ?? null,
+    acrbAngle: acrb?.recommendedAngleId ?? null,
   };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 24);
 }
 
+export function buildResearchContextFromAcrb(
+  acrb: AudienceContentResearchBrief | null | undefined,
+): PublishableResearchContext | null {
+  if (!acrb) return null;
+  const angle =
+    acrb.contentAngles.find((a) => a.angleId === acrb.recommendedAngleId) ??
+    acrb.contentAngles[0] ??
+    null;
+  return {
+    researchBriefId: acrb.id,
+    selectedAngleId: angle?.angleId ?? acrb.recommendedAngleId,
+    selectedAngle: angle?.angle ?? null,
+    selectedAngleTension: angle?.audienceTension ?? null,
+    selectedAngleRationale: angle?.rationale ?? null,
+    audiencePrimary: acrb.audience.primary.map((x) => x.text).slice(0, 4),
+    motivations: acrb.audience.motivations.map((x) => x.text).slice(0, 4),
+    anxieties: acrb.audience.anxieties.map((x) => x.text).slice(0, 5),
+    objections: acrb.audience.objections.map((x) => x.text).slice(0, 4),
+    decisionTriggers: acrb.audience.decisionTriggers.map((x) => x.text).slice(0, 4),
+    searchIntentPrimary: acrb.searchIntent.primaryIntent,
+    searchQuestions: acrb.searchIntent.questions.map((x) => x.text).slice(0, 8),
+    contentGaps: acrb.marketSignals.contentGaps.map((x) => x.text).slice(0, 5),
+    channelFit: angle?.channelFit ?? null,
+    researchVerdict: acrb.researchVerdict,
+    limitations: acrb.limitations.slice(0, 8),
+    findingHints: acrb.researchFindings.slice(0, 8).map((f) => ({
+      text: f.text,
+      type: f.type,
+    })),
+  };
+}
+
 export function buildPublishableComposerInput(
   candidate: CompletedMarketingCandidate,
+  options?: {
+    acrb?: AudienceContentResearchBrief | null;
+    explicitTargetChannels?: PublishableChannel[] | null;
+  },
 ): PublishableComposerInput {
   const unsupported = (candidate.governanceDecision?.unsupportedClaims ?? []).map((c) =>
     normalizeStatement(String(c)),
   );
   const unsupportedLower = new Set(unsupported.map((s) => s.toLowerCase()).filter(Boolean));
+  const acrb = options?.acrb ?? null;
+  const research = buildResearchContextFromAcrb(acrb);
 
   const usableFacts: PublishableComposerFact[] = [];
   const avoidedStatements: string[] = [];
@@ -86,10 +154,31 @@ export function buildPublishableComposerInput(
       confidence: fact.confidence,
       evidenceRefIds: [...fact.evidenceRefs],
       usable: true,
+      epistemicType: fact.confidence === "high" ? "verified_fact" : "observed_signal",
     });
   }
 
-  // Soften: also avoid contentPlan.factsToAvoid
+  if (research) {
+    for (const finding of research.findingHints) {
+      if (finding.type === "hypothesis" || finding.type === "inference") {
+        avoidedStatements.push(finding.text);
+        continue;
+      }
+      if (finding.type === "verified_fact" || finding.type === "observed_signal") {
+        const statement = normalizeStatement(finding.text);
+        if (!statement) continue;
+        if (usableFacts.some((f) => f.statement === statement)) continue;
+        usableFacts.push({
+          statement,
+          confidence: finding.type === "verified_fact" ? "high" : "medium",
+          evidenceRefIds: [],
+          usable: true,
+          epistemicType: finding.type,
+        });
+      }
+    }
+  }
+
   for (const avoid of candidate.contentPlan?.factsToAvoid ?? []) {
     const statement = normalizeStatement(avoid);
     if (statement) avoidedStatements.push(statement);
@@ -107,21 +196,40 @@ export function buildPublishableComposerInput(
     }
   }
 
+  const targetChannels = resolveTargetPublishableChannels({
+    explicit: options?.explicitTargetChannels,
+    contentPlanTargetChannels: candidate.contentPlan?.targetChannels ?? null,
+  });
+
   return {
     candidateId: candidate.candidateId,
     businessDateKst: candidate.businessDateKst,
     topic: candidate.contentAssignment.topic || candidate.selectedAgenda.title,
-    audience: candidate.contentPlan?.targetAudience ?? candidate.contentAssignment.audience ?? null,
+    audience:
+      research?.audiencePrimary[0] ??
+      candidate.contentPlan?.targetAudience ??
+      candidate.contentAssignment.audience ??
+      null,
     commercialIntent: candidate.contentAssignment.commercialIntent,
-    hookHint: candidate.contentPlan?.hook ?? candidate.selectedAgenda.timelinessNote ?? null,
-    keyMessage: candidate.contentPlan?.keyMessage ?? candidate.selectedAgenda.summary ?? null,
+    hookHint:
+      research?.selectedAngleTension ??
+      candidate.contentPlan?.hook ??
+      candidate.selectedAgenda.timelinessNote ??
+      null,
+    keyMessage:
+      research?.selectedAngle ??
+      candidate.contentPlan?.keyMessage ??
+      candidate.selectedAgenda.summary ??
+      null,
     destinations,
     entities: [...(candidate.selectedAgenda.entities ?? [])],
-    usableFacts: usableFacts.slice(0, 8),
-    avoidedStatements: [...new Set(avoidedStatements)].slice(0, 8),
+    usableFacts: usableFacts.slice(0, 10),
+    avoidedStatements: [...new Set(avoidedStatements)].slice(0, 10),
     unsupportedClaims: unsupported.slice(0, 12),
     governanceDecision: candidate.governanceDecision?.decision ?? null,
-    sourceRevision: computePublishableSourceRevision(candidate),
+    sourceRevision: computePublishableSourceRevision(candidate, null, acrb),
     evidenceRefIds,
+    research,
+    targetChannels,
   };
 }

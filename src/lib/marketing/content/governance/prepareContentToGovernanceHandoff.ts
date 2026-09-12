@@ -115,6 +115,37 @@ export function prepareContentToGovernanceHandoff(
     now,
   });
 
+  const acrb = input.audienceContentResearchBrief ?? null;
+  const findingTypeCounts: Record<string, number> = {};
+  const hypothesisFindingIds: string[] = [];
+  const inferenceFindingIds: string[] = [];
+  if (acrb) {
+    for (const f of acrb.researchFindings) {
+      findingTypeCounts[f.type] = (findingTypeCounts[f.type] ?? 0) + 1;
+      if (f.type === "hypothesis") hypothesisFindingIds.push(f.findingId);
+      if (f.type === "inference") inferenceFindingIds.push(f.findingId);
+    }
+    const softTexts = [
+      ...acrb.researchFindings
+        .filter((f) => f.type === "hypothesis" || f.type === "inference")
+        .map((f) => f.text),
+      ...acrb.limitations,
+    ];
+    for (const soft of softTexts.slice(0, 8)) {
+      const needle = soft.slice(0, 24);
+      if (needle.length >= 8 && input.draft.body.includes(needle)) {
+        preflightSignals.factualRisks.push("hypothesis_or_inference_presented_as_fact");
+        preflightSignals.suggestedConcerns.push(
+          "Draft appears to promote research inference/hypothesis as hard fact",
+        );
+        break;
+      }
+    }
+  }
+
+  const recommendedAngle =
+    acrb?.contentAngles.find((a) => a.angleId === acrb.recommendedAngleId)?.angle ?? null;
+
   const request: StructuredGovernanceReviewRequest = {
     contract: GOVERNANCE_REVIEW_REQUEST_CONTRACT,
     reviewId,
@@ -145,6 +176,12 @@ export function prepareContentToGovernanceHandoff(
       "do not publish",
       "governance evaluates only — do not rewrite content",
       "preserve assignment/agenda ownership boundaries",
+      ...(acrb
+        ? [
+            "treat ACRB hypothesis/inference as non-factual unless separately evidenced",
+            ...(acrb.limitations.slice(0, 3).map((item) => `research_limitation:${item.slice(0, 100)}`)),
+          ]
+        : []),
       ...(assignment?.constraints ?? []).slice(0, 8),
     ].slice(0, 16),
     priorRevision,
@@ -162,6 +199,19 @@ export function prepareContentToGovernanceHandoff(
       revisionNumber: priorRevision,
       requestedAt: now.toISOString(),
     },
+    audienceContentResearch: acrb
+      ? {
+          researchBriefId: acrb.id,
+          researchVerdict: acrb.researchVerdict,
+          researchStatus: acrb.researchStatus,
+          recommendedAngleId: acrb.recommendedAngleId,
+          recommendedAngle,
+          limitations: acrb.limitations.slice(0, 8),
+          findingTypeCounts,
+          hypothesisFindingIds: hypothesisFindingIds.slice(0, 12),
+          inferenceFindingIds: inferenceFindingIds.slice(0, 12),
+        }
+      : null,
   };
 
   return { request };

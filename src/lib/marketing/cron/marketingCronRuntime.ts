@@ -34,6 +34,43 @@ export function createMarketingCronCorrelationId(now = new Date()): string {
 
 export type HermesProfileInvoker = (profile: string, prompt: string) => string;
 
+/**
+ * RA-1C — wire Audience & Content Research LLM synthesis to the same Hermes/Runtime
+ * gateway used by Marketing Cron. Reuses content-strategist profile as structured-JSON
+ * transport; the ACRB prompt itself forbids final channel copy. No new Bot process.
+ */
+export function createAudienceResearchInvoke(
+  options: MarketingPlanPipelineDispatchOptions,
+): ((prompt: string) => Promise<string>) | null {
+  if (options.useRuntime) {
+    if (!options.executor) return null;
+    const executor = options.executor;
+    const now = options.now ?? (() => new Date());
+    const timeoutMs = options.completionTimeoutMs;
+    return async (prompt: string) => {
+      const request = createCronRuntimeRequest(
+        {
+          agentId: "content-strategist",
+          workload: "content_draft",
+          priority: "background",
+          messages: [{ role: "user", content: prompt }],
+          correlationId: options.correlationId,
+          cronJobId: MARKETING_CRON_JOB_ID,
+          departmentId: MARKETING_DEPARTMENT_ID,
+          routing: { requiresStructuredOutput: true },
+        },
+        { now },
+      );
+      const result = await executor.executeAndWait(request, { timeoutMs, now });
+      return assertRuntimeContent(result);
+    };
+  }
+
+  const invokeHermes = options.invokeHermesProfile;
+  if (!invokeHermes) return null;
+  return async (prompt: string) => invokeHermes("content-strategist", prompt);
+}
+
 export type MarketingPlanPipelineDispatchOptions = {
   useRuntime: boolean;
   correlationId: string;

@@ -259,6 +259,7 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
   now?: Date;
   /** Injected catalog for tests; production resolves via factory. */
   catalog?: MarketingMediaSourceCatalogRepository;
+  audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
 }): Promise<DailyShortformBridgeResult> {
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
@@ -291,6 +292,7 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
       now,
       overwriteArtifacts: true,
       forcePublishableRegenerate: false,
+      audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
     });
 
     const packageRoot = exportResult.packageRoot;

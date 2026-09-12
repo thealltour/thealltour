@@ -105,6 +105,42 @@ export type MorningReviewHumanAction = {
   manualPublicationPlatform: string | null;
 };
 
+export type MorningChannelReviewView = {
+  channel: import("@/lib/marketing/review/channelReviews").ReviewablePublishableChannel;
+  label: string;
+  status: import("@/lib/marketing/review/channelReviews").ChannelReviewStatus;
+  statusLabel: string;
+  title: string | null;
+  body: string;
+  aiTitle: string | null;
+  aiBody: string;
+  source: "human" | "ai";
+  validationWarnings: string[];
+  blogMeta?: {
+    selectedTitle?: string | null;
+    titleCandidates?: string[];
+    primaryTopic?: string | null;
+    searchIntent?: string | null;
+  } | null;
+};
+
+export type MorningResearchSummary = {
+  primaryAudience: string[];
+  strongestTension: string | null;
+  recommendedAngle: string | null;
+  verdict: string | null;
+  limitations: string[];
+  topQuestions: string[];
+  contentGaps: string[];
+};
+
+export type MorningStrategySummary = {
+  selectedAngle: string | null;
+  keyMessage: string | null;
+  targetChannels: string[];
+  commercialIntent: string | null;
+};
+
 export type MorningMarketingReviewContext = {
   contract: typeof MORNING_MARKETING_REVIEW_CONTEXT_CONTRACT;
   identity: MorningReviewIdentity;
@@ -118,6 +154,10 @@ export type MorningMarketingReviewContext = {
     originalBody: string;
     humanEditedAfterGovernance: boolean;
   };
+  /** CG-4C — only generated channels. */
+  channelReviews: MorningChannelReviewView[];
+  researchSummary: MorningResearchSummary | null;
+  strategySummary: MorningStrategySummary;
   evidence: {
     claims: MorningReviewEvidenceClaim[];
     unlinkedEvidenceCount: number;

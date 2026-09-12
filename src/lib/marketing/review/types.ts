@@ -20,6 +20,9 @@ export type ManualPublicationRecord = {
   externalUrl?: string;
   externalPostId?: string;
   notes?: string;
+  /** CG-4C — which publishable channel this record refers to. */
+  channel?: string;
+  socialAccountId?: string;
 };
 
 export type HumanMarketingReview = {
@@ -30,10 +33,17 @@ export type HumanMarketingReview = {
   status: HumanMarketingReviewStatus;
   originalDraft: HumanReviewDraft;
   currentDraft: HumanReviewDraft;
+  /**
+   * CG-4C — per-channel review map (payload jsonb; no DB migration).
+   * Threads currentDraft remains the primary compatibility slot.
+   */
+  channelReviews?: import("@/lib/marketing/review/channelReviews").ChannelReviewsMap;
   humanNotes: string | null;
   rejectionReason: string | null;
   deferredUntil: string | null;
   manualPublication: ManualPublicationRecord | null;
+  /** Optional history of per-channel manual publication records. */
+  manualPublications?: ManualPublicationRecord[];
   reviewedBy: string | null;
   governanceReviewedDraftBody: string;
   humanEditedAfterGovernance: boolean;

@@ -22,6 +22,25 @@ import { resolveMarketingAssetRoot } from "@/lib/marketing/assets/config";
 import { resolvePackageDirectory } from "@/lib/marketing/assets/paths";
 import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
 import { looksLikeInternalPlanningBody } from "@/lib/marketing/publishable/validate";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { AUDIENCE_CONTENT_RESEARCH_BRIEF_RELATIVE_PATH } from "@/lib/marketing/audienceResearch/paths";
+import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
+import { parseAudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/validate";
+import {
+  channelLabel,
+  channelStatusLabel,
+  effectiveChannelDraft,
+} from "@/lib/marketing/review/channelReviews";
+import {
+  mergeChannelReviewsFromPublishable,
+  visibleChannelsFromReviews,
+} from "@/lib/marketing/review/mergeChannelReviews";
+import type {
+  MorningChannelReviewView,
+  MorningResearchSummary,
+  MorningStrategySummary,
+} from "@/lib/marketing/review/morningReview/types";
 
 function workflowState(item: HumanReviewQueueItem): MorningReviewWorkflowState {
   if (!item.humanReviewStatus) {
@@ -161,26 +180,117 @@ export function buildMorningMarketingReviewContext(input: {
     Boolean(review?.humanEditedAfterGovernance) && !looksLikeInternalPlanningBody(rawDraftBody);
   let publishableTitle = rawDraftTitle;
   let publishableBody = rawDraftBody;
-  if (!humanOwnsPublishableDraft && looksLikeInternalPlanningBody(rawDraftBody)) {
-    try {
-      const assetRoot = resolveMarketingAssetRoot({});
-      const packageRoot = resolvePackageDirectory({
-        assetRoot,
-        businessDateKst: candidate.businessDateKst,
-        candidateId: candidate.candidateId,
-      });
-      const bundle = ensurePublishableContentSync({
-        candidate,
-        packageRoot,
-        humanDraft: review?.currentDraft,
-        humanEditedAfterGovernance: review?.humanEditedAfterGovernance,
-      });
-      publishableTitle = bundle.threads.title;
-      publishableBody = bundle.threads.body;
-    } catch {
-      /* keep raw draft */
+  let publishableBundle: ReturnType<typeof ensurePublishableContentSync> | null = null;
+  try {
+    const assetRoot = resolveMarketingAssetRoot({});
+    const packageRoot = resolvePackageDirectory({
+      assetRoot,
+      businessDateKst: candidate.businessDateKst,
+      candidateId: candidate.candidateId,
+    });
+    publishableBundle = ensurePublishableContentSync({
+      candidate,
+      packageRoot,
+      humanDraft: review?.currentDraft,
+      humanEditedAfterGovernance: review?.humanEditedAfterGovernance,
+      audienceContentResearchBrief: null,
+      explicitTargetChannels: candidate.contentPlan?.targetChannels ?? null,
+    });
+    if (!humanOwnsPublishableDraft && looksLikeInternalPlanningBody(rawDraftBody)) {
+      publishableTitle = publishableBundle.threads.title;
+      publishableBody = publishableBundle.threads.body;
+    } else if (review?.channelReviews?.threads) {
+      const eff = effectiveChannelDraft(review.channelReviews.threads);
+      publishableTitle = eff.title;
+      publishableBody = eff.body;
     }
+  } catch {
+    /* keep raw draft */
   }
+
+  const channelReviewsMap = publishableBundle
+    ? mergeChannelReviewsFromPublishable({
+        existing: review?.channelReviews,
+        bundle: publishableBundle,
+      })
+    : review?.channelReviews ?? {};
+
+  const channelReviews: MorningChannelReviewView[] = visibleChannelsFromReviews(channelReviewsMap).map(
+    (channel) => {
+      const entry = channelReviewsMap[channel]!;
+      const eff = effectiveChannelDraft(entry);
+      const blogMeta =
+        channel === "naver_blog" && publishableBundle?.naver_blog?.blogMeta
+          ? {
+              selectedTitle: publishableBundle.naver_blog.blogMeta.selectedTitle,
+              titleCandidates: publishableBundle.naver_blog.blogMeta.titleCandidates,
+              primaryTopic: publishableBundle.naver_blog.blogMeta.primaryTopic,
+              searchIntent: publishableBundle.naver_blog.blogMeta.searchIntent,
+            }
+          : null;
+      return {
+        channel,
+        label: channelLabel(channel),
+        status: entry.status,
+        statusLabel: channelStatusLabel(entry.status),
+        title: eff.title,
+        body: eff.body,
+        aiTitle: entry.aiDraft.title,
+        aiBody: entry.aiDraft.body,
+        source: eff.source,
+        validationWarnings: entry.validationWarnings,
+        blogMeta,
+      };
+    },
+  );
+
+  let acrb: AudienceContentResearchBrief | null = null;
+  try {
+    const assetRoot = resolveMarketingAssetRoot({});
+    const packageRoot = resolvePackageDirectory({
+      assetRoot,
+      businessDateKst: candidate.businessDateKst,
+      candidateId: candidate.candidateId,
+    });
+    const acrbPath = join(packageRoot, AUDIENCE_CONTENT_RESEARCH_BRIEF_RELATIVE_PATH);
+    if (existsSync(acrbPath)) {
+      acrb = parseAudienceContentResearchBrief(JSON.parse(readFileSync(acrbPath, "utf8")));
+    }
+  } catch {
+    acrb = null;
+  }
+  const recommendedAngle =
+    acrb?.contentAngles.find((a) => a.angleId === acrb.recommendedAngleId) ??
+    acrb?.contentAngles[0] ??
+    null;
+  const researchSummary: MorningResearchSummary | null = acrb
+    ? {
+        primaryAudience: acrb.audience.primary.map((x) => x.text).slice(0, 3),
+        strongestTension: recommendedAngle?.audienceTension ?? null,
+        recommendedAngle: recommendedAngle?.angle ?? null,
+        verdict: acrb.researchVerdict,
+        limitations: acrb.limitations.slice(0, 5),
+        topQuestions: acrb.searchIntent.questions.map((q) => q.text).slice(0, 5),
+        contentGaps: acrb.marketSignals.contentGaps.map((g) => g.text).slice(0, 3),
+      }
+    : recommendedAngle || plan
+      ? {
+          primaryAudience: [assignment.audience].filter(Boolean) as string[],
+          strongestTension: null,
+          recommendedAngle: plan?.primaryAngle ?? null,
+          verdict: candidate.audienceContentResearchRef?.researchVerdict ?? null,
+          limitations: [],
+          topQuestions: [],
+          contentGaps: [],
+        }
+      : null;
+
+  const strategySummary: MorningStrategySummary = {
+    selectedAngle: plan?.primaryAngle ?? recommendedAngle?.angle ?? null,
+    keyMessage: plan?.keyMessage ?? null,
+    targetChannels: plan?.targetChannels ?? publishableBundle?.targetChannels ?? ["threads", "shortform"],
+    commercialIntent: assignment.commercialIntent ?? null,
+  };
 
   return {
     contract: MORNING_MARKETING_REVIEW_CONTEXT_CONTRACT,
@@ -218,6 +328,9 @@ export function buildMorningMarketingReviewContext(input: {
       originalBody: review?.originalDraft.body ?? candidate.draft.body,
       humanEditedAfterGovernance: review?.humanEditedAfterGovernance ?? false,
     },
+    channelReviews,
+    researchSummary,
+    strategySummary,
     evidence: {
       claims,
       unlinkedEvidenceCount: claims.filter((claim) => claim.linkage === "unlinked").length,

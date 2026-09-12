@@ -11,6 +11,21 @@ export const updateHumanDraftSchema = z.object({
   humanNotes: z.string().max(4_000).nullable().optional(),
 });
 
+export const updateChannelReviewDraftSchema = z.object({
+  channel: z.enum(["threads", "naver_blog", "naver_band", "kakao_channel", "shortform"]),
+  title: z.string().max(300).nullable().optional(),
+  body: z.string().min(1).max(40_000),
+  notes: z.string().max(4_000).nullable().optional(),
+  humanNotes: z.string().max(4_000).nullable().optional(),
+});
+
+export const setChannelReviewStatusSchema = z.object({
+  channel: z.enum(["threads", "naver_blog", "naver_band", "kakao_channel", "shortform"]),
+  status: z.enum(["approved", "skipped", "needs_review"]),
+  notes: z.string().max(4_000).nullable().optional(),
+  humanNotes: z.string().max(4_000).nullable().optional(),
+});
+
 export const deferHumanReviewSchema = z.object({
   humanNotes: z.string().max(4_000).nullable().optional(),
   deferredUntil: z.string().datetime().nullable().optional(),
@@ -31,6 +46,8 @@ export const manualPublicationSchema = z.object({
   externalUrl: z.string().url().max(2_000).optional(),
   externalPostId: z.string().max(256).optional(),
   notes: z.string().max(4_000).optional(),
+  channel: z.string().max(64).optional(),
+  socialAccountId: z.string().uuid().optional(),
 });
 
 export const markManuallyPublishedSchema = z.object({

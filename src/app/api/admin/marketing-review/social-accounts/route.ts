@@ -4,22 +4,28 @@ import { createSocialRepository } from "@/lib/marketing/social/repository/create
 export const dynamic = "force-dynamic";
 
 /**
- * OPS-1 — Safe SocialAccount list for Manual Publication Bridge selector.
- * Returns channel/display identity only — never credentials or tokens.
+ * OPS-1 / CG-4C — Safe SocialAccount list for Manual Publication Bridge selector.
+ * Optional ?channel= filters to compatible accounts. Never returns credentials.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireAdminPermission("settings.manage");
   if (!auth.ok) return auth.res;
 
   try {
+    const url = new URL(request.url);
+    const channelFilter = url.searchParams.get("channel")?.trim() || null;
     const repo = await createSocialRepository();
     const accounts = await repo.listSocialAccounts({
       status: ["connected", "disconnected"],
       limit: 50,
     });
+    const filtered = channelFilter
+      ? accounts.filter((account) => account.channel === channelFilter && account.status === "connected")
+      : accounts.filter((account) => account.status === "connected" || account.status === "disconnected");
+
     return Response.json(
       {
-        accounts: accounts.map((account) => ({
+        accounts: filtered.map((account) => ({
           id: account.id,
           channel: account.channel,
           provider: account.provider,
@@ -34,6 +40,7 @@ export async function GET() {
             .filter(Boolean)
             .join(" · "),
         })),
+        channelFilter,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

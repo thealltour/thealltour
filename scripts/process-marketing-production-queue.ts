@@ -71,6 +71,7 @@ async function main() {
   const {
     createMarketingCronCorrelationId,
     createMarketingPlanPipelineDispatch,
+    createAudienceResearchInvoke,
     isAiRuntimeMarketingCronEnabled,
   } = await import("../src/lib/marketing/cron/marketingCronRuntime");
   const {
@@ -174,13 +175,15 @@ async function main() {
     await ensureSharedObservabilityRecorder();
   }
   const runtimeExecutor = useRuntime ? createRuntimeExecutorStack() : undefined;
-  const dispatch = createMarketingPlanPipelineDispatch({
+  const dispatchOptions = {
     useRuntime,
     correlationId,
     executor: runtimeExecutor,
     invokeHermesProfile: useRuntime ? undefined : invokeHermesProfile,
     completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
-  });
+  };
+  const dispatch = createMarketingPlanPipelineDispatch(dispatchOptions);
+  const invokeAudienceResearch = createAudienceResearchInvoke(dispatchOptions);
   const reviewRepo = await createHumanMarketingReviewRepository(backend ? { backend } : {});
 
   const executeProduction = createDefaultProductionExecutor({
@@ -189,7 +192,9 @@ async function main() {
     pipelineDeps: {
       repo: runRepo,
       reviewRepo,
+      productionRequestRepo,
       ...dispatch,
+      invokeAudienceResearch,
       // Exact slate selection is supplied per request — never rediscover via MM.
       requestPerformance: async () => ({
         unavailable: true as const,

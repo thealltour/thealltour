@@ -69,6 +69,7 @@ export type DepartmentPipelineInput = {
   goal: string;
   agenda?: string | null;
   brief?: unknown;
+  audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
   constraints?: string[];
   memoryReferences?: string[];
   contentAssignmentId?: string | null;
@@ -335,15 +336,24 @@ export async function runDepartmentPipeline(
     }
   }
 
+  const acrb = input.audienceContentResearchBrief ?? null;
   const draftRequest: ContentDraftRequest = {
     productId: input.productId,
     channel: input.channel,
     goal: input.goal,
     agenda: input.agenda ?? input.selectedAgenda?.title ?? null,
-    brief: input.brief ?? null,
+    brief: acrb ?? input.brief ?? null,
+    audienceContentResearchBrief: acrb,
     constraints: [
       ...(input.constraints ?? ["do not invent product facts", "do not publish"]),
       ...(input.contentAssignment?.constraints ?? []),
+      ...(acrb
+        ? [
+            "use AudienceContentResearchBrief for angle/strategy; do not repeat broad research",
+            "do not treat inference/hypothesis as verified facts",
+            ...(acrb.limitations.slice(0, 4).map((item) => `research_limitation:${item.slice(0, 120)}`)),
+          ]
+        : []),
     ].slice(0, 20),
     memoryReferences: input.memoryReferences ?? [],
     contentAssignmentId: input.contentAssignmentId ?? input.contentAssignment?.assignmentId ?? null,
@@ -422,6 +432,7 @@ export async function runDepartmentPipeline(
       productId: input.productId,
       channel: input.channel,
       priorRevision,
+      audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
     });
 
     const idempotencyKey = buildGovernanceReviewIdempotencyKey({

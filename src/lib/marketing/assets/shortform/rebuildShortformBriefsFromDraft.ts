@@ -59,6 +59,7 @@ function mergeDraftIntoCandidate(
   return {
     ...candidate,
     draft: {
+      ...candidate.draft,
       title: draft.title ?? candidate.draft.title,
       body: draft.body,
       channel: draft.channel || candidate.draft.channel,

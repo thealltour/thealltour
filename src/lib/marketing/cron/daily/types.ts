@@ -19,6 +19,7 @@ export type DailyMarketingFailureReason =
   | "MANAGER_DEFERRED"
   | "MANAGER_INVALID_OUTPUT"
   | "ASSIGNMENT_FAILED"
+  | "AUDIENCE_CONTENT_RESEARCH_SKIPPED"
   | "CONTENT_STRATEGIST_FAILED"
   | "GOVERNANCE_FAILED"
   | "GOVERNANCE_TECHNICAL_FAILURE"
@@ -96,6 +97,8 @@ export type CompletedMarketingCandidate = {
     governanceReviewId: string | null;
   };
   observability: DailyMarketingRunObservability;
+  /** Compact RA-1B pointer — full brief is on production request / package artifact. */
+  audienceContentResearchRef?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBriefRef | null;
 };
 
 export type DailyMarketingPipelineInput = {
@@ -125,4 +128,6 @@ export type DailyMarketingPipelineResult = {
   candidate: CompletedMarketingCandidate | null;
   /** Present when the daily job stops at the human-gated agenda slate. */
   slate?: import("@/lib/marketing/cron/daily/agendaSlate/types").DailyAgendaSlate | null;
+  /** RA-1B — present when research completed (including SKIP). */
+  audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
 };

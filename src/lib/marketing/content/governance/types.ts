@@ -88,6 +88,21 @@ export type StructuredGovernanceReviewRequest = {
   agendaKey: string | null;
   preflightSignals: GovernancePreflightSignals;
   observability: GovernanceReviewObservability;
+  /**
+   * Compact RA-1B context — finding types / limitations / recommended angle.
+   * Full ACRB lives on production request / package artifact.
+   */
+  audienceContentResearch?: {
+    researchBriefId: string;
+    researchVerdict: string;
+    researchStatus: string;
+    recommendedAngleId: string | null;
+    recommendedAngle: string | null;
+    limitations: string[];
+    findingTypeCounts: Record<string, number>;
+    hypothesisFindingIds: string[];
+    inferenceFindingIds: string[];
+  } | null;
 };
 
 export type StructuredGovernanceDecision = {
@@ -136,6 +151,8 @@ export type PrepareContentToGovernanceHandoffInput = {
   channel: string;
   priorRevision?: number;
   now?: Date;
+  /** RA-1B — epistemic context for claim typing; does not replace evidenceRefs. */
+  audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
 };
 
 export type ContentToGovernanceHandoffResult = {

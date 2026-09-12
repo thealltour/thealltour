@@ -117,6 +117,13 @@ export type ContentPlan = {
   contract: typeof CONTENT_PLAN_CONTRACT;
   assignmentId: string;
   recommendedFormats: ContentFormatRecommendation[];
+  /**
+   * CG-4B — selected publishable target channels persisted by Content Strategist.
+   * Composers generate optional channels only when listed here (plus baseline).
+   */
+  targetChannels?: Array<
+    "threads" | "shortform" | "naver_blog" | "naver_band" | "kakao_channel"
+  >;
   primaryAngle: string;
   keyMessage: string;
   targetAudience: string;

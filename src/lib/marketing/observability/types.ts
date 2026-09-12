@@ -71,6 +71,7 @@ export type MarketingSpanStage =
   | "marketing_manager"
   | "deliverable_requirements"
   | "evidence_pack"
+  | "audience_content_research"
   | "content_strategist"
   | "completeness_validator"
   | "governance_auditor"
@@ -94,6 +95,7 @@ export type MarketingAgentActorId =
 export type MarketingDeterministicActorId =
   | "deliverable_requirements"
   | "evidence_pack"
+  | "audience_content_research"
   | "completeness_validator"
   | "semantic_dedupe"
   | "media_brief";

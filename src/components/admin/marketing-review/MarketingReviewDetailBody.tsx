@@ -7,6 +7,7 @@ import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTe
 import AdminCard from "@/components/admin/ui/AdminCard";
 import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/MarketingReviewAssetsPanel";
 import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketing-review/MarketingReviewShortformSourcesPanel";
+import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/MarketingReviewChannelTabs";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/dto";
 
@@ -42,8 +43,6 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
   const candidate = detail.candidate;
   const review = detail.review;
 
-  const [draftTitle, setDraftTitle] = useState(context.draft.title ?? "");
-  const [draftBody, setDraftBody] = useState(context.draft.body);
   const [humanNotes, setHumanNotes] = useState(review?.humanNotes ?? "");
   const [rejectionReason, setRejectionReason] = useState("");
   const [manualPlatform, setManualPlatform] = useState("");
@@ -54,12 +53,16 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
   const [socialAccountsError, setSocialAccountsError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<string>(
+    context.channelReviews[0]?.channel ?? context.draft.channel ?? "threads",
+  );
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/admin/marketing-review/social-accounts", {
+        const qs = selectedChannel ? `?channel=${encodeURIComponent(selectedChannel)}` : "";
+        const res = await fetch(`/api/admin/marketing-review/social-accounts${qs}`, {
           cache: "no-store",
         });
         const data = (await res.json()) as { accounts?: SocialAccountOption[]; message?: string };
@@ -74,11 +77,14 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           setSocialAccounts(data.accounts ?? []);
           setSocialAccountsError(null);
           const preferred =
-            (data.accounts ?? []).find((a) => a.channel === (context.draft.channel || "threads")) ??
+            (data.accounts ?? []).find((a) => a.channel === selectedChannel) ??
             (data.accounts ?? [])[0];
-          if (preferred && !manualSocialAccountId) {
+          if (preferred) {
             setManualSocialAccountId(preferred.id);
-            if (!manualPlatform) setManualPlatform(preferred.channel);
+            setManualPlatform(preferred.channel);
+          } else {
+            setManualSocialAccountId("");
+            setManualPlatform(selectedChannel);
           }
         }
       } catch {
@@ -91,9 +97,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
     return () => {
       cancelled = true;
     };
-    // Load once for this review page; do not re-bind on every draft channel keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candidate.candidateId]);
+  }, [candidate.candidateId, selectedChannel]);
 
   async function reloadContext() {
     const res = await fetch(`/api/admin/marketing-review/${encodeURIComponent(candidate.candidateId)}`, {
@@ -102,34 +106,9 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
     if (!res.ok) throw new Error("reload_failed");
     const next = (await res.json()) as MorningMarketingReviewContext;
     setContext(next);
-    setDraftTitle(next.draft.title ?? "");
-    setDraftBody(next.draft.body);
     setHumanNotes(next.detail.review?.humanNotes ?? "");
-  }
-
-  async function saveDraft() {
-    setBusy(true);
-    setMessage(null);
-    try {
-      await fetch(`/api/admin/marketing-review/${encodeURIComponent(candidate.candidateId)}/draft`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          draft: { title: draftTitle || null, body: draftBody, channel: context.draft.channel },
-          humanNotes: humanNotes || null,
-        }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(typeof data.message === "string" ? data.message : "save_failed");
-        }
-      });
-      await reloadContext();
-      setMessage("초안을 저장했습니다.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "save_failed");
-    } finally {
-      setBusy(false);
+    if (!next.channelReviews.some((c) => c.channel === selectedChannel) && next.channelReviews[0]) {
+      setSelectedChannel(next.channelReviews[0].channel);
     }
   }
 
@@ -283,7 +262,8 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
                     </span>
                   ) : socialAccounts.length === 0 ? (
                     <span className="mt-1 block text-xs text-[var(--text-secondary)]">
-                      연결된 SocialAccount가 없습니다. 먼저 Threads canary 바인딩을 확인하세요.
+                      선택한 채널({selectedChannel})에 연결된 SocialAccount가 없습니다. 계정 바인딩을 확인하세요.
+                      UUID를 직접 입력하지 마세요.
                     </span>
                   ) : null}
                 </label>
@@ -312,7 +292,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
                 onClick={() =>
                   void run("manual-publication", {
                     socialAccountId: manualSocialAccountId.trim(),
-                    channel: manualPlatform || context.draft.channel,
+                    channel: selectedChannel || manualPlatform || context.draft.channel,
                     externalUrl: manualUrl.trim() || undefined,
                     externalPostId: manualPostId.trim() || undefined,
                     publishedAt: new Date().toISOString(),
@@ -337,33 +317,56 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         </AdminCard>
 
         <AdminCard className="space-y-3 p-4">
-          <h2 className="text-base font-semibold">2. 초안</h2>
+          <h2 className="text-base font-semibold">연구 / 전략 요약</h2>
+          {context.researchSummary ? (
+            <div className="grid gap-2 text-sm md:grid-cols-2">
+              <div>대상: {context.researchSummary.primaryAudience.join(" · ") || "—"}</div>
+              <div>판정: {context.researchSummary.verdict ?? "—"}</div>
+              <div className="md:col-span-2">
+                추천 각도: {context.researchSummary.recommendedAngle ?? "—"}
+              </div>
+              <div className="md:col-span-2">
+                긴장: {context.researchSummary.strongestTension ?? "—"}
+              </div>
+              <div className="md:col-span-2 text-[var(--text-secondary)]">
+                한계: {context.researchSummary.limitations.join(" · ") || "—"}
+              </div>
+              <details className="md:col-span-2 text-sm">
+                <summary className="cursor-pointer text-[var(--primary)]">질문 / 공백 더보기</summary>
+                <div className="mt-2 space-y-1 text-[var(--text-secondary)]">
+                  <div>질문: {context.researchSummary.topQuestions.join(" · ") || "—"}</div>
+                  <div>공백: {context.researchSummary.contentGaps.join(" · ") || "—"}</div>
+                </div>
+              </details>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--text-secondary)]">RA-1 요약 없음 (패키지 ACRB 미존재 가능)</p>
+          )}
+          <div className="border-t border-[var(--border)] pt-3 text-sm">
+            <div>선택 각도: {context.strategySummary.selectedAngle ?? "—"}</div>
+            <div>핵심 메시지: {context.strategySummary.keyMessage ?? "—"}</div>
+            <div>타깃 채널: {context.strategySummary.targetChannels.join(", ") || "—"}</div>
+            <div>상업 의도: {context.strategySummary.commercialIntent ?? "—"}</div>
+          </div>
+        </AdminCard>
+
+        <AdminCard className="space-y-3 p-4">
+          <h2 className="text-base font-semibold">2. 채널별 검토</h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            채널 {context.draft.channel}
-            {context.draft.format ? ` · 형식 ${context.draft.format}` : ""}
-            {context.draft.cta ? ` · CTA ${context.draft.cta}` : ""}
+            생성된 채널만 표시됩니다. 채널 저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다.
           </p>
+          <MarketingReviewChannelTabs
+            context={context}
+            canEdit={detail.canEdit}
+            busy={busy}
+            onBusy={setBusy}
+            onMessage={setMessage}
+            onReload={reloadContext}
+            selectedChannel={selectedChannel}
+            onSelectChannel={setSelectedChannel}
+          />
           <label className="block text-sm">
-            <span className="mb-1 block text-[var(--text-secondary)]">Title</span>
-            <input
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-              disabled={!detail.canEdit || busy}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-[var(--text-secondary)]">Body</span>
-            <textarea
-              value={draftBody}
-              onChange={(e) => setDraftBody(e.target.value)}
-              disabled={!detail.canEdit || busy}
-              rows={12}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-[var(--text-secondary)]">Human notes</span>
+            <span className="mb-1 block text-[var(--text-secondary)]">Human notes (후보 공통)</span>
             <textarea
               value={humanNotes}
               onChange={(e) => setHumanNotes(e.target.value)}
@@ -372,19 +375,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
             />
           </label>
-          <div className="rounded-lg bg-[var(--surface-muted)] p-3 text-xs text-[var(--text-secondary)] whitespace-pre-wrap">
-            Original AI draft:
-            {"\n"}
-            {sanitizeTextForDisplay(context.draft.originalBody, 1200)}
-          </div>
-          <button
-            type="button"
-            disabled={!detail.canEdit || busy}
-            onClick={() => void saveDraft()}
-            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            초안 저장
-          </button>
+          {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
         </AdminCard>
 
         <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />

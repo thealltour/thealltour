@@ -5,6 +5,8 @@ import type {
 } from "@/lib/marketing/cron/daily/types";
 import type { DepartmentPipelineResult } from "@/lib/marketing/bot/organization/pipeline";
 import type { StructuredGovernanceDecision } from "@/lib/marketing/content/governance/types";
+import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
+import { toAudienceContentResearchBriefRef } from "@/lib/marketing/audienceResearch/validate";
 
 export function mapPipelineToCandidateStatus(
   pipeline: DepartmentPipelineResult,
@@ -25,6 +27,7 @@ export function buildCompletedCandidate(input: {
   pipeline: DepartmentPipelineResult;
   governance: StructuredGovernanceDecision | null;
   now?: Date;
+  audienceContentResearchBrief?: AudienceContentResearchBrief | null;
 }): CompletedMarketingCandidate {
   const now = input.now ?? new Date();
   const draft = input.pipeline.draft!;
@@ -57,5 +60,8 @@ export function buildCompletedCandidate(input: {
       governanceReviewId: input.governance?.reviewId ?? null,
     },
     observability: input.run.observability,
+    audienceContentResearchRef: input.audienceContentResearchBrief
+      ? toAudienceContentResearchBriefRef(input.audienceContentResearchBrief)
+      : null,
   };
 }

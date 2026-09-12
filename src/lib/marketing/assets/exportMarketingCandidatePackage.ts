@@ -40,6 +40,12 @@ import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensure
 import { PUBLISHABLE_CONTENT_MEDIA_TYPE, PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
 import type { HumanReviewDraft } from "@/lib/marketing/review/types";
+import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
+import {
+  AUDIENCE_CONTENT_RESEARCH_BRIEF_MEDIA_TYPE,
+  AUDIENCE_CONTENT_RESEARCH_BRIEF_RELATIVE_PATH,
+} from "@/lib/marketing/audienceResearch/paths";
+import { toAudienceContentResearchBriefRef } from "@/lib/marketing/audienceResearch/validate";
 
 export type ExportMarketingCandidatePackageInput = {
   candidate: CompletedMarketingCandidate;
@@ -55,6 +61,8 @@ export type ExportMarketingCandidatePackageInput = {
   overwriteArtifacts?: boolean;
   /** Force rebuild of publishable Threads + shortform narration. */
   forcePublishableRegenerate?: boolean;
+  /** RA-1B — full ACRB for package artifact (optional if only compact ref on candidate). */
+  audienceContentResearchBrief?: AudienceContentResearchBrief | null;
 };
 
 export type ExportMarketingCandidatePackageResult = {
@@ -90,15 +98,31 @@ function buildCopyTextFromPublishable(bundle: PublishableContentBundle): string 
   return buildThreadsPostText(bundle);
 }
 
+function pushCopyArtifact(
+  planned: PlannedPackageArtifact[],
+  relativePath: string,
+  text: string,
+): void {
+  if (!text.trim()) return;
+  planned.push({
+    relativePath,
+    content: Buffer.from(text.endsWith("\n") ? text : `${text}\n`, "utf8"),
+    kind: "copy",
+    origin: "candidate_copy",
+    mediaType: mediaTypeFor(relativePath),
+  });
+}
+
 function planGeneratedArtifacts(input: {
   candidate: CompletedMarketingCandidate;
   mediaBrief: MediaBrief;
   publishable: PublishableContentBundle;
+  audienceContentResearchBrief?: AudienceContentResearchBrief | null;
 }): PlannedPackageArtifact[] {
   const planned: PlannedPackageArtifact[] = [
     {
       relativePath: "context/export-context.json",
-      content: stableJsonBytes(buildExportContext(input.candidate)),
+      content: stableJsonBytes(buildExportContext(input.candidate, input.audienceContentResearchBrief)),
       kind: "context",
       origin: "pipeline_export",
       mediaType: mediaTypeFor("context/export-context.json"),
@@ -119,21 +143,41 @@ function planGeneratedArtifacts(input: {
     },
   ];
 
-  const copy = buildCopyTextFromPublishable(input.publishable);
-  if (copy.trim()) {
+  if (input.audienceContentResearchBrief) {
     planned.push({
-      relativePath: "copy/post.txt",
-      content: Buffer.from(copy, "utf8"),
-      kind: "copy",
-      origin: "candidate_copy",
-      mediaType: mediaTypeFor("copy/post.txt"),
+      relativePath: AUDIENCE_CONTENT_RESEARCH_BRIEF_RELATIVE_PATH,
+      content: stableJsonBytes(input.audienceContentResearchBrief),
+      kind: "context",
+      origin: "pipeline_export",
+      mediaType: AUDIENCE_CONTENT_RESEARCH_BRIEF_MEDIA_TYPE,
     });
+  }
+
+  const copy = buildCopyTextFromPublishable(input.publishable);
+  pushCopyArtifact(planned, "copy/post.txt", copy);
+
+  // CG-4B — only emit artifacts for channels actually generated.
+  if (input.publishable.naver_blog?.body) {
+    pushCopyArtifact(planned, "copy/naver-blog.md", input.publishable.naver_blog.body);
+  }
+  if (input.publishable.naver_band?.body) {
+    pushCopyArtifact(planned, "copy/naver-band.txt", input.publishable.naver_band.body);
+  }
+  if (input.publishable.kakao_channel?.body) {
+    pushCopyArtifact(planned, "copy/kakao-channel.txt", input.publishable.kakao_channel.body);
   }
 
   return planned;
 }
 
-function buildExportContext(candidate: CompletedMarketingCandidate) {
+function buildExportContext(
+  candidate: CompletedMarketingCandidate,
+  audienceContentResearchBrief?: AudienceContentResearchBrief | null,
+) {
+  const acrbRef =
+    audienceContentResearchBrief
+      ? toAudienceContentResearchBriefRef(audienceContentResearchBrief)
+      : candidate.audienceContentResearchRef ?? null;
   const context = {
     contract: MARKETING_ASSET_EXPORT_CONTEXT_CONTRACT,
     candidateId: candidate.candidateId,
@@ -165,6 +209,7 @@ function buildExportContext(candidate: CompletedMarketingCandidate) {
           hook: candidate.contentPlan.hook,
           outline: candidate.contentPlan.outline,
           ctaStrategy: candidate.contentPlan.ctaStrategy,
+          targetChannels: candidate.contentPlan.targetChannels ?? null,
           recommendedFormats: candidate.contentPlan.recommendedFormats.map((item) => ({
             format: item.format,
             score: item.score,
@@ -184,6 +229,7 @@ function buildExportContext(candidate: CompletedMarketingCandidate) {
           unsupportedClaims: candidate.governanceDecision.unsupportedClaims,
         }
       : null,
+    audienceContentResearch: acrbRef,
   };
 
   const cleaned = stripForbiddenBotData(context);
@@ -273,6 +319,7 @@ export function exportMarketingCandidatePackage(
     humanEditedAfterGovernance: input.humanEditedAfterGovernance,
     forceRegenerate: input.forcePublishableRegenerate,
     now,
+    audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
   });
 
   const baseBrief = input.mediaBrief ?? buildMediaBriefFromCandidate(input.candidate);
@@ -289,6 +336,7 @@ export function exportMarketingCandidatePackage(
     candidate: input.candidate,
     mediaBrief,
     publishable,
+    audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
   });
   const plannedArtifacts = planned.map((item) => describePlannedArtifact(item, timestamp));
   const plannedRelativePaths = [...planned.map((item) => item.relativePath), "manifest.json"];

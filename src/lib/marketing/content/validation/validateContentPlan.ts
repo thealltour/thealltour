@@ -98,6 +98,7 @@ function providerShapeToCanonical(
     contract: CONTENT_PLAN_CONTRACT,
     assignmentId: parsed.assignmentId,
     recommendedFormats: parsed.recommendedFormats ?? [],
+    targetChannels: parsed.targetChannels,
     primaryAngle: parsed.primaryAngle ?? "",
     keyMessage: parsed.keyMessage ?? "",
     targetAudience: parsed.targetAudience ?? "",

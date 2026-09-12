@@ -35,6 +35,12 @@ import type {
 } from "@/lib/marketing/review/types";
 import type { ShortformVideoRenderJobRepository } from "@/lib/marketing/assets/shortform/renderJob/repository";
 import type { MarketingMediaSourceCatalogRepository } from "@/lib/marketing/assets/sourceCatalog/repository";
+import {
+  emptyChannelReviewEntry,
+  type ChannelReviewStatus,
+  type ReviewablePublishableChannel,
+} from "@/lib/marketing/review/channelReviews";
+import { persistChannelHumanEditToPackage } from "@/lib/marketing/review/persistChannelHumanEdit";
 
 export type HumanMarketingReviewServiceDeps = {
   candidateRepo: DailyMarketingRunRepository;
@@ -323,6 +329,184 @@ export class HumanMarketingReviewService {
       humanNotes: input.humanNotes ?? review.humanNotes,
       reviewedBy: input.reviewedBy ?? review.reviewedBy,
       updatedAt: this.now().toISOString(),
+    };
+    return this.deps.reviewRepo.update(updated);
+  }
+
+  /**
+   * CG-4C — channel-scoped draft save. Does not overwrite other channels.
+   * Threads also updates compatibility currentDraft.
+   */
+  async updateChannelReviewDraft(input: {
+    candidateId: string;
+    channel: ReviewablePublishableChannel;
+    title?: string | null;
+    body: string;
+    notes?: string | null;
+    humanNotes?: string | null;
+    reviewedBy: string | null;
+  }): Promise<HumanMarketingReview> {
+    const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(input.candidateId);
+    if (!candidate) throw new Error("candidate_not_found");
+    if (isCandidateDiagnosticsOnly(candidate.status)) {
+      throw new Error("diagnostics_only_candidate");
+    }
+    if (isCandidateBlocked(candidate.status) && candidate.governanceDecision?.decision === "BLOCK") {
+      // Still allow edits while blocked, but channel cannot be approved later.
+    }
+
+    const review = await this.loadMutableReview(input.candidateId, input.reviewedBy);
+    if (review.status === "rejected" || review.status === "manually_published") {
+      throw new Error("review_not_editable");
+    }
+
+    const nextStatus = review.status === "pending" ? "editing" : review.status;
+    assertAllowedTransition(review.status, nextStatus);
+
+    const existingEntry =
+      review.channelReviews?.[input.channel] ??
+      emptyChannelReviewEntry(input.channel, { title: input.title ?? null, body: input.body });
+
+    const nowIso = this.now().toISOString();
+    const entry = {
+      ...existingEntry,
+      humanDraft: {
+        title: input.title ?? null,
+        body: input.body,
+      },
+      status:
+        existingEntry.status === "approved" || existingEntry.status === "skipped"
+          ? ("needs_review" as const)
+          : existingEntry.status === "draft"
+            ? ("needs_review" as const)
+            : existingEntry.status,
+      lastEditedAt: nowIso,
+      notes: input.notes ?? existingEntry.notes,
+    };
+
+    const channelReviews = {
+      ...(review.channelReviews ?? {}),
+      [input.channel]: entry,
+    };
+
+    let currentDraft = review.currentDraft;
+    let humanEditedAfterGovernance = review.humanEditedAfterGovernance;
+    if (input.channel === "threads") {
+      currentDraft = {
+        title: input.title ?? null,
+        body: input.body,
+        channel: "threads",
+      };
+      humanEditedAfterGovernance = computeGovernanceStale(
+        review.governanceReviewedDraftBody,
+        input.body,
+      );
+    }
+
+    const updated: HumanMarketingReview = {
+      ...review,
+      status: nextStatus,
+      currentDraft,
+      channelReviews,
+      humanNotes: input.humanNotes ?? review.humanNotes,
+      reviewedBy: input.reviewedBy ?? review.reviewedBy,
+      humanEditedAfterGovernance,
+      updatedAt: nowIso,
+    };
+    const saved = await this.deps.reviewRepo.update(updated);
+
+    // Best-effort package sync — never fails the review save.
+    persistChannelHumanEditToPackage({
+      candidate,
+      channel: input.channel,
+      title: input.title ?? null,
+      body: input.body,
+      now: this.now(),
+    });
+
+    return saved;
+  }
+
+  /**
+   * CG-4C — approve/skip one channel without touching others.
+   * Candidate BLOCK governance prevents channel approval.
+   * Approving ≥1 channel may lift review to approved_for_manual_publish.
+   */
+  async setChannelReviewStatus(input: {
+    candidateId: string;
+    channel: ReviewablePublishableChannel;
+    status: Extract<ChannelReviewStatus, "approved" | "skipped" | "needs_review">;
+    notes?: string | null;
+    humanNotes?: string | null;
+    reviewedBy: string | null;
+  }): Promise<HumanMarketingReview> {
+    const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(input.candidateId);
+    if (!candidate) throw new Error("candidate_not_found");
+    if (isCandidateDiagnosticsOnly(candidate.status)) {
+      throw new Error("diagnostics_only_candidate");
+    }
+
+    if (input.status === "approved") {
+      if (candidate.status === "blocked" || candidate.governanceDecision?.decision === "BLOCK") {
+        throw new Error("governance_block_prevents_channel_approval");
+      }
+      if (input.channel === "shortform") {
+        await assertShortformReadyForManualPublish({
+          candidateId: input.candidateId,
+          candidate,
+          catalog: this.deps.shortformCatalog,
+          jobRepository: this.deps.shortformJobRepository,
+          repository: this.deps.candidateRepo,
+        });
+      }
+    }
+
+    const review = await this.loadMutableReview(input.candidateId, input.reviewedBy);
+    if (review.status === "rejected") {
+      throw new Error("review_rejected");
+    }
+
+    const existing =
+      review.channelReviews?.[input.channel] ??
+      emptyChannelReviewEntry(input.channel, {
+        title: review.currentDraft.title,
+        body: review.currentDraft.body,
+      });
+
+    const nowIso = this.now().toISOString();
+    const entry = {
+      ...existing,
+      status: input.status,
+      notes: input.notes ?? existing.notes,
+      approvedAt: input.status === "approved" ? nowIso : existing.approvedAt,
+      skippedAt: input.status === "skipped" ? nowIso : existing.skippedAt,
+    };
+
+    const channelReviews = {
+      ...(review.channelReviews ?? {}),
+      [input.channel]: entry,
+    };
+
+    const anyApproved = Object.values(channelReviews).some((c) => c?.status === "approved");
+    let nextReviewStatus = review.status;
+    let approvedAt = review.approvedAt;
+    if (
+      anyApproved &&
+      (review.status === "pending" || review.status === "editing" || review.status === "deferred")
+    ) {
+      assertAllowedTransition(review.status, "approved_for_manual_publish");
+      nextReviewStatus = "approved_for_manual_publish";
+      approvedAt = nowIso;
+    }
+
+    const updated: HumanMarketingReview = {
+      ...review,
+      status: nextReviewStatus,
+      channelReviews,
+      humanNotes: input.humanNotes ?? review.humanNotes,
+      reviewedBy: input.reviewedBy ?? review.reviewedBy,
+      approvedAt,
+      updatedAt: nowIso,
     };
     return this.deps.reviewRepo.update(updated);
   }

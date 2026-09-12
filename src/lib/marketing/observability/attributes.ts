@@ -71,6 +71,23 @@ export const MARKETING_ATTR = {
   AI_RUNTIME_JOB_ID: "ai_runtime.job_id",
   AI_RUNTIME_CORRELATION_ID: "ai_runtime.correlation_id",
   AI_RUNTIME_EVENT_TYPE: "ai_runtime.event_type",
+
+  // RA-1B/C Audience & Content Research
+  ACRB_VERDICT: "marketing.acrb.verdict",
+  ACRB_STATUS: "marketing.acrb.status",
+  ACRB_ANGLE_COUNT: "marketing.acrb.angle_count",
+  ACRB_REUSED: "marketing.acrb.reused",
+  ACRB_EXTERNAL_USED: "marketing.acrb.external_research_used",
+  ACRB_SEARCH_PROVIDER: "marketing.acrb.search_provider",
+  ACRB_QUERY_COUNT: "marketing.acrb.query_count",
+  ACRB_RESULT_COUNT: "marketing.acrb.result_count",
+  ACRB_FETCHED_DOCUMENT_COUNT: "marketing.acrb.fetched_document_count",
+  ACRB_OFFICIAL_SOURCE_COUNT: "marketing.acrb.official_source_count",
+  ACRB_SOCIAL_SOURCE_COUNT: "marketing.acrb.social_community_source_count",
+  ACRB_FAILED_FETCH_COUNT: "marketing.acrb.failed_fetch_count",
+  ACRB_FETCHED_BYTES: "marketing.acrb.total_fetched_bytes",
+  ACRB_EXTERNAL_RUNTIME_MS: "marketing.acrb.external_runtime_ms",
+  ACRB_SYNTHESIS_MODE: "marketing.acrb.synthesis_mode",
 } as const;
 
 export type MarketingAttrKey = (typeof MARKETING_ATTR)[keyof typeof MARKETING_ATTR];

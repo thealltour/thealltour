@@ -128,15 +128,15 @@ function originLabel(origin: string): string {
 function CandidatePreview({ candidate }: { candidate: CandidateDto }) {
   if (candidate.generatedPlan) {
     return (
-      <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
-        실사/스톡 후보를 찾지 못했습니다. AI B-roll 생성 가능 (실행은 아직 불가)
+      <div className="aspect-[9/16] max-h-36 rounded-md bg-[var(--surface-muted)] px-2 py-2 text-[10px] text-[var(--text-secondary)]">
+        AI B-roll 생성 가능 (실행 불가)
       </div>
     );
   }
   if (candidate.previewUrl && candidate.mediaType === "video") {
     return (
       <video
-        className="max-h-40 w-full rounded-md bg-black object-contain"
+        className="aspect-[9/16] max-h-36 w-full rounded-md bg-black object-contain"
         src={candidate.previewUrl}
         poster={candidate.previewUrl}
         controls
@@ -150,13 +150,13 @@ function CandidatePreview({ candidate }: { candidate: CandidateDto }) {
       <img
         src={candidate.previewUrl}
         alt=""
-        className="max-h-40 w-full rounded-md object-cover"
+        className="aspect-[9/16] max-h-36 w-full rounded-md object-cover"
       />
     );
   }
   return (
-    <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
-      미리보기 없음 — 소스 페이지를 확인하세요.
+    <div className="aspect-[9/16] max-h-36 rounded-md bg-[var(--surface-muted)] px-2 py-2 text-[10px] text-[var(--text-secondary)]">
+      미리보기 없음
     </div>
   );
 }
@@ -170,36 +170,37 @@ function CandidateCard(props: {
   const { candidate, busy, onPick, isRecommended } = props;
   const blocked = Boolean(candidate.pickBlockedReason);
   return (
-    <div className="space-y-2 rounded-lg border border-[var(--border)] p-3">
+    <div className="flex min-w-0 flex-col space-y-1.5 rounded-lg border border-[var(--border)] p-2">
       {isRecommended ? (
-        <div className="text-xs font-medium text-[var(--text-secondary)]">추천 소스</div>
+        <div className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-secondary)]">
+          추천 소스
+        </div>
       ) : null}
       <CandidatePreview candidate={candidate} />
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium">{originLabel(candidate.origin)}</span>
-        {candidate.photoMotion ? (
-          <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-xs">사진 모션 사용 가능</span>
-        ) : null}
-        {candidate.reviewRequired ? (
-          <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-xs">확인 필요</span>
-        ) : null}
+      <div className="truncate text-xs font-medium" title={originLabel(candidate.origin)}>
+        {originLabel(candidate.origin)}
+        {candidate.photoMotion ? " · 모션" : ""}
+        {candidate.reviewRequired ? " · 확인" : ""}
       </div>
-      <div className="text-xs text-[var(--text-secondary)]">
+      <div
+        className="line-clamp-2 text-[10px] text-[var(--text-secondary)]"
+        title={
+          `${candidate.creatorName ?? "작성자 미상"}${candidate.providerAssetId ? ` · ${candidate.providerAssetId}` : ""}`
+        }
+      >
         {candidate.creatorName ?? "작성자 미상"}
         {candidate.providerAssetId ? ` · ${candidate.providerAssetId}` : ""}
       </div>
-      <div className="text-xs text-[var(--text-secondary)]">
+      <div className="text-[10px] text-[var(--text-secondary)]">
         Score {candidate.score.toFixed(2)} · {candidate.factualMatchLabel}
-        {candidate.licenseName ? ` · ${candidate.licenseName}` : ""}
-        {candidate.rightsKind === "unknown" ? " · 사용권 확인 필요" : ""}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="mt-auto flex flex-col gap-1">
         {!candidate.generatedPlan ? (
           <button
             type="button"
             disabled={busy || blocked}
             onClick={() => onPick(candidate)}
-            className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className="w-full rounded-md bg-[var(--primary)] px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
           >
             이 장면에 사용
           </button>
@@ -207,7 +208,7 @@ function CandidateCard(props: {
           <button
             type="button"
             disabled
-            className="rounded-lg bg-[var(--surface-muted)] px-3 py-1.5 text-sm text-[var(--text-secondary)]"
+            className="w-full rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--text-secondary)]"
           >
             생성 (준비 중)
           </button>
@@ -217,14 +218,14 @@ function CandidateCard(props: {
             href={candidate.sourcePageUrl}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-[var(--border)] px-2 py-1 text-center text-xs"
           >
-            소스 페이지 열기
+            소스 페이지
           </a>
         ) : null}
       </div>
       {candidate.pickBlockedReason ? (
-        <p className="text-xs text-[var(--danger, #b91c1c)]">{candidate.pickBlockedReason}</p>
+        <p className="text-[10px] text-[var(--danger, #b91c1c)]">{candidate.pickBlockedReason}</p>
       ) : null}
     </div>
   );
@@ -496,12 +497,24 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
             ) : null}
 
             {scene.recommended ? (
-              <CandidateCard
-                candidate={scene.recommended}
-                isRecommended
-                busy={busyKey === `${scene.sceneId}:${scene.recommended.candidateKey}`}
-                onPick={(c) => void pick(scene.sceneId, c)}
-              />
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                <CandidateCard
+                  candidate={scene.recommended}
+                  isRecommended
+                  busy={busyKey === `${scene.sceneId}:${scene.recommended.candidateKey}`}
+                  onPick={(c) => void pick(scene.sceneId, c)}
+                />
+                {showAlts
+                  ? alternatives.map((candidate) => (
+                      <CandidateCard
+                        key={candidate.candidateKey}
+                        candidate={candidate}
+                        busy={busyKey === `${scene.sceneId}:${candidate.candidateKey}`}
+                        onPick={(c) => void pick(scene.sceneId, c)}
+                      />
+                    ))
+                  : null}
+              </div>
             ) : (
               <p className="text-sm text-[var(--text-secondary)]">추천 후보 없음 ({scene.reason})</p>
             )}
@@ -520,16 +533,18 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
                 >
                   {showAlts ? "다른 후보 접기" : `다른 후보 ${alternatives.length}개 보기`}
                 </button>
-                {showAlts
-                  ? alternatives.map((candidate) => (
+                {!scene.recommended && showAlts ? (
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                    {alternatives.map((candidate) => (
                       <CandidateCard
                         key={candidate.candidateKey}
                         candidate={candidate}
                         busy={busyKey === `${scene.sceneId}:${candidate.candidateKey}`}
                         onPick={(c) => void pick(scene.sceneId, c)}
                       />
-                    ))
-                  : null}
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

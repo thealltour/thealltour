@@ -39,6 +39,17 @@ export function isMobileAdminRouteAllowed(
       if (prefix === "/members" && !hasAdminPermission(session, "members.manage")) continue;
       if (prefix === "/points" && !hasAdminPermission(session, "points.manage")) continue;
       if (prefix === "/rewards" && !hasAdminPermission(session, "rewards.manage")) continue;
+      if (
+        (prefix === "/ai-marketing" ||
+          prefix === "/ai-runtime" ||
+          prefix === "/trend-inbox" ||
+          prefix === "/marketing-review" ||
+          prefix === "/marketing-operations" ||
+          prefix === "/marketing-observability") &&
+        !hasAdminPermission(session, "settings.manage")
+      ) {
+        continue;
+      }
       return true;
     }
   }

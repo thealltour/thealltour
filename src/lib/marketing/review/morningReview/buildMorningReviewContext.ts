@@ -18,6 +18,10 @@ import {
 } from "@/lib/marketing/review/morningReview/types";
 import type { HumanReviewQueueItem } from "@/lib/marketing/review/types";
 import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
+import { resolveMarketingAssetRoot } from "@/lib/marketing/assets/config";
+import { resolvePackageDirectory } from "@/lib/marketing/assets/paths";
+import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
+import { looksLikeInternalPlanningBody } from "@/lib/marketing/publishable/validate";
 
 function workflowState(item: HumanReviewQueueItem): MorningReviewWorkflowState {
   if (!item.humanReviewStatus) {
@@ -151,6 +155,33 @@ export function buildMorningMarketingReviewContext(input: {
 
   const performanceItems = performanceSnapshots.map(toPerformanceItem);
 
+  const rawDraftTitle = review?.currentDraft.title ?? candidate.draft.title ?? null;
+  const rawDraftBody = review?.currentDraft.body ?? candidate.draft.body;
+  const humanOwnsPublishableDraft =
+    Boolean(review?.humanEditedAfterGovernance) && !looksLikeInternalPlanningBody(rawDraftBody);
+  let publishableTitle = rawDraftTitle;
+  let publishableBody = rawDraftBody;
+  if (!humanOwnsPublishableDraft && looksLikeInternalPlanningBody(rawDraftBody)) {
+    try {
+      const assetRoot = resolveMarketingAssetRoot({});
+      const packageRoot = resolvePackageDirectory({
+        assetRoot,
+        businessDateKst: candidate.businessDateKst,
+        candidateId: candidate.candidateId,
+      });
+      const bundle = ensurePublishableContentSync({
+        candidate,
+        packageRoot,
+        humanDraft: review?.currentDraft,
+        humanEditedAfterGovernance: review?.humanEditedAfterGovernance,
+      });
+      publishableTitle = bundle.threads.title;
+      publishableBody = bundle.threads.body;
+    } catch {
+      /* keep raw draft */
+    }
+  }
+
   return {
     contract: MORNING_MARKETING_REVIEW_CONTEXT_CONTRACT,
     identity: {
@@ -179,8 +210,8 @@ export function buildMorningMarketingReviewContext(input: {
       channel: candidate.draft.channel,
     },
     draft: {
-      title: review?.currentDraft.title ?? candidate.draft.title ?? null,
-      body: review?.currentDraft.body ?? candidate.draft.body,
+      title: publishableTitle,
+      body: publishableBody,
       channel: review?.currentDraft.channel ?? candidate.draft.channel,
       cta: plan?.ctaStrategy ?? null,
       format: plan?.recommendedFormats?.[0]?.format ?? null,

@@ -14,7 +14,7 @@ import { join } from "node:path";
 
 import { buildMediaBriefFromCandidate } from "@/lib/marketing/assets/buildMediaBriefFromCandidate";
 import { resolveMarketingAssetRoot, type MarketingAssetEnv } from "@/lib/marketing/assets/config";
-import type { MediaBrief, ShortformNarrationSegment } from "@/lib/marketing/assets/contracts";
+import type { MediaBrief } from "@/lib/marketing/assets/contracts";
 import { parseMediaBrief } from "@/lib/marketing/assets/parse";
 import { exportMarketingCandidatePackage } from "@/lib/marketing/assets/exportMarketingCandidatePackage";
 import {
@@ -28,6 +28,7 @@ import { isShortVideoBriefGenerationApplicable } from "@/lib/marketing/assets/sh
 import { buildShortVideoBrief } from "@/lib/marketing/assets/shortVideoBrief/buildShortVideoBrief";
 import { persistShortVideoBrief } from "@/lib/marketing/assets/shortVideoBrief/persist";
 import { SHORT_VIDEO_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/shortVideoBrief/paths";
+import { splitShortformNarrationSegments } from "@/lib/marketing/assets/shortform/narrationSegments";
 import { createShortformResolverProviders } from "@/lib/marketing/assets/shortform/resolver/createProviders";
 import { persistShortformSourceResolution } from "@/lib/marketing/assets/shortform/resolver/persist";
 import { SHORTFORM_SOURCE_RESOLUTION_RELATIVE_PATH } from "@/lib/marketing/assets/shortform/resolver/paths";
@@ -36,6 +37,8 @@ import { atomicWriteFile } from "@/lib/marketing/assets/atomicWrite";
 import { stableJsonBytes } from "@/lib/marketing/assets/hashing";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import type { ContentFormatKind } from "@/lib/marketing/content/types";
+import { applyPublishableContentToMediaBrief } from "@/lib/marketing/publishable/applyToMediaBrief";
+import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
 
 export const DAILY_SHORTFORM_COMMITMENT_CONTRACT = "daily-shortform-commitment-v1" as const;
 export const DAILY_SHORTFORM_COMMITMENT_RELATIVE_PATH = "context/shortform-commitment.json" as const;
@@ -210,21 +213,6 @@ function persistCommitment(input: {
   atomicWriteFile(join(input.packageRoot, DAILY_SHORTFORM_COMMITMENT_RELATIVE_PATH), stableJsonBytes(payload));
 }
 
-function narrationSegmentsFromBody(body: string): ShortformNarrationSegment[] {
-  const chunks = body
-    .split(/\n{2,}|\n/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return chunks.slice(0, 16).map((text, index) => ({
-    segmentId: `narr-${String(index + 1).padStart(2, "0")}`,
-    narrationText: text,
-    subtitleText: text,
-    purpose: "narration",
-    visualIntent: "",
-    evidenceRefs: [],
-  }));
-}
-
 function ensureShortformEnabledMediaBrief(
   candidate: CompletedMarketingCandidate,
   mediaBrief: MediaBrief,
@@ -234,6 +222,8 @@ function ensureShortformEnabledMediaBrief(
   }
   const draftBody = candidate.draft.body?.trim() || "";
   if (!draftBody) return mediaBrief;
+  const destinations = candidate.selectedAgenda.destinations ?? [];
+  const entities = candidate.selectedAgenda.entities ?? [];
   return parseMediaBrief({
     ...mediaBrief,
     formats: {
@@ -245,7 +235,11 @@ function ensureShortformEnabledMediaBrief(
         narrationSegments:
           mediaBrief.formats.shortform.narrationSegments.length > 0
             ? mediaBrief.formats.shortform.narrationSegments
-            : narrationSegmentsFromBody(draftBody),
+            : splitShortformNarrationSegments(draftBody, {
+                destinations,
+                entities,
+                title: candidate.draft.title,
+              }),
         cta:
           mediaBrief.formats.shortform.cta ??
           candidate.contentPlan?.ctaStrategy?.trim() ??
@@ -295,6 +289,8 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
       assetRoot: input.assetRoot,
       env,
       now,
+      overwriteArtifacts: true,
+      forcePublishableRegenerate: false,
     });
 
     const packageRoot = exportResult.packageRoot;
@@ -305,9 +301,17 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
       nowIso,
     });
 
-    const mediaBrief = ensureShortformEnabledMediaBrief(
-      input.candidate,
-      buildMediaBriefFromCandidate(input.candidate),
+    const publishable = ensurePublishableContentSync({
+      candidate: input.candidate,
+      packageRoot,
+      now,
+    });
+    const mediaBrief = applyPublishableContentToMediaBrief(
+      ensureShortformEnabledMediaBrief(
+        input.candidate,
+        buildMediaBriefFromCandidate(input.candidate),
+      ),
+      publishable,
     );
 
     if (!isShortVideoBriefGenerationApplicable(mediaBrief)) {

@@ -43,6 +43,24 @@ function canAccessPath(
 
   if (!isSessionAllowedForConsolePath(session, pathStem)) return false;
 
+  // AI Marketing Team pages: console-path permission is authoritative.
+  if (
+    pathStem === "/ai-marketing" ||
+    pathStem.startsWith("/ai-marketing/") ||
+    pathStem === "/ai-runtime" ||
+    pathStem.startsWith("/ai-runtime/") ||
+    pathStem === "/trend-inbox" ||
+    pathStem.startsWith("/trend-inbox/") ||
+    pathStem === "/marketing-review" ||
+    pathStem.startsWith("/marketing-review/") ||
+    pathStem === "/marketing-operations" ||
+    pathStem.startsWith("/marketing-operations/") ||
+    pathStem === "/marketing-observability" ||
+    pathStem.startsWith("/marketing-observability/")
+  ) {
+    return true;
+  }
+
   if (pathStem.startsWith("/members") && !hasAdminPermission(session, "members.manage")) {
     return false;
   }

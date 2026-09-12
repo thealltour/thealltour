@@ -80,6 +80,25 @@ export function writePackageArtifact(input: {
   return { status: "created", artifact };
 }
 
+/**
+ * Force-overwrite an artifact (human draft save / brief rebuild).
+ * Bypasses sha256 conflict checks used by immutable export writes.
+ */
+export function overwritePackageArtifact(input: {
+  packageRoot: string;
+  planned: PlannedPackageArtifact;
+  createdAt: string;
+}): { status: "created" | "updated"; artifact: MarketingAssetArtifact } {
+  const artifact = describePlannedArtifact(input.planned, input.createdAt);
+  const absolutePath = resolvePackageArtifactPath({
+    packageRoot: input.packageRoot,
+    relativePath: input.planned.relativePath,
+  });
+  const existed = existsSync(absolutePath);
+  atomicWriteFile(absolutePath, input.planned.content);
+  return { status: existed ? "updated" : "created", artifact };
+}
+
 export function writePackageArtifactFromFile(input: {
   packageRoot: string;
   createdAt: string;

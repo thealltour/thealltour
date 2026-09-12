@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { MainMenuKey } from "@/components/admin/SubHeader";
 import { useAdminSession } from "@/components/admin/AdminRoleContext";
@@ -37,7 +36,6 @@ function memberRewardsHref(session: ReturnType<typeof useAdminSession>) {
 }
 
 export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
-  const router = useRouter();
   const session = useAdminSession();
   const { isCollapsed, setIsCollapsed } = useSidebarCollapse();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -133,20 +131,22 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
                   groupItems.map((item) => {
                     const isActive = isSidebarMainKeyActive(item.mainKey!, activeMenu);
                     const Icon = item.icon;
+                    const href =
+                      item.mainKey === "member_rewards"
+                        ? memberRewardsHref(session)
+                        : buildAdminSectionHomeHref(item.mainKey!, item.href);
 
                     return (
-                      <button
+                      <Link
                         key={item.href}
-                        type="button"
+                        href={href}
                         title={item.label}
-                        onClick={() => {
-                          if (!confirmAdminProductUnsavedIfNeeded()) return;
+                        onClick={(event) => {
+                          if (!confirmAdminProductUnsavedIfNeeded()) {
+                            event.preventDefault();
+                            return;
+                          }
                           setActiveMenu(item.mainKey!);
-                          router.push(
-                            item.mainKey === "member_rewards"
-                              ? memberRewardsHref(session)
-                              : buildAdminSectionHomeHref(item.mainKey!, item.href),
-                          );
                         }}
                         className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
                           isActive
@@ -163,7 +163,7 @@ export default function Sidebar({ activeMenu, setActiveMenu }: SidebarProps) {
                           />
                           {!isCollapsed && <span>{item.label}</span>}
                         </span>
-                      </button>
+                      </Link>
                     );
                   })}
               </div>

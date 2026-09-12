@@ -5,10 +5,10 @@ import {
   type CardNewsCard,
   type MediaBrief,
   type MediaBriefFactualClaim,
-  type ShortformNarrationSegment,
 } from "@/lib/marketing/assets/contracts";
 import { parseMediaBrief } from "@/lib/marketing/assets/parse";
 import { assertSafeCandidateId, splitBusinessDateParts } from "@/lib/marketing/assets/paths";
+import { splitShortformNarrationSegments } from "@/lib/marketing/assets/shortform/narrationSegments";
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
@@ -106,21 +106,6 @@ function buildCardNewsCards(candidate: CompletedMarketingCandidate): CardNewsCar
   return cards.slice(0, 12);
 }
 
-function splitNarrationSegments(body: string): ShortformNarrationSegment[] {
-  const chunks = body
-    .split(/\n{2,}|\n/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return chunks.slice(0, 16).map((text, index) => ({
-    segmentId: `narr-${String(index + 1).padStart(2, "0")}`,
-    narrationText: text,
-    subtitleText: text,
-    purpose: "narration",
-    visualIntent: "",
-    evidenceRefs: [],
-  }));
-}
-
 export function buildMediaBriefFromCandidate(candidate: CompletedMarketingCandidate): MediaBrief {
   assertSafeCandidateId(candidate.candidateId);
   splitBusinessDateParts(candidate.businessDateKst);
@@ -137,6 +122,8 @@ export function buildMediaBriefFromCandidate(candidate: CompletedMarketingCandid
   const shortformEnabled = hasFormat(formats, "short_video_concept");
   const draftTitle = candidate.draft.title?.trim() || null;
   const draftBody = candidate.draft.body?.trim() || null;
+  const destinations = candidate.selectedAgenda.destinations ?? [];
+  const entities = candidate.selectedAgenda.entities ?? [];
 
   const brief: MediaBrief = {
     contract: MEDIA_BRIEF_CONTRACT,
@@ -169,7 +156,14 @@ export function buildMediaBriefFromCandidate(candidate: CompletedMarketingCandid
         enabled: shortformEnabled,
         orientation: "vertical",
         targetDurationRange: null,
-        narrationSegments: shortformEnabled && draftBody ? splitNarrationSegments(draftBody) : [],
+        narrationSegments:
+          shortformEnabled && draftBody
+            ? splitShortformNarrationSegments(draftBody, {
+                destinations,
+                entities,
+                title: draftTitle,
+              })
+            : [],
         cta: candidate.contentPlan?.ctaStrategy?.trim() || null,
         voiceProfileId: null,
       },

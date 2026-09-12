@@ -40,9 +40,12 @@ describe("candidate package export", () => {
     });
     expect(result.plannedRelativePaths.at(-1)).toBe("manifest.json");
     expect(existsSync(join(result.packageRoot, "copy/post.txt"))).toBe(true);
-    expect(readFileSync(join(result.packageRoot, "copy/post.txt"), "utf8")).toContain(
-      "Official guidance says autumn travel planning is easier.",
-    );
+    expect(existsSync(join(result.packageRoot, "context/publishable-content.json"))).toBe(true);
+    const post = readFileSync(join(result.packageRoot, "copy/post.txt"), "utf8");
+    expect(post).not.toMatch(/Key verified facts/i);
+    expect(post).not.toMatch(/Context\n/);
+    // Publishable Threads body should include usable fact substance (not raw outline draft).
+    expect(post.toLowerCase()).toMatch(/autumn|travel|japan/);
     const briefOnDisk = JSON.parse(readFileSync(join(result.packageRoot, "context/media-brief.json"), "utf8"));
     expect(briefOnDisk.contract).toBe("media-brief-v1");
     const manifest = parseMarketingAssetManifest(
@@ -182,7 +185,7 @@ describe("candidate package export", () => {
     expect(readFileSync(join(first.packageRoot, "human-edited/caption.txt"), "utf8")).toBe("editor note");
   });
 
-  it("skips copy/post.txt when draft text is absent", () => {
+  it("writes publishable Threads copy even when strategist draft body is blank", () => {
     const root = tempRoot();
     const result = exportMarketingCandidatePackage({
       candidate: buildTestCandidate({
@@ -191,8 +194,12 @@ describe("candidate package export", () => {
       assetRoot: root,
       now: NOW,
     });
-    expect(result.plannedRelativePaths).not.toContain("copy/post.txt");
-    expect(existsSync(join(result.packageRoot, "copy/post.txt"))).toBe(false);
+    expect(result.plannedRelativePaths).toContain("copy/post.txt");
+    expect(existsSync(join(result.packageRoot, "copy/post.txt"))).toBe(true);
+    const post = readFileSync(join(result.packageRoot, "copy/post.txt"), "utf8");
+    expect(post.trim().length).toBeGreaterThan(20);
+    expect(post).not.toMatch(/Key verified facts/i);
+    expect(existsSync(join(result.packageRoot, "context/publishable-content.json"))).toBe(true);
     expect(existsSync(join(result.packageRoot, "context/media-brief.json"))).toBe(true);
   });
 });

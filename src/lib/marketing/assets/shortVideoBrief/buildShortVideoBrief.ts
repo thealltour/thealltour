@@ -85,12 +85,24 @@ export function inferFactualVisualRequired(input: {
   return false;
 }
 
-function resolveSubject(segment: ShortformNarrationSegment): string {
-  const visual = segment.visualIntent.trim();
-  if (visual) return visual.slice(0, 400);
-  const purpose = segment.purpose.trim();
-  if (purpose) return purpose.slice(0, 400);
+function narrationSubjectFallback(segment: ShortformNarrationSegment, destinations: string[]): string {
+  const narration = segment.narrationText.trim();
+  if (narration) {
+    const sentence = narration.split(/[.!?。！？\n]/)[0]?.trim() || narration;
+    const clipped = sentence.slice(0, 120).trim();
+    if (clipped && clipped.toLowerCase() !== "narration") return clipped;
+  }
+  if (destinations[0]) return `${destinations[0]} travel lifestyle`;
   return "generic lifestyle visual";
+}
+
+/**
+ * Subject for stock search — never use purpose labels like "narration" / "hook".
+ */
+function resolveSubject(segment: ShortformNarrationSegment, destinations: string[]): string {
+  const visual = segment.visualIntent.trim();
+  if (visual && visual.toLowerCase() !== "narration") return visual.slice(0, 400);
+  return narrationSubjectFallback(segment, destinations).slice(0, 400);
 }
 
 function buildSearchQueries(input: {
@@ -104,10 +116,20 @@ function buildSearchQueries(input: {
       [destination],
     ),
   );
+  const primaryDestination = mentionedDestinations[0] ?? input.destinations[0] ?? null;
+  const subject = input.subject.trim();
+  const skipSubject =
+    !subject ||
+    subject === "generic lifestyle visual" ||
+    subject.toLowerCase() === "narration" ||
+    subject.toLowerCase() === input.segment.purpose.trim().toLowerCase();
+
   return uniqueBoundedQueries([
-    input.segment.visualIntent,
-    mentionedDestinations[0] ?? null,
-    input.subject !== "generic lifestyle visual" ? input.subject : null,
+    input.segment.visualIntent && input.segment.visualIntent.toLowerCase() !== "narration"
+      ? input.segment.visualIntent
+      : null,
+    primaryDestination,
+    skipSubject ? null : subject,
   ]);
 }
 
@@ -118,7 +140,7 @@ function buildVisual(input: {
   mediaPreference?: ShortVideoMediaPreference;
 }): ShortVideoSceneVisual {
   const factualVisualRequired = inferFactualVisualRequired(input);
-  const subject = resolveSubject(input.segment);
+  const subject = resolveSubject(input.segment, input.destinations);
   return {
     subject,
     searchQueries: buildSearchQueries({

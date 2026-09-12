@@ -11,6 +11,7 @@ import {
 } from "@/lib/marketing/assets/shortform/resolver/paths";
 import {
   assertPackageArtifactWritable,
+  overwritePackageArtifact,
   writePackageArtifact,
   type PlannedPackageArtifact,
 } from "@/lib/marketing/assets/writeArtifact";
@@ -39,8 +40,22 @@ export function persistShortformSourceResolution(input: {
   packageRoot: string;
   plan: ShortformSourceResolutionPlan;
   createdAt: string;
-}): { status: "created" | "reused"; relativePath: string; sha256: string } {
+  /** When true, replace existing resolution (다시 검색 / brief rebuild). */
+  overwrite?: boolean;
+}): { status: "created" | "reused" | "updated"; relativePath: string; sha256: string } {
   const planned = planShortformSourceResolutionArtifact(input.plan);
+  if (input.overwrite) {
+    const written = overwritePackageArtifact({
+      packageRoot: input.packageRoot,
+      planned,
+      createdAt: input.createdAt,
+    });
+    return {
+      status: written.status,
+      relativePath: planned.relativePath,
+      sha256: written.artifact.sha256,
+    };
+  }
   assertPackageArtifactWritable({ packageRoot: input.packageRoot, planned });
   const written = writePackageArtifact({
     packageRoot: input.packageRoot,

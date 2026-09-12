@@ -10,6 +10,7 @@ import { parseShortVideoBrief } from "@/lib/marketing/assets/shortVideoBrief/val
 import {
   assertPackageArtifactWritable,
   describePlannedArtifact,
+  overwritePackageArtifact,
   writePackageArtifact,
   type PlannedPackageArtifact,
 } from "@/lib/marketing/assets/writeArtifact";
@@ -38,12 +39,26 @@ export function persistShortVideoBrief(input: {
   packageRoot: string;
   brief: ShortVideoBrief;
   createdAt: string;
+  /** When true, replace existing brief (draft save / 다시 검색 rebuild). */
+  overwrite?: boolean;
 }): {
-  status: "created" | "reused";
+  status: "created" | "reused" | "updated";
   artifact: ReturnType<typeof describePlannedArtifact>;
   relativePath: typeof SHORT_VIDEO_BRIEF_RELATIVE_PATH;
 } {
   const planned = planShortVideoBriefArtifact(input.brief);
+  if (input.overwrite) {
+    const written = overwritePackageArtifact({
+      packageRoot: input.packageRoot,
+      planned,
+      createdAt: input.createdAt,
+    });
+    return {
+      status: written.status,
+      artifact: written.artifact,
+      relativePath: SHORT_VIDEO_BRIEF_RELATIVE_PATH,
+    };
+  }
   assertPackageArtifactWritable({ packageRoot: input.packageRoot, planned });
   const written = writePackageArtifact({
     packageRoot: input.packageRoot,

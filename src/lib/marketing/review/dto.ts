@@ -10,6 +10,10 @@ import {
 } from "@/lib/marketing/review/types";
 import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
 import { matchesQueueFilter } from "@/lib/marketing/review/transitions";
+import { resolveMarketingAssetRoot } from "@/lib/marketing/assets/config";
+import { resolvePackageDirectory } from "@/lib/marketing/assets/paths";
+import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
+import { looksLikeInternalPlanningBody } from "@/lib/marketing/publishable/validate";
 
 export function draftFromContentOutput(draft: ContentStrategistOutput): HumanReviewDraft {
   return {
@@ -25,7 +29,25 @@ export function createInitialHumanReview(
   now = new Date(),
   reviewId?: string,
 ): HumanMarketingReview {
-  const draft = draftFromContentOutput(candidate.draft);
+  let draft = draftFromContentOutput(candidate.draft);
+  if (looksLikeInternalPlanningBody(draft.body)) {
+    try {
+      const assetRoot = resolveMarketingAssetRoot({});
+      const packageRoot = resolvePackageDirectory({
+        assetRoot,
+        businessDateKst: candidate.businessDateKst,
+        candidateId: candidate.candidateId,
+      });
+      const bundle = ensurePublishableContentSync({ candidate, packageRoot, now });
+      draft = {
+        title: bundle.threads.title,
+        body: bundle.threads.body,
+        channel: candidate.draft.channel,
+      };
+    } catch {
+      /* keep strategist draft */
+    }
+  }
   const iso = now.toISOString();
   return {
     contract: HUMAN_MARKETING_REVIEW_CONTRACT,

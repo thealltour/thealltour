@@ -24,6 +24,7 @@ import {
 import { persistShortformSourceResolution } from "@/lib/marketing/assets/shortform/resolver/persist";
 import { SHORTFORM_SOURCE_RESOLUTION_RELATIVE_PATH } from "@/lib/marketing/assets/shortform/resolver/paths";
 import { resolveShortVideoSources } from "@/lib/marketing/assets/shortform/resolver/resolveBrief";
+import { rebuildShortformBriefsFromDraft } from "@/lib/marketing/assets/shortform/rebuildShortformBriefsFromDraft";
 import {
   toResolveDto,
   type ShortformSourcesResolveDto,
@@ -33,6 +34,7 @@ import {
   verifyShortformCandidateSelectionToken,
   type ShortformCandidateSelectionPayload,
 } from "@/lib/marketing/assets/shortform/review/selectionToken";
+import { createHumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 
 export class ShortformSourceReviewError extends Error {
   readonly code: string;
@@ -189,6 +191,22 @@ export async function resolveShortformSourcesForReview(
     );
   }
 
+  if (input.forceRefresh && !input.brief) {
+    try {
+      const reviewRepo = await createHumanMarketingReviewRepository({});
+      const review = await reviewRepo.findByCandidateId(input.candidateId);
+      if (review?.currentDraft?.body?.trim()) {
+        await rebuildShortformBriefsFromDraft({
+          candidateId: input.candidateId,
+          draft: review.currentDraft,
+          invalidateUnpickedResolution: true,
+        });
+      }
+    } catch {
+      /* best-effort; fall through to existing brief on disk */
+    }
+  }
+
   const brief = input.brief ?? (await loadShortVideoBriefOrThrow(input.candidateId)).brief;
   if (brief.candidateId !== input.candidateId) {
     throw new ShortformSourceReviewError(
@@ -270,6 +288,7 @@ export async function resolveShortformSourcesForReview(
         packageRoot,
         plan,
         createdAt: new Date().toISOString(),
+        overwrite: Boolean(input.forceRefresh),
       });
     }
   } catch {

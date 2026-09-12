@@ -28,9 +28,18 @@ import {
 import {
   assertPackageArtifactWritable,
   describePlannedArtifact,
+  overwritePackageArtifact,
   writePackageArtifact,
   type PlannedPackageArtifact,
 } from "@/lib/marketing/assets/writeArtifact";
+import {
+  applyPublishableContentToMediaBrief,
+  buildThreadsPostText,
+} from "@/lib/marketing/publishable/applyToMediaBrief";
+import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
+import { PUBLISHABLE_CONTENT_MEDIA_TYPE, PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
+import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import type { HumanReviewDraft } from "@/lib/marketing/review/types";
 
 export type ExportMarketingCandidatePackageInput = {
   candidate: CompletedMarketingCandidate;
@@ -39,6 +48,13 @@ export type ExportMarketingCandidatePackageInput = {
   env?: MarketingAssetEnv;
   dryRun?: boolean;
   now?: Date;
+  /** Human publishable draft — preferred for Threads when not internal planning. */
+  humanDraft?: HumanReviewDraft | null;
+  humanEditedAfterGovernance?: boolean;
+  /** When true, overwrite post.txt / media-brief / publishable-content if content changed. */
+  overwriteArtifacts?: boolean;
+  /** Force rebuild of publishable Threads + shortform narration. */
+  forcePublishableRegenerate?: boolean;
 };
 
 export type ExportMarketingCandidatePackageResult = {
@@ -70,12 +86,51 @@ function mediaTypeFor(relativePath: string): string {
   return "application/octet-stream";
 }
 
-function buildCopyText(candidate: CompletedMarketingCandidate): string | null {
-  const title = candidate.draft.title?.trim() ?? "";
-  const body = candidate.draft.body?.trim() ?? "";
-  if (!title && !body) return null;
-  if (title && body) return `${title}\n\n${body}\n`;
-  return `${title || body}\n`;
+function buildCopyTextFromPublishable(bundle: PublishableContentBundle): string {
+  return buildThreadsPostText(bundle);
+}
+
+function planGeneratedArtifacts(input: {
+  candidate: CompletedMarketingCandidate;
+  mediaBrief: MediaBrief;
+  publishable: PublishableContentBundle;
+}): PlannedPackageArtifact[] {
+  const planned: PlannedPackageArtifact[] = [
+    {
+      relativePath: "context/export-context.json",
+      content: stableJsonBytes(buildExportContext(input.candidate)),
+      kind: "context",
+      origin: "pipeline_export",
+      mediaType: mediaTypeFor("context/export-context.json"),
+    },
+    {
+      relativePath: PUBLISHABLE_CONTENT_RELATIVE_PATH,
+      content: stableJsonBytes(input.publishable),
+      kind: "context",
+      origin: "pipeline_export",
+      mediaType: PUBLISHABLE_CONTENT_MEDIA_TYPE,
+    },
+    {
+      relativePath: "context/media-brief.json",
+      content: stableJsonBytes(input.mediaBrief),
+      kind: "media_brief",
+      origin: "media_brief",
+      mediaType: mediaTypeFor("context/media-brief.json"),
+    },
+  ];
+
+  const copy = buildCopyTextFromPublishable(input.publishable);
+  if (copy.trim()) {
+    planned.push({
+      relativePath: "copy/post.txt",
+      content: Buffer.from(copy, "utf8"),
+      kind: "copy",
+      origin: "candidate_copy",
+      mediaType: mediaTypeFor("copy/post.txt"),
+    });
+  }
+
+  return planned;
 }
 
 function buildExportContext(candidate: CompletedMarketingCandidate) {
@@ -136,41 +191,6 @@ function buildExportContext(candidate: CompletedMarketingCandidate) {
     throw new MarketingAssetContractError("export context contained forbidden secret or embedding fields");
   }
   return cleaned;
-}
-
-function planGeneratedArtifacts(input: {
-  candidate: CompletedMarketingCandidate;
-  mediaBrief: MediaBrief;
-}): PlannedPackageArtifact[] {
-  const planned: PlannedPackageArtifact[] = [
-    {
-      relativePath: "context/export-context.json",
-      content: stableJsonBytes(buildExportContext(input.candidate)),
-      kind: "context",
-      origin: "pipeline_export",
-      mediaType: mediaTypeFor("context/export-context.json"),
-    },
-    {
-      relativePath: "context/media-brief.json",
-      content: stableJsonBytes(input.mediaBrief),
-      kind: "media_brief",
-      origin: "media_brief",
-      mediaType: mediaTypeFor("context/media-brief.json"),
-    },
-  ];
-
-  const copy = buildCopyText(input.candidate);
-  if (copy) {
-    planned.push({
-      relativePath: "copy/post.txt",
-      content: Buffer.from(copy, "utf8"),
-      kind: "copy",
-      origin: "candidate_copy",
-      mediaType: mediaTypeFor("copy/post.txt"),
-    });
-  }
-
-  return planned;
 }
 
 function integrityDigest(artifacts: MarketingAssetArtifact[]): string {
@@ -240,20 +260,36 @@ export function exportMarketingCandidatePackage(
     explicitRoot: input.assetRoot,
     env: input.env,
   });
-  const mediaBrief = input.mediaBrief ?? buildMediaBriefFromCandidate(input.candidate);
-  assertNoSecretLeak(mediaBrief);
-
   const packageRoot = resolvePackageDirectory({
     assetRoot,
     businessDateKst: input.candidate.businessDateKst,
     candidateId: input.candidate.candidateId,
   });
+
+  const publishable = ensurePublishableContentSync({
+    candidate: input.candidate,
+    packageRoot: existsSync(packageRoot) ? packageRoot : null,
+    humanDraft: input.humanDraft,
+    humanEditedAfterGovernance: input.humanEditedAfterGovernance,
+    forceRegenerate: input.forcePublishableRegenerate,
+    now,
+  });
+
+  const baseBrief = input.mediaBrief ?? buildMediaBriefFromCandidate(input.candidate);
+  const mediaBrief = applyPublishableContentToMediaBrief(baseBrief, publishable);
+  assertNoSecretLeak(mediaBrief);
+  assertNoSecretLeak(publishable);
+
   const relativePackagePath = resolvePackageRelativePath({
     assetRoot,
     businessDateKst: input.candidate.businessDateKst,
     candidateId: input.candidate.candidateId,
   });
-  const planned = planGeneratedArtifacts({ candidate: input.candidate, mediaBrief });
+  const planned = planGeneratedArtifacts({
+    candidate: input.candidate,
+    mediaBrief,
+    publishable,
+  });
   const plannedArtifacts = planned.map((item) => describePlannedArtifact(item, timestamp));
   const plannedRelativePaths = [...planned.map((item) => item.relativePath), "manifest.json"];
   const existingManifest = input.dryRun ? null : readExistingManifest(packageRoot);
@@ -290,21 +326,34 @@ export function exportMarketingCandidatePackage(
     };
   }
 
-  for (const item of planned) {
-    assertPackageArtifactWritable({ packageRoot, planned: item });
+  if (!input.overwriteArtifacts) {
+    for (const item of planned) {
+      assertPackageArtifactWritable({ packageRoot, planned: item });
+    }
   }
 
   ensurePackageLayout(packageRoot);
 
   const writtenArtifacts: MarketingAssetArtifact[] = [];
   for (const item of planned) {
-    const written = writePackageArtifact({
-      packageRoot,
-      planned: item,
-      createdAt: existingManifest?.artifacts.find((artifact) => artifact.relativePath === item.relativePath)
-        ?.createdAt ?? timestamp,
-    });
-    writtenArtifacts.push(written.artifact);
+    const createdAtForArtifact =
+      existingManifest?.artifacts.find((artifact) => artifact.relativePath === item.relativePath)
+        ?.createdAt ?? timestamp;
+    if (input.overwriteArtifacts) {
+      const written = overwritePackageArtifact({
+        packageRoot,
+        planned: item,
+        createdAt: createdAtForArtifact,
+      });
+      writtenArtifacts.push(written.artifact);
+    } else {
+      const written = writePackageArtifact({
+        packageRoot,
+        planned: item,
+        createdAt: createdAtForArtifact,
+      });
+      writtenArtifacts.push(written.artifact);
+    }
   }
 
   const nextManifest = buildManifest({

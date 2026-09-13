@@ -10,6 +10,8 @@ import type {
   SelectedAgenda,
 } from "@/lib/marketing/content/types";
 import type { ExternalResearchBundle } from "@/lib/marketing/audienceResearch/external/runExternalResearch";
+import { deriveAgendaTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/deriveTopicIdentity";
+import { classifyHistoricalAgainstIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/guardAngles";
 
 export type AcrbHistoricalMatch = {
   kind: "candidate" | "agenda" | "publication";
@@ -17,6 +19,8 @@ export type AcrbHistoricalMatch = {
   title: string;
   similarityHint: number;
   reason: string;
+  /** MQ-1: compatibility vs AgendaTopicIdentity (not a retrieval filter). */
+  identityCompatibility?: "compatible" | "adjacent" | "conflicting";
 };
 
 export type AcrbGatheredInputs = {
@@ -111,6 +115,11 @@ export async function gatherAcrbInputs(input: {
   }
 
   const topicBlob = `${selectedAgenda.title} ${selectedAgenda.summary}`;
+  const topicIdentity = deriveAgendaTopicIdentity({
+    selectedAgenda,
+    assignment: input.handoff.contentAssignment,
+    weakHooks: editorial?.hookSignals ?? [],
+  });
   const historicalMatches: AcrbHistoricalMatch[] = recent.slice(0, 20).map((row) => {
     const similarityHint = lexicalOverlapRatio(topicBlob, row.title);
     return {
@@ -119,6 +128,7 @@ export async function gatherAcrbInputs(input: {
       title: row.title,
       similarityHint,
       reason: similarityHint >= 0.6 ? "lexical_title_overlap" : "recent_candidate",
+      identityCompatibility: classifyHistoricalAgainstIdentity(row.title, topicIdentity),
     };
   });
   historicalMatches.sort((a, b) => b.similarityHint - a.similarityHint);

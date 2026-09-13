@@ -137,6 +137,11 @@ export type ContentPlan = {
   requiredAssets: string[];
   riskNotes: string[];
   draftInstructions: string[];
+  /**
+   * MQ-3 — first-class Content Proposition (nested; avoid duplicating fields).
+   * Optional for backward-compatible scaffolds / older plans.
+   */
+  proposition?: import("@/lib/marketing/content/proposition/contracts").ContentProposition | null;
 };
 
 export type EvidenceFreshnessHint = "fresh" | "aging" | "stale" | "unknown";

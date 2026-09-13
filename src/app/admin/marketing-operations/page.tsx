@@ -12,6 +12,22 @@ import type {
 
 export const dynamic = "force-dynamic";
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export default async function AdminMarketingOperationsPage() {
   const businessDateKst = formatKstBusinessDate();
   await prepareAdminNotificationsAndGetUnreadCount().catch(() => undefined);
@@ -21,14 +37,23 @@ export default async function AdminMarketingOperationsPage() {
   let loadError: string | null = null;
 
   try {
-    const [status, recent] = await Promise.all([
+    initialStatus = await withTimeout(
       getDailyMarketingOperationsStatus({ businessDateKst }),
-      getRecentDailyMarketingOperationsSummaries(7),
-    ]);
-    initialStatus = status;
-    initialRecent = recent;
+      20_000,
+      "ops_status",
+    );
   } catch (err) {
     loadError = err instanceof Error ? err.message : "운영 상태를 불러오지 못했습니다.";
+  }
+
+  try {
+    initialRecent = await withTimeout(getRecentDailyMarketingOperationsSummaries(7), 15_000, "ops_recent");
+  } catch {
+    // Keep page usable even if multi-day summary is slow/unavailable.
+    initialRecent = [];
+    if (!loadError) {
+      loadError = "최근 7일 요약 로드가 지연되어 생략했습니다. 새로고침으로 다시 시도하세요.";
+    }
   }
 
   return (

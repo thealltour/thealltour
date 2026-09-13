@@ -18,6 +18,9 @@ import {
   mergeResearchFindings,
   mergeTypedInsightLists,
 } from "@/lib/marketing/audienceResearch/mergeInsights";
+import { deriveAgendaTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/deriveTopicIdentity";
+import { summarizeTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/contracts";
+import { guardAnglesAgainstTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/guardAngles";
 
 export type AcrbLlmInvoke = (prompt: string) => Promise<string> | string;
 
@@ -43,6 +46,8 @@ function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
     "Avoid generic marketing filler such as: 여행에 관심 있는 사람 / 특별한 경험 / 좋은 추억 / 유용한 정보를 제공합니다.",
     "Do NOT invent official policies, boarding times, terminals, baggage rules, prices, Naver search volume, CTR, or ranking difficulty.",
     "Meta contentAngles are SEEDS only — re-evaluate into 3-5 strategic angles with concrete audience tension.",
+    "AgendaTopicIdentity is AUTHORITATIVE: refine angles, but do NOT change destination / product type / travel mode / principal subject without evidence.",
+    "Do NOT introduce cruise/hotel/flight/named ships unless identity or inspected evidence already supports them.",
     "Only mark verified_fact when official sources (inspected bodies, not snippets alone) support it.",
     "Distinguish observed_signal vs inference. Prefer specific over generic Korean audiences.",
     "For content gaps, say 'within the inspected sample' — do not claim market-wide saturation from a few docs.",
@@ -61,6 +66,11 @@ function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
         topics: gathered.selectedAgenda.topics,
         entities: gathered.selectedAgenda.entities,
       },
+      topicIdentity: deriveAgendaTopicIdentity({
+        selectedAgenda: gathered.selectedAgenda,
+        assignment: gathered.assignment,
+        weakHooks: editorial?.hookSignals ?? [],
+      }),
       assignment: {
         assignmentId: gathered.assignment.assignmentId,
         audience: gathered.assignment.audience,
@@ -225,6 +235,41 @@ export function mergeLlmIntoSkeleton(
   };
 
   const gatedAngles = mergeAngles(skeleton.contentAngles, parsed.contentAngles);
+  const identity =
+    skeleton.topicIdentity ??
+    parsed.topicIdentity ??
+    null;
+
+  const identityGuard = identity
+    ? guardAnglesAgainstTopicIdentity({
+        angles: gatedAngles,
+        identity,
+        stage: "acrb_synthesis",
+        agendaId: skeleton.selectedAgendaId,
+        candidateId: skeleton.provenance.agendaCandidateId,
+      })
+    : {
+        angles: gatedAngles,
+        rejected: [] as AcrbContentAngle[],
+        diagnostics: [],
+        recommended: pickRecommendedAngle(gatedAngles),
+        noValidAngles: gatedAngles.length === 0,
+      };
+
+  const skeletonFallback =
+    identity && identityGuard.noValidAngles
+      ? guardAnglesAgainstTopicIdentity({
+          angles: applyAngleQualityGate(skeleton.contentAngles),
+          identity,
+          stage: "acrb_synthesis_fallback_skeleton",
+          agendaId: skeleton.selectedAgendaId,
+          candidateId: skeleton.provenance.agendaCandidateId,
+        }).angles
+      : [];
+
+  const survivingAngles = identityGuard.angles.length
+    ? identityGuard.angles
+    : skeletonFallback;
 
   let verdict = parsed.researchVerdict;
   if (skeleton.researchVerdict === "SKIP" && verdict === "PROCEED") {
@@ -237,15 +282,24 @@ export function mergeLlmIntoSkeleton(
       verdict = "PROCEED_WITH_CAUTION";
     }
   }
+  if (survivingAngles.length === 0) {
+    verdict = "SKIP";
+  }
 
-  const recommended = verdict === "SKIP" ? null : pickRecommendedAngle(gatedAngles);
+  const recommended =
+    verdict === "SKIP"
+      ? null
+      : identityGuard.recommended &&
+          survivingAngles.some((a) => a.angleId === identityGuard.recommended?.angleId)
+        ? identityGuard.recommended
+        : pickRecommendedAngle(survivingAngles);
   const coreOk = hasUsefulAcrbCore({
     primary: audience.primary,
     motivations: audience.motivations,
     decisionTriggers: audience.decisionTriggers,
     questions: searchIntent.questions,
     contentGaps: marketSignals.contentGaps,
-    angles: gatedAngles,
+    angles: survivingAngles,
   });
   const skeletonHadCore = hasUsefulAcrbCore({
     primary: skeleton.audience.primary,
@@ -258,6 +312,11 @@ export function mergeLlmIntoSkeleton(
 
   let researchStatus = parsed.researchStatus === "failed" ? "partial" : parsed.researchStatus;
   const limitations = [...new Set([...skeleton.limitations, ...parsed.limitations])];
+  if (identity && identityGuard.diagnostics.length) {
+    limitations.push(
+      `topic_identity_rejected_angles:${identityGuard.diagnostics.length};${summarizeTopicIdentity(identity)}`,
+    );
+  }
   if (
     (verdict === "PROCEED" || verdict === "PROCEED_WITH_CAUTION") &&
     !coreOk &&
@@ -278,7 +337,7 @@ export function mergeLlmIntoSkeleton(
     searchIntent,
     marketSignals,
     researchFindings: findings.length ? findings : skeleton.researchFindings,
-    contentAngles: gatedAngles,
+    contentAngles: survivingAngles,
     recommendedAngleId: recommended?.angleId ?? null,
     recommendedAngleReason: recommended
       ? [
@@ -292,6 +351,11 @@ export function mergeLlmIntoSkeleton(
     researchVerdict: verdict,
     researchStatus,
     limitations: limitations.slice(0, 20),
+    topicIdentity: identity,
+    identityDiagnostics: [
+      ...(skeleton.identityDiagnostics ?? []),
+      ...identityGuard.diagnostics,
+    ],
     sourceCoverage: {
       ...skeleton.sourceCoverage,
       ...parsed.sourceCoverage,

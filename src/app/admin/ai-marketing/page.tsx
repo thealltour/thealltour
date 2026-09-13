@@ -1,4 +1,5 @@
-import { AiMarketingHubPageBody, hubFieldsFromReviewQueue } from "@/components/admin/ai-marketing/AiMarketingHubPageBody";
+import { AiMarketingHubPageBody } from "@/components/admin/ai-marketing/AiMarketingHubPageBody";
+import { hubFieldsFromReviewQueue } from "@/lib/marketing/review/morningReview/hubFieldsFromReviewQueue";
 import { prepareAdminNotificationsAndGetUnreadCount } from "@/lib/adminNotifications";
 import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
 import { getDailyMarketingOperationsStatus } from "@/lib/marketing/operations";

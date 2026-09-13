@@ -195,6 +195,7 @@ export function buildMorningMarketingReviewContext(input: {
       humanEditedAfterGovernance: review?.humanEditedAfterGovernance,
       audienceContentResearchBrief: null,
       explicitTargetChannels: candidate.contentPlan?.targetChannels ?? null,
+      allowDeterministicGeneration: false,
     });
     if (!humanOwnsPublishableDraft && looksLikeInternalPlanningBody(rawDraftBody)) {
       publishableTitle = publishableBundle.threads.title;
@@ -219,6 +220,16 @@ export function buildMorningMarketingReviewContext(input: {
     (channel) => {
       const entry = channelReviewsMap[channel]!;
       const eff = effectiveChannelDraft(entry);
+      const slot =
+        channel === "threads"
+          ? publishableBundle?.threads
+          : channel === "shortform"
+            ? publishableBundle?.shortform
+            : channel === "naver_blog"
+              ? publishableBundle?.naver_blog
+              : channel === "naver_band"
+                ? publishableBundle?.naver_band
+                : publishableBundle?.kakao_channel;
       const blogMeta =
         channel === "naver_blog" && publishableBundle?.naver_blog?.blogMeta
           ? {
@@ -228,18 +239,29 @@ export function buildMorningMarketingReviewContext(input: {
               searchIntent: publishableBundle.naver_blog.blogMeta.searchIntent,
             }
           : null;
+      const mv = entry.marketingValue ?? slot?.marketingValue ?? null;
       return {
         channel,
         label: channelLabel(channel),
-        status: entry.status,
-        statusLabel: channelStatusLabel(entry.status),
+        status: entry.status ?? "needs_review",
+        statusLabel: channelStatusLabel(entry.status ?? "needs_review"),
         title: eff.title,
         body: eff.body,
-        aiTitle: entry.aiDraft.title,
-        aiBody: entry.aiDraft.body,
+        aiTitle: entry.aiDraft?.title ?? null,
+        aiBody: entry.aiDraft?.body ?? "",
         source: eff.source,
-        validationWarnings: entry.validationWarnings,
+        validationWarnings: entry.validationWarnings ?? [],
         blogMeta,
+        marketingValue: mv
+          ? {
+              verdict: mv.verdict,
+              overallScore: mv.overallScore,
+              reasons: mv.reasons ?? [],
+              improvementHints: mv.improvementHints ?? [],
+              stale: mv.stale,
+              hardFail: mv.hardFail,
+            }
+          : null,
       };
     },
   );

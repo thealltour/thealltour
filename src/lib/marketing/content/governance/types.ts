@@ -103,6 +103,8 @@ export type StructuredGovernanceReviewRequest = {
     hypothesisFindingIds: string[];
     inferenceFindingIds: string[];
   } | null;
+  /** MQ-3 compact ContentProposition for governance inspection. */
+  contentProposition?: import("@/lib/marketing/content/proposition/contracts").ContentPropositionCompact | null;
 };
 
 export type StructuredGovernanceDecision = {

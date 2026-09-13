@@ -190,6 +190,40 @@ describe("CG-4C multi-channel human review", () => {
     });
   });
 
+  it("visibleChannelsFromReviews tolerates partial entries without aiDraft", () => {
+    const map = {
+      threads: {
+        channel: "threads" as const,
+        status: "needs_review" as const,
+        aiDraft: undefined as unknown as { title: string | null; body: string },
+        humanDraft: { title: null, body: "human only body" },
+        validationWarnings: [],
+        lastEditedAt: null,
+        approvedAt: null,
+        skippedAt: null,
+        notes: null,
+      },
+      naver_band: {
+        channel: "naver_band" as const,
+        status: "draft" as const,
+        // intentionally incomplete payload shape
+        humanDraft: null,
+        validationWarnings: undefined as unknown as string[],
+        lastEditedAt: null,
+        approvedAt: null,
+        skippedAt: null,
+        notes: null,
+      } as any,
+    };
+    expect(() => visibleChannelsFromReviews(map)).not.toThrow();
+    expect(visibleChannelsFromReviews(map)).toEqual(["threads"]);
+    expect(effectiveChannelDraft(map.threads)).toEqual({
+      title: null,
+      body: "human only body",
+      source: "human",
+    });
+  });
+
   it("channel-scoped save/approve/skip isolation + governance block", async () => {
     const candidate = makeCandidate();
     const candidateRepo = createInMemoryDailyMarketingRunRepository();

@@ -1,7 +1,8 @@
 /**
  * Idempotent ensure: generate or reuse PublishableContentBundle.
+ * MQ-4 canonical PRODUCTION path — async + PublishableLlmInvoke.
  * Never silently overwrite human-edited channel bodies.
- * Optional CG-4B channels only when selected in targetChannels.
+ * Deterministic fallback is diagnostic-only (publishableSuccess=false).
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -22,6 +23,7 @@ import {
   computePublishableSourceRevision,
 } from "@/lib/marketing/publishable/inputs";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
+import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
 import { composeKakaoChannelPublishableContent } from "@/lib/marketing/publishable/kakao_channel/composeKakaoChannelPublishableContent";
 import { composeNaverBandPublishableContent } from "@/lib/marketing/publishable/naver_band/composeNaverBandPublishableContent";
 import { composeNaverBlogPublishableContent } from "@/lib/marketing/publishable/naver_blog/composeNaverBlogPublishableContent";
@@ -35,6 +37,12 @@ import {
   stripEvidenceIdsFromText,
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
+import {
+  attachAssessmentsToPublishableBundle,
+  buildMarketingValueBundle,
+  evaluateBundleChannels,
+  persistMarketingValueBundle,
+} from "@/lib/marketing/value";
 
 export type EnsurePublishableContentInput = {
   candidate: CompletedMarketingCandidate;
@@ -47,11 +55,14 @@ export type EnsurePublishableContentInput = {
   forceRegenerateChannels?: PublishableChannel[];
   allowOverwriteHuman?: boolean;
   invoke?: PublishableLlmInvoke | null;
+  modelProfile?: string | null;
   now?: Date;
   /** Durable ACRB — never triggers external research. */
   audienceContentResearchBrief?: AudienceContentResearchBrief | null;
   /** Explicit channel selection for human review generation. */
   explicitTargetChannels?: PublishableChannel[] | null;
+  /** Persist bundle to packageRoot when generation runs. Default true when packageRoot set. */
+  persist?: boolean;
 };
 
 function tryReadBundle(packageRoot: string | null | undefined): PublishableContentBundle | null {
@@ -78,6 +89,7 @@ function threadsFromHumanDraft(
   nowIso: string,
 ): PublishableChannelContent {
   const body = stripEvidenceIdsFromText(draft.body);
+  const validation = validatePublishableText(body);
   return {
     contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
     channel: "threads",
@@ -92,8 +104,12 @@ function threadsFromHumanDraft(
       composer: "human",
       evidenceRefIds: candidate.contentAssignment.facts.flatMap((f) => f.evidenceRefs).slice(0, 12),
       commercialIntent: candidate.contentAssignment.commercialIntent,
+      generationMode: "human",
+      attemptCount: 0,
     },
-    validation: validatePublishableText(body),
+    validation,
+    publishableSuccess: validation.ok,
+    needsRegeneration: !validation.ok,
   };
 }
 
@@ -121,6 +137,8 @@ export async function ensurePublishableContent(
     explicitTargetChannels: input.explicitTargetChannels,
   });
   const targetChannels = composerInput.targetChannels;
+  const modelProfile = input.modelProfile ?? "content-strategist";
+  const governanceDecision = input.candidate.governanceDecision?.decision ?? null;
 
   const humanOwnsThreads =
     Boolean(input.humanEditedAfterGovernance) &&
@@ -148,25 +166,45 @@ export async function ensurePublishableContent(
     return existing;
   }
 
+  // Governance BLOCK — do not polish channel copy for publication.
+  const blocked = governanceDecision === "BLOCK";
+  const invoke = blocked ? null : input.invoke;
+  const composeOpts = {
+    composerInput,
+    now,
+    invoke,
+    modelProfile,
+    allowDeterministicFallback: true,
+  };
+
   const threads =
     humanOwnsThreads && input.humanDraft
       ? threadsFromHumanDraft(input.candidate, input.humanDraft, sourceRevision, nowIso)
       : !shouldRegen("threads", input, existing?.threads) && existing?.threads
         ? existing.threads
-        : await composeThreadsPublishableContent({
-            composerInput,
-            now,
-            invoke: input.invoke,
-          });
+        : await composeThreadsPublishableContent(composeOpts);
 
   const shortform =
     !shouldRegen("shortform", input, existing?.shortform) && existing?.shortform
       ? existing.shortform
-      : await composeShortformNarration({
-          composerInput,
-          now,
-          invoke: input.invoke,
-        });
+      : await composeShortformNarration(composeOpts);
+
+  // Stamp governance block on freshly composed non-human channels
+  const stampBlock = (content: PublishableChannelContent): PublishableChannelContent => {
+    if (!blocked || content.status === "human_edited") return content;
+    return {
+      ...content,
+      status: "generation_failed",
+      publishableSuccess: false,
+      needsRegeneration: true,
+      provenance: {
+        ...content.provenance,
+        generationMode: "skipped",
+        failureCategory: "governance_block",
+        failureMessage: "governance BLOCK — channel composers not invoked",
+      },
+    };
+  };
 
   const bundle: PublishableContentBundle = {
     contract: PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
@@ -175,11 +213,10 @@ export async function ensurePublishableContent(
     generatedAt: nowIso,
     sourceRevision,
     targetChannels,
-    threads,
-    shortform,
+    threads: stampBlock(threads),
+    shortform: stampBlock(shortform),
   };
 
-  // Preserve human-edited optional channels not targeted for regen
   for (const channel of ["naver_blog", "naver_band", "kakao_channel"] as const) {
     const prev = existing?.[channel];
     if (prev?.status === "human_edited" && !input.allowOverwriteHuman) {
@@ -191,33 +228,69 @@ export async function ensurePublishableContent(
     bundle.naver_blog =
       !shouldRegen("naver_blog", input, existing?.naver_blog) && existing?.naver_blog
         ? existing.naver_blog
-        : await composeNaverBlogPublishableContent({
-            composerInput,
-            now,
-            invoke: input.invoke,
-          });
+        : stampBlock(await composeNaverBlogPublishableContent(composeOpts));
   }
 
   if (targetChannels.includes("naver_band")) {
     bundle.naver_band =
       !shouldRegen("naver_band", input, existing?.naver_band) && existing?.naver_band
         ? existing.naver_band
-        : await composeNaverBandPublishableContent({
-            composerInput,
-            now,
-            invoke: input.invoke,
-          });
+        : stampBlock(await composeNaverBandPublishableContent(composeOpts));
   }
 
   if (targetChannels.includes("kakao_channel")) {
     bundle.kakao_channel =
       !shouldRegen("kakao_channel", input, existing?.kakao_channel) && existing?.kakao_channel
         ? existing.kakao_channel
-        : await composeKakaoChannelPublishableContent({
-            composerInput,
+        : stampBlock(await composeKakaoChannelPublishableContent(composeOpts));
+  }
+
+  // MQ-5 — deterministic Marketing Value Gate (evaluate only; no auto-regeneration).
+  const channelsToScore: Array<{
+    channel: PublishableChannel;
+    content: PublishableChannelContent;
+  }> = [
+    { channel: "threads", content: bundle.threads },
+    { channel: "shortform", content: bundle.shortform },
+  ];
+  if (bundle.naver_blog) channelsToScore.push({ channel: "naver_blog", content: bundle.naver_blog });
+  if (bundle.naver_band) channelsToScore.push({ channel: "naver_band", content: bundle.naver_band });
+  if (bundle.kakao_channel) {
+    channelsToScore.push({ channel: "kakao_channel", content: bundle.kakao_channel });
+  }
+  const assessments = evaluateBundleChannels({
+    channels: channelsToScore,
+    proposition: composerInput.contentProposition,
+    researchVerdict: acrb?.researchVerdict ?? null,
+    now,
+  });
+  const scoredBundle = attachAssessmentsToPublishableBundle(bundle, assessments);
+  Object.assign(bundle, scoredBundle);
+
+  if (input.packageRoot && input.persist !== false) {
+    try {
+      if (!existsSync(input.packageRoot)) {
+        // package may not exist yet — export creates it; skip persist here
+      } else {
+        persistPublishableContentBundle({
+          packageRoot: input.packageRoot,
+          bundle,
+          createdAt: nowIso,
+        });
+        persistMarketingValueBundle({
+          packageRoot: input.packageRoot,
+          bundle: buildMarketingValueBundle({
+            candidateId: input.candidate.candidateId,
+            sourceRevision,
+            channels: assessments,
             now,
-            invoke: input.invoke,
-          });
+          }),
+          createdAt: nowIso,
+        });
+      }
+    } catch {
+      /* best-effort persist */
+    }
   }
 
   return bundle;

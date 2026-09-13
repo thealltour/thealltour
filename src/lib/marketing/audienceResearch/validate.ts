@@ -336,7 +336,48 @@ export function parseAudienceContentResearchBrief(
         typeof provenanceRaw.socialCommunitySourceCount === "number"
           ? provenanceRaw.socialCommunitySourceCount
           : undefined,
+      plannedQueryCount:
+        typeof provenanceRaw.plannedQueryCount === "number"
+          ? provenanceRaw.plannedQueryCount
+          : undefined,
+      attemptedQueryCount:
+        typeof provenanceRaw.attemptedQueryCount === "number"
+          ? provenanceRaw.attemptedQueryCount
+          : undefined,
+      successfulQueryCount:
+        typeof provenanceRaw.successfulQueryCount === "number"
+          ? provenanceRaw.successfulQueryCount
+          : undefined,
+      failedQueryCount:
+        typeof provenanceRaw.failedQueryCount === "number"
+          ? provenanceRaw.failedQueryCount
+          : undefined,
+      retryCount:
+        typeof provenanceRaw.retryCount === "number" ? provenanceRaw.retryCount : undefined,
+      usableResultCount:
+        typeof provenanceRaw.usableResultCount === "number"
+          ? provenanceRaw.usableResultCount
+          : undefined,
+      searchRequestCount:
+        typeof provenanceRaw.searchRequestCount === "number"
+          ? provenanceRaw.searchRequestCount
+          : undefined,
+      externalSearchStatus:
+        typeof provenanceRaw.externalSearchStatus === "string"
+          ? (provenanceRaw.externalSearchStatus as AudienceContentResearchBrief["provenance"]["externalSearchStatus"])
+          : undefined,
+      providerCredentialPresent:
+        typeof provenanceRaw.providerCredentialPresent === "boolean"
+          ? provenanceRaw.providerCredentialPresent
+          : undefined,
     },
+    topicIdentity:
+      row.topicIdentity && typeof row.topicIdentity === "object"
+        ? (row.topicIdentity as AudienceContentResearchBrief["topicIdentity"])
+        : null,
+    identityDiagnostics: Array.isArray(row.identityDiagnostics)
+      ? (row.identityDiagnostics as AudienceContentResearchBrief["identityDiagnostics"])
+      : [],
   };
 }
 

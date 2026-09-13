@@ -72,6 +72,7 @@ async function main() {
     createMarketingCronCorrelationId,
     createMarketingPlanPipelineDispatch,
     createAudienceResearchInvoke,
+    createPublishableComposerInvoke,
     isAiRuntimeMarketingCronEnabled,
   } = await import("../src/lib/marketing/cron/marketingCronRuntime");
   const {
@@ -184,6 +185,7 @@ async function main() {
   };
   const dispatch = createMarketingPlanPipelineDispatch(dispatchOptions);
   const invokeAudienceResearch = createAudienceResearchInvoke(dispatchOptions);
+  const invokePublishableComposer = createPublishableComposerInvoke(dispatchOptions);
   const reviewRepo = await createHumanMarketingReviewRepository(backend ? { backend } : {});
 
   const executeProduction = createDefaultProductionExecutor({
@@ -195,6 +197,7 @@ async function main() {
       productionRequestRepo,
       ...dispatch,
       invokeAudienceResearch,
+      invokePublishableComposer,
       // Exact slate selection is supplied per request — never rediscover via MM.
       requestPerformance: async () => ({
         unavailable: true as const,

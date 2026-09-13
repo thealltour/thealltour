@@ -1,6 +1,6 @@
 import type { AssignmentEvidenceRef, AssignmentFact, ContentPlan } from "@/lib/marketing/content/types";
 import type { MorningReviewEvidenceClaim, MorningReviewEvidenceSupport } from "@/lib/marketing/review/morningReview/types";
-import { safeExternalUrl, sanitizeTextForDisplay } from "@/lib/marketing/review/dto";
+import { safeExternalUrl, sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
 
 const MAX_EXCERPT = 500;
 

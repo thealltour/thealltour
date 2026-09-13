@@ -146,7 +146,11 @@ export async function getDailyMarketingOperationsStatus(
     deps.runRepo ? Promise.resolve(deps.runRepo) : createDailyMarketingRunRepository(),
     deps.reviewRepo ? Promise.resolve(deps.reviewRepo) : createHumanMarketingReviewRepository(),
     deps.perfRepo ? Promise.resolve(deps.perfRepo) : createContentPerformanceRepository(),
-    deps.researchRepo ? Promise.resolve(deps.researchRepo) : createResearchRepository(),
+    options.lite
+      ? Promise.resolve(null)
+      : deps.researchRepo
+        ? Promise.resolve(deps.researchRepo)
+        : createResearchRepository(),
   ]);
 
   const [run, allCandidatesForDate, performanceBrief, snapshotsSince] = await Promise.all([
@@ -189,22 +193,57 @@ export async function getDailyMarketingOperationsStatus(
       ? await deps.checkSemanticInfrastructure()
       : false;
 
-  const researchContext = await getMarketingManagerResearchContext(
-    { lookbackHours: 168 },
-    {
-      repo: researchRepo,
-      now: contextNow > now ? now : contextNow,
-      checkSemanticInfrastructure: async () => semanticOk,
-    },
-  );
+  let researchStage: { status: OperationsStageStatus; message: string; degradedSources: string[] };
+  let researchBriefCount: number | null = null;
+  let researchSignalCount: number | null = null;
 
-  const researchStage = classifyResearchStage({
-    contextStatus: researchContext.status,
-    briefCount: researchContext.briefs.length,
-    semanticOk,
-    businessDateKst,
-    now,
-  });
+  if (options.lite) {
+    researchStage = {
+      status: "pending",
+      message: "Research detail skipped (lite summary).",
+      degradedSources: [],
+    };
+  } else {
+    if (!researchRepo) {
+      researchStage = {
+        status: "failed",
+        message: "Research repository unavailable.",
+        degradedSources: ["research_repo"],
+      };
+    } else {
+      const researchContext = await Promise.race([
+        getMarketingManagerResearchContext(
+          { lookbackHours: 168 },
+          {
+            repo: researchRepo,
+            now: contextNow > now ? now : contextNow,
+            checkSemanticInfrastructure: async () => semanticOk,
+          },
+        ),
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), 12_000);
+        }),
+      ]);
+
+      if (!researchContext) {
+        researchStage = {
+          status: "degraded",
+          message: "Research context timed out; other stages still evaluated.",
+          degradedSources: ["research_timeout"],
+        };
+      } else {
+        researchStage = classifyResearchStage({
+          contextStatus: researchContext.status,
+          briefCount: researchContext.briefs.length,
+          semanticOk,
+          businessDateKst,
+          now,
+        });
+        researchBriefCount = researchContext.briefs.length;
+        researchSignalCount = researchContext.observability?.candidateCount ?? null;
+      }
+    }
+  }
 
   const performanceStage = classifyPerformanceBriefStage({
     artifactGeneratedAt: performanceBrief?.generatedAt ?? null,
@@ -286,10 +325,12 @@ export async function getDailyMarketingOperationsStatus(
     }
   }
 
-  const perfSignals = await researchRepo.findRecentSignals({
-    since: businessDateStartIso(businessDateKst),
-    limit: 100,
-  });
+  const perfSignals = researchRepo
+    ? await researchRepo.findRecentSignals({
+        since: businessDateStartIso(businessDateKst),
+        limit: 100,
+      })
+    : [];
   const productionPerfSignals = perfSignals.filter(
     (signal) =>
       signal.signalType === "content_performance" &&
@@ -358,8 +399,8 @@ export async function getDailyMarketingOperationsStatus(
     businessDateKst,
     research: {
       status: researchStage.status,
-      signalCount: researchContext.observability.candidateCount,
-      briefCount: researchContext.briefs.length,
+      signalCount: researchSignalCount,
+      briefCount: researchBriefCount,
       degradedSources: researchStage.degradedSources,
       message: researchStage.message,
     },
@@ -409,7 +450,11 @@ export async function getRecentDailyMarketingOperationsSummaries(
   for (let offset = 0; offset < days; offset += 1) {
     const date = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
     const businessDateKst = formatKstBusinessDate(date);
-    const status = await getDailyMarketingOperationsStatus({ businessDateKst, now }, deps);
+    // Lite: skip research N+1 enrichment so the ops page can render in seconds.
+    const status = await getDailyMarketingOperationsStatus(
+      { businessDateKst, now, lite: true },
+      deps,
+    );
     summaries.push({
       businessDateKst: status.businessDateKst,
       overallStatus: status.overallStatus,

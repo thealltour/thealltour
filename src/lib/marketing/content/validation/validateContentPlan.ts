@@ -14,6 +14,7 @@ import {
   contentPlanProviderSchema,
   CONTENT_PLAN_MAX_EVIDENCE,
 } from "@/lib/marketing/content/validation/contentPlanSchema";
+import { parseContentProposition } from "@/lib/marketing/content/proposition/parseContentProposition";
 
 export type ContentPlanValidationSource =
   | "provider_output"
@@ -94,14 +95,17 @@ function providerShapeToCanonical(
   parsed: ReturnType<typeof contentPlanProviderSchema.parse>,
   evidenceRefs: AssignmentEvidenceRef[],
 ): ContentPlan {
+  const proposition = parsed.proposition
+    ? parseContentProposition(parsed.proposition)
+    : null;
   return {
     contract: CONTENT_PLAN_CONTRACT,
     assignmentId: parsed.assignmentId,
     recommendedFormats: parsed.recommendedFormats ?? [],
     targetChannels: parsed.targetChannels,
-    primaryAngle: parsed.primaryAngle ?? "",
-    keyMessage: parsed.keyMessage ?? "",
-    targetAudience: parsed.targetAudience ?? "",
+    primaryAngle: parsed.primaryAngle ?? proposition?.angle ?? "",
+    keyMessage: parsed.keyMessage ?? proposition?.keyMessage ?? "",
+    targetAudience: parsed.targetAudience ?? proposition?.primaryAudience ?? "",
     hook: parsed.hook ?? "",
     outline: parsed.outline ?? [],
     factsToUse: parsed.factsToUse ?? [],
@@ -112,6 +116,7 @@ function providerShapeToCanonical(
     requiredAssets: parsed.requiredAssets ?? [],
     riskNotes: parsed.riskNotes ?? [],
     draftInstructions: parsed.draftInstructions ?? [],
+    proposition,
   };
 }
 

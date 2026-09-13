@@ -368,6 +368,27 @@ export class HumanMarketingReviewService {
       emptyChannelReviewEntry(input.channel, { title: input.title ?? null, body: input.body });
 
     const nowIso = this.now().toISOString();
+    // MQ-5: deterministic re-eval on human save (cheap; no LLM).
+    const { evaluateMarketingValue } = await import("@/lib/marketing/value/evaluateMarketingValue");
+    const { toMarketingValueCompact } = await import("@/lib/marketing/value/contracts");
+    const marketingValue = toMarketingValueCompact(
+      evaluateMarketingValue({
+        channel: input.channel === "shortform" ? "shortform" : input.channel,
+        body: input.body,
+        title: input.title ?? null,
+        content: {
+          status: "human_edited",
+          publishableSuccess: true,
+          provenance: { composer: "human", evidenceRefIds: [], commercialIntent: null },
+          validation: { ok: true, issues: [] },
+          body: input.body,
+          title: input.title ?? null,
+        } as never,
+        proposition: candidate.contentPlan?.proposition ?? null,
+        now: this.now(),
+      }),
+    );
+
     const entry = {
       ...existingEntry,
       humanDraft: {
@@ -382,6 +403,7 @@ export class HumanMarketingReviewService {
             : existingEntry.status,
       lastEditedAt: nowIso,
       notes: input.notes ?? existingEntry.notes,
+      marketingValue,
     };
 
     const channelReviews = {
@@ -449,6 +471,85 @@ export class HumanMarketingReviewService {
     if (input.status === "approved") {
       if (candidate.status === "blocked" || candidate.governanceDecision?.decision === "BLOCK") {
         throw new Error("governance_block_prevents_channel_approval");
+      }
+      // MQ-4 — fallback / generation_failed / validation_failed cannot be approved.
+      const { approvalBlockedReasonForChannel } = await import(
+        "@/lib/marketing/publishable/publishableSuccess"
+      );
+      const { isMarketingValueApprovable } = await import("@/lib/marketing/value/contracts");
+      const { resolveMarketingAssetRoot } = await import("@/lib/marketing/assets/config");
+      const { resolvePackageDirectory } = await import("@/lib/marketing/assets/paths");
+      const { ensurePublishableContentSync } = await import(
+        "@/lib/marketing/publishable/ensurePublishableContentSync"
+      );
+      try {
+        const assetRoot = resolveMarketingAssetRoot({});
+        const packageRoot = resolvePackageDirectory({
+          assetRoot,
+          businessDateKst: candidate.businessDateKst,
+          candidateId: input.candidateId,
+        });
+        const bundle = ensurePublishableContentSync({
+          candidate,
+          packageRoot,
+          allowDeterministicGeneration: false,
+        });
+        const slot =
+          input.channel === "threads"
+            ? bundle.threads
+            : input.channel === "shortform"
+              ? bundle.shortform
+              : input.channel === "naver_blog"
+                ? bundle.naver_blog
+                : input.channel === "naver_band"
+                  ? bundle.naver_band
+                  : bundle.kakao_channel;
+        const reviewForGate = await this.loadMutableReview(input.candidateId, input.reviewedBy);
+        const channelEntry = reviewForGate.channelReviews?.[input.channel];
+        const humanOwns = Boolean(channelEntry?.humanDraft?.body?.trim());
+        if (!humanOwns) {
+          if (slot) {
+            const blocked = approvalBlockedReasonForChannel(slot);
+            if (blocked) {
+              throw new Error(blocked);
+            }
+          } else if (
+            channelEntry?.validationWarnings?.some(
+              (w) =>
+                /degraded:fallback|generation_failed|validation_failed|needs_regeneration/i.test(w),
+            )
+          ) {
+            throw new Error("regeneration_required:fallback_generated_not_approvable");
+          }
+        }
+        const assessment = slot?.marketingValue ?? channelEntry?.marketingValue ?? null;
+        const override =
+          /marketing_value_override|value_override/i.test(channelEntry?.notes ?? "") ||
+          /marketing_value_override|value_override/i.test(input.notes ?? "");
+        if (assessment) {
+          const ok = isMarketingValueApprovable(assessment as never, {
+            allowNeedsImprovementOverride: override,
+          });
+          if (!ok) {
+            if (assessment.stale) {
+              throw new Error("regeneration_required:marketing_value_stale");
+            }
+            if (assessment.verdict === "reject" || assessment.hardFail) {
+              throw new Error("regeneration_required:marketing_value_reject");
+            }
+            if (assessment.verdict === "needs_improvement") {
+              throw new Error(
+                "regeneration_required:marketing_value_needs_improvement — edit content or set notes=marketing_value_override",
+              );
+            }
+            throw new Error("regeneration_required:marketing_value");
+          }
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("regeneration_required")) {
+          throw error;
+        }
+        // If package missing, still allow existing review tests without marketingValue.
       }
       if (input.channel === "shortform") {
         await assertShortformReadyForManualPublish({

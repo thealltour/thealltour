@@ -4,6 +4,7 @@ import type {
   ResearchSearchProvider,
 } from "@/lib/marketing/audienceResearch/external/searchProvider";
 import { createDisabledSearchProvider } from "@/lib/marketing/audienceResearch/external/tavilyProvider";
+import { EXTERNAL_SEARCH_PER_QUERY_TIMEOUT_MS } from "@/lib/marketing/audienceResearch/external/researchPolicy";
 
 export const OPENROUTER_FREE_MODEL = "openrouter/free" as const;
 export const OPENROUTER_DEFAULT_BASE = "https://openrouter.ai/api/v1" as const;
@@ -193,7 +194,7 @@ export function createOpenRouterWebSearchProvider(
       const q = query.trim();
       if (!q) return [];
       const maxResults = Math.min(Math.max(1, options.maxResults ?? defaultMaxResults), 8);
-      const timeoutMs = options.timeoutMs ?? 90_000;
+      const timeoutMs = options.timeoutMs ?? EXTERNAL_SEARCH_PER_QUERY_TIMEOUT_MS;
       const userContent = [
         "You are assisting Audience & Content Research.",
         "You MUST use web search for this query before answering.",

@@ -90,6 +90,11 @@ export type GetDailyMarketingOperationsStatusOptions = {
   businessDateKst?: string;
   now?: Date;
   includeVerification?: boolean;
+  /**
+   * Skip expensive research-context enrichment (N+1 brief/source reads).
+   * Used by multi-day summary rows so the ops dashboard can render quickly.
+   */
+  lite?: boolean;
 };
 
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";

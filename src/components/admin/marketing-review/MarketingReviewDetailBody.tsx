@@ -9,7 +9,7 @@ import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/
 import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketing-review/MarketingReviewShortformSourcesPanel";
 import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/MarketingReviewChannelTabs";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
-import { sanitizeTextForDisplay } from "@/lib/marketing/review/dto";
+import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
 
 type SocialAccountOption = {
   id: string;
@@ -54,7 +54,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<string>(
-    context.channelReviews[0]?.channel ?? context.draft.channel ?? "threads",
+    (context.channelReviews ?? [])[0]?.channel ?? context.draft.channel ?? "threads",
   );
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
     const next = (await res.json()) as MorningMarketingReviewContext;
     setContext(next);
     setHumanNotes(next.detail.review?.humanNotes ?? "");
-    if (!next.channelReviews.some((c) => c.channel === selectedChannel) && next.channelReviews[0]) {
+    if (!(next.channelReviews ?? []).some((c) => c.channel === selectedChannel) && next.channelReviews?.[0]) {
       setSelectedChannel(next.channelReviews[0].channel);
     }
   }
@@ -320,7 +320,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           <h2 className="text-base font-semibold">연구 / 전략 요약</h2>
           {context.researchSummary ? (
             <div className="grid gap-2 text-sm md:grid-cols-2">
-              <div>대상: {context.researchSummary.primaryAudience.join(" · ") || "—"}</div>
+              <div>대상: {context.researchSummary.primaryAudience?.join(" · ") || "—"}</div>
               <div>판정: {context.researchSummary.verdict ?? "—"}</div>
               <div className="md:col-span-2">
                 추천 각도: {context.researchSummary.recommendedAngle ?? "—"}
@@ -329,13 +329,13 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
                 긴장: {context.researchSummary.strongestTension ?? "—"}
               </div>
               <div className="md:col-span-2 text-[var(--text-secondary)]">
-                한계: {context.researchSummary.limitations.join(" · ") || "—"}
+                한계: {context.researchSummary.limitations?.join(" · ") || "—"}
               </div>
               <details className="md:col-span-2 text-sm">
                 <summary className="cursor-pointer text-[var(--primary)]">질문 / 공백 더보기</summary>
                 <div className="mt-2 space-y-1 text-[var(--text-secondary)]">
-                  <div>질문: {context.researchSummary.topQuestions.join(" · ") || "—"}</div>
-                  <div>공백: {context.researchSummary.contentGaps.join(" · ") || "—"}</div>
+                  <div>질문: {context.researchSummary.topQuestions?.join(" · ") || "—"}</div>
+                  <div>공백: {context.researchSummary.contentGaps?.join(" · ") || "—"}</div>
                 </div>
               </details>
             </div>
@@ -345,7 +345,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           <div className="border-t border-[var(--border)] pt-3 text-sm">
             <div>선택 각도: {context.strategySummary.selectedAngle ?? "—"}</div>
             <div>핵심 메시지: {context.strategySummary.keyMessage ?? "—"}</div>
-            <div>타깃 채널: {context.strategySummary.targetChannels.join(", ") || "—"}</div>
+            <div>타깃 채널: {context.strategySummary.targetChannels?.join(", ") || "—"}</div>
             <div>상업 의도: {context.strategySummary.commercialIntent ?? "—"}</div>
           </div>
         </AdminCard>

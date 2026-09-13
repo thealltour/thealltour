@@ -72,6 +72,8 @@ export type DailyMarketingPipelineDeps = DepartmentPipelineDeps & {
   /** Optional ACRB LLM synthesis; when omitted, deterministic partial research is used. */
   invokeAudienceResearch?: ((prompt: string) => Promise<string> | string) | null;
   forceAudienceResearchRegenerate?: boolean;
+  /** MQ-4 — channel-native publishable LLM invoke (Hermes/Runtime). */
+  invokePublishableComposer?: ((prompt: string) => Promise<string> | string) | null;
 };
 
 function buildObservability(run: Partial<DailyMarketingRun>): DailyMarketingRunObservability {
@@ -857,6 +859,82 @@ export async function runDailyMarketingProductionPipeline(
       reason: bootstrapResult.outcome === "skipped" ? bootstrapResult.reason : null,
     };
 
+  // MQ-4: generate channel-native LLM publishable content after CS/Governance, before Human Review bridge.
+  let publishableGeneration: Record<string, unknown> = { status: "skipped" };
+  let publishableBundle: import("@/lib/marketing/publishable/contracts").PublishableContentBundle | null =
+    null;
+  try {
+    const govDecision = savedCandidate.governanceDecision?.decision ?? null;
+    if (govDecision === "BLOCK") {
+      publishableGeneration = {
+        status: "skipped",
+        reason: "governance_block",
+      };
+    } else if (deps.invokePublishableComposer) {
+      const { ensurePublishableContent } = await import(
+        "@/lib/marketing/publishable/ensurePublishableContent"
+      );
+      const { resolveMarketingAssetRoot } = await import("@/lib/marketing/assets/config");
+      const { resolvePackageDirectory, ensurePackageLayout } = await import(
+        "@/lib/marketing/assets/paths"
+      );
+      const { exportMarketingCandidatePackage } = await import(
+        "@/lib/marketing/assets/exportMarketingCandidatePackage"
+      );
+      const { mkdirSync } = await import("node:fs");
+      const assetRoot = resolveMarketingAssetRoot({});
+      const packageRoot = resolvePackageDirectory({
+        assetRoot,
+        businessDateKst: savedCandidate.businessDateKst,
+        candidateId: savedCandidate.candidateId,
+      });
+      mkdirSync(packageRoot, { recursive: true });
+      ensurePackageLayout(packageRoot);
+      publishableBundle = await ensurePublishableContent({
+        candidate: savedCandidate,
+        packageRoot,
+        now,
+        invoke: deps.invokePublishableComposer,
+        modelProfile: "content-strategist",
+        audienceContentResearchBrief,
+        persist: true,
+      });
+      exportMarketingCandidatePackage({
+        candidate: savedCandidate,
+        assetRoot,
+        now,
+        overwriteArtifacts: true,
+        audienceContentResearchBrief,
+        publishableBundle,
+      });
+      publishableGeneration = {
+        status: "succeeded",
+        sourceRevision: publishableBundle.sourceRevision,
+        threads: {
+          composer: publishableBundle.threads.provenance.composer,
+          status: publishableBundle.threads.status,
+          publishableSuccess: publishableBundle.threads.publishableSuccess ?? false,
+        },
+        shortform: {
+          composer: publishableBundle.shortform.provenance.composer,
+          status: publishableBundle.shortform.status,
+          publishableSuccess: publishableBundle.shortform.publishableSuccess ?? false,
+        },
+        targetChannels: publishableBundle.targetChannels,
+      };
+    } else {
+      publishableGeneration = {
+        status: "skipped",
+        reason: "invoke_publishable_missing",
+      };
+    }
+  } catch (error) {
+    publishableGeneration = {
+      status: "failed",
+      error: error instanceof Error ? error.message.slice(0, 400) : String(error).slice(0, 400),
+    };
+  }
+
   // CG-2: best-effort shortform brief + source resolution (no PICK / no RenderJob / no publish).
   let shortformBridge: Record<string, unknown> = { status: "skipped" };
   try {
@@ -867,6 +945,8 @@ export async function runDailyMarketingProductionPipeline(
       candidate: savedCandidate,
       now,
       audienceContentResearchBrief,
+      publishableBundle,
+      invokePublishable: deps.invokePublishableComposer ?? null,
     });
     shortformBridge = {
       status: bridgeResult.outcome,
@@ -901,6 +981,7 @@ export async function runDailyMarketingProductionPipeline(
     metadata: {
       ...run.metadata,
       humanReviewBootstrap,
+      publishableGeneration,
       shortformBridge,
     },
     observability: buildObservability({

@@ -11,6 +11,7 @@ export default defineConfig({
     include: [
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
+      "scripts/**/*.test.mjs",
       "tools/thealltour_hanatour_collector_tests/**/*.test.ts",
     ],
   },

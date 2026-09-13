@@ -136,14 +136,24 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
             하지 않습니다.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={busy || loading}
-          onClick={() => void exportToHdd()}
-          className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {assets?.status === "present" ? "HDD 다시 보내기" : "HDD로 보내기"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {assets?.status === "present" ? (
+            <a
+              href={`/api/admin/marketing-review/${encodeURIComponent(candidateId)}/assets/download-zip`}
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+            >
+              일괄 다운로드
+            </a>
+          ) : null}
+          <button
+            type="button"
+            disabled={busy || loading}
+            onClick={() => void exportToHdd()}
+            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {assets?.status === "present" ? "HDD 다시 보내기" : "HDD로 보내기"}
+          </button>
+        </div>
       </div>
 
       {loading ? (

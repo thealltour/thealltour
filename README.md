@@ -69,4 +69,22 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
+### Ignored Build Step (VB-1A)
+
+`vercel.json` sets `ignoreCommand` to `node scripts/vercel-should-build.mjs`.
+
+- Exit **0** = skip deploy; exit **1** = build (Vercel ignore-step convention).
+- **Build** if any web-relevant path changed (`src/**`, `public/**`, lockfiles, Next/Vercel config, …).
+- **Skip** only when every changed path is a verified non-web path (`docs/`, `deploy/`, `tools/`, most of `scripts/`, `supabase/`, `.github/`, …).
+- Unknown paths and unavailable git diffs default to **build**.
+- `src/lib/marketing/**`, `src/ai-runtime/**`, and `public/extension-builds/**` always build.
+- Prefer comparing `VERCEL_GIT_PREVIOUS_SHA` → current commit (multi-commit safe). Enable *Automatically expose System Environment Variables* if previous SHA is missing.
+
+Do not broaden ignore prefixes without reviewing whether the path can affect Next/Vercel output.
+
+### Runtime crons (VB-1B)
+
+Active Vercel crons: `sms-bulk` (`*/5`), `threads-refresh-token` (weekly).  
+`/api/cron/threads-replies` route remains for manual/legacy reactivation but is **not** scheduled — keyword auto-reply depends on legacy admin Threads publish rows (`thread_marketing_posts`), not Manual Publication Bridge.
+
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

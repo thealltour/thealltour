@@ -22,5 +22,11 @@ export function humanReviewErrorResponse(error: unknown): NextResponse {
   if (message === "must_be_approved_before_manual_publication_record") {
     return NextResponse.json({ message: "수동 게시 기록 전에 승인이 필요합니다." }, { status: 422 });
   }
+  if (message.startsWith("regeneration_required")) {
+    return NextResponse.json(
+      { message: "재생성(LLM)이 필요합니다.", reason: message },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ message: "요청 처리에 실패했습니다." }, { status: 500 });
 }

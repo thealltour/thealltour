@@ -22,6 +22,12 @@ import {
   humanEditedRelativePath,
   type ReviewablePublishableChannel,
 } from "@/lib/marketing/review/channelReviews";
+import { evaluateMarketingValue } from "@/lib/marketing/value/evaluateMarketingValue";
+import {
+  buildMarketingValueBundle,
+  persistMarketingValueBundle,
+  tryReadMarketingValueBundle,
+} from "@/lib/marketing/value/persist";
 
 function tryReadBundle(packageRoot: string): PublishableContentBundle | null {
   const path = join(packageRoot, PUBLISHABLE_CONTENT_RELATIVE_PATH);
@@ -114,11 +120,25 @@ export function persistChannelHumanEditToPackage(input: {
         evidenceRefIds: prev?.provenance.evidenceRefIds ?? [],
         commercialIntent:
           prev?.provenance.commercialIntent ?? input.candidate.contentAssignment.commercialIntent,
+        generationMode: "human" as const,
       },
       validation,
+      publishableSuccess: validation.ok,
+      needsRegeneration: !validation.ok,
       narrationSegments: prev && "narrationSegments" in prev ? prev.narrationSegments : undefined,
       blogMeta: prev && "blogMeta" in prev ? prev.blogMeta : undefined,
+      // MQ-5: cheap deterministic re-evaluation on human save (no LLM).
+      marketingValue: null as import("@/lib/marketing/value/contracts").MarketingValueAssessment | null,
     };
+
+    nextContent.marketingValue = evaluateMarketingValue({
+      channel: pubChannel,
+      body: input.body,
+      title: input.title,
+      content: nextContent as never,
+      proposition: input.candidate.contentPlan?.proposition ?? null,
+      now: input.now,
+    });
 
     const nextBundle: PublishableContentBundle = {
       ...bundle,
@@ -135,6 +155,20 @@ export function persistChannelHumanEditToPackage(input: {
       `${JSON.stringify(nextBundle, null, 2)}\n`,
       "utf8",
     );
+
+    const existingValue = tryReadMarketingValueBundle(packageRoot);
+    const channels = { ...(existingValue?.channels ?? {}) };
+    channels[pubChannel] = nextContent.marketingValue!;
+    persistMarketingValueBundle({
+      packageRoot,
+      bundle: buildMarketingValueBundle({
+        candidateId: input.candidate.candidateId,
+        sourceRevision: bundle.sourceRevision,
+        channels,
+        now: input.now,
+      }),
+      createdAt: nowIso,
+    });
 
     const humanPath = join(packageRoot, humanEditedRelativePath(input.channel));
     mkdirSync(dirname(humanPath), { recursive: true });

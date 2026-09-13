@@ -40,6 +40,8 @@ export type ChannelReviewEntry = {
   approvedAt: string | null;
   skippedAt: string | null;
   notes: string | null;
+  /** MQ-5 — compact marketing value (optional, additive). */
+  marketingValue?: import("@/lib/marketing/value/contracts").MarketingValueCompact | null;
 };
 
 export type ChannelReviewsMap = Partial<
@@ -62,14 +64,14 @@ export function effectiveChannelDraft(entry: ChannelReviewEntry): {
 } {
   if (entry.humanDraft?.body?.trim()) {
     return {
-      title: entry.humanDraft.title,
+      title: entry.humanDraft.title ?? null,
       body: entry.humanDraft.body,
       source: "human",
     };
   }
   return {
-    title: entry.aiDraft.title,
-    body: entry.aiDraft.body,
+    title: entry.aiDraft?.title ?? null,
+    body: entry.aiDraft?.body ?? "",
     source: "ai",
   };
 }

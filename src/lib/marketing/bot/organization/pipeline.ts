@@ -344,6 +344,7 @@ export async function runDepartmentPipeline(
     agenda: input.agenda ?? input.selectedAgenda?.title ?? null,
     brief: acrb ?? input.brief ?? null,
     audienceContentResearchBrief: acrb,
+    agendaTopicIdentity: acrb?.topicIdentity ?? null,
     constraints: [
       ...(input.constraints ?? ["do not invent product facts", "do not publish"]),
       ...(input.contentAssignment?.constraints ?? []),
@@ -351,6 +352,7 @@ export async function runDepartmentPipeline(
         ? [
             "use AudienceContentResearchBrief for angle/strategy; do not repeat broad research",
             "do not treat inference/hypothesis as verified facts",
+            "AgendaTopicIdentity is authoritative — do not change destination/product type/travel mode without evidence",
             ...(acrb.limitations.slice(0, 4).map((item) => `research_limitation:${item.slice(0, 120)}`)),
           ]
         : []),

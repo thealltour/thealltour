@@ -1,5 +1,6 @@
 /**
- * Shortform narration composer — LLM when provided, else deterministic fallback.
+ * Shortform narration composer — LLM required for publishable success.
+ * Hook must be paid off; READY render invalidation remains caller's responsibility.
  */
 
 import {
@@ -7,6 +8,16 @@ import {
   type PublishableChannelContent,
   type PublishableNarrationSegment,
 } from "@/lib/marketing/publishable/contracts";
+import {
+  PROPOSITION_COMPOSER_RULES,
+  bodyReflectsPropositionTakeaway,
+  buildPropositionPromptSlice,
+  buildPropositionProvenance,
+  checkShortformHookPayoff,
+  invokeWithBoundedRepair,
+  propositionBlocksPolishedGeneration,
+  resolveFailureStatus,
+} from "@/lib/marketing/publishable/composerRuntime";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { composeShortformNarrationDeterministic } from "@/lib/marketing/publishable/shortform/deterministicShortform";
 import { SHORTFORM_NARRATION_WRITING_CONTRACT } from "@/lib/marketing/publishable/shortform/writingContract";
@@ -16,15 +27,20 @@ import {
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
 
-function buildShortformPrompt(input: PublishableComposerInput): string {
+function buildShortformPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
   return [
     SHORTFORM_NARRATION_WRITING_CONTRACT,
+    PROPOSITION_COMPOSER_RULES,
+    "Structure: hook → payoff → concrete useful information → close/action.",
+    "If hook promises N things / one rule / a checklist, body MUST deliver it.",
+    repairHint ?? "",
     "INPUT_JSON:",
     JSON.stringify({
       topic: input.topic,
       commercialIntent: input.commercialIntent,
       destinations: input.destinations,
       keyMessage: input.keyMessage,
+      contentProposition: buildPropositionPromptSlice(input.contentProposition),
       usableFacts: input.usableFacts.map((f) => ({
         statement: f.statement,
         confidence: f.confidence,
@@ -32,7 +48,9 @@ function buildShortformPrompt(input: PublishableComposerInput): string {
       unsupportedClaims: input.unsupportedClaims,
       governanceDecision: input.governanceDecision,
     }),
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function parseShortformJson(
@@ -91,64 +109,170 @@ function parseShortformJson(
   }
 }
 
-export async function composeShortformNarration(input: {
+function wrap(input: {
   composerInput: PublishableComposerInput;
-  now?: Date;
-  invoke?: PublishableLlmInvoke | null;
-}): Promise<PublishableChannelContent> {
-  const nowIso = (input.now ?? new Date()).toISOString();
-  let body = "";
-  let segments: PublishableNarrationSegment[] = [];
-  let composer: PublishableChannelContent["provenance"]["composer"] = "deterministic_fallback";
-  let status: PublishableChannelContent["status"] = "fallback_generated";
-
-  if (input.invoke) {
-    try {
-      const raw = await input.invoke(buildShortformPrompt(input.composerInput));
-      const parsed = parseShortformJson(
-        typeof raw === "string" ? raw : String(raw),
-        input.composerInput,
-      );
-      if (parsed) {
-        const validation = validatePublishableText(parsed.body);
-        const segOk = parsed.segments.every((s) => validatePublishableText(s.narrationText).ok);
-        if (validation.ok && segOk) {
-          body = parsed.body;
-          segments = parsed.segments;
-          composer = "llm";
-          status = "generated";
-        }
-      }
-    } catch {
-      /* fall through */
-    }
-  }
-
-  if (!body || segments.length < 1) {
-    const det = composeShortformNarrationDeterministic(input.composerInput);
-    body = det.body;
-    segments = det.segments;
-    composer = "deterministic_fallback";
-    status = "fallback_generated";
-  }
-
-  const validation = validatePublishableText(body);
+  nowIso: string;
+  body: string;
+  segments: PublishableNarrationSegment[];
+  status: PublishableChannelContent["status"];
+  composer: PublishableChannelContent["provenance"]["composer"];
+  generationMode: NonNullable<PublishableChannelContent["provenance"]["generationMode"]>;
+  attemptCount: number;
+  latencyMs: number | null;
+  failureCategory?: PublishableChannelContent["provenance"]["failureCategory"];
+  failureMessage?: string | null;
+  modelProfile?: string | null;
+}): PublishableChannelContent {
+  const validation = validatePublishableText(input.body);
+  const publishableSuccess =
+    input.composer === "llm" && input.status === "generated" && validation.ok;
   return {
     contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
     channel: "shortform",
     format: "short_video_narration",
     title: null,
-    body,
-    status: validation.ok ? status : "generated",
-    generatedAt: nowIso,
+    body: input.body,
+    status: input.status,
+    generatedAt: input.nowIso,
     sourceCandidateId: input.composerInput.candidateId,
     sourceRevision: input.composerInput.sourceRevision,
+    selectedAngleRef: input.composerInput.research?.selectedAngleId ?? null,
+    researchBriefRef: input.composerInput.research?.researchBriefId ?? null,
     provenance: {
-      composer,
+      composer: input.composer,
       evidenceRefIds: input.composerInput.evidenceRefIds,
       commercialIntent: input.composerInput.commercialIntent,
+      generationMode: input.generationMode,
+      modelProfile: input.modelProfile ?? null,
+      attemptCount: input.attemptCount,
+      latencyMs: input.latencyMs,
+      failureCategory: input.failureCategory ?? null,
+      failureMessage: input.failureMessage ?? null,
+      propositionStrength: input.composerInput.contentProposition?.propositionStrength ?? null,
+      proposition: buildPropositionProvenance(input.composerInput),
     },
     validation,
-    narrationSegments: segments,
+    publishableSuccess,
+    needsRegeneration: !publishableSuccess,
+    narrationSegments: input.segments,
   };
+}
+
+export async function composeShortformNarration(input: {
+  composerInput: PublishableComposerInput;
+  now?: Date;
+  invoke?: PublishableLlmInvoke | null;
+  modelProfile?: string | null;
+  allowDeterministicFallback?: boolean;
+}): Promise<PublishableChannelContent> {
+  const nowIso = (input.now ?? new Date()).toISOString();
+  const started = Date.now();
+  const allowFallback = input.allowDeterministicFallback !== false;
+
+  if (propositionBlocksPolishedGeneration(input.composerInput.contentProposition)) {
+    const det = allowFallback
+      ? composeShortformNarrationDeterministic(input.composerInput)
+      : { body: "[generation skipped: insufficient content proposition]", segments: [] };
+    return wrap({
+      composerInput: input.composerInput,
+      nowIso,
+      body: det.body,
+      segments: det.segments,
+      status: "generation_failed",
+      composer: "deterministic_fallback",
+      generationMode: "skipped",
+      attemptCount: 0,
+      latencyMs: Date.now() - started,
+      failureCategory: "insufficient_proposition",
+      failureMessage: "propositionStrength=insufficient",
+      modelProfile: input.modelProfile,
+    });
+  }
+
+  if (input.invoke) {
+    const result = await invokeWithBoundedRepair({
+      invoke: input.invoke,
+      buildPrompt: (hint) => buildShortformPrompt(input.composerInput, hint),
+      parseAndValidate: (raw) => {
+        const parsed = parseShortformJson(raw, input.composerInput);
+        if (!parsed) return { ok: false, category: "invalid_json", message: "shortform_json_parse_failed" };
+        const validation = validatePublishableText(parsed.body);
+        const segOk = parsed.segments.every((s) => validatePublishableText(s.narrationText).ok);
+        if (!validation.ok || !segOk) {
+          return {
+            ok: false,
+            category: "publishability_validation",
+            message: validation.issues.map((i) => i.code).join(",") || "segment_validation_failed",
+          };
+        }
+        const payoff = checkShortformHookPayoff({
+          segments: parsed.segments,
+          body: parsed.body,
+        });
+        if (!payoff.ok) {
+          return {
+            ok: false,
+            category: "publishability_validation",
+            message: payoff.reason ?? "hook_payoff_failed",
+          };
+        }
+        if (!bodyReflectsPropositionTakeaway(parsed.body, input.composerInput.contentProposition)) {
+          return {
+            ok: false,
+            category: "publishability_validation",
+            message: "proposition_takeaway_not_reflected",
+          };
+        }
+        return { ok: true };
+      },
+    });
+    if (result.success && result.raw) {
+      const parsed = parseShortformJson(result.raw, input.composerInput)!;
+      return wrap({
+        composerInput: input.composerInput,
+        nowIso,
+        body: parsed.body,
+        segments: parsed.segments,
+        status: "generated",
+        composer: "llm",
+        generationMode: "llm",
+        attemptCount: result.attemptCount,
+        latencyMs: Date.now() - started,
+        modelProfile: input.modelProfile,
+      });
+    }
+    const det = allowFallback
+      ? composeShortformNarrationDeterministic(input.composerInput)
+      : { body: "[generation failed]", segments: [] };
+    return wrap({
+      composerInput: input.composerInput,
+      nowIso,
+      body: det.body,
+      segments: det.segments,
+      status: resolveFailureStatus({ llmAttempted: true, category: result.failureCategory }),
+      composer: "deterministic_fallback",
+      generationMode: "fallback",
+      attemptCount: result.attemptCount,
+      latencyMs: Date.now() - started,
+      failureCategory: result.failureCategory ?? "unknown",
+      failureMessage: result.failureMessage ?? "llm_compose_failed",
+      modelProfile: input.modelProfile,
+    });
+  }
+
+  const det = composeShortformNarrationDeterministic(input.composerInput);
+  return wrap({
+    composerInput: input.composerInput,
+    nowIso,
+    body: det.body,
+    segments: det.segments,
+    status: "fallback_generated",
+    composer: "deterministic_fallback",
+    generationMode: "fallback",
+    attemptCount: 0,
+    latencyMs: Date.now() - started,
+    failureCategory: "invoke_missing",
+    failureMessage: "no PublishableLlmInvoke supplied",
+    modelProfile: input.modelProfile,
+  });
 }

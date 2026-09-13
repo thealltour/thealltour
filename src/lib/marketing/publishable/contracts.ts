@@ -36,8 +36,31 @@ export const PUBLISHABLE_CONTENT_STATUSES = [
   "human_edited",
   "validated",
   "fallback_generated",
+  /** MQ-4 — LLM invoke failed (timeout/auth/network/etc.). Not publishable success. */
+  "generation_failed",
+  /** MQ-4 — model output failed deterministic validation after repair budget. */
+  "validation_failed",
 ] as const;
 export type PublishableContentStatus = (typeof PUBLISHABLE_CONTENT_STATUSES)[number];
+
+export const PUBLISHABLE_GENERATION_FAILURE_CATEGORIES = [
+  "timeout",
+  "auth",
+  "rate_limited",
+  "upstream_5xx",
+  "network",
+  "invalid_json",
+  "schema_validation",
+  "publishability_validation",
+  "topic_identity_conflict",
+  "evidence_violation",
+  "insufficient_proposition",
+  "governance_block",
+  "invoke_missing",
+  "unknown",
+] as const;
+export type PublishableGenerationFailureCategory =
+  (typeof PUBLISHABLE_GENERATION_FAILURE_CATEGORIES)[number];
 
 export type PublishableValidationIssueCode =
   | "internal_heading_leak"
@@ -103,8 +126,35 @@ export type PublishableChannelContent = {
     composer: "llm" | "deterministic_fallback" | "human";
     evidenceRefIds: string[];
     commercialIntent: string | null;
+    /** MQ-4 generation telemetry (additive). */
+    generationMode?: "llm" | "fallback" | "human" | "skipped";
+    modelProfile?: string | null;
+    attemptCount?: number;
+    latencyMs?: number | null;
+    failureCategory?: PublishableGenerationFailureCategory | null;
+    failureMessage?: string | null;
+    propositionStrength?: string | null;
+    /** Records that ContentProposition drove the draft. */
+    proposition?: {
+      contract: string;
+      selectedAngleRef?: string | null;
+      contentPromise?: string | null;
+      readerGain?: string | null;
+      takeawayBasis?: string[];
+      desiredAudienceAction?: string | null;
+      engagementMechanism?: string | null;
+      propositionStrength?: string | null;
+    } | null;
   };
   validation: PublishableValidationResult;
+  /**
+   * MQ-4 — explicit publishable success gate.
+   * fallback_generated / generation_failed / validation_failed ⇒ false.
+   */
+  publishableSuccess?: boolean;
+  needsRegeneration?: boolean;
+  /** MQ-5 — marketing usefulness gate (separate from Governance). */
+  marketingValue?: import("@/lib/marketing/value/contracts").MarketingValueAssessment | null;
   /** Shortform only — spoken segments for ShortVideoBrief. */
   narrationSegments?: PublishableNarrationSegment[];
   /** Naver Blog structured fields (optional). */

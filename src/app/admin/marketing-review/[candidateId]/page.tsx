@@ -11,7 +11,7 @@ export default async function AdminMarketingReviewDetailPage({ params }: PagePro
   const { candidateId } = await params;
   const service = await createHumanMarketingReviewService();
   const [unreadNotificationCount, context] = await Promise.all([
-    prepareAdminNotificationsAndGetUnreadCount(),
+    prepareAdminNotificationsAndGetUnreadCount().catch(() => 0),
     service.getMorningMarketingReviewContext(candidateId),
   ]);
 

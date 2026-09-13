@@ -37,8 +37,19 @@ import {
   buildThreadsPostText,
 } from "@/lib/marketing/publishable/applyToMediaBrief";
 import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
+import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
 import { PUBLISHABLE_CONTENT_MEDIA_TYPE, PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
-import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import type { PublishableChannelContent, PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import {
+  MARKETING_VALUE_MEDIA_TYPE,
+  MARKETING_VALUE_RELATIVE_PATH,
+} from "@/lib/marketing/value/paths";
+import {
+  buildMarketingValueBundle,
+  tryReadMarketingValueBundle,
+} from "@/lib/marketing/value/persist";
+import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
+import type { MarketingValueAssessment } from "@/lib/marketing/value/contracts";
 import type { HumanReviewDraft } from "@/lib/marketing/review/types";
 import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
 import {
@@ -59,8 +70,14 @@ export type ExportMarketingCandidatePackageInput = {
   humanEditedAfterGovernance?: boolean;
   /** When true, overwrite post.txt / media-brief / publishable-content if content changed. */
   overwriteArtifacts?: boolean;
-  /** Force rebuild of publishable Threads + shortform narration. */
+  /**
+   * Deprecated for production LLM regen — export must not invoke composers.
+   * When true with no pre-built bundle, sync may only reuse persisted artifacts
+   * (allowDeterministicGeneration=false). Prefer `publishableBundle`.
+   */
   forcePublishableRegenerate?: boolean;
+  /** MQ-4 — pre-generated LLM publishable bundle (canonical). Export does not call LLM. */
+  publishableBundle?: PublishableContentBundle | null;
   /** RA-1B — full ACRB for package artifact (optional if only compact ref on candidate). */
   audienceContentResearchBrief?: AudienceContentResearchBrief | null;
 };
@@ -95,7 +112,32 @@ function mediaTypeFor(relativePath: string): string {
 }
 
 function buildCopyTextFromPublishable(bundle: PublishableContentBundle): string {
+  if (!channelCountsAsPublishableSuccess(bundle.threads) && bundle.threads.status !== "human_edited") {
+    const reason =
+      bundle.threads.provenance?.failureMessage ??
+      bundle.threads.status ??
+      "not_publishable";
+    return `[DEGRADED — not final publishable copy]\nstatus=${bundle.threads.status}\ncomposer=${bundle.threads.provenance.composer}\nreason=${reason}\n\n${buildThreadsPostText(bundle)}`;
+  }
   return buildThreadsPostText(bundle);
+}
+
+function pushChannelCopyIfPublishable(
+  planned: PlannedPackageArtifact[],
+  relativePath: string,
+  content: PublishableChannelContent | undefined,
+): void {
+  if (!content?.body?.trim()) return;
+  if (channelCountsAsPublishableSuccess(content) || content.status === "human_edited") {
+    pushCopyArtifact(planned, relativePath, content.body);
+    return;
+  }
+  // Diagnostic only — clearly marked in-body, not masquerading as final.
+  pushCopyArtifact(
+    planned,
+    relativePath,
+    `[DEGRADED — ${content.status} / ${content.provenance.composer} — not final publishable copy]\n${content.body}`,
+  );
 }
 
 function pushCopyArtifact(
@@ -118,6 +160,7 @@ function planGeneratedArtifacts(input: {
   mediaBrief: MediaBrief;
   publishable: PublishableContentBundle;
   audienceContentResearchBrief?: AudienceContentResearchBrief | null;
+  packageRoot?: string | null;
 }): PlannedPackageArtifact[] {
   const planned: PlannedPackageArtifact[] = [
     {
@@ -153,19 +196,37 @@ function planGeneratedArtifacts(input: {
     });
   }
 
+  // MQ-5 — persist assessment metadata; never recompute scores on export.
+  const fromPublishable: Partial<Record<PublishableChannel, MarketingValueAssessment>> = {};
+  for (const channel of ["threads", "shortform", "naver_blog", "naver_band", "kakao_channel"] as const) {
+    const slot = input.publishable[channel];
+    if (slot?.marketingValue) fromPublishable[channel] = slot.marketingValue;
+  }
+  const existingValue = tryReadMarketingValueBundle(input.packageRoot ?? null);
+  const valueChannels = { ...(existingValue?.channels ?? {}), ...fromPublishable };
+  if (Object.keys(valueChannels).length > 0) {
+    planned.push({
+      relativePath: MARKETING_VALUE_RELATIVE_PATH,
+      content: stableJsonBytes(
+        buildMarketingValueBundle({
+          candidateId: input.candidate.candidateId,
+          sourceRevision: input.publishable.sourceRevision,
+          channels: valueChannels,
+        }),
+      ),
+      kind: "context",
+      origin: "pipeline_export",
+      mediaType: MARKETING_VALUE_MEDIA_TYPE,
+    });
+  }
+
   const copy = buildCopyTextFromPublishable(input.publishable);
   pushCopyArtifact(planned, "copy/post.txt", copy);
 
   // CG-4B — only emit artifacts for channels actually generated.
-  if (input.publishable.naver_blog?.body) {
-    pushCopyArtifact(planned, "copy/naver-blog.md", input.publishable.naver_blog.body);
-  }
-  if (input.publishable.naver_band?.body) {
-    pushCopyArtifact(planned, "copy/naver-band.txt", input.publishable.naver_band.body);
-  }
-  if (input.publishable.kakao_channel?.body) {
-    pushCopyArtifact(planned, "copy/kakao-channel.txt", input.publishable.kakao_channel.body);
-  }
+  pushChannelCopyIfPublishable(planned, "copy/naver-blog.md", input.publishable.naver_blog);
+  pushChannelCopyIfPublishable(planned, "copy/naver-band.txt", input.publishable.naver_band);
+  pushChannelCopyIfPublishable(planned, "copy/kakao-channel.txt", input.publishable.kakao_channel);
 
   return planned;
 }
@@ -312,15 +373,20 @@ export function exportMarketingCandidatePackage(
     candidateId: input.candidate.candidateId,
   });
 
-  const publishable = ensurePublishableContentSync({
-    candidate: input.candidate,
-    packageRoot: existsSync(packageRoot) ? packageRoot : null,
-    humanDraft: input.humanDraft,
-    humanEditedAfterGovernance: input.humanEditedAfterGovernance,
-    forceRegenerate: input.forcePublishableRegenerate,
-    now,
-    audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
-  });
+  const publishable =
+    input.publishableBundle ??
+    ensurePublishableContentSync({
+      candidate: input.candidate,
+      packageRoot: existsSync(packageRoot) ? packageRoot : null,
+      humanDraft: input.humanDraft,
+      humanEditedAfterGovernance: input.humanEditedAfterGovernance,
+      // MQ-4: never invent deterministic "publishable" on export — reuse persisted only.
+      forceRegenerate: false,
+      allowDeterministicGeneration: false,
+      now,
+      audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
+    });
+  void input.forcePublishableRegenerate;
 
   const baseBrief = input.mediaBrief ?? buildMediaBriefFromCandidate(input.candidate);
   const mediaBrief = applyPublishableContentToMediaBrief(baseBrief, publishable);
@@ -337,6 +403,7 @@ export function exportMarketingCandidatePackage(
     mediaBrief,
     publishable,
     audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
+    packageRoot,
   });
   const plannedArtifacts = planned.map((item) => describePlannedArtifact(item, timestamp));
   const plannedRelativePaths = [...planned.map((item) => item.relativePath), "manifest.json"];

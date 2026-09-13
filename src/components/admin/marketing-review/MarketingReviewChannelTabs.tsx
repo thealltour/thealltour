@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { MorningChannelReviewView, MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import type { ReviewablePublishableChannel } from "@/lib/marketing/review/channelReviews";
-import { sanitizeTextForDisplay } from "@/lib/marketing/review/dto";
+import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
 
 type Props = {
   context: MorningMarketingReviewContext;
@@ -26,7 +26,7 @@ export function MarketingReviewChannelTabs({
   selectedChannel,
   onSelectChannel,
 }: Props) {
-  const channels = context.channelReviews;
+  const channels = context.channelReviews ?? [];
   const active: MorningChannelReviewView | undefined =
     channels.find((c) => c.channel === selectedChannel) ?? channels[0];
 
@@ -179,12 +179,42 @@ export function MarketingReviewChannelTabs({
               상태: <strong>{active.statusLabel}</strong>
             </span>
             <span>소스: {active.source === "human" ? "사람 수정" : "AI 초안"}</span>
+            {active.marketingValue ? (
+              <span
+                className={
+                  active.marketingValue.verdict === "strong" ||
+                  active.marketingValue.verdict === "publishable"
+                    ? "text-emerald-700"
+                    : active.marketingValue.verdict === "needs_improvement"
+                      ? "text-amber-700"
+                      : "text-red-700"
+                }
+              >
+                Value: <strong>{active.marketingValue.verdict}</strong> (
+                {active.marketingValue.overallScore})
+                {active.marketingValue.stale ? " · stale" : ""}
+              </span>
+            ) : null}
             {active.validationWarnings.length > 0 ? (
               <span className="text-amber-700">경고 {active.validationWarnings.length}건</span>
             ) : (
               <span className="text-emerald-700">검증 통과</span>
             )}
           </div>
+
+          {active.marketingValue ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs space-y-1">
+              <div className="font-medium">Marketing Value (≠ Governance)</div>
+              {(active.marketingValue.reasons ?? []).slice(0, 3).map((r) => (
+                <div key={r}>· {r}</div>
+              ))}
+              {(active.marketingValue.improvementHints ?? []).slice(0, 3).map((h) => (
+                <div key={h} className="text-amber-800">
+                  hint: {h}
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {active.validationWarnings.length > 0 ? (
             <ul className="list-disc space-y-1 pl-5 text-xs text-amber-800">

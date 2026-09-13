@@ -15,6 +15,12 @@ import type {
   GovernanceReviewResult,
 } from "@/lib/marketing/bot/organization/handoffs";
 import { resolveMarketingCronHermesTimeoutMs } from "@/lib/marketing/cron/hermesSpawnFailure";
+import {
+  ContentStrategistPropositionError,
+  ContentStrategistTopicIdentityError,
+  validateContentStrategistAgainstTopicIdentity,
+} from "@/lib/marketing/cron/contentStrategistTopicIdentity";
+import { validateContentProposition } from "@/lib/marketing/content/proposition/validateContentProposition";
 
 /** Default Hermes oneshot timeout for Marketing Cron specialist profiles. */
 export const MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT = 180_000;
@@ -281,7 +287,59 @@ function formatEvidencePackSection(pack: ContentDraftRequest["evidencePack"]): s
 }
 
 const CONTENT_DRAFT_SHAPE =
-  'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"],"targetChannels":["threads","shortform"],"primaryAngle":"","keyMessage":""},"assignmentId":null}';
+  'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"],"targetChannels":["threads","shortform"],"primaryAngle":"","keyMessage":"","hook":"","outline":[],"ctaStrategy":"","targetAudience":"","proposition":{"contract":"content-proposition-v1","primaryAudience":"","audienceProblem":"","audienceTension":"","whyNow":null,"contentPromise":"","readerGain":"","specificTakeaways":[],"proofRequirements":[],"contentGapUsed":"","engagementMechanism":"save_worthy_checklist","desiredAudienceAction":"save","angle":"","keyMessage":"","commercialIntent":"informational","propositionStrength":"usable","limitations":[]}},"assignmentId":null}';
+
+const PROPOSITION_RULES = [
+  "ContentProposition (content-proposition-v1) is REQUIRED inside contentPlan.proposition.",
+  "Do NOT merely summarize ACRB. Decide what useful content should actually be made.",
+  "Angle = editorial lens. ContentProposition = concrete value delivered through that lens.",
+  "Forbidden as core value: '관측됨', '참고하면 좋다', '도움이 될 수 있다', '유용한 정보를 제공한다', '관련 정보를 정리한다'.",
+  "primaryAudience: specific supported segment from ACRB audience.primary (not generic Korean travelers).",
+  "audienceProblem: one concrete decision problem (not '여행 준비가 어렵다').",
+  "audienceTension: decision-relevant tradeoff from anxieties/decisionTriggers.",
+  "whyNow: only from real seasonality/promotion/decision-window signals; null if none. Never invent urgency (좌석 마감 etc.).",
+  "contentPromise: what the content helps the reader understand/do (concrete).",
+  "readerGain: what remains after reading (checklist/criteria/questions) — not abstract '도움이 된다'.",
+  "specificTakeaways: 2–5 when evidence allows; practical checks/rules/questions. Do NOT invent operational facts.",
+  "proofRequirements: declare what must be evidenced before claiming specifics (flight/inclusions/price/boarding).",
+  "contentGapUsed: which ACRB content gap this piece exploits (plain language).",
+  "engagementMechanism: why someone would save/comment/share (checklist, decision aid, etc.) — not just 'add CTA'.",
+  "desiredAudienceAction: save|compare|verify|comment|ask|click|consult|shortlist.",
+  "propositionStrength: strong|usable|weak|insufficient. If research cannot support useful takeaways without invention → insufficient/weak. Do NOT polish a fake strong plan.",
+  "outline: derive from proposition (not generic Context/Facts/CTA template).",
+  "hook: connect audience tension + content promise; no unsupported urgency.",
+  "ctaStrategy: derive from desiredAudienceAction.",
+  "Preserve epistemic status: verified_fact vs observed_signal vs inference/hypothesis — never promote soft research to hard fact.",
+].join("\n");
+
+function formatAcrbStrategyBrief(
+  acrb: NonNullable<ContentDraftRequest["audienceContentResearchBrief"]>,
+): string {
+  const recommended =
+    acrb.contentAngles.find((a) => a.angleId === acrb.recommendedAngleId) ?? acrb.contentAngles[0] ?? null;
+  return [
+    "ACRB_STRATEGY_BRIEF (consume these fields explicitly for ContentProposition):",
+    `topicIdentity: ${JSON.stringify(acrb.topicIdentity ?? null)}`,
+    `researchVerdict=${acrb.researchVerdict}; researchStatus=${acrb.researchStatus}; sourceCoverage.externalWebSearch=${acrb.sourceCoverage.externalWebSearch}`,
+    `audience.primary: ${acrb.audience.primary.map((x) => x.text).slice(0, 3).join(" | ")}`,
+    `motivations: ${acrb.audience.motivations.map((x) => x.text).slice(0, 3).join(" | ")}`,
+    `anxieties: ${acrb.audience.anxieties.map((x) => x.text).slice(0, 4).join(" | ")}`,
+    `objections: ${acrb.audience.objections.map((x) => x.text).slice(0, 3).join(" | ")}`,
+    `decisionTriggers: ${acrb.audience.decisionTriggers.map((x) => x.text).slice(0, 3).join(" | ")}`,
+    `searchIntent: ${acrb.searchIntent.primaryIntent}; questions=${acrb.searchIntent.questions
+      .slice(0, 5)
+      .map((q) => q.text)
+      .join(" | ")}`,
+    `contentGaps: ${acrb.marketSignals.contentGaps.map((x) => x.text).slice(0, 4).join(" | ")}`,
+    `saturatedAngles: ${acrb.marketSignals.saturatedAngles.map((x) => x.text).slice(0, 2).join(" | ")}`,
+    `recommendedAngle: ${recommended?.angle ?? "none"} | tension=${recommended?.audienceTension ?? ""} | evidenceStrength=${recommended?.evidenceStrength ?? ""}`,
+    `limitations: ${acrb.limitations.slice(0, 6).join(" | ")}`,
+    `findingTypes: ${acrb.researchFindings
+      .slice(0, 6)
+      .map((f) => `${f.type}:${f.text.slice(0, 60)}`)
+      .join(" || ")}`,
+  ].join("\n");
+}
 
 const GROUNDING_RULES = [
   "Grounding rules:",
@@ -296,25 +354,51 @@ const GROUNDING_RULES = [
 export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
   const supplied = collectSuppliedEvidenceRefs(payload);
   const acrb = payload.audienceContentResearchBrief;
+  const identity =
+    payload.agendaTopicIdentity ??
+    acrb?.topicIdentity ??
+    null;
   const recommendedAngle = acrb
     ? acrb.contentAngles.find((a) => a.angleId === acrb.recommendedAngleId) ?? acrb.contentAngles[0]
     : null;
+  const rejectedAngles = (acrb?.identityDiagnostics ?? [])
+    .filter((d) => d.stage.includes("synthesis") || d.stage.includes("skeleton"))
+    .map((d) => d.rejectedText)
+    .filter(Boolean)
+    .slice(0, 5);
   return [
-    "JSON only. ContentAssignment/ContentDraftRequest를 근거로 contentPlan + Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마. Do not re-select the manager agenda.",
+    "JSON only. ContentAssignment/ContentDraftRequest를 근거로 contentPlan (with ContentProposition) + Threads 초안. 없는 혜택/일정 만들지 마. 게시하지 마. Cron 만들지 마. Do not re-select the manager agenda.",
+    PROPOSITION_RULES,
+    identity
+      ? [
+          "AgendaTopicIdentity is AUTHORITATIVE for destination / product type / travel mode / principal subject.",
+          `Identity summary: ${JSON.stringify({
+            origin: identity.originEntities,
+            destination: identity.destinationEntities,
+            productTypes: identity.productTypes,
+            travelModes: identity.travelModes,
+            seasonality: identity.campaignSeasonality,
+            topicEntities: identity.topicEntities,
+          })}`,
+          "You may refine the angle and audience framing, but MUST NOT silently change destination, travel product type, travel mode, or principal commercial subject without evidence.",
+          "Do NOT reuse contaminated/rejected ACRB angles (especially cross-product cruise/package drift).",
+          rejectedAngles.length
+            ? `Rejected contaminated angle texts (do not reuse): ${rejectedAngles.join(" || ")}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      : null,
+    acrb ? formatAcrbStrategyBrief(acrb) : null,
     acrb
       ? [
-          "AudienceContentResearchBrief (RA-1) is already done — confirm/override recommended angle, set keyMessage/formats/tone/targetChannels.",
+          "AudienceContentResearchBrief (RA-1) is already done — build ContentProposition, then confirm angle/keyMessage/formats/tone/targetChannels.",
           "Do NOT repeat broad research. Do NOT invent facts. inference/hypothesis must not become hard factual copy.",
           "Persist contentPlan.targetChannels using ACRB.channelFit + searchIntent + commercialIntent + format suitability.",
           "Baseline usually includes threads+shortform. Add naver_blog for deep planning/search questions, naver_band for community/family discussion, kakao_channel for consultation/offer when fit supports it.",
           "Do NOT select every channel by default.",
-          `Recommended angle: ${recommendedAngle?.angle ?? acrb.recommendedAngleId ?? "none"} / verdict=${acrb.researchVerdict}`,
+          `Recommended angle seed: ${recommendedAngle?.angle ?? acrb.recommendedAngleId ?? "none"} / verdict=${acrb.researchVerdict}`,
           `channelFit: ${JSON.stringify(recommendedAngle?.channelFit ?? null)}`,
-          `searchIntent: ${acrb.searchIntent.primaryIntent}; questions=${acrb.searchIntent.questions
-            .slice(0, 4)
-            .map((q) => q.text)
-            .join(" | ")}`,
-          `Limitations: ${acrb.limitations.slice(0, 5).join(" | ")}`,
         ].join(" ")
       : null,
     formatDeliverableRequirementsSection(payload.deliverableRequirements),
@@ -378,6 +462,96 @@ export function buildContentDraftGroundingRepairPrompt(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+export function buildContentDraftTopicIdentityRepairPrompt(
+  payload: ContentDraftRequest,
+  reasons: string[],
+): string {
+  const supplied = collectSuppliedEvidenceRefs(payload);
+  const identity =
+    payload.agendaTopicIdentity ?? payload.audienceContentResearchBrief?.topicIdentity ?? null;
+  return [
+    "JSON only. Your previous Content Strategist response violated AgendaTopicIdentity and/or ContentProposition contract.",
+    `Violations: ${reasons.slice(0, 10).join(" | ")}`,
+    identity
+      ? `Authoritative identity: ${JSON.stringify({
+          origin: identity.originEntities,
+          destination: identity.destinationEntities,
+          productTypes: identity.productTypes,
+          travelModes: identity.travelModes,
+          seasonality: identity.campaignSeasonality,
+        })}`
+      : null,
+    PROPOSITION_RULES,
+    "Return the COMPLETE JSON object again. Keep grounded facts.",
+    "Rewrite primaryAngle / keyMessage / title / contentPlan.proposition so they do NOT change destination/product type/travel mode, and so proposition fields are specific (promise, readerGain, takeaways, engagement).",
+    "If research cannot support useful takeaways without inventing facts, set propositionStrength=insufficient and list limitations — do NOT invent 3 fake tips.",
+    "No markdown fences. No prose before or after.",
+    formatDeliverableRequirementsSection(payload.deliverableRequirements),
+    formatEvidencePackSection(payload.evidencePack),
+    formatAvailableEvidenceSection(supplied),
+    GROUNDING_RULES,
+    JSON.stringify(payload),
+    CONTENT_DRAFT_SHAPE,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function resolvePayloadTopicIdentity(payload: ContentDraftRequest) {
+  return payload.agendaTopicIdentity ?? payload.audienceContentResearchBrief?.topicIdentity ?? null;
+}
+
+function assertOrNullIdentity(
+  output: ContentStrategistOutput,
+  payload: ContentDraftRequest,
+): ReturnType<typeof validateContentStrategistAgainstTopicIdentity> {
+  const identity = resolvePayloadTopicIdentity(payload);
+  if (!identity) return { ok: true };
+  return validateContentStrategistAgainstTopicIdentity({
+    output,
+    identity,
+    agendaId: payload.selectedAgenda?.id ?? payload.audienceContentResearchBrief?.selectedAgendaId ?? null,
+    candidateId: payload.audienceContentResearchBrief?.provenance.agendaCandidateId ?? null,
+  });
+}
+
+function assertProposition(
+  output: ContentStrategistOutput,
+  payload: ContentDraftRequest,
+): { ok: true } | { ok: false; reasons: string[]; error: ContentStrategistPropositionError } {
+  const identity = resolvePayloadTopicIdentity(payload);
+  const prop = output.contentPlan?.proposition ?? null;
+  // Scaffold-only / no ACRB paths may omit proposition — require when ACRB present.
+  if (!payload.audienceContentResearchBrief && !prop) {
+    return { ok: true };
+  }
+  const result = validateContentProposition(prop, { identity });
+  if (result.ok) {
+    // Persist effective strength downgrade if validator softened it.
+    if (prop && result.effectiveStrength !== prop.propositionStrength && output.contentPlan) {
+      output.contentPlan.proposition = {
+        ...prop,
+        propositionStrength: result.effectiveStrength,
+        limitations: [
+          ...prop.limitations,
+          `strength_downgraded_to_${result.effectiveStrength}`,
+        ].slice(0, 12),
+      };
+    }
+    return { ok: true };
+  }
+  const reasons = result.issues.map((i) => `${i.field}:${i.code}:${i.message}`);
+  return {
+    ok: false,
+    reasons,
+    error: new ContentStrategistPropositionError(
+      reasons.join("; "),
+      result.issues,
+      result.effectiveStrength,
+    ),
+  };
 }
 
 export function buildGovernanceReviewPrompt(
@@ -658,7 +832,8 @@ function semanticErrorMessage(error: Error): string {
  * Invoke CS raw → parse, with at most one bounded repair:
  * - format/JSON failure → format repair
  * - evidence_refs_absent/empty + supplied evidence → grounding repair
- * Never both. Max invocations = CONTENT_STRATEGIST_MAX_MODEL_INVOCATIONS (2).
+ * - topic identity violation on otherwise-valid JSON → identity repair
+ * Never both format+grounding. Max invocations = CONTENT_STRATEGIST_MAX_MODEL_INVOCATIONS (2).
  * Runtime/gateway stdout failures do not retry.
  */
 export async function requestContentStrategistDraftWithFormatRetry(input: {
@@ -672,23 +847,117 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
   const suppliedCount = supplied.length;
   const parseOpts: ParseContentStrategistOptions = { suppliedEvidenceRefs: supplied };
 
+  const finishOk = async (
+    output: ContentStrategistOutput,
+    base: {
+      attemptCount: number;
+      firstAttemptFailureClass: string | null;
+      finalParseMode: ContentStrategistParseDiagnostics["finalParseMode"];
+      stdoutLength: number;
+      formatRetryUsed: boolean;
+      groundingRetryUsed: boolean;
+      groundingFailureClass?: ContentStrategistGroundingFailureClass | null;
+    },
+    allowStrategyRepair: boolean,
+  ): Promise<{
+    output: ContentStrategistOutput;
+    diagnostics: ContentStrategistParseDiagnostics;
+  }> => {
+    const identityCheck = assertOrNullIdentity(output, input.payload);
+    const propositionCheck = assertProposition(output, input.payload);
+
+    if (identityCheck.ok && propositionCheck.ok) {
+      return {
+        output,
+        diagnostics: buildDiagnostics({
+          ...base,
+          contentPlan: output.contentPlan,
+          suppliedEvidenceRefCount: suppliedCount,
+        }),
+      };
+    }
+
+    const repairReasons = [
+      ...(!identityCheck.ok ? identityCheck.reasons : []),
+      ...(!propositionCheck.ok ? propositionCheck.reasons : []),
+    ];
+
+    if (!allowStrategyRepair) {
+      if (!identityCheck.ok) {
+        throw new ContentStrategistTopicIdentityError(
+          identityCheck.reasons.join("; "),
+          identityCheck.diagnostics,
+        );
+      }
+      if (!propositionCheck.ok) {
+        throw propositionCheck.error;
+      }
+      throw new Error("content strategist strategy validation failed");
+    }
+
+    const rawRepair = await input.invoke(
+      buildContentDraftTopicIdentityRepairPrompt(input.payload, repairReasons),
+    );
+    const repaired = parseContentStrategistOutputDetailed(rawRepair, parseOpts);
+    if (!repaired.ok) {
+      if (!identityCheck.ok) {
+        throw new ContentStrategistTopicIdentityError(
+          `strategy_repair_failed:${repairReasons.join("; ")}`,
+          identityCheck.diagnostics,
+        );
+      }
+      throw new ContentStrategistPropositionError(
+        `strategy_repair_failed:${repairReasons.join("; ")}`,
+        propositionCheck.ok ? [] : propositionCheck.error.issues,
+        propositionCheck.ok ? "weak" : propositionCheck.error.effectiveStrength,
+      );
+    }
+
+    const secondIdentity = assertOrNullIdentity(repaired.output, input.payload);
+    if (!secondIdentity.ok) {
+      throw new ContentStrategistTopicIdentityError(
+        secondIdentity.reasons.join("; "),
+        secondIdentity.diagnostics,
+      );
+    }
+    const secondProposition = assertProposition(repaired.output, input.payload);
+    if (!secondProposition.ok) {
+      throw secondProposition.error;
+    }
+
+    return {
+      output: repaired.output,
+      diagnostics: buildDiagnostics({
+        attemptCount: base.attemptCount + 1,
+        firstAttemptFailureClass:
+          base.firstAttemptFailureClass ??
+          (!identityCheck.ok ? "topic_identity_violation" : "content_proposition_violation"),
+        finalParseMode: "format_retry",
+        stdoutLength: repaired.stdoutLength,
+        formatRetryUsed: base.formatRetryUsed,
+        groundingRetryUsed: base.groundingRetryUsed,
+        contentPlan: repaired.output.contentPlan,
+        suppliedEvidenceRefCount: suppliedCount,
+      }),
+    };
+  };
+
   const raw1 = await input.invoke(buildContentDraftPrompt(input.payload));
   const first = parseContentStrategistOutputDetailed(raw1, parseOpts);
 
   if (first.ok) {
-    return {
-      output: first.output,
-      diagnostics: buildDiagnostics({
+    return finishOk(
+      first.output,
+      {
         attemptCount: 1,
         firstAttemptFailureClass: null,
         finalParseMode: first.extractMode,
         stdoutLength: first.stdoutLength,
         formatRetryUsed: false,
         groundingRetryUsed: false,
-        contentPlan: first.output.contentPlan,
-        suppliedEvidenceRefCount: suppliedCount,
-      }),
-    };
+      },
+      true,
+    );
   }
 
   if (first.kind === "runtime") {
@@ -724,9 +993,9 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
     const second = parseContentStrategistOutputDetailed(raw2, parseOpts);
 
     if (second.ok) {
-      return {
-        output: second.output,
-        diagnostics: buildDiagnostics({
+      return finishOk(
+        second.output,
+        {
           attemptCount: 2,
           firstAttemptFailureClass: groundingClass,
           groundingFailureClass: groundingClass,
@@ -734,10 +1003,9 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
           stdoutLength: second.stdoutLength,
           formatRetryUsed: false,
           groundingRetryUsed: true,
-          contentPlan: second.output.contentPlan,
-          suppliedEvidenceRefCount: suppliedCount,
-        }),
-      };
+        },
+        false,
+      );
     }
 
     if (second.kind === "runtime") {
@@ -791,19 +1059,18 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
   const second = parseContentStrategistOutputDetailed(raw2, parseOpts);
 
   if (second.ok) {
-    return {
-      output: second.output,
-      diagnostics: buildDiagnostics({
+    return finishOk(
+      second.output,
+      {
         attemptCount: 2,
         firstAttemptFailureClass: first.failureClass,
         finalParseMode: "format_retry",
         stdoutLength: second.stdoutLength,
         formatRetryUsed: true,
         groundingRetryUsed: false,
-        contentPlan: second.output.contentPlan,
-        suppliedEvidenceRefCount: suppliedCount,
-      }),
-    };
+      },
+      false,
+    );
   }
 
   if (second.kind === "runtime") {

@@ -7,30 +7,35 @@
 import type { MediaBrief, ShortformNarrationSegment } from "@/lib/marketing/assets/contracts";
 import { parseMediaBrief } from "@/lib/marketing/assets/parse";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
 
 export function applyPublishableContentToMediaBrief(
   mediaBrief: MediaBrief,
   bundle: PublishableContentBundle,
 ): MediaBrief {
-  const narrationSegments: ShortformNarrationSegment[] = (
-    bundle.shortform.narrationSegments ?? []
-  ).map((seg) => ({
-    segmentId: seg.segmentId,
-    narrationText: seg.narrationText,
-    subtitleText: seg.subtitleText,
-    purpose: seg.purpose,
-    visualIntent: seg.visualIntent,
-    evidenceRefs: seg.evidenceRefs.slice(0, 8),
-  }));
+  const shortformOk = channelCountsAsPublishableSuccess(bundle.shortform);
+  const threadsBody = bundle.threads.body?.trim() ? bundle.threads.body : mediaBrief.formats.text.body;
+  const threadsTitle = bundle.threads.title ?? mediaBrief.formats.text.title;
+
+  const narrationSegments: ShortformNarrationSegment[] = shortformOk
+    ? (bundle.shortform.narrationSegments ?? []).map((seg) => ({
+        segmentId: seg.segmentId,
+        narrationText: seg.narrationText,
+        subtitleText: seg.subtitleText,
+        purpose: seg.purpose,
+        visualIntent: seg.visualIntent,
+        evidenceRefs: seg.evidenceRefs.slice(0, 8),
+      }))
+    : [];
 
   return parseMediaBrief({
     ...mediaBrief,
     formats: {
       ...mediaBrief.formats,
       text: {
-        enabled: Boolean(bundle.threads.title || bundle.threads.body),
-        title: bundle.threads.title,
-        body: bundle.threads.body,
+        enabled: Boolean(threadsTitle || threadsBody),
+        title: threadsTitle,
+        body: threadsBody,
       },
       shortform: {
         ...mediaBrief.formats.shortform,

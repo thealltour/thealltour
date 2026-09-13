@@ -10,6 +10,8 @@ export type ContentDraftRequest = {
   brief: unknown;
   /** Post-selection Audience & Content Research Brief — not pre-selection ResearchBrief. */
   audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
+  /** MQ-1: durable agenda topic identity (also mirrored on ACRB.topicIdentity). */
+  agendaTopicIdentity?: import("@/lib/marketing/audienceResearch/topicIdentity/contracts").AgendaTopicIdentity | null;
   constraints: string[];
   memoryReferences: string[];
   contentAssignmentId?: string | null;

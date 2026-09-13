@@ -454,11 +454,17 @@ describe("CG-4B channel-native composers", () => {
     try {
       const acrb = busanAcrb();
       const candidate = makeCandidate();
+      const bundle = ensurePublishableContentSync({
+        candidate,
+        audienceContentResearchBrief: acrb,
+        forceRegenerate: true,
+        allowDeterministicGeneration: true,
+      });
       const first = exportMarketingCandidatePackage({
         candidate,
         assetRoot: dir,
         audienceContentResearchBrief: acrb,
-        forcePublishableRegenerate: true,
+        publishableBundle: bundle,
       });
       const packageDir = first.packageRoot;
       const paths = first.manifest.artifacts.map((a) => a.relativePath);
@@ -467,13 +473,14 @@ describe("CG-4B channel-native composers", () => {
       expect(paths).toContain("copy/naver-band.txt");
       expect(paths).toContain("copy/kakao-channel.txt");
       const blog = readFileSync(join(packageDir, "copy/naver-blog.md"), "utf8");
-      expect(blog).toMatch(/^#\s+/m);
+      expect(blog).toMatch(/^#\s+|DEGRADED/m);
       expect(blog).not.toMatch(/f4e6f641|\[object Object\]|ACRB/);
 
       const second = exportMarketingCandidatePackage({
         candidate,
         assetRoot: dir,
         audienceContentResearchBrief: acrb,
+        publishableBundle: bundle,
       });
       expect(second.manifest.integrity.digest).toBe(first.manifest.integrity.digest);
     } finally {

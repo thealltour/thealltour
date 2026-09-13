@@ -1,6 +1,13 @@
 /**
- * Synchronous ensure — deterministic composers only (export / MediaBrief path).
- * Does not invoke LLM or external research.
+ * Synchronous ensure — DETERMINISTIC / DIAGNOSTIC ONLY.
+ *
+ * MQ-4: Production must use async `ensurePublishableContent` + PublishableLlmInvoke.
+ * This sync helper remains for:
+ *   - unit tests
+ *   - continuity when explicitly allowed
+ *   - reading persisted bundles without LLM
+ *
+ * Fallback output always has publishableSuccess=false.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -56,6 +63,7 @@ function threadsFromHuman(
   nowIso: string,
 ): PublishableChannelContent {
   const body = stripEvidenceIdsFromText(draft.body);
+  const validation = validatePublishableText(body);
   return {
     contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
     channel: "threads",
@@ -70,8 +78,31 @@ function threadsFromHuman(
       composer: "human",
       evidenceRefIds: candidate.contentAssignment.facts.flatMap((f) => f.evidenceRefs).slice(0, 12),
       commercialIntent: candidate.contentAssignment.commercialIntent,
+      generationMode: "human",
+      attemptCount: 0,
     },
-    validation: validatePublishableText(body),
+    validation,
+    publishableSuccess: validation.ok,
+    needsRegeneration: !validation.ok,
+  };
+}
+
+function markFallback(
+  content: Omit<PublishableChannelContent, "publishableSuccess" | "needsRegeneration"> &
+    Partial<Pick<PublishableChannelContent, "publishableSuccess" | "needsRegeneration">>,
+): PublishableChannelContent {
+  return {
+    ...content,
+    publishableSuccess: false,
+    needsRegeneration: true,
+    provenance: {
+      ...content.provenance,
+      generationMode: content.provenance.generationMode ?? "fallback",
+      failureCategory: content.provenance.failureCategory ?? "invoke_missing",
+      failureMessage:
+        content.provenance.failureMessage ??
+        "deterministic sync path — not production publishable success",
+    },
   };
 }
 
@@ -81,7 +112,7 @@ function shortformContent(
   nowIso: string,
 ): PublishableChannelContent {
   const det = composeShortformNarrationDeterministic(composerInput);
-  return {
+  return markFallback({
     contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
     channel: "shortform",
     format: "short_video_narration",
@@ -98,7 +129,7 @@ function shortformContent(
     },
     validation: validatePublishableText(det.body),
     narrationSegments: det.segments,
-  };
+  });
 }
 
 function wrapChannel(
@@ -108,7 +139,7 @@ function wrapChannel(
   composerInput: ReturnType<typeof buildPublishableComposerInput>,
   nowIso: string,
 ): PublishableChannelContent {
-  return {
+  return markFallback({
     contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
     channel,
     format,
@@ -132,7 +163,7 @@ function wrapChannel(
       allowHeadings: channel === "naver_blog",
     }),
     blogMeta: det.blogMeta,
-  };
+  });
 }
 
 export function ensurePublishableContentSync(input: {
@@ -145,6 +176,13 @@ export function ensurePublishableContentSync(input: {
   now?: Date;
   audienceContentResearchBrief?: AudienceContentResearchBrief | null;
   explicitTargetChannels?: PublishableChannel[] | null;
+  /**
+   * MQ-4 — production callers must pass false.
+   * When false: only reuse persisted LLM/human artifacts; never invent new deterministic
+   * "publishable" copy (may return existing or incomplete bundle without regenerating).
+   * Default true for unit-test / diagnostic continuity.
+   */
+  allowDeterministicGeneration?: boolean;
 }): PublishableContentBundle {
   const nowIso = (input.now ?? new Date()).toISOString();
   const acrb = input.audienceContentResearchBrief ?? null;
@@ -155,6 +193,7 @@ export function ensurePublishableContentSync(input: {
     explicitTargetChannels: input.explicitTargetChannels,
   });
   const targetChannels = composerInput.targetChannels;
+  const allowDet = input.allowDeterministicGeneration !== false;
 
   const humanOwns =
     Boolean(input.humanEditedAfterGovernance) &&
@@ -181,6 +220,64 @@ export function ensurePublishableContentSync(input: {
     return existing;
   }
 
+  // Production-safe: reuse prior revision when deterministic generation is disallowed.
+  if (!allowDet) {
+    if (existing && existing.candidateId === input.candidate.candidateId) {
+      if (humanOwns && input.humanDraft) {
+        return {
+          ...existing,
+          targetChannels: existing.targetChannels ?? targetChannels,
+          sourceRevision,
+          generatedAt: nowIso,
+          threads: threadsFromHuman(input.candidate, input.humanDraft, sourceRevision, nowIso),
+        };
+      }
+      return {
+        ...existing,
+        targetChannels: existing.targetChannels ?? targetChannels,
+        sourceRevision: existing.sourceRevision,
+        generatedAt: nowIso,
+      };
+    }
+    const failed = (channel: PublishableChannel, format: PublishableChannelContent["format"]) =>
+      markFallback({
+        contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
+        channel,
+        format,
+        title: null,
+        body: "[awaiting LLM channel generation]",
+        status: "generation_failed",
+        generatedAt: nowIso,
+        sourceCandidateId: input.candidate.candidateId,
+        sourceRevision,
+        provenance: {
+          composer: "deterministic_fallback",
+          evidenceRefIds: composerInput.evidenceRefIds,
+          commercialIntent: composerInput.commercialIntent,
+          failureCategory: "invoke_missing",
+          failureMessage:
+            "sync path without allowDeterministicGeneration — generation required via ensurePublishableContent",
+        },
+        validation: {
+          ok: false,
+          issues: [{ code: "empty_body", message: "awaiting LLM generation" }],
+        },
+      });
+    return {
+      contract: PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
+      candidateId: input.candidate.candidateId,
+      businessDateKst: input.candidate.businessDateKst,
+      generatedAt: nowIso,
+      sourceRevision,
+      targetChannels,
+      threads:
+        humanOwns && input.humanDraft
+          ? threadsFromHuman(input.candidate, input.humanDraft, sourceRevision, nowIso)
+          : failed("threads", "threads_text"),
+      shortform: failed("shortform", "short_video_narration"),
+    };
+  }
+
   const forceAll = Boolean(input.forceRegenerate && !input.forceRegenerateChannels?.length);
   const forceSet = new Set(input.forceRegenerateChannels ?? []);
 
@@ -201,7 +298,7 @@ export function ensurePublishableContentSync(input: {
         ? existing.threads
         : (() => {
             const det = composeThreadsPublishableDeterministic(composerInput);
-            return {
+            return markFallback({
               contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
               channel: "threads" as const,
               format: "threads_text" as const,
@@ -217,7 +314,7 @@ export function ensurePublishableContentSync(input: {
                 commercialIntent: composerInput.commercialIntent,
               },
               validation: validatePublishableText(det.body),
-            };
+            });
           })();
 
   const bundle: PublishableContentBundle = {

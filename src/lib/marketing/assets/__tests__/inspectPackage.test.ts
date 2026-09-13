@@ -2,8 +2,10 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import JSZip from "jszip";
 
 import {
+  buildMarketingAssetPackageZip,
   exportMarketingCandidatePackage,
   inspectMarketingAssetPackage,
   readMarketingAssetPackageFile,
@@ -142,5 +144,45 @@ describe("readMarketingAssetPackageFile", () => {
         env: { MARKETING_ASSET_ROOT: root },
       }),
     ).toThrow(/artifact not found/);
+  });
+});
+
+describe("buildMarketingAssetPackageZip", () => {
+  it("zips package artifacts including manifest.json", async () => {
+    const root = tempRoot();
+    exportMarketingCandidatePackage({
+      candidate: buildTestCandidate(),
+      assetRoot: root,
+      now: NOW,
+    });
+
+    const built = await buildMarketingAssetPackageZip({
+      candidateId: CANDIDATE_ID,
+      businessDateKst: BUSINESS_DATE,
+      env: { MARKETING_ASSET_ROOT: root },
+    });
+
+    expect(built.zipFileName).toMatch(/\.zip$/);
+    expect(built.entryCount).toBeGreaterThan(1);
+    expect(built.byteSize).toBe(built.bytes.byteLength);
+
+    const zip = await JSZip.loadAsync(built.bytes);
+    const names = Object.keys(zip.files).filter((name) => !zip.files[name]?.dir);
+    expect(names).toContain("manifest.json");
+    expect(names).toContain("copy/post.txt");
+
+    const post = await zip.file("copy/post.txt")!.async("string");
+    expect(post.trim().length).toBeGreaterThan(0);
+  });
+
+  it("throws when package is missing", async () => {
+    const root = tempRoot();
+    await expect(
+      buildMarketingAssetPackageZip({
+        candidateId: CANDIDATE_ID,
+        businessDateKst: BUSINESS_DATE,
+        env: { MARKETING_ASSET_ROOT: root },
+      }),
+    ).rejects.toThrow(/package not found/);
   });
 });

@@ -71,6 +71,44 @@ export function createAudienceResearchInvoke(
   return async (prompt: string) => invokeHermes("content-strategist", prompt);
 }
 
+/**
+ * MQ-4 — production PublishableLlmInvoke for channel-native composers.
+ * Reuses content-strategist Hermes/Runtime transport (structured JSON). No web search.
+ */
+export const PUBLISHABLE_COMPOSER_MODEL_PROFILE = "content-strategist" as const;
+
+export function createPublishableComposerInvoke(
+  options: MarketingPlanPipelineDispatchOptions,
+): ((prompt: string) => Promise<string>) | null {
+  if (options.useRuntime) {
+    if (!options.executor) return null;
+    const executor = options.executor;
+    const now = options.now ?? (() => new Date());
+    const timeoutMs = options.completionTimeoutMs;
+    return async (prompt: string) => {
+      const request = createCronRuntimeRequest(
+        {
+          agentId: PUBLISHABLE_COMPOSER_MODEL_PROFILE,
+          workload: "content_draft",
+          priority: "background",
+          messages: [{ role: "user", content: prompt }],
+          correlationId: options.correlationId,
+          cronJobId: MARKETING_CRON_JOB_ID,
+          departmentId: MARKETING_DEPARTMENT_ID,
+          routing: { requiresStructuredOutput: true },
+        },
+        { now },
+      );
+      const result = await executor.executeAndWait(request, { timeoutMs, now });
+      return assertRuntimeContent(result);
+    };
+  }
+
+  const invokeHermes = options.invokeHermesProfile;
+  if (!invokeHermes) return null;
+  return async (prompt: string) => invokeHermes(PUBLISHABLE_COMPOSER_MODEL_PROFILE, prompt);
+}
+
 export type MarketingPlanPipelineDispatchOptions = {
   useRuntime: boolean;
   correlationId: string;

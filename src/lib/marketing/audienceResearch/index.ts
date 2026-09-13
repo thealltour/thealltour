@@ -37,6 +37,13 @@ export { synthesizeAudienceContentResearch } from "@/lib/marketing/audienceResea
 export { buildDeterministicAcrb } from "@/lib/marketing/audienceResearch/deterministicSkeleton";
 export { gatherAcrbInputs } from "@/lib/marketing/audienceResearch/gatherInputs";
 export { runBoundedExternalResearch } from "@/lib/marketing/audienceResearch/external/runExternalResearch";
+export {
+  EXTERNAL_SEARCH_PER_QUERY_TIMEOUT_MS,
+  EXTERNAL_RESEARCH_OVERALL_BUDGET_MS,
+  EXTERNAL_SAFE_FETCH_TIMEOUT_MS,
+  EXTERNAL_SEARCH_CONCURRENCY,
+  EXTERNAL_SEARCH_MAX_PAID_REQUESTS,
+} from "@/lib/marketing/audienceResearch/external/researchPolicy";
 export { createResearchSearchProvider } from "@/lib/marketing/audienceResearch/external/createSearchProvider";
 export {
   createGeminiGoogleSearchProvider,
@@ -72,3 +79,5 @@ export {
   AUDIENCE_CONTENT_RESEARCH_BRIEF_RELATIVE_PATH,
   AUDIENCE_CONTENT_RESEARCH_BRIEF_MEDIA_TYPE,
 } from "@/lib/marketing/audienceResearch/paths";
+
+export * from "@/lib/marketing/audienceResearch/topicIdentity";

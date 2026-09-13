@@ -6,7 +6,6 @@ import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import { AI_MARKETING_TEAM_NAV } from "@/lib/adminNav/aiMarketingTeam";
 import type { DailyMarketingOperatingCycle } from "@/lib/marketing/operations/types";
-import type { MorningReviewQueueSummary } from "@/lib/marketing/review/morningReview/types";
 import { cn } from "@/lib/cn";
 
 export type AiMarketingHubSnapshot = {
@@ -167,20 +166,4 @@ export function AiMarketingHubPageBody({ snapshot }: Props) {
       </div>
     </div>
   );
-}
-
-/** Helper for server page to shape morning queue into hub fields. */
-export function hubFieldsFromReviewQueue(queue: MorningReviewQueueSummary | null): {
-  reviewPendingCount: number | null;
-  todayCandidateTitle: string | null;
-  todayCandidateId: string | null;
-} {
-  if (!queue) {
-    return { reviewPendingCount: null, todayCandidateTitle: null, todayCandidateId: null };
-  }
-  return {
-    reviewPendingCount: queue.pendingCount,
-    todayCandidateTitle: queue.todayCandidate?.title ?? null,
-    todayCandidateId: queue.todayCandidate?.candidateId ?? null,
-  };
 }

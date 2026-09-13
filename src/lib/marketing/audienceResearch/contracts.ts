@@ -138,6 +138,7 @@ export type AcrbProvenance = {
   evidenceFingerprint: string;
   synthesisMode: "llm" | "deterministic_fallback" | "reused";
   documentCount: number;
+  /** Attempted external search query count (MQ-2: not usable-only). */
   queryCount: number;
   semanticUsed: boolean;
   historicalMatchCount: number;
@@ -150,6 +151,16 @@ export type AcrbProvenance = {
   externalResearchRuntimeMs?: number;
   officialSourceCount?: number;
   socialCommunitySourceCount?: number;
+  /** MQ-2 additive external-research provenance */
+  plannedQueryCount?: number;
+  attemptedQueryCount?: number;
+  successfulQueryCount?: number;
+  failedQueryCount?: number;
+  retryCount?: number;
+  usableResultCount?: number;
+  searchRequestCount?: number;
+  externalSearchStatus?: import("@/lib/marketing/audienceResearch/external/researchPolicy").ExternalSearchStatus;
+  providerCredentialPresent?: boolean;
 };
 
 export type AudienceContentResearchBrief = {
@@ -173,6 +184,10 @@ export type AudienceContentResearchBrief = {
   verdictReasons: AcrbVerdictReasonCode[];
   limitations: string[];
   provenance: AcrbProvenance;
+  /** MQ-1 durable agenda topic identity — authoritative for angle/query guards. */
+  topicIdentity?: import("@/lib/marketing/audienceResearch/topicIdentity/contracts").AgendaTopicIdentity | null;
+  /** Lightweight identity-conflict diagnostics (no secrets / no prompts). */
+  identityDiagnostics?: import("@/lib/marketing/audienceResearch/topicIdentity/contracts").IdentityConflictDiagnostic[];
 };
 
 /** Compact pointer for export-context / candidate metadata. */

@@ -56,6 +56,8 @@ export type PublishableComposerInput = {
   evidenceRefIds: string[];
   research: PublishableResearchContext | null;
   targetChannels: PublishableChannel[];
+  /** MQ-3 — available for composers; not consumed by deterministic composers yet. */
+  contentProposition?: import("@/lib/marketing/content/proposition/contracts").ContentProposition | null;
 };
 
 function normalizeStatement(text: string): string {
@@ -71,6 +73,7 @@ export function computePublishableSourceRevision(
   humanDraft?: HumanReviewDraft | null,
   acrb?: AudienceContentResearchBrief | null,
 ): string {
+  const proposition = candidate.contentPlan?.proposition;
   const payload = {
     candidateId: candidate.candidateId,
     draftBody: candidate.draft.body,
@@ -78,6 +81,16 @@ export function computePublishableSourceRevision(
     planKey: candidate.contentPlan?.keyMessage ?? null,
     planHook: candidate.contentPlan?.hook ?? null,
     planChannels: candidate.contentPlan?.targetChannels ?? null,
+    planAngle: candidate.contentPlan?.primaryAngle ?? null,
+    proposition: proposition
+      ? {
+          strength: proposition.propositionStrength,
+          promise: proposition.contentPromise,
+          gain: proposition.readerGain,
+          takeaways: proposition.specificTakeaways,
+          angle: proposition.angle,
+        }
+      : null,
     facts: candidate.contentAssignment.facts.map((f) => [f.factId, f.statement, f.confidence]),
     unsupported: candidate.governanceDecision?.unsupportedClaims ?? [],
     decision: candidate.governanceDecision?.decision ?? null,
@@ -206,19 +219,21 @@ export function buildPublishableComposerInput(
     businessDateKst: candidate.businessDateKst,
     topic: candidate.contentAssignment.topic || candidate.selectedAgenda.title,
     audience:
+      candidate.contentPlan?.proposition?.primaryAudience ??
       research?.audiencePrimary[0] ??
       candidate.contentPlan?.targetAudience ??
       candidate.contentAssignment.audience ??
       null,
     commercialIntent: candidate.contentAssignment.commercialIntent,
     hookHint:
-      research?.selectedAngleTension ??
       candidate.contentPlan?.hook ??
+      research?.selectedAngleTension ??
       candidate.selectedAgenda.timelinessNote ??
       null,
     keyMessage:
-      research?.selectedAngle ??
+      candidate.contentPlan?.proposition?.contentPromise ??
       candidate.contentPlan?.keyMessage ??
+      research?.selectedAngle ??
       candidate.selectedAgenda.summary ??
       null,
     destinations,
@@ -231,5 +246,6 @@ export function buildPublishableComposerInput(
     evidenceRefIds,
     research,
     targetChannels,
+    contentProposition: candidate.contentPlan?.proposition ?? null,
   };
 }

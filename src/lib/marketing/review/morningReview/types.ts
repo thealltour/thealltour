@@ -122,6 +122,15 @@ export type MorningChannelReviewView = {
     primaryTopic?: string | null;
     searchIntent?: string | null;
   } | null;
+  /** MQ-5 — marketing usefulness (not Governance). */
+  marketingValue?: {
+    verdict: string;
+    overallScore: number;
+    reasons: string[];
+    improvementHints: string[];
+    stale?: boolean;
+    hardFail?: boolean;
+  } | null;
 };
 
 export type MorningResearchSummary = {

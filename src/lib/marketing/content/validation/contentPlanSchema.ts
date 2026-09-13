@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { CONTENT_PLAN_CONTRACT } from "@/lib/marketing/content/types";
+import { CONTENT_PROPOSITION_CONTRACT } from "@/lib/marketing/content/proposition/contracts";
 
 export const CONTENT_PLAN_MAX_FACTS = 16;
 export const CONTENT_PLAN_MAX_EVIDENCE = 16;
@@ -35,6 +36,43 @@ export const contentFormatRecommendationSchema = z.object({
 const stringArray = (maxItems: number, maxLen = CONTENT_PLAN_MAX_SHORT) =>
   z.array(boundedString(maxLen)).max(maxItems);
 
+const proofRequirementSchema = z.object({
+  claimArea: boundedString(160),
+  requiredProof: boundedString(240),
+  severity: z.enum(["must", "should", "nice"]).default("should"),
+});
+
+export const contentPropositionSchema = z.object({
+  contract: z.literal(CONTENT_PROPOSITION_CONTRACT).default(CONTENT_PROPOSITION_CONTRACT),
+  primaryAudience: boundedString(200),
+  audienceProblem: boundedString(280),
+  audienceTension: boundedString(320).default(""),
+  whyNow: boundedString(280).nullable().default(null),
+  contentPromise: boundedString(400),
+  readerGain: boundedString(400),
+  specificTakeaways: stringArray(5, 200).default([]),
+  proofRequirements: z.array(proofRequirementSchema).max(8).default([]),
+  contentGapUsed: boundedString(320).default(""),
+  engagementMechanism: boundedString(80),
+  desiredAudienceAction: boundedString(40),
+  angle: boundedString(280).default(""),
+  keyMessage: boundedString(280).default(""),
+  commercialIntent: boundedString(40).default("informational"),
+  channelIntentHints: z
+    .object({
+      threads: boundedString(120).optional(),
+      shortform: boundedString(120).optional(),
+      naver_blog: boundedString(120).optional(),
+      naver_band: boundedString(120).optional(),
+      kakao_channel: boundedString(120).optional(),
+    })
+    .nullable()
+    .optional()
+    .default(null),
+  propositionStrength: z.enum(["strong", "usable", "weak", "insufficient"]),
+  limitations: stringArray(12, 200).default([]),
+});
+
 /** Canonical runtime ContentPlan — all fields required after successful validation. */
 export const contentPlanCanonicalSchema = z.object({
   contract: z.literal(CONTENT_PLAN_CONTRACT),
@@ -59,6 +97,7 @@ export const contentPlanCanonicalSchema = z.object({
   requiredAssets: stringArray(12),
   riskNotes: stringArray(12),
   draftInstructions: stringArray(12),
+  proposition: contentPropositionSchema.optional().nullable(),
 });
 
 /**
@@ -89,6 +128,7 @@ export const contentPlanProviderSchema = z
     requiredAssets: stringArray(12).optional(),
     riskNotes: stringArray(12).optional(),
     draftInstructions: stringArray(12).optional(),
+    proposition: contentPropositionSchema.optional().nullable(),
   })
   .strict();
 

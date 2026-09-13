@@ -72,6 +72,10 @@ export {
   type MarketingAssetPackageInspection,
   type MarketingAssetPackageFileRead,
 } from "@/lib/marketing/assets/inspectMarketingAssetPackage";
+export {
+  buildMarketingAssetPackageZip,
+  type MarketingAssetPackageZipBuild,
+} from "@/lib/marketing/assets/buildMarketingAssetPackageZip";
 export { marketingAssetErrorResponse } from "@/lib/marketing/assets/assetApiErrors";
 export {
   inspectCandidateAssetPackage,

@@ -32,6 +32,17 @@ export { ensurePublishableContent } from "@/lib/marketing/publishable/ensurePubl
 export { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
 export { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
 export {
+  channelCountsAsPublishableSuccess,
+  channelRequiresRegeneration,
+  approvalBlockedReasonForChannel,
+  isPublishableSuccessStatus,
+} from "@/lib/marketing/publishable/publishableSuccess";
+export {
+  PUBLISHABLE_MAX_INVOCATIONS_PER_CHANNEL,
+  classifyPublishableLlmFailure,
+  checkShortformHookPayoff,
+} from "@/lib/marketing/publishable/composerRuntime";
+export {
   applyPublishableContentToMediaBrief,
   buildThreadsPostText,
 } from "@/lib/marketing/publishable/applyToMediaBrief";

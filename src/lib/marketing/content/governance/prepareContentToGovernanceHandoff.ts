@@ -16,6 +16,7 @@ import {
 } from "@/lib/marketing/content/validation/validateContentPlan";
 import { ContentPlanContractError } from "@/lib/marketing/content/validation/contentPlanContractError";
 import type { AssignmentEvidenceRef, ContentPlan } from "@/lib/marketing/content/types";
+import { toContentPropositionCompact } from "@/lib/marketing/content/proposition/contracts";
 
 export function buildGovernanceReviewIdempotencyKey(input: {
   assignmentId: string | null;
@@ -211,6 +212,9 @@ export function prepareContentToGovernanceHandoff(
           hypothesisFindingIds: hypothesisFindingIds.slice(0, 12),
           inferenceFindingIds: inferenceFindingIds.slice(0, 12),
         }
+      : null,
+    contentProposition: contentPlan?.proposition
+      ? toContentPropositionCompact(contentPlan.proposition)
       : null,
   };
 

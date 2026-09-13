@@ -39,6 +39,9 @@ import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/typ
 import type { ContentFormatKind } from "@/lib/marketing/content/types";
 import { applyPublishableContentToMediaBrief } from "@/lib/marketing/publishable/applyToMediaBrief";
 import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
+import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
+import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
 
 export const DAILY_SHORTFORM_COMMITMENT_CONTRACT = "daily-shortform-commitment-v1" as const;
 export const DAILY_SHORTFORM_COMMITMENT_RELATIVE_PATH = "context/shortform-commitment.json" as const;
@@ -251,6 +254,7 @@ function ensureShortformEnabledMediaBrief(
 
 /**
  * Best-effort CG-2 bridge. Must not throw to callers that need fail-safe production.
+ * MQ-4: consumes persisted LLM shortform narration — does not invent deterministic publishable copy.
  */
 export async function maybeGenerateShortformBriefAndResolve(input: {
   candidate: CompletedMarketingCandidate;
@@ -260,6 +264,10 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
   /** Injected catalog for tests; production resolves via factory. */
   catalog?: MarketingMediaSourceCatalogRepository;
   audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
+  /** MQ-4 — preferred: already LLM-generated publishable bundle. */
+  publishableBundle?: PublishableContentBundle | null;
+  /** Optional: if narration missing, invoke canonical async ensure (caller may also pre-generate). */
+  invokePublishable?: PublishableLlmInvoke | null;
 }): Promise<DailyShortformBridgeResult> {
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
@@ -281,6 +289,58 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
       };
     }
 
+    let publishable =
+      input.publishableBundle ??
+      ensurePublishableContentSync({
+        candidate: input.candidate,
+        packageRoot: resolvePackageDirectory({
+          assetRoot: resolveMarketingAssetRoot({
+            explicitRoot: input.assetRoot,
+            env,
+          }),
+          businessDateKst: input.candidate.businessDateKst,
+          candidateId: input.candidate.candidateId,
+        }),
+        now,
+        allowDeterministicGeneration: false,
+        audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
+      });
+
+    if (!channelCountsAsPublishableSuccess(publishable.shortform) && input.invokePublishable) {
+      const { ensurePublishableContent } = await import(
+        "@/lib/marketing/publishable/ensurePublishableContent"
+      );
+      const assetRoot = resolveMarketingAssetRoot({
+        explicitRoot: input.assetRoot,
+        env,
+      });
+      const packageRoot = resolvePackageDirectory({
+        assetRoot,
+        businessDateKst: input.candidate.businessDateKst,
+        candidateId: input.candidate.candidateId,
+      });
+      publishable = await ensurePublishableContent({
+        candidate: input.candidate,
+        packageRoot: existsSync(packageRoot) ? packageRoot : null,
+        now,
+        invoke: input.invokePublishable,
+        audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
+        forceRegenerateChannels: ["shortform"],
+        persist: existsSync(packageRoot),
+      });
+    }
+
+    if (!channelCountsAsPublishableSuccess(publishable.shortform)) {
+      return {
+        outcome: "brief_failed",
+        shortformIntended: true,
+        reason: "shortform_llm_narration_required",
+        error:
+          publishable.shortform.provenance?.failureMessage ??
+          "shortform narration must be LLM-generated before brief bridge",
+      };
+    }
+
     const exportResult = exportMarketingCandidatePackage({
       candidate: input.candidate,
       mediaBrief: ensureShortformEnabledMediaBrief(
@@ -292,6 +352,7 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
       now,
       overwriteArtifacts: true,
       forcePublishableRegenerate: false,
+      publishableBundle: publishable,
       audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
     });
 
@@ -303,11 +364,6 @@ export async function maybeGenerateShortformBriefAndResolve(input: {
       nowIso,
     });
 
-    const publishable = ensurePublishableContentSync({
-      candidate: input.candidate,
-      packageRoot,
-      now,
-    });
     const mediaBrief = applyPublishableContentToMediaBrief(
       ensureShortformEnabledMediaBrief(
         input.candidate,

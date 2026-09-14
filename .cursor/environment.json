@@ -1,0 +1,11 @@
+{
+  "name": "TheAllTour",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "next-dev",
+      "command": "bash .cursor/dev.sh"
+    }
+  ],
+  "ports": [4000]
+}

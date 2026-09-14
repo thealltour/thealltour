@@ -11,6 +11,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionPromptSlice,
   buildPropositionProvenance,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -29,6 +31,8 @@ function buildPrompt(input: PublishableComposerInput, repairHint?: string | null
     NAVER_BAND_WRITING_CONTRACT,
     PROPOSITION_COMPOSER_RULES,
     "Channel: community-native Band post. Practical checklist / experience question welcome.",
+    formatCorePackPromptBlock(input),
+    formatQualityRevisionPromptBlock(input.qualityRevision),
     repairHint ?? "",
     "INPUT_JSON:",
     JSON.stringify({

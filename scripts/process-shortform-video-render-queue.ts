@@ -51,7 +51,7 @@ async function main() {
   const healthOnly = hasFlag(argv, "--health");
   const dryRun = hasFlag(argv, "--dry-run") || hasFlag(argv, "--inspect");
 
-  const { loadShortformVideoWorkerConfig } = await import(
+  const { loadShortformVideoWorkerConfig, SHORTFORM_WORKER_MAX_JOBS_PER_RUN_CEILING } = await import(
     "@/lib/marketing/assets/shortform/worker/config"
   );
   const { buildShortformWorkerHealthReport } = await import(
@@ -74,7 +74,10 @@ async function main() {
   }
   const maxJobsRaw = Number(argValue(argv, "--max-jobs") ?? config.maxJobsPerRun);
   if (Number.isFinite(maxJobsRaw) && maxJobsRaw >= 1) {
-    config = { ...config, maxJobsPerRun: Math.min(Math.trunc(maxJobsRaw), 3) };
+    config = {
+      ...config,
+      maxJobsPerRun: Math.min(Math.trunc(maxJobsRaw), SHORTFORM_WORKER_MAX_JOBS_PER_RUN_CEILING),
+    };
   }
 
   const backend = argValue(argv, "--backend") === "memory" ? "memory" : undefined;

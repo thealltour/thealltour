@@ -80,4 +80,6 @@ export {
   AUDIENCE_CONTENT_RESEARCH_BRIEF_MEDIA_TYPE,
 } from "@/lib/marketing/audienceResearch/paths";
 
+export { tryReadAudienceContentResearchBriefFromPackage } from "@/lib/marketing/audienceResearch/readPackageAcrb";
+
 export * from "@/lib/marketing/audienceResearch/topicIdentity";

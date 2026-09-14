@@ -56,16 +56,16 @@ Production spine은 `runDepartmentPipeline` / Agenda queue다. Group Chat은 협
 
 ### Content Strategist
 
-- **책임:** message strategy, content structure, copywriting, channel voice, CTA, revision
-- **하지 않음:** Evidence Pack build, Completeness judgment, open research discovery, self approval, publication
-- **입력:** ContentDraftRequest (+ `deliverableRequirements`, `evidencePack`)
-- **출력:** `{ title?, body, channel, agenda, sourceReferences, contentPlan? }`
-- **handoff:** Completeness Validator → Governance Auditor
+- **책임:** message strategy, ContentProposition (promise / takeaways / proof / desiredAudienceAction), channel targeting guidance, revision of strategy
+- **하지 않음:** final channel-native body as SoT (Threads/Blog/Band/Kakao/Shortform publishable copy), Evidence Pack build, Completeness judgment, open research discovery, self approval, publication
+- **입력:** ContentDraftRequest (+ `deliverableRequirements`, `evidencePack`, ACRB when present)
+- **출력:** `{ title?, body?, channel, agenda, sourceReferences, contentPlan? }` — draft body is scaffold/strategy aid; **Channel Composers** produce publishable channel copy
+- **handoff:** Completeness Validator → Governance Auditor → (parallel) Channel Composers → Marketing Value Gate → Human Review
 
 ### Governance Auditor
 
-- **책임:** policy, misleading claims, unsupported factual claims, commercial/legal risk, publication governance judgment
-- **하지 않음:** structural completeness, copy rewrite, publication
+- **책임:** policy, misleading claims, unsupported factual claims, commercial/legal risk, publication governance judgment (**safety ≠ marketing usefulness**)
+- **하지 않음:** structural completeness, copy rewrite, marketing-value scoring, publication
 - **입력:** GovernanceReviewRequest
 - **출력:** GovernanceWorkflowResult (ALLOW/REVIEW/BLOCK)
 
@@ -80,26 +80,32 @@ Production spine은 `runDepartmentPipeline` / Agenda queue다. Group Chat은 협
 | Layer | Role |
 |-------|------|
 | Research Intelligence | Signals → ResearchBrief → AgendaCandidate (service, not 5th Bot) |
+| Audience Content Research (ACRB) | Per-agenda research brief for angles / audience (RA-1) |
 | Deliverable Requirements | Structural destinations/sections for draft |
 | Evidence Pack Builder | Lock `allowedForDraft` facts |
 | Completeness Validator | Structural gate before GA; shares `MAX_AUTO_REVISION_ROUNDS=1` |
+| Channel Composers | Channel-native publishable bodies (Threads / Blog / Band / Kakao / Shortform) from Proposition + usableFacts |
+| Marketing Value Gate (MQ-5) | Deterministic usefulness / specificity / CTA alignment (**≠ Governance**) |
 | Semantic / Dedupe | Research + GA evaluators |
 | Media Pipeline | Post-candidate MediaBrief → cardnews/TTS/video |
-| Human Review | Bootstrap HMR after CompletedMarketingCandidate |
+| Human Review | Bootstrap HMR after CompletedMarketingCandidate; channel tabs + on-demand regenerate |
 | Publication Governance | Inactive SNS boundary (`PUBLICATION_FLOW_INACTIVE`) |
 | Observability / Analytics | OBS-1~6 traces + admin viewer |
 
 **Principle:** judgment / strategy / creative interpretation → Agent.
-count / schema / validation / evidence locking / freshness / dedupe / render / persistence / telemetry → deterministic.
+count / schema / validation / evidence locking / freshness / dedupe / render / persistence / telemetry / publishable compose / value scoring → deterministic.
+
+**Production copy path (marketing):**  
+`CS (Proposition)` → `Completeness` → `GA (safety)` → `Channel Composers (body/CTA)` → `Value Gate (worth publishing)` → `Human Review` → Human Owner.
 
 ## PREPARE specialists (not created / not registered)
 
 ### Channel Producer
 
-- **Purpose:** channel-native creative adaptation beyond Threads-first CS draft
+- **Purpose:** Hermes Bot upgrade path when Channel Composers + on-demand regenerate are insufficient for multi-channel creative variance
 - **Handoff:** CS/MM → Channel Producer → Completeness or Media Pipeline
 - **cron_default:** false (optional only)
-- **Activation:** ≥2 real production channels **and** OBS-6 shows repeated CS duration/revision/quality pain from channel variance
+- **Activation:** ≥2 real production channels **and** OBS-6 shows repeated composer duration/revision/quality pain from channel variance beyond deterministic composers
 
 ### Creative Director
 

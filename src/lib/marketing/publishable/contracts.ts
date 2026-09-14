@@ -14,7 +14,12 @@ export const PUBLISHABLE_CHANNEL_CONTENT_CONTRACT = "publishable-channel-content
 export const PUBLISHABLE_BASELINE_CHANNELS = ["threads", "shortform"] as const;
 
 /** Optional CG-4B channel-native outputs — only when selected. */
-export const PUBLISHABLE_OPTIONAL_CHANNELS = ["naver_blog", "naver_band", "kakao_channel"] as const;
+export const PUBLISHABLE_OPTIONAL_CHANNELS = [
+  "naver_blog",
+  "naver_band",
+  "kakao_channel",
+  "instagram",
+] as const;
 
 export const PUBLISHABLE_CHANNELS = [
   ...PUBLISHABLE_BASELINE_CHANNELS,
@@ -28,6 +33,7 @@ export const PUBLISHABLE_FORMATS = [
   "naver_blog_article",
   "naver_band_post",
   "kakao_channel_post",
+  "instagram_caption",
 ] as const;
 export type PublishableFormat = (typeof PUBLISHABLE_FORMATS)[number];
 
@@ -55,6 +61,8 @@ export const PUBLISHABLE_GENERATION_FAILURE_CATEGORIES = [
   "topic_identity_conflict",
   "evidence_violation",
   "insufficient_proposition",
+  /** Core fact gate — fan-out skipped because the core could not carry a post. */
+  "core_facts_insufficient",
   "governance_block",
   "invoke_missing",
   "unknown",
@@ -77,7 +85,13 @@ export type PublishableValidationIssueCode =
   | "missing_title"
   | "too_long"
   | "too_short"
-  | "json_fence_leak";
+  | "json_fence_leak"
+  /** Instagram — nothing worth reading before the 125-character "more" fold. */
+  | "weak_hook"
+  /** Instagram — hashtag count outside policy, or duplicated/banned tags. */
+  | "hashtag_policy"
+  /** Instagram — caption promises a clickable link that the platform will not render. */
+  | "unclickable_link_cta";
 
 export type PublishableValidationIssue = {
   code: PublishableValidationIssueCode;
@@ -97,6 +111,21 @@ export type PublishableNarrationSegment = {
   visualIntent: string;
   /** Internal governance only — never spoken / never printed in body. */
   evidenceRefs: string[];
+};
+
+/**
+ * Instagram-specific structured metadata (body remains the caption).
+ * IG captions carry no clickable link, so the CTA must resolve to profile link /
+ * save / comment, and hashtags are a first-class surface rather than decoration.
+ */
+export type PublishableInstagramMeta = {
+  /** Shown before the "more" fold — the first 125 characters of the caption. */
+  hook: string;
+  hashtags: string[];
+  /** Ordered text overlays for the cardnews slides. */
+  slideHeadlines: string[];
+  cta: string | null;
+  altText: string | null;
 };
 
 /** Blog-specific structured metadata (body remains the markdown export). */
@@ -159,6 +188,8 @@ export type PublishableChannelContent = {
   narrationSegments?: PublishableNarrationSegment[];
   /** Naver Blog structured fields (optional). */
   blogMeta?: PublishableBlogMeta;
+  /** Instagram structured fields (optional). */
+  instagramMeta?: PublishableInstagramMeta;
 };
 
 /**
@@ -178,6 +209,7 @@ export type PublishableContentBundle = {
   naver_blog?: PublishableChannelContent;
   naver_band?: PublishableChannelContent;
   kakao_channel?: PublishableChannelContent;
+  instagram?: PublishableChannelContent;
 };
 
 export function isPublishableChannel(value: unknown): value is PublishableChannel {
@@ -199,5 +231,7 @@ export function formatForChannel(channel: PublishableChannel): PublishableFormat
       return "naver_band_post";
     case "kakao_channel":
       return "kakao_channel_post";
+    case "instagram":
+      return "instagram_caption";
   }
 }

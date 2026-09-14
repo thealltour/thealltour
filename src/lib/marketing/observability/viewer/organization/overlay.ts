@@ -180,6 +180,9 @@ const WORKFLOW_EDGE_ORDER = [
   "ev_to_cs",
   "cs_to_cv",
   "cv_to_ga",
+  "ga_to_composers",
+  "composers_to_value",
+  "value_to_human_review",
   "ga_to_hmr",
 ] as const;
 

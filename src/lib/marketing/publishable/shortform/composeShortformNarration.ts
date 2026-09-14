@@ -14,6 +14,7 @@ import {
   buildPropositionPromptSlice,
   buildPropositionProvenance,
   checkShortformHookPayoff,
+  formatCorePackPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -33,6 +34,7 @@ function buildShortformPrompt(input: PublishableComposerInput, repairHint?: stri
     PROPOSITION_COMPOSER_RULES,
     "Structure: hook → payoff → concrete useful information → close/action.",
     "If hook promises N things / one rule / a checklist, body MUST deliver it.",
+    formatCorePackPromptBlock(input),
     repairHint ?? "",
     "INPUT_JSON:",
     JSON.stringify({

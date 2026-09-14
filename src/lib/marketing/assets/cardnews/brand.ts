@@ -5,10 +5,51 @@
 export const CARDNEWS_RENDER_CONTRACT = "cardnews-render-v1" as const;
 export const CARDNEWS_RENDERER_VERSION = "cardnews-render-v1" as const;
 
-export const CARDNEWS_WIDTH = 1080 as const;
-export const CARDNEWS_HEIGHT = 1350 as const;
-export const CARDNEWS_ASPECT_RATIO = "4:5" as const;
+export const CARDNEWS_ASPECT_RATIOS = ["4:5", "1:1", "9:16"] as const;
+export type CardNewsAspectRatio = (typeof CARDNEWS_ASPECT_RATIOS)[number];
+
+export const CARDNEWS_SIZE_PRESETS: Record<
+  CardNewsAspectRatio,
+  { width: number; height: number }
+> = {
+  "4:5": { width: 1080, height: 1350 },
+  "1:1": { width: 1080, height: 1080 },
+  "9:16": { width: 1080, height: 1920 },
+};
+
+export const CARDNEWS_DEFAULT_ASPECT_RATIO: CardNewsAspectRatio = "4:5";
+
+/** Every vertical anchor in the renderer was tuned on the 4:5 canvas. */
+export const CARDNEWS_LAYOUT_BASE_HEIGHT = CARDNEWS_SIZE_PRESETS["4:5"].height;
+
+export const CARDNEWS_WIDTH = CARDNEWS_SIZE_PRESETS["4:5"].width;
+export const CARDNEWS_HEIGHT = CARDNEWS_SIZE_PRESETS["4:5"].height;
+export const CARDNEWS_ASPECT_RATIO = CARDNEWS_DEFAULT_ASPECT_RATIO;
 export const CARDNEWS_MEDIA_TYPE = "image/png" as const;
+
+export type CardNewsGeometry = {
+  aspectRatio: CardNewsAspectRatio;
+  width: number;
+  height: number;
+  /** Maps a 4:5-tuned vertical anchor onto this canvas. Identity on 4:5. */
+  scaleY: (base: number) => number;
+};
+
+export function isCardNewsAspectRatio(value: unknown): value is CardNewsAspectRatio {
+  return CARDNEWS_ASPECT_RATIOS.includes(value as CardNewsAspectRatio);
+}
+
+export function resolveCardNewsGeometry(aspectRatio?: unknown): CardNewsGeometry {
+  const ratio = isCardNewsAspectRatio(aspectRatio) ? aspectRatio : CARDNEWS_DEFAULT_ASPECT_RATIO;
+  const preset = CARDNEWS_SIZE_PRESETS[ratio];
+  const factor = preset.height / CARDNEWS_LAYOUT_BASE_HEIGHT;
+  return {
+    aspectRatio: ratio,
+    width: preset.width,
+    height: preset.height,
+    scaleY: (base: number) => (factor === 1 ? base : Math.round(base * factor)),
+  };
+}
 
 export const CARDNEWS_BRAND = {
   blue: "#1E5B8F",

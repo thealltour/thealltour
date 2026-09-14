@@ -53,6 +53,9 @@ export function approvalBlockedReasonForChannel(
   if (content.status === "fallback_generated" || content.provenance?.composer === "deterministic_fallback") {
     return "regeneration_required:fallback_generated_not_approvable";
   }
+  if (content.provenance?.failureCategory === "core_facts_insufficient") {
+    return "regeneration_required:core_facts_insufficient";
+  }
   if (content.status === "generation_failed") {
     return "regeneration_required:generation_failed";
   }

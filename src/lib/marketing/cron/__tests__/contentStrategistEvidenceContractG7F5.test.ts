@@ -9,11 +9,13 @@ import {
   buildContentDraftPrompt,
   buildContentDraftFormatRepairPrompt,
   buildContentDraftGroundingRepairPrompt,
+  buildContentDraftSchemaRepairPrompt,
   classifyContentStrategistRuntimeFailure,
   collectSuppliedEvidenceRefs,
   parseContentStrategistOutput,
   parseContentStrategistOutputDetailed,
   requestContentStrategistDraftWithFormatRetry,
+  resolveProviderEvidenceRefsAgainstSupplied,
   ContentStrategistFormatError,
   ContentStrategistRuntimeError,
   isContentStrategistRuntimeError,
@@ -345,5 +347,67 @@ describe("G7-F5 Content Strategist evidence-contract reliability", () => {
 
   it("17: max model invocations is 2", () => {
     expect(CONTENT_STRATEGIST_MAX_MODEL_INVOCATIONS).toBe(2);
+  });
+
+  it("18: mixed evidenceRefs string+object resolve against supplied", () => {
+    const refs = taiwanEvidenceRefs();
+    const plan = resolveProviderEvidenceRefsAgainstSupplied(
+      {
+        assignmentId: "ca_taiwan",
+        factsToUse: ["UK FCDO updated Taiwan travel health guidance for travellers."],
+        evidenceRefs: [EVIDENCE_IDS[0], refs[1]],
+      },
+      refs,
+    ) as { evidenceRefs: Array<{ evidenceId: string }> };
+    expect(plan.evidenceRefs.map((r) => r.evidenceId)).toEqual([EVIDENCE_IDS[0], EVIDENCE_IDS[1]]);
+  });
+
+  it("19: string recommendedFormats coerce without schema retry", async () => {
+    const first = {
+      ...validDraftWithRefs(),
+      contentPlan: {
+        assignmentId: "ca_taiwan",
+        factsToUse: ["UK FCDO updated Taiwan travel health guidance for travellers."],
+        evidenceRefs: [EVIDENCE_IDS[0]],
+        recommendedFormats: ["threads_text", "checklist", "app_notification"],
+      },
+    };
+    const invoke = vi.fn().mockReturnValue(JSON.stringify(first));
+    const { output, diagnostics } = await requestContentStrategistDraftWithFormatRetry({
+      payload: draftPayload(),
+      invoke,
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(diagnostics.schemaRetryUsed).toBe(false);
+    expect(output.contentPlan?.recommendedFormats?.[0]?.format).toBe("threads_text");
+  });
+
+  it("20: wrong_primitive_type triggers one schema repair (not grounding)", async () => {
+    const bad = {
+      ...validDraftWithRefs(),
+      contentPlan: {
+        assignmentId: "ca_taiwan",
+        factsToUse: ["UK FCDO updated Taiwan travel health guidance for travellers."],
+        evidenceRefs: [taiwanEvidenceRefs()[0]],
+        outline: "should-be-array",
+      },
+    };
+    const fixed = validDraftWithRefs();
+    const invoke = vi
+      .fn()
+      .mockReturnValueOnce(JSON.stringify(bad))
+      .mockReturnValueOnce(JSON.stringify(fixed));
+    const { diagnostics } = await requestContentStrategistDraftWithFormatRetry({
+      payload: draftPayload(),
+      invoke,
+    });
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(diagnostics.schemaRetryUsed).toBe(true);
+    expect(diagnostics.groundingRetryUsed).toBe(false);
+    expect(diagnostics.finalParseMode).toBe("schema_retry");
+    expect(String(invoke.mock.calls[1][0])).toContain("schema validation");
+    expect(buildContentDraftSchemaRepairPrompt(draftPayload(), "wrong_primitive_type", "outline")).toContain(
+      "Zod path: outline",
+    );
   });
 });

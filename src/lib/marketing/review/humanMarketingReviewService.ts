@@ -385,6 +385,7 @@ export class HumanMarketingReviewService {
           title: input.title ?? null,
         } as never,
         proposition: candidate.contentPlan?.proposition ?? null,
+        usableFacts: (candidate.contentAssignment?.facts ?? []).map((f) => f.statement),
         now: this.now(),
       }),
     );
@@ -503,7 +504,9 @@ export class HumanMarketingReviewService {
                 ? bundle.naver_blog
                 : input.channel === "naver_band"
                   ? bundle.naver_band
-                  : bundle.kakao_channel;
+                  : input.channel === "instagram"
+                    ? bundle.instagram
+                    : bundle.kakao_channel;
         const reviewForGate = await this.loadMutableReview(input.candidateId, input.reviewedBy);
         const channelEntry = reviewForGate.channelReviews?.[input.channel];
         const humanOwns = Boolean(channelEntry?.humanDraft?.body?.trim());

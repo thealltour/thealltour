@@ -15,6 +15,7 @@ export type ChannelReviewStatus = (typeof CHANNEL_REVIEW_STATUSES)[number];
 
 export const REVIEWABLE_PUBLISHABLE_CHANNELS = [
   "threads",
+  "instagram",
   "naver_blog",
   "naver_band",
   "kakao_channel",
@@ -98,6 +99,8 @@ export function channelLabel(channel: ReviewablePublishableChannel | Publishable
   switch (channel) {
     case "threads":
       return "Threads";
+    case "instagram":
+      return "Instagram";
     case "naver_blog":
       return "Naver Blog";
     case "naver_band":
@@ -131,6 +134,8 @@ export function humanEditedRelativePath(channel: ReviewablePublishableChannel): 
   switch (channel) {
     case "threads":
       return "human-edited/threads.txt";
+    case "instagram":
+      return "human-edited/instagram-caption.txt";
     case "naver_blog":
       return "human-edited/naver-blog.md";
     case "naver_band":

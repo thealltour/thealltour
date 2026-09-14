@@ -13,9 +13,8 @@ import {
   MARKETING_CRON_JOB_ID,
   MARKETING_DEPARTMENT_ID,
   MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS,
-  buildGovernanceReviewPrompt,
-  parseGovernanceAuditorOutput,
   requestContentStrategistDraftWithFormatRetry,
+  requestGovernanceReviewWithFormatRetry,
   isContentStrategistFormatError,
   isContentStrategistRuntimeError,
 } from "@/lib/marketing/cron/marketingPlanSpecialists";
@@ -32,7 +31,11 @@ export function createMarketingCronCorrelationId(now = new Date()): string {
   return `marketing-cron:${now.toISOString()}:${randomUUID().slice(0, 8)}`;
 }
 
-export type HermesProfileInvoker = (profile: string, prompt: string) => string;
+export type HermesProfileInvoker = (
+  profile: string,
+  prompt: string,
+) => string | Promise<string>;
+
 
 /**
  * RA-1C — wire Audience & Content Research LLM synthesis to the same Hermes/Runtime
@@ -116,6 +119,8 @@ export type MarketingPlanPipelineDispatchOptions = {
   invokeHermesProfile?: HermesProfileInvoker;
   completionTimeoutMs?: number;
   now?: () => Date;
+  /** Observability hook — fires when Governance Auditor needed a JSON format repair. */
+  onGovernanceFormatRetry?: (info: { message: string }) => void;
 };
 
 function assertRuntimeContent(result: Awaited<ReturnType<RuntimeExecutor["executeAndWait"]>>): string {
@@ -185,23 +190,29 @@ export function createMarketingPlanPipelineDispatch(
         }
       },
       requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
-        const request = createCronRuntimeRequest(
-          {
-            agentId: "governance-auditor",
-            workload: "governance",
-            priority: "high",
-            messages: [{ role: "user", content: buildGovernanceReviewPrompt(envelope.payload) }],
-            correlationId: options.correlationId,
-            parentRequestId: lastRequestId,
-            cronJobId: MARKETING_CRON_JOB_ID,
-            departmentId: MARKETING_DEPARTMENT_ID,
-            routing: { requiresStructuredOutput: true },
+        const { result } = await requestGovernanceReviewWithFormatRetry({
+          payload: envelope.payload,
+          invoke: async (prompt) => {
+            const request = createCronRuntimeRequest(
+              {
+                agentId: "governance-auditor",
+                workload: "governance",
+                priority: "high",
+                messages: [{ role: "user", content: prompt }],
+                correlationId: options.correlationId,
+                parentRequestId: lastRequestId,
+                cronJobId: MARKETING_CRON_JOB_ID,
+                departmentId: MARKETING_DEPARTMENT_ID,
+                routing: { requiresStructuredOutput: true },
+              },
+              { now },
+            );
+            lastRequestId = request.id;
+            return assertRuntimeGovernance(await executor.executeAndWait(request, { timeoutMs, now }));
           },
-          { now },
-        );
-        lastRequestId = request.id;
-        const result = await executor.executeAndWait(request, { timeoutMs, now });
-        return parseGovernanceAuditorOutput(assertRuntimeGovernance(result));
+          onFormatRetry: options.onGovernanceFormatRetry,
+        });
+        return result;
       },
     };
   }
@@ -216,7 +227,7 @@ export function createMarketingPlanPipelineDispatch(
       try {
         const { output } = await requestContentStrategistDraftWithFormatRetry({
           payload: envelope.payload,
-          invoke: (prompt) => invokeHermes("content-strategist", prompt),
+          invoke: (prompt) => Promise.resolve(invokeHermes("content-strategist", prompt)),
         });
         return output;
       } catch (error) {
@@ -227,8 +238,12 @@ export function createMarketingPlanPipelineDispatch(
       }
     },
     requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
-      const raw = invokeHermes("governance-auditor", buildGovernanceReviewPrompt(envelope.payload));
-      return parseGovernanceAuditorOutput(raw);
+      const { result } = await requestGovernanceReviewWithFormatRetry({
+        payload: envelope.payload,
+        invoke: (prompt) => Promise.resolve(invokeHermes("governance-auditor", prompt)),
+        onFormatRetry: options.onGovernanceFormatRetry,
+      });
+      return result;
     },
   };
 }
@@ -291,7 +306,7 @@ export function createMarketingManagerAgendaDispatch(
 
   return {
     invokeManagerProfile: async (prompt: string) => {
-      return invokeHermes("marketing-manager", prompt);
+      return Promise.resolve(invokeHermes("marketing-manager", prompt));
     },
   };
 }

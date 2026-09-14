@@ -1,0 +1,22 @@
+[Unit]
+Description=Run TheAllTour marketing research collection every 6 hours (KST-aligned)
+Documentation=docs/hermes/marketing/research-collection-worker.md
+Requires=thealltour-marketing-research-collection.service
+
+[Timer]
+# 07:10 KST run guarantees fresh signals before the 09:00 agenda slate.
+# Remaining runs spread collection load across the day.
+# Timezone belongs after the time; `Asia/Seoul 07:10` fails to parse and systemd
+# then refuses the whole timer for lacking any value.
+OnCalendar=01:10 Asia/Seoul
+OnCalendar=07:10 Asia/Seoul
+OnCalendar=13:10 Asia/Seoul
+OnCalendar=19:10 Asia/Seoul
+AccuracySec=2min
+RandomizedDelaySec=3min
+# Catch up after a reboot/downtime so agenda never starts from an empty corpus.
+Persistent=true
+Unit=thealltour-marketing-research-collection.service
+
+[Install]
+WantedBy=timers.target

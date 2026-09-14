@@ -58,6 +58,17 @@ export type PublishableComposerInput = {
   targetChannels: PublishableChannel[];
   /** MQ-3 — available for composers; not consumed by deterministic composers yet. */
   contentProposition?: import("@/lib/marketing/content/proposition/contracts").ContentProposition | null;
+  /**
+   * Channel-agnostic core (facts, CTA intent, hedge list) fixed once per candidate.
+   * Composers must treat this as the only fact source they may state.
+   */
+  corePack?: import("@/lib/marketing/publishable/core/coreContentPack").CoreContentPack | null;
+  /** Human-review quality repair: Marketing Value hints → Content Strategist composer. */
+  qualityRevision?: {
+    hints: string[];
+    priorBody?: string | null;
+    reasons?: string[];
+  } | null;
 };
 
 function normalizeStatement(text: string): string {

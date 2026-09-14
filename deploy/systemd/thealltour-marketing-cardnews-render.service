@@ -1,0 +1,26 @@
+[Unit]
+Description=TheAllTour Instagram Cardnews Render Step (one-shot, asset render only)
+Documentation=docs/hermes/marketing/instagram-cardnews-render-step.md
+After=network-online.target thealltour-marketing-production-queue.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ysh
+Group=ysh
+WorkingDirectory=/home/ysh/thealltour
+Environment=NODE_ENV=production
+Environment=PATH=/home/ysh/.local/bin:/home/ysh/.hermes/node/bin:/usr/bin:/bin
+# Asset render only — no Hermes calls, no SNS side effects.
+# MARKETING_ASSET_ROOT comes from WorkingDirectory/.env.local (production: /mnt/HDD2TB/marketing-assets).
+ExecStart=/home/ysh/.hermes/node/bin/npx tsx scripts/render-instagram-cardnews.ts
+# sharp rasterization is the heaviest marketing job on the Pi; stay behind the
+# production queue and the web app.
+Nice=18
+IOSchedulingClass=idle
+TimeoutStartSec=900
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

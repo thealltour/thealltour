@@ -45,8 +45,46 @@ export type EvaluateMarketingValueInput = {
   now?: Date;
   /** Optional research verdict string for evidence adequacy. */
   researchVerdict?: string | null;
+  /** Allowed facts the composer should have embodied — used to detect verify-only shells. */
+  usableFacts?: Array<string | { statement?: string | null }> | null;
 };
 
+function normalizeUsableFactStatements(
+  facts: EvaluateMarketingValueInput["usableFacts"],
+): string[] {
+  if (!facts?.length) return [];
+  const out: string[] = [];
+  for (const row of facts.slice(0, 10)) {
+    const statement = typeof row === "string" ? row : row?.statement;
+    if (typeof statement === "string" && statement.trim().length >= 8) {
+      out.push(statement.trim());
+    }
+  }
+  return out;
+}
+
+function bestFactOverlap(body: string, facts: string[]): number {
+  let best = 0;
+  for (const fact of facts) {
+    best = Math.max(best, tokenOverlapRatio(body, fact));
+  }
+  return best;
+}
+
+/** Count defer-to-official language (verify hedge used as the payload). */
+function countVerifyDeferrals(text: string): number {
+  return (
+    text.match(
+      /공식\s*(?:채널|사이트|안내|소스|페이지)?\s*(?:를\s*)?(?:직접\s*)?확인|예약\s*전\s*(?:반드시\s*)?확인|대조해야|직접\s*확인하세요|공식\s*경로/g,
+    ) ?? []
+  ).length;
+}
+
+function hasOperationalDetail(text: string): boolean {
+  return /(TDAC|무비자|비자\s*면제|\d+\s*개월|\d+\s*일|\d+\s*월|섭씨|e-?Arrival|FCDO|\d+\s*[–\-〜~至到]\s*\d+\s*월|(?:우기|건기)[^\n]{0,40}\d+\s*월|\d+\s*월[^\n]{0,40}(?:우기|건기))/i.test(
+    text,
+  );
+}
 function tokenizeMeaningful(text: string): string[] {
   return text
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
@@ -108,6 +146,37 @@ function engagementScore(
   proposition: ContentProposition | null | undefined,
 ): { score: number; weakness?: string; hint?: string } {
   const mechanism = String(proposition?.engagementMechanism ?? "");
+  const action = String(proposition?.desiredAudienceAction ?? "");
+
+  if (/^comment$/i.test(action) || /experience_sharing|comment/i.test(mechanism)) {
+    if (GENERIC_CTA_RE.test(body) && !ACTIONABLE_RE.test(body) && !/어떤\s*경험|걱정|동반/.test(body)) {
+      return {
+        score: 35,
+        weakness: "generic comment CTA without discussion point",
+        hint: "CTA asks for comments without giving readers a discussion point.",
+      };
+    }
+    if (/걱정|경험|동반|아이|부모님|첫\s*크루즈|어떤\s*항목|댓글|여러분은/.test(body)) {
+      return { score: 78 };
+    }
+    return {
+      score: 48,
+      weakness: "desiredAudienceAction=comment but no discussion prompt",
+      hint: "Close with a concrete experience question that invites a comment.",
+    };
+  }
+
+  if (/click|visit_site|site|outbound/i.test(action) || /click_through|outbound/i.test(mechanism)) {
+    if (/사이트|홈페이지|더\s*자세히|문의|비교해\s*보|일정\s*보러|링크/.test(body)) {
+      return { score: 80 };
+    }
+    return {
+      score: 40,
+      weakness: "desiredAudienceAction wants site/next-step but CTA is missing",
+      hint: "End with a soft next step toward the site or a specific comparison action.",
+    };
+  }
+
   if (/save_worthy_checklist|checklist/i.test(mechanism)) {
     if (hasNumberedStructure(body) || /체크리스트|저장/.test(body)) {
       return { score: 82 };
@@ -126,20 +195,7 @@ function engagementScore(
       hint: "Provide a concrete 2–3 item checklist worth saving.",
     };
   }
-  if (/experience_sharing|comment/i.test(mechanism)) {
-    if (GENERIC_CTA_RE.test(body) && !ACTIONABLE_RE.test(body)) {
-      return {
-        score: 35,
-        weakness: "generic comment CTA without discussion point",
-        hint: "CTA asks for comments without giving readers a discussion point.",
-      };
-    }
-    if (/걱정|경험|동반|아이|부모님|첫\s*크루즈|어떤\s*항목/.test(body)) {
-      return { score: 78 };
-    }
-    return { score: 50, hint: "Invite a specific experience/question tied to the audience tension." };
-  }
-  if (/decision_aid|compare|verify/i.test(mechanism) || /compare|verify|shortlist/.test(String(proposition?.desiredAudienceAction ?? ""))) {
+  if (/decision_aid|compare|verify/i.test(mechanism) || /compare|verify|shortlist/.test(action)) {
     if (ACTIONABLE_RE.test(body)) return { score: 75 };
     return { score: 45, hint: "Desired action needs a concrete next step or decision rule." };
   }
@@ -198,6 +254,20 @@ function channelAdjustments(input: {
       if (!ACTIONABLE_RE.test(body)) {
         scores.usefulnessScore = Math.min(scores.usefulnessScore, 45);
         hints.push("Kakao needs a clear next step / decision action.");
+      }
+      break;
+    }
+    case "instagram": {
+      // Only the first ~125 characters are visible before the "more" tap.
+      const fold = body.slice(0, 125).replace(/#[^\s#]+/g, "").trim();
+      if (fold.length < 30) {
+        scores.hookStrengthScore = Math.min(scores.hookStrengthScore, 40);
+        weaknesses.push("Instagram caption has no standalone hook before the fold");
+        hints.push("Put a complete, curiosity-driven sentence in the first 125 characters.");
+      }
+      if (!/저장|댓글|프로필/.test(body)) {
+        scores.engagementPotentialScore = Math.min(scores.engagementPotentialScore, 48);
+        hints.push("Instagram CTA must resolve to save, comment, or profile link — captions have no clickable link.");
       }
       break;
     }
@@ -297,6 +367,23 @@ export function evaluateMarketingValue(
     );
   }
 
+  const usableFactStatements = normalizeUsableFactStatements(input.usableFacts);
+  const factOverlap = bestFactOverlap(body, usableFactStatements);
+  const verifyHits = countVerifyDeferrals(body);
+  const operational = hasOperationalDetail(body);
+  /** Numbered "go check official sources" shell without stating usableFacts / ops detail. */
+  const verifyOnlyShell =
+    verifyHits >= 2 &&
+    factOverlap < 0.1 &&
+    !operational &&
+    (hasNumberedStructure(body) || GENERIC_ADVICE_RE.test(full));
+  if (verifyOnlyShell) {
+    weaknesses.push("verify-only shell — deferral language without usableFacts payload");
+    improvementHints.push(
+      "State concrete usableFacts in the body; 'officially verify' is a hedge for uncertain claims, not the takeaway.",
+    );
+  }
+
   // Dimension scores
   const audienceText = prop?.primaryAudience || prop?.audienceProblem || "";
   const audienceRelevanceScore = clampScore(
@@ -304,10 +391,16 @@ export function evaluateMarketingValue(
   );
 
   let specificityScore = 35;
-  if (hasNumberedStructure(body)) specificityScore += 25;
+  if (hasNumberedStructure(body) && (factOverlap >= 0.1 || operational || concrete)) {
+    specificityScore += 25;
+  } else if (hasNumberedStructure(body)) {
+    specificityScore += 8; // structure alone is weak without fact density
+  }
   if (concrete) specificityScore += 15;
   if (actionable) specificityScore += 15;
+  if (factOverlap >= 0.15) specificityScore += 12;
   if (genericHeavy) specificityScore -= 25;
+  if (verifyOnlyShell) specificityScore -= 20;
   if (body.length < 60) specificityScore -= 15;
   specificityScore = clampScore(specificityScore);
 
@@ -315,15 +408,18 @@ export function evaluateMarketingValue(
   if (promise.delivered) usefulnessScore += 25;
   if (actionable) usefulnessScore += 20;
   if (prop?.readerGain && tokenOverlapRatio(body, prop.readerGain) >= 0.12) usefulnessScore += 15;
+  if (factOverlap >= 0.15) usefulnessScore += 15;
   if (genericHeavy) usefulnessScore -= 20;
+  if (verifyOnlyShell) usefulnessScore -= 25;
   if (RESEARCH_RESTATE_RE.test(body) && !actionable) usefulnessScore -= 25;
   usefulnessScore = clampScore(usefulnessScore);
 
   let noveltyScore = 55;
   if (RESEARCH_RESTATE_RE.test(body)) noveltyScore -= 30;
   if (genericHeavy) noveltyScore -= 25;
+  if (verifyOnlyShell) noveltyScore -= 15;
   if (prop?.contentGapUsed && tokenOverlapRatio(body, prop.contentGapUsed) >= 0.1) noveltyScore += 15;
-  if (hasNumberedStructure(body) && concrete) noveltyScore += 10;
+  if (hasNumberedStructure(body) && (concrete || operational || factOverlap >= 0.1)) noveltyScore += 10;
   noveltyScore = clampScore(noveltyScore);
 
   const open = opening(body);
@@ -337,8 +433,9 @@ export function evaluateMarketingValue(
   hookStrengthScore = clampScore(hookStrengthScore);
 
   let payoffScore = promise.delivered ? 70 : 40;
-  if (hasNumberedStructure(body)) payoffScore += 15;
+  if (hasNumberedStructure(body) && (factOverlap >= 0.1 || operational || concrete)) payoffScore += 15;
   if (genericHeavy) payoffScore -= 20;
+  if (verifyOnlyShell) payoffScore -= 20;
   payoffScore = clampScore(payoffScore);
 
   const engagement = engagementScore(body, prop);
@@ -368,9 +465,17 @@ export function evaluateMarketingValue(
   if (input.researchVerdict && /INSUFFICIENT|BLOCK/i.test(input.researchVerdict)) {
     evidenceAdequacyForPromiseScore = Math.min(evidenceAdequacyForPromiseScore, 45);
   }
-  if (/예약\s*전\s*확인|공식\s*확인/.test(body) && proofCount > 0) {
+  // Verify language is a hedge — reward only when usableFacts / ops detail are also present.
+  if (/예약\s*전\s*확인|공식\s*확인/.test(body) && proofCount > 0 && (factOverlap >= 0.1 || operational)) {
     evidenceAdequacyForPromiseScore = Math.max(evidenceAdequacyForPromiseScore, 75);
-    reasons.push("Respects proofRequirements with verify-before-claim language");
+    reasons.push("States usable evidence and hedges only where proof is incomplete");
+  }
+  if (verifyOnlyShell) {
+    evidenceAdequacyForPromiseScore = Math.min(evidenceAdequacyForPromiseScore, 40);
+  }
+  if (factOverlap >= 0.2) {
+    evidenceAdequacyForPromiseScore = Math.max(evidenceAdequacyForPromiseScore, 70);
+    reasons.push("Embodies usableFacts in the body");
   }
   evidenceAdequacyForPromiseScore = clampScore(evidenceAdequacyForPromiseScore);
 
@@ -419,11 +524,12 @@ export function evaluateMarketingValue(
       scores.evidenceAdequacyForPromiseScore * 0.05,
   );
 
-  // Small bonus when promise+takeaways+verify-language are all present (trustworthy usefulness).
+  // Small bonus when promise+takeaways+concrete checks are present (trustworthy usefulness).
+  // Verify-language alone no longer earns the bonus — usableFacts / ops detail required.
   const qualityBonus =
     promise.delivered &&
     bodyReflectsPropositionTakeaway(body, prop) &&
-    /공식\s*확인|예약\s*전\s*확인/.test(body) &&
+    (factOverlap >= 0.12 || operational) &&
     (/직항/.test(body) && /포함/.test(body) && /일정|날짜/.test(body))
       ? 6
       : 0;
@@ -435,13 +541,18 @@ export function evaluateMarketingValue(
   if (!hardFail && genericHeavy && scored >= 70) {
     verdict = "needs_improvement";
   }
+  if (!hardFail && verifyOnlyShell && scored >= 60) {
+    verdict = "needs_improvement";
+  }
   if (!hardFail && !promise.delivered && scored >= 70) {
     verdict = "needs_improvement";
     improvementHints.push("Promise delivery weak; keep score from becoming strong.");
   }
 
   if (promise.delivered) reasons.push("Delivers ContentProposition promise/takeaways");
-  if (hasNumberedStructure(body)) reasons.push("Contains concrete multi-point structure");
+  if (hasNumberedStructure(body) && (factOverlap >= 0.1 || operational || concrete)) {
+    reasons.push("Contains concrete multi-point structure");
+  }
   if (scores.hookStrengthScore >= 70) reasons.push("Opening creates a reason to continue");
   if (scores.engagementPotentialScore >= 70) reasons.push("Engagement mechanism is usable");
 
@@ -479,6 +590,7 @@ export function evaluateBundleChannels(input: {
   }>;
   proposition: ContentProposition | null | undefined;
   researchVerdict?: string | null;
+  usableFacts?: EvaluateMarketingValueInput["usableFacts"];
   now?: Date;
 }): Partial<Record<PublishableChannel, MarketingValueAssessment>> {
   const out: Partial<Record<PublishableChannel, MarketingValueAssessment>> = {};
@@ -490,6 +602,7 @@ export function evaluateBundleChannels(input: {
       content: row.content,
       proposition: input.proposition,
       researchVerdict: input.researchVerdict,
+      usableFacts: input.usableFacts,
       now: input.now,
     });
   }

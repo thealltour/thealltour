@@ -15,7 +15,6 @@
  * graph; hoisted static imports would bypass the stub.
  */
 import { createRequire } from "node:module";
-import { spawnSync } from "node:child_process";
 
 import { loadLocalEnv } from "./loadLocalEnv";
 
@@ -79,11 +78,14 @@ async function main() {
     MARKETING_CRON_HERMES_TIMEOUT_MS,
     MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
   } = await import("../src/lib/marketing/cron/marketingPlanSpecialists");
-  const { assertHermesSpawnSyncSuccess, resolveMarketingCronHermesTimeoutMs } = await import(
+  const { invokeHermesProfileWithRetry, resolveMarketingCronHermesTimeoutMs } = await import(
     "../src/lib/marketing/cron/hermesSpawnFailure"
   );
   const { resolveHermesExecutable } = await import(
     "../src/lib/marketing/cron/resolveHermesExecutable"
+  );
+  const { formatMarketingCronEnvironmentLines, inspectMarketingCronEnvironment } = await import(
+    "../src/lib/marketing/cron/marketingCronEnvironment"
   );
   const { createRuntimeExecutorStack } = await import("../src/ai-runtime/integration/runtime-stack");
   const { ensureSharedObservabilityRecorder } = await import(
@@ -93,22 +95,22 @@ async function main() {
     "../src/lib/marketing/social/publication/governanceBoundary"
   );
 
-  function invokeHermesProfile(profile: string, prompt: string): string {
+  async function invokeHermesProfile(profile: string, prompt: string): Promise<string> {
     const timeoutMs = resolveMarketingCronHermesTimeoutMs(
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    const hermesBin = resolveHermesExecutable(process.env);
-    const result = spawnSync(
-      hermesBin,
-      ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt],
-      {
-        encoding: "utf8",
-        env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-        timeout: timeoutMs,
+    return invokeHermesProfileWithRetry({
+      hermesBin: resolveHermesExecutable(process.env),
+      profile,
+      prompt,
+      timeoutMs,
+      onRetry: (attempt) => {
+        console.error(
+          `[hermes-retry] ${attempt.profile} attempt ${attempt.attempt}/${attempt.maxAttempts} failed (${attempt.message}); retrying in ${attempt.delayMs}ms`,
+        );
       },
-    );
-    return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
+    });
   }
 
   const argv = process.argv.slice(2);
@@ -134,6 +136,14 @@ async function main() {
   console.log(`- staleAfterMs: ${staleAfterMs}`);
   console.log(`- productId: ${productId}`);
   console.log(`- channel: ${channel}`);
+  for (const line of formatMarketingCronEnvironmentLines(
+    inspectMarketingCronEnvironment({
+      entryPoint: "process-marketing-production-queue",
+      fallbackTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+    }),
+  )) {
+    console.log(line);
+  }
   console.log(`- publication_flow_inactive: ${PUBLICATION_FLOW_INACTIVE}`);
   console.log(`- sns_side_effect: ${SNS_SIDE_EFFECTS_STEP_3_7}`);
   console.log(`- publish: forbidden`);

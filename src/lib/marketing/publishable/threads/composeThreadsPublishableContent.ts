@@ -12,6 +12,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionPromptSlice,
   buildPropositionProvenance,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -31,6 +33,8 @@ function buildThreadsPrompt(input: PublishableComposerInput, repairHint?: string
   return [
     THREADS_WRITING_CONTRACT,
     PROPOSITION_COMPOSER_RULES,
+    formatCorePackPromptBlock(input),
+    formatQualityRevisionPromptBlock(input.qualityRevision),
     repairHint ?? "",
     "INPUT_JSON:",
     JSON.stringify({

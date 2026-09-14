@@ -1,7 +1,13 @@
 export const DAILY_AGENDA_SLATE_CONTRACT = "daily-agenda-slate-v1" as const;
 export const AGENDA_SLATE_CANDIDATE_CONTRACT = "agenda-slate-candidate-v1" as const;
 
-export const MAX_SELECTED_TODAY = 3;
+/**
+ * Daily selection cap. Raised from 3 once the queue worker's per-run batch
+ * (`DEFAULT_PRODUCTION_WORKER_MAX_BATCH`) became the real load limit: the timer
+ * claims at most that many candidates per minute-long run, so a wider slate
+ * lengthens the drain rather than the peak.
+ */
+export const MAX_SELECTED_TODAY = 5;
 
 export type AgendaSlateCandidateState =
   | "AVAILABLE"

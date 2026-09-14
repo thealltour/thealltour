@@ -20,7 +20,6 @@
  * dynamic import() inside main() (same pattern as generate-marketing-subtitles.ts).
  */
 import { createRequire } from "node:module";
-import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -91,26 +90,37 @@ async function main() {
     MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
   } = await import("../src/lib/marketing/cron/marketingPlanSpecialists");
   const {
-    assertHermesSpawnSyncSuccess,
+    invokeHermesProfileWithRetry,
     resolveMarketingCronHermesTimeoutMs,
   } = await import("../src/lib/marketing/cron/hermesSpawnFailure");
+  const { resolveHermesExecutable } = await import(
+    "../src/lib/marketing/cron/resolveHermesExecutable"
+  );
+  const { formatMarketingCronEnvironmentLines, inspectMarketingCronEnvironment } = await import(
+    "../src/lib/marketing/cron/marketingCronEnvironment"
+  );
   const {
     defaultPerformanceBriefAbsolutePath,
     formatDailyPerformanceBriefMarkdown,
     readLatestPerformanceBrief,
   } = await import("../src/lib/marketing/cron/performanceBriefArtifact");
 
-  function invokeHermesProfile(profile: string, prompt: string): string {
+  async function invokeHermesProfile(profile: string, prompt: string): Promise<string> {
     const timeoutMs = resolveMarketingCronHermesTimeoutMs(
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-      encoding: "utf8",
-      env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-      timeout: timeoutMs,
+    return invokeHermesProfileWithRetry({
+      hermesBin: resolveHermesExecutable(process.env),
+      profile,
+      prompt,
+      timeoutMs,
+      onRetry: (attempt) => {
+        console.error(
+          `[hermes-retry] ${attempt.profile} attempt ${attempt.attempt}/${attempt.maxAttempts} failed (${attempt.message}); retrying in ${attempt.delayMs}ms`,
+        );
+      },
     });
-    return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
   }
 
   function logOpsRuntimeTelemetry(useRuntime: boolean): void {
@@ -186,7 +196,14 @@ async function main() {
   );
   console.log(`- performance handoff: ${brief ? "artifact_read" : "missing_fallback"}`);
   console.log(`- note: ${performanceNote}`);
-  console.log(`- inference_path: ${useRuntime ? "ai-runtime" : "hermes-cli"}`);
+  for (const line of formatMarketingCronEnvironmentLines(
+    inspectMarketingCronEnvironment({
+      entryPoint: "cron-daily-marketing-plan",
+      fallbackTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+    }),
+  )) {
+    console.log(line);
+  }
   console.log(`- correlationId: ${correlationId}`);
   console.log(`- publication_flow_inactive: ${PUBLICATION_FLOW_INACTIVE}`);
   console.log(`- sns_side_effect: ${SNS_SIDE_EFFECTS_STEP_3_7}`);

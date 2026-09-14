@@ -11,6 +11,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionPromptSlice,
   buildPropositionProvenance,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -29,6 +31,8 @@ function buildPrompt(input: PublishableComposerInput, repairHint?: string | null
     KAKAO_CHANNEL_WRITING_CONTRACT,
     PROPOSITION_COMPOSER_RULES,
     "Channel: concise Kakao decision aid / action. Match desiredAudienceAction. No invented urgency/price.",
+    formatCorePackPromptBlock(input),
+    formatQualityRevisionPromptBlock(input.qualityRevision),
     repairHint ?? "",
     "INPUT_JSON:",
     JSON.stringify({

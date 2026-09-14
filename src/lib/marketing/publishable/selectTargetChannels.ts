@@ -29,6 +29,7 @@ function uniqueChannels(channels: PublishableChannel[]): PublishableChannel[] {
  * - deep planning/search → naver_blog + shortform
  * - community/family → naver_band + threads
  * - offer/consultation → kakao_channel + naver_band
+ * - visual destination / save-worthy checklist → instagram (cardnews)
  */
 export function recommendTargetChannelsFromAcrb(input: {
   acrb?: AudienceContentResearchBrief | null;
@@ -49,15 +50,30 @@ export function recommendTargetChannelsFromAcrb(input: {
     /family|community|band|가족|커뮤니티/.test(objective) ||
     (acrb?.audience.anxieties.length ?? 0) >= 2;
   const commercial = intent === "commercial" || intent === "mixed" || intent === "transactional";
+  /**
+   * Instagram earns a slot when there is something worth a cardnews slide: a
+   * destination to show, or a takeaway list a reader would save. Without either,
+   * a caption is just a Threads post with hashtags.
+   */
+  const visual =
+    /inspiration|discovery|destination|여행지|풍경|코스|루트|비교|체크리스트/.test(objective) ||
+    (input.acrb?.contentAngles.some((angle) => /사진|비주얼|풍경|지도|코스/.test(angle.angle)) ??
+      false);
+  const saveWorthy =
+    (input.acrb?.searchIntent.questions.length ?? 0) >= 3 ||
+    /체크리스트|준비물|정리|순서|단계/.test(objective);
 
   if (fit) {
     if ((fit.naver_blog ?? 0) >= 0.55 && searchy) recommended.push("naver_blog");
     if ((fit.naver_band ?? 0) >= 0.5 && community) recommended.push("naver_band");
     if ((fit.kakao_channel ?? 0) >= 0.5 && commercial) recommended.push("kakao_channel");
+    // ACRB scores this surface as `cardnews`, which is exactly an IG carousel.
+    if ((fit.cardnews ?? 0) >= 0.5 && (visual || saveWorthy)) recommended.push("instagram");
   } else {
     if (searchy) recommended.push("naver_blog");
     if (community) recommended.push("naver_band");
     if (commercial) recommended.push("kakao_channel");
+    if (visual || saveWorthy) recommended.push("instagram");
   }
 
   return uniqueChannels(recommended);

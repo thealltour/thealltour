@@ -12,6 +12,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionPromptSlice,
   buildPropositionProvenance,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -30,6 +32,8 @@ function buildPrompt(input: PublishableComposerInput, repairHint?: string | null
     NAVER_BLOG_WRITING_CONTRACT,
     PROPOSITION_COMPOSER_RULES,
     "Channel: search/problem-solving article around ContentProposition promise/takeaways.",
+    formatCorePackPromptBlock(input),
+    formatQualityRevisionPromptBlock(input.qualityRevision),
     repairHint ?? "",
     "INPUT_JSON:",
     JSON.stringify({

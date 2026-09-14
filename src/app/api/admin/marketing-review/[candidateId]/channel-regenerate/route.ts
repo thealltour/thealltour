@@ -13,21 +13,25 @@ import {
   createPublishableComposerInvoke,
   isAiRuntimeMarketingCronEnabled,
 } from "@/lib/marketing/cron/marketingCronRuntime";
-import { MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT } from "@/lib/marketing/cron/marketingPlanSpecialists";
+import { CHANNEL_REGENERATE_COMPOSER_TIMEOUT_MS_DEFAULT } from "@/lib/marketing/cron/marketingPlanSpecialists";
 import { resolveHermesExecutable } from "@/lib/marketing/cron/resolveHermesExecutable";
 import {
-  assertHermesSpawnSyncSuccess,
   resolveMarketingCronHermesTimeoutMs,
+  spawnHermesProfileAsync,
 } from "@/lib/marketing/cron/hermesSpawnFailure";
-import { spawnSync } from "node:child_process";
 import { createRuntimeExecutorStack } from "@/ai-runtime/integration/runtime-stack";
 import { ensureSharedObservabilityRecorder } from "@/ai-runtime/observability/persistence";
+import { tryReadAudienceContentResearchBriefFromPackage } from "@/lib/marketing/audienceResearch/readPackageAcrb";
 
 export const dynamic = "force-dynamic";
 
 const schema = z.object({
-  channel: z.enum(["threads", "naver_blog", "naver_band", "kakao_channel"]),
+  channel: z.enum(["threads", "naver_blog", "naver_band", "kakao_channel", "instagram"]),
   allowOverwriteHuman: z.boolean().optional(),
+  /** When true (or when qualityHints provided), pass Marketing Value feedback to Content Strategist. */
+  qualityRevision: z.boolean().optional(),
+  qualityHints: z.array(z.string().max(400)).max(8).optional(),
+  qualityReasons: z.array(z.string().max(400)).max(6).optional(),
 });
 
 type RouteContext = { params: Promise<{ candidateId: string }> };
@@ -35,6 +39,13 @@ type RouteContext = { params: Promise<{ candidateId: string }> };
 /**
  * CG-4C / MQ-4 — channel-scoped regenerate via LLM composer (no RA-1 web search).
  * Shortform regenerate intentionally not exposed here.
+ *
+ * Operator notes (stale / timeout packages such as …_9e):
+ * - Morning deterministic_fallback on Band/Shortform stays until those channels
+ *   are regenerated (Shortform has no UI button — use production ensure / script).
+ * - Threads regenerate that hits composer timeout used to re-persist “관측됨” fallback;
+ *   failures now keep the prior package body and return channel_regenerate_failed.
+ * - Missing contentPlan.proposition → 409 content_proposition_missing (fail-closed).
  */
 export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAdminPermission("settings.manage");
@@ -56,8 +67,25 @@ export async function POST(request: Request, context: RouteContext) {
     const service = await createHumanMarketingReviewService();
     const detail = await service.getHumanReviewDetail(candidateId);
     if (!detail?.candidate) throw new Error("candidate_not_found");
-    const review = detail.review;
-    if (!review) throw new Error("review_missing");
+    // Pipeline/quality-gate blocked candidates may lack bootstrap; ensure review for channel repair.
+    let review = detail.review;
+    if (!review) {
+      review = await service.getOrCreateHumanReview(
+        candidateId,
+        auth.session.username ?? "admin",
+      );
+    }
+
+    if (!detail.candidate.contentPlan?.proposition) {
+      return Response.json(
+        {
+          message: "content_proposition_missing",
+          hint: "Content Strategist를 재실행하거나 contentPlan.proposition을 백필한 뒤 채널 재생성을 다시 시도하세요.",
+          channel: parsed.data.channel,
+        },
+        { status: 409 },
+      );
+    }
 
     const entry = review.channelReviews?.[parsed.data.channel];
     if (entry?.humanDraft?.body && !parsed.data.allowOverwriteHuman) {
@@ -78,13 +106,16 @@ export async function POST(request: Request, context: RouteContext) {
       ensurePackageLayout(packageRoot);
     }
 
+    const audienceContentResearchBrief =
+      tryReadAudienceContentResearchBriefFromPackage(packageRoot);
+
     const useRuntime = isAiRuntimeMarketingCronEnabled();
     if (useRuntime) {
       await ensureSharedObservabilityRecorder();
     }
     const timeoutMs = resolveMarketingCronHermesTimeoutMs(
       process.env,
-      MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+      CHANNEL_REGENERATE_COMPOSER_TIMEOUT_MS_DEFAULT,
     );
     const invoke = createPublishableComposerInvoke({
       useRuntime,
@@ -93,19 +124,14 @@ export async function POST(request: Request, context: RouteContext) {
       completionTimeoutMs: timeoutMs,
       invokeHermesProfile: useRuntime
         ? undefined
-        : (profile, prompt) => {
-            const hermesBin = resolveHermesExecutable(process.env);
-            const result = spawnSync(
-              hermesBin,
-              ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt],
-              {
-                encoding: "utf8",
-                env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-                timeout: timeoutMs,
-              },
-            );
-            return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
-          },
+        : (profile, prompt) =>
+            spawnHermesProfileAsync({
+              hermesBin: resolveHermesExecutable(process.env),
+              profile,
+              prompt,
+              timeoutMs,
+              env: process.env,
+            }),
     });
 
     if (!invoke) {
@@ -120,15 +146,69 @@ export async function POST(request: Request, context: RouteContext) {
       packageRoot,
       forceRegenerateChannels: [parsed.data.channel as PublishableChannel],
       allowOverwriteHuman: Boolean(parsed.data.allowOverwriteHuman),
+      allowDeterministicFallback: false,
       explicitTargetChannels: [
         ...(detail.candidate.contentPlan?.targetChannels ?? ["threads", "shortform"]),
         parsed.data.channel as PublishableChannel,
       ],
-      audienceContentResearchBrief: null,
+      audienceContentResearchBrief,
       invoke,
       modelProfile: "content-strategist",
       persist: true,
+      qualityRevision:
+        parsed.data.qualityRevision ||
+        (parsed.data.qualityHints && parsed.data.qualityHints.length > 0) ||
+        (parsed.data.qualityReasons && parsed.data.qualityReasons.length > 0)
+          ? {
+              hints: parsed.data.qualityHints ?? [],
+              reasons: parsed.data.qualityReasons ?? [],
+              priorBody: entry?.humanDraft?.body?.trim()
+                ? entry.humanDraft.body
+                : entry?.aiDraft?.body ?? detail.candidate.draft.body ?? null,
+            }
+          : null,
     });
+
+    const slot =
+      parsed.data.channel === "threads"
+        ? bundle.threads
+        : parsed.data.channel === "naver_blog"
+          ? bundle.naver_blog
+          : parsed.data.channel === "naver_band"
+            ? bundle.naver_band
+            : parsed.data.channel === "instagram"
+              ? bundle.instagram
+              : bundle.kakao_channel;
+
+    const llmOk =
+      Boolean(slot?.body?.trim()) &&
+      slot?.provenance.composer === "llm" &&
+      slot.publishableSuccess === true;
+
+    if (!llmOk) {
+      const failureCategory = slot?.provenance.failureCategory ?? "unknown";
+      const failureMessage =
+        slot?.provenance.failureMessage ??
+        "channel regenerate failed without LLM publishable success";
+      const timeoutHint =
+        failureCategory === "timeout"
+          ? ` Composer timeout was ${timeoutMs}ms — retry once, or raise MARKETING_CRON_HERMES_TIMEOUT_MS.`
+          : "";
+      return Response.json(
+        {
+          message: "channel_regenerate_failed",
+          channel: parsed.data.channel,
+          failureCategory,
+          failureMessage: `${failureMessage}${timeoutHint}`,
+          composer: slot?.provenance.composer ?? null,
+          status: slot?.status ?? null,
+          publishableSuccess: slot?.publishableSuccess ?? false,
+          completionTimeoutMs: timeoutMs,
+          hint: "이전 패키지 본문은 유지했습니다. diagnostic fallback으로 덮어쓰지 않았습니다.",
+        },
+        { status: 502 },
+      );
+    }
 
     const merged = mergeChannelReviewsFromPublishable({
       existing: {
@@ -145,14 +225,6 @@ export async function POST(request: Request, context: RouteContext) {
       bundle,
     });
 
-    const slot =
-      parsed.data.channel === "threads"
-        ? bundle.threads
-        : parsed.data.channel === "naver_blog"
-          ? bundle.naver_blog
-          : parsed.data.channel === "naver_band"
-            ? bundle.naver_band
-            : bundle.kakao_channel;
     if (slot?.body) {
       merged[parsed.data.channel] = {
         channel: parsed.data.channel,
@@ -188,6 +260,8 @@ export async function POST(request: Request, context: RouteContext) {
       composer: slot?.provenance.composer ?? null,
       publishableSuccess: slot?.publishableSuccess ?? false,
       status: slot?.status ?? null,
+      completionTimeoutMs: timeoutMs,
+      acrbLoaded: Boolean(audienceContentResearchBrief),
     });
   } catch (error) {
     return humanReviewErrorResponse(error);

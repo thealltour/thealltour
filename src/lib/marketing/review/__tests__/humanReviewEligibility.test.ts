@@ -228,7 +228,7 @@ describe("STEP 3-13 centralized Human Review eligibility", () => {
     }
   });
 
-  it("5: blocked candidate — bootstrap and getOrCreate both create zero reviews", async () => {
+  it("5: GA BLOCK blocked candidate — bootstrap and getOrCreate create zero reviews", async () => {
     const { candidateRepo, candidate } = await seedCandidate("blocked");
     const service = new HumanMarketingReviewService({ candidateRepo, reviewRepo, now: () => NOW });
     const bootstrap = await bootstrapHumanReviewForCandidate(candidate, { reviewRepo, now: () => NOW });
@@ -237,6 +237,24 @@ describe("STEP 3-13 centralized Human Review eligibility", () => {
       HumanReviewEligibilityError,
     );
     expect((await reviewRepo.listReviews()).length).toBe(0);
+  });
+
+  it("5b: pipeline-blocked without GA — bootstrap allowed for Body repair", async () => {
+    const { candidateRepo, candidate } = await seedCandidate("ready_for_human_review");
+    const pipelineBlocked = {
+      ...candidate,
+      status: "blocked" as const,
+      governanceDecision: null,
+      observability: { ...candidate.observability, governanceDecision: null },
+      revisionHistory: [],
+    };
+    await candidateRepo.saveCandidate(pipelineBlocked);
+    expect(evaluateHumanReviewEligibility(pipelineBlocked).eligible).toBe(true);
+    const bootstrap = await bootstrapHumanReviewForCandidate(pipelineBlocked, {
+      reviewRepo,
+      now: () => NOW,
+    });
+    expect(bootstrap.outcome).toBe("created");
   });
 
   it("6: failed candidate — zero reviews through bootstrap and getOrCreate", async () => {

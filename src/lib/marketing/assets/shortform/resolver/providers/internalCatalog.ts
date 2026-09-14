@@ -8,7 +8,29 @@ import type {
 } from "@/lib/marketing/assets/shortform/resolver/provider";
 import { inferOrientation, tokenOverlapScore } from "@/lib/marketing/assets/shortform/resolver/scoring";
 
-function recordToHit(record: MarketingMediaSourceRecord): ShortformNormalizedHit | null {
+function resolvePreviewUrl(record: MarketingMediaSourceRecord): string | null {
+  const meta = record.metadata;
+  if (typeof meta.previewUrl === "string" && meta.previewUrl.trim()) {
+    return meta.previewUrl.trim();
+  }
+  if (record.mediaType === "image" && record.remoteAssetUrl?.trim()) {
+    return record.remoteAssetUrl.trim();
+  }
+  return null;
+}
+
+function resolveCreatorName(record: MarketingMediaSourceRecord): string | null {
+  if (record.creatorName?.trim()) return record.creatorName.trim();
+  if (record.attributionText?.trim()) return record.attributionText.trim();
+  if (typeof record.metadata.subject === "string" && record.metadata.subject.trim()) {
+    return record.metadata.subject.trim();
+  }
+  if (record.sourceKind === "own") return "자체 소스";
+  return null;
+}
+
+/** Exported for unit tests — maps catalog rows into Shortform resolver hits. */
+export function recordToHit(record: MarketingMediaSourceRecord): ShortformNormalizedHit | null {
   if (record.status !== "active") return null;
   let mediaType: ShortformNormalizedHit["mediaType"] | null = null;
   if (record.mediaType === "video") mediaType = "video";
@@ -35,12 +57,12 @@ function recordToHit(record: MarketingMediaSourceRecord): ShortformNormalizedHit
     sourcePageUrl: record.sourcePageUrl,
     remoteAssetUrl: record.remoteAssetUrl,
     remoteAssetUrlExpiresAt: record.remoteAssetUrlExpiresAt,
-    previewUrl: null,
+    previewUrl: resolvePreviewUrl(record),
     width: record.width,
     height: record.height,
     durationMs: record.durationMs,
     orientation: record.orientation ?? inferOrientation(record.width, record.height),
-    creatorName: record.creatorName,
+    creatorName: resolveCreatorName(record),
     rightsKind: record.rightsKind,
     licenseName: record.licenseName,
     licenseUrl: record.licenseUrl,

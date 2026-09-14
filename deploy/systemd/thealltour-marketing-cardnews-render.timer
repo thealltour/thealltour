@@ -1,0 +1,18 @@
+[Unit]
+Description=Render Instagram cardnews for today's packages after copy generation settles
+Documentation=docs/hermes/marketing/instagram-cardnews-render-step.md
+Requires=thealltour-marketing-cardnews-render.service
+
+[Timer]
+# Copy generation runs from 09:00 KST; render in the gaps rather than in lockstep
+# so a slow sharp pass never blocks the queue.
+OnCalendar=09:40 Asia/Seoul
+OnCalendar=11:40 Asia/Seoul
+OnCalendar=14:40 Asia/Seoul
+AccuracySec=2min
+RandomizedDelaySec=5min
+Persistent=true
+Unit=thealltour-marketing-cardnews-render.service
+
+[Install]
+WantedBy=timers.target

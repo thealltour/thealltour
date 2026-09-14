@@ -304,8 +304,75 @@ describe("MQ-5 approval policy", () => {
       body: GOOD_THREADS,
       content: llmContent(GOOD_THREADS),
       proposition: prop(),
+      usableFacts: [
+        "부산 출발·직항 여부는 예약 전 공식 확인이 필요하다",
+        "패키지 포함/불포함 항목을 비교한다",
+        "가족 전원이 가능한 날짜부터 맞춘다",
+      ],
     });
     expect(isMarketingValueApprovable(good)).toBe(true);
     expect(isMarketingValueApprovable({ ...good, stale: true })).toBe(false);
+  });
+});
+
+describe("MQ-5 verify-only vs usableFacts", () => {
+  const VERIFY_ONLY = `소셜 여행 정보, 어디까지 믿을까요?
+
+출국 전 체크리스트입니다.
+1. 공식 입국 절차 재확인: 비자·입국 카드는 공식 채널을 직접 확인하세요.
+2. 시즌별 기상 변동성 파악: 우기 안내는 공식 사이트를 대조해야 합니다.
+
+공식 경로를 체크해 보세요.`;
+
+  const FACTFUL = `태국 가기 전, 입국·시즌만 먼저 정리해 두세요.
+
+1. 입국: 한국 여권은 단기 관광 시 비자 면제 조건이 있고, TDAC(디지털 입국 카드)을 출국 전에 준비하는 흐름이 안내됩니다.
+2. 시즌: 대체로 11–2월이 건조·선선하고, 우기에는 소나기·이동 차질 가능성을 일정에 반영하세요.
+
+직항·요금처럼 바뀌는 값은 단정하지 말고, 일정 짜실 때 공식 입국 안내만 한 번 더 보세요.
+태국 첫 여행이라면 입국 카드 준비에서 막힌 경험, 댓글로 공유해 주셔도 좋아요.`;
+
+  it("penalizes numbered verify-only shells", () => {
+    const a = evaluateMarketingValue({
+      channel: "threads",
+      body: VERIFY_ONLY,
+      content: llmContent(VERIFY_ONLY),
+      proposition: prop({
+        contentPromise: "태국 입국·우기 확인 포인트를 정리한다",
+        specificTakeaways: ["입국 절차", "우기 대비"],
+        desiredAudienceAction: "save",
+      }),
+      usableFacts: [
+        "Updated information about visa requirements and the rainy season in Thailand",
+        "TDAC Thailand Digital Arrival Card",
+      ],
+    });
+    expect(a.verdict === "needs_improvement" || a.verdict === "reject" || a.overallScore < 70).toBe(
+      true,
+    );
+    expect(a.improvementHints.join(" ")).toMatch(/usableFacts|verify/i);
+  });
+
+  it("rewards bodies that state usableFacts and match comment CTA", () => {
+    const a = evaluateMarketingValue({
+      channel: "threads",
+      body: FACTFUL,
+      content: llmContent(FACTFUL),
+      proposition: prop({
+        contentPromise: "태국 입국·시즌 확인 포인트를 정리한다",
+        readerGain: "입국 카드와 시즌 기준을 얻는다",
+        specificTakeaways: ["TDAC 준비", "11–2월 건기"],
+        engagementMechanism: "experience_sharing",
+        desiredAudienceAction: "comment",
+      }),
+      usableFacts: [
+        "TDAC Thailand Digital Arrival Card",
+        "11월부터 2월까지 건조하고 선선한 날씨",
+        "단기 체류 비자 없이 입국할 수 있습니다",
+      ],
+    });
+    expect(a.overallScore).toBeGreaterThanOrEqual(65);
+    expect(a.verdict).not.toBe("reject");
+    expect(a.engagementPotentialScore).toBeGreaterThanOrEqual(70);
   });
 });

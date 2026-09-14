@@ -14,6 +14,7 @@ import type { HumanReviewDraft } from "@/lib/marketing/review/types";
 import {
   PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
   PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
+  formatForChannel,
   type PublishableChannel,
   type PublishableChannelContent,
   type PublishableContentBundle,
@@ -22,8 +23,18 @@ import {
   buildPublishableComposerInput,
   computePublishableSourceRevision,
 } from "@/lib/marketing/publishable/inputs";
+import {
+  buildCoreContentPack,
+  resolveCoreGateDecision,
+} from "@/lib/marketing/publishable/core/coreContentPack";
+import { persistCoreContentPack } from "@/lib/marketing/publishable/core/persistCoreContentPack";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
+import {
+  resolvePublishableComposerConcurrency,
+  runWithConcurrency,
+} from "@/lib/marketing/publishable/composeConcurrency";
+import { composeInstagramPublishableContent } from "@/lib/marketing/publishable/instagram/composeInstagramPublishableContent";
 import { composeKakaoChannelPublishableContent } from "@/lib/marketing/publishable/kakao_channel/composeKakaoChannelPublishableContent";
 import { composeNaverBandPublishableContent } from "@/lib/marketing/publishable/naver_band/composeNaverBandPublishableContent";
 import { composeNaverBlogPublishableContent } from "@/lib/marketing/publishable/naver_blog/composeNaverBlogPublishableContent";
@@ -63,6 +74,17 @@ export type EnsurePublishableContentInput = {
   explicitTargetChannels?: PublishableChannel[] | null;
   /** Persist bundle to packageRoot when generation runs. Default true when packageRoot set. */
   persist?: boolean;
+  /**
+   * When false, composers must not invent diagnostic “관측됨” fallback bodies.
+   * Defaults to false for channel-scoped regenerate; true otherwise.
+   */
+  allowDeterministicFallback?: boolean;
+  /** Marketing Value / human review quality repair hints for Content Strategist composer. */
+  qualityRevision?: {
+    hints: string[];
+    priorBody?: string | null;
+    reasons?: string[];
+  } | null;
 };
 
 function tryReadBundle(packageRoot: string | null | undefined): PublishableContentBundle | null {
@@ -132,10 +154,23 @@ export async function ensurePublishableContent(
   const acrb = input.audienceContentResearchBrief ?? null;
   const sourceRevision = computePublishableSourceRevision(input.candidate, input.humanDraft, acrb);
   const existing = tryReadBundle(input.packageRoot);
-  const composerInput = buildPublishableComposerInput(input.candidate, {
-    acrb,
-    explicitTargetChannels: input.explicitTargetChannels,
-  });
+  const baseComposerInput = {
+    ...buildPublishableComposerInput(input.candidate, {
+      acrb,
+      explicitTargetChannels: input.explicitTargetChannels,
+    }),
+    ...(input.qualityRevision
+      ? {
+          qualityRevision: {
+            hints: input.qualityRevision.hints.slice(0, 8),
+            priorBody: input.qualityRevision.priorBody ?? null,
+            reasons: input.qualityRevision.reasons?.slice(0, 6),
+          },
+        }
+      : {}),
+  };
+  const corePack = buildCoreContentPack({ composerInput: baseComposerInput, now });
+  const composerInput = { ...baseComposerInput, corePack };
   const targetChannels = composerInput.targetChannels;
   const modelProfile = input.modelProfile ?? "content-strategist";
   const governanceDecision = input.candidate.governanceDecision?.decision ?? null;
@@ -169,25 +204,66 @@ export async function ensurePublishableContent(
   // Governance BLOCK — do not polish channel copy for publication.
   const blocked = governanceDecision === "BLOCK";
   const invoke = blocked ? null : input.invoke;
+  const allowDeterministicFallback =
+    input.allowDeterministicFallback ?? !scopedOnly;
   const composeOpts = {
     composerInput,
     now,
     invoke,
     modelProfile,
-    allowDeterministicFallback: true,
+    allowDeterministicFallback,
   };
 
-  const threads =
-    humanOwnsThreads && input.humanDraft
-      ? threadsFromHumanDraft(input.candidate, input.humanDraft, sourceRevision, nowIso)
-      : !shouldRegen("threads", input, existing?.threads) && existing?.threads
-        ? existing.threads
-        : await composeThreadsPublishableContent(composeOpts);
+  /**
+   * Core fact gate. A scoped regenerate is an explicit operator request, so it
+   * bypasses the gate — silently refusing there would look like a broken button.
+   */
+  const coreGate = scopedOnly
+    ? null
+    : resolveCoreGateDecision({ pack: corePack, targetChannels });
+  const coreGateBlocks = (channel: PublishableChannel): boolean =>
+    Boolean(coreGate?.blockedChannels.includes(channel));
 
-  const shortform =
-    !shouldRegen("shortform", input, existing?.shortform) && existing?.shortform
-      ? existing.shortform
-      : await composeShortformNarration(composeOpts);
+  const isScopedLlmSuccess = (content: PublishableChannelContent): boolean =>
+    content.provenance.composer === "llm" && content.publishableSuccess === true;
+
+  /** Persist prior artifact when scoped regenerate fails (never write diagnostic fallback). */
+  const channelForPersist = (
+    channel: PublishableChannel,
+    composed: PublishableChannelContent,
+    previous: PublishableChannelContent | undefined,
+  ): PublishableChannelContent => {
+    if (!input.forceRegenerateChannels?.includes(channel)) return composed;
+    if (isScopedLlmSuccess(composed)) return composed;
+    if (previous?.body?.trim()) return previous;
+    return composed;
+  };
+
+  /** Skipped channel placeholder — records why, never a fabricated body. */
+  const coreGateSkipped = (channel: PublishableChannel): PublishableChannelContent => ({
+    contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
+    channel,
+    format: formatForChannel(channel),
+    title: null,
+    body: "",
+    status: "generation_failed",
+    generatedAt: nowIso,
+    sourceCandidateId: input.candidate.candidateId,
+    sourceRevision,
+    provenance: {
+      composer: "deterministic_fallback",
+      evidenceRefIds: [],
+      commercialIntent: input.candidate.contentAssignment.commercialIntent,
+      generationMode: "skipped",
+      modelProfile: null,
+      attemptCount: 0,
+      failureCategory: "core_facts_insufficient",
+      failureMessage: coreGate?.reason ?? "core_facts_insufficient",
+    },
+    validation: { ok: false, issues: [{ code: "empty_body", message: "core fact gate skipped generation" }] },
+    publishableSuccess: false,
+    needsRegeneration: true,
+  });
 
   // Stamp governance block on freshly composed non-human channels
   const stampBlock = (content: PublishableChannelContent): PublishableChannelContent => {
@@ -206,6 +282,72 @@ export async function ensurePublishableContent(
     };
   };
 
+  const composerFor: Record<
+    PublishableChannel,
+    (opts: typeof composeOpts) => Promise<PublishableChannelContent>
+  > = {
+    threads: composeThreadsPublishableContent,
+    shortform: composeShortformNarration,
+    naver_blog: composeNaverBlogPublishableContent,
+    naver_band: composeNaverBandPublishableContent,
+    kakao_channel: composeKakaoChannelPublishableContent,
+    instagram: composeInstagramPublishableContent,
+  };
+
+  /**
+   * Reuse / gate decisions are cheap and deterministic, so they resolve up front;
+   * only channels that actually need a model call become tasks. That keeps the
+   * concurrency budget spent on Hermes calls rather than on bookkeeping.
+   */
+  const resolvedChannels = new Map<PublishableChannel, PublishableChannelContent>();
+  const composeTasks: Array<{ channel: PublishableChannel; run: () => Promise<PublishableChannelContent> }> =
+    [];
+
+  const planChannel = (channel: PublishableChannel): void => {
+    const prior = existing?.[channel];
+    if (!shouldRegen(channel, input, prior) && prior) {
+      resolvedChannels.set(channel, prior);
+      return;
+    }
+    if (coreGateBlocks(channel)) {
+      resolvedChannels.set(channel, coreGateSkipped(channel));
+      return;
+    }
+    composeTasks.push({ channel, run: () => composerFor[channel](composeOpts) });
+  };
+
+  if (humanOwnsThreads && input.humanDraft) {
+    resolvedChannels.set(
+      "threads",
+      threadsFromHumanDraft(input.candidate, input.humanDraft, sourceRevision, nowIso),
+    );
+  } else {
+    planChannel("threads");
+  }
+  planChannel("shortform");
+
+  const optionalChannels = ["naver_blog", "naver_band", "kakao_channel", "instagram"] as const;
+  const humanOwned = new Set<PublishableChannel>();
+  for (const channel of optionalChannels) {
+    const prev = existing?.[channel];
+    if (prev?.status === "human_edited" && !input.allowOverwriteHuman) {
+      humanOwned.add(channel);
+      resolvedChannels.set(channel, prev);
+      continue;
+    }
+    if (targetChannels.includes(channel)) planChannel(channel);
+  }
+
+  const composed = await runWithConcurrency(
+    composeTasks.map((task) => task.run),
+    resolvePublishableComposerConcurrency(),
+  );
+  const freshlyComposed = new Set<PublishableChannel>();
+  for (const [index, task] of composeTasks.entries()) {
+    resolvedChannels.set(task.channel, composed[index]!);
+    freshlyComposed.add(task.channel);
+  }
+
   const bundle: PublishableContentBundle = {
     contract: PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
     candidateId: input.candidate.candidateId,
@@ -213,36 +355,16 @@ export async function ensurePublishableContent(
     generatedAt: nowIso,
     sourceRevision,
     targetChannels,
-    threads: stampBlock(threads),
-    shortform: stampBlock(shortform),
+    // threads/shortform are stamped even when reused, matching the pre-fan-out contract.
+    threads: stampBlock(resolvedChannels.get("threads")!),
+    shortform: stampBlock(resolvedChannels.get("shortform")!),
   };
 
-  for (const channel of ["naver_blog", "naver_band", "kakao_channel"] as const) {
-    const prev = existing?.[channel];
-    if (prev?.status === "human_edited" && !input.allowOverwriteHuman) {
-      bundle[channel] = prev;
-    }
-  }
-
-  if (targetChannels.includes("naver_blog")) {
-    bundle.naver_blog =
-      !shouldRegen("naver_blog", input, existing?.naver_blog) && existing?.naver_blog
-        ? existing.naver_blog
-        : stampBlock(await composeNaverBlogPublishableContent(composeOpts));
-  }
-
-  if (targetChannels.includes("naver_band")) {
-    bundle.naver_band =
-      !shouldRegen("naver_band", input, existing?.naver_band) && existing?.naver_band
-        ? existing.naver_band
-        : stampBlock(await composeNaverBandPublishableContent(composeOpts));
-  }
-
-  if (targetChannels.includes("kakao_channel")) {
-    bundle.kakao_channel =
-      !shouldRegen("kakao_channel", input, existing?.kakao_channel) && existing?.kakao_channel
-        ? existing.kakao_channel
-        : stampBlock(await composeKakaoChannelPublishableContent(composeOpts));
+  for (const channel of optionalChannels) {
+    const content = resolvedChannels.get(channel);
+    if (!content) continue;
+    bundle[channel] =
+      freshlyComposed.has(channel) && !humanOwned.has(channel) ? stampBlock(content) : content;
   }
 
   // MQ-5 — deterministic Marketing Value Gate (evaluate only; no auto-regeneration).
@@ -258,10 +380,12 @@ export async function ensurePublishableContent(
   if (bundle.kakao_channel) {
     channelsToScore.push({ channel: "kakao_channel", content: bundle.kakao_channel });
   }
+  if (bundle.instagram) channelsToScore.push({ channel: "instagram", content: bundle.instagram });
   const assessments = evaluateBundleChannels({
     channels: channelsToScore,
     proposition: composerInput.contentProposition,
     researchVerdict: acrb?.researchVerdict ?? null,
+    usableFacts: composerInput.usableFacts.map((f) => f.statement),
     now,
   });
   const scoredBundle = attachAssessmentsToPublishableBundle(bundle, assessments);
@@ -272,21 +396,63 @@ export async function ensurePublishableContent(
       if (!existsSync(input.packageRoot)) {
         // package may not exist yet — export creates it; skip persist here
       } else {
+        const persistBundle: PublishableContentBundle = {
+          ...bundle,
+          threads: channelForPersist("threads", bundle.threads, existing?.threads),
+          shortform: channelForPersist("shortform", bundle.shortform, existing?.shortform),
+          naver_blog: bundle.naver_blog
+            ? channelForPersist("naver_blog", bundle.naver_blog, existing?.naver_blog)
+            : bundle.naver_blog,
+          naver_band: bundle.naver_band
+            ? channelForPersist("naver_band", bundle.naver_band, existing?.naver_band)
+            : bundle.naver_band,
+          kakao_channel: bundle.kakao_channel
+            ? channelForPersist("kakao_channel", bundle.kakao_channel, existing?.kakao_channel)
+            : bundle.kakao_channel,
+          instagram: bundle.instagram
+            ? channelForPersist("instagram", bundle.instagram, existing?.instagram)
+            : bundle.instagram,
+        };
         persistPublishableContentBundle({
           packageRoot: input.packageRoot,
-          bundle,
+          bundle: persistBundle,
           createdAt: nowIso,
         });
-        persistMarketingValueBundle({
+        persistCoreContentPack({
           packageRoot: input.packageRoot,
-          bundle: buildMarketingValueBundle({
-            candidateId: input.candidate.candidateId,
-            sourceRevision,
-            channels: assessments,
-            now,
-          }),
+          pack: corePack,
           createdAt: nowIso,
         });
+        const scopedFailed =
+          scopedOnly &&
+          (input.forceRegenerateChannels ?? []).every((channel) => {
+            const slot =
+              channel === "threads"
+                ? bundle.threads
+                : channel === "shortform"
+                  ? bundle.shortform
+                  : channel === "naver_blog"
+                    ? bundle.naver_blog
+                    : channel === "naver_band"
+                      ? bundle.naver_band
+                      : channel === "instagram"
+                        ? bundle.instagram
+                        : bundle.kakao_channel;
+            return !slot || !isScopedLlmSuccess(slot);
+          });
+        // Do not clobber prior Marketing Value scores with empty/failure assessments.
+        if (!scopedFailed) {
+          persistMarketingValueBundle({
+            packageRoot: input.packageRoot,
+            bundle: buildMarketingValueBundle({
+              candidateId: input.candidate.candidateId,
+              sourceRevision,
+              channels: assessments,
+              now,
+            }),
+            createdAt: nowIso,
+          });
+        }
       }
     } catch {
       /* best-effort persist */

@@ -56,6 +56,12 @@ export type MorningReviewEvidenceClaim = {
 export type MorningReviewGovernanceContext = {
   decision: string | null;
   summary: string;
+  /**
+   * Why candidate appears blocked in UI.
+   * - governance_block: GA decision BLOCK
+   * - pipeline_blocked_without_governance: status=blocked but no GA decision (e.g. revision_required / completeness)
+   */
+  blockKind: "governance_block" | "pipeline_blocked_without_governance" | null;
   humanApprovalStillRequired: boolean;
   riskScore: number | null;
   reasons: string[];
@@ -80,6 +86,22 @@ export type MorningReviewPerformanceItem = {
   metrics: Record<string, number>;
 };
 
+export type MorningReviewDegradationCode =
+  | "manager_deterministic_fallback"
+  | "channel_composer_fallback"
+  | "channel_value_weak"
+  | "research_limited"
+  | "run_degraded"
+  | "semantic_infra_degraded";
+
+/** A degradation that previously stayed silent in run metadata / channel warnings. */
+export type MorningReviewDegradation = {
+  code: MorningReviewDegradationCode;
+  severity: "warning" | "critical";
+  message: string;
+  detail?: string | null;
+};
+
 export type MorningReviewOperationsContext = {
   runStatus: string | null;
   executionAttempt: number | null;
@@ -87,6 +109,7 @@ export type MorningReviewOperationsContext = {
   recovered: boolean;
   notice: string | null;
   workflowIssue: "missing_review" | null;
+  degradations: MorningReviewDegradation[];
 };
 
 export type MorningReviewHumanAction = {
@@ -116,6 +139,8 @@ export type MorningChannelReviewView = {
   aiBody: string;
   source: "human" | "ai";
   validationWarnings: string[];
+  /** True when target/offerable slot has no body yet — regenerate to fill. */
+  awaitingGeneration?: boolean;
   blogMeta?: {
     selectedTitle?: string | null;
     titleCandidates?: string[];

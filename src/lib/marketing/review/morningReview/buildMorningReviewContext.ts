@@ -7,9 +7,11 @@ import {
   buildMorningReviewEvidenceClaims,
   pickFactsToUse,
 } from "@/lib/marketing/review/morningReview/buildEvidenceLinks";
+import { collectMorningReviewDegradations } from "@/lib/marketing/review/morningReview/collectDegradations";
 import {
   MORNING_MARKETING_REVIEW_CONTEXT_CONTRACT,
   type MorningMarketingReviewContext,
+  type MorningReviewGovernanceContext,
   type MorningReviewHumanAction,
   type MorningReviewPerformanceItem,
   type MorningReviewQueueRow,
@@ -34,8 +36,11 @@ import {
 } from "@/lib/marketing/review/channelReviews";
 import {
   mergeChannelReviewsFromPublishable,
+  ensureChannelReviewPlaceholders,
   visibleChannelsFromReviews,
+  OFFERABLE_REVIEW_CHANNELS,
 } from "@/lib/marketing/review/mergeChannelReviews";
+import { emptyChannelReviewEntry } from "@/lib/marketing/review/channelReviews";
 import type {
   MorningChannelReviewView,
   MorningResearchSummary,
@@ -103,6 +108,17 @@ function governanceSummary(decision: string | null): string {
     return "AI 거버넌스가 BLOCK 했습니다. 자동 게시 또는 승인으로 이어지지 않습니다.";
   }
   return "거버넌스 결과가 없습니다.";
+}
+
+function resolveGovernanceBlockKind(input: {
+  candidateStatus: string;
+  decision: string | null;
+}): MorningReviewGovernanceContext["blockKind"] {
+  if (input.decision === "BLOCK") return "governance_block";
+  if (input.candidateStatus === "blocked" && !input.decision) {
+    return "pipeline_blocked_without_governance";
+  }
+  return null;
 }
 
 function boundedMetrics(snapshot: ContentPerformanceSnapshot): Record<string, number> {
@@ -209,27 +225,30 @@ export function buildMorningMarketingReviewContext(input: {
     /* keep raw draft */
   }
 
-  const channelReviewsMap = publishableBundle
+  const mergedMap = publishableBundle
     ? mergeChannelReviewsFromPublishable({
         existing: review?.channelReviews,
         bundle: publishableBundle,
       })
     : review?.channelReviews ?? {};
+  const channelReviewsMap = ensureChannelReviewPlaceholders(
+    mergedMap,
+    OFFERABLE_REVIEW_CHANNELS,
+  );
 
-  const channelReviews: MorningChannelReviewView[] = visibleChannelsFromReviews(channelReviewsMap).map(
-    (channel) => {
-      const entry = channelReviewsMap[channel]!;
+  const planTargets = plan?.targetChannels ?? publishableBundle?.targetChannels ?? null;
+  const channelReviews: MorningChannelReviewView[] = visibleChannelsFromReviews(channelReviewsMap, {
+    targetChannels: planTargets,
+    offerAllPublishableSlots: true,
+  }).map((channel) => {
+      const entry =
+        channelReviewsMap[channel] ??
+        emptyChannelReviewEntry(channel, { title: null, body: "" }, ["awaiting_generation"]);
       const eff = effectiveChannelDraft(entry);
-      const slot =
-        channel === "threads"
-          ? publishableBundle?.threads
-          : channel === "shortform"
-            ? publishableBundle?.shortform
-            : channel === "naver_blog"
-              ? publishableBundle?.naver_blog
-              : channel === "naver_band"
-                ? publishableBundle?.naver_band
-                : publishableBundle?.kakao_channel;
+      const awaitingGeneration = !eff.body.trim();
+      // Keyed lookup, not a ternary chain: the chain's final `else` silently
+      // handed every newly added channel kakao_channel's content.
+      const slot = publishableBundle?.[channel];
       const blogMeta =
         channel === "naver_blog" && publishableBundle?.naver_blog?.blogMeta
           ? {
@@ -243,14 +262,17 @@ export function buildMorningMarketingReviewContext(input: {
       return {
         channel,
         label: channelLabel(channel),
-        status: entry.status ?? "needs_review",
-        statusLabel: channelStatusLabel(entry.status ?? "needs_review"),
+        status: awaitingGeneration ? "draft" : entry.status ?? "needs_review",
+        statusLabel: awaitingGeneration
+          ? "미생성"
+          : channelStatusLabel(entry.status ?? "needs_review"),
         title: eff.title,
         body: eff.body,
         aiTitle: entry.aiDraft?.title ?? null,
         aiBody: entry.aiDraft?.body ?? "",
         source: eff.source,
         validationWarnings: entry.validationWarnings ?? [],
+        awaitingGeneration,
         blogMeta,
         marketingValue: mv
           ? {
@@ -361,7 +383,17 @@ export function buildMorningMarketingReviewContext(input: {
     },
     governance: {
       decision: governance?.decision ?? null,
-      summary: governanceSummary(governance?.decision ?? null),
+      summary:
+        resolveGovernanceBlockKind({
+          candidateStatus: candidate.status,
+          decision: governance?.decision ?? null,
+        }) === "pipeline_blocked_without_governance"
+          ? "후보 상태는 blocked이지만 AI 거버넌스(ALLOW/REVIEW/BLOCK) 판정은 기록되지 않았습니다. 품질·완성도 게이트(revision_required 등)에서 멈춘 경우가 많습니다."
+          : governanceSummary(governance?.decision ?? null),
+      blockKind: resolveGovernanceBlockKind({
+        candidateStatus: candidate.status,
+        decision: governance?.decision ?? null,
+      }),
       humanApprovalStillRequired: governance?.decision !== "BLOCK",
       riskScore: governance?.riskScore ?? null,
       reasons: (governance?.reasons ?? []).slice(0, 8),
@@ -390,6 +422,11 @@ export function buildMorningMarketingReviewContext(input: {
       recovered,
       notice: operationsNotice,
       workflowIssue: missingReview ? "missing_review" : null,
+      degradations: collectMorningReviewDegradations({
+        run,
+        channelReviews,
+        researchLimitations: researchSummary?.limitations ?? [],
+      }),
     },
     humanAction: humanActionFromDetail(detail),
     detail,

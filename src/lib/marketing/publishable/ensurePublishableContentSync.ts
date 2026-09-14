@@ -28,6 +28,7 @@ import {
   computePublishableSourceRevision,
 } from "@/lib/marketing/publishable/inputs";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
+import { composeInstagramPublishableDeterministic } from "@/lib/marketing/publishable/instagram/deterministicInstagram";
 import { composeKakaoChannelPublishableDeterministic } from "@/lib/marketing/publishable/kakao_channel/deterministicKakao";
 import { composeNaverBandPublishableDeterministic } from "@/lib/marketing/publishable/naver_band/deterministicBand";
 import { composeNaverBlogPublishableDeterministic } from "@/lib/marketing/publishable/naver_blog/deterministicBlog";
@@ -135,7 +136,12 @@ function shortformContent(
 function wrapChannel(
   channel: PublishableChannel,
   format: PublishableChannelContent["format"],
-  det: { title: string | null; body: string; blogMeta?: PublishableChannelContent["blogMeta"] },
+  det: {
+    title: string | null;
+    body: string;
+    blogMeta?: PublishableChannelContent["blogMeta"];
+    instagramMeta?: PublishableChannelContent["instagramMeta"];
+  },
   composerInput: ReturnType<typeof buildPublishableComposerInput>,
   nowIso: string,
 ): PublishableChannelContent {
@@ -163,6 +169,7 @@ function wrapChannel(
       allowHeadings: channel === "naver_blog",
     }),
     blogMeta: det.blogMeta,
+    instagramMeta: det.instagramMeta,
   });
 }
 
@@ -331,7 +338,7 @@ export function ensurePublishableContentSync(input: {
         : shortformContent(input.candidate, composerInput, nowIso),
   };
 
-  for (const channel of ["naver_blog", "naver_band", "kakao_channel"] as const) {
+  for (const channel of ["naver_blog", "naver_band", "kakao_channel", "instagram"] as const) {
     const prev = existing?.[channel];
     if (prev?.status === "human_edited") {
       bundle[channel] = prev;
@@ -372,6 +379,19 @@ export function ensurePublishableContentSync(input: {
             "kakao_channel",
             "kakao_channel_post",
             composeKakaoChannelPublishableDeterministic(composerInput),
+            composerInput,
+            nowIso,
+          );
+  }
+
+  if (targetChannels.includes("instagram")) {
+    bundle.instagram =
+      keep("instagram", existing?.instagram) && existing?.instagram
+        ? existing.instagram
+        : wrapChannel(
+            "instagram",
+            "instagram_caption",
+            composeInstagramPublishableDeterministic(composerInput),
             composerInput,
             nowIso,
           );

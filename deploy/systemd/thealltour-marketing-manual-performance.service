@@ -1,0 +1,24 @@
+[Unit]
+Description=TheAllTour Marketing Manual Publication Performance Collection (one-shot, read-only)
+Documentation=docs/hermes/marketing/research-collection-worker.md
+After=network-online.target thealltour-internal.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ysh
+Group=ysh
+WorkingDirectory=/home/ysh/thealltour
+Environment=NODE_ENV=production
+Environment=PATH=/home/ysh/.local/bin:/home/ysh/.hermes/node/bin:/usr/bin:/bin
+Environment=HERMES_HOME=/home/ysh/.hermes
+# Secrets come from WorkingDirectory/.env.local — do not embed in this unit.
+ExecStart=/home/ysh/.hermes/node/bin/npx tsx scripts/cron-collect-manual-performance.ts
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=900
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

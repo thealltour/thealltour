@@ -76,6 +76,69 @@ export function countPhraseOccurrences(haystack: string, phrase: string): number
   return count;
 }
 
+/** Instagram truncates the caption here; anything after it needs a tap to reveal. */
+export const INSTAGRAM_HOOK_VISIBLE_CHARS = 125;
+export const INSTAGRAM_CAPTION_MAX_CHARS = 2200;
+export const INSTAGRAM_HASHTAG_MIN = 3;
+export const INSTAGRAM_HASHTAG_MAX = 12;
+
+/** Captions render links as plain text, so "링크 클릭" is a dead end for the reader. */
+const INSTAGRAM_LINK_CTA_RE =
+  /(?:아래|하단|본문)?\s*링크\s*(?:를\s*)?(?:클릭|눌러|타고|접속)|링크\s*참고|https?:\/\//;
+
+export function extractInstagramHashtags(caption: string): string[] {
+  return (caption.match(/#[^\s#]+/g) ?? []).map((tag) => tag.trim());
+}
+
+export function instagramCaptionIssues(caption: string): PublishableValidationIssue[] {
+  const issues: PublishableValidationIssue[] = [];
+  const trimmed = caption.trim();
+  if (!trimmed) return issues;
+
+  if (trimmed.length > INSTAGRAM_CAPTION_MAX_CHARS) {
+    issues.push({
+      code: "too_long",
+      message: `Instagram caption exceeds ${INSTAGRAM_CAPTION_MAX_CHARS} characters`,
+    });
+  }
+
+  const visible = trimmed.slice(0, INSTAGRAM_HOOK_VISIBLE_CHARS);
+  const visibleWithoutTags = visible.replace(/#[^\s#]+/g, "").trim();
+  if (visibleWithoutTags.length < 20) {
+    issues.push({
+      code: "weak_hook",
+      message: `First ${INSTAGRAM_HOOK_VISIBLE_CHARS} characters carry no hook before the fold`,
+    });
+  }
+
+  const hashtags = extractInstagramHashtags(trimmed);
+  const unique = new Set(hashtags.map((tag) => tag.toLowerCase()));
+  if (hashtags.length < INSTAGRAM_HASHTAG_MIN) {
+    issues.push({
+      code: "hashtag_policy",
+      message: `Needs at least ${INSTAGRAM_HASHTAG_MIN} hashtags for discovery`,
+    });
+  }
+  if (hashtags.length > INSTAGRAM_HASHTAG_MAX) {
+    issues.push({
+      code: "hashtag_policy",
+      message: `More than ${INSTAGRAM_HASHTAG_MAX} hashtags reads as spam`,
+    });
+  }
+  if (unique.size !== hashtags.length) {
+    issues.push({ code: "hashtag_policy", message: "Duplicate hashtags" });
+  }
+
+  if (INSTAGRAM_LINK_CTA_RE.test(trimmed)) {
+    issues.push({
+      code: "unclickable_link_cta",
+      message: "Instagram captions cannot render clickable links — point to the profile link instead",
+    });
+  }
+
+  return issues;
+}
+
 export function validatePublishableText(
   body: string,
   options?: {
@@ -163,6 +226,10 @@ export function validatePublishableText(
     if (trimmed.length > 2200) {
       issues.push({ code: "too_long", message: "Band post excessively long" });
     }
+  }
+
+  if (channel === "instagram") {
+    issues.push(...instagramCaptionIssues(trimmed));
   }
 
   if (channel === "kakao_channel") {

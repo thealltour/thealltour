@@ -7,6 +7,7 @@ import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTe
 import AdminCard from "@/components/admin/ui/AdminCard";
 import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/MarketingReviewAssetsPanel";
 import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketing-review/MarketingReviewShortformSourcesPanel";
+import { MarketingReviewChannelChecklist } from "@/components/admin/marketing-review/MarketingReviewChannelChecklist";
 import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/MarketingReviewChannelTabs";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
@@ -170,15 +171,57 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           </AdminCard>
         ) : null}
 
-        {candidate.status === "blocked" ? (
+        {candidate.status === "blocked" && context.governance.blockKind === "governance_block" ? (
           <AdminCard className="border-amber-500/30 bg-amber-500/5 p-4 text-sm">
             거버넌스 BLOCK 상태입니다. 일반 승인 버튼은 비활성화됩니다.
+          </AdminCard>
+        ) : null}
+
+        {candidate.status === "blocked" &&
+        context.governance.blockKind === "pipeline_blocked_without_governance" ? (
+          <AdminCard className="border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+            후보가 blocked이지만 AI 거버넌스 판정은 없습니다(품질·완성도 게이트에서 중단된 경우가 많습니다).
+            Body 품질이 낮으면 채널 탭에서 Content Strategist 재생성을 먼저 시도하세요. 일반 후보자 승인은
+            이 상태에서는 비활성입니다.
           </AdminCard>
         ) : null}
 
         {context.governance.governanceStale ? (
           <AdminCard className="border-amber-500/30 bg-amber-500/5 p-4 text-sm">
             이 초안은 AI 거버넌스 검토 이후 편집되었습니다. ALLOW/REVIEW/BLOCK 판정은 수정 전 초안 기준입니다.
+          </AdminCard>
+        ) : null}
+
+        {context.operations.degradations.length > 0 ? (
+          <AdminCard
+            className={`space-y-3 p-4 ${
+              context.operations.degradations.some((item) => item.severity === "critical")
+                ? "border-red-500/30 bg-red-500/5"
+                : "border-amber-500/30 bg-amber-500/5"
+            }`}
+          >
+            <h2 className="text-base font-semibold">파이프라인 저하 감지</h2>
+            <ul className="space-y-2 text-sm">
+              {context.operations.degradations.map((item) => (
+                <li key={item.code} className="space-y-1">
+                  <div className="flex items-start gap-2">
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${
+                        item.severity === "critical"
+                          ? "bg-red-500/15 text-red-300"
+                          : "bg-amber-500/15 text-amber-300"
+                      }`}
+                    >
+                      {item.severity === "critical" ? "심각" : "주의"}
+                    </span>
+                    <span>{item.message}</span>
+                  </div>
+                  {item.detail ? (
+                    <div className="pl-12 text-xs text-[var(--text-secondary)]">{item.detail}</div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           </AdminCard>
         ) : null}
 
@@ -353,8 +396,17 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         <AdminCard className="space-y-3 p-4">
           <h2 className="text-base font-semibold">2. 채널별 검토</h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            생성된 채널만 표시됩니다. 채널 저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다.
+            전 채널 탭을 표시합니다. 미생성 채널은 Content Strategist 재생성으로 채울 수 있습니다. 채널
+            저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다.
           </p>
+          <MarketingReviewChannelChecklist
+            context={context}
+            busy={busy}
+            onBusy={setBusy}
+            onMessage={setMessage}
+            onReload={reloadContext}
+            onSelectChannel={setSelectedChannel}
+          />
           <MarketingReviewChannelTabs
             context={context}
             canEdit={detail.canEdit}
@@ -468,7 +520,15 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
               <div>Revision count: {context.governance.revisionCount}</div>
             </div>
           ) : (
-            <p className="text-sm text-[var(--text-secondary)]">거버넌스 결과 없음</p>
+            <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+              <p>거버넌스 결과 없음</p>
+              {context.governance.blockKind === "pipeline_blocked_without_governance" ? (
+                <p>
+                  {context.governance.summary} GA가 BLOCK한 기록이 아니므로, Body 재생성으로 품질을 올린 뒤
+                  운영 정책에 따라 상태를 재평가하세요.
+                </p>
+              ) : null}
+            </div>
           )}
         </AdminCard>
 

@@ -72,11 +72,13 @@ export type MarketingSpanStage =
   | "deliverable_requirements"
   | "evidence_pack"
   | "audience_content_research"
+  | "story_point"
   | "content_strategist"
   | "completeness_validator"
   | "governance_auditor"
   | "performance_analyst"
   | "candidate_persist"
+  | "canonical_marketing_asset"
   | "human_review"
   | "research"
   | "agenda_slate"
@@ -98,7 +100,8 @@ export type MarketingDeterministicActorId =
   | "audience_content_research"
   | "completeness_validator"
   | "semantic_dedupe"
-  | "media_brief";
+  | "media_brief"
+  | "asset_source_writer";
 
 /**
  * Attribute values — OTel-compatible primitives (+ string arrays).

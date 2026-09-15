@@ -44,9 +44,16 @@ export type MarketingProductionRequestRepository = {
   enqueue(request: MarketingProductionRequest): Promise<{ request: MarketingProductionRequest; created: boolean }>;
   /**
    * Re-open a FAILED request as QUEUED for another worker attempt.
-   * COMPLETED cannot be requeued. Same logical_run_key is preserved.
+   * COMPLETED cannot be requeued via this path. Same logical_run_key is preserved.
    */
   requeueFailed(input: {
+    logicalRunKey: string;
+    now?: Date;
+  }): Promise<MarketingProductionRequest>;
+  /**
+   * Re-open COMPLETED+awaiting_story_selection as QUEUED after human Story pick.
+   */
+  requeueAwaitingStorySelection(input: {
     logicalRunKey: string;
     now?: Date;
   }): Promise<MarketingProductionRequest>;
@@ -74,6 +81,42 @@ export type MarketingProductionRequestRepository = {
 
 export function createProductionRequestId(logicalRunKey: string): string {
   return `mpr_${createHash("sha256").update(logicalRunKey).digest("hex").slice(0, 24)}`;
+}
+
+/** Reset a COMPLETED awaiting_story_selection request for another queue claim. */
+export function buildRequeuedAwaitingStorySelectionRequest(
+  existing: MarketingProductionRequest,
+  now: Date = new Date(),
+): MarketingProductionRequest {
+  if (existing.status !== "COMPLETED") {
+    throw new Error(`REQUEUE_REQUIRES_COMPLETED:${existing.status}`);
+  }
+  if (existing.metadata?.productionOutcome !== "awaiting_story_selection") {
+    throw new Error("REQUEUE_REQUIRES_AWAITING_STORY_SELECTION");
+  }
+  const iso = now.toISOString();
+  return normalizeProductionRequest({
+    ...existing,
+    status: "QUEUED",
+    updatedAt: iso,
+    claimedAt: null,
+    startedAt: null,
+    completedAt: null,
+    failedAt: null,
+    attemptCount: 0,
+    claimToken: null,
+    lastError: null,
+    errorMessage: null,
+    workerId: null,
+    completedCandidateId: null,
+    metadata: {
+      ...existing.metadata,
+      productionOutcome: "story_selection_resumed",
+      storySelectionResumedAt: iso,
+      requeuedAt: iso,
+      requeueCount: Number(existing.metadata.requeueCount ?? 0) + 1,
+    },
+  });
 }
 
 /** Reset a FAILED request payload fields for another queue claim. */
@@ -307,6 +350,11 @@ export function createInMemoryMarketingProductionRequestRepository(): MarketingP
         throw new Error(`REQUEUE_REQUIRES_FAILED:${existing.status}`);
       }
       return set(buildRequeuedFailedRequest(existing, input.now ?? new Date()));
+    },
+    async requeueAwaitingStorySelection(input) {
+      const existing = get(input.logicalRunKey);
+      if (!existing) throw new Error(`production request not found: ${input.logicalRunKey}`);
+      return set(buildRequeuedAwaitingStorySelectionRequest(existing, input.now ?? new Date()));
     },
     async update(request) {
       if (!byKey.has(request.logicalRunKey)) {

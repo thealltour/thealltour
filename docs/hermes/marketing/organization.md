@@ -1,40 +1,31 @@
-# 조직도 — TheAllTour Marketing Agents Organization v2.1 (LOCKED)
+# 조직도 — TheAllTour Marketing Agents Organization v2.2 (LOCKED)
 
-> Locked: 2026-09-10. Core Hermes Bot count remains **4**. No new Agents activated.
-> Observability: OBS-1~6 ready. Next UI: OBS-7 Organization Overview Graph.
+> Locked: 2026-09-15. Core Hermes Bot count remains **4**. No new Agents activated.
+> Observability: OBS-7 Organization graph aligns with ED-LIVE + Canonical Asset spine (`topology.ts` v2.2).
 
 ```
-                         Human Owner
-                              │
-                              ▼
-                    Marketing Manager / CMO
-                         [CORE AGENT]
-                              │
-          ┌───────────────────┼───────────────────┐
-          │                   │                   │
-          ▼                   ▼                   ▼
- Content Strategy       Governance / QA     Performance Intelligence
-          │                   │                   │
-          ▼                   ▼                   ▼
- Content Strategist    Governance Auditor   Performance Analyst
-   [CORE AGENT]          [CORE AGENT]          [CORE AGENT]
-          │
-          ├──────── OPTIONAL SPECIALISTS (PREPARE — not registered) ──┐
-          │                                                           │
-          ▼                                                           ▼
- Channel Producer                                          Creative Director
-    [PREPARE]                                                   [PREPARE]
+Human Owner
+   │
+Marketing Manager / CMO
+   │
+Story/Point Miner (ED-1)
+   │
+Human Story Selection  ← pause
+   │
+Audience Content Research (ED-2 / ACRB)
+   │
+Deliverable Requirements → Evidence Pack
+   │
+Content Strategist → Completeness → Governance Auditor
+   │
+Asset Source Writer → Canonical Marketing Asset
+   │
+Human Asset Approval  ← pause
+   │
+Channel Editors → Human Channel Review → Media Pipeline
 
-────────────────── SHARED SERVICES / STAFF (not Hermes Bots) ──────────────────
-Research Intelligence
-Deliverable Requirements
-Evidence Pack Builder
-Completeness Validator
-Semantic / Dedupe
-Media Pipeline
-Human Review
-Publication Governance
-Observability / Analytics
+Core agents (Hermes): MM · CS · GA · PA
+Planned (toggle): Creative Director
 ```
 
 Hermes Bot profile / registry slots remain:
@@ -55,6 +46,9 @@ Production spine은 `runDepartmentPipeline` / Agenda queue다. Group Chat은 협
 - **승인/게시 권한:** 없음 (REVIEW는 사람에게)
 
 ### Content Strategist
+
+ED-3: derives a Story-locked ContentProposition from approved StoryPoint + EvidenceBackedStoryBrief (does not invent a new story).
+
 
 - **책임:** message strategy, content structure, copywriting, channel voice, CTA, revision
 - **하지 않음:** Evidence Pack build, Completeness judgment, open research discovery, self approval, publication
@@ -80,26 +74,31 @@ Production spine은 `runDepartmentPipeline` / Agenda queue다. Group Chat은 협
 | Layer | Role |
 |-------|------|
 | Research Intelligence | Signals → ResearchBrief → AgendaCandidate (service, not 5th Bot) |
+| Story/Point Miner (ED-1) | Selected agenda → 5–8 story candidates → Point Quality Gate → Top 1–3 durable CandidateSet; fail-closed skip (TS staff, not Hermes bot) |
+| Story-targeted RA-1 (ED-2) | Primary StoryPoint `researchQuestions` → bounded web search → evidence adjudication → ACRB overlay; optional alternate on REFUTED/INSUFFICIENT |
 | Deliverable Requirements | Structural destinations/sections for draft |
 | Evidence Pack Builder | Lock `allowedForDraft` facts |
 | Completeness Validator | Structural gate before GA; shares `MAX_AUTO_REVISION_ROUNDS=1` |
 | Semantic / Dedupe | Research + GA evaluators |
 | Media Pipeline | Post-candidate MediaBrief → cardnews/TTS/video |
-| Human Review | Bootstrap HMR after CompletedMarketingCandidate |
+| Human Story Selection | Pause — pick PASS Story before ED-2 |
+| Asset Source Writer | Channel-agnostic Korean source (deterministic) |
+| Canonical Marketing Asset | Persisted common source (SoT for channels) |
+| Human Asset Approval | Pause — approve source before channel editors |
+| Channel Editors | Channel drafts from approved Canonical Asset |
+| Human Channel Review | Bootstrap HMR / channel QA after candidates |
 | Publication Governance | Inactive SNS boundary (`PUBLICATION_FLOW_INACTIVE`) |
 | Observability / Analytics | OBS-1~6 traces + admin viewer |
 
 **Principle:** judgment / strategy / creative interpretation → Agent.
 count / schema / validation / evidence locking / freshness / dedupe / render / persistence / telemetry → deterministic.
 
+## LIVE workflow — Channel Editors
+
+Channel Editors are part of the production spine after Human Asset Approval (not a Hermes Bot).
+Creative Director remains PREPARE-only.
+
 ## PREPARE specialists (not created / not registered)
-
-### Channel Producer
-
-- **Purpose:** channel-native creative adaptation beyond Threads-first CS draft
-- **Handoff:** CS/MM → Channel Producer → Completeness or Media Pipeline
-- **cron_default:** false (optional only)
-- **Activation:** ≥2 real production channels **and** OBS-6 shows repeated CS duration/revision/quality pain from channel variance
 
 ### Creative Director
 

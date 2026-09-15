@@ -43,6 +43,7 @@ export class ContentPlanContractError extends Error {
   }
 
   toPipelineMessage(): string {
-    return `content_plan_validation:${this.incidentClass}:${this.validationIssue}:${this.message}`;
+    const path = this.zodPath ? `@${this.zodPath}` : "";
+    return `content_plan_validation:${this.incidentClass}:${this.validationIssue}${path}:${this.message}`;
   }
 }

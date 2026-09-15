@@ -150,6 +150,34 @@ export type MorningStrategySummary = {
   commercialIntent: string | null;
 };
 
+export type MorningCanonicalAssetView = {
+  present: boolean;
+  legacyWithoutAsset: boolean;
+  assetId: string | null;
+  status: string | null;
+  statusLabelKo: string;
+  version: number | null;
+  approvedVersion: number | null;
+  humanEdited: boolean;
+  storyTitle: string | null;
+  storySupportVerdict: string | null;
+  supportedClaimBoundaryKo: string | null;
+  titleKo: string;
+  dekKo: string | null;
+  openingHookKo: string;
+  bodyKo: string;
+  keyTakeawaysKo: string[];
+  decisionGuidanceKo: string;
+  optionalCtaIntentKo: string | null;
+  limitationsKo: string[];
+  forbiddenClaimsKo: string[];
+  canApproveOriginal: boolean;
+  canApproveEdited: boolean;
+  canEdit: boolean;
+  channelsBlockedUntilApproved: boolean;
+  staleChannelNoticeKo: string | null;
+};
+
 export type MorningMarketingReviewContext = {
   contract: typeof MORNING_MARKETING_REVIEW_CONTEXT_CONTRACT;
   identity: MorningReviewIdentity;
@@ -167,6 +195,7 @@ export type MorningMarketingReviewContext = {
   channelReviews: MorningChannelReviewView[];
   researchSummary: MorningResearchSummary | null;
   strategySummary: MorningStrategySummary;
+  canonicalAsset: MorningCanonicalAssetView;
   evidence: {
     claims: MorningReviewEvidenceClaim[];
     unlinkedEvidenceCount: number;

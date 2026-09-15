@@ -9,6 +9,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
+import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
+import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import type { HumanReviewDraft } from "@/lib/marketing/review/types";
 import {
@@ -22,6 +24,7 @@ import {
   buildPublishableComposerInput,
   computePublishableSourceRevision,
 } from "@/lib/marketing/publishable/inputs";
+import { stampChannelFromApprovedAsset } from "@/lib/marketing/publishable/approvedAsset";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
 import { composeKakaoChannelPublishableContent } from "@/lib/marketing/publishable/kakao_channel/composeKakaoChannelPublishableContent";
@@ -63,6 +66,12 @@ export type EnsurePublishableContentInput = {
   explicitTargetChannels?: PublishableChannel[] | null;
   /** Persist bundle to packageRoot when generation runs. Default true when packageRoot set. */
   persist?: boolean;
+  /**
+   * Approved Canonical Marketing Asset override.
+   * When candidate carries an unapproved asset, channel generation is blocked (fail closed).
+   * Legacy candidates without any asset keep the prior path.
+   */
+  approvedCanonicalAsset?: CanonicalMarketingAsset | null;
 };
 
 function tryReadBundle(packageRoot: string | null | undefined): PublishableContentBundle | null {
@@ -130,11 +139,30 @@ export async function ensurePublishableContent(
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
   const acrb = input.audienceContentResearchBrief ?? null;
-  const sourceRevision = computePublishableSourceRevision(input.candidate, input.humanDraft, acrb);
+
+  const candidateAsset = input.candidate.canonicalMarketingAsset ?? null;
+  const approvedAsset =
+    input.approvedCanonicalAsset ??
+    (isApprovedCanonicalAsset(candidateAsset) ? candidateAsset : null);
+
+  // New path: asset exists but is not approved → fail closed (no channel generation).
+  if (candidateAsset && !isApprovedCanonicalAsset(approvedAsset)) {
+    const err = new Error("canonical_asset_unapproved");
+    (err as Error & { code?: string }).code = "canonical_asset_unapproved";
+    throw err;
+  }
+
+  const sourceRevision = computePublishableSourceRevision(
+    input.candidate,
+    input.humanDraft,
+    acrb,
+    approvedAsset,
+  );
   const existing = tryReadBundle(input.packageRoot);
   const composerInput = buildPublishableComposerInput(input.candidate, {
     acrb,
     explicitTargetChannels: input.explicitTargetChannels,
+    approvedCanonicalAsset: approvedAsset,
   });
   const targetChannels = composerInput.targetChannels;
   const modelProfile = input.modelProfile ?? "content-strategist";
@@ -161,6 +189,10 @@ export async function ensurePublishableContent(
         threads: threadsFromHumanDraft(input.candidate, input.humanDraft, sourceRevision, nowIso),
         generatedAt: nowIso,
         sourceRevision,
+        sourceAssetId: approvedAsset?.assetId ?? existing.sourceAssetId ?? null,
+        sourceAssetVersion:
+          approvedAsset?.approvedVersion ?? existing.sourceAssetVersion ?? null,
+        sourceAssetRevision: approvedAsset?.sourceRevision ?? existing.sourceAssetRevision ?? null,
       };
     }
     return existing;
@@ -215,6 +247,9 @@ export async function ensurePublishableContent(
     targetChannels,
     threads: stampBlock(threads),
     shortform: stampBlock(shortform),
+    sourceAssetId: approvedAsset?.assetId ?? null,
+    sourceAssetVersion: approvedAsset?.approvedVersion ?? null,
+    sourceAssetRevision: approvedAsset?.sourceRevision ?? null,
   };
 
   for (const channel of ["naver_blog", "naver_band", "kakao_channel"] as const) {
@@ -243,6 +278,20 @@ export async function ensurePublishableContent(
       !shouldRegen("kakao_channel", input, existing?.kakao_channel) && existing?.kakao_channel
         ? existing.kakao_channel
         : stampBlock(await composeKakaoChannelPublishableContent(composeOpts));
+  }
+
+  if (approvedAsset) {
+    bundle.threads = stampChannelFromApprovedAsset(bundle.threads, approvedAsset);
+    bundle.shortform = stampChannelFromApprovedAsset(bundle.shortform, approvedAsset);
+    if (bundle.naver_blog) {
+      bundle.naver_blog = stampChannelFromApprovedAsset(bundle.naver_blog, approvedAsset);
+    }
+    if (bundle.naver_band) {
+      bundle.naver_band = stampChannelFromApprovedAsset(bundle.naver_band, approvedAsset);
+    }
+    if (bundle.kakao_channel) {
+      bundle.kakao_channel = stampChannelFromApprovedAsset(bundle.kakao_channel, approvedAsset);
+    }
   }
 
   // MQ-5 — deterministic Marketing Value Gate (evaluate only; no auto-regeneration).

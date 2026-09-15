@@ -91,3 +91,17 @@ Provenance on every envelope:
 - governance decision / riskScore / reasonCodes when present
 
 Embedding vector와 raw PII는 envelope에 넣지 않는다.
+
+
+## Marketing Manager → Story/Point Miner → RA-1 (ED-1)
+
+After agenda selection / content assignment handoff:
+
+1. **Story/Point Miner** (TypeScript staff) mines 5–8 editorial story candidates (no web search).
+2. **Point Quality Gate** evaluates each candidate structurally (not phrase bans alone).
+3. Rank PASS candidates; select Top 1–3 into a durable `storyPointCandidateSet` on the production request.
+4. If none PASS after ≤3 attempts → `story_point_skip` (deferred). Do **not** call RA-1 / Content Strategist / channel composers.
+5. If PASS → **ED-2 targeted RA-1**: `ensureStoryTargetedResearch` runs bounded external search from `researchQuestions[]` (max 2 StoryPoints / 8 search requests per agenda), adjudicates `EvidenceBackedStoryBrief`, and gates Content Strategist on `SUPPORTED` / `PARTIALLY_SUPPORTED` only.
+6. If PASS → **ED-3 ContentProposition lock**: CS derives a Story-locked ContentProposition from StoryPoint + EvidenceBackedStoryBrief; deterministic lock validator; max 1 repair; fail closed before channel composers.
+
+Contract: `story-content-point-v1` / `story-point-candidate-set-v1` under `src/lib/marketing/storyPoint/`.

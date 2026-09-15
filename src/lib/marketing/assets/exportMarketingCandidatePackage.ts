@@ -57,6 +57,11 @@ import {
   AUDIENCE_CONTENT_RESEARCH_BRIEF_RELATIVE_PATH,
 } from "@/lib/marketing/audienceResearch/paths";
 import { toAudienceContentResearchBriefRef } from "@/lib/marketing/audienceResearch/validate";
+import {
+  CANONICAL_MARKETING_ASSET_MEDIA_TYPE,
+  CANONICAL_MARKETING_ASSET_RELATIVE_PATH,
+} from "@/lib/marketing/canonicalAsset/paths";
+import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 
 export type ExportMarketingCandidatePackageInput = {
   candidate: CompletedMarketingCandidate;
@@ -80,6 +85,8 @@ export type ExportMarketingCandidatePackageInput = {
   publishableBundle?: PublishableContentBundle | null;
   /** RA-1B — full ACRB for package artifact (optional if only compact ref on candidate). */
   audienceContentResearchBrief?: AudienceContentResearchBrief | null;
+  /** Canonical Marketing Asset — export only; never regenerate. */
+  canonicalMarketingAsset?: import("@/lib/marketing/canonicalAsset/contracts").CanonicalMarketingAsset | null;
 };
 
 export type ExportMarketingCandidatePackageResult = {
@@ -157,9 +164,10 @@ function pushCopyArtifact(
 
 function planGeneratedArtifacts(input: {
   candidate: CompletedMarketingCandidate;
-  mediaBrief: MediaBrief;
-  publishable: PublishableContentBundle;
+  mediaBrief: MediaBrief | null;
+  publishable: PublishableContentBundle | null;
   audienceContentResearchBrief?: AudienceContentResearchBrief | null;
+  canonicalMarketingAsset?: CanonicalMarketingAsset | null;
   packageRoot?: string | null;
 }): PlannedPackageArtifact[] {
   const planned: PlannedPackageArtifact[] = [
@@ -170,21 +178,27 @@ function planGeneratedArtifacts(input: {
       origin: "pipeline_export",
       mediaType: mediaTypeFor("context/export-context.json"),
     },
-    {
+  ];
+
+  if (input.publishable) {
+    planned.push({
       relativePath: PUBLISHABLE_CONTENT_RELATIVE_PATH,
       content: stableJsonBytes(input.publishable),
       kind: "context",
       origin: "pipeline_export",
       mediaType: PUBLISHABLE_CONTENT_MEDIA_TYPE,
-    },
-    {
+    });
+  }
+
+  if (input.mediaBrief) {
+    planned.push({
       relativePath: "context/media-brief.json",
       content: stableJsonBytes(input.mediaBrief),
       kind: "media_brief",
       origin: "media_brief",
       mediaType: mediaTypeFor("context/media-brief.json"),
-    },
-  ];
+    });
+  }
 
   if (input.audienceContentResearchBrief) {
     planned.push({
@@ -194,6 +208,22 @@ function planGeneratedArtifacts(input: {
       origin: "pipeline_export",
       mediaType: AUDIENCE_CONTENT_RESEARCH_BRIEF_MEDIA_TYPE,
     });
+  }
+
+  const asset =
+    input.canonicalMarketingAsset ?? input.candidate.canonicalMarketingAsset ?? null;
+  if (asset) {
+    planned.push({
+      relativePath: CANONICAL_MARKETING_ASSET_RELATIVE_PATH,
+      content: stableJsonBytes(asset),
+      kind: "context",
+      origin: "pipeline_export",
+      mediaType: CANONICAL_MARKETING_ASSET_MEDIA_TYPE,
+    });
+  }
+
+  if (!input.publishable) {
+    return planned;
   }
 
   // MQ-5 — persist assessment metadata; never recompute scores on export.
@@ -373,25 +403,33 @@ export function exportMarketingCandidatePackage(
     candidateId: input.candidate.candidateId,
   });
 
+  // Explicit null publishableBundle = asset-only export (awaiting human asset approval).
+  // Undefined = legacy reuse of persisted publishable; never invent LLM copy on export.
   const publishable =
-    input.publishableBundle ??
-    ensurePublishableContentSync({
-      candidate: input.candidate,
-      packageRoot: existsSync(packageRoot) ? packageRoot : null,
-      humanDraft: input.humanDraft,
-      humanEditedAfterGovernance: input.humanEditedAfterGovernance,
-      // MQ-4: never invent deterministic "publishable" on export — reuse persisted only.
-      forceRegenerate: false,
-      allowDeterministicGeneration: false,
-      now,
-      audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
-    });
+    input.publishableBundle === null
+      ? null
+      : (input.publishableBundle ??
+        ensurePublishableContentSync({
+          candidate: input.candidate,
+          packageRoot: existsSync(packageRoot) ? packageRoot : null,
+          humanDraft: input.humanDraft,
+          humanEditedAfterGovernance: input.humanEditedAfterGovernance,
+          forceRegenerate: false,
+          allowDeterministicGeneration: false,
+          now,
+          audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
+        }));
   void input.forcePublishableRegenerate;
 
   const baseBrief = input.mediaBrief ?? buildMediaBriefFromCandidate(input.candidate);
-  const mediaBrief = applyPublishableContentToMediaBrief(baseBrief, publishable);
+  const mediaBrief = publishable
+    ? applyPublishableContentToMediaBrief(baseBrief, publishable)
+    : baseBrief;
   assertNoSecretLeak(mediaBrief);
-  assertNoSecretLeak(publishable);
+  if (publishable) assertNoSecretLeak(publishable);
+  const canonicalMarketingAsset =
+    input.canonicalMarketingAsset ?? input.candidate.canonicalMarketingAsset ?? null;
+  if (canonicalMarketingAsset) assertNoSecretLeak(canonicalMarketingAsset);
 
   const relativePackagePath = resolvePackageRelativePath({
     assetRoot,
@@ -403,6 +441,7 @@ export function exportMarketingCandidatePackage(
     mediaBrief,
     publishable,
     audienceContentResearchBrief: input.audienceContentResearchBrief ?? null,
+    canonicalMarketingAsset,
     packageRoot,
   });
   const plannedArtifacts = planned.map((item) => describePlannedArtifact(item, timestamp));

@@ -1,6 +1,6 @@
 /**
- * Bounded query plan from agenda identity + Meta seeds — not keyword spam.
- * Cruise/Busan/boarding queries only when AgendaTopicIdentity supports them.
+ * Bounded query plan — ED-2: primarily from StoryPoint.researchQuestions[]
+ * when present; otherwise legacy agenda/identity templates (MQ-1 safe).
  */
 import type { ManagerToContentHandoffResult } from "@/lib/marketing/content/types";
 import type { ResearchBriefEditorialIntelligence } from "@/lib/marketing/research/types/editorialIntelligence";
@@ -16,16 +16,21 @@ import {
   textLooksCruiseSpecific,
   validateAngleAgainstAgendaIdentity,
 } from "@/lib/marketing/audienceResearch/topicIdentity/validateAgainstIdentity";
+import type { StoryContentPoint } from "@/lib/marketing/storyPoint/contracts";
+import { STORY_RESEARCH_MAX_QUERIES_PER_STORY } from "@/lib/marketing/storyPoint/contracts";
 
 export type ResearchQueryPurpose =
   | "factual_verification"
   | "audience_questions"
-  | "competitor_content_gap";
+  | "competitor_content_gap"
+  | "counterevidence";
 
 export type ResearchQueryPlanItem = {
   query: string;
   purpose: ResearchQueryPurpose;
   language: "ko" | "en";
+  /** Optional link back to a researchQuestion. */
+  researchQuestion?: string | null;
 };
 
 export type ResearchQueryPlan = {
@@ -33,9 +38,15 @@ export type ResearchQueryPlan = {
   maxQueries: number;
   topicIdentity: AgendaTopicIdentity;
   identityDiagnostics: IdentityConflictDiagnostic[];
+  /** True when plan was driven by StoryPoint researchQuestions. */
+  storyPointTargeted?: boolean;
 };
 
-const DEFAULT_MAX_QUERIES = 6;
+const DEFAULT_MAX_QUERIES = STORY_RESEARCH_MAX_QUERIES_PER_STORY;
+
+/** Broad destination / generic travel exploration — blocked unless a researchQuestion needs it. */
+const BROAD_GENERIC_QUERY =
+  /여행\s*팁|여행\s*준비|기본\s*정보|관광지\s*추천|체크리스트|알아둘\s*점|종합\s*가이드|things to do|travel tips/i;
 
 function uniqQueries(items: ResearchQueryPlanItem[], max: number): ResearchQueryPlanItem[] {
   const seen = new Set<string>();
@@ -56,7 +67,18 @@ function pushIfCompatible(
   identity: AgendaTopicIdentity,
   diagnostics: IdentityConflictDiagnostic[],
   agendaId: string | null,
+  opts?: { allowBroadGeneric?: boolean },
 ): void {
+  if (!opts?.allowBroadGeneric && BROAD_GENERIC_QUERY.test(item.query)) {
+    diagnostics.push({
+      stage: "query_plan",
+      agendaId,
+      conflictDimension: "product_type",
+      rejectedText: item.query.slice(0, 160),
+      identitySummary: summarizeTopicIdentity(identity),
+    });
+    return;
+  }
   const result = validateAngleAgainstAgendaIdentity(item.query, identity);
   if (!result.ok) {
     for (const iss of result.issues) {
@@ -70,7 +92,6 @@ function pushIfCompatible(
     }
     return;
   }
-  // Extra hard rule: never emit cruise-looking queries without cruise identity.
   if (textLooksCruiseSpecific(item.query) && !identityIsCruise(identity)) {
     diagnostics.push({
       stage: "query_plan",
@@ -84,14 +105,38 @@ function pushIfCompatible(
   planned.push(item);
 }
 
+function cleanResearchQuestion(q: string): string {
+  return q.replace(/[?？]/g, "").trim().slice(0, 72);
+}
+
+function questionsOverlap(a: string, b: string): boolean {
+  const ta = new Set(
+    a
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length >= 2),
+  );
+  const tb = b
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length >= 2);
+  if (ta.size === 0 || tb.length === 0) return false;
+  let hit = 0;
+  for (const t of tb) {
+    if (ta.has(t)) hit += 1;
+  }
+  return hit / Math.max(ta.size, tb.length) >= 0.55;
+}
+
 /**
- * Bounded query plan from agenda + Meta seeds — identity-aware.
+ * Bounded query plan from StoryPoint researchQuestions (ED-2) or legacy agenda seeds.
  */
 export function buildResearchQueryPlan(input: {
   handoff: ManagerToContentHandoffResult;
   editorial?: ResearchBriefEditorialIntelligence | null;
   maxQueries?: number;
   topicIdentity?: AgendaTopicIdentity | null;
+  storyPoint?: StoryContentPoint | null;
 }): ResearchQueryPlan {
   const maxQueries = input.maxQueries ?? DEFAULT_MAX_QUERIES;
   const agenda = input.handoff.selectedAgenda;
@@ -105,6 +150,123 @@ export function buildResearchQueryPlan(input: {
     });
   const diagnostics: IdentityConflictDiagnostic[] = [];
   const agendaId = agenda.id ?? null;
+  const storyPoint = input.storyPoint ?? null;
+
+  if (storyPoint && (storyPoint.researchQuestions?.length ?? 0) > 0) {
+    return buildStoryPointTargetedPlan({
+      storyPoint,
+      identity,
+      diagnostics,
+      agendaId,
+      maxQueries,
+      dest: identity.destinationEntities[0] ?? agenda.destinations?.[0] ?? null,
+    });
+  }
+
+  return buildLegacyAgendaPlan({
+    handoff: input.handoff,
+    editorial: input.editorial,
+    identity,
+    diagnostics,
+    agendaId,
+    maxQueries,
+  });
+}
+
+function buildStoryPointTargetedPlan(input: {
+  storyPoint: StoryContentPoint;
+  identity: AgendaTopicIdentity;
+  diagnostics: IdentityConflictDiagnostic[];
+  agendaId: string | null;
+  maxQueries: number;
+  dest: string | null;
+}): ResearchQueryPlan {
+  const planned: ResearchQueryPlanItem[] = [];
+  const mergedQuestions: string[] = [];
+
+  for (const raw of input.storyPoint.researchQuestions) {
+    const cleaned = cleanResearchQuestion(raw);
+    if (cleaned.length < 4) continue;
+    if (mergedQuestions.some((q) => questionsOverlap(q, cleaned))) continue;
+    mergedQuestions.push(cleaned);
+  }
+
+  for (const q of mergedQuestions) {
+    pushIfCompatible(
+      planned,
+      {
+        query: q,
+        purpose: "factual_verification",
+        language: "ko",
+        researchQuestion: q,
+      },
+      input.identity,
+      input.diagnostics,
+      input.agendaId,
+    );
+  }
+
+  // Counterevidence: what would make the claim false? (no mandatory extra query if budget tight)
+  const claim =
+    input.storyPoint.storyClaim ??
+    input.storyPoint.storyQuestion?.replace(/[?？]/g, "").trim() ??
+    null;
+  if (claim && planned.length < input.maxQueries) {
+    const counter = `${claim.slice(0, 40)} 반론 OR 과장 OR 그렇지 않다`.slice(0, 72);
+    pushIfCompatible(
+      planned,
+      {
+        query: counter,
+        purpose: "counterevidence",
+        language: "ko",
+        researchQuestion: null,
+      },
+      input.identity,
+      input.diagnostics,
+      input.agendaId,
+    );
+  }
+
+  // Light identity anchor only when questions omit destination (gap fill, not broad exploration).
+  if (input.dest && planned.length < 2) {
+    const needDest = !planned.some((p) => p.query.includes(input.dest!));
+    if (needDest) {
+      pushIfCompatible(
+        planned,
+        {
+          query: `${input.dest} ${cleanResearchQuestion(input.storyPoint.researchQuestions[0] ?? input.dest).slice(0, 40)}`,
+          purpose: "factual_verification",
+          language: "ko",
+        },
+        input.identity,
+        input.diagnostics,
+        input.agendaId,
+      );
+    }
+  }
+
+  return {
+    queries: uniqQueries(planned, input.maxQueries),
+    maxQueries: input.maxQueries,
+    topicIdentity: input.identity,
+    identityDiagnostics: input.diagnostics,
+    storyPointTargeted: true,
+  };
+}
+
+function buildLegacyAgendaPlan(input: {
+  handoff: ManagerToContentHandoffResult;
+  editorial?: ResearchBriefEditorialIntelligence | null;
+  identity: AgendaTopicIdentity;
+  diagnostics: IdentityConflictDiagnostic[];
+  agendaId: string | null;
+  maxQueries: number;
+}): ResearchQueryPlan {
+  const agenda = input.handoff.selectedAgenda;
+  const identity = input.identity;
+  const diagnostics = input.diagnostics;
+  const agendaId = input.agendaId;
+  const maxQueries = input.maxQueries;
 
   const dest = identity.destinationEntities[0] ?? agenda.destinations?.[0] ?? null;
   const origin = identity.originEntities[0] ?? null;
@@ -132,6 +294,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
     pushIfCompatible(
       planned,
@@ -143,6 +306,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   } else if (hasPackage && dest) {
     pushIfCompatible(
@@ -157,6 +321,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
     if (origin && dest) {
       pushIfCompatible(
@@ -169,6 +334,7 @@ export function buildResearchQueryPlan(input: {
         identity,
         diagnostics,
         agendaId,
+        { allowBroadGeneric: true },
       );
     }
   } else if (hasHotel && dest) {
@@ -182,6 +348,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   } else if (hasFlight && dest) {
     pushIfCompatible(
@@ -194,6 +361,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   } else if (dest) {
     pushIfCompatible(
@@ -206,6 +374,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   }
 
@@ -220,6 +389,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   }
 
@@ -234,6 +404,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   } else if (hasChuseok && hasPackage && dest) {
     pushIfCompatible(
@@ -246,10 +417,10 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   }
 
-  // Audience seed — never Busan→cruise unless cruise identity.
   if (hasCruise && origin === "부산") {
     pushIfCompatible(
       planned,
@@ -261,6 +432,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   } else if (hasPackage && dest) {
     pushIfCompatible(
@@ -273,6 +445,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   } else {
     pushIfCompatible(
@@ -285,6 +458,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   }
 
@@ -299,6 +473,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   } else {
     pushIfCompatible(
@@ -311,6 +486,7 @@ export function buildResearchQueryPlan(input: {
       identity,
       diagnostics,
       agendaId,
+      { allowBroadGeneric: true },
     );
   }
 
@@ -327,6 +503,7 @@ export function buildResearchQueryPlan(input: {
         identity,
         diagnostics,
         agendaId,
+        { allowBroadGeneric: true },
       );
     }
   }
@@ -336,5 +513,6 @@ export function buildResearchQueryPlan(input: {
     maxQueries,
     topicIdentity: identity,
     identityDiagnostics: diagnostics,
+    storyPointTargeted: false,
   };
 }

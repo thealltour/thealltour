@@ -62,8 +62,14 @@ describe("OBS-7 organization topology", () => {
     expect(nodes.some((n) => n.id === "marketing_manager")).toBe(true);
     expect(nodes.some((n) => n.id === "content_strategist")).toBe(true);
     expect(nodes.some((n) => n.id === "evidence_pack")).toBe(true);
+    expect(nodes.some((n) => n.id === "human_story_selection")).toBe(true);
+    expect(nodes.some((n) => n.id === "audience_content_research")).toBe(true);
+    expect(nodes.some((n) => n.id === "asset_source_writer")).toBe(true);
+    expect(nodes.some((n) => n.id === "canonical_marketing_asset")).toBe(true);
+    expect(nodes.some((n) => n.id === "human_asset_approval")).toBe(true);
+    expect(nodes.some((n) => n.id === "channel_producer")).toBe(true);
     expect(nodes.some((n) => n.kind === "planned_agent")).toBe(false);
-    expect(getDefaultVisibleNodes(true).some((n) => n.id === "channel_producer")).toBe(true);
+    expect(getDefaultVisibleNodes(true).some((n) => n.id === "creative_director")).toBe(true);
     expect(getDefaultVisibleEdges(true).some((e) => e.planned)).toBe(true);
   });
 
@@ -206,10 +212,33 @@ describe("OBS-7 execution overlay", () => {
 
   it("Case F — planned agents are distinct from idle core", () => {
     const model = buildMarketingOrganizationGraphModel({ showPlanned: true });
-    const cp = model.nodes.find((n) => n.id === "channel_producer");
-    expect(cp?.kind).toBe("planned_agent");
-    expect(orgNodeKindLabel(cp!.kind)).toBe("PLANNED");
+    const cd = model.nodes.find((n) => n.id === "creative_director");
+    expect(cd?.kind).toBe("planned_agent");
+    expect(orgNodeKindLabel(cd!.kind)).toBe("PLANNED");
     expect(MARKETING_ORG_V21_NODES.some((n) => n.id === "creative_director")).toBe(true);
+    expect(model.nodes.find((n) => n.id === "channel_producer")?.tier).toBe("workflow");
+  });
+
+  it("maps story awaiting_selection onto human_story_selection", () => {
+    const traceId = createMarketingTraceId();
+    const model = buildMarketingOrganizationGraphModel({
+      detail: detail([
+        span({
+          spanId: createMarketingSpanId(),
+          traceId,
+          stage: "story_point",
+          name: "marketing.story_point",
+          kind: "deterministic",
+          status: "ok",
+          attributes: {
+            "marketing.story_point.awaiting_selection": true,
+          },
+        }),
+      ]),
+    });
+    expect(model.nodeOverlays.human_story_selection?.state).toBe("waiting");
+    expect(model.nodeOverlays.human_story_selection?.summary).toBe("awaiting_human_selection");
+    expect(model.nodeOverlays.audience_content_research?.state).not.toBe("waiting");
   });
 
   it("Governance BLOCK stays business blocked, not technical_error", () => {

@@ -1,9 +1,13 @@
 /**
  * Canonical repository path guard (repo hygiene).
  * Detects forbidden filesystem paths pointing at theallcloud stub — not legacy identifiers.
+ * Also rejects the wrong internal systemd unit identity (legacy id + "-internal").
  */
 
 export const CANONICAL_APP_REPO = "/home/ysh/thealltour" as const;
+
+/** Production / internal Next.js systemd unit (Pi). Not derived from legacy theallcloud ids. */
+export const CANONICAL_INTERNAL_SYSTEMD_UNIT = "thealltour-internal.service" as const;
 
 /** Line/file marker: intentional documented forbidden-path examples (rules, historical ops notes). */
 export const CANONICAL_PATH_DOCUMENTED_FORBIDDEN_MARKER =
@@ -13,18 +17,26 @@ export type CanonicalPathViolation = {
   file: string;
   line: number;
   match: string;
+  expected?: string;
 };
 
-/** Built without embedding a contiguous forbidden path literal in this source file. */
+/** Built without embedding a contiguous forbidden path / service literal in this source file. */
 const FORBIDDEN_LEAF = ["theall", "cloud"].join("");
+const FORBIDDEN_INTERNAL_SERVICE = [FORBIDDEN_LEAF, "-internal"].join("");
 const BAD_PATH_PATTERNS: RegExp[] = [
   new RegExp(`/home/ysh/${FORBIDDEN_LEAF}\\b`, "g"),
   new RegExp(`~/${FORBIDDEN_LEAF}\\b`, "g"),
 ];
+const BAD_INTERNAL_SERVICE_PATTERN = new RegExp(
+  `\\b${FORBIDDEN_INTERNAL_SERVICE}(?:\\.service)?\\b`,
+  "g",
+);
 
 /**
- * Scan a single text blob for forbidden theallcloud filesystem paths.
+ * Scan a single text blob for forbidden theallcloud filesystem paths
+ * and the wrong internal systemd service name.
  * Skips any line that contains CANONICAL_PATH_DOCUMENTED_FORBIDDEN_MARKER.
+ * Does not flag legacy logical identifiers (ORCHESTRATION_PROJECT_ID, MCP ids, gateway aliases).
  */
 export function findCanonicalPathViolationsInText(
   content: string,
@@ -47,8 +59,20 @@ export function findCanonicalPathViolationsInText(
           file: filePath,
           line: index + 1,
           match: match[0]!,
+          expected: CANONICAL_APP_REPO,
         });
       }
+    }
+
+    BAD_INTERNAL_SERVICE_PATTERN.lastIndex = 0;
+    let serviceMatch: RegExpExecArray | null;
+    while ((serviceMatch = BAD_INTERNAL_SERVICE_PATTERN.exec(line)) !== null) {
+      violations.push({
+        file: filePath,
+        line: index + 1,
+        match: serviceMatch[0]!,
+        expected: CANONICAL_INTERNAL_SYSTEMD_UNIT,
+      });
     }
   }
 

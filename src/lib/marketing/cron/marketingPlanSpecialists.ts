@@ -21,6 +21,14 @@ import {
   validateContentStrategistAgainstTopicIdentity,
 } from "@/lib/marketing/cron/contentStrategistTopicIdentity";
 import { validateContentProposition } from "@/lib/marketing/content/proposition/validateContentProposition";
+import {
+  assertStoryVerdictAllowsContentStrategist,
+  computeEvidenceBriefRevision,
+  computePropositionSourceRevision,
+  PROPOSITION_LOCK_VERSION,
+  validateContentPropositionAgainstStory,
+} from "@/lib/marketing/content/proposition/storyLock";
+import type { EvidenceBackedStoryBrief } from "@/lib/marketing/storyPoint/contracts";
 
 /** Default Hermes oneshot timeout for Marketing Cron specialist profiles. */
 export const MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT = 180_000;
@@ -287,7 +295,7 @@ function formatEvidencePackSection(pack: ContentDraftRequest["evidencePack"]): s
 }
 
 const CONTENT_DRAFT_SHAPE =
-  'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"],"targetChannels":["threads","shortform"],"primaryAngle":"","keyMessage":"","hook":"","outline":[],"ctaStrategy":"","targetAudience":"","proposition":{"contract":"content-proposition-v1","primaryAudience":"","audienceProblem":"","audienceTension":"","whyNow":null,"contentPromise":"","readerGain":"","specificTakeaways":[],"proofRequirements":[],"contentGapUsed":"","engagementMechanism":"save_worthy_checklist","desiredAudienceAction":"save","angle":"","keyMessage":"","commercialIntent":"informational","propositionStrength":"usable","limitations":[]}},"assignmentId":null}';
+  'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"],"targetChannels":["threads","shortform","naver_blog","naver_band","kakao_channel"],"primaryAngle":"","keyMessage":"","hook":"","outline":[],"ctaStrategy":"","targetAudience":"","proposition":{"contract":"content-proposition-v1","primaryAudience":"","audienceProblem":"","audienceTension":"","whyNow":null,"contentPromise":"","readerGain":"","specificTakeaways":[],"proofRequirements":[],"contentGapUsed":"","engagementMechanism":"save_worthy_checklist","desiredAudienceAction":"save","angle":"","keyMessage":"","commercialIntent":"informational","propositionStrength":"usable","limitations":[]}},"assignmentId":null}';
 
 const PROPOSITION_RULES = [
   "ContentProposition (content-proposition-v1) is REQUIRED inside contentPlan.proposition.",
@@ -301,7 +309,8 @@ const PROPOSITION_RULES = [
   "contentPromise: what the content helps the reader understand/do (concrete).",
   "readerGain: what remains after reading (checklist/criteria/questions) — not abstract '도움이 된다'.",
   "specificTakeaways: 2–5 when evidence allows; practical checks/rules/questions. Do NOT invent operational facts.",
-  "proofRequirements: declare what must be evidenced before claiming specifics (flight/inclusions/price/boarding).",
+  "proofRequirements: array of {claimArea, requiredProof, severity} objects (strings are accepted but objects preferred).",
+  "Set contentPlan.targetChannels to the full configured set when eligible: threads, shortform, naver_blog, naver_band, kakao_channel. Do not silently omit Blog/Band/Kakao.",
   "contentGapUsed: which ACRB content gap this piece exploits (plain language).",
   "engagementMechanism: why someone would save/comment/share (checklist, decision aid, etc.) — not just 'add CTA'.",
   "desiredAudienceAction: save|compare|verify|comment|ask|click|consult|shortlist.",
@@ -310,6 +319,14 @@ const PROPOSITION_RULES = [
   "hook: connect audience tension + content promise; no unsupported urgency.",
   "ctaStrategy: derive from desiredAudienceAction.",
   "Preserve epistemic status: verified_fact vs observed_signal vs inference/hypothesis — never promote soft research to hard fact.",
+  "ED-3 STORY LOCK: You are NOT choosing the story. The StoryPoint has already been selected. The Research Desk already determined what is supported.",
+  "Your job is to turn the supported Story into a ContentProposition — organize argument, sequence evidence, formulate proposition language.",
+  "AUTHORITATIVE: StoryPoint + storySupportVerdict + supportedClaimBoundary + researchQuestionFindings + evidence limitations.",
+  "Do NOT invent another editorial thesis, switch destination/product/travel mode, broaden into destination summary, replace Story with generic travel tips, revive a refuted claim, or ignore supportedClaimBoundary.",
+  "For PARTIALLY_SUPPORTED: never exceed supportedClaimBoundary — it is the MAXIMUM claim scope.",
+  "specificTakeaways MUST be evidence-backed from researchQuestionFindings; include takeawayEvidenceRefs when possible.",
+  "Do NOT produce generic destination advice, an alternative angle, a replacement story, or unsupported takeaways.",
+  "Do NOT rescue REFUTED / INSUFFICIENT_EVIDENCE with generic content advice.",
 ].join("\n");
 
 function formatAcrbStrategyBrief(
@@ -351,6 +368,41 @@ const GROUNDING_RULES = [
   "- Structural completeness (destinations/sections/outputs) is enforced by Completeness Validator — cover every requiredDestination in title/body/contentPlan.",
 ].join("\n");
 
+
+function formatStoryLockBrief(payload: ContentDraftRequest): string | null {
+  const acrb = payload.audienceContentResearchBrief;
+  const story = payload.authoritativeStoryPoint ?? null;
+  if (!acrb?.storySupportVerdict && !story) return null;
+  const brief = acrb?.evidenceBackedStoryBrief ?? null;
+  return [
+    "AUTHORITATIVE_STORY_LOCK (ED-3 — derive ContentProposition from this; do not invent a new story):",
+    story
+      ? `STORY_POINT: ${JSON.stringify({
+          storyPointId: story.pointId,
+          storyQuestion: story.storyQuestion,
+          storyClaim: story.storyClaim,
+          whyInteresting: story.whyInteresting,
+          audienceTension: story.audienceTension,
+          curiosityGap: story.curiosityGap,
+          readerPayoff: story.readerPayoff,
+          researchNeeded: story.researchNeeded,
+          researchQuestions: story.researchQuestions,
+          mechanisms: story.mechanisms,
+          nonGoals: story.nonGoals,
+          storyPointHash: acrb?.storyPointHash ?? null,
+        })}`
+      : `STORY_POINT_REF: ${JSON.stringify(acrb?.storyPointRef ?? null)}`,
+    `storySupportVerdict=${acrb?.storySupportVerdict ?? "unknown"}`,
+    `supportedClaimBoundary=${acrb?.supportedClaimBoundary ?? "(none)"}`,
+    `researchQuestionFindings=${JSON.stringify((acrb?.researchQuestionFindings ?? []).slice(0, 8))}`,
+    `contradictedClaims=${JSON.stringify((acrb?.contradictedClaims ?? []).slice(0, 6))}`,
+    `unresolvedQuestions=${JSON.stringify((acrb?.unresolvedQuestions ?? []).slice(0, 6))}`,
+    `evidenceLimitations=${JSON.stringify((brief?.limitations ?? acrb?.limitations ?? []).slice(0, 8))}`,
+    "This StoryPoint is the hypothesis/editorial scope being verified. Interpret evidence relative to it.",
+  ].join("\n");
+}
+
+
 export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
   const supplied = collectSuppliedEvidenceRefs(payload);
   const acrb = payload.audienceContentResearchBrief;
@@ -390,6 +442,7 @@ export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
           .join(" ")
       : null,
     acrb ? formatAcrbStrategyBrief(acrb) : null,
+    formatStoryLockBrief(payload),
     acrb
       ? [
           "AudienceContentResearchBrief (RA-1) is already done — build ContentProposition, then confirm angle/keyMessage/formats/tone/targetChannels.",
@@ -484,6 +537,7 @@ export function buildContentDraftTopicIdentityRepairPrompt(
         })}`
       : null,
     PROPOSITION_RULES,
+    formatStoryLockBrief(payload),
     "Return the COMPLETE JSON object again. Keep grounded facts.",
     "Rewrite primaryAngle / keyMessage / title / contentPlan.proposition so they do NOT change destination/product type/travel mode, and so proposition fields are specific (promise, readerGain, takeaways, engagement).",
     "If research cannot support useful takeaways without inventing facts, set propositionStrength=insufficient and list limitations — do NOT invent 3 fake tips.",
@@ -517,6 +571,12 @@ function assertOrNullIdentity(
   });
 }
 
+function resolveEvidenceBriefForLock(
+  payload: ContentDraftRequest,
+): EvidenceBackedStoryBrief | null {
+  return payload.audienceContentResearchBrief?.evidenceBackedStoryBrief ?? null;
+}
+
 function assertProposition(
   output: ContentStrategistOutput,
   payload: ContentDraftRequest,
@@ -528,29 +588,91 @@ function assertProposition(
     return { ok: true };
   }
   const result = validateContentProposition(prop, { identity });
-  if (result.ok) {
-    // Persist effective strength downgrade if validator softened it.
-    if (prop && result.effectiveStrength !== prop.propositionStrength && output.contentPlan) {
+  const issues = [...result.issues];
+  let effectiveStrength = result.effectiveStrength;
+  const acrb = payload.audienceContentResearchBrief;
+  const story = payload.authoritativeStoryPoint ?? null;
+  const evidenceBrief = resolveEvidenceBriefForLock(payload);
+
+  if (acrb?.storySupportVerdict) {
+    const gate = assertStoryVerdictAllowsContentStrategist(acrb.storySupportVerdict);
+    if (!gate.ok) {
+      issues.push({
+        code: "content_proposition_refuted_or_insufficient",
+        field: "storySupportVerdict",
+        message: gate.reason,
+      });
+      effectiveStrength = "insufficient";
+    }
+  }
+
+  if (prop && story && evidenceBrief && acrb?.storySupportVerdict) {
+    const lock = validateContentPropositionAgainstStory({
+      proposition: prop,
+      storyPoint: story,
+      evidenceBrief,
+      topicIdentity: identity,
+    });
+    if (!lock.ok) {
+      for (const iss of lock.issues) {
+        issues.push({
+          code: String(iss.code),
+          field: iss.field,
+          message: iss.message,
+        });
+      }
+      effectiveStrength = "insufficient";
+    } else if (output.contentPlan) {
+      const sourceRevision = computePropositionSourceRevision({
+        storyPointHash: evidenceBrief.storyPointHash,
+        storySupportVerdict: evidenceBrief.storySupportVerdict,
+        supportedClaimBoundary: evidenceBrief.supportedClaimBoundary,
+        evidenceBrief,
+      });
       output.contentPlan.proposition = {
         ...prop,
-        propositionStrength: result.effectiveStrength,
+        propositionStrength:
+          effectiveStrength !== prop.propositionStrength ? effectiveStrength : prop.propositionStrength,
+        storyPointRef: {
+          storyPointId: story.pointId,
+          storyPointHash: evidenceBrief.storyPointHash,
+          researchContractVersion: evidenceBrief.researchContractVersion,
+        },
+        storyPointHash: evidenceBrief.storyPointHash,
+        storySupportVerdict: evidenceBrief.storySupportVerdict,
+        supportedClaimBoundaryUsed: evidenceBrief.supportedClaimBoundary,
+        evidenceBriefRevision: computeEvidenceBriefRevision(evidenceBrief),
+        propositionLockVersion: PROPOSITION_LOCK_VERSION,
+        propositionSourceRevision: sourceRevision,
         limitations: [
           ...prop.limitations,
-          `strength_downgraded_to_${result.effectiveStrength}`,
+          ...evidenceBrief.limitations.filter((l) => !prop.limitations.includes(l)),
         ].slice(0, 12),
       };
     }
-    return { ok: true };
   }
-  const reasons = result.issues.map((i) => `${i.field}:${i.code}:${i.message}`);
+
+  if (issues.length === 0 || (result.ok && issues.length === 0)) {
+    if (prop && effectiveStrength !== prop.propositionStrength && output.contentPlan && output.contentPlan.proposition) {
+      output.contentPlan.proposition = {
+        ...output.contentPlan.proposition,
+        propositionStrength: effectiveStrength,
+        limitations: [
+          ...output.contentPlan.proposition.limitations,
+          `strength_downgraded_to_${effectiveStrength}`,
+        ].slice(0, 12),
+      };
+    }
+    if (issues.length === 0) return { ok: true };
+  }
+
+  const ok = issues.length === 0;
+  if (ok) return { ok: true };
+  const reasons = issues.map((i) => `${i.field}:${i.code}:${i.message}`);
   return {
     ok: false,
     reasons,
-    error: new ContentStrategistPropositionError(
-      reasons.join("; "),
-      result.issues,
-      result.effectiveStrength,
-    ),
+    error: new ContentStrategistPropositionError(reasons.join("; "), issues, effectiveStrength),
   };
 }
 
@@ -843,6 +965,57 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
   output: ContentStrategistOutput;
   diagnostics: ContentStrategistParseDiagnostics;
 }> {
+  
+  const acrbGate = input.payload.audienceContentResearchBrief;
+  if (acrbGate?.storySupportVerdict) {
+    const verdictGate = assertStoryVerdictAllowsContentStrategist(acrbGate.storySupportVerdict);
+    if (!verdictGate.ok) {
+      throw new ContentStrategistPropositionError(
+        verdictGate.reason,
+        [{ code: "content_proposition_refuted_or_insufficient", field: "storySupportVerdict", message: verdictGate.reason }],
+        "insufficient",
+      );
+    }
+  }
+  if (input.payload.reusedProposition && input.payload.reusedProposition.propositionSourceRevision) {
+    const brief = input.payload.audienceContentResearchBrief?.evidenceBackedStoryBrief ?? null;
+    if (brief) {
+      const expected = computePropositionSourceRevision({
+        storyPointHash: brief.storyPointHash,
+        storySupportVerdict: brief.storySupportVerdict,
+        supportedClaimBoundary: brief.supportedClaimBoundary,
+        evidenceBrief: brief,
+      });
+      if (expected === input.payload.reusedProposition.propositionSourceRevision) {
+        const reusedContentPlan = {
+          ...(input.payload.contentPlanScaffold as object),
+          proposition: input.payload.reusedProposition,
+        } as ContentStrategistOutput["contentPlan"];
+        return {
+          output: {
+            title: null,
+            body: "",
+            channel: input.payload.channel,
+            agenda: input.payload.agenda,
+            sourceReferences: [],
+            contentPlan: reusedContentPlan,
+            assignmentId: input.payload.contentAssignmentId ?? null,
+          } as ContentStrategistOutput,
+          diagnostics: buildDiagnostics({
+            attemptCount: 0,
+            firstAttemptFailureClass: null,
+            finalParseMode: null,
+            stdoutLength: 0,
+            formatRetryUsed: false,
+            groundingRetryUsed: false,
+            contentPlan: reusedContentPlan,
+            suppliedEvidenceRefCount: 0,
+          }),
+        };
+      }
+    }
+  }
+
   const supplied = collectSuppliedEvidenceRefs(input.payload);
   const suppliedCount = supplied.length;
   const parseOpts: ParseContentStrategistOptions = { suppliedEvidenceRefs: supplied };

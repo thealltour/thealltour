@@ -188,6 +188,27 @@ export type AudienceContentResearchBrief = {
   topicIdentity?: import("@/lib/marketing/audienceResearch/topicIdentity/contracts").AgendaTopicIdentity | null;
   /** Lightweight identity-conflict diagnostics (no secrets / no prompts). */
   identityDiagnostics?: import("@/lib/marketing/audienceResearch/topicIdentity/contracts").IdentityConflictDiagnostic[];
+  /**
+   * ED-2 — StoryPoint-targeted research overlay (backward-compatible additive).
+   * When present, CS must respect storySupportVerdict / supportedClaimBoundary.
+   */
+  storyPointRef?: {
+    storyPointId: string;
+    storyPointHash: string;
+    researchContractVersion: string;
+  } | null;
+  /** Convenience mirror of storyPointRef.storyPointHash for cache/UI read-back. */
+  storyPointHash?: string | null;
+  storySupportVerdict?: import("@/lib/marketing/storyPoint/contracts").StoryEvidenceSupportStatus | null;
+  supportedClaimBoundary?: string | null;
+  researchQuestionFindings?: import("@/lib/marketing/storyPoint/contracts").ResearchQuestionFinding[];
+  contradictedClaims?: string[];
+  unresolvedQuestions?: string[];
+  evidenceBackedStoryBrief?: import("@/lib/marketing/storyPoint/contracts").EvidenceBackedStoryBrief | null;
+  /** Distinct from storySupportVerdict — infrastructure vs epistemic. */
+  researchExecutionStatus?: import("@/lib/marketing/storyPoint/contracts").ResearchExecutionStatus | null;
+  /** ED-2 alternate StoryPoint fallback used for this ACRB (optional metadata). */
+  alternateUsed?: boolean | null;
 };
 
 /** Compact pointer for export-context / candidate metadata. */

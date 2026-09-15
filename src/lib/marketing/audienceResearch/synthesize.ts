@@ -24,28 +24,56 @@ import { guardAnglesAgainstTopicIdentity } from "@/lib/marketing/audienceResearc
 
 export type AcrbLlmInvoke = (prompt: string) => Promise<string> | string;
 
-function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
+/** Exported for ED-2H focused tests. */
+export function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
   const editorial = gathered.editorial;
   const external = gathered.externalResearch;
+  const storyPoint = gathered.storyPoint ?? null;
+  const storyPointHash = gathered.storyPointHash ?? null;
+  const storyTargeted = Boolean(storyPoint);
+
+  const roleLines = storyTargeted
+    ? [
+        "JSON only. You are Audience & Content Research (RA-1) acting as Research & Fact Desk — NOT a social-copy writer.",
+        "Produce audience-content-research-brief-v1 fields for strategy — no final Threads/Blog/Band/Kakao copy.",
+        "AUTHORITATIVE_STORY_POINT below is the hypothesis/editorial scope being verified.",
+        "Do NOT invent a new story.",
+        "Do NOT broaden into destination travel tips or generic checklists.",
+        "Interpret ALL evidence relative to this StoryPoint.",
+        "Answer specifically:",
+        "- Which researchQuestions were answered / partially answered / unresolved / contradicted?",
+        "- What evidence supports the StoryPoint?",
+        "- What evidence contradicts it?",
+        "- What remains unresolved?",
+        "- How far can the claim safely go?",
+        "- Is narrowing required (supportedClaimBoundary)?",
+        "If evidence only supports a narrower claim, propose a supportedClaimBoundary that preserves the SAME Story core (same destination/product/topic).",
+        "Do NOT replace REFUTED or INSUFFICIENT_EVIDENCE with a different angle or generic travel advice — report limitations instead.",
+        "contentAngles must be researchSupportedFraming derived from the StoryPoint — not a creative replacement thesis.",
+      ]
+    : [
+        "JSON only. You are Audience & Content Research (RA-1), a research/strategy staff role — NOT a social-copy writer.",
+        "Produce audience-content-research-brief-v1 fields for strategy — no final Threads/Blog/Band/Kakao copy.",
+        "Fill non-empty audience.primary, motivations/decisionTriggers, anxieties/objections when relevant, searchIntent.questions, contentGaps, and 3-5 tension-bearing angles.",
+        "Do NOT return empty arrays for those sections when INPUT already contains usable seeds — refine them instead.",
+        "Do NOT emit placeholder angles like '시드 재평가: …'.",
+        "Answer specifically:",
+        "- Who specifically may care?",
+        "- What tension/problem makes this interesting?",
+        "- What questions are actually worth answering?",
+        "- What did the research sample show?",
+        "- What is verified vs merely observed/inferred?",
+        "- What angles are overused in the inspected sample?",
+        "- What useful gap exists within the inspected sample?",
+        "- Which 3–5 angles are strongest, with channel fit?",
+        "- Should the agenda proceed at all (PROCEED / PROCEED_WITH_CAUTION / SKIP)?",
+        "Meta contentAngles are SEEDS only — re-evaluate into 3-5 strategic angles with concrete audience tension.",
+      ];
+
   return [
-    "JSON only. You are Audience & Content Research (RA-1), a research/strategy staff role — NOT a social-copy writer.",
-    "Produce audience-content-research-brief-v1 fields for strategy — no final Threads/Blog/Band/Kakao copy.",
-    "Fill non-empty audience.primary, motivations/decisionTriggers, anxieties/objections when relevant, searchIntent.questions, contentGaps, and 3-5 tension-bearing angles.",
-    "Do NOT return empty arrays for those sections when INPUT already contains usable seeds — refine them instead.",
-    "Do NOT emit placeholder angles like '시드 재평가: …'.",
-    "Answer specifically:",
-    "- Who specifically may care?",
-    "- What tension/problem makes this interesting?",
-    "- What questions are actually worth answering?",
-    "- What did the research sample show?",
-    "- What is verified vs merely observed/inferred?",
-    "- What angles are overused in the inspected sample?",
-    "- What useful gap exists within the inspected sample?",
-    "- Which 3–5 angles are strongest, with channel fit?",
-    "- Should the agenda proceed at all (PROCEED / PROCEED_WITH_CAUTION / SKIP)?",
+    ...roleLines,
     "Avoid generic marketing filler such as: 여행에 관심 있는 사람 / 특별한 경험 / 좋은 추억 / 유용한 정보를 제공합니다.",
     "Do NOT invent official policies, boarding times, terminals, baggage rules, prices, Naver search volume, CTR, or ranking difficulty.",
-    "Meta contentAngles are SEEDS only — re-evaluate into 3-5 strategic angles with concrete audience tension.",
     "AgendaTopicIdentity is AUTHORITATIVE: refine angles, but do NOT change destination / product type / travel mode / principal subject without evidence.",
     "Do NOT introduce cruise/hotel/flight/named ships unless identity or inspected evidence already supports them.",
     "Only mark verified_fact when official sources (inspected bodies, not snippets alone) support it.",
@@ -53,7 +81,11 @@ function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
     "For content gaps, say 'within the inspected sample' — do not claim market-wide saturation from a few docs.",
     "Every psychological item / finding needs type in {verified_fact,observed_signal,inference,hypothesis}.",
     "Scores 0-1 advisory. Korean/Naver-style questions preferred.",
-    "Strong angles usually need at least one of: concrete tension, unanswered question, decision problem, practical mistake/risk, timely trigger, comparison tension, evidence-backed commercial opportunity.",
+    ...(storyTargeted
+      ? []
+      : [
+          "Strong angles usually need at least one of: concrete tension, unanswered question, decision problem, practical mistake/risk, timely trigger, comparison tension, evidence-backed commercial opportunity.",
+        ]),
     "INPUT_JSON:",
     JSON.stringify({
       agenda: {
@@ -71,6 +103,23 @@ function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
         assignment: gathered.assignment,
         weakHooks: editorial?.hookSignals ?? [],
       }),
+      AUTHORITATIVE_STORY_POINT: storyPoint
+        ? {
+            storyPointId: storyPoint.pointId,
+            storyQuestion: storyPoint.storyQuestion,
+            storyClaim: storyPoint.storyClaim,
+            whyInteresting: storyPoint.whyInteresting,
+            audienceTension: storyPoint.audienceTension,
+            curiosityGap: storyPoint.curiosityGap,
+            readerPayoff: storyPoint.readerPayoff,
+            researchNeeded: storyPoint.researchNeeded,
+            researchQuestions: storyPoint.researchQuestions,
+            mechanisms: storyPoint.mechanisms,
+            nonGoals: storyPoint.nonGoals,
+            storyPointHash,
+            storyPointGatePass: Boolean(gathered.storyPointGatePass),
+          }
+        : null,
       assignment: {
         assignmentId: gathered.assignment.assignmentId,
         audience: gathered.assignment.audience,
@@ -124,7 +173,9 @@ function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
           }
         : { available: false },
     }),
-    "Return object with keys: audience, searchIntent, marketSignals, researchFindings, contentAngles, recommendedAngleId, recommendedAngleReason, researchVerdict, verdictReasons, limitations, researchStatus.",
+    storyTargeted
+      ? "Return object with keys: audience, searchIntent, marketSignals, researchFindings, contentAngles (story-derived framing only), recommendedAngleId, recommendedAngleReason, researchVerdict, verdictReasons, limitations, researchStatus. Do not invent a replacement StoryPoint."
+      : "Return object with keys: audience, searchIntent, marketSignals, researchFindings, contentAngles, recommendedAngleId, recommendedAngleReason, researchVerdict, verdictReasons, limitations, researchStatus.",
   ].join("\n");
 }
 
@@ -378,6 +429,21 @@ export function mergeLlmIntoSkeleton(
       officialSourceCount: skeleton.provenance.officialSourceCount,
       socialCommunitySourceCount: skeleton.provenance.socialCommunitySourceCount,
     },
+    // Preserve ED-2 Story overlay from skeleton when LLM omit/drops it.
+    storyPointRef: parsed.storyPointRef ?? skeleton.storyPointRef ?? null,
+    storyPointHash: parsed.storyPointHash ?? skeleton.storyPointHash ?? null,
+    storySupportVerdict: parsed.storySupportVerdict ?? skeleton.storySupportVerdict ?? null,
+    supportedClaimBoundary:
+      parsed.supportedClaimBoundary ?? skeleton.supportedClaimBoundary ?? null,
+    researchQuestionFindings:
+      parsed.researchQuestionFindings ?? skeleton.researchQuestionFindings,
+    contradictedClaims: parsed.contradictedClaims ?? skeleton.contradictedClaims,
+    unresolvedQuestions: parsed.unresolvedQuestions ?? skeleton.unresolvedQuestions,
+    evidenceBackedStoryBrief:
+      parsed.evidenceBackedStoryBrief ?? skeleton.evidenceBackedStoryBrief ?? null,
+    researchExecutionStatus:
+      parsed.researchExecutionStatus ?? skeleton.researchExecutionStatus ?? null,
+    alternateUsed: parsed.alternateUsed ?? skeleton.alternateUsed ?? null,
   });
 }
 

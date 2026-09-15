@@ -61,6 +61,26 @@ export type ContentProposition = {
   > | null;
   propositionStrength: PropositionStrength;
   limitations: string[];
+  /**
+   * ED-3 additive provenance — Story lock identity (backward compatible).
+   * Optional on legacy propositions.
+   */
+  storyPointRef?: {
+    storyPointId: string;
+    storyPointHash: string;
+    researchContractVersion?: string;
+  } | null;
+  storyPointHash?: string | null;
+  storySupportVerdict?:
+    | import("@/lib/marketing/storyPoint/contracts").StoryEvidenceSupportStatus
+    | null;
+  /** Boundary actually used when PARTIALLY_SUPPORTED. */
+  supportedClaimBoundaryUsed?: string | null;
+  evidenceBriefRevision?: string | null;
+  propositionLockVersion?: string | null;
+  propositionSourceRevision?: string | null;
+  /** Lightweight takeaway → evidence provenance. */
+  takeawayEvidenceRefs?: Array<{ takeaway: string; evidenceRefs: string[] }> | null;
 };
 
 export type ContentPropositionCompact = {

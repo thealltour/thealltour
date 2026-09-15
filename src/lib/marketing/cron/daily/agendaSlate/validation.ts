@@ -28,3 +28,26 @@ export const agendaSlateRetryProductionSchema = z
   .refine((value) => Boolean(value.slateItemId?.trim() || value.logicalRunKey?.trim()), {
     message: "slateItemId or logicalRunKey required",
   });
+
+export const agendaSlateSelectStorySchema = z
+  .object({
+    businessDateKst: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    slateItemId: z.string().min(1).max(80).optional(),
+    logicalRunKey: z.string().min(1).max(240).optional(),
+    storyPointId: z.string().min(1).max(120),
+  })
+  .refine((value) => Boolean(value.slateItemId?.trim() || value.logicalRunKey?.trim()), {
+    message: "slateItemId or logicalRunKey required",
+  });
+
+export const agendaSlateImportExternalStorySchema = z.object({
+  businessDateKst: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  rawJson: z.string().min(2).max(200_000),
+  dryRun: z.boolean().optional(),
+});

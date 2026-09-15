@@ -1,4 +1,4 @@
-# AI Marketing Department — Org v2.1 (LOCKED)
+# AI Marketing Department — Org v2.2 (LOCKED)
 
 더올투어 마케팅을 Hermes Agent **Core 4**로 조율한다. Desktop profile은 배포됨. Cron은 task-only (SNS 게시 없음). 조직 계약: [organization.md](./organization.md).
 

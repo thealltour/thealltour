@@ -78,6 +78,9 @@ export type DepartmentPipelineInput = {
   selectedAgenda?: import("@/lib/marketing/content/types").SelectedAgenda | null;
   deliverableRequirements?: import("@/lib/marketing/content/types").ContentDeliverableRequirements | null;
   evidencePack?: import("@/lib/marketing/content/types").EvidencePack | null;
+  /** ED-3 authoritative StoryPoint for ContentProposition lock. */
+  authoritativeStoryPoint?: import("@/lib/marketing/storyPoint/contracts").StoryContentPoint | null;
+  reusedProposition?: import("@/lib/marketing/content/proposition/contracts").ContentProposition | null;
 };
 
 export type DepartmentPipelineResult = {
@@ -364,6 +367,8 @@ export async function runDepartmentPipeline(
     selectedAgenda: input.selectedAgenda ?? null,
     deliverableRequirements,
     evidencePack,
+    authoritativeStoryPoint: input.authoritativeStoryPoint ?? null,
+    reusedProposition: input.reusedProposition ?? null,
   };
 
   async function draftOnce(constraints: string[], attempt: number): Promise<ContentStrategistOutput> {

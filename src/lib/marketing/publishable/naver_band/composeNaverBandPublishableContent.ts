@@ -7,10 +7,10 @@ import {
   type PublishableChannelContent,
 } from "@/lib/marketing/publishable/contracts";
 import {
-  PROPOSITION_COMPOSER_RULES,
   bodyReflectsPropositionTakeaway,
-  buildPropositionPromptSlice,
   buildPropositionProvenance,
+  buildChannelComposerInputJson,
+  channelComposerRules,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -27,29 +27,11 @@ import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/c
 function buildPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
   return [
     NAVER_BAND_WRITING_CONTRACT,
-    PROPOSITION_COMPOSER_RULES,
+    channelComposerRules(input),
     "Channel: community-native Band post. Practical checklist / experience question welcome.",
     repairHint ?? "",
     "INPUT_JSON:",
-    JSON.stringify({
-      topic: input.topic,
-      audience: input.audience,
-      commercialIntent: input.commercialIntent,
-      keyMessage: input.keyMessage,
-      contentProposition: buildPropositionPromptSlice(input.contentProposition),
-      research: {
-        selectedAngle: input.research?.selectedAngle,
-        audiencePrimary: input.research?.audiencePrimary,
-        anxieties: input.research?.anxieties,
-        questions: input.research?.searchQuestions,
-        motivations: input.research?.motivations,
-      },
-      usableFacts: input.usableFacts.map((f) => ({
-        statement: f.statement,
-        type: f.epistemicType ?? null,
-      })),
-      avoidedStatements: input.avoidedStatements,
-    }),
+    JSON.stringify(buildChannelComposerInputJson(input)),
   ]
     .filter(Boolean)
     .join("\n");

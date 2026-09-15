@@ -336,6 +336,39 @@ describe("RA-1B AudienceContentResearchBrief", () => {
       throw new Error("GA should not run on SKIP");
     });
 
+    // ED-1 Story Miner runs before ACRB; inject PASS StoryPoints so ACRB SKIP path is reachable.
+    const invokeStoryMiner = async () =>
+      JSON.stringify({
+        candidates: Array.from({ length: 5 }, (_, i) => ({
+          pointId: `sp_busan_skip_${i + 1}`,
+          storyQuestion: `부산 출발 크루즈 첫 탑승에서 터미널 동선이 왜 막히는가? (${i + 1})`,
+          storyClaim: null,
+          whyInteresting:
+            "첫 탑승 가족이 터미널 동선과 수하물 타이밍을 헷갈려 실제 대기 스트레스를 반복적으로 겪는다",
+          audienceTension:
+            "선사 안내만 보면 쉬워 보이지만 부산항 현장 동선은 처음 가는 부모님 동반에 부담이 된다",
+          curiosityGap:
+            "공식 안내의 '간단 탑승'과 실제 부산항 첫 탑승 대기/이동 경험이 어긋나는 지점이 무엇인지",
+          readerPayoff:
+            "첫 탑승 전에 어떤 동선·타이밍을 미리 확인해야 하는지 한 가지 판단 기준을 얻는다",
+          mechanisms: ["curiosity_gap", "decision_relief"],
+          researchNeeded: ["부산항 터미널 공식 동선", "첫 탑승 후기 패턴"],
+          researchQuestions: [
+            "부산항 크루즈 터미널 공식 동선 안내와 실 후기 대기가 실제로 어긋나는가?",
+            "부모님 동반 첫 탑승 후기에서 수하물/이동 불편이 반복되는가?",
+          ],
+          genericRisk: "탑승 체크리스트 나열로 붕괴 가능",
+          genericRiskMitigation: "동선 한 가지 판단 기준으로 고정",
+          channelPotential: {
+            conversation: "high",
+            visualExplainability: "medium",
+            searchDepth: "high",
+            shortformHookability: "medium",
+          },
+          nonGoals: ["크루즈 종합 가이드", "준비 체크리스트 나열"],
+        })),
+      });
+
     const result = await runDailyMarketingProductionFromSelection(
       {
         productId: "prod_test",
@@ -353,6 +386,7 @@ describe("RA-1B AudienceContentResearchBrief", () => {
         contentAssignmentStore: assignmentStore,
         requestDraft,
         requestGovernance,
+        invokeStoryMiner,
         getResearchContext: async () => ({
           contract: "marketing-research-context-v1",
           status: "ok",
@@ -437,11 +471,17 @@ describe("RA-1B AudienceContentResearchBrief", () => {
       },
     );
 
-    expect(result.run.failureReason).toBe("AUDIENCE_CONTENT_RESEARCH_SKIPPED");
-    expect(result.audienceContentResearchBrief?.researchVerdict).toBe("SKIP");
+    // ED-2: Story research fail-closed may surface as story_research_skip
+    // (failureReason STORY_POINT_SKIPPED) or classic ACRB SKIP.
+    expect(["AUDIENCE_CONTENT_RESEARCH_SKIPPED", "STORY_POINT_SKIPPED"]).toContain(
+      result.run.failureReason,
+    );
     expect(result.candidate).toBeNull();
     expect(requestDraft).not.toHaveBeenCalled();
     expect(requestGovernance).not.toHaveBeenCalled();
+    if (result.audienceContentResearchBrief) {
+      expect(result.audienceContentResearchBrief.researchVerdict).toBe("SKIP");
+    }
   });
 
   it("governance receives ACRB compact context", () => {

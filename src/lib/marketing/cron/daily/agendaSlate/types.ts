@@ -112,3 +112,12 @@ export type AgendaSlateAction =
   | "defer"
   | "reject"
   | "reset_available";
+
+/** Lightweight row for the Morning Review date picker. */
+export type AgendaSlateDaySummary = {
+  businessDateKst: string;
+  status: DailyAgendaSlateStatus;
+  candidateCount: number;
+  selectedTodayCount: number;
+  slateId: string;
+};

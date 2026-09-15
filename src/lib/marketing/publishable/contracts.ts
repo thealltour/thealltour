@@ -57,6 +57,7 @@ export const PUBLISHABLE_GENERATION_FAILURE_CATEGORIES = [
   "insufficient_proposition",
   "governance_block",
   "invoke_missing",
+  "canonical_asset_unapproved",
   "unknown",
 ] as const;
 export type PublishableGenerationFailureCategory =
@@ -159,6 +160,11 @@ export type PublishableChannelContent = {
   narrationSegments?: PublishableNarrationSegment[];
   /** Naver Blog structured fields (optional). */
   blogMeta?: PublishableBlogMeta;
+  /** Approved Canonical Marketing Asset provenance (additive). */
+  sourceAssetId?: string | null;
+  sourceAssetVersion?: number | null;
+  /** True when approved asset moved ahead of this channel draft. */
+  stale?: boolean;
 };
 
 /**
@@ -178,6 +184,10 @@ export type PublishableContentBundle = {
   naver_blog?: PublishableChannelContent;
   naver_band?: PublishableChannelContent;
   kakao_channel?: PublishableChannelContent;
+  /** Bundle-level pointer to approved Canonical Asset used for generation. */
+  sourceAssetId?: string | null;
+  sourceAssetVersion?: number | null;
+  sourceAssetRevision?: string | null;
 };
 
 export function isPublishableChannel(value: unknown): value is PublishableChannel {

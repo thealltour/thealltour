@@ -1,11 +1,14 @@
 /**
  * Resolve which publishable channels to generate.
- * Never silently expand beyond strategy / explicit selection.
+ * Standard production defaults to the full configured registry (5 channels).
+ * Explicit overrides may narrow; baseline-only contentPlan lists are treated as
+ * incomplete CS output and expanded (do not silently collapse to Threads+Shortform).
  */
 
 import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
 import {
   PUBLISHABLE_BASELINE_CHANNELS,
+  PUBLISHABLE_CHANNELS,
   PUBLISHABLE_OPTIONAL_CHANNELS,
   isPublishableChannel,
   type PublishableChannel,
@@ -65,7 +68,8 @@ export function recommendTargetChannelsFromAcrb(input: {
 
 /**
  * Final selected channels for generation.
- * Priority: explicit override → contentPlan.targetChannels → baseline only.
+ * Priority: explicit override → contentPlan.targetChannels → all configured publishable channels.
+ * Do NOT silently collapse to Threads + Shortform when Blog/Band/Kakao remain enabled.
  */
 export function resolveTargetPublishableChannels(input: {
   explicit?: PublishableChannel[] | null;
@@ -84,7 +88,13 @@ export function resolveTargetPublishableChannels(input: {
 
   const fromPlan = (input.contentPlanTargetChannels ?? []).filter(isPublishableChannel);
   if (fromPlan.length > 0) {
-    // Honor plan, but always keep baseline threads+shortform when plan lists any channel.
+    const hasOptional = fromPlan.some((c) =>
+      (PUBLISHABLE_OPTIONAL_CHANNELS as readonly string[]).includes(c),
+    );
+    // Baseline-only plan is the historical silent collapse — expand to full registry.
+    if (!hasOptional) {
+      return uniqueChannels([...PUBLISHABLE_CHANNELS]);
+    }
     const hasBaseline = fromPlan.some((c) =>
       (PUBLISHABLE_BASELINE_CHANNELS as readonly string[]).includes(c),
     );
@@ -93,5 +103,6 @@ export function resolveTargetPublishableChannels(input: {
     );
   }
 
-  return [...PUBLISHABLE_BASELINE_CHANNELS];
+  // Standard marketing production: generate the full configured channel set.
+  return uniqueChannels([...PUBLISHABLE_CHANNELS]);
 }

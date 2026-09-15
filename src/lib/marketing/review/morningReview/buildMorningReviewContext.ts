@@ -37,10 +37,113 @@ import {
   visibleChannelsFromReviews,
 } from "@/lib/marketing/review/mergeChannelReviews";
 import type {
+  MorningCanonicalAssetView,
   MorningChannelReviewView,
   MorningResearchSummary,
   MorningStrategySummary,
 } from "@/lib/marketing/review/morningReview/types";
+import { resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/persistence";
+import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
+
+function canonicalAssetStatusLabelKo(status: string | null | undefined): string {
+  switch (status) {
+    case "draft":
+      return "AI 원본";
+    case "human_edited":
+      return "수정됨";
+    case "approved":
+      return "승인됨";
+    case "stale":
+      return "오래됨";
+    case "validation_failed":
+      return "검증 실패";
+    default:
+      return "없음";
+  }
+}
+
+function buildCanonicalAssetView(input: {
+  candidate: CompletedMarketingCandidate;
+  packageRoot: string | null;
+  publishableBundle: ReturnType<typeof ensurePublishableContentSync> | null;
+}): MorningCanonicalAssetView {
+  const asset = resolveCanonicalMarketingAsset({
+    candidate: input.candidate,
+    packageRoot: input.packageRoot,
+  });
+  if (!asset) {
+    return {
+      present: false,
+      legacyWithoutAsset: true,
+      assetId: null,
+      status: null,
+      statusLabelKo: "레거시(원문 없음)",
+      version: null,
+      approvedVersion: null,
+      humanEdited: false,
+      storyTitle: input.candidate.contentPlan?.proposition?.angle ?? null,
+      storySupportVerdict: input.candidate.contentPlan?.proposition?.storySupportVerdict ?? null,
+      supportedClaimBoundaryKo:
+        input.candidate.contentPlan?.proposition?.supportedClaimBoundaryUsed ?? null,
+      titleKo: "",
+      dekKo: null,
+      openingHookKo: "",
+      bodyKo: "",
+      keyTakeawaysKo: [],
+      decisionGuidanceKo: "",
+      optionalCtaIntentKo: null,
+      limitationsKo: [],
+      forbiddenClaimsKo: [],
+      canApproveOriginal: false,
+      canApproveEdited: false,
+      canEdit: false,
+      channelsBlockedUntilApproved: false,
+      staleChannelNoticeKo: null,
+    };
+  }
+  const approved = isApprovedCanonicalAsset(asset);
+  const staleChannels = (
+    ["threads", "shortform", "naver_blog", "naver_band", "kakao_channel"] as const
+  ).filter((ch) => {
+    const slot = input.publishableBundle?.[ch];
+    return Boolean(slot?.stale);
+  });
+  return {
+    present: true,
+    legacyWithoutAsset: false,
+    assetId: asset.assetId,
+    status: asset.status,
+    statusLabelKo:
+      asset.status === "approved"
+        ? "승인됨"
+        : asset.status === "human_edited"
+          ? "승인 대기"
+          : canonicalAssetStatusLabelKo(asset.status),
+    version: asset.version,
+    approvedVersion: asset.approvedVersion,
+    humanEdited: asset.humanEdited,
+    storyTitle: asset.titleKo || input.candidate.contentPlan?.proposition?.angle || null,
+    storySupportVerdict: asset.storySupportVerdict,
+    supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
+    titleKo: asset.titleKo,
+    dekKo: asset.dekKo,
+    openingHookKo: asset.openingHookKo,
+    bodyKo: asset.bodyKo,
+    keyTakeawaysKo: asset.keyTakeawaysKo,
+    decisionGuidanceKo: asset.decisionGuidanceKo,
+    optionalCtaIntentKo: asset.optionalCtaIntentKo,
+    limitationsKo: asset.limitationsKo,
+    forbiddenClaimsKo: asset.forbiddenClaimsKo,
+    canApproveOriginal: asset.status === "draft" && !asset.humanEdited,
+    canApproveEdited: asset.status === "human_edited" && asset.humanEdited,
+    canEdit: asset.status !== "validation_failed",
+    channelsBlockedUntilApproved: !approved,
+    staleChannelNoticeKo:
+      staleChannels.length > 0
+        ? "원문이 변경되어 기존 채널 콘텐츠가 오래된 버전입니다"
+        : null,
+  };
+}
 
 function workflowState(item: HumanReviewQueueItem): MorningReviewWorkflowState {
   if (!item.humanReviewStatus) {
@@ -181,6 +284,7 @@ export function buildMorningMarketingReviewContext(input: {
   let publishableTitle = rawDraftTitle;
   let publishableBody = rawDraftBody;
   let publishableBundle: ReturnType<typeof ensurePublishableContentSync> | null = null;
+  let packageRootForAsset: string | null = null;
   try {
     const assetRoot = resolveMarketingAssetRoot({});
     const packageRoot = resolvePackageDirectory({
@@ -188,18 +292,23 @@ export function buildMorningMarketingReviewContext(input: {
       businessDateKst: candidate.businessDateKst,
       candidateId: candidate.candidateId,
     });
-    publishableBundle = ensurePublishableContentSync({
-      candidate,
-      packageRoot,
-      humanDraft: review?.currentDraft,
-      humanEditedAfterGovernance: review?.humanEditedAfterGovernance,
-      audienceContentResearchBrief: null,
-      explicitTargetChannels: candidate.contentPlan?.targetChannels ?? null,
-      allowDeterministicGeneration: false,
-    });
+    packageRootForAsset = packageRoot;
+    // Do not invent channel copy when Canonical Asset awaits approval.
+    const assetGate = resolveCanonicalMarketingAsset({ candidate, packageRoot });
+    if (!assetGate || isApprovedCanonicalAsset(assetGate)) {
+      publishableBundle = ensurePublishableContentSync({
+        candidate,
+        packageRoot,
+        humanDraft: review?.currentDraft,
+        humanEditedAfterGovernance: review?.humanEditedAfterGovernance,
+        audienceContentResearchBrief: null,
+        explicitTargetChannels: candidate.contentPlan?.targetChannels ?? null,
+        allowDeterministicGeneration: false,
+      });
+    }
     if (!humanOwnsPublishableDraft && looksLikeInternalPlanningBody(rawDraftBody)) {
-      publishableTitle = publishableBundle.threads.title;
-      publishableBody = publishableBundle.threads.body;
+      publishableTitle = publishableBundle?.threads.title ?? rawDraftTitle;
+      publishableBody = publishableBundle?.threads.body ?? rawDraftBody;
     } else if (review?.channelReviews?.threads) {
       const eff = effectiveChannelDraft(review.channelReviews.threads);
       publishableTitle = eff.title;
@@ -314,6 +423,12 @@ export function buildMorningMarketingReviewContext(input: {
     commercialIntent: assignment.commercialIntent ?? null,
   };
 
+  const canonicalAsset = buildCanonicalAssetView({
+    candidate,
+    packageRoot: packageRootForAsset,
+    publishableBundle,
+  });
+
   return {
     contract: MORNING_MARKETING_REVIEW_CONTEXT_CONTRACT,
     identity: {
@@ -353,6 +468,7 @@ export function buildMorningMarketingReviewContext(input: {
     channelReviews,
     researchSummary,
     strategySummary,
+    canonicalAsset,
     evidence: {
       claims,
       unlinkedEvidenceCount: claims.filter((claim) => claim.linkage === "unlinked").length,

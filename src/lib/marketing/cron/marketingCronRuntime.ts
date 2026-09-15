@@ -71,6 +71,78 @@ export function createAudienceResearchInvoke(
   return async (prompt: string) => invokeHermes("content-strategist", prompt);
 }
 
+/** ED-1 — Story Miner LLM invoke (reuses content-strategist transport; no web search). */
+export function createStoryMinerInvoke(
+  options: MarketingPlanPipelineDispatchOptions,
+): ((prompt: string) => Promise<string>) | null {
+  if (options.useRuntime) {
+    if (!options.executor) return null;
+    const executor = options.executor;
+    const now = options.now ?? (() => new Date());
+    const timeoutMs = options.completionTimeoutMs;
+    return async (prompt: string) => {
+      const request = createCronRuntimeRequest(
+        {
+          agentId: "content-strategist",
+          workload: "content_draft",
+          priority: "background",
+          messages: [{ role: "user", content: prompt }],
+          correlationId: options.correlationId,
+          cronJobId: MARKETING_CRON_JOB_ID,
+          departmentId: MARKETING_DEPARTMENT_ID,
+          routing: { requiresStructuredOutput: true },
+        },
+        { now },
+      );
+      const result = await executor.executeAndWait(request, { timeoutMs, now });
+      return assertRuntimeContent(result);
+    };
+  }
+
+  const invokeHermes = options.invokeHermesProfile;
+  if (!invokeHermes) return null;
+  return async (prompt: string) => invokeHermes("content-strategist", prompt);
+}
+
+/**
+ * Canonical Asset Source Writer — structured JSON Korean source asset.
+ * Reuses content-strategist Hermes/Runtime transport (no new Hermes bot). Role is
+ * enforced by prompt contract (asset-source-writer), not Content Strategist.
+ */
+export const ASSET_SOURCE_WRITER_MODEL_PROFILE = "content-strategist" as const;
+
+export function createAssetSourceWriterInvoke(
+  options: MarketingPlanPipelineDispatchOptions,
+): ((prompt: string) => Promise<string>) | null {
+  if (options.useRuntime) {
+    if (!options.executor) return null;
+    const executor = options.executor;
+    const now = options.now ?? (() => new Date());
+    const timeoutMs = options.completionTimeoutMs;
+    return async (prompt: string) => {
+      const request = createCronRuntimeRequest(
+        {
+          agentId: ASSET_SOURCE_WRITER_MODEL_PROFILE,
+          workload: "content_draft",
+          priority: "background",
+          messages: [{ role: "user", content: prompt }],
+          correlationId: options.correlationId,
+          cronJobId: MARKETING_CRON_JOB_ID,
+          departmentId: MARKETING_DEPARTMENT_ID,
+          routing: { requiresStructuredOutput: true },
+        },
+        { now },
+      );
+      const result = await executor.executeAndWait(request, { timeoutMs, now });
+      return assertRuntimeContent(result);
+    };
+  }
+
+  const invokeHermes = options.invokeHermesProfile;
+  if (!invokeHermes) return null;
+  return async (prompt: string) => invokeHermes(ASSET_SOURCE_WRITER_MODEL_PROFILE, prompt);
+}
+
 /**
  * MQ-4 — production PublishableLlmInvoke for channel-native composers.
  * Reuses content-strategist Hermes/Runtime transport (structured JSON). No web search.

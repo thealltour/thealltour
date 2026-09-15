@@ -20,6 +20,7 @@ export type DailyMarketingFailureReason =
   | "MANAGER_INVALID_OUTPUT"
   | "ASSIGNMENT_FAILED"
   | "AUDIENCE_CONTENT_RESEARCH_SKIPPED"
+  | "STORY_POINT_SKIPPED"
   | "CONTENT_STRATEGIST_FAILED"
   | "GOVERNANCE_FAILED"
   | "GOVERNANCE_TECHNICAL_FAILURE"
@@ -99,6 +100,11 @@ export type CompletedMarketingCandidate = {
   observability: DailyMarketingRunObservability;
   /** Compact RA-1B pointer — full brief is on production request / package artifact. */
   audienceContentResearchRef?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBriefRef | null;
+  /**
+   * Canonical Marketing Asset (channel-agnostic Korean SoT).
+   * Legacy candidates may omit this — do not fabricate.
+   */
+  canonicalMarketingAsset?: import("@/lib/marketing/canonicalAsset/contracts").CanonicalMarketingAsset | null;
 };
 
 export type DailyMarketingPipelineInput = {
@@ -129,5 +135,6 @@ export type DailyMarketingPipelineResult = {
   /** Present when the daily job stops at the human-gated agenda slate. */
   slate?: import("@/lib/marketing/cron/daily/agendaSlate/types").DailyAgendaSlate | null;
   /** RA-1B — present when research completed (including SKIP). */
+  storyPointCandidateSet?: import("@/lib/marketing/storyPoint/contracts").DurableStoryPointCandidateSet | null;
   audienceContentResearchBrief?: import("@/lib/marketing/audienceResearch/contracts").AudienceContentResearchBrief | null;
 };

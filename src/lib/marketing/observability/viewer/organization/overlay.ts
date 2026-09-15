@@ -173,14 +173,21 @@ function executionStateForSpans(
   };
 }
 
+/** Spine order for “next WAITING” — ED-LIVE → Canonical Asset → channel review. */
 const WORKFLOW_EDGE_ORDER = [
-  "ri_to_mm",
-  "mm_to_req",
+  "mm_to_story_point",
+  "story_point_to_human_select",
+  "human_select_to_ed2",
+  "ed2_to_req",
   "req_to_ev",
   "ev_to_cs",
   "cs_to_cv",
   "cv_to_ga",
-  "ga_to_hmr",
+  "ga_to_writer",
+  "writer_to_canonical",
+  "canonical_to_asset_approve",
+  "asset_approve_to_channels",
+  "channels_to_hmr",
 ] as const;
 
 function visitStateForEdge(
@@ -280,7 +287,37 @@ export function buildMarketingOrganizationGraphModel(input: {
           : [],
       spanIds: matched.map((s) => s.spanId),
       spanCount: matched.length,
+      summary: (() => {
+        const reused = matched.some(
+          (s) => s.attributes?.["marketing.story_point.reused"] === true,
+        );
+        if (reused && base.state === "ok") return "reused";
+        return base.summary;
+      })(),
     };
+  }
+
+  // Human Story Selection pause (attr lives on story_point spans)
+  const storyAwaiting = spans.some(
+    (s) => s.attributes?.["marketing.story_point.awaiting_selection"] === true,
+  );
+  if (storyAwaiting && nodeOverlays.human_story_selection) {
+    nodeOverlays.human_story_selection.state = "waiting";
+    nodeOverlays.human_story_selection.summary = "awaiting_human_selection";
+    if (nodeOverlays.story_point_miner && nodeOverlays.story_point_miner.state === "ok") {
+      nodeOverlays.story_point_miner.summary = "awaiting_human_selection";
+    }
+  }
+
+  // Human Asset Approval pause — outcome may appear on any production span attrs
+  const assetAwaiting = spans.some((s) => {
+    const outcome = s.attributes?.["marketing.production.outcome"];
+    const flag = s.attributes?.["marketing.canonical_asset.awaiting_approval"];
+    return outcome === "awaiting_asset_approval" || flag === true;
+  });
+  if (assetAwaiting && nodeOverlays.human_asset_approval) {
+    nodeOverlays.human_asset_approval.state = "waiting";
+    nodeOverlays.human_asset_approval.summary = "awaiting_asset_approval";
   }
 
   // Second pass: mark waiting for not-yet-visited workflow nodes after a visited predecessor
@@ -291,14 +328,32 @@ export function buildMarketingOrganizationGraphModel(input: {
     const tgt = nodeOverlays[edge.target];
     if (!src || !tgt) continue;
     if (tgt.state !== "idle") continue;
+    // Don't advance past an active human pause
+    if (
+      edge.source === "human_story_selection" &&
+      nodeOverlays.human_story_selection?.state === "waiting"
+    ) {
+      continue;
+    }
+    if (
+      edge.source === "human_asset_approval" &&
+      nodeOverlays.human_asset_approval?.state === "waiting"
+    ) {
+      continue;
+    }
     if (
       src.state === "ok" ||
       src.state === "running" ||
       src.state === "revision_required" ||
       src.state === "blocked" ||
       src.state === "technical_error" ||
-      src.state === "stale"
+      src.state === "stale" ||
+      src.state === "waiting"
     ) {
+      // Human pause nodes already set to waiting above; only propagate from completed/running priors
+      if (src.state === "waiting" && edge.source === "human_story_selection") continue;
+      if (src.state === "waiting" && edge.source === "human_asset_approval") continue;
+      if (src.state === "waiting") continue;
       tgt.state = "waiting";
     }
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CANONICAL_INTERNAL_SYSTEMD_UNIT,
   CANONICAL_PATH_DOCUMENTED_FORBIDDEN_MARKER,
   findCanonicalPathViolationsInText,
 } from "@/lib/repoHygiene/canonicalPathGuard";
@@ -8,6 +9,8 @@ import {
 /** Split so the repo-wide path scanner does not treat this test file as a violation. */
 const FORBIDDEN_ABS = ["/home/ysh/", "theallcloud"].join("");
 const FORBIDDEN_TILDE = ["~/", "theallcloud"].join("");
+const FORBIDDEN_INTERNAL_SERVICE = ["theall", "cloud", "-internal"].join("");
+const FORBIDDEN_INTERNAL_UNIT = `${FORBIDDEN_INTERNAL_SERVICE}.service`;
 
 describe("canonicalPathGuard", () => {
   it("fails on cd absolute forbidden path", () => {
@@ -61,6 +64,46 @@ describe("canonicalPathGuard", () => {
 
   it("skips documented forbidden examples with marker", () => {
     const line = `${FORBIDDEN_ABS} ${CANONICAL_PATH_DOCUMENTED_FORBIDDEN_MARKER}`;
+    expect(findCanonicalPathViolationsInText(`${line}\n`)).toHaveLength(0);
+  });
+
+  it("fails on wrong internal systemd unit filename", () => {
+    const v = findCanonicalPathViolationsInText(
+      `sudo systemctl restart ${FORBIDDEN_INTERNAL_UNIT}\n`,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]?.match).toBe(FORBIDDEN_INTERNAL_UNIT);
+    expect(v[0]?.expected).toBe(CANONICAL_INTERNAL_SYSTEMD_UNIT);
+  });
+
+  it("fails on wrong internal systemd unit without .service suffix", () => {
+    const v = findCanonicalPathViolationsInText(
+      `journalctl -u ${FORBIDDEN_INTERNAL_SERVICE} -n 20\n`,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]?.match).toBe(FORBIDDEN_INTERNAL_SERVICE);
+    expect(v[0]?.expected).toBe(CANONICAL_INTERNAL_SYSTEMD_UNIT);
+  });
+
+  it("passes on thealltour-internal.service", () => {
+    expect(
+      findCanonicalPathViolationsInText(
+        "sudo systemctl status thealltour-internal.service --no-pager\n",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("does not treat gateway alias or MCP id as the internal unit", () => {
+    const text = [
+      "model: theallcloud/auto",
+      "server: theallcloud-marketing",
+      'ORCHESTRATION_PROJECT_ID="theallcloud"',
+    ].join("\n");
+    expect(findCanonicalPathViolationsInText(`${text}\n`)).toHaveLength(0);
+  });
+
+  it("skips documented wrong internal unit with marker", () => {
+    const line = `${FORBIDDEN_INTERNAL_UNIT} ${CANONICAL_PATH_DOCUMENTED_FORBIDDEN_MARKER}`;
     expect(findCanonicalPathViolationsInText(`${line}\n`)).toHaveLength(0);
   });
 });

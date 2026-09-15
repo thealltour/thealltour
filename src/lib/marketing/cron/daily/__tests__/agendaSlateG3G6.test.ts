@@ -465,4 +465,47 @@ describe("STEP G-3/G-4/G-5/G-6 agenda slate curation & human gates", () => {
     });
     expect(next.candidates[0]?.origin).toBe("deferred_carryover");
   });
+
+  it("listRecentDaySummaries collapses superseded duplicate dates", async () => {
+    const slateRepo = createInMemoryDailyAgendaSlateRepository();
+    const organic = buildDailyAgendaSlate({
+      research: multiCandidateContext(4),
+      logicalRunKey: `daily-marketing-plan:${PREV}:superseded-morning-meta`,
+      businessDateKst: PREV,
+      runId: "run-old",
+      correlationId: "corr-old",
+      now: new Date("2026-09-04T00:00:00.000Z"),
+    });
+    const superseded = { ...organic, status: "superseded" as const, updatedAt: "2026-09-04T05:50:00.000Z" };
+    await slateRepo.saveSlate(superseded);
+    await slateRepo.updateSlate(superseded);
+
+    const ready = buildDailyAgendaSlate({
+      research: multiCandidateContext(6),
+      logicalRunKey: `daily-marketing-plan:${PREV}`,
+      businessDateKst: PREV,
+      runId: "run-new",
+      correlationId: "corr-new",
+      now: new Date("2026-09-04T05:52:00.000Z"),
+    });
+    await slateRepo.saveSlate(ready);
+
+    const day2 = buildDailyAgendaSlate({
+      research: multiCandidateContext(5),
+      logicalRunKey: `daily-marketing-plan:${DAY}`,
+      businessDateKst: DAY,
+      runId: "run-day2",
+      correlationId: "corr-day2",
+      now: NOW,
+    });
+    await slateRepo.saveSlate(day2);
+
+    const service = await createAgendaSlateService({ slateRepo, now: NOW });
+    const days = await service.listRecentDaySummaries({ limit: 10 });
+    expect(days.map((d) => d.businessDateKst)).toEqual([DAY, PREV]);
+    const prev = days.find((d) => d.businessDateKst === PREV);
+    expect(prev?.status).toBe("ready_for_human_selection");
+    expect(prev?.candidateCount).toBe(ready.candidates.length);
+    expect(prev?.slateId).toBe(ready.slateId);
+  });
 });

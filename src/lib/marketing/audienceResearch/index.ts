@@ -33,7 +33,8 @@ export {
 export { ensureAudienceContentResearch } from "@/lib/marketing/audienceResearch/ensureAudienceContentResearch";
 export type { EnsureAcrbInput, EnsureAcrbResult } from "@/lib/marketing/audienceResearch/ensureAudienceContentResearch";
 
-export { synthesizeAudienceContentResearch } from "@/lib/marketing/audienceResearch/synthesize";
+export { synthesizeAudienceContentResearch, buildSynthesisPrompt } from "@/lib/marketing/audienceResearch/synthesize";
+export type { AcrbLlmInvoke } from "@/lib/marketing/audienceResearch/synthesize";
 export { buildDeterministicAcrb } from "@/lib/marketing/audienceResearch/deterministicSkeleton";
 export { gatherAcrbInputs } from "@/lib/marketing/audienceResearch/gatherInputs";
 export { runBoundedExternalResearch } from "@/lib/marketing/audienceResearch/external/runExternalResearch";

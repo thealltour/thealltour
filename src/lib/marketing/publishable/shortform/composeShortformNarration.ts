@@ -9,10 +9,10 @@ import {
   type PublishableNarrationSegment,
 } from "@/lib/marketing/publishable/contracts";
 import {
-  PROPOSITION_COMPOSER_RULES,
   bodyReflectsPropositionTakeaway,
-  buildPropositionPromptSlice,
   buildPropositionProvenance,
+  buildChannelComposerInputJson,
+  channelComposerRules,
   checkShortformHookPayoff,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
@@ -30,24 +30,12 @@ import {
 function buildShortformPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
   return [
     SHORTFORM_NARRATION_WRITING_CONTRACT,
-    PROPOSITION_COMPOSER_RULES,
+    channelComposerRules(input),
     "Structure: hook → payoff → concrete useful information → close/action.",
     "If hook promises N things / one rule / a checklist, body MUST deliver it.",
     repairHint ?? "",
     "INPUT_JSON:",
-    JSON.stringify({
-      topic: input.topic,
-      commercialIntent: input.commercialIntent,
-      destinations: input.destinations,
-      keyMessage: input.keyMessage,
-      contentProposition: buildPropositionPromptSlice(input.contentProposition),
-      usableFacts: input.usableFacts.map((f) => ({
-        statement: f.statement,
-        confidence: f.confidence,
-      })),
-      unsupportedClaims: input.unsupportedClaims,
-      governanceDecision: input.governanceDecision,
-    }),
+    JSON.stringify(buildChannelComposerInputJson(input)),
   ]
     .filter(Boolean)
     .join("\n");

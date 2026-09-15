@@ -505,6 +505,85 @@ describe("STEP 3-12 ContentPlan contract — provenance semantics", () => {
     ).toThrow(ContentPlanContractError);
   });
 
+  it("proposition.proofRequirements string items coerce to objects", () => {
+    const plan = parseProviderContentPlan({
+      assignmentId: "ca1",
+      primaryAngle: "Vietnam sanctuary resorts",
+      keyMessage: "Verify boarding rules before booking",
+      proposition: {
+        contract: "content-proposition-v1",
+        primaryAudience: "베트남 휴양 관심 한국 여행자",
+        audienceProblem: "리조트 홍보만 보고 예약하면 동선·증빙이 빠진다",
+        audienceTension: "휴식이 필요하지만 정보가 파편화됨",
+        whyNow: "성수기 직전",
+        contentPromise: "예약 전에 확인할 공식 기준 3가지",
+        readerGain: "잘못된 패키지 선택을 줄인다",
+        specificTakeaways: ["공식 관광청 안내를 먼저 확인"],
+        proofRequirements: [
+          "boarding or visa rules must cite official source",
+          {
+            claimArea: "price",
+            requiredProof: "official fare page",
+            severity: "must",
+          },
+        ],
+        contentGapUsed: "checklist gap",
+        engagementMechanism: "save_worthy_checklist",
+        desiredAudienceAction: "save",
+        angle: "verify-first sanctuary checklist",
+        keyMessage: "홍보 문구보다 증빙 먼저",
+        commercialIntent: "informational",
+        propositionStrength: "usable",
+        limitations: [],
+      },
+    });
+    expect(plan.proposition?.proofRequirements).toHaveLength(2);
+    expect(plan.proposition?.proofRequirements[0]).toMatchObject({
+      claimArea: "boarding or visa rules must cite official source",
+      requiredProof: "boarding or visa rules must cite official source",
+      severity: "should",
+    });
+    expect(plan.proposition?.proofRequirements[1]).toMatchObject({
+      claimArea: "price",
+      requiredProof: "official fare page",
+      severity: "must",
+    });
+  });
+
+  it("proposition.proofRequirements tolerates partial objects and severity aliases", () => {
+    const plan = parseProviderContentPlan({
+      assignmentId: "ca1",
+      proposition: {
+        contract: "content-proposition-v1",
+        primaryAudience: "여행자",
+        audienceProblem: "정보 파편화",
+        contentPromise: "공식 기준 체크리스트",
+        readerGain: "잘못된 예약을 줄인다",
+        specificTakeaways: ["공식 안내 확인"],
+        proofRequirements: [
+          { claimArea: "only area" },
+          { requiredProof: "only proof" },
+          { claim: "visa", proof: "embassy page", severity: "required" },
+          { claimArea: "a", requiredProof: "b", severity: "optional" },
+          null,
+          42,
+          "x".repeat(300),
+        ],
+        engagementMechanism: "save_worthy_checklist",
+        desiredAudienceAction: "save",
+        propositionStrength: "usable",
+      },
+    });
+    expect(plan.proposition?.proofRequirements.length).toBeGreaterThanOrEqual(4);
+    expect(plan.proposition?.proofRequirements.some((p) => p.severity === "must")).toBe(true);
+    expect(plan.proposition?.proofRequirements.some((p) => p.severity === "nice")).toBe(true);
+    expect(
+      plan.proposition?.proofRequirements.every(
+        (p) => p.claimArea.length > 0 && p.requiredProof.length > 0,
+      ),
+    ).toBe(true);
+  });
+
   it("oversized evidenceRefs and facts rejected", () => {
     expect(() =>
       parseProviderContentPlan({

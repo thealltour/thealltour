@@ -12,6 +12,7 @@ import {
 } from "@/lib/marketing/audienceResearch/external/createSearchProvider";
 import { buildResearchQueryPlan } from "@/lib/marketing/audienceResearch/external/queryPlan";
 import type { ResearchQueryPlanItem } from "@/lib/marketing/audienceResearch/external/queryPlan";
+import type { StoryContentPoint } from "@/lib/marketing/storyPoint/contracts";
 import {
   classifyExternalSource,
   sourceClassAllowsVerifiedFact,
@@ -156,6 +157,8 @@ function coverageSufficient(input: {
 export async function runBoundedExternalResearch(input: {
   handoff: ManagerToContentHandoffResult;
   editorial?: ResearchBriefEditorialIntelligence | null;
+  /** ED-2 — when set, query plan is driven by storyPoint.researchQuestions. */
+  storyPoint?: StoryContentPoint | null;
   searchProvider?: ResearchSearchProvider | null;
   cache?: SourceSearchCache | null;
   maxQueries?: number;
@@ -206,6 +209,7 @@ export async function runBoundedExternalResearch(input: {
   const plan = buildResearchQueryPlan({
     handoff: input.handoff,
     editorial: input.editorial,
+    storyPoint: input.storyPoint ?? null,
     maxQueries,
   });
 

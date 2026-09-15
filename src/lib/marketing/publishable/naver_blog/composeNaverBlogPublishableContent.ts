@@ -8,10 +8,10 @@ import {
   type PublishableChannelContent,
 } from "@/lib/marketing/publishable/contracts";
 import {
-  PROPOSITION_COMPOSER_RULES,
   bodyReflectsPropositionTakeaway,
-  buildPropositionPromptSlice,
   buildPropositionProvenance,
+  buildChannelComposerInputJson,
+  channelComposerRules,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -28,26 +28,11 @@ import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/c
 function buildPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
   return [
     NAVER_BLOG_WRITING_CONTRACT,
-    PROPOSITION_COMPOSER_RULES,
+    channelComposerRules(input),
     "Channel: search/problem-solving article around ContentProposition promise/takeaways.",
     repairHint ?? "",
     "INPUT_JSON:",
-    JSON.stringify({
-      topic: input.topic,
-      audience: input.audience,
-      commercialIntent: input.commercialIntent,
-      keyMessage: input.keyMessage,
-      destinations: input.destinations,
-      contentProposition: buildPropositionPromptSlice(input.contentProposition),
-      usableFacts: input.usableFacts.map((f) => ({
-        statement: f.statement,
-        confidence: f.confidence,
-        type: f.epistemicType ?? null,
-      })),
-      avoidedStatements: input.avoidedStatements,
-      unsupportedClaims: input.unsupportedClaims,
-      research: input.research,
-    }),
+    JSON.stringify(buildChannelComposerInputJson(input)),
   ]
     .filter(Boolean)
     .join("\n");

@@ -42,6 +42,68 @@ const proofRequirementSchema = z.object({
   severity: z.enum(["must", "should", "nice"]).default("should"),
 });
 
+type ProofRequirementShape = z.infer<typeof proofRequirementSchema>;
+
+function asTrimmedString(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value).trim();
+  return "";
+}
+
+function coerceProofSeverity(value: unknown): "must" | "should" | "nice" {
+  const raw = asTrimmedString(value).toLowerCase();
+  if (raw === "must" || raw === "required" || raw === "hard") return "must";
+  if (raw === "nice" || raw === "optional" || raw === "soft") return "nice";
+  return "should";
+}
+
+/**
+ * Models emit proofRequirements as strings, partial objects, or alternate keys.
+ * Coerce to canonical shape; drop items that cannot yield any usable text.
+ */
+export function coerceProofRequirementItem(item: unknown): ProofRequirementShape | null {
+  if (typeof item === "string") {
+    const text = item.trim();
+    if (!text) return null;
+    return {
+      claimArea: text.slice(0, 160),
+      requiredProof: text.slice(0, 240),
+      severity: "should",
+    };
+  }
+  if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+  const row = item as Record<string, unknown>;
+  const claimArea = asTrimmedString(
+    row.claimArea ?? row.area ?? row.claim ?? row.topic ?? row.title,
+  );
+  const requiredProof = asTrimmedString(
+    row.requiredProof ?? row.proof ?? row.requirement ?? row.evidenceNeed ?? row.description,
+  );
+  if (!claimArea && !requiredProof) return null;
+  return {
+    claimArea: (claimArea || requiredProof).slice(0, 160),
+    requiredProof: (requiredProof || claimArea).slice(0, 240),
+    severity: coerceProofSeverity(row.severity),
+  };
+}
+
+export function coerceProofRequirementsList(value: unknown): ProofRequirementShape[] {
+  if (!Array.isArray(value)) return [];
+  const out: ProofRequirementShape[] = [];
+  for (const item of value) {
+    const coerced = coerceProofRequirementItem(item);
+    if (!coerced) continue;
+    out.push(coerced);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+const proofRequirementsFieldSchema = z.preprocess(
+  (value) => coerceProofRequirementsList(value),
+  z.array(proofRequirementSchema).max(8).default([]),
+);
+
 export const contentPropositionSchema = z.object({
   contract: z.literal(CONTENT_PROPOSITION_CONTRACT).default(CONTENT_PROPOSITION_CONTRACT),
   primaryAudience: boundedString(200),
@@ -51,7 +113,7 @@ export const contentPropositionSchema = z.object({
   contentPromise: boundedString(400),
   readerGain: boundedString(400),
   specificTakeaways: stringArray(5, 200).default([]),
-  proofRequirements: z.array(proofRequirementSchema).max(8).default([]),
+  proofRequirements: proofRequirementsFieldSchema,
   contentGapUsed: boundedString(320).default(""),
   engagementMechanism: boundedString(80),
   desiredAudienceAction: boundedString(40),

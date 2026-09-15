@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Fail if forbidden theallcloud filesystem/repository paths appear in source/docs/config.
+ * Also fail on the wrong internal systemd unit identity (legacy id + "-internal").
  *
  *   npm run check:canonical-paths
  *
@@ -75,7 +76,7 @@ function main(): void {
       console.error(`file: ${v.file}`);
       console.error(`line: ${v.line}`);
       console.error(`match: ${v.match}`);
-      console.error(`expected: ${CANONICAL_APP_REPO}`);
+      console.error(`expected: ${v.expected ?? CANONICAL_APP_REPO}`);
       console.error("");
     }
     console.error(`CANONICAL_PATH_VIOLATIONS: ${violations.length}`);

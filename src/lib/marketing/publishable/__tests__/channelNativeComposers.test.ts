@@ -313,11 +313,30 @@ function makeCandidate(
 }
 
 describe("CG-4B channel-native composers", () => {
-  it("defaults to threads+shortform only when targetChannels unset", () => {
+  it("defaults to the full configured publishable channel set when targetChannels unset", () => {
     const channels = resolveTargetPublishableChannels({
       contentPlanTargetChannels: null,
     });
-    expect(channels).toEqual(["threads", "shortform"]);
+    expect(channels).toEqual([
+      "threads",
+      "shortform",
+      "naver_blog",
+      "naver_band",
+      "kakao_channel",
+    ]);
+  });
+
+  it("does not silently collapse baseline-only contentPlan to threads+shortform", () => {
+    const channels = resolveTargetPublishableChannels({
+      contentPlanTargetChannels: ["threads", "shortform"],
+    });
+    expect(channels).toEqual([
+      "threads",
+      "shortform",
+      "naver_blog",
+      "naver_band",
+      "kakao_channel",
+    ]);
   });
 
   it("multi-channel bundle parse remains threads/shortform compatible", () => {
@@ -336,7 +355,7 @@ describe("CG-4B channel-native composers", () => {
     expect(bundle.kakao_channel?.body).toBeTruthy();
   });
 
-  it("does not generate optional channels when not selected", () => {
+  it("does not generate optional channels when explicitly narrowed to baseline", () => {
     const candidate = makeCandidate({
       contentPlan: {
         ...makeCandidate().contentPlan!,
@@ -347,6 +366,7 @@ describe("CG-4B channel-native composers", () => {
       candidate,
       audienceContentResearchBrief: busanAcrb(),
       forceRegenerate: true,
+      explicitTargetChannels: ["threads", "shortform"],
     });
     expect(bundle.naver_blog).toBeUndefined();
     expect(bundle.naver_band).toBeUndefined();

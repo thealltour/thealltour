@@ -14,6 +14,10 @@ import type {
 } from "@/lib/marketing/publishable/contracts";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
+import {
+  APPROVED_ASSET_COMPOSER_RULES,
+  buildApprovedAssetPromptSlice,
+} from "@/lib/marketing/publishable/approvedAsset";
 
 export const PUBLISHABLE_MAX_INVOCATIONS_PER_CHANNEL = 2 as const;
 
@@ -92,6 +96,46 @@ export const PROPOSITION_COMPOSER_RULES = [
   "Forbidden as core substance: '관측됨', '참고해 두세요', 'Meta hook seed', research narration.",
   "Do NOT call web search or invent sources.",
 ].join("\n");
+
+export function channelComposerRules(input: PublishableComposerInput): string {
+  if (input.approvedCanonicalAsset) {
+    return [APPROVED_ASSET_COMPOSER_RULES, PROPOSITION_COMPOSER_RULES].join("\n");
+  }
+  return PROPOSITION_COMPOSER_RULES;
+}
+
+export function buildChannelComposerInputJson(input: PublishableComposerInput): Record<string, unknown> {
+  return {
+    topic: input.topic,
+    audience: input.audience,
+    commercialIntent: input.commercialIntent,
+    hookHint: input.hookHint,
+    keyMessage: input.keyMessage,
+    destinations: input.destinations,
+    approvedCanonicalAsset: buildApprovedAssetPromptSlice(input.approvedCanonicalAsset),
+    contentProposition: buildPropositionPromptSlice(input.contentProposition),
+    usableFacts: input.usableFacts.map((f) => ({
+      statement: f.statement,
+      confidence: f.confidence,
+      type: f.epistemicType ?? null,
+    })),
+    avoidedStatements: input.avoidedStatements,
+    unsupportedClaims: input.unsupportedClaims,
+    governanceDecision: input.governanceDecision,
+    research: input.approvedCanonicalAsset
+      ? {
+          // Safety metadata only when approved asset is SoT — do not invent new angles.
+          limitations: input.research?.limitations ?? [],
+          researchVerdict: input.research?.researchVerdict ?? null,
+        }
+      : {
+          selectedAngle: input.research?.selectedAngle,
+          selectedAngleTension: input.research?.selectedAngleTension,
+          contentGaps: input.research?.contentGaps,
+          limitations: input.research?.limitations,
+        },
+  };
+}
 
 export function propositionBlocksPolishedGeneration(
   proposition: ContentProposition | null | undefined,

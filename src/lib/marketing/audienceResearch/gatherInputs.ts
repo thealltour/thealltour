@@ -36,6 +36,10 @@ export type AcrbGatheredInputs = {
   nearDuplicate: boolean;
   cooledIdentity: boolean;
   externalResearch: ExternalResearchBundle | null;
+  /** ED-2 authoritative editorial scope for targeted research. */
+  storyPoint?: import("@/lib/marketing/storyPoint/contracts").StoryContentPoint | null;
+  storyPointHash?: string | null;
+  storyPointGatePass?: boolean;
 };
 
 function tokenize(text: string): Set<string> {
@@ -76,6 +80,10 @@ export type GatherAcrbInputsDeps = {
   cooledIdentity?: boolean;
   semanticAvailable?: boolean;
   externalResearch?: ExternalResearchBundle | null;
+  /** ED-2 targeted research scope. */
+  storyPoint?: import("@/lib/marketing/storyPoint/contracts").StoryContentPoint | null;
+  storyPointHash?: string | null;
+  storyPointGatePass?: boolean;
 };
 
 export async function gatherAcrbInputs(input: {
@@ -152,5 +160,8 @@ export async function gatherAcrbInputs(input: {
     nearDuplicate: nearDuplicate || Boolean(deps.cooledIdentity),
     cooledIdentity: Boolean(deps.cooledIdentity),
     externalResearch: deps.externalResearch ?? null,
+    storyPoint: deps.storyPoint ?? null,
+    storyPointHash: deps.storyPointHash ?? null,
+    storyPointGatePass: deps.storyPointGatePass ?? Boolean(deps.storyPoint),
   };
 }

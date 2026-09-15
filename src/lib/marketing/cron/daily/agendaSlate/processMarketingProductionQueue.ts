@@ -253,13 +253,34 @@ export async function processMarketingProductionQueue(input: {
       }
 
       const result = await input.deps.executeProduction(claimed);
+      const productionOutcome =
+        typeof result.run.metadata?.productionOutcome === "string"
+          ? result.run.metadata.productionOutcome
+          : null;
+      const awaitingStorySelection = productionOutcome === "awaiting_story_selection";
+      const awaitingAssetApproval = productionOutcome === "awaiting_asset_approval";
       const researchSkip =
         result.run.failureReason === "AUDIENCE_CONTENT_RESEARCH_SKIPPED" ||
-        result.run.metadata?.productionOutcome === "audience_content_research_skip" ||
+        productionOutcome === "audience_content_research_skip" ||
         result.audienceContentResearchBrief?.researchVerdict === "SKIP";
+      const storyPointSkip =
+        result.run.failureReason === "STORY_POINT_SKIPPED" ||
+        productionOutcome === "story_point_skip" ||
+        productionOutcome === "story_research_skip" ||
+        result.storyPointCandidateSet?.outcome === "skip";
 
-      if (researchSkip) {
+      // Soft pause / skip outcomes: COMPLETED (not FAILED), keep selection for human review.
+      if (awaitingStorySelection || awaitingAssetApproval || researchSkip || storyPointSkip) {
         const nowIso = now.toISOString();
+        const outcome =
+          productionOutcome ??
+          (awaitingStorySelection
+            ? "awaiting_story_selection"
+            : awaitingAssetApproval
+              ? "awaiting_asset_approval"
+              : storyPointSkip
+                ? "story_point_skip"
+                : "audience_content_research_skip");
         const completed = await repo.update({
           ...claimed,
           status: "COMPLETED",
@@ -267,26 +288,39 @@ export async function processMarketingProductionQueue(input: {
           failedAt: null,
           lastError: null,
           errorMessage: null,
-          completedCandidateId: null,
+          completedCandidateId: awaitingAssetApproval
+            ? result.candidate?.candidateId ?? claimed.completedCandidateId
+            : null,
           updatedAt: nowIso,
           metadata: {
             ...claimed.metadata,
-            productionOutcome: "audience_content_research_skip",
+            ...result.run.metadata,
+            productionOutcome: outcome,
             audienceContentResearchBrief:
               result.audienceContentResearchBrief ??
               claimed.metadata.audienceContentResearchBrief ??
               null,
-            researchVerdict: result.audienceContentResearchBrief?.researchVerdict ?? "SKIP",
+            researchVerdict: result.audienceContentResearchBrief?.researchVerdict ?? null,
             researchSkipReasons: result.audienceContentResearchBrief?.verdictReasons ?? [],
+            storyPointCandidateSet:
+              result.storyPointCandidateSet ??
+              claimed.metadata.storyPointCandidateSet ??
+              null,
+            canonicalMarketingAsset:
+              result.candidate?.canonicalMarketingAsset ??
+              claimed.metadata.canonicalMarketingAsset ??
+              null,
           },
         });
-        await releaseSelectionIfTerminal(true);
+        await releaseSelectionIfTerminal(!awaitingStorySelection && !awaitingAssetApproval);
         processed.push({
           logicalRunKey: claimed.logicalRunKey,
           slateItemId: claimed.slateItemId,
           outcome: "completed",
           status: completed.status,
-          completedCandidateId: null,
+          completedCandidateId: awaitingAssetApproval
+            ? result.candidate?.candidateId ?? null
+            : null,
           lastError: null,
           idempotent: Boolean(result.idempotent),
         });

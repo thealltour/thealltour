@@ -162,7 +162,7 @@ Empty RUNNING envelopes (zero spans) are excluded from analytics denominators ge
 
 | Piece | Location |
 |-------|----------|
-| Topology SoT | `viewer/organization/topology.ts` (Org v2.1 lock) |
+| Topology SoT | `viewer/organization/topology.ts` (Org v2.2 lock) |
 | Execution overlay | `viewer/organization/overlay.ts` |
 | UI | Organization tab — `@xyflow/react` read-only graph |
 

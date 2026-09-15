@@ -18,6 +18,8 @@ Never use these as repository root, checkout, `WorkingDirectory`, deployment sou
 
 Default generated commands, systemd units, and ops docs to `/home/ysh/thealltour` unless a subsystem documents a different path.
 
+Internal Next.js systemd unit on Pi: `thealltour-internal.service`. Never derive that unit name from the legacy `theallcloud` identifier.
+
 ## Path vs legacy identifier
 
 | Kind | Rule |

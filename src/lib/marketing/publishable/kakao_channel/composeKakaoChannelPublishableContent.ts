@@ -7,10 +7,10 @@ import {
   type PublishableChannelContent,
 } from "@/lib/marketing/publishable/contracts";
 import {
-  PROPOSITION_COMPOSER_RULES,
   bodyReflectsPropositionTakeaway,
-  buildPropositionPromptSlice,
   buildPropositionProvenance,
+  buildChannelComposerInputJson,
+  channelComposerRules,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -27,29 +27,11 @@ import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/c
 function buildPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
   return [
     KAKAO_CHANNEL_WRITING_CONTRACT,
-    PROPOSITION_COMPOSER_RULES,
+    channelComposerRules(input),
     "Channel: concise Kakao decision aid / action. Match desiredAudienceAction. No invented urgency/price.",
     repairHint ?? "",
     "INPUT_JSON:",
-    JSON.stringify({
-      topic: input.topic,
-      audience: input.audience,
-      commercialIntent: input.commercialIntent,
-      keyMessage: input.keyMessage,
-      contentProposition: buildPropositionPromptSlice(input.contentProposition),
-      research: {
-        selectedAngle: input.research?.selectedAngle,
-        decisionTriggers: input.research?.decisionTriggers,
-        anxieties: input.research?.anxieties,
-        limitations: input.research?.limitations,
-      },
-      usableFacts: input.usableFacts.map((f) => ({
-        statement: f.statement,
-        type: f.epistemicType ?? null,
-      })),
-      avoidedStatements: input.avoidedStatements,
-      unsupportedClaims: input.unsupportedClaims,
-    }),
+    JSON.stringify(buildChannelComposerInputJson(input)),
   ]
     .filter(Boolean)
     .join("\n");

@@ -8,10 +8,10 @@ import {
   type PublishableChannelContent,
 } from "@/lib/marketing/publishable/contracts";
 import {
-  PROPOSITION_COMPOSER_RULES,
   bodyReflectsPropositionTakeaway,
-  buildPropositionPromptSlice,
   buildPropositionProvenance,
+  buildChannelComposerInputJson,
+  channelComposerRules,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -30,32 +30,10 @@ export type PublishableLlmInvoke = (prompt: string) => Promise<string> | string;
 function buildThreadsPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
   return [
     THREADS_WRITING_CONTRACT,
-    PROPOSITION_COMPOSER_RULES,
+    channelComposerRules(input),
     repairHint ?? "",
     "INPUT_JSON:",
-    JSON.stringify({
-      topic: input.topic,
-      audience: input.audience,
-      commercialIntent: input.commercialIntent,
-      hookHint: input.hookHint,
-      keyMessage: input.keyMessage,
-      destinations: input.destinations,
-      contentProposition: buildPropositionPromptSlice(input.contentProposition),
-      usableFacts: input.usableFacts.map((f) => ({
-        statement: f.statement,
-        confidence: f.confidence,
-        type: f.epistemicType ?? null,
-      })),
-      avoidedStatements: input.avoidedStatements,
-      unsupportedClaims: input.unsupportedClaims,
-      governanceDecision: input.governanceDecision,
-      research: {
-        selectedAngle: input.research?.selectedAngle,
-        selectedAngleTension: input.research?.selectedAngleTension,
-        contentGaps: input.research?.contentGaps,
-        limitations: input.research?.limitations,
-      },
-    }),
+    JSON.stringify(buildChannelComposerInputJson(input)),
   ]
     .filter(Boolean)
     .join("\n");

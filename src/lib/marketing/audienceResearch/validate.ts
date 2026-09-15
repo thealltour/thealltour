@@ -19,6 +19,20 @@ import {
   type ResearchFindingType,
   type SearchIntentCategory,
 } from "@/lib/marketing/audienceResearch/contracts";
+import {
+  EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
+  RESEARCH_EXECUTION_STATUSES,
+  RESEARCH_QUESTION_FINDING_STATUSES,
+  STORY_EVIDENCE_RELATIONSHIPS,
+  STORY_EVIDENCE_SUPPORT_STATUSES,
+  STORY_RESEARCH_CONTRACT_VERSION,
+  type EvidenceBackedStoryBrief,
+  type ResearchExecutionStatus,
+  type ResearchQuestionFinding,
+  type StoryEvidenceAssessmentItem,
+  type StoryEvidenceRelationship,
+  type StoryEvidenceSupportStatus,
+} from "@/lib/marketing/storyPoint/contracts";
 
 export function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -147,6 +161,10 @@ export function buildAcrbLogicalIdentity(input: {
   evidenceFingerprint: string;
   preselectionResearchBriefId: string | null;
   contractVersion?: number;
+  /** ED-2: StoryPoint-aware cache key segment. */
+  storyPointHash?: string | null;
+  /** ED-2 research contract version (e.g. story-research-v1). */
+  researchContractVersion?: string | null;
 }): string {
   const seed = [
     input.selectedAgendaId,
@@ -154,6 +172,8 @@ export function buildAcrbLogicalIdentity(input: {
     input.evidenceFingerprint,
     input.preselectionResearchBriefId ?? "",
     String(input.contractVersion ?? ACRB_CONTRACT_VERSION),
+    input.storyPointHash ?? "",
+    input.researchContractVersion ?? "",
   ].join("::");
   return createHash("sha256").update(seed).digest("hex").slice(0, 32);
 }
@@ -182,6 +202,232 @@ export function toAudienceContentResearchBriefRef(
     researchStatus: brief.researchStatus,
     recommendedAngleId: brief.recommendedAngleId,
     recommendedAngle: recommended?.angle ?? null,
+  };
+}
+
+function isStorySupportVerdict(value: unknown): value is StoryEvidenceSupportStatus {
+  return (
+    typeof value === "string" &&
+    (STORY_EVIDENCE_SUPPORT_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+function isResearchExecutionStatus(value: unknown): value is ResearchExecutionStatus {
+  return (
+    typeof value === "string" &&
+    (RESEARCH_EXECUTION_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+function isResearchQuestionFindingStatus(
+  value: unknown,
+): value is ResearchQuestionFinding["status"] {
+  return (
+    typeof value === "string" &&
+    (RESEARCH_QUESTION_FINDING_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+function isEvidenceRelationship(value: unknown): value is StoryEvidenceRelationship {
+  return (
+    typeof value === "string" &&
+    (STORY_EVIDENCE_RELATIONSHIPS as readonly string[]).includes(value)
+  );
+}
+
+function normalizeResearchQuestionFinding(raw: unknown): ResearchQuestionFinding | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const question = asString(row.question);
+  if (!question) return null;
+  return {
+    question,
+    status: isResearchQuestionFindingStatus(row.status) ? row.status : "unresolved",
+    finding: asString(row.finding),
+    evidenceRefs: asStringArray(row.evidenceRefs),
+    sourceClasses: asStringArray(row.sourceClasses),
+    confidence: clamp01(typeof row.confidence === "number" ? row.confidence : 0),
+    limitations: asStringArray(row.limitations),
+  };
+}
+
+function normalizeEvidenceAssessmentItem(raw: unknown): StoryEvidenceAssessmentItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const evidenceId = asString(row.evidenceId);
+  if (!evidenceId) return null;
+  const epistemic =
+    row.epistemicType === "verified_fact" ||
+    row.epistemicType === "observed_signal" ||
+    row.epistemicType === "inference" ||
+    row.epistemicType === "hypothesis"
+      ? row.epistemicType
+      : "hypothesis";
+  return {
+    evidenceId,
+    relationship: isEvidenceRelationship(row.relationship) ? row.relationship : "unresolved",
+    relevanceToStoryPoint: clamp01(
+      typeof row.relevanceToStoryPoint === "number" ? row.relevanceToStoryPoint : 0,
+    ),
+    epistemicType: epistemic,
+    sourceClass: asString(row.sourceClass) || null,
+    note: asString(row.note) || null,
+  };
+}
+
+function normalizeStoryPointRef(
+  raw: unknown,
+): AudienceContentResearchBrief["storyPointRef"] {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const storyPointId = asString(row.storyPointId);
+  const storyPointHash = asString(row.storyPointHash);
+  if (!storyPointId || !storyPointHash) return null;
+  return {
+    storyPointId,
+    storyPointHash,
+    researchContractVersion:
+      asString(row.researchContractVersion) || STORY_RESEARCH_CONTRACT_VERSION,
+  };
+}
+
+function normalizeEvidenceBackedStoryBrief(raw: unknown): EvidenceBackedStoryBrief | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  if (row.contract !== EVIDENCE_BACKED_STORY_BRIEF_CONTRACT) return null;
+  const storyPointId = asString(row.storyPointId);
+  const storyPointHash = asString(row.storyPointHash);
+  if (!storyPointId || !storyPointHash) return null;
+
+  const findings = Array.isArray(row.researchQuestionFindings)
+    ? row.researchQuestionFindings
+        .map(normalizeResearchQuestionFinding)
+        .filter((item): item is ResearchQuestionFinding => item != null)
+    : [];
+  const assessments = Array.isArray(row.evidenceAssessment)
+    ? row.evidenceAssessment
+        .map(normalizeEvidenceAssessmentItem)
+        .filter((item): item is StoryEvidenceAssessmentItem => item != null)
+    : [];
+  const obsRaw =
+    row.observability && typeof row.observability === "object"
+      ? (row.observability as Record<string, unknown>)
+      : {};
+
+  return {
+    contract: EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
+    researchContractVersion: STORY_RESEARCH_CONTRACT_VERSION,
+    storyPointId,
+    storyPointHash,
+    agendaLogicalIdentity: asString(row.agendaLogicalIdentity),
+    researchExecutionStatus: isResearchExecutionStatus(row.researchExecutionStatus)
+      ? row.researchExecutionStatus
+      : "partial",
+    storySupportVerdict: isStorySupportVerdict(row.storySupportVerdict)
+      ? row.storySupportVerdict
+      : "INSUFFICIENT_EVIDENCE",
+    supportedClaimBoundary: asString(row.supportedClaimBoundary) || null,
+    researchQuestionFindings: findings,
+    evidenceAssessment: assessments,
+    contradictedClaims: asStringArray(row.contradictedClaims),
+    unresolvedQuestions: asStringArray(row.unresolvedQuestions),
+    usableFactIds: asStringArray(row.usableFactIds),
+    refutationNotes: asString(row.refutationNotes) || null,
+    limitations: asStringArray(row.limitations),
+    alternateFallbackUsed: Boolean(row.alternateFallbackUsed),
+    researchSupportedFraming: asStringArray(row.researchSupportedFraming),
+    observability: {
+      plannedQuestionCount:
+        typeof obsRaw.plannedQuestionCount === "number" ? obsRaw.plannedQuestionCount : findings.length,
+      answeredQuestionCount:
+        typeof obsRaw.answeredQuestionCount === "number"
+          ? obsRaw.answeredQuestionCount
+          : findings.filter((f) => f.status === "answered").length,
+      unresolvedQuestionCount:
+        typeof obsRaw.unresolvedQuestionCount === "number"
+          ? obsRaw.unresolvedQuestionCount
+          : findings.filter((f) => f.status === "unresolved").length,
+      contradictingEvidenceCount:
+        typeof obsRaw.contradictingEvidenceCount === "number"
+          ? obsRaw.contradictingEvidenceCount
+          : assessments.filter((a) => a.relationship === "contradicts").length,
+      externalQueriesAttempted:
+        typeof obsRaw.externalQueriesAttempted === "number" ? obsRaw.externalQueriesAttempted : 0,
+      externalQueriesSuccessful:
+        typeof obsRaw.externalQueriesSuccessful === "number" ? obsRaw.externalQueriesSuccessful : 0,
+      sourceClasses: asStringArray(obsRaw.sourceClasses),
+    },
+  };
+}
+
+function normalizeStoryResearchOverlay(row: Record<string, unknown>): Pick<
+  AudienceContentResearchBrief,
+  | "storyPointRef"
+  | "storyPointHash"
+  | "storySupportVerdict"
+  | "supportedClaimBoundary"
+  | "researchQuestionFindings"
+  | "contradictedClaims"
+  | "unresolvedQuestions"
+  | "evidenceBackedStoryBrief"
+  | "researchExecutionStatus"
+  | "alternateUsed"
+> {
+  const storyPointRef = normalizeStoryPointRef(row.storyPointRef);
+  const evidenceBrief = normalizeEvidenceBackedStoryBrief(row.evidenceBackedStoryBrief);
+  const findings = Array.isArray(row.researchQuestionFindings)
+    ? row.researchQuestionFindings
+        .map(normalizeResearchQuestionFinding)
+        .filter((item): item is ResearchQuestionFinding => item != null)
+    : evidenceBrief?.researchQuestionFindings;
+
+  const storyPointHash =
+    asString(row.storyPointHash) ||
+    storyPointRef?.storyPointHash ||
+    evidenceBrief?.storyPointHash ||
+    null;
+
+  const storySupportVerdict = isStorySupportVerdict(row.storySupportVerdict)
+    ? row.storySupportVerdict
+    : evidenceBrief?.storySupportVerdict ?? null;
+
+  const researchExecutionStatus = isResearchExecutionStatus(row.researchExecutionStatus)
+    ? row.researchExecutionStatus
+    : evidenceBrief?.researchExecutionStatus ?? null;
+
+  const alternateUsed =
+    typeof row.alternateUsed === "boolean"
+      ? row.alternateUsed
+      : evidenceBrief
+        ? Boolean(evidenceBrief.alternateFallbackUsed)
+        : null;
+
+  return {
+    storyPointRef:
+      storyPointRef ??
+      (evidenceBrief
+        ? {
+            storyPointId: evidenceBrief.storyPointId,
+            storyPointHash: evidenceBrief.storyPointHash,
+            researchContractVersion: evidenceBrief.researchContractVersion,
+          }
+        : null),
+    storyPointHash,
+    storySupportVerdict,
+    supportedClaimBoundary:
+      asString(row.supportedClaimBoundary) ||
+      evidenceBrief?.supportedClaimBoundary ||
+      null,
+    researchQuestionFindings: findings ?? undefined,
+    contradictedClaims: Array.isArray(row.contradictedClaims)
+      ? asStringArray(row.contradictedClaims)
+      : evidenceBrief?.contradictedClaims,
+    unresolvedQuestions: Array.isArray(row.unresolvedQuestions)
+      ? asStringArray(row.unresolvedQuestions)
+      : evidenceBrief?.unresolvedQuestions,
+    evidenceBackedStoryBrief: evidenceBrief,
+    researchExecutionStatus,
+    alternateUsed,
   };
 }
 
@@ -378,6 +624,7 @@ export function parseAudienceContentResearchBrief(
     identityDiagnostics: Array.isArray(row.identityDiagnostics)
       ? (row.identityDiagnostics as AudienceContentResearchBrief["identityDiagnostics"])
       : [],
+    ...normalizeStoryResearchOverlay(row),
   };
 }
 

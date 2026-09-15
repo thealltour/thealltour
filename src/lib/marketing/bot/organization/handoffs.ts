@@ -20,6 +20,10 @@ export type ContentDraftRequest = {
   selectedAgenda?: import("@/lib/marketing/content/types").SelectedAgenda | null;
   deliverableRequirements?: import("@/lib/marketing/content/types").ContentDeliverableRequirements | null;
   evidencePack?: import("@/lib/marketing/content/types").EvidencePack | null;
+  /** ED-3 — authoritative StoryPoint selected before CS (when ED path active). */
+  authoritativeStoryPoint?: import("@/lib/marketing/storyPoint/contracts").StoryContentPoint | null;
+  /** ED-3 — reuse stored proposition when source revision matches (0 CS LLM calls). */
+  reusedProposition?: import("@/lib/marketing/content/proposition/contracts").ContentProposition | null;
 };
 
 export type GovernanceReviewRequest = {

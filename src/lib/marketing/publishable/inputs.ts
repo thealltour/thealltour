@@ -5,10 +5,12 @@
 import { createHash } from "node:crypto";
 
 import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
+import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import type { HumanReviewDraft } from "@/lib/marketing/review/types";
 import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
 import { resolveTargetPublishableChannels } from "@/lib/marketing/publishable/selectTargetChannels";
+import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 
 export type PublishableComposerFact = {
   statement: string;
@@ -58,6 +60,11 @@ export type PublishableComposerInput = {
   targetChannels: PublishableChannel[];
   /** MQ-3 — available for composers; not consumed by deterministic composers yet. */
   contentProposition?: import("@/lib/marketing/content/proposition/contracts").ContentProposition | null;
+  /**
+   * Approved Canonical Marketing Asset — authoritative editorial content for channel editors.
+   * Absent on legacy packages (composers fall back to prior inputs).
+   */
+  approvedCanonicalAsset?: CanonicalMarketingAsset | null;
 };
 
 function normalizeStatement(text: string): string {
@@ -72,8 +79,10 @@ export function computePublishableSourceRevision(
   candidate: CompletedMarketingCandidate,
   humanDraft?: HumanReviewDraft | null,
   acrb?: AudienceContentResearchBrief | null,
+  approvedAsset?: CanonicalMarketingAsset | null,
 ): string {
   const proposition = candidate.contentPlan?.proposition;
+  const asset = approvedAsset ?? candidate.canonicalMarketingAsset ?? null;
   const payload = {
     candidateId: candidate.candidateId,
     draftBody: candidate.draft.body,
@@ -89,6 +98,20 @@ export function computePublishableSourceRevision(
           gain: proposition.readerGain,
           takeaways: proposition.specificTakeaways,
           angle: proposition.angle,
+          storyPointHash: proposition.storyPointHash ?? null,
+          storySupportVerdict: proposition.storySupportVerdict ?? null,
+          supportedClaimBoundaryUsed: proposition.supportedClaimBoundaryUsed ?? null,
+          propositionSourceRevision: proposition.propositionSourceRevision ?? null,
+        }
+      : null,
+    canonicalAsset: asset
+      ? {
+          assetId: asset.assetId,
+          version: asset.version,
+          approvedVersion: asset.approvedVersion,
+          sourceRevision: asset.sourceRevision,
+          status: asset.status,
+          bodyHash: createHash("sha256").update(asset.bodyKo ?? "", "utf8").digest("hex").slice(0, 16),
         }
       : null,
     facts: candidate.contentAssignment.facts.map((f) => [f.factId, f.statement, f.confidence]),
@@ -139,6 +162,7 @@ export function buildPublishableComposerInput(
   options?: {
     acrb?: AudienceContentResearchBrief | null;
     explicitTargetChannels?: PublishableChannel[] | null;
+    approvedCanonicalAsset?: CanonicalMarketingAsset | null;
   },
 ): PublishableComposerInput {
   const unsupported = (candidate.governanceDecision?.unsupportedClaims ?? []).map((c) =>
@@ -147,10 +171,17 @@ export function buildPublishableComposerInput(
   const unsupportedLower = new Set(unsupported.map((s) => s.toLowerCase()).filter(Boolean));
   const acrb = options?.acrb ?? null;
   const research = buildResearchContextFromAcrb(acrb);
+  const approvedAsset =
+    options?.approvedCanonicalAsset ??
+    (isApprovedCanonicalAsset(candidate.canonicalMarketingAsset)
+      ? candidate.canonicalMarketingAsset
+      : null);
 
   const usableFacts: PublishableComposerFact[] = [];
   const avoidedStatements: string[] = [];
 
+  // When approved asset exists, it is the editorial SoT — do not expand usable facts
+  // from research into new angles; keep facts as safety metadata only.
   for (const fact of candidate.contentAssignment.facts) {
     const statement = normalizeStatement(fact.statement);
     if (!statement) continue;
@@ -171,7 +202,7 @@ export function buildPublishableComposerInput(
     });
   }
 
-  if (research) {
+  if (research && !approvedAsset) {
     for (const finding of research.findingHints) {
       if (finding.type === "hypothesis" || finding.type === "inference") {
         avoidedStatements.push(finding.text);
@@ -196,9 +227,18 @@ export function buildPublishableComposerInput(
     const statement = normalizeStatement(avoid);
     if (statement) avoidedStatements.push(statement);
   }
+  if (approvedAsset) {
+    for (const claim of approvedAsset.forbiddenClaimsKo) {
+      const statement = normalizeStatement(claim);
+      if (statement) avoidedStatements.push(statement);
+    }
+  }
 
   const evidenceRefIds = [
-    ...new Set(usableFacts.flatMap((f) => f.evidenceRefIds).filter(Boolean)),
+    ...new Set([
+      ...usableFacts.flatMap((f) => f.evidenceRefIds).filter(Boolean),
+      ...(approvedAsset?.evidenceRefs.map((e) => e.evidenceId) ?? []),
+    ]),
   ].slice(0, 24);
 
   const destinations = [...(candidate.selectedAgenda.destinations ?? [])];
@@ -226,11 +266,13 @@ export function buildPublishableComposerInput(
       null,
     commercialIntent: candidate.contentAssignment.commercialIntent,
     hookHint:
+      approvedAsset?.openingHookKo ??
       candidate.contentPlan?.hook ??
       research?.selectedAngleTension ??
       candidate.selectedAgenda.timelinessNote ??
       null,
     keyMessage:
+      approvedAsset?.titleKo ??
       candidate.contentPlan?.proposition?.contentPromise ??
       candidate.contentPlan?.keyMessage ??
       research?.selectedAngle ??
@@ -239,13 +281,17 @@ export function buildPublishableComposerInput(
     destinations,
     entities: [...(candidate.selectedAgenda.entities ?? [])],
     usableFacts: usableFacts.slice(0, 10),
-    avoidedStatements: [...new Set(avoidedStatements)].slice(0, 10),
-    unsupportedClaims: unsupported.slice(0, 12),
+    avoidedStatements: [...new Set(avoidedStatements)].slice(0, 16),
+    unsupportedClaims: [
+      ...unsupported.slice(0, 12),
+      ...(approvedAsset?.forbiddenClaimsKo ?? []).slice(0, 8),
+    ],
     governanceDecision: candidate.governanceDecision?.decision ?? null,
-    sourceRevision: computePublishableSourceRevision(candidate, null, acrb),
+    sourceRevision: computePublishableSourceRevision(candidate, null, acrb, approvedAsset),
     evidenceRefIds,
     research,
     targetChannels,
     contentProposition: candidate.contentPlan?.proposition ?? null,
+    approvedCanonicalAsset: approvedAsset,
   };
 }

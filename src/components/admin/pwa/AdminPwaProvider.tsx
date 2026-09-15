@@ -37,7 +37,7 @@ export function AdminPwaInstallBanner() {
   if (!visible || onHub) return null;
 
   return (
-    <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-950">
+    <div className="mb-3 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-3 py-3 text-xs text-[var(--primary)]">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-semibold">홈 화면에 추가하면 앱처럼 사용할 수 있습니다</p>
@@ -53,7 +53,7 @@ export function AdminPwaInstallBanner() {
         <button
           type="button"
           aria-label="닫기"
-          className="shrink-0 rounded px-1 text-sky-700"
+          className="shrink-0 rounded px-1 text-[var(--primary)]"
           onClick={() => {
             localStorage.setItem(ADMIN_PWA_INSTALL_DISMISS_KEY, "1");
             setVisible(false);

@@ -10,9 +10,9 @@ type AnomalyAlertsListProps = {
 function SeverityBadge({ severity }: { severity: string }) {
   const classes =
     severity === "high"
-      ? "bg-red-100 text-red-800"
+      ? "bg-[var(--danger-bg)] text-[var(--danger)]"
       : severity === "medium"
-        ? "bg-amber-100 text-amber-800"
+        ? "bg-[var(--warning-bg)] text-[var(--warning)]"
         : "bg-slate-100 text-slate-700";
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${classes}`}>

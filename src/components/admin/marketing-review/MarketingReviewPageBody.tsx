@@ -6,10 +6,13 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
+import AdminButton from "@/components/admin/ui/AdminButton";
+import { adminToneBorderBg, adminToneText } from "@/components/admin/ui/adminStatusTone";
 import { AgendaSlatePanel } from "@/components/admin/marketing-review/AgendaSlatePanel";
+import { FilterChip } from "@/components/ui/FilterChip";
 import type { HumanReviewQueueFilter } from "@/lib/marketing/review/types";
 import type {
-  MorningReviewQueueRow,
   MorningReviewQueueSummary,
   MorningReviewWorkflowState,
 } from "@/lib/marketing/review/morningReview/types";
@@ -27,24 +30,11 @@ const FILTERS: Array<{ id: HumanReviewQueueFilter; label: string }> = [
 ];
 
 function statusBadge(label: string, tone: "success" | "warning" | "danger" | "muted") {
-  const toneClass = {
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-800",
-    danger: "border-red-500/30 bg-red-500/10 text-red-700",
-    muted: "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]",
-  }[tone];
   return (
-    <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-xs font-medium", toneClass)}>
+    <AdminBadge variant={tone} showDot={tone !== "muted"}>
       {label}
-    </span>
+    </AdminBadge>
   );
-}
-
-function candidateTone(status: MorningReviewQueueRow["candidateStatus"]) {
-  if (status === "ready_for_human_review") return "success" as const;
-  if (status === "needs_human_review") return "warning" as const;
-  if (status === "blocked" || status === "failed") return "danger" as const;
-  return "muted" as const;
 }
 
 function workflowTone(state: MorningReviewWorkflowState) {
@@ -63,9 +53,15 @@ function governanceTone(decision: string | null) {
 type Props = {
   initialSummary: MorningReviewQueueSummary;
   unreadNotificationCount: number;
+  /** Optional KST business date override for Agenda Slate panel (testing / historical). */
+  slateBusinessDateKst?: string;
 };
 
-export function MarketingReviewPageBody({ initialSummary, unreadNotificationCount }: Props) {
+export function MarketingReviewPageBody({
+  initialSummary,
+  unreadNotificationCount,
+  slateBusinessDateKst,
+}: Props) {
   const [filter, setFilter] = useState<HumanReviewQueueFilter>("today");
   const [summary, setSummary] = useState(initialSummary);
   const { items, todayCandidate, pendingCount } = summary;
@@ -106,6 +102,8 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
     setSummary(data);
   }
 
+  const todayMissing = todayCandidate?.reviewWorkflowState === "missing";
+
   return (
     <div className="min-h-screen bg-[var(--bg)] px-3 py-4 text-[var(--text-primary)] sm:px-4 sm:py-8 md:px-8">
       <main className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
@@ -117,15 +115,13 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
 
         <MarketingTeamSubnav />
 
-        <AgendaSlatePanel />
+        <AgendaSlatePanel businessDateKst={slateBusinessDateKst} />
 
         {todayCandidate ? (
           <AdminCard
             className={cn(
               "p-4",
-              todayCandidate.reviewWorkflowState === "missing"
-                ? "border-red-500/30 bg-red-500/5"
-                : "border-emerald-500/30 bg-emerald-500/5",
+              todayMissing ? adminToneBorderBg.danger : adminToneBorderBg.success,
             )}
           >
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -133,10 +129,10 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
                 <p
                   className={cn(
                     "text-sm font-semibold",
-                    todayCandidate.reviewWorkflowState === "missing" ? "text-red-800" : "text-emerald-800",
+                    todayMissing ? adminToneText.danger : adminToneText.success,
                   )}
                 >
-                  {todayCandidate.reviewWorkflowState === "missing"
+                  {todayMissing
                     ? "오늘 후보는 있으나 HumanMarketingReview 레코드가 누락되었습니다"
                     : "오늘의 AI 마케팅 작업이 준비되었습니다"}
                 </p>
@@ -146,15 +142,17 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
                   {todayCandidate.governanceDecision ?? "—"} · {todayCandidate.actionLabel}
                 </p>
                 {todayCandidate.operationalMessage ? (
-                  <p className="mt-1 text-xs text-red-700">{todayCandidate.operationalMessage}</p>
+                  <p className={cn("mt-1 text-xs", adminToneText.danger)}>
+                    {todayCandidate.operationalMessage}
+                  </p>
                 ) : null}
               </div>
-              <Link
+              <AdminButton
                 href={`/theall_manager_only/marketing-review/${encodeURIComponent(todayCandidate.candidateId)}`}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white md:w-auto md:min-h-[40px]"
+                className="w-full md:w-auto"
               >
                 검토 열기
-              </Link>
+              </AdminButton>
             </div>
           </AdminCard>
         ) : (
@@ -171,27 +169,17 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
 
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((item) => (
-            <button
+            <FilterChip
               key={item.id}
-              type="button"
+              variant={filter === item.id ? "selected" : "default"}
               onClick={() => setFilter(item.id)}
-              className={cn(
-                "min-h-10 rounded-full border px-3 py-1.5 text-sm",
-                filter === item.id
-                  ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]",
-              )}
             >
               {item.label}
-            </button>
+            </FilterChip>
           ))}
-          <button
-            type="button"
-            onClick={() => void reload()}
-            className="min-h-10 rounded-full border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)]"
-          >
+          <FilterChip variant="default" onClick={() => void reload()}>
             새로고침
-          </button>
+          </FilterChip>
         </div>
 
         <AdminCard className="overflow-hidden p-0">
@@ -221,7 +209,7 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
                       <td className="px-4 py-3 whitespace-nowrap">
                         {item.businessDateKst}
                         {item.isToday ? (
-                          <span className="ml-2 text-xs text-emerald-700">오늘</span>
+                          <span className={cn("ml-2 text-xs", adminToneText.success)}>오늘</span>
                         ) : null}
                       </td>
                       <td className="px-4 py-3">
@@ -244,7 +232,9 @@ export function MarketingReviewPageBody({ initialSummary, unreadNotificationCoun
                       </td>
                       <td className="px-4 py-3">
                         {item.actionNeeded ? (
-                          <span className="text-xs font-medium text-amber-800">조치 필요</span>
+                          <span className={cn("text-xs font-medium", adminToneText.warning)}>
+                            조치 필요
+                          </span>
                         ) : (
                           <span className="text-xs text-[var(--text-secondary)]">—</span>
                         )}

@@ -13,8 +13,8 @@ function SentimentBadge({ sentiment }: { sentiment: string }) {
     sentiment === "positive"
       ? "bg-green-100 text-green-800"
       : sentiment === "negative"
-        ? "bg-red-100 text-red-800"
-        : "bg-amber-100 text-amber-800";
+        ? "bg-[var(--danger-bg)] text-[var(--danger)]"
+        : "bg-[var(--warning-bg)] text-[var(--warning)]";
   const label = sentiment === "positive" ? "긍정" : sentiment === "negative" ? "부정" : "혼재";
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${classes}`}>

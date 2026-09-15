@@ -18,8 +18,8 @@ function formatDate(s: string) {
 }
 
 const PRIORITY_CLASS: Record<string, string> = {
-  high: "bg-red-100 text-red-800",
-  medium: "bg-amber-100 text-amber-800",
+  high: "bg-[var(--danger-bg)] text-[var(--danger)]",
+  medium: "bg-[var(--warning-bg)] text-[var(--warning)]",
   low: "bg-slate-100 text-slate-700",
 };
 

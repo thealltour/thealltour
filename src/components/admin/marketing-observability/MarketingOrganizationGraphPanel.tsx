@@ -134,7 +134,7 @@ function OrganizationGraphInner({
 
   useEffect(() => {
     const t = window.setTimeout(() => {
-      void fitView({ padding: 0.18, duration: 200 });
+      void fitView({ padding: 0.1, duration: 200 });
     }, 50);
     return () => window.clearTimeout(t);
   }, [showPlanned, fitView, selectedTraceId]);
@@ -148,12 +148,12 @@ function OrganizationGraphInner({
   const selectedAnalytics = selectedNodeId ? model.stageAnalytics[selectedNodeId] : undefined;
 
   return (
-    <div className={cn("flex min-h-[36rem] flex-col gap-3", className)}>
+    <div className={cn("flex min-h-[40rem] flex-col gap-3", className)}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-[var(--text)]">Organization</h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            Org v2.1 topology + execution overlay (read-only)
+            Org v2.2 topology + execution overlay (read-only)
             {connectionState ? ` · ${connectionState}` : ""}
           </p>
         </div>
@@ -161,7 +161,7 @@ function OrganizationGraphInner({
           <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
             <span>Trace</span>
             <select
-              className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)]"
+              className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] px-2 py-1 text-xs text-[var(--text)]"
               value={selectedTraceId ?? ""}
               onChange={(e) => onSelectTrace(e.target.value || null)}
             >
@@ -184,7 +184,7 @@ function OrganizationGraphInner({
           </label>
           <button
             type="button"
-            onClick={() => void fitView({ padding: 0.18, duration: 200 })}
+            onClick={() => void fitView({ padding: 0.1, duration: 200 })}
             className="rounded border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text)] hover:bg-[var(--surface-muted)]"
           >
             Fit view
@@ -192,16 +192,17 @@ function OrganizationGraphInner({
         </div>
       </div>
 
-      <div className="grid min-h-[32rem] flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="overflow-hidden rounded border border-[var(--border)] bg-[var(--surface)]">
-          <div className="h-[32rem] w-full">
+      <div className="grid min-h-[40rem] flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)]">
+          <div className="min-h-[40rem] h-[calc(100vh-12rem)] w-full">
             <ReactFlow
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
               onNodeClick={onNodeClick}
               fitView
-              minZoom={0.4}
+              fitViewOptions={{ padding: 0.1 }}
+              minZoom={0.55}
               maxZoom={1.4}
               proOptions={{ hideAttribution: true }}
               nodesDraggable={false}
@@ -221,7 +222,7 @@ function OrganizationGraphInner({
           </div>
         </div>
 
-        <aside className="flex min-h-0 flex-col gap-3 overflow-auto rounded border border-[var(--border)] bg-[var(--surface)] p-3 text-xs">
+        <aside className="flex min-h-0 flex-col gap-3 overflow-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] p-3 text-xs">
           <section>
             <h3 className="text-sm font-semibold text-[var(--text)]">Selected node</h3>
             {!selectedDef ? (

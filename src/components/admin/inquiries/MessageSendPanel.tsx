@@ -146,9 +146,9 @@ export function MessageSendPanel({
 
   const lengthTone =
     lengthInfo.kind === "LMS"
-      ? "text-amber-800 dark:text-amber-200"
+      ? "text-[var(--warning)]"
       : lengthInfo.remaining != null && lengthInfo.remaining <= 10
-        ? "text-amber-700 dark:text-amber-300"
+        ? "text-[var(--warning)]"
         : "text-[var(--text-muted)]";
 
   return (
@@ -238,7 +238,7 @@ export function MessageSendPanel({
         />
 
         {lengthInfo.warning ? (
-          <p className="mt-1.5 text-xs text-amber-800 dark:text-amber-200">{lengthInfo.warning}</p>
+          <p className="mt-1.5 text-xs text-[var(--warning)]">{lengthInfo.warning}</p>
         ) : null}
 
         <div className="mt-2 flex flex-wrap gap-1.5">

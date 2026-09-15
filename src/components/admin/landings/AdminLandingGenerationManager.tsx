@@ -184,7 +184,7 @@ export default function AdminLandingGenerationManager() {
               onClick={() => {
                 void handleGenerateAllGolf();
               }}
-              className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-2 text-sm font-semibold text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? "생성 중..." : `골프 지역 일괄 생성 (${pendingGolfCount})`}
             </button>

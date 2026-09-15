@@ -217,7 +217,7 @@ export default function AdminUsersManager() {
                       <button type="button" className="text-[var(--primary)] hover:underline" onClick={() => openEdit(user)}>
                         수정
                       </button>
-                      <button type="button" className="text-red-600 hover:underline" onClick={() => void handleDeactivate(user.id)}>
+                      <button type="button" className="text-[var(--danger)] hover:underline" onClick={() => void handleDeactivate(user.id)}>
                         비활성화
                       </button>
                     </div>

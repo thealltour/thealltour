@@ -101,7 +101,7 @@ export default function AdminLandingSectionsPanel({
   return (
     <section
       className={`space-y-4 rounded-2xl bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)] ring-1 ring-[var(--border)] ${
-        highlightIssue ? "ring-2 ring-amber-400/90" : ""
+        highlightIssue ? "ring-2 ring-[var(--warning)]/90" : ""
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">

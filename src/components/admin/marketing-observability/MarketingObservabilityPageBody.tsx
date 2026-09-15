@@ -12,6 +12,11 @@ import { MarketingObservabilityAnalyticsPanel } from "@/components/admin/marketi
 import { MarketingOrganizationGraphPanel } from "@/components/admin/marketing-observability/MarketingOrganizationGraphPanel";
 import { MarketingSpanDetailsPanel } from "@/components/admin/marketing-observability/MarketingSpanDetailsPanel";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
+import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
+import AdminButton from "@/components/admin/ui/AdminButton";
+import { adminToneText } from "@/components/admin/ui/adminStatusTone";
+import { Tabs, TabsTrigger } from "@/components/ui/Tabs";
 import { useMarketingTraceLive } from "@/hooks/useMarketingTraceLive";
 import type {
   MarketingTraceDetailDto,
@@ -148,57 +153,48 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
             <ConnectionBadge state={connectionState} />
           ) : null}
           {tab === "runs" ? (
-            <button
+            <AdminButton
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => void resync().catch(() => undefined)}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:bg-[var(--surface-muted)]"
             >
               목록 새로고침
-            </button>
+            </AdminButton>
           ) : null}
         </div>
       </header>
 
       <MarketingTeamSubnav />
 
-      <div className="flex gap-1 border-b border-[var(--border)]">
-        {(
-          [
-            { id: "organization" as const, label: "Organization" },
-            { id: "analytics" as const, label: "Analytics" },
-            { id: "runs" as const, label: "Runs" },
-          ] as const
-        ).map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setTab(item.id)}
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium",
-              tab === item.id
-                ? "border-[var(--text)] text-[var(--text)]"
-                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text)]",
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onChange={(value) => setTab(value as PageTab)}
+        className="w-full max-w-md"
+      >
+        <TabsTrigger value="organization">Organization</TabsTrigger>
+        <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsTrigger value="runs">Runs</TabsTrigger>
+      </Tabs>
 
       {tab === "organization" ? (
-        <MarketingOrganizationGraphPanel
-          className="rounded border border-[var(--border)] bg-[var(--surface)] p-4"
-          traces={traces}
-          selectedTraceId={selectedId}
-          onSelectTrace={setSelectedId}
-          detail={detail}
-          connectionState={connectionState}
-          onOpenRunsTab={() => setTab("runs")}
-        />
+        <AdminCard className="p-4">
+          <MarketingOrganizationGraphPanel
+            className="border-0 bg-transparent p-0 shadow-none"
+            traces={traces}
+            selectedTraceId={selectedId}
+            onSelectTrace={setSelectedId}
+            detail={detail}
+            connectionState={connectionState}
+            onOpenRunsTab={() => setTab("runs")}
+          />
+        </AdminCard>
       ) : tab === "analytics" ? (
-        <MarketingObservabilityAnalyticsPanel className="rounded border border-[var(--border)] bg-[var(--surface)] p-4" />
+        <AdminCard className="p-4">
+          <MarketingObservabilityAnalyticsPanel className="border-0 bg-transparent p-0 shadow-none" />
+        </AdminCard>
       ) : (
-        <div className="min-h-[36rem] flex-1 overflow-hidden rounded border border-[var(--border)] bg-[var(--surface)]">
+        <AdminCard className="min-h-[36rem] flex-1 overflow-hidden p-0">
           <div className="hidden h-full min-h-[36rem] lg:block">
             <PanelGroup direction="horizontal" className="h-full min-h-[36rem]">
               <Panel defaultSize={22} minSize={16} maxSize={36} className="min-h-0">
@@ -247,13 +243,15 @@ export function MarketingObservabilityPageBody({ initialTraces }: Props) {
             />
             <MarketingSpanDetailsPanel span={selectedMarketingSpan} trace={trace} className="min-h-64" />
           </div>
-        </div>
+        </AdminCard>
       )}
     </div>
   );
 }
 
 function ConnectionBadge({ state }: { state: MarketingTraceLiveConnectionState }) {
+  const variant =
+    state === "live" ? ("success" as const) : state === "offline" ? ("danger" as const) : ("muted" as const);
   const label =
     state === "live"
       ? "Live"
@@ -262,21 +260,11 @@ function ConnectionBadge({ state }: { state: MarketingTraceLiveConnectionState }
         : state === "reconnecting"
           ? "Reconnecting"
           : "Offline";
-  const tone =
-    state === "live"
-      ? "border-emerald-600/40 text-emerald-800 dark:text-emerald-300"
-      : state === "offline"
-        ? "border-red-600/40 text-red-800 dark:text-red-300"
-        : "border-[var(--border)] text-[var(--text-secondary)]";
   return (
-    <span
-      className={cn(
-        "rounded border bg-[var(--surface)] px-2.5 py-1 text-xs font-medium tracking-wide",
-        tone,
-      )}
-      title="Realtime transport status (DB remains source of truth)"
-    >
-      {label}
+    <span title="Realtime transport status (DB remains source of truth)">
+      <AdminBadge variant={variant} showDot={variant !== "muted"}>
+        {label}
+      </AdminBadge>
     </span>
   );
 }
@@ -336,7 +324,7 @@ function RecentRunsList({
                     <span
                       className={cn(
                         "font-semibold tracking-wide",
-                        stale.isStale ? "text-amber-800 dark:text-amber-300" : "text-[var(--text)]",
+                        stale.isStale ? adminToneText.warning : "text-[var(--text)]",
                       )}
                       title={stale.isStale ? stale.label ?? undefined : undefined}
                     >
@@ -385,7 +373,7 @@ function TreePane({
         {loading ? (
           <p className="p-4 text-sm text-[var(--text-secondary)]">불러오는 중…</p>
         ) : error ? (
-          <p className="p-4 text-sm text-red-700 dark:text-red-300">{error}</p>
+          <p className={cn("p-4 text-sm", adminToneText.danger)}>{error}</p>
         ) : tree.length === 0 ? (
           <p className="p-4 text-sm text-[var(--text-secondary)]">표시할 span이 없습니다</p>
         ) : (

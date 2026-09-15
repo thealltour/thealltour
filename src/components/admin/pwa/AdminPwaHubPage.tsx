@@ -65,7 +65,7 @@ export default function AdminPwaHubPage() {
       </section>
 
       {!standalone ? (
-        <section className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4 text-sm text-sky-950">
+        <section className="rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-4 py-4 text-sm text-[var(--primary)]">
           <p className="font-semibold">홈 화면에 추가 (이 화면에서)</p>
           {canPrompt ? (
             <div className="mt-3 space-y-2">
@@ -80,7 +80,7 @@ export default function AdminPwaHubPage() {
                   setInstallBusy(true);
                   void promptInstall().finally(() => setInstallBusy(false));
                 }}
-                className="rounded-lg bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-[var(--radius-md)] bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50"
               >
                 {installBusy ? "설치 창 여는 중…" : "앱 설치"}
               </button>
@@ -102,12 +102,12 @@ export default function AdminPwaHubPage() {
               )}
             </ol>
           )}
-          <p className="mt-3 text-xs text-sky-800/90">
+          <p className="mt-3 text-xs text-[var(--primary)]">
             다른 메뉴(상품·랜딩 등)에서 추가하면 PC 전용 안내가 뜰 수 있습니다.
           </p>
           <button
             type="button"
-            className="mt-3 text-xs font-medium text-sky-800 underline"
+            className="mt-3 text-xs font-medium text-[var(--primary)] underline"
             onClick={() => {
               localStorage.setItem(ADMIN_PWA_INSTALL_DISMISS_KEY, "1");
             }}
@@ -128,7 +128,7 @@ export default function AdminPwaHubPage() {
               </p>
               <Link
                 href="/theall_manager_only/notifications/push"
-                className="mt-2 inline-flex rounded-lg bg-amber-800 px-3 py-2 text-xs font-semibold text-white"
+                className="mt-2 inline-flex rounded-[var(--radius-md)] bg-[var(--warning)] px-3 py-2 text-xs font-semibold text-white"
               >
                 알림 켜기
               </Link>

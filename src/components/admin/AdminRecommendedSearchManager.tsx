@@ -176,10 +176,10 @@ export default function AdminRecommendedSearchManager() {
         </p>
       ) : null}
       {message ? (
-        <p className="text-xs text-emerald-600">{message}</p>
+        <p className="text-xs text-[var(--success)]">{message}</p>
       ) : null}
       {errorMessage ? (
-        <p className="text-xs text-red-500">{errorMessage}</p>
+        <p className="text-xs text-[var(--danger)]">{errorMessage}</p>
       ) : null}
 
       <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)]">

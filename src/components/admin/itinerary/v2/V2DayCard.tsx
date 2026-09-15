@@ -227,7 +227,7 @@ export function V2DayCard({
                       className={`group relative aspect-[4/3] overflow-hidden rounded-md border transition ${
                         selected
                           ? isCover
-                            ? "border-amber-500 ring-2 ring-amber-500/40"
+                            ? "border-[var(--warning)] ring-2 ring-[var(--warning)]/40"
                             : "border-[var(--primary)] ring-2 ring-[var(--primary-soft)]"
                           : "border-[var(--border)] hover:border-[var(--border-strong)]"
                       }`}
@@ -239,7 +239,7 @@ export function V2DayCard({
                         className="h-full w-full object-cover"
                       />
                       {isCover ? (
-                        <span className="absolute left-0 top-0 rounded-br bg-amber-600 px-1 py-0.5 text-[8px] font-bold text-white">
+                        <span className="absolute left-0 top-0 rounded-br bg-[var(--warning)] px-1 py-0.5 text-[8px] font-bold text-white">
                           대표
                         </span>
                       ) : null}

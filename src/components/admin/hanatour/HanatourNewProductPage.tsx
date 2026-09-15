@@ -417,13 +417,13 @@ export default function HanatourNewProductPage() {
         </div>
 
         {parseError && (
-          <div className="mt-4 text-red-400" role="alert">
+          <div className="mt-4 text-[var(--danger)]" role="alert">
             {parseError}
           </div>
         )}
 
         {previewError && (
-          <div className="mt-4 text-amber-400" role="alert">
+          <div className="mt-4 text-[var(--warning)]" role="alert">
             미리보기: {previewError}
           </div>
         )}

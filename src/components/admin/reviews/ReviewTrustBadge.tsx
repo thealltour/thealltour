@@ -18,8 +18,8 @@ const BAND_CLASSES: Record<string, string> = {
   trusted: "bg-green-100 text-green-800",
   high: "bg-blue-100 text-blue-800",
   medium: "bg-yellow-100 text-yellow-800",
-  low: "bg-orange-100 text-orange-800",
-  risk: "bg-red-100 text-red-800",
+  low: "bg-[var(--warning-bg)] text-[var(--warning)]",
+  risk: "bg-[var(--danger-bg)] text-[var(--danger)]",
 };
 
 export function ReviewTrustBadge({ trustScore }: ReviewTrustBadgeProps) {

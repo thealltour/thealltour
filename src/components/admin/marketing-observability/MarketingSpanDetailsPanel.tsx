@@ -6,6 +6,8 @@ import { buildSpanDetailGroups } from "@/lib/marketing/observability/viewer/deta
 import { presentBusinessStatus } from "@/lib/marketing/observability/viewer/businessStatus";
 import { marketingSpanDisplayName } from "@/lib/marketing/observability/viewer/displayLabels";
 import { cn } from "@/lib/cn";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
+import type { AdminBadgeVariant } from "@/components/admin/ui/AdminBadge";
 
 export function MarketingSpanDetailsPanel({
   span,
@@ -83,13 +85,9 @@ function StatusChip({
   label: string;
   tone: "success" | "warning" | "danger" | "muted";
 }) {
-  const toneClass = {
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100",
-    danger: "border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-200",
-    muted: "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]",
-  }[tone];
   return (
-    <span className={cn("rounded border px-2 py-0.5 font-medium", toneClass)}>{label}</span>
+    <AdminBadge variant={tone as AdminBadgeVariant} showDot={tone !== "muted"}>
+      {label}
+    </AdminBadge>
   );
 }

@@ -759,7 +759,7 @@ export default function AdminProductTaxonomyView({
       ) : (
         <>
           {hasFallbackItems ? (
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-[var(--warning)]">
               분류 전용 테이블이 없어 임시 목록으로 표시 중입니다. SQL 적용 후 추가/삭제가 완전 활성화됩니다.
             </p>
           ) : null}

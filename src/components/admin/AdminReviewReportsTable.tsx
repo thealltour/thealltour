@@ -151,7 +151,7 @@ export default function AdminReviewReportsTable({ reports: initialReports }: Pro
                   {STATUS_LABEL[row.status] ?? row.status}
                 </span>
                 {row.review_status === "hidden" && (
-                  <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                  <span className="ml-1 rounded-full bg-[var(--warning-bg)] px-2 py-0.5 text-xs text-[var(--warning)]">
                     숨김
                   </span>
                 )}

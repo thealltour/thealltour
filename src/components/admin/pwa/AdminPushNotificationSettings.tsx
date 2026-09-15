@@ -205,7 +205,7 @@ export function AdminPushNotificationSettings() {
             홈 화면에 추가한 관리자 앱이 꺼져 있어도 신규 문의·SMS 등을 알림센터로 받습니다.
           </p>
           {!configured ? (
-            <p className="mt-2 text-xs text-amber-700">
+            <p className="mt-2 text-xs text-[var(--warning)]">
               서버 VAPID 키가 설정되지 않았습니다. 배포 환경변수를 확인해 주세요.
             </p>
           ) : null}
@@ -219,7 +219,7 @@ export function AdminPushNotificationSettings() {
           {busy ? "처리 중…" : subscribed ? "OS 알림 끄기" : "OS 알림 켜기"}
         </button>
       </div>
-      {errorMessage ? <p className="mt-3 text-xs text-red-600">{errorMessage}</p> : null}
+      {errorMessage ? <p className="mt-3 text-xs text-[var(--danger)]">{errorMessage}</p> : null}
       {subscribed ? (
         <div className="mt-4 flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5">
           <div>

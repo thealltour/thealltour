@@ -584,7 +584,7 @@ export default function AdminInquiryTable() {
                             consultationStatus === "new"
                               ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                               : consultationStatus === "contacted"
-                                ? "bg-amber-100 text-amber-800"
+                                ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                                 : consultationStatus === "on_hold"
                                   ? "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
                                   : "bg-[var(--success-bg)] text-[var(--success)]"
@@ -662,7 +662,7 @@ export default function AdminInquiryTable() {
                               <span
                                 className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                                   inquiry.acquisition_channel === "paid"
-                                    ? "bg-amber-100 text-amber-800"
+                                    ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                                     : inquiry.acquisition_channel === "social"
                                       ? "bg-blue-100 text-blue-800"
                                       : inquiry.acquisition_channel === "organic"
@@ -809,7 +809,7 @@ export default function AdminInquiryTable() {
                           consultationStatus === "new"
                             ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                             : consultationStatus === "contacted"
-                              ? "bg-amber-100 text-amber-800"
+                              ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                               : consultationStatus === "on_hold"
                                 ? "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
                                 : "bg-[var(--success-bg)] text-[var(--success)]"
@@ -879,7 +879,7 @@ export default function AdminInquiryTable() {
                               <span
                                 className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                                   inv.acquisition_channel === "paid"
-                                    ? "bg-amber-100 text-amber-800"
+                                    ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                                     : inv.acquisition_channel === "social"
                                       ? "bg-blue-100 text-blue-800"
                                       : inv.acquisition_channel === "organic"

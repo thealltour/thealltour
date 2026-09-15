@@ -57,7 +57,7 @@ export function SmsConversationList({
                       {item.memberName}
                     </p>
                   ) : (
-                    <p className="text-xs text-amber-700 dark:text-amber-300">미연결</p>
+                    <p className="text-xs text-[var(--warning)]">미연결</p>
                   )}
                   {item.inquiryName && item.memberName ? (
                     <p className="truncate text-[10px] text-[var(--text-subtle)]">회원: {item.memberName}</p>
@@ -76,7 +76,7 @@ export function SmsConversationList({
                     </span>
                   ) : null}
                   {item.matchStatus === "unmatched" && item.linkType === "none" ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <span className="rounded-full bg-[var(--warning-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--warning)]">
                       미연결
                     </span>
                   ) : null}

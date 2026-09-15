@@ -191,7 +191,7 @@ export default function AdminLandingManager() {
                   void handleBulkDelete();
                 }}
                 disabled={deleteBusy || selectedIds.size === 0}
-                className="rounded-lg border border-[var(--danger)]/40 bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--danger)] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-[var(--danger)]/40 bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--danger)] hover:bg-[var(--danger-bg)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {deleteBusy ? "삭제 중…" : `선택 삭제${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
               </button>

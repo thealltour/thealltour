@@ -94,7 +94,7 @@ export function MobileAdminInquiryCard({
               consultationStatus === "new"
                 ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                 : consultationStatus === "contacted"
-                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                  ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                   : consultationStatus === "on_hold"
                     ? "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
                     : "bg-[var(--success-bg)] text-[var(--success)]"

@@ -52,7 +52,7 @@ export function RatingDropProductsTable({ products }: RatingDropProductsTablePro
                 </td>
                 <td className="p-3">{p.previousAverageRating.toFixed(2)}</td>
                 <td className="p-3">{p.recentAverageRating.toFixed(2)}</td>
-                <td className="p-3 font-medium text-red-600">{p.ratingDelta.toFixed(2)}</td>
+                <td className="p-3 font-medium text-[var(--danger)]">{p.ratingDelta.toFixed(2)}</td>
                 <td className="p-3">{p.previousCount}</td>
                 <td className="p-3">{p.recentCount}</td>
               </tr>

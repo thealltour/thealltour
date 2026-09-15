@@ -96,7 +96,7 @@ export function ProductFormSectionNav({
                       ? "bg-[var(--success)]/20 text-[var(--success)]"
                       : badgeVariant === "required"
                         ? "bg-[var(--danger)]/20 text-[var(--danger)]"
-                        : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                        : "bg-[var(--warning-bg)] text-[var(--warning)]"
                   }`}
                 >
                   {badgeLabel}

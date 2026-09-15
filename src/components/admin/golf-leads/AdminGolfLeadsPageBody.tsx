@@ -227,7 +227,7 @@ export function AdminGolfLeadsPageBody({
         </div>
 
         {errorMessage ? (
-          <p className="px-4 py-6 text-sm text-red-600 md:px-5">{errorMessage}</p>
+          <p className="px-4 py-6 text-sm text-[var(--danger)] md:px-5">{errorMessage}</p>
         ) : isLoading && !data ? (
           <p className="px-4 py-6 text-sm text-[var(--text-muted)] md:px-5">불러오는 중…</p>
         ) : leads.length === 0 ? (

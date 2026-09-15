@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
 
 type AdminCardVariant = "default" | "muted" | "glass";
 
@@ -10,28 +11,28 @@ type AdminCardProps = {
   variant?: AdminCardVariant;
 };
 
-function cx(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
-
+/**
+ * Admin surface card — radius/border/shadow tokens match public `Card` default.
+ * `muted` / `glass` remain admin-only density variants.
+ */
 export default function AdminCard({
   children,
   className,
   variant = "default",
 }: AdminCardProps) {
-  const base = "rounded-xl border transition-colors duration-150";
+  const base =
+    "rounded-[var(--radius-lg)] border border-[var(--border)] transition-colors duration-150";
 
   const byVariant: Record<AdminCardVariant, string> = {
-    default: "bg-[var(--surface)] border-[var(--border)]",
-    muted: "bg-[var(--surface-muted)] border-[var(--border)]",
+    default: "bg-[var(--surface)] shadow-[var(--shadow-soft)]",
+    muted: "bg-[var(--surface-muted)] shadow-none",
     glass:
-      "bg-[var(--glass-surface)] border-[var(--glass-border)] backdrop-blur-md",
+      "bg-[var(--glass-surface)] border-[var(--glass-border)] shadow-[var(--shadow-soft)] backdrop-blur-md",
   };
 
   return (
-    <div className={cx(base, byVariant[variant], className)}>
+    <div className={cn(base, byVariant[variant], className)}>
       {children}
     </div>
   );
 }
-

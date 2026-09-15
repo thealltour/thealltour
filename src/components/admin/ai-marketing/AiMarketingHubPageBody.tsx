@@ -4,9 +4,9 @@ import Link from "next/link";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
 import { AI_MARKETING_TEAM_NAV } from "@/lib/adminNav/aiMarketingTeam";
 import type { DailyMarketingOperatingCycle } from "@/lib/marketing/operations/types";
-import { cn } from "@/lib/cn";
 
 export type AiMarketingHubSnapshot = {
   businessDateKst: string;
@@ -51,12 +51,7 @@ function overallTone(
 }
 
 export function AiMarketingHubPageBody({ snapshot }: Props) {
-  const toneClass = {
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200",
-    danger: "border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-300",
-    muted: "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]",
-  }[overallTone(snapshot.operationsOverall)];
+  const opsTone = overallTone(snapshot.operationsOverall);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -73,7 +68,7 @@ export function AiMarketingHubPageBody({ snapshot }: Props) {
       <MarketingTeamSubnav />
 
       {snapshot.loadErrors.length > 0 ? (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--warning)]/40 bg-[var(--warning-bg)] p-3 text-sm text-[var(--warning)]">
           일부 요약 로드 실패: {snapshot.loadErrors.join(" · ")}
         </div>
       ) : null}
@@ -130,8 +125,10 @@ export function AiMarketingHubPageBody({ snapshot }: Props) {
             <Link href={AI_MARKETING_TEAM_NAV[3]!.href} className="font-medium text-[var(--text)] hover:underline">
               오늘 운영
             </Link>
-            <span className={cn("ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-medium", toneClass)}>
-              {overallLabel(snapshot.operationsOverall)}
+            <span className="ml-2 inline-flex">
+              <AdminBadge variant={opsTone} showDot={opsTone !== "muted"}>
+                {overallLabel(snapshot.operationsOverall)}
+              </AdminBadge>
             </span>
             {snapshot.operationsAction ? ` — ${snapshot.operationsAction}` : null}
           </li>

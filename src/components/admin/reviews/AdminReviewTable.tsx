@@ -221,7 +221,7 @@ export default function AdminReviewTable() {
                           <option value={1}>★☆☆☆☆</option>
                         </select>
                       ) : item.rating ? (
-                        <span className="text-xs text-amber-500">
+                        <span className="text-xs text-[var(--warning)]">
                           {"★".repeat(item.rating).padEnd(5, "☆")}
                         </span>
                       ) : (

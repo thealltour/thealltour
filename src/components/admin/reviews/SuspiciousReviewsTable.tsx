@@ -64,7 +64,7 @@ export function SuspiciousReviewsTable({ reviews }: SuspiciousReviewsTableProps)
                   {r.verified ? (
                     <span className="text-green-600">Y</span>
                   ) : (
-                    <span className="text-amber-600">N</span>
+                    <span className="text-[var(--warning)]">N</span>
                   )}
                 </td>
                 <td className="p-3">{r.helpfulCount}</td>
@@ -72,9 +72,9 @@ export function SuspiciousReviewsTable({ reviews }: SuspiciousReviewsTableProps)
                   <span
                     className={
                       r.riskScore >= 5
-                        ? "font-semibold text-red-600"
+                        ? "font-semibold text-[var(--danger)]"
                         : r.riskScore >= 3
-                          ? "font-medium text-amber-600"
+                          ? "font-medium text-[var(--warning)]"
                           : "text-slate-600"
                     }
                   >

@@ -85,9 +85,9 @@ export function ModerationReviewCard({
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                   priorityLevel === "high"
-                    ? "bg-red-100 text-red-800"
+                    ? "bg-[var(--danger-bg)] text-[var(--danger)]"
                     : priorityLevel === "medium"
-                      ? "bg-amber-100 text-amber-800"
+                      ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                       : "bg-slate-100 text-slate-700"
                 }`}
               >
@@ -95,7 +95,7 @@ export function ModerationReviewCard({
               </span>
             )}
             {review.report_count > 0 && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+              <span className="rounded-full bg-[var(--danger-bg)] px-2 py-0.5 text-xs font-medium text-[var(--danger)]">
                 신고 {review.report_count}
               </span>
             )}
@@ -136,7 +136,7 @@ export function ModerationReviewCard({
       )}
       <p className="mt-1 line-clamp-2 text-sm text-[var(--text-secondary)]">{preview || "내용 없음"}</p>
       {review.moderation_reason && (
-        <p className="mt-1 text-xs text-amber-700">사유: {review.moderation_reason}</p>
+        <p className="mt-1 text-xs text-[var(--warning)]">사유: {review.moderation_reason}</p>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
         {status !== "hidden" && (

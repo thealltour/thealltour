@@ -21,8 +21,8 @@ export function ReviewInsightSummaryCards({
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       <AdminSummaryCard title="전체 상품" value={totalProducts} />
       <AdminSummaryCard title="Healthy" value={healthyCount} valueClassName="text-green-600" />
-      <AdminSummaryCard title="Watch" value={watchCount} valueClassName="text-amber-600" />
-      <AdminSummaryCard title="Risk" value={riskCount} valueClassName="text-red-600" />
+      <AdminSummaryCard title="Watch" value={watchCount} valueClassName="text-[var(--warning)]" />
+      <AdminSummaryCard title="Risk" value={riskCount} valueClassName="text-[var(--danger)]" />
       <AdminSummaryCard title="반복 불만 신호" value={complaintSignalsCount} />
     </div>
   );

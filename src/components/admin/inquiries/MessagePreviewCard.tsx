@@ -14,7 +14,7 @@ export function MessagePreviewCard({ phoneDigits, previewText, isEmpty, lengthIn
   const displayPhone = formatPhoneDisplay(phoneDigits);
   const kindClass =
     lengthInfo.kind === "LMS"
-      ? "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
+      ? "bg-[var(--warning-bg)] text-[var(--warning)]"
       : "bg-[var(--primary-soft)] text-[var(--primary)]";
 
   return (

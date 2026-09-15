@@ -28,8 +28,8 @@ export function ReviewStatusBadge({ status }: ReviewStatusBadgeProps) {
       : s === "hidden"
         ? "bg-slate-200 text-slate-700"
         : s === "under_review"
-          ? "bg-amber-100 text-amber-800"
-          : "bg-red-100 text-red-800";
+          ? "bg-[var(--warning-bg)] text-[var(--warning)]"
+          : "bg-[var(--danger-bg)] text-[var(--danger)]";
 
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${classes}`}>

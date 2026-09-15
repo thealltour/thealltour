@@ -57,7 +57,7 @@ export default function AdminDashboardAnalyticsSection({
         <section className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-surface)] p-4 text-sm text-[var(--text-primary)] backdrop-blur-md transition-colors md:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-semibold text-red-600">대시보드 지표를 불러오지 못했습니다.</p>
+              <p className="font-semibold text-[var(--danger)]">대시보드 지표를 불러오지 못했습니다.</p>
               <p className="mt-1 text-xs text-[var(--text-muted)]">
                 네트워크 상태를 확인한 뒤 다시 시도해 주세요.
               </p>

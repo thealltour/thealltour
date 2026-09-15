@@ -67,9 +67,9 @@ export function MobileModerationReviewCard({
               <span
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                   priorityLevel === "high"
-                    ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                    ? "bg-[var(--danger-bg)] text-[var(--danger)]"
                     : priorityLevel === "medium"
-                      ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                      ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                       : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 }`}
               >
@@ -77,7 +77,7 @@ export function MobileModerationReviewCard({
               </span>
             ) : null}
             {review.report_count > 0 ? (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">
+              <span className="rounded-full bg-[var(--danger-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--danger)]">
                 신고 {review.report_count}
               </span>
             ) : null}
@@ -109,7 +109,7 @@ export function MobileModerationReviewCard({
         {preview || "내용 없음"}
       </p>
       {review.moderation_reason ? (
-        <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">사유: {review.moderation_reason}</p>
+        <p className="mt-2 text-xs text-[var(--warning)]">사유: {review.moderation_reason}</p>
       ) : null}
 
       <div className="mt-3 flex max-w-full flex-wrap gap-1.5">

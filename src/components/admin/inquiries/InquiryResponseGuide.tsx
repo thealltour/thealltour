@@ -52,14 +52,14 @@ function formatFullDateTime(iso: string): string {
 }
 
 function leadBadgeClass(lead: InquiryLeadTemperature): string {
-  if (lead === "hot") return "bg-red-100 text-red-900 dark:bg-red-950/50 dark:text-red-200";
-  if (lead === "warm") return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100";
+  if (lead === "hot") return "bg-[var(--danger-bg)] text-[var(--danger)]";
+  if (lead === "warm") return "bg-[var(--warning-bg)] text-[var(--warning)]";
   return "bg-[var(--surface-muted)] text-[var(--text-secondary)]";
 }
 
 function leadPriorityBadgeClass(tone: ReturnType<typeof getLeadPriorityTone>): string {
-  if (tone === "red") return "bg-red-100 text-red-900 dark:bg-red-950/50 dark:text-red-200";
-  if (tone === "amber") return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100";
+  if (tone === "red") return "bg-[var(--danger-bg)] text-[var(--danger)]";
+  if (tone === "amber") return "bg-[var(--warning-bg)] text-[var(--warning)]";
   return "bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
 }
 
@@ -591,7 +591,7 @@ export function InquiryResponseGuide({
           {analysis.cautionItems.map((item) => (
             <li
               key={item}
-              className="flex gap-2 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger-bg)]/40 px-2 py-1.5 text-[var(--danger)] dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
+              className="flex gap-2 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger-bg)]/40 px-2 py-1.5 text-[var(--danger)] "
             >
               <span className="mt-0.5 shrink-0 font-bold">!</span>
               <span>{item}</span>

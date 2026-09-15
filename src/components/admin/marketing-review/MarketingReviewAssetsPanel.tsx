@@ -161,7 +161,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
       ) : !assets ? (
         <p className="text-sm text-[var(--text-secondary)]">상태를 표시할 수 없습니다.</p>
       ) : !assets.assetRootConfigured ? (
-        <p className="text-sm text-amber-900">
+        <p className="text-sm text-[var(--warning)]">
           MARKETING_ASSET_ROOT가 설정되지 않았습니다. 서버 환경에
           `/mnt/HDD2TB/marketing-assets` 등 절대 경로를 설정한 뒤 다시 시도하세요.
         </p>

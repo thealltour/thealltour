@@ -61,7 +61,7 @@ export default function AdminProductsRowWarnings({ warnings, className }: AdminP
         aria-label={tooltip}
       >
         <AlertCircle
-          className="h-[1.3rem] w-[1.3rem] shrink-0 text-red-600 drop-shadow-[0_0_2px_rgba(220,38,38,0.55)] dark:text-red-400"
+          className="h-[1.3rem] w-[1.3rem] shrink-0 text-[var(--danger)] drop-shadow-[0_0_2px_rgba(220,38,38,0.55)] dark:text-[var(--danger)]"
           strokeWidth={3}
           aria-hidden
         />
@@ -77,7 +77,7 @@ export default function AdminProductsRowWarnings({ warnings, className }: AdminP
       aria-label={tooltip}
     >
       <AlertTriangle
-        className="h-3 w-3 shrink-0 text-amber-600/50 dark:text-amber-500/38"
+        className="h-3 w-3 shrink-0 text-[var(--warning)]/50 dark:text-[var(--warning)]/38"
         strokeWidth={1.85}
         aria-hidden
       />

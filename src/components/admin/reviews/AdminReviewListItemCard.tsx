@@ -72,7 +72,7 @@ export function AdminReviewListItemCard({
               {review.id.slice(0, 8)}…
             </Link>
             {review.rating != null && review.rating >= 1 && review.rating <= 5 && (
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+              <span className="rounded bg-[var(--warning-bg)] px-1.5 py-0.5 text-xs font-medium text-[var(--warning)]">
                 ★ {Number(review.rating).toFixed(1)}
               </span>
             )}
@@ -90,7 +90,7 @@ export function AdminReviewListItemCard({
               <ReviewStatusBadge status={review.status} />
             )}
             {(review.report_count ?? review.reportCount ?? 0) > 0 && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+              <span className="rounded-full bg-[var(--danger-bg)] px-2 py-0.5 text-xs font-medium text-[var(--danger)]">
                 신고 {review.report_count ?? review.reportCount ?? 0}
               </span>
             )}
@@ -98,9 +98,9 @@ export function AdminReviewListItemCard({
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                   priorityLevel === "high"
-                    ? "bg-red-100 text-red-800"
+                    ? "bg-[var(--danger-bg)] text-[var(--danger)]"
                     : priorityLevel === "medium"
-                      ? "bg-amber-100 text-amber-800"
+                      ? "bg-[var(--warning-bg)] text-[var(--warning)]"
                       : "bg-slate-100 text-slate-700"
                 }`}
               >
@@ -111,7 +111,7 @@ export function AdminReviewListItemCard({
               <ReviewReportReasonBadgeList reasons={reportReasons} />
             )}
             {hint && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              <span className="rounded-full bg-[var(--warning-bg)] px-2 py-0.5 text-xs font-medium text-[var(--warning)]">
                 검토 필요
               </span>
             )}
@@ -141,7 +141,7 @@ export function AdminReviewListItemCard({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-3 text-sm">
-          <span className="text-amber-600">★ {review.rating ?? "—"}</span>
+          <span className="text-[var(--warning)]">★ {review.rating ?? "—"}</span>
           <span className="text-[var(--text-muted)]">도움 {review.helpfulCount ?? 0}</span>
           {typeof review.recommendationScore === "number" && (
             <span className="font-medium text-[var(--text-secondary)]">
@@ -166,7 +166,7 @@ export function AdminReviewListItemCard({
               }
             }}
             disabled={deleting}
-            className="text-xs text-red-600 hover:underline disabled:opacity-50"
+            className="text-xs text-[var(--danger)] hover:underline disabled:opacity-50"
           >
             {deleting ? "삭제 중…" : "삭제"}
           </button>

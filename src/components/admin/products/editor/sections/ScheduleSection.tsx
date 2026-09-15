@@ -77,7 +77,7 @@ export function ScheduleSection({
                   setScheduleEditorMode("visual");
                   setShowLegacyEditor(false);
                 }}
-                className="mt-2 rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
+                className="mt-2 rounded-[var(--radius-md)] bg-[var(--warning)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
               >
                 시각화 일정 편집으로 전환
               </button>

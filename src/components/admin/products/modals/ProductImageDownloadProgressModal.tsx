@@ -106,7 +106,7 @@ export default function ProductImageDownloadProgressModal({
                   {completed} / {total}장 처리 완료
                 </span>
                 {failed > 0 ? (
-                  <span className="font-medium text-amber-800 dark:text-amber-200">실패 {failed}장</span>
+                  <span className="font-medium text-[var(--warning)]">실패 {failed}장</span>
                 ) : null}
               </div>
               <div

@@ -54,7 +54,7 @@ export function ReviewSurgeProductsTable({ products }: ReviewSurgeProductsTableP
                 <td className="p-3">{p.previous30dCount}</td>
                 <td className="p-3">{p.recent7dPerDay.toFixed(2)}</td>
                 <td className="p-3">{p.previous30dPerDay.toFixed(2)}</td>
-                <td className="p-3 font-medium text-amber-600">{p.surgeRatio.toFixed(2)}×</td>
+                <td className="p-3 font-medium text-[var(--warning)]">{p.surgeRatio.toFixed(2)}×</td>
               </tr>
             ))}
           </tbody>

@@ -40,7 +40,7 @@ function sortStateLabel(field: ProductSortKey, direction: "asc" | "desc"): strin
 
 function statusBadgeClass(status: string): string {
   if (status === "SOLD_OUT") return "bg-[var(--danger-bg)] text-[var(--danger)]";
-  if (status === "LIMITED") return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200";
+  if (status === "LIMITED") return "bg-[var(--warning-bg)] text-[var(--warning)]";
   if (status === "CONSULT_REQUIRED") return "bg-[var(--surface-muted)] text-[var(--text-secondary)]";
   return "bg-[var(--primary-soft)] text-[var(--primary)]";
 }
@@ -285,7 +285,7 @@ export default function AdminProductsListView({
             {" "}
           </span>
           <span
-            className={itOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-amber-800/90 dark:text-amber-400/90"}
+            className={itOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-[var(--warning)]/90 dark:text-[var(--warning)]/90"}
             aria-hidden
           >
             {itOk ? "📅" : "❌"}
@@ -427,7 +427,7 @@ export default function AdminProductsListView({
           <span className={imgOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-[var(--danger)]"} aria-hidden>
             {imgOk ? "🖼" : "❌"}
           </span>
-          <span className={itOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-amber-800/90 dark:text-amber-400/90"} aria-hidden>
+          <span className={itOk ? "opacity-30 grayscale-[0.2]" : "font-semibold text-[var(--warning)]/90 dark:text-[var(--warning)]/90"} aria-hidden>
             {itOk ? "📅" : "❌"}
           </span>
         </span>
@@ -500,10 +500,10 @@ export default function AdminProductsListView({
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-bold text-[var(--text-primary)]">
             문제 상품 {issueProductCount}건{" "}
-            <span className="font-semibold text-red-700 dark:text-red-400/95">
+            <span className="font-semibold text-[var(--danger)]">
               (치명 {criticalTotal}
             </span>
-            <span className="font-medium text-amber-800/90 dark:text-amber-200/90">
+            <span className="font-medium text-[var(--warning)]">
               {" "}
               / 주의 {warningTotal})
             </span>

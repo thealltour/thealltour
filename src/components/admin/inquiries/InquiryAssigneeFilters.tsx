@@ -98,7 +98,7 @@ export function InquiryAssigneeFilters({
           />
         </label>
         {assigneeFilter === "mine" && !selfDisplayName.trim() ? (
-          <p className="text-[11px] text-amber-700 dark:text-amber-300">이름을 입력하면 내 문의만 볼 수 있습니다.</p>
+          <p className="text-[11px] text-[var(--warning)]">이름을 입력하면 내 문의만 볼 수 있습니다.</p>
         ) : null}
       </div>
     </div>

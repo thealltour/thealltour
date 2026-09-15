@@ -5,12 +5,12 @@ import Link from "next/link";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
 import type {
   DailyMarketingOperatingCycle,
   DailyMarketingOverallStatus,
   MarketingOperationsSummary,
 } from "@/lib/marketing/operations/types";
-import { cn } from "@/lib/cn";
 
 type StatusTone = "success" | "warning" | "muted" | "danger";
 
@@ -30,21 +30,10 @@ function overallTone(status: DailyMarketingOverallStatus): StatusTone {
 }
 
 function StatusBadge({ label, tone = "muted" }: { label: string; tone?: StatusTone }) {
-  const toneClass: Record<StatusTone, string> = {
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
-    muted: "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]",
-    danger: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
-  };
   return (
-    <span
-      className={cn(
-        "inline-flex min-h-[28px] items-center rounded-full border px-2.5 py-1 text-xs font-medium",
-        toneClass[tone],
-      )}
-    >
+    <AdminBadge variant={tone} showDot={tone !== "muted"}>
       {label}
-    </span>
+    </AdminBadge>
   );
 }
 
@@ -149,12 +138,12 @@ export function MarketingOperationsPageBody({
       <MarketingTeamSubnav />
 
       {error ? (
-        <div className="space-y-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300">
+        <div className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger)]">
           <p>{error}</p>
           <button
             type="button"
             onClick={() => void refresh()}
-            className="rounded border border-red-500/40 px-3 py-1.5 text-xs font-medium hover:bg-red-500/10"
+            className="rounded-[var(--radius-md)] border border-[var(--danger)]/40 px-3 py-1.5 text-xs font-medium hover:bg-[var(--danger-bg)]"
           >
             다시 시도
           </button>

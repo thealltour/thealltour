@@ -154,7 +154,7 @@ export default function AdminNotificationBell({ initialUnreadCount }: AdminNotif
             </button>
           </div>
 
-          {errorMessage ? <p className="mb-2 text-xs text-red-500">{errorMessage}</p> : null}
+          {errorMessage ? <p className="mb-2 text-xs text-[var(--danger)]">{errorMessage}</p> : null}
 
           {isLoading ? (
             <p className="py-4 text-center text-xs text-[var(--text-muted)]">알림을 불러오는 중입니다...</p>

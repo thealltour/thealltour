@@ -1044,7 +1044,7 @@ function FlyerModalShell({ product, onClose, showToast, persistedBootstrap }: Fl
 
           <div className="min-h-0 flex-1 overflow-auto p-4 lg:p-6">
             {draft.selectedImageUrls.length > FLYER_MAX_GALLERY_IMAGES ? (
-              <div className="mb-3 rounded-lg border border-sky-300/50 bg-sky-500/10 px-3 py-2 text-xs text-sky-900 dark:text-sky-100 print:hidden">
+              <div className="mb-3 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-2 text-xs text-[var(--primary)] print:hidden">
                 갤러리는 최대 {FLYER_MAX_GALLERY_IMAGES}장만 표시·저장됩니다. (현재{" "}
                 {draft.selectedImageUrls.length}장)
               </div>
@@ -1102,7 +1102,7 @@ function FlyerModalShell({ product, onClose, showToast, persistedBootstrap }: Fl
             type="button"
             disabled={exportPending || saving}
             onClick={() => void handlePngExport()}
-            className="rounded-lg border border-sky-300/50 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-900 hover:opacity-90 disabled:opacity-50 dark:border-sky-800 dark:text-sky-100"
+            className="rounded-lg border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-4 py-2 text-sm font-semibold text-[var(--primary)] hover:opacity-90 disabled:opacity-50"
           >
             {exportPending ? "PNG 생성 중…" : "PNG 저장 (전체 세로)"}
           </button>

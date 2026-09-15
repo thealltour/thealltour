@@ -40,7 +40,7 @@ export function TopRecommendedReviews({ reviews }: TopRecommendedReviewsProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-medium text-[var(--text-muted)]">{i + 1}.</span>
                 {r.eligibility_id && <VerifiedBadge />}
-                <span className="text-xs text-amber-600">★ {r.rating ?? "-"}</span>
+                <span className="text-xs text-[var(--warning)]">★ {r.rating ?? "-"}</span>
                 <span className="text-xs text-[var(--text-secondary)]">
                   도움됨 {r.helpfulCount ?? 0}
                 </span>

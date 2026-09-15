@@ -53,9 +53,9 @@ export function SmsComposePanel({
 
   const lengthTone =
     lengthInfo.kind === "LMS"
-      ? "text-amber-800 dark:text-amber-200"
+      ? "text-[var(--warning)]"
       : lengthInfo.remaining != null && lengthInfo.remaining <= 10
-        ? "text-amber-700 dark:text-amber-300"
+        ? "text-[var(--warning)]"
         : "text-[var(--text-muted)]";
 
   const handleSend = async () => {
@@ -126,7 +126,7 @@ export function SmsComposePanel({
           placeholder="고객에게 보낼 문자를 입력하세요."
         />
         {lengthInfo.warning ? (
-          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">{lengthInfo.warning}</p>
+          <p className="mt-1 text-xs text-[var(--warning)]">{lengthInfo.warning}</p>
         ) : null}
       </div>
 
@@ -140,7 +140,7 @@ export function SmsComposePanel({
       </div>
 
       {duplicateBlockReason ? (
-        <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">{duplicateBlockReason}</p>
+        <p className="mt-2 text-sm text-[var(--warning)]">{duplicateBlockReason}</p>
       ) : null}
 
       {sendError ? (

@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminSummaryCard from "@/components/admin/ui/AdminSummaryCard";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
+import AdminButton from "@/components/admin/ui/AdminButton";
+import { adminToneBorderBg, adminToneText } from "@/components/admin/ui/adminStatusTone";
 import type { RuntimeQuotaSnapshotDto, RuntimeReservationSnapshotDto, RuntimeRoutingPolicyDto, RuntimeRoutingStatusDto, RuntimeSchedulerStatusDto, RuntimeStatusDto } from "@/ai-runtime/observability/types";
 import type { QuotaHealth } from "@/ai-runtime/domain/quota";
 import { cn } from "@/lib/cn";
@@ -17,22 +20,10 @@ function StatusBadge({
   label: string;
   tone?: StatusTone;
 }) {
-  const toneClass: Record<StatusTone, string> = {
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
-    muted: "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]",
-    danger: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
-  };
-
   return (
-    <span
-      className={cn(
-        "inline-flex min-h-[28px] items-center rounded-full border px-2.5 py-1 text-xs font-medium",
-        toneClass[tone],
-      )}
-    >
+    <AdminBadge variant={tone} showDot={tone !== "muted"}>
       {label}
-    </span>
+    </AdminBadge>
   );
 }
 
@@ -777,15 +768,11 @@ export default function AiRuntimeConsole() {
         ) : null}
 
         {error ? (
-          <AdminCard className="space-y-3 border-red-500/30 p-6">
-            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
-            <button
-              type="button"
-              onClick={() => void loadStatus()}
-              className="min-h-[44px] rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
-            >
+          <AdminCard className={cn("space-y-3 p-6", adminToneBorderBg.danger)}>
+            <p className={cn("text-sm", adminToneText.danger)}>{error}</p>
+            <AdminButton type="button" variant="secondary" onClick={() => void loadStatus()}>
               다시 시도
-            </button>
+            </AdminButton>
           </AdminCard>
         ) : null}
 

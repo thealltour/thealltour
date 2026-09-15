@@ -109,7 +109,7 @@ export default function AdminUtmLinkBuilder() {
         >
           URL 복사
         </button>
-        {message ? <span className="text-xs text-emerald-600">{message}</span> : null}
+        {message ? <span className="text-xs text-[var(--success)]">{message}</span> : null}
       </div>
     </section>
   );

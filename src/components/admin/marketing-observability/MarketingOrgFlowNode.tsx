@@ -17,19 +17,19 @@ type OrgNode = Node<MarketingOrgFlowNodeData, "marketingOrg">;
 function stateTone(state: MarketingOrgExecutionState | undefined): string {
   switch (state) {
     case "running":
-      return "border-sky-600/50 bg-sky-500/10";
+      return "border-[var(--primary)]/50 bg-[var(--primary-soft)]";
     case "ok":
-      return "border-emerald-600/40 bg-emerald-500/10";
+      return "border-[var(--success)]/40 bg-[var(--success-bg)]";
     case "revision_required":
-      return "border-amber-600/50 bg-amber-500/10";
+      return "border-[var(--warning)]/50 bg-[var(--warning-bg)]";
     case "blocked":
-      return "border-orange-600/50 bg-orange-500/10";
+      return "border-[var(--warning)]/50 bg-[var(--warning-bg)]";
     case "technical_error":
-      return "border-red-600/50 bg-red-500/10";
+      return "border-[var(--danger)]/50 bg-[var(--danger-bg)]";
     case "stale":
-      return "border-amber-700/40 bg-amber-500/5";
+      return "border-[var(--warning)]/40 bg-[var(--warning-bg)]";
     case "waiting":
-      return "border-slate-500/40 bg-[var(--surface-muted)]";
+      return "border-[var(--border)] bg-[var(--surface-muted)]";
     default:
       return "border-[var(--border)] bg-[var(--surface)]";
   }
@@ -76,10 +76,12 @@ function MarketingOrgNodeInner({ data }: NodeProps<OrgNode>) {
         <span
           className={cn(
             "rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
-            state === "technical_error" && "bg-red-600/15 text-red-800 dark:text-red-300",
-            state === "revision_required" && "bg-amber-600/15 text-amber-900 dark:text-amber-200",
-            state === "running" && "bg-sky-600/15 text-sky-900 dark:text-sky-200",
-            state === "ok" && "bg-emerald-600/15 text-emerald-900 dark:text-emerald-200",
+            state === "technical_error" && "bg-[var(--danger-bg)] text-[var(--danger)]",
+            state === "revision_required" && "bg-[var(--warning-bg)] text-[var(--warning)]",
+            state === "running" && "bg-[var(--primary-soft)] text-[var(--primary)]",
+            state === "ok" && "bg-[var(--success-bg)] text-[var(--success)]",
+            state === "blocked" && "bg-[var(--warning-bg)] text-[var(--warning)]",
+            state === "stale" && "bg-[var(--warning-bg)] text-[var(--warning)]",
             (!state || state === "idle" || planned) &&
               "bg-[var(--surface-muted)] text-[var(--text-secondary)]",
           )}

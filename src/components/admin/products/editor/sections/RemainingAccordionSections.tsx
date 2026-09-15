@@ -1187,7 +1187,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                         onClick={() => setForm((prev) => ({ ...prev, [fieldKey]: "O" }))}
                         className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                           value === "O"
-                            ? "bg-emerald-600 text-white"
+                            ? "bg-[var(--primary)] text-[var(--on-primary)]"
                             : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]"
                         }`}
                       >

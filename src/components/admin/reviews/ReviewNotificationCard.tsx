@@ -80,7 +80,7 @@ export function ReviewNotificationCard({
             type="button"
             onClick={handleMarkRead}
             disabled={pending}
-            className="rounded-lg bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-200 disabled:opacity-50 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60"
+            className="rounded-lg bg-[var(--warning-bg)] px-3 py-1.5 text-sm font-medium text-[var(--warning)] hover:opacity-90 disabled:opacity-50"
           >
             읽음
           </button>

@@ -106,7 +106,7 @@ export function MarketingObservabilityAnalyticsPanel({ className }: Props) {
       {loading && !data ? (
         <p className="text-sm text-[var(--text-secondary)]">분석 불러오는 중…</p>
       ) : error ? (
-        <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        <p className="text-sm text-[var(--danger)]">{error}</p>
       ) : !data ? (
         <p className="text-sm text-[var(--text-secondary)]">분석 데이터가 없습니다</p>
       ) : (
@@ -140,7 +140,7 @@ function KpiCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)] px-3 py-2.5">
       <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-secondary)]">
         {label}
       </div>

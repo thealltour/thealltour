@@ -43,7 +43,7 @@ export function ProductFormSectionIssuesPanel({
     <div className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
       <p
         className={`mb-2 text-xs font-semibold ${
-          hasRequired ? "text-[var(--danger)]" : "text-amber-800 dark:text-amber-200"
+          hasRequired ? "text-[var(--danger)]" : "text-[var(--warning)]"
         }`}
       >
         {title}

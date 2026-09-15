@@ -106,7 +106,7 @@ export default function AdminLandingGenerationTable({ items, selectedKeys, onTog
                       <span className="text-xs text-[var(--text-muted)]">이미 생성됨</span>
                     )
                   ) : (
-                    <span className="text-xs text-emerald-600">생성 가능</span>
+                    <span className="text-xs text-[var(--success)]">생성 가능</span>
                   )}
                 </td>
               </tr>

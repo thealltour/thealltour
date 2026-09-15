@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
+import AdminButton from "@/components/admin/ui/AdminButton";
+import { adminToneSurface, adminToneText } from "@/components/admin/ui/adminStatusTone";
 import { cn } from "@/lib/cn";
 
 type PreviewItem =
@@ -58,16 +61,10 @@ function statusTone(status: string): "success" | "warning" | "danger" | "muted" 
 
 function StatusBadge({ status }: { status: string }) {
   const tone = statusTone(status);
-  const toneClass = {
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-800",
-    danger: "border-red-500/30 bg-red-500/10 text-red-700",
-    muted: "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]",
-  }[tone];
   return (
-    <span className={cn("inline-flex rounded-md border px-2 py-0.5 text-xs font-medium", toneClass)}>
+    <AdminBadge variant={tone} showDot={tone !== "muted"}>
       {statusLabelKo(status)}
-    </span>
+    </AdminBadge>
   );
 }
 
@@ -184,9 +181,9 @@ export function TrendInboxPageBody() {
             };
 
   const bannerClass = {
-    success: "border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100",
-    muted: "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]",
-    danger: "border-red-500/40 bg-red-500/10 text-red-900 dark:text-red-100",
+    success: adminToneSurface.success,
+    muted: adminToneSurface.muted,
+    danger: adminToneSurface.danger,
   };
 
   return (
@@ -197,9 +194,7 @@ export function TrendInboxPageBody() {
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">트렌드 인입</h1>
-          <span className="inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-800">
-            대기 NEW {pendingNewCount}건
-          </span>
+          <AdminBadge variant="warning">대기 NEW {pendingNewCount}건</AdminBadge>
         </div>
         <p className="max-w-2xl text-sm text-[var(--text-secondary)]">
           Meta AI TrendSignal v1 JSON을 붙여넣어 검증·스테이징 인입합니다. Agenda 확정·CMC·HMR·게시에는
@@ -222,25 +217,26 @@ export function TrendInboxPageBody() {
           placeholder='{"provider":"meta_ai","items":[...]}'
         />
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <button
+          <AdminButton
             type="button"
+            variant="secondary"
             disabled={busy || !paste.trim()}
             onClick={() => void onValidate()}
-            className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2.5 text-sm font-medium disabled:opacity-50 sm:w-auto"
+            className="w-full sm:w-auto"
           >
             검증
-          </button>
-          <button
+          </AdminButton>
+          <AdminButton
             type="button"
             disabled={busy || !paste.trim()}
             onClick={() => void onIngest()}
-            className="min-h-11 w-full rounded-lg bg-[var(--text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--surface)] disabled:opacity-50 sm:w-auto"
+            className="w-full sm:w-auto"
           >
             인입하기
-          </button>
+          </AdminButton>
         </div>
         {error ? (
-          <p className="mt-3 text-sm text-red-700 dark:text-red-300">{error}</p>
+          <p className={cn("mt-3 text-sm", adminToneText.danger)}>{error}</p>
         ) : null}
       </AdminCard>
 

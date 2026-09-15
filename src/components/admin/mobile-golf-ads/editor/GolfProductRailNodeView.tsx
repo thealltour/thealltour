@@ -101,7 +101,7 @@ export function GolfProductRailNodeView({ node, updateAttributes, deleteNode }: 
           <button
             type="button"
             onClick={() => deleteNode()}
-            className="rounded-md border border-[var(--border)] p-1 text-[var(--text-muted)] hover:text-red-600"
+            className="rounded-md border border-[var(--border)] p-1 text-[var(--text-muted)] hover:text-[var(--danger)]"
             aria-label="진열대 삭제"
           >
             <Trash2 className="h-4 w-4" />
@@ -177,7 +177,7 @@ export function GolfProductRailNodeView({ node, updateAttributes, deleteNode }: 
                     <button
                       type="button"
                       onClick={() => removeProduct(product.id)}
-                      className="shrink-0 text-[var(--text-muted)] hover:text-red-600"
+                      className="shrink-0 text-[var(--text-muted)] hover:text-[var(--danger)]"
                     >
                       제거
                     </button>

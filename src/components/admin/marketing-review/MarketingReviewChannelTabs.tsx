@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AdminBadge from "@/components/admin/ui/AdminBadge";
+import AdminButton from "@/components/admin/ui/AdminButton";
+import { adminToneText } from "@/components/admin/ui/adminStatusTone";
+import { FilterChip } from "@/components/ui/FilterChip";
 import type { MorningChannelReviewView, MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import type { ReviewablePublishableChannel } from "@/lib/marketing/review/channelReviews";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
+import { cn } from "@/lib/cn";
 
 type Props = {
   context: MorningMarketingReviewContext;
@@ -157,18 +162,13 @@ export function MarketingReviewChannelTabs({
 
       <div className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-2">
         {channels.map((c) => (
-          <button
+          <FilterChip
             key={c.channel}
-            type="button"
+            variant={active?.channel === c.channel ? "selected" : "default"}
             onClick={() => onSelectChannel(c.channel)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${
-              active?.channel === c.channel
-                ? "bg-[var(--primary)] text-white"
-                : "border border-[var(--border)]"
-            }`}
           >
             {c.label}
-          </button>
+          </FilterChip>
         ))}
       </div>
 
@@ -180,44 +180,47 @@ export function MarketingReviewChannelTabs({
             </span>
             <span>소스: {active.source === "human" ? "사람 수정" : "AI 초안"}</span>
             {active.marketingValue ? (
-              <span
-                className={
+              <AdminBadge
+                variant={
                   active.marketingValue.verdict === "strong" ||
                   active.marketingValue.verdict === "publishable"
-                    ? "text-emerald-700"
+                    ? "success"
                     : active.marketingValue.verdict === "needs_improvement"
-                      ? "text-amber-700"
-                      : "text-red-700"
+                      ? "warning"
+                      : "danger"
                 }
               >
-                Value: <strong>{active.marketingValue.verdict}</strong> (
-                {active.marketingValue.overallScore})
-                {active.marketingValue.stale ? " · stale" : ""}
-              </span>
+                가치 {active.marketingValue.verdict}
+                {active.marketingValue.stale ? " · 오래됨" : ""}
+              </AdminBadge>
             ) : null}
             {active.validationWarnings.length > 0 ? (
-              <span className="text-amber-700">경고 {active.validationWarnings.length}건</span>
+              <span className={adminToneText.warning}>경고 {active.validationWarnings.length}건</span>
             ) : (
-              <span className="text-emerald-700">검증 통과</span>
+              <span className={adminToneText.success}>검증 통과</span>
             )}
           </div>
 
-          {active.marketingValue ? (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs space-y-1">
-              <div className="font-medium">Marketing Value (≠ Governance)</div>
-              {(active.marketingValue.reasons ?? []).slice(0, 3).map((r) => (
-                <div key={r}>· {r}</div>
-              ))}
-              {(active.marketingValue.improvementHints ?? []).slice(0, 3).map((h) => (
-                <div key={h} className="text-amber-800">
-                  hint: {h}
-                </div>
-              ))}
-            </div>
+          {active.marketingValue &&
+          ((active.marketingValue.reasons?.length ?? 0) > 0 ||
+            (active.marketingValue.improvementHints?.length ?? 0) > 0) ? (
+            <details className="text-xs text-[var(--text-secondary)]">
+              <summary className="cursor-pointer text-[var(--primary)]">가치 평가 상세</summary>
+              <div className="mt-2 space-y-1 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                {(active.marketingValue.reasons ?? []).slice(0, 3).map((r) => (
+                  <div key={r}>· {r}</div>
+                ))}
+                {(active.marketingValue.improvementHints ?? []).slice(0, 3).map((h) => (
+                  <div key={h} className={adminToneText.warning}>
+                    개선 힌트: {h}
+                  </div>
+                ))}
+              </div>
+            </details>
           ) : null}
 
           {active.validationWarnings.length > 0 ? (
-            <ul className="list-disc space-y-1 pl-5 text-xs text-amber-800">
+            <ul className={cn("list-disc space-y-1 pl-5 text-xs", adminToneText.warning)}>
               {active.validationWarnings.map((w) => (
                 <li key={w}>{w}</li>
               ))}
@@ -231,7 +234,7 @@ export function MarketingReviewChannelTabs({
                 {active.blogMeta?.primaryTopic ?? "—"}
               </div>
               <label className="block">
-                <span className="mb-1 block text-[var(--text-secondary)]">Title</span>
+                <span className="mb-1 block text-[var(--text-secondary)]">제목</span>
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -269,7 +272,7 @@ export function MarketingReviewChannelTabs({
             </div>
           ) : active.channel !== "shortform" ? (
             <label className="block text-sm">
-              <span className="mb-1 block text-[var(--text-secondary)]">Title (optional)</span>
+              <span className="mb-1 block text-[var(--text-secondary)]">제목 (선택)</span>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -285,59 +288,57 @@ export function MarketingReviewChannelTabs({
                 Shortform 내레이션/렌더 상태는 아래 Shortform 패널에서 소스 PICK·렌더·미리보기를 확인하세요.
                 이 탭에서는 승인만 가능하며 READY 게이트가 적용됩니다. 재생성 UI는 노출하지 않습니다.
               </p>
-              <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--surface-muted)] p-3 text-xs">
+              <div className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--surface-muted)] p-3 text-sm">
                 {sanitizeTextForDisplay(active.body, 4000)}
-              </pre>
+              </div>
             </div>
           ) : (
             <label className="block text-sm">
-              <span className="mb-1 block text-[var(--text-secondary)]">Body</span>
+              <span className="mb-1 block text-[var(--text-secondary)]">본문</span>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 disabled={!editable || busy}
                 rows={active.channel === "naver_blog" ? 18 : 10}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-mono text-[13px]"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
               />
             </label>
           )}
 
           <div className="flex flex-wrap gap-2">
             {active.channel !== "shortform" ? (
-              <button
+              <AdminButton
                 type="button"
                 disabled={!editable || busy}
                 onClick={() => void saveChannel()}
-                className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 채널 저장
-              </button>
+              </AdminButton>
             ) : null}
-            <button
+            <AdminButton
               type="button"
               disabled={busy || context.governance.decision === "BLOCK"}
               onClick={() => void setStatus("approved")}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               채널 승인
-            </button>
-            <button
+            </AdminButton>
+            <AdminButton
               type="button"
+              variant="secondary"
               disabled={busy}
               onClick={() => void setStatus("skipped")}
-              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
             >
               채널 Skip
-            </button>
+            </AdminButton>
             {active.channel !== "shortform" ? (
-              <button
+              <AdminButton
                 type="button"
+                variant="secondary"
                 disabled={busy}
                 onClick={() => void regenerate(false)}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
                 채널만 재생성
-              </button>
+              </AdminButton>
             ) : null}
             <button
               type="button"

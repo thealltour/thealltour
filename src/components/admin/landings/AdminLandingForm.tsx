@@ -44,7 +44,7 @@ function normalizeSlug(input: string): string {
 
 function fieldRing(highlightIssueFields: string[] | undefined, field: string): string {
   if (!highlightIssueFields?.includes(field)) return "";
-  return "rounded-lg ring-2 ring-amber-400/90 ring-offset-2 ring-offset-[var(--surface)]";
+  return "rounded-lg ring-2 ring-[var(--warning)]/90 ring-offset-2 ring-offset-[var(--surface)]";
 }
 
 export default function AdminLandingForm({

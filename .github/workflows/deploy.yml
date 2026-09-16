@@ -10,22 +10,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm ci'
+          cache: 'npm'
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: npm ci
 
-      # Vercel 환경변수 가져오기
-      - run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Pull Vercel env
+        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      # GitHub에서 빌드 (Vercel CPU 안 씀)
-      - run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build on GitHub (free)
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      # 빌드 결과만 Vercel에 업로드
-      - run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy prebuilt to Vercel
+        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

@@ -21,6 +21,27 @@ import type { CompletedMarketingCandidate, DailyMarketingPipelineResult } from "
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
 import { bootstrapHumanReviewForCandidate } from "@/lib/marketing/review/bootstrap/bootstrapHumanReview";
 import type { HumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
+import { parseDurableStoryPointCandidateSet } from "@/lib/marketing/storyPoint/persistence";
+
+/** Prefer the CandidateSet that keeps external / human-imported Stories. */
+export function preferRicherStoryPointCandidateSet(
+  incoming: unknown,
+  previous: unknown,
+): unknown {
+  const next = parseDurableStoryPointCandidateSet(incoming);
+  const prev = parseDurableStoryPointCandidateSet(previous);
+  if (!next && !prev) return incoming ?? previous ?? null;
+  if (!next) return previous;
+  if (!prev) return incoming;
+  const extCount = (set: { candidates: Array<{ pointId: string }> }) =>
+    set.candidates.filter((c) => String(c.pointId).startsWith("sp_ext_")).length;
+  const nextExt = extCount(next);
+  const prevExt = extCount(prev);
+  if (prevExt > nextExt) return previous;
+  if (nextExt > prevExt) return incoming;
+  if (prev.candidates.length > next.candidates.length) return previous;
+  return incoming;
+}
 
 export type ProcessProductionQueueResult = {
   dryRun: boolean;
@@ -302,10 +323,15 @@ export async function processMarketingProductionQueue(input: {
               null,
             researchVerdict: result.audienceContentResearchBrief?.researchVerdict ?? null,
             researchSkipReasons: result.audienceContentResearchBrief?.verdictReasons ?? [],
-            storyPointCandidateSet:
-              result.storyPointCandidateSet ??
-              claimed.metadata.storyPointCandidateSet ??
-              null,
+            storyPointCandidateSet: preferRicherStoryPointCandidateSet(
+              result.storyPointCandidateSet,
+              claimed.metadata.storyPointCandidateSet,
+            ),
+            storyPointCandidateSetFull: preferRicherStoryPointCandidateSet(
+              result.run.metadata?.storyPointCandidateSetFull ?? result.storyPointCandidateSet,
+              claimed.metadata.storyPointCandidateSetFull ??
+                claimed.metadata.storyPointCandidateSet,
+            ),
             canonicalMarketingAsset:
               result.candidate?.canonicalMarketingAsset ??
               claimed.metadata.canonicalMarketingAsset ??

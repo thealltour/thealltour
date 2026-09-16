@@ -69,18 +69,188 @@ const STRUCTURAL_GENERIC_FALLBACK =
 const OVERBROAD_ABSOLUTE =
   /무조건|항상\s*더\s*중요|등급보다\s*위치가\s*더\s*중요하(다|며)|위치가\s*항상/i;
 
+/** Language-agnostic stopwords — keep destination/entity tokens, drop glue words. */
+const STOPWORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "from",
+  "that",
+  "this",
+  "when",
+  "what",
+  "how",
+  "are",
+  "was",
+  "were",
+  "been",
+  "have",
+  "has",
+  "had",
+  "not",
+  "but",
+  "into",
+  "onto",
+  "than",
+  "then",
+  "also",
+  "only",
+  "more",
+  "most",
+  "such",
+  "their",
+  "they",
+  "them",
+  "does",
+  "did",
+  "can",
+  "could",
+  "should",
+  "would",
+  "will",
+  "about",
+  "over",
+  "under",
+  "between",
+  "without",
+  "within",
+  "while",
+  "where",
+  "which",
+  "whose",
+  "whom",
+  "being",
+  "through",
+  "during",
+  "before",
+  "after",
+  "above",
+  "below",
+  "other",
+  "some",
+  "any",
+  "each",
+  "few",
+  "own",
+  "same",
+  "too",
+  "very",
+  "just",
+  "like",
+  "vs",
+  "or",
+  "an",
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "by",
+  "as",
+  "is",
+  "it",
+  "be",
+  "a",
+  "해당",
+  "일정",
+  "맥락",
+  "에서는",
+  "에서",
+  "증거",
+  "범위",
+  "안에서만",
+  "말함",
+  "관련",
+  "대한",
+  "위한",
+  "있는",
+  "없는",
+  "하는",
+  "되는",
+  "되는가",
+  "인가",
+  "할까",
+  "있다",
+  "없다",
+  "한다",
+  "된다",
+  "위해",
+  "통해",
+  "따라",
+  "같은",
+  "다른",
+  "보다",
+  "가장",
+  "매우",
+  "정말",
+  "부분",
+  "답변",
+  "입니다",
+  "수준의",
+  "관찰",
+  "신호만",
+  "있어",
+  "군도는",
+  "위치하며",
+  "바탕으로",
+  "방식을",
+  "취함",
+]);
+
+/**
+ * EN↔KO travel entity / theme aliases. Longer patterns first.
+ * Fixes Con Dao vs 콘다오 style Story lock false negatives.
+ */
+const ENTITY_ALIAS_RULES: Array<{ canonical: string; pattern: RegExp }> = [
+  { canonical: "condao", pattern: /côn\s*đảo|con[\s\-]?dao|콘\s*다오|꼰\s*다오|콘다오|꼰다오/gi },
+  { canonical: "phuquoc", pattern: /ph[uú]\s*qu[oố]c|푸\s*꾸옥|푸꾸옥/gi },
+  { canonical: "ninhbinh", pattern: /ninh\s*binh|닌\s*빈|닌빈/gi },
+  { canonical: "danang", pattern: /da\s*nang|đ[àa]\s*n[ẵă]ng|다\s*낭|다낭/gi },
+  { canonical: "nhatrang", pattern: /nha\s*trang|나\s*트랑|나트랑/gi },
+  { canonical: "bangkok", pattern: /방콕|bangkok/gi },
+  { canonical: "thailand", pattern: /태국|thailand/gi },
+  { canonical: "vietnam", pattern: /vi[eệ]t\s*nam|베트남|vietnam/gi },
+  { canonical: "masstourism", pattern: /mass\s*tourism|대규모\s*관광|대중\s*관광|오버투어리즘|과잉\s*관광/gi },
+  { canonical: "overtourism", pattern: /overtourism|과잉관광/gi },
+  { canonical: "conservation", pattern: /conservation|환경\s*보호|자연\s*보호|보존|보호된|보호\s*구역/gi },
+  { canonical: "sustainable", pattern: /sustainable|지속\s*가능/gi },
+  { canonical: "marine", pattern: /marine|해양|바다\s*생태계/gi },
+  { canonical: "ecosystem", pattern: /ecosystem|생태계|생태\s*안식처|생태/gi },
+  { canonical: "sanctuary", pattern: /sanctuary|안식처|성역/gi },
+  { canonical: "tourism", pattern: /tourism|관광/gi },
+  { canonical: "luxury", pattern: /luxury|럭셔리|호화|고급\s*휴양/gi },
+  { canonical: "barefoot", pattern: /barefoot|맨발/gi },
+  { canonical: "resort", pattern: /resort|리조트/gi },
+  { canonical: "booking", pattern: /booking|예약\s*전|예약/gi },
+];
+
+function canonicalizeTravelText(text: string): string {
+  let out = ` ${text} `;
+  for (const rule of ENTITY_ALIAS_RULES) {
+    out = out.replace(rule.pattern, ` ${rule.canonical} `);
+  }
+  return out.replace(/\s+/g, " ").trim();
+}
+
 function tokenize(text: string): string[] {
-  return text
+  return canonicalizeTravelText(text)
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((t) => t.length >= 2);
 }
 
+function contentTokens(text: string): string[] {
+  // Hangul content words are often 2 syllables (위치, 등급, 부모) — keep len>=2.
+  return tokenize(text).filter((t) => !STOPWORDS.has(t) && t.length >= 2);
+}
+
 function significantOverlap(a: string, b: string, minHits = 1): boolean {
-  const left = new Set(tokenize(a));
+  const left = new Set(contentTokens(a));
+  if (left.size === 0) return false;
   let hits = 0;
-  for (const t of tokenize(b)) {
+  for (const t of contentTokens(b)) {
     if (left.has(t)) hits += 1;
   }
   return hits >= minHits;
@@ -106,12 +276,68 @@ function evidenceSupportBlob(brief: EvidenceBackedStoryBrief): string {
   ].join("\n");
 }
 
+function claimScopeBlob(brief: EvidenceBackedStoryBrief): string {
+  return [
+    brief.supportedClaimBoundary ?? "",
+    ...brief.researchSupportedFraming,
+    ...brief.researchQuestionFindings
+      .filter((f) => f.status === "answered" || f.status === "partially_answered")
+      .map((f) => `${f.question}\n${f.finding}`),
+  ].join("\n");
+}
+
+/** Topic-agnostic evidence lexicon (EN/KO). Do not hardcode destination vocab. */
 function collectEvidenceTokens(brief: EvidenceBackedStoryBrief): Set<string> {
-  return new Set(
-    tokenize(evidenceSupportBlob(brief)).filter((t) =>
-      /방콕|나트랑|호텔|위치|등급|bts|mrt|부모|이동|접근|패키지|크루즈|부산|항공|교통|숙소/i.test(t),
-    ),
-  );
+  return new Set(contentTokens(evidenceSupportBlob(brief)));
+}
+
+function distinctiveAnchors(...blobs: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const blob of blobs) {
+    for (const t of contentTokens(blob)) {
+      // Prefer entity-like / longer tokens for cross-lingual residual anchors.
+      if (t.length >= 4) out.add(t);
+    }
+  }
+  return out;
+}
+
+function sharesDistinctiveAnchors(text: string, anchors: Set<string>, minHits = 1): boolean {
+  if (anchors.size === 0) return false;
+  let hits = 0;
+  for (const t of contentTokens(text)) {
+    if (anchors.has(t)) {
+      hits += 1;
+      if (hits >= minHits) return true;
+    }
+  }
+  return false;
+}
+
+function fieldAlignsWithStory(input: {
+  fieldText: string;
+  primary: string;
+  storyCore: string;
+  claimScope: string;
+  anchors: Set<string>;
+}): boolean {
+  const text = input.fieldText.trim();
+  if (!text) return true;
+  if (significantOverlap(input.primary, text, 1)) return true;
+  if (significantOverlap(input.storyCore, text, 2)) return true;
+  // PARTIAL boundary is often EN while CS writes KO — 1 thematic hit after alias normalize is enough.
+  if (significantOverlap(input.claimScope, text, 1)) return true;
+  // English StoryPoint + Korean CS paraphrase: shared canonical entities (condao, conservation…).
+  if (sharesDistinctiveAnchors(text, input.anchors, 1)) return true;
+  return false;
+}
+
+function knownEvidenceIds(brief: EvidenceBackedStoryBrief): Set<string> {
+  return new Set([
+    ...brief.evidenceAssessment.map((a) => a.evidenceId),
+    ...brief.usableFactIds,
+    ...brief.researchQuestionFindings.flatMap((f) => f.evidenceRefs),
+  ]);
 }
 
 function takeawayHasEvidenceSupport(
@@ -121,10 +347,14 @@ function takeawayHasEvidenceSupport(
 ): boolean {
   const mapped = explicitRefs?.find((r) => r.takeaway.trim() === takeaway.trim());
   if (mapped && mapped.evidenceRefs.length > 0) {
-    return significantOverlap(evidenceSupportBlob(brief), takeaway, 1);
+    const known = knownEvidenceIds(brief);
+    const refsKnown = mapped.evidenceRefs.some((id) => known.has(id));
+    if (refsKnown) return true;
+    if (significantOverlap(evidenceSupportBlob(brief), takeaway, 1)) return true;
   }
   const evidenceTokens = collectEvidenceTokens(brief);
-  if (tokenize(takeaway).some((t) => evidenceTokens.has(t))) return true;
+  if (contentTokens(takeaway).some((t) => evidenceTokens.has(t))) return true;
+  if (significantOverlap(claimScopeBlob(brief), takeaway, 1)) return true;
   return brief.researchQuestionFindings.some(
     (f) =>
       (f.status === "answered" || f.status === "partially_answered") &&
@@ -272,10 +502,18 @@ export function validateContentPropositionAgainstStory(
     }
   }
 
+  const storyCore = storyCoreBlob(storyPoint);
+  const claimScope = claimScopeBlob(evidenceBrief);
+  const anchors = distinctiveAnchors(storyCore, claimScope);
+
   if (
-    proposition.audienceTension.trim() &&
-    !significantOverlap(storyPoint.audienceTension, proposition.audienceTension, 1) &&
-    !significantOverlap(storyCoreBlob(storyPoint), proposition.audienceTension, 2)
+    !fieldAlignsWithStory({
+      fieldText: proposition.audienceTension,
+      primary: storyPoint.audienceTension,
+      storyCore,
+      claimScope,
+      anchors,
+    })
   ) {
     issues.push(
       issue(
@@ -288,9 +526,13 @@ export function validateContentPropositionAgainstStory(
   }
 
   if (
-    proposition.readerGain.trim() &&
-    !significantOverlap(storyPoint.readerPayoff, proposition.readerGain, 1) &&
-    !significantOverlap(storyCoreBlob(storyPoint), proposition.readerGain, 2)
+    !fieldAlignsWithStory({
+      fieldText: proposition.readerGain,
+      primary: storyPoint.readerPayoff,
+      storyCore,
+      claimScope,
+      anchors,
+    })
   ) {
     issues.push(
       issue(
@@ -311,9 +553,13 @@ export function validateContentPropositionAgainstStory(
         );
 
   if (
-    proposition.contentPromise.trim() &&
-    !significantOverlap(promiseAnchor, proposition.contentPromise, 1) &&
-    !significantOverlap(storyCoreBlob(storyPoint), proposition.contentPromise, 2)
+    !fieldAlignsWithStory({
+      fieldText: proposition.contentPromise,
+      primary: promiseAnchor,
+      storyCore,
+      claimScope,
+      anchors,
+    })
   ) {
     issues.push(
       issue(
@@ -340,8 +586,9 @@ export function validateContentPropositionAgainstStory(
 
   if (STRUCTURAL_GENERIC_FALLBACK.test(propBlob)) {
     const keepsStory =
-      significantOverlap(storyCoreBlob(storyPoint), propBlob, 2) ||
-      significantOverlap(promiseAnchor, propBlob, 2);
+      significantOverlap(storyCore, propBlob, 2) ||
+      significantOverlap(promiseAnchor, propBlob, 2) ||
+      sharesDistinctiveAnchors(propBlob, anchors, 2);
     if (!keepsStory) {
       issues.push(
         issue(

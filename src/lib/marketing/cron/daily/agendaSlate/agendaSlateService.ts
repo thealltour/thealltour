@@ -4,6 +4,7 @@ import {
   AgendaSlateActionError,
   listSelectedToday,
   reconcileSelectedTodayWithTerminalRequests,
+  restoreSelectedTodayForAwaitingStory,
 } from "@/lib/marketing/cron/daily/agendaSlate/agendaSlateActions";
 import type {
   AgendaSlateAction,
@@ -275,14 +276,43 @@ export async function createAgendaSlateService(deps: {
         })
         .map((r) => r.slateItemId),
     );
-    if (terminalSlateItemIds.size === 0) return slate;
-    const { slate: next, releasedCount } = reconcileSelectedTodayWithTerminalRequests({
-      slate,
-      terminalSlateItemIds,
-      expectedBusinessDateKst: date,
-      now,
-    });
-    if (releasedCount === 0) return slate;
+    const awaitingStorySlateItemIds = new Set(
+      requests
+        .filter(
+          (r) =>
+            r.status === "COMPLETED" &&
+            r.metadata?.productionOutcome === "awaiting_story_selection",
+        )
+        .map((r) => r.slateItemId),
+    );
+
+    let next = slate;
+    let dirty = false;
+    if (terminalSlateItemIds.size > 0) {
+      const released = reconcileSelectedTodayWithTerminalRequests({
+        slate: next,
+        terminalSlateItemIds,
+        expectedBusinessDateKst: date,
+        now,
+      });
+      if (released.releasedCount > 0) {
+        next = released.slate;
+        dirty = true;
+      }
+    }
+    if (awaitingStorySlateItemIds.size > 0) {
+      const restored = restoreSelectedTodayForAwaitingStory({
+        slate: next,
+        awaitingStorySlateItemIds,
+        expectedBusinessDateKst: date,
+        now,
+      });
+      if (restored.restoredCount > 0) {
+        next = restored.slate;
+        dirty = true;
+      }
+    }
+    if (!dirty) return slate;
     return slateRepo.updateSlate(next);
   }
 

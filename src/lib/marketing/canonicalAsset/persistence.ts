@@ -40,15 +40,17 @@ export function readCanonicalAssetFromPackage(
   }
 }
 
-/** Prefer candidate → package → production request. Legacy: null (do not fabricate). */
+/** Prefer package → candidate → production request. Legacy: null (do not fabricate).
+ * Package is the durable SoT after human save/approve writes to disk.
+ */
 export function resolveCanonicalMarketingAsset(input: {
   candidate?: CompletedMarketingCandidate | null;
   packageRoot?: string | null;
   productionRequest?: MarketingProductionRequest | null;
 }): CanonicalMarketingAsset | null {
   return (
-    readCanonicalAssetFromCandidate(input.candidate) ??
     readCanonicalAssetFromPackage(input.packageRoot) ??
+    readCanonicalAssetFromCandidate(input.candidate) ??
     readCanonicalAssetFromProductionRequest(input.productionRequest)
   );
 }

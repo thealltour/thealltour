@@ -24,6 +24,14 @@ import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/p
 import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
 import { checkShortformHookPayoff } from "@/lib/marketing/publishable/composerRuntime";
 
+function asPromptText(prompt: unknown): string {
+  if (typeof prompt === "string") return prompt;
+  if (prompt && typeof prompt === "object" && "text" in prompt) {
+    return String((prompt as { text: string }).text);
+  }
+  return String(prompt ?? "");
+}
+
 function proposition(overrides: Partial<ContentProposition> = {}): ContentProposition {
   return {
     contract: CONTENT_PROPOSITION_CONTRACT,
@@ -230,13 +238,13 @@ describe("MQ-4 publishable success gates", () => {
     const out = await composeThreadsPublishableContent({
       composerInput: input,
       invoke: async () => goodThreadsJson(),
-      modelProfile: "content-strategist",
+      modelProfile: "channel-editor-threads",
     });
     expect(out.status).toBe("generated");
     expect(out.provenance.composer).toBe("llm");
     expect(out.publishableSuccess).toBe(true);
     expect(out.provenance.proposition?.contract).toBe(CONTENT_PROPOSITION_CONTRACT);
-    expect(out.provenance.modelProfile).toBe("content-strategist");
+    expect(out.provenance.modelProfile).toBe("channel-editor-threads");
   });
 
   it("insufficient proposition skips polished generation", async () => {
@@ -280,12 +288,12 @@ describe("MQ-4 export / persistence / idempotency", () => {
     mkdirSync(join(dir, "context"), { recursive: true });
     const cand = candidate();
     let calls = 0;
-    const invoke = async (prompt: string) => {
+    const invoke = async (prompt) => {
       calls += 1;
-      if (prompt.includes("숏폼") || prompt.includes("나레이션") || prompt.includes("segments")) {
+      if (asPromptText(prompt).includes("숏폼") || asPromptText(prompt).includes("나레이션") || asPromptText(prompt).includes("segments")) {
         return goodShortformJson();
       }
-      if (prompt.includes("Band") || prompt.includes("밴드")) {
+      if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드")) {
         return goodBandJson();
       }
       return goodThreadsJson();
@@ -310,6 +318,62 @@ describe("MQ-4 export / persistence / idempotency", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it("channel-scoped regenerate invokes LLM only for the forced channel", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "mq4-scope-llm-"));
+    mkdirSync(join(dir, "context"), { recursive: true });
+    const cand = candidate();
+    let calls = 0;
+    const invoke = async (prompt) => {
+      calls += 1;
+      if (asPromptText(prompt).includes("segments")) return goodShortformJson();
+      if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드")) return goodBandJson();
+      if (asPromptText(prompt).includes("blog") || asPromptText(prompt).includes("블로그")) {
+        return JSON.stringify({
+          title: "블로그 제목",
+          body: "블로그 본문입니다. ".repeat(40),
+        });
+      }
+      return goodThreadsJson();
+    };
+    await ensurePublishableContent({
+      candidate: cand,
+      packageRoot: dir,
+      forceRegenerate: true,
+      explicitTargetChannels: ["threads", "shortform", "naver_blog"],
+      invoke,
+      persist: true,
+    });
+    const afterSeed = calls;
+    const scopedPrompts: string[] = [];
+    const scoped = await ensurePublishableContent({
+      candidate: cand,
+      packageRoot: dir,
+      forceRegenerateChannels: ["threads"],
+      explicitTargetChannels: ["threads", "shortform", "naver_blog"],
+      invoke: async (prompt) => {
+        calls += 1;
+        const text = asPromptText(prompt);
+        scopedPrompts.push(text);
+        expect(
+          typeof prompt === "object" && prompt && "channel" in prompt
+            ? (prompt as { channel: string }).channel
+            : "threads",
+        ).toBe("threads");
+        return JSON.stringify({
+          title: "재생성 스레드",
+          body: JSON.parse(goodThreadsJson()).body,
+        });
+      },
+      persist: true,
+    });
+    // composer may do initial + one repair; both must stay on the forced channel
+    expect(calls - afterSeed).toBeGreaterThanOrEqual(1);
+    expect(calls - afterSeed).toBeLessThanOrEqual(2);
+    expect(scopedPrompts.every((p) => /CHANNEL: Threads|Threads\(스레드\)/i.test(p))).toBe(true);
+    expect(scoped.threads.title).toBe("재생성 스레드");
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it("export with prebuilt LLM bundle writes non-degraded post", async () => {
     const dir = mkdtempSync(join(tmpdir(), "mq4-export-llm-"));
     mkdirSync(join(dir, "pkg"), { recursive: true });
@@ -318,8 +382,8 @@ describe("MQ-4 export / persistence / idempotency", () => {
       candidate: cand,
       forceRegenerate: true,
       invoke: async (prompt) => {
-        if (prompt.includes("segments")) return goodShortformJson();
-        if (prompt.includes("Band") || prompt.includes("밴드") || prompt.includes("community")) {
+        if (asPromptText(prompt).includes("segments")) return goodShortformJson();
+        if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드") || asPromptText(prompt).includes("community")) {
           return goodBandJson();
         }
         return goodThreadsJson();
@@ -342,10 +406,10 @@ describe("MQ-4 channel differentiation + proposition consumption", () => {
     const input = buildPublishableComposerInput(candidate());
     expect(input.contentProposition?.contentPromise).toBeTruthy();
     const prompts: string[] = [];
-    const invoke = async (prompt: string) => {
-      prompts.push(prompt);
-      if (prompt.includes("segments") || prompt.includes("숏폼")) return goodShortformJson();
-      if (prompt.includes("Band") || prompt.includes("밴드") || prompt.includes("community")) {
+    const invoke = async (prompt) => {
+      prompts.push(asPromptText(prompt));
+      if (asPromptText(prompt).includes("segments") || asPromptText(prompt).includes("숏폼")) return goodShortformJson();
+      if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드") || asPromptText(prompt).includes("community")) {
         return goodBandJson();
       }
       return goodThreadsJson();

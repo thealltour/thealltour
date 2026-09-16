@@ -224,17 +224,28 @@ function ProductionPipelineBanner(props: {
   const latest = [...requests].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
   const outcomeOf = (pr: MarketingProductionRequest) =>
     typeof pr.metadata?.productionOutcome === "string" ? pr.metadata.productionOutcome : null;
+  const awaitingStory = requests.filter(
+    (pr) => pr.status === "COMPLETED" && outcomeOf(pr) === "awaiting_story_selection",
+  );
+  const awaitingAsset = requests.filter(
+    (pr) => pr.status === "COMPLETED" && outcomeOf(pr) === "awaiting_asset_approval",
+  );
   const completedWithReview = requests.filter(
-    (pr) => pr.status === "COMPLETED" && Boolean(pr.completedCandidateId),
+    (pr) =>
+      pr.status === "COMPLETED" &&
+      Boolean(pr.completedCandidateId) &&
+      outcomeOf(pr) !== "awaiting_story_selection",
   );
   const tone =
     counts.failed > 0
       ? "border-[var(--danger)]/40 bg-[var(--danger-bg)] text-[var(--danger)]"
-      : counts.running > 0
-        ? "border-[var(--primary)]/40 bg-[var(--primary-soft)] text-[var(--primary)]"
-        : counts.queued > 0
-          ? "border-[var(--warning)]/40 bg-[var(--warning-bg)] text-[var(--warning)]"
-          : "border-[var(--success)]/40 bg-[var(--success-bg)] text-[var(--success)]";
+      : awaitingStory.length > 0
+        ? "border-violet-500/40 bg-violet-500/10 text-violet-950"
+        : counts.running > 0
+          ? "border-[var(--primary)]/40 bg-[var(--primary-soft)] text-[var(--primary)]"
+          : counts.queued > 0
+            ? "border-[var(--warning)]/40 bg-[var(--warning-bg)] text-[var(--warning)]"
+            : "border-[var(--success)]/40 bg-[var(--success-bg)] text-[var(--success)]";
 
   return (
     <div className={cn("space-y-1 border-b px-4 py-3 text-xs", tone)}>
@@ -255,24 +266,49 @@ function ProductionPipelineBanner(props: {
           갱신 {formatTs(latest.updatedAt)}
         </div>
       ) : null}
-      {completedWithReview.length > 0 ? (
+      {awaitingStory.length > 0 ? (
+        <div className="space-y-1 pt-0.5">
+          <div className="font-semibold">
+            Story 선택 대기 {awaitingStory.length}건 — 아직 공통 원문/후보 검토 화면이 아닙니다.
+          </div>
+          <div className="opacity-90">
+            아래 해당 후보 카드의 「Story 후보」에서 하나를 고른 뒤 「이 Story로 제작」을 누르세요.
+            (카드 상태가 「대기」여도 Story 선택은 가능합니다.)
+          </div>
+          <ul className="list-disc space-y-0.5 pl-4 font-medium">
+            {awaitingStory.map((pr) => (
+              <li key={pr.requestId}>
+                {pr.selection?.title?.trim() || pr.slateItemId}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {awaitingAsset.length > 0 || completedWithReview.length > 0 ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
           <span className="font-medium">수정·승인:</span>
-          {completedWithReview.map((pr) => (
-            <Link
-              key={pr.requestId}
-              href={`/theall_manager_only/marketing-review/${encodeURIComponent(pr.completedCandidateId!)}`}
-              className="font-medium underline underline-offset-2"
-            >
-              {pr.selection?.title?.trim() || pr.completedCandidateId}
-              {outcomeOf(pr) === "awaiting_asset_approval" ? " (원문 승인)" : ""}
-              {" →"}
-            </Link>
-          ))}
+          {[...awaitingAsset, ...completedWithReview.filter((pr) => !awaitingAsset.includes(pr))].map(
+            (pr) =>
+              pr.completedCandidateId ? (
+                <Link
+                  key={pr.requestId}
+                  href={`/theall_manager_only/marketing-review/${encodeURIComponent(pr.completedCandidateId)}`}
+                  className="font-medium underline underline-offset-2"
+                >
+                  {pr.selection?.title?.trim() || pr.completedCandidateId}
+                  {outcomeOf(pr) === "awaiting_asset_approval" ? " (원문 승인)" : ""}
+                  {" →"}
+                </Link>
+              ) : null,
+          )}
         </div>
-      ) : counts.completed > 0 ? (
+      ) : null}
+      {counts.completed > 0 &&
+      awaitingStory.length === 0 &&
+      awaitingAsset.length === 0 &&
+      completedWithReview.length === 0 ? (
         <div className="opacity-80">
-          COMPLETED {counts.completed}건 — 아래 후보 카드에서 완성 후보 링크를 확인하세요.
+          COMPLETED {counts.completed}건 — 후보 카드의 제작 상태 박스에서 다음 단계를 확인하세요.
         </div>
       ) : null}
       <div className="opacity-80">
@@ -311,13 +347,20 @@ function CandidateCard(props: {
     typeof pr?.metadata?.productionOutcome === "string" ? pr.metadata.productionOutcome : null;
   const awaitingStory = outcome === "awaiting_story_selection";
   const storyCandidates = awaitingStory ? extractPassStoryCandidates(pr) : [];
+  const humanSelectionMeta = pr?.metadata?.humanStorySelection as
+    | { selectedStoryPointId?: string | null; lastResearchRejectReason?: string | null }
+    | undefined;
+  const staleHumanSelectionId =
+    typeof humanSelectionMeta?.selectedStoryPointId === "string" &&
+    humanSelectionMeta.selectedStoryPointId.trim() &&
+    !storyCandidates.some((c) => c.pointId === humanSelectionMeta.selectedStoryPointId)
+      ? humanSelectionMeta.selectedStoryPointId.trim()
+      : null;
   const rejectReason =
     typeof pr?.metadata?.lastStoryResearchRejectReason === "string"
       ? pr.metadata.lastStoryResearchRejectReason
-      : typeof (pr?.metadata?.humanStorySelection as { lastResearchRejectReason?: string } | undefined)
-            ?.lastResearchRejectReason === "string"
-        ? (pr?.metadata?.humanStorySelection as { lastResearchRejectReason: string })
-            .lastResearchRejectReason
+      : typeof humanSelectionMeta?.lastResearchRejectReason === "string"
+        ? humanSelectionMeta.lastResearchRejectReason
         : null;
 
   return (
@@ -341,6 +384,11 @@ function CandidateCard(props: {
             <span className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)]">
               {stateLabel(item.state)}
             </span>
+            {awaitingStory ? (
+              <span className="rounded border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 text-[11px] font-medium text-violet-950">
+                Story 선택 필요
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{item.summary}</p>
         </div>
@@ -428,6 +476,12 @@ function CandidateCard(props: {
               {rejectReason ? (
                 <p className="rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1.5 text-[var(--warning)]">
                   이전 선택 Story 연구 거부: {rejectReason}. 다른 PASS 후보를 고르세요.
+                </p>
+              ) : null}
+              {staleHumanSelectionId ? (
+                <p className="rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1.5 text-[var(--warning)]">
+                  이전에 고른 Story({staleHumanSelectionId})가 현재 후보 목록에 없습니다. 외부
+                  Story를 다시 가져오거나, 아래 PASS 후보 중 하나를 새로 선택하세요.
                 </p>
               ) : null}
               {storyCandidates.length === 0 ? (

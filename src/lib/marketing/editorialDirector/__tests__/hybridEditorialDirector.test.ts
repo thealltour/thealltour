@@ -1,7 +1,4 @@
-import { describe, expect, it } from "vitest";
-
-import { createInMemoryMarketingProductionRequestRepository } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
-import type { AgendaSlateCandidate, DailyAgendaSlate } from "@/lib/marketing/cron/daily/agendaSlate/types";
+import type { DailyAgendaSlate, AgendaSlateCandidate } from "@/lib/marketing/cron/daily/agendaSlate/types";
 import {
   AGENDA_SLATE_CANDIDATE_CONTRACT,
   DAILY_AGENDA_SLATE_CONTRACT,
@@ -10,17 +7,15 @@ import {
   buildEditorialDirectorClipboardText,
   buildAgendaSlateEditorialExportPayload,
 } from "@/lib/marketing/editorialDirector/buildSlateExport";
-import {
-  AGENDA_SLATE_PAYLOAD_END,
-  AGENDA_SLATE_PAYLOAD_START,
-  EDITORIAL_DIRECTOR_INSTRUCTION_KO,
-} from "@/lib/marketing/editorialDirector/editorialPrompt";
+import { EDITORIAL_DIRECTOR_INSTRUCTION_KO } from "@/lib/marketing/editorialDirector/editorialPrompt";
 import { EXTERNAL_EDITORIAL_DIRECTOR_CONTRACT } from "@/lib/marketing/editorialDirector/contracts";
 import { importExternalEditorialDirector } from "@/lib/marketing/editorialDirector/importExternalStories";
 import { parseExternalEditorialDirectorPayload } from "@/lib/marketing/editorialDirector/parseExternalPayload";
 import { PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY } from "@/lib/marketing/storyPoint/contracts";
 import { PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION } from "@/lib/marketing/storyPoint/humanStorySelection";
 import { PRODUCTION_REQUEST_EXTERNAL_STORY_PROVENANCE_KEY } from "@/lib/marketing/editorialDirector/contracts";
+import { createInMemoryMarketingProductionRequestRepository } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
+import { describe, expect, it } from "vitest";
 
 function slateItem(n: number, overrides: Partial<AgendaSlateCandidate> = {}): AgendaSlateCandidate {
   return {
@@ -190,19 +185,25 @@ function validExternalPayload(agendaId: string) {
 }
 
 describe("HYBRID editorial director — slate export", () => {
-  it("includes all agendas without preselection and wraps Korean prompt", () => {
+  it("copies slate JSON only without Editorial Director instruction prompt", () => {
     const slate = makeSlate(6);
     const built = buildEditorialDirectorClipboardText(slate);
     expect(built.agendaCount).toBe(6);
-    expect(built.text).toContain(EDITORIAL_DIRECTOR_INSTRUCTION_KO.slice(0, 40));
-    expect(built.text).toContain(AGENDA_SLATE_PAYLOAD_START);
-    expect(built.text).toContain(AGENDA_SLATE_PAYLOAD_END);
+    expect(built.text).not.toContain(EDITORIAL_DIRECTOR_INSTRUCTION_KO.slice(0, 40));
+    expect(built.text).not.toContain("Senior Marketing Editorial Director");
+    expect(built.text).not.toContain("STEP 1");
+    const parsed = JSON.parse(built.text) as {
+      contract: string;
+      agendaCount: number;
+      agendas: Array<{ agendaId: string }>;
+    };
+    expect(parsed.contract).toBeTruthy();
+    expect(parsed.agendaCount).toBe(6);
+    expect(parsed.agendas).toHaveLength(6);
+    expect(parsed.agendas.every((a) => a.agendaId.startsWith("asc_"))).toBe(true);
     const payload = buildAgendaSlateEditorialExportPayload(slate);
-    expect(payload.agendas).toHaveLength(6);
-    expect(payload.agendas.every((a) => a.agendaId.startsWith("asc_"))).toBe(true);
     expect(payload.agendas[0]?.productType).toBeNull();
     expect(payload.agendas[0]?.commercialIntent).toBeNull();
-    expect(JSON.parse(JSON.stringify(payload)).agendaCount).toBe(6);
   });
 });
 

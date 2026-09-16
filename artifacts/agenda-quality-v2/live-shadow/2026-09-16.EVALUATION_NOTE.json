@@ -1,0 +1,14 @@
+{
+  "note": "DAY0_NON_CANONICAL_FOR_5DAY_EVALUATION",
+  "businessDateKst": "2026-09-16",
+  "reason": "Day-0 controlled smoke plus same-date cache recheck overwrote the initial observational artifact before Phase 4C rerun protection. Editorial content is left unchanged.",
+  "formalFiveDayWindow": [
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21"
+  ],
+  "day0CountedInFiveDayEval": false,
+  "recordedAt": "2026-09-16T15:00:00.000Z"
+}

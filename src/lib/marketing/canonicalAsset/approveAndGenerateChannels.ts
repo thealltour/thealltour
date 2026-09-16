@@ -19,7 +19,15 @@ import {
   readCanonicalAssetFromPackage,
   resolveCanonicalMarketingAsset,
 } from "@/lib/marketing/canonicalAsset/persistence";
-import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
+import {
+  canValidateCanonicalAssetAgainstDomain,
+  resolveCanonicalAssetDomainContext,
+} from "@/lib/marketing/canonicalAsset/resolveCanonicalAssetDomainContext";
+import {
+  isApprovedCanonicalAsset,
+  validateCanonicalMarketingAsset,
+  type CanonicalAssetValidationIssue,
+} from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import type { DailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
@@ -47,10 +55,75 @@ function tryReadBundle(packageRoot: string): PublishableContentBundle | null {
   }
 }
 
+function assertExpectedRevisionTokens(input: {
+  existing: CanonicalMarketingAsset;
+  expectedAssetId?: string;
+  expectedVersion?: number;
+  expectedSourceRevision?: string;
+}): void {
+  const { existing } = input;
+  const hasAny =
+    input.expectedAssetId != null ||
+    input.expectedVersion != null ||
+    input.expectedSourceRevision != null;
+  if (!hasAny) return;
+  if (
+    (input.expectedAssetId != null && input.expectedAssetId !== existing.assetId) ||
+    (input.expectedVersion != null && input.expectedVersion !== existing.version) ||
+    (input.expectedSourceRevision != null &&
+      input.expectedSourceRevision !== existing.sourceRevision)
+  ) {
+    throw new Error("canonical_asset_stale");
+  }
+}
+
+function assertAssetPassesDomainValidation(input: {
+  candidate: CompletedMarketingCandidate;
+  asset: CanonicalMarketingAsset;
+  packageRoot?: string | null;
+  require: boolean;
+}): CanonicalAssetValidationIssue[] | null {
+  const ctx = resolveCanonicalAssetDomainContext({
+    candidate: {
+      ...input.candidate,
+      canonicalMarketingAsset: input.asset,
+    },
+    packageRoot: input.packageRoot,
+  });
+  if (!canValidateCanonicalAssetAgainstDomain(ctx)) {
+    if (input.require) {
+      throw new Error("canonical_asset_validation_context_missing");
+    }
+    return null;
+  }
+  const check = validateCanonicalMarketingAsset({
+    asset: input.asset,
+    storyPoint: ctx.storyPoint,
+    storyPointHash: ctx.storyPointHash,
+    evidenceBrief: ctx.evidenceBrief,
+    proposition: ctx.proposition,
+    expectedSourceRevision: input.asset.sourceRevision,
+  });
+  if (!check.ok) {
+    const err = new Error("canonical_asset_validation_failed") as Error & {
+      issues?: CanonicalAssetValidationIssue[];
+    };
+    err.issues = check.issues;
+    throw err;
+  }
+  return check.issues;
+}
+
 export async function saveCanonicalAssetHumanEdit(input: {
   candidate: CompletedMarketingCandidate;
   runRepo: DailyMarketingRunRepository;
   edits: CanonicalAssetEditFields;
+  /** Optimistic concurrency tokens (ChatGPT import / stale protection). */
+  expectedAssetId?: string;
+  expectedVersion?: number;
+  expectedSourceRevision?: string;
+  /** When true, domain validation is mandatory (ChatGPT import). */
+  requireDomainValidation?: boolean;
   now?: Date;
 }): Promise<{ candidate: CompletedMarketingCandidate; asset: CanonicalMarketingAsset }> {
   const assetRoot = resolveMarketingAssetRoot({});
@@ -68,10 +141,22 @@ export async function saveCanonicalAssetHumanEdit(input: {
   if (existing.status === "validation_failed") {
     throw new Error("validation_failed_asset_cannot_edit_until_regenerated");
   }
+  assertExpectedRevisionTokens({
+    existing,
+    expectedAssetId: input.expectedAssetId,
+    expectedVersion: input.expectedVersion,
+    expectedSourceRevision: input.expectedSourceRevision,
+  });
   const edited = applyHumanCanonicalAssetEdit({
     asset: existing,
     edits: input.edits,
     now: input.now,
+  });
+  assertAssetPassesDomainValidation({
+    candidate: input.candidate,
+    asset: edited,
+    packageRoot: existsSync(packageRoot) ? packageRoot : null,
+    require: Boolean(input.requireDomainValidation),
   });
   persistCanonicalAssetToPackage({ packageRoot, asset: edited });
   const priorBundle = tryReadBundle(packageRoot);
@@ -88,15 +173,20 @@ export async function saveCanonicalAssetHumanEdit(input: {
   }
   const candidate = attachCanonicalAssetToCandidate(input.candidate, edited);
   const saved = await input.runRepo.saveCandidate(candidate);
+  // Prefer the attached asset even if a repo incorrectly returned a stale row.
+  const durableCandidate =
+    saved.canonicalMarketingAsset?.version === edited.version
+      ? saved
+      : attachCanonicalAssetToCandidate(saved, edited);
   exportMarketingCandidatePackage({
-    candidate: saved,
+    candidate: durableCandidate,
     assetRoot,
     now: input.now,
     overwriteArtifacts: true,
     publishableBundle: null,
     canonicalMarketingAsset: edited,
   });
-  return { candidate: saved, asset: edited };
+  return { candidate: durableCandidate, asset: edited };
 }
 
 export async function approveCanonicalAssetAndGenerateChannels(input: {
@@ -134,6 +224,23 @@ export async function approveCanonicalAssetAndGenerateChannels(input: {
   if (existing.status === "validation_failed") {
     throw new Error("validation_failed_asset_cannot_approve");
   }
+  // Invalid content must never become approved / feed Channel Editors.
+  try {
+    assertAssetPassesDomainValidation({
+      candidate: input.candidate,
+      asset: existing,
+      packageRoot,
+      require: false,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "canonical_asset_validation_failed"
+    ) {
+      throw new Error("validation_failed_asset_cannot_approve");
+    }
+    throw error;
+  }
 
   const approved = approveCanonicalMarketingAsset({
     asset: existing,
@@ -144,6 +251,9 @@ export async function approveCanonicalAssetAndGenerateChannels(input: {
   persistCanonicalAssetToPackage({ packageRoot, asset: approved });
   let candidate = attachCanonicalAssetToCandidate(input.candidate, approved);
   candidate = await input.runRepo.saveCandidate(candidate);
+  if (candidate.canonicalMarketingAsset?.version !== approved.version) {
+    candidate = attachCanonicalAssetToCandidate(candidate, approved);
+  }
 
   const priorBundle = tryReadBundle(packageRoot);
   const priorVersion = priorBundle?.sourceAssetVersion ?? null;
@@ -155,7 +265,6 @@ export async function approveCanonicalAssetAndGenerateChannels(input: {
     packageRoot,
     now,
     invoke: input.invoke,
-    modelProfile: "content-strategist",
     approvedCanonicalAsset: approved,
     forceRegenerate: forceAll || !priorBundle,
     persist: true,

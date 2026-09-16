@@ -217,6 +217,28 @@ async function main() {
     completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
   });
 
+  const { isAgendaQualityV2ShadowEnabled } = await import(
+    "../src/lib/marketing/agendaQualityV2/shadow/config"
+  );
+  let agendaQualityV2Shadow:
+    | import("../src/lib/marketing/agendaQualityV2/shadow/liveShadowRunner").LiveShadowRunnerDeps
+    | undefined;
+  if (isAgendaQualityV2ShadowEnabled(process.env) && useRuntime && runtimeExecutor) {
+    const { createMarketingAgendaTransformerInvoke } = await import(
+      "../src/lib/marketing/agendaQualityV2/transformer/createInvoke"
+    );
+    agendaQualityV2Shadow = {
+      invoke: createMarketingAgendaTransformerInvoke({
+        executor: runtimeExecutor,
+        correlationId,
+        completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
+      }),
+      writeArtifacts: true,
+      runType: "SCHEDULED",
+      runId: `scheduled:${correlationId}`,
+    };
+  }
+
   const repo = await createDailyMarketingRunRepository();
   const slateRepo = await createDailyAgendaSlateRepository();
 
@@ -235,6 +257,7 @@ async function main() {
       repo,
       slateRepo,
       invokeManagerProfile: managerDispatch.invokeManagerProfile,
+      ...(agendaQualityV2Shadow ? { agendaQualityV2Shadow } : {}),
     },
   );
 
@@ -262,6 +285,31 @@ async function main() {
   console.log(`- curationMode: ${slate?.curation.mode ?? run.metadata?.curationMode ?? "none"}`);
   console.log(`- completedCandidateId: ${run.completedCandidateId ?? "none"}`);
   console.log(`- failureReason: ${run.failureReason ?? "none"}`);
+  const v2Shadow = run.metadata?.agendaQualityV2Shadow as
+    | {
+        attempted?: boolean;
+        status?: string;
+        slateCount?: number;
+        llmCallCount?: number;
+        blockerReason?: string | null;
+        artifactJson?: string | null;
+        productionLiveShadowReady?: boolean;
+      }
+    | undefined;
+  if (v2Shadow) {
+    console.log(`- agendaQualityV2Shadow: ${v2Shadow.status ?? "unknown"}`);
+    console.log(`- agendaQualityV2SlateCount: ${v2Shadow.slateCount ?? 0}`);
+    console.log(`- agendaQualityV2LlmCalls: ${v2Shadow.llmCallCount ?? 0}`);
+    console.log(
+      `- agendaQualityV2LiveReady: ${v2Shadow.productionLiveShadowReady ? "yes" : "no"}`,
+    );
+    if (v2Shadow.blockerReason) {
+      console.log(`- agendaQualityV2Blocker: ${v2Shadow.blockerReason}`);
+    }
+    if (v2Shadow.artifactJson) {
+      console.log(`- agendaQualityV2Artifact: ${v2Shadow.artifactJson}`);
+    }
+  }
   console.log("");
 
   if (run.failureReason && !slate) {

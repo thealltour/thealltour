@@ -43,6 +43,13 @@ export {
   checkShortformHookPayoff,
 } from "@/lib/marketing/publishable/composerRuntime";
 export {
+  CHANNEL_EDITOR_HERMES_PROFILES,
+  CHANNEL_EDITOR_COMMON_IDENTITY,
+  buildChannelEditorIdentityPrompt,
+  resolveChannelEditorHermesProfile,
+  assembleChannelComposerPromptParts,
+} from "@/lib/marketing/publishable/channelEditorIdentity";
+export {
   applyPublishableContentToMediaBrief,
   buildThreadsPostText,
 } from "@/lib/marketing/publishable/applyToMediaBrief";

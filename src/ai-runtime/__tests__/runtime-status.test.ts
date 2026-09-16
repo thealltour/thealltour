@@ -144,6 +144,11 @@ describe("ai-runtime observability", () => {
       "NVIDIA",
       "Gemini Secondary",
     ]);
+    expect(status.roleRoutingPolicies?.length).toBeGreaterThan(0);
+    expect(
+      status.roleRoutingPolicies?.find((policy) => policy.roleKey === "content_strategist")?.orderLabels,
+    ).toEqual(["Gemini", "OpenRouter", "Gemini Secondary", "NVIDIA"]);
+    expect(status.roleRoutingPolicies?.some((p) => /astra|chatgpt/i.test(p.roleKey))).toBe(false);
   });
 
   it("includes scheduler snapshot when scheduler is provided", () => {

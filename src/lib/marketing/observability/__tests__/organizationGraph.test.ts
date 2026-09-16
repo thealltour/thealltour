@@ -77,6 +77,29 @@ describe("OBS-7 organization topology", () => {
     expect(orgNodeKindLabel("core_agent")).toBe("CORE AGENT");
     expect(orgNodeKindLabel("planned_agent")).toBe("PLANNED");
     expect(orgNodeKindLabel("validation")).toBe("VALIDATION");
+    expect(orgNodeKindLabel("llm_staff")).toBe("LLM STAFF");
+    expect(orgNodeKindLabel("artifact_state")).toBe("ARTIFACT / STATE");
+    expect(orgNodeKindLabel("external_human_operated_ai")).toBe("EXTERNAL AI (MANUAL)");
+  });
+
+  it("classifies Asset Source Writer / Channel Editors as LLM staff and Canonical Asset as artifact", () => {
+    const nodes = getDefaultVisibleNodes(false);
+    expect(nodes.find((n) => n.id === "asset_source_writer")?.kind).toBe("llm_staff");
+    expect(nodes.find((n) => n.id === "channel_producer")?.kind).toBe("llm_staff");
+    expect(nodes.find((n) => n.id === "canonical_marketing_asset")?.kind).toBe("artifact_state");
+    expect(nodes.find((n) => n.id === "story_point_miner")?.kind).toBe("llm_staff");
+  });
+
+  it("shows external Astra nodes as display-only manual AI with no runtime span stages", () => {
+    const nodes = getDefaultVisibleNodes(false);
+    const editorial = nodes.find((n) => n.id === "chatgpt_astra_editorial_director");
+    const assetEditor = nodes.find((n) => n.id === "chatgpt_astra_asset_editor");
+    expect(editorial?.kind).toBe("external_human_operated_ai");
+    expect(editorial?.executionMode).toBe("manual_external");
+    expect(editorial?.spanStages).toEqual([]);
+    expect(assetEditor?.kind).toBe("external_human_operated_ai");
+    expect(assetEditor?.executionMode).toBe("manual_external");
+    expect(assetEditor?.spanStages).toEqual([]);
   });
 });
 

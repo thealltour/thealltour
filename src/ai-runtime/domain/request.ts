@@ -56,6 +56,11 @@ export interface RuntimeRequestMetadata {
    * candidate before inference (no credential damage). Never set on production agents.
    */
   spikeForceFallback?: boolean;
+  /**
+   * Optional marketing role route key (ORG_ROUTING_ALIGNMENT_V1).
+   * When absent/unknown, Router falls back to workload defaults.
+   */
+  roleKey?: string;
 }
 
 /**

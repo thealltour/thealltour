@@ -11,8 +11,7 @@ import {
 import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
-  buildChannelComposerInputJson,
-  channelComposerRules,
+  buildChannelComposerPromptParts,
   checkShortformHookPayoff,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
@@ -26,19 +25,22 @@ import {
   stripEvidenceIdsFromText,
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
+import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
 
-function buildShortformPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
-  return [
-    SHORTFORM_NARRATION_WRITING_CONTRACT,
-    channelComposerRules(input),
-    "Structure: hook → payoff → concrete useful information → close/action.",
-    "If hook promises N things / one rule / a checklist, body MUST deliver it.",
-    repairHint ?? "",
-    "INPUT_JSON:",
-    JSON.stringify(buildChannelComposerInputJson(input)),
-  ]
-    .filter(Boolean)
-    .join("\n");
+function buildShortformPrompt(
+  input: PublishableComposerInput,
+  repairHint?: string | null,
+): ChannelComposerPromptParts {
+  return buildChannelComposerPromptParts({
+    channel: "shortform",
+    writingContract: [
+      SHORTFORM_NARRATION_WRITING_CONTRACT,
+      "Structure: hook → payoff → concrete useful information → close/action.",
+      "If hook promises N things / one rule / a checklist, body MUST deliver it — without changing the approved Story.",
+    ].join("\n"),
+    composerInput: input,
+    repairHint,
+  });
 }
 
 function parseShortformJson(
@@ -180,6 +182,7 @@ export async function composeShortformNarration(input: {
   if (input.invoke) {
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
+      channel: "shortform",
       buildPrompt: (hint) => buildShortformPrompt(input.composerInput, hint),
       parseAndValidate: (raw) => {
         const parsed = parseShortformJson(raw, input.composerInput);

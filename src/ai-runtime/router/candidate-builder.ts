@@ -2,7 +2,12 @@ import type { RuntimeRequest } from "@/ai-runtime/domain/request";
 import type { AiRuntimeRegistry } from "@/ai-runtime/registry/registry";
 import { buildModelQuotaState } from "@/ai-runtime/quota/quota-state";
 import type { UsageLedgerAggregation } from "@/ai-runtime/quota/usage-ledger";
-import { policyRankForModel, scoreCandidate, sortCandidates } from "@/ai-runtime/router/scoring";
+import {
+  policyRankForModel,
+  resolveRequestModelRoute,
+  scoreCandidate,
+  sortCandidates,
+} from "@/ai-runtime/router/scoring";
 import type { RoutingCandidate } from "@/ai-runtime/router/types";
 
 export function buildEligibilityCriteria(request: RuntimeRequest) {
@@ -24,6 +29,7 @@ export function buildRoutingCandidates(input: {
 }): RoutingCandidate[] {
   const criteria = buildEligibilityCriteria(input.request);
   const eligible = input.registry.findEligibleModels(criteria);
+  const resolved = resolveRequestModelRoute(input.request);
 
   const now = input.now ?? (() => new Date());
   const candidates: RoutingCandidate[] = [];
@@ -47,8 +53,9 @@ export function buildRoutingCandidates(input: {
         priority: input.request.priority,
         quotaHealth: quotaState.health,
         request: input.request,
+        modelOrder: resolved.modelIds,
       }),
-      policyRank: policyRankForModel(model.id, input.request.workload),
+      policyRank: policyRankForModel(model.id, input.request.workload, resolved.modelIds),
       score: 0,
     };
 
@@ -58,6 +65,7 @@ export function buildRoutingCandidates(input: {
       priority: input.request.priority,
       quotaHealth: quotaState.health,
       request: input.request,
+      modelOrder: resolved.modelIds,
     });
 
     candidates.push(candidate);

@@ -10,6 +10,11 @@ import {
   WORKLOAD_CAPABILITY_AXIS,
   WORKLOAD_MODEL_ORDER,
 } from "@/ai-runtime/router/policies";
+import {
+  mapAgentIdToRoleKey,
+  resolveModelRoute,
+  type ResolvedModelRoute,
+} from "@/ai-runtime/router/role-routes";
 import type { RoutingCandidate } from "@/ai-runtime/router/types";
 
 function isProviderManaged(model: ModelDefinition): boolean {
@@ -33,8 +38,22 @@ export function quotaHealthScore(health: QuotaHealth): number {
   return ROUTING_SCORE_WEIGHTS.quotaHealth[health];
 }
 
-export function policyRankForModel(modelId: string, workload: WorkloadClass): number {
-  const order = WORKLOAD_MODEL_ORDER[workload];
+export function resolveRequestModelRoute(request: RuntimeRequest): ResolvedModelRoute {
+  const explicit =
+    typeof request.metadata?.roleKey === "string" ? request.metadata.roleKey.trim() : "";
+  const fromAgent = mapAgentIdToRoleKey(request.agentId, request.workload);
+  return resolveModelRoute({
+    role: explicit || fromAgent,
+    workload: request.workload,
+  });
+}
+
+export function policyRankForModel(
+  modelId: string,
+  workload: WorkloadClass,
+  modelOrder?: readonly string[],
+): number {
+  const order = modelOrder ?? WORKLOAD_MODEL_ORDER[workload];
   const index = order.indexOf(modelId);
   return index >= 0 ? order.length - index : 0;
 }
@@ -45,8 +64,10 @@ export function scoreCandidate(input: {
   priority: RuntimePriority;
   quotaHealth: QuotaHealth;
   request: RuntimeRequest;
+  modelOrder?: readonly string[];
 }): number {
   const { model, workload, priority, quotaHealth, request } = input;
+  const modelOrder = input.modelOrder ?? WORKLOAD_MODEL_ORDER[workload];
 
   if (quotaHealth === "blocked") {
     return ROUTING_SCORE_WEIGHTS.quotaHealth.blocked;
@@ -55,7 +76,7 @@ export function scoreCandidate(input: {
   let score = model.routing.basePriority;
   score += capabilityScoreForWorkload(model, workload) * ROUTING_SCORE_WEIGHTS.capabilityMultiplier;
   score += quotaHealthScore(quotaHealth);
-  score += policyRankForModel(model.id, workload) * ROUTING_SCORE_WEIGHTS.policyRankBonus;
+  score += policyRankForModel(model.id, workload, modelOrder) * ROUTING_SCORE_WEIGHTS.policyRankBonus;
 
   if (isFreeTier(model)) {
     score += ROUTING_SCORE_WEIGHTS.freeTierBonus[priority];
@@ -71,7 +92,8 @@ export function scoreCandidate(input: {
 
   if (model.id === AI_MODEL_IDS.GEMINI_FLASH_LITE_SECONDARY) {
     const preferredModelIds = request.routing?.preferredModelIds ?? [];
-    if (!preferredModelIds.includes(model.id)) {
+    const topOfRoute = modelOrder[0] === model.id;
+    if (!preferredModelIds.includes(model.id) && !topOfRoute) {
       score -= ROUTING_SCORE_WEIGHTS.secondaryGeminiPenalty;
     }
   }

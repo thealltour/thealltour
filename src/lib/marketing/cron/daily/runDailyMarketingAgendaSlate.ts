@@ -78,6 +78,11 @@ export type DailyAgendaSlatePipelineDeps = {
    * Failures never block Agenda. Omit to run default preflight; set null to skip.
    */
   trendPreflight?: import("@/lib/marketing/trends/preflight/runTrendAgendaPreflight").TrendAgendaPreflightDeps | null;
+  /**
+   * AGENDA_QUALITY_V2 Live Shadow — observational only.
+   * Failures never affect V1. Omit to use env flag + optional Runtime invoke from deps.
+   */
+  agendaQualityV2Shadow?: import("@/lib/marketing/agendaQualityV2/shadow/liveShadowRunner").LiveShadowRunnerDeps | null;
 };
 
 function buildObservability(run: Partial<DailyMarketingRun>): DailyMarketingRunObservability {
@@ -710,9 +715,78 @@ export async function runDailyMarketingAgendaSlate(
   };
   await repo.saveRun(completedRun);
 
+  // AGENDA_QUALITY_V2 Live Shadow — after V1 persist; fail-open; never mutates V1 slate.
+  let agendaQualityV2ShadowMeta: Record<string, unknown> | null = null;
+  if (deps.agendaQualityV2Shadow !== null) {
+    try {
+      const { isAgendaQualityV2ShadowEnabled } = await import(
+        "@/lib/marketing/agendaQualityV2/shadow/config"
+      );
+      if (isAgendaQualityV2ShadowEnabled(process.env) || deps.agendaQualityV2Shadow) {
+        const { runAgendaQualityV2LiveShadowSafe } = await import(
+          "@/lib/marketing/agendaQualityV2/shadow/liveShadowRunner"
+        );
+        const shadowResult = await runAgendaQualityV2LiveShadowSafe({
+          businessDateKst,
+          v1Slate: savedSlate,
+          agendaCandidates: research.agendaCandidates,
+          deps: {
+            ...(deps.agendaQualityV2Shadow ?? {}),
+            writeArtifacts: deps.agendaQualityV2Shadow?.writeArtifacts ?? true,
+            forceMemory:
+              deps.agendaQualityV2Shadow?.forceMemory ??
+              Boolean(process.env.VITEST || process.env.NODE_ENV === "test"),
+          },
+        });
+        agendaQualityV2ShadowMeta = {
+          attempted: shadowResult.attempted,
+          status: shadowResult.snapshot.status,
+          slateCount: shadowResult.snapshot.v2.slateCount,
+          llmCallCount: shadowResult.snapshot.source.llmCallCount,
+          cacheHits: shadowResult.snapshot.source.transformCacheHits,
+          blockerReason: shadowResult.snapshot.blockerReason,
+          failureReason: shadowResult.snapshot.failureReason,
+          productionLiveShadowReady:
+            shadowResult.snapshot.observability.productionLiveShadowReady,
+          artifactJson: shadowResult.artifactPaths?.jsonPath ?? null,
+          v1Unaffected: true,
+          shadow: true,
+          qualityVersion: "v2",
+        };
+      }
+    } catch (err) {
+      agendaQualityV2ShadowMeta = {
+        attempted: true,
+        status: "failed",
+        failureReason: err instanceof Error ? err.message : String(err),
+        v1Unaffected: true,
+        shadow: true,
+        qualityVersion: "v2",
+      };
+    }
+  }
+
+  const runWithShadow: DailyMarketingRun =
+    agendaQualityV2ShadowMeta
+      ? {
+          ...completedRun,
+          metadata: {
+            ...completedRun.metadata,
+            agendaQualityV2Shadow: agendaQualityV2ShadowMeta,
+          },
+        }
+      : completedRun;
+  if (agendaQualityV2ShadowMeta) {
+    try {
+      await repo.saveRun(runWithShadow);
+    } catch {
+      /* shadow meta persist must not fail V1 */
+    }
+  }
+
   return {
     idempotent: false,
-    run: completedRun,
+    run: runWithShadow,
     candidate: null,
     slate: savedSlate,
   };

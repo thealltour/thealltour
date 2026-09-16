@@ -14,7 +14,8 @@ export type HumanReviewEligibilityResult =
  * Domain invariant (mapPipelineToCandidateStatus):
  * - ready_for_human_review ⇐ governance ALLOW + pipeline publish_ready
  * - needs_human_review ⇐ governance REVIEW | approval_pending | malformed governance
- * - blocked ⇐ governance BLOCK | revision_required
+ *   | completeness revision_required (governance may not have run yet)
+ * - blocked ⇐ governance BLOCK only
  * - failed ⇐ pipeline failure or unmatched terminal state
  *
  * Persisted candidates may omit governanceDecision; status is trusted when consistent.

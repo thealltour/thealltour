@@ -33,6 +33,11 @@ export interface RuntimeRequestFactoryInput {
   departmentId?: string;
   /** Spike-only controlled fallback probe — see RuntimeRequestMetadata.spikeForceFallback. */
   spikeForceFallback?: boolean;
+  /**
+   * Optional marketing role route key (ORG_ROUTING_ALIGNMENT_V1).
+   * When absent/unknown, Router falls back to workload defaults via agentId mapping.
+   */
+  roleKey?: string;
 
   expectedOutputTokens?: number;
   deadlineAt?: string;

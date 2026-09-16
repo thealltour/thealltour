@@ -86,16 +86,15 @@ export function listPassStoryCandidates(candidateSet: DurableStoryPointCandidate
 
 /**
  * Apply human selection as authoritative primary; disable auto-primary from miner ranking.
- * Returns null if pointId is not a PASS candidate or revision mismatch.
+ * Returns null if pointId is not a PASS candidate.
+ * Revision mismatch is tolerated when the selected PASS point still exists — remine/input
+ * drift must not silently drop an already-chosen Story (including external imports).
  */
 export function applyHumanSelectionToCandidateSet(input: {
   candidateSet: DurableStoryPointCandidateSet;
   selection: HumanStorySelection;
 }): DurableStoryPointCandidateSet | null {
   if (!selectionIsActive(input.selection)) return null;
-  if (input.selection.candidateSetInputRevision !== input.candidateSet.inputRevision) {
-    return null;
-  }
   const pass = listPassStoryCandidates(input.candidateSet);
   const hit = pass.find((p) => p.point.pointId === input.selection.selectedStoryPointId);
   if (!hit) return null;

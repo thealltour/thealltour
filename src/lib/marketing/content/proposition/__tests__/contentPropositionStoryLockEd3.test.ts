@@ -323,6 +323,116 @@ describe("ED-3 ContentProposition Story lock", () => {
     expect(refuted.ok).toBe(false);
   });
 
+  it("allows English StoryPoint + Korean paraphrase when entity anchors stay (Con Dao)", () => {
+    const conDao: StoryContentPoint = {
+      ...BANGKOK,
+      pointId: "sp_condao_ed3",
+      storyQuestion: null,
+      storyClaim:
+        "Con Dao’s strict environmental conservation model protects its marine ecosystem by limiting mass tourism, creating rare barefoot luxury.",
+      audienceTension:
+        "Travelers seeking exclusive island luxury fear contributing to overtourism in fragile marine sanctuaries.",
+      curiosityGap:
+        "How does an isolated archipelago keep ultra-low visitor footprints while delivering hospitality?",
+      readerPayoff:
+        "Understand how sustainable luxury works in Con Dao before booking.",
+      researchQuestions: [
+        "What visitor caps or environmental fees are enforced in Con Dao?",
+        "How do luxury resorts balance amenities with conservation mandates?",
+      ],
+      nonGoals: ["generic Vietnam beach guide"],
+    };
+    const boundary =
+      "해당 일정·맥락에서는 Con Dao conservation model limits mass tourism for barefoot luxury — 증거 범위 안에서만 말함";
+    const brief = evidenceBrief({
+      storyPointId: conDao.pointId,
+      storyPointHash: createStoryPointHash(conDao),
+      storySupportVerdict: "PARTIALLY_SUPPORTED",
+      supportedClaimBoundary: boundary,
+      researchSupportedFraming: [boundary],
+      researchQuestionFindings: [
+        {
+          question: conDao.researchQuestions[0]!,
+          status: "partially_answered",
+          finding: "커뮤니티/후기 수준의 관찰 신호만 있어 부분 답변입니다.",
+          evidenceRefs: ["ext_condao_1"],
+          sourceClasses: ["unknown"],
+          confidence: 0.35,
+          limitations: ["social_or_snippet_only"],
+        },
+      ],
+      evidenceAssessment: [
+        {
+          evidenceId: "ext_condao_1",
+          relationship: "partially_supports",
+          relevanceToStoryPoint: 0.25,
+          epistemicType: "observed_signal",
+          sourceClass: "unknown",
+          note: "snippet_only_not_verified_fact",
+        },
+      ],
+      usableFactIds: [],
+      limitations: ["claim_narrowed_to_supported_boundary", "social_or_community_evidence_only"],
+    });
+    const identity: AgendaTopicIdentity = {
+      ...bangkokIdentity(),
+      destinationEntities: ["베트남", "Con Dao"],
+      topicEntities: ["Con Dao", "conservation", "luxury"],
+      commercialSubject: "Con Dao luxury",
+      sourceKeywords: ["Con Dao", "Vietnam", "conservation"],
+      productTypes: ["hotel"],
+    };
+    const ok = validateContentPropositionAgainstStory({
+      proposition: baseProposition({
+        primaryAudience: "프라이빗 섬 휴양을 찾는 한국 여행자",
+        audienceProblem: "럭셔리 휴양과 해양 생태계 보호가 충돌할까 걱정된다",
+        audienceTension:
+          "독점적인 섬 럭셔리를 원하지만 취약한 해양 안식처에 과잉관광을 남기기 싫은 긴장",
+        contentPromise:
+          "콘다오가 대규모 관광을 제한하는 보존 모델로 맨발 럭셔리를 만드는지 판단 기준을 정리한다",
+        readerGain: "콘다오 지속가능 럭셔리가 본인 가치와 맞는지 예약 전에 이해한다",
+        angle: "콘다오 보존 모델 vs 대중 해변 휴양",
+        keyMessage: "콘다오는 보존 한도 안에서만 럭셔리를 말하라",
+        specificTakeaways: [
+          "콘다오 군도는 베트남 남해안에 위치하며, 가파른 화강암 절벽과 보호된 해양만을 품은 고립된 생태 안식처입니다.",
+          "콘다오 럭셔리 리조트가 보존 규정과 편의 사이에서 어떻게 균형을 잡는지 부분 근거로만 말한다",
+        ],
+        takeawayEvidenceRefs: [
+          {
+            takeaway:
+              "콘다오 군도는 베트남 남해안에 위치하며, 가파른 화강암 절벽과 보호된 해양만을 품은 고립된 생태 안식처입니다.",
+            evidenceRefs: ["ext_condao_1"],
+          },
+          {
+            takeaway:
+              "콘다오 럭셔리 리조트가 보존 규정과 편의 사이에서 어떻게 균형을 잡는지 부분 근거로만 말한다",
+            evidenceRefs: ["ext_condao_1"],
+          },
+        ],
+        limitations: ["claim_narrowed_to_supported_boundary", "social_or_community_evidence_only"],
+      }),
+      storyPoint: conDao,
+      evidenceBrief: brief,
+      topicIdentity: identity,
+    });
+    expect(ok.ok).toBe(true);
+
+    const drifted = validateContentPropositionAgainstStory({
+      proposition: baseProposition({
+        audienceTension: "항공권 환불 분쟁에서 OTA 책임이 헷갈린다",
+        readerGain: "취소 수수료를 아낄 체크리스트를 얻는다",
+        contentPromise: "글로벌 OTA 항공 취소 분쟁 대응 방법을 정리한다",
+        specificTakeaways: ["항공사 위약금과 OTA 수수료를 구분한다"],
+        takeawayEvidenceRefs: null,
+        limitations: ["claim_narrowed_to_supported_boundary"],
+      }),
+      storyPoint: conDao,
+      evidenceBrief: brief,
+      topicIdentity: identity,
+    });
+    expect(drifted.ok).toBe(false);
+  });
+
   it("same revision is stable; boundary change invalidates", () => {
     const brief = evidenceBrief({
       storySupportVerdict: "PARTIALLY_SUPPORTED",

@@ -1,0 +1,81 @@
+{
+  "contract": "agenda-quality-v2-validation-manifest",
+  "validationId": "aqv2-live-20260917-20260921",
+  "createdAt": "2026-09-16T15:17:07.720Z",
+  "formalStartDate": "2026-09-17",
+  "formalEndDate": "2026-09-21",
+  "formalDates": [
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21"
+  ],
+  "day0Excluded": "2026-09-16",
+  "validationConfigFingerprint": "aqv2cfg_1b1f1bdb396c398dee46772e",
+  "config": {
+    "agendaQualityVersion": "v2",
+    "transformerContractVersion": "marketing-agenda-candidate-v2",
+    "transformRevision": "agenda-transform-v1",
+    "promptVersion": "agenda-transform-prompt-v1",
+    "roleKey": "marketing_agenda_transformer",
+    "thresholds": {
+      "strong": 0.72,
+      "publishable": 0.52,
+      "marketingFloor": 0.46,
+      "weakMin": 0.35,
+      "marketingWeight": 0.68,
+      "signalWeight": 0.32
+    },
+    "penalties": {
+      "presentationFatigueSecond": 0.14,
+      "presentationFatigueThirdPlus": 0.32,
+      "presentationFatigueWindowHours": 36
+    },
+    "freshnessTtlHours": {
+      "breaking": 48,
+      "timely": 120,
+      "seasonal": 504,
+      "evergreen": 1440
+    },
+    "slatePolicy": {
+      "max": 6,
+      "min": 0,
+      "weakBackfill": false,
+      "forceFill": false,
+      "decisionAxisSoftCap": 2
+    },
+    "memoryPolicy": {
+      "topicLookbackDays": 14,
+      "decisionLookbackDays": 14,
+      "selectedPublishedLookbackDays": 30
+    },
+    "transformBudget": {
+      "maxTransformsPerRun": 12
+    }
+  },
+  "configuredRoute": [
+    "gemini-flash-lite-primary",
+    "openrouter-free",
+    "nvidia-nemotron-3-ultra",
+    "gemini-flash-lite-secondary"
+  ],
+  "availableRouteAtManifestCreation": [
+    "gemini-flash-lite-primary",
+    "openrouter-free",
+    "nvidia-nemotron-3-ultra",
+    "gemini-flash-lite-secondary"
+  ],
+  "featureFlags": {
+    "AGENDA_QUALITY_V2_SHADOW_ENABLED": true
+  },
+  "code": {
+    "gitHead": "6092e2238ac1389c1ed5a64d58ec512d0ee9884f",
+    "workingTreeDirty": true
+  },
+  "artifactPolicy": {
+    "scheduledCanonicalPath": "/home/ysh/thealltour/artifacts/agenda-quality-v2/live-shadow/YYYY-MM-DD.{json,md}",
+    "manualRerunPath": "/home/ysh/thealltour/artifacts/agenda-quality-v2/live-shadow/reruns/YYYY-MM-DD/<timestamp>.{json,md}",
+    "rollupSourcePolicy": "scheduled_canonical_preferred"
+  }
+}

@@ -354,7 +354,77 @@ describe("ED-2 adjudication", () => {
       storyPointHash: hash,
       agendaLogicalIdentity: "logical_test",
       externalResearch: null,
-      verdictOverride: "INSUFFICIENT_EVIDENCE",
+    });
+    expect(brief.storySupportVerdict).toBe("INSUFFICIENT_EVIDENCE");
+    expect(assertStoryResearchCanProceed(brief).ok).toBe(false);
+  });
+
+  it("maps community-only supporting hits to PARTIALLY_SUPPORTED (not INSUFFICIENT loop)", () => {
+    const socialOnly: ExternalResearchBundle = {
+      ...supportingBundle(),
+      officialSourceCount: 0,
+      socialCommunitySourceCount: 2,
+      evidence: [
+        {
+          evidenceId: "ext_social_1",
+          url: "https://cafe.example.com/bts-parents",
+          title: "부모님 방콕 BTS 근처 숙소 후기",
+          excerpt:
+            "부모님 동반 방콕 일정에서 BTS MRT 접근성이 좋은 숙소 위치가 호텔 등급보다 중요하다는 후기가 반복된다",
+          sourceClass: "community",
+          fromSnippetOnly: true,
+          query: "부모님 동반 방콕 후기 숙소 위치 이동거리",
+          purpose: "factual_verification",
+        },
+        {
+          evidenceId: "ext_social_2",
+          url: "https://blog.example.com/bts-access",
+          title: "방콕 숙박지역 BTS 접근성",
+          excerpt:
+            "방콕 숙박지역별 BTS MRT 접근성 차이가 커서 이동거리가 긴 경우 부모님 동반 일정이 힘들어진다는 경험",
+          sourceClass: "commercial_blog",
+          fromSnippetOnly: true,
+          query: "방콕 주요 숙박지역별 BTS MRT 접근성 차이",
+          purpose: "factual_verification",
+        },
+      ],
+    };
+    const brief = adjudicateStoryResearch({
+      storyPoint: BANGKOK_STRONG,
+      storyPointHash: hash,
+      agendaLogicalIdentity: "logical_test",
+      externalResearch: socialOnly,
+    });
+    expect(brief.storySupportVerdict).toBe("PARTIALLY_SUPPORTED");
+    expect(brief.limitations).toEqual(
+      expect.arrayContaining(["claim_narrowed_to_supported_boundary"]),
+    );
+    expect(assertStoryResearchCanProceed(brief).ok).toBe(true);
+  });
+
+  it("keeps INSUFFICIENT_EVIDENCE when evidence exists but is all weak/irrelevant", () => {
+    const weakOnly: ExternalResearchBundle = {
+      ...supportingBundle(),
+      officialSourceCount: 0,
+      socialCommunitySourceCount: 1,
+      evidence: [
+        {
+          evidenceId: "ext_weak_1",
+          url: "https://example.com/unrelated",
+          title: "유럽 기차 패스 할인 안내",
+          excerpt: "스위스 패스와 유레일 패스 비교 및 좌석 예약 팁",
+          sourceClass: "community",
+          fromSnippetOnly: true,
+          query: "유럽 기차 패스",
+          purpose: "factual_verification",
+        },
+      ],
+    };
+    const brief = adjudicateStoryResearch({
+      storyPoint: BANGKOK_STRONG,
+      storyPointHash: hash,
+      agendaLogicalIdentity: "logical_test",
+      externalResearch: weakOnly,
     });
     expect(brief.storySupportVerdict).toBe("INSUFFICIENT_EVIDENCE");
     expect(assertStoryResearchCanProceed(brief).ok).toBe(false);

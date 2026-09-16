@@ -258,10 +258,11 @@ export function adjudicateStoryResearch(
   const unresolved = findings.filter((f) => f.status === "unresolved").length;
   const contradictedQs = findings.filter((f) => f.status === "contradicted").length;
   const contradictingEvidence = assessments.filter((a) => a.relationship === "contradicts").length;
+  // Travel/consumer stories often rely on community/news signals — slightly looser relevance.
   const supportingRelevant = assessments.filter(
     (a) =>
       (a.relationship === "supports" || a.relationship === "partially_supports") &&
-      a.relevanceToStoryPoint >= 0.12,
+      a.relevanceToStoryPoint >= 0.08,
   );
   const onlyWeakSocial =
     supportingRelevant.length > 0 &&
@@ -289,13 +290,11 @@ export function adjudicateStoryResearch(
     refutationNotes = "반증 증거가 우세합니다.";
     if (input.storyPoint.storyClaim) contradictedClaims.push(input.storyPoint.storyClaim);
   } else if (
-    (answered === 0 && partial === 0) ||
-    (supportingRelevant.length === 0 && evidence.length > 0 && onlyWeakOrIrrelevant(assessments)) ||
-    (onlyWeakSocial &&
-      answered === 0 &&
-      partial <= 1 &&
-      unresolved + contradictedQs >= Math.max(0, questions.length - 1))
+    (answered === 0 && partial === 0 && supportingRelevant.length === 0) ||
+    (supportingRelevant.length === 0 && evidence.length > 0 && onlyWeakOrIrrelevant(assessments))
   ) {
+    // Truly no usable support — keep fail-closed. Social-only with some support falls through
+    // to PARTIALLY_SUPPORTED below (travel topics rarely have verified_fact sources).
     verdict = "INSUFFICIENT_EVIDENCE";
     limitations.push("insufficient_relevant_or_reliable_evidence");
   } else if (
@@ -312,6 +311,13 @@ export function adjudicateStoryResearch(
     verdict = "PARTIALLY_SUPPORTED";
     boundary = narrowClaimBoundary(input.storyPoint);
     limitations.push("claim_narrowed_to_supported_boundary");
+    if (onlyWeakSocial) limitations.push("social_or_community_evidence_only");
+  } else if (supportingRelevant.length >= 1) {
+    // Supporting hits without clear Q&A mapping — still allow narrowed progress.
+    verdict = "PARTIALLY_SUPPORTED";
+    boundary = narrowClaimBoundary(input.storyPoint);
+    limitations.push("claim_narrowed_to_supported_boundary", "question_coverage_incomplete");
+    if (onlyWeakSocial) limitations.push("social_or_community_evidence_only");
   } else {
     verdict = "INSUFFICIENT_EVIDENCE";
     limitations.push("insufficient_to_support_or_refute");

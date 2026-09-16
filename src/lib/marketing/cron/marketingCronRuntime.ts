@@ -19,6 +19,11 @@ import {
   isContentStrategistFormatError,
   isContentStrategistRuntimeError,
 } from "@/lib/marketing/cron/marketingPlanSpecialists";
+import {
+  assertChannelEditorHermesProfile,
+  resolveChannelEditorHermesProfile,
+  type ChannelComposerPromptParts,
+} from "@/lib/marketing/publishable/channelEditorIdentity";
 export { MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS };
 
 export function isAiRuntimeMarketingCronEnabled(
@@ -32,7 +37,10 @@ export function createMarketingCronCorrelationId(now = new Date()): string {
   return `marketing-cron:${now.toISOString()}:${randomUUID().slice(0, 8)}`;
 }
 
-export type HermesProfileInvoker = (profile: string, prompt: string) => string;
+export type HermesProfileInvoker = (
+  profile: string,
+  prompt: string,
+) => string | Promise<string>;
 
 /**
  * RA-1C — wire Audience & Content Research LLM synthesis to the same Hermes/Runtime
@@ -57,6 +65,7 @@ export function createAudienceResearchInvoke(
           correlationId: options.correlationId,
           cronJobId: MARKETING_CRON_JOB_ID,
           departmentId: MARKETING_DEPARTMENT_ID,
+          roleKey: "research_synthesis",
           routing: { requiresStructuredOutput: true },
         },
         { now },
@@ -68,7 +77,7 @@ export function createAudienceResearchInvoke(
 
   const invokeHermes = options.invokeHermesProfile;
   if (!invokeHermes) return null;
-  return async (prompt: string) => invokeHermes("content-strategist", prompt);
+  return async (prompt: string) => Promise.resolve(invokeHermes("content-strategist", prompt));
 }
 
 /** ED-1 — Story Miner LLM invoke (reuses content-strategist transport; no web search). */
@@ -90,6 +99,7 @@ export function createStoryMinerInvoke(
           correlationId: options.correlationId,
           cronJobId: MARKETING_CRON_JOB_ID,
           departmentId: MARKETING_DEPARTMENT_ID,
+          roleKey: "story_point_miner",
           routing: { requiresStructuredOutput: true },
         },
         { now },
@@ -101,7 +111,7 @@ export function createStoryMinerInvoke(
 
   const invokeHermes = options.invokeHermesProfile;
   if (!invokeHermes) return null;
-  return async (prompt: string) => invokeHermes("content-strategist", prompt);
+  return async (prompt: string) => Promise.resolve(invokeHermes("content-strategist", prompt));
 }
 
 /**
@@ -129,6 +139,7 @@ export function createAssetSourceWriterInvoke(
           correlationId: options.correlationId,
           cronJobId: MARKETING_CRON_JOB_ID,
           departmentId: MARKETING_DEPARTMENT_ID,
+          roleKey: "asset_source_writer",
           routing: { requiresStructuredOutput: true },
         },
         { now },
@@ -140,33 +151,48 @@ export function createAssetSourceWriterInvoke(
 
   const invokeHermes = options.invokeHermesProfile;
   if (!invokeHermes) return null;
-  return async (prompt: string) => invokeHermes(ASSET_SOURCE_WRITER_MODEL_PROFILE, prompt);
+  return async (prompt: string) =>
+    Promise.resolve(invokeHermes(ASSET_SOURCE_WRITER_MODEL_PROFILE, prompt));
 }
 
 /**
  * MQ-4 — production PublishableLlmInvoke for channel-native composers.
- * Reuses content-strategist Hermes/Runtime transport (structured JSON). No web search.
+ * Runtime: Channel Editor identity as system message + roleKey=channel_editor.
+ * Hermes oneshot: channel-editor-* profile (never content-strategist).
  */
-export const PUBLISHABLE_COMPOSER_MODEL_PROFILE = "content-strategist" as const;
+export const PUBLISHABLE_COMPOSER_RUNTIME_AGENT_ID = "content-strategist" as const;
 
 export function createPublishableComposerInvoke(
   options: MarketingPlanPipelineDispatchOptions,
-): ((prompt: string) => Promise<string>) | null {
+): ((prompt: ChannelComposerPromptParts | string) => Promise<string>) | null {
   if (options.useRuntime) {
     if (!options.executor) return null;
     const executor = options.executor;
     const now = options.now ?? (() => new Date());
     const timeoutMs = options.completionTimeoutMs;
-    return async (prompt: string) => {
+    return async (prompt) => {
+      const parts =
+        typeof prompt === "string"
+          ? { channel: "threads" as const, system: "", user: prompt, text: prompt }
+          : prompt;
+      if (!parts.system || !parts.system.includes("You are a Channel Editor")) {
+        throw new Error("channel_editor_identity_missing_from_runtime_prompt");
+      }
+      const messages = [
+        { role: "system" as const, content: parts.system },
+        { role: "user" as const, content: parts.user || parts.text },
+      ];
       const request = createCronRuntimeRequest(
         {
-          agentId: PUBLISHABLE_COMPOSER_MODEL_PROFILE,
+          // Gateway agent id remains CS transport alias; identity is Channel Editor system prompt.
+          agentId: PUBLISHABLE_COMPOSER_RUNTIME_AGENT_ID,
           workload: "content_draft",
           priority: "background",
-          messages: [{ role: "user", content: prompt }],
+          messages,
           correlationId: options.correlationId,
           cronJobId: MARKETING_CRON_JOB_ID,
           departmentId: MARKETING_DEPARTMENT_ID,
+          roleKey: "channel_editor",
           routing: { requiresStructuredOutput: true },
         },
         { now },
@@ -178,7 +204,16 @@ export function createPublishableComposerInvoke(
 
   const invokeHermes = options.invokeHermesProfile;
   if (!invokeHermes) return null;
-  return async (prompt: string) => invokeHermes(PUBLISHABLE_COMPOSER_MODEL_PROFILE, prompt);
+  return async (prompt) => {
+    const channel = typeof prompt === "string" ? null : prompt.channel;
+    if (!channel) {
+      throw new Error("channel_editor_oneshot_requires_channel");
+    }
+    const profile = resolveChannelEditorHermesProfile(channel);
+    assertChannelEditorHermesProfile(profile);
+    const text = typeof prompt === "string" ? prompt : prompt.text;
+    return Promise.resolve(invokeHermes(profile, text));
+  };
 }
 
 export type MarketingPlanPipelineDispatchOptions = {
@@ -239,6 +274,7 @@ export function createMarketingPlanPipelineDispatch(
                   parentRequestId: lastRequestId,
                   cronJobId: MARKETING_CRON_JOB_ID,
                   departmentId: MARKETING_DEPARTMENT_ID,
+                  roleKey: "content_strategist",
                   routing: { requiresStructuredOutput: true },
                 },
                 { now },
@@ -267,6 +303,7 @@ export function createMarketingPlanPipelineDispatch(
             parentRequestId: lastRequestId,
             cronJobId: MARKETING_CRON_JOB_ID,
             departmentId: MARKETING_DEPARTMENT_ID,
+            roleKey: "governance_auditor",
             routing: { requiresStructuredOutput: true },
           },
           { now },
@@ -288,7 +325,7 @@ export function createMarketingPlanPipelineDispatch(
       try {
         const { output } = await requestContentStrategistDraftWithFormatRetry({
           payload: envelope.payload,
-          invoke: (prompt) => invokeHermes("content-strategist", prompt),
+          invoke: async (prompt) => Promise.resolve(invokeHermes("content-strategist", prompt)),
         });
         return output;
       } catch (error) {
@@ -299,7 +336,9 @@ export function createMarketingPlanPipelineDispatch(
       }
     },
     requestGovernance: async (envelope: HandoffEnvelope<StructuredGovernanceReviewRequest>) => {
-      const raw = invokeHermes("governance-auditor", buildGovernanceReviewPrompt(envelope.payload));
+      const raw = await Promise.resolve(
+        invokeHermes("governance-auditor", buildGovernanceReviewPrompt(envelope.payload)),
+      );
       return parseGovernanceAuditorOutput(raw);
     },
   };
@@ -345,6 +384,7 @@ export function createMarketingManagerAgendaDispatch(
             parentRequestId: lastRequestId,
             cronJobId: MARKETING_CRON_JOB_ID,
             departmentId: MARKETING_DEPARTMENT_ID,
+            roleKey: "marketing_manager",
             routing: { requiresStructuredOutput: true },
           },
           { now },
@@ -363,7 +403,7 @@ export function createMarketingManagerAgendaDispatch(
 
   return {
     invokeManagerProfile: async (prompt: string) => {
-      return invokeHermes("marketing-manager", prompt);
+      return Promise.resolve(invokeHermes("marketing-manager", prompt));
     },
   };
 }

@@ -174,9 +174,24 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           </AdminCard>
         ) : null}
 
-        {candidate.status === "blocked" ? (
+        {candidate.status === "blocked" && context.governance.decision === "BLOCK" ? (
           <AdminCard className={cn("p-4 text-sm", adminToneBorderBg.warning)}>
             거버넌스 BLOCK 상태입니다. 일반 승인 버튼은 비활성화됩니다.
+          </AdminCard>
+        ) : null}
+
+        {candidate.status === "blocked" && context.governance.decision !== "BLOCK" ? (
+          <AdminCard className={cn("p-4 text-sm", adminToneBorderBg.warning)}>
+            후보가 blocked 이지만 거버넌스 판정 기록이 없습니다. 보통 초안 완전성(completeness)
+            미달로 파이프라인이 거버넌스 Auditor 전에 멈춘 경우입니다. 거버넌스 결과 &quot;—&quot; 는
+            Auditor가 실행되지 않았다는 뜻입니다.
+          </AdminCard>
+        ) : null}
+
+        {candidate.status === "needs_human_review" && !context.governance.decision ? (
+          <AdminCard className={cn("p-4 text-sm", adminToneBorderBg.warning)}>
+            거버넌스 Auditor 판정 전에 인간 검토로 넘어온 후보입니다(예: 초안 completeness 수정 필요).
+            거버넌스 결과 &quot;—&quot; 은 미실행을 의미하며, BLOCK이 아닙니다.
           </AdminCard>
         ) : null}
 

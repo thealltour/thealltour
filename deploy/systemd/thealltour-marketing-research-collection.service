@@ -1,0 +1,30 @@
+[Unit]
+Description=TheAllTour Marketing Research Collection Cycle (one-shot, read-only)
+Documentation=docs/hermes/marketing/research-collection-worker.md
+After=network-online.target thealltour-internal.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ysh
+Group=ysh
+WorkingDirectory=/home/ysh/thealltour
+Environment=NODE_ENV=production
+Environment=PATH=/home/ysh/.local/bin:/home/ysh/.hermes/node/bin:/usr/bin:/bin
+Environment=HERMES_HOME=/home/ysh/.hermes
+Environment=HERMES_BIN=/home/ysh/.local/bin/hermes
+Environment=MARKETING_TRACE_ENABLED=true
+# Collection is read-only (RSS/HTTP fetch); no SNS side effects.
+Environment=RESEARCH_COLLECTION_ENABLED=true
+# Persist signals so the 09:00 Marketing Manager agenda has usable facts.
+Environment=RESEARCH_USE_SUPABASE=true
+# Secrets come from WorkingDirectory/.env.local — do not embed in this unit.
+ExecStart=/home/ysh/.hermes/node/bin/npx tsx scripts/research-collection-run.ts
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=900
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

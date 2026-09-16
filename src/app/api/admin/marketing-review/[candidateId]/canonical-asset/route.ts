@@ -7,17 +7,18 @@ import {
   saveCanonicalAssetHumanEdit,
 } from "@/lib/marketing/canonicalAsset/approveAndGenerateChannels";
 import {
+  formatCanonicalAssetValidationIssuesKo,
+  STALE_ASSET_MESSAGE_KO,
+} from "@/lib/marketing/canonicalAsset/chatGptAssetTransfer";
+import type { CanonicalAssetValidationIssue } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
+import {
   createMarketingCronCorrelationId,
   createPublishableComposerInvoke,
   isAiRuntimeMarketingCronEnabled,
 } from "@/lib/marketing/cron/marketingCronRuntime";
 import { MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT } from "@/lib/marketing/cron/marketingPlanSpecialists";
-import { resolveHermesExecutable } from "@/lib/marketing/cron/resolveHermesExecutable";
-import {
-  assertHermesSpawnSyncSuccess,
-  resolveMarketingCronHermesTimeoutMs,
-} from "@/lib/marketing/cron/hermesSpawnFailure";
-import { spawnSync } from "node:child_process";
+import { resolveMarketingCronHermesTimeoutMs } from "@/lib/marketing/cron/hermesSpawnFailure";
+import { invokeHermesProfileAsync } from "@/lib/marketing/cron/invokeHermesProfileAsync";
 import { createRuntimeExecutorStack } from "@/ai-runtime/integration/runtime-stack";
 import { ensureSharedObservabilityRecorder } from "@/ai-runtime/observability/persistence";
 import { createDailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
@@ -35,6 +36,11 @@ const schema = z.discriminatedUnion("action", [
     decisionGuidanceKo: z.string().optional(),
     optionalCtaIntentKo: z.string().nullable().optional(),
     limitationsKo: z.array(z.string()).optional(),
+    expectedAssetId: z.string().optional(),
+    expectedVersion: z.number().int().positive().optional(),
+    expectedSourceRevision: z.string().optional(),
+    /** ChatGPT import — force domain validation before persist. */
+    fromChatGptImport: z.boolean().optional(),
   }),
   z.object({
     action: z.literal("approve_original"),
@@ -74,6 +80,7 @@ export async function POST(request: Request, context: RouteContext) {
     const runRepo = await createDailyMarketingRunRepository({});
 
     if (parsed.data.action === "save_edit") {
+      const fromChatGpt = Boolean(parsed.data.fromChatGptImport);
       const { candidate, asset } = await saveCanonicalAssetHumanEdit({
         candidate: detail.candidate,
         runRepo,
@@ -85,13 +92,20 @@ export async function POST(request: Request, context: RouteContext) {
           keyTakeawaysKo: parsed.data.keyTakeawaysKo,
           decisionGuidanceKo: parsed.data.decisionGuidanceKo,
           optionalCtaIntentKo: parsed.data.optionalCtaIntentKo,
-          limitationsKo: parsed.data.limitationsKo,
+          // ChatGPT import must never overwrite limitations; only manual save may.
+          limitationsKo: fromChatGpt ? undefined : parsed.data.limitationsKo,
         },
+        expectedAssetId: parsed.data.expectedAssetId,
+        expectedVersion: parsed.data.expectedVersion,
+        expectedSourceRevision: parsed.data.expectedSourceRevision,
+        requireDomainValidation: fromChatGpt,
       });
       return Response.json({
         ok: true,
         action: "save_edit",
-        message: "수정본을 저장했습니다.",
+        message: fromChatGpt
+          ? "검증된 수정본을 저장했습니다."
+          : "수정본을 저장했습니다.",
         asset: {
           assetId: asset.assetId,
           version: asset.version,
@@ -117,19 +131,7 @@ export async function POST(request: Request, context: RouteContext) {
       completionTimeoutMs: timeoutMs,
       invokeHermesProfile: useRuntime
         ? undefined
-        : (profile, prompt) => {
-            const hermesBin = resolveHermesExecutable(process.env);
-            const result = spawnSync(
-              hermesBin,
-              ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt],
-              {
-                encoding: "utf8",
-                env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-                timeout: timeoutMs,
-              },
-            );
-            return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
-          },
+        : (profile, prompt) => invokeHermesProfileAsync(profile, prompt, timeoutMs),
     });
     if (!invoke) {
       return Response.json(
@@ -171,6 +173,39 @@ export async function POST(request: Request, context: RouteContext) {
     const message = error instanceof Error ? error.message : String(error);
     if (message === "canonical_asset_missing") {
       return Response.json({ message: "공통 마케팅 원문이 없습니다." }, { status: 404 });
+    }
+    if (message === "canonical_asset_stale") {
+      return Response.json(
+        {
+          message: STALE_ASSET_MESSAGE_KO,
+          code: "stale",
+        },
+        { status: 409 },
+      );
+    }
+    if (message === "canonical_asset_validation_failed") {
+      const issues =
+        error && typeof error === "object" && "issues" in error
+          ? ((error as { issues?: CanonicalAssetValidationIssue[] }).issues ?? [])
+          : [];
+      return Response.json(
+        {
+          message: formatCanonicalAssetValidationIssuesKo(issues),
+          code: "validation_failed",
+          issues,
+        },
+        { status: 422 },
+      );
+    }
+    if (message === "canonical_asset_validation_context_missing") {
+      return Response.json(
+        {
+          message:
+            "ChatGPT 수정본 검증에 필요한 Story/Evidence/Proposition 컨텍스트가 없습니다.",
+          code: "validation_context_missing",
+        },
+        { status: 422 },
+      );
     }
     if (message === "validation_failed_asset_cannot_approve") {
       return Response.json(

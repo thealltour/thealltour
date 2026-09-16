@@ -158,10 +158,17 @@ export type MorningCanonicalAssetView = {
   statusLabelKo: string;
   version: number | null;
   approvedVersion: number | null;
+  sourceRevision: string | null;
   humanEdited: boolean;
   storyTitle: string | null;
+  storyQuestionKo: string | null;
+  audienceProblemKo: string | null;
+  decisionAtStakeKo: string | null;
+  readerPayoffKo: string | null;
   storySupportVerdict: string | null;
   supportedClaimBoundaryKo: string | null;
+  keyEvidenceKo: string[];
+  contentPromiseKo: string | null;
   titleKo: string;
   dekKo: string | null;
   openingHookKo: string;

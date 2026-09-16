@@ -75,7 +75,7 @@ export type DailyMarketingPipelineDeps = DepartmentPipelineDeps & {
   invokeStoryMiner?: ((prompt: string) => Promise<string> | string) | null;
   forceAudienceResearchRegenerate?: boolean;
   /** MQ-4 — channel-native publishable LLM invoke (Hermes/Runtime). */
-  invokePublishableComposer?: ((prompt: string) => Promise<string> | string) | null;
+  invokePublishableComposer?: import("@/lib/marketing/publishable/threads/composeThreadsPublishableContent").PublishableLlmInvoke | null;
   /**
    * Asset Source Writer invoke (structured JSON). Defaults to invokePublishableComposer
    * when omitted — role contract is prompt-enforced (asset-source-writer).
@@ -549,15 +549,40 @@ export async function runDailyMarketingProductionPipeline(
           .findByLogicalKey(logicalRunKey)
           .catch(() => null);
         const humanSelection = readHumanStorySelection(productionRequest);
+        const {
+          readStoryPointCandidateSetFromProductionRequest,
+        } = await import("@/lib/marketing/storyPoint/persistence");
+        const durableSet = readStoryPointCandidateSetFromProductionRequest(productionRequest);
+
+        // Prefer the durable request set when it still holds the human-selected point
+        // or external imports — remine must not wipe ChatGPT-imported Stories.
+        let baseSet = mined.candidateSet;
+        const selectedId = humanSelection?.selectedStoryPointId?.trim() ?? null;
+        const durableHasSelected =
+          Boolean(selectedId) &&
+          Boolean(durableSet?.candidates.some((c) => c.pointId === selectedId));
+        const durableHasExternal = Boolean(
+          durableSet?.candidates.some((c) => String(c.pointId).startsWith("sp_ext_")),
+        );
+        const minedHasExternal = mined.candidateSet.candidates.some((c) =>
+          String(c.pointId).startsWith("sp_ext_"),
+        );
+        if (
+          durableSet?.outcome === "pass" &&
+          (durableHasSelected || (durableHasExternal && !minedHasExternal))
+        ) {
+          baseSet = durableSet;
+        }
+
         const humanApplied =
-          mined.candidateSet.outcome === "pass" && selectionIsActive(humanSelection)
+          baseSet.outcome === "pass" && selectionIsActive(humanSelection)
             ? applyHumanSelectionToCandidateSet({
-                candidateSet: mined.candidateSet,
+                candidateSet: baseSet,
                 selection: humanSelection!,
               })
             : null;
         const selectionStatus =
-          mined.candidateSet.outcome !== "pass"
+          baseSet.outcome !== "pass"
             ? "n/a"
             : humanApplied
               ? "human_selected"
@@ -566,7 +591,8 @@ export async function runDailyMarketingProductionPipeline(
                 : "awaiting_human_selection";
         return {
           ...mined,
-          effectiveCandidateSet: humanApplied ?? mined.candidateSet,
+          candidateSet: baseSet,
+          effectiveCandidateSet: humanApplied ?? baseSet,
           humanSelection,
           humanApplied,
           selectionStatus,
@@ -1388,7 +1414,6 @@ export async function runDailyMarketingProductionPipeline(
             packageRoot,
             now,
             invoke: deps.invokePublishableComposer,
-            modelProfile: "content-strategist",
             audienceContentResearchBrief,
             approvedCanonicalAsset: savedCandidate.canonicalMarketingAsset,
             persist: true,
@@ -1441,7 +1466,6 @@ export async function runDailyMarketingProductionPipeline(
             packageRoot,
             now,
             invoke: deps.invokePublishableComposer,
-            modelProfile: "content-strategist",
             audienceContentResearchBrief,
             persist: true,
           });

@@ -14,9 +14,18 @@ export function mapPipelineToCandidateStatus(
 ): CompletedMarketingCandidateStatus {
   if (pipeline.failure) return "failed";
   const decision = governance?.decision ?? pipeline.governance?.decision ?? null;
+  // Only explicit Governance Auditor BLOCK maps to candidate "blocked".
+  // Completeness revision_required happens BEFORE governance runs — do not
+  // conflate it with BLOCK (UI would show "거버넌스 BLOCK" with decision "—").
+  if (decision === "BLOCK") return "blocked";
   if (decision === "ALLOW" && pipeline.status === "publish_ready") return "ready_for_human_review";
-  if (decision === "REVIEW" || pipeline.status === "approval_pending") return "needs_human_review";
-  if (decision === "BLOCK" || pipeline.status === "revision_required") return "blocked";
+  if (
+    decision === "REVIEW" ||
+    pipeline.status === "approval_pending" ||
+    pipeline.status === "revision_required"
+  ) {
+    return "needs_human_review";
+  }
   if (governance?.malformed) return "needs_human_review";
   return "failed";
 }

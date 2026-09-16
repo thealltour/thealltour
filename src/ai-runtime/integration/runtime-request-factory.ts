@@ -17,6 +17,9 @@ function buildMetadata(input: RuntimeRequestFactoryInput): RuntimeRequest["metad
   if (input.cronJobId) metadata.cronJobId = input.cronJobId;
   if (input.departmentId) metadata.departmentId = input.departmentId;
   if (input.spikeForceFallback === true) metadata.spikeForceFallback = true;
+  if (typeof input.roleKey === "string" && input.roleKey.trim()) {
+    metadata.roleKey = input.roleKey.trim();
+  }
 
   return Object.keys(metadata).length > 0 ? metadata : undefined;
 }

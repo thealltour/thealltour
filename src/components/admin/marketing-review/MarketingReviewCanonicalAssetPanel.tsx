@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import type { MorningCanonicalAssetView } from "@/lib/marketing/review/morningReview/types";
+import {
+  buildCanonicalAssetChatGptClipboardText,
+  parseCanonicalAssetChatGptImport,
+  type CanonicalAssetChatGptImportPreview,
+} from "@/lib/marketing/canonicalAsset/chatGptAssetTransfer";
 
 type Props = {
   candidateId: string;
@@ -28,6 +33,14 @@ export function MarketingReviewCanonicalAssetPanel({
   const [bodyKo, setBodyKo] = useState(asset.bodyKo);
   const [decisionGuidanceKo, setDecisionGuidanceKo] = useState(asset.decisionGuidanceKo);
   const [takeawaysText, setTakeawaysText] = useState(asset.keyTakeawaysKo.join("\n"));
+  const [importRaw, setImportRaw] = useState("");
+  const [importPreview, setImportPreview] = useState<CanonicalAssetChatGptImportPreview | null>(
+    null,
+  );
+  const [importFeedback, setImportFeedback] = useState<{
+    tone: "error" | "ok";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     setTitleKo(asset.titleKo);
@@ -43,6 +56,7 @@ export function MarketingReviewCanonicalAssetPanel({
     asset.keyTakeawaysKo,
     asset.version,
     asset.status,
+    asset.sourceRevision,
   ]);
 
   if (asset.legacyWithoutAsset && !asset.present) {
@@ -67,15 +81,138 @@ export function MarketingReviewCanonicalAssetPanel({
       });
       const json = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) {
-        onMessage(json.message ?? "원문 처리에 실패했습니다.");
-        return;
+        const text = json.message ?? "원문 처리에 실패했습니다.";
+        onMessage(text);
+        setImportFeedback({ tone: "error", text });
+        return false;
       }
       onMessage(json.message ?? "완료");
       await onReload();
+      return true;
     } catch {
-      onMessage("원문 처리 중 오류가 발생했습니다.");
+      const text = "원문 처리 중 오류가 발생했습니다.";
+      onMessage(text);
+      setImportFeedback({ tone: "error", text });
+      return false;
     } finally {
       onBusy(false);
+    }
+  }
+
+  function parseImportOrFail() {
+    if (!asset.assetId || asset.version == null || !asset.sourceRevision) {
+      const text = "원문 identity(version/sourceRevision)가 없어 가져올 수 없습니다.";
+      onMessage(text);
+      setImportFeedback({ tone: "error", text });
+      return null;
+    }
+    const parsed = parseCanonicalAssetChatGptImport({
+      raw: importRaw,
+      expectedCandidateId: candidateId,
+      expectedAssetId: asset.assetId,
+      expectedVersion: asset.version,
+      expectedSourceRevision: asset.sourceRevision,
+    });
+    if (!parsed.ok) {
+      setImportPreview(null);
+      onMessage(parsed.messageKo);
+      setImportFeedback({ tone: "error", text: parsed.messageKo });
+      return null;
+    }
+    return parsed;
+  }
+
+  async function copyChatGptAsset() {
+    if (!asset.assetId || asset.version == null || !asset.sourceRevision) {
+      onMessage("원문 identity가 없어 복사할 수 없습니다.");
+      return;
+    }
+    onBusy(true);
+    onMessage("");
+    try {
+      const text = buildCanonicalAssetChatGptClipboardText({
+        candidateId,
+        assetId: asset.assetId,
+        version: asset.version,
+        sourceRevision: asset.sourceRevision,
+        editable: {
+          titleKo,
+          openingHookKo,
+          bodyKo,
+          keyTakeawaysKo: takeawaysText
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean),
+          decisionGuidanceKo,
+        },
+        contextReadOnly: {
+          storyTitleKo: asset.storyTitle,
+          storyQuestionKo: asset.storyQuestionKo,
+          audienceProblemKo: asset.audienceProblemKo,
+          decisionAtStakeKo: asset.decisionAtStakeKo,
+          readerPayoffKo: asset.readerPayoffKo,
+          storySupportVerdict: asset.storySupportVerdict,
+          supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
+          keyEvidenceKo: asset.keyEvidenceKo ?? [],
+          limitationsKo: asset.limitationsKo ?? [],
+          forbiddenClaimsKo: asset.forbiddenClaimsKo ?? [],
+          contentPromiseKo: asset.contentPromiseKo,
+          ctaIntentKo: asset.optionalCtaIntentKo,
+        },
+      });
+      await navigator.clipboard.writeText(text);
+      onMessage("복사 완료 — ChatGPT에 붙여넣고 editable만 수정한 JSON을 돌려받으세요.");
+    } catch {
+      onMessage("클립보드 복사에 실패했습니다.");
+    } finally {
+      onBusy(false);
+    }
+  }
+
+  function previewImport() {
+    const parsed = parseImportOrFail();
+    if (!parsed) return;
+    setImportPreview(parsed.preview);
+    const text = `미리보기 OK (서버 요청 없음): ${parsed.preview.titleKo} · 요점 ${parsed.preview.takeawayCount}개 · v${parsed.preview.returnedVersion ?? "?"}→현재 v${parsed.preview.currentVersion}`;
+    setImportFeedback({ tone: "ok", text });
+    onMessage(text);
+  }
+
+  async function importAsEdit() {
+    const parsed = parseImportOrFail();
+    if (!parsed) return;
+
+    const edits = parsed.edits;
+    setTitleKo(edits.titleKo ?? titleKo);
+    setOpeningHookKo(edits.openingHookKo ?? openingHookKo);
+    setBodyKo(edits.bodyKo ?? bodyKo);
+    setDecisionGuidanceKo(edits.decisionGuidanceKo ?? decisionGuidanceKo);
+    setTakeawaysText((edits.keyTakeawaysKo ?? []).join("\n"));
+    setImportPreview(parsed.preview);
+    setImportFeedback({
+      tone: "ok",
+      text: "검증 통과 — 수정본 저장 요청 중…",
+    });
+
+    const ok = await postAction({
+      action: "save_edit",
+      fromChatGptImport: true,
+      expectedAssetId: parsed.expectedAssetId,
+      expectedVersion: parsed.expectedVersion,
+      expectedSourceRevision: parsed.expectedSourceRevision,
+      titleKo: edits.titleKo,
+      openingHookKo: edits.openingHookKo,
+      bodyKo: edits.bodyKo,
+      decisionGuidanceKo: edits.decisionGuidanceKo,
+      keyTakeawaysKo: edits.keyTakeawaysKo,
+    });
+    if (ok) {
+      setImportRaw("");
+      setImportPreview(null);
+      setImportFeedback({
+        tone: "ok",
+        text: "수정본으로 인입했습니다. 「수정본 승인」을 눌러 채널 생성을 진행하세요.",
+      });
     }
   }
 
@@ -214,6 +351,13 @@ export function MarketingReviewCanonicalAssetPanel({
                 .split("\n")
                 .map((l) => l.trim())
                 .filter(Boolean),
+              ...(asset.assetId && asset.version != null && asset.sourceRevision
+                ? {
+                    expectedAssetId: asset.assetId,
+                    expectedVersion: asset.version,
+                    expectedSourceRevision: asset.sourceRevision,
+                  }
+                : {}),
             })
           }
           className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
@@ -236,7 +380,91 @@ export function MarketingReviewCanonicalAssetPanel({
         >
           수정본 승인
         </button>
+        <button
+          type="button"
+          disabled={busy || !asset.present || !asset.assetId || !asset.sourceRevision}
+          onClick={() => void copyChatGptAsset()}
+          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
+        >
+          ChatGPT용 원문 복사
+        </button>
       </div>
+
+      <details className="rounded-lg border border-[var(--border)] p-3">
+        <summary className="cursor-pointer text-sm font-medium">ChatGPT 수정본 가져오기</summary>
+        <p className="mt-2 text-xs text-[var(--text-secondary)]">
+          ChatGPT가 돌려준 JSON을 붙여넣은 뒤 수정본으로 인입하세요. 승인은 「수정본 승인」으로
+          별도 진행합니다.
+        </p>
+        <textarea
+          value={importRaw}
+          onChange={(e) => {
+            setImportRaw(e.target.value);
+            setImportPreview(null);
+            setImportFeedback(null);
+          }}
+          disabled={busy || !canEdit || !asset.canEdit}
+          rows={8}
+          placeholder='{"contract":"canonical-marketing-asset-chatgpt-edit-v1", ... } ChatGPT 반환 JSON'
+          className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs"
+        />
+        {importPreview ? (
+          <div className="mt-2 space-y-1 text-xs text-[var(--text-secondary)]">
+            <div>
+              <span className="font-medium text-[var(--text-primary)]">제목:</span>{" "}
+              {importPreview.titleKo}
+            </div>
+            <div>
+              <span className="font-medium text-[var(--text-primary)]">오프닝 훅:</span>{" "}
+              {importPreview.openingHookKo}
+            </div>
+            <div>
+              <span className="font-medium text-[var(--text-primary)]">본문 일부:</span>{" "}
+              {importPreview.bodyPreview}
+              {importPreview.bodyPreview.length >= 160 ? "…" : ""}
+            </div>
+            <div>
+              <span className="font-medium text-[var(--text-primary)]">핵심 요점:</span>{" "}
+              {importPreview.takeawayCount}개
+            </div>
+            <div>
+              <span className="font-medium text-[var(--text-primary)]">버전:</span> 반환{" "}
+              {importPreview.returnedVersion ?? "?"} / 현재 {importPreview.currentVersion}
+            </div>
+          </div>
+        ) : null}
+        {importFeedback ? (
+          <p
+            className={
+              importFeedback.tone === "error"
+                ? "mt-2 text-sm text-[var(--danger,#b91c1c)]"
+                : "mt-2 text-sm text-[var(--success,#047857)]"
+            }
+            role="status"
+          >
+            {importFeedback.text}
+          </p>
+        ) : null}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy || !importRaw.trim() || !canEdit || !asset.canEdit}
+            onClick={() => previewImport()}
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            미리보기
+          </button>
+          <button
+            type="button"
+            disabled={busy || !importRaw.trim() || !canEdit || !asset.canEdit}
+            onClick={() => void importAsEdit()}
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            수정본으로 인입
+          </button>
+        </div>
+      </details>
+
       {asset.channelsBlockedUntilApproved ? (
         <p className="text-sm text-[var(--warning)]">
           원문 승인 전에는 채널별 콘텐츠를 제작하지 않습니다.

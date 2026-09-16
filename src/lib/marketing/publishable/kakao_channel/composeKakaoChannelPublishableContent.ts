@@ -9,32 +9,35 @@ import {
 import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
-  buildChannelComposerInputJson,
-  channelComposerRules,
+  buildChannelComposerPromptParts,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
 } from "@/lib/marketing/publishable/composerRuntime";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { composeKakaoChannelPublishableDeterministic } from "@/lib/marketing/publishable/kakao_channel/deterministicKakao";
-import { KAKAO_CHANNEL_WRITING_CONTRACT } from "@/lib/marketing/publishable/kakao_channel/writingContract";
+import { kakaoChannelWritingContract } from "@/lib/marketing/publishable/kakao_channel/writingContract";
 import {
   stripEvidenceIdsFromText,
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
+import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
 
-function buildPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
-  return [
-    KAKAO_CHANNEL_WRITING_CONTRACT,
-    channelComposerRules(input),
-    "Channel: concise Kakao decision aid / action. Match desiredAudienceAction. No invented urgency/price.",
-    repairHint ?? "",
-    "INPUT_JSON:",
-    JSON.stringify(buildChannelComposerInputJson(input)),
-  ]
-    .filter(Boolean)
-    .join("\n");
+function buildPrompt(
+  input: PublishableComposerInput,
+  repairHint?: string | null,
+): ChannelComposerPromptParts {
+  const hasApproved = Boolean(input.approvedCanonicalAsset);
+  return buildChannelComposerPromptParts({
+    channel: "kakao_channel",
+    writingContract: [
+      kakaoChannelWritingContract({ hasApprovedCanonicalAsset: hasApproved }),
+      "Channel: concise Kakao decision aid / action. Match approved decision. No invented urgency/price.",
+    ].join("\n"),
+    composerInput: input,
+    repairHint,
+  });
 }
 
 function parseBodyJson(raw: string): { title: string | null; body: string } | null {
@@ -141,6 +144,7 @@ export async function composeKakaoChannelPublishableContent(input: {
   if (input.invoke) {
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
+      channel: "kakao_channel",
       buildPrompt: (hint) => buildPrompt(input.composerInput, hint),
       parseAndValidate: (raw) => {
         const parsed = parseBodyJson(raw);

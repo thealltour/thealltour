@@ -169,14 +169,28 @@ describe("ED-LIVE human story selection", () => {
     expect(applied?.primaryStoryPointHash).toBe(createStoryPointHash(pass[1]!.point));
   });
 
-  it("invalidates selection when candidateSet inputRevision changes", () => {
+  it("keeps human selection when candidateSet inputRevision drifts but PASS point remains", () => {
     const set = candidateSet([ninhStory(1), ninhStory(2)]);
     const selection = buildHumanStorySelection({ point: set.candidates[1]!, candidateSet: set });
     const reminted = { ...set, inputRevision: "rev_ninh_v2" };
-    expect(
-      applyHumanSelectionToCandidateSet({ candidateSet: reminted, selection }),
-    ).toBeNull();
+    const applied = applyHumanSelectionToCandidateSet({ candidateSet: reminted, selection });
+    expect(applied?.primaryStoryPointId).toBe("sp_ninh_2");
     expect(selectionIsActive(selection)).toBe(true);
+  });
+
+  it("rejects human selection when the selected PASS point is missing from the set", () => {
+    const set = candidateSet([ninhStory(1), ninhStory(2)]);
+    const selection = buildHumanStorySelection({ point: set.candidates[1]!, candidateSet: set });
+    const withoutSelected = {
+      ...set,
+      candidates: [set.candidates[0]!],
+      gateResults: set.gateResults.filter((g) => g.pointId === "sp_ninh_1"),
+      selectedPointIds: ["sp_ninh_1"],
+      primaryStoryPointId: "sp_ninh_1",
+    };
+    expect(
+      applyHumanSelectionToCandidateSet({ candidateSet: withoutSelected, selection }),
+    ).toBeNull();
   });
 
   it("research rejection clears selection and keeps remaining candidates selectable", () => {

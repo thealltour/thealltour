@@ -14,10 +14,21 @@ import {
   shouldSkipProviderOnError,
 } from "@/ai-runtime/router/execute-routed";
 import { WORKLOAD_FALLBACK_ORDER } from "@/ai-runtime/router/policies";
+import { resolveModelRoute, mapAgentIdToRoleKey } from "@/ai-runtime/router/role-routes";
 import { getDefaultRoutingLedger, type RoutingLedger } from "@/ai-runtime/router/routing-ledger";
 import type { RuntimeRoutingDecision } from "@/ai-runtime/router/types";
 import { isSpikeGatewayAgentId } from "@/ai-runtime/gateway/alias-registry";
 import { SPIKE_FORCE_FALLBACK_DETAIL } from "@/ai-runtime/integration/constants";
+
+function resolveRouteForRequest(request: RuntimeRequest) {
+  const explicit =
+    typeof request.metadata?.roleKey === "string" ? request.metadata.roleKey.trim() : "";
+  const fromAgent = mapAgentIdToRoleKey(request.agentId, request.workload);
+  return resolveModelRoute({
+    role: explicit || fromAgent,
+    workload: request.workload,
+  });
+}
 
 export type RuntimeRouterDependencies = {
   registry: AiRuntimeRegistry;
@@ -166,6 +177,7 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
           attempts.length,
           decision.fallbackUsed,
         );
+        const resolvedRoute = resolveRouteForRequest(request);
         this.deps.observability?.routeCompleted({
           requestId: request.id,
           correlationId: request.metadata?.correlationId,
@@ -181,6 +193,8 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
           metadata: {
             cronJobId: request.metadata?.cronJobId,
             departmentId: request.metadata?.departmentId,
+            ...(resolvedRoute.roleKey ? { roleKey: resolvedRoute.roleKey } : {}),
+            routeSource: resolvedRoute.routeSource,
           },
         });
         return response;
@@ -273,6 +287,7 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
     attemptCount: number,
     fallbackUsed: boolean,
   ): void {
+    const resolved = resolveRouteForRequest(request);
     this.deps.routingLedger.record({
       id: `${request.id}:${this.now().getTime()}`,
       timestamp: this.now().toISOString(),
@@ -287,6 +302,8 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
       fallbackUsed,
       finalStatus,
       finalErrorCode,
+      roleKey: resolved.roleKey,
+      routeSource: resolved.routeSource,
     });
 
     if (finalStatus === "failed") {
@@ -306,6 +323,8 @@ export class FallbackRuntimeRouter implements RuntimeRouter {
         metadata: {
           cronJobId: request.metadata?.cronJobId,
           departmentId: request.metadata?.departmentId,
+          ...(resolved.roleKey ? { roleKey: resolved.roleKey } : {}),
+          routeSource: resolved.routeSource,
         },
       });
     }

@@ -105,7 +105,9 @@ export function MarketingReviewChannelTabs({
   async function regenerate(allowOverwriteHuman = false) {
     if (!active || active.channel === "shortform") return;
     onBusy(true);
-    onMessage(null);
+    onMessage(`${active.label} 재생성 중… (최대 약 3분, 페이지 이동은 가능합니다)`);
+    const controller = new AbortController();
+    const abortTimer = window.setTimeout(() => controller.abort(), 200_000);
     try {
       const res = await fetch(
         `/api/admin/marketing-review/${encodeURIComponent(context.identity.candidateId)}/channel-regenerate`,
@@ -116,10 +118,19 @@ export function MarketingReviewChannelTabs({
             channel: active.channel,
             allowOverwriteHuman,
           }),
+          signal: controller.signal,
         },
       );
       const data = await res.json().catch(() => ({}));
       if (res.status === 409) {
+        const code = typeof data.code === "string" ? data.code : "";
+        if (code === "canonical_asset_unapproved") {
+          throw new Error(
+            typeof data.message === "string"
+              ? data.message
+              : "공통 원문 승인 후 채널을 재생성하세요.",
+          );
+        }
         const ok = window.confirm(
           "이 채널에 사람 수정본이 있습니다. AI 초안으로 덮어쓸까요?",
         );
@@ -132,8 +143,13 @@ export function MarketingReviewChannelTabs({
       await onReload();
       onMessage(`${active.label} 재생성 완료 (외부 리서치 0회).`);
     } catch (error) {
-      onMessage(error instanceof Error ? error.message : "regenerate_failed");
+      if (error instanceof DOMException && error.name === "AbortError") {
+        onMessage("재생성 요청이 시간 초과되었습니다. 잠시 후 다시 시도하세요.");
+      } else {
+        onMessage(error instanceof Error ? error.message : "regenerate_failed");
+      }
     } finally {
+      window.clearTimeout(abortTimer);
       onBusy(false);
     }
   }
@@ -337,7 +353,7 @@ export function MarketingReviewChannelTabs({
                 disabled={busy}
                 onClick={() => void regenerate(false)}
               >
-                채널만 재생성
+                {busy ? "재생성 중…" : "채널만 재생성"}
               </AdminButton>
             ) : null}
             <button

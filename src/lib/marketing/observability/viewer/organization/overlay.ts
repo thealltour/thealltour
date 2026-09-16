@@ -398,12 +398,20 @@ export function orgNodeKindLabel(kind: MarketingOrganizationNodeDef["kind"]): st
       return "CORE AGENT";
     case "shared_service":
       return "SHARED SERVICE";
+    case "llm_staff":
+      return "LLM STAFF";
+    case "llm_staff_or_service":
+      return "LLM STAFF / SERVICE";
     case "deterministic":
       return "DETERMINISTIC";
     case "validation":
       return "VALIDATION";
+    case "artifact_state":
+      return "ARTIFACT / STATE";
     case "human_boundary":
       return "HUMAN BOUNDARY";
+    case "external_human_operated_ai":
+      return "EXTERNAL AI (MANUAL)";
     case "planned_agent":
       return "PLANNED";
     default:
@@ -450,6 +458,8 @@ export function orgEdgeKindLabel(kind: MarketingOrgEdgeKind): string {
       return "feedback";
     case "human_approval":
       return "approval";
+    case "manual_external":
+      return "manual";
     default:
       return kind;
   }

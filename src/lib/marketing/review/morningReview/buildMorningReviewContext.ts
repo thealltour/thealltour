@@ -44,6 +44,8 @@ import type {
 } from "@/lib/marketing/review/morningReview/types";
 import { resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/persistence";
 import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
+import { buildKeyEvidenceKo } from "@/lib/marketing/canonicalAsset/chatGptAssetTransfer";
+import { resolveCanonicalAssetDomainContext } from "@/lib/marketing/canonicalAsset/resolveCanonicalAssetDomainContext";
 
 function canonicalAssetStatusLabelKo(status: string | null | undefined): string {
   switch (status) {
@@ -71,6 +73,31 @@ function buildCanonicalAssetView(input: {
     candidate: input.candidate,
     packageRoot: input.packageRoot,
   });
+  const domain = resolveCanonicalAssetDomainContext({
+    candidate: {
+      ...input.candidate,
+      canonicalMarketingAsset: asset ?? input.candidate.canonicalMarketingAsset ?? null,
+    },
+    packageRoot: input.packageRoot,
+  });
+  const story = domain.storyPoint;
+  const proposition = domain.proposition;
+  const storyTitle =
+    story?.storyQuestion?.trim() ||
+    story?.storyClaim?.trim() ||
+    proposition?.angle?.trim() ||
+    null;
+  const audienceProblemKo = proposition?.audienceProblem?.trim() || null;
+  const decisionAtStakeKo =
+    proposition?.audienceTension?.trim() || story?.audienceTension?.trim() || null;
+  const readerPayoffKo =
+    story?.readerPayoff?.trim() || proposition?.readerGain?.trim() || null;
+  const contentPromiseKo = proposition?.contentPromise?.trim() || null;
+  const keyEvidenceKo = buildKeyEvidenceKo({
+    asset,
+    evidenceBrief: domain.evidenceBrief,
+  });
+
   if (!asset) {
     return {
       present: false,
@@ -80,11 +107,17 @@ function buildCanonicalAssetView(input: {
       statusLabelKo: "레거시(원문 없음)",
       version: null,
       approvedVersion: null,
+      sourceRevision: null,
       humanEdited: false,
-      storyTitle: input.candidate.contentPlan?.proposition?.angle ?? null,
-      storySupportVerdict: input.candidate.contentPlan?.proposition?.storySupportVerdict ?? null,
-      supportedClaimBoundaryKo:
-        input.candidate.contentPlan?.proposition?.supportedClaimBoundaryUsed ?? null,
+      storyTitle,
+      storyQuestionKo: story?.storyQuestion?.trim() || null,
+      audienceProblemKo,
+      decisionAtStakeKo,
+      readerPayoffKo,
+      storySupportVerdict: proposition?.storySupportVerdict ?? null,
+      supportedClaimBoundaryKo: proposition?.supportedClaimBoundaryUsed ?? null,
+      keyEvidenceKo,
+      contentPromiseKo,
       titleKo: "",
       dekKo: null,
       openingHookKo: "",
@@ -121,10 +154,17 @@ function buildCanonicalAssetView(input: {
           : canonicalAssetStatusLabelKo(asset.status),
     version: asset.version,
     approvedVersion: asset.approvedVersion,
+    sourceRevision: asset.sourceRevision,
     humanEdited: asset.humanEdited,
-    storyTitle: asset.titleKo || input.candidate.contentPlan?.proposition?.angle || null,
+    storyTitle,
+    storyQuestionKo: story?.storyQuestion?.trim() || null,
+    audienceProblemKo,
+    decisionAtStakeKo,
+    readerPayoffKo,
     storySupportVerdict: asset.storySupportVerdict,
     supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
+    keyEvidenceKo,
+    contentPromiseKo,
     titleKo: asset.titleKo,
     dekKo: asset.dekKo,
     openingHookKo: asset.openingHookKo,

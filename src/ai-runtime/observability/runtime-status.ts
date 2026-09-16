@@ -16,6 +16,7 @@ import { getDefaultQuotaBroker } from "@/ai-runtime/quota/quota-broker";
 import {
   formatWorkloadPolicyOrder,
   getDefaultRoutingLedger,
+  listRoleRoutingPolicies,
   PROVIDER_DISPLAY_LABELS,
 } from "@/ai-runtime/router";
 import type { RoutingLedger } from "@/ai-runtime/router/routing-ledger";
@@ -28,10 +29,12 @@ import type {
   RuntimeProviderStatusDto,
   RuntimeQuotaSnapshotDto,
   RuntimeReservationSnapshotDto,
+  RuntimeRoleRoutingPolicyDto,
   RuntimeRoutingPolicyDto,
   RuntimeRoutingStatusDto,
   RuntimeSchedulerStatusDto,
   RuntimeStatusDto,
+  RuntimeStatusSummaryDto,
 } from "@/ai-runtime/observability/types";
 
 export type BuildRuntimeStatusOptions = {
@@ -223,6 +226,14 @@ export function buildRuntimeStatus(options: BuildRuntimeStatusOptions = {}): Run
     orderLabels: formatWorkloadPolicyOrder(workload),
   }));
 
+  const roleRoutingPolicies: RuntimeRoleRoutingPolicyDto[] = listRoleRoutingPolicies().map(
+    (policy) => ({
+      roleKey: policy.roleKey,
+      label: policy.label,
+      orderLabels: policy.orderLabels,
+    }),
+  );
+
   const schedulerSnapshot = options.scheduler?.snapshot(now());
   const scheduler: RuntimeSchedulerStatusDto | undefined = schedulerSnapshot
     ? {
@@ -267,6 +278,7 @@ export function buildRuntimeStatus(options: BuildRuntimeStatusOptions = {}): Run
     summary,
     routing,
     routingPolicies,
+    roleRoutingPolicies,
     scheduler,
     providers: providerStatuses,
     shared: options.shared,

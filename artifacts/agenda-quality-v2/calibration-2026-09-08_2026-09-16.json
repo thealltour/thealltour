@@ -1,0 +1,4053 @@
+{
+  "contract": "agenda-quality-v2-calibration-report",
+  "dateRange": {
+    "from": "2026-09-08",
+    "to": "2026-09-16"
+  },
+  "realPersistedDataUsed": true,
+  "llmExternalCalls": 0,
+  "productionSlateUnchanged": true,
+  "calibration": {
+    "strong_threshold": {
+      "before": 0.72,
+      "after": 0.72,
+      "changed": false,
+      "reason": "Keep STRONG strict; avoid flooding"
+    },
+    "publishable_threshold": {
+      "before": 0.55,
+      "after": 0.52,
+      "changed": true,
+      "reason": "Operational-truth country/visa briefs scored ~0.52–0.54 with usable decision framing; 0.55 was TOO_STRICT for PUBLISHABLE"
+    },
+    "marketing_floor": {
+      "before": 0.48,
+      "after": 0.46,
+      "changed": true,
+      "reason": "Slight ease (0.48→0.46) for narrow family/cruise decision seeds with research questions; generic headline_echo still hard-REJECT"
+    },
+    "generic_penalty": {
+      "changed": false,
+      "reason": "Correctly kills headline echoes; operational truth uses dedicated reconstruct path"
+    },
+    "reuse_penalty": {
+      "changed": false,
+      "reason": "Meta TOPIC_REPEAT progression validated on cruise/9.9 observations"
+    },
+    "decision_repeat_penalty": {
+      "changed": false,
+      "reason": "Soft diversity cap=2 remains APPROPRIATE"
+    },
+    "presentation_fatigue": {
+      "changed": true,
+      "reason": "Slightly stronger 2nd/3rd penalties to curb consecutive deferred Meta resurfacing"
+    }
+  },
+  "days": [
+    {
+      "businessDateKst": "2026-09-08",
+      "v1Count": 6,
+      "v2Count": 1,
+      "newQualified": 6,
+      "carryoverEligible": 6,
+      "deferredResurfaced": [],
+      "v1": [
+        {
+          "date": "2026-09-08",
+          "rank": 1,
+          "agendaId": "9a95db46-4eca-448a-8a79-02596c2095f6",
+          "title": "chasing gold and clouds: vietnam’s best september escapes",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "chasing-gold-and-clouds-vietnam-s-best-september-escapes",
+            "vietnam"
+          ],
+          "topics": [
+            "event",
+            "travel"
+          ],
+          "v1Score": 0.817,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-08",
+          "rank": 2,
+          "agendaId": "4992224b-2dc8-4f2e-9e92-75e2f67ef351",
+          "title": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "slow-down-breathe-deep-discover-vietnam-s-ecotourism-wellness",
+            "vietnam"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.795,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-08",
+          "rank": 3,
+          "agendaId": "65ca10e2-155e-4b99-8d69-de3c9ce8c725",
+          "title": "after floods, grand canyon opens on a limited basis. what to know.",
+          "sourceType": "news",
+          "destinations": [
+            "after-floods-grand-canyon-opens-on-a-limited-basis-what-to-know"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.75,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-08",
+          "rank": 4,
+          "agendaId": "43ef5a0f-87f3-4462-8536-66861c1b9052",
+          "title": "taiwan",
+          "sourceType": "official_government",
+          "destinations": [
+            "taiwan"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.802,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "GENERIC_INFORMATIONAL"
+        },
+        {
+          "date": "2026-09-08",
+          "rank": 5,
+          "agendaId": "7337ec91-3772-41f1-8184-003e72a8e749",
+          "title": "nepal",
+          "sourceType": "official_government",
+          "destinations": [
+            "nepal"
+          ],
+          "topics": [
+            "safety",
+            "travel"
+          ],
+          "v1Score": 0.694,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        },
+        {
+          "date": "2026-09-08",
+          "rank": 6,
+          "agendaId": "b6f6959d-edc4-4baa-b69b-72ba84846cc8",
+          "title": "what to know about the grand canyon flooding",
+          "sourceType": "news",
+          "destinations": [
+            "what-to-know-about-the-grand-canyon-flooding"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.659,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "Chasing Gold and Clouds: Vietnam’s Best September Escapes ngoctitc Fri, 09/04/2026 - 08:59 Flying over the Golden Season (Photo: Nguyen Tuan Nghia) The series o",
+          "marketingStorySeedKo": "chasing gold and clouds: vietnam’s best september escapes",
+          "travelerProblemKo": "chasing gold and clouds: vietnam’s best september escapes — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "chasing gold and clouds: vietnam’s best september escapes",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.98175,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.07000699999999993,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+          "marketingStorySeedKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "travelerProblemKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.9385,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.05616700000000008,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "As the search for missing visitors continues, the National Park has shut down hotels and much of its terrain, but people can still enter.",
+          "marketingStorySeedKo": "after floods, grand canyon opens on a limited basis. what to know.",
+          "travelerProblemKo": "after floods, grand canyon opens on a limited basis. what to know. — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "after floods, grand canyon opens on a limited basis. what to know.",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.8787,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.2270310000000001,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Updated information of the health risks you’ll face in Taiwan (‘Health’ page).",
+          "marketingStorySeedKo": "taiwan",
+          "travelerProblemKo": "taiwan — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "taiwan",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.962,
+          "marketingQualityScore": 0.34215,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Addition of UK government assistance phone number from India ('Warnings and insurance' page).",
+          "marketingStorySeedKo": "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.8869999999999999,
+          "marketingQualityScore": 0.8931500000000001,
+          "totalScore": 0.8911820000000001,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal",
+          "finalRank": 1
+        },
+        {
+          "sourceTitle": "Two bodies were found and at least one person was unaccounted for after a flash flood swept through a remote section of Grand Canyon National Park.",
+          "marketingStorySeedKo": "what to know about the grand canyon flooding",
+          "travelerProblemKo": "what to know about the grand canyon flooding — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "what to know about the grand canyon flooding",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.8281999999999999,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.21087100000000003,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "decisionAtStake": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "qualityTier": "STRONG",
+          "totalScore": 0.8911820000000001,
+          "origin": "NEW",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_0fbfad40ff8d47b8",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.07000699999999993,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ce3f0fb855ea4800",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.05616700000000008,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_8df83887965a40f2",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.2270310000000001,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_586a0a4e905a423e",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_a4452dc665d84658",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.21087100000000003,
+          "origin": "NEW"
+        }
+      ],
+      "v1OnlyTitles": [
+        "chasing gold and clouds: vietnam’s best september escapes",
+        "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+        "after floods, grand canyon opens on a limited basis. what to know.",
+        "taiwan",
+        "what to know about the grand canyon flooding"
+      ],
+      "v2OnlySeeds": [
+        "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?"
+      ]
+    },
+    {
+      "businessDateKst": "2026-09-09",
+      "v1Count": 6,
+      "v2Count": 2,
+      "newQualified": 6,
+      "carryoverEligible": 12,
+      "deferredResurfaced": [
+        "magv2_658ed1985df546af"
+      ],
+      "v1": [
+        {
+          "date": "2026-09-09",
+          "rank": 1,
+          "agendaId": "9a95db46-4eca-448a-8a79-02596c2095f6",
+          "title": "chasing gold and clouds: vietnam’s best september escapes",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "chasing-gold-and-clouds-vietnam-s-best-september-escapes",
+            "vietnam"
+          ],
+          "topics": [
+            "event",
+            "travel"
+          ],
+          "v1Score": 0.817,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-09",
+          "rank": 2,
+          "agendaId": "4992224b-2dc8-4f2e-9e92-75e2f67ef351",
+          "title": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "slow-down-breathe-deep-discover-vietnam-s-ecotourism-wellness",
+            "vietnam"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.795,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-09",
+          "rank": 3,
+          "agendaId": "a370f970-e91b-4811-9d77-3c960fe4b5e5",
+          "title": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "28"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.58,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        },
+        {
+          "date": "2026-09-09",
+          "rank": 4,
+          "agendaId": "76949fbd-1c0c-4fca-a8bc-e110d4eea220",
+          "title": "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까?",
+          "sourceType": "travel_industry",
+          "destinations": [],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.569,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        },
+        {
+          "date": "2026-09-09",
+          "rank": 5,
+          "agendaId": "148b4e31-d927-4292-8f14-0c1a788081b6",
+          "title": "짧은 추석 연휴, 어디 갈까? 3박4일로 충분한 해외 도시 4",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "3-4-4"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.581,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        },
+        {
+          "date": "2026-09-09",
+          "rank": 6,
+          "agendaId": "8f22526e-a653-4a3f-a330-e9c20cb43a52",
+          "title": "[talk back] 돌고 돌아 다시 한국",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "talk-back"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "Chasing Gold and Clouds: Vietnam’s Best September Escapes ngoctitc Fri, 09/04/2026 - 08:59 Flying over the Golden Season (Photo: Nguyen Tuan Nghia) The series o",
+          "marketingStorySeedKo": "chasing gold and clouds: vietnam’s best september escapes",
+          "travelerProblemKo": "chasing gold and clouds: vietnam’s best september escapes — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "chasing gold and clouds: vietnam’s best september escapes",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.98175,
+          "marketingQualityScore": 0.41327500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+          "marketingStorySeedKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "travelerProblemKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.9385,
+          "marketingQualityScore": 0.41327500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "프랑스 관광청(Atout France) 한국사무소를 이끌 새 수장에 정혜원 지사장이 취임했다.프랑스 관광청은 9월 1일부로 한국사무소 정혜원 지사장 직무대행을 신임 지사장으로 정식 임명했다. 정 신임 지사장은 1996년 에어프랑스 기내통역원으로 관련 업계 경력을 시작했으며, 1998년",
+          "marketingStorySeedKo": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+          "travelerProblemKo": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원 — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7172,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.17535100000000003,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "한국과 일본, 그리고 호주 여행업계 핵심 관계자들이 호주 여행 상품 개발을 위해 도쿄에 집결했다. 호주정부관광청이 주최한 ‘2026 한일 호주마켓플레이스(Australia Marketplace Japan & Korea 2026, 이하 AMJK26)’가 9월 2일부터 4일까지 일본 도쿄에서 개최된다. 이번 행사는 한국과 일",
+          "marketingStorySeedKo": "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까? 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7676999999999999,
+          "marketingQualityScore": 0.86065,
+          "totalScore": 0.280906,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": true,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0.15,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.05,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Empty/generic decision frame or hard reject",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "짧은 추석 연휴, 어디 갈까? 3박4일로 충분한 해외 도시 4",
+          "marketingStorySeedKo": "짧은 연휴, 해외 도시를 고를 때 무엇을 먼저 볼까?",
+          "travelerProblemKo": "짧은 연휴에 해외 도시가 일정·피로도·비용 대비 맞는지 어떻게 고를까?",
+          "decisionAtStakeKo": "근거리 단기 도시 vs 국내/대안 일정",
+          "audienceTensionKo": "이동 시간 손실 vs 해외 경험 만족",
+          "readerPayoffKo": "연휴 길이에 맞는 목적지 필터를 얻는다",
+          "freshnessClass": "seasonal",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7176999999999999,
+          "marketingQualityScore": 0.8144833333333336,
+          "totalScore": 0.7835126666666669,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "specific tension + researchable + fresh/credible signal",
+          "finalRank": 1
+        },
+        {
+          "sourceTitle": "돌고 돌아 다시 한국 취향은 돌고 돈다. 10년 동안 그렇게 목놓아 외치던 해외여행에 대한 열의는 작년에 정점을 찍고 조금씩 잦아들었다. 세계에는 여전히 멋진 곳이 많은 걸 알지만, 그 풍경이 주는 자극은 예전 같지 않았다. 대신 주말이면 기차와 버스를 타고 서울 밖으로 나갔다. 인제의",
+          "marketingStorySeedKo": "[talk back] 돌고 돌아 다시 한국",
+          "travelerProblemKo": "[talk back] 돌고 돌아 다시 한국 — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "[talk back] 돌고 돌아 다시 한국",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.6907,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.1668710000000001,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "짧은 연휴, 해외 도시를 고를 때 무엇을 먼저 볼까?",
+          "decisionAtStake": "근거리 단기 도시 vs 국내/대안 일정",
+          "qualityTier": "STRONG",
+          "totalScore": 0.7835126666666669,
+          "origin": "NEW",
+          "explanation": "specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 2,
+          "storySeed": "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "decisionAtStake": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.7167788419957951,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_fa6ae1ca30dd42fe",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_facf404f7813478d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_823c436b77ef4af7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.17535100000000003,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e5b756748a984d84",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.280906,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e44eff24583842c4",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1668710000000001,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_0fbfad40ff8d47b8",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.057278713220297206,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ce3f0fb855ea4800",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.04343871322029713,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_8df83887965a40f2",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.21430271322029726,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_586a0a4e905a423e",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_a4452dc665d84658",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1981427132202972,
+          "origin": "NEW"
+        }
+      ],
+      "v1OnlyTitles": [
+        "chasing gold and clouds: vietnam’s best september escapes",
+        "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+        "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+        "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까?",
+        "짧은 추석 연휴, 어디 갈까? 3박4일로 충분한 해외 도시 4",
+        "[talk back] 돌고 돌아 다시 한국"
+      ],
+      "v2OnlySeeds": [
+        "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?"
+      ]
+    },
+    {
+      "businessDateKst": "2026-09-10",
+      "v1Count": 6,
+      "v2Count": 1,
+      "newQualified": 6,
+      "carryoverEligible": 17,
+      "deferredResurfaced": [
+        "magv2_e865ebd245514b55"
+      ],
+      "v1": [
+        {
+          "date": "2026-09-10",
+          "rank": 1,
+          "agendaId": "9a95db46-4eca-448a-8a79-02596c2095f6",
+          "title": "chasing gold and clouds: vietnam’s best september escapes",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "chasing-gold-and-clouds-vietnam-s-best-september-escapes",
+            "vietnam"
+          ],
+          "topics": [
+            "event",
+            "travel"
+          ],
+          "v1Score": 0.817,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-10",
+          "rank": 2,
+          "agendaId": "4992224b-2dc8-4f2e-9e92-75e2f67ef351",
+          "title": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "slow-down-breathe-deep-discover-vietnam-s-ecotourism-wellness",
+            "vietnam"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.795,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-10",
+          "rank": 3,
+          "agendaId": "a370f970-e91b-4811-9d77-3c960fe4b5e5",
+          "title": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "28"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.58,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "GENERIC_INFORMATIONAL"
+        },
+        {
+          "date": "2026-09-10",
+          "rank": 4,
+          "agendaId": "148b4e31-d927-4292-8f14-0c1a788081b6",
+          "title": "짧은 추석 연휴, 어디 갈까? 3박4일로 충분한 해외 도시 4",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "3-4-4"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.581,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        },
+        {
+          "date": "2026-09-10",
+          "rank": 5,
+          "agendaId": "76949fbd-1c0c-4fca-a8bc-e110d4eea220",
+          "title": "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까?",
+          "sourceType": "travel_industry",
+          "destinations": [],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.569,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        },
+        {
+          "date": "2026-09-10",
+          "rank": 6,
+          "agendaId": "6ada32b7-f710-4f57-bdcf-15e9869a813d",
+          "title": "관통사 한시자격 논란 계속되자…문관부 “6개 언어 인력난 보완책”",
+          "sourceType": "travel_industry",
+          "destinations": [],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.59,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "Chasing Gold and Clouds: Vietnam’s Best September Escapes ngoctitc Fri, 09/04/2026 - 08:59 Flying over the Golden Season (Photo: Nguyen Tuan Nghia) The series o",
+          "marketingStorySeedKo": "chasing gold and clouds: vietnam’s best september escapes",
+          "travelerProblemKo": "chasing gold and clouds: vietnam’s best september escapes — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "chasing gold and clouds: vietnam’s best september escapes",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.98175,
+          "marketingQualityScore": 0.41327500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+          "marketingStorySeedKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "travelerProblemKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.9385,
+          "marketingQualityScore": 0.41327500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "프랑스 관광청(Atout France) 한국사무소를 이끌 새 수장에 정혜원 지사장이 취임했다.프랑스 관광청은 9월 1일부로 한국사무소 정혜원 지사장 직무대행을 신임 지사장으로 정식 임명했다. 정 신임 지사장은 1996년 에어프랑스 기내통역원으로 관련 업계 경력을 시작했으며, 1998년",
+          "marketingStorySeedKo": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+          "travelerProblemKo": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원 — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7172,
+          "marketingQualityScore": 0.41327500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "짧은 추석 연휴, 어디 갈까? 3박4일로 충분한 해외 도시 4",
+          "marketingStorySeedKo": "짧은 연휴, 해외 도시를 고를 때 무엇을 먼저 볼까?",
+          "travelerProblemKo": "짧은 연휴에 해외 도시가 일정·피로도·비용 대비 맞는지 어떻게 고를까?",
+          "decisionAtStakeKo": "근거리 단기 도시 vs 국내/대안 일정",
+          "audienceTensionKo": "이동 시간 손실 vs 해외 경험 만족",
+          "readerPayoffKo": "연휴 길이에 맞는 목적지 필터를 얻는다",
+          "freshnessClass": "seasonal",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7176999999999999,
+          "marketingQualityScore": 0.7779833333333335,
+          "totalScore": 0.008692666666666793,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "한국과 일본, 그리고 호주 여행업계 핵심 관계자들이 호주 여행 상품 개발을 위해 도쿄에 집결했다. 호주정부관광청이 주최한 ‘2026 한일 호주마켓플레이스(Australia Marketplace Japan & Korea 2026, 이하 AMJK26)’가 9월 2일부터 4일까지 일본 도쿄에서 개최된다. 이번 행사는 한국과 일",
+          "marketingStorySeedKo": "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까? 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7676999999999999,
+          "marketingQualityScore": 0.86065,
+          "totalScore": 0.08090600000000003,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "관광통역안내사(관통사) 한시자격 도입을 둘러싸고 전문성과 형평성, 관광 안내 품질 저하 우려가 이어지자 문화체육관광부가 공식 입장을 내놨다. 소수언어권 인력 부족에 대응하기 위한 한시적·보완적 조치라는 설명이다.문관부는 9월 2일 설명자료를 통해 한시자격 대상이 프랑스어·독일어·스페인어",
+          "marketingStorySeedKo": "관통사 한시자격 논란 계속되자…문관부 “6개 언어 인력난 보완책”",
+          "travelerProblemKo": "관통사 한시자격 논란 계속되자…문관부 “6개 언어 인력난 보완책” — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "관통사 한시자격 논란 계속되자…문관부 “6개 언어 인력난 보완책”",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7676999999999999,
+          "marketingQualityScore": 0.44577500000000003,
+          "totalScore": 0.18879100000000004,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "짧은 연휴, 해외 도시를 고를 때 무엇을 먼저 볼까?",
+          "decisionAtStake": "근거리 단기 도시 vs 국내/대안 일정",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.6348482789075164,
+          "origin": "CARRYOVER",
+          "explanation": "specific tension + researchable + fresh/credible signal"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_b31a54ac20cb41d3",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_c85fbe7a271541e7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ea993757489c4d81",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_2d86e09b871641f1",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.008692666666666793,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_9f0448eb3d7b4a7a",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.08090600000000003,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1ebd3c2f71894f65",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.18879100000000004,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_0fbfad40ff8d47b8",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ce3f0fb855ea4800",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_8df83887965a40f2",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.20359954249492385,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_586a0a4e905a423e",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_a4452dc665d84658",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1874395424949239,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_fa6ae1ca30dd42fe",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_facf404f7813478d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_823c436b77ef4af7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1626227132202972,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e5b756748a984d84",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.2513028419957949,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e44eff24583842c4",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.15414271322029716,
+          "origin": "NEW"
+        }
+      ],
+      "v1OnlyTitles": [
+        "chasing gold and clouds: vietnam’s best september escapes",
+        "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+        "프랑스관광청 한국사무소 새 수장에 ‘28년 베테랑’ 정혜원",
+        "짧은 추석 연휴, 어디 갈까? 3박4일로 충분한 해외 도시 4",
+        "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까?",
+        "관통사 한시자격 논란 계속되자…문관부 “6개 언어 인력난 보완책”"
+      ],
+      "v2OnlySeeds": []
+    },
+    {
+      "businessDateKst": "2026-09-11",
+      "v1Count": 6,
+      "v2Count": 0,
+      "newQualified": 6,
+      "carryoverEligible": 22,
+      "deferredResurfaced": [],
+      "v1": [
+        {
+          "date": "2026-09-11",
+          "rank": 1,
+          "agendaId": "4992224b-2dc8-4f2e-9e92-75e2f67ef351",
+          "title": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "slow-down-breathe-deep-discover-vietnam-s-ecotourism-wellness",
+            "vietnam"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.795,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-11",
+          "rank": 2,
+          "agendaId": "76949fbd-1c0c-4fca-a8bc-e110d4eea220",
+          "title": "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까?",
+          "sourceType": "travel_industry",
+          "destinations": [],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.569,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        },
+        {
+          "date": "2026-09-11",
+          "rank": 3,
+          "agendaId": "22eee2e0-bfb1-4e85-bd89-ef0d6e71c6bd",
+          "title": "모두투어, ‘메이플 로드’ 기획전 출시",
+          "sourceType": "travel_industry",
+          "destinations": [],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.551,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "PROMOTIONAL"
+        },
+        {
+          "date": "2026-09-11",
+          "rank": 4,
+          "agendaId": "c1c0672e-844e-469c-b11f-4850fbe46f50",
+          "title": "홍콩, 빛과 불로 물든다",
+          "sourceType": "travel_industry",
+          "destinations": [],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.551,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "GENERIC_INFORMATIONAL"
+        },
+        {
+          "date": "2026-09-11",
+          "rank": 5,
+          "agendaId": "96f62b57-21a1-493a-8228-55f1b10182b3",
+          "title": "highland escape: coffee, waterfalls & cool breezes in da lat",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "highland-escape-coffee-waterfalls-cool-breezes-in-da-lat",
+            "vietnam"
+          ],
+          "topics": [
+            "travel",
+            "weather"
+          ],
+          "v1Score": 0.777,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "PROMOTIONAL"
+        },
+        {
+          "date": "2026-09-11",
+          "rank": 6,
+          "agendaId": "702dcf21-4e6b-45b8-8d39-9172852e2e81",
+          "title": "영화 속 장면 따라 유럽으로…요즘 패키지 여행이 달라졌다 [주간 여행산업 브리핑]",
+          "sourceType": "travel_industry",
+          "destinations": [],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.579,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+          "marketingStorySeedKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "travelerProblemKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.9385,
+          "marketingQualityScore": 0.41727500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "한국과 일본, 그리고 호주 여행업계 핵심 관계자들이 호주 여행 상품 개발을 위해 도쿄에 집결했다. 호주정부관광청이 주최한 ‘2026 한일 호주마켓플레이스(Australia Marketplace Japan & Korea 2026, 이하 AMJK26)’가 9월 2일부터 4일까지 일본 도쿄에서 개최된다. 이번 행사는 한국과 일",
+          "marketingStorySeedKo": "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까? 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7676999999999999,
+          "marketingQualityScore": 0.86065,
+          "totalScore": 0.08090600000000003,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "모두투어는 가을 북미 여행 시즌을 맞아 캐나다와 미국 동부의 대표 단풍 여행지를 연결한 ‘캐나다 & 미동부 Maple Road’ 기획전을 출시했다.캐나다 메이플 로드와 미국 동부 지역은 가을 단풍과 도시 관광을 함께 즐길 수 있는 장거리 여행지로 주목받고 있다. 9월 말 캐나다 퀘벡을",
+          "marketingStorySeedKo": "모두투어, ‘메이플 로드’ 기획전 출시",
+          "travelerProblemKo": "모두투어, ‘메이플 로드’ 기획전 출시 — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "모두투어, ‘메이플 로드’ 기획전 출시",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.75645,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.08791100000000002,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": true,
+          "reusePenalty": 0.08,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0.02,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "추석 연휴를 앞두고 홍콩의 밤이 등불과 불로 물든다. 홍콩관광청은 오는 9월 홍콩 전역에서 중추절을 맞아 다양한 축제와 전통문화 행사를 선보인다.이번 중추절에는 ‘홍콩 중추절 등불 축제(International Lantern Spectacular)’와 147년 전통의 ‘타이항 파이어 드",
+          "marketingStorySeedKo": "홍콩, 빛과 불로 물든다",
+          "travelerProblemKo": "홍콩, 빛과 불로 물든다 — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "홍콩, 빛과 불로 물든다",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.75645,
+          "marketingQualityScore": 0.378025,
+          "totalScore": 0.03912100000000002,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": true,
+          "reusePenalty": 0.08,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0.02,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Highland Escape: Coffee, Waterfalls & Cool Breezes in Da Lat ngoctitc Mon, 08/24/2026 - 14:25 Welcome to Lam Dong Province, home to the legendary town of Da Lat",
+          "marketingStorySeedKo": "highland escape: coffee, waterfalls & cool breezes in da lat",
+          "travelerProblemKo": "highland escape: coffee, waterfalls & cool breezes in da lat — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "highland escape: coffee, waterfalls & cool breezes in da lat",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.92725,
+          "marketingQualityScore": 0.46177500000000005,
+          "totalScore": 0.060726999999999975,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "여행사 부문 따라가는 여행하나투어가 고전 서사시 ‘오디세이아’를 테마로 그리스와 이탈리아의 주요 배경지를 둘러보는 지중해 여행 상품을 선보였다. 오디세우스의 귀향 항로와 관련된 지역을 연결한 일정으로 전문 인솔자가 동행한다. ‘오디세우스의 발자취 그리스 일주 9일’은 이타카섬의 바티·엑",
+          "marketingStorySeedKo": "영화 속 장면 따라 유럽으로…요즘 패키지 여행이 달라졌다 [주간 여행산업 브리핑]",
+          "travelerProblemKo": "영화 속 장면 따라 유럽으로…요즘 패키지 여행이 달라졌다 [주간 여행산업 브리핑] — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "영화 속 장면 따라 유럽으로…요즘 패키지 여행이 달라졌다 [주간 여행산업 브리핑]",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7676999999999999,
+          "marketingQualityScore": 0.46177500000000005,
+          "totalScore": 0.19967100000000004,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        }
+      ],
+      "v2Slate": [],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_5ad31bf33d754a6f",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ce147968454a49a3",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.08090600000000003,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b4b06a15bf4143",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.08791100000000002,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_503df45c659f486a",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.03912100000000002,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_05b2fcf9ad904c4d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.060726999999999975,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ba225bbf4d814f9c",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.19967100000000004,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_0fbfad40ff8d47b8",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ce3f0fb855ea4800",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_8df83887965a40f2",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1945992846001089,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_586a0a4e905a423e",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_a4452dc665d84658",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.17843928460010883,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_fa6ae1ca30dd42fe",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_facf404f7813478d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_823c436b77ef4af7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e865ebd245514b55",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_e44eff24583842c4",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.14343954249492386,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_b31a54ac20cb41d3",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_c85fbe7a271541e7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ea993757489c4d81",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_2d86e09b871641f1",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.004828278907516359,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_9f0448eb3d7b4a7a",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.051302841995794934,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1ebd3c2f71894f65",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1760627132202972,
+          "origin": "NEW"
+        }
+      ],
+      "v1OnlyTitles": [
+        "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+        "올겨울 항공 공급 폭발하는 여행지 ‘호주’, 기회의 땅 될까?",
+        "모두투어, ‘메이플 로드’ 기획전 출시",
+        "홍콩, 빛과 불로 물든다",
+        "highland escape: coffee, waterfalls & cool breezes in da lat",
+        "영화 속 장면 따라 유럽으로…요즘 패키지 여행이 달라졌다 [주간 여행산업 브리핑]"
+      ],
+      "v2OnlySeeds": []
+    },
+    {
+      "businessDateKst": "2026-09-12",
+      "v1Count": 5,
+      "v2Count": 5,
+      "newQualified": 5,
+      "carryoverEligible": 26,
+      "deferredResurfaced": [],
+      "v1": [
+        {
+          "date": "2026-09-12",
+          "rank": 1,
+          "agendaId": "a776f385-3710-4fe2-a7f0-3e42b74a2d3a",
+          "title": "부산 출발 크루즈 추석 탑승 가이드 콘텐츠 관측",
+          "sourceType": "social",
+          "destinations": [],
+          "topics": [
+            "activity_trend",
+            "cruise",
+            "family",
+            "short-haul"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "TREND_REPEAT"
+        },
+        {
+          "date": "2026-09-12",
+          "rank": 2,
+          "agendaId": "33d3970c-adeb-4d4f-b414-fb34c8e6bd14",
+          "title": "부산 출발 크루즈 가족 여행 활동 콘텐츠 관측",
+          "sourceType": "social",
+          "destinations": [],
+          "topics": [
+            "activity_trend",
+            "cruise",
+            "family",
+            "short-haul"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "TREND_REPEAT"
+        },
+        {
+          "date": "2026-09-12",
+          "rank": 3,
+          "agendaId": "ecc011cd-0db0-41fa-bc1a-6eaeaf53b738",
+          "title": "부산 출발 MSC 벨리시마 추석 크루즈 프로모션 콘텐츠 관측",
+          "sourceType": "social",
+          "destinations": [],
+          "topics": [
+            "competitor_promotion_signal",
+            "family",
+            "short-haul",
+            "cruise"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "TREND_REPEAT"
+        },
+        {
+          "date": "2026-09-12",
+          "rank": 4,
+          "agendaId": "5ed748f3-c996-4c9e-9cfe-58ff2a4a28c3",
+          "title": "TTL fix MM pool cruise scoped 1789013443480",
+          "sourceType": "social",
+          "destinations": [
+            "부산",
+            "일본"
+          ],
+          "topics": [
+            "activity_trend",
+            "family",
+            "short-haul",
+            "cruise"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "TREND_REPEAT"
+        },
+        {
+          "date": "2026-09-12",
+          "rank": 5,
+          "agendaId": "4199e812-23c9-48ba-936c-b1edb0b40a7c",
+          "title": "TTL fix MM pool cruise scoped 1789012959022",
+          "sourceType": "social",
+          "destinations": [
+            "부산",
+            "일본"
+          ],
+          "topics": [
+            "activity_trend",
+            "family",
+            "short-haul",
+            "cruise"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "TREND_REPEAT"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "부산 출발 크루즈 추석 탑승 가이드 콘텐츠 관측",
+          "marketingStorySeedKo": "부산 출발 가족 크루즈(부산 출발 크루즈 추석 탑승 가이) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "travelerProblemKo": "가족 일정·예산·체력/멀미 부담을 감안할 때 크루즈가 우리 여행 형태에 맞는지 어떻게 판단할까?",
+          "decisionAtStakeKo": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "audienceTensionKo": "한 번에 움직이는 편의 vs 일정 유연성·아이/부모 체력",
+          "readerPayoffKo": "우리 가족에게 크루즈가 맞는지 걸러내는 체크포인트를 얻는다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.63,
+          "marketingQualityScore": 0.8931500000000001,
+          "totalScore": 0.8089420000000002,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal",
+          "finalRank": 1
+        },
+        {
+          "sourceTitle": "부산 출발 크루즈 가족 여행 활동 콘텐츠 관측",
+          "marketingStorySeedKo": "부산 출발 가족 크루즈(부산 출발 크루즈 가족 여행 활동) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "travelerProblemKo": "가족 일정·예산·체력/멀미 부담을 감안할 때 크루즈가 우리 여행 형태에 맞는지 어떻게 판단할까?",
+          "decisionAtStakeKo": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "audienceTensionKo": "한 번에 움직이는 편의 vs 일정 유연성·아이/부모 체력",
+          "readerPayoffKo": "우리 가족에게 크루즈가 맞는지 걸러내는 체크포인트를 얻는다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.63,
+          "marketingQualityScore": 0.8931500000000001,
+          "totalScore": 0.8089420000000002,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal",
+          "finalRank": 2
+        },
+        {
+          "sourceTitle": "부산 출발 MSC 벨리시마 추석 크루즈 프로모션 콘텐츠 관측",
+          "marketingStorySeedKo": "부산 출발 가족 크루즈(부산 출발 MSC 벨리시마 추석) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "travelerProblemKo": "가족 일정·예산·체력/멀미 부담을 감안할 때 크루즈가 우리 여행 형태에 맞는지 어떻게 판단할까?",
+          "decisionAtStakeKo": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "audienceTensionKo": "한 번에 움직이는 편의 vs 일정 유연성·아이/부모 체력",
+          "readerPayoffKo": "우리 가족에게 크루즈가 맞는지 걸러내는 체크포인트를 얻는다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.63,
+          "marketingQualityScore": 0.8931500000000001,
+          "totalScore": 0.8089420000000002,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal",
+          "finalRank": 3
+        },
+        {
+          "sourceTitle": "TTL fix MM pool cruise scoped 1789013443480",
+          "marketingStorySeedKo": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "travelerProblemKo": "가족 일정·예산·체력/멀미 부담을 감안할 때 크루즈가 우리 여행 형태에 맞는지 어떻게 판단할까?",
+          "decisionAtStakeKo": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "audienceTensionKo": "한 번에 움직이는 편의 vs 일정 유연성·아이/부모 체력",
+          "readerPayoffKo": "우리 가족에게 크루즈가 맞는지 걸러내는 체크포인트를 얻는다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.63,
+          "marketingQualityScore": 0.8931500000000001,
+          "totalScore": 0.8089420000000002,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal",
+          "finalRank": 4
+        },
+        {
+          "sourceTitle": "TTL fix MM pool cruise scoped 1789012959022",
+          "marketingStorySeedKo": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "travelerProblemKo": "가족 일정·예산·체력/멀미 부담을 감안할 때 크루즈가 우리 여행 형태에 맞는지 어떻게 판단할까?",
+          "decisionAtStakeKo": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "audienceTensionKo": "한 번에 움직이는 편의 vs 일정 유연성·아이/부모 체력",
+          "readerPayoffKo": "우리 가족에게 크루즈가 맞는지 걸러내는 체크포인트를 얻는다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.63,
+          "marketingQualityScore": 0.8931500000000001,
+          "totalScore": 0.8089420000000002,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal",
+          "finalRank": 5
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "부산 출발 가족 크루즈(부산 출발 크루즈 추석 탑승 가이) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "STRONG",
+          "totalScore": 0.8089420000000002,
+          "origin": "NEW",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 2,
+          "storySeed": "부산 출발 가족 크루즈(부산 출발 크루즈 가족 여행 활동) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "STRONG",
+          "totalScore": 0.8089420000000002,
+          "origin": "NEW",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 3,
+          "storySeed": "부산 출발 가족 크루즈(부산 출발 MSC 벨리시마 추석) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "STRONG",
+          "totalScore": 0.8089420000000002,
+          "origin": "NEW",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 4,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "STRONG",
+          "totalScore": 0.8089420000000002,
+          "origin": "NEW",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 5,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "STRONG",
+          "totalScore": 0.8089420000000002,
+          "origin": "NEW",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_0fbfad40ff8d47b8",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ce3f0fb855ea4800",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_8df83887965a40f2",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.18703100000000006,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_586a0a4e905a423e",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_a4452dc665d84658",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.170871,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_fa6ae1ca30dd42fe",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_facf404f7813478d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_823c436b77ef4af7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e865ebd245514b55",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_e44eff24583842c4",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1344392846001089,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_b31a54ac20cb41d3",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_c85fbe7a271541e7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ea993757489c4d81",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_2d86e09b871641f1",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.0011505598077793389,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1ebd3c2f71894f65",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.07735954249492377,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_5ad31bf33d754a6f",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ce147968454a49a3",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.051302841995794934,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b4b06a15bf4143",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.08718271322029719,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_503df45c659f486a",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.03839271322029719,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_05b2fcf9ad904c4d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.04799871322029714,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ba225bbf4d814f9c",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1869427132202972,
+          "origin": "NEW"
+        }
+      ],
+      "v1OnlyTitles": [],
+      "v2OnlySeeds": []
+    },
+    {
+      "businessDateKst": "2026-09-13",
+      "v1Count": 2,
+      "v2Count": 4,
+      "newQualified": 2,
+      "carryoverEligible": 22,
+      "deferredResurfaced": [
+        "magv2_0ad6636575a74e1e",
+        "magv2_810b286bc0c544ae"
+      ],
+      "v1": [
+        {
+          "date": "2026-09-13",
+          "rank": 1,
+          "agendaId": "791051ce-183f-45ca-ae40-d9046aaf5dc1",
+          "title": "베트남 노선 9.9 특가 프로모션 관측",
+          "sourceType": "social",
+          "destinations": [],
+          "topics": [
+            "fare_price_signal",
+            "short-haul"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "TREND_REPEAT"
+        },
+        {
+          "date": "2026-09-13",
+          "rank": 2,
+          "agendaId": "5d5407c3-7b0d-4bf2-add3-76b202107694",
+          "title": "부산 출발 나트랑 추석 가족 패키지 프로모션 관측",
+          "sourceType": "social",
+          "destinations": [],
+          "topics": [
+            "competitor_promotion_signal",
+            "family",
+            "short-haul"
+          ],
+          "v1Score": 0.562,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "TREND_REPEAT"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "베트남 노선 9.9 특가 프로모션 관측",
+          "marketingStorySeedKo": "특가 신호가 다시 보일 때, 가격 전에 무엇을 확인해야 할까?",
+          "travelerProblemKo": "특가/프로모 가격이 일정 제약·숨은 비용 대비 실제로 이득인지 어떻게 판단할까?",
+          "decisionAtStakeKo": "즉시 예약 vs 조건 확인 후 대기",
+          "audienceTensionKo": "할인 매력 vs 일정 경직·취소수수료·포함 범위",
+          "readerPayoffKo": "프로모가 '이득'인지 걸러낼 체크리스트를 얻는다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.63,
+          "marketingQualityScore": 0.8144833333333336,
+          "totalScore": 0.7554486666666669,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "specific tension + researchable + fresh/credible signal",
+          "finalRank": 1
+        },
+        {
+          "sourceTitle": "부산 출발 나트랑 추석 가족 패키지 프로모션 관측",
+          "marketingStorySeedKo": "특가 신호가 다시 보일 때, 가격 전에 무엇을 확인해야 할까?",
+          "travelerProblemKo": "특가/프로모 가격이 일정 제약·숨은 비용 대비 실제로 이득인지 어떻게 판단할까?",
+          "decisionAtStakeKo": "즉시 예약 vs 조건 확인 후 대기",
+          "audienceTensionKo": "할인 매력 vs 일정 경직·취소수수료·포함 범위",
+          "readerPayoffKo": "프로모가 '이득'인지 걸러낼 체크리스트를 얻는다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.63,
+          "marketingQualityScore": 0.8144833333333336,
+          "totalScore": 0.7554486666666669,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "specific tension + researchable + fresh/credible signal",
+          "finalRank": 2
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "특가 신호가 다시 보일 때, 가격 전에 무엇을 확인해야 할까?",
+          "decisionAtStake": "즉시 예약 vs 조건 확인 후 대기",
+          "qualityTier": "STRONG",
+          "totalScore": 0.7554486666666669,
+          "origin": "NEW",
+          "explanation": "specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 2,
+          "storySeed": "특가 신호가 다시 보일 때, 가격 전에 무엇을 확인해야 할까?",
+          "decisionAtStake": "즉시 예약 vs 조건 확인 후 대기",
+          "qualityTier": "STRONG",
+          "totalScore": 0.7554486666666669,
+          "origin": "NEW",
+          "explanation": "specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 3,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.6544137132202973,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal + material update"
+        },
+        {
+          "rank": 4,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.6544137132202973,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal + material update"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_fa6ae1ca30dd42fe",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_facf404f7813478d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_823c436b77ef4af7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e865ebd245514b55",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_e44eff24583842c4",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.12687100000000007,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_b31a54ac20cb41d3",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_c85fbe7a271541e7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ea993757489c4d81",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_2d86e09b871641f1",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1ebd3c2f71894f65",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.06835928460010882,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_5ad31bf33d754a6f",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b4b06a15bf4143",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.07647954249492378,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_503df45c659f486a",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.02768954249492378,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_05b2fcf9ad904c4d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.03729554249492373,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ba225bbf4d814f9c",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1762395424949239,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b205c6e2bf4f8b",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.07931371322029723,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_ad94c85fc2eb4724",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.07931371322029723,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_65b37a4e181a4a99",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.07931371322029723,
+          "origin": "CARRYOVER"
+        }
+      ],
+      "v1OnlyTitles": [
+        "베트남 노선 9.9 특가 프로모션 관측",
+        "부산 출발 나트랑 추석 가족 패키지 프로모션 관측"
+      ],
+      "v2OnlySeeds": [
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?"
+      ]
+    },
+    {
+      "businessDateKst": "2026-09-14",
+      "v1Count": 6,
+      "v2Count": 3,
+      "newQualified": 6,
+      "carryoverEligible": 24,
+      "deferredResurfaced": [
+        "magv2_0ad6636575a74e1e",
+        "magv2_810b286bc0c544ae"
+      ],
+      "v1": [
+        {
+          "date": "2026-09-14",
+          "rank": 1,
+          "agendaId": "9c0a0fe1-2dea-4909-ada2-8eb8da019e00",
+          "title": "recharging in vietnam’s hidden sanctuary resorts",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "recharging-in-vietnam-s-hidden-sanctuary-resorts",
+            "vietnam"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.8,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        },
+        {
+          "date": "2026-09-14",
+          "rank": 2,
+          "agendaId": "85213d88-f034-431c-ac96-8a4bf4d3a35f",
+          "title": "thailand",
+          "sourceType": "official_government",
+          "destinations": [
+            "thailand"
+          ],
+          "topics": [
+            "safety",
+            "travel",
+            "visa"
+          ],
+          "v1Score": 0.811,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        },
+        {
+          "date": "2026-09-14",
+          "rank": 3,
+          "agendaId": "c8d8467e-13a3-4032-ab3b-80638ffef9f4",
+          "title": "“한국인 40만 명 마음을 흔들어라”…호주 전역 신규 콘텐츠 총정리",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "40"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.649,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        },
+        {
+          "date": "2026-09-14",
+          "rank": 4,
+          "agendaId": "47796826-eded-474d-b02c-fe1e0c1fd65e",
+          "title": "빨간색을 따라 여행한 런던 ‘london in red’",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "london-in-red"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.662,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        },
+        {
+          "date": "2026-09-14",
+          "rank": 5,
+          "agendaId": "3be6092c-cb77-4426-82f1-5f49bfd8f020",
+          "title": "festivals celebrate italy’s fall harvest",
+          "sourceType": "news",
+          "destinations": [
+            "festivals-celebrate-italy-s-fall-harvest"
+          ],
+          "topics": [
+            "event",
+            "travel"
+          ],
+          "v1Score": 0.737,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        },
+        {
+          "date": "2026-09-14",
+          "rank": 6,
+          "agendaId": "3bed95a6-e5f5-4210-9d8a-7e9c7aab6eec",
+          "title": "nepal",
+          "sourceType": "official_government",
+          "destinations": [
+            "nepal"
+          ],
+          "topics": [
+            "safety",
+            "travel"
+          ],
+          "v1Score": 0.581,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "Recharging in Vietnam’s hidden sanctuary resorts ngoctitc Wed, 09/09/2026 - 13:57 1. Ninh Binh: Zen solitude among ancient karsts Famous for its vertical limest",
+          "marketingStorySeedKo": "recharging in vietnam’s hidden sanctuary resorts",
+          "travelerProblemKo": "recharging in vietnam’s hidden sanctuary resorts — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "recharging in vietnam’s hidden sanctuary resorts",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.95825,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.06248699999999996,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Updated information about visa requirements and the rainy season in Thailand ('Entry requirements' and 'Safety and security' pages).",
+          "marketingStorySeedKo": "thailand 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.9614999999999999,
+          "marketingQualityScore": 0.86065,
+          "totalScore": 0.34292199999999995,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": true,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0.15,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.05,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Empty/generic decision frame or hard reject",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "“한국인 40만 명 마음을 흔들어라”…호주 전역 신규 콘텐츠 총정리",
+          "marketingStorySeedKo": "호주 항공 공급이 늘 때, 무엇을 먼저 비교해야 할까?",
+          "travelerProblemKo": "항공 공급이 늘어난 지금, 가격보다 출도착 시간과 현지 첫날 동선을 먼저 봐야 하는가?",
+          "decisionAtStakeKo": "가격 우선 vs 스케줄·환승·첫날 동선 우선",
+          "audienceTensionKo": "저가 유혹 vs 피로·일정 리스크",
+          "readerPayoffKo": "공급 확대 국면에서 항공 선택 우선순위를 정한다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.81195,
+          "marketingQualityScore": 0.7724833333333335,
+          "totalScore": 0.6051126666666669,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.18,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Empty/generic decision frame or hard reject",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "런던은 선명한 빨강으로 기억되는 도시다. 그럴 수밖에 없다. 매일 거리를 누비는 2층 버스부터 지하철역의 표지판, 근위병의 제복, 영국 국기 유니언 잭까지 도시의 상징 곳곳에 빨강이 들어 있다.",
+          "marketingStorySeedKo": "빨간색을 따라 여행한 런던 ‘london in red’",
+          "travelerProblemKo": "빨간색을 따라 여행한 런던 ‘london in red’ — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "빨간색을 따라 여행한 런던 ‘london in red’",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.8294499999999999,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.2112710000000001,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Here are five culinary celebrations to work into your autumn itinerary.",
+          "marketingStorySeedKo": "festivals celebrate italy’s fall harvest",
+          "travelerProblemKo": "festivals celebrate italy’s fall harvest — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "festivals celebrate italy’s fall harvest",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.86095,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.22135100000000008,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Updated information about flooding in the Rasuwa district and Nepal-China border area and about the Family Assistance Centre at the British Embassy Kathmandu (‘Warnings and insuran",
+          "marketingStorySeedKo": "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.7307499999999999,
+          "marketingQualityScore": 0.8931500000000001,
+          "totalScore": 0.7411820000000001,
+          "qualityTier": "STRONG",
+          "topicRepeat": true,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": true,
+          "reusePenalty": 0.08,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.02,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal + material update",
+          "finalRank": 1
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "decisionAtStake": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "qualityTier": "STRONG",
+          "totalScore": 0.7411820000000001,
+          "origin": "NEW",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal + material update"
+        },
+        {
+          "rank": 2,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.638910542494924,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal + material update"
+        },
+        {
+          "rank": 3,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.638910542494924,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal + material update"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_c70de6fdd998446b",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.06248699999999996,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_b46d855df9ce4ebf",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.34292199999999995,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1c30db95e74b4723",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.6051126666666669,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_50bfd3b3d6c04eeb",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.2112710000000001,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e46bc95a0c064d52",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.22135100000000008,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e865ebd245514b55",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_b31a54ac20cb41d3",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_c85fbe7a271541e7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ea993757489c4d81",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_2d86e09b871641f1",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1ebd3c2f71894f65",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.060790999999999984,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_5ad31bf33d754a6f",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b4b06a15bf4143",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.06747928460010882,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_503df45c659f486a",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.018689284600108824,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_05b2fcf9ad904c4d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.028295284600108772,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ba225bbf4d814f9c",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.16723928460010884,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b205c6e2bf4f8b",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1526105424949239,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_ad94c85fc2eb4724",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1526105424949239,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_65b37a4e181a4a99",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1526105424949239,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_88507424268c4254",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_d99e97247f0d42da",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        }
+      ],
+      "v1OnlyTitles": [
+        "recharging in vietnam’s hidden sanctuary resorts",
+        "thailand",
+        "“한국인 40만 명 마음을 흔들어라”…호주 전역 신규 콘텐츠 총정리",
+        "빨간색을 따라 여행한 런던 ‘london in red’",
+        "festivals celebrate italy’s fall harvest"
+      ],
+      "v2OnlySeeds": [
+        "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?"
+      ]
+    },
+    {
+      "businessDateKst": "2026-09-15",
+      "v1Count": 6,
+      "v2Count": 3,
+      "newQualified": 6,
+      "carryoverEligible": 26,
+      "deferredResurfaced": [
+        "magv2_579950d734b34381",
+        "magv2_0ad6636575a74e1e",
+        "magv2_810b286bc0c544ae"
+      ],
+      "v1": [
+        {
+          "date": "2026-09-15",
+          "rank": 1,
+          "agendaId": "60bc20d5-9923-420d-9de6-9eb19f04dbcc",
+          "title": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "2027"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.749,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-15",
+          "rank": 2,
+          "agendaId": "3be6092c-cb77-4426-82f1-5f49bfd8f020",
+          "title": "festivals celebrate italy’s fall harvest",
+          "sourceType": "news",
+          "destinations": [
+            "festivals-celebrate-italy-s-fall-harvest"
+          ],
+          "topics": [
+            "event",
+            "travel"
+          ],
+          "v1Score": 0.737,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        },
+        {
+          "date": "2026-09-15",
+          "rank": 3,
+          "agendaId": "4b37e01b-bcef-49b1-8644-ae22d55315df",
+          "title": "항공권 취소했더니 수수료 두 번…3년간 피해 구제 7,438건",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "3-7-438"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.669,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        },
+        {
+          "date": "2026-09-15",
+          "rank": 4,
+          "agendaId": "c8d8467e-13a3-4032-ab3b-80638ffef9f4",
+          "title": "“한국인 40만 명 마음을 흔들어라”…호주 전역 신규 콘텐츠 총정리",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "40"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.649,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        },
+        {
+          "date": "2026-09-15",
+          "rank": 5,
+          "agendaId": "95977e16-5fd9-4775-b2da-db2d83be08f8",
+          "title": "offshore paradises of vietnam",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "offshore-paradises-of-vietnam",
+            "vietnam"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.807,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-15",
+          "rank": 6,
+          "agendaId": "edf899f1-7926-4550-933a-8c4ead1194e1",
+          "title": "ireland",
+          "sourceType": "official_government",
+          "destinations": [
+            "ireland"
+          ],
+          "topics": [
+            "travel",
+            "visa"
+          ],
+          "v1Score": 0.797,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "세계적인 공연 그룹 태양의서커스(Cirque du Soleil)의 하와이 상설 공연인 ‘아우아나(ʻAuana)’가 2027년 공연 티켓 판매를 시작한다. 태양의서커스 ‘아우아나’는 호놀룰루 와이키키에 위치한 아웃리거 와이키키 비치콤버 호텔(OUTRIGGER Waikīkī Beachcom",
+          "marketingStorySeedKo": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+          "travelerProblemKo": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈 — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.87395,
+          "marketingQualityScore": 0.44577500000000003,
+          "totalScore": 0.22279100000000007,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Here are five culinary celebrations to work into your autumn itinerary.",
+          "marketingStorySeedKo": "festivals celebrate italy’s fall harvest",
+          "travelerProblemKo": "festivals celebrate italy’s fall harvest — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "festivals celebrate italy’s fall harvest",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.86095,
+          "marketingQualityScore": 0.41327500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "여행사나 글로벌 온라인 여행사(OTA)를 통해 구입한 항공권은 취소·변경 과정에서 항공사 수수료와 별도의 판매처 수수료가 발생할 수 있어 주의가 필요하다. 추석 연휴를 앞두고 항공 서비스 관련 소비자 피해가 해외여행객 증가세를 크게 웃도는 속도로 늘고 있다.한국소비자원과 공정거래위원회는 추석 명절을 맞아 항공서비스 소비자",
+          "marketingStorySeedKo": "항공권 취소했더니 수수료 두 번…3년간 피해 구제 7,438건 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.8404499999999999,
+          "marketingQualityScore": 0.85665,
+          "totalScore": 0.301466,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": true,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0.15,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.05,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Empty/generic decision frame or hard reject",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "“한국인 40만 명 마음을 흔들어라”…호주 전역 신규 콘텐츠 총정리",
+          "marketingStorySeedKo": "호주 항공 공급이 늘 때, 무엇을 먼저 비교해야 할까?",
+          "travelerProblemKo": "항공 공급이 늘어난 지금, 가격보다 출도착 시간과 현지 첫날 동선을 먼저 봐야 하는가?",
+          "decisionAtStakeKo": "가격 우선 vs 스케줄·환승·첫날 동선 우선",
+          "audienceTensionKo": "저가 유혹 vs 피로·일정 리스크",
+          "readerPayoffKo": "공급 확대 국면에서 항공 선택 우선순위를 정한다",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.81195,
+          "marketingQualityScore": 0.7359833333333334,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.18,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Offshore Paradises of Vietnam ngoctitc Fri, 09/11/2026 - 10:19 Con Dao: The protected sanctuary of barefoot luxury Rising dramatically out of the deep blue wate",
+          "marketingStorySeedKo": "offshore paradises of vietnam",
+          "travelerProblemKo": "offshore paradises of vietnam — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "offshore paradises of vietnam",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.968,
+          "marketingQualityScore": 0.44577500000000003,
+          "totalScore": 0.06288699999999992,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Addition of information about ID requirements for travel between the UK and Ireland under the Common Travel Area (‘Entry requirements’ page).",
+          "marketingStorySeedKo": "ireland 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.942,
+          "marketingQualityScore": 0.85665,
+          "totalScore": 0.3339620000000001,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": true,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0.15,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.05,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Empty/generic decision frame or hard reject",
+          "finalRank": null
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "decisionAtStake": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.6697788419957951,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + fresh/credible signal + material update"
+        },
+        {
+          "rank": 2,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.625110284600109,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + material update"
+        },
+        {
+          "rank": 3,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.625110284600109,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + material update"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_45072cf9734f4388",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.22279100000000007,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_236306d7d3af4886",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_86343f56a4c54026",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.301466,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_f8a92b4a5ce3451f",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_b79fae626c6c43aa",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.06288699999999992,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_18f15a11a3c34082",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.3339620000000001,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e865ebd245514b55",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_2d86e09b871641f1",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_5ad31bf33d754a6f",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b4b06a15bf4143",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.05991099999999999,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_503df45c659f486a",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.011120999999999992,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_05b2fcf9ad904c4d",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.02072699999999994,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_ba225bbf4d814f9c",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.159671,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b205c6e2bf4f8b",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.14361028460010894,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_ad94c85fc2eb4724",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.14361028460010894,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_65b37a4e181a4a99",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.14361028460010894,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_88507424268c4254",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.04911720916159057,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_d99e97247f0d42da",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.04911720916159057,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_c70de6fdd998446b",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.049758713220297235,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_b46d855df9ce4ebf",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.31331884199579485,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1c30db95e74b4723",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.5923843798869639,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_50bfd3b3d6c04eeb",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.19854271322029715,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e46bc95a0c064d52",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.20862271322029724,
+          "origin": "NEW"
+        }
+      ],
+      "v1OnlyTitles": [
+        "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+        "festivals celebrate italy’s fall harvest",
+        "항공권 취소했더니 수수료 두 번…3년간 피해 구제 7,438건",
+        "“한국인 40만 명 마음을 흔들어라”…호주 전역 신규 콘텐츠 총정리",
+        "offshore paradises of vietnam",
+        "ireland"
+      ],
+      "v2OnlySeeds": [
+        "nepal 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?"
+      ]
+    },
+    {
+      "businessDateKst": "2026-09-16",
+      "v1Count": 6,
+      "v2Count": 3,
+      "newQualified": 6,
+      "carryoverEligible": 25,
+      "deferredResurfaced": [
+        "magv2_0ad6636575a74e1e",
+        "magv2_810b286bc0c544ae"
+      ],
+      "v1": [
+        {
+          "date": "2026-09-16",
+          "rank": 1,
+          "agendaId": "628d2c37-b644-4249-8c0f-bcdcdaba9a7e",
+          "title": "호텔 쏟아지는 푸꾸옥, ‘한국인 40%’ 리조트는 다르게 간다",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "40"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.757,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        },
+        {
+          "date": "2026-09-16",
+          "rank": 2,
+          "agendaId": "60bc20d5-9923-420d-9de6-9eb19f04dbcc",
+          "title": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+          "sourceType": "travel_industry",
+          "destinations": [
+            "2027"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.749,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "NEWS_HEADLINE_LIKE"
+        },
+        {
+          "date": "2026-09-16",
+          "rank": 3,
+          "agendaId": "3be6092c-cb77-4426-82f1-5f49bfd8f020",
+          "title": "festivals celebrate italy’s fall harvest",
+          "sourceType": "news",
+          "destinations": [
+            "festivals-celebrate-italy-s-fall-harvest"
+          ],
+          "topics": [
+            "event",
+            "travel"
+          ],
+          "v1Score": 0.737,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        },
+        {
+          "date": "2026-09-16",
+          "rank": 4,
+          "agendaId": "edf899f1-7926-4550-933a-8c4ead1194e1",
+          "title": "ireland",
+          "sourceType": "official_government",
+          "destinations": [
+            "ireland"
+          ],
+          "topics": [
+            "travel",
+            "visa"
+          ],
+          "v1Score": 0.797,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OPERATIONAL_TRUTH"
+        },
+        {
+          "date": "2026-09-16",
+          "rank": 5,
+          "agendaId": "1b01fcae-86ad-4992-a35a-2f6f8c80297f",
+          "title": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "slow-down-breathe-deep-discover-vietnam-s-ecotourism-wellness",
+            "vietnam"
+          ],
+          "topics": [
+            "hotel",
+            "travel"
+          ],
+          "v1Score": 0.767,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "DECISION_ORIENTED"
+        },
+        {
+          "date": "2026-09-16",
+          "rank": 6,
+          "agendaId": "02c81383-a06b-40a6-ba4d-f13ab283d4e0",
+          "title": "vietnam motorcycle tours - an excellent choice for thrill-seekers",
+          "sourceType": "tourism_board",
+          "destinations": [
+            "vietnam",
+            "vietnam-motorcycle-tours-an-excellent-choice-for-thrill-seekers"
+          ],
+          "topics": [
+            "travel"
+          ],
+          "v1Score": 0.755,
+          "humanSelected": false,
+          "laterStoryUsed": null,
+          "similarTopicNearby": null,
+          "editorialClass": "OTHER"
+        }
+      ],
+      "v2Candidates": [
+        {
+          "sourceTitle": "2027년 APEC 정상회의를 앞두고 베트남 푸꾸옥의 관광 지형이 빠르게 바뀌고 있다. 남부를 중심으로 호텔과 컨벤션, 교통 인프라 개발이 이어지면서 객실 공급과 리조트 간 경쟁도 한층 치열해질 전망이다. 프리미어 빌리지 푸꾸옥(Premier Village Phu Quoc Resort)은 이러한 변화 속에서 자연환경과 독",
+          "marketingStorySeedKo": "호텔 공급이 늘어난 푸꾸옥에서, 숙소 위치는 무엇으로 고를까?",
+          "travelerProblemKo": "리조트 선택지가 늘어날수록 독립적 입지를 가진 프리미어 빌리지 등 럭셔리 리조트 선택에 실질적인 가이드라인 을 어떻게 적용할지?",
+          "decisionAtStakeKo": "독립 입지/럭셔리 집중 vs 관광 접근성·신규 공급 클러스터",
+          "audienceTensionKo": "편의·시설 집중 vs 동선·외부 관광 효율",
+          "readerPayoffKo": "독립적 입지를 가진 프리미어 빌리지 등 럭셔리 리조트 선택에 실질적인 가이드라인 제공",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.8867,
+          "marketingQualityScore": 0.7514833333333335,
+          "totalScore": 0.7947526666666668,
+          "qualityTier": "STRONG",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": true,
+          "exclusionReason": null,
+          "explanation": "specific tension + researchable + fresh/credible signal",
+          "finalRank": 1
+        },
+        {
+          "sourceTitle": "세계적인 공연 그룹 태양의서커스(Cirque du Soleil)의 하와이 상설 공연인 ‘아우아나(ʻAuana)’가 2027년 공연 티켓 판매를 시작한다. 태양의서커스 ‘아우아나’는 호놀룰루 와이키키에 위치한 아웃리거 와이키키 비치콤버 호텔(OUTRIGGER Waikīkī Beachcom",
+          "marketingStorySeedKo": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+          "travelerProblemKo": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈 — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.87395,
+          "marketingQualityScore": 0.4292750000000001,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Here are five culinary celebrations to work into your autumn itinerary.",
+          "marketingStorySeedKo": "festivals celebrate italy’s fall harvest",
+          "travelerProblemKo": "festivals celebrate italy’s fall harvest — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "festivals celebrate italy’s fall harvest",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.86095,
+          "marketingQualityScore": 0.41727500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.36,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Addition of information about ID requirements for travel between the UK and Ireland under the Common Travel Area (‘Entry requirements’ page).",
+          "marketingStorySeedKo": "ireland 관련 공식·안전 신호, 출국 직전 여행자는 무엇을 바꿔야 할까?",
+          "travelerProblemKo": "공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?",
+          "decisionAtStakeKo": "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
+          "audienceTensionKo": "여행 강행 vs 리스크 회피 비용·번거로움 사이의 판단",
+          "readerPayoffKo": "주의/규정 정보가 '취소 사유'인지 '준비 강화'인지 판단한다",
+          "freshnessClass": "breaking",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.942,
+          "marketingQualityScore": 0.86065,
+          "totalScore": 0.13668199999999997,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.55,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0,
+          "staleTrendPenalty": 0.2,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+          "marketingStorySeedKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "travelerProblemKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.8997499999999999,
+          "marketingQualityScore": 0.41727500000000006,
+          "totalScore": 0,
+          "qualityTier": "REJECT",
+          "topicRepeat": true,
+          "decisionRepeat": true,
+          "storySeedRepeat": true,
+          "materialUpdate": false,
+          "reusePenalty": 0.25,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0.15,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        },
+        {
+          "sourceTitle": "Vietnam Motorcycle Tours - An Excellent Choice For Thrill-Seekers ngoctitc Thu, 08/20/2026 - 14:51 Vietnam, shaped like the letter S, offers breathtaking views",
+          "marketingStorySeedKo": "vietnam motorcycle tours - an excellent choice for thrill-seekers",
+          "travelerProblemKo": "vietnam motorcycle tours - an excellent choice for thrill-seekers — 여행자는 어떻게 해야 할까?",
+          "decisionAtStakeKo": "vietnam motorcycle tours - an excellent choice for thrill-seekers",
+          "audienceTensionKo": "관심 증가",
+          "readerPayoffKo": "여행 계획에 참고",
+          "freshnessClass": "timely",
+          "origin": "NEW",
+          "lifecycleStatus": "QUALIFIED",
+          "signalQualityScore": 0.88325,
+          "marketingQualityScore": 0.44977500000000004,
+          "totalScore": 0.03848699999999994,
+          "qualityTier": "REJECT",
+          "topicRepeat": false,
+          "decisionRepeat": false,
+          "storySeedRepeat": false,
+          "materialUpdate": false,
+          "reusePenalty": 0,
+          "fatiguePenalty": 0,
+          "genericRiskPenalty": 0.55,
+          "staleTrendPenalty": 0,
+          "selectedIntoSlate": false,
+          "exclusionReason": "quality_gate_reject",
+          "explanation": "Generic news announcement; no concrete decision",
+          "finalRank": null
+        }
+      ],
+      "v2Slate": [
+        {
+          "rank": 1,
+          "storySeed": "호텔 공급이 늘어난 푸꾸옥에서, 숙소 위치는 무엇으로 고를까?",
+          "decisionAtStake": "독립 입지/럭셔리 집중 vs 관광 접근성·신규 공급 클러스터",
+          "qualityTier": "STRONG",
+          "totalScore": 0.7947526666666668,
+          "origin": "NEW",
+          "explanation": "specific tension + researchable + fresh/credible signal"
+        },
+        {
+          "rank": 2,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.6127420000000001,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + material update"
+        },
+        {
+          "rank": 3,
+          "storySeed": "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+          "decisionAtStake": "크루즈 vs 육상 패키지/개별여행 중 무엇을 우선 검토할지",
+          "qualityTier": "PUBLISHABLE",
+          "totalScore": 0.6127420000000001,
+          "origin": "CARRYOVER",
+          "explanation": "Strong traveler decision + specific tension + researchable + material update"
+        }
+      ],
+      "v2Rejected": [
+        {
+          "agendaId": "magv2_a4f7cbde54da44e2",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_c866c5dac7eb4105",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_05fc61c2fce9482e",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.13668199999999997,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1cb3b9f2d6384bb9",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_bd94d156a9e542d7",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.03848699999999994,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e865ebd245514b55",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_2d86e09b871641f1",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_66b205c6e2bf4f8b",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1360420000000001,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_ad94c85fc2eb4724",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1360420000000001,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_65b37a4e181a4a99",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.1360420000000001,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_88507424268c4254",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.0401169512667755,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_d99e97247f0d42da",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.0401169512667755,
+          "origin": "CARRYOVER"
+        },
+        {
+          "agendaId": "magv2_c70de6fdd998446b",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.03905554249492382,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_1c30db95e74b4723",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_50bfd3b3d6c04eeb",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.18783954249492385,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_e46bc95a0c064d52",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_45072cf9734f4388",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.21006271322029724,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_236306d7d3af4886",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_86343f56a4c54026",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.2718628419957949,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_f8a92b4a5ce3451f",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_b79fae626c6c43aa",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.05015871322029719,
+          "origin": "NEW"
+        },
+        {
+          "agendaId": "magv2_18f15a11a3c34082",
+          "qualityTier": "REJECT",
+          "reason": "quality_gate_reject",
+          "totalScore": 0.304358841995795,
+          "origin": "NEW"
+        }
+      ],
+      "v1OnlyTitles": [
+        "호텔 쏟아지는 푸꾸옥, ‘한국인 40%’ 리조트는 다르게 간다",
+        "태양의서커스 ‘아우아나’, 2027년 티켓 오픈",
+        "festivals celebrate italy’s fall harvest",
+        "ireland",
+        "slow down, breathe deep: discover vietnam’s ecotourism & wellness",
+        "vietnam motorcycle tours - an excellent choice for thrill-seekers"
+      ],
+      "v2OnlySeeds": [
+        "호텔 공급이 늘어난 푸꾸옥에서, 숙소 위치는 무엇으로 고를까?",
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?",
+        "부산 출발 가족 크루즈(TTL fix MM pool cr) — 우리 가족은 무엇을 먼저 확인해야 할까?"
+      ]
+    }
+  ],
+  "totals": {
+    "v1Items": 49,
+    "v1ClassCounts": {
+      "NEWS_HEADLINE_LIKE": 11,
+      "GENERIC_INFORMATIONAL": 3,
+      "OPERATIONAL_TRUTH": 9,
+      "DECISION_ORIENTED": 9,
+      "OTHER": 8,
+      "PROMOTIONAL": 2,
+      "TREND_REPEAT": 7
+    },
+    "v2Candidates": 49,
+    "strong": 11,
+    "publishable": 0,
+    "weak": 0,
+    "reject": 38,
+    "dailySlateCounts": [
+      1,
+      2,
+      1,
+      0,
+      5,
+      4,
+      3,
+      3,
+      3
+    ],
+    "deferredResurfacedTotal": 11,
+    "genericNewsDropped": 14,
+    "repeatedTrendsDropped": 1,
+    "lowCountDays": 3,
+    "midDays": 4,
+    "sixItemDays": 0,
+    "topicFingerprintExampleCruise": "tp_00121f14"
+  },
+  "metaFatigue": {
+    "cruise_case": [
+      {
+        "date": "2026-09-12",
+        "title": "부산 출발 크루즈 추석 탑승 가이드 콘텐츠 관측",
+        "topicFingerprint": "tp_3a2ec58f",
+        "reuseKind": "NOVEL",
+        "reusePenalty": 0,
+        "seenPrior": 0,
+        "tier": "STRONG",
+        "included": true
+      },
+      {
+        "date": "2026-09-12",
+        "title": "부산 출발 크루즈 가족 여행 활동 콘텐츠 관측",
+        "topicFingerprint": "tp_c2765053",
+        "reuseKind": "NOVEL",
+        "reusePenalty": 0,
+        "seenPrior": 0,
+        "tier": "STRONG",
+        "included": true
+      },
+      {
+        "date": "2026-09-12",
+        "title": "부산 출발 MSC 벨리시마 추석 크루즈 프로모션 콘텐츠 관측",
+        "topicFingerprint": "tp_30f1d1a2",
+        "reuseKind": "NOVEL",
+        "reusePenalty": 0,
+        "seenPrior": 0,
+        "tier": "STRONG",
+        "included": true
+      },
+      {
+        "date": "2026-09-12",
+        "title": "TTL fix MM pool cruise scoped 1789013443480",
+        "topicFingerprint": "tp_e734f234",
+        "reuseKind": "NOVEL",
+        "reusePenalty": 0,
+        "seenPrior": 0,
+        "tier": "STRONG",
+        "included": true
+      },
+      {
+        "date": "2026-09-12",
+        "title": "TTL fix MM pool cruise scoped 1789012959022",
+        "topicFingerprint": "tp_e734f234",
+        "reuseKind": "NOVEL",
+        "reusePenalty": 0,
+        "seenPrior": 0,
+        "tier": "STRONG",
+        "included": true
+      }
+    ],
+    "vietnam_promo_case": [
+      {
+        "date": "2026-09-13",
+        "title": "베트남 노선 9.9 특가 프로모션 관측",
+        "reuseKind": "NOVEL",
+        "reusePenalty": 0,
+        "tier": "STRONG",
+        "included": true
+      }
+    ],
+    "wellness_case": [
+      {
+        "date": "2026-09-08",
+        "title": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+        "topicFingerprint": "tp_2cfbb2fd",
+        "reuseKind": "NOVEL",
+        "tier": "REJECT",
+        "included": false
+      },
+      {
+        "date": "2026-09-09",
+        "title": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+        "topicFingerprint": "tp_2cfbb2fd",
+        "reuseKind": "EXACT_REPEAT",
+        "tier": "REJECT",
+        "included": false
+      },
+      {
+        "date": "2026-09-10",
+        "title": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+        "topicFingerprint": "tp_2cfbb2fd",
+        "reuseKind": "EXACT_REPEAT",
+        "tier": "REJECT",
+        "included": false
+      },
+      {
+        "date": "2026-09-11",
+        "title": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+        "topicFingerprint": "tp_2cfbb2fd",
+        "reuseKind": "EXACT_REPEAT",
+        "tier": "REJECT",
+        "included": false
+      },
+      {
+        "date": "2026-09-16",
+        "title": "Slow down, breathe deep: Discover Vietnam’s ecotourism & wellness ngoctitc Tue, 08/25/2026 - 09:56 Eco-Luxury along the Central Coast The coastal stretch betwee",
+        "topicFingerprint": "tp_2cfbb2fd",
+        "reuseKind": "TOPIC_REPEAT",
+        "tier": "REJECT",
+        "included": false
+      }
+    ],
+    "material_update_behavior": "UPDATED_SIGNAL reduces reusePenalty vs TOPIC_REPEAT (policy unchanged; no material updates in this window for cruise)"
+  },
+  "falsePositives": [],
+  "falseNegatives": [
+    {
+      "date": "2026-09-09",
+      "title": "한국과 일본, 그리고 호주 여행업계 핵심 관계자들이 호주 여행 상품 개발을 위해 도쿄에 집결했다. 호주정부관광청이 주최한 ‘2026 한일 호주마켓플레이스(Australia Marketplace Japan & Korea 2026, 이하 AMJK26)’가 9월 2일부터 4일까지 일본 도쿄에서 개최된다. 이번 행사는 한국과 일",
+      "tier": "REJECT",
+      "totalScore": 0.280906,
+      "marketingQualityScore": 0.86065,
+      "reason": "Empty/generic decision frame or hard reject"
+    },
+    {
+      "date": "2026-09-10",
+      "title": "한국과 일본, 그리고 호주 여행업계 핵심 관계자들이 호주 여행 상품 개발을 위해 도쿄에 집결했다. 호주정부관광청이 주최한 ‘2026 한일 호주마켓플레이스(Australia Marketplace Japan & Korea 2026, 이하 AMJK26)’가 9월 2일부터 4일까지 일본 도쿄에서 개최된다. 이번 행사는 한국과 일",
+      "tier": "REJECT",
+      "totalScore": 0.08090600000000003,
+      "marketingQualityScore": 0.86065,
+      "reason": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty"
+    },
+    {
+      "date": "2026-09-11",
+      "title": "한국과 일본, 그리고 호주 여행업계 핵심 관계자들이 호주 여행 상품 개발을 위해 도쿄에 집결했다. 호주정부관광청이 주최한 ‘2026 한일 호주마켓플레이스(Australia Marketplace Japan & Korea 2026, 이하 AMJK26)’가 9월 2일부터 4일까지 일본 도쿄에서 개최된다. 이번 행사는 한국과 일",
+      "tier": "REJECT",
+      "totalScore": 0.08090600000000003,
+      "marketingQualityScore": 0.86065,
+      "reason": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty"
+    },
+    {
+      "date": "2026-09-14",
+      "title": "Updated information about visa requirements and the rainy season in Thailand ('Entry requirements' and 'Safety and security' pages).",
+      "tier": "REJECT",
+      "totalScore": 0.34292199999999995,
+      "marketingQualityScore": 0.86065,
+      "reason": "Empty/generic decision frame or hard reject"
+    },
+    {
+      "date": "2026-09-15",
+      "title": "여행사나 글로벌 온라인 여행사(OTA)를 통해 구입한 항공권은 취소·변경 과정에서 항공사 수수료와 별도의 판매처 수수료가 발생할 수 있어 주의가 필요하다. 추석 연휴를 앞두고 항공 서비스 관련 소비자 피해가 해외여행객 증가세를 크게 웃도는 속도로 늘고 있다.한국소비자원과 공정거래위원회는 추석 명절을 맞아 항공서비스 소비자",
+      "tier": "REJECT",
+      "totalScore": 0.301466,
+      "marketingQualityScore": 0.85665,
+      "reason": "Empty/generic decision frame or hard reject"
+    },
+    {
+      "date": "2026-09-15",
+      "title": "Addition of information about ID requirements for travel between the UK and Ireland under the Common Travel Area (‘Entry requirements’ page).",
+      "tier": "REJECT",
+      "totalScore": 0.3339620000000001,
+      "marketingQualityScore": 0.85665,
+      "reason": "Empty/generic decision frame or hard reject"
+    },
+    {
+      "date": "2026-09-16",
+      "title": "Addition of information about ID requirements for travel between the UK and Ireland under the Common Travel Area (‘Entry requirements’ page).",
+      "tier": "REJECT",
+      "totalScore": 0.13668199999999997,
+      "marketingQualityScore": 0.86065,
+      "reason": "Repeated topic (EXACT_REPEAT); fatigue/reuse penalty"
+    }
+  ],
+  "transformerReview": {
+    "counts": {
+      "SUPERFICIAL_REWRITE": 14,
+      "STRONG_STORY_SEED": 10,
+      "GENERIC_DECISION": 14,
+      "GOOD_TRANSFORMATION": 11
+    },
+    "note": "No LLM — deterministic reconstruction from V1 editorial/topic tags only"
+  },
+  "productionReadiness": {
+    "classification": "READY_FOR_LIVE_SHADOW",
+    "reasons": [
+      "Architecture + calibration replay on real data look sound",
+      "Do not switch production until live 09:00 shadow days complete"
+    ],
+    "recommendedLiveShadowDays": 5
+  }
+}

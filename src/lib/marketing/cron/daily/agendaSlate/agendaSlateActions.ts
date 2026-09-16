@@ -167,6 +167,37 @@ export function reconcileSelectedTodayWithTerminalRequests(input: {
   return { slate: next, releasedCount };
 }
 
+/**
+ * Re-select items that are AVAILABLE but still awaiting human Story selection,
+ * so the card does not look like a plain idle "대기" row.
+ */
+export function restoreSelectedTodayForAwaitingStory(input: {
+  slate: DailyAgendaSlate;
+  awaitingStorySlateItemIds: ReadonlySet<string>;
+  expectedBusinessDateKst?: string;
+  now?: Date;
+}): { slate: DailyAgendaSlate; restoredCount: number } {
+  let next = input.slate;
+  let restoredCount = 0;
+  for (const candidate of input.slate.candidates) {
+    if (candidate.state !== "AVAILABLE") continue;
+    if (!input.awaitingStorySlateItemIds.has(candidate.slateItemId)) continue;
+    try {
+      next = applyAgendaSlateAction({
+        slate: next,
+        slateItemId: candidate.slateItemId,
+        action: "select_today",
+        expectedBusinessDateKst: input.expectedBusinessDateKst,
+        now: input.now,
+      });
+      restoredCount += 1;
+    } catch {
+      // Cap / validation — leave AVAILABLE; UI still shows Story picker via PR attach.
+    }
+  }
+  return { slate: next, restoredCount };
+}
+
 /** Stable research identity seed for production logicalRunKey hashing. */
 export function researchIdentitySeedForCandidate(item: {
   agendaCandidateId?: string | null;

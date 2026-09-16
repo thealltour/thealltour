@@ -1,0 +1,14 @@
+[Unit]
+Description=Collect manual-publication performance snapshots before the 08:30 KST brief
+Documentation=docs/hermes/marketing/research-collection-worker.md
+Requires=thealltour-marketing-manual-performance.service
+
+[Timer]
+# Must complete before the 08:30 KST Performance Analyst brief reads snapshots.
+OnCalendar=08:05 Asia/Seoul
+AccuracySec=1min
+Persistent=true
+Unit=thealltour-marketing-manual-performance.service
+
+[Install]
+WantedBy=timers.target

@@ -324,6 +324,8 @@ const PROPOSITION_RULES = [
   "AUTHORITATIVE: StoryPoint + storySupportVerdict + supportedClaimBoundary + researchQuestionFindings + evidence limitations.",
   "Do NOT invent another editorial thesis, switch destination/product/travel mode, broaden into destination summary, replace Story with generic travel tips, revive a refuted claim, or ignore supportedClaimBoundary.",
   "For PARTIALLY_SUPPORTED: never exceed supportedClaimBoundary — it is the MAXIMUM claim scope.",
+  "Keep StoryPoint destination/entity anchors in proposition fields (e.g. Con Dao, conservation, BTS) even when writing Korean — do not replace with unrelated destinations or generic travel framing.",
+  "audienceTension / readerGain / contentPromise must stay recognizably about the same Story tension, payoff, and supported claim (paraphrase OK; topic switch is not).",
   "specificTakeaways MUST be evidence-backed from researchQuestionFindings; include takeawayEvidenceRefs when possible.",
   "Do NOT produce generic destination advice, an alternative angle, a replacement story, or unsupported takeaways.",
   "Do NOT rescue REFUTED / INSUFFICIENT_EVIDENCE with generic content advice.",
@@ -540,6 +542,8 @@ export function buildContentDraftTopicIdentityRepairPrompt(
     formatStoryLockBrief(payload),
     "Return the COMPLETE JSON object again. Keep grounded facts.",
     "Rewrite primaryAngle / keyMessage / title / contentPlan.proposition so they do NOT change destination/product type/travel mode, and so proposition fields are specific (promise, readerGain, takeaways, engagement).",
+    "If StoryPoint is English and you write Korean: keep destination transliteration (e.g. Con Dao→콘다오) AND thematic anchors (conservation/보존·보호, tourism/관광, luxury/럭셔리, marine/해양). Geography-only blurbs without the Story tension/payoff are not enough.",
+    "audienceTension/readerGain/contentPromise must remain about the SAME Story claim boundary — paraphrase OK, topic switch is not.",
     "If research cannot support useful takeaways without inventing facts, set propositionStrength=insufficient and list limitations — do NOT invent 3 fake tips.",
     "No markdown fences. No prose before or after.",
     formatDeliverableRequirementsSection(payload.deliverableRequirements),
@@ -577,12 +581,58 @@ function resolveEvidenceBriefForLock(
   return payload.audienceContentResearchBrief?.evidenceBackedStoryBrief ?? null;
 }
 
+/**
+ * Last-resort deterministic heal when CS Korean paraphrase fails EN Story lock.
+ * Prefer Story/boundary text over encyclopedic drift so production can proceed.
+ */
+function healPropositionTowardStory(input: {
+  proposition: NonNullable<ContentStrategistOutput["contentPlan"]>["proposition"];
+  story: NonNullable<ContentDraftRequest["authoritativeStoryPoint"]>;
+  evidenceBrief: EvidenceBackedStoryBrief;
+}): NonNullable<ContentStrategistOutput["contentPlan"]>["proposition"] {
+  const prop = input.proposition;
+  if (!prop) return prop;
+  const boundary = input.evidenceBrief.supportedClaimBoundary?.trim() || null;
+  const promise =
+    boundary ??
+    input.story.storyClaim?.trim() ??
+    input.story.storyQuestion?.trim() ??
+    input.story.curiosityGap;
+  const findings = input.evidenceBrief.researchQuestionFindings.filter(
+    (f) => f.status === "answered" || f.status === "partially_answered",
+  );
+  const healedTakeaways =
+    findings.length > 0
+      ? findings.slice(0, 3).map((f) => f.question.trim() || f.finding.trim()).filter(Boolean)
+      : prop.specificTakeaways;
+  const healedRefs =
+    findings.length > 0
+      ? findings.slice(0, healedTakeaways.length).map((f, i) => ({
+          takeaway: healedTakeaways[i]!,
+          evidenceRefs: f.evidenceRefs.slice(0, 6),
+        }))
+      : prop.takeawayEvidenceRefs;
+  return {
+    ...prop,
+    audienceTension: input.story.audienceTension,
+    readerGain: input.story.readerPayoff,
+    contentPromise: promise.slice(0, 400),
+    specificTakeaways: healedTakeaways.slice(0, 5),
+    takeawayEvidenceRefs: healedRefs,
+    limitations: [
+      ...prop.limitations,
+      "proposition_healed_to_story_lock",
+      ...input.evidenceBrief.limitations.filter((l) => !prop.limitations.includes(l)),
+    ].slice(0, 12),
+  };
+}
+
 function assertProposition(
   output: ContentStrategistOutput,
   payload: ContentDraftRequest,
 ): { ok: true } | { ok: false; reasons: string[]; error: ContentStrategistPropositionError } {
   const identity = resolvePayloadTopicIdentity(payload);
-  const prop = output.contentPlan?.proposition ?? null;
+  let prop = output.contentPlan?.proposition ?? null;
   // Scaffold-only / no ACRB paths may omit proposition — require when ACRB present.
   if (!payload.audienceContentResearchBrief && !prop) {
     return { ok: true };
@@ -607,12 +657,30 @@ function assertProposition(
   }
 
   if (prop && story && evidenceBrief && acrb?.storySupportVerdict) {
-    const lock = validateContentPropositionAgainstStory({
+    let lock = validateContentPropositionAgainstStory({
       proposition: prop,
       storyPoint: story,
       evidenceBrief,
       topicIdentity: identity,
     });
+    if (!lock.ok) {
+      const healed = healPropositionTowardStory({
+        proposition: prop,
+        story,
+        evidenceBrief,
+      });
+      const healedLock = validateContentPropositionAgainstStory({
+        proposition: healed!,
+        storyPoint: story,
+        evidenceBrief,
+        topicIdentity: identity,
+      });
+      if (healedLock.ok && healed && output.contentPlan) {
+        prop = healed;
+        output.contentPlan.proposition = healed;
+        lock = healedLock;
+      }
+    }
     if (!lock.ok) {
       for (const iss of lock.issues) {
         issues.push({
@@ -630,9 +698,9 @@ function assertProposition(
         evidenceBrief,
       });
       output.contentPlan.proposition = {
-        ...prop,
+        ...prop!,
         propositionStrength:
-          effectiveStrength !== prop.propositionStrength ? effectiveStrength : prop.propositionStrength,
+          effectiveStrength !== prop!.propositionStrength ? effectiveStrength : prop!.propositionStrength,
         storyPointRef: {
           storyPointId: story.pointId,
           storyPointHash: evidenceBrief.storyPointHash,
@@ -645,8 +713,8 @@ function assertProposition(
         propositionLockVersion: PROPOSITION_LOCK_VERSION,
         propositionSourceRevision: sourceRevision,
         limitations: [
-          ...prop.limitations,
-          ...evidenceBrief.limitations.filter((l) => !prop.limitations.includes(l)),
+          ...prop!.limitations,
+          ...evidenceBrief.limitations.filter((l) => !prop!.limitations.includes(l)),
         ].slice(0, 12),
       };
     }

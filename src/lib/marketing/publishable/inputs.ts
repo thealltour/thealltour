@@ -11,6 +11,8 @@ import type { HumanReviewDraft } from "@/lib/marketing/review/types";
 import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
 import { resolveTargetPublishableChannels } from "@/lib/marketing/publishable/selectTargetChannels";
 import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
+import { resolveCanonicalAssetDomainContext } from "@/lib/marketing/canonicalAsset/resolveCanonicalAssetDomainContext";
+import type { ContentProposition } from "@/lib/marketing/content/proposition/contracts";
 
 export type PublishableComposerFact = {
   statement: string;
@@ -40,6 +42,19 @@ export type PublishableResearchContext = {
   findingHints: Array<{ text: string; type: string }>;
 };
 
+export type PublishableStoryLock = {
+  /** Read-only Story identity — not a creative source. */
+  role: "STORY_LOCK_READ_ONLY";
+  storyPointId: string | null;
+  storyPointHash: string | null;
+  storyTitleKo: string | null;
+  storyQuestionKo: string | null;
+  audienceProblemKo: string | null;
+  decisionAtStakeKo: string | null;
+  audienceTensionKo: string | null;
+  readerPayoffKo: string | null;
+};
+
 export type PublishableComposerInput = {
   candidateId: string;
   businessDateKst: string;
@@ -65,6 +80,10 @@ export type PublishableComposerInput = {
    * Absent on legacy packages (composers fall back to prior inputs).
    */
   approvedCanonicalAsset?: CanonicalMarketingAsset | null;
+  /** STEP 2 — read-only Story lock for approved-asset adapter mode. */
+  storyLock?: PublishableStoryLock | null;
+  /** STEP 2 — composition mode marker for prompt/observability. */
+  compositionMode?: "approved_asset_adapter" | "legacy_proposition_driven";
 };
 
 function normalizeStatement(text: string): string {
@@ -163,6 +182,7 @@ export function buildPublishableComposerInput(
     acrb?: AudienceContentResearchBrief | null;
     explicitTargetChannels?: PublishableChannel[] | null;
     approvedCanonicalAsset?: CanonicalMarketingAsset | null;
+    packageRoot?: string | null;
   },
 ): PublishableComposerInput {
   const unsupported = (candidate.governanceDecision?.unsupportedClaims ?? []).map((c) =>
@@ -176,49 +196,51 @@ export function buildPublishableComposerInput(
     (isApprovedCanonicalAsset(candidate.canonicalMarketingAsset)
       ? candidate.canonicalMarketingAsset
       : null);
+  const compositionMode = approvedAsset ? "approved_asset_adapter" : "legacy_proposition_driven";
 
   const usableFacts: PublishableComposerFact[] = [];
   const avoidedStatements: string[] = [];
 
-  // When approved asset exists, it is the editorial SoT — do not expand usable facts
-  // from research into new angles; keep facts as safety metadata only.
-  for (const fact of candidate.contentAssignment.facts) {
-    const statement = normalizeStatement(fact.statement);
-    if (!statement) continue;
-    const blocked =
-      fact.confidence === "low" ||
-      unsupportedLower.has(statement.toLowerCase()) ||
-      unsupported.some((u) => u && statement.includes(u));
-    if (blocked) {
-      avoidedStatements.push(statement);
-      continue;
-    }
-    usableFacts.push({
-      statement,
-      confidence: fact.confidence,
-      evidenceRefIds: [...fact.evidenceRefs],
-      usable: true,
-      epistemicType: fact.confidence === "high" ? "verified_fact" : "observed_signal",
-    });
-  }
-
-  if (research && !approvedAsset) {
-    for (const finding of research.findingHints) {
-      if (finding.type === "hypothesis" || finding.type === "inference") {
-        avoidedStatements.push(finding.text);
+  // APPROVED-ASSET mode: do not feed contentAssignment/research facts as creative material.
+  if (!approvedAsset) {
+    for (const fact of candidate.contentAssignment.facts) {
+      const statement = normalizeStatement(fact.statement);
+      if (!statement) continue;
+      const blocked =
+        fact.confidence === "low" ||
+        unsupportedLower.has(statement.toLowerCase()) ||
+        unsupported.some((u) => u && statement.includes(u));
+      if (blocked) {
+        avoidedStatements.push(statement);
         continue;
       }
-      if (finding.type === "verified_fact" || finding.type === "observed_signal") {
-        const statement = normalizeStatement(finding.text);
-        if (!statement) continue;
-        if (usableFacts.some((f) => f.statement === statement)) continue;
-        usableFacts.push({
-          statement,
-          confidence: finding.type === "verified_fact" ? "high" : "medium",
-          evidenceRefIds: [],
-          usable: true,
-          epistemicType: finding.type,
-        });
+      usableFacts.push({
+        statement,
+        confidence: fact.confidence,
+        evidenceRefIds: [...fact.evidenceRefs],
+        usable: true,
+        epistemicType: fact.confidence === "high" ? "verified_fact" : "observed_signal",
+      });
+    }
+
+    if (research) {
+      for (const finding of research.findingHints) {
+        if (finding.type === "hypothesis" || finding.type === "inference") {
+          avoidedStatements.push(finding.text);
+          continue;
+        }
+        if (finding.type === "verified_fact" || finding.type === "observed_signal") {
+          const statement = normalizeStatement(finding.text);
+          if (!statement) continue;
+          if (usableFacts.some((f) => f.statement === statement)) continue;
+          usableFacts.push({
+            statement,
+            confidence: finding.type === "verified_fact" ? "high" : "medium",
+            evidenceRefIds: [],
+            usable: true,
+            epistemicType: finding.type,
+          });
+        }
       }
     }
   }
@@ -234,17 +256,28 @@ export function buildPublishableComposerInput(
     }
   }
 
-  const evidenceRefIds = [
-    ...new Set([
-      ...usableFacts.flatMap((f) => f.evidenceRefIds).filter(Boolean),
-      ...(approvedAsset?.evidenceRefs.map((e) => e.evidenceId) ?? []),
-    ]),
-  ].slice(0, 24);
+  const evidenceRefIds = approvedAsset
+    ? [...new Set(approvedAsset.evidenceRefs.map((e) => e.evidenceId).filter(Boolean))].slice(0, 24)
+    : [...new Set(usableFacts.flatMap((f) => f.evidenceRefIds).filter(Boolean))].slice(0, 24);
 
-  const destinations = [...(candidate.selectedAgenda.destinations ?? [])];
-  if (destinations.length === 0) {
+  const destinations = approvedAsset
+    ? []
+    : [...(candidate.selectedAgenda.destinations ?? [])];
+  if (!approvedAsset && destinations.length === 0) {
     const hay = `${candidate.selectedAgenda.title}\n${candidate.contentAssignment.topic}\n${candidate.contentPlan?.keyMessage ?? ""}`;
-    for (const place of ["부산", "다낭", "오사카", "도쿄", "후쿠오카", "오키나와", "방콕", "싱가포르", "유럽", "제주"]) {
+    for (const place of [
+      "부산",
+      "다낭",
+      "오사카",
+      "도쿄",
+      "후쿠오카",
+      "오키나와",
+      "방콕",
+      "싱가포르",
+      "유럽",
+      "제주",
+      "푸꾸옥",
+    ]) {
       if (hay.includes(place)) destinations.push(place);
     }
   }
@@ -254,26 +287,80 @@ export function buildPublishableComposerInput(
     contentPlanTargetChannels: candidate.contentPlan?.targetChannels ?? null,
   });
 
+  const proposition = candidate.contentPlan?.proposition ?? null;
+  const storyLock = buildPublishableStoryLock({
+    candidate,
+    approvedAsset,
+    packageRoot: options?.packageRoot ?? null,
+    acrb,
+    proposition,
+  });
+
+  if (approvedAsset) {
+    return {
+      candidateId: candidate.candidateId,
+      businessDateKst: candidate.businessDateKst,
+      topic: approvedAsset.titleKo,
+      audience: proposition?.primaryAudience ?? null,
+      // commercialIntent kept only as format context; asset CTA wins in prompt rules
+      commercialIntent: candidate.contentAssignment.commercialIntent,
+      hookHint: approvedAsset.openingHookKo,
+      keyMessage: approvedAsset.titleKo,
+      destinations,
+      entities: [],
+      usableFacts: [],
+      avoidedStatements: [...new Set(avoidedStatements)].slice(0, 16),
+      unsupportedClaims: [
+        ...unsupported.slice(0, 12),
+        ...approvedAsset.forbiddenClaimsKo.slice(0, 8),
+      ],
+      governanceDecision: candidate.governanceDecision?.decision ?? null,
+      sourceRevision: computePublishableSourceRevision(candidate, null, acrb, approvedAsset),
+      evidenceRefIds,
+      research: research
+        ? {
+            ...research,
+            // Strip creative ACRB signals; keep safety-only fields for INPUT_JSON builder.
+            selectedAngle: null,
+            selectedAngleTension: null,
+            selectedAngleRationale: null,
+            selectedAngleId: null,
+            searchIntentPrimary: null,
+            searchQuestions: [],
+            contentGaps: [],
+            decisionTriggers: [],
+            motivations: [],
+            anxieties: [],
+            objections: [],
+            findingHints: [],
+          }
+        : null,
+      targetChannels,
+      contentProposition: proposition,
+      approvedCanonicalAsset: approvedAsset,
+      storyLock,
+      compositionMode,
+    };
+  }
+
   return {
     candidateId: candidate.candidateId,
     businessDateKst: candidate.businessDateKst,
     topic: candidate.contentAssignment.topic || candidate.selectedAgenda.title,
     audience:
-      candidate.contentPlan?.proposition?.primaryAudience ??
+      proposition?.primaryAudience ??
       research?.audiencePrimary[0] ??
       candidate.contentPlan?.targetAudience ??
       candidate.contentAssignment.audience ??
       null,
     commercialIntent: candidate.contentAssignment.commercialIntent,
     hookHint:
-      approvedAsset?.openingHookKo ??
       candidate.contentPlan?.hook ??
       research?.selectedAngleTension ??
       candidate.selectedAgenda.timelinessNote ??
       null,
     keyMessage:
-      approvedAsset?.titleKo ??
-      candidate.contentPlan?.proposition?.contentPromise ??
+      proposition?.contentPromise ??
       candidate.contentPlan?.keyMessage ??
       research?.selectedAngle ??
       candidate.selectedAgenda.summary ??
@@ -282,16 +369,73 @@ export function buildPublishableComposerInput(
     entities: [...(candidate.selectedAgenda.entities ?? [])],
     usableFacts: usableFacts.slice(0, 10),
     avoidedStatements: [...new Set(avoidedStatements)].slice(0, 16),
-    unsupportedClaims: [
-      ...unsupported.slice(0, 12),
-      ...(approvedAsset?.forbiddenClaimsKo ?? []).slice(0, 8),
-    ],
+    unsupportedClaims: unsupported.slice(0, 12),
     governanceDecision: candidate.governanceDecision?.decision ?? null,
     sourceRevision: computePublishableSourceRevision(candidate, null, acrb, approvedAsset),
     evidenceRefIds,
     research,
     targetChannels,
-    contentProposition: candidate.contentPlan?.proposition ?? null,
+    contentProposition: proposition,
     approvedCanonicalAsset: approvedAsset,
+    storyLock,
+    compositionMode,
+  };
+}
+
+function buildPublishableStoryLock(input: {
+  candidate: CompletedMarketingCandidate;
+  approvedAsset: CanonicalMarketingAsset | null;
+  packageRoot: string | null;
+  acrb: AudienceContentResearchBrief | null;
+  proposition: ContentProposition | null;
+}): PublishableStoryLock | null {
+  if (!input.approvedAsset && !input.proposition) return null;
+  const domain = resolveCanonicalAssetDomainContext({
+    candidate: {
+      ...input.candidate,
+      canonicalMarketingAsset:
+        input.approvedAsset ?? input.candidate.canonicalMarketingAsset ?? null,
+    },
+    packageRoot: input.packageRoot,
+    audienceContentResearchBrief: input.acrb,
+  });
+  const story = domain.storyPoint;
+  const prop = input.proposition ?? domain.proposition;
+  const storyQuestion =
+    story?.storyQuestion?.trim() ||
+    prop?.supportedClaimBoundaryUsed?.trim() ||
+    input.approvedAsset?.supportedClaimBoundaryKo?.trim() ||
+    null;
+  const storyTitle =
+    storyQuestion ||
+    story?.storyClaim?.trim() ||
+    input.approvedAsset?.titleKo?.trim() ||
+    null;
+  const propTension = prop?.audienceTension?.trim() || null;
+  const storyTension = story?.audienceTension?.trim() || null;
+  return {
+    role: "STORY_LOCK_READ_ONLY",
+    storyPointId:
+      input.approvedAsset?.storyPointId?.trim() ||
+      story?.pointId?.trim() ||
+      prop?.storyPointRef?.storyPointId?.trim() ||
+      null,
+    storyPointHash:
+      input.approvedAsset?.storyPointHash?.trim() ||
+      domain.storyPointHash?.trim() ||
+      prop?.storyPointRef?.storyPointHash?.trim() ||
+      prop?.storyPointHash?.trim() ||
+      null,
+    storyTitleKo: storyTitle,
+    storyQuestionKo: storyQuestion,
+    audienceProblemKo: prop?.audienceProblem?.trim() || null,
+    // Consistency lock: tension doubles as decision-at-stake when no richer Story field exists.
+    decisionAtStakeKo: propTension || storyTension || null,
+    audienceTensionKo: storyTension || propTension || null,
+    readerPayoffKo:
+      story?.readerPayoff?.trim() ||
+      prop?.readerGain?.trim() ||
+      input.approvedAsset?.decisionGuidanceKo?.trim() ||
+      null,
   };
 }

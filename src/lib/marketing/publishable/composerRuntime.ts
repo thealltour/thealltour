@@ -14,10 +14,16 @@ import type {
 } from "@/lib/marketing/publishable/contracts";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
+import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
 import {
   APPROVED_ASSET_COMPOSER_RULES,
   buildApprovedAssetPromptSlice,
 } from "@/lib/marketing/publishable/approvedAsset";
+import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
+import {
+  assembleChannelComposerPromptParts,
+  formatStoryLockForPrompt,
+} from "@/lib/marketing/publishable/channelEditorIdentity";
 
 export const PUBLISHABLE_MAX_INVOCATIONS_PER_CHANNEL = 2 as const;
 
@@ -64,8 +70,24 @@ export function classifyPublishableLlmFailure(error: unknown): {
 
 export function buildPropositionPromptSlice(
   proposition: ContentProposition | null | undefined,
+  mode: "approved_asset_adapter" | "legacy_proposition_driven" = "legacy_proposition_driven",
 ): Record<string, unknown> | null {
   if (!proposition) return null;
+  if (mode === "approved_asset_adapter") {
+    // Consistency lock only — no angle/whyNow/keyMessage creative drivers.
+    return {
+      role: "CONSISTENCY_LOCK",
+      contract: proposition.contract,
+      primaryAudience: proposition.primaryAudience,
+      audienceProblem: proposition.audienceProblem,
+      audienceTension: proposition.audienceTension,
+      contentPromise: proposition.contentPromise,
+      readerGain: proposition.readerGain,
+      specificTakeaways: proposition.specificTakeaways.slice(0, 5),
+      desiredAudienceAction: proposition.desiredAudienceAction,
+      limitations: proposition.limitations.slice(0, 8),
+    };
+  }
   return {
     contract: proposition.contract,
     primaryAudience: proposition.primaryAudience,
@@ -97,15 +119,77 @@ export const PROPOSITION_COMPOSER_RULES = [
   "Do NOT call web search or invent sources.",
 ].join("\n");
 
+export const PROPOSITION_CONSISTENCY_LOCK_RULES = [
+  "CONTENT_PROPOSITION is a CONSISTENCY_LOCK only — not editorial authority.",
+  "It must NOT override APPROVED_CANONICAL_MARKETING_ASSET.",
+  "It must NOT create a new angle, replace decisionAtStake, create new CTA intent, revive whyNow, or revive Agenda framing.",
+  "If a proposition field is not represented in the approved asset, do not force it into final copy.",
+  "Approved asset wins over any conflicting proposition field (including desiredAudienceAction).",
+  "Do NOT call web search or invent sources.",
+].join("\n");
+
+export const CHANNEL_INPUT_AUTHORITY_VERSION = "channel-input-authority-v1" as const;
+
 export function channelComposerRules(input: PublishableComposerInput): string {
-  if (input.approvedCanonicalAsset) {
-    return [APPROVED_ASSET_COMPOSER_RULES, PROPOSITION_COMPOSER_RULES].join("\n");
+  if (input.approvedCanonicalAsset || input.compositionMode === "approved_asset_adapter") {
+    return [
+      "=== APPROVED_ASSET_AUTHORITY_RULES ===",
+      APPROVED_ASSET_COMPOSER_RULES,
+      "=== CONSISTENCY_LOCK_RULES ===",
+      PROPOSITION_CONSISTENCY_LOCK_RULES,
+      "=== SAFETY_BOUNDARY ===",
+      "Respect supportedClaimBoundaryKo, forbiddenClaimsKo, and limitationsKo from the approved asset.",
+      "Do NOT invent booking-timing, future-price, urgency, or supply-competition angles unless present in the approved asset.",
+    ].join("\n");
   }
   return PROPOSITION_COMPOSER_RULES;
 }
 
 export function buildChannelComposerInputJson(input: PublishableComposerInput): Record<string, unknown> {
+  const mode =
+    input.compositionMode ??
+    (input.approvedCanonicalAsset ? "approved_asset_adapter" : "legacy_proposition_driven");
+
+  if (mode === "approved_asset_adapter") {
+    return {
+      compositionMode: "approved_asset_adapter",
+      inputAuthorityVersion: CHANNEL_INPUT_AUTHORITY_VERSION,
+      channelFormatContext: {
+        commercialIntent: input.commercialIntent,
+        governanceDecision: input.governanceDecision,
+      },
+      topic: input.approvedCanonicalAsset?.titleKo ?? input.topic,
+      audience: input.audience,
+      hookHint: input.approvedCanonicalAsset?.openingHookKo ?? input.hookHint,
+      keyMessage: input.approvedCanonicalAsset?.titleKo ?? input.keyMessage,
+      approvedCanonicalAsset: buildApprovedAssetPromptSlice(input.approvedCanonicalAsset),
+      storyLock: input.storyLock ?? null,
+      contentProposition: buildPropositionPromptSlice(input.contentProposition, mode),
+      safetyBoundary: {
+        avoidedStatements: input.avoidedStatements,
+        unsupportedClaims: input.unsupportedClaims,
+        evidenceRefIds: input.evidenceRefIds,
+        researchVerdict: input.research?.researchVerdict ?? null,
+        researchLimitations: input.research?.limitations ?? [],
+      },
+      provenance: {
+        sourceAssetId: input.approvedCanonicalAsset?.assetId ?? null,
+        sourceAssetVersion:
+          input.approvedCanonicalAsset?.approvedVersion ??
+          input.approvedCanonicalAsset?.version ??
+          null,
+        sourceRevision: input.sourceRevision,
+        storyPointId: input.storyLock?.storyPointId ?? input.approvedCanonicalAsset?.storyPointId ?? null,
+        storyPointHash:
+          input.storyLock?.storyPointHash ?? input.approvedCanonicalAsset?.storyPointHash ?? null,
+      },
+      // Explicitly omit Agenda/ACRB creative fields (selectedAngle, searchIntent, usableFacts, destinations).
+    };
+  }
+
   return {
+    compositionMode: "legacy_proposition_driven",
+    inputAuthorityVersion: CHANNEL_INPUT_AUTHORITY_VERSION,
     topic: input.topic,
     audience: input.audience,
     commercialIntent: input.commercialIntent,
@@ -113,7 +197,7 @@ export function buildChannelComposerInputJson(input: PublishableComposerInput): 
     keyMessage: input.keyMessage,
     destinations: input.destinations,
     approvedCanonicalAsset: buildApprovedAssetPromptSlice(input.approvedCanonicalAsset),
-    contentProposition: buildPropositionPromptSlice(input.contentProposition),
+    contentProposition: buildPropositionPromptSlice(input.contentProposition, mode),
     usableFacts: input.usableFacts.map((f) => ({
       statement: f.statement,
       confidence: f.confidence,
@@ -122,19 +206,32 @@ export function buildChannelComposerInputJson(input: PublishableComposerInput): 
     avoidedStatements: input.avoidedStatements,
     unsupportedClaims: input.unsupportedClaims,
     governanceDecision: input.governanceDecision,
-    research: input.approvedCanonicalAsset
-      ? {
-          // Safety metadata only when approved asset is SoT — do not invent new angles.
-          limitations: input.research?.limitations ?? [],
-          researchVerdict: input.research?.researchVerdict ?? null,
-        }
-      : {
-          selectedAngle: input.research?.selectedAngle,
-          selectedAngleTension: input.research?.selectedAngleTension,
-          contentGaps: input.research?.contentGaps,
-          limitations: input.research?.limitations,
-        },
+    research: {
+      selectedAngle: input.research?.selectedAngle,
+      selectedAngleTension: input.research?.selectedAngleTension,
+      contentGaps: input.research?.contentGaps,
+      limitations: input.research?.limitations,
+    },
   };
+}
+
+export function buildChannelComposerPromptParts(input: {
+  channel: PublishableChannel;
+  writingContract: string;
+  composerInput: PublishableComposerInput;
+  repairHint?: string | null;
+}): ChannelComposerPromptParts {
+  const inputJson = buildChannelComposerInputJson(input.composerInput);
+  return assembleChannelComposerPromptParts({
+    channel: input.channel,
+    writingContract: input.writingContract,
+    channelRules: channelComposerRules(input.composerInput),
+    repairHint: input.repairHint,
+    inputJson,
+    storyLockText: formatStoryLockForPrompt(
+      inputJson.storyLock as Record<string, unknown> | null | undefined,
+    ),
+  });
 }
 
 export function propositionBlocksPolishedGeneration(
@@ -228,7 +325,8 @@ export function checkShortformHookPayoff(input: {
 
 export async function invokeWithBoundedRepair(input: {
   invoke: PublishableLlmInvoke;
-  buildPrompt: (repairHint?: string | null) => string;
+  channel: PublishableChannel;
+  buildPrompt: (repairHint?: string | null) => ChannelComposerPromptParts | string;
   parseAndValidate: (raw: string) => {
     ok: boolean;
     category?: PublishableGenerationFailureCategory;
@@ -250,10 +348,15 @@ export async function invokeWithBoundedRepair(input: {
     attemptCount = attempt;
     const repairHint =
       attempt === 2
-        ? `REPAIR: previous output failed (${lastCategory}: ${lastMessage}). Return valid JSON only. Remove internal headings, UUIDs, unsupported prices/urgency, and inventing facts.`
+        ? `REPAIR: previous output failed (${lastCategory}: ${lastMessage}). Return valid JSON only. Remove internal headings, UUIDs, unsupported prices/urgency, and inventing facts. Do NOT invent a new Story or angle.`
         : null;
     try {
-      const raw = await input.invoke(input.buildPrompt(repairHint));
+      const built = input.buildPrompt(repairHint);
+      const prompt =
+        typeof built === "string"
+          ? { channel: input.channel, text: built, system: "", user: built }
+          : built;
+      const raw = await input.invoke(prompt);
       lastRaw = typeof raw === "string" ? raw : String(raw);
       const checked = input.parseAndValidate(lastRaw);
       if (checked.ok) {

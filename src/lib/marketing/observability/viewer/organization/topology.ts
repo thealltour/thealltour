@@ -1,15 +1,19 @@
 /**
- * Org v2.2 application-level topology for OBS-7.
- * Aligns with ED-LIVE + Canonical Asset spine (not Hermes registry / not React Flow types).
+ * Org v2.3 application-level topology for OBS-7 / ORG_ROUTING_ALIGNMENT_V1.
+ * Display classification only — does not drive Hermes/runtime execution.
  */
 
 export type MarketingOrgNodeKind =
   | "human"
   | "core_agent"
   | "shared_service"
+  | "llm_staff"
+  | "llm_staff_or_service"
   | "deterministic"
   | "validation"
+  | "artifact_state"
   | "human_boundary"
+  | "external_human_operated_ai"
   | "planned_agent";
 
 export type MarketingOrgEdgeKind =
@@ -18,9 +22,13 @@ export type MarketingOrgEdgeKind =
   | "optional_handoff"
   | "service_input"
   | "performance_feedback"
-  | "human_approval";
+  | "human_approval"
+  | "manual_external";
 
 export type MarketingOrgNodeTier = "core" | "workflow" | "planned" | "later";
+
+/** How the node participates in production execution (display metadata). */
+export type MarketingOrgExecutionMode = "runtime" | "manual_external";
 
 export type MarketingOrganizationNodeDef = {
   id: string;
@@ -32,6 +40,11 @@ export type MarketingOrganizationNodeDef = {
   /** Optional span name prefixes for matching. */
   spanNames?: string[];
   description?: string;
+  /**
+   * Display-only. Runtime orchestration never depends on this field.
+   * manual_external = human-operated ChatGPT/Astra clipboard flows.
+   */
+  executionMode?: MarketingOrgExecutionMode;
 };
 
 export type MarketingOrganizationEdgeDef = {
@@ -44,7 +57,7 @@ export type MarketingOrganizationEdgeDef = {
   planned?: boolean;
 };
 
-/** Static Org v2.2 lock — single source for Organization graph. */
+/** Static Org lock — single source for Organization graph. */
 export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
   {
     id: "human_owner",
@@ -53,6 +66,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "core",
     spanStages: [],
     description: "Final approval / publication authority",
+    executionMode: "runtime",
   },
   {
     id: "marketing_manager",
@@ -62,6 +76,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     spanStages: ["marketing_manager"],
     spanNames: ["marketing.manager"],
     description: "CMO / department orchestrator",
+    executionMode: "runtime",
   },
   {
     id: "content_strategist",
@@ -71,6 +86,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     spanStages: ["content_strategist"],
     spanNames: ["marketing.content_strategist"],
     description: "Message strategy, copy, channel voice, revision",
+    executionMode: "runtime",
   },
   {
     id: "governance_auditor",
@@ -80,6 +96,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     spanStages: ["governance_auditor"],
     spanNames: ["marketing.governance_auditor"],
     description: "Policy / factual / commercial-legal judgment",
+    executionMode: "runtime",
   },
   {
     id: "performance_analyst",
@@ -89,6 +106,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     spanStages: ["performance_analyst"],
     spanNames: ["marketing.performance_analyst"],
     description: "Confirmed performance → learning loop (not in-queue spine)",
+    executionMode: "runtime",
   },
   {
     id: "research_intelligence",
@@ -97,15 +115,27 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "workflow",
     spanStages: ["research"],
     description: "Signals → ResearchBrief → Agenda (service, not Bot)",
+    executionMode: "runtime",
   },
   {
     id: "story_point_miner",
-    label: "Story/Point Miner",
-    kind: "shared_service",
+    label: "Internal Story/Point Miner",
+    kind: "llm_staff",
     tier: "workflow",
     spanStages: ["story_point"],
     spanNames: ["marketing.story_point"],
-    description: "ED-1 TS staff — 5–8 story candidates → Point Gate → Top 1–3 (not a Hermes bot)",
+    description: "ED-1 LLM staff — 5–8 story candidates → Point Gate → Top 1–3",
+    executionMode: "runtime",
+  },
+  {
+    id: "chatgpt_astra_editorial_director",
+    label: "ChatGPT Astra Editorial Director",
+    kind: "external_human_operated_ai",
+    tier: "workflow",
+    spanStages: [],
+    description:
+      "Manual external AI — Agenda comparison + Story edit via clipboard JSON (no API runtime)",
+    executionMode: "manual_external",
   },
   {
     id: "human_story_selection",
@@ -114,15 +144,17 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "workflow",
     spanStages: [],
     description: "Pause — human picks PASS Story before ED-2 / CS",
+    executionMode: "runtime",
   },
   {
     id: "audience_content_research",
     label: "Audience Content Research",
-    kind: "shared_service",
+    kind: "llm_staff_or_service",
     tier: "workflow",
     spanStages: ["audience_content_research"],
     spanNames: ["marketing.audience_content_research"],
-    description: "ED-2 — Story-targeted RA-1 / ACRB",
+    description: "ED-2 — Story-targeted research + synthesis (search ladder unchanged)",
+    executionMode: "runtime",
   },
   {
     id: "deliverable_requirements",
@@ -131,6 +163,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "workflow",
     spanStages: ["deliverable_requirements"],
     spanNames: ["marketing.deliverable_requirements"],
+    executionMode: "runtime",
   },
   {
     id: "evidence_pack",
@@ -139,6 +172,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "workflow",
     spanStages: ["evidence_pack"],
     spanNames: ["marketing.evidence_pack"],
+    executionMode: "runtime",
   },
   {
     id: "completeness_validator",
@@ -147,24 +181,37 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "workflow",
     spanStages: ["completeness_validator"],
     spanNames: ["marketing.completeness_validator"],
+    executionMode: "runtime",
   },
   {
     id: "asset_source_writer",
     label: "Asset Source Writer",
-    kind: "deterministic",
+    kind: "llm_staff",
     tier: "workflow",
     spanStages: [],
     spanNames: ["marketing.asset_source_writer"],
-    description: "Deterministic staff — channel-agnostic Korean marketing source",
+    description: "LLM staff — channel-agnostic Korean marketing source (not deterministic)",
+    executionMode: "runtime",
   },
   {
     id: "canonical_marketing_asset",
     label: "Canonical Marketing Asset",
-    kind: "deterministic",
+    kind: "artifact_state",
     tier: "workflow",
     spanStages: ["canonical_marketing_asset"],
     spanNames: ["marketing.canonical_marketing_asset"],
-    description: "Persisted common source asset (SoT for channel editors)",
+    description: "Persisted common source artifact/state (SoT for channel editors)",
+    executionMode: "runtime",
+  },
+  {
+    id: "chatgpt_astra_asset_editor",
+    label: "ChatGPT Astra Canonical Asset Editor",
+    kind: "external_human_operated_ai",
+    tier: "workflow",
+    spanStages: [],
+    description:
+      "Manual external AI — evidence-locked Canonical Asset edit via JSON clipboard (no API)",
+    executionMode: "manual_external",
   },
   {
     id: "human_asset_approval",
@@ -173,15 +220,17 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "workflow",
     spanStages: [],
     description: "Pause — approve common marketing source before channels",
+    executionMode: "runtime",
   },
   {
     id: "channel_producer",
     label: "Channel Editors",
-    kind: "deterministic",
+    kind: "llm_staff",
     tier: "workflow",
     spanStages: [],
     spanNames: ["marketing.channel"],
-    description: "Channel-native drafts from approved Canonical Asset",
+    description: "LLM staff family — channel-native drafts from approved Canonical Asset",
+    executionMode: "runtime",
   },
   {
     id: "human_review",
@@ -191,6 +240,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     spanStages: ["human_review"],
     spanNames: ["marketing.human_review_boundary"],
     description: "Final channel QA / manual publish gate (not Story or Asset pick)",
+    executionMode: "runtime",
   },
   {
     id: "media_pipeline",
@@ -199,6 +249,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "workflow",
     spanStages: ["media_brief"],
     description: "Post-candidate MediaBrief / cardnews / video",
+    executionMode: "runtime",
   },
   {
     id: "creative_director",
@@ -207,6 +258,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "planned",
     spanStages: [],
     description: "PREPARE — campaign concept specialist",
+    executionMode: "runtime",
   },
 ];
 
@@ -214,7 +266,6 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
 export const MARKETING_ORG_V21_NODES = MARKETING_ORG_V22_NODES;
 
 export const MARKETING_ORG_V22_EDGES: MarketingOrganizationEdgeDef[] = [
-  // Organization reporting
   {
     id: "mm_reports_human",
     source: "marketing_manager",
@@ -240,7 +291,6 @@ export const MARKETING_ORG_V22_EDGES: MarketingOrganizationEdgeDef[] = [
     target: "marketing_manager",
     kind: "reports_to",
   },
-  // Agenda service input
   {
     id: "ri_to_mm",
     source: "research_intelligence",
@@ -248,7 +298,6 @@ export const MARKETING_ORG_V22_EDGES: MarketingOrganizationEdgeDef[] = [
     kind: "service_input",
     label: "agenda",
   },
-  // ED-LIVE + Canonical Asset spine
   {
     id: "mm_to_story_point",
     source: "marketing_manager",
@@ -262,6 +311,20 @@ export const MARKETING_ORG_V22_EDGES: MarketingOrganizationEdgeDef[] = [
     target: "human_story_selection",
     kind: "human_approval",
     label: "Story pick",
+  },
+  {
+    id: "miner_to_astra_editorial",
+    source: "story_point_miner",
+    target: "chatgpt_astra_editorial_director",
+    kind: "manual_external",
+    label: "Slate JSON copy",
+  },
+  {
+    id: "astra_editorial_to_human_select",
+    source: "chatgpt_astra_editorial_director",
+    target: "human_story_selection",
+    kind: "manual_external",
+    label: "manual import",
   },
   {
     id: "human_select_to_ed2",
@@ -314,6 +377,20 @@ export const MARKETING_ORG_V22_EDGES: MarketingOrganizationEdgeDef[] = [
     kind: "mandatory_handoff",
   },
   {
+    id: "canonical_to_astra_asset",
+    source: "canonical_marketing_asset",
+    target: "chatgpt_astra_asset_editor",
+    kind: "manual_external",
+    label: "JSON copy",
+  },
+  {
+    id: "astra_asset_to_approve",
+    source: "chatgpt_astra_asset_editor",
+    target: "human_asset_approval",
+    kind: "manual_external",
+    label: "manual import",
+  },
+  {
     id: "canonical_to_asset_approve",
     source: "canonical_marketing_asset",
     target: "human_asset_approval",
@@ -348,7 +425,6 @@ export const MARKETING_ORG_V22_EDGES: MarketingOrganizationEdgeDef[] = [
     kind: "performance_feedback",
     label: "brief",
   },
-  // Planned optional (Creative Director only — Channel Editors are live workflow)
   {
     id: "mm_to_cd",
     source: "marketing_manager",

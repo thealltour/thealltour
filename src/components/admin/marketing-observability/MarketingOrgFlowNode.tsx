@@ -53,8 +53,14 @@ function LiveDuration({ startedAt }: { startedAt: string }) {
 function MarketingOrgNodeInner({ data }: NodeProps<OrgNode>) {
   const { def, overlay, selected } = data;
   const planned = def.kind === "planned_agent";
-  const state = planned ? undefined : overlay?.state;
-  const badge = planned ? "PLANNED" : orgExecutionStateLabel(state ?? "idle");
+  const externalManual =
+    def.kind === "external_human_operated_ai" || def.executionMode === "manual_external";
+  const state = planned || externalManual ? undefined : overlay?.state;
+  const badge = planned
+    ? "PLANNED"
+    : externalManual
+      ? "MANUAL"
+      : orgExecutionStateLabel(state ?? "idle");
 
   return (
     <div
@@ -62,7 +68,9 @@ function MarketingOrgNodeInner({ data }: NodeProps<OrgNode>) {
         "min-w-[11.5rem] max-w-[14rem] rounded-md border px-3 py-2 shadow-sm",
         planned
           ? "border-dashed border-[var(--border)] bg-[var(--surface)] opacity-80"
-          : stateTone(state),
+          : externalManual
+            ? "border-dashed border-[var(--text-secondary)]/45 bg-[var(--surface-muted)]"
+            : stateTone(state),
         selected && "ring-2 ring-[var(--text)] ring-offset-1 ring-offset-[var(--surface)]",
       )}
       aria-label={`${def.label} ${orgNodeKindLabel(def.kind)} ${badge}`}
@@ -82,7 +90,9 @@ function MarketingOrgNodeInner({ data }: NodeProps<OrgNode>) {
             state === "ok" && "bg-[var(--success-bg)] text-[var(--success)]",
             state === "blocked" && "bg-[var(--warning-bg)] text-[var(--warning)]",
             state === "stale" && "bg-[var(--warning-bg)] text-[var(--warning)]",
+            externalManual && "bg-[var(--surface)] text-[var(--text-secondary)] ring-1 ring-[var(--border)]",
             (!state || state === "idle" || planned) &&
+              !externalManual &&
               "bg-[var(--surface-muted)] text-[var(--text-secondary)]",
           )}
         >

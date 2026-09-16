@@ -44,8 +44,7 @@ export function createInMemoryDailyMarketingRunRepository(): DailyMarketingRunRe
       return run;
     },
     async saveCandidate(candidate) {
-      const existing = candidates.get(candidate.logicalRunKey);
-      if (existing) return existing;
+      // Upsert so human Canonical Asset save/approve can update an existing candidate.
       candidates.set(candidate.logicalRunKey, candidate);
       return candidate;
     },

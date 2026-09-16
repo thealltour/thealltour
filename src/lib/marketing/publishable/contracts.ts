@@ -146,6 +146,9 @@ export type PublishableChannelContent = {
       engagementMechanism?: string | null;
       propositionStrength?: string | null;
     } | null;
+    /** STEP 2 — approved-asset adapter vs legacy. */
+    compositionMode?: "approved_asset_adapter" | "legacy_proposition_driven" | null;
+    inputAuthorityVersion?: string | null;
   };
   validation: PublishableValidationResult;
   /**

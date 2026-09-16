@@ -21,9 +21,24 @@ export {
 } from "@/ai-runtime/router/policies";
 
 export {
+  ROLE_MODEL_ROUTES,
+  MARKETING_ROLE_ROUTE_KEYS,
+  ROLE_ROUTE_DISPLAY_LABELS,
+  resolveModelRoute,
+  mapAgentIdToRoleKey,
+  formatRolePolicyOrder,
+  listRoleRoutingPolicies,
+  isMarketingRoleRouteKey,
+  type MarketingRoleRouteKey,
+  type ModelRouteSource,
+  type ResolvedModelRoute,
+} from "@/ai-runtime/router/role-routes";
+
+export {
   capabilityScoreForWorkload,
   quotaHealthScore,
   policyRankForModel,
+  resolveRequestModelRoute,
   scoreCandidate,
   compareCandidates,
   sortCandidates,

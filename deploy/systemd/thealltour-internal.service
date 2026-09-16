@@ -1,0 +1,22 @@
+[Unit]
+Description=TheAllTour Internal Next.js (127.0.0.1:3000) — Marketing Review / admin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ysh
+Group=ysh
+WorkingDirectory=/home/ysh/thealltour
+Environment=NODE_ENV=production
+Environment=PATH=/home/ysh/.hermes/node/bin:/usr/bin:/bin
+# Keep alive across reboot, crash, and accidental process kill (exit 0).
+# on-failure alone does not restart after a clean stop/kill that exits 0.
+ExecStart=/home/ysh/.hermes/node/bin/node /home/ysh/thealltour/node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -7,7 +7,7 @@ import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminBadge from "@/components/admin/ui/AdminBadge";
 import AdminButton from "@/components/admin/ui/AdminButton";
 import { adminToneBorderBg, adminToneText } from "@/components/admin/ui/adminStatusTone";
-import type { RuntimeQuotaSnapshotDto, RuntimeReservationSnapshotDto, RuntimeRoutingPolicyDto, RuntimeRoutingStatusDto, RuntimeSchedulerStatusDto, RuntimeStatusDto } from "@/ai-runtime/observability/types";
+import type { RuntimeQuotaSnapshotDto, RuntimeReservationSnapshotDto, RuntimeRoleRoutingPolicyDto, RuntimeRoutingPolicyDto, RuntimeRoutingStatusDto, RuntimeSchedulerStatusDto, RuntimeStatusDto } from "@/ai-runtime/observability/types";
 import type { QuotaHealth } from "@/ai-runtime/domain/quota";
 import { cn } from "@/lib/cn";
 
@@ -336,8 +336,10 @@ function RoutingPolicySection({ policies }: { policies: RuntimeRoutingPolicyDto[
   return (
     <AdminCard className="space-y-4 p-4 md:p-5">
       <div className="space-y-1">
-        <h2 className="text-base font-semibold text-[var(--text-primary)]">Routing Policy</h2>
-        <p className="text-xs text-[var(--text-secondary)]">Default model order per workload</p>
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">Workload Defaults</h2>
+        <p className="text-xs text-[var(--text-secondary)]">
+          Default model order per workload (fallback when role is unknown or unset)
+        </p>
       </div>
       <ul className="space-y-3">
         {policies.map((policy) => (
@@ -347,6 +349,36 @@ function RoutingPolicySection({ policies }: { policies: RuntimeRoutingPolicyDto[
           >
             <p className="font-mono text-xs font-medium uppercase text-[var(--text-muted)]">
               {policy.workload}
+            </p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">
+              {policy.orderLabels.join(" → ")}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </AdminCard>
+  );
+}
+
+function RoleRoutingPolicySection({ policies }: { policies: RuntimeRoleRoutingPolicyDto[] }) {
+  return (
+    <AdminCard className="space-y-4 p-4 md:p-5">
+      <div className="space-y-1">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">Role Overrides</h2>
+        <p className="text-xs text-[var(--text-secondary)]">
+          Higher-priority route when the marketing role is known. Manual ChatGPT/Astra workflows are
+          not listed — they are not automatic provider routes.
+        </p>
+      </div>
+      <ul className="space-y-3">
+        {policies.map((policy) => (
+          <li
+            key={policy.roleKey}
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3"
+          >
+            <p className="text-sm font-medium text-[var(--text-primary)]">{policy.label}</p>
+            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+              {policy.roleKey}
             </p>
             <p className="mt-1 text-sm text-[var(--text-primary)]">
               {policy.orderLabels.join(" → ")}
@@ -379,6 +411,8 @@ function RecentRoutingSection({ routing }: { routing: RuntimeRoutingStatusDto })
             <thead className="border-b border-[var(--border)] bg-[var(--surface-muted)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
               <tr>
                 <th className="px-4 py-3">Workload</th>
+                <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Route</th>
                 <th className="px-4 py-3">Provider</th>
                 <th className="px-4 py-3">Model</th>
                 <th className="px-4 py-3">Attempts</th>
@@ -389,6 +423,12 @@ function RecentRoutingSection({ routing }: { routing: RuntimeRoutingStatusDto })
               {routing.recent.map((entry, index) => (
                 <tr key={`${entry.timestamp}-${index}`} className="border-b border-[var(--border)] last:border-b-0">
                   <td className="px-4 py-3 font-mono text-xs">{entry.workload}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
+                    {entry.roleKey ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
+                    {entry.routeSource ?? "—"}
+                  </td>
                   <td className="px-4 py-3">{providerLabel(entry.selectedProviderId)}</td>
                   <td className="break-all px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
                     {entry.selectedModelId ?? "—"}
@@ -800,6 +840,9 @@ export default function AiRuntimeConsole() {
                 <RoutingSummarySection routing={status.routing} />
                 {status.routingPolicies ? (
                   <RoutingPolicySection policies={status.routingPolicies} />
+                ) : null}
+                {status.roleRoutingPolicies ? (
+                  <RoleRoutingPolicySection policies={status.roleRoutingPolicies} />
                 ) : null}
                 <RecentRoutingSection routing={status.routing} />
               </>

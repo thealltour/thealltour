@@ -10,8 +10,7 @@ import {
 import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
-  buildChannelComposerInputJson,
-  channelComposerRules,
+  buildChannelComposerPromptParts,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -24,19 +23,22 @@ import {
   stripEvidenceIdsFromText,
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
+import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
 
-export type PublishableLlmInvoke = (prompt: string) => Promise<string> | string;
+export type PublishableLlmInvoke = (
+  prompt: ChannelComposerPromptParts | string,
+) => Promise<string> | string;
 
-function buildThreadsPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
-  return [
-    THREADS_WRITING_CONTRACT,
-    channelComposerRules(input),
-    repairHint ?? "",
-    "INPUT_JSON:",
-    JSON.stringify(buildChannelComposerInputJson(input)),
-  ]
-    .filter(Boolean)
-    .join("\n");
+function buildThreadsPrompt(
+  input: PublishableComposerInput,
+  repairHint?: string | null,
+): ChannelComposerPromptParts {
+  return buildChannelComposerPromptParts({
+    channel: "threads",
+    writingContract: THREADS_WRITING_CONTRACT,
+    composerInput: input,
+    repairHint,
+  });
 }
 
 function parseThreadsJson(raw: string): { title: string | null; body: string } | null {
@@ -146,6 +148,7 @@ export async function composeThreadsPublishableContent(input: {
   if (input.invoke) {
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
+      channel: "threads",
       buildPrompt: (repairHint) => buildThreadsPrompt(input.composerInput, repairHint),
       parseAndValidate: (raw) => {
         const parsed = parseThreadsJson(raw);

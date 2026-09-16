@@ -10,6 +10,7 @@ import { join } from "node:path";
 
 import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
+import { readCanonicalAssetFromPackage } from "@/lib/marketing/canonicalAsset/persistence";
 import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import type { HumanReviewDraft } from "@/lib/marketing/review/types";
@@ -25,6 +26,8 @@ import {
   computePublishableSourceRevision,
 } from "@/lib/marketing/publishable/inputs";
 import { stampChannelFromApprovedAsset } from "@/lib/marketing/publishable/approvedAsset";
+import { resolveChannelEditorHermesProfile } from "@/lib/marketing/publishable/channelEditorIdentity";
+import { CHANNEL_INPUT_AUTHORITY_VERSION } from "@/lib/marketing/publishable/composerRuntime";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
 import { composeKakaoChannelPublishableContent } from "@/lib/marketing/publishable/kakao_channel/composeKakaoChannelPublishableContent";
@@ -128,8 +131,11 @@ function shouldRegen(
   existing: PublishableChannelContent | undefined,
 ): boolean {
   if (existing?.status === "human_edited" && !input.allowOverwriteHuman) return false;
-  if (input.forceRegenerateChannels?.includes(channel)) return true;
-  if (input.forceRegenerate && !input.forceRegenerateChannels?.length) return true;
+  // Channel-scoped regenerate: only listed channels hit the LLM.
+  if (input.forceRegenerateChannels?.length) {
+    return input.forceRegenerateChannels.includes(channel);
+  }
+  if (input.forceRegenerate) return true;
   return !existing?.body;
 }
 
@@ -140,13 +146,16 @@ export async function ensurePublishableContent(
   const nowIso = now.toISOString();
   const acrb = input.audienceContentResearchBrief ?? null;
 
+  const packageAsset = readCanonicalAssetFromPackage(input.packageRoot ?? null);
   const candidateAsset = input.candidate.canonicalMarketingAsset ?? null;
   const approvedAsset =
     input.approvedCanonicalAsset ??
+    (isApprovedCanonicalAsset(packageAsset) ? packageAsset : null) ??
     (isApprovedCanonicalAsset(candidateAsset) ? candidateAsset : null);
 
-  // New path: asset exists but is not approved → fail closed (no channel generation).
-  if (candidateAsset && !isApprovedCanonicalAsset(approvedAsset)) {
+  // Asset present but not approved → fail closed (no channel generation).
+  const knownAsset = packageAsset ?? candidateAsset;
+  if (knownAsset && !isApprovedCanonicalAsset(approvedAsset)) {
     const err = new Error("canonical_asset_unapproved");
     (err as Error & { code?: string }).code = "canonical_asset_unapproved";
     throw err;
@@ -163,9 +172,11 @@ export async function ensurePublishableContent(
     acrb,
     explicitTargetChannels: input.explicitTargetChannels,
     approvedCanonicalAsset: approvedAsset,
+    packageRoot: input.packageRoot ?? null,
   });
   const targetChannels = composerInput.targetChannels;
-  const modelProfile = input.modelProfile ?? "content-strategist";
+  const modelProfileFor = (channel: PublishableChannel) =>
+    input.modelProfile ?? resolveChannelEditorHermesProfile(channel);
   const governanceDecision = input.candidate.governanceDecision?.decision ?? null;
 
   const humanOwnsThreads =
@@ -201,39 +212,60 @@ export async function ensurePublishableContent(
   // Governance BLOCK — do not polish channel copy for publication.
   const blocked = governanceDecision === "BLOCK";
   const invoke = blocked ? null : input.invoke;
-  const composeOpts = {
+  const composeOptsFor = (channel: PublishableChannel) => ({
     composerInput,
     now,
     invoke,
-    modelProfile,
+    modelProfile: modelProfileFor(channel),
     allowDeterministicFallback: true,
-  };
+  });
 
   const threads =
     humanOwnsThreads && input.humanDraft
       ? threadsFromHumanDraft(input.candidate, input.humanDraft, sourceRevision, nowIso)
-      : !shouldRegen("threads", input, existing?.threads) && existing?.threads
-        ? existing.threads
-        : await composeThreadsPublishableContent(composeOpts);
+      : shouldRegen("threads", input, existing?.threads)
+        ? await composeThreadsPublishableContent(composeOptsFor("threads"))
+        : existing?.threads
+          ? existing.threads
+          : await composeThreadsPublishableContent(
+              scopedOnly
+                ? { ...composeOptsFor("threads"), invoke: null }
+                : composeOptsFor("threads"),
+            );
 
-  const shortform =
-    !shouldRegen("shortform", input, existing?.shortform) && existing?.shortform
+  const shortform = shouldRegen("shortform", input, existing?.shortform)
+    ? await composeShortformNarration(composeOptsFor("shortform"))
+    : existing?.shortform
       ? existing.shortform
-      : await composeShortformNarration(composeOpts);
+      : await composeShortformNarration(
+          scopedOnly
+            ? { ...composeOptsFor("shortform"), invoke: null }
+            : composeOptsFor("shortform"),
+        );
 
   // Stamp governance block on freshly composed non-human channels
   const stampBlock = (content: PublishableChannelContent): PublishableChannelContent => {
-    if (!blocked || content.status === "human_edited") return content;
+    let next = content;
+    if (blocked && content.status !== "human_edited") {
+      next = {
+        ...content,
+        status: "generation_failed",
+        publishableSuccess: false,
+        needsRegeneration: true,
+        provenance: {
+          ...content.provenance,
+          generationMode: "skipped",
+          failureCategory: "governance_block",
+          failureMessage: "governance BLOCK — channel composers not invoked",
+        },
+      };
+    }
     return {
-      ...content,
-      status: "generation_failed",
-      publishableSuccess: false,
-      needsRegeneration: true,
+      ...next,
       provenance: {
-        ...content.provenance,
-        generationMode: "skipped",
-        failureCategory: "governance_block",
-        failureMessage: "governance BLOCK — channel composers not invoked",
+        ...next.provenance,
+        compositionMode: composerInput.compositionMode ?? null,
+        inputAuthorityVersion: CHANNEL_INPUT_AUTHORITY_VERSION,
       },
     };
   };
@@ -260,24 +292,45 @@ export async function ensurePublishableContent(
   }
 
   if (targetChannels.includes("naver_blog")) {
-    bundle.naver_blog =
-      !shouldRegen("naver_blog", input, existing?.naver_blog) && existing?.naver_blog
+    bundle.naver_blog = shouldRegen("naver_blog", input, existing?.naver_blog)
+      ? stampBlock(await composeNaverBlogPublishableContent(composeOptsFor("naver_blog")))
+      : existing?.naver_blog
         ? existing.naver_blog
-        : stampBlock(await composeNaverBlogPublishableContent(composeOpts));
+        : stampBlock(
+            await composeNaverBlogPublishableContent(
+              scopedOnly
+                ? { ...composeOptsFor("naver_blog"), invoke: null }
+                : composeOptsFor("naver_blog"),
+            ),
+          );
   }
 
   if (targetChannels.includes("naver_band")) {
-    bundle.naver_band =
-      !shouldRegen("naver_band", input, existing?.naver_band) && existing?.naver_band
+    bundle.naver_band = shouldRegen("naver_band", input, existing?.naver_band)
+      ? stampBlock(await composeNaverBandPublishableContent(composeOptsFor("naver_band")))
+      : existing?.naver_band
         ? existing.naver_band
-        : stampBlock(await composeNaverBandPublishableContent(composeOpts));
+        : stampBlock(
+            await composeNaverBandPublishableContent(
+              scopedOnly
+                ? { ...composeOptsFor("naver_band"), invoke: null }
+                : composeOptsFor("naver_band"),
+            ),
+          );
   }
 
   if (targetChannels.includes("kakao_channel")) {
-    bundle.kakao_channel =
-      !shouldRegen("kakao_channel", input, existing?.kakao_channel) && existing?.kakao_channel
+    bundle.kakao_channel = shouldRegen("kakao_channel", input, existing?.kakao_channel)
+      ? stampBlock(await composeKakaoChannelPublishableContent(composeOptsFor("kakao_channel")))
+      : existing?.kakao_channel
         ? existing.kakao_channel
-        : stampBlock(await composeKakaoChannelPublishableContent(composeOpts));
+        : stampBlock(
+            await composeKakaoChannelPublishableContent(
+              scopedOnly
+                ? { ...composeOptsFor("kakao_channel"), invoke: null }
+                : composeOptsFor("kakao_channel"),
+            ),
+          );
   }
 
   if (approvedAsset) {

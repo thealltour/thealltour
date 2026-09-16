@@ -41,6 +41,9 @@ export type RoutingLedgerEntry = {
   fallbackUsed: boolean;
   finalStatus: "success" | "failed";
   finalErrorCode?: string;
+  /** ORG_ROUTING_ALIGNMENT_V1 — additive observability only. */
+  roleKey?: string | null;
+  routeSource?: "role_override" | "workload_default";
 };
 
 export type RoutingLedgerSnapshot = {
@@ -56,6 +59,8 @@ export type RoutingLedgerSnapshot = {
     attemptCount: number;
     fallbackUsed: boolean;
     finalStatus: "success" | "failed";
+    roleKey?: string | null;
+    routeSource?: "role_override" | "workload_default";
   }>;
 };
 

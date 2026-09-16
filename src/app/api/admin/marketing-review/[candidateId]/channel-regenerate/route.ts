@@ -14,14 +14,15 @@ import {
   isAiRuntimeMarketingCronEnabled,
 } from "@/lib/marketing/cron/marketingCronRuntime";
 import { MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT } from "@/lib/marketing/cron/marketingPlanSpecialists";
-import { resolveHermesExecutable } from "@/lib/marketing/cron/resolveHermesExecutable";
-import {
-  assertHermesSpawnSyncSuccess,
-  resolveMarketingCronHermesTimeoutMs,
-} from "@/lib/marketing/cron/hermesSpawnFailure";
-import { spawnSync } from "node:child_process";
+import { resolveMarketingCronHermesTimeoutMs } from "@/lib/marketing/cron/hermesSpawnFailure";
+import { invokeHermesProfileAsync } from "@/lib/marketing/cron/invokeHermesProfileAsync";
 import { createRuntimeExecutorStack } from "@/ai-runtime/integration/runtime-stack";
 import { ensureSharedObservabilityRecorder } from "@/ai-runtime/observability/persistence";
+import {
+  attachCanonicalAssetToCandidate,
+  readCanonicalAssetFromPackage,
+} from "@/lib/marketing/canonicalAsset/persistence";
+import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ type RouteContext = { params: Promise<{ candidateId: string }> };
 /**
  * CG-4C / MQ-4 — channel-scoped regenerate via LLM composer (no RA-1 web search).
  * Shortform regenerate intentionally not exposed here.
+ * Requires an approved Canonical Marketing Asset (package SoT).
  */
 export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAdminPermission("settings.manage");
@@ -78,6 +80,22 @@ export async function POST(request: Request, context: RouteContext) {
       ensurePackageLayout(packageRoot);
     }
 
+    const packageAsset = readCanonicalAssetFromPackage(packageRoot);
+    if (packageAsset && !isApprovedCanonicalAsset(packageAsset)) {
+      return Response.json(
+        {
+          message: "공통 마케팅 원문이 아직 승인되지 않았습니다. 수정본/원문 승인 후 채널을 생성하세요.",
+          code: "canonical_asset_unapproved",
+        },
+        { status: 409 },
+      );
+    }
+    const approvedAsset =
+      packageAsset && isApprovedCanonicalAsset(packageAsset) ? packageAsset : null;
+    const candidate = approvedAsset
+      ? attachCanonicalAssetToCandidate(detail.candidate, approvedAsset)
+      : detail.candidate;
+
     const useRuntime = isAiRuntimeMarketingCronEnabled();
     if (useRuntime) {
       await ensureSharedObservabilityRecorder();
@@ -93,19 +111,7 @@ export async function POST(request: Request, context: RouteContext) {
       completionTimeoutMs: timeoutMs,
       invokeHermesProfile: useRuntime
         ? undefined
-        : (profile, prompt) => {
-            const hermesBin = resolveHermesExecutable(process.env);
-            const result = spawnSync(
-              hermesBin,
-              ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt],
-              {
-                encoding: "utf8",
-                env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-                timeout: timeoutMs,
-              },
-            );
-            return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
-          },
+        : (profile, prompt) => invokeHermesProfileAsync(profile, prompt, timeoutMs),
     });
 
     if (!invoke) {
@@ -116,7 +122,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const bundle = await ensurePublishableContent({
-      candidate: detail.candidate,
+      candidate,
       packageRoot,
       forceRegenerateChannels: [parsed.data.channel as PublishableChannel],
       allowOverwriteHuman: Boolean(parsed.data.allowOverwriteHuman),
@@ -125,8 +131,8 @@ export async function POST(request: Request, context: RouteContext) {
         parsed.data.channel as PublishableChannel,
       ],
       audienceContentResearchBrief: null,
+      approvedCanonicalAsset: approvedAsset,
       invoke,
-      modelProfile: "content-strategist",
       persist: true,
     });
 
@@ -188,8 +194,18 @@ export async function POST(request: Request, context: RouteContext) {
       composer: slot?.provenance.composer ?? null,
       publishableSuccess: slot?.publishableSuccess ?? false,
       status: slot?.status ?? null,
+      sourceAssetVersion: bundle.sourceAssetVersion ?? approvedAsset?.approvedVersion ?? null,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "canonical_asset_unapproved") {
+      return Response.json(
+        {
+          message: "공통 마케팅 원문이 아직 승인되지 않았습니다. 수정본/원문 승인 후 채널을 생성하세요.",
+          code: "canonical_asset_unapproved",
+        },
+        { status: 409 },
+      );
+    }
     return humanReviewErrorResponse(error);
   }
 }

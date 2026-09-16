@@ -30,6 +30,8 @@ export const SAFE_OBSERVABILITY_METADATA_KEYS = [
   "remainingRequests",
   "remainingTokens",
   "retryAfterMs",
+  "roleKey",
+  "routeSource",
 ] as const;
 
 export type SafeObservabilityMetadataKey = (typeof SAFE_OBSERVABILITY_METADATA_KEYS)[number];

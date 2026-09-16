@@ -95,8 +95,8 @@ export class SupabaseDailyMarketingRunRepository implements DailyMarketingRunRep
   }
 
   async saveCandidate(candidate: CompletedMarketingCandidate): Promise<CompletedMarketingCandidate> {
-    const existing = await this.findCandidateByLogicalKey(candidate.logicalRunKey);
-    if (existing) return existing;
+    // Upsert: human edit/approve must persist canonicalMarketingAsset onto existing rows.
+    // Pipeline idempotency is enforced at the daily-run layer, not by freezing candidate payloads.
     const row = {
       logical_run_key: candidate.logicalRunKey,
       candidate_id: candidate.candidateId,

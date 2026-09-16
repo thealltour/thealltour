@@ -9,32 +9,35 @@ import {
 import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
-  buildChannelComposerInputJson,
-  channelComposerRules,
+  buildChannelComposerPromptParts,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
 } from "@/lib/marketing/publishable/composerRuntime";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { composeNaverBandPublishableDeterministic } from "@/lib/marketing/publishable/naver_band/deterministicBand";
-import { NAVER_BAND_WRITING_CONTRACT } from "@/lib/marketing/publishable/naver_band/writingContract";
+import { naverBandWritingContract } from "@/lib/marketing/publishable/naver_band/writingContract";
 import {
   stripEvidenceIdsFromText,
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
+import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
 
-function buildPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
-  return [
-    NAVER_BAND_WRITING_CONTRACT,
-    channelComposerRules(input),
-    "Channel: community-native Band post. Practical checklist / experience question welcome.",
-    repairHint ?? "",
-    "INPUT_JSON:",
-    JSON.stringify(buildChannelComposerInputJson(input)),
-  ]
-    .filter(Boolean)
-    .join("\n");
+function buildPrompt(
+  input: PublishableComposerInput,
+  repairHint?: string | null,
+): ChannelComposerPromptParts {
+  const hasApproved = Boolean(input.approvedCanonicalAsset);
+  return buildChannelComposerPromptParts({
+    channel: "naver_band",
+    writingContract: [
+      naverBandWritingContract({ hasApprovedCanonicalAsset: hasApproved }),
+      "Channel: community-native Band post. Practical checklist / experience question welcome — same approved Story.",
+    ].join("\n"),
+    composerInput: input,
+    repairHint,
+  });
 }
 
 function parseBodyJson(raw: string): { title: string | null; body: string } | null {
@@ -141,6 +144,7 @@ export async function composeNaverBandPublishableContent(input: {
   if (input.invoke) {
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
+      channel: "naver_band",
       buildPrompt: (hint) => buildPrompt(input.composerInput, hint),
       parseAndValidate: (raw) => {
         const parsed = parseBodyJson(raw);

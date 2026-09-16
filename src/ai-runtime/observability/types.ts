@@ -78,6 +78,7 @@ export type RuntimeStatusDto = {
   summary: RuntimeStatusSummaryDto;
   routing?: RuntimeRoutingStatusDto;
   routingPolicies?: RuntimeRoutingPolicyDto[];
+  roleRoutingPolicies?: RuntimeRoleRoutingPolicyDto[];
   /** Live queue/running — this process only. */
   scheduler?: RuntimeSchedulerStatusDto;
   providers: RuntimeProviderStatusDto[];
@@ -98,11 +99,19 @@ export type RuntimeRoutingStatusDto = {
     attemptCount: number;
     fallbackUsed: boolean;
     finalStatus: "success" | "failed";
+    roleKey?: string | null;
+    routeSource?: "role_override" | "workload_default";
   }>;
 };
 
 export type RuntimeRoutingPolicyDto = {
   workload: WorkloadClass;
+  orderLabels: string[];
+};
+
+export type RuntimeRoleRoutingPolicyDto = {
+  roleKey: string;
+  label: string;
   orderLabels: string[];
 };
 

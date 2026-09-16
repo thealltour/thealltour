@@ -60,6 +60,8 @@ export function createInMemoryRoutingLedger(nowFn: () => Date = () => new Date()
             attemptCount: entry.attemptCount,
             fallbackUsed: entry.fallbackUsed,
             finalStatus: entry.finalStatus,
+            roleKey: entry.roleKey,
+            routeSource: entry.routeSource,
           })),
       };
     },

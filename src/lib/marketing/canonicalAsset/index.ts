@@ -53,3 +53,26 @@ export {
   CANONICAL_MARKETING_ASSET_MEDIA_TYPE,
 } from "@/lib/marketing/canonicalAsset/paths";
 export { buildAssetSourceWriterPrompt } from "@/lib/marketing/canonicalAsset/prompt";
+export {
+  CANONICAL_ASSET_CHATGPT_EDIT_CONTRACT,
+  STALE_ASSET_MESSAGE_KO,
+  buildCanonicalAssetChatGptClipboardText,
+  buildCanonicalAssetChatGptExportPayload,
+  buildKeyEvidenceKo,
+  normalizeKeyTakeawaysKo,
+  parseCanonicalAssetChatGptImport,
+  validateCanonicalAssetChatGptEdits,
+  formatCanonicalAssetValidationIssuesKo,
+} from "@/lib/marketing/canonicalAsset/chatGptAssetTransfer";
+export type {
+  CanonicalAssetChatGptEditable,
+  CanonicalAssetChatGptContextReadOnly,
+  CanonicalAssetChatGptExportPayload,
+  CanonicalAssetChatGptImportFail,
+  CanonicalAssetChatGptImportOk,
+  CanonicalAssetChatGptImportPreview,
+} from "@/lib/marketing/canonicalAsset/chatGptAssetTransfer";
+export {
+  resolveCanonicalAssetDomainContext,
+  canValidateCanonicalAssetAgainstDomain,
+} from "@/lib/marketing/canonicalAsset/resolveCanonicalAssetDomainContext";

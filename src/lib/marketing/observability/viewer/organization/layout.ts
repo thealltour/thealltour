@@ -37,6 +37,7 @@ const POSITIONS: Record<string, { x: number; y: number }> = {
   research_intelligence: { x: COL.left, y: ROW.y1 },
   performance_analyst: { x: COL.farRight, y: ROW.y1 },
   story_point_miner: { x: COL.center, y: ROW.y2 },
+  chatgpt_astra_editorial_director: { x: COL.right, y: ROW.y2 },
   human_story_selection: { x: COL.center, y: ROW.y3 },
   audience_content_research: { x: COL.center, y: ROW.y4 },
   deliverable_requirements: { x: COL.center, y: ROW.y5 },
@@ -47,6 +48,7 @@ const POSITIONS: Record<string, { x: number; y: number }> = {
   governance_auditor: { x: COL.center, y: ROW.y9 },
   asset_source_writer: { x: COL.center, y: ROW.y10 },
   canonical_marketing_asset: { x: COL.center, y: ROW.y11 },
+  chatgpt_astra_asset_editor: { x: COL.right, y: ROW.y11 },
   human_asset_approval: { x: COL.center, y: ROW.y12 },
   channel_producer: { x: COL.center, y: ROW.y13 },
   human_review: { x: COL.right, y: ROW.y13 },
@@ -88,6 +90,7 @@ export function toReactFlowElements(
 function toFlowEdge(edge: MarketingOrganizationEdgeDef, model: MarketingOrganizationGraphModel): Edge {
   const visit = model.edgeOverlays[edge.id]?.visit ?? "not_yet";
   const isReports = edge.kind === "reports_to";
+  const isManualExternal = edge.kind === "manual_external";
   const isPlanned = Boolean(edge.planned) || edge.kind === "optional_handoff";
 
   let stroke = "var(--border)";
@@ -95,7 +98,11 @@ function toFlowEdge(edge: MarketingOrganizationEdgeDef, model: MarketingOrganiza
   let strokeDasharray: string | undefined;
   let animated = false;
 
-  if (isPlanned) {
+  if (isManualExternal) {
+    strokeDasharray = "6 3";
+    stroke = "#7c3aed";
+    strokeWidth = 1.25;
+  } else if (isPlanned) {
     strokeDasharray = "4 4";
     stroke = "var(--text-secondary)";
   } else if (isReports) {
@@ -116,7 +123,7 @@ function toFlowEdge(edge: MarketingOrganizationEdgeDef, model: MarketingOrganiza
     source: edge.source,
     target: edge.target,
     type: "smoothstep",
-    animated: animated && !isReports && !isPlanned,
+    animated: animated && !isReports && !isPlanned && !isManualExternal,
     label: edge.label,
     style: { stroke, strokeWidth, strokeDasharray },
     labelStyle: { fill: "var(--text-secondary)", fontSize: 10 },

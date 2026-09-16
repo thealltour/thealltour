@@ -6,11 +6,6 @@ import type { DailyAgendaSlate, AgendaSlateCandidate } from "@/lib/marketing/cro
 import {
   AGENDA_SLATE_EXPORT_PAYLOAD_CONTRACT,
 } from "@/lib/marketing/editorialDirector/contracts";
-import {
-  AGENDA_SLATE_PAYLOAD_END,
-  AGENDA_SLATE_PAYLOAD_START,
-  EDITORIAL_DIRECTOR_INSTRUCTION_KO,
-} from "@/lib/marketing/editorialDirector/editorialPrompt";
 
 function exportAgendaItem(item: AgendaSlateCandidate) {
   const evidence = item.evidenceSummary.map((e) => ({
@@ -110,15 +105,7 @@ export function buildEditorialDirectorClipboardText(
   now: Date = new Date(),
 ): { text: string; agendaCount: number; payload: AgendaSlateEditorialExportPayload } {
   const payload = buildAgendaSlateEditorialExportPayload(slate, now);
-  const text = [
-    EDITORIAL_DIRECTOR_INSTRUCTION_KO.trim(),
-    "",
-    AGENDA_SLATE_PAYLOAD_START,
-    "",
-    JSON.stringify(payload, null, 2),
-    "",
-    AGENDA_SLATE_PAYLOAD_END,
-    "",
-  ].join("\n");
+  // Clipboard is slate JSON only — paste Editorial Director instructions separately if needed.
+  const text = JSON.stringify(payload, null, 2);
   return { text, agendaCount: payload.agendaCount, payload };
 }

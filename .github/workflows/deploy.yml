@@ -2,6 +2,12 @@ name: Deploy (prebuilt)
 
 # Builds on GitHub Actions free runners, then deploys prebuilt artifacts to Vercel.
 # Pair with scripts/vercel-should-build.mjs always-SKIP so Vercel Git builds use no CPU.
+#
+# IMPORTANT: `vercel pull` requires an Account/Team token.
+# Project-scoped tokens return this misleading error:
+#   "Could not retrieve Project Settings..."
+# because GET /v2/user → 404 and GET /teams → 403 even when the project itself is OK.
+# See: https://github.com/vercel/vercel/issues/17506
 
 on:
   push:
@@ -11,6 +17,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
+      # Trim in a later step — trailing newlines from the Secrets UI break the CLI.
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -22,45 +29,145 @@ jobs:
           node-version: 20
           cache: "npm"
 
-      - name: Verify Vercel secrets
+      - name: Normalize + verify Vercel secrets
         run: |
+          # Strip CR/LF/spaces often introduced by paste into GitHub Secrets.
+          VERCEL_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          VERCEL_ORG_ID=$(printf '%s' "$VERCEL_ORG_ID" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+          VERCEL_PROJECT_ID=$(printf '%s' "$VERCEL_PROJECT_ID" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+          echo "VERCEL_TOKEN=$VERCEL_TOKEN" >> "$GITHUB_ENV"
+          echo "VERCEL_ORG_ID=$VERCEL_ORG_ID" >> "$GITHUB_ENV"
+          echo "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID" >> "$GITHUB_ENV"
+
           missing=
           [ -n "$VERCEL_TOKEN" ] || missing="$missing VERCEL_TOKEN"
           [ -n "$VERCEL_ORG_ID" ] || missing="$missing VERCEL_ORG_ID"
           [ -n "$VERCEL_PROJECT_ID" ] || missing="$missing VERCEL_PROJECT_ID"
           if [ -n "$missing" ]; then
             echo "::error::Missing GitHub Actions secrets:$missing"
-            echo "Set them under repo Settings → Secrets and variables → Actions."
-            echo "Values must match the linked Vercel project (.vercel after 'vercel link'):"
-            echo "  VERCEL_ORG_ID     = orgId   (team_... or user_...)"
-            echo "  VERCEL_PROJECT_ID = projectId (prj_...)"
-            echo "  VERCEL_TOKEN      = Account/Team token (NOT project-scoped;"
-            echo "                     project tokens break 'vercel pull')."
             exit 1
           fi
           case "$VERCEL_ORG_ID" in team_*|user_*) ;; *)
-            echo "::warning::VERCEL_ORG_ID does not look like team_* or user_*"
+            echo "::warning::VERCEL_ORG_ID does not look like team_* or user_* (got length ${#VERCEL_ORG_ID})"
             ;;
           esac
           case "$VERCEL_PROJECT_ID" in prj_*) ;; *)
-            echo "::warning::VERCEL_PROJECT_ID does not look like prj_*"
+            echo "::warning::VERCEL_PROJECT_ID does not look like prj_* (got length ${#VERCEL_PROJECT_ID})"
             ;;
           esac
-          echo "Vercel secrets present (values not logged)."
+          echo "Secret lengths: token=${#VERCEL_TOKEN} org=${#VERCEL_ORG_ID} project=${#VERCEL_PROJECT_ID}"
+
+      - name: Diagnose Vercel token scope (no secret values logged)
+        id: vercel_scope
+        run: |
+          set +e
+          user_code=$(curl -sS -o /tmp/vercel-user.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            "https://api.vercel.com/v2/user")
+          team_code=$(curl -sS -o /tmp/vercel-team.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            "https://api.vercel.com/teams/${VERCEL_ORG_ID}")
+          proj_qs="teamId=${VERCEL_ORG_ID}"
+          case "$VERCEL_ORG_ID" in user_*) proj_qs="" ;; esac
+          if [ -n "$proj_qs" ]; then
+            proj_url="https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}?${proj_qs}"
+          else
+            proj_url="https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}"
+          fi
+          proj_code=$(curl -sS -o /tmp/vercel-proj.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            "$proj_url")
+          set -e
+
+          echo "API status: user=${user_code} team=${team_code} project=${proj_code}"
+          echo "user_code=${user_code}" >> "$GITHUB_OUTPUT"
+          echo "team_code=${team_code}" >> "$GITHUB_OUTPUT"
+          echo "proj_code=${proj_code}" >> "$GITHUB_OUTPUT"
+
+          if [ "$proj_code" != "200" ]; then
+            echo "::error::Project API returned ${proj_code}. ORG_ID/PROJECT_ID mismatch or token lacks project access."
+            echo "Expected local link: orgId=team_vJ4fbhkqwzAfhdcgp16NxeXW projectId=prj_XACWbY0P36sK0N8QLEui4zWmGLcs (thealltour-us7x)"
+            exit 1
+          fi
+
+          if [ "$user_code" != "200" ] || [ "$team_code" != "200" ]; then
+            echo "::warning::Token looks project-scoped (user=${user_code}, team=${team_code})."
+            echo "::warning::vercel pull will fail with 'Could not retrieve Project Settings' — using pull workaround."
+            echo "token_kind=project" >> "$GITHUB_OUTPUT"
+          else
+            echo "Token looks Account/Team scoped — vercel pull should work."
+            echo "token_kind=team" >> "$GITHUB_OUTPUT"
+          fi
 
       - run: npm ci
 
-      # Drop any stale local link; recreate from secrets (required for CI).
       - name: Link Vercel project
         run: |
           rm -rf .vercel
           mkdir -p .vercel
           printf '%s\n' "{\"orgId\":\"${VERCEL_ORG_ID}\",\"projectId\":\"${VERCEL_PROJECT_ID}\"}" > .vercel/project.json
 
-      # Needs a full Account or Team token. Project-scoped tokens fail here with:
-      # "Could not retrieve Project Settings..."
       - name: Pull Vercel production settings
-        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: |
+          if [ "${{ steps.vercel_scope.outputs.token_kind }}" = "team" ]; then
+            npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+            exit 0
+          fi
+
+          echo "Skipping 'vercel pull' (broken for project-scoped tokens — vercel/vercel#17506)."
+          echo "Fetching production env via API instead…"
+
+          env_url="https://api.vercel.com/v3/env/pull/${VERCEL_PROJECT_ID}/production?source=vercel-cli%3Apull&teamId=${VERCEL_ORG_ID}"
+          code=$(curl -sS -o /tmp/vercel-env-pull.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            "$env_url")
+          if [ "$code" != "200" ]; then
+            echo "::error::Env pull API returned ${code}."
+            echo "Fix: recreate VERCEL_TOKEN as an Account or Team token (not project-scoped)"
+            echo "at https://vercel.com/account/tokens — then vercel pull works normally."
+            head -c 400 /tmp/vercel-env-pull.json || true
+            echo
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require("fs");
+          const raw = JSON.parse(fs.readFileSync("/tmp/vercel-env-pull.json", "utf8"));
+          const records = raw.env || raw.buildEnv || raw;
+          if (!records || typeof records !== "object" || Array.isArray(records)) {
+            console.error("Unexpected env pull payload keys:", Object.keys(raw));
+            process.exit(1);
+          }
+          const ignore = new Set(["VERCEL_OIDC_TOKEN"]);
+          const escapeValue = (v) =>
+            String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+          const body =
+            "# Created by GitHub Actions (project-scoped token workaround)\n" +
+            Object.keys(records)
+              .sort()
+              .filter((k) => !ignore.has(k))
+              .map((k) => `${k}="${escapeValue(records[k])}"`)
+              .join("\n") +
+            "\n";
+          fs.mkdirSync(".vercel", { recursive: true });
+          fs.writeFileSync(".vercel/.env.production.local", body);
+          console.log(`Wrote .vercel/.env.production.local (${Object.keys(records).length} keys)`);
+
+          const link = JSON.parse(fs.readFileSync(".vercel/project.json", "utf8"));
+          const settings = {
+            orgId: link.orgId,
+            projectId: link.projectId,
+            settings: {
+              framework: "nextjs",
+              buildCommand: null,
+              outputDirectory: null,
+              installCommand: null,
+              devCommand: null,
+            },
+          };
+          fs.writeFileSync(".vercel/project.json", JSON.stringify(settings, null, 2));
+          console.log("Wrote .vercel/project.json with nextjs settings");
+          NODE
 
       - name: Build (prebuilt)
         run: npx vercel build --prod --token="$VERCEL_TOKEN"

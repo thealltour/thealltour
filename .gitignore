@@ -88,4 +88,4 @@ tools/thealltour_extension/build
 /extracted_sample.txt
 
 # marketing cron runtime artifacts (latest brief only; no PII by contract)
-/data/marketing/cron/
+/data/marketing/cron/.vercel

@@ -1,5 +1,8 @@
 name: Deploy (prebuilt)
 
+# Builds on GitHub Actions free runners, then deploys prebuilt artifacts to Vercel.
+# Pair with scripts/vercel-should-build.mjs always-SKIP so Vercel Git builds use no CPU.
+
 on:
   push:
     branches: [main]
@@ -13,12 +16,54 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
+
+      - name: Verify Vercel secrets
+        run: |
+          missing=
+          [ -n "$VERCEL_TOKEN" ] || missing="$missing VERCEL_TOKEN"
+          [ -n "$VERCEL_ORG_ID" ] || missing="$missing VERCEL_ORG_ID"
+          [ -n "$VERCEL_PROJECT_ID" ] || missing="$missing VERCEL_PROJECT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub Actions secrets:$missing"
+            echo "Set them under repo Settings → Secrets and variables → Actions."
+            echo "Values must match the linked Vercel project (.vercel after 'vercel link'):"
+            echo "  VERCEL_ORG_ID     = orgId   (team_... or user_...)"
+            echo "  VERCEL_PROJECT_ID = projectId (prj_...)"
+            echo "  VERCEL_TOKEN      = Account/Team token (NOT project-scoped;"
+            echo "                     project tokens break 'vercel pull')."
+            exit 1
+          fi
+          case "$VERCEL_ORG_ID" in team_*|user_*) ;; *)
+            echo "::warning::VERCEL_ORG_ID does not look like team_* or user_*"
+            ;;
+          esac
+          case "$VERCEL_PROJECT_ID" in prj_*) ;; *)
+            echo "::warning::VERCEL_PROJECT_ID does not look like prj_*"
+            ;;
+          esac
+          echo "Vercel secrets present (values not logged)."
+
       - run: npm ci
-      - run: rm -rf .vercel
-      - run: npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-      - run: npx vercel build --prod --token=$VERCEL_TOKEN
-      - run: npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+
+      # Drop any stale local link; recreate from secrets (required for CI).
+      - name: Link Vercel project
+        run: |
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '%s\n' "{\"orgId\":\"${VERCEL_ORG_ID}\",\"projectId\":\"${VERCEL_PROJECT_ID}\"}" > .vercel/project.json
+
+      # Needs a full Account or Team token. Project-scoped tokens fail here with:
+      # "Could not retrieve Project Settings..."
+      - name: Pull Vercel production settings
+        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build (prebuilt)
+        run: npx vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt to production
+        run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

@@ -1,6 +1,10 @@
 import { requireAdminPermission } from "@/lib/apiAuth";
 import { createHumanMarketingReviewService } from "@/lib/marketing/review/humanMarketingReviewService";
 import { humanReviewErrorResponse } from "@/lib/marketing/review/apiErrors";
+import {
+  collectManualPublicationSnapshot,
+  createManualPublicationFollowUpDeps,
+} from "@/lib/marketing/review/manualPublicationFollowUp";
 import { createHumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 import { recordManualMarketingPublicationSchema } from "@/lib/marketing/review/validation";
 import {
@@ -88,7 +92,25 @@ export async function POST(request: Request, context: RouteContext) {
       notes: parsed.data.notes,
     });
 
+    /**
+     * Collect the first performance snapshot here rather than waiting for the
+     * next timer: without it the 08:30 brief sees a publication with no
+     * observation attached. Failure only downgrades this step.
+     */
+    const snapshotStep = await collectManualPublicationSnapshot({
+      candidateId,
+      review: result.review,
+      correlationId: "manual-publication",
+      deps: await createManualPublicationFollowUpDeps({ reviewedBy }),
+    }).catch(() => ({
+      step: "performance_snapshot" as const,
+      status: "failed" as const,
+      reason: "snapshot_step_unavailable",
+      ref: null,
+    }));
+
     return Response.json({
+      performanceSnapshot: snapshotStep,
       publicationId: result.publication.id,
       status: result.publication.status,
       provider: result.publication.provider,

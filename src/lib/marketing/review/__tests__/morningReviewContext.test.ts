@@ -494,6 +494,56 @@ describe("MorningMarketingReviewContext", () => {
     const context = await service.getMorningMarketingReviewContext("cmc_step_3_8_verification");
     expect(context?.identity.isVerificationFixture).toBe(true);
   });
+
+  it("31: blocked without GA decision → pipeline_blocked_without_governance", async () => {
+    const { repo, reviewRepo, candidate } = await seedReadyCandidate();
+    const service = createService(repo, reviewRepo);
+    const detail = await service.getHumanReviewDetail(candidate.candidateId);
+    expect(detail).toBeTruthy();
+    const context = buildMorningMarketingReviewContext({
+      detail: {
+        ...detail!,
+        candidate: {
+          ...detail!.candidate,
+          status: "blocked",
+          governanceDecision: null,
+          governanceReviewId: null,
+        },
+        governance: null,
+      },
+      run: null,
+      performanceSnapshots: [],
+    });
+    expect(context.governance.blockKind).toBe("pipeline_blocked_without_governance");
+    expect(context.governance.decision).toBeNull();
+    expect(context.governance.summary).toMatch(/품질|완성도/);
+  });
+
+  it("32: GA BLOCK → governance_block", async () => {
+    const { repo, reviewRepo, candidate } = await seedReadyCandidate();
+    const service = createService(repo, reviewRepo);
+    const detail = await service.getHumanReviewDetail(candidate.candidateId);
+    expect(detail).toBeTruthy();
+    expect(detail!.candidate.governanceDecision).toBeTruthy();
+    const context = buildMorningMarketingReviewContext({
+      detail: {
+        ...detail!,
+        candidate: {
+          ...detail!.candidate,
+          status: "blocked",
+          governanceDecision: {
+            ...detail!.candidate.governanceDecision!,
+            decision: "BLOCK",
+            reasons: ["POLICY"],
+          },
+        },
+      },
+      run: null,
+      performanceSnapshots: [],
+    });
+    expect(context.governance.blockKind).toBe("governance_block");
+    expect(context.governance.decision).toBe("BLOCK");
+  });
 });
 
 describe("morningReview queue filter semantics", () => {

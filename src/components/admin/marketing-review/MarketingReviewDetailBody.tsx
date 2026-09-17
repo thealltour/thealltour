@@ -10,6 +10,7 @@ import { adminToneBorderBg, adminToneText } from "@/components/admin/ui/adminSta
 import { cn } from "@/lib/cn";
 import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/MarketingReviewAssetsPanel";
 import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketing-review/MarketingReviewShortformSourcesPanel";
+import { MarketingReviewChannelChecklist } from "@/components/admin/marketing-review/MarketingReviewChannelChecklist";
 import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/MarketingReviewChannelTabs";
 import { MarketingReviewCanonicalAssetPanel } from "@/components/admin/marketing-review/MarketingReviewCanonicalAssetPanel";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
@@ -174,17 +175,18 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           </AdminCard>
         ) : null}
 
-        {candidate.status === "blocked" && context.governance.decision === "BLOCK" ? (
+        {candidate.status === "blocked" && context.governance.blockKind === "governance_block" ? (
           <AdminCard className={cn("p-4 text-sm", adminToneBorderBg.warning)}>
             거버넌스 BLOCK 상태입니다. 일반 승인 버튼은 비활성화됩니다.
           </AdminCard>
         ) : null}
 
-        {candidate.status === "blocked" && context.governance.decision !== "BLOCK" ? (
+        {candidate.status === "blocked" &&
+        context.governance.blockKind === "pipeline_blocked_without_governance" ? (
           <AdminCard className={cn("p-4 text-sm", adminToneBorderBg.warning)}>
-            후보가 blocked 이지만 거버넌스 판정 기록이 없습니다. 보통 초안 완전성(completeness)
-            미달로 파이프라인이 거버넌스 Auditor 전에 멈춘 경우입니다. 거버넌스 결과 &quot;—&quot; 는
-            Auditor가 실행되지 않았다는 뜻입니다.
+            후보가 blocked이지만 AI 거버넌스 판정은 없습니다(품질·완성도 게이트에서 중단된 경우가 많습니다).
+            Body 품질이 낮으면 채널 탭에서 Content Strategist 재생성을 먼저 시도하세요. 일반 후보자 승인은
+            이 상태에서는 비활성입니다.
           </AdminCard>
         ) : null}
 
@@ -201,6 +203,39 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           </AdminCard>
         ) : null}
 
+        {context.operations.degradations.length > 0 ? (
+          <AdminCard
+            className={cn(
+              "space-y-3 p-4",
+              context.operations.degradations.some((item) => item.severity === "critical")
+                ? adminToneBorderBg.danger
+                : adminToneBorderBg.warning,
+            )}
+          >
+            <h2 className="text-base font-semibold">파이프라인 저하 감지</h2>
+            <ul className="space-y-2 text-sm">
+              {context.operations.degradations.map((item) => (
+                <li key={item.code} className="space-y-1">
+                  <div className="flex items-start gap-2">
+                    <span
+                      className={cn(
+                        "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium",
+                        item.severity === "critical" ? adminToneText.danger : adminToneText.warning,
+                      )}
+                    >
+                      {item.severity === "critical" ? "심각" : "주의"}
+                    </span>
+                    <span>{item.message}</span>
+                  </div>
+                  {item.detail ? (
+                    <div className="pl-12 text-xs text-[var(--text-secondary)]">{item.detail}</div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </AdminCard>
+        ) : null}
+
         <MarketingReviewCanonicalAssetPanel
           candidateId={candidate.candidateId}
           asset={context.canonicalAsset}
@@ -211,40 +246,8 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           onReload={reloadContext}
         />
 
-        <AdminCard className="space-y-3 p-4">
-          <h2 className="text-base font-semibold">채널별 콘텐츠</h2>
-          <p className="text-xs text-[var(--text-secondary)]">
-            생성된 채널만 표시됩니다. 채널 저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다.
-          </p>
-          <MarketingReviewChannelTabs
-            context={context}
-            canEdit={detail.canEdit}
-            busy={busy}
-            onBusy={setBusy}
-            onMessage={setMessage}
-            onReload={reloadContext}
-            selectedChannel={selectedChannel}
-            onSelectChannel={setSelectedChannel}
-          />
-          <label className="block text-sm">
-            <span className="mb-1 block text-[var(--text-secondary)]">검토 메모 (후보 공통)</span>
-            <textarea
-              value={humanNotes}
-              onChange={(e) => setHumanNotes(e.target.value)}
-              disabled={busy}
-              rows={3}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-            />
-          </label>
-          {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
-        </AdminCard>
-
-        <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />
-
-        <MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} />
-
         <AdminCard className="space-y-4 p-4">
-          <h2 className="text-base font-semibold">후보 승인</h2>
+          <h2 className="text-base font-semibold">1. 인간 검토 / 조치</h2>
           <p className="text-sm text-[var(--text-secondary)]">
             현재 상태: <strong>{context.humanAction.label}</strong>
             {context.governance.decision === "ALLOW" ? (
@@ -416,8 +419,49 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         </AdminCard>
 
         <AdminCard className="space-y-3 p-4">
+          <h2 className="text-base font-semibold">2. 채널별 검토</h2>
+          <p className="text-xs text-[var(--text-secondary)]">
+            전 채널 탭을 표시합니다. 미생성 채널은 Content Strategist 재생성으로 채울 수 있습니다. 채널
+            저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다.
+          </p>
+          <MarketingReviewChannelChecklist
+            context={context}
+            busy={busy}
+            onBusy={setBusy}
+            onMessage={setMessage}
+            onReload={reloadContext}
+            onSelectChannel={setSelectedChannel}
+          />
+          <MarketingReviewChannelTabs
+            context={context}
+            canEdit={detail.canEdit}
+            busy={busy}
+            onBusy={setBusy}
+            onMessage={setMessage}
+            onReload={reloadContext}
+            selectedChannel={selectedChannel}
+            onSelectChannel={setSelectedChannel}
+          />
+          <label className="block text-sm">
+            <span className="mb-1 block text-[var(--text-secondary)]">검토 메모 (후보 공통)</span>
+            <textarea
+              value={humanNotes}
+              onChange={(e) => setHumanNotes(e.target.value)}
+              disabled={busy}
+              rows={3}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+            />
+          </label>
+          {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
+        </AdminCard>
+
+        <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />
+
+        <MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} />
+
+        <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">왜 오늘 이 콘텐츠인가</summary>
+            <summary className="cursor-pointer text-base font-semibold">3. 왜 오늘 이 콘텐츠인가</summary>
             <div className="mt-3 space-y-3">
           <p className="text-sm">{sanitizeTextForDisplay(context.agenda.summary)}</p>
           <div className="grid gap-2 text-sm text-[var(--text-secondary)] md:grid-cols-2">
@@ -438,7 +482,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">근거 / 사실 지원</summary>
+            <summary className="cursor-pointer text-base font-semibold">4. 근거 / 사실 지원</summary>
             <div className="mt-3 space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">{context.evidence.message}</p>
           {context.evidence.claims.length === 0 ? (
@@ -493,7 +537,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">거버넌스</summary>
+            <summary className="cursor-pointer text-base font-semibold">5. 거버넌스</summary>
             <div className="mt-3">
           {context.governance.decision ? (
             <div className="space-y-2 text-sm">
@@ -511,7 +555,15 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
               <div>수정 횟수: {context.governance.revisionCount}</div>
             </div>
           ) : (
-            <p className="text-sm text-[var(--text-secondary)]">거버넌스 결과 없음</p>
+            <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+              <p>거버넌스 결과 없음</p>
+              {context.governance.blockKind === "pipeline_blocked_without_governance" ? (
+                <p>
+                  {context.governance.summary} GA가 BLOCK한 기록이 아니므로, Body 재생성으로 품질을 올린 뒤
+                  운영 정책에 따라 상태를 재평가하세요.
+                </p>
+              ) : null}
+            </div>
           )}
             </div>
           </details>
@@ -519,7 +571,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">성과 맥락</summary>
+            <summary className="cursor-pointer text-base font-semibold">6. 성과 맥락</summary>
             <div className="mt-3 space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">{context.performance.message}</p>
           {context.performance.absent ? null : (
@@ -553,7 +605,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         {context.operations.notice ? (
           <AdminCard className={cn("space-y-2 p-4", adminToneBorderBg.warning)}>
-            <h2 className="text-base font-semibold">운영 메타데이터</h2>
+            <h2 className="text-base font-semibold">7. 운영 메타데이터</h2>
             <p className="text-sm">{context.operations.notice}</p>
             <div className="text-xs text-[var(--text-secondary)]">
               Run {context.operations.runStatus ?? "—"} · attempt {context.operations.executionAttempt ?? "—"} · prior

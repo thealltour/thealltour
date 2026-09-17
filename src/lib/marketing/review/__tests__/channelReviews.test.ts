@@ -5,7 +5,7 @@ import {
   effectiveChannelDraft,
   emptyChannelReviewEntry,
 } from "@/lib/marketing/review/channelReviews";
-import { mergeChannelReviewsFromPublishable, visibleChannelsFromReviews } from "@/lib/marketing/review/mergeChannelReviews";
+import { mergeChannelReviewsFromPublishable, visibleChannelsFromReviews, ensureChannelReviewPlaceholders } from "@/lib/marketing/review/mergeChannelReviews";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
 import { createInitialHumanReview } from "@/lib/marketing/review/dto";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
@@ -167,7 +167,7 @@ function sampleBundle(): PublishableContentBundle {
 describe("CG-4C multi-channel human review", () => {
   it("merges only generated channels into review map", () => {
     const map = mergeChannelReviewsFromPublishable({ bundle: sampleBundle() });
-    expect(visibleChannelsFromReviews(map)).toEqual([
+    expect(visibleChannelsFromReviews(map, { offerAllPublishableSlots: false })).toEqual([
       "threads",
       "naver_blog",
       "naver_band",
@@ -175,6 +175,28 @@ describe("CG-4C multi-channel human review", () => {
       "shortform",
     ]);
     expect(channelLabel("naver_blog")).toBe("Naver Blog");
+  });
+
+  it("offers empty optional channel tabs before generation", () => {
+    const map = mergeChannelReviewsFromPublishable({
+      bundle: {
+        ...sampleBundle(),
+        naver_blog: undefined,
+        naver_band: undefined,
+        kakao_channel: undefined,
+      } as never,
+    });
+    const withPlaceholders = ensureChannelReviewPlaceholders(map);
+    expect(visibleChannelsFromReviews(withPlaceholders)).toEqual([
+      "threads",
+      "instagram",
+      "naver_blog",
+      "naver_band",
+      "kakao_channel",
+      "shortform",
+    ]);
+    expect(withPlaceholders.naver_blog?.validationWarnings).toContain("awaiting_generation");
+    expect(withPlaceholders.naver_blog?.aiDraft.body).toBe("");
   });
 
   it("human draft takes precedence over AI draft", () => {
@@ -215,8 +237,8 @@ describe("CG-4C multi-channel human review", () => {
         notes: null,
       } as any,
     };
-    expect(() => visibleChannelsFromReviews(map)).not.toThrow();
-    expect(visibleChannelsFromReviews(map)).toEqual(["threads"]);
+    expect(() => visibleChannelsFromReviews(map, { offerAllPublishableSlots: false })).not.toThrow();
+    expect(visibleChannelsFromReviews(map, { offerAllPublishableSlots: false })).toEqual(["threads"]);
     expect(effectiveChannelDraft(map.threads)).toEqual({
       title: null,
       body: "human only body",
@@ -243,8 +265,21 @@ describe("CG-4C multi-channel human review", () => {
       candidateId: candidate.candidateId,
       channel: "naver_blog",
       title: "사람 블로그 제목",
-      body: "# 사람 블로그\n\n수정본",
+      body: `# 사람 블로그
+
+## 일정부터
+가족 전원이 가능한 날짜를 먼저 맞춥니다. 추석 연휴처럼 날짜가 겹치면 비교 자체가 무의미해질 수 있어요.
+
+## 출발·직항
+부산 출발·직항 여부는 예약 전 공식 확인합니다. 직항으로 간다고 단정하지 말고 스케줄을 대조하세요.
+
+## 포함사항
+패키지 포함/불포함(식사·수하물·여행자보험) 항목을 표로 비교한 뒤 저장해 두세요.
+
+관심 있으면 일정만 맞춰 두고 옵션을 천천히 비교해 보시면 충분합니다.
+`,
       reviewedBy: "tester",
+      notes: "marketing_value_override",
     });
     expect(afterBlog.channelReviews?.naver_blog?.humanDraft?.title).toBe("사람 블로그 제목");
     expect(afterBlog.channelReviews?.naver_band?.humanDraft).toBeNull();
@@ -255,6 +290,7 @@ describe("CG-4C multi-channel human review", () => {
       channel: "naver_blog",
       status: "approved",
       reviewedBy: "tester",
+      notes: "marketing_value_override",
     });
     expect(approved.channelReviews?.naver_blog?.status).toBe("approved");
     expect(approved.status).toBe("approved_for_manual_publish");

@@ -161,11 +161,17 @@ describe("HumanMarketingReviewService", () => {
     expect(detail?.canApprove).toBe(true);
   });
 
-  it("C: blocked candidate cannot be approved or bootstrapped", async () => {
+  it("C: GA-BLOCK blocked candidate cannot be approved or bootstrapped", async () => {
     const { repo, candidate } = await seedCandidate("blocked");
+    // Ensure observability carries BLOCK (seed uses governance:null on structured field).
+    candidate.observability = {
+      ...candidate.observability,
+      governanceDecision: "BLOCK",
+    };
+    await repo.saveCandidate(candidate);
     const service = createService(repo);
     await expect(service.getOrCreateHumanReview(candidate.candidateId, "admin")).rejects.toThrow(
-      /candidate_not_eligible_for_human_review:candidate_status_blocked/,
+      /candidate_not_eligible_for_human_review:governance_blocked/,
     );
     expect((await service.getHumanReviewDetail(candidate.candidateId))?.review).toBeNull();
     await expect(service.approveForManualPublish({ candidateId: candidate.candidateId, reviewedBy: "admin" })).rejects.toBeInstanceOf(

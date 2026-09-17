@@ -1,14 +1,33 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import AdminBadge from "@/components/admin/ui/AdminBadge";
-import AdminButton from "@/components/admin/ui/AdminButton";
-import { adminToneText } from "@/components/admin/ui/adminStatusTone";
-import { FilterChip } from "@/components/ui/FilterChip";
 import type { MorningChannelReviewView, MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import type { ReviewablePublishableChannel } from "@/lib/marketing/review/channelReviews";
+import {
+  buildChannelCopyPayload,
+  channelBodyCharCount,
+  channelFoldPreview,
+  channelTitleCharCount,
+  type CharCount,
+} from "@/lib/marketing/review/channelCopyLimits";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
-import { cn } from "@/lib/cn";
+import { CopyToClipboardButton } from "@/components/admin/marketing-review/CopyToClipboardButton";
+
+function CharCountBadge({ count }: { count: CharCount }) {
+  return (
+    <span
+      className={
+        count.status === "over_limit"
+          ? "text-red-700"
+          : count.status === "near_limit"
+            ? "text-amber-700"
+            : "text-[var(--text-secondary)]"
+      }
+    >
+      {count.label}
+    </span>
+  );
+}
 
 type Props = {
   context: MorningMarketingReviewContext;
@@ -102,13 +121,20 @@ export function MarketingReviewChannelTabs({
     }
   }
 
-  async function regenerate(allowOverwriteHuman = false) {
+  const bodyQualityWeak =
+    active?.marketingValue?.verdict === "needs_improvement" ||
+    active?.marketingValue?.verdict === "reject" ||
+    active?.marketingValue?.hardFail === true;
+
+  async function regenerate(
+    allowOverwriteHuman = false,
+    options?: { qualityRevision?: boolean },
+  ) {
     if (!active || active.channel === "shortform") return;
     onBusy(true);
-    onMessage(`${active.label} 재생성 중… (최대 약 3분, 페이지 이동은 가능합니다)`);
-    const controller = new AbortController();
-    const abortTimer = window.setTimeout(() => controller.abort(), 200_000);
+    onMessage(null);
     try {
+      const qualityRevision = Boolean(options?.qualityRevision);
       const res = await fetch(
         `/api/admin/marketing-review/${encodeURIComponent(context.identity.candidateId)}/channel-regenerate`,
         {
@@ -117,8 +143,14 @@ export function MarketingReviewChannelTabs({
           body: JSON.stringify({
             channel: active.channel,
             allowOverwriteHuman,
+            ...(qualityRevision
+              ? {
+                  qualityRevision: true,
+                  qualityHints: (active.marketingValue?.improvementHints ?? []).slice(0, 8),
+                  qualityReasons: (active.marketingValue?.reasons ?? []).slice(0, 6),
+                }
+              : {}),
           }),
-          signal: controller.signal,
         },
       );
       const data = await res.json().catch(() => ({}));
@@ -131,28 +163,49 @@ export function MarketingReviewChannelTabs({
               : "공통 원문 승인 후 채널을 재생성하세요.",
           );
         }
-        const ok = window.confirm(
-          "이 채널에 사람 수정본이 있습니다. AI 초안으로 덮어쓸까요?",
-        );
-        if (ok) {
-          await regenerate(true);
+        if (data.message === "human_edited_channel_requires_confirm") {
+          const ok = window.confirm(
+            qualityRevision
+              ? "이 채널에 사람 수정본이 있습니다. Content Strategist가 Value 피드백을 반영해 Body를 덮어쓸까요?"
+              : "이 채널에 사람 수정본이 있습니다. AI 초안으로 덮어쓸까요?",
+          );
+          if (ok) {
+            await regenerate(true, options);
+          }
+          return;
         }
-        return;
       }
-      if (!res.ok) throw new Error(typeof data.message === "string" ? data.message : "regenerate_failed");
+      if (!res.ok) {
+        const detail =
+          typeof data.failureMessage === "string"
+            ? data.failureMessage
+            : typeof data.hint === "string"
+              ? data.hint
+              : null;
+        const base =
+          typeof data.message === "string" ? data.message : "regenerate_failed";
+        throw new Error(detail ? `${base}: ${detail}` : base);
+      }
       await onReload();
-      onMessage(`${active.label} 재생성 완료 (외부 리서치 0회).`);
+      onMessage(
+        qualityRevision
+          ? `${active.label} Body 품질 재생성 완료 (Content Strategist · Value 힌트 반영).`
+          : `${active.label} 재생성 완료 (외부 리서치 0회).`,
+      );
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        onMessage("재생성 요청이 시간 초과되었습니다. 잠시 후 다시 시도하세요.");
-      } else {
-        onMessage(error instanceof Error ? error.message : "regenerate_failed");
-      }
+      onMessage(error instanceof Error ? error.message : "regenerate_failed");
     } finally {
-      window.clearTimeout(abortTimer);
       onBusy(false);
     }
   }
+
+  const copyPayload = useMemo(
+    () => buildChannelCopyPayload({ title, body }),
+    [title, body],
+  );
+  const bodyCount = active ? channelBodyCharCount(active.channel, body) : null;
+  const titleCount = active ? channelTitleCharCount(active.channel, title) : null;
+  const foldPreview = active ? channelFoldPreview(active.channel, body) : null;
 
   const summaryChips = useMemo(
     () =>
@@ -178,13 +231,18 @@ export function MarketingReviewChannelTabs({
 
       <div className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-2">
         {channels.map((c) => (
-          <FilterChip
+          <button
             key={c.channel}
-            variant={active?.channel === c.channel ? "selected" : "default"}
+            type="button"
             onClick={() => onSelectChannel(c.channel)}
+            className={`rounded-lg px-3 py-1.5 text-sm ${
+              active?.channel === c.channel
+                ? "bg-[var(--primary)] text-white"
+                : "border border-[var(--border)]"
+            }`}
           >
             {c.label}
-          </FilterChip>
+          </button>
         ))}
       </div>
 
@@ -196,47 +254,78 @@ export function MarketingReviewChannelTabs({
             </span>
             <span>소스: {active.source === "human" ? "사람 수정" : "AI 초안"}</span>
             {active.marketingValue ? (
-              <AdminBadge
-                variant={
+              <span
+                className={
                   active.marketingValue.verdict === "strong" ||
                   active.marketingValue.verdict === "publishable"
-                    ? "success"
+                    ? "text-emerald-700"
                     : active.marketingValue.verdict === "needs_improvement"
-                      ? "warning"
-                      : "danger"
+                      ? "text-amber-700"
+                      : "text-red-700"
                 }
               >
-                가치 {active.marketingValue.verdict}
-                {active.marketingValue.stale ? " · 오래됨" : ""}
-              </AdminBadge>
+                Value: <strong>{active.marketingValue.verdict}</strong> (
+                {active.marketingValue.overallScore})
+                {active.marketingValue.stale ? " · stale" : ""}
+              </span>
             ) : null}
             {active.validationWarnings.length > 0 ? (
-              <span className={adminToneText.warning}>경고 {active.validationWarnings.length}건</span>
+              <span className="text-amber-700">경고 {active.validationWarnings.length}건</span>
             ) : (
-              <span className={adminToneText.success}>검증 통과</span>
+              <span className="text-emerald-700">검증 통과</span>
             )}
           </div>
 
-          {active.marketingValue &&
-          ((active.marketingValue.reasons?.length ?? 0) > 0 ||
-            (active.marketingValue.improvementHints?.length ?? 0) > 0) ? (
-            <details className="text-xs text-[var(--text-secondary)]">
-              <summary className="cursor-pointer text-[var(--primary)]">가치 평가 상세</summary>
-              <div className="mt-2 space-y-1 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
-                {(active.marketingValue.reasons ?? []).slice(0, 3).map((r) => (
-                  <div key={r}>· {r}</div>
-                ))}
-                {(active.marketingValue.improvementHints ?? []).slice(0, 3).map((h) => (
-                  <div key={h} className={adminToneText.warning}>
-                    개선 힌트: {h}
-                  </div>
-                ))}
-              </div>
-            </details>
+          {active.marketingValue ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs space-y-1">
+              <div className="font-medium">Marketing Value (≠ Governance)</div>
+              {(active.marketingValue.reasons ?? []).slice(0, 3).map((r) => (
+                <div key={r}>· {r}</div>
+              ))}
+              {(active.marketingValue.improvementHints ?? []).slice(0, 3).map((h) => (
+                <div key={h} className="text-amber-800">
+                  hint: {h}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {active.awaitingGeneration && active.channel !== "shortform" ? (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+              <p className="text-sm text-amber-950">
+                이 채널 초안은 아직 없습니다. Content Strategist로 채널 본문을 생성할 수 있습니다
+                (프로덕션 기본은 Threads+Shortform만 자동 생성).
+              </p>
+              <button
+                type="button"
+                disabled={busy || context.governance.decision === "BLOCK"}
+                onClick={() => void regenerate(false, { qualityRevision: true })}
+                className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                채널 초안 생성 (Content Strategist)
+              </button>
+            </div>
+          ) : null}
+
+          {bodyQualityWeak && !active.awaitingGeneration && active.channel !== "shortform" ? (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+              <p className="text-sm text-amber-950">
+                Body 품질이 게시 기준에 못 미칩니다. Content Strategist에게 Marketing Value 피드백을 넘겨
+                Body만 재생성할 수 있습니다.
+              </p>
+              <button
+                type="button"
+                disabled={busy || context.governance.decision === "BLOCK"}
+                onClick={() => void regenerate(false, { qualityRevision: true })}
+                className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Body 품질 재생성 (Content Strategist)
+              </button>
+            </div>
           ) : null}
 
           {active.validationWarnings.length > 0 ? (
-            <ul className={cn("list-disc space-y-1 pl-5 text-xs", adminToneText.warning)}>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-amber-800">
               {active.validationWarnings.map((w) => (
                 <li key={w}>{w}</li>
               ))}
@@ -250,7 +339,10 @@ export function MarketingReviewChannelTabs({
                 {active.blogMeta?.primaryTopic ?? "—"}
               </div>
               <label className="block">
-                <span className="mb-1 block text-[var(--text-secondary)]">제목</span>
+                <span className="mb-1 flex items-center justify-between text-[var(--text-secondary)]">
+                  <span>Title</span>
+                  {titleCount ? <CharCountBadge count={titleCount} /> : null}
+                </span>
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -288,7 +380,7 @@ export function MarketingReviewChannelTabs({
             </div>
           ) : active.channel !== "shortform" ? (
             <label className="block text-sm">
-              <span className="mb-1 block text-[var(--text-secondary)]">제목 (선택)</span>
+              <span className="mb-1 block text-[var(--text-secondary)]">Title (optional)</span>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -304,57 +396,97 @@ export function MarketingReviewChannelTabs({
                 Shortform 내레이션/렌더 상태는 아래 Shortform 패널에서 소스 PICK·렌더·미리보기를 확인하세요.
                 이 탭에서는 승인만 가능하며 READY 게이트가 적용됩니다. 재생성 UI는 노출하지 않습니다.
               </p>
-              <div className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--surface-muted)] p-3 text-sm">
+              <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--surface-muted)] p-3 text-xs">
                 {sanitizeTextForDisplay(active.body, 4000)}
-              </div>
+              </pre>
             </div>
           ) : (
             <label className="block text-sm">
-              <span className="mb-1 block text-[var(--text-secondary)]">본문</span>
+              <span className="mb-1 flex items-center justify-between text-[var(--text-secondary)]">
+                <span>Body</span>
+                {bodyCount ? <CharCountBadge count={bodyCount} /> : null}
+              </span>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 disabled={!editable || busy}
                 rows={active.channel === "naver_blog" ? 18 : 10}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-mono text-[13px]"
               />
             </label>
           )}
 
+          {foldPreview ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs">
+              <div className="mb-1 text-[var(--text-secondary)]">
+                더보기 이전에 보이는 부분 (앞 125자)
+              </div>
+              <p className="whitespace-pre-wrap">
+                {sanitizeTextForDisplay(foldPreview.text, 200)}
+                {foldPreview.truncated ? <span className="text-[var(--text-secondary)]"> … 더 보기</span> : null}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] p-2">
+            <span className="text-xs text-[var(--text-secondary)]">붙여넣기용 복사:</span>
+            <CopyToClipboardButton label="본문" value={copyPayload.body} disabled={busy} />
+            {copyPayload.hashtagLine ? (
+              <>
+                <CopyToClipboardButton
+                  label="본문(해시태그 제외)"
+                  value={copyPayload.bodyWithoutHashtags}
+                  disabled={busy}
+                />
+                <CopyToClipboardButton
+                  label={`해시태그 ${copyPayload.hashtags.length}개`}
+                  value={copyPayload.hashtagLine}
+                  disabled={busy}
+                  title={copyPayload.hashtagLine}
+                />
+              </>
+            ) : null}
+            {copyPayload.title ? (
+              <CopyToClipboardButton label="제목" value={copyPayload.title} disabled={busy} />
+            ) : null}
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {active.channel !== "shortform" ? (
-              <AdminButton
+              <button
                 type="button"
                 disabled={!editable || busy}
                 onClick={() => void saveChannel()}
+                className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 채널 저장
-              </AdminButton>
+              </button>
             ) : null}
-            <AdminButton
+            <button
               type="button"
               disabled={busy || context.governance.decision === "BLOCK"}
               onClick={() => void setStatus("approved")}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               채널 승인
-            </AdminButton>
-            <AdminButton
+            </button>
+            <button
               type="button"
-              variant="secondary"
               disabled={busy}
               onClick={() => void setStatus("skipped")}
+              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
             >
               채널 Skip
-            </AdminButton>
+            </button>
             {active.channel !== "shortform" ? (
-              <AdminButton
+              <button
                 type="button"
-                variant="secondary"
-                disabled={busy}
+                disabled={busy || context.governance.decision === "BLOCK"}
                 onClick={() => void regenerate(false)}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
-                {busy ? "재생성 중…" : "채널만 재생성"}
-              </AdminButton>
+                채널만 재생성
+              </button>
             ) : null}
             <button
               type="button"

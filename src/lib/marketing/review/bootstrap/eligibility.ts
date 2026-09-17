@@ -66,12 +66,29 @@ export function evaluateHumanReviewEligibility(
     };
   }
 
+  /**
+   * status=blocked is overloaded:
+   * - GA BLOCK → no human-review bootstrap / no channel polish
+   * - quality/completeness gate (revision_required) with no GA decision → allow bootstrap
+   *   so operators can repair Body via Content Strategist regenerate
+   */
   if (candidate.status === "blocked") {
-    return {
-      eligible: false,
-      reason: "candidate_status_blocked",
-      detail: "Blocked candidates cannot enter the human review queue until governance is resolved.",
-    };
+    const blockedGov = resolveCandidateGovernanceDecision(candidate);
+    if (blockedGov === "BLOCK") {
+      return {
+        eligible: false,
+        reason: "governance_blocked",
+        detail: "Governance BLOCK prohibits human review bootstrap for this candidate.",
+      };
+    }
+    if (!candidate.draft?.body?.trim()) {
+      return {
+        eligible: false,
+        reason: "missing_draft_body",
+        detail: "Candidate draft body is required before HumanMarketingReview can be bootstrapped.",
+      };
+    }
+    return { eligible: true };
   }
 
   if (candidate.status !== "ready_for_human_review" && candidate.status !== "needs_human_review") {

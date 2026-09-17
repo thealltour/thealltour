@@ -47,6 +47,7 @@ function toPublishableChannel(channel: ReviewablePublishableChannel): Publishabl
   if (channel === "naver_blog") return "naver_blog";
   if (channel === "naver_band") return "naver_band";
   if (channel === "kakao_channel") return "kakao_channel";
+  if (channel === "instagram") return "instagram";
   return null;
 }
 
@@ -137,6 +138,7 @@ export function persistChannelHumanEditToPackage(input: {
       title: input.title,
       content: nextContent as never,
       proposition: input.candidate.contentPlan?.proposition ?? null,
+      usableFacts: (input.candidate.contentAssignment?.facts ?? []).map((f) => f.statement),
       now: input.now,
     });
 
@@ -148,6 +150,7 @@ export function persistChannelHumanEditToPackage(input: {
       ...(pubChannel === "naver_blog" ? { naver_blog: nextContent } : {}),
       ...(pubChannel === "naver_band" ? { naver_band: nextContent } : {}),
       ...(pubChannel === "kakao_channel" ? { kakao_channel: nextContent } : {}),
+      ...(pubChannel === "instagram" ? { instagram: nextContent } : {}),
     };
 
     writeFileSync(

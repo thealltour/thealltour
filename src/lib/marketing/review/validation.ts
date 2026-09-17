@@ -11,8 +11,17 @@ export const updateHumanDraftSchema = z.object({
   humanNotes: z.string().max(4_000).nullable().optional(),
 });
 
+const channelReviewChannelSchema = z.enum([
+  "threads",
+  "naver_blog",
+  "naver_band",
+  "kakao_channel",
+  "instagram",
+  "shortform",
+]);
+
 export const updateChannelReviewDraftSchema = z.object({
-  channel: z.enum(["threads", "naver_blog", "naver_band", "kakao_channel", "shortform"]),
+  channel: channelReviewChannelSchema,
   title: z.string().max(300).nullable().optional(),
   body: z.string().min(1).max(40_000),
   notes: z.string().max(4_000).nullable().optional(),
@@ -20,7 +29,18 @@ export const updateChannelReviewDraftSchema = z.object({
 });
 
 export const setChannelReviewStatusSchema = z.object({
-  channel: z.enum(["threads", "naver_blog", "naver_band", "kakao_channel", "shortform"]),
+  channel: channelReviewChannelSchema,
+  status: z.enum(["approved", "skipped", "needs_review"]),
+  notes: z.string().max(4_000).nullable().optional(),
+  humanNotes: z.string().max(4_000).nullable().optional(),
+});
+
+/**
+ * Batch form of the same transition. Each channel is still gated individually —
+ * this only saves the operator six round trips when running 6 channels a day.
+ */
+export const setChannelReviewStatusBatchSchema = z.object({
+  channels: z.array(channelReviewChannelSchema).min(1).max(6),
   status: z.enum(["approved", "skipped", "needs_review"]),
   notes: z.string().max(4_000).nullable().optional(),
   humanNotes: z.string().max(4_000).nullable().optional(),

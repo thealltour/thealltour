@@ -6,11 +6,24 @@ import type { PublishableContentBundle, PublishableChannelContent } from "@/lib/
 import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
 import {
   emptyChannelReviewEntry,
+  isReviewablePublishableChannel,
   type ChannelReviewEntry,
   type ChannelReviewsMap,
   type ReviewablePublishableChannel,
 } from "@/lib/marketing/review/channelReviews";
 import { toMarketingValueCompact } from "@/lib/marketing/value/contracts";
+
+export const CHANNEL_REVIEW_TAB_ORDER: ReviewablePublishableChannel[] = [
+  "threads",
+  "instagram",
+  "naver_blog",
+  "naver_band",
+  "kakao_channel",
+  "shortform",
+];
+
+/** Human Review offers all publishable slots; generation stays on-demand via regenerate. */
+export const OFFERABLE_REVIEW_CHANNELS: ReviewablePublishableChannel[] = [...CHANNEL_REVIEW_TAB_ORDER];
 
 function warningsFrom(content: {
   validation?: { ok: boolean; issues: Array<{ message: string }> };
@@ -100,6 +113,10 @@ export function mergeChannelReviewsFromPublishable(input: {
     const entry = seedFromBundleSlot("kakao_channel", b.kakao_channel, prev.kakao_channel);
     if (entry) next.kakao_channel = entry;
   }
+  if (b.instagram) {
+    const entry = seedFromBundleSlot("instagram", b.instagram, prev.instagram);
+    if (entry) next.instagram = entry;
+  }
   if (b.shortform?.body) {
     const entry = seedFromBundleSlot("shortform", b.shortform, prev.shortform);
     if (entry) next.shortform = entry;
@@ -108,13 +125,57 @@ export function mergeChannelReviewsFromPublishable(input: {
   return next;
 }
 
-export function visibleChannelsFromReviews(map: ChannelReviewsMap | null | undefined): ReviewablePublishableChannel[] {
-  const order: ReviewablePublishableChannel[] = [
-    "threads",
-    "naver_blog",
-    "naver_band",
-    "kakao_channel",
-    "shortform",
-  ];
-  return order.filter((ch) => Boolean(map?.[ch]?.aiDraft?.body || map?.[ch]?.humanDraft?.body));
+/**
+ * Ensure target/offerable channels exist as placeholders so tabs appear before first generate.
+ */
+export function ensureChannelReviewPlaceholders(
+  map: ChannelReviewsMap,
+  offerChannels: readonly ReviewablePublishableChannel[] = OFFERABLE_REVIEW_CHANNELS,
+): ChannelReviewsMap {
+  const next: ChannelReviewsMap = { ...map };
+  for (const channel of offerChannels) {
+    if (!isReviewablePublishableChannel(channel)) continue;
+    const existing = next[channel];
+    const hasBody = Boolean(existing?.aiDraft?.body?.trim() || existing?.humanDraft?.body?.trim());
+    if (hasBody) continue;
+    if (existing) {
+      const warnings = existing.validationWarnings.includes("awaiting_generation")
+        ? existing.validationWarnings
+        : ["awaiting_generation", ...existing.validationWarnings].slice(0, 10);
+      next[channel] = {
+        ...existing,
+        status: existing.status === "approved" ? existing.status : "draft",
+        validationWarnings: warnings,
+      };
+      continue;
+    }
+    const entry = emptyChannelReviewEntry(channel, { title: null, body: "" }, ["awaiting_generation"]);
+    entry.status = "draft";
+    next[channel] = entry;
+  }
+  return next;
+}
+
+export function visibleChannelsFromReviews(
+  map: ChannelReviewsMap | null | undefined,
+  options?: {
+    /** Prefer plan targets; empty tabs still offered for all publishable slots by default. */
+    targetChannels?: readonly string[] | null;
+    offerAllPublishableSlots?: boolean;
+  },
+): ReviewablePublishableChannel[] {
+  const offerAll = options?.offerAllPublishableSlots !== false;
+  const targets = new Set(
+    (options?.targetChannels ?? [])
+      .filter((ch): ch is ReviewablePublishableChannel => isReviewablePublishableChannel(ch)),
+  );
+
+  return CHANNEL_REVIEW_TAB_ORDER.filter((ch) => {
+    const entry = map?.[ch];
+    const hasBody = Boolean(entry?.aiDraft?.body?.trim() || entry?.humanDraft?.body?.trim());
+    if (hasBody) return true;
+    if (offerAll) return true;
+    if (targets.size > 0) return targets.has(ch);
+    return false;
+  });
 }

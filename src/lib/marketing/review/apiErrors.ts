@@ -22,11 +22,45 @@ export function humanReviewErrorResponse(error: unknown): NextResponse {
   if (message === "must_be_approved_before_manual_publication_record") {
     return NextResponse.json({ message: "수동 게시 기록 전에 승인이 필요합니다." }, { status: 422 });
   }
+  if (message === "review_missing") {
+    return NextResponse.json(
+      {
+        message: "human_review_missing",
+        hint: "HumanMarketingReview 레코드가 없습니다. 페이지를 새로고침한 뒤 Body 품질 재생성을 다시 시도하세요.",
+      },
+      { status: 409 },
+    );
+  }
+  if (message === "content_proposition_missing") {
+    return NextResponse.json(
+      {
+        message: "content_proposition_missing",
+        hint: "ContentProposition이 없습니다. Content Strategist 재실행 또는 proposition 백필 후 재생성하세요.",
+      },
+      { status: 409 },
+    );
+  }
+  if (message === "channel_regenerate_failed" || message.startsWith("channel_regenerate_failed")) {
+    return NextResponse.json(
+      {
+        message: "채널 재생성에 실패했습니다. 이전 본문은 유지됩니다.",
+        reason: message,
+      },
+      { status: 502 },
+    );
+  }
   if (message.startsWith("regeneration_required")) {
     return NextResponse.json(
       { message: "재생성(LLM)이 필요합니다.", reason: message },
       { status: 409 },
     );
   }
-  return NextResponse.json({ message: "요청 처리에 실패했습니다." }, { status: 500 });
+  console.error("[humanReviewErrorResponse]", message, error);
+  return NextResponse.json(
+    {
+      message: "요청 처리에 실패했습니다.",
+      reason: message.slice(0, 500),
+    },
+    { status: 500 },
+  );
 }

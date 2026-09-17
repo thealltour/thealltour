@@ -323,6 +323,7 @@ describe("CG-4B channel-native composers", () => {
       "naver_blog",
       "naver_band",
       "kakao_channel",
+      "instagram",
     ]);
   });
 
@@ -336,6 +337,7 @@ describe("CG-4B channel-native composers", () => {
       "naver_blog",
       "naver_band",
       "kakao_channel",
+      "instagram",
     ]);
   });
 

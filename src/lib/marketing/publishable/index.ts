@@ -28,6 +28,7 @@ export { composeShortformNarration } from "@/lib/marketing/publishable/shortform
 export { composeNaverBlogPublishableContent } from "@/lib/marketing/publishable/naver_blog/composeNaverBlogPublishableContent";
 export { composeNaverBandPublishableContent } from "@/lib/marketing/publishable/naver_band/composeNaverBandPublishableContent";
 export { composeKakaoChannelPublishableContent } from "@/lib/marketing/publishable/kakao_channel/composeKakaoChannelPublishableContent";
+export { composeInstagramPublishableContent } from "@/lib/marketing/publishable/instagram/composeInstagramPublishableContent";
 export { ensurePublishableContent } from "@/lib/marketing/publishable/ensurePublishableContent";
 export { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
 export { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";

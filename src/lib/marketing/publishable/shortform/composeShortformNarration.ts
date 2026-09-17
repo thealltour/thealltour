@@ -13,6 +13,8 @@ import {
   buildPropositionProvenance,
   buildChannelComposerPromptParts,
   checkShortformHookPayoff,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -37,7 +39,11 @@ function buildShortformPrompt(
       SHORTFORM_NARRATION_WRITING_CONTRACT,
       "Structure: hook → payoff → concrete useful information → close/action.",
       "If hook promises N things / one rule / a checklist, body MUST deliver it — without changing the approved Story.",
-    ].join("\n"),
+      formatCorePackPromptBlock(input),
+      formatQualityRevisionPromptBlock(input.qualityRevision),
+    ]
+      .filter(Boolean)
+      .join("\n"),
     composerInput: input,
     repairHint,
   });

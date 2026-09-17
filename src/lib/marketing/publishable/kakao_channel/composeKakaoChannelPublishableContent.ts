@@ -10,6 +10,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
   buildChannelComposerPromptParts,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -34,7 +36,11 @@ function buildPrompt(
     writingContract: [
       kakaoChannelWritingContract({ hasApprovedCanonicalAsset: hasApproved }),
       "Channel: concise Kakao decision aid / action. Match approved decision. No invented urgency/price.",
-    ].join("\n"),
+      formatCorePackPromptBlock(input),
+      formatQualityRevisionPromptBlock(input.qualityRevision),
+    ]
+      .filter(Boolean)
+      .join("\n"),
     composerInput: input,
     repairHint,
   });

@@ -11,6 +11,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
   buildChannelComposerPromptParts,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -35,7 +37,11 @@ function buildPrompt(
     writingContract: [
       naverBlogWritingContract({ hasApprovedCanonicalAsset: hasApproved }),
       "Channel: useful article structure around the approved Story / ContentProposition promise — do not invent a new Story.",
-    ].join("\n"),
+      formatCorePackPromptBlock(input),
+      formatQualityRevisionPromptBlock(input.qualityRevision),
+    ]
+      .filter(Boolean)
+      .join("\n"),
     composerInput: input,
     repairHint,
   });

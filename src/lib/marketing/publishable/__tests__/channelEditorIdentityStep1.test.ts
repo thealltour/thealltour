@@ -24,6 +24,7 @@ const CHANNELS: PublishableChannel[] = [
   "naver_band",
   "kakao_channel",
   "shortform",
+  "instagram",
 ];
 
 describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
@@ -61,6 +62,7 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
     expect(resolveChannelEditorHermesProfile("naver_band")).toBe("channel-editor-naver-band");
     expect(resolveChannelEditorHermesProfile("kakao_channel")).toBe("channel-editor-kakao");
     expect(resolveChannelEditorHermesProfile("shortform")).toBe("channel-editor-shortform");
+    expect(resolveChannelEditorHermesProfile("instagram")).toBe("channel-editor-instagram");
     for (const channel of CHANNELS) {
       const profile = resolveChannelEditorHermesProfile(channel);
       expect(profile).not.toBe("content-strategist");
@@ -166,6 +168,7 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
       "channel-editor-naver-band",
       "channel-editor-kakao",
       "channel-editor-shortform",
+      "channel-editor-instagram",
     ]);
     expect(profiles.includes("content-strategist")).toBe(false);
   });

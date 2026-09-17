@@ -1,10 +1,12 @@
 /**
  * Apply publishable Threads + shortform narration onto a MediaBrief.
  * Blog/Band/Kakao remain package-level copy artifacts (not MediaBrief formats)
- * to avoid bloating media-brief-v1.
+ * to avoid bloating media-brief-v1. Instagram also contributes cardnews cards,
+ * because the carousel images are a MediaBrief format.
  */
 
 import type { MediaBrief, ShortformNarrationSegment } from "@/lib/marketing/assets/contracts";
+import { applyInstagramCardnewsToBrief } from "@/lib/marketing/assets/cardnews/instagramCards";
 import { parseMediaBrief } from "@/lib/marketing/assets/parse";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
 import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
@@ -28,10 +30,12 @@ export function applyPublishableContentToMediaBrief(
       }))
     : [];
 
+  const withCardnews = applyInstagramCardnewsToBrief(mediaBrief, bundle);
+
   return parseMediaBrief({
-    ...mediaBrief,
+    ...withCardnews,
     formats: {
-      ...mediaBrief.formats,
+      ...withCardnews.formats,
       text: {
         enabled: Boolean(threadsTitle || threadsBody),
         title: threadsTitle,

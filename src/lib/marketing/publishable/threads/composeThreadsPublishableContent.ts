@@ -11,6 +11,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
   buildChannelComposerPromptParts,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -35,7 +37,13 @@ function buildThreadsPrompt(
 ): ChannelComposerPromptParts {
   return buildChannelComposerPromptParts({
     channel: "threads",
-    writingContract: THREADS_WRITING_CONTRACT,
+    writingContract: [
+      THREADS_WRITING_CONTRACT,
+      formatCorePackPromptBlock(input),
+      formatQualityRevisionPromptBlock(input.qualityRevision),
+    ]
+      .filter(Boolean)
+      .join("\n"),
     composerInput: input,
     repairHint,
   });

@@ -10,6 +10,8 @@ import {
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
   buildChannelComposerPromptParts,
+  formatCorePackPromptBlock,
+  formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
@@ -34,7 +36,11 @@ function buildPrompt(
     writingContract: [
       naverBandWritingContract({ hasApprovedCanonicalAsset: hasApproved }),
       "Channel: community-native Band post. Practical checklist / experience question welcome — same approved Story.",
-    ].join("\n"),
+      formatCorePackPromptBlock(input),
+      formatQualityRevisionPromptBlock(input.qualityRevision),
+    ]
+      .filter(Boolean)
+      .join("\n"),
     composerInput: input,
     repairHint,
   });

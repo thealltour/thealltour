@@ -61,6 +61,169 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const KNOWN_CONTENT_FORMATS = [
+  "threads_text",
+  "instagram_carousel",
+  "blog_article",
+  "short_video_concept",
+] as const;
+
+type KnownContentFormat = (typeof KNOWN_CONTENT_FORMATS)[number];
+
+function isKnownContentFormat(value: string): value is KnownContentFormat {
+  return (KNOWN_CONTENT_FORMATS as readonly string[]).includes(value);
+}
+
+function coerceProofRequirements(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  const out: Array<Record<string, unknown>> = [];
+  for (const item of value) {
+    if (isRecord(item)) {
+      const claimArea =
+        typeof item.claimArea === "string"
+          ? item.claimArea.trim()
+          : typeof item.area === "string"
+            ? String(item.area).trim()
+            : "";
+      const requiredProof =
+        typeof item.requiredProof === "string"
+          ? item.requiredProof.trim()
+          : typeof item.proof === "string"
+            ? String(item.proof).trim()
+            : typeof item.claim === "string"
+              ? String(item.claim).trim()
+              : "";
+      if (!claimArea && !requiredProof) continue;
+      const severityRaw = typeof item.severity === "string" ? item.severity.trim().toLowerCase() : "";
+      const severity =
+        severityRaw === "must" || severityRaw === "should" || severityRaw === "nice"
+          ? severityRaw
+          : severityRaw === "required" || severityRaw === "req"
+            ? "must"
+            : severityRaw === "optional" || severityRaw === "opt"
+              ? "nice"
+              : "should";
+      out.push({
+        claimArea: (claimArea || "claim").slice(0, 160),
+        requiredProof: (requiredProof || claimArea).slice(0, 240),
+        severity,
+      });
+      continue;
+    }
+    if (typeof item === "string") {
+      const text = item.trim();
+      if (!text) continue;
+      out.push({
+        claimArea: text.slice(0, 160),
+        requiredProof: text.slice(0, 240),
+        severity: "should",
+      });
+    }
+  }
+  return out.slice(0, 8);
+}
+
+function normalizePropositionShape(proposition: unknown): unknown {
+  if (!isRecord(proposition)) return proposition;
+  const next: Record<string, unknown> = { ...proposition };
+  if ("proofRequirements" in next) {
+    next.proofRequirements = coerceProofRequirements(next.proofRequirements);
+  }
+  // specificTakeaways must be string[]; objects/numbers → stringified or drop
+  if (Array.isArray(next.specificTakeaways)) {
+    next.specificTakeaways = next.specificTakeaways
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (isRecord(item) && typeof item.text === "string") return item.text.trim();
+        if (isRecord(item) && typeof item.takeaway === "string") return item.takeaway.trim();
+        return "";
+      })
+      .filter(Boolean)
+      .slice(0, 5);
+  }
+  return next;
+}
+
+/**
+ * Deterministic coerce of common CS shape mistakes before Zod.
+ * Does not invent evidence or proposition fields.
+ */
+export function normalizeProviderContentPlanShape(raw: unknown): unknown {
+  if (!isRecord(raw)) return raw;
+
+  const next: Record<string, unknown> = { ...raw };
+  const droppedFormatHints: string[] = [];
+
+  if (typeof next.proposition === "string") {
+    const trimmed = next.proposition.trim();
+    if (!trimmed) {
+      next.proposition = null;
+    } else if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown;
+        next.proposition = isRecord(parsed) ? parsed : null;
+      } catch {
+        next.proposition = null;
+      }
+    } else {
+      next.proposition = null;
+    }
+  }
+
+  if (next.proposition != null) {
+    next.proposition = normalizePropositionShape(next.proposition);
+  }
+
+  if (typeof next.recommendedFormats === "string") {
+    next.recommendedFormats = [next.recommendedFormats];
+  }
+
+  if (Array.isArray(next.recommendedFormats)) {
+    const coerced: Array<Record<string, unknown>> = [];
+    for (const item of next.recommendedFormats) {
+      if (isRecord(item) && typeof item.format === "string") {
+        const format = item.format.trim();
+        if (isKnownContentFormat(format)) {
+          coerced.push({
+            format,
+            score: typeof item.score === "number" ? item.score : 0.6,
+            rationale:
+              typeof item.rationale === "string" && item.rationale.trim()
+                ? item.rationale
+                : "provider_object",
+          });
+        } else if (format) {
+          droppedFormatHints.push(format);
+        }
+        continue;
+      }
+      if (typeof item === "string") {
+        const format = item.trim();
+        if (isKnownContentFormat(format)) {
+          coerced.push({
+            format,
+            score: 0.6,
+            rationale: "provider_string_coerced",
+          });
+        } else if (format) {
+          droppedFormatHints.push(format);
+        }
+      }
+    }
+    next.recommendedFormats = coerced;
+  }
+
+  if (droppedFormatHints.length > 0) {
+    const existing = Array.isArray(next.draftInstructions)
+      ? next.draftInstructions.map(String)
+      : [];
+    const hint = `format_hint:${[...new Set(droppedFormatHints)].slice(0, 4).join(",")}`;
+    next.draftInstructions = [...existing, hint].slice(0, 12);
+  }
+
+  return next;
+}
+
 export function getProviderEvidencePresence(raw: Record<string, unknown>): ProviderEvidencePresence {
   if (!("evidenceRefs" in raw)) return "absent";
   if (!Array.isArray(raw.evidenceRefs)) return "malformed";
@@ -233,22 +396,24 @@ export function parseProviderContentPlan(
   raw: unknown,
   source: ContentPlanValidationSource = "provider_output",
 ): ContentPlan {
-  if (!isRecord(raw)) {
+  const normalized = normalizeProviderContentPlanShape(raw);
+  if (!isRecord(normalized)) {
     throw new ContentPlanContractError({
       incidentClass: "malformed_model_output",
       validationIssue: "wrong_primitive_type",
       source,
       message: "Provider contentPlan must be an object",
+      zodPath: "root",
     });
   }
 
-  const parsed = contentPlanProviderSchema.safeParse(raw);
+  const parsed = contentPlanProviderSchema.safeParse(normalized);
   if (!parsed.success) {
     throw zodToContractError(parsed.error, source);
   }
 
   const factsToUse = parsed.data.factsToUse ?? [];
-  const evidenceRefs = assertProviderEvidenceSemantics(raw, factsToUse, source);
+  const evidenceRefs = assertProviderEvidenceSemantics(normalized, factsToUse, source);
 
   if (evidenceRefs.length > 0) {
     const evidenceValidated = contentPlanCanonicalSchema.shape.evidenceRefs.safeParse(evidenceRefs);

@@ -84,6 +84,17 @@ export type PublishableComposerInput = {
   storyLock?: PublishableStoryLock | null;
   /** STEP 2 — composition mode marker for prompt/observability. */
   compositionMode?: "approved_asset_adapter" | "legacy_proposition_driven";
+  /**
+   * Channel-agnostic core (facts, CTA intent, hedge list) fixed once per candidate.
+   * Composers must treat this as the only fact source they may state.
+   */
+  corePack?: import("@/lib/marketing/publishable/core/coreContentPack").CoreContentPack | null;
+  /** Human-review quality repair: Marketing Value hints → Content Strategist composer. */
+  qualityRevision?: {
+    hints: string[];
+    priorBody?: string | null;
+    reasons?: string[];
+  } | null;
 };
 
 function normalizeStatement(text: string): string {

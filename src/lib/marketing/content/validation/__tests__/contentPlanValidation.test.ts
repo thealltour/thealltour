@@ -15,6 +15,7 @@ import { ContentPlanContractError } from "@/lib/marketing/content/validation/con
 import {
   canSafelyAdaptLegacyEvidenceRefs,
   getProviderEvidencePresence,
+  normalizeProviderContentPlanShape,
   parseProviderContentPlan,
   resolveContentPlanForGovernance,
   validateInternalContentPlan,
@@ -695,5 +696,119 @@ describe("STEP 3-12 ContentPlan contract — provenance semantics", () => {
         pipelineFailureMessage: "governance-auditor returned no ALLOW/REVIEW/BLOCK",
       }).incidentClass,
     ).toBe("malformed_model_output");
+  });
+});
+
+describe("CS contentPlan shape normalize (wrong_primitive_type fix)", () => {
+  it("coerces recommendedFormats string[] and drops slate aliases", () => {
+    const plan = parseProviderContentPlan({
+      assignmentId: "ca1",
+      factsToUse: [],
+      evidenceRefs: [],
+      recommendedFormats: ["threads_text", "checklist", "quick_tips", "app_notification"],
+    });
+    expect(plan.recommendedFormats).toEqual([
+      { format: "threads_text", score: 0.6, rationale: "provider_string_coerced" },
+    ]);
+    expect(plan.draftInstructions.some((line) => line.startsWith("format_hint:"))).toBe(true);
+  });
+
+  it("nulls prose proposition string; parses JSON proposition string", () => {
+    const nulled = parseProviderContentPlan({
+      assignmentId: "ca1",
+      factsToUse: [],
+      evidenceRefs: [],
+      proposition: "Thailand visa and rainy season update for travelers",
+    });
+    expect(nulled.proposition).toBeNull();
+
+    const asJson = parseProviderContentPlan({
+      assignmentId: "ca1",
+      factsToUse: [],
+      evidenceRefs: [],
+      proposition: JSON.stringify({
+        contract: "content-proposition-v1",
+        primaryAudience: "한국인 태국 여행 예정자",
+        audienceProblem: "비자·우기 정보가 흩어져 있어 출발 전 확인이 어렵다",
+        audienceTension: "",
+        whyNow: "공식 엔트리/세이프티 페이지 갱신",
+        contentPromise: "공식 갱신 포인트만 짧게 정리한다",
+        readerGain: "출발 전 확인 순서를 바로 적용할 수 있다",
+        specificTakeaways: ["엔트리 요건 페이지 확인"],
+        proofRequirements: [],
+        contentGapUsed: "",
+        engagementMechanism: "save_worthy_checklist",
+        desiredAudienceAction: "save",
+        angle: "태국 공식 입국·우기 갱신",
+        keyMessage: "공식 페이지 기준으로 확인",
+        commercialIntent: "informational",
+        propositionStrength: "usable",
+        limitations: [],
+      }),
+    });
+    expect(asJson.proposition?.contentPromise).toMatch(/공식/);
+  });
+
+  it("normalizeProviderContentPlanShape is exported and idempotent on objects", () => {
+    const raw = {
+      assignmentId: "ca1",
+      recommendedFormats: [{ format: "threads_text", score: 0.9, rationale: "ok" }],
+    };
+    const once = normalizeProviderContentPlanShape(raw);
+    const twice = normalizeProviderContentPlanShape(once);
+    expect(twice).toEqual(once);
+  });
+
+  it("pipeline message includes zodPath for wrong_primitive_type", () => {
+    const err = expectContractError(() =>
+      parseProviderContentPlan({
+        assignmentId: "ca1",
+        factsToUse: [],
+        evidenceRefs: [],
+        outline: "not-an-array",
+      }),
+    );
+    expect(err.validationIssue).toBe("wrong_primitive_type");
+    expect(err.zodPath).toBe("outline");
+    expect(err.toPipelineMessage()).toContain("@outline");
+  });
+
+  it("coerces proposition.proofRequirements string items to objects", () => {
+    const plan = parseProviderContentPlan({
+      assignmentId: "ca1",
+      factsToUse: [],
+      evidenceRefs: [],
+      proposition: {
+        contract: "content-proposition-v1",
+        primaryAudience: "한국인 태국 여행 예정자",
+        audienceProblem: "비자·우기 정보가 흩어져 있어 출발 전 확인이 어렵다",
+        contentPromise: "공식 갱신 포인트만 짧게 정리한다",
+        readerGain: "출발 전 확인 순서를 바로 적용할 수 있다",
+        specificTakeaways: ["엔트리 요건 페이지 확인"],
+        proofRequirements: [
+          "Entry requirements page updated for Thailand visa rules",
+          "Safety and security page notes rainy season precautions",
+        ],
+        engagementMechanism: "save_worthy_checklist",
+        desiredAudienceAction: "save",
+        angle: "태국 공식 입국·우기 갱신",
+        keyMessage: "공식 페이지 기준으로 확인",
+        commercialIntent: "informational",
+        propositionStrength: "usable",
+        limitations: [],
+      },
+    });
+    expect(plan.proposition?.proofRequirements).toEqual([
+      {
+        claimArea: "Entry requirements page updated for Thailand visa rules",
+        requiredProof: "Entry requirements page updated for Thailand visa rules",
+        severity: "should",
+      },
+      {
+        claimArea: "Safety and security page notes rainy season precautions",
+        requiredProof: "Safety and security page notes rainy season precautions",
+        severity: "should",
+      },
+    ]);
   });
 });

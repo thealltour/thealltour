@@ -12,6 +12,7 @@ import type {
   PublishableGenerationFailureCategory,
   PublishableValidationResult,
 } from "@/lib/marketing/publishable/contracts";
+import { formatCoreContentPackPromptBlock } from "@/lib/marketing/publishable/core/coreContentPack";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
 import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
@@ -26,6 +27,34 @@ import {
 } from "@/lib/marketing/publishable/channelEditorIdentity";
 
 export const PUBLISHABLE_MAX_INVOCATIONS_PER_CHANNEL = 2 as const;
+
+/**
+ * Every channel derives from the same core. Emitting this block first keeps the
+ * channels from independently inventing (or omitting) substance.
+ */
+export function formatCorePackPromptBlock(input: PublishableComposerInput): string {
+  return input.corePack ? formatCoreContentPackPromptBlock(input.corePack) : "";
+}
+
+/** Human-review Marketing Value → Content Strategist quality repair block. */
+export function formatQualityRevisionPromptBlock(
+  quality: PublishableComposerInput["qualityRevision"],
+): string {
+  if (!quality || (!quality.hints?.length && !quality.priorBody && !quality.reasons?.length)) {
+    return "";
+  }
+  return [
+    "QUALITY_REVISION (from Marketing Value / human review):",
+    "Rewrite Body so it is worth saving — concrete checklist or numbered takeaways grounded in usableFacts.",
+    "Do not replace facts with '공식 채널에서 확인하세요' shells. Put the known visa/season/procedure points in the body; hedge only where facts are missing.",
+    "CTA must match desiredAudienceAction (comment / site visit / save) — not a generic 'official path check'.",
+    quality.reasons?.length ? `Issues: ${quality.reasons.slice(0, 4).join(" | ")}` : "",
+    quality.hints?.length ? `Hints: ${quality.hints.slice(0, 6).join(" | ")}` : "",
+    quality.priorBody ? `PRIOR_BODY_TO_IMPROVE:\n${quality.priorBody.slice(0, 1200)}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 export type ComposeAttemptOutcome =
   | {
@@ -112,9 +141,12 @@ export function buildPropositionPromptSlice(
 
 export const PROPOSITION_COMPOSER_RULES = [
   "CONTENT_PROPOSITION is the value contract — embody it in the copy; do not treat it as metadata.",
+  "CORE_CONTENT_PACK.CORE_FACTS is the ONLY substance you may state as fact. Every channel derives from the same core; do not add facts this channel alone knows.",
   "Deliver contentPromise + readerGain. Include at least one specificTakeaway concept when present.",
-  "Respect proofRequirements: if proof is missing, tell the reader to verify — never invent operational facts (direct flight, price, seats, boarding rules).",
-  "Align CTA/close with desiredAudienceAction and engagementMechanism.",
+  "CORE_FACTS are the payload: write the concrete visa/season/procedure facts they contain into the body.",
+  "Verify language is only a hedge for claims NOT covered by CORE_FACTS — never fill the checklist with 'go check official sources' alone.",
+  "Respect proofRequirements: do not invent operational facts (direct flight status, live prices, seats, boarding rules) beyond usableFacts.",
+  "Align CTA/close with desiredAudienceAction and engagementMechanism (comment → experience question; click/site → soft next step; save → worth-saving checklist).",
   "Forbidden as core substance: '관측됨', '참고해 두세요', 'Meta hook seed', research narration.",
   "Do NOT call web search or invent sources.",
 ].join("\n");

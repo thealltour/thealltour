@@ -261,6 +261,31 @@ describe("MQ-4 publishable success gates", () => {
     expect(out.provenance.failureCategory).toBe("insufficient_proposition");
     expect(out.publishableSuccess).toBe(false);
   });
+
+  it("qualityRevision injects QUALITY_REVISION block into Content Strategist prompt", async () => {
+    const input = {
+      ...buildPublishableComposerInput(candidate()),
+      qualityRevision: {
+        hints: ["Replace scaffold headings with a concrete checklist"],
+        reasons: ["Scaffold-like body"],
+        priorBody: "[Context]\n[Key verified facts]",
+      },
+    };
+    let seen = "";
+    const out = await composeThreadsPublishableContent({
+      composerInput: input,
+      invoke: async (prompt) => {
+        seen = asPromptText(prompt);
+        return goodThreadsJson();
+      },
+      modelProfile: "content-strategist",
+    });
+    expect(seen).toContain("QUALITY_REVISION");
+    expect(seen).toContain("Scaffold-like body");
+    expect(seen).toContain("Replace scaffold headings");
+    expect(seen).toContain("[Context]");
+    expect(out.publishableSuccess).toBe(true);
+  });
 });
 
 describe("MQ-4 export / persistence / idempotency", () => {
@@ -397,6 +422,53 @@ describe("MQ-4 export / persistence / idempotency", () => {
     const post = readFileSync(join(exported.packageRoot, "copy/post.txt"), "utf8");
     expect(post).not.toMatch(/DEGRADED/);
     expect(post).toMatch(/일정|포함/);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("scoped regenerate LLM failure keeps prior body and does not persist diagnostic fallback", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "mq4-regen-nofallback-"));
+    mkdirSync(join(dir, "context"), { recursive: true });
+    const cand = candidate();
+    const prior = await ensurePublishableContent({
+      candidate: cand,
+      packageRoot: dir,
+      forceRegenerate: true,
+      invoke: async (prompt) => {
+        const text = asPromptText(prompt);
+        if (text.includes("segments") || text.includes("숏폼") || text.includes("나레이션")) {
+          return goodShortformJson();
+        }
+        if (text.includes("Band") || text.includes("밴드") || text.includes("community")) {
+          return goodBandJson();
+        }
+        return goodThreadsJson();
+      },
+      persist: true,
+    });
+    expect(prior.threads.provenance.composer).toBe("llm");
+    const priorBody = prior.threads.body;
+
+    const failed = await ensurePublishableContent({
+      candidate: cand,
+      packageRoot: dir,
+      forceRegenerateChannels: ["threads"],
+      allowDeterministicFallback: false,
+      invoke: async () => {
+        throw new Error("ETIMEDOUT hermes timeout after 360000ms");
+      },
+      persist: true,
+    });
+
+    expect(failed.threads.provenance.composer).not.toBe("llm");
+    expect(failed.threads.publishableSuccess).toBe(false);
+    expect(failed.threads.body).not.toMatch(/공개된 콘텐츠·후기에서는/);
+    expect(failed.threads.body === "" || failed.threads.body.startsWith("[generation")).toBe(true);
+
+    const persisted = JSON.parse(
+      readFileSync(join(dir, PUBLISHABLE_CONTENT_RELATIVE_PATH), "utf8"),
+    ) as { threads: { body: string; provenance: { composer: string } } };
+    expect(persisted.threads.body).toBe(priorBody);
+    expect(persisted.threads.provenance.composer).toBe("llm");
     rmSync(dir, { recursive: true, force: true });
   });
 });

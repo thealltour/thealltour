@@ -12,6 +12,7 @@ export const CHANNEL_EDITOR_HERMES_PROFILES = {
   naver_band: "channel-editor-naver-band",
   kakao_channel: "channel-editor-kakao",
   shortform: "channel-editor-shortform",
+  instagram: "channel-editor-instagram",
 } as const satisfies Record<PublishableChannel, string>;
 
 export type ChannelEditorHermesProfile =
@@ -135,6 +136,13 @@ CHANNEL: Shortform
 Purpose: spoken Korean narration for Reels/Shorts.
 Priorities: immediate but truthful hook; same approved Story; visualizable sequence; TTS-friendly language; concise payoff.
 Do not: change Story for a stronger visual hook; invent sensational facts; turn into generic destination promotion.
+`.trim(),
+
+  instagram: `
+CHANNEL: Instagram
+Purpose: adapt the same approved Story into a Korean Instagram carousel caption plus slide headlines.
+Priorities: complete hook in the first visible lines; same approved Story; card-ready slide headlines; save/comment CTA without raw URLs; specific hashtags.
+Do not: invent price/urgency; open with hashtag stacks; change Story for a stronger visual hook; turn into generic destination promotion.
 `.trim(),
 };
 

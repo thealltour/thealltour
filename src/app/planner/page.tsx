@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import SiteHeader from "@/components/site-chrome/SiteHeader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PlannerLandingIntro } from "@/components/planner/PlannerLandingIntro";
-import { PlannerLandingInfo } from "@/components/planner/PlannerLandingInfo";
 import { PlannerWizard } from "@/components/planner/PlannerWizard";
 import { assertFreeTravelPlannerEnabled } from "@/lib/planner/assertPlannerEnabled";
 import { isPlannerQaModeEnabled } from "@/lib/planner/qaMode";
@@ -25,7 +24,6 @@ export default function PlannerPage() {
             <Suspense fallback={<div className="min-h-[12rem]" aria-hidden />}>
               <PlannerWizard qaEnabled={qaEnabled} />
             </Suspense>
-            <PlannerLandingInfo />
           </main>
         </PageContainer>
       </div>

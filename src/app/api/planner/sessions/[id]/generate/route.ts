@@ -12,6 +12,7 @@ import {
   generatePlannerPlan,
   getPlannerFailureCategory,
   getPlannerGenerateSafeLogFields,
+  getPlannerItemDensityStats,
   PlannerGenerateError,
   toClientGenerationErrorMessage,
   type PlannerGenerateDiagnosticEvent,
@@ -62,6 +63,14 @@ function logGenerateFailure(params: {
   provider?: string | null;
   schemaIssuePaths?: Array<{ path: string; code: string }> | null;
   invariantCode?: string | null;
+  qualityIssue?: {
+    code?: string;
+    day?: number;
+    actual?: number;
+    expectedMinimum?: number;
+    pace?: string;
+    dayRole?: string;
+  } | null;
   sdkFailureType?: string | null;
   causeName?: string | null;
   causeChain?: string[] | null;
@@ -83,6 +92,16 @@ function logGenerateFailure(params: {
     modelId: params.modelId ?? null,
     schemaIssuePaths: params.schemaIssuePaths ?? null,
     invariantCode: params.invariantCode ?? null,
+    qualityIssue: params.qualityIssue
+      ? {
+          code: params.qualityIssue.code ?? null,
+          day: params.qualityIssue.day ?? null,
+          actual: params.qualityIssue.actual ?? null,
+          expectedMinimum: params.qualityIssue.expectedMinimum ?? null,
+          pace: params.qualityIssue.pace ?? null,
+          dayRole: params.qualityIssue.dayRole ?? null,
+        }
+      : null,
     finishReason: params.finishReason ?? null,
     usage: params.usage ?? null,
     durationMs: params.durationMs,
@@ -179,6 +198,16 @@ export async function POST(request: Request, context: RouteContext) {
           nextModelId: event.nextModelId ?? null,
           schemaIssuePaths: event.schemaIssuePaths ?? null,
           invariantCode: event.invariantCode ?? null,
+          qualityIssue: event.qualityIssue
+            ? {
+                code: event.qualityIssue.code,
+                day: event.qualityIssue.day,
+                actual: event.qualityIssue.actual,
+                expectedMinimum: event.qualityIssue.expectedMinimum,
+                pace: event.qualityIssue.pace,
+                dayRole: event.qualityIssue.dayRole,
+              }
+            : null,
           errorName: event.errorName ?? null,
           sdkFailureType: event.sdkFailureType ?? null,
           causeName: event.causeName ?? null,
@@ -242,10 +271,15 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
+    const densityStats = getPlannerItemDensityStats(plan);
     console.info("[planner/generate]", {
       sessionId: session!.id,
       durationMs: Date.now() - startedAt,
       dayCount: plan.days.length,
+      totalItemCount: densityStats.totalItemCount,
+      minDayItemCount: densityStats.minItemsPerDay,
+      maxDayItemCount: densityStats.maxItemsPerDay,
+      avgItemsPerDay: densityStats.averageItemsPerDay,
       dateMode: draftParsed.data.dates.mode,
       semanticAttempts: meta.semanticAttempts,
       provider: meta.provider,
@@ -272,6 +306,7 @@ export async function POST(request: Request, context: RouteContext) {
       provider: safe.provider,
       schemaIssuePaths: safe.schemaIssuePaths,
       invariantCode: safe.invariantCode,
+      qualityIssue: safe.qualityIssue,
       sdkFailureType: safe.sdkFailureType,
       causeName: safe.causeName,
       causeChain: safe.causeChain,

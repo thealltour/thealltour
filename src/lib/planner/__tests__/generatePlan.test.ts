@@ -98,7 +98,23 @@ function sampleDraft(): PlannerDraftInput {
   };
 }
 
+function makeItems(count: number): PlannerPlan["days"][number]["items"] {
+  return Array.from({ length: count }, (_, i) => ({
+    order: i + 1,
+    time: `${String(10 + i).padStart(2, "0")}:00`,
+    type: i % 2 === 0 ? ("attraction" as const) : ("food" as const),
+    name: `일정 ${i + 1}`,
+    area: "난바",
+    description: "둘러보기",
+    estimatedDurationMinutes: 60,
+    travelToNext: null,
+    bookingRecommended: false,
+  }));
+}
+
 function validPlan(): PlannerPlan {
+  // 3-day balanced: arrival 2 / full 4 / departure 2 (meets hard mins)
+  const counts = [2, 4, 2];
   return {
     title: "오사카 2박 3일",
     summary: "난바 중심의 여유로운 일정입니다.",
@@ -111,24 +127,12 @@ function validPlan(): PlannerPlan {
       travelersSummary: "성인 2명",
       styleSummary: "맛집과 관광",
     },
-    days: [0, 1, 2].map((i) => ({
+    days: counts.map((count, i) => ({
       day: i + 1,
       date: addDaysToIsoDate("2026-10-01", i),
       title: `${i + 1}일차`,
       summary: "하루 요약",
-      items: [
-        {
-          order: 1,
-          time: "10:00",
-          type: "attraction" as const,
-          name: "명소",
-          area: "난바",
-          description: "둘러보기",
-          estimatedDurationMinutes: 90,
-          travelToNext: null,
-          bookingRecommended: false,
-        },
-      ],
+      items: makeItems(count),
       tips: ["운영시간 확인"],
     })),
     preparation: {
@@ -136,6 +140,21 @@ function validPlan(): PlannerPlan {
       packingHints: ["편한 신발"],
     },
   };
+}
+
+function sparseBalancedPlan(): PlannerPlan {
+  // schema-valid but quality-fail: full day has only 2 items
+  const counts = [2, 2, 2];
+  const plan = validPlan();
+  plan.days = counts.map((count, i) => ({
+    day: i + 1,
+    date: addDaysToIsoDate("2026-10-01", i),
+    title: `${i + 1}일차`,
+    summary: "하루 요약",
+    items: makeItems(count),
+    tips: ["운영시간 확인"],
+  }));
+  return plan;
 }
 
 function schemaInvalidPlan(): PlannerPlan {
@@ -230,6 +249,62 @@ describe("generatePlannerPlan semantic retry", () => {
     expect(withGoogleModelFallback.mock.calls[1]![2]).toEqual({
       primaryModelId: DEFAULT_PLANNER_SEMANTIC_FALLBACK_MODEL,
     });
+  });
+
+  it("retries once after quality_failed density then succeeds with fallback model", async () => {
+    generateObject
+      .mockResolvedValueOnce({ object: sparseBalancedPlan() })
+      .mockResolvedValueOnce({ object: validPlan() });
+
+    const events: Array<{ type: string; failureCategory?: string; qualityIssue?: unknown }> = [];
+    const result = await generatePlannerPlan(sampleDraft(), {
+      onDiagnostic: (e) => {
+        if (e.type === "semantic_retry") {
+          events.push({
+            type: e.type,
+            failureCategory: e.failureCategory,
+            qualityIssue: e.qualityIssue,
+          });
+        } else {
+          events.push({ type: e.type });
+        }
+      },
+    });
+
+    expect(result.meta.semanticAttempts).toBe(2);
+    expect(result.meta.modelId).toBe(DEFAULT_PLANNER_SEMANTIC_FALLBACK_MODEL);
+    expect(generateObject).toHaveBeenCalledTimes(2);
+    expect(withGoogleModelFallback.mock.calls[1]![2]).toEqual({
+      primaryModelId: DEFAULT_PLANNER_SEMANTIC_FALLBACK_MODEL,
+    });
+    expect(events[0]).toMatchObject({
+      type: "semantic_retry",
+      failureCategory: "quality_failed",
+      qualityIssue: expect.objectContaining({
+        code: "day_item_density_too_low",
+        day: 2,
+        actual: 2,
+        expectedMinimum: 3,
+        pace: "balanced",
+      }),
+    });
+    const secondPrompt = generateObject.mock.calls[1]![0].prompt as string;
+    expect(secondPrompt).toContain("일정 밀도");
+    expect(secondPrompt).toContain("itinerary item");
+    expect(secondPrompt).not.toContain("RAW");
+    expect(secondPrompt).not.toContain(JSON.stringify(sparseBalancedPlan()));
+  });
+
+  it("fails with quality_failed after two sparse plans and does not succeed", async () => {
+    generateObject
+      .mockResolvedValueOnce({ object: sparseBalancedPlan() })
+      .mockResolvedValueOnce({ object: sparseBalancedPlan() });
+
+    await expect(generatePlannerPlan(sampleDraft())).rejects.toMatchObject({
+      failureCategory: "quality_failed",
+      code: "quality_failed",
+    });
+    expect(generateObject).toHaveBeenCalledTimes(2);
   });
 
   it("fails with schema_invalid after two schema failures", async () => {

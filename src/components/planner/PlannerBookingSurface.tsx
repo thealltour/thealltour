@@ -109,13 +109,13 @@ export function PlannerBookingSurface({
 
   return (
     <section
-      className="space-y-3"
+      className="space-y-2.5"
       data-testid="planner-booking-surface"
       aria-label="여행 준비"
     >
       <div>
-        <h2 className="type-h3 text-[var(--foreground)]">여행 준비</h2>
-        <p className="mt-1 type-caption text-[var(--text-muted)]">
+        <h2 className="type-body font-semibold text-[var(--foreground)]">여행 준비</h2>
+        <p className="mt-0.5 type-caption text-[var(--text-muted)]">
           필요한 예약과 준비를 여기서 확인하세요.
         </p>
       </div>

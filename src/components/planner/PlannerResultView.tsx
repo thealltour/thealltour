@@ -22,6 +22,7 @@ import type {
   PlannerWeatherDay,
 } from "@/lib/planner/enrichmentTypes";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
+import type { PlannerPace } from "@/types/planner";
 import { useCallback, useMemo, useState } from "react";
 
 type PlannerResultViewProps = {
@@ -31,6 +32,7 @@ type PlannerResultViewProps = {
   isSaved: boolean;
   enrichment: PlannerEnrichmentDto | null;
   originText?: string | null;
+  pace?: PlannerPace | null;
   onSaved: () => void;
   onPlanUpdated: (plan: PlannerPlan) => void;
 };
@@ -42,6 +44,7 @@ export function PlannerResultView({
   isSaved,
   enrichment,
   originText,
+  pace,
   onSaved,
   onPlanUpdated,
 }: PlannerResultViewProps) {
@@ -148,13 +151,13 @@ export function PlannerResultView({
     <PlannerAffiliateOffersProvider sessionId={sessionId} sourceProductId={sourceProductId}>
       {(affiliateOffers) => (
         <div
-          className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-0 sm:py-12"
+          className="mx-auto w-full max-w-2xl space-y-5 px-4 py-6 sm:space-y-6 sm:px-0 sm:py-10"
           data-testid="planner-result-view"
         >
-          <PlannerPlanSummary plan={plan} originText={originText} />
+          <PlannerPlanSummary plan={plan} originText={originText} pace={pace} />
 
           <div
-            className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3"
+            className="grid grid-cols-2 gap-2 sm:gap-3"
             data-testid="planner-result-actions"
           >
             <PlannerSavePanel
@@ -175,20 +178,10 @@ export function PlannerResultView({
             />
           </div>
 
-          <PlannerBookingSurface
-            offers={affiliateOffers}
-            sessionId={sessionId}
-            sourceProductId={sourceProductId}
-            originText={originText}
-            destinationName={plan.destination.name}
-            startDate={plan.tripOverview.startDate}
-            endDate={plan.tripOverview.endDate}
-          />
-
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div>
-              <h2 className="type-h3 text-[var(--foreground)]">일자별 일정</h2>
-              <p className="mt-1 type-caption text-[var(--text-muted)]">
+              <h2 className="type-body font-semibold text-[var(--foreground)]">일정</h2>
+              <p className="mt-0.5 type-caption text-[var(--text-muted)]">
                 이동시간은 교통상황에 따라 달라질 수 있습니다.
               </p>
             </div>
@@ -224,6 +217,16 @@ export function PlannerResultView({
               </section>
             ))}
           </div>
+
+          <PlannerBookingSurface
+            offers={affiliateOffers}
+            sessionId={sessionId}
+            sourceProductId={sourceProductId}
+            originText={originText}
+            destinationName={plan.destination.name}
+            startDate={plan.tripOverview.startDate}
+            endDate={plan.tripOverview.endDate}
+          />
 
           <section
             className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"

@@ -14,13 +14,17 @@ import { PlannerCustomInput } from "@/components/planner/conversation/PlannerCus
 import {
   BUDGET_STYLE_DESCRIPTIONS,
   BUDGET_STYLE_DISPLAY_LABELS,
-  BUDGET_STYLE_ICONS,
-  COMPANION_ICONS,
-  DATE_MODE_ICONS,
-  INTEREST_ICONS,
-  PACE_ICONS,
-  QUICK_REQUEST_ICONS,
-  THEME_MOOD_ICONS,
+  BUDGET_STYLE_VISUALS,
+  COMPANION_VISUALS,
+  DATE_MODE_VISUALS,
+  getPlannerIconToneClasses,
+  INTEREST_VISUALS,
+  PACE_VISUALS,
+  QUICK_REQUEST_VISUALS,
+  SUMMARY_SECTION_VISUALS,
+  THEME_MOOD_VISUALS,
+  type PlannerConversationIcon,
+  type PlannerVisualTone,
 } from "@/components/planner/conversation/plannerConversationIcons";
 import {
   appendPlannerQuickRequest,
@@ -39,13 +43,17 @@ import {
   PLANNER_QUICK_REQUESTS,
 } from "@/lib/planner/constants";
 import {
+  getDefaultTravelersForCompanion,
+  getTravelerConstraints,
+} from "@/lib/planner/travelers";
+import {
   PLANNER_ASSISTANT_DESCRIPTIONS,
   PLANNER_ASSISTANT_QUESTIONS,
   PLANNER_BUDGET_QUESTION,
   PLANNER_ORIGIN_SUGGESTIONS,
   PLANNER_THEME_MOOD_CHIPS,
   budgetSummary,
-  companionLabel,
+  formatPlannerTravelersSummary,
   formatWonDisplay,
   getPlannerAcknowledgement,
   interestLabels,
@@ -120,7 +128,17 @@ export function PlannerConversationStep1({
           <PlannerChoiceChip
             selected={customOrigin}
             disabled={disabled}
-            onClick={() => setCustomOrigin(true)}
+            onClick={() => {
+              setCustomOrigin(true);
+              const trimmed = draft.origin.text.trim();
+              const isPresetOrigin = (PLANNER_ORIGIN_SUGGESTIONS as readonly string[]).includes(
+                trimmed,
+              );
+              if (isPresetOrigin) {
+                patchDraft({ origin: { text: "" } });
+              }
+              onClearError?.();
+            }}
           >
             다른 출발지
           </PlannerChoiceChip>
@@ -167,7 +185,16 @@ export function PlannerConversationStep1({
           <PlannerChoiceChip
             selected={customDest}
             disabled={disabled}
-            onClick={() => setCustomDest(true)}
+            onClick={() => {
+              setCustomDest(true);
+              const isPresetDestination = PLANNER_POPULAR_DESTINATIONS.some(
+                (d) => d.label === draft.destination.text.trim(),
+              );
+              if (isPresetDestination) {
+                patchDraft({ destination: { text: "" } });
+              }
+              onClearError?.();
+            }}
           >
             다른 여행지
           </PlannerChoiceChip>
@@ -202,6 +229,7 @@ export function PlannerConversationStep2({
   draft,
   disabled,
   patchDraft,
+  onClearError,
   todayYmd,
   customDurationOpen,
   setCustomDurationOpen,
@@ -254,7 +282,8 @@ export function PlannerConversationStep2({
         <PlannerChoiceChip
           selected={draft.dates.mode === "fixed"}
           disabled={disabled}
-          icon={DATE_MODE_ICONS.fixed}
+          icon={DATE_MODE_VISUALS.fixed.icon}
+          iconTone={DATE_MODE_VISUALS.fixed.tone}
           onClick={() => setDateMode("fixed")}
         >
           날짜를 정했어요
@@ -262,7 +291,8 @@ export function PlannerConversationStep2({
         <PlannerChoiceChip
           selected={draft.dates.mode === "flexible"}
           disabled={disabled}
-          icon={DATE_MODE_ICONS.flexible}
+          icon={DATE_MODE_VISUALS.flexible.icon}
+          iconTone={DATE_MODE_VISUALS.flexible.tone}
           onClick={() => setDateMode("flexible")}
         >
           아직 정하지 않았어요
@@ -276,7 +306,10 @@ export function PlannerConversationStep2({
             to={draft.dates.endDate ?? ""}
             min={todayYmd}
             keepOpenAfterStart
-            onChange={applyFixedRange}
+            onChange={(from, to) => {
+              applyFixedRange(from, to);
+              onClearError?.();
+            }}
             placeholder="출발일 ~ 귀국일"
             aria-label="여행 기간"
             disabled={disabled}
@@ -369,6 +402,7 @@ export function PlannerConversationStep3({
   patchDraft,
 }: ConversationStepCommonProps) {
   const ack = getPlannerAcknowledgement({ step: 3, draft });
+  const constraints = getTravelerConstraints(draft.companionType);
 
   return (
     <div className="space-y-4">
@@ -382,8 +416,15 @@ export function PlannerConversationStep3({
               key={opt.value}
               selected={selected}
               disabled={disabled}
-              icon={COMPANION_ICONS[opt.value]}
-              onClick={() => patchDraft({ companionType: opt.value })}
+              icon={COMPANION_VISUALS[opt.value].icon}
+              iconTone={COMPANION_VISUALS[opt.value].tone}
+              onClick={() => {
+                if (draft.companionType === opt.value) return;
+                patchDraft({
+                  companionType: opt.value,
+                  travelers: getDefaultTravelersForCompanion(opt.value),
+                });
+              }}
             >
               {opt.label}
             </PlannerChoiceChip>
@@ -396,16 +437,16 @@ export function PlannerConversationStep3({
       <TravelerCounter
         label="성인"
         value={draft.travelers.adults}
-        min={1}
-        max={20}
+        min={constraints.adultsMin}
+        max={constraints.adultsMax}
         disabled={disabled}
         onChange={(adults) => patchDraft({ travelers: { ...draft.travelers, adults } })}
       />
       <TravelerCounter
         label="아이"
         value={draft.travelers.children}
-        min={0}
-        max={20}
+        min={constraints.childrenMin}
+        max={constraints.childrenMax}
         disabled={disabled}
         onChange={(children) => patchDraft({ travelers: { ...draft.travelers, children } })}
       />
@@ -448,7 +489,8 @@ export function PlannerConversationStep4({
               key={opt.value}
               selected={selected}
               disabled={disabled}
-              icon={INTEREST_ICONS[opt.value]}
+              icon={INTEREST_VISUALS[opt.value].icon}
+              iconTone={INTEREST_VISUALS[opt.value].tone}
               onClick={() => toggleInterest(opt.value)}
             >
               {opt.label}
@@ -471,7 +513,8 @@ export function PlannerConversationStep4({
                 key={chip.label}
                 selected={selected}
                 disabled={disabled}
-                icon={THEME_MOOD_ICONS[chip.label]}
+                icon={THEME_MOOD_VISUALS[chip.label]?.icon}
+                iconTone={THEME_MOOD_VISUALS[chip.label]?.tone}
                 onClick={() => applyThemeMood(chip.text)}
               >
                 {chip.label}
@@ -490,6 +533,7 @@ export function PlannerConversationStep4({
           placeholder="예: 유명 관광지는 조금만 보고 현지 맛집 위주로 다니고 싶어요."
           expandLabel="직접 입력하기"
           expandIcon={Pencil}
+          expandIconTone="slate"
           onChange={(themeRequest) => patchDraft({ themeRequest })}
         />
       </div>
@@ -540,26 +584,21 @@ export function PlannerConversationStep5({
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <div className="space-y-4">
         <PlannerAssistantMessage>{PLANNER_ASSISTANT_QUESTIONS[5]}</PlannerAssistantMessage>
 
         <div className="space-y-2" role="radiogroup" aria-label="여행 속도">
           {PLANNER_PACE_OPTIONS.map((opt) => {
-            const description =
-              opt.value === "relaxed"
-                ? "하루 2~3곳 정도, 휴식 시간을 충분히"
-                : opt.value === "balanced"
-                  ? "관광과 휴식의 균형"
-                  : "가능한 많은 곳을 보고 싶어요";
             return (
               <PlannerChoiceCard
                 key={opt.value}
                 title={opt.label}
-                description={description}
+                description={opt.description}
                 selected={draft.pace === opt.value}
                 disabled={disabled}
-                icon={PACE_ICONS[opt.value]}
+                icon={PACE_VISUALS[opt.value].icon}
+                iconTone={PACE_VISUALS[opt.value].tone}
                 onClick={() => patchDraft({ pace: opt.value })}
               />
             );
@@ -581,7 +620,8 @@ export function PlannerConversationStep5({
                 description={BUDGET_STYLE_DESCRIPTIONS[opt.value]}
                 selected={selected}
                 disabled={disabled}
-                icon={BUDGET_STYLE_ICONS[opt.value]}
+                icon={BUDGET_STYLE_VISUALS[opt.value].icon}
+                iconTone={BUDGET_STYLE_VISUALS[opt.value].tone}
                 onClick={() => setBudgetMode(opt.value)}
               />
             );
@@ -655,6 +695,9 @@ export function PlannerConversationStep5({
                 }}
                 className="w-full accent-[var(--primary)]"
               />
+              <p className="type-caption text-[var(--text-muted)]">
+                슬라이더는 편의용입니다. 더 큰 금액은 위 칸에 직접 입력할 수 있습니다.
+              </p>
             </div>
           </div>
         ) : null}
@@ -675,7 +718,9 @@ export function PlannerConversationStep6({
 }: Step6Props) {
   return (
     <div className="space-y-3">
-      <PlannerAssistantMessage>{PLANNER_ASSISTANT_QUESTIONS[6]}</PlannerAssistantMessage>
+      <PlannerAssistantMessage description={PLANNER_ASSISTANT_DESCRIPTIONS[6]}>
+        {PLANNER_ASSISTANT_QUESTIONS[6]}
+      </PlannerAssistantMessage>
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="빠른 요청">
         {PLANNER_QUICK_REQUESTS.map((chip) => {
@@ -685,7 +730,8 @@ export function PlannerConversationStep6({
               key={chip.id}
               selected={inserted}
               disabled={disabled}
-              icon={QUICK_REQUEST_ICONS[chip.id]}
+              icon={QUICK_REQUEST_VISUALS[chip.id]?.icon}
+              iconTone={QUICK_REQUEST_VISUALS[chip.id]?.tone}
               onClick={() =>
                 patchDraft({
                   additionalRequest: appendPlannerQuickRequest(
@@ -712,7 +758,7 @@ export function PlannerConversationStep6({
           maxLength={1000}
           value={draft.additionalRequest}
           disabled={disabled}
-          placeholder={"부모님이 많이 걷는 건 힘들어하세요.\n숙소는 좋은 곳이면 좋겠어요."}
+          placeholder={"아침 일정은 늦게 시작하고 싶어요.\n하루에 한 지역을 중심으로 둘러보고 싶어요."}
           onChange={(ev) => patchDraft({ additionalRequest: ev.target.value })}
         />
       </FormField>
@@ -727,54 +773,71 @@ type SummaryProps = {
 };
 
 export function PlannerConversationSummary({ draft, disabled, onEditSection }: SummaryProps) {
+  const themeValue = [interestLabels(draft.interests), draft.themeRequest.trim() || null]
+    .filter(Boolean)
+    .join(" · ");
+  const requestValue = draft.additionalRequest.trim();
+
   return (
     <div className="space-y-4">
       <PlannerAssistantMessage>{PLANNER_ASSISTANT_QUESTIONS[7]}</PlannerAssistantMessage>
       <p className="type-small leading-relaxed text-[var(--text-muted)]">
-        준비는 여기까지. 이제 일정은 더올투어가 만들어드릴게요.
+        필요한 항목은 수정한 뒤 바로 여행 플랜을 만들 수 있어요.
       </p>
-      <dl className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <dl className="divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4">
         <SummaryEditRow
-          label="출발·도착"
+          label="출발 · 도착"
           value={
             draft.origin.text.trim()
               ? `${draft.origin.text.trim()} → ${draft.destination.text}`
               : draft.destination.text
           }
+          icon={SUMMARY_SECTION_VISUALS.destination.icon}
+          tone={SUMMARY_SECTION_VISUALS.destination.tone}
           onEdit={() => onEditSection("destination")}
           disabled={disabled}
         />
         <SummaryEditRow
-          label="여행일"
+          label="여행 기간"
           value={formatPlannerDatesSummary(draft.dates)}
+          icon={SUMMARY_SECTION_VISUALS.dates.icon}
+          tone={SUMMARY_SECTION_VISUALS.dates.tone}
           onEdit={() => onEditSection("dates")}
           disabled={disabled}
         />
         <SummaryEditRow
           label="동행"
-          value={`성인 ${draft.travelers.adults} · 아이 ${draft.travelers.children} · ${companionLabel(draft.companionType)}`}
+          value={formatPlannerTravelersSummary(draft)}
+          icon={SUMMARY_SECTION_VISUALS.companions.icon}
+          tone={SUMMARY_SECTION_VISUALS.companions.tone}
           onEdit={() => onEditSection("companions")}
           disabled={disabled}
         />
         <SummaryEditRow
-          label="여행테마"
-          value={[interestLabels(draft.interests), draft.themeRequest.trim() || null]
-            .filter(Boolean)
-            .join(" · ")}
+          label="여행 테마"
+          value={themeValue}
+          icon={SUMMARY_SECTION_VISUALS.themes.icon}
+          tone={SUMMARY_SECTION_VISUALS.themes.tone}
           onEdit={() => onEditSection("themes")}
           disabled={disabled}
         />
         <SummaryEditRow
-          label="속도/예산"
+          label="속도 · 예산"
           value={`${paceLabel(draft.pace)} · ${budgetSummary(draft)}`}
+          icon={SUMMARY_SECTION_VISUALS.budget.icon}
+          tone={SUMMARY_SECTION_VISUALS.budget.tone}
           onEdit={() => onEditSection("budget")}
           disabled={disabled}
         />
         <SummaryEditRow
           label="추가 요청"
-          value={draft.additionalRequest.trim() || "없음"}
+          value={requestValue || "없음"}
+          icon={SUMMARY_SECTION_VISUALS.request.icon}
+          tone={SUMMARY_SECTION_VISUALS.request.tone}
           onEdit={() => onEditSection("request")}
           disabled={disabled}
+          multiline
+          mutedValue={!requestValue}
         />
       </dl>
     </div>
@@ -784,30 +847,57 @@ export function PlannerConversationSummary({ draft, disabled, onEditSection }: S
 function SummaryEditRow({
   label,
   value,
+  icon: Icon,
+  tone,
   onEdit,
   disabled,
+  multiline,
+  mutedValue,
 }: {
   label: string;
   value: string;
+  icon: PlannerConversationIcon;
+  tone: PlannerVisualTone;
   onEdit: () => void;
   disabled?: boolean;
+  multiline?: boolean;
+  mutedValue?: boolean;
 }) {
+  const toneClasses = getPlannerIconToneClasses(tone);
+
   return (
-    <div className="flex gap-3 type-small">
+    <div className="flex items-start gap-3 py-3.5">
+      <span
+        className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneClasses.container} ${toneClasses.icon}`}
+        aria-hidden
+      >
+        <Icon className="h-[18px] w-[18px]" aria-hidden={true} />
+      </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <dt className="font-medium text-[var(--text-muted)]">{label}</dt>
+        <div className="flex items-start justify-between gap-2">
+          <dt className="type-caption font-medium text-[var(--text-muted)]">{label}</dt>
           <button
             type="button"
-            className="shrink-0 type-caption font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:opacity-50"
+            className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 type-caption font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:opacity-50"
             onClick={onEdit}
             disabled={disabled}
             aria-label={`${label} 수정`}
           >
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
             수정
           </button>
         </div>
-        <dd className="mt-1 whitespace-pre-wrap break-words text-[var(--foreground)]">{value}</dd>
+        <dd
+          className={
+            mutedValue
+              ? "mt-1 type-body font-medium leading-snug text-[var(--text-muted)]"
+              : multiline
+                ? "mt-1 whitespace-pre-wrap break-words type-body font-medium leading-relaxed text-[var(--foreground)]"
+                : "mt-1 break-words type-body font-semibold leading-snug text-[var(--foreground)]"
+          }
+        >
+          {value}
+        </dd>
       </div>
     </div>
   );

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
 import {
+  PLANNER_DENSITY_RETRY_INSTRUCTION,
   PLANNER_EDIT_SYSTEM_PROMPT,
   PLANNER_PLAN_SYSTEM_PROMPT,
+  appendPlannerSemanticRetryInstruction,
   buildPlannerEditUserPrompt,
   buildPlannerPlanUserPrompt,
 } from "@/lib/planner/prompts";
@@ -93,6 +95,17 @@ describe("PR-9O origin-aware planner generation prompts", () => {
     expect(prompt).not.toContain("[출발지] 서울");
   });
 
+  it("includes consistent travelers and companion lines for solo draft", () => {
+    const prompt = buildPlannerPlanUserPrompt(
+      draft({
+        companionType: "solo",
+        travelers: { adults: 1, children: 0 },
+      }),
+    );
+    expect(prompt).toContain("[인원] 성인 1, 아이 0");
+    expect(prompt).toContain("[동행] 혼자 (solo)");
+  });
+
   it("system prompt lists origin as an input condition", () => {
     expect(PLANNER_PLAN_SYSTEM_PROMPT).toMatch(/origin\/destination/);
   });
@@ -118,6 +131,44 @@ describe("PR-9O origin-aware planner generation prompts", () => {
     expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("중립 표현");
     expect(PLANNER_PLAN_SYSTEM_PROMPT).toMatch(/출도착 시각|비행 소요시간/);
     expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("확정 예약·가격·항공·호텔 재고");
+  });
+
+  it("system prompt prioritizes concrete additionalRequest constraints over generic pace", () => {
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("구체적인 제한·회피 조건");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("일반적인 pace 밀도 선호보다 우선");
+  });
+
+  it("system prompt defines itinerary item density targets and place vs item", () => {
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("Itinerary item은 실제 사용자에게 보여지는 일정 단위");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("장소 수");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("itinerary item");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("relaxed: 3~4");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("balanced: 4~5");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("packed: 5~6");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("2~3개의 핵심 itinerary item");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("travelToNext를 우선");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("무의미한 transport/rest");
+    expect(PLANNER_PLAN_SYSTEM_PROMPT).toContain("기계적으로 같은 개수");
+  });
+
+  it("density retry instruction covers sparse correction without prior output", () => {
+    expect(PLANNER_DENSITY_RETRY_INSTRUCTION).toContain("일정 밀도");
+    const prompt = appendPlannerSemanticRetryInstruction("BASE", { densityFailed: true });
+    expect(prompt).toContain("BASE");
+    expect(prompt).toContain("이전 생성 결과가 출력 스키마");
+    expect(prompt).toContain("일정 밀도");
+    expect(prompt).not.toContain("malformed output");
+  });
+
+  it("user prompt includes additionalRequest constraint text", () => {
+    const prompt = buildPlannerPlanUserPrompt(
+      draft({
+        additionalRequest: "밤늦게까지 이어지는 일정은 피해주세요.",
+      }),
+    );
+    expect(prompt).toContain("[추가 요청] 밤늦게까지 이어지는 일정은 피해주세요.");
+    expect(prompt).toContain("[일정 제약 해석]");
+    expect(prompt).toContain("20:30");
   });
 
   it("edit user prompt includes origin from draft", () => {

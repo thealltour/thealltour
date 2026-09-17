@@ -31,6 +31,8 @@ export function PlannerConversationShell({
   className,
 }: PlannerConversationShellProps) {
   const currentRef = useRef<HTMLDivElement>(null);
+  /** Skip scroll on initial mount; only restore when step actually changes. */
+  const previousStepRef = useRef<PlannerWizardStep | null>(null);
   const completedSteps = getCompletedConversationSteps({
     step,
     draft,
@@ -38,6 +40,10 @@ export function PlannerConversationShell({
   });
 
   useEffect(() => {
+    const previous = previousStepRef.current;
+    previousStepRef.current = step;
+    if (previous == null || previous === step) return;
+
     const el = currentRef.current;
     if (!el || typeof el.scrollIntoView !== "function") return;
     const reduceMotion =
@@ -45,7 +51,7 @@ export function PlannerConversationShell({
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollIntoView({
-      block: "nearest",
+      block: "start",
       behavior: reduceMotion ? "auto" : "smooth",
     });
   }, [step]);
@@ -56,7 +62,11 @@ export function PlannerConversationShell({
         <PlannerWizardProgress step={step} />
       </div>
 
-      <div ref={currentRef} className="space-y-4" data-testid="planner-conversation-current">
+      <div
+        ref={currentRef}
+        className="scroll-mt-[calc(var(--mobile-header-top-height)+0.75rem)] space-y-4"
+        data-testid="planner-conversation-current"
+      >
         {error ? (
           <p className="type-caption text-[var(--danger)]" role="alert" aria-live="polite">
             {error}

@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 
 export type MyPageNavIconKey =
@@ -65,11 +66,38 @@ export function MyPageNavIcon({ iconKey, className }: MyPageNavIconProps) {
   return <Icon className={cn("size-4 shrink-0", className)} aria-hidden />;
 }
 
-export const MYPAGE_QUICK_ACTIONS = [
+const BASE_MYPAGE_QUICK_ACTIONS = [
   { href: "/mypage/bookings", label: "내 예약", iconKey: "bookings" as const, description: "예약·결제" },
   { href: "/mypage/points", label: "포인트", iconKey: "points" as const, description: "잔액·내역" },
   { href: "/mypage/reviews", label: "리뷰", iconKey: "reviews" as const, description: "작성·관리" },
   { href: "/mypage/rewards", label: "리워드", iconKey: "rewards" as const, description: "교환·신청" },
 ] as const;
+
+/** Dashboard quick actions — includes Planner when feature flag is on. */
+export function getMyPageQuickActions(): Array<{
+  href: string;
+  label: string;
+  iconKey: MyPageNavIconKey;
+  description?: string;
+}> {
+  const items: Array<{
+    href: string;
+    label: string;
+    iconKey: MyPageNavIconKey;
+    description?: string;
+  }> = [...BASE_MYPAGE_QUICK_ACTIONS];
+  if (ENABLE_FREE_TRAVEL_PLANNER) {
+    items.splice(1, 0, {
+      href: PLANNER_SAVED_LIST_PATH,
+      label: "내 여행 플랜",
+      iconKey: "planner",
+      description: "저장한 일정",
+    });
+  }
+  return items;
+}
+
+/** @deprecated Prefer getMyPageQuickActions() for flag-aware list. */
+export const MYPAGE_QUICK_ACTIONS = BASE_MYPAGE_QUICK_ACTIONS;
 
 export { MessageSquare };

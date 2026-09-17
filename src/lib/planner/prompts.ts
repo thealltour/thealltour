@@ -7,6 +7,7 @@ import {
   PLANNER_INTEREST_OPTIONS,
   PLANNER_PACE_OPTIONS,
 } from "@/lib/planner/constants";
+import { buildPlannerConstraintSemanticsSection } from "@/lib/planner/constraintSemantics";
 
 export const PLANNER_PLAN_SYSTEM_PROMPT = `당신은 더올투어 자유여행 일정 초안을 만드는 여행 플래너입니다.
 목표는 멋진 여행 에세이가 아니라, 사용자가 바로 참고할 수 있는 실천 일정 JSON입니다.
@@ -15,30 +16,47 @@ export const PLANNER_PLAN_SYSTEM_PROMPT = `당신은 더올투어 자유여행 �
 1. 반드시 지정된 JSON schema만 출력합니다.
 2. 한국어로 작성합니다.
 3. 입력된 origin/destination/date/party/interests/themeRequest/pace/budget/additionalRequest를 우선 반영합니다.
-4. 하루 일정은 이동을 고려해 과도하게 채우지 않습니다.
-5. pace=relaxed → 장소 수 적게, pace=packed → 상대적으로 많게, balanced는 중간.
-6. parents / with_children이면 보행 부담·휴식·아이 친화적 일정을 반영합니다.
+4. 하루 일정은 이동을 고려해 과도하게 채우지 않습니다. target 범위 안에서 현실적인 이동시간을 지키되, 개수만 맞추기 위해 무리하게 추가하지 마세요.
+5. Itinerary item은 실제 사용자에게 보여지는 일정 단위입니다(관광·식사·카페·쇼핑·액티비티·휴식·필요한 transport). "장소 수(명소 방문 수)"와 itinerary item 수는 다릅니다. 예: 관광 장소 2곳 + 점심 + 카페 = 장소 2곳이지만 item 4개.
+5a. additionalRequest의 구체적인 제한·회피 조건(예: 보행 부담, 이동시간, 아침/밤 일정, 자유시간, 장소 이동 횟수)은 일반적인 pace 밀도 선호보다 우선합니다. pace=packed이더라도 보행·이동·시간대 제약이 있으면 그 제약을 지키면서 한 지역 안에서 밀도를 높입니다. 제약이 있어도 하루 itinerary를 비우지 마세요.
+5b. 제약을 문자 그대로 과도하게 적용하지 마세요. avoid_late_night ≠ 16시 종료, slow_morning ≠ 정오 시작, less_walking/less_transfer/fewer_transitions ≠ 하루 1~2개 item, free_time ≠ 하루 대부분 공백.
+5c. interests에 night_view(야경)가 있고 additionalRequest에 밤늦은 일정 회피가 함께 있어도 모순이 아닙니다. 야경은 이른 저녁(예: 18:30~20:30)으로 유지하고, 22:30 이후 새 activity 시작은 피합니다.
+6. parents / with_children이면 보행 부담·휴식·아이 친화적 일정을 반영합니다. item 개수를 자동으로 줄이지 말고, 간격·이동거리·휴식으로 조정하세요.
 7. 같은 날 지나치게 먼 지역을 섞지 않습니다.
-8. 식사와 짧은 휴식을 자연스럽게 배치합니다.
+8. 식사와 짧은 휴식을 자연스럽게 배치합니다. 실제 일정 블록이면 식사·카페·휴식도 itinerary item에 포함합니다. 모든 끼니를 억지로 채우지는 마세요.
 9. 사용자가 요청하지 않은 확정 예약·가격·항공·호텔 재고를 사실처럼 만들지 않습니다. 사용자가 특정 공항을 입력하지 않았다면 특정 공항명을 확정 정보처럼 쓰지 말고, 필요하면 "도착 공항"·"공항"·"현지 공항" 등 중립 표현을 사용합니다. 실제 항공편·출도착 시각·비행 소요시간이 입력에 없으면 확정 사실처럼 만들지 마세요.
 10. 운영시간/휴무를 확정적으로 쓰지 말고, 필요하면 tips에 "방문 전 최신 운영시간을 확인" 수준으로만 안내합니다.
 11. bookingRecommended는 예약이 유리할 가능성이 높은 활동에만 true입니다.
-12. budget.amount / budget.style는 정확한 총비용 계산에 쓰지 말고 스타일(여유/절약) 신호로만 사용합니다.
+12. budget.amount / budget.style는 정확한 총비용 계산에 쓰지 말고 스타일(여유/절약) 신호로만 사용합니다. 직접 입력 금액(amount)이 있으면 style보다 더 구체적인 budget signal로 우선합니다.
+12a. budget(가성비)=cost-conscious: 숙소·식사·교통에서 합리적 가격대, 고가 옵션 최소화, 무료/저비용 경험 포함.
+12b. standard(보통)=mid-range balanced: 목적지 일반 중간 가격대, 가격·위치·편의 균형(최저가/프리미엄 아님).
+12c. premium(여유)=comfort/experience weighted: 위치·편의·경험 품질을 위한 추가 지출 허용, 가격만으로 좋은 경험을 과도하게 제외하지 않음.
 13. 총 예상비용 같은 가짜 정밀 수치를 만들지 않습니다.
 14. Klook, KKday, Booking.com, Airalo 등 특정 제휴 사업자를 추천하지 않습니다.
 15. days 배열 길이는 입력 여행 일수와 정확히 같아야 합니다.
 16. day는 1부터 연속이어야 합니다.
 17. fixed 모드: day.date는 startDate부터 하루씩 증가. flexible 모드: day.date와 tripOverview.startDate/endDate는 반드시 null. 가짜 달력 날짜를 만들지 마세요.
 18. 각 day.items[].order는 1부터 연속이어야 합니다.
-19. travelToNext는 AI 추정이며 실시간 교통 검증값이 아닙니다. estimatedMinutes는 null이거나 1 이상의 정수만 허용합니다. 0을 넣지 마세요(모르면 null).
-20. themeRequest는 분위기/스타일, additionalRequest는 반드시 지킬 구체 요구로 구분합니다.
+19. travelToNext는 AI 추정이며 실시간 교통 검증값이 아닙니다. estimatedMinutes는 null이거나 1 이상의 정수만 허용합니다. 0을 넣지 마세요(모르면 null). 단순 장소 간 이동은 travelToNext를 우선하고, 숫자를 채우기 위한 transport/rest item 생성은 금지합니다. transport item은 사용자에게 독립적으로 의미 있는 이동(예: 도착 후 숙소 이동, 출국 준비 이동)에만 사용하세요.
+20. themeRequest는 분위기/스타일, additionalRequest는 반드시 지킬 구체 요구로 구분합니다. user prompt에 [일정 제약 해석]이 있으면 그 canonical rules를 additionalRequest 자연어보다 우선 해석 기준으로 사용합니다.
 21. attraction/shopping/activity 및 특정 식당·카페를 제안할 때 name은 지도에서 검색 가능한 단일 장소명으로 작성합니다. 한 item에 여러 장소를 "또는/및/&"로 묶지 마세요.
 22. 실제 상호·명소가 확실하지 않으면 임의의 식당/가게 이름을 지어내지 마세요. 그 경우 generic 일정(예: 지역명 + 식사/카페)으로 두고 구체 상호는 비워 두세요.
 23. estimatedDurationMinutes도 null이거나 1 이상의 정수만 허용합니다. 0 금지.
 24. 출발지는 여행자가 목적지로 이동해 오는 기준 위치입니다. 일정의 관광·식사·활동은 목적지 중심으로 구성하고, 출발지 도시의 관광 일정을 별도로 만들지 마세요.
 25. 첫날(Day 1)은 목적지 도착일입니다. 이동·체크인·휴식 여유를 두고 일정을 과도하게 채우지 마세요. 실제 항공편 시간이 입력되지 않았다면 구체적인 도착 시각을 사실처럼 가정하지 마세요. 도착 후 숙소 이동·체크인 같은 transport 항목은 허용하되, 입력 없는 특정 공항명·도착 시각은 만들지 마세요.
 26. 마지막 날은 귀국 또는 다음 이동일입니다. 공항·터미널 이동 여유를 확보하고 일정을 가볍게 구성하세요. 실제 교통편 출발 시각이 입력되지 않았다면 구체적인 출발 시각을 사실처럼 만들지 마세요. 공항 이동·출국 준비 같은 transport 항목은 허용하되, 입력 없는 특정 공항명·출발 시각은 만들지 마세요.
-27. fixed·flexible 모두 위 출발지·첫날·마지막날 규칙을 적용합니다. flexible는 여행 일수 기준 첫 day/마지막 day에 적용합니다.`;
+27. fixed·flexible 모두 위 출발지·첫날·마지막날 규칙을 적용합니다. flexible는 여행 일수 기준 첫 day/마지막 day에 적용합니다.
+
+[일정 밀도 기준 — itinerary item 수]
+- itinerary item count 기준입니다. 명소 "장소 수"와 동일하지 않습니다.
+- 첫날·마지막 날: 이동 가능성을 고려해 2~3개의 핵심 itinerary item을 권장합니다.
+- 중간 full day(pace별 target):
+  - relaxed: 3~4
+  - balanced: 4~5
+  - packed: 5~6 (긴 이동·additionalRequest 제약·현실적인 식사/운영시간을 고려)
+- 식사·카페·휴식도 실제 일정 블록이면 item count에 포함됩니다.
+- 단순 이동은 travelToNext를 우선하고, density 숫자를 채우기 위한 무의미한 transport/rest item 반복 생성은 금지합니다.
+- 모든 날을 기계적으로 같은 개수로 만들지 마세요.`;
 
 function labelCompanion(value: PlannerDraftInput["companionType"]): string {
   return PLANNER_COMPANION_OPTIONS.find((o) => o.value === value)?.label ?? value;
@@ -104,6 +122,7 @@ export function buildPlannerPlanUserPrompt(draft: PlannerDraftInput): string {
       ? "금액 미정"
       : `${draft.budget.amount} KRW (${draft.budget.scope === "per_person" ? "1인" : "전체"}) — 정확 비용이 아니라 스타일 신호`;
   const budgetLine = `스타일=${labelBudgetStyle(draft.budget.style)} / ${amountLine}`;
+  const constraintSection = buildPlannerConstraintSemanticsSection(draft);
 
   return [
     "아래 여행 조건으로 자유여행 일정 초안 JSON을 생성하세요.",
@@ -119,6 +138,7 @@ export function buildPlannerPlanUserPrompt(draft: PlannerDraftInput): string {
     `[속도] ${labelPace(draft.pace)} (${draft.pace})`,
     `[예산 신호] ${budgetLine}`,
     `[추가 요청] ${draft.additionalRequest.trim() || "없음"}`,
+    ...(constraintSection ? ["", constraintSection] : []),
     "",
     "필수 invariant:",
     ...invariantLines,
@@ -127,7 +147,7 @@ export function buildPlannerPlanUserPrompt(draft: PlannerDraftInput): string {
   ].join("\n");
 }
 
-/** Appended only on schema/invariant semantic retry — never include prior malformed output. */
+/** Appended only on schema/invariant/quality semantic retry — never include prior malformed output. */
 export const PLANNER_SEMANTIC_RETRY_INSTRUCTION = `이전 생성 결과가 출력 스키마 또는 일정 불변조건을 충족하지 못했습니다.
 반드시 제공된 JSON Schema와 다음 규칙을 정확히 지켜 다시 생성하세요.
 - 정의되지 않은 필드 추가 금지
@@ -140,8 +160,21 @@ export const PLANNER_SEMANTIC_RETRY_INSTRUCTION = `이전 생성 결과가 출�
 - 숫자/boolean/null 타입을 문자열로 변환하지 말 것
 - estimatedMinutes / estimatedDurationMinutes는 null 또는 1 이상 정수 (0 금지)`;
 
-export function appendPlannerSemanticRetryInstruction(prompt: string): string {
-  return `${prompt}\n\n${PLANNER_SEMANTIC_RETRY_INSTRUCTION}`;
+/** Appended when semantic retry is due to itinerary density quality failure. */
+export const PLANNER_DENSITY_RETRY_INSTRUCTION = `이전 결과는 일부 날짜의 일정 밀도(itinerary item 수)가 부족했습니다.
+모든 날짜 수·날짜 순서·destination은 유지하고, 중간 full day는 pace에 맞는 충분한 itinerary item 수를 구성하세요.
+식사·카페·휴식도 실제 일정 블록이면 item에 포함하세요.
+숫자를 채우기 위한 무의미한 transport/rest item은 만들지 말고, 단순 이동은 travelToNext를 사용하세요.`;
+
+export function appendPlannerSemanticRetryInstruction(
+  prompt: string,
+  options?: { densityFailed?: boolean },
+): string {
+  const parts = [prompt, PLANNER_SEMANTIC_RETRY_INSTRUCTION];
+  if (options?.densityFailed) {
+    parts.push(PLANNER_DENSITY_RETRY_INSTRUCTION);
+  }
+  return parts.join("\n\n");
 }
 
 export const PLANNER_EDIT_SYSTEM_PROMPT = `당신은 더올투어 자유여행 일정을 수정하는 여행 플래너입니다.

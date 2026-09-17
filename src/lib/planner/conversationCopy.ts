@@ -30,12 +30,13 @@ export const PLANNER_ASSISTANT_QUESTIONS: Record<PlannerWizardStep, string> = {
   3: "누구와 함께 떠나시나요?",
   4: "이번 여행에서 무엇을 즐기고 싶으세요?",
   5: "하루 일정은 어느 정도가 좋으세요?",
-  6: "꼭 반영했으면 하는 조건이 있나요?",
+  6: "일정을 짤 때 꼭 지켜야 할 조건이 있나요?",
   7: "좋습니다. 지금까지 말씀해주신 여행 조건을 정리했어요.",
 };
 
 export const PLANNER_ASSISTANT_DESCRIPTIONS: Partial<Record<PlannerWizardStep, string>> = {
   4: "여러 개 선택하셔도 됩니다.",
+  6: "해당되는 항목만 선택해 주세요.",
 };
 
 export const PLANNER_BUDGET_QUESTION = "여행 경비는 어느 정도로 생각하고 계세요?";
@@ -81,6 +82,27 @@ export function budgetSummary(draft: PlannerDraftInput): string {
   return [styleLabel, amountLabel].filter(Boolean).join(" · ");
 }
 
+/** Step 7 / history display — companion first; hide children when 0. */
+export function formatPlannerTravelersSummary(draft: PlannerDraftInput): string {
+  const companion = companionLabel(draft.companionType);
+  const adults = `성인 ${draft.travelers.adults}명`;
+  if (draft.travelers.children > 0) {
+    return `${companion} · ${adults} · 아이 ${draft.travelers.children}명`;
+  }
+  return `${companion} · ${adults}`;
+}
+
+/** Compact one-line context for generation waiting UI (display only). */
+export function formatPlannerGenerationContext(draft: PlannerDraftInput): string {
+  const parts = [
+    formatPlannerDatesSummary(draft.dates) || null,
+    companionLabel(draft.companionType),
+    interestLabels(draft.interests) || null,
+    paceLabel(draft.pace),
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
 export function formatCompletedStepAnswer(
   step: PlannerWizardStep,
   draft: PlannerDraftInput,
@@ -95,7 +117,7 @@ export function formatCompletedStepAnswer(
     case 2:
       return formatPlannerDatesSummary(draft.dates);
     case 3:
-      return `${companionLabel(draft.companionType)} · 성인 ${draft.travelers.adults} · 아이 ${draft.travelers.children}`;
+      return formatPlannerTravelersSummary(draft);
     case 4: {
       const interests = interestLabels(draft.interests);
       const theme = draft.themeRequest.trim();

@@ -5,6 +5,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { PlannerChoiceChip } from "@/components/planner/conversation/PlannerChoiceChip";
+import type { PlannerVisualTone } from "@/components/planner/conversation/plannerConversationIcons";
 import { cn } from "@/lib/cn";
 
 type IconComponent = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
@@ -24,6 +25,7 @@ type PlannerCustomInputProps = {
   className?: string;
   expandLabel?: string;
   expandIcon?: IconComponent;
+  expandIconTone?: PlannerVisualTone;
 };
 
 export function PlannerCustomInput({
@@ -40,6 +42,7 @@ export function PlannerCustomInput({
   className,
   expandLabel = "직접 입력하기",
   expandIcon,
+  expandIconTone,
 }: PlannerCustomInputProps) {
   const id = useId();
   const [opened, setOpened] = useState(false);
@@ -51,6 +54,7 @@ export function PlannerCustomInput({
         <PlannerChoiceChip
           disabled={disabled}
           icon={expandIcon}
+          iconTone={expandIconTone}
           onClick={() => setOpened(true)}
           aria-label={expandLabel}
         >

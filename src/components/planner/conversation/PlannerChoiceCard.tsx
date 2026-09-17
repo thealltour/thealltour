@@ -3,6 +3,10 @@
 import type { ComponentType } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
+import {
+  getPlannerIconToneClasses,
+  type PlannerVisualTone,
+} from "@/components/planner/conversation/plannerConversationIcons";
 
 type IconComponent = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 
@@ -14,6 +18,8 @@ type PlannerChoiceCardProps = {
   onClick?: () => void;
   className?: string;
   icon?: IconComponent;
+  /** Category meaning tone (unselected only). Selected uses primary. */
+  iconTone?: PlannerVisualTone;
 };
 
 export function PlannerChoiceCard({
@@ -24,7 +30,10 @@ export function PlannerChoiceCard({
   onClick,
   className,
   icon: Icon,
+  iconTone,
 }: PlannerChoiceCardProps) {
+  const toneClasses = iconTone ? getPlannerIconToneClasses(iconTone) : null;
+
   return (
     <button
       type="button"
@@ -43,13 +52,19 @@ export function PlannerChoiceCard({
       )}
     >
       {Icon ? (
-        <Icon
+        <span
           className={cn(
-            "mt-0.5 h-5 w-5 shrink-0",
-            selected ? "text-[var(--primary)]" : "text-[var(--text-muted)]",
+            "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+            selected
+              ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+              : toneClasses
+                ? cn(toneClasses.container, toneClasses.icon)
+                : "bg-[var(--surface-muted)] text-[var(--text-muted)]",
           )}
           aria-hidden={true}
-        />
+        >
+          <Icon className="h-[18px] w-[18px]" aria-hidden={true} />
+        </span>
       ) : null}
       <span className="min-w-0 flex-1">
         <span className="block type-body font-semibold text-[var(--foreground)]">{title}</span>

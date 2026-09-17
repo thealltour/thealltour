@@ -194,7 +194,7 @@ describe("PlannerResultView day navigation", () => {
 });
 
 describe("PlannerResultView information architecture", () => {
-  it("orders summary → actions → booking → days → preparation → notices", () => {
+  it("orders summary → actions → days → booking → preparation → notices", () => {
     offersState.value = {
       summary: [makeOffer({ offerId: "f1", category: "flight" })],
       preparation: [],
@@ -226,8 +226,9 @@ describe("PlannerResultView information architecture", () => {
     const order = [
       screen.getByTestId("plan-summary"),
       screen.getByTestId("planner-result-actions"),
+      screen.getByText("일정"),
+      screen.getByTestId("planner-day-section-1"),
       screen.getByTestId("planner-booking-surface"),
-      screen.getByText("일자별 일정"),
       screen.getByTestId("planner-result-preparation"),
       screen.getByTestId("planner-result-notices"),
     ];
@@ -239,6 +240,7 @@ describe("PlannerResultView information architecture", () => {
     expect(within(root).queryByTestId("legacy-summary-slot")).not.toBeInTheDocument();
     expect(within(root).queryByTestId("legacy-prep-slot")).not.toBeInTheDocument();
     expect(screen.queryByText("AI 초안 안내")).not.toBeInTheDocument();
+    expect(screen.queryByText("일자별 일정")).not.toBeInTheDocument();
     expect(screen.getByText(/AI가 입력하신 여행 조건/)).toBeInTheDocument();
     expect(screen.getByText(/일부 장소 정보를 확인하지 못했습니다/)).toBeInTheDocument();
     expect(screen.getByText(/여행일이 가까워지면 최신 날씨/)).toBeInTheDocument();
@@ -257,6 +259,24 @@ describe("PlannerResultView information architecture", () => {
       />,
     );
     expect(screen.queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
+  });
+
+  it("keeps compact result actions in a two-column grid", () => {
+    render(
+      <PlannerResultView
+        plan={makePlan(2)}
+        sessionId="550e8400-e29b-41d4-a716-446655440000"
+        sourceProductId={null}
+        isSaved={false}
+        enrichment={null}
+        onSaved={vi.fn()}
+        onPlanUpdated={vi.fn()}
+      />,
+    );
+    const actions = screen.getByTestId("planner-result-actions");
+    expect(actions).toHaveClass("grid-cols-2");
+    expect(screen.getByTestId("save-panel")).toHaveTextContent("플랜 저장");
+    expect(screen.getByTestId("edit-panel")).toHaveTextContent("AI로 수정");
   });
 });
 

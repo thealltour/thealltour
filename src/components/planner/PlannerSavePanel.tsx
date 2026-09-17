@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { startOAuthLogin } from "@/lib/auth/oauthStart";
@@ -140,7 +141,12 @@ export function PlannerSavePanel({
           loading={saving}
           onClick={() => void onClickSave()}
         >
-          {compact ? "플랜 저장" : "이 플랜 저장하기"}
+          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+            {compact ? (
+              <Bookmark className="h-4 w-4 shrink-0" aria-hidden={true} />
+            ) : null}
+            {compact ? "플랜 저장" : "이 플랜 저장하기"}
+          </span>
         </Button>
         {error ? (
           <p className="type-small text-[var(--danger)]" role="alert">

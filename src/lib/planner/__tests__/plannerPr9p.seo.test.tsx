@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { PlannerLandingIntro } from "@/components/planner/PlannerLandingIntro";
 import { PlannerLandingInfo } from "@/components/planner/PlannerLandingInfo";
 import { PlannerAssistantMessage } from "@/components/planner/conversation/PlannerAssistantMessage";
@@ -53,7 +53,7 @@ describe("PR-9P Planner SEO hardening", () => {
   });
 
   describe("visible landing copy", () => {
-    it("renders a single h1 and intro mentioning origin/destination/conditions", () => {
+    it("renders a single h1 and compact subtitle mentioning origin/destination/conditions", () => {
       render(<PlannerLandingIntro />);
       const h1 = screen.getByRole("heading", { level: 1, name: "AI 자유여행 플래너" });
       expect(h1).toBeTruthy();
@@ -61,6 +61,18 @@ describe("PR-9P Planner SEO hardening", () => {
       expect(screen.getByText(/목적지/)).toBeTruthy();
       expect(screen.getByText(/여행 조건/)).toBeTruthy();
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(screen.getByRole("button", { name: "AI 자유여행 플래너 안내" })).toBeTruthy();
+    });
+
+    it("opens info modal with detailed explanation and closes on confirm", () => {
+      render(<PlannerLandingIntro />);
+      fireEvent.click(screen.getByRole("button", { name: "AI 자유여행 플래너 안내" }));
+      const dialog = screen.getByRole("dialog", { name: "AI 자유여행 플래너 안내" });
+      expect(dialog).toBeTruthy();
+      expect(within(dialog).getByText(/여행 날짜/)).toBeTruthy();
+      expect(within(dialog).getByText(/여행 준비/)).toBeTruthy();
+      fireEvent.click(within(dialog).getByRole("button", { name: "확인" }));
+      expect(screen.queryByRole("dialog", { name: "AI 자유여행 플래너 안내" })).toBeNull();
     });
 
     it("keeps wizard questions as h2 under the landing h1", () => {

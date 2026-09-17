@@ -15,6 +15,11 @@ import {
   type PlannerPlan,
 } from "@/lib/planner/planSchemas";
 import {
+  assertPlannerPlanQuality,
+  PlannerPlanQualityError,
+  type PlannerPlanQualityIssue,
+} from "@/lib/planner/planQuality";
+import {
   appendPlannerSemanticRetryInstruction,
   buildPlannerEditUserPrompt,
   buildPlannerPlanUserPrompt,
@@ -41,6 +46,7 @@ export type PlannerGenerateStage =
   | "provider_call"
   | "schema_validation"
   | "invariant_validation"
+  | "quality_validation"
   | "persistence"
   | "result_validation";
 
@@ -57,6 +63,7 @@ export type PlannerGenerateDiagnostics = {
   provider?: string | null;
   schemaIssuePaths?: PlannerSchemaIssuePath[];
   invariantCode?: string;
+  qualityIssue?: PlannerPlanQualityIssue;
   errorName?: string;
   sdkFailureType?: PlannerSdkFailureType | null;
   causeName?: string | null;
@@ -92,6 +99,7 @@ export type PlannerGenerateDiagnosticEvent =
       provider?: string | null;
       schemaIssuePaths?: PlannerSchemaIssuePath[];
       invariantCode?: string;
+      qualityIssue?: PlannerPlanQualityIssue;
       errorName?: string;
       sdkFailureType?: PlannerSdkFailureType | null;
       causeName?: string | null;
@@ -115,6 +123,7 @@ export class PlannerGenerateError extends Error {
     | "invalid_plan"
     | "schema_invalid"
     | "invariant_failed"
+    | "quality_failed"
     | "provider"
     | "unknown";
   readonly failureCategory: PlannerGenerationFailureCategory;
@@ -135,9 +144,11 @@ export class PlannerGenerateError extends Error {
         ? "schema_invalid"
         : code === "invariant_failed" || code === "invalid_plan"
           ? "invariant_failed"
-          : code === "missing_key" || code === "timeout" || code === "provider"
-            ? "provider_failed"
-            : "provider_failed");
+          : code === "quality_failed"
+            ? "quality_failed"
+            : code === "missing_key" || code === "timeout" || code === "provider"
+              ? "provider_failed"
+              : "provider_failed");
     this.diagnostics = {
       stage: diagnostics?.stage ?? "provider_call",
       attempt: diagnostics?.attempt,
@@ -146,6 +157,7 @@ export class PlannerGenerateError extends Error {
       provider: diagnostics?.provider ?? null,
       schemaIssuePaths: diagnostics?.schemaIssuePaths,
       invariantCode: diagnostics?.invariantCode,
+      qualityIssue: diagnostics?.qualityIssue,
       errorName: diagnostics?.errorName ?? this.name,
       sdkFailureType: diagnostics?.sdkFailureType ?? null,
       causeName: diagnostics?.causeName ?? null,
@@ -219,7 +231,9 @@ function findZodCause(error: unknown): ZodError | null {
 
 export function isSemanticRetryableFailure(error: PlannerGenerateError): boolean {
   return (
-    error.failureCategory === "schema_invalid" || error.failureCategory === "invariant_failed"
+    error.failureCategory === "schema_invalid" ||
+    error.failureCategory === "invariant_failed" ||
+    error.failureCategory === "quality_failed"
   );
 }
 
@@ -282,6 +296,23 @@ export function normalizePlannerGenerateError(
         {
           stage: "invariant_validation",
           invariantCode: error.code,
+          errorName: error.name,
+          ...extras,
+        },
+        error,
+      ),
+    );
+  }
+
+  if (error instanceof PlannerPlanQualityError) {
+    return new PlannerGenerateError(
+      "quality_failed",
+      "Plan quality validation failed",
+      "quality_failed",
+      attachRootCauseDiagnostics(
+        {
+          stage: "quality_validation",
+          qualityIssue: error.issue,
           errorName: error.name,
           ...extras,
         },
@@ -440,7 +471,9 @@ export async function generatePlannerPlan(
     const prompt =
       attempt === 1
         ? basePrompt
-        : appendPlannerSemanticRetryInstruction(basePrompt);
+        : appendPlannerSemanticRetryInstruction(basePrompt, {
+            densityFailed: lastError?.failureCategory === "quality_failed",
+          });
 
     try {
       const parsed = await runGenerateObject({
@@ -457,6 +490,17 @@ export async function generatePlannerPlan(
       } catch (error) {
         throw normalizePlannerGenerateError(error, {
           stage: "invariant_validation",
+          attempt,
+          maxAttempts: MAX_PLANNER_SEMANTIC_ATTEMPTS,
+          modelId: lastModelId,
+          provider,
+        });
+      }
+      try {
+        assertPlannerPlanQuality(parsed, draft);
+      } catch (error) {
+        throw normalizePlannerGenerateError(error, {
+          stage: "quality_validation",
           attempt,
           maxAttempts: MAX_PLANNER_SEMANTIC_ATTEMPTS,
           modelId: lastModelId,
@@ -506,6 +550,7 @@ export async function generatePlannerPlan(
           provider,
           schemaIssuePaths: normalized.diagnostics.schemaIssuePaths,
           invariantCode: normalized.diagnostics.invariantCode,
+          qualityIssue: normalized.diagnostics.qualityIssue,
           errorName: normalized.diagnostics.errorName,
           sdkFailureType: normalized.diagnostics.sdkFailureType,
           causeName: normalized.diagnostics.causeName,
@@ -578,6 +623,8 @@ export {
   getPlannerModelIdForSemanticAttempt,
 };
 
+export { getPlannerItemDensityStats } from "@/lib/planner/planQuality";
+
 export function toClientGenerationErrorMessage(error: unknown): string {
   if (error instanceof PlannerGenerateError) {
     if (error.code === "timeout") {
@@ -608,6 +655,7 @@ export function toClientEditErrorMessage(error: unknown): string {
 export function getPlannerFailureCategory(error: unknown): PlannerGenerationFailureCategory {
   if (error instanceof PlannerGenerateError) return error.failureCategory;
   if (error instanceof PlannerPlanInvariantError) return "invariant_failed";
+  if (error instanceof PlannerPlanQualityError) return "quality_failed";
   if (isZodErrorLike(error)) return "schema_invalid";
   return "provider_failed";
 }
@@ -622,6 +670,7 @@ export function getPlannerGenerateSafeLogFields(error: unknown): {
   provider: string | null;
   schemaIssuePaths: PlannerSchemaIssuePath[] | null;
   invariantCode: string | null;
+  qualityIssue: PlannerPlanQualityIssue | null;
   sdkFailureType: PlannerSdkFailureType | null;
   causeName: string | null;
   causeChain: string[] | null;
@@ -640,6 +689,7 @@ export function getPlannerGenerateSafeLogFields(error: unknown): {
       provider: null,
       schemaIssuePaths: root.schemaIssuePaths,
       invariantCode: null,
+      qualityIssue: null,
       sdkFailureType: root.sdkFailureType,
       causeName: root.causeName,
       causeChain: root.causeChain,
@@ -658,6 +708,7 @@ export function getPlannerGenerateSafeLogFields(error: unknown): {
     provider: d.provider ?? null,
     schemaIssuePaths: d.schemaIssuePaths ?? null,
     invariantCode: d.invariantCode ?? null,
+    qualityIssue: d.qualityIssue ?? null,
     sdkFailureType: d.sdkFailureType ?? null,
     causeName: d.causeName ?? null,
     causeChain: d.causeChain ?? null,

@@ -8,6 +8,7 @@ import { getPlannerSessionById } from "@/lib/planner/repository";
 import { persistEditedPlannerPlan } from "@/lib/planner/planVersionRepository";
 import {
   generateEditedPlannerPlan,
+  getPlannerItemDensityStats,
   toClientEditErrorMessage,
 } from "@/lib/planner/generatePlan";
 
@@ -102,6 +103,7 @@ export async function POST(request: Request, context: RouteContext) {
       status,
     });
 
+    const densityStats = getPlannerItemDensityStats(nextPlan);
     const refreshed = await getPlannerSessionById(session!.id);
     const durationMs = Date.now() - startedAt;
     console.info("[planner] edit ok", {
@@ -110,6 +112,10 @@ export async function POST(request: Request, context: RouteContext) {
       instructionLength,
       versionNumber,
       status,
+      totalItemCount: densityStats.totalItemCount,
+      minDayItemCount: densityStats.minItemsPerDay,
+      maxDayItemCount: densityStats.maxItemsPerDay,
+      avgItemsPerDay: densityStats.averageItemsPerDay,
     });
 
     return NextResponse.json({

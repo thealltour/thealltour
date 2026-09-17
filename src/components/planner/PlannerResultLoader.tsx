@@ -19,6 +19,8 @@ import {
 import { getOrCreatePlannerAnonymousKey } from "@/lib/planner/anonymousKey";
 import type { PlannerEnrichmentDto } from "@/lib/planner/enrichmentTypes";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
+import { PLANNER_PACES } from "@/lib/planner/schemas";
+import type { PlannerPace } from "@/types/planner";
 import {
   clearPlannerSaveIntent,
   consumeMatchingPlannerSaveIntent,
@@ -36,6 +38,7 @@ type ReadResponse = {
     input?: {
       origin?: { text?: string } | null;
       destination?: { text?: string };
+      pace?: string;
     };
   };
 };
@@ -52,6 +55,7 @@ type PlannerResultLoaderProps = {
 export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
   const [plan, setPlan] = useState<PlannerPlan | null>(null);
   const [originText, setOriginText] = useState<string | null>(null);
+  const [pace, setPace] = useState<PlannerPace | null>(null);
   const [sourceProductId, setSourceProductId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [enrichment, setEnrichment] = useState<PlannerEnrichmentDto | null>(null);
@@ -130,6 +134,12 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       setPlan(data!.session!.plan);
       const rawOrigin = data!.session!.input?.origin?.text?.trim() || "";
       setOriginText(rawOrigin || null);
+      const rawPace = data!.session!.input?.pace;
+      setPace(
+        rawPace && (PLANNER_PACES as readonly string[]).includes(rawPace)
+          ? (rawPace as PlannerPace)
+          : null,
+      );
       setSourceProductId(data!.session!.sourceProductId ?? null);
       setIsSaved(Boolean(data!.session!.isSaved) || status === "saved");
     } catch {
@@ -222,6 +232,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       isSaved={isSaved}
       enrichment={enrichment}
       originText={originText}
+      pace={pace}
       onSaved={() => setIsSaved(true)}
       onPlanUpdated={(next) => {
         setPlan(next);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -138,7 +139,12 @@ export function PlannerEditPanel({
             setOpen(true);
           }}
         >
-          {compact ? "AI로 수정" : "AI로 일정 수정하기"}
+          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+            {compact ? (
+              <Sparkles className="h-4 w-4 shrink-0" aria-hidden={true} />
+            ) : null}
+            {compact ? "AI로 수정" : "AI로 일정 수정하기"}
+          </span>
         </Button>
         {successHint ? (
           <p className="type-small text-[var(--text-secondary)]" role="status">

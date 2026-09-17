@@ -186,7 +186,8 @@ export async function GET(request: Request, context: RouteContext) {
       if (result.kakaoWelcomeGranted) {
         destination = resolveKakaoWelcomeNextPath(result.next);
       }
-      if (result.needsProfile) {
+      // 카카오 OAuth 동의 화면에 서비스 약관 포함 → complete-profile 미경유 (Google/Naver만 게이트)
+      if (result.needsProfile && providerId !== "kakao") {
         destination = `/auth/complete-profile?next=${encodeURIComponent(destination)}`;
       }
     }

@@ -5,7 +5,7 @@ import { syncMemberCustomerProfiles } from "@/lib/customerAccountLinks";
 import { createNewMemberNotification } from "@/lib/adminNotifications";
 import { generateUniqueUsername } from "@/lib/auth/username";
 import { grantKakaoSignupWelcomePoints } from "@/lib/auth/grantKakaoSignupWelcomePoints";
-import { memberNeedsProfileCompletion } from "@/lib/auth/memberProfileGate";
+import { memberNeedsProfileCompletion, shouldWaiveKakaoSiteTerms } from "@/lib/auth/memberProfileGate";
 import { isKakaoSyncFunnelAcquisition } from "@/lib/analytics/kakaoSyncLandingHit";
 import { resolveOAuthIdentityMatchMode } from "@/lib/auth/oauthIdentityMatch";
 import { sendKakaoSignupAlimtalk } from "@/lib/notifications/kakaoSignupAlimtalk";
@@ -18,7 +18,7 @@ import type {
   OAuthProfile,
 } from "@/lib/auth/types";
 
-export { memberNeedsProfileCompletion } from "@/lib/auth/memberProfileGate";
+export { memberNeedsProfileCompletion, shouldWaiveKakaoSiteTerms } from "@/lib/auth/memberProfileGate";
 
 const MEMBER_SELECT =
   "id,username,name,email,phone,password_hash,password_salt,agree_terms,agree_privacy,signup_method,profile_completed_at,kakao_channel_added";
@@ -142,6 +142,7 @@ async function createSocialMember(
   const username = await generateUniqueUsername(provider, profile.providerUserId, isUsernameTaken);
   const fromKakaoSync = isKakaoSyncFunnelAcquisition(acquisition ?? null);
   const email = await resolveInsertableEmail(profile.email, fromKakaoSync);
+  const waiveTerms = shouldWaiveKakaoSiteTerms(provider);
   const { data, error } = await supabaseAdmin
     .from("members")
     .insert({
@@ -153,12 +154,12 @@ async function createSocialMember(
       gender: null,
       password_hash: null,
       password_salt: null,
-      /** 카카오싱크 동의 화면에 서비스 약관이 포함되므로 complete-profile 전면 스킵 */
-      agree_terms: fromKakaoSync,
-      agree_privacy: fromKakaoSync,
+      /** 카카오 OAuth 동의 화면에 서비스 약관 포함 → complete-profile 약관 스킵 */
+      agree_terms: waiveTerms,
+      agree_privacy: waiveTerms,
       agree_email: false,
       signup_method: "social",
-      profile_completed_at: fromKakaoSync ? new Date().toISOString() : null,
+      profile_completed_at: waiveTerms ? new Date().toISOString() : null,
       kakao_channel_added: typeof profile.kakaoChannelAdded === "boolean" ? profile.kakaoChannelAdded : null,
       acquisition: acquisition ?? null,
     })
@@ -177,14 +178,14 @@ async function createSocialMember(
 }
 
 /**
- * 카카오싱크 유입은 싱크 동의로 약관을 갈음하고 complete-profile을 전면 스킵한다.
+ * 모든 카카오 OAuth(싱크 포함)는 카카오 동의로 약관을 갈음하고 complete-profile을 전면 스킵한다.
  * (전화번호 유무와 무관)
  */
-async function applyKakaoSyncTermsAgreementIfNeeded(
+async function applyKakaoTermsAgreementIfNeeded(
   member: MemberRowForAuth,
-  acquisition?: MemberAcquisition | null,
+  provider: AuthProviderId,
 ): Promise<MemberRowForAuth> {
-  if (!isKakaoSyncFunnelAcquisition(acquisition ?? null)) return member;
+  if (!shouldWaiveKakaoSiteTerms(provider)) return member;
   const hasTerms = member.agree_terms && member.agree_privacy;
   if (hasTerms && member.profile_completed_at) return member;
 
@@ -200,7 +201,7 @@ async function applyKakaoSyncTermsAgreementIfNeeded(
 
   const { error } = await supabaseAdmin.from("members").update(updates).eq("id", member.id);
   if (error) {
-    console.error("[memberAuthService] applyKakaoSyncTermsAgreementIfNeeded:", error.message);
+    console.error("[memberAuthService] applyKakaoTermsAgreementIfNeeded:", error.message);
     return member;
   }
   return (await getMemberById(String(member.id))) ?? member;
@@ -254,7 +255,7 @@ export async function handleOAuthCallback(params: {
     await applyOAuthProfileToMember(memberId, profile);
     let member = await getMemberById(memberId);
     if (!member) throw new Error("연결된 회원을 찾을 수 없습니다.");
-    member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
+    member = await applyKakaoTermsAgreementIfNeeded(member, provider);
     await syncMemberAfterAuth(member);
     return {
       type: "session",
@@ -291,7 +292,7 @@ export async function handleOAuthCallback(params: {
     await supabaseAdmin.from("members").update({ signup_method: signupMethod }).eq("id", linkMemberId);
 
     let member = (await getMemberById(linkMemberId))!;
-    member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
+    member = await applyKakaoTermsAgreementIfNeeded(member, provider);
     await syncMemberAfterAuth(member);
     return {
       type: "session",
@@ -339,7 +340,7 @@ export async function handleOAuthCallback(params: {
       .update({ signup_method: matchedMember.signup_method === "local" ? "mixed" : "social" })
       .eq("id", matchedMember.id);
     let member = (await getMemberById(String(matchedMember.id)))!;
-    member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
+    member = await applyKakaoTermsAgreementIfNeeded(member, provider);
     await syncMemberAfterAuth(member);
     return {
       type: "session",
@@ -352,7 +353,7 @@ export async function handleOAuthCallback(params: {
 
   let member = await createSocialMember(provider, profile, acquisition);
   await upsertProviderLink(String(member.id), provider, profile);
-  member = await applyKakaoSyncTermsAgreementIfNeeded(member, acquisition);
+  member = await applyKakaoTermsAgreementIfNeeded(member, provider);
   await syncMemberAfterAuth(member);
 
   let kakaoWelcomeGranted = false;

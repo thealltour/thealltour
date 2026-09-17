@@ -742,6 +742,16 @@
   }
 }
 
+/* Planner generation — indeterminate rail (not percentage). */
+@keyframes planner-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
 html {
   scroll-behavior: smooth;
 }

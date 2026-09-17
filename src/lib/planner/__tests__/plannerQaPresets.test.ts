@@ -52,12 +52,16 @@ describe("planner QA presets", () => {
     expect(draft.dates.durationDays).toBeGreaterThanOrEqual(2);
   });
 
-  it("osaka-fixed uses future dates", () => {
-    const now = new Date(2026, 8, 9);
-    const draft = getPlannerQaPreset("osaka-fixed", now).draft;
-    expect(draft.dates.mode).toBe("fixed");
-    expect(draft.dates.startDate! > dateToYmd(now)).toBe(true);
-    expect(draft.interests.length).toBeGreaterThanOrEqual(1);
+  it("tokyo-flexible uses a new constraint insertText", () => {
+    const draft = getPlannerQaPreset("tokyo-flexible").draft;
+    expect(draft.additionalRequest).toBe(
+      "장소 간 이동시간이 길지 않도록 동선을 구성해주세요.",
+    );
+  });
+
+  it("danang-family keeps free-form legacy companion request text", () => {
+    const draft = getPlannerQaPreset("danang-family-fixed", new Date(2026, 8, 9)).draft;
+    expect(draft.additionalRequest).toBe("아이와 편하게 다닐 수 있게 구성해주세요.");
   });
 });
 

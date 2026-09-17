@@ -393,7 +393,7 @@ describe("PR-7C theme / budget / quick request", () => {
   });
 
   it("24-25. quick request insert + duplicate prevention", () => {
-    const text = "많이 걷지 않는 일정으로 구성해주세요.";
+    const text = "장소 간 이동시간이 길지 않도록 동선을 구성해주세요.";
     const once = appendPlannerQuickRequest("", text);
     expect(once).toContain(text);
     const twice = appendPlannerQuickRequest(once, text);
@@ -425,10 +425,11 @@ describe("PR-7C summary / CTA / failure contracts", () => {
       "provider_failed",
       "schema_invalid",
       "invariant_failed",
+      "quality_failed",
       "persist_failed",
       "result_navigation_failed",
     ];
-    expect(cats).toHaveLength(6);
+    expect(cats).toHaveLength(7);
   });
 });
 

@@ -5,6 +5,7 @@ import {
   computeDurationDays,
   isIsoDateYmd,
 } from "@/lib/planner/dates";
+import { getCompanionTravelersConsistencyError } from "@/lib/planner/travelers";
 
 export const PLANNER_SESSION_STATUSES = ["draft", "generated", "saved"] as const;
 
@@ -204,7 +205,21 @@ export const plannerDraftInputSchema = z
       .trim()
       .max(1000, "요청사항은 1000자 이내로 입력해 주세요."),
   })
-  .strict();
+  .strict()
+  .superRefine((draft, ctx) => {
+    const message = getCompanionTravelersConsistencyError({
+      companionType: draft.companionType,
+      adults: draft.travelers.adults,
+      children: draft.travelers.children,
+    });
+    if (message) {
+      ctx.addIssue({
+        code: "custom",
+        message,
+        path: ["travelers"],
+      });
+    }
+  });
 
 export type PlannerDraftInputParsed = z.infer<typeof plannerDraftInputSchema>;
 
@@ -331,7 +346,12 @@ export function validatePlannerStep(
     if (input.travelers.adults < 1) return "성인은 1명 이상이어야 합니다.";
     if (input.travelers.children < 0) return "아이 인원이 올바르지 않습니다.";
     const c = plannerCompanionTypeSchema.safeParse(input.companionType);
-    return c.success ? null : "동행 유형을 선택해 주세요.";
+    if (!c.success) return "동행 유형을 선택해 주세요.";
+    return getCompanionTravelersConsistencyError({
+      companionType: c.data,
+      adults: input.travelers.adults,
+      children: input.travelers.children,
+    });
   }
   if (step === 4) {
     if (input.interests.length < 1) return "여행 취향을 1개 이상 선택해 주세요.";

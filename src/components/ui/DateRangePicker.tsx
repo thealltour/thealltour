@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import type { DateRange } from "react-day-picker";
+import type { DateRange, Modifiers } from "react-day-picker";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatIsoDateKorean } from "@/lib/inquiry/desiredDeparture";
 import {
   buildDisabledMatcher,
   dateToYmd,
+  getNextPlannerDateRangeSelection,
   isDateRangeSelectionComplete,
   ymdToDate,
 } from "@/lib/datePickerUtils";
@@ -29,7 +30,7 @@ export type DateRangePickerProps = {
   size?: "default" | "compact";
   /**
    * Planner UX: keep the popover open after selecting only the start date.
-   * react-day-picker range mode may set from===to on the first click; treat that as incomplete.
+   * Uses deterministic reselection (completed → new start; earlier/same → new start).
    * Default false preserves product/admin picker behavior.
    */
   keepOpenAfterStart?: boolean;
@@ -62,7 +63,7 @@ export function DateRangePicker({
     const fromDate = ymdToDate(from);
     const toDate = ymdToDate(to);
     if (!fromDate && !toDate) return undefined;
-    return { from: fromDate, to: toDate };
+    return { from: fromDate, to: toDate ?? undefined };
   }, [from, to]);
 
   const disabledMatcher = React.useMemo(() => buildDisabledMatcher(min, max), [min, max]);
@@ -87,28 +88,45 @@ export function DateRangePicker({
     }
   }, [open]);
 
+  function applyPlannerDaySelection(day: Date, modifiers: Modifiers) {
+    if (modifiers.disabled) return;
+    const clicked = dateToYmd(day);
+    if (!clicked) return;
+
+    const next = getNextPlannerDateRangeSelection(from, to, clicked);
+    onChange(next.from, next.to);
+    if (isDateRangeSelectionComplete(next.from, next.to, true)) {
+      setOpen(false);
+    }
+  }
+
   function handleSelect(range: DateRange | undefined) {
+    if (keepOpenAfterStart) {
+      // Selection is driven by onDayClick / onDayKeyDown for deterministic reselection.
+      return;
+    }
+
     if (!range?.from) {
       onChange("", "");
       return;
     }
     const nextFrom = dateToYmd(range.from) ?? "";
-    let nextTo = range.to ? dateToYmd(range.to) ?? "" : "";
-
-    if (keepOpenAfterStart) {
-      // First click often mirrors from→to; keep calendar open until a real end date.
-      if (nextTo && nextFrom === nextTo && !to) {
-        nextTo = "";
-      }
-      onChange(nextFrom, nextTo);
-      if (isDateRangeSelectionComplete(nextFrom, nextTo, true)) {
-        setOpen(false);
-      }
-      return;
-    }
-
+    const nextTo = range.to ? dateToYmd(range.to) ?? "" : "";
     onChange(nextFrom, nextTo);
     if (range.from && range.to) setOpen(false);
+  }
+
+  function handleDayClick(day: Date, modifiers: Modifiers, e: React.MouseEvent) {
+    if (!keepOpenAfterStart) return;
+    e.preventDefault();
+    applyPlannerDaySelection(day, modifiers);
+  }
+
+  function handleDayKeyDown(day: Date, modifiers: Modifiers, e: React.KeyboardEvent) {
+    if (!keepOpenAfterStart) return;
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    applyPlannerDaySelection(day, modifiers);
   }
 
   return (
@@ -148,6 +166,8 @@ export function DateRangePicker({
             numberOfMonths={2}
             selected={selected}
             onSelect={handleSelect}
+            onDayClick={keepOpenAfterStart ? handleDayClick : undefined}
+            onDayKeyDown={keepOpenAfterStart ? handleDayKeyDown : undefined}
             disabled={disabledMatcher}
           />
         </div>

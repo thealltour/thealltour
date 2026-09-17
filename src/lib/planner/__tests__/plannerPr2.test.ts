@@ -57,6 +57,46 @@ describe("plannerDraftInputSchema", () => {
     expect(plannerDraftInputSchema.safeParse(draft).success).toBe(false);
   });
 
+  it("rejects solo + adults 2", () => {
+    const draft = { ...validDraft(), companionType: "solo" as const, travelers: { adults: 2, children: 0 } };
+    const result = plannerDraftInputSchema.safeParse(draft);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => /혼자/.test(i.message))).toBe(true);
+    }
+  });
+
+  it("rejects with_children + children 0", () => {
+    const draft = {
+      ...validDraft(),
+      companionType: "with_children" as const,
+      travelers: { adults: 2, children: 0 },
+    };
+    const result = plannerDraftInputSchema.safeParse(draft);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => /아이/.test(i.message))).toBe(true);
+    }
+  });
+
+  it("rejects friends + adults 1", () => {
+    const draft = {
+      ...validDraft(),
+      companionType: "friends" as const,
+      travelers: { adults: 1, children: 0 },
+    };
+    expect(plannerDraftInputSchema.safeParse(draft).success).toBe(false);
+  });
+
+  it("accepts family + adults 1 children 0", () => {
+    const draft = {
+      ...validDraft(),
+      companionType: "family" as const,
+      travelers: { adults: 1, children: 0 },
+    };
+    expect(plannerDraftInputSchema.safeParse(draft).success).toBe(true);
+  });
+
   it("rejects invalid companion", () => {
     const draft = { ...validDraft(), companionType: "coworker" };
     expect(plannerDraftInputSchema.safeParse(draft).success).toBe(false);
@@ -93,6 +133,22 @@ describe("validatePlannerStep", () => {
     const missingDest = createEmptyPlannerDraftInput("", "서울");
     expect(validatePlannerStep(1, missingDest)).toMatch(/목적지/);
     expect(validatePlannerStep(1, createEmptyPlannerDraftInput("제주", "서울"))).toBeNull();
+  });
+
+  it("rejects companion/traveler contradictions on step 3", () => {
+    const soloBad = {
+      ...createEmptyPlannerDraftInput("제주", "서울"),
+      companionType: "solo" as const,
+      travelers: { adults: 2, children: 0 },
+    };
+    expect(validatePlannerStep(3, soloBad)).toMatch(/혼자/);
+
+    const kidsBad = {
+      ...createEmptyPlannerDraftInput("제주", "서울"),
+      companionType: "with_children" as const,
+      travelers: { adults: 2, children: 0 },
+    };
+    expect(validatePlannerStep(3, kidsBad)).toMatch(/아이/);
   });
 
   it("requires interests on step 4", () => {

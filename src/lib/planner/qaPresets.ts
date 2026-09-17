@@ -109,7 +109,7 @@ function buildTokyoFlexible(): PlannerDraftInput {
       scope: "per_person",
       currency: "KRW",
     },
-    additionalRequest: "쇼핑 시간을 넉넉히 넣어주세요.",
+    additionalRequest: "장소 간 이동시간이 길지 않도록 동선을 구성해주세요.",
   };
 }
 

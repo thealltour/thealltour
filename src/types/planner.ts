@@ -91,5 +91,6 @@ export type PlannerGenerationFailureCategory =
   | "provider_failed"
   | "schema_invalid"
   | "invariant_failed"
+  | "quality_failed"
   | "persist_failed"
   | "result_navigation_failed";

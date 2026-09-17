@@ -18,6 +18,7 @@ import {
   type BudgetUiMode,
 } from "@/components/planner/conversation/PlannerConversationSteps";
 import { PlannerGenerationView } from "@/components/planner/PlannerGenerationView";
+import { PlannerLandingInfo } from "@/components/planner/PlannerLandingInfo";
 import { PlannerQaPanel } from "@/components/planner/PlannerQaPanel";
 import { dateToYmd } from "@/lib/datePickerUtils";
 import { getOrCreatePlannerAnonymousKey } from "@/lib/planner/anonymousKey";
@@ -40,12 +41,14 @@ import {
   trackPlannerStarted,
   trackPlannerSummaryEditClicked,
 } from "@/lib/analytics/trackPlannerEvents";
+import { formatPlannerGenerationContext } from "@/lib/planner/conversationCopy";
 import type {
   PlannerDraftInput,
   PlannerSummaryEditSection,
   PlannerWizardStep,
 } from "@/types/planner";
 import { cn } from "@/lib/cn";
+import { Sparkles } from "lucide-react";
 
 export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
   const router = useRouter();
@@ -557,7 +560,12 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
   }
 
   if (phase === "generating") {
-    return <PlannerGenerationView destination={draft.destination.text} />;
+    return (
+      <PlannerGenerationView
+        destination={draft.destination.text}
+        contextLine={formatPlannerGenerationContext(draft)}
+      />
+    );
   }
 
   if (phase === "failed") {
@@ -567,6 +575,9 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
           <p className="type-body text-[var(--text-secondary)]">
             {error ??
               "여행 플랜을 만드는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."}
+          </p>
+          <p className="mt-2 type-caption text-[var(--text-muted)]">
+            입력한 여행 조건은 그대로 유지됩니다.
           </p>
         </AlertCard>
         <Button
@@ -606,7 +617,11 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
         : "다음"
       : "이 조건으로 여행 만들기";
 
+  const isFinalizeStep = step === 7 && !editingFromSummary;
   const showActions = step > 1 || Boolean(sessionId) || editingFromSummary;
+  /** Landing SEO/FAQ — only before conversation/session starts (avoids fixed-footer overlap). */
+  const showLandingInfo =
+    phase === "wizard" && step === 1 && !sessionId && !editingFromSummary;
 
   const stepBody =
     step === 1 ? (
@@ -661,6 +676,7 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
 
   const actions = showActions ? (
     <div
+      data-testid="planner-wizard-footer"
       className={cn(
         "fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 backdrop-blur",
         "pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none",
@@ -671,7 +687,7 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
           type="button"
           variant="outline"
           size="lg"
-          className="min-w-24 flex-1 sm:flex-none"
+          className="min-w-[6.5rem] shrink-0 whitespace-nowrap sm:flex-none"
           disabled={isPending || (step <= 1 && !editingFromSummary && !sessionId)}
           onClick={handleBack}
         >
@@ -681,9 +697,10 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
           type="button"
           variant="primary"
           size="lg"
-          className="flex-[2]"
+          className="min-w-0 flex-1"
           loading={isPending}
           disabled={isPending}
+          aria-label={isFinalizeStep ? "이 조건으로 여행 만들기" : undefined}
           onClick={() => {
             if (step < 7 || editingFromSummary) {
               handleNext();
@@ -692,7 +709,15 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
             handleFinalize();
           }}
         >
-          {primaryCtaLabel}
+          {isFinalizeStep ? (
+            <span className="inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap">
+              <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="sm:hidden">여행 만들기</span>
+              <span className="hidden sm:inline">이 조건으로 여행 만들기</span>
+            </span>
+          ) : (
+            primaryCtaLabel
+          )}
         </Button>
       </div>
     </div>
@@ -710,37 +735,45 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
   ) : null;
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-5 px-4 pb-28 pt-6 sm:px-0 sm:pb-12 sm:pt-10">
-      {showQaPanel ? (
-        <PlannerQaPanel
-          step={step}
-          sessionId={sessionId}
-          phase={phase}
-          draft={draft}
-          presetId={qaPresetId}
-          busy={qaBusy || isPending}
-          error={qaError}
-          onPresetIdChange={setQaPresetId}
-          onApplyPreset={qaApplyPreset}
-          onCreateSession={qaCreateSession}
-          onJumpStep={qaJumpToStep}
-          onReadySummary={qaReadySummary}
-          onGenerate={qaGenerateNow}
-          onReset={qaReset}
-        />
-      ) : null}
-
-      <PlannerConversationShell
-        step={step}
-        draft={draft}
-        editingFromSummary={editingFromSummary}
-        disabled={isPending}
-        error={error}
-        onEditCompletedStep={openHistoryEdit}
-        actions={actions}
+    <>
+      <div
+        className={cn(
+          "mx-auto w-full max-w-lg space-y-5 px-4 pt-6 sm:px-0 sm:pb-12 sm:pt-10",
+          showActions ? "pb-28" : "pb-6",
+        )}
       >
-        {stepBody}
-      </PlannerConversationShell>
-    </div>
+        {showQaPanel ? (
+          <PlannerQaPanel
+            step={step}
+            sessionId={sessionId}
+            phase={phase}
+            draft={draft}
+            presetId={qaPresetId}
+            busy={qaBusy || isPending}
+            error={qaError}
+            onPresetIdChange={setQaPresetId}
+            onApplyPreset={qaApplyPreset}
+            onCreateSession={qaCreateSession}
+            onJumpStep={qaJumpToStep}
+            onReadySummary={qaReadySummary}
+            onGenerate={qaGenerateNow}
+            onReset={qaReset}
+          />
+        ) : null}
+
+        <PlannerConversationShell
+          step={step}
+          draft={draft}
+          editingFromSummary={editingFromSummary}
+          disabled={isPending}
+          error={error}
+          onEditCompletedStep={openHistoryEdit}
+          actions={actions}
+        >
+          {stepBody}
+        </PlannerConversationShell>
+      </div>
+      {showLandingInfo ? <PlannerLandingInfo /> : null}
+    </>
   );
 }

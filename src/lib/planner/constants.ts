@@ -42,9 +42,9 @@ export const PLANNER_PACE_OPTIONS: ReadonlyArray<{
   label: string;
   description: string;
 }> = [
-  { value: "relaxed", label: "여유롭게", description: "쉬는 시간을 넉넉히" },
-  { value: "balanced", label: "균형 있게", description: "관광과 휴식의 균형" },
-  { value: "packed", label: "알차게", description: "하루를 최대한 활용" },
+  { value: "relaxed", label: "여유롭게", description: "핵심 장소 위주로 쉬는 시간을 넉넉히" },
+  { value: "balanced", label: "균형 있게", description: "관광·식사·휴식을 적당히 배분" },
+  { value: "packed", label: "알차게", description: "하루 시간을 적극 활용해 더 많은 경험" },
 ] as const;
 
 export const PLANNER_BUDGET_SCOPE_OPTIONS: ReadonlyArray<{
@@ -91,35 +91,35 @@ export const PLANNER_QUICK_REQUESTS: ReadonlyArray<{
     insertText: "많이 걷지 않는 일정으로 구성해주세요.",
   },
   {
-    id: "with_kids",
-    label: "아이와 편하게",
-    insertText: "아이와 편하게 다닐 수 있게 구성해주세요.",
+    id: "less_transfer",
+    label: "이동시간 줄이기",
+    insertText: "장소 간 이동시간이 길지 않도록 동선을 구성해주세요.",
   },
   {
-    id: "with_parents",
-    label: "부모님과 편하게",
-    insertText: "부모님과 편하게 다닐 수 있게 구성해주세요.",
+    id: "slow_morning",
+    label: "아침 일정 여유롭게",
+    insertText: "아침 일정은 너무 이르게 시작하지 않도록 구성해주세요.",
   },
   {
-    id: "shopping_time",
-    label: "쇼핑시간 넉넉히",
-    insertText: "쇼핑 시간을 넉넉히 넣어주세요.",
+    id: "avoid_late_night",
+    label: "밤늦은 일정 피하기",
+    insertText: "밤늦게까지 이어지는 일정은 피해주세요.",
   },
   {
-    id: "food_focus",
-    label: "맛집 위주",
-    insertText: "맛집 위주로 일정을 잡아주세요.",
+    id: "free_time",
+    label: "자유시간 확보",
+    insertText: "일정 중 자유시간을 충분히 확보해주세요.",
   },
   {
-    id: "rest_enough",
-    label: "휴식시간 충분히",
-    insertText: "휴식 시간을 충분히 넣어주세요.",
+    id: "fewer_transitions",
+    label: "장소 이동 적게",
+    insertText: "하루에 장소를 자주 옮기지 않도록 일정을 구성해주세요.",
   },
 ] as const;
 
-/** KRW slider bounds for custom budget entry (not style presets). */
+/** KRW slider bounds for custom budget entry (not style presets). Text input may exceed max. */
 export const PLANNER_BUDGET_SLIDER_MIN = 300_000;
-export const PLANNER_BUDGET_SLIDER_MAX = 5_000_000;
+export const PLANNER_BUDGET_SLIDER_MAX = 50_000_000;
 export const PLANNER_BUDGET_SLIDER_STEP = 100_000;
 
 export const PLANNER_WIZARD_STEP_COUNT = 7;
@@ -130,7 +130,7 @@ export const PLANNER_WIZARD_TITLES: Record<number, string> = {
   3: "누구와 함께 가시나요?",
   4: "어떤 여행을 원하세요?",
   5: "여행 속도와 예산은요?",
-  6: "꼭 반영했으면 하는 내용이 있나요?",
+  6: "일정 조건",
   7: "입력하신 조건을 확인해주세요",
 };
 

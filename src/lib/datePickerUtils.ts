@@ -33,3 +33,32 @@ export function isDateRangeSelectionComplete(
   if (keepOpenAfterStart && from === to) return false;
   return true;
 }
+
+export type PlannerDateRangeSelection = {
+  from: string;
+  to: string;
+};
+
+/**
+ * Deterministic Planner fixed-date reselection (YYYY-MM-DD).
+ * - Empty or completed range → clicked becomes new start
+ * - Start-only + clicked later → complete range
+ * - Start-only + clicked earlier/same → new start (no swap)
+ */
+export function getNextPlannerDateRangeSelection(
+  currentFrom: string,
+  currentTo: string,
+  clicked: string,
+): PlannerDateRangeSelection {
+  if (!clicked) return { from: currentFrom, to: currentTo };
+
+  if (!currentFrom || currentTo) {
+    return { from: clicked, to: "" };
+  }
+
+  if (clicked <= currentFrom) {
+    return { from: clicked, to: "" };
+  }
+
+  return { from: currentFrom, to: clicked };
+}

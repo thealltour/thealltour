@@ -1,6 +1,6 @@
 import MyPageLayout from "@/components/mypage/MyPageLayout";
 import WelcomeKakaoPointsToast from "@/components/mypage/WelcomeKakaoPointsToast";
-import { MYPAGE_QUICK_ACTIONS } from "@/components/mypage/ui/MyPageNavIcon";
+import { getMyPageQuickActions } from "@/components/mypage/ui/MyPageNavIcon";
 import { MyPageCard } from "@/components/mypage/ui/MyPageCard";
 import { MyPageEmptyState } from "@/components/mypage/ui/MyPageEmptyState";
 import { MyPageGolfBenefitCard } from "@/components/mypage/ui/MyPageGolfBenefitCard";
@@ -12,7 +12,9 @@ import { MyPageStatGrid } from "@/components/mypage/ui/MyPageStatGrid";
 import { MyPageStatusBadge } from "@/components/mypage/ui/MyPageStatusBadge";
 import { MyPageWelcomeStrip } from "@/components/mypage/ui/MyPageWelcomeStrip";
 import { memberHasConfirmedBooking } from "@/lib/bookings/memberHasConfirmedBooking";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { getMemberGolfDiscountCopy } from "@/lib/mypage/memberGolfDiscountCopy";
+import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import {
@@ -65,7 +67,7 @@ export default async function MyPageDashboardPage() {
           benefitCaption={golfBenefitCopy.badgeLabel}
         />
 
-        <MyPageQuickActionGrid items={MYPAGE_QUICK_ACTIONS} />
+        <MyPageQuickActionGrid items={getMyPageQuickActions()} />
 
         <MyPageStatGrid>
           <MyPageGolfBenefitCard copy={golfBenefitCopy} />
@@ -75,6 +77,25 @@ export default async function MyPageDashboardPage() {
             earliestExpiresAt={couponPacks.earliestExpiresAt}
           />
         </MyPageStatGrid>
+
+        {ENABLE_FREE_TRAVEL_PLANNER ? (
+          <MyPageCard>
+            <MyPageSectionHeader
+              title="내 여행 플랜"
+              actionHref={PLANNER_SAVED_LIST_PATH}
+              actionLabel="전체 보기"
+            />
+            <div className="mt-4">
+              <MyPageEmptyState
+                message="저장한 자유여행 일정을 한곳에서 다시 볼 수 있어요."
+                ctaHref={PLANNER_SAVED_LIST_PATH}
+                ctaLabel="내 여행 플랜 보기"
+                dashed
+                className="py-4"
+              />
+            </div>
+          </MyPageCard>
+        ) : null}
 
         <MyPageCard>
           <MyPageSectionHeader title="최근 리워드 상태" actionHref="/mypage/redemptions" actionLabel="전체 보기" />

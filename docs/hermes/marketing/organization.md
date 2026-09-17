@@ -22,10 +22,10 @@ Asset Source Writer → Canonical Marketing Asset
    │
 Human Asset Approval  ← pause
    │
-Channel Editors → Human Channel Review → Media Pipeline
+Channel Editors → Marketing Value Gate → Human Channel Review → Media Pipeline
 
 Core agents (Hermes): MM · CS · GA · PA
-Planned (toggle): Creative Director
+Planned (toggle): Creative Director · Channel Producer
 ```
 
 Hermes Bot profile / registry slots remain:
@@ -49,17 +49,16 @@ Production spine은 `runDepartmentPipeline` / Agenda queue다. Group Chat은 협
 
 ED-3: derives a Story-locked ContentProposition from approved StoryPoint + EvidenceBackedStoryBrief (does not invent a new story).
 
-
-- **책임:** message strategy, content structure, copywriting, channel voice, CTA, revision
-- **하지 않음:** Evidence Pack build, Completeness judgment, open research discovery, self approval, publication
-- **입력:** ContentDraftRequest (+ `deliverableRequirements`, `evidencePack`)
-- **출력:** `{ title?, body, channel, agenda, sourceReferences, contentPlan? }`
-- **handoff:** Completeness Validator → Governance Auditor
+- **책임:** message strategy, ContentProposition (promise / takeaways / proof / desiredAudienceAction), channel targeting guidance, revision of strategy
+- **하지 않음:** final channel-native body as SoT (Threads/Blog/Band/Kakao/Shortform publishable copy), Evidence Pack build, Completeness judgment, open research discovery, self approval, publication
+- **입력:** ContentDraftRequest (+ `deliverableRequirements`, `evidencePack`, ACRB when present)
+- **출력:** `{ title?, body?, channel, agenda, sourceReferences, contentPlan? }` — draft body is scaffold/strategy aid; **Channel Editors** (from approved Canonical Asset) produce publishable channel copy
+- **handoff:** Completeness Validator → Governance Auditor → Asset Source Writer → Canonical Asset → Human Asset Approval → Channel Editors → Marketing Value Gate → Human Channel Review
 
 ### Governance Auditor
 
-- **책임:** policy, misleading claims, unsupported factual claims, commercial/legal risk, publication governance judgment
-- **하지 않음:** structural completeness, copy rewrite, publication
+- **책임:** policy, misleading claims, unsupported factual claims, commercial/legal risk, publication governance judgment (**safety ≠ marketing usefulness**)
+- **하지 않음:** structural completeness, copy rewrite, marketing-value scoring, publication
 - **입력:** GovernanceReviewRequest
 - **출력:** GovernanceWorkflowResult (ALLOW/REVIEW/BLOCK)
 
@@ -75,30 +74,41 @@ ED-3: derives a Story-locked ContentProposition from approved StoryPoint + Evide
 |-------|------|
 | Research Intelligence | Signals → ResearchBrief → AgendaCandidate (service, not 5th Bot) |
 | Story/Point Miner (ED-1) | Selected agenda → 5–8 story candidates → Point Quality Gate → Top 1–3 durable CandidateSet; fail-closed skip (TS staff, not Hermes bot) |
-| Story-targeted RA-1 (ED-2) | Primary StoryPoint `researchQuestions` → bounded web search → evidence adjudication → ACRB overlay; optional alternate on REFUTED/INSUFFICIENT |
+| Story-targeted RA-1 (ED-2) / ACRB | Primary StoryPoint `researchQuestions` → bounded web search → evidence adjudication → ACRB overlay; optional alternate on REFUTED/INSUFFICIENT |
 | Deliverable Requirements | Structural destinations/sections for draft |
 | Evidence Pack Builder | Lock `allowedForDraft` facts |
 | Completeness Validator | Structural gate before GA; shares `MAX_AUTO_REVISION_ROUNDS=1` |
+| Asset Source Writer | Channel-agnostic Korean source (deterministic / staff) |
+| Canonical Marketing Asset | Persisted common source (SoT for channel editors) |
+| Human Asset Approval | Pause — approve source before channel editors |
+| Channel Editors / Composers | Channel drafts from approved Canonical Asset (Threads / Blog / Band / Kakao / Shortform) |
+| Marketing Value Gate (MQ-5) | Deterministic usefulness / specificity / CTA alignment (**≠ Governance**) |
 | Semantic / Dedupe | Research + GA evaluators |
 | Media Pipeline | Post-candidate MediaBrief → cardnews/TTS/video |
 | Human Story Selection | Pause — pick PASS Story before ED-2 |
-| Asset Source Writer | Channel-agnostic Korean source (deterministic) |
-| Canonical Marketing Asset | Persisted common source (SoT for channels) |
-| Human Asset Approval | Pause — approve source before channel editors |
-| Channel Editors | Channel drafts from approved Canonical Asset |
-| Human Channel Review | Bootstrap HMR / channel QA after candidates |
+| Human Channel Review | Bootstrap HMR / channel QA after candidates; channel tabs + on-demand regenerate |
 | Publication Governance | Inactive SNS boundary (`PUBLICATION_FLOW_INACTIVE`) |
 | Observability / Analytics | OBS-1~6 traces + admin viewer |
 
 **Principle:** judgment / strategy / creative interpretation → Agent.
-count / schema / validation / evidence locking / freshness / dedupe / render / persistence / telemetry → deterministic.
+count / schema / validation / evidence locking / freshness / dedupe / render / persistence / telemetry / publishable compose / value scoring → deterministic.
+
+**Production copy path (marketing):**  
+`CS (Proposition)` → `Completeness` → `GA (safety)` → `Asset Source Writer` → `Canonical Asset` → `Human Asset Approval` → `Channel Editors (body/CTA)` → `Value Gate (worth publishing)` → `Human Channel Review` → Human Owner.
 
 ## LIVE workflow — Channel Editors
 
 Channel Editors are part of the production spine after Human Asset Approval (not a Hermes Bot).
-Creative Director remains PREPARE-only.
+Creative Director remains PREPARE-only. On-demand channel regenerate (review UI) uses Content Strategist + Quality Revision when Marketing Value is weak.
 
 ## PREPARE specialists (not created / not registered)
+
+### Channel Producer
+
+- **Purpose:** Hermes Bot upgrade path when Channel Editors + on-demand regenerate are insufficient for multi-channel creative variance
+- **Handoff:** CS/MM → Channel Producer → Completeness or Media Pipeline
+- **cron_default:** false (optional only)
+- **Activation:** ≥2 real production channels **and** OBS-6 shows repeated composer duration/revision/quality pain from channel variance beyond deterministic composers
 
 ### Creative Director
 
@@ -148,8 +158,8 @@ Does **not** replace production pipeline, handoff state, Human Review, or approv
 | Name | Verdict |
 |------|---------|
 | `ORCHESTRATION_PROJECT_ID=theallcloud` | intentional app/orchestration id |
-| MCP `thealltour-marketing` | intentional |
-| `PROJECT_DEPARTMENT_REGISTRY.thealltour.marketing` | intentional |
+| MCP `theallcloud-marketing` | intentional |
+| `PROJECT_DEPARTMENT_REGISTRY.theallcloud.marketing` | intentional |
 | `/home/ysh/theallcloud` | stale stub — do not use for org work | <!-- canonical-path-documented-forbidden -->
 
 ## OBS-7 readiness (Organization Overview Graph)

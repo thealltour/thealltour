@@ -12,7 +12,17 @@ import { SHORTFORM_WORKER_WORKSPACE_DEFAULT_PATH } from "@/lib/marketing/assets/
 export const SHORTFORM_VIDEO_EXECUTION_MODES = ["disabled", "dry_run", "production"] as const;
 export type ShortformVideoExecutionMode = (typeof SHORTFORM_VIDEO_EXECUTION_MODES)[number];
 
+/**
+ * One render per run stays the default because a run has no lease renewal: the
+ * unit's 30m `TimeoutStartSec` kills a run mid-render, and the 45m lease then
+ * holds the job until reclaim. Raising this is safe only once render duration
+ * telemetry shows N renders fitting inside that timeout, so it is env-tunable
+ * (`SHORTFORM_WORKER_MAX_JOBS_PER_RUN`) rather than raised blind.
+ */
 export const DEFAULT_SHORTFORM_WORKER_MAX_JOBS_PER_RUN = 1;
+
+/** Ceiling shared with the CLI's `--max-jobs` override. */
+export const SHORTFORM_WORKER_MAX_JOBS_PER_RUN_CEILING = 3;
 export const SHORTFORM_WORKER_CONCURRENCY = 1 as const;
 
 /** Lease renewal unsupported; default lease (45m) must exceed systemd TimeoutStartSec (30m). */
@@ -58,7 +68,7 @@ export function loadShortformVideoWorkerConfig(
   );
   const maxJobsPerRun =
     Number.isFinite(maxJobsRaw) && maxJobsRaw >= 1
-      ? Math.min(Math.trunc(maxJobsRaw), 3)
+      ? Math.min(Math.trunc(maxJobsRaw), SHORTFORM_WORKER_MAX_JOBS_PER_RUN_CEILING)
       : DEFAULT_SHORTFORM_WORKER_MAX_JOBS_PER_RUN;
 
   const leaseRaw = Number(env.SHORTFORM_VIDEO_RENDER_LEASE_MS?.trim() ?? DEFAULT_SHORTFORM_VIDEO_RENDER_LEASE_MS);

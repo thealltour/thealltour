@@ -85,7 +85,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "core",
     spanStages: ["content_strategist"],
     spanNames: ["marketing.content_strategist"],
-    description: "Message strategy, copy, channel voice, revision",
+    description: "Proposition / message strategy (not final channel body SoT)",
     executionMode: "runtime",
   },
   {
@@ -95,7 +95,7 @@ export const MARKETING_ORG_V22_NODES: MarketingOrganizationNodeDef[] = [
     tier: "core",
     spanStages: ["governance_auditor"],
     spanNames: ["marketing.governance_auditor"],
-    description: "Policy / factual / commercial-legal judgment",
+    description: "Policy / factual / commercial-legal safety (≠ marketing value)",
     executionMode: "runtime",
   },
   {

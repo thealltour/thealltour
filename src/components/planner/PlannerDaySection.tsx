@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/Badge";
 import { PlannerDayMap, type PlannerMapMarker } from "@/components/planner/PlannerDayMap";
 import type { PlannerPlanDay, PlannerPlanItem } from "@/lib/planner/planSchemas";
 import type {
@@ -9,6 +8,7 @@ import type {
   PlannerWeatherDay,
 } from "@/lib/planner/enrichmentTypes";
 import { formatDistanceMeters } from "@/lib/planner/routePairs";
+import { cn } from "@/lib/cn";
 
 const ITEM_TYPE_LABEL: Record<PlannerPlanItem["type"], string> = {
   attraction: "관광",
@@ -97,54 +97,43 @@ export function PlannerDaySection({
           {weatherText ? ` · ${weatherText}` : ""}
         </p>
         <h2 className="type-h3 text-[var(--foreground)]">{day.title}</h2>
-        <p className="type-small leading-relaxed text-[var(--text-secondary)]">{day.summary}</p>
+        <p className="type-small leading-relaxed text-[var(--text-muted)]">{day.summary}</p>
       </header>
 
       {markers.length > 0 ? (
         <PlannerDayMap sessionId={sessionId} dayNumber={day.day} markers={markers} />
       ) : null}
 
-      <ol className="space-y-4">
+      <ol className="divide-y divide-[var(--divider)]">
         {day.items.map((item) => {
           const enrichment = placeByOrder?.get(item.order)?.place;
           const route = routeByFromOrder?.get(item.order);
           const nextItem = day.items.find((x) => x.order === item.order + 1);
           const showTravel = Boolean(item.travelToNext) || Boolean(nextItem);
+          const hasSecondary =
+            Boolean(item.area) ||
+            (enrichment?.status === "resolved" && Boolean(enrichment.formattedAddress)) ||
+            enrichment?.status === "ambiguous" ||
+            (enrichment?.status === "resolved" && Boolean(enrichment.googleMapsUri)) ||
+            item.bookingRecommended;
 
           return (
-            <li key={`${day.day}-${item.order}`} className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <li key={`${day.day}-${item.order}`} className="space-y-2 py-3 first:pt-0 last:pb-0">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {item.time ? (
                   <span className="type-caption font-semibold tabular-nums text-[var(--primary)]">
                     {item.time}
                   </span>
                 ) : null}
-                <Badge variant="neutral">{ITEM_TYPE_LABEL[item.type]}</Badge>
-                {item.bookingRecommended ? <Badge variant="primary">예약 권장</Badge> : null}
+                <span className="type-caption text-[var(--text-muted)]">
+                  {ITEM_TYPE_LABEL[item.type]}
+                </span>
+                {item.bookingRecommended ? (
+                  <span className="type-caption text-[var(--text-subtle)]">예약 권장</span>
+                ) : null}
               </div>
               <div>
                 <p className="type-body font-semibold text-[var(--foreground)]">{item.name}</p>
-                {item.area ? (
-                  <p className="type-caption text-[var(--text-muted)]">{item.area}</p>
-                ) : null}
-                {enrichment?.status === "resolved" && enrichment.formattedAddress ? (
-                  <p className="type-caption text-[var(--text-muted)]">{enrichment.formattedAddress}</p>
-                ) : null}
-                {enrichment?.status === "ambiguous" ? (
-                  <p className="type-caption text-[var(--text-muted)]">
-                    장소 정보를 정확히 확인하지 못했습니다.
-                  </p>
-                ) : null}
-                {enrichment?.status === "resolved" && enrichment.googleMapsUri ? (
-                  <a
-                    href={enrichment.googleMapsUri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-block type-caption font-medium text-[var(--primary)] underline-offset-2 hover:underline"
-                  >
-                    지도에서 보기
-                  </a>
-                ) : null}
                 <p className="mt-1 type-small leading-relaxed text-[var(--text-secondary)]">
                   {item.description}
                 </p>
@@ -154,8 +143,47 @@ export function PlannerDaySection({
                   </p>
                 ) : null}
               </div>
-              {showTravel ? (
-                <TravelLine item={item} route={route} />
+              {showTravel ? <TravelLine item={item} route={route} /> : null}
+
+              {hasSecondary ? (
+                <details className="group">
+                  <summary
+                    className={cn(
+                      "cursor-pointer list-none type-caption font-medium text-[var(--primary)]",
+                      "underline-offset-2 hover:underline",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+                      "[&::-webkit-details-marker]:hidden",
+                    )}
+                  >
+                    <span className="group-open:hidden">자세히</span>
+                    <span className="hidden group-open:inline">접기</span>
+                  </summary>
+                  <div className="mt-2 space-y-1">
+                    {item.area ? (
+                      <p className="type-caption text-[var(--text-muted)]">{item.area}</p>
+                    ) : null}
+                    {enrichment?.status === "resolved" && enrichment.formattedAddress ? (
+                      <p className="type-caption text-[var(--text-muted)]">
+                        {enrichment.formattedAddress}
+                      </p>
+                    ) : null}
+                    {enrichment?.status === "ambiguous" ? (
+                      <p className="type-caption text-[var(--text-muted)]">
+                        장소 정보를 정확히 확인하지 못했습니다.
+                      </p>
+                    ) : null}
+                    {enrichment?.status === "resolved" && enrichment.googleMapsUri ? (
+                      <a
+                        href={enrichment.googleMapsUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block type-caption font-medium text-[var(--primary)] underline-offset-2 hover:underline"
+                      >
+                        지도에서 보기
+                      </a>
+                    ) : null}
+                  </div>
+                </details>
               ) : null}
             </li>
           );

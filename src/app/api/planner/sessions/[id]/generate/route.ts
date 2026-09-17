@@ -11,8 +11,11 @@ import {
 import {
   generatePlannerPlan,
   getPlannerFailureCategory,
+  getPlannerGenerateSafeLogFields,
   PlannerGenerateError,
   toClientGenerationErrorMessage,
+  type PlannerGenerateDiagnosticEvent,
+  type PlannerGenerateStage,
 } from "@/lib/planner/generatePlan";
 import type { PlannerGenerationFailureCategory } from "@/types/planner";
 import { z } from "zod";
@@ -50,12 +53,38 @@ function logGenerateFailure(params: {
   sessionId: string;
   failureCategory: PlannerGenerationFailureCategory;
   durationMs: number;
-  provider?: string;
+  errorCode?: string | null;
+  errorName?: string | null;
+  stage?: PlannerGenerateStage | null;
+  attempt?: number | null;
+  maxAttempts?: number | null;
+  modelId?: string | null;
+  provider?: string | null;
+  schemaIssuePaths?: Array<{ path: string; code: string }> | null;
+  invariantCode?: string | null;
+  sdkFailureType?: string | null;
+  causeName?: string | null;
+  causeChain?: string[] | null;
+  finishReason?: string | null;
+  usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | null;
 }) {
   console.error("[planner/generate]", {
     sessionId: params.sessionId,
     failureCategory: params.failureCategory,
-    provider: params.provider ?? "google",
+    errorCode: params.errorCode ?? null,
+    errorName: params.errorName ?? null,
+    sdkFailureType: params.sdkFailureType ?? null,
+    causeName: params.causeName ?? null,
+    causeChain: params.causeChain ?? null,
+    stage: params.stage ?? null,
+    attempt: params.attempt ?? null,
+    maxAttempts: params.maxAttempts ?? null,
+    provider: params.provider ?? null,
+    modelId: params.modelId ?? null,
+    schemaIssuePaths: params.schemaIssuePaths ?? null,
+    invariantCode: params.invariantCode ?? null,
+    finishReason: params.finishReason ?? null,
+    usage: params.usage ?? null,
     durationMs: params.durationMs,
     ok: false,
   });
@@ -116,6 +145,9 @@ export async function POST(request: Request, context: RouteContext) {
     logGenerateFailure({
       sessionId: session!.id,
       failureCategory: "input_invalid",
+      stage: "schema_validation",
+      errorCode: "input_invalid",
+      errorName: "DraftValidationError",
       durationMs: 0,
     });
     return NextResponse.json(
@@ -130,20 +162,55 @@ export async function POST(request: Request, context: RouteContext) {
 
   const startedAt = Date.now();
   try {
-    const plan = await generatePlannerPlan(draftParsed.data);
+    const { plan, meta } = await generatePlannerPlan(draftParsed.data, {
+      onDiagnostic: (event: PlannerGenerateDiagnosticEvent) => {
+        if (event.type !== "semantic_retry") return;
+        console.warn("[planner/generate/retry]", {
+          sessionId: session!.id,
+          failureCategory: event.failureCategory,
+          errorCode: event.errorCode,
+          stage: event.stage,
+          attempt: event.attempt,
+          nextAttempt: event.nextAttempt,
+          maxAttempts: event.maxAttempts,
+          provider: event.provider ?? null,
+          modelId: event.modelId ?? null,
+          selectedModelId: event.selectedModelId ?? null,
+          nextModelId: event.nextModelId ?? null,
+          schemaIssuePaths: event.schemaIssuePaths ?? null,
+          invariantCode: event.invariantCode ?? null,
+          errorName: event.errorName ?? null,
+          sdkFailureType: event.sdkFailureType ?? null,
+          causeName: event.causeName ?? null,
+          causeChain: event.causeChain ?? null,
+          finishReason: event.finishReason ?? null,
+          usage: event.usage ?? null,
+        });
+      },
+    });
+
     let saved;
     try {
       saved = await saveGeneratedPlannerPlan({ id: session!.id, plan });
-    } catch {
+    } catch (persistError) {
       logGenerateFailure({
         sessionId: session!.id,
         failureCategory: "persist_failed",
+        stage: "persistence",
+        errorCode: "persist_failed",
+        errorName: persistError instanceof Error ? persistError.name : "PersistError",
+        attempt: meta.semanticAttempts,
+        maxAttempts: meta.semanticAttempts,
+        provider: meta.provider,
+        modelId: meta.modelId,
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         {
           message: toClientGenerationErrorMessage(
-            new PlannerGenerateError("unknown", "persist failed", "persist_failed"),
+            new PlannerGenerateError("unknown", "persist failed", "persist_failed", {
+              stage: "persistence",
+            }),
           ),
           code: "generation_failed",
           failureCategory: "persist_failed" satisfies PlannerGenerationFailureCategory,
@@ -156,6 +223,13 @@ export async function POST(request: Request, context: RouteContext) {
       logGenerateFailure({
         sessionId: session!.id,
         failureCategory: "result_navigation_failed",
+        stage: "result_validation",
+        errorCode: "result_navigation_failed",
+        errorName: "MissingPlanError",
+        attempt: meta.semanticAttempts,
+        maxAttempts: meta.semanticAttempts,
+        provider: meta.provider,
+        modelId: meta.modelId,
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
@@ -173,6 +247,9 @@ export async function POST(request: Request, context: RouteContext) {
       durationMs: Date.now() - startedAt,
       dayCount: plan.days.length,
       dateMode: draftParsed.data.dates.mode,
+      semanticAttempts: meta.semanticAttempts,
+      provider: meta.provider,
+      modelId: meta.modelId,
       ok: true,
     });
     return NextResponse.json({
@@ -181,10 +258,25 @@ export async function POST(request: Request, context: RouteContext) {
     });
   } catch (err) {
     const failureCategory = getPlannerFailureCategory(err);
+    const safe = getPlannerGenerateSafeLogFields(err);
     logGenerateFailure({
       sessionId: session!.id,
       failureCategory,
       durationMs: Date.now() - startedAt,
+      errorCode: safe.errorCode,
+      errorName: safe.errorName,
+      stage: safe.stage,
+      attempt: safe.attempt,
+      maxAttempts: safe.maxAttempts,
+      modelId: safe.modelId,
+      provider: safe.provider,
+      schemaIssuePaths: safe.schemaIssuePaths,
+      invariantCode: safe.invariantCode,
+      sdkFailureType: safe.sdkFailureType,
+      causeName: safe.causeName,
+      causeChain: safe.causeChain,
+      finishReason: safe.finishReason,
+      usage: safe.usage,
     });
     return NextResponse.json(
       {

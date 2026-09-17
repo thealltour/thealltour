@@ -12,12 +12,15 @@ export function PlannerWizardProgress({ step }: PlannerWizardProgressProps) {
   const pct = Math.round((safeStep / PLANNER_WIZARD_STEP_COUNT) * 100);
 
   return (
-    <div className="space-y-2" aria-label={`진행 ${safeStep} / ${PLANNER_WIZARD_STEP_COUNT}`}>
+    <div
+      className="space-y-2"
+      aria-label={`여행 조건을 알아가는 중 ${safeStep} / ${PLANNER_WIZARD_STEP_COUNT}`}
+    >
       <div className="flex items-center justify-between type-caption text-[var(--text-muted)]">
+        <span>여행 조건을 알아가는 중</span>
         <span>
-          {safeStep} / {PLANNER_WIZARD_STEP_COUNT}
+          {safeStep}/{PLANNER_WIZARD_STEP_COUNT}
         </span>
-        <span>{pct}%</span>
       </div>
       <div
         className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]"

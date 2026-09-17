@@ -35,6 +35,8 @@ type PlannerEditPanelProps = {
   sourceProductId: string | null;
   status: "generated" | "saved";
   onPlanUpdated: (plan: PlannerPlan) => void;
+  /** Tighter layout for Result action group (behavior unchanged). */
+  compact?: boolean;
 };
 
 export function PlannerEditPanel({
@@ -43,6 +45,7 @@ export function PlannerEditPanel({
   sourceProductId,
   status,
   onPlanUpdated,
+  compact = false,
 }: PlannerEditPanelProps) {
   const [open, setOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
@@ -124,18 +127,18 @@ export function PlannerEditPanel({
 
   return (
     <>
-      <div className="space-y-2">
+      <div className={compact ? "space-y-1.5" : "space-y-2"}>
         <Button
           type="button"
           variant="outline"
-          className="w-full sm:w-auto"
+          className="w-full"
           disabled={submitting}
           onClick={() => {
             setError(null);
             setOpen(true);
           }}
         >
-          AI로 일정 수정하기
+          {compact ? "AI로 수정" : "AI로 일정 수정하기"}
         </Button>
         {successHint ? (
           <p className="type-small text-[var(--text-secondary)]" role="status">

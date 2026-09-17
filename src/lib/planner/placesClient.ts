@@ -14,13 +14,23 @@ export function getGoogleMapsApiKey(): string | null {
   );
 }
 
+export function isPlacesProviderConfigured(): boolean {
+  return Boolean(getGoogleMapsApiKey());
+}
+
 export class PlacesProviderError extends Error {
   readonly category: "missing_key" | "http" | "network" | "parse";
+  readonly httpStatus: number | null;
 
-  constructor(category: PlacesProviderError["category"], message: string) {
+  constructor(
+    category: PlacesProviderError["category"],
+    message: string,
+    options?: { httpStatus?: number | null },
+  ) {
     super(message);
     this.name = "PlacesProviderError";
     this.category = category;
+    this.httpStatus = options?.httpStatus ?? null;
   }
 }
 
@@ -71,7 +81,9 @@ export async function searchPlacesText(params: {
   }
 
   if (!res.ok) {
-    throw new PlacesProviderError("http", `Places HTTP ${res.status}`);
+    throw new PlacesProviderError("http", `Places HTTP ${res.status}`, {
+      httpStatus: res.status,
+    });
   }
 
   let json: unknown;

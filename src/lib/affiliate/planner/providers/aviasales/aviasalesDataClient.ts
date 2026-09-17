@@ -12,6 +12,7 @@ import {
 } from "@/lib/affiliate/planner/providers/aviasales/aviasalesCache";
 import {
   AVIASALES_DEFAULT_CURRENCY,
+  AVIASALES_DEFAULT_MARKET,
   AVIASALES_PRICE_STALE_MAX_AGE_MS,
   AVIASALES_PRICES_FOR_DATES_URL,
   AVIASALES_TIMEOUT_MS,
@@ -88,6 +89,7 @@ export async function fetchAviasalesPricesForDates(
   if (returnAt) url.searchParams.set("return_at", returnAt);
   url.searchParams.set("one_way", oneWay ? "true" : "false");
   url.searchParams.set("currency", currency);
+  url.searchParams.set("market", AVIASALES_DEFAULT_MARKET);
   url.searchParams.set("sorting", "price");
   url.searchParams.set("limit", String(Math.min(params.limit ?? 30, 100)));
   url.searchParams.set("page", "1");

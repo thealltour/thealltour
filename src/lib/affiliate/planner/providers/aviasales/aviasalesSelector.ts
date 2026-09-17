@@ -1,5 +1,8 @@
 import {
   AVIASALES_ALLOWED_HOSTS,
+  AVIASALES_DEFAULT_CURRENCY,
+  AVIASALES_DEFAULT_LOCALE,
+  AVIASALES_DEFAULT_MARKET,
   AVIASALES_SEARCH_ORIGIN,
   type AviasalesPriceOffer,
 } from "@/lib/affiliate/planner/providers/aviasales/aviasalesTypes";
@@ -37,7 +40,7 @@ export function selectAviasalesPriceOffer(params: {
 
 /**
  * Travelpayouts docs: prepend https://www.aviasales.com/ to relative `link`.
- * Result is a brand search URL suitable for Partner Links (not a GraphQL ticket).
+ * Apply KR presentation (locale/currency/market) before Partner Links.
  */
 export function buildAviasalesSearchUrl(link: string): string | null {
   if (!canBuildSearchUrl(link)) return null;
@@ -50,9 +53,21 @@ export function buildAviasalesSearchUrl(link: string): string | null {
     );
     if (!allowed) return null;
     if (!url.pathname.startsWith("/search")) return null;
+    applyAviasalesKrPresentation(url);
     return url.toString();
   } catch {
     return null;
+  }
+}
+
+/** Force Korean market presentation on brand search URLs. */
+export function applyAviasalesKrPresentation(url: URL): void {
+  url.searchParams.set("locale", AVIASALES_DEFAULT_LOCALE);
+  url.searchParams.set("currency", AVIASALES_DEFAULT_CURRENCY);
+  url.searchParams.set("market", AVIASALES_DEFAULT_MARKET);
+  // Data API sometimes embeds expected_price_currency=usd on the relative link.
+  if (url.searchParams.has("expected_price_currency")) {
+    url.searchParams.set("expected_price_currency", AVIASALES_DEFAULT_CURRENCY);
   }
 }
 

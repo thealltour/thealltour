@@ -25,7 +25,9 @@ export const ENABLE_FREE_TRAVEL_PLANNER = true;
  * - true: Result monetization slots + click attribution 활성
  *
  * Production canary: keep committed false until an intentional canary deploy.
- * Runtime override (server): ENABLE_PLANNER_AFFILIATE_ROUTER=true|false env.
+ * Runtime override (server): ENABLE_PLANNER_AFFILIATE_ROUTER=true|false env —
+ * see isPlannerAffiliateMasterEnabled in affiliateRollout.ts.
+ * Client always soft-fetches; server gates. Do not flip this constant to true in production.
  * Percent canary is separate — see PLANNER_AFFILIATE_ROLLOUT_PERCENT.
  */
 export const ENABLE_PLANNER_AFFILIATE_ROUTER = false;

@@ -8,20 +8,59 @@ const RESOLVE_TYPES = new Set<PlannerPlanItem["type"]>([
   "activity",
 ]);
 
+/** Soft generic activity phrases — not a specific mappable POI. */
+const GENERIC_NAME_PATTERNS: RegExp[] = [
+  /근처/,
+  /주변/,
+  /현지\s*맛집/,
+  /분위기\s*좋은\s*카페/,
+  /저녁\s*식사/,
+  /점심\s*식사/,
+  /아침\s*식사/,
+  /조식/,
+  /브런치/,
+  /숙소\s*(체크|이동|휴식)?/,
+  /^숙소$/,
+  /휴식$/,
+  /이동$/,
+  /산책만/,
+  /여유\s*시간/,
+  /자유\s*시간/,
+  /또는/,
+];
+
 export function shouldResolvePlannerItemType(type: PlannerPlanItem["type"]): boolean {
   return RESOLVE_TYPES.has(type);
+}
+
+/**
+ * True when the item looks like a single concrete place worth Places Text Search.
+ * Type must be eligible; generic meal/cafe/rest phrasing is skipped.
+ */
+export function isConcretePlannerPlaceCandidate(item: {
+  type: PlannerPlanItem["type"];
+  name: string;
+}): boolean {
+  if (!shouldResolvePlannerItemType(item.type)) return false;
+  const name = item.name.trim();
+  if (!name) return false;
+  for (const re of GENERIC_NAME_PATTERNS) {
+    if (re.test(name)) return false;
+  }
+  return true;
 }
 
 export function buildPlacesSearchQuery(params: {
   name: string;
   area: string | null;
   destination: string;
+  country?: string | null;
 }): string {
   const name = params.name.trim();
   const area = params.area?.trim() || "";
   const destination = params.destination.trim();
-  if (area) return `${name} ${area} ${destination}`.replace(/\s+/g, " ").trim();
-  return `${name} ${destination}`.replace(/\s+/g, " ").trim();
+  const country = params.country?.trim() || "";
+  return [name, area, destination, country].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
 }
 
 export function normalizePlaceDedupeKey(params: {

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AffiliateOfferSlot } from "@/components/planner/AffiliateOfferSlot";
-import { ENABLE_PLANNER_AFFILIATE_ROUTER } from "@/config/featureFlags";
 import { getOrCreatePlannerAnonymousKey } from "@/lib/planner/anonymousKey";
 import type { PlannerAffiliateOffersDto } from "@/lib/affiliate/planner/types";
 
@@ -21,6 +20,8 @@ const EMPTY: PlannerAffiliateOffersDto = {
 
 /**
  * Loads affiliate offers once per Result view (progressive enhancement).
+ * Always soft-fetches; server master/rollout gates visibility.
+ * Client compile-time flag must not block local/dev env override QA.
  */
 export function PlannerAffiliateOffersProvider({
   sessionId,
@@ -29,13 +30,10 @@ export function PlannerAffiliateOffersProvider({
 }: PlannerAffiliateOffersProps) {
   void _ignoredSourceProductId;
   const [offers, setOffers] = useState<PlannerAffiliateOffersDto>(EMPTY);
-  const loaded = useRef(false);
 
   useEffect(() => {
-    if (!ENABLE_PLANNER_AFFILIATE_ROUTER || loaded.current) return;
-    loaded.current = true;
-
     let cancelled = false;
+    setOffers(EMPTY);
 
     void (async () => {
       try {
@@ -66,13 +64,10 @@ export function PlannerAffiliateOffersProvider({
     };
   }, [sessionId]);
 
-  if (!ENABLE_PLANNER_AFFILIATE_ROUTER) {
-    return <>{children(EMPTY)}</>;
-  }
-
   return <>{children(offers)}</>;
 }
 
+/** @deprecated Prefer PlannerBookingSurface for global offers. Kept for Day contextual only. */
 export function PlannerAffiliateSummarySlot(props: {
   offers: PlannerAffiliateOffersDto;
   sessionId: string;
@@ -93,6 +88,7 @@ export function PlannerAffiliateSummarySlot(props: {
   );
 }
 
+/** @deprecated Prefer PlannerBookingSurface for preparation categories. */
 export function PlannerAffiliatePreparationSlot(props: {
   offers: PlannerAffiliateOffersDto;
   sessionId: string;

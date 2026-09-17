@@ -94,6 +94,7 @@ export type AnalyticsEventName =
   | "planner_routes_loaded"
   | "planner_routes_failed"
   | "planner_summary_edit_clicked"
+  | "planner_day_nav_click"
   | "affiliate_impression"
   | "affiliate_clicked";
 

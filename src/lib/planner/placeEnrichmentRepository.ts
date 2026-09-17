@@ -18,8 +18,16 @@ type EnrichmentRow = {
   updated_at: string;
 };
 
-/** Display attributes TTL (Google Place Data cache guidance ~30 days). */
+/** Display attributes TTL for resolved/ambiguous (Google Place Data cache guidance ~30 days). */
 export const PLACE_ATTRIBUTE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Actual zero-result unresolved — short TTL so provider recovery can re-query. */
+export const PLACE_UNRESOLVED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function placeCacheTtlMsForStatus(status: string): number {
+  if (status === "unresolved") return PLACE_UNRESOLVED_CACHE_TTL_MS;
+  return PLACE_ATTRIBUTE_CACHE_TTL_MS;
+}
 
 function mapRow(row: EnrichmentRow): PlannerPlaceEnrichmentItem {
   const types = Array.isArray(row.types_json)
@@ -45,6 +53,12 @@ function mapRow(row: EnrichmentRow): PlannerPlaceEnrichmentItem {
   };
 }
 
+function isRowFresh(row: EnrichmentRow, nowMs: number): boolean {
+  const t = Date.parse(row.updated_at);
+  if (!Number.isFinite(t)) return false;
+  return nowMs - t < placeCacheTtlMsForStatus(row.resolution_status);
+}
+
 export async function listPlaceEnrichmentsForFingerprint(params: {
   sessionId: string;
   planFingerprint: string;
@@ -65,12 +79,8 @@ export async function listPlaceEnrichmentsForFingerprint(params: {
   const rows = (data ?? []) as EnrichmentRow[];
   if (rows.length === 0) return { items: [], fresh: false };
 
-  const oldest = rows.reduce((min, r) => {
-    const t = Date.parse(r.updated_at);
-    return Number.isFinite(t) ? Math.min(min, t) : min;
-  }, Date.now());
-
-  const fresh = Date.now() - oldest < PLACE_ATTRIBUTE_CACHE_TTL_MS;
+  const nowMs = Date.now();
+  const fresh = rows.every((r) => isRowFresh(r, nowMs));
   return { items: rows.map(mapRow), fresh };
 }
 

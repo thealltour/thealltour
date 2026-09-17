@@ -27,6 +27,8 @@ export type SiteHeaderUIProps = {
   kakaoConsultHref?: string;
   session: { name: string } | null;
   memberPoints: number | null;
+  /** When true, hide mobile header search row (planner write screen). */
+  hideMobileSearchRow?: boolean;
 };
 
 /** 데이터 없을 때 사용할 최소 1차 메뉴 (직접 링크) */
@@ -64,10 +66,12 @@ export default function SiteHeaderUI({
   kakaoConsultHref,
   session,
   memberPoints,
+  hideMobileSearchRow = false,
 }: SiteHeaderUIProps) {
   const pathname = usePathname();
-  /** 모바일/태블릿 헤더 검색행: 홈에서만 숨겨 히어로 검색과 중복 제거 */
+  /** 모바일/태블릿 헤더 검색행: 홈·플래너 작성 화면에서 숨김 */
   const isHomePath = pathname === "/";
+  const showHeaderSearchRow = !isHomePath && !hideMobileSearchRow;
   const primaryNavRaw = withPlannerNavigation(headerNavigationData?.primaryNav?.length
     ? headerNavigationData.primaryNav
     : getFallbackPrimaryNav());
@@ -148,7 +152,7 @@ export default function SiteHeaderUI({
         activeTab={activeTab}
         searchQuery={searchQuery}
         session={session}
-        showHeaderSearchRow={!isHomePath}
+        showHeaderSearchRow={showHeaderSearchRow}
       />
     </header>
     </div>

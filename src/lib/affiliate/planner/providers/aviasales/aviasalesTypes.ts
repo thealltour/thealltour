@@ -24,8 +24,14 @@ export const AVIASALES_PRICE_TTL_MS = 2 * 60 * 60 * 1000;
 /** Stale price usable up to 12h after fetch for limited fallback. */
 export const AVIASALES_PRICE_STALE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
-/** Default quote currency — USD (no FX). KRW not assumed without live confirm. */
-export const AVIASALES_DEFAULT_CURRENCY = "usd";
+/**
+ * Default quote + search presentation for Korean Planner surface.
+ * prices_for_dates `currency` + brand URL locale/currency/market.
+ */
+export const AVIASALES_DEFAULT_CURRENCY = "krw";
+export const AVIASALES_DEFAULT_LOCALE = "ko";
+/** ISO 3166-1 alpha-2 market for agency/cache set (KR). */
+export const AVIASALES_DEFAULT_MARKET = "kr";
 
 export type AviasalesPlaceType = "city" | "airport";
 

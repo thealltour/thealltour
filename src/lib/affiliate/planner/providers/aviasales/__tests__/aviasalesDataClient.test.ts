@@ -92,7 +92,8 @@ describe("aviasalesDataClient", () => {
     expect(seen[0]).toContain("/aviasales/v3/prices_for_dates");
     expect(seen[0]).toContain("origin=ICN");
     expect(seen[0]).toContain("destination=OSA");
-    expect(seen[0]).toContain("currency=usd");
+    expect(seen[0]).toContain("currency=krw");
+    expect(seen[0]).toContain("market=kr");
     expect(seen[0]).toContain("token=test-token");
     const second = await fetchAviasalesPricesForDates({
       origin: "ICN",

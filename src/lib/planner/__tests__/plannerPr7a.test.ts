@@ -4,6 +4,7 @@ import { computePlannerPlanFingerprint } from "@/lib/planner/planFingerprint";
 import {
   buildPlacesSearchQuery,
   classifyPlacesCandidates,
+  isConcretePlannerPlaceCandidate,
   normalizePlaceDedupeKey,
   scorePlacesCandidate,
   shouldResolvePlannerItemType,
@@ -82,6 +83,37 @@ describe("PR-7A reality layer contracts", () => {
     expect(buildPlacesSearchQuery({ name: "오사카성", area: null, destination: "오사카" })).toBe(
       "오사카성 오사카",
     );
+  });
+
+  it("composes places query with country when provided", () => {
+    expect(
+      buildPlacesSearchQuery({
+        name: "우메다 스카이빌딩 공중정원 야경",
+        area: "우메다",
+        destination: "오사카",
+        country: "일본",
+      }),
+    ).toBe("우메다 스카이빌딩 공중정원 야경 우메다 오사카 일본");
+  });
+
+  it("filters generic place names via isConcretePlannerPlaceCandidate", () => {
+    expect(
+      isConcretePlannerPlaceCandidate({ type: "food", name: "난바 근처 이자카야 저녁 식사" }),
+    ).toBe(false);
+    expect(
+      isConcretePlannerPlaceCandidate({
+        type: "cafe",
+        name: "우메다 분위기 좋은 카페에서 휴식",
+      }),
+    ).toBe(false);
+    expect(
+      isConcretePlannerPlaceCandidate({
+        type: "attraction",
+        name: "오사카성 및 니시노마루 정원",
+      }),
+    ).toBe(true);
+    expect(isConcretePlannerPlaceCandidate({ type: "attraction", name: "쓰텐카쿠" })).toBe(true);
+    expect(isConcretePlannerPlaceCandidate({ type: "transport", name: "지하철" })).toBe(false);
   });
 
   it("dedupes by destination+area+name", () => {

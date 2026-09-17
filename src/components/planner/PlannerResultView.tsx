@@ -1,16 +1,20 @@
 "use client";
 
-import AlertCard from "@/components/ui/AlertCard";
+import {
+  PlannerAffiliateDaySlot,
+  PlannerAffiliateOffersProvider,
+} from "@/components/planner/PlannerAffiliateOffers";
+import { PlannerBookingSurface } from "@/components/planner/PlannerBookingSurface";
+import { PlannerDayNavigation } from "@/components/planner/PlannerDayNavigation";
 import { PlannerDaySection } from "@/components/planner/PlannerDaySection";
 import { PlannerEditPanel } from "@/components/planner/PlannerEditPanel";
 import { PlannerPlanSummary } from "@/components/planner/PlannerPlanSummary";
 import { PlannerSavePanel } from "@/components/planner/PlannerSavePanel";
 import {
-  PlannerAffiliateDaySlot,
-  PlannerAffiliateOffersProvider,
-  PlannerAffiliatePreparationSlot,
-  PlannerAffiliateSummarySlot,
-} from "@/components/planner/PlannerAffiliateOffers";
+  usePlannerDayScrollSpy,
+  usePrefersReducedMotion,
+} from "@/components/planner/usePlannerDayScrollSpy";
+import { trackPlannerDayNavigationClick } from "@/lib/analytics/trackPlannerEvents";
 import type {
   PlannerEnrichmentDto,
   PlannerPlaceEnrichmentItem,
@@ -18,7 +22,7 @@ import type {
   PlannerWeatherDay,
 } from "@/lib/planner/enrichmentTypes";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 type PlannerResultViewProps = {
   plan: PlannerPlan;
@@ -41,6 +45,48 @@ export function PlannerResultView({
   onSaved,
   onPlanUpdated,
 }: PlannerResultViewProps) {
+  const dayNumbers = useMemo(() => plan.days.map((d) => d.day), [plan.days]);
+  const firstDay = dayNumbers[0] ?? 1;
+  const [activeDayState, setActiveDay] = useState(firstDay);
+  const activeDay = dayNumbers.includes(activeDayState) ? activeDayState : firstDay;
+  const [suppressSpy, setSuppressSpy] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
+
+  const handleSpyActiveDay = useCallback((dayNumber: number) => {
+    setActiveDay(dayNumber);
+  }, []);
+
+  usePlannerDayScrollSpy({
+    dayNumbers,
+    suppressUpdates: suppressSpy,
+    onActiveDayChange: handleSpyActiveDay,
+  });
+
+  const handleDaySelect = useCallback(
+    (dayNumber: number) => {
+      const dayIndex = dayNumbers.indexOf(dayNumber);
+      setActiveDay(dayNumber);
+      setSuppressSpy(true);
+      trackPlannerDayNavigationClick({
+        sessionId,
+        dayNumber,
+        dayIndex: dayIndex >= 0 ? dayIndex : 0,
+      });
+
+      const el = document.getElementById(`planner-day-${dayNumber}`);
+      el?.scrollIntoView({
+        behavior: reducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+
+      window.setTimeout(
+        () => setSuppressSpy(false),
+        reducedMotion ? 50 : 700,
+      );
+    },
+    [dayNumbers, reducedMotion, sessionId],
+  );
+
   const placesByDay = useMemo(() => {
     const map = new Map<number, Map<number, PlannerPlaceEnrichmentItem>>();
     if (!enrichment) return map;
@@ -76,25 +122,48 @@ export function PlannerResultView({
     return map;
   }, [enrichment]);
 
+  const noticeLines = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(
+      "AI가 입력하신 여행 조건을 바탕으로 만든 초안입니다. 운영시간·휴무·현지 사정은 여행 전 다시 확인해 주세요.",
+    );
+    if (enrichment?.partialFailure) {
+      lines.push("일부 장소 정보를 확인하지 못했습니다.");
+    }
+    const weatherAvailability = enrichment?.weather.availability;
+    if (weatherAvailability === "date_not_set") {
+      lines.push("여행 날짜를 정하면 최신 날씨를 확인할 수 있어요.");
+    } else if (
+      weatherAvailability === "too_early" ||
+      (Boolean(enrichment?.message?.includes("날씨")) && weatherAvailability !== "forecast")
+    ) {
+      lines.push("여행일이 가까워지면 최신 날씨를 확인할 수 있어요.");
+    } else if (weatherAvailability === "forecast") {
+      lines.push("날씨는 변동될 수 있습니다.");
+    }
+    return lines;
+  }, [enrichment]);
+
   return (
     <PlannerAffiliateOffersProvider sessionId={sessionId} sourceProductId={sourceProductId}>
       {(affiliateOffers) => (
-        <div className="mx-auto w-full max-w-2xl space-y-8 px-4 py-8 sm:px-0 sm:py-12">
+        <div
+          className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-0 sm:py-12"
+          data-testid="planner-result-view"
+        >
           <PlannerPlanSummary plan={plan} originText={originText} />
 
-          <PlannerAffiliateSummarySlot
-            offers={affiliateOffers}
-            sessionId={sessionId}
-            sourceProductId={sourceProductId}
-          />
-
-          <div className="space-y-3">
+          <div
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3"
+            data-testid="planner-result-actions"
+          >
             <PlannerSavePanel
               sessionId={sessionId}
               destination={plan.destination.name}
               sourceProductId={sourceProductId}
               isSaved={isSaved}
               onSaved={onSaved}
+              compact
             />
             <PlannerEditPanel
               sessionId={sessionId}
@@ -102,47 +171,43 @@ export function PlannerResultView({
               sourceProductId={sourceProductId}
               status={isSaved ? "saved" : "generated"}
               onPlanUpdated={onPlanUpdated}
+              compact
             />
           </div>
 
-          {enrichment?.weather.availability === "date_not_set" ? (
-            <p className="type-caption text-[var(--text-muted)]">
-              여행 날짜를 정하면 최신 날씨를 확인할 수 있어요.
-            </p>
-          ) : null}
-
-          {enrichment?.weather.availability === "too_early" ||
-          (enrichment?.message?.includes("날씨") &&
-            enrichment?.weather.availability !== "date_not_set") ? (
-            <p className="type-caption text-[var(--text-muted)]">
-              여행일이 가까워지면 최신 날씨를 확인할 수 있어요.
-            </p>
-          ) : null}
-
-          {enrichment?.weather.availability === "forecast" ? (
-            <p className="type-caption text-[var(--text-muted)]">날씨는 변동될 수 있습니다.</p>
-          ) : null}
-
-          {enrichment?.partialFailure ? (
-            <p className="type-caption text-[var(--text-muted)]">
-              일부 장소 정보를 확인하지 못했습니다.
-            </p>
-          ) : null}
-
-          <AlertCard variant="neutral" title="AI 초안 안내">
-            <p className="type-small text-[var(--text-secondary)]">
-              AI가 입력하신 여행 조건을 바탕으로 만든 초안입니다. 운영시간·휴무·현지 사정은 여행
-              전 다시 확인해 주세요.
-            </p>
-          </AlertCard>
+          <PlannerBookingSurface
+            offers={affiliateOffers}
+            sessionId={sessionId}
+            sourceProductId={sourceProductId}
+            originText={originText}
+            destinationName={plan.destination.name}
+            startDate={plan.tripOverview.startDate}
+            endDate={plan.tripOverview.endDate}
+          />
 
           <div className="space-y-5">
-            <h2 className="type-h3 text-[var(--foreground)]">일자별 일정</h2>
-            <p className="type-caption text-[var(--text-muted)]">
-              이동시간은 교통상황에 따라 달라질 수 있습니다.
-            </p>
+            <div>
+              <h2 className="type-h3 text-[var(--foreground)]">일자별 일정</h2>
+              <p className="mt-1 type-caption text-[var(--text-muted)]">
+                이동시간은 교통상황에 따라 달라질 수 있습니다.
+              </p>
+            </div>
+
+            <PlannerDayNavigation
+              days={plan.days}
+              activeDay={activeDay}
+              onDaySelect={handleDaySelect}
+              reducedMotion={reducedMotion}
+            />
+
             {plan.days.map((day) => (
-              <div key={`${day.day}-${day.date ?? "flex"}-${day.title}`} className="space-y-3">
+              <section
+                key={`${day.day}-${day.date ?? "flex"}-${day.title}`}
+                id={`planner-day-${day.day}`}
+                data-planner-day={day.day}
+                data-testid={`planner-day-section-${day.day}`}
+                className="scroll-mt-[calc(var(--planner-result-day-nav-top)+var(--planner-day-nav-height))] space-y-3 lg:scroll-mt-[calc(108px+var(--planner-day-nav-height))]"
+              >
                 <PlannerDaySection
                   day={day}
                   sessionId={sessionId}
@@ -156,11 +221,14 @@ export function PlannerResultView({
                   sessionId={sessionId}
                   sourceProductId={sourceProductId}
                 />
-              </div>
+              </section>
             ))}
           </div>
 
-          <section className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+          <section
+            className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"
+            data-testid="planner-result-preparation"
+          >
             <div>
               <h2 className="type-h3 text-[var(--foreground)]">여행 전에 참고하세요</h2>
               <ul className="mt-2 space-y-1.5">
@@ -181,12 +249,24 @@ export function PlannerResultView({
                 ))}
               </ul>
             </div>
-            <PlannerAffiliatePreparationSlot
-              offers={affiliateOffers}
-              sessionId={sessionId}
-              sourceProductId={sourceProductId}
-            />
           </section>
+
+          {noticeLines.length > 0 ? (
+            <section
+              className="space-y-2 border-t border-[var(--border)] pt-4"
+              data-testid="planner-result-notices"
+              aria-label="알아두세요"
+            >
+              <h2 className="type-caption font-semibold text-[var(--text-muted)]">알아두세요</h2>
+              <ul className="space-y-1.5">
+                {noticeLines.map((line) => (
+                  <li key={line} className="type-caption leading-relaxed text-[var(--text-muted)]">
+                    · {line}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </div>
       )}
     </PlannerAffiliateOffersProvider>

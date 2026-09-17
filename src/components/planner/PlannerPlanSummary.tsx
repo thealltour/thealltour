@@ -26,16 +26,20 @@ export function PlannerPlanSummary({ plan, originText }: PlannerPlanSummaryProps
     ? `${origin} → ${destination.name}`
     : destination.name;
   return (
-    <header className="space-y-3">
+    <header className="space-y-2.5 sm:space-y-3">
       <div className="space-y-1">
         <p className="type-caption font-semibold tracking-wide text-[var(--text-muted)]">
           {routeLabel}
           {destination.country ? ` · ${destination.country}` : ""}
         </p>
-        <h1 className="heading-display type-h1 text-[var(--foreground)]">{plan.title}</h1>
+        <h1 className="heading-display text-[1.5rem] font-bold leading-[1.25] tracking-[-0.02em] text-[var(--foreground)] sm:text-[1.75rem]">
+          {plan.title}
+        </h1>
       </div>
-      <p className="type-body leading-relaxed text-[var(--text-secondary)]">{plan.summary}</p>
-      <dl className="grid grid-cols-1 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:grid-cols-2">
+      <p className="type-small leading-relaxed text-[var(--text-secondary)] sm:text-[1rem]">
+        {plan.summary}
+      </p>
+      <dl className="grid grid-cols-1 gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:grid-cols-2 sm:gap-2 sm:p-4">
         <SummaryItem label="여행 기간" value={formatTripPeriod(plan)} />
         <SummaryItem label="인원" value={tripOverview.travelersSummary} />
         <SummaryItem label="스타일" value={tripOverview.styleSummary} />

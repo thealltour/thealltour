@@ -86,6 +86,29 @@ describe("plannerPlanSchema", () => {
     expect(plannerPlanSchema.safeParse(plan).success).toBe(false);
   });
 
+  it("coerces travelToNext.estimatedMinutes 0 to null", () => {
+    const plan = samplePlan();
+    plan.days[0]!.items[0]!.travelToNext = {
+      mode: "walk",
+      estimatedMinutes: 0 as unknown as number,
+    };
+    const parsed = plannerPlanSchema.safeParse(plan);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.days[0]!.items[0]!.travelToNext?.estimatedMinutes).toBeNull();
+    }
+  });
+
+  it("coerces estimatedDurationMinutes 0 to null", () => {
+    const plan = samplePlan();
+    plan.days[0]!.items[0]!.estimatedDurationMinutes = 0 as unknown as number;
+    const parsed = plannerPlanSchema.safeParse(plan);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.days[0]!.items[0]!.estimatedDurationMinutes).toBeNull();
+    }
+  });
+
   it("rejects non-sequential item order", () => {
     const plan = samplePlan();
     plan.days[0]!.items = [

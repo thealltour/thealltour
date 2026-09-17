@@ -23,6 +23,8 @@ type PlannerSavePanelProps = {
   sourceProductId: string | null;
   isSaved: boolean;
   onSaved: () => void;
+  /** Tighter layout for Result action group (behavior unchanged). */
+  compact?: boolean;
 };
 
 export function PlannerSavePanel({
@@ -31,6 +33,7 @@ export function PlannerSavePanel({
   sourceProductId,
   isSaved,
   onSaved,
+  compact = false,
 }: PlannerSavePanelProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,11 +101,19 @@ export function PlannerSavePanel({
 
   if (isSaved) {
     return (
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 space-y-2">
+      <div
+        className={
+          compact
+            ? "space-y-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
+            : "space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+        }
+      >
         <p className="type-body font-medium text-[var(--foreground)]">✓ 저장됨</p>
-        <p className="type-caption text-[var(--text-muted)]">
-          같은 계정으로 로그인하면 다른 기기에서도 이 플랜을 볼 수 있어요.
-        </p>
+        {!compact ? (
+          <p className="type-caption text-[var(--text-muted)]">
+            같은 계정으로 로그인하면 다른 기기에서도 이 플랜을 볼 수 있어요.
+          </p>
+        ) : null}
         <Link
           href={PLANNER_SAVED_LIST_PATH}
           className="inline-flex type-small font-medium text-[var(--primary)] underline-offset-2 hover:underline"
@@ -115,25 +126,31 @@ export function PlannerSavePanel({
 
   return (
     <>
-      <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div
+        className={
+          compact
+            ? "space-y-1.5"
+            : "space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4"
+        }
+      >
         <Button
           type="button"
           variant="primary"
-          className="w-full sm:w-auto"
+          className="w-full"
           loading={saving}
           onClick={() => void onClickSave()}
         >
-          이 플랜 저장하기
+          {compact ? "플랜 저장" : "이 플랜 저장하기"}
         </Button>
         {error ? (
           <p className="type-small text-[var(--danger)]" role="alert">
             {error}
           </p>
-        ) : (
+        ) : !compact ? (
           <p className="type-caption text-[var(--text-muted)]">
             저장하면 다른 기기에서도 다시 확인할 수 있어요.
           </p>
-        )}
+        ) : null}
       </div>
 
       <Modal

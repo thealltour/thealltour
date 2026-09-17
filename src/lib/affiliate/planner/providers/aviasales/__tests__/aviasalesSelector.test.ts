@@ -21,9 +21,15 @@ function offer(partial: Partial<AviasalesPriceOffer> & { price: number; link: st
 }
 
 describe("aviasalesSelector", () => {
-  it("builds aviasales.com search URL from relative link", () => {
-    const url = buildAviasalesSearchUrl("/search/ICN0110OSA1?t=abc");
-    expect(url).toBe("https://www.aviasales.com/search/ICN0110OSA1?t=abc");
+  it("builds aviasales.com search URL from relative link with KR presentation", () => {
+    const url = buildAviasalesSearchUrl("/search/ICN0110OSA1?t=abc&expected_price_currency=usd");
+    expect(url).toContain("https://www.aviasales.com/search/ICN0110OSA1");
+    expect(url).toContain("t=abc");
+    expect(url).toContain("locale=ko");
+    expect(url).toContain("currency=krw");
+    expect(url).toContain("market=kr");
+    expect(url).toContain("expected_price_currency=krw");
+    expect(url).not.toContain("expected_price_currency=usd");
     expect(buildAviasalesSearchUrl("https://evil.com/x")).toBeNull();
     expect(buildAviasalesSearchUrl("//evil.com/search/x")).toBeNull();
   });

@@ -14,10 +14,16 @@ import {
 import {
   buildPlacesSearchQuery,
   classifyPlacesCandidates,
+  isConcretePlannerPlaceCandidate,
   normalizePlaceDedupeKey,
   shouldResolvePlannerItemType,
 } from "@/lib/planner/placesQuery";
-import { mapWithConcurrency, PlacesProviderError, searchPlacesText } from "@/lib/planner/placesClient";
+import {
+  isPlacesProviderConfigured,
+  mapWithConcurrency,
+  PlacesProviderError,
+  searchPlacesText,
+} from "@/lib/planner/placesClient";
 import { fetchPlannerWeatherSummary } from "@/lib/planner/plannerWeather";
 import { resolvePlannerRoutes } from "@/lib/planner/resolvePlannerRoutes";
 
@@ -27,10 +33,25 @@ export const PLANNER_PLACE_CONCURRENCY = 4;
 type WorkItem = {
   dayNumber: number;
   itemOrder: number;
+  itemType: PlannerPlan["days"][number]["items"][number]["type"];
   name: string;
   area: string | null;
   destination: string;
+  country: string | null;
   dedupeKey: string;
+};
+
+type PlaceLookupKind = "classified" | "provider_failure";
+
+type PlaceLookupResult = {
+  key: string;
+  place: PlannerResolvedPlace;
+  kind: PlaceLookupKind;
+  category?: PlacesProviderError["category"];
+  httpStatus?: number | null;
+  dayNumber: number;
+  itemOrder: number;
+  itemType: WorkItem["itemType"];
 };
 
 function unresolvedPlace(originalName: string): PlannerResolvedPlace {
@@ -66,12 +87,59 @@ function fromClassification(
   };
 }
 
+function collectEligibleWork(plan: PlannerPlan): {
+  eligible: WorkItem[];
+  skippedGeneric: number;
+} {
+  const destination = plan.destination.name;
+  const country = plan.destination.country?.trim() || null;
+  const eligible: WorkItem[] = [];
+  let skippedGeneric = 0;
+
+  for (const day of plan.days) {
+    for (const item of day.items) {
+      if (!shouldResolvePlannerItemType(item.type)) continue;
+      if (!isConcretePlannerPlaceCandidate({ type: item.type, name: item.name })) {
+        skippedGeneric += 1;
+        continue;
+      }
+      eligible.push({
+        dayNumber: day.day,
+        itemOrder: item.order,
+        itemType: item.type,
+        name: item.name,
+        area: item.area,
+        destination,
+        country,
+        dedupeKey: normalizePlaceDedupeKey({
+          destination,
+          area: item.area,
+          name: item.name,
+        }),
+      });
+    }
+  }
+
+  return { eligible, skippedGeneric };
+}
+
+function cacheCoversEligible(
+  cached: PlannerPlaceEnrichmentItem[],
+  capped: WorkItem[],
+): boolean {
+  if (capped.length === 0) return cached.length === 0;
+  if (cached.length < capped.length) return false;
+  const keys = new Set(cached.map((c) => `${c.dayNumber}:${c.itemOrder}`));
+  return capped.every((w) => keys.has(`${w.dayNumber}:${w.itemOrder}`));
+}
+
 export async function enrichPlannerSession(params: {
   sessionId: string;
   plan: PlannerPlan;
 }): Promise<PlannerEnrichmentDto> {
   const planFingerprint = computePlannerPlanFingerprint(params.plan);
-  const destination = params.plan.destination.name;
+  const { eligible, skippedGeneric } = collectEligibleWork(params.plan);
+  const capped = eligible.slice(0, PLANNER_PLACE_RESOLVE_MAX);
 
   const existing = await listPlaceEnrichmentsForFingerprint({
     sessionId: params.sessionId,
@@ -81,81 +149,127 @@ export async function enrichPlannerSession(params: {
   let places: PlannerPlaceEnrichmentItem[] = existing.items;
   let partialFailure = false;
   let placeRequestCount = 0;
+  const placeEligibleCount = capped.length;
+  const placeSkippedGenericCount = skippedGeneric;
+  let placeProviderFailureCount = 0;
 
-  if (!existing.fresh || existing.items.length === 0) {
-    const work: WorkItem[] = [];
-    for (const day of params.plan.days) {
-      for (const item of day.items) {
-        if (!shouldResolvePlannerItemType(item.type)) continue;
-        work.push({
-          dayNumber: day.day,
-          itemOrder: item.order,
-          name: item.name,
-          area: item.area,
-          destination,
-          dedupeKey: normalizePlaceDedupeKey({
-            destination,
-            area: item.area,
-            name: item.name,
-          }),
-        });
-      }
-    }
+  const useCache = existing.fresh && cacheCoversEligible(existing.items, capped);
 
-    const capped = work.slice(0, PLANNER_PLACE_RESOLVE_MAX);
+  if (!useCache) {
+    const resolvedByKey = new Map<string, PlaceLookupResult>();
     const uniqueKeys = [...new Set(capped.map((w) => w.dedupeKey))];
-    const resolvedByKey = new Map<string, PlannerResolvedPlace>();
     const uniqueWork = uniqueKeys.map((key) => capped.find((w) => w.dedupeKey === key)!);
 
-    const uniqueResults = await mapWithConcurrency(
-      uniqueWork,
-      PLANNER_PLACE_CONCURRENCY,
-      async (w) => {
-        placeRequestCount += 1;
-        const textQuery = buildPlacesSearchQuery({
-          name: w.name,
-          area: w.area,
-          destination: w.destination,
+    if (uniqueWork.length > 0 && !isPlacesProviderConfigured()) {
+      console.info("[planner] places unavailable", {
+        sessionId: params.sessionId,
+        category: "missing_key",
+      });
+      partialFailure = true;
+      placeProviderFailureCount = uniqueWork.length;
+      for (const w of uniqueWork) {
+        resolvedByKey.set(w.dedupeKey, {
+          key: w.dedupeKey,
+          place: unresolvedPlace(w.name),
+          kind: "provider_failure",
+          category: "missing_key",
+          httpStatus: null,
+          dayNumber: w.dayNumber,
+          itemOrder: w.itemOrder,
+          itemType: w.itemType,
         });
-        try {
-          const candidates = await searchPlacesText({ textQuery });
-          const classified = classifyPlacesCandidates(candidates, {
+      }
+    } else if (uniqueWork.length > 0) {
+      placeRequestCount = uniqueWork.length;
+      const uniqueResults = await mapWithConcurrency(
+        uniqueWork,
+        PLANNER_PLACE_CONCURRENCY,
+        async (w) => {
+          const textQuery = buildPlacesSearchQuery({
             name: w.name,
             area: w.area,
             destination: w.destination,
+            country: w.country,
           });
-          return { key: w.dedupeKey, place: fromClassification(w.name, classified) };
-        } catch (error) {
-          partialFailure = true;
-          if (!(error instanceof PlacesProviderError && error.category === "missing_key")) {
+          try {
+            const candidates = await searchPlacesText({ textQuery });
+            const classified = classifyPlacesCandidates(candidates, {
+              name: w.name,
+              area: w.area,
+              destination: w.destination,
+            });
+            return {
+              key: w.dedupeKey,
+              place: fromClassification(w.name, classified),
+              kind: "classified" as const,
+              dayNumber: w.dayNumber,
+              itemOrder: w.itemOrder,
+              itemType: w.itemType,
+            };
+          } catch (error) {
+            partialFailure = true;
+            placeProviderFailureCount += 1;
+            const category =
+              error instanceof PlacesProviderError ? error.category : "unknown";
+            const httpStatus =
+              error instanceof PlacesProviderError ? error.httpStatus : null;
             console.info("[planner] places resolve failed", {
               sessionId: params.sessionId,
-              category: error instanceof PlacesProviderError ? error.category : "unknown",
+              category,
+              httpStatus,
+              itemType: w.itemType,
+              dayNumber: w.dayNumber,
+              itemOrder: w.itemOrder,
             });
+            return {
+              key: w.dedupeKey,
+              place: unresolvedPlace(w.name),
+              kind: "provider_failure" as const,
+              category: error instanceof PlacesProviderError ? error.category : undefined,
+              httpStatus,
+              dayNumber: w.dayNumber,
+              itemOrder: w.itemOrder,
+              itemType: w.itemType,
+            };
           }
-          return { key: w.dedupeKey, place: unresolvedPlace(w.name) };
-        }
-      },
-    );
+        },
+      );
 
-    for (const r of uniqueResults) {
-      resolvedByKey.set(r.key, r.place);
+      for (const r of uniqueResults) {
+        resolvedByKey.set(r.key, r);
+      }
     }
 
     places = capped.map((w) => ({
       dayNumber: w.dayNumber,
       itemOrder: w.itemOrder,
-      place: resolvedByKey.get(w.dedupeKey) ?? unresolvedPlace(w.name),
+      place: resolvedByKey.get(w.dedupeKey)?.place ?? unresolvedPlace(w.name),
     }));
 
-    try {
-      await replacePlaceEnrichmentsForFingerprint({
-        sessionId: params.sessionId,
-        planFingerprint,
-        items: places,
-      });
-    } catch {
-      partialFailure = true;
+    // Persist only lookup_success (classified), including actual zero-result unresolved.
+    // Never persist provider_failure (avoids 30d cache poisoning).
+    const persistable = capped
+      .map((w) => {
+        const r = resolvedByKey.get(w.dedupeKey);
+        if (!r || r.kind !== "classified") return null;
+        return {
+          dayNumber: w.dayNumber,
+          itemOrder: w.itemOrder,
+          place: r.place,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null);
+
+    if (persistable.length > 0) {
+      try {
+        await replacePlaceEnrichmentsForFingerprint({
+          sessionId: params.sessionId,
+          planFingerprint,
+          items: persistable,
+        });
+      } catch {
+        partialFailure = true;
+      }
     }
   }
 
@@ -163,7 +277,7 @@ export async function enrichPlannerSession(params: {
     params.plan.tripOverview.startDate == null || params.plan.tripOverview.endDate == null
       ? { availability: "date_not_set" as const, days: [] }
       : await fetchPlannerWeatherSummary({
-          destination,
+          destination: params.plan.destination.name,
           startDate: params.plan.tripOverview.startDate,
           endDate: params.plan.tripOverview.endDate,
         });
@@ -183,11 +297,14 @@ export async function enrichPlannerSession(params: {
 
   console.info("[planner] enrich", {
     sessionId: params.sessionId,
+    placeEligibleCount,
+    placeSkippedGenericCount,
     placeRequestCount,
-    routesRequestCount: routeResult.requestCount,
     resolvedPlaceCount,
     ambiguousPlaceCount,
     unresolvedPlaceCount,
+    placeProviderFailureCount,
+    routesRequestCount: routeResult.requestCount,
     resolvedRouteCount,
     weatherAvailability: weather.availability,
     partialFailure,

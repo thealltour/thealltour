@@ -11,6 +11,8 @@ type SiteHeaderProps = {
   golfPresetActive?: boolean;
   quickConsultHref?: string;
   kakaoConsultHref?: string;
+  /** When true, hide the mobile header search row (e.g. /planner write screen). */
+  hideMobileSearchRow?: boolean;
 };
 
 export default async function SiteHeader({
@@ -19,6 +21,7 @@ export default async function SiteHeader({
   golfPresetActive = false,
   quickConsultHref,
   kakaoConsultHref,
+  hideMobileSearchRow = false,
 }: SiteHeaderProps) {
   const cookieStore = await cookies();
   const session = getMemberSessionFromCookies(cookieStore);
@@ -52,6 +55,7 @@ export default async function SiteHeader({
       kakaoConsultHref={kakaoConsultHref}
       session={session ? { name: session.name } : null}
       memberPoints={memberPoints}
+      hideMobileSearchRow={hideMobileSearchRow}
     />
   );
 }

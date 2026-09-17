@@ -25,10 +25,21 @@ const isoDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "날짜 형식이 올바르지 않습니다.");
 
+/** LLM often emits 0 for “unknown/negligible”; treat as null (not a valid positive estimate). */
+function coerceZeroMinutesToNull(value: unknown): unknown {
+  if (typeof value === "number" && Object.is(value, 0)) return null;
+  return value;
+}
+
+const positiveMinutesOrNullSchema = z.preprocess(
+  coerceZeroMinutesToNull,
+  z.number().int().positive().nullable(),
+);
+
 export const plannerPlanTravelToNextSchema = z
   .object({
     mode: z.enum(PLANNER_TRAVEL_MODES).nullable(),
-    estimatedMinutes: z.number().int().positive().nullable(),
+    estimatedMinutes: positiveMinutesOrNullSchema,
   })
   .strict()
   .nullable();
@@ -45,8 +56,10 @@ export const plannerPlanItemSchema = z
     name: z.string().trim().min(1).max(80),
     area: z.string().trim().min(1).max(80).nullable(),
     description: z.string().trim().min(1).max(400),
-    estimatedDurationMinutes: z.number().int().positive().max(12 * 60).nullable(),
-    travelToNext: plannerPlanTravelToNextSchema,
+    estimatedDurationMinutes: z.preprocess(
+      coerceZeroMinutesToNull,
+      z.number().int().positive().max(12 * 60).nullable(),
+    ),    travelToNext: plannerPlanTravelToNextSchema,
     bookingRecommended: z.boolean(),
   })
   .strict();
@@ -123,48 +136,84 @@ export function expectedTripDays(startDate: string, endDate: string): number {
   return Math.round((end - start) / 86_400_000) + 1;
 }
 
+export type PlannerInvariantCode =
+  | "fixed_draft_dates_required"
+  | "day_count_mismatch"
+  | "trip_overview_days_mismatch"
+  | "nights_mismatch"
+  | "fixed_start_date_mismatch"
+  | "fixed_end_date_mismatch"
+  | "day_index_mismatch"
+  | "date_sequence_mismatch"
+  | "flexible_overview_dates_not_null"
+  | "flexible_date_not_null"
+  | "destination_unchanged"
+  | "duration_unchanged"
+  | "day_count_unchanged"
+  | "date_mode_unchanged"
+  | "unknown_invariant";
+
 export class PlannerPlanInvariantError extends Error {
-  constructor(message: string) {
+  readonly code: PlannerInvariantCode;
+
+  constructor(code: PlannerInvariantCode, message: string) {
     super(message);
     this.name = "PlannerPlanInvariantError";
+    this.code = code;
   }
 }
 
 function assertFixedPlanMatchesDraft(plan: PlannerPlan, draft: PlannerDraftInput): void {
   if (!isIsoDateYmd(draft.dates.startDate) || !isIsoDateYmd(draft.dates.endDate)) {
-    throw new PlannerPlanInvariantError("fixed draft requires startDate and endDate");
+    throw new PlannerPlanInvariantError(
+      "fixed_draft_dates_required",
+      "fixed draft requires startDate and endDate",
+    );
   }
   const expectedDays = expectedTripDays(draft.dates.startDate, draft.dates.endDate);
   if (plan.days.length !== expectedDays) {
     throw new PlannerPlanInvariantError(
+      "day_count_mismatch",
       `day count mismatch: expected ${expectedDays}, got ${plan.days.length}`,
     );
   }
   if (plan.tripOverview.days !== expectedDays) {
     throw new PlannerPlanInvariantError(
+      "trip_overview_days_mismatch",
       `tripOverview.days mismatch: expected ${expectedDays}, got ${plan.tripOverview.days}`,
     );
   }
   if (plan.tripOverview.nights !== Math.max(0, expectedDays - 1)) {
     throw new PlannerPlanInvariantError(
+      "nights_mismatch",
       `tripOverview.nights mismatch: expected ${expectedDays - 1}, got ${plan.tripOverview.nights}`,
     );
   }
   if (plan.tripOverview.startDate !== draft.dates.startDate) {
-    throw new PlannerPlanInvariantError("tripOverview.startDate mismatch");
+    throw new PlannerPlanInvariantError(
+      "fixed_start_date_mismatch",
+      "tripOverview.startDate mismatch",
+    );
   }
   if (plan.tripOverview.endDate !== draft.dates.endDate) {
-    throw new PlannerPlanInvariantError("tripOverview.endDate mismatch");
+    throw new PlannerPlanInvariantError(
+      "fixed_end_date_mismatch",
+      "tripOverview.endDate mismatch",
+    );
   }
 
   for (let i = 0; i < plan.days.length; i += 1) {
     const day = plan.days[i]!;
     const expectedDate = addDaysToIsoDate(draft.dates.startDate, i);
     if (day.day !== i + 1) {
-      throw new PlannerPlanInvariantError(`day index mismatch at ${i}: expected ${i + 1}`);
+      throw new PlannerPlanInvariantError(
+        "day_index_mismatch",
+        `day index mismatch at ${i}: expected ${i + 1}`,
+      );
     }
     if (day.date !== expectedDate) {
       throw new PlannerPlanInvariantError(
+        "date_sequence_mismatch",
         `day date mismatch at day ${day.day}: expected ${expectedDate}, got ${day.date}`,
       );
     }
@@ -175,30 +224,40 @@ function assertFlexiblePlanMatchesDraft(plan: PlannerPlan, draft: PlannerDraftIn
   const expectedDays = draft.dates.durationDays;
   if (plan.days.length !== expectedDays) {
     throw new PlannerPlanInvariantError(
+      "day_count_mismatch",
       `day count mismatch: expected ${expectedDays}, got ${plan.days.length}`,
     );
   }
   if (plan.tripOverview.days !== expectedDays) {
     throw new PlannerPlanInvariantError(
+      "trip_overview_days_mismatch",
       `tripOverview.days mismatch: expected ${expectedDays}, got ${plan.tripOverview.days}`,
     );
   }
   if (plan.tripOverview.nights !== Math.max(0, expectedDays - 1)) {
     throw new PlannerPlanInvariantError(
+      "nights_mismatch",
       `tripOverview.nights mismatch: expected ${expectedDays - 1}, got ${plan.tripOverview.nights}`,
     );
   }
   if (plan.tripOverview.startDate != null || plan.tripOverview.endDate != null) {
-    throw new PlannerPlanInvariantError("flexible tripOverview dates must be null");
+    throw new PlannerPlanInvariantError(
+      "flexible_overview_dates_not_null",
+      "flexible tripOverview dates must be null",
+    );
   }
 
   for (let i = 0; i < plan.days.length; i += 1) {
     const day = plan.days[i]!;
     if (day.day !== i + 1) {
-      throw new PlannerPlanInvariantError(`day index mismatch at ${i}: expected ${i + 1}`);
+      throw new PlannerPlanInvariantError(
+        "day_index_mismatch",
+        `day index mismatch at ${i}: expected ${i + 1}`,
+      );
     }
     if (day.date != null) {
       throw new PlannerPlanInvariantError(
+        "flexible_date_not_null",
         `flexible day.date must be null at day ${day.day}, got ${day.date}`,
       );
     }
@@ -213,6 +272,7 @@ export function assertGeneratedPlanMatchesDraft(
   const expected = draftTripDurationDays(draft);
   if (plan.days.length !== expected) {
     throw new PlannerPlanInvariantError(
+      "day_count_mismatch",
       `day count mismatch: expected ${expected}, got ${plan.days.length}`,
     );
   }
@@ -236,17 +296,29 @@ export function assertEditedPlanMatchesContext(
 ): void {
   assertGeneratedPlanMatchesDraft(plan, draft);
   if (plan.destination.name.trim() !== previousPlan.destination.name.trim()) {
-    throw new PlannerPlanInvariantError("destination name must stay unchanged during edit");
+    throw new PlannerPlanInvariantError(
+      "destination_unchanged",
+      "destination name must stay unchanged during edit",
+    );
   }
   if (plan.tripOverview.days !== previousPlan.tripOverview.days) {
-    throw new PlannerPlanInvariantError("trip duration must stay unchanged during edit");
+    throw new PlannerPlanInvariantError(
+      "duration_unchanged",
+      "trip duration must stay unchanged during edit",
+    );
   }
   if (plan.days.length !== previousPlan.days.length) {
-    throw new PlannerPlanInvariantError("day count must stay unchanged during edit");
+    throw new PlannerPlanInvariantError(
+      "day_count_unchanged",
+      "day count must stay unchanged during edit",
+    );
   }
   const prevFlexible = previousPlan.tripOverview.startDate == null;
   const nextFlexible = plan.tripOverview.startDate == null;
   if (prevFlexible !== nextFlexible) {
-    throw new PlannerPlanInvariantError("date mode must stay unchanged during edit");
+    throw new PlannerPlanInvariantError(
+      "date_mode_unchanged",
+      "date mode must stay unchanged during edit",
+    );
   }
 }

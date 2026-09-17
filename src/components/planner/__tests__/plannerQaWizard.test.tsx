@@ -91,7 +91,9 @@ describe("PlannerWizard QA session + step 7 ready", () => {
     fireEvent.click(screen.getByRole("button", { name: "완성 직전으로" }));
 
     await waitFor(() => {
-      expect(screen.getByText("입력하신 조건을 확인해주세요")).toBeInTheDocument();
+      expect(
+        screen.getByText("좋습니다. 지금까지 말씀해주신 여행 조건을 정리했어요."),
+      ).toBeInTheDocument();
     });
 
     const methods = fetchMock.mock.calls.map((c) => (c[1] as RequestInit | undefined)?.method);

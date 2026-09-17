@@ -16,6 +16,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
     },
     {
+      url: `${base}/planner`,
+      lastModified: now,
+    },
+    {
       url: `${base}/destinations`,
       lastModified: now,
     },

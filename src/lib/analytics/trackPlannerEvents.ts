@@ -442,3 +442,22 @@ export function trackAffiliateClicked(params: AffiliateMetaBase): void {
     },
   });
 }
+
+export function trackPlannerDayNavigationClick(params: {
+  sessionId: string;
+  dayNumber: number;
+  dayIndex: number;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_day_nav_click,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_day_nav",
+    label: `Day ${params.dayNumber}`,
+    metadata: {
+      sessionId: params.sessionId,
+      dayNumber: params.dayNumber,
+      dayIndex: params.dayIndex,
+      source: "sticky_nav",
+    },
+  });
+}

@@ -1,0 +1,37 @@
+/**
+ * 상품 옵션 선택 + 가격 변동 UI
+ * - false: 옵션 UI 미노출, 기존 price/duration 그대로 표시
+ * - true: options 데이터가 있을 때만 옵션 UI 노출
+ */
+export const ENABLE_PRODUCT_OPTIONS = true;
+
+/**
+ * 쿠팡 파트너스 제휴 배너 (홈 /products /region)
+ * - false: 모든 CoupangTravelSection 표면 비표시
+ * - true: 기존 배너·고지 노출
+ */
+export const ENABLE_COUPANG_PARTNERS_BANNER = false;
+
+/**
+ * 자유여행 Planner MVP
+ * - false: /planner 404, 홈·상품상세 진입점 비표시
+ * - true: Planner 진입 route·CTA 노출
+ */
+export const ENABLE_FREE_TRAVEL_PLANNER = true;
+
+/**
+ * Planner Affiliate Router v0 — MASTER kill switch (committed default).
+ * - false: affiliate offers API/UI 비활성 (기본)
+ * - true: Result monetization slots + click attribution 활성
+ *
+ * Production canary: keep committed false until an intentional canary deploy.
+ * Runtime override (server): ENABLE_PLANNER_AFFILIATE_ROUTER=true|false env.
+ * Percent canary is separate — see PLANNER_AFFILIATE_ROLLOUT_PERCENT.
+ */
+export const ENABLE_PLANNER_AFFILIATE_ROUTER = false;
+
+/**
+ * Committed default for percent canary (0 = nobody).
+ * Runtime: PLANNER_AFFILIATE_ROLLOUT_PERCENT (integer 0–100). Invalid → 0.
+ */
+export const PLANNER_AFFILIATE_ROLLOUT_PERCENT_DEFAULT = 0;

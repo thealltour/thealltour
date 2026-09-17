@@ -93,9 +93,24 @@ export {
   CARDNEWS_WIDTH,
   CARDNEWS_HEIGHT,
   CARDNEWS_MEDIA_TYPE,
+  CARDNEWS_ASPECT_RATIOS,
+  CARDNEWS_SIZE_PRESETS,
+  CARDNEWS_DEFAULT_ASPECT_RATIO,
+  resolveCardNewsGeometry,
+  type CardNewsAspectRatio,
 } from "@/lib/marketing/assets/cardnews/brand";
 export { fitText, wrapText } from "@/lib/marketing/assets/cardnews/textLayout";
 export { renderCardNewsPackage } from "@/lib/marketing/assets/cardnews/renderCardNewsPackage";
+export {
+  INSTAGRAM_CARDNEWS_ASPECT_RATIOS,
+  applyInstagramCardnewsToBrief,
+  buildInstagramCardnewsCards,
+  resolveInstagramCardnewsSkip,
+} from "@/lib/marketing/assets/cardnews/instagramCards";
+export {
+  renderInstagramCardnewsForBusinessDate,
+  renderInstagramCardnewsForPackage,
+} from "@/lib/marketing/assets/cardnews/instagramCardnews";
 export { createCardNewsVerificationBrief, CARDNEWS_VERIFICATION_CANDIDATE_ID } from "@/lib/marketing/assets/cardnews/fixture";
 export {
   parseRenderMarketingCardNewsArgs,
@@ -369,6 +384,7 @@ export {
   loadShortformVideoWorkerConfig,
   defaultShortformWorkerId,
   DEFAULT_SHORTFORM_WORKER_MAX_JOBS_PER_RUN,
+  SHORTFORM_WORKER_MAX_JOBS_PER_RUN_CEILING,
   SHORTFORM_WORKER_CONCURRENCY,
   SHORTFORM_WORKER_LEASE_RENEWAL_SUPPORTED,
 } from "@/lib/marketing/assets/shortform/worker/config";

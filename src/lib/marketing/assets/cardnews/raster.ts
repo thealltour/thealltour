@@ -1,12 +1,19 @@
 import sharp from "sharp";
 
-import { CARDNEWS_HEIGHT, CARDNEWS_WIDTH } from "@/lib/marketing/assets/cardnews/brand";
+import {
+  resolveCardNewsGeometry,
+  type CardNewsGeometry,
+} from "@/lib/marketing/assets/cardnews/brand";
 import { withCardNewsFonts } from "@/lib/marketing/assets/cardnews/fonts";
 
-export async function rasterizeCardNewsSvg(svg: string): Promise<Buffer> {
+export async function rasterizeCardNewsSvg(
+  svg: string,
+  geometry?: CardNewsGeometry,
+): Promise<Buffer> {
+  const geo = geometry ?? resolveCardNewsGeometry();
   return withCardNewsFonts(async () => {
     return sharp(Buffer.from(svg), { density: 72 })
-      .resize(CARDNEWS_WIDTH, CARDNEWS_HEIGHT, { fit: "fill" })
+      .resize(geo.width, geo.height, { fit: "fill" })
       .png({
         compressionLevel: 9,
         adaptiveFiltering: false,

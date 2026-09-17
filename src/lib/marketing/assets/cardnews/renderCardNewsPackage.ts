@@ -6,14 +6,15 @@ import type { AssignmentEvidenceRef } from "@/lib/marketing/content/types";
 import type { CardNewsCard, MarketingAssetArtifact, MarketingAssetManifest, MediaBrief } from "@/lib/marketing/assets/contracts";
 import { MARKETING_ASSET_MANIFEST_CONTRACT } from "@/lib/marketing/assets/contracts";
 import {
-  CARDNEWS_ASPECT_RATIO,
+  CARDNEWS_DEFAULT_ASPECT_RATIO,
   CARDNEWS_FONT_FAMILY,
-  CARDNEWS_HEIGHT,
   CARDNEWS_MEDIA_TYPE,
   CARDNEWS_RENDER_CONTRACT,
   CARDNEWS_RENDERER_VERSION,
   CARDNEWS_SAFE,
-  CARDNEWS_WIDTH,
+  resolveCardNewsGeometry,
+  type CardNewsAspectRatio,
+  type CardNewsGeometry,
 } from "@/lib/marketing/assets/cardnews/brand";
 import { encodeLocalVisualDataUri, rasterizeCardNewsSvg } from "@/lib/marketing/assets/cardnews/raster";
 import { buildCardNewsSvg, loadWordmarkDataUri, type CardCitation, type CardRenderModel } from "@/lib/marketing/assets/cardnews/svg";
@@ -64,7 +65,7 @@ export type CardNewsRenderDocument = {
   rendererVersion: typeof CARDNEWS_RENDERER_VERSION;
   width: number;
   height: number;
-  aspectRatio: typeof CARDNEWS_ASPECT_RATIO;
+  aspectRatio: CardNewsAspectRatio;
   mediaType: typeof CARDNEWS_MEDIA_TYPE;
   fontFamily: typeof CARDNEWS_FONT_FAMILY;
   fontFallback: [typeof CARDNEWS_FONT_FAMILY];
@@ -81,6 +82,8 @@ export type RenderCardNewsPackageInput = {
   graphicOnly?: boolean;
   visuals?: Record<string, string>;
   allowedVisualRoots?: string[];
+  /** Overrides the brief's aspect ratio (e.g. rendering a 1:1 variant of the same cards). */
+  aspectRatio?: CardNewsAspectRatio | null;
   now?: Date;
 };
 
@@ -108,8 +111,15 @@ const ROLE_KICKER: Record<CardNewsCard["role"], string> = {
   cta: "다음 단계",
 };
 
-function cardRelativePath(index: number): string {
-  return `cardnews/card-${String(index).padStart(2, "0")}.png`;
+/** 4:5 keeps the historical flat paths; other ratios get their own subdirectory. */
+function cardnewsDirectory(geometry: CardNewsGeometry): string {
+  return geometry.aspectRatio === CARDNEWS_DEFAULT_ASPECT_RATIO
+    ? "cardnews"
+    : `cardnews/${geometry.aspectRatio.replace(":", "x")}`;
+}
+
+function cardRelativePath(index: number, geometry: CardNewsGeometry): string {
+  return `${cardnewsDirectory(geometry)}/card-${String(index).padStart(2, "0")}.png`;
 }
 
 function evidenceCatalog(brief: MediaBrief): Map<string, AssignmentEvidenceRef> {
@@ -160,12 +170,14 @@ function buildRenderModel(input: {
   citation: CardCitation | null;
   visualDataUri: string | null;
   wordmarkDataUri: string | null;
+  geometry: CardNewsGeometry;
 }): CardRenderModel {
   const sizes = preferredSizes(input.card.role);
-  const textWidth = CARDNEWS_WIDTH - CARDNEWS_SAFE.padX * 2;
+  const textWidth = input.geometry.width - CARDNEWS_SAFE.padX * 2;
   const hasVisual = Boolean(input.visualDataUri);
-  const headlineMaxHeight = hasVisual ? 180 : 240;
-  const bodyMaxHeight = hasVisual ? 240 : 360;
+  // The text box has to shrink with the canvas or a 1:1 card overruns its footer.
+  const headlineMaxHeight = input.geometry.scaleY(hasVisual ? 180 : 240);
+  const bodyMaxHeight = input.geometry.scaleY(hasVisual ? 240 : 360);
   const headline = fitText({
     text: input.card.headline,
     preferredFontSize: sizes.headline,
@@ -308,6 +320,9 @@ export async function renderCardNewsPackage(
   }
 
   const catalog = evidenceCatalog(brief);
+  const geometry = resolveCardNewsGeometry(
+    input.aspectRatio ?? brief.formats.cardnews.aspectRatio,
+  );
   const wordmarkDataUri = loadWordmarkDataUri();
   const allowedVisualRoots = input.allowedVisualRoots?.length ? input.allowedVisualRoots : [packageRoot];
   const graphicOnly = Boolean(input.graphicOnly);
@@ -331,6 +346,7 @@ export async function renderCardNewsPackage(
         citation: citationForCard(card, catalog),
         visualDataUri: visual.dataUri,
         wordmarkDataUri,
+        geometry,
       }),
     );
   }
@@ -338,7 +354,7 @@ export async function renderCardNewsPackage(
   const pngs: Buffer[] = [];
   if (!input.dryRun) {
     for (const model of models) {
-      pngs.push(await rasterizeCardNewsSvg(buildCardNewsSvg(model)));
+      pngs.push(await rasterizeCardNewsSvg(buildCardNewsSvg(model, geometry), geometry));
     }
   }
 
@@ -353,7 +369,7 @@ export async function renderCardNewsPackage(
   ];
 
   const cardMetas: CardNewsRenderCardMeta[] = models.map((model, offset) => {
-    const relativePath = cardRelativePath(model.index);
+    const relativePath = cardRelativePath(model.index, geometry);
     const content = pngs[offset] ?? Buffer.alloc(0);
     if (!input.dryRun) {
       planned.push({
@@ -369,8 +385,8 @@ export async function renderCardNewsPackage(
       cardRole: model.role,
       sourceBriefCardId: model.cardId,
       relativePath,
-      width: CARDNEWS_WIDTH,
-      height: CARDNEWS_HEIGHT,
+      width: geometry.width,
+      height: geometry.height,
       mediaType: CARDNEWS_MEDIA_TYPE,
       sha256: pngs[offset] ? sha256Buffer(pngs[offset]) : "0".repeat(64),
       byteSize: pngs[offset]?.byteLength ?? 0,
@@ -384,9 +400,9 @@ export async function renderCardNewsPackage(
   const render: CardNewsRenderDocument = {
     contract: CARDNEWS_RENDER_CONTRACT,
     rendererVersion: CARDNEWS_RENDERER_VERSION,
-    width: CARDNEWS_WIDTH,
-    height: CARDNEWS_HEIGHT,
-    aspectRatio: CARDNEWS_ASPECT_RATIO,
+    width: geometry.width,
+    height: geometry.height,
+    aspectRatio: geometry.aspectRatio,
     mediaType: CARDNEWS_MEDIA_TYPE,
     fontFamily: CARDNEWS_FONT_FAMILY,
     fontFallback: [CARDNEWS_FONT_FAMILY],
@@ -398,7 +414,7 @@ export async function renderCardNewsPackage(
 
   if (!input.dryRun) {
     planned.push({
-      relativePath: "cardnews/render.json",
+      relativePath: `${cardnewsDirectory(geometry)}/render.json`,
       content: stableJsonBytes(render),
       kind: "context",
       origin: "cardnews_render",
@@ -418,7 +434,11 @@ export async function renderCardNewsPackage(
       dryRun: true,
       wrote: false,
       reused: false,
-      plannedRelativePaths: [...cardMetas.map((item) => item.relativePath), "cardnews/render.json", "manifest.json"],
+      plannedRelativePaths: [
+        ...cardMetas.map((item) => item.relativePath),
+        `${cardnewsDirectory(geometry)}/render.json`,
+        "manifest.json",
+      ],
       artifacts: [],
       manifest: null,
       render,

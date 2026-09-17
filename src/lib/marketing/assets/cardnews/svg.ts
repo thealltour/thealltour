@@ -5,11 +5,11 @@ import type { CardNewsRole } from "@/lib/marketing/assets/contracts";
 import {
   CARDNEWS_BRAND,
   CARDNEWS_FONT_FAMILY,
-  CARDNEWS_HEIGHT,
   CARDNEWS_SAFE,
-  CARDNEWS_WIDTH,
   CARDNEWS_WORDMARK_RELATIVE,
   CARDNEWS_WORDMARK_TEXT,
+  resolveCardNewsGeometry,
+  type CardNewsGeometry,
 } from "@/lib/marketing/assets/cardnews/brand";
 import type { FittedText } from "@/lib/marketing/assets/cardnews/textLayout";
 
@@ -77,14 +77,14 @@ function progress(model: CardRenderModel, y: number): string {
     : "";
 }
 
-function geometricFallback(role: CardNewsRole, index: number): string {
+function geometricFallback(role: CardNewsRole, index: number, geometry: CardNewsGeometry): string {
   const numeral = String(index).padStart(2, "0");
   const accent =
     role === "cta"
-      ? `<rect x="${CARDNEWS_WIDTH - 196}" y="96" width="108" height="18" fill="${CARDNEWS_BRAND.orange}"/>`
-      : `<rect x="${CARDNEWS_WIDTH - 176}" y="96" width="88" height="18" fill="${CARDNEWS_BRAND.blue}"/>`;
+      ? `<rect x="${geometry.width - 196}" y="96" width="108" height="18" fill="${CARDNEWS_BRAND.orange}"/>`
+      : `<rect x="${geometry.width - 176}" y="96" width="88" height="18" fill="${CARDNEWS_BRAND.blue}"/>`;
   return [
-    `<text x="${CARDNEWS_SAFE.padX}" y="430" font-family="${CARDNEWS_FONT_FAMILY}" font-size="188" font-weight="700" fill="${CARDNEWS_BRAND.blue}" fill-opacity="0.08">${numeral}</text>`,
+    `<text x="${CARDNEWS_SAFE.padX}" y="${geometry.scaleY(430)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="188" font-weight="700" fill="${CARDNEWS_BRAND.blue}" fill-opacity="0.08">${numeral}</text>`,
     `<rect x="${CARDNEWS_SAFE.padX}" y="96" width="72" height="72" fill="${CARDNEWS_BRAND.blue}"/>`,
     `<rect x="${CARDNEWS_SAFE.padX + 54}" y="132" width="36" height="36" fill="${CARDNEWS_BRAND.orange}"/>`,
     accent,
@@ -107,30 +107,31 @@ export function loadWordmarkDataUri(repoRoot = process.cwd()): string | null {
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
-export function buildCardNewsSvg(model: CardRenderModel): string {
+export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeometry): string {
+  const geo = geometry ?? resolveCardNewsGeometry();
   const hasVisual = Boolean(model.visualDataUri);
-  const contentTop = hasVisual ? 620 : 470;
+  const contentTop = geo.scaleY(hasVisual ? 620 : 470);
   const headlineY = contentTop;
   const bodyY = headlineY + model.headline.height + 36;
-  const citationY = CARDNEWS_HEIGHT - 210;
+  const citationY = geo.height - geo.scaleY(210);
   const kickerFill = model.role === "cta" ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue;
-  const kickerY = hasVisual ? 236 : 250;
+  const kickerY = geo.scaleY(hasVisual ? 236 : 250);
 
   const citation = model.citation
     ? [
-        `<rect x="${CARDNEWS_SAFE.padX}" y="${citationY - 28}" width="${CARDNEWS_WIDTH - CARDNEWS_SAFE.padX * 2}" height="4" fill="${CARDNEWS_BRAND.line}"/>`,
+        `<rect x="${CARDNEWS_SAFE.padX}" y="${citationY - 28}" width="${geo.width - CARDNEWS_SAFE.padX * 2}" height="4" fill="${CARDNEWS_BRAND.line}"/>`,
         `<text x="${CARDNEWS_SAFE.padX}" y="${citationY + 16}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="20" font-weight="700" fill="${CARDNEWS_BRAND.blue}">${escapeXml(model.citation.label)}</text>`,
         `<text x="${CARDNEWS_SAFE.padX}" y="${citationY + 48}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="22" font-weight="400" fill="${CARDNEWS_BRAND.muted}">${escapeXml(model.citation.detail)}</text>`,
       ].join("")
     : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${CARDNEWS_WIDTH}" height="${CARDNEWS_HEIGHT}" viewBox="0 0 ${CARDNEWS_WIDTH} ${CARDNEWS_HEIGHT}">
-  <rect width="${CARDNEWS_WIDTH}" height="${CARDNEWS_HEIGHT}" fill="${CARDNEWS_BRAND.paper}"/>
-  <rect width="${CARDNEWS_WIDTH}" height="18" fill="${CARDNEWS_BRAND.blue}"/>
-  ${model.role === "cta" ? `<rect x="0" y="${CARDNEWS_HEIGHT - 18}" width="${CARDNEWS_WIDTH}" height="18" fill="${CARDNEWS_BRAND.orange}"/>` : ""}
-  ${hasVisual ? "" : geometricFallback(model.role, model.index)}
-  ${visualSlot(model, CARDNEWS_SAFE.padX, 280, CARDNEWS_WIDTH - CARDNEWS_SAFE.padX * 2, 300)}
+<svg xmlns="http://www.w3.org/2000/svg" width="${geo.width}" height="${geo.height}" viewBox="0 0 ${geo.width} ${geo.height}">
+  <rect width="${geo.width}" height="${geo.height}" fill="${CARDNEWS_BRAND.paper}"/>
+  <rect width="${geo.width}" height="18" fill="${CARDNEWS_BRAND.blue}"/>
+  ${model.role === "cta" ? `<rect x="0" y="${geo.height - 18}" width="${geo.width}" height="18" fill="${CARDNEWS_BRAND.orange}"/>` : ""}
+  ${hasVisual ? "" : geometricFallback(model.role, model.index, geo)}
+  ${visualSlot(model, CARDNEWS_SAFE.padX, geo.scaleY(280), geo.width - CARDNEWS_SAFE.padX * 2, geo.scaleY(300))}
   <text x="${CARDNEWS_SAFE.padX}" y="${kickerY}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="22" font-weight="700" fill="${kickerFill}">${escapeXml(model.kicker)}</text>
   ${textBlock({
     lines: model.headline.lines,
@@ -151,8 +152,8 @@ export function buildCardNewsSvg(model: CardRenderModel): string {
     fill: CARDNEWS_BRAND.ink,
   })}
   ${citation}
-  ${progress(model, CARDNEWS_HEIGHT - 118)}
-  ${wordmark(model, CARDNEWS_SAFE.padX, CARDNEWS_HEIGHT - 96)}
+  ${progress(model, geo.height - geo.scaleY(118))}
+  ${wordmark(model, CARDNEWS_SAFE.padX, geo.height - geo.scaleY(96))}
 </svg>
 `;
 }

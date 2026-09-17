@@ -228,7 +228,14 @@ function planGeneratedArtifacts(input: {
 
   // MQ-5 — persist assessment metadata; never recompute scores on export.
   const fromPublishable: Partial<Record<PublishableChannel, MarketingValueAssessment>> = {};
-  for (const channel of ["threads", "shortform", "naver_blog", "naver_band", "kakao_channel"] as const) {
+  for (const channel of [
+    "threads",
+    "shortform",
+    "naver_blog",
+    "naver_band",
+    "kakao_channel",
+    "instagram",
+  ] as const) {
     const slot = input.publishable[channel];
     if (slot?.marketingValue) fromPublishable[channel] = slot.marketingValue;
   }
@@ -257,6 +264,7 @@ function planGeneratedArtifacts(input: {
   pushChannelCopyIfPublishable(planned, "copy/naver-blog.md", input.publishable.naver_blog);
   pushChannelCopyIfPublishable(planned, "copy/naver-band.txt", input.publishable.naver_band);
   pushChannelCopyIfPublishable(planned, "copy/kakao-channel.txt", input.publishable.kakao_channel);
+  pushChannelCopyIfPublishable(planned, "copy/instagram-caption.txt", input.publishable.instagram);
 
   return planned;
 }
